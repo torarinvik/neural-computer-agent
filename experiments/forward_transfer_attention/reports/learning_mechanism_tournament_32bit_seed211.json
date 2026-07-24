@@ -1,0 +1,344 @@
+{
+  "admitted_to_second_seed": false,
+  "configuration": {
+    "batch_size": 32,
+    "blind_lifetimes": 256,
+    "checkpoint_out": "artifacts/checkpoints/learning_mechanism_tournament_seed211.pt",
+    "device": "cuda",
+    "fit_updates": 256,
+    "pretrain_lifetimes": 128,
+    "pretrain_steps": 40,
+    "report": "experiments/forward_transfer_attention/reports/learning_mechanism_tournament_32bit_seed211.json",
+    "seed": 211,
+    "selection_lifetimes": 256
+  },
+  "population": {
+    "action_embedding_lr1e4": {
+      "adaptation": "action_embedding",
+      "adapter_rank": 0,
+      "aulc_above_chance": 0.0546875,
+      "core_learning_rate": 0.0001,
+      "curve": [
+        {
+          "examples_processed": 2048,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 8,
+          "unique_reward_bits": 8,
+          "verified_accuracy": 0.546875
+        },
+        {
+          "examples_processed": 4096,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 16,
+          "unique_reward_bits": 16,
+          "verified_accuracy": 0.4296875
+        },
+        {
+          "examples_processed": 8192,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 32,
+          "unique_reward_bits": 32,
+          "verified_accuracy": 0.6171875
+        }
+      ],
+      "final_accuracy": 0.6171875,
+      "readout_learning_rate": 0.001,
+      "stable_bits_to_75": null,
+      "trainable_parameters": 45958
+    },
+    "action_predictor_tail_lr1e4": {
+      "adaptation": "action_predictor_tail",
+      "adapter_rank": 0,
+      "aulc_above_chance": 0.05859375,
+      "core_learning_rate": 0.0001,
+      "curve": [
+        {
+          "examples_processed": 2048,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 8,
+          "unique_reward_bits": 8,
+          "verified_accuracy": 0.55078125
+        },
+        {
+          "examples_processed": 4096,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 16,
+          "unique_reward_bits": 16,
+          "verified_accuracy": 0.47265625
+        },
+        {
+          "examples_processed": 8192,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 32,
+          "unique_reward_bits": 32,
+          "verified_accuracy": 0.625
+        }
+      ],
+      "final_accuracy": 0.625,
+      "readout_learning_rate": 0.001,
+      "stable_bits_to_75": null,
+      "trainable_parameters": 54214
+    },
+    "frozen_readout": {
+      "adaptation": "frozen",
+      "adapter_rank": 0,
+      "aulc_above_chance": 0.0546875,
+      "core_learning_rate": 0.0,
+      "curve": [
+        {
+          "examples_processed": 2048,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 8,
+          "unique_reward_bits": 8,
+          "verified_accuracy": 0.546875
+        },
+        {
+          "examples_processed": 4096,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 16,
+          "unique_reward_bits": 16,
+          "verified_accuracy": 0.43359375
+        },
+        {
+          "examples_processed": 8192,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 32,
+          "unique_reward_bits": 32,
+          "verified_accuracy": 0.6171875
+        }
+      ],
+      "final_accuracy": 0.6171875,
+      "readout_learning_rate": 0.001,
+      "stable_bits_to_75": null,
+      "trainable_parameters": 45922
+    },
+    "predictor_tail_lr1e4": {
+      "adaptation": "predictor_tail",
+      "adapter_rank": 0,
+      "aulc_above_chance": 0.05859375,
+      "core_learning_rate": 0.0001,
+      "curve": [
+        {
+          "examples_processed": 2048,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 8,
+          "unique_reward_bits": 8,
+          "verified_accuracy": 0.55078125
+        },
+        {
+          "examples_processed": 4096,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 16,
+          "unique_reward_bits": 16,
+          "verified_accuracy": 0.47265625
+        },
+        {
+          "examples_processed": 8192,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 32,
+          "unique_reward_bits": 32,
+          "verified_accuracy": 0.625
+        }
+      ],
+      "final_accuracy": 0.625,
+      "readout_learning_rate": 0.001,
+      "stable_bits_to_75": null,
+      "trainable_parameters": 54178
+    },
+    "recurrent_predictor_tail_lr3e5": {
+      "adaptation": "recurrent_predictor_tail",
+      "adapter_rank": 0,
+      "aulc_above_chance": 0.06510416666666667,
+      "core_learning_rate": 3e-05,
+      "curve": [
+        {
+          "examples_processed": 2048,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 8,
+          "unique_reward_bits": 8,
+          "verified_accuracy": 0.5625
+        },
+        {
+          "examples_processed": 4096,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 16,
+          "unique_reward_bits": 16,
+          "verified_accuracy": 0.51171875
+        },
+        {
+          "examples_processed": 8192,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 32,
+          "unique_reward_bits": 32,
+          "verified_accuracy": 0.62109375
+        }
+      ],
+      "final_accuracy": 0.62109375,
+      "readout_learning_rate": 0.001,
+      "stable_bits_to_75": null,
+      "trainable_parameters": 81442
+    },
+    "residual_rank16": {
+      "adaptation": "adapter",
+      "adapter_rank": 16,
+      "aulc_above_chance": 0.078125,
+      "core_learning_rate": 0.0,
+      "curve": [
+        {
+          "examples_processed": 2048,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 8,
+          "unique_reward_bits": 8,
+          "verified_accuracy": 0.546875
+        },
+        {
+          "examples_processed": 4096,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 16,
+          "unique_reward_bits": 16,
+          "verified_accuracy": 0.4375
+        },
+        {
+          "examples_processed": 8192,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 32,
+          "unique_reward_bits": 32,
+          "verified_accuracy": 0.6875
+        }
+      ],
+      "final_accuracy": 0.6875,
+      "readout_learning_rate": 0.001,
+      "stable_bits_to_75": null,
+      "trainable_parameters": 52658
+    },
+    "residual_rank4": {
+      "adaptation": "adapter",
+      "adapter_rank": 4,
+      "aulc_above_chance": 0.057291666666666664,
+      "core_learning_rate": 0.0,
+      "curve": [
+        {
+          "examples_processed": 2048,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 8,
+          "unique_reward_bits": 8,
+          "verified_accuracy": 0.546875
+        },
+        {
+          "examples_processed": 4096,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 16,
+          "unique_reward_bits": 16,
+          "verified_accuracy": 0.453125
+        },
+        {
+          "examples_processed": 8192,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 32,
+          "unique_reward_bits": 32,
+          "verified_accuracy": 0.625
+        }
+      ],
+      "final_accuracy": 0.625,
+      "readout_learning_rate": 0.001,
+      "stable_bits_to_75": null,
+      "trainable_parameters": 48038
+    },
+    "residual_rank8": {
+      "adaptation": "adapter",
+      "adapter_rank": 8,
+      "aulc_above_chance": 0.0625,
+      "core_learning_rate": 0.0,
+      "curve": [
+        {
+          "examples_processed": 2048,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 8,
+          "unique_reward_bits": 8,
+          "verified_accuracy": 0.546875
+        },
+        {
+          "examples_processed": 4096,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 16,
+          "unique_reward_bits": 16,
+          "verified_accuracy": 0.46484375
+        },
+        {
+          "examples_processed": 8192,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 32,
+          "unique_reward_bits": 32,
+          "verified_accuracy": 0.640625
+        }
+      ],
+      "final_accuracy": 0.640625,
+      "readout_learning_rate": 0.001,
+      "stable_bits_to_75": null,
+      "trainable_parameters": 49578
+    }
+  },
+  "population_size": 8,
+  "pretraining": {
+    "examples_processed": 2560,
+    "history": [
+      {
+        "gradient_norm": 14.317509651184082,
+        "loss": 4.030429840087891,
+        "predictive_loss": 2.0141654014587402,
+        "step": 1
+      },
+      {
+        "gradient_norm": 3.298067808151245,
+        "loss": 3.2398924827575684,
+        "predictive_loss": 1.776667594909668,
+        "step": 20
+      },
+      {
+        "gradient_norm": 2.4425551891326904,
+        "loss": 2.560849905014038,
+        "predictive_loss": 1.7165634632110596,
+        "step": 40
+      }
+    ],
+    "optimizer_updates": 40,
+    "unique_lifetimes": 128,
+    "unique_scored_transitions": 256
+  },
+  "schema": "learning-mechanism-tournament-v1",
+  "selection_and_blind_lifetimes_disjoint": true,
+  "semantic_labels_used_for_training": false,
+  "total_seconds": 42.53000481998606,
+  "unattempted_action_labels_used_for_training": false,
+  "unique_reward_bits_per_clone": 32,
+  "visual_embeddings_cached_identically_across_clones": true,
+  "winner": "residual_rank16",
+  "winner_blind_audit": {
+    "missing_consequence_accuracy": 0.5,
+    "missing_consequence_entropy": 0.3792295753955841,
+    "no_probe_effect_accuracy": 0.5,
+    "normal_accuracy": 0.6640625,
+    "normal_entropy": 0.40570423007011414,
+    "protocol_swap_accuracy": 0.7265625,
+    "protocol_swap_prediction_flip": 0.515625,
+    "target_reverse_accuracy": 0.69921875,
+    "target_reverse_prediction_flip": 0.50390625
+  },
+  "winner_controls": {
+    "action_shuffled": {
+      "mean_margin": 2.5064949989318848,
+      "normalized_policy_entropy": 0.4529615342617035,
+      "verified_accuracy": 0.4609375
+    },
+    "fully_fresh_core": {
+      "mean_margin": 0.9183616638183594,
+      "normalized_policy_entropy": 0.8558382987976074,
+      "verified_accuracy": 0.5
+    },
+    "reward_shuffled": {
+      "mean_margin": 5.267065525054932,
+      "normalized_policy_entropy": 0.2874104082584381,
+      "verified_accuracy": 0.4921875
+    }
+  }
+}

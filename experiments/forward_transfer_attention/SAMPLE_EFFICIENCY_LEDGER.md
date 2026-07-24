@@ -47,6 +47,8 @@ new tasks is evidence of compounding learning.
 | 2026-07-24 | Full task capped at 32 bits with 512 replay updates | 52.73%; protocol 54.69%, target 52.34%; no causal flips | Fully fresh 48.44%; no control reached 75% | Extra replay cannot substitute for the missing 32→64 unique outcomes; keep 64 bits as the frontier |
 | 2026-07-24 | Eight-clone 32-bit latent-interface tournament, broad generation, seed 211 | Best selection 72.27%, blind 69.53%; action/reward/fresh controls 44.14–48.44% | Baseline concat/high-rate clone 50.39%; no clone reached stable 75% | Narrow low-rate heads showed a real but sub-gate signal; reversal flips were only 47.66%/39.84%, so no promotion |
 | 2026-07-24 | Refined descendants on seed 307 | Best selection 61.33%, blind 55.47%; reversal flips 48.83%/24.61% | Shuffled/fresh controls 44.14–50% | The first-generation advantage did not replicate; no checkpoint retained and the 64-bit frontier remains |
+| 2026-07-24 | Eight-clone conservative learning-mechanism tournament at 32 bits, seed 211 | Zero-initialized rank-16 residual adapter: 68.75% selection, 66.41% blind | Frozen readout 61.72% selection; shuffled/fresh controls 46.09–50% | A bounded one-seed signal, but protocol/target flips were only 51.56%/50.39%; exact-parent replication required |
+| 2026-07-24 | Exact rank-16 residual parent, seed 307 | 58.98% selection, 55.47% blind; target flip 13.67% | Shuffled/fresh controls 45.70–50% | Conservative adaptation did not replicate or learn the causal rule; reject the family at 32 bits and retain no checkpoint |
 
 The direct-outcome comparison is a supervised probe curve, not an acceptable
 deployed learning method. It is included only to measure whether prior sensory
@@ -123,8 +125,10 @@ Future evolutionary searches must use successive halving across seeds:
    pre-registered bar;
 4. never reproduce a one-seed winner merely because it ranks first.
 
-The next 32-bit search should change the learning mechanism rather than continue
-width/rate/interface mutations.  The highest-value family is conservative joint
-adaptation: frozen-core baseline versus tiny zero-initialized latent adapters
-and limited recurrent/predictor fine-tuning, all trained only from attempted
-actions and scalar outcomes.
+The follow-up changed the learning mechanism rather than the feature interface:
+eight clones compared a frozen readout, zero-initialized residual adapters, and
+limited action-embedding, predictor, and recurrent adaptation.  A rank-16
+adapter improved the first seed but failed exact-parent replication.  This
+closes the cheap "more adaptable readout" branch at 32 bits.  The next
+experiment should change the information curriculum or pretraining objective,
+not add optimizer freedom to the same 32 outcomes.

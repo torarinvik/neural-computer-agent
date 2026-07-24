@@ -123,15 +123,18 @@ python -m experiments.forward_transfer_attention.train_identify_then_act \
 
 ## Next experiment
 
-The first 32-bit feature-interface tournament is complete. A seed-211 clone
-reached 72.27% selection and 69.53% blind accuracy, but the family fell to
-55.47% blind accuracy on seed 307. No checkpoint was promoted.
+Two different 32-bit searches are now complete. The feature-interface winner
+fell from 69.53% blind accuracy to 55.47% on its replication seed. A subsequent
+learning-mechanism population compared a frozen core, zero-initialized residual
+adapters, and conservative action/predictor/recurrent adaptation. Its rank-16
+adapter reached 66.41% blind accuracy on seed 211 but also fell to 55.47% on
+seed 307, with invalid causal reversal behavior. No checkpoint was promoted.
 
-The next population should change the learning mechanism rather than continue
-interface-width tuning: compare a frozen-core baseline with tiny zero-initialized
-latent adapters and conservative recurrent/predictor fine-tuning. Reproduce
-exact parents on a second seed before mutation. Every clone remains capped at
-32 unique verifier outcomes and must pass blind causal audits.
+The cheap "more readout capacity or optimizer freedom" branch is closed at 32
+unique outcomes. The next population should change the information curriculum
+or self-supervised predictive objective while preserving the exact 32-bit
+verifier budget. A candidate only earns a longer run after exact-parent
+replication and valid pixel-rerender causal audits.
 
 The longer-term optimization is a gradient-trained population with
 successive-halving compute allocation. Fitness is held-out learning AULC,
