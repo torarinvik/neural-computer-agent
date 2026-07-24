@@ -1,0 +1,484 @@
+# screencap.elisa — ScreenCaptureKit capture driven entirely from Elisa via the Objective-C runtime.
+#
+# This replaces the screencap_bridge.m Objective-C source: there is NO .m file. ScreenCaptureKit is an
+# Objective-C framework, so we drive it through the Obj-C runtime over plain-C FFI — objc_msgSend
+# (address taken via dlsym, invoked per-call-site with call_as for the exact arm64 prototype),
+# objc_allocateClassPair/class_addMethod to build the SCStreamOutput delegate with an Elisa @c_abi
+# function as its IMP, and hand-assembled global blocks for the async completion handlers. All frame
+# and audio math (motion energy, RMS, BGRA->RGB) is plain Elisa calling the CoreMedia/CoreVideo C APIs.
+#
+# Public API used by frame_dump.elisa:
+#   screencap_start / screencap_wait_first_frame / screencap_grab / screencap_w / screencap_h
+#   screencap_log_dims / screencap_stop / screencap_install_sigint / screencap_should_stop
+#   screencap_wait_keyframe / screencap_now_ms / screencap_audio_level / screencap_set_audio_trigger
+#
+# Written for -Wflow-strict: decisions are values, guards, `is`-bindings, or extracted helpers.
+
+# ---- Obj-C runtime + dynamic loader -----------------------------------------------------------------
+extern dlopen(path: void&?, mode: int) -> void&?
+extern dlsym(handle: void&?, sym: u8&) -> void&?
+@link_name(objc_getClass)
+extern objc_getClass(name: u8&) -> void&?
+extern sel_registerName(name: u8&) -> void&?
+extern objc_allocateClassPair(super: void&?, name: u8&, extra: usize) -> void&?
+extern class_addMethod(cls: void&?, sel: void&?, imp: void&?, types: u8&) -> u8
+extern objc_registerClassPair(cls: void&?) -> void
+extern dispatch_queue_create(label: void&?, attr: void&?) -> void&?
+
+# ---- libc / timing / locking ------------------------------------------------------------------------
+extern usleep(usec: u32) -> int
+extern memcpy(dst: void&, src: void&, n: usize) -> void&?
+extern sqrt(x: f64) -> f64
+extern signal(sig: int, handler: void&?) -> void&?
+extern os_unfair_lock_lock(lock: void&) -> void
+extern os_unfair_lock_unlock(lock: void&) -> void
+
+extern clock_gettime(clk: int, ts: void&) -> int
+extern CMSampleBufferIsValid(sb: void&?) -> u8
+extern CMSampleBufferGetImageBuffer(sb: void&?) -> void&?
+extern CVPixelBufferLockBaseAddress(px: void&?, flags: u64) -> int
+extern CVPixelBufferUnlockBaseAddress(px: void&?, flags: u64) -> int
+extern CVPixelBufferGetWidth(px: void&?) -> usize
+extern CVPixelBufferGetHeight(px: void&?) -> usize
+extern CVPixelBufferGetBytesPerRow(px: void&?) -> usize
+extern CVPixelBufferGetBaseAddress(px: void&?) -> void&?
+extern CMSampleBufferGetAudioBufferListWithRetainedBlockBuffer(sb: void&?, sizeNeeded: void&?, ablOut: void&, ablSize: usize, structAlloc: void&?, blockAlloc: void&?, flags: u32, blockOut: void&?) -> i32
+extern CFRelease(obj: void&?) -> void
+extern CGDisplayCopyDisplayMode(displayID: u32) -> void&?
+extern CGDisplayModeGetPixelWidth(mode: void&?) -> usize
+extern CGDisplayModeGetPixelHeight(mode: void&?) -> usize
+extern CGDisplayModeRelease(mode: void&?) -> void
+module Screencap:
+    private struct Timespec layout(c):
+        tv_sec: mutable i64
+        tv_nsec: mutable i64
+
+    # ---- CoreMedia / CoreVideo / CoreFoundation / CoreGraphics (plain C) --------------------------------
+
+    private struct CMTime layout(c):
+        value: mutable i64
+        timescale: mutable i32
+        flags: mutable u32
+        epoch: mutable i64
+
+    private struct AudioBuffer layout(c):
+        mNumberChannels: mutable u32
+        mDataByteSize: mutable u32
+        mData: mutable void&?
+    private struct AudioBufferList2 layout(c):        # AudioBufferList with room for 2 channel buffers
+        mNumberBuffers: mutable u32
+        pad: mutable u32
+        buf0: mutable AudioBuffer
+        buf1: mutable AudioBuffer
+
+    private struct BlockDescriptor layout(c):
+        reserved: mutable u64
+        size: mutable u64
+        signature: mutable void&?
+    private struct BlockLiteral layout(c):
+        isa: mutable void&?
+        flags: mutable i32
+        reserved: mutable i32
+        invoke: mutable void&?
+        descriptor: mutable void&?
+
+    # ---- capacity: latest-frame staging buffer (BGRA, tightly packed) up to 24M px -----------------------
+    private const SC_STAGE_CAP_PX: i32 = 24000000
+    private global mutable g_stage: array[u8, 96000000] = zeroed
+
+    private global mutable g_msgSend: void&? = null
+    private global mutable g_block_isa: void&? = null
+    private global mutable g_lock: u32 = 0
+
+    private global mutable g_w: i32 = 0
+    private global mutable g_h: i32 = 0
+    private global mutable g_have: i32 = 0
+    private global mutable g_motion_accum: i64 = 0
+    private global mutable g_audio_level: i32 = 0
+    private global mutable g_audio_accum: i64 = 0
+    private global mutable g_audio_floor: i32 = 25
+    private global mutable g_audio_kf_thresh: i64 = 0
+
+    private global mutable g_display: void&? = null
+    private global mutable g_content_done: i32 = 0
+    private global mutable g_start_done: i32 = 0
+    private global mutable g_stop_flag: i32 = 0
+
+    # two reusable global blocks (content, then start/stop reuse the second)
+    private global mutable g_desc_a: BlockDescriptor = zeroed
+    private global mutable g_block_a: BlockLiteral = zeroed
+    private global mutable g_desc_b: BlockDescriptor = zeroed
+    private global mutable g_block_b: BlockLiteral = zeroed
+
+    # ---- msgSend helpers: each call_as supplies the exact arm64 prototype at its call site --------------
+    private def sel(name: cstr) -> void&?:
+        return sel_registerName(name.cast[u8&])
+    private def m0(r: void&?, s: void&?) -> void&?:
+        trusted Unsafe.IndirectCall:
+            return g_msgSend.call_as[fn(void&?, void&?) -> void&?](r, s)
+    private def m2(r: void&?, s: void&?, a: void&?, b: void&?) -> void&?:
+        trusted Unsafe.IndirectCall:
+            return g_msgSend.call_as[fn(void&?, void&?, void&?, void&?) -> void&?](r, s, a, b)
+    private def m3(r: void&?, s: void&?, a: void&?, b: void&?, c: void&?) -> void&?:
+        trusted Unsafe.IndirectCall:
+            return g_msgSend.call_as[fn(void&?, void&?, void&?, void&?, void&?) -> void&?](r, s, a, b, c)
+    private def mi(r: void&?, s: void&?) -> i64:
+        trusted Unsafe.IndirectCall:
+            return g_msgSend.call_as[fn(void&?, void&?) -> i64](r, s)
+    private def m_u32(r: void&?, s: void&?) -> u32:
+        trusted Unsafe.IndirectCall:
+            return g_msgSend.call_as[fn(void&?, void&?) -> u32](r, s)
+    private def m_idx(r: void&?, s: void&?, v: usize) -> void&?:
+        trusted Unsafe.IndirectCall:
+            return g_msgSend.call_as[fn(void&?, void&?, usize) -> void&?](r, s, v)
+    private def m_setu(r: void&?, s: void&?, v: usize) -> void:
+        trusted Unsafe.IndirectCall:
+            g_msgSend.call_as[fn(void&?, void&?, usize) -> void](r, s, v)
+    private def m_setu32(r: void&?, s: void&?, v: u32) -> void:
+        trusted Unsafe.IndirectCall:
+            g_msgSend.call_as[fn(void&?, void&?, u32) -> void](r, s, v)
+    private def m_seti(r: void&?, s: void&?, v: i64) -> void:
+        trusted Unsafe.IndirectCall:
+            g_msgSend.call_as[fn(void&?, void&?, i64) -> void](r, s, v)
+    private def m_setb(r: void&?, s: void&?, v: u8) -> void:
+        trusted Unsafe.IndirectCall:
+            g_msgSend.call_as[fn(void&?, void&?, u8) -> void](r, s, v)
+    private def m_setcmtime(r: void&?, s: void&?, v: CMTime) -> void:
+        trusted Unsafe.IndirectCall:
+            g_msgSend.call_as[fn(void&?, void&?, CMTime) -> void](r, s, v)
+    private def m_addout(r: void&?, s: void&?, a: void&?, t: i64, q: void&?, e: void&?) -> u8:
+        trusted Unsafe.IndirectCall:
+            return g_msgSend.call_as[fn(void&?, void&?, void&?, i64, void&?, void&?) -> u8](r, s, a, t, q, e)
+    private def m_blk(r: void&?, s: void&?, b: void&?) -> void:
+        trusted Unsafe.IndirectCall:
+            g_msgSend.call_as[fn(void&?, void&?, void&?) -> void](r, s, b)
+
+    private def iabs(x: i32) -> i32:
+        ensure result >= 0
+        return -x if x < 0 else x
+    private def lock() -> void:
+        trusted Unsafe.PointerCast:
+            os_unfair_lock_lock((&g_lock).cast[void&])
+    private def unlock() -> void:
+        trusted Unsafe.PointerCast:
+            os_unfair_lock_unlock((&g_lock).cast[void&])
+
+    public def screencap_now_ms() -> i64:
+        ts: mutable Timespec = zeroed
+        trusted Unsafe.PointerCast:
+            _ = clock_gettime(6, (&ts).cast[void&])      # CLOCK_MONOTONIC
+        return ts.tv_sec * 1000 + ts.tv_nsec / 1000000
+
+    public def screencap_w() -> int:
+        return g_w
+    public def screencap_h() -> int:
+        return g_h
+    private def screencap_audio_level() -> int:
+        lock()
+        v: i32 = g_audio_level
+        unlock()
+        return v
+    private def screencap_set_audio_trigger(thresh: i32) -> void:
+        lock()
+        g_audio_kf_thresh <- thresh.i64()
+        unlock()
+    public def screencap_should_stop() -> int:
+        return g_stop_flag
+
+    # ---- SIGINT ----------------------------------------------------------------------------------------
+    private @callconv(c)
+    def sc_sigint_handler(sig: int) -> void:
+        g_stop_flag <- 1
+    public def screencap_install_sigint() -> void:
+        hp: mutable void&? = null
+        trusted Unsafe.PointerCast:
+            hp <- sc_sigint_handler.cast[void&?]
+        _ = signal(2, hp)                                # SIGINT
+
+    # ---- async completion handlers (block invokes) -----------------------------------------------------
+    private def retain_first_display(content: void&?) -> void:
+        return if content == null
+        displays: void&? = m0(content, sel("displays"))
+        d: void&? = m_idx(displays, sel("objectAtIndex:"), 0.usize())
+        # the display object is explicitly retained, so it outlives the callback frame
+        trusted Unsafe.StaleRef:
+            g_display <- m0(d, sel("retain"))
+
+    private @callconv(c)
+    def sc_content_cb(blk: void&?, content: void&?, err: void&?) -> void:
+        retain_first_display(content)
+        g_content_done <- 1
+    private @callconv(c)
+    def sc_start_cb(blk: void&?, err: void&?) -> void:
+        g_start_done <- 1
+
+    # The stored pointers are all process-lifetime: fn pointers, string literals, global block isa.
+    private def fill_block_a(invoke: void&?, sig: cstr) -> void:
+        trusted Unsafe.PointerCast:
+            trusted Unsafe.StaleRef:
+                g_desc_a.reserved <- 0
+                g_desc_a.size <- 32
+                g_desc_a.signature <- sig.cast[u8&].cast[void&?]
+                g_block_a.isa <- g_block_isa
+                g_block_a.flags <- 0x50000000
+                g_block_a.reserved <- 0
+                g_block_a.invoke <- invoke
+                g_block_a.descriptor <- (&g_desc_a).cast[void&?]
+    private def fill_block_b(invoke: void&?, sig: cstr) -> void:
+        trusted Unsafe.PointerCast:
+            trusted Unsafe.StaleRef:
+                g_desc_b.reserved <- 0
+                g_desc_b.size <- 32
+                g_desc_b.signature <- sig.cast[u8&].cast[void&?]
+                g_block_b.isa <- g_block_isa
+                g_block_b.flags <- 0x50000000
+                g_block_b.reserved <- 0
+                g_block_b.invoke <- invoke
+                g_block_b.descriptor <- (&g_desc_b).cast[void&?]
+
+    # ---- per-frame processing (runs on the SCStream background queue via the IMP) -----------------------
+    private def process_audio(sb: void&?) -> void:
+        abl: mutable AudioBufferList2 = zeroed
+        blk: mutable void&? = null
+        s: mutable i32 = 0
+        trusted Unsafe.PointerCast:
+            s <- CMSampleBufferGetAudioBufferListWithRetainedBlockBuffer(sb, null, (&abl).cast[void&], 40.usize(), null, null, 1, (&blk).cast[void&?])
+        failed: bool = s != 0 or blk == null
+        CFRelease(blk) if failed and blk != null
+        return if failed
+        sumsq: mutable f64 = 0.0
+        n: mutable i64 = 0
+        nb: u32 = abl.mNumberBuffers
+        i: mutable u32 = 0
+        while i < nb and i < 2:
+            ab: mutable AudioBuffer = abl.buf0
+            ab <- abl.buf1 if i != 0
+            if ab.mData is dp:
+                cnt: i64 = (ab.mDataByteSize / 4).i64()
+                trusted Unsafe.PointerCast:
+                    fp: f32& = dp.cast[f32&]
+                    k: mutable i64 = 0
+                    while k < cnt:
+                        v: f64 = fp[k.usize()].f64()
+                        sumsq <- sumsq + v * v
+                        n <- n + 1
+                        k <- k + 1
+            i <- i + 1
+        CFRelease(blk)
+        return if n <= 0
+        level: i32 = (sqrt(sumsq / n.f64()) * 1000.0).i32()
+        lock()
+        g_audio_level <- level
+        g_audio_accum <- g_audio_accum + (level - g_audio_floor).i64() if level > g_audio_floor
+        unlock()
+
+    # motion energy vs the previous frame (still in g_stage), sparse 8x8 grid. Caller holds the lock.
+    private def accum_motion(bptr: u8&, w: i32, h: i32, bpr: usize) -> void:
+        requires w >= 0
+        requires h >= 0
+        requires w * h <= SC_STAGE_CAP_PX
+        sad: mutable i64 = 0
+        cntm: mutable i64 = 0
+        y: mutable i32 = 0
+        while y < h:
+            srow: usize = y.usize() * bpr
+            prow: usize = (y * w * 4).usize()
+            x: mutable i32 = 0
+            while x < w:
+                so: usize = srow + (x * 4).usize()
+                po: usize = prow + (x * 4).usize()
+                db: i32 = iabs(bptr[so].i32() - g_stage[po].i32())
+                dg: i32 = iabs(bptr[so + 1.usize()].i32() - g_stage[po + 1.usize()].i32())
+                dr: i32 = iabs(bptr[so + 2.usize()].i32() - g_stage[po + 2.usize()].i32())
+                sad <- sad + (db + dg + dr).i64()
+                cntm <- cntm + 1
+                x <- x + 8
+            y <- y + 8
+        g_motion_accum <- g_motion_accum + sad / cntm if cntm > 0
+
+    # copy this frame (drop row padding) into the staging buffer. Caller holds the lock.
+    private def copy_rows(bptr: u8&, w: i32, h: i32, bpr: usize) -> void:
+        requires w >= 0
+        requires h >= 0
+        requires w * h <= SC_STAGE_CAP_PX
+        rowbytes: usize = (w * 4).usize()
+        for yy in 0..<h:
+            trusted Unsafe.PointerCast:
+                _ = memcpy((&g_stage[(yy * w * 4).usize()]).cast[void&], (&bptr[yy.usize() * bpr]).cast[void&], rowbytes)
+
+    private def stage_incoming(base: void&?, w: i32, h: i32, bpr: usize) -> void:
+        if base is bp:
+            return if w <= 0 or h <= 0 or w * h > SC_STAGE_CAP_PX
+            trusted Unsafe.PointerCast:
+                bptr: u8& = bp.cast[u8&]
+                lock()
+                accum_motion(bptr, w, h, bpr) if g_have == 1 and g_w == w and g_h == h
+                copy_rows(bptr, w, h, bpr)
+                g_w <- w
+                g_h <- h
+                g_have <- 1
+                unlock()
+
+    private def process_video(sb: void&?) -> void:
+        px: void&? = CMSampleBufferGetImageBuffer(sb)
+        return if px == null
+        _ = CVPixelBufferLockBaseAddress(px, 1)          # kCVPixelBufferLock_ReadOnly
+        w: i32 = CVPixelBufferGetWidth(px).i32()
+        h: i32 = CVPixelBufferGetHeight(px).i32()
+        bpr: usize = CVPixelBufferGetBytesPerRow(px)
+        stage_incoming(CVPixelBufferGetBaseAddress(px), w, h, bpr)
+        _ = CVPixelBufferUnlockBaseAddress(px, 1)
+
+    # ---- the SCStreamOutput delegate IMP: stream:didOutputSampleBuffer:ofType: -------------------------
+    private @callconv(c)
+    def sc_sample_imp(self: void&?, cmd: void&?, stream: void&?, sb: void&?, kind: i64) -> void:
+        return if sb == null
+        return if CMSampleBufferIsValid(sb) == 0
+        process_audio(sb) if kind == 1                   # SCStreamOutputTypeAudio
+        process_video(sb) if kind != 1                   # SCStreamOutputTypeScreen (0)
+
+    # ---- public lifecycle ------------------------------------------------------------------------------
+    public def screencap_start() -> int:
+        h: void&? = dlopen(null, 2)
+        # dlsym on the main executable image: these symbols live for the whole process
+        trusted Unsafe.StaleRef:
+            g_msgSend <- dlsym(h, "objc_msgSend".cast[u8&])
+            g_block_isa <- dlsym(h, "_NSConcreteGlobalBlock".cast[u8&])
+        0 return if g_msgSend == null or g_block_isa == null
+
+        cb1: mutable void&? = null
+        trusted Unsafe.PointerCast:
+            cb1 <- sc_content_cb.cast[void&?]
+        fill_block_a(cb1, "v@?@@")
+        trusted Unsafe.PointerCast:
+            m_blk(objc_getClass("SCShareableContent".cast[u8&]), sel("getShareableContentWithCompletionHandler:"), (&g_block_a).cast[void&?])
+        waited: mutable i32 = 0
+        while g_content_done == 0 and waited < 4000:
+            _ = usleep(1000)
+            waited <- waited + 1
+        0 return if g_display == null
+
+        # full backing-pixel (Retina) resolution from the current display mode
+        did: u32 = m_u32(g_display, sel("displayID"))
+        capw: mutable i64 = mi(g_display, sel("width"))
+        caph: mutable i64 = mi(g_display, sel("height"))
+        mode: void&? = CGDisplayCopyDisplayMode(did)
+        if mode is md:
+            capw <- CGDisplayModeGetPixelWidth(md).i64()
+            caph <- CGDisplayModeGetPixelHeight(md).i64()
+            CGDisplayModeRelease(md)
+
+        empty: void&? = m0(objc_getClass("NSArray".cast[u8&]), sel("array"))
+        filt: mutable void&? = m0(objc_getClass("SCContentFilter".cast[u8&]), sel("alloc"))
+        filt <- m2(filt, sel("initWithDisplay:excludingWindows:"), g_display, empty)
+        cfg: void&? = m0(m0(objc_getClass("SCStreamConfiguration".cast[u8&]), sel("alloc")), sel("init"))
+        m_setu(cfg, sel("setWidth:"), capw.usize())
+        m_setu(cfg, sel("setHeight:"), caph.usize())
+        m_setu32(cfg, sel("setPixelFormat:"), 0x42475241)            # 'BGRA'
+        frv: mutable CMTime = zeroed
+        frv.value <- 1
+        frv.timescale <- 60
+        frv.flags <- 1
+        m_setcmtime(cfg, sel("setMinimumFrameInterval:"), frv)
+        m_seti(cfg, sel("setQueueDepth:"), 6)
+        m_setb(cfg, sel("setShowsCursor:"), 1)
+        m_setb(cfg, sel("setCapturesAudio:"), 1)
+        m_setb(cfg, sel("setExcludesCurrentProcessAudio:"), 1)
+
+        sink_cls: void&? = objc_allocateClassPair(objc_getClass("NSObject".cast[u8&]), "ElisaSCSink".cast[u8&], 0.usize())
+        imp: mutable void&? = null
+        trusted Unsafe.PointerCast:
+            imp <- sc_sample_imp.cast[void&?]
+        _ = class_addMethod(sink_cls, sel("stream:didOutputSampleBuffer:ofType:"), imp, "v@:@^vq".cast[u8&])
+        objc_registerClassPair(sink_cls)
+        sink: void&? = m0(m0(sink_cls, sel("alloc")), sel("init"))
+
+        stream: mutable void&? = m0(objc_getClass("SCStream".cast[u8&]), sel("alloc"))
+        stream <- m3(stream, sel("initWithFilter:configuration:delegate:"), filt, cfg, sink)
+        qv: void&? = dispatch_queue_create(null, null)
+        qa: void&? = dispatch_queue_create(null, null)
+        _ = m_addout(stream, sel("addStreamOutput:type:sampleHandlerQueue:error:"), sink, 0, qv, null)
+        _ = m_addout(stream, sel("addStreamOutput:type:sampleHandlerQueue:error:"), sink, 1, qa, null)
+
+        cb2: mutable void&? = null
+        trusted Unsafe.PointerCast:
+            cb2 <- sc_start_cb.cast[void&?]
+        fill_block_b(cb2, "v@?@")
+        trusted Unsafe.PointerCast:
+            m_blk(stream, sel("startCaptureWithCompletionHandler:"), (&g_block_b).cast[void&?])
+        sw: mutable i32 = 0
+        while g_start_done == 0 and sw < 4000:
+            _ = usleep(1000)
+            sw <- sw + 1
+        return 1
+
+    public def screencap_wait_first_frame() -> int:
+        i: mutable i32 = 0
+        while i < 2000:
+            lock()
+            have: i32 = g_have
+            unlock()
+            1 return if have == 1
+            _ = usleep(1000)
+            i <- i + 1
+        return 0
+
+    public def screencap_log_dims() -> void:
+        # (kept minimal; the recorder prints its own startup banner)
+        return
+
+    # Why a keyframe fired (the public API encodes these as 1 / 2 / 3 respectively).
+    private enum KeyframeReason:
+        Motion
+        Timeout
+        Audio
+
+    # Poll until a keyframe condition fires.
+    private def keyframe_reason(min_ms: i32, max_ms: i32, thresh: i32) -> KeyframeReason:
+        start: i64 = screencap_now_ms()
+        while true:
+            KeyframeReason.Timeout return if g_stop_flag == 1
+            elapsed: i64 = screencap_now_ms() - start
+            lock()
+            m: i64 = g_motion_accum
+            a: i64 = g_audio_accum
+            akf: i64 = g_audio_kf_thresh
+            unlock()
+            ready: bool = elapsed >= min_ms.i64()
+            KeyframeReason.Motion return if ready and m >= thresh.i64()
+            KeyframeReason.Audio return if ready and akf > 0 and a >= akf
+            KeyframeReason.Timeout return if elapsed >= max_ms.i64()
+            _ = usleep(6000)
+        return KeyframeReason.Timeout
+
+    private def screencap_wait_keyframe(min_ms: i32, max_ms: i32, thresh: i32) -> int:
+        reason: KeyframeReason = keyframe_reason(min_ms, max_ms, thresh)
+        lock()
+        g_motion_accum <- 0
+        g_audio_accum <- 0
+        unlock()
+        return match reason:
+            KeyframeReason.Motion: 1
+            KeyframeReason.Timeout: 2
+            KeyframeReason.Audio: 3
+
+    public def screencap_grab(dst: mutable u32&, capacity_px: i32) -> int:
+        lock()
+        w: i32 = g_w
+        h: i32 = g_h
+        empty: bool = g_have == 0 or w <= 0 or h <= 0 or w * h > capacity_px
+        unlock() if empty
+        0 return if empty
+        for y in 0..<h:
+            row: usize = (y * w * 4).usize()
+            for x in 0..<w:
+                o: usize = row + (x * 4).usize()
+                b: u32 = g_stage[o].u32()
+                g: u32 = g_stage[o + 1.usize()].u32()
+                r: u32 = g_stage[o + 2.usize()].u32()
+                dst[(y * w + x).usize()] <- (r << 16) | (g << 8) | b
+        unlock()
+        return 1
+
+    public def screencap_stop() -> void:
+        return

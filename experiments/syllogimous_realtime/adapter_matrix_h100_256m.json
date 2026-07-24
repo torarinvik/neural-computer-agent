@@ -1,0 +1,1258 @@
+{
+  "frozen_listener": true,
+  "model": "HuggingFaceTB/SmolVLM2-256M-Video-Instruct",
+  "results": [
+    {
+      "action_traces": [
+        [
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 0
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 1285
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 1630
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 2006
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 2301
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 2607
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 2936
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 3305
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 3599
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 3829
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 4120
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 4417
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 4717
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 5014
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 5302
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 5532
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 5829
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 6127
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 6405
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 6628
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 6916
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 7214
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 7517
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 7895
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 8133
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 8422
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 8732
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 9021
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 9319
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 9614
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 9926
+          }
+        ]
+      ],
+      "metrics": {
+        "by_family_difficulty": {
+          "LESS THAN/standard": {
+            "accuracy": 0.0,
+            "episodes": 1,
+            "mean_inference_ms": 10141.0,
+            "mean_latency_ms": 10217.0,
+            "mean_reward": -1.0,
+            "mean_sensory_tokens": 31.0,
+            "p95_latency_ms": 10217,
+            "timeout_rate": 1.0
+          }
+        },
+        "episodes": 1,
+        "overall": {
+          "accuracy": 0.0,
+          "episodes": 1,
+          "mean_inference_ms": 10141.0,
+          "mean_latency_ms": 10217.0,
+          "mean_reward": -1.0,
+          "mean_sensory_tokens": 31.0,
+          "p95_latency_ms": 10217,
+          "timeout_rate": 1.0
+        },
+        "schema": "syllogimous.metrics.v1"
+      },
+      "trained": false,
+      "variant": "dense"
+    },
+    {
+      "action_traces": [
+        [
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 0
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 294
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 596
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 906
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 1202
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 1494
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 1795
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 2087
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 2311
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 2888
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 3175
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 3404
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 3697
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 3980
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 4214
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 4500
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 4798
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 5077
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 5397
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 5693
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 5976
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 6208
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 6514
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 6800
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 7088
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 7470
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 7708
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 8002
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 8279
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 8507
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 8777
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 9093
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 9404
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 9683
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 9914
+          }
+        ]
+      ],
+      "metrics": {
+        "by_family_difficulty": {
+          "LESS THAN/standard": {
+            "accuracy": 0.0,
+            "episodes": 1,
+            "mean_inference_ms": 10039.0,
+            "mean_latency_ms": 10208.0,
+            "mean_reward": -1.0,
+            "mean_sensory_tokens": 35.0,
+            "p95_latency_ms": 10208,
+            "timeout_rate": 1.0
+          }
+        },
+        "episodes": 1,
+        "overall": {
+          "accuracy": 0.0,
+          "episodes": 1,
+          "mean_inference_ms": 10039.0,
+          "mean_latency_ms": 10208.0,
+          "mean_reward": -1.0,
+          "mean_sensory_tokens": 35.0,
+          "p95_latency_ms": 10208,
+          "timeout_rate": 1.0
+        },
+        "schema": "syllogimous.metrics.v1"
+      },
+      "trained": false,
+      "variant": "fixed-gate"
+    },
+    {
+      "action_traces": [
+        [
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 0
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 34
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 70
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 383
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 686
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 721
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 759
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 797
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 834
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 872
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 910
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 947
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 1274
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 1309
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 1595
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 1631
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 1971
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 2006
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 2041
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 2176
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 2212
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 2495
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 2784
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 2820
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 2858
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 2895
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 2933
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 2971
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 3008
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 3046
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 3084
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 3119
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 3156
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 3478
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 3514
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 3549
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 3587
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 3624
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 3662
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 3700
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 3738
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 3775
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 3813
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 3851
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 3889
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 3926
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 3964
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 4279
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 4315
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 4594
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 4630
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 4667
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 4898
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 4934
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 5286
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 5322
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 5601
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 5636
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 5674
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 5991
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 6379
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 6414
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 6791
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 7182
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 7217
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 7253
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 7288
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 7586
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 7622
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 7657
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 7975
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 8011
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 8049
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 8095
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 8133
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 8170
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 8208
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 8246
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 8284
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 8321
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 8359
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 8397
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 8434
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 8472
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 8510
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 8547
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 8585
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 8620
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 8655
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 8986
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 9021
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 9059
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 9108
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 9472
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 9507
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 9545
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 9583
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 9883
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 9919
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 9956
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 9994
+          }
+        ]
+      ],
+      "metrics": {
+        "by_family_difficulty": {
+          "LESS THAN/standard": {
+            "accuracy": 0.0,
+            "episodes": 1,
+            "mean_inference_ms": 6930.0,
+            "mean_latency_ms": 10032.0,
+            "mean_reward": -1.0,
+            "mean_sensory_tokens": 22.0,
+            "p95_latency_ms": 10032,
+            "timeout_rate": 1.0
+          }
+        },
+        "episodes": 1,
+        "overall": {
+          "accuracy": 0.0,
+          "episodes": 1,
+          "mean_inference_ms": 6930.0,
+          "mean_latency_ms": 10032.0,
+          "mean_reward": -1.0,
+          "mean_sensory_tokens": 22.0,
+          "p95_latency_ms": 10032,
+          "timeout_rate": 1.0
+        },
+        "schema": "syllogimous.metrics.v1"
+      },
+      "trained": false,
+      "variant": "random-control"
+    },
+    {
+      "action_traces": [
+        [
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 0
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 50
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 95
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 360
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 400
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 663
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 950
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 1240
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 1566
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 1854
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 2213
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 2464
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 2752
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 3049
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 3092
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 3428
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 3660
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 3947
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 4242
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 4466
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 4752
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 5030
+          },
+          {
+            "action": "WAIT",
+            "raw": "",
+            "suppressed": true,
+            "timestamp_ms": 5069
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 5108
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 5368
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 5660
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 5964
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 6259
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 6548
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 6854
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 7543
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 7845
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 8146
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 8440
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 8666
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 8959
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 9252
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 9547
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 9847
+          }
+        ]
+      ],
+      "metrics": {
+        "by_family_difficulty": {
+          "LESS THAN/standard": {
+            "accuracy": 0.0,
+            "episodes": 1,
+            "mean_inference_ms": 9702.0,
+            "mean_latency_ms": 10146.0,
+            "mean_reward": -1.0,
+            "mean_sensory_tokens": 33.0,
+            "p95_latency_ms": 10146,
+            "timeout_rate": 1.0
+          }
+        },
+        "episodes": 1,
+        "overall": {
+          "accuracy": 0.0,
+          "episodes": 1,
+          "mean_inference_ms": 9702.0,
+          "mean_latency_ms": 10146.0,
+          "mean_reward": -1.0,
+          "mean_sensory_tokens": 33.0,
+          "p95_latency_ms": 10146,
+          "timeout_rate": 1.0
+        },
+        "schema": "syllogimous.metrics.v1"
+      },
+      "trained": true,
+      "variant": "learned-gate"
+    }
+  ],
+  "schema": "syllogimous.adapter-matrix.v1"
+}

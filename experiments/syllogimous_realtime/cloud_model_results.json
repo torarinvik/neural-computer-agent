@@ -1,0 +1,448 @@
+{
+  "protocol": {
+    "deadline_ms": 10000,
+    "episodes": 1,
+    "packet_only": true,
+    "premises": 2
+  },
+  "results": [
+    {
+      "action_traces": [
+        [
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 0
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 2133
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 2421
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 2703
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 2923
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 3197
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 3425
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 3630
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 3894
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 4195
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 4497
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 4803
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 5130
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 5420
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 5695
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 6016
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 6317
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 6527
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 6804
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 7176
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 7425
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 7707
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 8025
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 8231
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 8511
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 8724
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 9008
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 9216
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 9425
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 9624
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 9822
+          }
+        ]
+      ],
+      "episode_metrics": {
+        "accuracy": 0.0,
+        "episodes": 1,
+        "mean_inference_ms": 9945.0,
+        "mean_latency_ms": 10024.0,
+        "mean_reward": -1.0,
+        "mean_sensory_tokens": 31.0,
+        "p95_latency_ms": 10024,
+        "timeout_rate": 1.0
+      },
+      "hardware": "NVIDIA H100 NVL",
+      "parameters": 256000000,
+      "size": "256m"
+    },
+    {
+      "action_traces": [
+        [
+          {
+            "action": "PREVIOUS",
+            "raw": " PREVIOUS",
+            "timestamp_ms": 0
+          },
+          {
+            "action": "PREVIOUS",
+            "raw": " PREVIOUS",
+            "timestamp_ms": 1217
+          },
+          {
+            "action": "PREVIOUS",
+            "raw": " PREVIOUS",
+            "timestamp_ms": 1551
+          },
+          {
+            "action": "PREVIOUS",
+            "raw": " PREVIOUS",
+            "timestamp_ms": 1946
+          },
+          {
+            "action": "PREVIOUS",
+            "raw": " PREVIOUS",
+            "timestamp_ms": 2262
+          },
+          {
+            "action": "PREVIOUS",
+            "raw": " PREVIOUS",
+            "timestamp_ms": 2643
+          },
+          {
+            "action": "PREVIOUS",
+            "raw": " PREVIOUS",
+            "timestamp_ms": 2959
+          },
+          {
+            "action": "PREVIOUS",
+            "raw": " PREVIOUS",
+            "timestamp_ms": 3350
+          },
+          {
+            "action": "PREVIOUS",
+            "raw": " PREVIOUS",
+            "timestamp_ms": 3663
+          },
+          {
+            "action": "PREVIOUS",
+            "raw": " PREVIOUS",
+            "timestamp_ms": 4045
+          },
+          {
+            "action": "PREVIOUS",
+            "raw": " PREVIOUS",
+            "timestamp_ms": 4348
+          },
+          {
+            "action": "PREVIOUS",
+            "raw": " PREVIOUS",
+            "timestamp_ms": 4678
+          },
+          {
+            "action": "PREVIOUS",
+            "raw": " PREVIOUS",
+            "timestamp_ms": 4970
+          },
+          {
+            "action": "PREVIOUS",
+            "raw": " PREVIOUS",
+            "timestamp_ms": 5264
+          },
+          {
+            "action": "PREVIOUS",
+            "raw": " PREVIOUS",
+            "timestamp_ms": 5572
+          },
+          {
+            "action": "PREVIOUS",
+            "raw": " PREVIOUS",
+            "timestamp_ms": 5865
+          },
+          {
+            "action": "PREVIOUS",
+            "raw": " PREVIOUS",
+            "timestamp_ms": 6240
+          },
+          {
+            "action": "PREVIOUS",
+            "raw": " PREVIOUS",
+            "timestamp_ms": 6560
+          },
+          {
+            "action": "PREVIOUS",
+            "raw": " PREVIOUS",
+            "timestamp_ms": 6925
+          },
+          {
+            "action": "PREVIOUS",
+            "raw": " PREVIOUS",
+            "timestamp_ms": 7260
+          },
+          {
+            "action": "PREVIOUS",
+            "raw": " PREVIOUS",
+            "timestamp_ms": 7571
+          },
+          {
+            "action": "PREVIOUS",
+            "raw": " PREVIOUS",
+            "timestamp_ms": 7877
+          },
+          {
+            "action": "PREVIOUS",
+            "raw": " PREVIOUS",
+            "timestamp_ms": 8252
+          },
+          {
+            "action": "PREVIOUS",
+            "raw": " PREVIOUS",
+            "timestamp_ms": 8666
+          },
+          {
+            "action": "PREVIOUS",
+            "raw": " PREVIOUS",
+            "timestamp_ms": 8966
+          },
+          {
+            "action": "PREVIOUS",
+            "raw": " PREVIOUS",
+            "timestamp_ms": 9344
+          },
+          {
+            "action": "PREVIOUS",
+            "raw": " PREVIOUS",
+            "timestamp_ms": 9655
+          },
+          {
+            "action": "PREVIOUS",
+            "raw": " PREVIOUS",
+            "timestamp_ms": 9966
+          }
+        ]
+      ],
+      "episode_metrics": {
+        "accuracy": 0.0,
+        "episodes": 1,
+        "mean_inference_ms": 10201.0,
+        "mean_latency_ms": 10273.0,
+        "mean_reward": -1.0,
+        "mean_sensory_tokens": 28.0,
+        "p95_latency_ms": 10273,
+        "timeout_rate": 1.0
+      },
+      "hardware": "NVIDIA H100 NVL",
+      "parameters": 500000000,
+      "size": "500m"
+    },
+    {
+      "action_traces": [
+        [
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 0
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 1492
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 1935
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 2432
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 2937
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 3437
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 3932
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 4522
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 5018
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 5619
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 6148
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 6719
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 7227
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 7731
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 8228
+          },
+          {
+            "action": "NEXT",
+            "raw": " NEXT",
+            "timestamp_ms": 8734
+          },
+          {
+            "action": "FALSE",
+            "raw": " FALSE",
+            "timestamp_ms": 9225
+          }
+        ]
+      ],
+      "episode_metrics": {
+        "accuracy": 0.0,
+        "episodes": 1,
+        "mean_inference_ms": 9705.0,
+        "mean_latency_ms": 9747.0,
+        "mean_reward": -1.0,
+        "mean_sensory_tokens": 17.0,
+        "p95_latency_ms": 9747,
+        "timeout_rate": 0.0
+      },
+      "hardware": "NVIDIA H100 NVL",
+      "parameters": 2200000000,
+      "size": "2.2b"
+    }
+  ],
+  "schema": "syllogimous.cloud-model-results.v1"
+}

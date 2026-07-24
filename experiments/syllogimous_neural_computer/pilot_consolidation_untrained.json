@@ -1,0 +1,31 @@
+{
+  "config": {
+    "attempts": 4,
+    "checkpoint": "/tmp/untrained-consolidation.pt",
+    "choices": 8,
+    "contexts": 8,
+    "controller": "experiments/syllogimous_neural_computer/vast_continual_sharp.pt",
+    "delay": 0,
+    "device": "cpu",
+    "eval_streams": 64,
+    "hidden": 128,
+    "learning_rate": 0.0003,
+    "report": "experiments/syllogimous_neural_computer/pilot_consolidation_untrained.json",
+    "seed": 23,
+    "threshold": 0.05,
+    "train_streams": 0
+  },
+  "controller_weights_frozen": true,
+  "evaluation": {
+    "accepted_rewrites": 3.609375,
+    "append_accuracy": 0.17578125,
+    "append_rows": 8.0,
+    "consolidated_accuracy": 0.21484375,
+    "consolidated_rows": 4.390625,
+    "lookup_reduction": 0.451171875
+  },
+  "history": [],
+  "schema": "syllogimous-transactional-consolidation-v1",
+  "sensory_replay_only": true,
+  "training_seconds": 5.676965333
+}

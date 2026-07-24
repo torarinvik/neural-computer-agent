@@ -1,0 +1,87 @@
+include "syllogimous_actions.elisa"
+
+def check_valid_actions() -> int error[ActionParseError]:
+    wait: Action = try parse_action_text("WAIT")
+    match wait:
+        Action.Wait:
+            pass
+        _:
+            return 1
+    padded_wait: Action = try parse_action_text("  WAIT  ")
+    match padded_wait:
+        Action.Wait:
+            pass
+        _:
+            return 6
+    next: Action = try parse_action_text("NEXT")
+    match next:
+        Action.Next:
+            pass
+        _:
+            return 2
+    previous: Action = try parse_action_text("PREVIOUS")
+    match previous:
+        Action.Previous:
+            pass
+        _:
+            return 3
+    true_action: Action = try parse_action_text("TRUE")
+    match true_action:
+        Action.Answer(value):
+            if value != Truth.True:
+                return 4
+        _:
+            return 4
+    false_action: Action = try parse_action_text("FALSE")
+    match false_action:
+        Action.Answer(value):
+            if value != Truth.False:
+                return 5
+        _:
+            return 5
+    move_action: Action = try parse_action_text("MOVE_CARD 3 17")
+    match move_action:
+        Action.MoveCard(source, destination):
+            if source != 3 or destination != 17:
+                return 6
+        _:
+            return 6
+    padded_move: Action = try parse_action_text("  MOVE_CARD 3 17  ")
+    match padded_move:
+        Action.MoveCard(source, destination):
+            if source != 3 or destination != 17:
+                return 7
+        _:
+            return 7
+    submit_action: Action = try parse_action_text("SUBMIT_SORT")
+    match submit_action:
+        Action.SubmitSort:
+            pass
+        _:
+            return 7
+    return 0
+
+def invalid_action_is_rejected(text: cstr) -> bool:
+    return catch parse_action_text(text):
+        action: false
+        error failure: true
+
+def main() -> int:
+    valid: i32 = catch check_valid_actions():
+        code: code
+        ActionParseError.Empty: 91
+        ActionParseError.UnknownCommand: 92
+        ActionParseError.MissingIndex: 93
+        ActionParseError.InvalidIndex: 94
+        ActionParseError.TrailingInput: 95
+    if valid != 0:
+        return valid
+    if not invalid_action_is_rejected(""):
+        return 8
+    if not invalid_action_is_rejected("MOVE_CARD 34 0"):
+        return 9
+    if not invalid_action_is_rejected("MOVE_CARD 3"):
+        return 10
+    if not invalid_action_is_rejected("TRUE NOW"):
+        return 11
+    return 0

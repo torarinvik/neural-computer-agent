@@ -1,0 +1,104 @@
+{
+  "config": {
+    "attempts": 3,
+    "checkpoint": "experiments/syllogimous_neural_computer/targeted_tournament_pilot/seed_37.pt",
+    "choices": 8,
+    "contexts": 8,
+    "controller": "experiments/syllogimous_neural_computer/vast_continual_sharp.pt",
+    "delay": 0,
+    "device": "cuda",
+    "eval_streams": 128,
+    "generalization_reward_weight": 0.0,
+    "hidden": 128,
+    "initial_policy": null,
+    "learning_rate": 0.0003,
+    "loss_tolerance": null,
+    "rehearsal_groups": 1,
+    "report": "experiments/syllogimous_neural_computer/targeted_tournament_pilot/seed_37.json",
+    "seed": 37,
+    "threshold": 0.05,
+    "tournament_candidates": 4,
+    "train_streams": 64
+  },
+  "controller_weights_frozen": true,
+  "evaluation": {
+    "accepted_rewrites": 2.6171875,
+    "append_accuracy": 0.2177734375,
+    "append_audit_accuracy": 0.2158203125,
+    "append_rows": 8.0,
+    "consolidated_accuracy": 0.2451171875,
+    "consolidated_audit_accuracy": 0.2353515625,
+    "consolidated_rows": 5.3828125,
+    "lookup_reduction": 0.3271484375,
+    "verifier_queries": 48.0
+  },
+  "history": [
+    {
+      "accepted": 3,
+      "reward": 0.001568698883056641,
+      "rows_after": 5,
+      "rows_before": 8,
+      "stream": 8,
+      "verifier_queries": 288
+    },
+    {
+      "accepted": 3,
+      "reward": 0.002934416135152181,
+      "rows_after": 5,
+      "rows_before": 8,
+      "stream": 16,
+      "verifier_queries": 288
+    },
+    {
+      "accepted": 3,
+      "reward": -5.379915237426758e-05,
+      "rows_after": 5,
+      "rows_before": 8,
+      "stream": 24,
+      "verifier_queries": 264
+    },
+    {
+      "accepted": 3,
+      "reward": 0.0014632622400919599,
+      "rows_after": 5,
+      "rows_before": 8,
+      "stream": 32,
+      "verifier_queries": 288
+    },
+    {
+      "accepted": 3,
+      "reward": -0.0006067355473836263,
+      "rows_after": 5,
+      "rows_before": 8,
+      "stream": 40,
+      "verifier_queries": 280
+    },
+    {
+      "accepted": 3,
+      "reward": 0.04292212327321371,
+      "rows_after": 5,
+      "rows_before": 8,
+      "stream": 48,
+      "verifier_queries": 264
+    },
+    {
+      "accepted": 3,
+      "reward": 0.0013042688369750979,
+      "rows_after": 5,
+      "rows_before": 8,
+      "stream": 56,
+      "verifier_queries": 288
+    },
+    {
+      "accepted": 3,
+      "reward": 3.780126571655274e-05,
+      "rows_after": 5,
+      "rows_before": 8,
+      "stream": 64,
+      "verifier_queries": 288
+    }
+  ],
+  "schema": "syllogimous-transactional-consolidation-v1",
+  "sensory_replay_only": true,
+  "training_seconds": 85.72411223000381
+}

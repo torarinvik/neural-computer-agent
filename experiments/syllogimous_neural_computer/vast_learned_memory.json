@@ -1,0 +1,108 @@
+{
+  "condition": "learned_memory",
+  "config": {
+    "associations": 1,
+    "batch_size": 64,
+    "checkpoint": "experiments/syllogimous_neural_computer/vast_learned_memory.pt",
+    "choices": 8,
+    "condition": "learned_memory",
+    "delay": 8,
+    "device": "cuda",
+    "epochs": 6,
+    "eval_lifetimes": 500,
+    "heads": 5,
+    "hidden": 160,
+    "learning_rate": 0.0003,
+    "report": "experiments/syllogimous_neural_computer/vast_learned_memory.json",
+    "seed": 17,
+    "thought_steps": 4,
+    "train_lifetimes": 2000,
+    "workspace_slots": 12,
+    "write_cost": 0.0
+  },
+  "evaluation": {
+    "accuracy": 0.82,
+    "entries_per_lifetime": 10.0,
+    "interface_loss": 0.07150504624843597,
+    "mean_write_strength": 0.06961119282692671,
+    "query_loss": 0.36088079333305356
+  },
+  "history": [
+    {
+      "accuracy": 0.133,
+      "entries_per_lifetime": 10.0,
+      "epoch": 1,
+      "interface_loss": 0.9301684036254882,
+      "mean_write_strength": 0.11842468867897989,
+      "query_loss": 2.0807050151824953
+    },
+    {
+      "accuracy": 0.1215,
+      "entries_per_lifetime": 10.0,
+      "epoch": 2,
+      "interface_loss": 0.3942047543525696,
+      "mean_write_strength": 0.11444992245435712,
+      "query_loss": 2.0821116256713865
+    },
+    {
+      "accuracy": 0.125,
+      "entries_per_lifetime": 10.0,
+      "epoch": 3,
+      "interface_loss": 0.20585928350687027,
+      "mean_write_strength": 0.11332695398330687,
+      "query_loss": 2.079737844467163
+    },
+    {
+      "accuracy": 0.2115,
+      "entries_per_lifetime": 10.0,
+      "epoch": 4,
+      "interface_loss": 0.1329027451276779,
+      "mean_write_strength": 0.0855690568268299,
+      "query_loss": 1.8453267135620117
+    },
+    {
+      "accuracy": 0.5645,
+      "entries_per_lifetime": 10.0,
+      "epoch": 5,
+      "interface_loss": 0.11011674612760544,
+      "mean_write_strength": 0.07516986346989872,
+      "query_loss": 1.0871774730682373
+    },
+    {
+      "accuracy": 0.7875,
+      "entries_per_lifetime": 10.0,
+      "epoch": 6,
+      "interface_loss": 0.10871641385555267,
+      "mean_write_strength": 0.07153061166405678,
+      "query_loss": 0.49334972810745237
+    }
+  ],
+  "memory_counterfactuals": {
+    "empty": {
+      "accuracy": 0.158,
+      "entries_per_lifetime": 1.0,
+      "interface_loss": 0.07150504624843597,
+      "mean_write_strength": 0.06579232919365169,
+      "query_loss": 2.79552960395813
+    },
+    "garbage": {
+      "accuracy": 0.142,
+      "entries_per_lifetime": 10.0,
+      "interface_loss": 0.07150504624843597,
+      "mean_write_strength": 0.06633362793475389,
+      "query_loss": 2.9249251747131346
+    },
+    "shuffled": {
+      "accuracy": 0.142,
+      "entries_per_lifetime": 10.0,
+      "interface_loss": 0.07150504624843597,
+      "mean_write_strength": 0.06904625558108092,
+      "query_loss": 4.513259819030762
+    }
+  },
+  "parameters": 2139149,
+  "persistent_memory_grows": true,
+  "schema": "syllogimous-growing-memory-benchmark-v1",
+  "sensory_only": true,
+  "training_seconds": 127.5706311740214
+}

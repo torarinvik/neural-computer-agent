@@ -1,0 +1,33 @@
+{
+  "condition": "intact",
+  "evaluation": {
+    "compact_early_auc": 0.4794921875,
+    "compact_few_shot_auc": 0.456298828125,
+    "compact_retention": 0.47265625,
+    "full_few_shot_auc": 0.368896484375,
+    "full_future_accuracy_0_shot": 0.375,
+    "full_future_accuracy_1_shot": 0.3681640625,
+    "full_future_accuracy_2_shot": 0.365234375,
+    "full_future_accuracy_4_shot": 0.3671875,
+    "full_old_accuracy_0_shot": 0.4453125,
+    "full_old_accuracy_1_shot": 0.423828125,
+    "full_old_accuracy_2_shot": 0.42578125,
+    "full_old_accuracy_4_shot": 0.443359375,
+    "full_retention": 0.443359375,
+    "future_accuracy_0_shot": 0.375,
+    "future_accuracy_1_shot": 0.48046875,
+    "future_accuracy_2_shot": 0.478515625,
+    "future_accuracy_4_shot": 0.4912109375,
+    "old_accuracy_0_shot": 0.4453125,
+    "old_accuracy_1_shot": 0.466796875,
+    "old_accuracy_2_shot": 0.482421875,
+    "old_accuracy_4_shot": 0.47265625,
+    "rows_saved": 4.0
+  },
+  "primitive": "temporal",
+  "reverse_temporal_query": true,
+  "schema": "cross-primitive-temporal-attention-v1",
+  "seed": 23,
+  "sensory_only": true,
+  "weights_frozen": true
+}

@@ -1,0 +1,103 @@
+{
+  "config": {
+    "heads": 4,
+    "hidden": 96,
+    "max_thought_steps": 2,
+    "memory_core": "event_transformer",
+    "memory_slots": 8
+  },
+  "eval_premises": [
+    2,
+    3,
+    4,
+    6,
+    8,
+    12,
+    16
+  ],
+  "evaluation": {
+    "accuracy": 0.8897142857142857,
+    "accuracy_by_premises": {
+      "12": 0.823,
+      "16": 0.813,
+      "2": 0.996,
+      "3": 0.994,
+      "4": 0.946,
+      "6": 0.82,
+      "8": 0.836
+    },
+    "episodes": 7000,
+    "latency_reward_active": true,
+    "mean_reward": 0.7794285714285714,
+    "mean_thought_steps": 2.0,
+    "milliseconds_per_episode": 2.1362157171492333
+  },
+  "history": [
+    {
+      "accuracy": 0.994560917721519,
+      "actor_loss": -0.02914500157286183,
+      "critic_loss": 0.028699196592161927,
+      "entropy": 0.016297387760839884,
+      "epoch": 1,
+      "latency_multiplier": 0.4196666023843253,
+      "premise_choices": [
+        2
+      ],
+      "reward": 0.989121835443038,
+      "thought_steps": 2.0
+    },
+    {
+      "accuracy": 0.9888251582278481,
+      "actor_loss": -0.039307860539131205,
+      "critic_loss": 0.04768012294286414,
+      "entropy": 0.024255856164271318,
+      "epoch": 2,
+      "latency_multiplier": 0.9887015241453603,
+      "premise_choices": [
+        2,
+        3
+      ],
+      "reward": 0.9776503164556962,
+      "thought_steps": 2.0
+    },
+    {
+      "accuracy": 0.9797270569620253,
+      "actor_loss": -0.02894132716461126,
+      "critic_loss": 0.07961019835894621,
+      "entropy": 0.02528014352332942,
+      "epoch": 3,
+      "latency_multiplier": 1.0,
+      "premise_choices": [
+        2,
+        3,
+        4
+      ],
+      "reward": 0.9594541139240507,
+      "thought_steps": 2.0
+    }
+  ],
+  "initial_checkpoint": "experiments/syllogimous_bitter_lesson/h100_curriculum_2_4.pt",
+  "learning_signal": "reinforce_fixed",
+  "overfit_fixed": false,
+  "parameters": 1271556,
+  "randomize_rendering": true,
+  "reward": {
+    "correct": 1.0,
+    "incorrect": -1.0,
+    "latency_ramp_accuracy": [
+      0.55,
+      0.8
+    ],
+    "max_correct_speed_bonus": 0.0
+  },
+  "scale": "1m",
+  "schema": "syllogimous-bitter-lesson-v1",
+  "seed": 17,
+  "semantic_auxiliary_labels": false,
+  "train_premises": [
+    2,
+    3,
+    4
+  ],
+  "training_seconds": 39.06052298902068
+}

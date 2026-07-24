@@ -1,0 +1,158 @@
+{
+  "architecture": "pairwise",
+  "best_test_accuracy": 0.9501953125,
+  "best_train_accuracy": 0.96624755859375,
+  "causal_reversal_audit": {
+    "normal_accuracy": 0.9501953125,
+    "operation": "reverse-object-events-before-frozen-controller-replay",
+    "prediction_flip_rate": 0.93359375,
+    "reversed_relabeled_accuracy": 0.9560546875,
+    "reversed_stale_label_accuracy": 0.0439453125
+  },
+  "controller_frozen": true,
+  "disposable_supervised_probe": true,
+  "effective_train_lifetimes": 4096,
+  "effective_train_render_variants": 4,
+  "feedback_mode": "color-button",
+  "game_state_inputs": false,
+  "history": [
+    {
+      "loss": 0.6833978891372681,
+      "step": 200,
+      "test_accuracy": 0.502685546875,
+      "train_accuracy": 0.539794921875
+    },
+    {
+      "loss": 0.6757955551147461,
+      "step": 400,
+      "test_accuracy": 0.4833984375,
+      "train_accuracy": 0.55242919921875
+    },
+    {
+      "loss": 0.6727468967437744,
+      "step": 600,
+      "test_accuracy": 0.49169921875,
+      "train_accuracy": 0.5528564453125
+    },
+    {
+      "loss": 0.6862020492553711,
+      "step": 800,
+      "test_accuracy": 0.489990234375,
+      "train_accuracy": 0.559326171875
+    },
+    {
+      "loss": 0.6892361640930176,
+      "step": 1000,
+      "test_accuracy": 0.490234375,
+      "train_accuracy": 0.55560302734375
+    },
+    {
+      "loss": 0.6502176523208618,
+      "step": 1200,
+      "test_accuracy": 0.521728515625,
+      "train_accuracy": 0.59814453125
+    },
+    {
+      "loss": 0.4086870551109314,
+      "step": 1400,
+      "test_accuracy": 0.7001953125,
+      "train_accuracy": 0.7347412109375
+    },
+    {
+      "loss": 0.38156336545944214,
+      "step": 1600,
+      "test_accuracy": 0.753173828125,
+      "train_accuracy": 0.7818603515625
+    },
+    {
+      "loss": 0.3257215917110443,
+      "step": 1800,
+      "test_accuracy": 0.77685546875,
+      "train_accuracy": 0.8082275390625
+    },
+    {
+      "loss": 0.25762292742729187,
+      "step": 2000,
+      "test_accuracy": 0.825927734375,
+      "train_accuracy": 0.85272216796875
+    },
+    {
+      "loss": 0.1907958686351776,
+      "step": 2200,
+      "test_accuracy": 0.854248046875,
+      "train_accuracy": 0.88671875
+    },
+    {
+      "loss": 0.19865480065345764,
+      "step": 2400,
+      "test_accuracy": 0.87255859375,
+      "train_accuracy": 0.89483642578125
+    },
+    {
+      "loss": 0.15410873293876648,
+      "step": 2600,
+      "test_accuracy": 0.898681640625,
+      "train_accuracy": 0.91900634765625
+    },
+    {
+      "loss": 0.13797146081924438,
+      "step": 2800,
+      "test_accuracy": 0.892822265625,
+      "train_accuracy": 0.9134521484375
+    },
+    {
+      "loss": 0.09215311706066132,
+      "step": 3000,
+      "test_accuracy": 0.928955078125,
+      "train_accuracy": 0.9462890625
+    },
+    {
+      "loss": 0.08737853169441223,
+      "step": 3200,
+      "test_accuracy": 0.93115234375,
+      "train_accuracy": 0.9453125
+    },
+    {
+      "loss": 0.07107025384902954,
+      "step": 3400,
+      "test_accuracy": 0.937255859375,
+      "train_accuracy": 0.9517822265625
+    },
+    {
+      "loss": 0.12225282192230225,
+      "step": 3600,
+      "test_accuracy": 0.939208984375,
+      "train_accuracy": 0.95263671875
+    },
+    {
+      "loss": 0.06721309572458267,
+      "step": 3800,
+      "test_accuracy": 0.94873046875,
+      "train_accuracy": 0.9654541015625
+    },
+    {
+      "loss": 0.05479632690548897,
+      "step": 4000,
+      "test_accuracy": 0.9501953125,
+      "train_accuracy": 0.96624755859375
+    }
+  ],
+  "input": "three-recurrent-event-snapshots",
+  "optimizer_steps": 4000,
+  "parameter_count": 138754,
+  "schema": "temporal-event-snapshot-binder-probe-v1",
+  "shuffle_labels": false,
+  "test_examples": 4096,
+  "test_first_identity_rate": 0.5,
+  "test_label_rate": 0.498046875,
+  "test_lifetimes": 4096,
+  "test_render_variants": 1,
+  "test_rewarded_identity_rate": 0.49951171875,
+  "train_examples": 16384,
+  "train_first_identity_rate": 0.5,
+  "train_label_rate": 0.50439453125,
+  "train_lifetimes": 4096,
+  "train_render_variants": 4,
+  "train_rewarded_identity_rate": 0.5068359375,
+  "width": 64
+}

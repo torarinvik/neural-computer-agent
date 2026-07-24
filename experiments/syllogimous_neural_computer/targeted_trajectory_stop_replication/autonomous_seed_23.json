@@ -1,0 +1,119 @@
+{
+  "config": {
+    "attempts": 5,
+    "autonomous_stop": true,
+    "autonomous_storage_value": 0.01,
+    "checkpoint": "experiments/syllogimous_neural_computer/targeted_trajectory_stop_replication/autonomous_seed_23.pt",
+    "choices": 8,
+    "contexts": 8,
+    "controller": "experiments/syllogimous_neural_computer/vast_continual_sharp.pt",
+    "delay": 0,
+    "device": "cuda",
+    "eval_streams": 256,
+    "generalization_reward_weight": 0.0,
+    "hidden": 128,
+    "initial_policy": null,
+    "learning_rate": 0.0003,
+    "loss_tolerance": null,
+    "rehearsal_groups": 1,
+    "report": "experiments/syllogimous_neural_computer/targeted_trajectory_stop_replication/autonomous_seed_23.json",
+    "seed": 23,
+    "stop_loss_weight": 1.0,
+    "stop_threshold": 0.6,
+    "threshold": 0.05,
+    "tournament_candidates": 4,
+    "train_streams": 128,
+    "trajectory_stop": true
+  },
+  "controller_weights_frozen": true,
+  "evaluation": {
+    "accepted_rewrites": 4.4453125,
+    "append_accuracy": 0.224609375,
+    "append_audit_accuracy": 0.2275390625,
+    "append_rows": 8.0,
+    "consolidated_accuracy": 0.2529296875,
+    "consolidated_audit_accuracy": 0.24951171875,
+    "consolidated_rows": 3.5546875,
+    "lookup_reduction": 0.5556640625,
+    "stop_rate": 0.0,
+    "stopped_rows": 0.0,
+    "verifier_queries": 80.0
+  },
+  "history": [
+    {
+      "accepted": 5,
+      "reward": 0.0023180961608886717,
+      "rows_after": 3,
+      "rows_before": 8,
+      "stopped": false,
+      "stream": 16,
+      "verifier_queries": 480
+    },
+    {
+      "accepted": 5,
+      "reward": 0.0016814470291137695,
+      "rows_after": 3,
+      "rows_before": 8,
+      "stopped": false,
+      "stream": 32,
+      "verifier_queries": 480
+    },
+    {
+      "accepted": 5,
+      "reward": 0.05130801200866699,
+      "rows_after": 3,
+      "rows_before": 8,
+      "stopped": false,
+      "stream": 48,
+      "verifier_queries": 472
+    },
+    {
+      "accepted": 5,
+      "reward": 9.35792922973633e-05,
+      "rows_after": 3,
+      "rows_before": 8,
+      "stopped": false,
+      "stream": 64,
+      "verifier_queries": 480
+    },
+    {
+      "accepted": 5,
+      "reward": -0.000552964210510254,
+      "rows_after": 3,
+      "rows_before": 8,
+      "stopped": false,
+      "stream": 80,
+      "verifier_queries": 480
+    },
+    {
+      "accepted": 5,
+      "reward": 0.0002763199806213379,
+      "rows_after": 3,
+      "rows_before": 8,
+      "stopped": false,
+      "stream": 96,
+      "verifier_queries": 480
+    },
+    {
+      "accepted": 5,
+      "reward": 0.023463306427001954,
+      "rows_after": 3,
+      "rows_before": 8,
+      "stopped": false,
+      "stream": 112,
+      "verifier_queries": 480
+    },
+    {
+      "accepted": 5,
+      "reward": -0.001975789070129395,
+      "rows_after": 3,
+      "rows_before": 8,
+      "stopped": false,
+      "stream": 128,
+      "verifier_queries": 480
+    }
+  ],
+  "schema": "syllogimous-transactional-consolidation-v1",
+  "sensory_replay_only": true,
+  "training_seconds": 250.26171769795474
+}

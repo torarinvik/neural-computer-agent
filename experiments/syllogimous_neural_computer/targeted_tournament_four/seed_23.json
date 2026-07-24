@@ -1,0 +1,39 @@
+{
+  "config": {
+    "attempts": 4,
+    "checkpoint": "experiments/syllogimous_neural_computer/targeted_tournament_four/seed_23.pt",
+    "choices": 8,
+    "contexts": 8,
+    "controller": "experiments/syllogimous_neural_computer/vast_continual_sharp.pt",
+    "delay": 0,
+    "device": "cuda",
+    "eval_streams": 128,
+    "generalization_reward_weight": 0.0,
+    "hidden": 128,
+    "initial_policy": "experiments/syllogimous_neural_computer/targeted_tournament_pilot/seed_23.pt",
+    "learning_rate": 0.0003,
+    "loss_tolerance": null,
+    "rehearsal_groups": 1,
+    "report": "experiments/syllogimous_neural_computer/targeted_tournament_four/seed_23.json",
+    "seed": 23,
+    "threshold": 0.05,
+    "tournament_candidates": 1,
+    "train_streams": 0
+  },
+  "controller_weights_frozen": true,
+  "evaluation": {
+    "accepted_rewrites": 3.5234375,
+    "append_accuracy": 0.2255859375,
+    "append_audit_accuracy": 0.2265625,
+    "append_rows": 8.0,
+    "consolidated_accuracy": 0.2470703125,
+    "consolidated_audit_accuracy": 0.2412109375,
+    "consolidated_rows": 4.4765625,
+    "lookup_reduction": 0.4404296875,
+    "verifier_queries": 64.0
+  },
+  "history": [],
+  "schema": "syllogimous-transactional-consolidation-v1",
+  "sensory_replay_only": true,
+  "training_seconds": 41.31983479496557
+}

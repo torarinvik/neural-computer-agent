@@ -1,0 +1,39 @@
+{
+  "schema": "mapping-representation-probe-v1",
+  "weights_frozen": true,
+  "sensory_only": true,
+  "diagnostic_labels_visible_to_probes_only": true,
+  "train_lifetimes": 256,
+  "test_lifetimes": 256,
+  "study_write_action_probes": {
+    "card_1_slot_1_action": {
+      "train_accuracy": 0.99609375,
+      "test_accuracy": 0.98046875,
+      "best_test_accuracy": 0.984375
+    },
+    "card_1_slot_2_action": {
+      "train_accuracy": 0.99609375,
+      "test_accuracy": 0.984375,
+      "best_test_accuracy": 0.984375
+    },
+    "card_2_slot_1_action": {
+      "train_accuracy": 0.9921875,
+      "test_accuracy": 0.9921875,
+      "best_test_accuracy": 0.9921875
+    },
+    "card_2_slot_2_action": {
+      "train_accuracy": 0.99609375,
+      "test_accuracy": 0.97265625,
+      "best_test_accuracy": 0.97265625
+    }
+  },
+  "query_color_identity_probe": {
+    "train_accuracy": 1.0,
+    "test_accuracy": 1.0,
+    "best_test_accuracy": 1.0
+  },
+  "chance": {
+    "study_action": 0.125,
+    "query_color": 0.25
+  }
+}

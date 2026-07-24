@@ -1,0 +1,34 @@
+{
+  "0.01": {
+    "accuracy": 1.0,
+    "writes_per_lifetime": 8.16000002002716
+  },
+  "0.02": {
+    "accuracy": 0.88,
+    "writes_per_lifetime": 6.352000020503998
+  },
+  "0.03": {
+    "accuracy": 0.88,
+    "writes_per_lifetime": 6.1220000205039975
+  },
+  "0.05": {
+    "accuracy": 0.874,
+    "writes_per_lifetime": 4.696000022649765
+  },
+  "0.1": {
+    "accuracy": 0.646,
+    "writes_per_lifetime": 3.0700000166893004
+  },
+  "0.2": {
+    "accuracy": 0.512,
+    "writes_per_lifetime": 0.5380000021457673
+  },
+  "0.3": {
+    "accuracy": 0.512,
+    "writes_per_lifetime": 0.5060000007152557
+  },
+  "0.5": {
+    "accuracy": 0.476,
+    "writes_per_lifetime": 0.3480000016689301
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "groups": {
+    "1": {
+      "audit_delta_mean": -0.0078125,
+      "audit_delta_stdev": 0.010334966058846057,
+      "audit_delta_values": [
+        -0.00390625,
+        -0.01953125,
+        0.0
+      ],
+      "lookup_reduction_mean": 0.4547526041666667,
+      "lookup_reduction_stdev": 0.019757800658194685,
+      "lookup_reduction_values": [
+        0.4775390625,
+        0.4443359375,
+        0.4423828125
+      ],
+      "verifier_queries_mean": 48.0
+    },
+    "2": {
+      "audit_delta_mean": -0.009114583333333334,
+      "audit_delta_stdev": 0.012556836928376244,
+      "audit_delta_values": [
+        -0.00390625,
+        -0.0234375,
+        0.0
+      ],
+      "lookup_reduction_mean": 0.4505208333333333,
+      "lookup_reduction_stdev": 0.018486029771485266,
+      "lookup_reduction_values": [
+        0.4716796875,
+        0.4423828125,
+        0.4375
+      ],
+      "verifier_queries_mean": 48.0
+    },
+    "3": {
+      "audit_delta_mean": -0.0078125,
+      "audit_delta_stdev": 0.01171875,
+      "audit_delta_values": [
+        0.00390625,
+        -0.01953125,
+        -0.0078125
+      ],
+      "lookup_reduction_mean": 0.4443359375,
+      "lookup_reduction_stdev": 0.022075497178627567,
+      "lookup_reduction_values": [
+        0.4697265625,
+        0.4296875,
+        0.43359375
+      ],
+      "verifier_queries_mean": 48.0
+    },
+    "6": {
+      "audit_delta_mean": -0.006510416666666667,
+      "audit_delta_stdev": 0.009830513587592122,
+      "audit_delta_values": [
+        0.00390625,
+        -0.0078125,
+        -0.015625
+      ],
+      "lookup_reduction_mean": 0.439453125,
+      "lookup_reduction_stdev": 0.02325367363240363,
+      "lookup_reduction_values": [
+        0.4658203125,
+        0.421875,
+        0.4306640625
+      ],
+      "verifier_queries_mean": 48.0
+    }
+  },
+  "schema": "syllogimous-rehearsal-granularity-v1"
+}

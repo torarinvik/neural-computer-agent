@@ -1,0 +1,102 @@
+{
+  "calibration": {
+    "forced": {
+      "accepted_rewrites": 4.234375,
+      "append_accuracy": 0.203125,
+      "append_audit_accuracy": 0.205078125,
+      "append_audit_loss": 2.0409757252782583,
+      "append_loss": 2.0437507666647434,
+      "append_rows": 8.0,
+      "consolidated_accuracy": 0.232421875,
+      "consolidated_audit_accuracy": 0.228515625,
+      "consolidated_audit_loss": 2.0450877528637648,
+      "consolidated_loss": 2.046822678297758,
+      "consolidated_rows": 3.765625,
+      "lookup_reduction": 0.529296875,
+      "stop_rate": 0.0,
+      "stopped_rows": 0.0,
+      "verifier_queries": 80.0
+    },
+    "trials": [
+      {
+        "accuracy": 0.23046875,
+        "audit_accuracy": 0.224609375,
+        "audit_loss": 2.045391447842121,
+        "loss": 2.047171151265502,
+        "safe": false,
+        "threshold": 0.5,
+        "useful": true,
+        "verifier_queries": 76.75
+      },
+      {
+        "accuracy": 0.232421875,
+        "audit_accuracy": 0.2265625,
+        "audit_loss": 2.0441423524171114,
+        "loss": 2.045877818018198,
+        "safe": false,
+        "threshold": 0.55,
+        "useful": true,
+        "verifier_queries": 79.25
+      },
+      {
+        "accuracy": 0.232421875,
+        "audit_accuracy": 0.228515625,
+        "audit_loss": 2.044864283874631,
+        "loss": 2.046611923724413,
+        "safe": true,
+        "threshold": 0.6,
+        "useful": true,
+        "verifier_queries": 79.75
+      }
+    ]
+  },
+  "config": {
+    "attempts": 5,
+    "autonomous_stop": true,
+    "autonomous_storage_value": 0.01,
+    "calibration_streams": 64,
+    "checkpoint": "experiments/syllogimous_neural_computer/targeted_evidence_calibrated_stop/autonomous_seed_11.pt",
+    "choices": 8,
+    "contexts": 8,
+    "controller": "experiments/syllogimous_neural_computer/vast_continual_sharp.pt",
+    "delay": 0,
+    "device": "cuda",
+    "eval_streams": 256,
+    "generalization_reward_weight": 0.0,
+    "hidden": 128,
+    "initial_policy": "experiments/syllogimous_neural_computer/targeted_trajectory_stop_replication/autonomous_seed_11.pt",
+    "learning_rate": 0.0003,
+    "loss_tolerance": null,
+    "rehearsal_groups": 1,
+    "report": "experiments/syllogimous_neural_computer/targeted_evidence_calibrated_stop/autonomous_seed_11.json",
+    "seed": 11,
+    "stop_loss_weight": 4.0,
+    "stop_threshold": 0.6,
+    "threshold": 0.05,
+    "tournament_candidates": 1,
+    "train_streams": 0,
+    "trajectory_stop": true
+  },
+  "controller_weights_frozen": true,
+  "evaluation": {
+    "accepted_rewrites": 4.4296875,
+    "append_accuracy": 0.2109375,
+    "append_audit_accuracy": 0.2158203125,
+    "append_audit_loss": 2.024922264739871,
+    "append_loss": 2.0249214321374893,
+    "append_rows": 8.0,
+    "consolidated_accuracy": 0.24267578125,
+    "consolidated_audit_accuracy": 0.23388671875,
+    "consolidated_audit_loss": 2.0456040878780186,
+    "consolidated_loss": 2.045307802502066,
+    "consolidated_rows": 3.5703125,
+    "lookup_reduction": 0.5537109375,
+    "stop_rate": 0.0546875,
+    "stopped_rows": 0.234375,
+    "verifier_queries": 78.875
+  },
+  "history": [],
+  "schema": "syllogimous-transactional-consolidation-v1",
+  "sensory_replay_only": true,
+  "training_seconds": 185.88448270002846
+}

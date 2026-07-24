@@ -1,0 +1,173 @@
+# Typed model-visible presentation state. Private truth never enters this layer.
+
+include "syllogimous_generators.elisa"
+include "syllogimous_nouns.elisa"
+
+def abstract_consonant(index: i32 where index >= 0 and index < 18) -> AbstractConsonant:
+    return match index:
+        0: AbstractConsonant.Q
+        1: AbstractConsonant.W
+        2: AbstractConsonant.R
+        3: AbstractConsonant.T
+        4: AbstractConsonant.P
+        5: AbstractConsonant.S
+        6: AbstractConsonant.D
+        7: AbstractConsonant.F
+        8: AbstractConsonant.G
+        9: AbstractConsonant.K
+        10: AbstractConsonant.L
+        11: AbstractConsonant.Z
+        12: AbstractConsonant.X
+        13: AbstractConsonant.C
+        14: AbstractConsonant.V
+        15: AbstractConsonant.B
+        16: AbstractConsonant.N
+        17: AbstractConsonant.M
+        _: AbstractConsonant.Q
+
+def abstract_vowel(index: i32 where index >= 0 and index < 5) -> AbstractVowel:
+    return match index:
+        0: AbstractVowel.A
+        1: AbstractVowel.E
+        2: AbstractVowel.I
+        3: AbstractVowel.O
+        4: AbstractVowel.U
+        _: AbstractVowel.A
+
+# The original 1,530-item abstract table is the Cartesian product of 18 first
+# consonants, five vowels, and every different final consonant, in this order.
+def decode_abstract_label(index: i32 where index >= 0 and index < 1530) -> AbstractSyllable:
+    first_index: i32 = index / 85
+    within_first: i32 = index % 85
+    vowel_index: i32 = within_first / 17
+    last_rank: i32 = within_first % 17
+    last_index: i32 = last_rank if last_rank < first_index else last_rank + 1
+    assert first_index >= 0 and first_index < 18
+    assert vowel_index >= 0 and vowel_index < 5
+    assert last_index >= 0 and last_index < 18
+    return AbstractSyllable{
+        first: abstract_consonant(first_index),
+        vowel: abstract_vowel(vowel_index),
+        last: abstract_consonant(last_index)
+    }
+
+def generate_entity_lexicon(rng: lmut Rng, vocabulary: Vocabulary,
+                            entity_count: i32 where entity_count >= 1 and entity_count <= 256) -> EntityLexicon:
+    pool_size: i32 = 446 if vocabulary == Vocabulary.Meaningful else 1530
+    pool: mutable array[i32, 1530] = zeroed
+    for i in 0..<pool_size:
+        pool[i.usize()] <- i
+
+    labels: mutable array[EntityLabel, 256] = zeroed
+    for i in 0..<entity_count:
+        remaining: i32 = pool_size - i
+        assert remaining > 0
+        rebind offset: i32, rng = random_below(rng, remaining)
+        chosen: i32 = i + offset
+        tmp: i32 = pool[i.usize()]
+        pool[i.usize()] <- pool[chosen.usize()]
+        pool[chosen.usize()] <- tmp
+        selected: i32 = pool[i.usize()]
+        match vocabulary:
+            Vocabulary.Meaningful:
+                assert selected >= 0 and selected < 446
+                labels[i.usize()] <- EntityLabel.Meaningful(selected)
+            Vocabulary.Abstract:
+                assert selected >= 0 and selected < 1530
+                labels[i.usize()] <- EntityLabel.Abstract(selected)
+    return EntityLexicon{labels: labels, entity_count: entity_count}
+
+def entity_label_index(label: EntityLabel,
+                       vocabulary: Vocabulary) -> i32 error[GenerationError]:
+    match (label, vocabulary):
+        EntityLabel.Meaningful(index), Vocabulary.Meaningful:
+            return index
+        EntityLabel.Abstract(index), Vocabulary.Abstract:
+            return index
+        _:
+            raise GenerationError.InvalidConfiguration
+
+def relational_has_negation(question: RelationalQuestion) -> bool:
+    found: mutable bool = question.conclusion.polarity == Polarity.Negated
+    for i in 0..<question.premise_count:
+        if question.premises[i.usize()].polarity == Polarity.Negated:
+            found <- true
+    return found
+
+def categorical_has_negation(question: CategoricalQuestion) -> bool:
+    found: mutable bool = question.conclusion.polarity == Polarity.Negated
+    for i in 0..<question.premise_count:
+        if question.premises[i.usize()].polarity == Polarity.Negated:
+            found <- true
+    return found
+
+def boolean_has_negation(question: BooleanQuestion) -> bool:
+    found: mutable bool = false
+    for i in 0..<question.base_count:
+        match question.bases[i.usize()]:
+            BaseQuestion.Relational(atom):
+                found <- true if relational_has_negation(atom) else found
+            BaseQuestion.Categorical(atom):
+                found <- true if categorical_has_negation(atom) else found
+    return found
+
+def question_has_negation(question: Question) -> bool:
+    return match question:
+        Question.Relational(family, content): relational_has_negation(content)
+        Question.Categorical(content): categorical_has_negation(content)
+        Question.Boolean(family, content): boolean_has_negation(content)
+        Question.Analogy(content): relational_has_negation(content.evidence)
+        Question.Sorting(content): false
+        Question.Challenge(content): false
+        Question.Fixed(content): false
+
+def toggle_button_order(value: ButtonOrder) -> ButtonOrder:
+    return when value:
+        ButtonOrder.TrueFirst -> ButtonOrder.FalseFirst
+        ButtonOrder.FalseFirst -> ButtonOrder.TrueFirst
+
+def toggle_button_palette(value: ButtonPalette) -> ButtonPalette:
+    return when value:
+        ButtonPalette.Semantic -> ButtonPalette.Inverted
+        ButtonPalette.Inverted -> ButtonPalette.Semantic
+
+def initial_presentation_state() -> PresentationState:
+    return PresentationState{
+        button_order: ButtonOrder.TrueFirst,
+        button_palette: ButtonPalette.Semantic
+    }
+
+# Button order and colors are intentionally persistent across questions, just
+# like the browser DOM. Disabling Stroop resets colors but not button order.
+def advance_presentation(rng: lmut Rng, state: lmut PresentationState,
+                         options: PresentationOptions,
+                         has_negated_surface: bool) -> PresentationFrame:
+    stroop_active: mutable bool = false
+    if options.negation_enabled and options.stroop_enabled:
+        rebind stroop_flip: Truth, rng = random_truth(rng)
+        stroop_active <- stroop_flip == Truth.True
+
+    if options.stroop_enabled:
+        rebind color_switches: i32, rng = random_below(rng, 10)
+        if color_switches % 2 == 1:
+            state.button_palette <- toggle_button_palette(state.button_palette)
+    else:
+        state.button_palette <- ButtonPalette.Semantic
+
+    rebind position_switches: i32, rng = random_below(rng, 10)
+    if position_switches % 2 == 1:
+        state.button_order <- toggle_button_order(state.button_order)
+
+    visible_state: PresentationState = PresentationState{
+        button_order: state.button_order,
+        button_palette: state.button_palette
+    }
+    return PresentationFrame{
+        state: visible_state,
+        stroop_active: stroop_active,
+        body_ink: InkColor.Red if stroop_active else InkColor.White,
+        negated_ink: InkColor.White if stroop_active else InkColor.Red,
+        show_negation_explainer: (
+            options.negation_explainer_enabled and has_negated_surface
+        )
+    }

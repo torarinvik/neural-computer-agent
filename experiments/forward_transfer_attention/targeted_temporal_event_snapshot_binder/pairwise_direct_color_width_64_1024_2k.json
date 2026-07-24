@@ -1,0 +1,141 @@
+{
+  "architecture": "pairwise",
+  "best_test_accuracy": 0.57763671875,
+  "best_train_accuracy": 0.9580078125,
+  "controller_frozen": true,
+  "disposable_supervised_probe": true,
+  "feedback_mode": "color-button",
+  "game_state_inputs": false,
+  "history": [
+    {
+      "loss": 0.6605600118637085,
+      "step": 100,
+      "test_accuracy": 0.4755859375,
+      "train_accuracy": 0.5654296875
+    },
+    {
+      "loss": 0.6217132806777954,
+      "step": 200,
+      "test_accuracy": 0.4892578125,
+      "train_accuracy": 0.607421875
+    },
+    {
+      "loss": 0.6562580466270447,
+      "step": 300,
+      "test_accuracy": 0.48828125,
+      "train_accuracy": 0.6142578125
+    },
+    {
+      "loss": 0.6442171931266785,
+      "step": 400,
+      "test_accuracy": 0.498046875,
+      "train_accuracy": 0.630859375
+    },
+    {
+      "loss": 0.5847856998443604,
+      "step": 500,
+      "test_accuracy": 0.501953125,
+      "train_accuracy": 0.6494140625
+    },
+    {
+      "loss": 0.5881956815719604,
+      "step": 600,
+      "test_accuracy": 0.4912109375,
+      "train_accuracy": 0.6669921875
+    },
+    {
+      "loss": 0.49868690967559814,
+      "step": 700,
+      "test_accuracy": 0.51904296875,
+      "train_accuracy": 0.716796875
+    },
+    {
+      "loss": 0.4216923415660858,
+      "step": 800,
+      "test_accuracy": 0.50830078125,
+      "train_accuracy": 0.7529296875
+    },
+    {
+      "loss": 0.41459253430366516,
+      "step": 900,
+      "test_accuracy": 0.521484375,
+      "train_accuracy": 0.7734375
+    },
+    {
+      "loss": 0.49546748399734497,
+      "step": 1000,
+      "test_accuracy": 0.54150390625,
+      "train_accuracy": 0.8203125
+    },
+    {
+      "loss": 0.37286436557769775,
+      "step": 1100,
+      "test_accuracy": 0.5244140625,
+      "train_accuracy": 0.8349609375
+    },
+    {
+      "loss": 0.29109638929367065,
+      "step": 1200,
+      "test_accuracy": 0.5498046875,
+      "train_accuracy": 0.8798828125
+    },
+    {
+      "loss": 0.17478343844413757,
+      "step": 1300,
+      "test_accuracy": 0.5361328125,
+      "train_accuracy": 0.890625
+    },
+    {
+      "loss": 0.26456719636917114,
+      "step": 1400,
+      "test_accuracy": 0.544921875,
+      "train_accuracy": 0.892578125
+    },
+    {
+      "loss": 0.20396727323532104,
+      "step": 1500,
+      "test_accuracy": 0.54345703125,
+      "train_accuracy": 0.921875
+    },
+    {
+      "loss": 0.17301687598228455,
+      "step": 1600,
+      "test_accuracy": 0.56103515625,
+      "train_accuracy": 0.92578125
+    },
+    {
+      "loss": 0.09700504690408707,
+      "step": 1700,
+      "test_accuracy": 0.5615234375,
+      "train_accuracy": 0.9443359375
+    },
+    {
+      "loss": 0.10984288901090622,
+      "step": 1800,
+      "test_accuracy": 0.56396484375,
+      "train_accuracy": 0.9482421875
+    },
+    {
+      "loss": 0.13417765498161316,
+      "step": 1900,
+      "test_accuracy": 0.55810546875,
+      "train_accuracy": 0.951171875
+    },
+    {
+      "loss": 0.08581780642271042,
+      "step": 2000,
+      "test_accuracy": 0.57763671875,
+      "train_accuracy": 0.9580078125
+    }
+  ],
+  "input": "three-recurrent-event-snapshots",
+  "optimizer_steps": 2000,
+  "parameter_count": 138754,
+  "schema": "temporal-event-snapshot-binder-probe-v1",
+  "shuffle_labels": false,
+  "test_label_rate": 0.4921875,
+  "test_lifetimes": 2048,
+  "train_label_rate": 0.4921875,
+  "train_lifetimes": 1024,
+  "width": 64
+}

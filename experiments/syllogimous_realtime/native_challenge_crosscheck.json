@@ -1,0 +1,7 @@
+{
+  "mismatch_count": 0,
+  "mismatches": [],
+  "records": 10000,
+  "schema": "syllogimous.native-crosscheck.v1",
+  "solver": "challenge_reference.generated"
+}

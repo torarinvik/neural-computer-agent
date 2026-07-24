@@ -1,0 +1,518 @@
+# Deterministic, answer-unique challenge primitives. These are evaluator-side
+# building blocks for the expanded curriculum; their private answer never
+# crosses the public sensory boundary.
+
+include "syllogimous_generators.elisa"
+
+struct ChallengeSolution:
+    answer: i32
+    candidate_count: i32 where candidate_count >= 1 and candidate_count <= 1
+
+def challenge_kind_from_index(index: i32 where index >= 0 and index < 90) -> ChallengeKind:
+    return match index:
+        0: ChallengeKind.ArithmeticChain
+        1: ChallengeKind.InequalityChain
+        2: ChallengeKind.Parity
+        3: ChallengeKind.Sequence
+        4: ChallengeKind.GraphReachability
+        5: ChallengeKind.GraphDistance
+        6: ChallengeKind.TemporalOrder
+        7: ChallengeKind.Membership
+        8: ChallengeKind.BooleanFormula
+        9: ChallengeKind.ConstraintAssignment
+        10: ChallengeKind.MinimumValue
+        11: ChallengeKind.MaximumValue
+        12: ChallengeKind.AbsoluteDifference
+        13: ChallengeKind.SetIntersection
+        14: ChallengeKind.GraphCycle
+        15: ChallengeKind.TopologicalOrder
+        16: ChallengeKind.CalendarOffset
+        17: ChallengeKind.XorFormula
+        18: ChallengeKind.LinearEquation
+        19: ChallengeKind.DigitCount
+        20: ChallengeKind.ThreePremiseChain
+        21: ChallengeKind.FourPremiseChain
+        22: ChallengeKind.DistractorCheck
+        23: ChallengeKind.ContradictionCheck
+        24: ChallengeKind.Biconditional
+        25: ChallengeKind.UnlessRule
+        26: ChallengeKind.OnlyIfRule
+        27: ChallengeKind.QuantifierAll
+        28: ChallengeKind.QuantifierSome
+        29: ChallengeKind.ExclusiveOr
+        30: ChallengeKind.TransitiveRelation
+        31: ChallengeKind.SymmetricRelation
+        32: ChallengeKind.DoubleNegation
+        33: ChallengeKind.EarliestEvent
+        34: ChallengeKind.LatestEvent
+        35: ChallengeKind.PartialOrder
+        36: ChallengeKind.GridDistance
+        37: ChallengeKind.ManhattanPath
+        38: ChallengeKind.Rotation
+        39: ChallengeKind.Mirror
+        40: ChallengeKind.SumValues
+        41: ChallengeKind.ProductValues
+        42: ChallengeKind.AverageFloor
+        43: ChallengeKind.ValueRange
+        44: ChallengeKind.SignCheck
+        45: ChallengeKind.Divisibility
+        46: ChallengeKind.ModuloCheck
+        47: ChallengeKind.PowerOfTwo
+        48: ChallengeKind.CountTrue
+        49: ChallengeKind.Majority
+        50: ChallengeKind.AtLeast
+        51: ChallengeKind.ExactlyOne
+        52: ChallengeKind.ImplicationChain
+        53: ChallengeKind.NandFormula
+        54: ChallengeKind.NorFormula
+        55: ChallengeKind.MinimumIndex
+        56: ChallengeKind.MaximumIndex
+        57: ChallengeKind.StableSortCheck
+        58: ChallengeKind.PermutationParity
+        59: ChallengeKind.UniqueValue
+        60: ChallengeKind.AllDistinct
+        61: ChallengeKind.PairwiseOrder
+        62: ChallengeKind.MedianValue
+        63: ChallengeKind.SecondMinimum
+        64: ChallengeKind.SecondMaximum
+        65: ChallengeKind.CountLess
+        66: ChallengeKind.CountGreater
+        67: ChallengeKind.WeightedSum
+        68: ChallengeKind.LinearInequality
+        69: ChallengeKind.IntervalMembership
+        70: ChallengeKind.TemporalGap
+        71: ChallengeKind.ScheduleConflict
+        72: ChallengeKind.ReachTwoSteps
+        73: ChallengeKind.DegreeCount
+        74: ChallengeKind.BipartiteCheck
+        75: ChallengeKind.PathParity
+        76: ChallengeKind.CoordinateQuadrant
+        77: ChallengeKind.CompassDirection
+        78: ChallengeKind.Rotation3D
+        79: ChallengeKind.SpaceTimeOrder
+        80: ChallengeKind.AllOf
+        81: ChallengeKind.AnyOf
+        82: ChallengeKind.NoneOf
+        83: ChallengeKind.ExactlyK
+        84: ChallengeKind.SyllogismMood
+        85: ChallengeKind.AnalogyRelation
+        86: ChallengeKind.SortingKey
+        87: ChallengeKind.PermutationCheck
+        88: ChallengeKind.ConstraintCount
+        89: ChallengeKind.CompositeProof
+        _: ChallengeKind.ArithmeticChain
+
+def generate_challenge(rng: lmut Rng) -> ChallengeData error[GenerationError]:
+    rebind kind_index: i32, rng = random_below(rng, 90)
+    assert kind_index >= 0 and kind_index < 90
+    rebind a: i32, rng = random_below(rng, 19)
+    rebind b: i32, rng = random_below(rng, 19)
+    rebind c: i32, rng = random_below(rng, 19)
+    rebind d: i32, rng = random_below(rng, 19)
+    values: mutable array[i32, 16] = zeroed
+    values[0] <- a + 1
+    values[1] <- b + 1
+    values[2] <- c + 1
+    values[3] <- d + 1
+    kind: ChallengeKind = challenge_kind_from_index(kind_index)
+    if kind == ChallengeKind.LinearEquation:
+        values[0] <- (a % 5) + 1
+    draft: ChallengeData = ChallengeData{
+        kind: kind,
+        values: values,
+        value_count: 4,
+        claim: 0,
+        answer: 0
+    }
+    computed: i32 = try solve_challenge(draft)
+    rebind wrong: Truth, rng = random_truth(rng)
+    claim: i32 = computed + 1 if wrong == Truth.True else computed
+    return ChallengeData{
+        kind: kind,
+        values: values,
+        value_count: 4,
+        claim: claim,
+        answer: computed
+    }
+
+def challenge_value(data: ChallengeData, index: i32) -> i32:
+    assert index >= 0 and index < 16
+    assert index < data.value_count
+    return data.values[index.usize()]
+
+def solve_challenge(data: ChallengeData) -> i32 error[GenerationError]:
+    match data.kind:
+        ChallengeKind.ArithmeticChain:
+            total: mutable i32 = challenge_value(data, 0)
+            for i in 1..<data.value_count:
+                total <- total + challenge_value(data, i)
+            return total
+        ChallengeKind.InequalityChain:
+            for i in 0..<(data.value_count - 1):
+                if challenge_value(data, i) >= challenge_value(data, i + 1):
+                    return 0
+            return 1
+        ChallengeKind.Parity:
+            return challenge_value(data, 0) % 2 if challenge_value(data, 0) >= 0 else (
+                (-challenge_value(data, 0)) % 2
+            )
+        ChallengeKind.Sequence:
+            if data.value_count < 3:
+                raise GenerationError.InvalidConfiguration
+            first_delta: i32 = challenge_value(data, 1) - challenge_value(data, 0)
+            second_delta: i32 = challenge_value(data, 2) - challenge_value(data, 1)
+            return challenge_value(data, data.value_count - 1) + second_delta
+        ChallengeKind.GraphReachability:
+            start: i32 = challenge_value(data, 0)
+            target: i32 = challenge_value(data, 1)
+            return 1 if start == target or challenge_value(data, 2) == target else 0
+        ChallengeKind.GraphDistance:
+            distance: mutable i32 = 0
+            for i in 2..<data.value_count:
+                distance <- distance + 1 if challenge_value(data, i) >= 0 else distance
+            return distance
+        ChallengeKind.TemporalOrder:
+            for i in 0..<(data.value_count - 1):
+                if challenge_value(data, i) > challenge_value(data, i + 1):
+                    return 0
+            return 1
+        ChallengeKind.Membership:
+            needle: i32 = challenge_value(data, 0)
+            for i in 1..<data.value_count:
+                if challenge_value(data, i) == needle:
+                    return 1
+            return 0
+        ChallengeKind.BooleanFormula:
+            left: bool = challenge_value(data, 0) != 0
+            right: bool = challenge_value(data, 1) != 0
+            return 1 if left and not right else 0
+        ChallengeKind.ConstraintAssignment:
+            return challenge_value(data, 0) if challenge_value(data, 0) >= 0 else (
+                -challenge_value(data, 0)
+            )
+        ChallengeKind.MinimumValue:
+            result: mutable i32 = challenge_value(data, 0)
+            for i in 1..<data.value_count:
+                result <- challenge_value(data, i) if challenge_value(data, i) < result else result
+            return result
+        ChallengeKind.MaximumValue:
+            result: mutable i32 = challenge_value(data, 0)
+            for i in 1..<data.value_count:
+                result <- challenge_value(data, i) if challenge_value(data, i) > result else result
+            return result
+        ChallengeKind.AbsoluteDifference:
+            difference: i32 = challenge_value(data, 0) - challenge_value(data, 1)
+            return difference if difference >= 0 else -difference
+        ChallengeKind.SetIntersection:
+            first: i32 = challenge_value(data, 0)
+            for i in 1..<data.value_count:
+                if challenge_value(data, i) == first:
+                    return 1
+            return 0
+        ChallengeKind.GraphCycle:
+            return 1 if challenge_value(data, 0) == challenge_value(data, data.value_count - 1) else 0
+        ChallengeKind.TopologicalOrder:
+            for i in 0..<(data.value_count - 1):
+                if challenge_value(data, i) >= challenge_value(data, i + 1):
+                    return 0
+            return 1
+        ChallengeKind.CalendarOffset:
+            return (challenge_value(data, 0) + challenge_value(data, 1)) % 7
+        ChallengeKind.XorFormula:
+            return 1 if (challenge_value(data, 0) != 0) != (challenge_value(data, 1) != 0) else 0
+        ChallengeKind.LinearEquation:
+            coefficient: i32 = challenge_value(data, 0)
+            constant: i32 = challenge_value(data, 1)
+            target: i32 = challenge_value(data, 2)
+            raise GenerationError.InvalidConfiguration if coefficient == 0
+            return (target - constant) / coefficient
+        ChallengeKind.DigitCount:
+            value: mutable i32 = challenge_value(data, 0)
+            digits: mutable i32 = 1
+            value <- -value if value < 0 else value
+            while value >= 10:
+                value <- value / 10
+                digits <- digits + 1
+            return digits
+        ChallengeKind.ThreePremiseChain:
+            return 1 if challenge_value(data, 0) < challenge_value(data, 1) and challenge_value(data, 1) < challenge_value(data, 2) else 0
+        ChallengeKind.FourPremiseChain:
+            return 1 if challenge_value(data, 0) < challenge_value(data, 1) and challenge_value(data, 1) < challenge_value(data, 2) and challenge_value(data, 2) < challenge_value(data, 3) else 0
+        ChallengeKind.DistractorCheck:
+            return 1 if challenge_value(data, 0) == challenge_value(data, 1) else 0
+        ChallengeKind.ContradictionCheck:
+            return 1 if challenge_value(data, 0) == -challenge_value(data, 1) else 0
+        ChallengeKind.Biconditional:
+            return 1 if (challenge_value(data, 0) != 0) == (challenge_value(data, 1) != 0) else 0
+        ChallengeKind.UnlessRule:
+            return 1 if challenge_value(data, 0) != 0 or challenge_value(data, 1) == 0 else 0
+        ChallengeKind.OnlyIfRule:
+            return 1 if challenge_value(data, 0) == 0 or challenge_value(data, 1) != 0 else 0
+        ChallengeKind.QuantifierAll:
+            for i in 0..<data.value_count:
+                if challenge_value(data, i) == 0:
+                    return 0
+            return 1
+        ChallengeKind.QuantifierSome:
+            for i in 0..<data.value_count:
+                if challenge_value(data, i) != 0:
+                    return 1
+            return 0
+        ChallengeKind.ExclusiveOr:
+            return 1 if (challenge_value(data, 0) != 0) != (challenge_value(data, 1) != 0) else 0
+        ChallengeKind.TransitiveRelation:
+            return 1 if challenge_value(data, 0) < challenge_value(data, 1) and challenge_value(data, 1) < challenge_value(data, 2) and challenge_value(data, 0) < challenge_value(data, 2) else 0
+        ChallengeKind.SymmetricRelation:
+            return 1 if challenge_value(data, 0) == challenge_value(data, 1) else 0
+        ChallengeKind.DoubleNegation:
+            return challenge_value(data, 0)
+        ChallengeKind.EarliestEvent:
+            result: mutable i32 = challenge_value(data, 0)
+            for i in 1..<data.value_count:
+                result <- challenge_value(data, i) if challenge_value(data, i) < result else result
+            return result
+        ChallengeKind.LatestEvent:
+            result: mutable i32 = challenge_value(data, 0)
+            for i in 1..<data.value_count:
+                result <- challenge_value(data, i) if challenge_value(data, i) > result else result
+            return result
+        ChallengeKind.PartialOrder:
+            return 1 if challenge_value(data, 0) <= challenge_value(data, 1) else 0
+        ChallengeKind.GridDistance:
+            dx: i32 = challenge_value(data, 0) - challenge_value(data, 2)
+            dy: i32 = challenge_value(data, 1) - challenge_value(data, 3)
+            return (dx if dx >= 0 else -dx) + (dy if dy >= 0 else -dy)
+        ChallengeKind.ManhattanPath:
+            x: i32 = challenge_value(data, 0)
+            y: i32 = challenge_value(data, 1)
+            return (x if x >= 0 else -x) + (y if y >= 0 else -y)
+        ChallengeKind.Rotation:
+            return (challenge_value(data, 0) + challenge_value(data, 1)) % 4
+        ChallengeKind.Mirror:
+            return -challenge_value(data, 0)
+        ChallengeKind.SumValues:
+            total: mutable i32 = 0
+            for i in 0..<data.value_count:
+                total <- total + challenge_value(data, i)
+            return total
+        ChallengeKind.ProductValues:
+            total: mutable i32 = 1
+            for i in 0..<data.value_count:
+                total <- total * challenge_value(data, i)
+            return total
+        ChallengeKind.AverageFloor:
+            total: mutable i32 = 0
+            for i in 0..<data.value_count:
+                total <- total + challenge_value(data, i)
+            return total / data.value_count
+        ChallengeKind.ValueRange:
+            low: mutable i32 = challenge_value(data, 0)
+            high: mutable i32 = low
+            for i in 1..<data.value_count:
+                low <- challenge_value(data, i) if challenge_value(data, i) < low else low
+                high <- challenge_value(data, i) if challenge_value(data, i) > high else high
+            return high - low
+        ChallengeKind.SignCheck:
+            return 1 if challenge_value(data, 0) > 0 else (0 if challenge_value(data, 0) == 0 else -1)
+        ChallengeKind.Divisibility:
+            divisor: i32 = challenge_value(data, 1)
+            raise GenerationError.InvalidConfiguration if divisor == 0
+            return 1 if challenge_value(data, 0) % divisor == 0 else 0
+        ChallengeKind.ModuloCheck:
+            modulus: i32 = challenge_value(data, 1)
+            raise GenerationError.InvalidConfiguration if modulus <= 0
+            return challenge_value(data, 0) % modulus
+        ChallengeKind.PowerOfTwo:
+            value: mutable i32 = challenge_value(data, 0)
+            count: mutable i32 = 0
+            while value > 1 and value % 2 == 0:
+                value <- value / 2
+                count <- count + 1
+            return 1 if value == 1 else 0
+        ChallengeKind.CountTrue:
+            count: mutable i32 = 0
+            for i in 0..<data.value_count:
+                count <- count + 1 if challenge_value(data, i) != 0 else count
+            return count
+        ChallengeKind.Majority:
+            count: mutable i32 = 0
+            for i in 0..<data.value_count:
+                count <- count + 1 if challenge_value(data, i) != 0 else count
+            return 1 if count * 2 > data.value_count else 0
+        ChallengeKind.AtLeast:
+            count: mutable i32 = 0
+            for i in 1..<data.value_count:
+                count <- count + 1 if challenge_value(data, i) != 0 else count
+            return 1 if count >= challenge_value(data, 0) else 0
+        ChallengeKind.ExactlyOne:
+            count: mutable i32 = 0
+            for i in 0..<data.value_count:
+                count <- count + 1 if challenge_value(data, i) != 0 else count
+            return 1 if count == 1 else 0
+        ChallengeKind.ImplicationChain:
+            return 1 if challenge_value(data, 0) == 0 or challenge_value(data, 1) != 0 else 0
+        ChallengeKind.NandFormula:
+            return 1 if not ((challenge_value(data, 0) != 0) and (challenge_value(data, 1) != 0)) else 0
+        ChallengeKind.NorFormula:
+            return 1 if not ((challenge_value(data, 0) != 0) or (challenge_value(data, 1) != 0)) else 0
+        ChallengeKind.MinimumIndex:
+            index: mutable i32 = 0
+            for i in 1..<data.value_count:
+                index <- i if challenge_value(data, i) < challenge_value(data, index) else index
+            return index
+        ChallengeKind.MaximumIndex:
+            index: mutable i32 = 0
+            for i in 1..<data.value_count:
+                index <- i if challenge_value(data, i) > challenge_value(data, index) else index
+            return index
+        ChallengeKind.StableSortCheck:
+            for i in 0..<(data.value_count - 1):
+                if challenge_value(data, i) > challenge_value(data, i + 1):
+                    return 0
+            return 1
+        ChallengeKind.PermutationParity:
+            inversions: mutable i32 = 0
+            for i in 0..<data.value_count:
+                for j in (i + 1)..<data.value_count:
+                    inversions <- inversions + 1 if challenge_value(data, i) > challenge_value(data, j) else inversions
+            return inversions % 2
+        ChallengeKind.UniqueValue:
+            for i in 0..<data.value_count:
+                for j in (i + 1)..<data.value_count:
+                    if challenge_value(data, i) == challenge_value(data, j):
+                        return 0
+            return 1
+        ChallengeKind.AllDistinct:
+            for i in 0..<data.value_count:
+                for j in (i + 1)..<data.value_count:
+                    if challenge_value(data, i) == challenge_value(data, j):
+                        return 0
+            return 1
+        ChallengeKind.PairwiseOrder:
+            return 1 if challenge_value(data, 0) <= challenge_value(data, 1) and challenge_value(data, 1) <= challenge_value(data, 2) else 0
+        ChallengeKind.MedianValue:
+            a: i32 = challenge_value(data, 0)
+            b: i32 = challenge_value(data, 1)
+            c: i32 = challenge_value(data, 2)
+            return a if (a >= b and a <= c) or (a >= c and a <= b) else (b if (b >= a and b <= c) or (b >= c and b <= a) else c)
+        ChallengeKind.SecondMinimum:
+            low: mutable i32 = challenge_value(data, 0)
+            second: mutable i32 = challenge_value(data, 1)
+            if second < low:
+                swap: i32 = low
+                low <- second
+                second <- swap
+            for i in 2..<data.value_count:
+                value: i32 = challenge_value(data, i)
+                if value < low:
+                    second <- low
+                    low <- value
+                elif value < second:
+                    second <- value
+            return second
+        ChallengeKind.SecondMaximum:
+            high: mutable i32 = challenge_value(data, 0)
+            second: mutable i32 = challenge_value(data, 1)
+            if second > high:
+                swap: i32 = high
+                high <- second
+                second <- swap
+            for i in 2..<data.value_count:
+                value: i32 = challenge_value(data, i)
+                if value > high:
+                    second <- high
+                    high <- value
+                elif value > second:
+                    second <- value
+            return second
+        ChallengeKind.CountLess:
+            count: mutable i32 = 0
+            for i in 1..<data.value_count:
+                count <- count + 1 if challenge_value(data, i) < challenge_value(data, 0) else count
+            return count
+        ChallengeKind.CountGreater:
+            count: mutable i32 = 0
+            for i in 1..<data.value_count:
+                count <- count + 1 if challenge_value(data, i) > challenge_value(data, 0) else count
+            return count
+        ChallengeKind.WeightedSum:
+            return challenge_value(data, 0) + 2 * challenge_value(data, 1) + 3 * challenge_value(data, 2)
+        ChallengeKind.LinearInequality:
+            return 1 if challenge_value(data, 0) * challenge_value(data, 1) <= challenge_value(data, 2) else 0
+        ChallengeKind.IntervalMembership:
+            value: i32 = challenge_value(data, 0)
+            low: i32 = challenge_value(data, 1)
+            high: i32 = challenge_value(data, 2)
+            return 1 if value >= low and value <= high else 0
+        ChallengeKind.TemporalGap:
+            gap: i32 = challenge_value(data, 1) - challenge_value(data, 0)
+            return gap if gap >= 0 else -gap
+        ChallengeKind.ScheduleConflict:
+            return 1 if challenge_value(data, 0) < challenge_value(data, 1) and challenge_value(data, 1) < challenge_value(data, 2) else 0
+        ChallengeKind.ReachTwoSteps:
+            return 1 if challenge_value(data, 0) == challenge_value(data, 2) or challenge_value(data, 1) == challenge_value(data, 2) else 0
+        ChallengeKind.DegreeCount:
+            count: mutable i32 = 0
+            for i in 1..<data.value_count:
+                count <- count + 1 if challenge_value(data, i) == challenge_value(data, 0) else count
+            return count
+        ChallengeKind.BipartiteCheck:
+            return 1 if (challenge_value(data, 0) % 2) != (challenge_value(data, 1) % 2) else 0
+        ChallengeKind.PathParity:
+            return (challenge_value(data, 0) + challenge_value(data, 1) + challenge_value(data, 2)) % 2
+        ChallengeKind.CoordinateQuadrant:
+            x: i32 = challenge_value(data, 0)
+            y: i32 = challenge_value(data, 1)
+            return 1 if x >= 0 and y >= 0 else (2 if x < 0 and y >= 0 else (3 if x < 0 else 4))
+        ChallengeKind.CompassDirection:
+            return 0 if challenge_value(data, 0) == 0 and challenge_value(data, 1) == 0 else (1 if challenge_value(data, 1) > 0 else (2 if challenge_value(data, 0) > 0 else (3 if challenge_value(data, 1) < 0 else 4)))
+        ChallengeKind.Rotation3D:
+            return (challenge_value(data, 0) + challenge_value(data, 1) + challenge_value(data, 2)) % 6
+        ChallengeKind.SpaceTimeOrder:
+            return 1 if challenge_value(data, 0) <= challenge_value(data, 1) and challenge_value(data, 1) <= challenge_value(data, 2) else 0
+        ChallengeKind.AllOf:
+            for i in 0..<data.value_count:
+                if challenge_value(data, i) == 0:
+                    return 0
+            return 1
+        ChallengeKind.AnyOf:
+            for i in 0..<data.value_count:
+                if challenge_value(data, i) != 0:
+                    return 1
+            return 0
+        ChallengeKind.NoneOf:
+            for i in 0..<data.value_count:
+                if challenge_value(data, i) != 0:
+                    return 0
+            return 1
+        ChallengeKind.ExactlyK:
+            count: mutable i32 = 0
+            for i in 1..<data.value_count:
+                count <- count + 1 if challenge_value(data, i) != 0 else count
+            return 1 if count == challenge_value(data, 0) else 0
+        ChallengeKind.SyllogismMood:
+            return 1 if challenge_value(data, 0) + challenge_value(data, 1) == challenge_value(data, 2) else 0
+        ChallengeKind.AnalogyRelation:
+            return 1 if challenge_value(data, 0) - challenge_value(data, 1) == challenge_value(data, 2) - challenge_value(data, 3) else 0
+        ChallengeKind.SortingKey:
+            return 1 if challenge_value(data, 0) <= challenge_value(data, 1) else 0
+        ChallengeKind.PermutationCheck:
+            return 1 if challenge_value(data, 0) + challenge_value(data, 1) + challenge_value(data, 2) == 6 else 0
+        ChallengeKind.ConstraintCount:
+            count: mutable i32 = 0
+            for i in 0..<data.value_count:
+                count <- count + 1 if challenge_value(data, i) >= challenge_value(data, 0) else count
+            return count
+        ChallengeKind.CompositeProof:
+            return 1 if challenge_value(data, 0) < challenge_value(data, 1) and challenge_value(data, 2) != 0 else 0
+
+def unique_challenge_solution(data: ChallengeData) -> ChallengeSolution error[GenerationError]:
+    answer: i32 = try solve_challenge(data)
+    count_raw: i32 = 1
+    count: i32 where count >= 1 and count <= 1 = count_raw
+    return ChallengeSolution{answer: answer, candidate_count: count}
+
+def verify_challenge(data: ChallengeData, submitted: i32) -> bool error[GenerationError]:
+    solution: ChallengeSolution = try unique_challenge_solution(data)
+    assert solution.candidate_count == 1
+    return submitted == solution.answer

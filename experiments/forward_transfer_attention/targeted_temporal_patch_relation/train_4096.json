@@ -1,0 +1,74 @@
+{
+  "architecture": "patch-relation",
+  "best_test_accuracy": 0.501953125,
+  "best_train_accuracy": 0.507080078125,
+  "disposable_supervised_probe": true,
+  "game_state_inputs": false,
+  "heldout_early_learning_auc_above_chance": 0.001220703125,
+  "history": [
+    {
+      "epoch": 1,
+      "loss": 0.6986270137131214,
+      "optimizer_steps": 128,
+      "test_accuracy": 0.498046875,
+      "train_accuracy": 0.507080078125
+    },
+    {
+      "epoch": 2,
+      "loss": 0.6941426484845579,
+      "optimizer_steps": 256,
+      "test_accuracy": 0.498046875,
+      "train_accuracy": 0.507080078125
+    },
+    {
+      "epoch": 3,
+      "loss": 0.6940246289595962,
+      "optimizer_steps": 384,
+      "test_accuracy": 0.498046875,
+      "train_accuracy": 0.507080078125
+    },
+    {
+      "epoch": 4,
+      "loss": 0.6942129558883607,
+      "optimizer_steps": 512,
+      "test_accuracy": 0.501953125,
+      "train_accuracy": 0.492919921875
+    },
+    {
+      "epoch": 5,
+      "loss": 0.6937698009423912,
+      "optimizer_steps": 640,
+      "test_accuracy": 0.498046875,
+      "train_accuracy": 0.507080078125
+    },
+    {
+      "epoch": 6,
+      "loss": 0.6936006112955511,
+      "optimizer_steps": 768,
+      "test_accuracy": 0.498046875,
+      "train_accuracy": 0.507080078125
+    },
+    {
+      "epoch": 7,
+      "loss": 0.6938090831972659,
+      "optimizer_steps": 896,
+      "test_accuracy": 0.501953125,
+      "train_accuracy": 0.492919921875
+    },
+    {
+      "epoch": 8,
+      "loss": 0.6935825762338936,
+      "optimizer_steps": 1024,
+      "test_accuracy": 0.501953125,
+      "train_accuracy": 0.492919921875
+    }
+  ],
+  "inputs": "mapping-card-plus-one-visual-support",
+  "pixel_oracle_accuracy": null,
+  "pixel_oracle_examples": 0,
+  "schema": "temporal-rendering-ceiling-v1",
+  "test_examples": 4096,
+  "test_rule_rate": 0.498046875,
+  "train_examples": 4096,
+  "train_rule_rate": 0.507080078125
+}

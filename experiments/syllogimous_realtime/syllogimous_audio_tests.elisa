@@ -1,0 +1,113 @@
+include "syllogimous_sensory.elisa"
+
+def packet_energy(packet: AudioPacket&) -> i64:
+    energy: mutable i64 = 0
+    for i in 0..<packet.sample_count:
+        value: i64 = packet.samples[i.usize()].i64()
+        energy <- energy + (-value if value < 0 else value)
+    return energy
+
+def packet_difference(left: AudioPacket&, right: AudioPacket&) -> i64:
+    count: i32 = left.sample_count if left.sample_count < right.sample_count else right.sample_count
+    difference: mutable i64 = 0
+    for i in 0..<count:
+        a: i64 = left.samples[i.usize()].i64()
+        b: i64 = right.samples[i.usize()].i64()
+        delta: i64 = a - b
+        difference <- difference + (-delta if delta < 0 else delta)
+    return difference
+
+def check_audio_renderer() -> int:
+    first_premise: PublicPremise = PublicPremise{
+        left: 3,
+        relation: Relation.Linear(LinearRelation.More),
+        right: 9,
+        polarity: Polarity.Positive
+    }
+    second_premise: PublicPremise = PublicPremise{
+        # 99 differs from 3 by 96. This specifically catches a single-tone
+        # modulo-96 codec that aliases distinct public entities.
+        left: 99,
+        relation: Relation.Linear(LinearRelation.More),
+        right: 9,
+        polarity: Polarity.Positive
+    }
+    first_card: RenderCard = RenderCard.Premise(0, 4, first_premise)
+    second_card: RenderCard = RenderCard.Premise(0, 4, second_premise)
+    first_codes: AudioCodeStream = audio_codes_for_card(first_card)
+    if first_codes.count != 7:
+        return 1
+    first_packet: AudioPacket = render_card_audio(first_card)
+    repeated_packet: AudioPacket = render_card_audio(first_card)
+    second_packet: AudioPacket = render_card_audio(second_card)
+    if first_packet.sample_count != first_codes.count * AUDIO_SAMPLES_PER_CODE:
+        return 2
+    if packet_energy(first_packet) <= 0:
+        return 3
+    if packet_difference(first_packet, repeated_packet) != 0:
+        return 4
+    if packet_difference(first_packet, second_packet) <= 0:
+        return 5
+
+    spatial_a: PublicPremise = PublicPremise{
+        left: 3,
+        relation: Relation.Spatial(Direction3D.Offset(1, 0, -1)),
+        right: 9,
+        polarity: Polarity.Positive
+    }
+    spatial_b: PublicPremise = PublicPremise{
+        left: 3,
+        relation: Relation.Spatial(Direction3D.Offset(0, 1, -1)),
+        right: 9,
+        polarity: Polarity.Positive
+    }
+    spatial_packet_a: AudioPacket = render_card_audio(
+        RenderCard.Conclusion(spatial_a)
+    )
+    spatial_packet_b: AudioPacket = render_card_audio(
+        RenderCard.Conclusion(spatial_b)
+    )
+    if packet_difference(spatial_packet_a, spatial_packet_b) <= 0:
+        return 11
+
+    fixed: RenderCard = RenderCard.FixedPremise(
+        QuestionFamily.Paradox, 0, 0
+    )
+    fixed_codes: AudioCodeStream = audio_codes_for_card(fixed)
+    if fixed_codes.count <= 8 or fixed_codes.count > 256:
+        return 6
+    feedback: RenderCard = RenderCard.Feedback(
+        Outcome.Timeout, 5000, -1, 2
+    )
+    if audio_codes_for_card(feedback).count != 19:
+        return 7
+
+    rng: mutable Rng = rng_from_seed(7001)
+    rebind lexicon: EntityLexicon, rng = generate_entity_lexicon(
+        rng, Vocabulary.Abstract, 256
+    )
+    state: mutable PresentationState = initial_presentation_state()
+    options: PresentationOptions = PresentationOptions{
+        negation_enabled: false,
+        negation_explainer_enabled: false,
+        stroop_enabled: false
+    }
+    rebind presentation: PresentationFrame, rng, state = advance_presentation(
+        rng, state, options, false
+    )
+    packet: SensoryPacket = render_sensory_packet(
+        first_card, lexicon, presentation, 750, 12345
+    )
+    if packet.pcm_count != first_packet.sample_count:
+        return 8
+    if packet.timestamp_ms != 12345 or packet.width != 640 or packet.height != 400:
+        return 9
+    pixel_energy: mutable u64 = 0
+    for i in 0..<(RASTER_W * RASTER_H):
+        pixel_energy <- pixel_energy + Encoder::SCREEN_GRAB[i.usize()].u64()
+    if pixel_energy == 0:
+        return 10
+    return 0
+
+def main() -> int:
+    return check_audio_renderer()

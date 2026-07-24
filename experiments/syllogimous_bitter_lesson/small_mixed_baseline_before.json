@@ -1,0 +1,102 @@
+{
+  "adaptive_curriculum": false,
+  "best_curriculum_epoch": 0,
+  "best_curriculum_score": -1.0,
+  "best_curriculum_stage": 0,
+  "choice_audio_distractors": 0,
+  "choice_counts": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "choice_delay_frames": 0,
+  "choice_distractors": 0,
+  "choice_target_like_distractors": 0,
+  "choice_temporal_distractors": 0,
+  "config": {
+    "action_count": 5,
+    "heads": 5,
+    "hidden": 160,
+    "max_thought_steps": 8,
+    "memory_core": "event_transformer",
+    "memory_slots": 12,
+    "thought_dynamics": "gated_residual"
+  },
+  "consistency_weight": 0.25,
+  "curriculum_start_stage": 1,
+  "eval_premises": [
+    2,
+    4,
+    8,
+    16,
+    17,
+    18,
+    19
+  ],
+  "evaluation": {
+    "accuracy": 0.995,
+    "accuracy_by_premises": {
+      "16": 0.995,
+      "17": 0.99,
+      "18": 0.98,
+      "19": 1.0,
+      "2": 1.0,
+      "4": 1.0,
+      "8": 1.0
+    },
+    "accuracy_by_thought_depth": {
+      "1": 0.9971428571428571,
+      "2": 0.9971428571428571,
+      "3": 0.9971428571428571,
+      "4": 0.9964285714285714,
+      "5": 0.995,
+      "6": 0.995,
+      "7": 0.995,
+      "8": 0.995
+    },
+    "episodes": 1400,
+    "latency_reward_active": true,
+    "mean_reward": 0.99,
+    "mean_thought_steps": 8.0,
+    "milliseconds_per_episode": 5.938073159995838
+  },
+  "evaluation_tasks": "parity",
+  "full_precision": false,
+  "history": [],
+  "initial_checkpoint": "experiments/syllogimous_bitter_lesson/h100_parity_2m_incremental_64.pt",
+  "learning_signal": "verifier",
+  "mastery_patience": 2,
+  "mastery_threshold": 0.95,
+  "overfit_fixed": false,
+  "parameters": 2349234,
+  "random_thought_depth": false,
+  "randomize_rendering": false,
+  "reward": {
+    "correct": 1.0,
+    "incorrect": -1.0,
+    "latency_ramp_accuracy": [
+      0.55,
+      0.8
+    ],
+    "max_correct_speed_bonus": 0.05
+  },
+  "scale": "2m",
+  "schema": "syllogimous-bitter-lesson-v1",
+  "seed": 17,
+  "semantic_auxiliary_labels": false,
+  "train_premises": [
+    2,
+    4,
+    8,
+    16,
+    17,
+    18,
+    19
+  ],
+  "training_seconds": 8.314429694000864,
+  "training_tasks": "parity"
+}

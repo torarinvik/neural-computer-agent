@@ -1,0 +1,94 @@
+{
+  "adaptive_curriculum": false,
+  "best_curriculum_epoch": 0,
+  "best_curriculum_score": -1.0,
+  "best_curriculum_stage": 0,
+  "choice_audio_distractors": 0,
+  "choice_counts": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "choice_delay_frames": 0,
+  "choice_distractors": 0,
+  "choice_target_like_distractors": 0,
+  "choice_temporal_distractors": 0,
+  "config": {
+    "action_count": 8,
+    "heads": 5,
+    "hidden": 160,
+    "max_thought_steps": 8,
+    "memory_core": "event_transformer",
+    "memory_slots": 12,
+    "thought_dynamics": "gated_residual"
+  },
+  "consistency_weight": 0.25,
+  "curriculum_start_stage": 1,
+  "cyclic_fraction": 0.25,
+  "eval_premises": [
+    2,
+    4,
+    8
+  ],
+  "evaluation": {
+    "accuracy": 0.4533333333333333,
+    "accuracy_by_premises": {
+      "2": 0.465,
+      "4": 0.42,
+      "8": 0.475
+    },
+    "accuracy_by_thought_depth": {
+      "1": 0.445,
+      "2": 0.44666666666666666,
+      "3": 0.44916666666666666,
+      "4": 0.45166666666666666,
+      "5": 0.45666666666666667,
+      "6": 0.45416666666666666,
+      "7": 0.45416666666666666,
+      "8": 0.4533333333333333
+    },
+    "episodes": 1200,
+    "latency_reward_active": false,
+    "mean_reward": -0.09333333333333338,
+    "mean_thought_steps": 8.0,
+    "milliseconds_per_episode": 3.430974386659121
+  },
+  "evaluation_tasks": "cyclic",
+  "full_precision": false,
+  "history": [],
+  "initial_checkpoint": "experiments/syllogimous_bitter_lesson/small_mixed_mod4_small.pt",
+  "learning_signal": "verifier",
+  "logic_modulus": 4,
+  "mastery_patience": 2,
+  "mastery_threshold": 0.95,
+  "overfit_fixed": false,
+  "parameters": 2350200,
+  "random_thought_depth": false,
+  "randomize_rendering": false,
+  "reaction_fraction": 0.5,
+  "reasoning_family": "parity",
+  "reward": {
+    "correct": 1.0,
+    "incorrect": -1.0,
+    "latency_ramp_accuracy": [
+      0.55,
+      0.8
+    ],
+    "max_correct_speed_bonus": 0.05
+  },
+  "scale": "2m",
+  "schema": "syllogimous-bitter-lesson-v1",
+  "seed": 17,
+  "semantic_auxiliary_labels": false,
+  "train_premises": [
+    2,
+    4,
+    8
+  ],
+  "training_seconds": 4.119329154011211,
+  "training_tasks": "cyclic"
+}

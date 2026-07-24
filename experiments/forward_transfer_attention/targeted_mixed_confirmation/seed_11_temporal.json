@@ -1,0 +1,32 @@
+{
+  "condition": "intact",
+  "evaluation": {
+    "compact_early_auc": 0.4688720703125,
+    "compact_few_shot_auc": 0.43731689453125,
+    "compact_retention": 0.45458984375,
+    "full_few_shot_auc": 0.3543701171875,
+    "full_future_accuracy_0_shot": 0.359619140625,
+    "full_future_accuracy_1_shot": 0.349365234375,
+    "full_future_accuracy_2_shot": 0.3583984375,
+    "full_future_accuracy_4_shot": 0.35009765625,
+    "full_old_accuracy_0_shot": 0.43359375,
+    "full_old_accuracy_1_shot": 0.4228515625,
+    "full_old_accuracy_2_shot": 0.42822265625,
+    "full_old_accuracy_4_shot": 0.44189453125,
+    "full_retention": 0.44189453125,
+    "future_accuracy_0_shot": 0.359619140625,
+    "future_accuracy_1_shot": 0.474365234375,
+    "future_accuracy_2_shot": 0.46337890625,
+    "future_accuracy_4_shot": 0.451904296875,
+    "old_accuracy_0_shot": 0.43359375,
+    "old_accuracy_1_shot": 0.4453125,
+    "old_accuracy_2_shot": 0.4423828125,
+    "old_accuracy_4_shot": 0.45458984375,
+    "rows_saved": 4.0
+  },
+  "primitive": "temporal",
+  "schema": "cross-primitive-temporal-attention-v1",
+  "seed": 11,
+  "sensory_only": true,
+  "weights_frozen": true
+}

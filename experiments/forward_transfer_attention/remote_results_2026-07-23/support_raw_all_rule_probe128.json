@@ -1,0 +1,26 @@
+{
+  "normal": {
+    "linear": {
+      "train_accuracy": 0.90625,
+      "test_accuracy": 0.65625,
+      "best_test_accuracy": 0.65625
+    },
+    "mlp": {
+      "train_accuracy": 1.0,
+      "test_accuracy": 0.671875,
+      "best_test_accuracy": 0.6796875
+    }
+  },
+  "shuffled_labels": {
+    "train_accuracy": 0.9921875,
+    "test_accuracy": 0.5078125,
+    "best_test_accuracy": 0.5703125
+  },
+  "train_examples": 128,
+  "test_examples": 128,
+  "shots": 2,
+  "tap": "support_raw_all",
+  "target": "rule",
+  "include_counterfactual": false,
+  "schema": "answer-fusion-input-probe-v1"
+}

@@ -1,0 +1,308 @@
+# audiotriage.elisa — the CYMBAL: deterministic, always-on audio triage (orchestra_v2 plan M4). The
+# audio twin of the bass (ACTIVITY triage): it reads 16 kHz mono PCM and emits cheap, symbolic AUDIO
+# events (transients, silence, level shifts, tones) so the singer sees audio in its normal cycle with
+# no protocol change. No model — pure DSP. A 512-point radix-2 FFT gives the spectrum for spectral
+# flux (transients) and single-bin dominance (tones); RMS + zero-crossings do the rest.
+#
+# USAGE: audiotriage <in.wav>       (16 kHz mono s16le; parses the RIFF header)
+# stdout: one AUDIO event per line:
+#   AUDIO <TRANSIENT|SILENCE_START|SILENCE_END|LEVEL_SHIFT|TONE> t=<ms> [dur=<ms>] [db=<x>] [freq=<hz>] conf=<c>
+# Deterministic: identical input => byte-identical output.
+
+extern fopen(path: u8&, mode: u8&) -> heap void&?
+extern fread(ptr: mutable u8&, size: usize, nmemb: usize, stream: void&) -> usize
+extern fclose(stream: void&) -> int
+extern printf(fmt: u8&) -> int
+extern sin(x: f64) -> f64
+extern cos(x: f64) -> f64
+extern sqrt(x: f64) -> f64
+
+global SR: i32 = 16000
+global HOP: i32 = 512                      # 32 ms analysis frame (no overlap)
+global NBIN: i32 = 257                      # 512-pt real FFT -> 0..256 unique bins
+
+global mutable RAW: array[u8, 2097152] = zeroed        # WAV bytes (~1 MB for 20 s + header)
+global mutable SAMP: array[i16, 1024000] = zeroed      # decoded PCM (up to 64 s)
+global mutable nsamp: i32 = 0
+
+# FFT working buffers (f64)
+global mutable RE: array[f64, 512] = zeroed
+global mutable IM: array[f64, 512] = zeroed
+global mutable MAG: array[f64, 257] = zeroed
+global mutable PREVMAG: array[f64, 257] = zeroed
+global mutable HANN: array[f64, 512] = zeroed
+
+# per-hop feature ring / running state
+global mutable have_prev: bool = false
+global mutable flux_ema: f64 = 0.0         # rolling spectral-flux baseline
+global mutable rms_slow: f64 = -1.0        # ~1 s rolling RMS for LEVEL_SHIFT
+global mutable in_silence: bool = false
+global mutable sil_run: i32 = 0            # consecutive silent hops
+global mutable sil_start_ms: i64 = 0
+global mutable tone_run: i32 = 0           # consecutive tone-like hops
+global mutable tone_start_ms: i64 = 0
+global mutable tone_freq: i32 = 0
+global mutable last_trans_ms: i64 = -100000
+global mutable prev_rms: f64 = 0.0         # previous hop RMS (for onset detection)
+global mutable level_ref: f64 = -1.0       # dB reference for LEVEL_SHIFT hysteresis
+
+# ---- output ----
+global mutable OB: array[u8, 512] = zeroed
+global mutable ob: i32 = 0
+def ob_byte(b: u8) -> void:
+    OB[ob.usize()] <- b
+    ob <- ob + 1
+def ob_str(s: cstr) -> void:
+    i: mutable i32 = 0
+    while s[i.usize()] != 0:
+        ob_byte(s[i.usize()])
+        i <- i + 1
+def ob_dec(v0: i64) -> void:
+    neg: bool = v0 < 0
+    ob_byte(45) if neg
+    v: mutable i64 = (0 - v0) if neg else v0
+    ob_byte(48) if v == 0
+    tmp: mutable array[u8, 24] = zeroed
+    n: mutable i32 = 0
+    while v > 0:
+        tmp[n.usize()] <- (48 + (v % 10).i32()).u8()
+        v <- v / 10
+        n <- n + 1
+    while n > 0:
+        n <- n - 1
+        ob_byte(tmp[n.usize()])
+def ob_flush() -> void:
+    OB[ob.usize()] <- 0
+    _ = printf(&OB[0])
+    ob <- 0
+
+def emit_event(kind: cstr, t: i64, dur: i64, has_dur: bool, freq: i32, has_freq: bool, conf: i32) -> void:
+    ob_str("AUDIO ")
+    ob_str(kind)
+    ob_str(" t=")
+    ob_dec(t)
+    if has_dur:
+        ob_str(" dur=")
+        ob_dec(dur)
+    if has_freq:
+        ob_str(" freq=")
+        ob_dec(freq.i64())
+    ob_str(" conf=")
+    ob_dec(conf.i64())
+    ob_byte(10)
+    ob_flush()
+
+# ---- WAV load (16 kHz mono s16le; find the 'data' chunk, copy samples) ----
+def load_wav(path: u8&) -> bool:
+    f0: void&? = fopen(path, "rb".cast[u8&])
+    if f0 is f:
+        got: i64 = fread(&RAW[0], 1.usize(), 2097152.usize(), f).i64()
+        _ = fclose(f)
+        false return if got < 44
+        # scan chunks after the 12-byte RIFF/WAVE header for "data"
+        p: mutable i32 = 12
+        while p + 8 <= got.i32():
+            is_data: bool = RAW[p.usize()] == 100 and RAW[(p + 1).usize()] == 97 and RAW[(p + 2).usize()] == 116 and RAW[(p + 3).usize()] == 97
+            clen: i32 = RAW[(p + 4).usize()].i32() | (RAW[(p + 5).usize()].i32() << 8) | (RAW[(p + 6).usize()].i32() << 16) | (RAW[(p + 7).usize()].i32() << 24)
+            if is_data:
+                body: i32 = p + 8
+                cnt: mutable i32 = clen / 2
+                cnt <- (got.i32() - body) / 2 if body + clen > got.i32()
+                i: mutable i32 = 0
+                while i < cnt and i < 1024000:
+                    lo: i32 = RAW[(body + i * 2).usize()].i32()
+                    hi: i32 = RAW[(body + i * 2 + 1).usize()].i32()
+                    val: mutable i32 = lo | (hi << 8)
+                    val <- val - 65536 if val >= 32768
+                    SAMP[i.usize()] <- val.i16()
+                    i <- i + 1
+                nsamp <- i
+                return true
+            p <- p + 8 + clen
+        return false
+    return false
+
+def build_hann() -> void:
+    twopi: f64 = 6.283185307179586
+    for i in 0..<HOP:
+        HANN[i.usize()] <- 0.5 - 0.5 * cos(twopi * i.f64() / 511.0)
+
+# ---- radix-2 iterative FFT over RE/IM (length 512) ----
+def fft() -> void:
+    n: i32 = 512
+    # bit-reversal permutation
+    j: mutable i32 = 0
+    for i in 1..<n:
+        bit: mutable i32 = n >> 1
+        while (j & bit) != 0:
+            j <- j ^ bit
+            bit <- bit >> 1
+        j <- j ^ bit
+        if i < j:
+            tr: f64 = RE[i.usize()]
+            RE[i.usize()] <- RE[j.usize()]
+            RE[j.usize()] <- tr
+            ti: f64 = IM[i.usize()]
+            IM[i.usize()] <- IM[j.usize()]
+            IM[j.usize()] <- ti
+    # butterflies
+    ln: mutable i32 = 2
+    while ln <= n:
+        ang: f64 = -6.283185307179586 / ln.f64()
+        wlen_re: f64 = cos(ang)
+        wlen_im: f64 = sin(ang)
+        half: i32 = ln / 2
+        i0: mutable i32 = 0
+        while i0 < n:
+            w_re: mutable f64 = 1.0
+            w_im: mutable f64 = 0.0
+            k: mutable i32 = 0
+            while k < half:
+                a: i32 = i0 + k
+                b: i32 = i0 + k + half
+                vr: f64 = RE[b.usize()] * w_re - IM[b.usize()] * w_im
+                vi: f64 = RE[b.usize()] * w_im + IM[b.usize()] * w_re
+                ur: f64 = RE[a.usize()]
+                ui: f64 = IM[a.usize()]
+                RE[a.usize()] <- ur + vr
+                IM[a.usize()] <- ui + vi
+                RE[b.usize()] <- ur - vr
+                IM[b.usize()] <- ui - vi
+                nw_re: f64 = w_re * wlen_re - w_im * wlen_im
+                w_im <- w_re * wlen_im + w_im * wlen_re
+                w_re <- nw_re
+                k <- k + 1
+            i0 <- i0 + ln
+        ln <- ln << 1
+
+# load hop `off` into RE (Hann-windowed), IM=0; returns rms of the raw samples
+def load_hop(off: i32) -> f64:
+    ss: mutable f64 = 0.0
+    for i in 0..<HOP:
+        s: f64 = SAMP[(off + i).usize()].i32().f64()
+        ss <- ss + s * s
+        RE[i.usize()] <- s * HANN[i.usize()]
+        IM[i.usize()] <- 0.0
+    return sqrt(ss / HOP.f64())
+
+def zero_crossings(off: i32) -> i32:
+    zc: mutable i32 = 0
+    prev: mutable i32 = SAMP[off.usize()].i32()
+    for i in 1..<HOP:
+        cur: i32 = SAMP[(off + i).usize()].i32()
+        zc <- zc + 1 if (prev < 0 and cur >= 0) or (prev >= 0 and cur < 0)
+        prev <- cur
+    return zc
+
+# magnitudes into MAG[0..NBIN); returns (peak_bin, total_energy, peak_energy) via globals-lite return
+global mutable peak_bin: i32 = 0
+global mutable total_mag: f64 = 0.0
+global mutable peak_mag: f64 = 0.0
+def spectrum() -> f64:
+    fft()
+    total_mag <- 0.0
+    peak_mag <- 0.0
+    peak_bin <- 0
+    flux: mutable f64 = 0.0
+    for kk in 0..<NBIN:
+        m: f64 = sqrt(RE[kk.usize()] * RE[kk.usize()] + IM[kk.usize()] * IM[kk.usize()])
+        MAG[kk.usize()] <- m
+        total_mag <- total_mag + m
+        if m > peak_mag:
+            peak_mag <- m
+            peak_bin <- kk
+        if have_prev:
+            d: f64 = m - PREVMAG[kk.usize()]
+            flux <- flux + d if d > 0.0
+    return flux
+
+def commit_spectrum() -> void:
+    for kk in 0..<NBIN:
+        PREVMAG[kk.usize()] <- MAG[kk.usize()]
+    have_prev <- true
+
+def db_of(rms: f64) -> f64:
+    r: f64 = rms if rms > 1.0 else 1.0
+    # 20*log10(r/32768); approximate log10 via natural-log-free ratio ladder is overkill — use bands
+    return r      # we compare RMS ratios directly (6 dB == 2x), so pass RMS through
+
+# ---- main analysis loop ----
+def analyze() -> void:
+    build_hann()
+    twopi: f64 = 6.283185307179586
+    nhops: i32 = nsamp / HOP
+    for h in 0..<nhops:
+        off: i32 = h * HOP
+        t_ms: i64 = (off.i64() * 1000) / SR.i64()
+        rms: f64 = load_hop(off)
+        _ = spectrum()                                       # fills MAG/peak_bin for the tone detector
+        zc: i32 = zero_crossings(off)
+
+        # --- TRANSIENT: sharp RMS onset vs the PREVIOUS hop. Robust where a flux-EMA baseline is not:
+        # an impact rising out of pure silence (av-sync) and two rapid impacts 150 ms apart (each is
+        # preceded by a bed-level hop, so each is its own onset) both trip it. Skip the stream-start hop.
+        if h >= 2 and rms > 1500.0 and rms > prev_rms * 2.5 and t_ms - last_trans_ms >= 60:
+            emit_event("TRANSIENT", t_ms, 0, false, 0, false, 80)
+            last_trans_ms <- t_ms
+        prev_rms <- rms
+
+        # --- SILENCE: RMS below a floor, min-duration gated on both edges ---
+        silent: bool = rms < 150.0
+        if silent:
+            if not in_silence:
+                sil_run <- sil_run + 1
+                if sil_run >= 6:                              # ~192 ms of silence to enter
+                    in_silence <- true
+                    sil_start_ms <- t_ms - (sil_run.i64() - 1) * 32
+                    emit_event("SILENCE_START", sil_start_ms, 0, false, 0, false, 80)
+        else:
+            if in_silence:
+                in_silence <- false
+                emit_event("SILENCE_END", t_ms, t_ms - sil_start_ms, true, 0, false, 80)
+            sil_run <- 0
+
+        # --- LEVEL_SHIFT: sustained RMS band change >= 6 dB (2x) vs a moving reference ---
+        if rms > 50.0:
+            if rms_slow < 0.0:
+                rms_slow <- rms
+            else:
+                rms_slow <- rms_slow * 0.95 + rms * 0.05      # ~0.6 s smoothing
+            if level_ref < 0.0:
+                level_ref <- rms_slow
+            else:
+                if rms_slow > level_ref * 2.0:
+                    emit_event("LEVEL_SHIFT", t_ms, 0, false, 0, false, 70)
+                    level_ref <- rms_slow
+                else:
+                    if rms_slow < level_ref * 0.5:
+                        emit_event("LEVEL_SHIFT", t_ms, 0, false, 0, false, 70)
+                        level_ref <- rms_slow
+
+        # --- TONE: one FFT bin holds most of the energy for a sustained run ---
+        toneish: bool = total_mag > 0.0 and peak_mag > total_mag * 0.30 and rms > 800.0 and peak_bin > 1
+        if toneish:
+            fq: i32 = peak_bin * SR / 512
+            if tone_run == 0:
+                tone_start_ms <- t_ms
+                tone_freq <- fq
+            tone_run <- tone_run + 1
+        else:
+            if tone_run >= 4:                                 # >=128 ms of a stable tone
+                emit_event("TONE", tone_start_ms, t_ms - tone_start_ms, true, tone_freq, true, 75)
+            tone_run <- 0
+
+        commit_spectrum()
+    # flush a tone still open at end of stream
+    if tone_run >= 4:
+        emit_event("TONE", tone_start_ms, (nhops.i64() * HOP.i64() * 1000) / SR.i64() - tone_start_ms, true, tone_freq, true, 75)
+
+def main(argc: int, argv: u8&&) -> int:
+    requires argc >= 0
+    if argc < 2:
+        _ = printf("usage: audiotriage <in.wav>\n".cast[u8&])
+        return 2
+    if not load_wav(argv[1]):
+        _ = printf("audiotriage: could not read WAV (need 16kHz mono s16le)\n".cast[u8&])
+        return 1
+    analyze()
+    return 0

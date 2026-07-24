@@ -1,0 +1,53 @@
+{
+  "condition": "random_write",
+  "config": {
+    "associations": 1,
+    "batch_size": 16,
+    "checkpoint": "experiments/syllogimous_neural_computer/smoke_random_write.pt",
+    "choices": 8,
+    "condition": "random_write",
+    "delay": 2,
+    "device": "cpu",
+    "epochs": 2,
+    "eval_lifetimes": 64,
+    "heads": 4,
+    "hidden": 40,
+    "learning_rate": 0.0005,
+    "report": "experiments/syllogimous_neural_computer/smoke_random_write.json",
+    "seed": 17,
+    "thought_steps": 2,
+    "train_lifetimes": 96,
+    "workspace_slots": 4,
+    "write_cost": 0.0
+  },
+  "evaluation": {
+    "accuracy": 0.109375,
+    "entries_per_lifetime": 4.0,
+    "interface_loss": 1.854706346988678,
+    "mean_write_strength": 0.5097031593322754,
+    "query_loss": 2.082308351993561
+  },
+  "history": [
+    {
+      "accuracy": 0.11458333333333333,
+      "entries_per_lifetime": 4.0,
+      "epoch": 1,
+      "interface_loss": 2.053238848845164,
+      "mean_write_strength": 0.5063385789593061,
+      "query_loss": 2.0977973143259683
+    },
+    {
+      "accuracy": 0.11458333333333333,
+      "entries_per_lifetime": 4.0,
+      "epoch": 2,
+      "interface_loss": 1.9127122362454732,
+      "mean_write_strength": 0.48953834796945256,
+      "query_loss": 2.0856422583262124
+    }
+  ],
+  "parameters": 621659,
+  "persistent_memory_grows": true,
+  "schema": "syllogimous-growing-memory-benchmark-v1",
+  "sensory_only": true,
+  "training_seconds": 4.337188709
+}

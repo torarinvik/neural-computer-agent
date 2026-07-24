@@ -1,0 +1,204 @@
+{
+  "arms": {
+    "extra_temporal": {
+      "examples_processed": 6000,
+      "last_gradient_norm": 0.5668880939483643,
+      "last_loss": 0.26708242297172546,
+      "mean_margin": 8.024702072143555,
+      "optimizer_updates": 200,
+      "reversal_prediction_flip_rate": 0.5755208134651184,
+      "reversed_relabeled_accuracy": 0.7864583134651184,
+      "unique_reward_bits": 510,
+      "verified_accuracy": 0.7890625
+    },
+    "fully_fresh": {
+      "examples_processed": 6000,
+      "last_gradient_norm": 0.16249528527259827,
+      "last_loss": 0.7007910013198853,
+      "mean_margin": 0.13050031661987305,
+      "optimizer_updates": 200,
+      "reversal_prediction_flip_rate": 0.0,
+      "reversed_relabeled_accuracy": 0.5,
+      "unique_reward_bits": 510,
+      "verified_accuracy": 0.5
+    },
+    "spatial_future_shuffled": {
+      "examples_processed": 6000,
+      "last_gradient_norm": 3.8797738552093506,
+      "last_loss": 0.4824722409248352,
+      "mean_margin": 5.943122863769531,
+      "optimizer_updates": 200,
+      "reversal_prediction_flip_rate": 0.5208333134651184,
+      "reversed_relabeled_accuracy": 0.765625,
+      "unique_reward_bits": 510,
+      "verified_accuracy": 0.7552083134651184
+    },
+    "temporal_only": {
+      "examples_processed": 6000,
+      "last_gradient_norm": 1.2094945907592773,
+      "last_loss": 0.3212886452674866,
+      "mean_margin": 7.46845006942749,
+      "optimizer_updates": 200,
+      "reversal_prediction_flip_rate": 0.5390625,
+      "reversed_relabeled_accuracy": 0.7682291865348816,
+      "unique_reward_bits": 510,
+      "verified_accuracy": 0.7708333134651184
+    },
+    "temporal_spatial": {
+      "examples_processed": 6000,
+      "last_gradient_norm": 3.033602237701416,
+      "last_loss": 0.3895045816898346,
+      "mean_margin": 5.955104351043701,
+      "optimizer_updates": 200,
+      "reversal_prediction_flip_rate": 0.4869791567325592,
+      "reversed_relabeled_accuracy": 0.7421875,
+      "unique_reward_bits": 510,
+      "verified_accuracy": 0.7447916865348816
+    }
+  },
+  "configuration": {
+    "batch_size": 30,
+    "device": "cuda",
+    "fit_updates": 200,
+    "hidden": 64,
+    "intention_width": 8,
+    "learning_rate": 0.003,
+    "policy_lifetimes": 510,
+    "pretrain_learning_rate": 0.0003,
+    "pretrain_lifetimes": 252,
+    "pretrain_steps": 40,
+    "report": "/workspace/elisa-screenwatch/experiments/forward_transfer_attention/remote_results_2026-07-24/action_conditioned_success/retention_seed211.json",
+    "seed": 211,
+    "test_lifetimes": 384
+  },
+  "gate": {
+    "advance_to_rehearsal_experiment": false,
+    "provisional_behavioral_forgetting": false
+  },
+  "pretraining": {
+    "extra_temporal": {
+      "history": [
+        {
+          "correlation_loss": 0.5903522372245789,
+          "gradient_norm": 5.925105094909668,
+          "loss": 2.8436145782470703,
+          "predictive_loss": 1.834967017173767,
+          "step": 1,
+          "variance_loss": 0.35673582553863525
+        },
+        {
+          "correlation_loss": 0.4760592579841614,
+          "gradient_norm": 12.858634948730469,
+          "loss": 2.370403528213501,
+          "predictive_loss": 1.5803964138031006,
+          "step": 20,
+          "variance_loss": 0.27598869800567627
+        },
+        {
+          "correlation_loss": 0.4538717567920685,
+          "gradient_norm": 2.5937750339508057,
+          "loss": 1.8647501468658447,
+          "predictive_loss": 1.405743956565857,
+          "step": 40,
+          "variance_loss": 0.11603516340255737
+        }
+      ],
+      "last_gradient_norm": 2.5937750339508057
+    },
+    "spatial": {
+      "history": [
+        {
+          "correlation_loss": 0.7838299870491028,
+          "gradient_norm": 6.310649871826172,
+          "loss": 3.144723892211914,
+          "predictive_loss": 1.8334418535232544,
+          "step": 1,
+          "variance_loss": 0.45968347787857056
+        },
+        {
+          "correlation_loss": 0.4921196699142456,
+          "gradient_norm": 6.157043933868408,
+          "loss": 2.3070459365844727,
+          "predictive_loss": 1.3844772577285767,
+          "step": 20,
+          "variance_loss": 0.3382544219493866
+        },
+        {
+          "correlation_loss": 0.5121428370475769,
+          "gradient_norm": 1.7205073833465576,
+          "loss": 1.8307346105575562,
+          "predictive_loss": 1.0602720975875854,
+          "step": 40,
+          "variance_loss": 0.25719553232192993
+        }
+      ],
+      "last_gradient_norm": 1.7205073833465576
+    },
+    "spatial_shuffled": {
+      "history": [
+        {
+          "correlation_loss": 0.7838299870491028,
+          "gradient_norm": 6.479851245880127,
+          "loss": 3.3632972240448,
+          "predictive_loss": 2.0520150661468506,
+          "step": 1,
+          "variance_loss": 0.45968347787857056
+        },
+        {
+          "correlation_loss": 0.5799045562744141,
+          "gradient_norm": 6.469978332519531,
+          "loss": 2.836674928665161,
+          "predictive_loss": 1.987608551979065,
+          "step": 20,
+          "variance_loss": 0.2795570194721222
+        },
+        {
+          "correlation_loss": 0.47682762145996094,
+          "gradient_norm": 4.28155517578125,
+          "loss": 2.656981945037842,
+          "predictive_loss": 1.9586856365203857,
+          "step": 40,
+          "variance_loss": 0.22994127869606018
+        }
+      ],
+      "last_gradient_norm": 4.28155517578125
+    },
+    "temporal": {
+      "history": [
+        {
+          "correlation_loss": 1.2261114120483398,
+          "gradient_norm": 26.536285400390625,
+          "loss": 4.494326591491699,
+          "predictive_loss": 2.0200231075286865,
+          "step": 1,
+          "variance_loss": 0.9306237697601318
+        },
+        {
+          "correlation_loss": 0.46502456068992615,
+          "gradient_norm": 5.9719672203063965,
+          "loss": 2.9304039478302,
+          "predictive_loss": 1.5436983108520508,
+          "step": 20,
+          "variance_loss": 0.5770967602729797
+        },
+        {
+          "correlation_loss": 0.6074951887130737,
+          "gradient_norm": 9.5308198928833,
+          "loss": 2.551488161087036,
+          "predictive_loss": 1.4700781106948853,
+          "step": 40,
+          "variance_loss": 0.3888311982154846
+        }
+      ],
+      "last_gradient_norm": 9.5308198928833
+    }
+  },
+  "schema": "predictive-core-temporal-retention-v1",
+  "semantic_labels_used_for_training": false,
+  "temporal_spatial_retention_drops": {
+    "normal_accuracy": 0.026041626930236816,
+    "reversed_accuracy": 0.026041686534881592
+  },
+  "total_seconds": 30.046942594999564,
+  "unattempted_action_labels_used_for_training": false
+}

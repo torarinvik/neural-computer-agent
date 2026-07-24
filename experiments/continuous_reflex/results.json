@@ -1,0 +1,44 @@
+{
+  "date": "2026-07-16",
+  "seeds": [7, 17, 29],
+  "train_samples_per_seed": 3000,
+  "heldout_samples_per_seed": 900,
+  "sequence_ticks": 32,
+  "distractors_per_window": 7,
+  "modes": {
+    "dense": {
+      "heldout_accuracy": 0.8181481481,
+      "tokens_per_window": 64.0,
+      "token_reduction_fraction": 0.0,
+      "relevant_event_recall": 1.0,
+      "latency_ms": 13.6824838073,
+      "cache_speedup": 1.0825763467
+    },
+    "fixed": {
+      "heldout_accuracy": 0.8051851852,
+      "tokens_per_window": 12.8240740741,
+      "token_reduction_fraction": 0.7996238426,
+      "relevant_event_recall": 1.0,
+      "latency_ms": 14.0694392135,
+      "cache_speedup": 1.0883130323
+    },
+    "learned": {
+      "heldout_accuracy": 0.7237037037,
+      "tokens_per_window": 35.7981481481,
+      "token_reduction_fraction": 0.4406539352,
+      "relevant_event_recall": 0.6978818283,
+      "latency_ms": 14.0272847188,
+      "cache_speedup": 1.0828554401
+    },
+    "random": {
+      "heldout_accuracy": 0.7566666667,
+      "tokens_per_window": 14.4059259259,
+      "token_reduction_fraction": 0.7749074074,
+      "relevant_event_recall": 0.2511148272,
+      "latency_ms": 14.1808309115,
+      "cache_speedup": 1.0564107686
+    }
+  },
+  "listener": "HuggingFaceTB/SmolVLM2-500M-Video-Instruct",
+  "listener_frozen": true
+}

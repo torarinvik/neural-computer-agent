@@ -1,0 +1,29 @@
+{
+  "date": "2026-07-16",
+  "seeds": [7, 17, 29],
+  "train_samples_per_seed": 3000,
+  "test_samples_per_seed": 1500,
+  "modes": {
+    "dense": {
+      "mean_accuracy": 1.0,
+      "mean_token_reduction_fraction": 0.0,
+      "mean_tokens_per_trial": 24.0,
+      "mean_latency_ms": 13.6260462005
+    },
+    "fixed": {
+      "mean_accuracy": 1.0,
+      "mean_token_reduction_fraction": 0.9028888889,
+      "mean_tokens_per_trial": 2.3203125,
+      "mean_latency_ms": 13.9420149427
+    },
+    "learned": {
+      "mean_accuracy": 1.0,
+      "mean_token_reduction_fraction": 0.9028888889,
+      "mean_tokens_per_trial": 2.3203125,
+      "mean_latency_ms": 13.9347445234
+    }
+  },
+  "all_modality_and_kind_slices_perfect": true,
+  "listener": "HuggingFaceTB/SmolVLM2-500M-Video-Instruct",
+  "listener_frozen": true
+}

@@ -1,0 +1,31 @@
+{
+  "condition": "shuffled",
+  "evaluation": {
+    "compact_early_auc": 0.14501953125,
+    "compact_few_shot_auc": 0.211181640625,
+    "compact_retention": 0.142578125,
+    "full_few_shot_auc": 0.425048828125,
+    "full_future_accuracy_0_shot": 0.4130859375,
+    "full_future_accuracy_1_shot": 0.4287109375,
+    "full_future_accuracy_2_shot": 0.4287109375,
+    "full_future_accuracy_4_shot": 0.4296875,
+    "full_old_accuracy_0_shot": 0.427734375,
+    "full_old_accuracy_1_shot": 0.44140625,
+    "full_old_accuracy_2_shot": 0.435546875,
+    "full_old_accuracy_4_shot": 0.439453125,
+    "full_retention": 0.439453125,
+    "future_accuracy_0_shot": 0.4130859375,
+    "future_accuracy_1_shot": 0.1455078125,
+    "future_accuracy_2_shot": 0.14453125,
+    "future_accuracy_4_shot": 0.1416015625,
+    "old_accuracy_0_shot": 0.427734375,
+    "old_accuracy_1_shot": 0.140625,
+    "old_accuracy_2_shot": 0.140625,
+    "old_accuracy_4_shot": 0.142578125,
+    "rows_saved": 4.0
+  },
+  "schema": "cross-primitive-shape-attention-v1",
+  "seed": 11,
+  "sensory_only": true,
+  "weights_frozen": true
+}

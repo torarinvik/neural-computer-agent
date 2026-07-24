@@ -1,0 +1,18 @@
+{"stream": 16, "reward": -0.00015075445175170903, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 480}
+{"stream": 32, "reward": 0.0013169050216674805, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 480}
+{"stream": 48, "reward": 0.048533821105957026, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 416}
+{"stream": 64, "reward": 3.63612174987793e-05, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 480}
+{"stream": 80, "reward": -0.0003293466567993164, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 480}
+{"stream": 96, "reward": 0.0001247239112854004, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 480}
+{"stream": 112, "reward": 0.0772244691848755, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 456}
+{"stream": 128, "reward": -0.0008511543273925781, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 480}
+{"evaluation": {"append_accuracy": 0.2109375, "consolidated_accuracy": 0.2412109375, "append_audit_accuracy": 0.2158203125, "consolidated_audit_accuracy": 0.232421875, "append_rows": 8.0, "consolidated_rows": 3.76953125, "accepted_rewrites": 4.23046875, "verifier_queries": 75.3125, "stop_rate": 0.19140625, "stopped_rows": 0.8671875, "lookup_reduction": 0.52880859375}}
+{"evaluation": {"append_accuracy": 0.2109375, "consolidated_accuracy": 0.24267578125, "append_audit_accuracy": 0.2158203125, "consolidated_audit_accuracy": 0.23388671875, "append_rows": 8.0, "consolidated_rows": 3.5, "accepted_rewrites": 4.5, "verifier_queries": 80.0, "stop_rate": 0.0, "stopped_rows": 0.0, "lookup_reduction": 0.5625}}
+{"stream": 16, "reward": -0.00015075445175170903, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 480}
+{"stream": 32, "reward": 0.0013169050216674805, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 480}
+{"stream": 48, "reward": 0.048533821105957026, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 416}
+{"stream": 64, "reward": 3.63612174987793e-05, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 480}
+{"stream": 80, "reward": -0.0003293466567993164, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 480}
+{"stream": 96, "reward": 0.0001247239112854004, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 480}
+{"stream": 112, "reward": 0.0772244691848755, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 456}
+{"stream": 128, "reward": -0.0008511543273925781, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 480}

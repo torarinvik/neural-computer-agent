@@ -1,0 +1,691 @@
+# Native deterministic regression gate for typed generators and prepared sessions.
+
+include "syllogimous_presentation.elisa"
+include "syllogimous_game.elisa"
+include "syllogimous_session.elisa"
+include "syllogimous_ledger.elisa"
+
+def check_generators() -> int error[GenerationError]:
+    directional_analogies: mutable i32 = 0
+    same_directional_analogies: mutable i32 = 0
+    for seed in 0..<512:
+        rng: mutable Rng = rng_from_seed(seed.u64())
+
+        rebind distinction: RelationalQuestion, rng = generate_distinction(rng, 8)
+        distinction_truth: Truth = try solve_distinction(distinction)
+        if distinction_truth != distinction.truth:
+            return 10
+        rebind negated_distinction: RelationalQuestion, rng = add_relational_negation(rng, distinction)
+        negated_distinction_truth: Truth = try solve_distinction(negated_distinction)
+        if negated_distinction_truth != distinction.truth:
+            return 11
+        wrapped_negated: Question = Question.Relational(
+            QuestionFamily.Distinction, negated_distinction
+        )
+        # At least one surface is usually negated; the exact all-positive case
+        # remains legal, so compare against the structural helper directly.
+        if question_has_negation(wrapped_negated) != relational_has_negation(negated_distinction):
+            return 14
+        rebind meta_distinction_result: RelationalQuestion error[GenerationError], rng = add_meta_relations(rng, negated_distinction)
+        meta_distinction: RelationalQuestion = try meta_distinction_result
+        meta_distinction_truth: Truth = try solve_distinction(meta_distinction)
+        if meta_distinction_truth != distinction.truth:
+            return 12
+        if not meta_relations_valid(meta_distinction):
+            return 13
+
+        rebind comparison: RelationalQuestion, rng = generate_comparison(rng, 8)
+        comparison_truth: Truth = try solve_ordered(comparison)
+        if comparison_truth != comparison.truth:
+            return 20
+        rebind negated_comparison: RelationalQuestion, rng = add_relational_negation(rng, comparison)
+        negated_comparison_truth: Truth = try solve_ordered(negated_comparison)
+        if negated_comparison_truth != comparison.truth:
+            return 21
+        rebind meta_comparison_result: RelationalQuestion error[GenerationError], rng = add_meta_relations(rng, negated_comparison)
+        meta_comparison: RelationalQuestion = try meta_comparison_result
+        meta_comparison_truth: Truth = try solve_ordered(meta_comparison)
+        if meta_comparison_truth != comparison.truth:
+            return 22
+        if not meta_relations_valid(meta_comparison):
+            return 23
+
+        rebind temporal: RelationalQuestion, rng = generate_temporal(rng, 8)
+        temporal_truth: Truth = try solve_ordered(temporal)
+        if temporal_truth != temporal.truth:
+            return 30
+        rebind negated_temporal: RelationalQuestion, rng = add_relational_negation(rng, temporal)
+        negated_temporal_truth: Truth = try solve_ordered(negated_temporal)
+        if negated_temporal_truth != temporal.truth:
+            return 31
+        rebind meta_temporal_result: RelationalQuestion error[GenerationError], rng = add_meta_relations(rng, negated_temporal)
+        meta_temporal: RelationalQuestion = try meta_temporal_result
+        meta_temporal_truth: Truth = try solve_ordered(meta_temporal)
+        if meta_temporal_truth != temporal.truth:
+            return 32
+        if not meta_relations_valid(meta_temporal):
+            return 33
+
+        rebind direction2_result: RelationalQuestion error[GenerationError], rng = generate_direction2(rng, 8)
+        direction2: RelationalQuestion = try direction2_result
+        direction2_truth: Truth = try solve_direction2(direction2)
+        if direction2_truth != direction2.truth:
+            return 40
+        rebind negated_direction2: RelationalQuestion, rng = add_relational_negation(rng, direction2)
+        negated_direction2_truth: Truth = try solve_direction2(negated_direction2)
+        if negated_direction2_truth != direction2.truth:
+            return 41
+
+        rebind direction3_result: RelationalQuestion error[GenerationError], rng = generate_direction3(rng, 8)
+        direction3: RelationalQuestion = try direction3_result
+        direction3_truth: Truth = try solve_direction3(direction3)
+        if direction3_truth != direction3.truth:
+            return 50
+        rebind negated_direction3: RelationalQuestion, rng = add_relational_negation(rng, direction3)
+        negated_direction3_truth: Truth = try solve_direction3(negated_direction3)
+        if negated_direction3_truth != direction3.truth:
+            return 51
+
+        rebind direction4_result: RelationalQuestion error[GenerationError], rng = generate_direction4(rng, 8)
+        direction4: RelationalQuestion = try direction4_result
+        direction4_truth: Truth = try solve_direction4(direction4)
+        if direction4_truth != direction4.truth:
+            return 60
+        rebind negated_direction4: RelationalQuestion, rng = add_relational_negation(rng, direction4)
+        negated_direction4_truth: Truth = try solve_direction4(negated_direction4)
+        if negated_direction4_truth != direction4.truth:
+            return 61
+
+        rebind categorical_result: CategoricalQuestion error[GenerationError], rng = generate_categorical(rng, 8)
+        categorical: CategoricalQuestion = try categorical_result
+        categorical_truth: Truth = solve_categorical(categorical)
+        if categorical_truth != categorical.truth:
+            return 70
+        rebind negated_categorical: CategoricalQuestion, rng = add_categorical_negation(rng, categorical)
+        if solve_categorical(negated_categorical) != categorical.truth:
+            return 71
+
+        rebind analogy_result: AnalogyQuestion error[GenerationError], rng = generate_analogy(rng, 8)
+        analogy: AnalogyQuestion = try analogy_result
+        analogy_truth: Truth = try solve_analogy(analogy)
+        if analogy_truth != analogy.truth:
+            return 75
+        if (analogy.first.left == analogy.first.right or
+            analogy.first.left == analogy.second.left or
+            analogy.first.left == analogy.second.right or
+            analogy.first.right == analogy.second.left or
+            analogy.first.right == analogy.second.right or
+            analogy.second.left == analogy.second.right):
+            return 76
+        assert analogy.first.left >= 0 and analogy.first.left < 256
+        assert analogy.first.right >= 0 and analogy.first.right < 256
+        assert analogy.second.left >= 0 and analogy.second.left < 256
+        assert analogy.second.right >= 0 and analogy.second.right < 256
+        inferred_first: Relation = try infer_pair_relation(
+            analogy.evidence, analogy.family, analogy.first.left, analogy.first.right
+        )
+        inferred_second: Relation = try infer_pair_relation(
+            analogy.evidence, analogy.family, analogy.second.left, analogy.second.right
+        )
+        if not same_relation(inferred_first, analogy.first.relation):
+            return 77
+        if not same_relation(inferred_second, analogy.second.relation):
+            return 78
+        if (analogy.family == QuestionFamily.Direction2D or
+            analogy.family == QuestionFamily.Direction3D or
+            analogy.family == QuestionFamily.Direction4D):
+            directional_analogies <- directional_analogies + 1
+            if same_relation(inferred_first, inferred_second):
+                same_directional_analogies <- same_directional_analogies + 1
+
+        rebind boolean_result: BooleanQuestion error[GenerationError], rng = generate_boolean(
+            rng, 5, 3, all_binary_operators()
+        )
+        boolean: BooleanQuestion = try boolean_result
+        boolean_truth: Truth = solve_boolean(boolean)
+        if boolean_truth != boolean.truth:
+            return 80
+
+        rebind sorting_result: SortingQuestion error[GenerationError], rng = generate_sorting(rng, 10, 2)
+        sorting: SortingQuestion = try sorting_result
+        if not sorting_solution_valid(sorting):
+            return 90
+        if not sorting_initial_unsolved(sorting):
+            return 91
+        if sorting.key_count < 2 or sorting.key_count > 3:
+            return 92
+    if directional_analogies < 200:
+        return 93
+    if same_directional_analogies * 10 < directional_analogies * 4:
+        return 94
+    if same_directional_analogies * 10 > directional_analogies * 6:
+        return 95
+    rare_rng: mutable Rng = rng_from_seed(9001)
+    rebind no_override: FixedPuzzle?, rare_rng = rare_puzzle_override(rare_rng, 0)
+    if no_override is unexpected:
+        return 96
+    rebind forced_override: FixedPuzzle?, rare_rng = rare_puzzle_override(rare_rng, 1000)
+    if forced_override is puzzle:
+        if puzzle.family != QuestionFamily.LogicPuzzle:
+            return 97
+        match puzzle.answer:
+            FixedPuzzleAnswer.Determinate(value):
+                if value != logic_puzzle_answer(puzzle.puzzle_id):
+                    return 98
+            FixedPuzzleAnswer.Undetermined:
+                return 99
+    else:
+        return 100
+    selection_code: i32 = try check_selection_plans()
+    if selection_code != 0:
+        return selection_code
+    return 0
+
+def test_family(enabled: bool, deadline_ms: i64 where deadline_ms >= 5000 and deadline_ms <= 300000) -> FamilyConfig:
+    return FamilyConfig{enabled: enabled, deadline_ms: deadline_ms}
+
+def selection_fixture(premises: i32 where premises >= 2 and premises <= 32,
+                      depth: i32 where depth >= 0 and depth <= 8,
+                      distinction: bool, comparison: bool,
+                      analogy: bool, binary: bool, sorting: bool,
+                      only_analogy: bool, only_binary: bool, only_sorting: bool,
+                      sorting_viewport_available: bool,
+                      rare_permille: i32 where rare_permille >= 0 and rare_permille <= 1000) -> SelectionConfig:
+    operators: BinaryOperatorConfig = all_binary_operators()
+    game: GameConfig = GameConfig{
+        difficulty: DifficultyTier.Standard,
+        premises: premises,
+        vocabulary: Vocabulary.Meaningful,
+        presentation: PresentationMode.Carousel,
+        negation: true,
+        negation_explainer: true,
+        meta_relations: true,
+        stroop: true,
+        binary_depth: depth,
+        binary_operators: operators,
+        sorting_min_width: 2,
+        rare_puzzle_permille: rare_permille,
+        challenge_enabled: false
+    }
+    return SelectionConfig{
+        game: game,
+        distinction: test_family(distinction, 11000),
+        comparison: test_family(comparison, 12000),
+        temporal: test_family(false, 13000),
+        categorical: test_family(false, 14000),
+        direction2: test_family(false, 15000),
+        direction3: test_family(false, 16000),
+        direction4: test_family(false, 17000),
+        analogy: test_family(analogy, 18000),
+        binary: test_family(binary, 19000),
+        sorting: test_family(sorting, 20000),
+        only_analogy: only_analogy,
+        only_binary: only_binary,
+        only_sorting: only_sorting,
+        sorting_viewport_available: sorting_viewport_available
+    }
+
+def select_once_for_rejection(config: SelectionConfig&) -> SelectedQuestionPlan error[GenerationError]:
+    rng: mutable Rng = rng_from_seed(9191)
+    rebind result: SelectedQuestionPlan error[GenerationError], rng = select_question_plan(rng, config)
+    return try result
+
+def invalid_selection_is_rejected(config: SelectionConfig&) -> bool:
+    catch select_once_for_rejection(config):
+        plan:
+            return false
+        error failure:
+            return true
+
+def check_selection_plans() -> i32 error[GenerationError]:
+    rng: mutable Rng = rng_from_seed(7001)
+    base: SelectionConfig = selection_fixture(
+        4, 0, true, false, false, false, false,
+        false, false, false, true, 0
+    )
+    rebind base_result: SelectedQuestionPlan error[GenerationError], rng = select_question_plan(rng, base)
+    base_plan: SelectedQuestionPlan = try base_result
+    match base_plan:
+        SelectedQuestionPlan.Generated(family, deadline_ms):
+            if family != QuestionFamily.Distinction or deadline_ms != 11000:
+                return 121
+        _:
+            return 122
+
+    analogy_only: SelectionConfig = selection_fixture(
+        4, 0, true, false, true, false, false,
+        true, false, false, true, 0
+    )
+    rebind analogy_result: SelectedQuestionPlan error[GenerationError], rng = select_question_plan(rng, analogy_only)
+    analogy_plan: SelectedQuestionPlan = try analogy_result
+    match analogy_plan:
+        SelectedQuestionPlan.Generated(family, deadline_ms):
+            if family != QuestionFamily.Analogy or deadline_ms != 18000:
+                return 123
+        _:
+            return 124
+
+    binary_only: SelectionConfig = selection_fixture(
+        4, 2, true, true, false, true, false,
+        false, true, false, true, 0
+    )
+    rebind binary_result: SelectedQuestionPlan error[GenerationError], rng = select_question_plan(rng, binary_only)
+    binary_plan: SelectedQuestionPlan = try binary_result
+    match binary_plan:
+        SelectedQuestionPlan.Generated(family, deadline_ms):
+            if family != QuestionFamily.NestedBinary or deadline_ms != 19000:
+                return 125
+        _:
+            return 126
+
+    sorting_only: SelectionConfig = selection_fixture(
+        4, 0, true, false, false, false, true,
+        false, false, true, true, 0
+    )
+    rebind sorting_result: SelectedQuestionPlan error[GenerationError], rng = select_question_plan(rng, sorting_only)
+    sorting_plan: SelectedQuestionPlan = try sorting_result
+    match sorting_plan:
+        SelectedQuestionPlan.Sorting(deadline_ms):
+            if deadline_ms != 20000:
+                return 127
+        _:
+            return 128
+
+    forced_rare: SelectionConfig = selection_fixture(
+        4, 0, true, false, false, false, false,
+        false, false, false, true, 1000
+    )
+    rebind rare_result: SelectedQuestionPlan error[GenerationError], rng = select_question_plan(rng, forced_rare)
+    rare_plan: SelectedQuestionPlan = try rare_result
+    match rare_plan:
+        SelectedQuestionPlan.Fixed(question, deadline_ms):
+            if question.family != QuestionFamily.LogicPuzzle or deadline_ms != 11000:
+                return 129
+        _:
+            return 130
+
+    invalid_analogy: SelectionConfig = selection_fixture(
+        4, 0, false, false, true, false, false,
+        true, false, false, true, 0
+    )
+    if not invalid_selection_is_rejected(invalid_analogy):
+        return 131
+    invalid_binary: SelectionConfig = selection_fixture(
+        4, 0, true, false, false, true, false,
+        false, true, false, true, 0
+    )
+    if not invalid_selection_is_rejected(invalid_binary):
+        return 132
+    unavailable_sorting: SelectionConfig = selection_fixture(
+        4, 0, true, false, false, false, true,
+        false, false, true, false, 0
+    )
+    if not invalid_selection_is_rejected(unavailable_sorting):
+        return 133
+
+    mixed_sorting: SelectionConfig = selection_fixture(
+        4, 0, true, false, false, false, true,
+        false, false, false, true, 0
+    )
+    generated_count: mutable i32 = 0
+    sorting_count: mutable i32 = 0
+    for seed in 0..<64:
+        sample_rng: mutable Rng = rng_from_seed((80000 + seed).u64())
+        rebind sample_result: SelectedQuestionPlan error[GenerationError], sample_rng = select_question_plan(
+            sample_rng, mixed_sorting
+        )
+        sample: SelectedQuestionPlan = try sample_result
+        match sample:
+            SelectedQuestionPlan.Generated(family, deadline_ms):
+                generated_count <- generated_count + 1
+            SelectedQuestionPlan.Sorting(deadline_ms):
+                sorting_count <- sorting_count + 1
+            SelectedQuestionPlan.Fixed(question, deadline_ms):
+                return 134
+    if generated_count < 1 or sorting_count < 1:
+        return 135
+    return 0
+
+def generated_question_matches(question: Question, family: QuestionFamily) -> bool:
+    match question:
+        Question.Relational(actual, content):
+            return actual == family
+        Question.Categorical(content):
+            return family == QuestionFamily.Categorical
+        Question.Boolean(actual, content):
+            return actual == family
+        Question.Analogy(content):
+            return family == QuestionFamily.Analogy
+        _:
+            return false
+
+def check_executed_family(rng: lmut Rng, family: QuestionFamily,
+                          config: GameConfig&) -> bool error[GenerationError]:
+    plan: SelectedQuestionPlan = SelectedQuestionPlan.Generated(family, 15000)
+    rebind result: Question error[GenerationError], rng = execute_question_plan(rng, plan, config)
+    return generated_question_matches(try result, family)
+
+def check_sorting_session(rng: lmut Rng, state: lmut PresentationState,
+                          config: GameConfig&) -> i32 error[GenerationError]:
+    plan: SelectedQuestionPlan = SelectedQuestionPlan.Sorting(20000)
+    rebind result: PreparedSession error[GenerationError], rng, state = prepare_session(
+        rng, state, plan, config, 1000
+    )
+    session: PreparedSession = try result
+    match session.question:
+        Question.Sorting(content):
+            match session.episode.task:
+                EpisodeTask.SortingAnswer(expected_order, card_count):
+                    if card_count != content.card_count: return 151
+                _:
+                    return 152
+        _:
+            return 153
+    return 0
+
+def check_fixed_session(rng: lmut Rng, state: lmut PresentationState,
+                        config: GameConfig&) -> i32 error[GenerationError]:
+    fixed: FixedPuzzle = FixedPuzzle{
+        family: QuestionFamily.Paradox,
+        puzzle_id: 0,
+        answer: FixedPuzzleAnswer.Undetermined
+    }
+    plan: SelectedQuestionPlan = SelectedQuestionPlan.Fixed(fixed, 11000)
+    rebind result: PreparedSession error[GenerationError], rng, state = prepare_session(
+        rng, state, plan, config, 2000
+    )
+    session: PreparedSession = try result
+    match session.question:
+        Question.Fixed(content):
+            if content.puzzle_id != 0: return 154
+        _:
+            return 155
+    match session.episode.task:
+        EpisodeTask.TruthAnswer(expected):
+            if expected != Truth.True: return 156
+        _:
+            return 157
+    return 0
+
+def check_prepared_sessions() -> i32 error[GenerationError]:
+    fixture: SelectionConfig = selection_fixture(
+        8, 3, true, true, true, true, true,
+        false, false, false, true, 0
+    )
+    rng: mutable Rng = rng_from_seed(44009)
+    rebind distinction_ok: bool error[GenerationError], rng = check_executed_family(rng, QuestionFamily.Distinction, fixture.game)
+    if not try distinction_ok: return 141
+    rebind comparison_ok: bool error[GenerationError], rng = check_executed_family(rng, QuestionFamily.Comparison, fixture.game)
+    if not try comparison_ok: return 142
+    rebind temporal_ok: bool error[GenerationError], rng = check_executed_family(rng, QuestionFamily.Temporal, fixture.game)
+    if not try temporal_ok: return 143
+    rebind direction2_ok: bool error[GenerationError], rng = check_executed_family(rng, QuestionFamily.Direction2D, fixture.game)
+    if not try direction2_ok: return 144
+    rebind direction3_ok: bool error[GenerationError], rng = check_executed_family(rng, QuestionFamily.Direction3D, fixture.game)
+    if not try direction3_ok: return 145
+    rebind direction4_ok: bool error[GenerationError], rng = check_executed_family(rng, QuestionFamily.Direction4D, fixture.game)
+    if not try direction4_ok: return 146
+    rebind categorical_ok: bool error[GenerationError], rng = check_executed_family(rng, QuestionFamily.Categorical, fixture.game)
+    if not try categorical_ok: return 147
+    rebind analogy_ok: bool error[GenerationError], rng = check_executed_family(rng, QuestionFamily.Analogy, fixture.game)
+    if not try analogy_ok: return 148
+    rebind binary_ok: bool error[GenerationError], rng = check_executed_family(rng, QuestionFamily.Binary, fixture.game)
+    if not try binary_ok: return 149
+    rebind nested_ok: bool error[GenerationError], rng = check_executed_family(rng, QuestionFamily.NestedBinary, fixture.game)
+    if not try nested_ok: return 150
+
+    state: mutable PresentationState = initial_presentation_state()
+    rebind sorting_code: i32 error[GenerationError], rng, state = check_sorting_session(
+        rng, state, fixture.game
+    )
+    sorting_value: i32 = try sorting_code
+    if sorting_value != 0: return sorting_value
+    rebind fixed_code: i32 error[GenerationError], rng, state = check_fixed_session(
+        rng, state, fixture.game
+    )
+    fixed_value: i32 = try fixed_code
+    if fixed_value != 0: return fixed_value
+    return 0
+
+def check_presentation() -> int error[GenerationError]:
+    if toggle_button_order(ButtonOrder.TrueFirst) != ButtonOrder.FalseFirst:
+        return 108
+    if toggle_button_order(ButtonOrder.FalseFirst) != ButtonOrder.TrueFirst:
+        return 109
+    if toggle_button_palette(ButtonPalette.Semantic) != ButtonPalette.Inverted:
+        return 110
+    if toggle_button_palette(ButtonPalette.Inverted) != ButtonPalette.Semantic:
+        return 111
+    first: AbstractSyllable = decode_abstract_label(0)
+    if (first.first != AbstractConsonant.Q or first.vowel != AbstractVowel.A or
+        first.last != AbstractConsonant.W):
+        return 112
+    qam: AbstractSyllable = decode_abstract_label(16)
+    if qam.first != AbstractConsonant.Q or qam.last != AbstractConsonant.M:
+        return 113
+    qew: AbstractSyllable = decode_abstract_label(17)
+    if qew.first != AbstractConsonant.Q or qew.vowel != AbstractVowel.E:
+        return 114
+    last: AbstractSyllable = decode_abstract_label(1529)
+    if (last.first != AbstractConsonant.M or last.vowel != AbstractVowel.U or
+        last.last != AbstractConsonant.N):
+        return 115
+
+    lexicon_rng: mutable Rng = rng_from_seed(44)
+    rebind lexicon: EntityLexicon, lexicon_rng = generate_entity_lexicon(
+        lexicon_rng, Vocabulary.Meaningful, 64
+    )
+    for i in 0..<64:
+        current: i32 = try entity_label_index(lexicon.labels[i.usize()], Vocabulary.Meaningful)
+        for j in 0..<i:
+            previous: i32 = try entity_label_index(lexicon.labels[j.usize()], Vocabulary.Meaningful)
+            if current == previous:
+                return 116
+
+    presentation_rng: mutable Rng = rng_from_seed(55)
+    state: mutable PresentationState = initial_presentation_state()
+    disabled: PresentationOptions = PresentationOptions{
+        negation_enabled: false,
+        negation_explainer_enabled: true,
+        stroop_enabled: false
+    }
+    rebind ordinary: PresentationFrame, presentation_rng, state = advance_presentation(
+        presentation_rng, state, disabled, true
+    )
+    if ordinary.stroop_active or ordinary.body_ink != InkColor.White:
+        return 117
+    if ordinary.negated_ink != InkColor.Red or not ordinary.show_negation_explainer:
+        return 118
+    if state.button_palette != ButtonPalette.Semantic:
+        return 119
+
+    enabled: PresentationOptions = PresentationOptions{
+        negation_enabled: true,
+        negation_explainer_enabled: false,
+        stroop_enabled: true
+    }
+    rebind styled: PresentationFrame, presentation_rng, state = advance_presentation(
+        presentation_rng, state, enabled, true
+    )
+    if styled.show_negation_explainer:
+        return 120
+    if styled.stroop_active:
+        if styled.body_ink != InkColor.Red or styled.negated_ink != InkColor.White:
+            return 121
+    else:
+        if styled.body_ink != InkColor.White or styled.negated_ink != InkColor.Red:
+            return 122
+    return 0
+
+def answer_before_conclusion_is_rejected(episode: RealtimeEpisode) -> bool:
+    catch step_episode(episode, Action.Answer(Truth.True), 1):
+        updated:
+            return false
+        error failure:
+            return true
+
+def check_episode_runtime() -> int error[EpisodeError]:
+    carousel: RealtimeEpisode = truth_episode(
+        Truth.True, PresentationMode.Carousel, 3, 0, 10000
+    )
+    initial: EpisodeObservation = observe_episode(carousel)
+    match initial.status:
+        EpisodePhase.Presenting(card):
+            if card != 0:
+                return 201
+        _:
+            return 202
+    if not answer_before_conclusion_is_rejected(carousel):
+        return 203
+
+    first: RealtimeEpisode = try step_episode(carousel, Action.Next, 1000)
+    second: RealtimeEpisode = try step_episode(first, Action.Next, 2000)
+    conclusion: RealtimeEpisode = try step_episode(second, Action.Next, 3000)
+    if not conclusion.conclusion_visible or conclusion.cursor != 3:
+        return 204
+
+    rewound: RealtimeEpisode = try step_episode(conclusion, Action.Previous, 3500)
+    if rewound.conclusion_visible or rewound.cursor != 2:
+        return 205
+    conclusion_again: RealtimeEpisode = try step_episode(rewound, Action.Next, 3750)
+    answered: RealtimeEpisode = try step_episode(
+        conclusion_again, Action.Answer(Truth.True), 4000
+    )
+    match answered.status:
+        EpisodeStatus.Finished(outcome, reward):
+            if outcome != Outcome.Correct:
+                return 206
+            if reward.correctness_milli != 1000 or reward.speed_milli != 30:
+                return 207
+        EpisodeStatus.Active:
+            return 208
+
+    display_all: RealtimeEpisode = truth_episode(
+        Truth.False, PresentationMode.DisplayAll, 5, 50, 5000
+    )
+    if not display_all.conclusion_visible or display_all.cursor != 5:
+        return 209
+    timed_out: RealtimeEpisode = try step_episode(display_all, Action.Wait, 5050)
+    match timed_out.status:
+        EpisodeStatus.Finished(outcome, reward):
+            if outcome != Outcome.Timeout or reward.correctness_milli != -1000:
+                return 210
+        EpisodeStatus.Active:
+            return 211
+
+    expected: mutable array[i32, 34] = zeroed
+    expected[0] <- 1
+    expected[1] <- 0
+    expected[2] <- 2
+    expected[3] <- 3
+    wrong_sort: RealtimeEpisode = sorting_episode(expected, 4, 100, 10000)
+    wrong_result: RealtimeEpisode = try step_episode(wrong_sort, Action.SubmitSort, 200)
+    match wrong_result.status:
+        EpisodeStatus.Finished(outcome, reward):
+            if outcome != Outcome.Wrong or reward.speed_milli != 0:
+                return 212
+        EpisodeStatus.Active:
+            return 213
+
+    correct_sort: RealtimeEpisode = sorting_episode(expected, 4, 100, 10000)
+    moved: RealtimeEpisode = try step_episode(correct_sort, Action.MoveCard(0, 1), 200)
+    sorted_result: RealtimeEpisode = try step_episode(moved, Action.SubmitSort, 300)
+    match sorted_result.status:
+        EpisodeStatus.Finished(outcome, reward):
+            if outcome != Outcome.Correct or reward.correctness_milli != 1000:
+                return 214
+        EpisodeStatus.Active:
+            return 215
+    return 0
+
+def check_game_ledger() -> int error[EpisodeError, LedgerError]:
+    ledger: mutable GameLedger = initial_game_ledger()
+    correct_episode: RealtimeEpisode = truth_episode(
+        Truth.True, PresentationMode.DisplayAll, 3, 1000, 10000
+    )
+    correct_result: RealtimeEpisode = try step_episode(
+        correct_episode, Action.Answer(Truth.True), 2500
+    )
+    rebind correct_record_result: RoundRecord error[LedgerError], ledger = record_finished_episode(
+        ledger, QuestionFamily.Distinction,
+        SubmittedAnswer.TruthValue(Truth.True), correct_result
+    )
+    correct_record: RoundRecord = try correct_record_result
+    if correct_record.elapsed_ms != 1500 or ledger.score != 1 or ledger.rounds != 1:
+        return 300
+
+    timeout_episode: RealtimeEpisode = truth_episode(
+        Truth.False, PresentationMode.DisplayAll, 2, 3000, 5000
+    )
+    timeout_result: RealtimeEpisode = try step_episode(
+        timeout_episode, Action.Wait, 8000
+    )
+    rebind timeout_record_result: RoundRecord error[LedgerError], ledger = record_finished_episode(
+        ledger, QuestionFamily.Temporal,
+        SubmittedAnswer.TimedOut, timeout_result
+    )
+    timeout_record: RoundRecord = try timeout_record_result
+    if timeout_record.outcome != Outcome.Timeout:
+        return 301
+    if ledger.score != 0 or ledger.rounds != 2 or ledger.recent_count != 2:
+        return 302
+    latest: RoundRecord = try latest_round(ledger)
+    if latest.family != QuestionFamily.Temporal or latest.elapsed_ms != 5000:
+        return 303
+
+    # Lifetime play is unbounded even though public diagnostic history is a
+    # fixed-size ring. Reusing a completed episode isolates ledger rollover.
+    for round in 0..<1030:
+        rebind rolled_result: RoundRecord error[LedgerError], ledger = record_finished_episode(
+            ledger, QuestionFamily.Distinction,
+            SubmittedAnswer.TruthValue(Truth.True), correct_result
+        )
+        rolled: RoundRecord = try rolled_result
+    if ledger.rounds != 1032 or ledger.score != 1030 or ledger.recent_count != 1024:
+        return 304
+    rolled_latest: RoundRecord = try latest_round(ledger)
+    if rolled_latest.family != QuestionFamily.Distinction:
+        return 305
+    visible_feedback: RenderCard = feedback_render_card(rolled_latest, ledger)
+    match visible_feedback:
+        RenderCard.Feedback(outcome, elapsed_ms, score, round):
+            if score != 1030 or round != 1032:
+                return 306
+        _:
+            return 307
+
+    ledger.score <- 12000
+    ledger.rounds <- 12000
+    saturated_feedback: RenderCard = feedback_render_card(rolled_latest, ledger)
+    match saturated_feedback:
+        RenderCard.Feedback(outcome, elapsed_ms, score, round):
+            if score != 9999 or round != 9999:
+                return 308
+        _:
+            return 309
+    return 0
+
+def main() -> int:
+    generator_code: i32 = catch check_generators():
+        code: code
+        error failure: 99
+    if generator_code != 0:
+        return generator_code
+    session_code: i32 = catch check_prepared_sessions():
+        code: code
+        error failure: 159
+    if session_code != 0:
+        return session_code
+    presentation_code: i32 = catch check_presentation():
+        code: code
+        error failure: 199
+    if presentation_code != 0:
+        return presentation_code
+    episode_code: i32 = catch check_episode_runtime():
+        code: code
+        error failure: 299
+    if episode_code != 0:
+        return episode_code
+    return catch check_game_ledger():
+        code: code
+        error failure: 399

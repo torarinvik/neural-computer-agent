@@ -1,0 +1,36 @@
+{
+  "consolidator_frozen": true,
+  "controller_frozen": true,
+  "feedback_mode": "color-button",
+  "pairwise_transfer": false,
+  "results": {
+    "1": {
+      "raw_write_row": {
+        "linear": {
+          "best_test_accuracy": 0.53125,
+          "test_accuracy": 0.4453125,
+          "train_accuracy": 0.90625
+        },
+        "mlp": {
+          "best_test_accuracy": 0.53125,
+          "test_accuracy": 0.46875,
+          "train_accuracy": 1.0
+        }
+      }
+    }
+  },
+  "schema": "temporal-rule-memory-probe-v1",
+  "selected_shots": [
+    1
+  ],
+  "selected_taps": [
+    "raw_write_row"
+  ],
+  "temporal_stage": "compositional",
+  "test_examples": 128,
+  "test_rule_rate": 0.5078125,
+  "train_examples": 32,
+  "train_rule_rate": 0.59375,
+  "transfer_strength": 0.0,
+  "visual_only": true
+}

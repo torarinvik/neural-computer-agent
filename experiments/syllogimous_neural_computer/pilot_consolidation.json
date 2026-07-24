@@ -1,0 +1,88 @@
+{
+  "config": {
+    "attempts": 4,
+    "checkpoint": "experiments/syllogimous_neural_computer/pilot_consolidation.pt",
+    "choices": 8,
+    "contexts": 8,
+    "controller": "experiments/syllogimous_neural_computer/vast_continual_sharp.pt",
+    "delay": 0,
+    "device": "cpu",
+    "eval_streams": 64,
+    "hidden": 128,
+    "learning_rate": 0.0003,
+    "report": "experiments/syllogimous_neural_computer/pilot_consolidation.json",
+    "seed": 23,
+    "threshold": 0.05,
+    "train_streams": 32
+  },
+  "controller_weights_frozen": true,
+  "evaluation": {
+    "accepted_rewrites": 3.859375,
+    "append_accuracy": 0.17578125,
+    "append_rows": 8.0,
+    "consolidated_accuracy": 0.2109375,
+    "consolidated_rows": 4.140625,
+    "lookup_reduction": 0.482421875
+  },
+  "history": [
+    {
+      "accepted": 4,
+      "reward": 0.01,
+      "rows_after": 4,
+      "rows_before": 8,
+      "stream": 4
+    },
+    {
+      "accepted": 4,
+      "reward": 0.01,
+      "rows_after": 4,
+      "rows_before": 8,
+      "stream": 8
+    },
+    {
+      "accepted": 4,
+      "reward": 0.01,
+      "rows_after": 4,
+      "rows_before": 8,
+      "stream": 12
+    },
+    {
+      "accepted": 4,
+      "reward": 0.01,
+      "rows_after": 4,
+      "rows_before": 8,
+      "stream": 16
+    },
+    {
+      "accepted": 4,
+      "reward": 0.01,
+      "rows_after": 4,
+      "rows_before": 8,
+      "stream": 20
+    },
+    {
+      "accepted": 4,
+      "reward": 0.01,
+      "rows_after": 4,
+      "rows_before": 8,
+      "stream": 24
+    },
+    {
+      "accepted": 4,
+      "reward": 0.01,
+      "rows_after": 4,
+      "rows_before": 8,
+      "stream": 28
+    },
+    {
+      "accepted": 4,
+      "reward": 0.01,
+      "rows_after": 4,
+      "rows_before": 8,
+      "stream": 32
+    }
+  ],
+  "schema": "syllogimous-transactional-consolidation-v1",
+  "sensory_replay_only": true,
+  "training_seconds": 8.239886541999999
+}

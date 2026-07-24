@@ -1,0 +1,270 @@
+include "syllogimous_scene.elisa"
+
+def driver_fixture(rng: lmut Rng,
+                   mode: PresentationMode,
+                   started_ms: i64 where started_ms >= 0) -> PreparedSession:
+    rebind question: RelationalQuestion, rng = generate_distinction(rng, 2)
+    rebind lexicon: EntityLexicon, rng = generate_entity_lexicon(
+        rng, Vocabulary.Meaningful, 256
+    )
+    state: mutable PresentationState = initial_presentation_state()
+    options: PresentationOptions = PresentationOptions{
+        negation_enabled: false,
+        negation_explainer_enabled: false,
+        stroop_enabled: false
+    }
+    rebind presentation: PresentationFrame, rng, state = advance_presentation(
+        rng, state, options, false
+    )
+    wrapped: Question = Question.Relational(
+        QuestionFamily.Distinction, question
+    )
+    episode: RealtimeEpisode = truth_episode(
+        question.truth, mode, 2, started_ms, 5000
+    )
+    return PreparedSession{
+        question: wrapped,
+        lexicon: lexicon,
+        presentation: presentation,
+        episode: episode
+    }
+
+def sorting_driver_fixture(rng: lmut Rng,
+                           started_ms: i64 where started_ms >= 0) -> PreparedSession error[GenerationError]:
+    rebind sorting_result: SortingQuestion error[GenerationError], rng = generate_sorting(
+        rng, 6, 2
+    )
+    sorting: SortingQuestion = try sorting_result
+    rebind lexicon: EntityLexicon, rng = generate_entity_lexicon(
+        rng, Vocabulary.Abstract, 256
+    )
+    state: mutable PresentationState = initial_presentation_state()
+    options: PresentationOptions = PresentationOptions{
+        negation_enabled: false,
+        negation_explainer_enabled: false,
+        stroop_enabled: false
+    }
+    rebind presentation: PresentationFrame, rng, state = advance_presentation(
+        rng, state, options, false
+    )
+    assert sorting.card_count >= 4 and sorting.card_count <= 34
+    return PreparedSession{
+        question: Question.Sorting(sorting),
+        lexicon: lexicon,
+        presentation: presentation,
+        episode: sorting_episode(
+            sorting.expected_order, sorting.card_count, started_ms, 10000
+        )
+    }
+
+def check_driver() -> int error[GenerationError, ActionParseError, EpisodeError, LedgerError, DriverError]:
+    rng: mutable Rng = rng_from_seed(8129)
+    rebind session: PreparedSession, rng = driver_fixture(
+        rng, PresentationMode.Carousel, 1000
+    )
+    driver: mutable RealtimeDriver = initial_realtime_driver(session)
+    ledger: mutable GameLedger = initial_game_ledger()
+    initial: DriverScene = try current_driver_scene(driver)
+    match initial:
+        DriverScene.Carousel(card):
+            match card:
+                RenderCard.Premise(index, total, content):
+                    if index != 0 or total != 2:
+                        return 1
+                _:
+                    return 1
+        _:
+            return 1
+    initial_packet: SensoryPacket = try render_driver_scene(
+        initial, driver.lexicon, driver.presentation, 1000, 1000
+    )
+    if initial_packet.pcm_count <= 0 or initial_packet.timestamp_ms != 1000:
+        return 10
+    observed_packet: SensoryPacket = try observe_driver_sensory(driver, 1100)
+    if observed_packet.timestamp_ms != 1100 or observed_packet.pcm_count <= 0:
+        return 18
+    if driver_remaining_permille(driver, 1000) != 1000:
+        return 2
+
+    # The upstream negation explainer is a real first carousel card, not an
+    # unused presentation flag. It also advances the answer-eligibility count.
+    explainer_frame: PresentationFrame = PresentationFrame{
+        state: driver.presentation.state,
+        stroop_active: false,
+        body_ink: InkColor.White,
+        negated_ink: InkColor.Red,
+        show_negation_explainer: true
+    }
+    explainer_session: PreparedSession = PreparedSession{
+        question: session.question,
+        lexicon: session.lexicon,
+        presentation: explainer_frame,
+        episode: truth_episode(
+            Truth.True, PresentationMode.Carousel, 3, 1000, 5000
+        )
+    }
+    explainer_driver: mutable RealtimeDriver = initial_realtime_driver(
+        explainer_session
+    )
+    explainer_scene: DriverScene = try current_driver_scene(explainer_driver)
+    match explainer_scene:
+        DriverScene.Carousel(RenderCard.NegationExplainer):
+            pass
+        _:
+            return 19
+    explainer_packet: SensoryPacket = try observe_driver_sensory(
+        explainer_driver, 1100
+    )
+    if explainer_packet.pcm_count <= 0:
+        return 20
+    explainer_ledger: mutable GameLedger = initial_game_ledger()
+    rebind after_explainer_result: DriverScene error[ActionParseError, EpisodeError, LedgerError, DriverError], explainer_driver, explainer_ledger = apply_driver_text(
+        explainer_driver, explainer_ledger, "NEXT", 1200
+    )
+    after_explainer: DriverScene = try after_explainer_result
+    match after_explainer:
+        DriverScene.Carousel(RenderCard.Premise(index, total, content)):
+            if index != 0 or total != 2:
+                return 21
+        _:
+            return 21
+
+    rebind second_result: DriverScene error[ActionParseError, EpisodeError, LedgerError, DriverError], driver, ledger = apply_driver_text(
+        driver, ledger, "NEXT", 1500
+    )
+    second: DriverScene = try second_result
+    match second:
+        DriverScene.Carousel(card):
+            match card:
+                RenderCard.Premise(index, total, content):
+                    if index != 1:
+                        return 3
+                _:
+                    return 3
+        _:
+            return 3
+
+    rebind conclusion_result: DriverScene error[ActionParseError, EpisodeError, LedgerError, DriverError], driver, ledger = apply_driver_text(
+        driver, ledger, "NEXT", 2000
+    )
+    conclusion: DriverScene = try conclusion_result
+    match conclusion:
+        DriverScene.Carousel(card):
+            match card:
+                RenderCard.Conclusion(content):
+                    pass
+                _:
+                    return 4
+        _:
+            return 4
+
+    response: cstr = match session.question:
+        Question.Relational(family, content):
+            "TRUE" if content.truth == Truth.True else "FALSE"
+        _:
+            "FALSE"
+    rebind feedback_result: DriverScene error[ActionParseError, EpisodeError, LedgerError, DriverError], driver, ledger = apply_driver_text(
+        driver, ledger, response, 2500
+    )
+    feedback_scene: DriverScene = try feedback_result
+    match feedback_scene:
+        DriverScene.Feedback(card):
+            match card:
+                RenderCard.Feedback(outcome, elapsed_ms, score, round):
+                    if outcome != Outcome.Correct or elapsed_ms != 1500:
+                        return 5
+                _:
+                    return 5
+        _:
+            return 5
+    feedback_packet: SensoryPacket = try render_driver_scene(
+        feedback_scene, driver.lexicon, driver.presentation, 700, 2500
+    )
+    if feedback_packet.pcm_count <= 0:
+        return 11
+    if ledger.score != 1 or ledger.rounds != 1:
+        return 6
+
+    rebind all_session: PreparedSession, rng = driver_fixture(
+        rng, PresentationMode.DisplayAll, 10000
+    )
+    all_driver: RealtimeDriver = initial_realtime_driver(all_session)
+    all_scene: DriverScene = try current_driver_scene(all_driver)
+    match all_scene:
+        DriverScene.DisplayAll(question):
+            pass
+        _:
+            return 7
+    all_packet: SensoryPacket = try render_driver_scene(
+        all_scene, all_driver.lexicon, all_driver.presentation, 1000, 10000
+    )
+    if all_packet.pcm_count <= 0:
+        return 12
+
+    rebind timeout_session: PreparedSession, rng = driver_fixture(
+        rng, PresentationMode.Carousel, 20000
+    )
+    timeout_driver: mutable RealtimeDriver = initial_realtime_driver(timeout_session)
+    rebind timeout_scene_result: DriverScene error[ActionParseError, EpisodeError, LedgerError, DriverError], timeout_driver, ledger = apply_driver_text(
+        timeout_driver, ledger, "WAIT", 25000
+    )
+    timeout_scene: DriverScene = try timeout_scene_result
+    match timeout_scene:
+        DriverScene.Feedback(card):
+            match card:
+                RenderCard.Feedback(outcome, elapsed_ms, score, round):
+                    if outcome != Outcome.Timeout or elapsed_ms != 5000:
+                        return 8
+                _:
+                    return 8
+        _:
+            return 8
+    if ledger.score != 0 or ledger.rounds != 2:
+        return 9
+
+    rebind sorting_session_result: PreparedSession error[GenerationError], rng = sorting_driver_fixture(
+        rng, 30000
+    )
+    sorting_driver: mutable RealtimeDriver = initial_realtime_driver(
+        try sorting_session_result
+    )
+    sorting_scene: DriverScene = try current_driver_scene(sorting_driver)
+    match sorting_scene:
+        DriverScene.Sorting(content, user_order, card_count):
+            if card_count != 6 or user_order[0] != 0 or user_order[1] != 1:
+                return 13
+        _:
+            return 13
+    sorting_packet: SensoryPacket = try render_driver_scene(
+        sorting_scene, sorting_driver.lexicon,
+        sorting_driver.presentation, 1000, 30000
+    )
+    if sorting_packet.pcm_count <= 0:
+        return 14
+    rebind moved_scene_result: DriverScene error[ActionParseError, EpisodeError, LedgerError, DriverError], sorting_driver, ledger = apply_driver_text(
+        sorting_driver, ledger, "MOVE_CARD 0 1", 30100
+    )
+    moved_scene: DriverScene = try moved_scene_result
+    match moved_scene:
+        DriverScene.Sorting(content, user_order, card_count):
+            if user_order[0] != 1 or user_order[1] != 0:
+                return 15
+        _:
+            return 15
+    rebind submitted_scene_result: DriverScene error[ActionParseError, EpisodeError, LedgerError, DriverError], sorting_driver, ledger = apply_driver_text(
+        sorting_driver, ledger, "SUBMIT_SORT", 30200
+    )
+    submitted_scene: DriverScene = try submitted_scene_result
+    match submitted_scene:
+        DriverScene.Feedback(card):
+            pass
+        _:
+            return 16
+    if ledger.rounds != 3:
+        return 17
+    return 0
+
+def main() -> int:
+    return catch check_driver():
+        code: code
+        error failure: 99

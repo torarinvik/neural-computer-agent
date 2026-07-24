@@ -1,0 +1,170 @@
+{
+  "action_traces": [
+    [
+      {
+        "action": "PREVIOUS",
+        "raw": " PREVIOUS",
+        "timestamp_ms": 0
+      },
+      {
+        "action": "PREVIOUS",
+        "raw": " PREVIOUS",
+        "timestamp_ms": 1217
+      },
+      {
+        "action": "PREVIOUS",
+        "raw": " PREVIOUS",
+        "timestamp_ms": 1551
+      },
+      {
+        "action": "PREVIOUS",
+        "raw": " PREVIOUS",
+        "timestamp_ms": 1946
+      },
+      {
+        "action": "PREVIOUS",
+        "raw": " PREVIOUS",
+        "timestamp_ms": 2262
+      },
+      {
+        "action": "PREVIOUS",
+        "raw": " PREVIOUS",
+        "timestamp_ms": 2643
+      },
+      {
+        "action": "PREVIOUS",
+        "raw": " PREVIOUS",
+        "timestamp_ms": 2959
+      },
+      {
+        "action": "PREVIOUS",
+        "raw": " PREVIOUS",
+        "timestamp_ms": 3350
+      },
+      {
+        "action": "PREVIOUS",
+        "raw": " PREVIOUS",
+        "timestamp_ms": 3663
+      },
+      {
+        "action": "PREVIOUS",
+        "raw": " PREVIOUS",
+        "timestamp_ms": 4045
+      },
+      {
+        "action": "PREVIOUS",
+        "raw": " PREVIOUS",
+        "timestamp_ms": 4348
+      },
+      {
+        "action": "PREVIOUS",
+        "raw": " PREVIOUS",
+        "timestamp_ms": 4678
+      },
+      {
+        "action": "PREVIOUS",
+        "raw": " PREVIOUS",
+        "timestamp_ms": 4970
+      },
+      {
+        "action": "PREVIOUS",
+        "raw": " PREVIOUS",
+        "timestamp_ms": 5264
+      },
+      {
+        "action": "PREVIOUS",
+        "raw": " PREVIOUS",
+        "timestamp_ms": 5572
+      },
+      {
+        "action": "PREVIOUS",
+        "raw": " PREVIOUS",
+        "timestamp_ms": 5865
+      },
+      {
+        "action": "PREVIOUS",
+        "raw": " PREVIOUS",
+        "timestamp_ms": 6240
+      },
+      {
+        "action": "PREVIOUS",
+        "raw": " PREVIOUS",
+        "timestamp_ms": 6560
+      },
+      {
+        "action": "PREVIOUS",
+        "raw": " PREVIOUS",
+        "timestamp_ms": 6925
+      },
+      {
+        "action": "PREVIOUS",
+        "raw": " PREVIOUS",
+        "timestamp_ms": 7260
+      },
+      {
+        "action": "PREVIOUS",
+        "raw": " PREVIOUS",
+        "timestamp_ms": 7571
+      },
+      {
+        "action": "PREVIOUS",
+        "raw": " PREVIOUS",
+        "timestamp_ms": 7877
+      },
+      {
+        "action": "PREVIOUS",
+        "raw": " PREVIOUS",
+        "timestamp_ms": 8252
+      },
+      {
+        "action": "PREVIOUS",
+        "raw": " PREVIOUS",
+        "timestamp_ms": 8666
+      },
+      {
+        "action": "PREVIOUS",
+        "raw": " PREVIOUS",
+        "timestamp_ms": 8966
+      },
+      {
+        "action": "PREVIOUS",
+        "raw": " PREVIOUS",
+        "timestamp_ms": 9344
+      },
+      {
+        "action": "PREVIOUS",
+        "raw": " PREVIOUS",
+        "timestamp_ms": 9655
+      },
+      {
+        "action": "PREVIOUS",
+        "raw": " PREVIOUS",
+        "timestamp_ms": 9966
+      }
+    ]
+  ],
+  "by_family_difficulty": {
+    "LESS THAN/standard": {
+      "accuracy": 0.0,
+      "episodes": 1,
+      "mean_inference_ms": 10201.0,
+      "mean_latency_ms": 10273.0,
+      "mean_reward": -1.0,
+      "mean_sensory_tokens": 28.0,
+      "p95_latency_ms": 10273,
+      "timeout_rate": 1.0
+    }
+  },
+  "episodes": 1,
+  "overall": {
+    "accuracy": 0.0,
+    "episodes": 1,
+    "mean_inference_ms": 10201.0,
+    "mean_latency_ms": 10273.0,
+    "mean_reward": -1.0,
+    "mean_sensory_tokens": 28.0,
+    "p95_latency_ms": 10273,
+    "timeout_rate": 1.0
+  },
+  "schema": "syllogimous.metrics.v1"
+}

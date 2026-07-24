@@ -1,0 +1,284 @@
+{
+  "arms": {
+    "fresh": {
+      "downstream_reward_only": {
+        "heldout_accuracy_final": 0.5,
+        "history": [
+          {
+            "heldout_accuracy": 0.5,
+            "unique_lifetimes": 0
+          },
+          {
+            "heldout_accuracy": 0.5,
+            "loss": 0.29326677322387695,
+            "mean_train_reward": 0.5333333611488342,
+            "unique_lifetimes": 30
+          },
+          {
+            "heldout_accuracy": 0.5,
+            "loss": 0.054360076785087585,
+            "mean_train_reward": 0.4333333671092987,
+            "unique_lifetimes": 120
+          },
+          {
+            "heldout_accuracy": 0.5,
+            "loss": 0.24731099605560303,
+            "mean_train_reward": 0.5,
+            "unique_lifetimes": 240
+          },
+          {
+            "heldout_accuracy": 0.5,
+            "loss": 0.03028479963541031,
+            "mean_train_reward": 0.36666667461395264,
+            "unique_lifetimes": 360
+          },
+          {
+            "heldout_accuracy": 0.5,
+            "loss": 0.07128302752971649,
+            "mean_train_reward": 0.5,
+            "unique_lifetimes": 510
+          }
+        ],
+        "reward_aulc_above_chance": 0.0,
+        "unique_lifetimes_to_threshold": {
+          "0.6": null,
+          "0.7": null,
+          "0.8": null
+        }
+      },
+      "pretraining": {
+        "history": [],
+        "last_gradient_norm": 0.0
+      },
+      "representation": {
+        "distinct_lifetime_pairwise_cosine": 0.9910646677017212,
+        "effective_rank": 1.2444796562194824,
+        "future_alignment_margin": 0.0020401477813720703,
+        "heldout_future_loss": 2.015597343444824,
+        "heldout_shuffled_future_loss": 2.0176374912261963,
+        "prediction_effective_rank": 1.623616099357605,
+        "prediction_std_mean": 0.013914791867136955,
+        "state_std_mean": 0.05561143532395363,
+        "target_effective_rank": 9.193965911865234
+      },
+      "seconds": 1.1918508620001376
+    },
+    "predictive": {
+      "downstream_reward_only": {
+        "heldout_accuracy_final": 0.5026041666666666,
+        "history": [
+          {
+            "heldout_accuracy": 0.453125,
+            "unique_lifetimes": 0
+          },
+          {
+            "heldout_accuracy": 0.4713541666666667,
+            "loss": 0.31872695684432983,
+            "mean_train_reward": 0.46666669845581055,
+            "unique_lifetimes": 30
+          },
+          {
+            "heldout_accuracy": 0.4765625,
+            "loss": 0.18940812349319458,
+            "mean_train_reward": 0.36666667461395264,
+            "unique_lifetimes": 120
+          },
+          {
+            "heldout_accuracy": 0.5,
+            "loss": 0.2743842303752899,
+            "mean_train_reward": 0.5,
+            "unique_lifetimes": 240
+          },
+          {
+            "heldout_accuracy": 0.4869791666666667,
+            "loss": 0.08051983267068863,
+            "mean_train_reward": 0.36666667461395264,
+            "unique_lifetimes": 360
+          },
+          {
+            "heldout_accuracy": 0.5026041666666666,
+            "loss": 0.09315149486064911,
+            "mean_train_reward": 0.5333333611488342,
+            "unique_lifetimes": 510
+          }
+        ],
+        "reward_aulc_above_chance": 0.00043402777777777163,
+        "unique_lifetimes_to_threshold": {
+          "0.6": null,
+          "0.7": null,
+          "0.8": null
+        }
+      },
+      "pretraining": {
+        "history": [
+          {
+            "correlation_loss": 1.2261114120483398,
+            "gradient_norm": 31.520061492919922,
+            "loss": 4.474263668060303,
+            "predictive_loss": 1.9999603033065796,
+            "step": 1,
+            "variance_loss": 0.9306237697601318
+          },
+          {
+            "correlation_loss": 0.520151674747467,
+            "gradient_norm": 10.013602256774902,
+            "loss": 2.7585370540618896,
+            "predictive_loss": 1.363724708557129,
+            "step": 20,
+            "variance_loss": 0.5673682689666748
+          },
+          {
+            "correlation_loss": 0.5750870704650879,
+            "gradient_norm": 5.169995307922363,
+            "loss": 2.101202964782715,
+            "predictive_loss": 1.1241273880004883,
+            "step": 40,
+            "variance_loss": 0.34476596117019653
+          }
+        ],
+        "last_gradient_norm": 5.169995307922363
+      },
+      "representation": {
+        "distinct_lifetime_pairwise_cosine": 0.2801513373851776,
+        "effective_rank": 5.136660099029541,
+        "future_alignment_margin": 0.9262833595275879,
+        "heldout_future_loss": 1.1035778522491455,
+        "heldout_shuffled_future_loss": 2.0298612117767334,
+        "prediction_effective_rank": 3.913998603820801,
+        "prediction_std_mean": 0.29541340470314026,
+        "state_std_mean": 0.36074721813201904,
+        "target_effective_rank": 5.551449775695801
+      },
+      "seconds": 6.097890004995861
+    },
+    "shuffled_future": {
+      "downstream_reward_only": {
+        "heldout_accuracy_final": 0.4921875,
+        "history": [
+          {
+            "heldout_accuracy": 0.4973958333333333,
+            "unique_lifetimes": 0
+          },
+          {
+            "heldout_accuracy": 0.4947916666666667,
+            "loss": 0.6066002249717712,
+            "mean_train_reward": 0.4333333671092987,
+            "unique_lifetimes": 30
+          },
+          {
+            "heldout_accuracy": 0.5,
+            "loss": 0.2140437215566635,
+            "mean_train_reward": 0.40000003576278687,
+            "unique_lifetimes": 120
+          },
+          {
+            "heldout_accuracy": 0.5208333333333334,
+            "loss": 0.13061057031154633,
+            "mean_train_reward": 0.46666669845581055,
+            "unique_lifetimes": 240
+          },
+          {
+            "heldout_accuracy": 0.4869791666666667,
+            "loss": 0.08975987136363983,
+            "mean_train_reward": 0.36666667461395264,
+            "unique_lifetimes": 360
+          },
+          {
+            "heldout_accuracy": 0.4921875,
+            "loss": 0.07509459555149078,
+            "mean_train_reward": 0.36666667461395264,
+            "unique_lifetimes": 510
+          }
+        ],
+        "reward_aulc_above_chance": 0.0034722222222222285,
+        "unique_lifetimes_to_threshold": {
+          "0.6": null,
+          "0.7": null,
+          "0.8": null
+        }
+      },
+      "pretraining": {
+        "history": [
+          {
+            "correlation_loss": 1.2261114120483398,
+            "gradient_norm": 26.104080200195312,
+            "loss": 4.45693302154541,
+            "predictive_loss": 1.9826300144195557,
+            "step": 1,
+            "variance_loss": 0.9306237697601318
+          },
+          {
+            "correlation_loss": 0.3962588310241699,
+            "gradient_norm": 7.036157608032227,
+            "loss": 3.3920462131500244,
+            "predictive_loss": 2.03615665435791,
+            "step": 20,
+            "variance_loss": 0.5788800716400146
+          },
+          {
+            "correlation_loss": 0.3938647508621216,
+            "gradient_norm": 6.653907775878906,
+            "loss": 2.873656988143921,
+            "predictive_loss": 1.9209572076797485,
+            "step": 40,
+            "variance_loss": 0.3778837323188782
+          }
+        ],
+        "last_gradient_norm": 6.653907775878906
+      },
+      "representation": {
+        "distinct_lifetime_pairwise_cosine": 0.3485534191131592,
+        "effective_rank": 5.541399955749512,
+        "future_alignment_margin": -0.16822302341461182,
+        "heldout_future_loss": 2.1433966159820557,
+        "heldout_shuffled_future_loss": 1.9751735925674438,
+        "prediction_effective_rank": 4.792074680328369,
+        "prediction_std_mean": 0.294887900352478,
+        "state_std_mean": 0.3143261671066284,
+        "target_effective_rank": 3.994243860244751
+      },
+      "seconds": 4.092064541997388
+    }
+  },
+  "configuration": {
+    "batch_size": 30,
+    "correlation_weight": 0.5,
+    "device": "cuda",
+    "hidden": 64,
+    "policy_learning_rate": 0.003,
+    "policy_lifetimes": 510,
+    "policy_test_lifetimes": 384,
+    "predictive_objective": "standardized",
+    "pretrain_learning_rate": 0.0003,
+    "pretrain_lifetimes": 252,
+    "pretrain_steps": 40,
+    "pretrain_test_lifetimes": 96,
+    "report": "experiments/forward_transfer_attention/remote_results_2026-07-24/zero_label_predictive/subminute_standardized_seed211.json",
+    "seed": 211,
+    "variance_weight": 2.0
+  },
+  "data_generation_seconds": 6.69422992800537,
+  "gate": {
+    "advance_to_three_minutes": false,
+    "noncollapsed": false,
+    "prediction_beats_shuffled": true,
+    "predictive_aulc_advantage": -0.003038194444444457,
+    "reward_aulc_beats_both_controls": false
+  },
+  "learner_forbidden_inputs": [
+    "rule_label",
+    "object_identity",
+    "palette_id",
+    "event_index",
+    "game_state",
+    "semantic_target"
+  ],
+  "learner_inputs": [
+    "rendered_rgb_stream",
+    "sampled_action_reward"
+  ],
+  "private_verifier_use": "sampled action equality converted to scalar reward",
+  "schema": "zero-label-predictive-state-v1",
+  "semantic_labels_used_for_training": false,
+  "total_seconds": 18.41576975499629
+}

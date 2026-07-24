@@ -1,0 +1,6 @@
+{
+  "count": 256,
+  "failed": [],
+  "passed": true,
+  "schema": "syllogimous.boundary-leak.v1"
+}

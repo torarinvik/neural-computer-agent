@@ -1,0 +1,30 @@
+{
+  "consolidator_seed": 23,
+  "controller_seed": 23,
+  "evaluation": {
+    "compact_early_auc": 0.4835205078125,
+    "compact_few_shot_auc": 0.4677734375,
+    "compact_retention": 0.48681640625,
+    "full_few_shot_auc": 0.44012451171875,
+    "full_future_accuracy_0_shot": 0.421875,
+    "full_future_accuracy_1_shot": 0.44970703125,
+    "full_future_accuracy_2_shot": 0.444580078125,
+    "full_future_accuracy_4_shot": 0.4443359375,
+    "full_old_accuracy_0_shot": 0.4287109375,
+    "full_old_accuracy_1_shot": 0.44677734375,
+    "full_old_accuracy_2_shot": 0.44189453125,
+    "full_old_accuracy_4_shot": 0.44189453125,
+    "full_retention": 0.44189453125,
+    "future_accuracy_0_shot": 0.421875,
+    "future_accuracy_1_shot": 0.47998046875,
+    "future_accuracy_2_shot": 0.487060546875,
+    "future_accuracy_4_shot": 0.482177734375,
+    "old_accuracy_0_shot": 0.4287109375,
+    "old_accuracy_1_shot": 0.48486328125,
+    "old_accuracy_2_shot": 0.48828125,
+    "old_accuracy_4_shot": 0.48681640625,
+    "rows_saved": 4.0
+  },
+  "same_seed": true,
+  "schema": "cross-controller-consolidator-v1"
+}

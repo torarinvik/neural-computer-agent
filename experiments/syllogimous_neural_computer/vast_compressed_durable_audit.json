@@ -1,0 +1,28 @@
+{
+  "checkpoint": "experiments/syllogimous_neural_computer/vast_compressed_memory.pt",
+  "process_boundary": "save-and-reload-before-query",
+  "results": {
+    "empty": {
+      "accuracy": 0.16,
+      "samples": 200.0,
+      "writes_per_lifetime": 3.45
+    },
+    "garbage": {
+      "accuracy": 0.235,
+      "samples": 200.0,
+      "writes_per_lifetime": 3.45
+    },
+    "intact": {
+      "accuracy": 0.975,
+      "samples": 200.0,
+      "writes_per_lifetime": 3.45
+    },
+    "shuffled": {
+      "accuracy": 0.45,
+      "samples": 200.0,
+      "writes_per_lifetime": 3.45
+    }
+  },
+  "schema": "syllogimous-durable-memory-audit-v1",
+  "threshold": 0.05
+}

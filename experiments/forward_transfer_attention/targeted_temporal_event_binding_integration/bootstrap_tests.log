@@ -1,0 +1,20 @@
+..........                                                               [100%]
+=============================== warnings summary ===============================
+experiments/forward_transfer_attention/test_consolidator.py::test_consolidator_emits_one_differentiable_row
+experiments/forward_transfer_attention/test_consolidator.py::test_tiny_behavior_compaction_batch_backpropagates_only_to_consolidator
+experiments/forward_transfer_attention/test_consolidator.py::test_write_rule_auxiliary_reaches_real_event_binder_through_raw_write
+  /root/elisa-screenwatch/experiments/forward_transfer_attention/consolidator.py:30: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+    self.encoder = nn.TransformerEncoder(layer, layers, norm=nn.LayerNorm(width))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+10 passed, 3 warnings in 37.97s
+..........                                                               [100%]
+=============================== warnings summary ===============================
+experiments/forward_transfer_attention/test_consolidator.py::test_consolidator_emits_one_differentiable_row
+experiments/forward_transfer_attention/test_consolidator.py::test_tiny_behavior_compaction_batch_backpropagates_only_to_consolidator
+experiments/forward_transfer_attention/test_consolidator.py::test_write_rule_auxiliary_reaches_real_event_binder_through_raw_write
+  /root/elisa-screenwatch/experiments/forward_transfer_attention/consolidator.py:30: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+    self.encoder = nn.TransformerEncoder(layer, layers, norm=nn.LayerNorm(width))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+10 passed, 3 warnings in 31.92s

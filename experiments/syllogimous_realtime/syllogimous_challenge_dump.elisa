@@ -1,0 +1,31 @@
+# Native evaluator oracle dump used only by the offline cross-check harness.
+# It writes private answers to stdout for a test process; this target is never
+# connected to the model-facing host stream.
+include "syllogimous_challenges.elisa"
+
+extern write(fd: int, source: u8&, count: usize) -> isize
+global mutable BYTES: array[u8, 20] = zeroed
+
+def put_i32(offset: i32 where offset >= 0 and offset <= 16, value: i32) -> void:
+    raw: u32 = value.u32()
+    for i in 0..<4:
+        BYTES[(offset + i).usize()] <- ((raw >> (i * 8).u8()) & 255).u8()
+
+def dump(count: i32 where count >= 1 and count <= 1000000) -> int error[GenerationError]:
+    for seed in 0..<count:
+        rng: mutable Rng = rng_from_seed(seed.u64())
+        rebind result: ChallengeData error[GenerationError], rng = generate_challenge(rng)
+        challenge: ChallengeData = try result
+        answer: i32 = try solve_challenge(challenge)
+        for i in 0..<4:
+            put_i32(i * 4, challenge.values[i.usize()])
+        put_i32(16, answer)
+        written: isize = write(1, &BYTES[0], 20.usize())
+        if written != 20:
+            return 2
+    return 0
+
+def main() -> int:
+    return catch dump(10000):
+        code: code
+        error failure: 99

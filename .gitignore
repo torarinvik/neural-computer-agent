@@ -1,0 +1,19 @@
+.DS_Store
+.pytest_cache/
+.venv/
+__pycache__/
+*.py[cod]
+
+# Disposable training products. Curated milestones are force-added explicitly
+# under artifacts/checkpoints.
+*.pt
+*.pth
+*.bin
+*.idx
+
+# Local runtime products.
+*.ppm
+videos/
+runs/
+wandb/
+

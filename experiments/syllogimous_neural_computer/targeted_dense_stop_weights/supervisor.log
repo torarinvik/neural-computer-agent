@@ -1,0 +1,27 @@
+{"stream": 8, "reward": 0.0010066843032836914, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 480}
+{"stream": 16, "reward": 0.0011861610412597656, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 480}
+{"stream": 24, "reward": 0.024823529720306395, "accepted": 4, "rows_before": 8, "rows_after": 4, "stopped": true, "verifier_queries": 440}
+{"stream": 32, "reward": 0.001474452018737793, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 480}
+{"stream": 40, "reward": -0.0002012300491333008, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 464}
+{"stream": 48, "reward": 0.06260848045349121, "accepted": 1, "rows_before": 8, "rows_after": 7, "stopped": true, "verifier_queries": 160}
+{"stream": 56, "reward": 0.0006353521347045898, "accepted": 4, "rows_before": 8, "rows_after": 4, "stopped": true, "verifier_queries": 480}
+{"stream": 64, "reward": 9.328126907348633e-05, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 472}
+{"evaluation": {"append_accuracy": 0.208984375, "consolidated_accuracy": 0.21875, "append_audit_accuracy": 0.2158203125, "consolidated_audit_accuracy": 0.220703125, "append_rows": 8.0, "consolidated_rows": 6.3359375, "accepted_rewrites": 1.6640625, "verifier_queries": 32.0, "stop_rate": 0.8203125, "stopped_rows": 5.4609375, "lookup_reduction": 0.2080078125}}
+{"stream": 8, "reward": 0.001124072074890137, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 480}
+{"stream": 16, "reward": 0.001966607570648193, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 480}
+{"stream": 24, "reward": 3.5676956176757816e-05, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 472}
+{"stream": 32, "reward": 0.0016045618057250975, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 480}
+{"stream": 40, "reward": -6.985664367675781e-06, "accepted": 1, "rows_before": 8, "rows_after": 7, "stopped": true, "verifier_queries": 176}
+{"stream": 48, "reward": 0.0, "accepted": 0, "rows_before": 8, "rows_after": 8, "stopped": true, "verifier_queries": 72}
+{"stream": 56, "reward": 0.00047178745269775395, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 480}
+{"stream": 64, "reward": 9.922504425048828e-05, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 472}
+{"evaluation": {"append_accuracy": 0.208984375, "consolidated_accuracy": 0.216796875, "append_audit_accuracy": 0.2158203125, "consolidated_audit_accuracy": 0.2177734375, "append_rows": 8.0, "consolidated_rows": 5.328125, "accepted_rewrites": 2.671875, "verifier_queries": 46.75, "stop_rate": 0.7109375, "stopped_rows": 4.2109375, "lookup_reduction": 0.333984375}}
+{"stream": 8, "reward": 0.0011249542236328124, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 480}
+{"stream": 16, "reward": 0.0014198780059814454, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 480}
+{"stream": 24, "reward": -0.00010190725326538086, "accepted": 4, "rows_before": 8, "rows_after": 4, "stopped": true, "verifier_queries": 456}
+{"stream": 32, "reward": 0.0011061191558837892, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 480}
+{"stream": 40, "reward": 3.441174825032552e-05, "accepted": 2, "rows_before": 8, "rows_after": 6, "stopped": true, "verifier_queries": 288}
+{"stream": 48, "reward": 0.0, "accepted": 0, "rows_before": 8, "rows_after": 8, "stopped": true, "verifier_queries": 64}
+{"stream": 56, "reward": 0.0009514749050140381, "accepted": 3, "rows_before": 8, "rows_after": 5, "stopped": true, "verifier_queries": 384}
+{"stream": 64, "reward": 7.927417755126953e-05, "accepted": 5, "rows_before": 8, "rows_after": 3, "stopped": false, "verifier_queries": 480}
+{"evaluation": {"append_accuracy": 0.208984375, "consolidated_accuracy": 0.2119140625, "append_audit_accuracy": 0.2158203125, "consolidated_audit_accuracy": 0.2158203125, "append_rows": 8.0, "consolidated_rows": 7.328125, "accepted_rewrites": 0.671875, "verifier_queries": 12.25, "stop_rate": 0.96875, "stopped_rows": 7.140625, "lookup_reduction": 0.083984375}}

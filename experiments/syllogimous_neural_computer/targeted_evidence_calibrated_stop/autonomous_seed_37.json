@@ -1,0 +1,92 @@
+{
+  "calibration": {
+    "forced": {
+      "accepted_rewrites": 4.71875,
+      "append_accuracy": 0.205078125,
+      "append_audit_accuracy": 0.1953125,
+      "append_audit_loss": 2.006635069847107,
+      "append_loss": 2.00880528613925,
+      "append_rows": 8.0,
+      "consolidated_accuracy": 0.232421875,
+      "consolidated_audit_accuracy": 0.224609375,
+      "consolidated_audit_loss": 2.054803494364023,
+      "consolidated_loss": 2.0564530957490206,
+      "consolidated_rows": 3.28125,
+      "lookup_reduction": 0.58984375,
+      "stop_rate": 0.0,
+      "stopped_rows": 0.0,
+      "verifier_queries": 80.0
+    },
+    "trials": [
+      {
+        "accuracy": 0.232421875,
+        "audit_accuracy": 0.22265625,
+        "audit_loss": 2.0531276650726795,
+        "loss": 2.054588770493865,
+        "safe": false,
+        "threshold": 0.5,
+        "useful": true,
+        "verifier_queries": 77.25
+      },
+      {
+        "accuracy": 0.232421875,
+        "audit_accuracy": 0.224609375,
+        "audit_loss": 2.0528020039200783,
+        "loss": 2.0543019883334637,
+        "safe": true,
+        "threshold": 0.55,
+        "useful": true,
+        "verifier_queries": 78.0
+      }
+    ]
+  },
+  "config": {
+    "attempts": 5,
+    "autonomous_stop": true,
+    "autonomous_storage_value": 0.01,
+    "calibration_streams": 64,
+    "checkpoint": "experiments/syllogimous_neural_computer/targeted_evidence_calibrated_stop/autonomous_seed_37.pt",
+    "choices": 8,
+    "contexts": 8,
+    "controller": "experiments/syllogimous_neural_computer/vast_continual_sharp.pt",
+    "delay": 0,
+    "device": "cuda",
+    "eval_streams": 256,
+    "generalization_reward_weight": 0.0,
+    "hidden": 128,
+    "initial_policy": "experiments/syllogimous_neural_computer/targeted_trajectory_stop_replication/autonomous_seed_37.pt",
+    "learning_rate": 0.0003,
+    "loss_tolerance": null,
+    "rehearsal_groups": 1,
+    "report": "experiments/syllogimous_neural_computer/targeted_evidence_calibrated_stop/autonomous_seed_37.json",
+    "seed": 37,
+    "stop_loss_weight": 4.0,
+    "stop_threshold": 0.55,
+    "threshold": 0.05,
+    "tournament_candidates": 1,
+    "train_streams": 0,
+    "trajectory_stop": true
+  },
+  "controller_weights_frozen": true,
+  "evaluation": {
+    "accepted_rewrites": 4.41015625,
+    "append_accuracy": 0.21337890625,
+    "append_audit_accuracy": 0.208984375,
+    "append_audit_loss": 2.0115267746150494,
+    "append_loss": 2.011055951938033,
+    "append_rows": 8.0,
+    "consolidated_accuracy": 0.2392578125,
+    "consolidated_audit_accuracy": 0.232421875,
+    "consolidated_audit_loss": 2.0504352529533207,
+    "consolidated_loss": 2.050361673347652,
+    "consolidated_rows": 3.58984375,
+    "lookup_reduction": 0.55126953125,
+    "stop_rate": 0.07421875,
+    "stopped_rows": 0.3125,
+    "verifier_queries": 78.5625
+  },
+  "history": [],
+  "schema": "syllogimous-transactional-consolidation-v1",
+  "sensory_replay_only": true,
+  "training_seconds": 159.83137865702156
+}

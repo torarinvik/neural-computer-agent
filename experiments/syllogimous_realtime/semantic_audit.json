@@ -1,0 +1,842 @@
+{
+  "all_reviewed": true,
+  "all_unique": true,
+  "families": [
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "ArithmeticChain",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 3,
+      "kind": "InequalityChain",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 3,
+      "kind": "Parity",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 1,
+      "kind": "Sequence",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 1,
+      "kind": "GraphReachability",
+      "notes": [
+        "compact scalar graph encoding; explicit edge-list variant recommended"
+      ],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 15,
+      "kind": "GraphDistance",
+      "notes": [
+        "compact scalar graph encoding; explicit edge-list variant recommended"
+      ],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "TemporalOrder",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 16,
+      "kind": "Membership",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 7,
+      "kind": "BooleanFormula",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "ConstraintAssignment",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 1,
+      "kind": "MinimumValue",
+      "notes": [
+        "surface alias of EarliestEvent; retained for curriculum coverage"
+      ],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "MaximumValue",
+      "notes": [
+        "surface alias of LatestEvent; retained for curriculum coverage"
+      ],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 1,
+      "kind": "AbsoluteDifference",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "SetIntersection",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "GraphCycle",
+      "notes": [
+        "compact scalar graph encoding; explicit edge-list variant recommended"
+      ],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "TopologicalOrder",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "CalendarOffset",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 12,
+      "kind": "XorFormula",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 14,
+      "kind": "LinearEquation",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 1,
+      "kind": "DigitCount",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "ThreePremiseChain",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 10,
+      "kind": "FourPremiseChain",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "DistractorCheck",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "ContradictionCheck",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 1169550213120000,
+      "kind": "Biconditional",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 6,
+      "kind": "UnlessRule",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "OnlyIfRule",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 3,
+      "kind": "QuantifierAll",
+      "notes": [
+        "surface alias of AllOf; retained for curriculum coverage"
+      ],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 13,
+      "kind": "QuantifierSome",
+      "notes": [
+        "surface alias of AnyOf; retained for curriculum coverage"
+      ],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 173,
+      "kind": "ExclusiveOr",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 1,
+      "kind": "TransitiveRelation",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 1,
+      "kind": "SymmetricRelation",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 4,
+      "kind": "DoubleNegation",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 1,
+      "kind": "EarliestEvent",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 20,
+      "kind": "LatestEvent",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 26,
+      "kind": "PartialOrder",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "GridDistance",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 2,
+      "kind": "ManhattanPath",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "Rotation",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "Mirror",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "SumValues",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 18,
+      "kind": "ProductValues",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "AverageFloor",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "ValueRange",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "SignCheck",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 1,
+      "kind": "Divisibility",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 2,
+      "kind": "ModuloCheck",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 1,
+      "kind": "PowerOfTwo",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 14,
+      "kind": "CountTrue",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "Majority",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "AtLeast",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 10,
+      "kind": "ExactlyOne",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "ImplicationChain",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 6,
+      "kind": "NandFormula",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 3,
+      "kind": "NorFormula",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 3,
+      "kind": "MinimumIndex",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "MaximumIndex",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 188,
+      "kind": "StableSortCheck",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 1,
+      "kind": "PermutationParity",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 131,
+      "kind": "UniqueValue",
+      "notes": [
+        "surface alias of AllDistinct; retained for curriculum coverage"
+      ],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 1,
+      "kind": "AllDistinct",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 18,
+      "kind": "PairwiseOrder",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "MedianValue",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 1,
+      "kind": "SecondMinimum",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 1,
+      "kind": "SecondMaximum",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 22,
+      "kind": "CountLess",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 23,
+      "kind": "CountGreater",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 8,
+      "kind": "WeightedSum",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "LinearInequality",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "IntervalMembership",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 53600577638400,
+      "kind": "TemporalGap",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 1,
+      "kind": "ScheduleConflict",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": -10,
+      "kind": "ReachTwoSteps",
+      "notes": [
+        "compact scalar graph encoding; explicit edge-list variant recommended"
+      ],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "DegreeCount",
+      "notes": [
+        "compact scalar graph encoding; explicit edge-list variant recommended"
+      ],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "BipartiteCheck",
+      "notes": [
+        "compact scalar graph encoding; explicit edge-list variant recommended"
+      ],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "PathParity",
+      "notes": [
+        "compact scalar graph encoding; explicit edge-list variant recommended"
+      ],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 1,
+      "kind": "CoordinateQuadrant",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 10,
+      "kind": "CompassDirection",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "Rotation3D",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 1,
+      "kind": "SpaceTimeOrder",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "AllOf",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 6,
+      "kind": "AnyOf",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "NoneOf",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "ExactlyK",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "SyllogismMood",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 1,
+      "kind": "AnalogyRelation",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 0,
+      "kind": "SortingKey",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 2,
+      "kind": "PermutationCheck",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 1,
+      "kind": "ConstraintCount",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    },
+    {
+      "candidate_count": 1,
+      "independent_answer": 140,
+      "kind": "CompositeProof",
+      "notes": [],
+      "reviewed": true,
+      "unique_answer_proof": "native ChallengeSolution candidate_count invariant",
+      "unique_scalar_answer": true
+    }
+  ],
+  "family_count": 90,
+  "schema": "syllogimous.semantic-audit.v1"
+}

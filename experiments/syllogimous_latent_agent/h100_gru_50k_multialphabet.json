@@ -1,0 +1,175 @@
+{
+  "core": "gru",
+  "eval_premises": [
+    2,
+    4,
+    6,
+    8,
+    16
+  ],
+  "generalization": {
+    "action_accuracy": 0.6246341463414634,
+    "end_to_end_milliseconds_per_episode": 4.1009283004677854,
+    "episodes": 2000,
+    "final_accuracy": 0.7215,
+    "final_accuracy_by_cards": {
+      "17": 0.0025,
+      "3": 0.9975,
+      "5": 0.9975,
+      "7": 1.0,
+      "9": 0.61
+    },
+    "model_milliseconds_per_episode": 0.2225131404120475,
+    "model_milliseconds_per_event": 0.0271357488307375,
+    "object_accuracy": 0.8151219512195121,
+    "relation_accuracy": 0.9970731707317073,
+    "subject_accuracy": 0.9782926829268292
+  },
+  "hidden": 384,
+  "history": [
+    {
+      "epoch": 1,
+      "loss": 3.3182892406078253,
+      "validation": {
+        "action_accuracy": 0.855,
+        "end_to_end_milliseconds_per_episode": 1.3646014565019868,
+        "episodes": 2000,
+        "final_accuracy": 0.4905,
+        "final_accuracy_by_cards": {
+          "3": 0.45,
+          "4": 0.5075,
+          "5": 0.51,
+          "6": 0.495,
+          "7": 0.49
+        },
+        "model_milliseconds_per_episode": 0.04099197738105431,
+        "model_milliseconds_per_event": 0.008198395476210863,
+        "object_accuracy": 0.7937,
+        "relation_accuracy": 1.0,
+        "subject_accuracy": 0.9304
+      }
+    },
+    {
+      "epoch": 2,
+      "loss": 1.1176161299581113,
+      "validation": {
+        "action_accuracy": 0.9325,
+        "end_to_end_milliseconds_per_episode": 1.3169941414962523,
+        "episodes": 2000,
+        "final_accuracy": 0.6755,
+        "final_accuracy_by_cards": {
+          "3": 0.6525,
+          "4": 0.6675,
+          "5": 0.675,
+          "6": 0.7,
+          "7": 0.6825
+        },
+        "model_milliseconds_per_episode": 0.054313667584210634,
+        "model_milliseconds_per_event": 0.010862733516842128,
+        "object_accuracy": 0.9016,
+        "relation_accuracy": 1.0,
+        "subject_accuracy": 0.9714
+      }
+    },
+    {
+      "epoch": 3,
+      "loss": 0.3588887541114217,
+      "validation": {
+        "action_accuracy": 0.9873,
+        "end_to_end_milliseconds_per_episode": 1.3592081654933281,
+        "episodes": 2000,
+        "final_accuracy": 0.937,
+        "final_accuracy_by_cards": {
+          "3": 0.875,
+          "4": 0.93,
+          "5": 0.9525,
+          "6": 0.975,
+          "7": 0.9525
+        },
+        "model_milliseconds_per_episode": 0.03986183216329664,
+        "model_milliseconds_per_event": 0.007972366432659328,
+        "object_accuracy": 0.8994,
+        "relation_accuracy": 1.0,
+        "subject_accuracy": 0.9435
+      }
+    },
+    {
+      "epoch": 4,
+      "loss": 0.08444139014577012,
+      "validation": {
+        "action_accuracy": 0.9986,
+        "end_to_end_milliseconds_per_episode": 1.3658907010103576,
+        "episodes": 2000,
+        "final_accuracy": 0.993,
+        "final_accuracy_by_cards": {
+          "3": 0.975,
+          "4": 0.995,
+          "5": 0.9975,
+          "6": 0.9975,
+          "7": 1.0
+        },
+        "model_milliseconds_per_episode": 0.038928996364120394,
+        "model_milliseconds_per_event": 0.007785799272824079,
+        "object_accuracy": 0.9432,
+        "relation_accuracy": 1.0,
+        "subject_accuracy": 0.9927
+      }
+    },
+    {
+      "epoch": 5,
+      "loss": 0.03024283359470346,
+      "validation": {
+        "action_accuracy": 0.9944,
+        "end_to_end_milliseconds_per_episode": 1.2980685065267608,
+        "episodes": 2000,
+        "final_accuracy": 0.9795,
+        "final_accuracy_by_cards": {
+          "3": 0.9675,
+          "4": 0.9775,
+          "5": 0.9775,
+          "6": 0.995,
+          "7": 0.98
+        },
+        "model_milliseconds_per_episode": 0.039113253937102854,
+        "model_milliseconds_per_event": 0.00782265078742057,
+        "object_accuracy": 0.891,
+        "relation_accuracy": 1.0,
+        "subject_accuracy": 0.9766
+      }
+    },
+    {
+      "epoch": 6,
+      "loss": 0.03345761980261187,
+      "validation": {
+        "action_accuracy": 0.9999,
+        "end_to_end_milliseconds_per_episode": 1.4086509484914131,
+        "episodes": 2000,
+        "final_accuracy": 0.9995,
+        "final_accuracy_by_cards": {
+          "3": 1.0,
+          "4": 1.0,
+          "5": 0.9975,
+          "6": 1.0,
+          "7": 1.0
+        },
+        "model_milliseconds_per_episode": 0.04057109745917842,
+        "model_milliseconds_per_event": 0.008114219491835684,
+        "object_accuracy": 0.9535,
+        "relation_accuracy": 1.0,
+        "subject_accuracy": 0.9963
+      }
+    }
+  ],
+  "parameters": 4690574,
+  "recursive_steps": 4,
+  "schema": "syllogimous-latent-agent-checkpoint-v1",
+  "seed": 17,
+  "train_premises": [
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "training_seconds": 199.18343017494772
+}

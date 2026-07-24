@@ -1,0 +1,94 @@
+{
+  "config": {
+    "checkpoint": "experiments/syllogimous_neural_computer/targeted_recurrent_context_parallel/seed_23.pt",
+    "choices": 8,
+    "context_cost": 0.001,
+    "contexts": 8,
+    "controller": "experiments/syllogimous_neural_computer/vast_continual_sharp.pt",
+    "delay": 0,
+    "device": "cuda",
+    "eval_streams": 64,
+    "hidden": 128,
+    "learning_rate": 0.0003,
+    "report": "experiments/syllogimous_neural_computer/targeted_recurrent_context_parallel/seed_23.json",
+    "seed": 23,
+    "target_temperature": 1.0,
+    "threshold": 0.05,
+    "train_streams": 64
+  },
+  "controller_weights_frozen": true,
+  "evaluation": {
+    "audit_empty_accuracy": 0.13671875,
+    "audit_full_accuracy": 0.203125,
+    "audit_learned_accuracy": 0.212890625,
+    "audit_learned_rows": 0.974609375,
+    "audit_oracle_accuracy": 0.662109375,
+    "audit_oracle_rows": 0.95703125,
+    "audit_random_accuracy": 0.1953125,
+    "audit_random_rows": 0.974609375,
+    "evaluation_seconds": 344.6935711160768,
+    "learned_null_rate": 0.02734375,
+    "query_empty_accuracy": 0.10546875,
+    "query_full_accuracy": 0.2109375,
+    "query_learned_accuracy": 0.205078125,
+    "query_learned_rows": 0.970703125,
+    "query_oracle_accuracy": 0.654296875,
+    "query_oracle_rows": 0.966796875,
+    "query_random_accuracy": 0.189453125,
+    "query_random_rows": 0.970703125
+  },
+  "history": [
+    {
+      "loss": 2.205112934112549,
+      "oracle_label_accuracy": 0.0,
+      "oracle_null_rate": 0.0,
+      "stream": 8
+    },
+    {
+      "loss": 2.1383066177368164,
+      "oracle_label_accuracy": 0.125,
+      "oracle_null_rate": 0.0,
+      "stream": 16
+    },
+    {
+      "loss": 2.1647934913635254,
+      "oracle_label_accuracy": 0.125,
+      "oracle_null_rate": 0.0,
+      "stream": 24
+    },
+    {
+      "loss": 2.1906983852386475,
+      "oracle_label_accuracy": 0.375,
+      "oracle_null_rate": 0.0,
+      "stream": 32
+    },
+    {
+      "loss": 2.1427054405212402,
+      "oracle_label_accuracy": 0.25,
+      "oracle_null_rate": 0.0,
+      "stream": 40
+    },
+    {
+      "loss": 2.183844566345215,
+      "oracle_label_accuracy": 0.25,
+      "oracle_null_rate": 0.0625,
+      "stream": 48
+    },
+    {
+      "loss": 2.1375651359558105,
+      "oracle_label_accuracy": 0.125,
+      "oracle_null_rate": 0.125,
+      "stream": 56
+    },
+    {
+      "loss": 2.1413910388946533,
+      "oracle_label_accuracy": 0.5,
+      "oracle_null_rate": 0.0,
+      "stream": 64
+    }
+  ],
+  "maximum_active_rows": 1,
+  "schema": "syllogimous-active-context-v1",
+  "selector_inputs": "sensory latent and latent memory only",
+  "training_seconds": 601.5566556859994
+}

@@ -1,0 +1,77 @@
+{
+  "condition": "learned_memory",
+  "config": {
+    "associations": 1,
+    "batch_size": 20,
+    "checkpoint": "experiments/syllogimous_neural_computer/pilot_learned_memory.pt",
+    "choices": 8,
+    "condition": "learned_memory",
+    "delay": 4,
+    "device": "mps",
+    "epochs": 5,
+    "eval_lifetimes": 300,
+    "heads": 4,
+    "hidden": 96,
+    "learning_rate": 0.0003,
+    "report": "experiments/syllogimous_neural_computer/pilot_learned_memory.json",
+    "seed": 17,
+    "thought_steps": 3,
+    "train_lifetimes": 1000,
+    "workspace_slots": 8,
+    "write_cost": 0.0
+  },
+  "evaluation": {
+    "accuracy": 0.8766666666666667,
+    "entries_per_lifetime": 6.0,
+    "interface_loss": 0.1670561283826828,
+    "mean_write_strength": 0.0674960471689701,
+    "query_loss": 0.5947647452354431
+  },
+  "history": [
+    {
+      "accuracy": 0.128,
+      "entries_per_lifetime": 6.0,
+      "epoch": 1,
+      "interface_loss": 1.1849658143520356,
+      "mean_write_strength": 0.1255869391063849,
+      "query_loss": 2.0819182205200195
+    },
+    {
+      "accuracy": 0.113,
+      "entries_per_lifetime": 6.0,
+      "epoch": 2,
+      "interface_loss": 0.6063075983524322,
+      "mean_write_strength": 0.12689261801540852,
+      "query_loss": 2.083994383811951
+    },
+    {
+      "accuracy": 0.139,
+      "entries_per_lifetime": 6.0,
+      "epoch": 3,
+      "interface_loss": 0.3255171117186546,
+      "mean_write_strength": 0.12493506737053398,
+      "query_loss": 2.0815762996673586
+    },
+    {
+      "accuracy": 0.231,
+      "entries_per_lifetime": 6.0,
+      "epoch": 4,
+      "interface_loss": 0.1357435803115368,
+      "mean_write_strength": 0.1194224908451239,
+      "query_loss": 2.0666006708145144
+    },
+    {
+      "accuracy": 0.584,
+      "entries_per_lifetime": 6.0,
+      "epoch": 5,
+      "interface_loss": 0.17382700994610786,
+      "mean_write_strength": 0.07559824294721089,
+      "query_loss": 1.2801853811740875
+    }
+  ],
+  "parameters": 1213571,
+  "persistent_memory_grows": true,
+  "schema": "syllogimous-growing-memory-benchmark-v1",
+  "sensory_only": true,
+  "training_seconds": 55.917734583000005
+}

@@ -1,0 +1,506 @@
+{
+  "core": "graph_cached",
+  "entity_count": 128,
+  "eval_premises": [
+    24,
+    32,
+    64
+  ],
+  "generalization": {
+    "action_accuracy": 0.6260975609756098,
+    "end_to_end_milliseconds_per_episode": 19.868283743349213,
+    "episodes": 1500,
+    "final_accuracy": 0.43266666666666664,
+    "final_accuracy_by_cards": {
+      "25": 0.26,
+      "33": 0.55,
+      "65": 0.488
+    },
+    "final_confusion_by_cards": {
+      "25": {
+        "correct": 130,
+        "episodes": 500,
+        "predicted_true": 113,
+        "target_true": 241
+      },
+      "33": {
+        "correct": 275,
+        "episodes": 500,
+        "predicted_true": 235,
+        "target_true": 248
+      },
+      "65": {
+        "correct": 244,
+        "episodes": 500,
+        "predicted_true": 213,
+        "target_true": 244
+      }
+    },
+    "model_milliseconds_per_episode": 5.380498578849559,
+    "model_milliseconds_per_event": 0.1312316726548673,
+    "object_accuracy": 0.8354634146341463,
+    "relation_accuracy": 1.0,
+    "subject_accuracy": 0.994130081300813
+  },
+  "hidden": 384,
+  "history": [
+    {
+      "epoch": 1,
+      "loss": 4.095422402787127,
+      "premise_choices": [
+        2
+      ],
+      "validation": {
+        "action_accuracy": 0.3217789930834808,
+        "end_to_end_milliseconds_per_episode": 5.397845226650436,
+        "episodes": 1500,
+        "final_accuracy": 0.66,
+        "final_accuracy_by_cards": {
+          "13": 0.5813953488372093,
+          "17": 0.602803738317757,
+          "3": 0.9813084112149533,
+          "4": 0.719626168224299,
+          "5": 0.5747663551401869,
+          "7": 0.6542056074766355,
+          "9": 0.5069767441860465
+        },
+        "final_confusion_by_cards": {
+          "13": {
+            "correct": 125,
+            "episodes": 215,
+            "predicted_true": 61,
+            "target_true": 105
+          },
+          "17": {
+            "correct": 129,
+            "episodes": 214,
+            "predicted_true": 63,
+            "target_true": 106
+          },
+          "3": {
+            "correct": 210,
+            "episodes": 214,
+            "predicted_true": 108,
+            "target_true": 108
+          },
+          "4": {
+            "correct": 154,
+            "episodes": 214,
+            "predicted_true": 92,
+            "target_true": 115
+          },
+          "5": {
+            "correct": 123,
+            "episodes": 214,
+            "predicted_true": 77,
+            "target_true": 98
+          },
+          "7": {
+            "correct": 140,
+            "episodes": 214,
+            "predicted_true": 78,
+            "target_true": 106
+          },
+          "9": {
+            "correct": 109,
+            "episodes": 215,
+            "predicted_true": 82,
+            "target_true": 106
+          }
+        },
+        "model_milliseconds_per_episode": 1.7168174873416622,
+        "model_milliseconds_per_event": 0.20711164798234627,
+        "object_accuracy": 0.6423516165353064,
+        "relation_accuracy": 1.0,
+        "subject_accuracy": 0.826524046967991
+      }
+    },
+    {
+      "epoch": 2,
+      "loss": 0.7224043936249339,
+      "premise_choices": [
+        2,
+        3
+      ],
+      "validation": {
+        "action_accuracy": 0.3427698246742802,
+        "end_to_end_milliseconds_per_episode": 3.2370666440110654,
+        "episodes": 1500,
+        "final_accuracy": 0.74,
+        "final_accuracy_by_cards": {
+          "13": 0.5534883720930233,
+          "17": 0.6308411214953271,
+          "3": 1.0,
+          "4": 0.9953271028037384,
+          "5": 0.7710280373831776,
+          "7": 0.6588785046728972,
+          "9": 0.5720930232558139
+        },
+        "final_confusion_by_cards": {
+          "13": {
+            "correct": 119,
+            "episodes": 215,
+            "predicted_true": 83,
+            "target_true": 105
+          },
+          "17": {
+            "correct": 135,
+            "episodes": 214,
+            "predicted_true": 77,
+            "target_true": 106
+          },
+          "3": {
+            "correct": 214,
+            "episodes": 214,
+            "predicted_true": 108,
+            "target_true": 108
+          },
+          "4": {
+            "correct": 213,
+            "episodes": 214,
+            "predicted_true": 114,
+            "target_true": 115
+          },
+          "5": {
+            "correct": 165,
+            "episodes": 214,
+            "predicted_true": 95,
+            "target_true": 98
+          },
+          "7": {
+            "correct": 141,
+            "episodes": 214,
+            "predicted_true": 105,
+            "target_true": 106
+          },
+          "9": {
+            "correct": 123,
+            "episodes": 215,
+            "predicted_true": 86,
+            "target_true": 106
+          }
+        },
+        "model_milliseconds_per_episode": 0.15905132284387946,
+        "model_milliseconds_per_event": 0.01918746857534335,
+        "object_accuracy": 0.869712079781245,
+        "relation_accuracy": 0.9994370275052276,
+        "subject_accuracy": 0.9782853466302075
+      }
+    },
+    {
+      "epoch": 3,
+      "loss": 0.18619912965127836,
+      "premise_choices": [
+        2,
+        3,
+        4
+      ],
+      "validation": {
+        "action_accuracy": 0.44933247547048416,
+        "end_to_end_milliseconds_per_episode": 3.2304561026394367,
+        "episodes": 1500,
+        "final_accuracy": 0.7906666666666666,
+        "final_accuracy_by_cards": {
+          "13": 0.5953488372093023,
+          "17": 0.5373831775700935,
+          "3": 1.0,
+          "4": 0.9953271028037384,
+          "5": 1.0,
+          "7": 0.6635514018691588,
+          "9": 0.7441860465116279
+        },
+        "final_confusion_by_cards": {
+          "13": {
+            "correct": 128,
+            "episodes": 215,
+            "predicted_true": 78,
+            "target_true": 105
+          },
+          "17": {
+            "correct": 115,
+            "episodes": 214,
+            "predicted_true": 77,
+            "target_true": 106
+          },
+          "3": {
+            "correct": 214,
+            "episodes": 214,
+            "predicted_true": 108,
+            "target_true": 108
+          },
+          "4": {
+            "correct": 213,
+            "episodes": 214,
+            "predicted_true": 116,
+            "target_true": 115
+          },
+          "5": {
+            "correct": 214,
+            "episodes": 214,
+            "predicted_true": 98,
+            "target_true": 98
+          },
+          "7": {
+            "correct": 142,
+            "episodes": 214,
+            "predicted_true": 92,
+            "target_true": 106
+          },
+          "9": {
+            "correct": 160,
+            "episodes": 215,
+            "predicted_true": 101,
+            "target_true": 106
+          }
+        },
+        "model_milliseconds_per_episode": 0.16466573152380684,
+        "model_milliseconds_per_event": 0.01986477378845989,
+        "object_accuracy": 0.8303040051471771,
+        "relation_accuracy": 1.0,
+        "subject_accuracy": 0.9856039890622487
+      }
+    },
+    {
+      "epoch": 4,
+      "loss": 0.10800900949489439,
+      "premise_choices": [
+        2,
+        3,
+        4,
+        6
+      ],
+      "validation": {
+        "action_accuracy": 0.7255911211195111,
+        "end_to_end_milliseconds_per_episode": 3.1429009852775684,
+        "episodes": 1500,
+        "final_accuracy": 0.824,
+        "final_accuracy_by_cards": {
+          "13": 0.5116279069767442,
+          "17": 0.4392523364485981,
+          "3": 0.9906542056074766,
+          "4": 0.9953271028037384,
+          "5": 1.0,
+          "7": 1.0,
+          "9": 0.8325581395348837
+        },
+        "final_confusion_by_cards": {
+          "13": {
+            "correct": 110,
+            "episodes": 215,
+            "predicted_true": 86,
+            "target_true": 105
+          },
+          "17": {
+            "correct": 94,
+            "episodes": 214,
+            "predicted_true": 82,
+            "target_true": 106
+          },
+          "3": {
+            "correct": 212,
+            "episodes": 214,
+            "predicted_true": 108,
+            "target_true": 108
+          },
+          "4": {
+            "correct": 213,
+            "episodes": 214,
+            "predicted_true": 114,
+            "target_true": 115
+          },
+          "5": {
+            "correct": 214,
+            "episodes": 214,
+            "predicted_true": 98,
+            "target_true": 98
+          },
+          "7": {
+            "correct": 214,
+            "episodes": 214,
+            "predicted_true": 106,
+            "target_true": 106
+          },
+          "9": {
+            "correct": 179,
+            "episodes": 215,
+            "predicted_true": 104,
+            "target_true": 106
+          }
+        },
+        "model_milliseconds_per_episode": 0.16125646932050586,
+        "model_milliseconds_per_event": 0.01945349074961869,
+        "object_accuracy": 0.8992279234357408,
+        "relation_accuracy": 1.0,
+        "subject_accuracy": 0.9905098922309796
+      }
+    },
+    {
+      "epoch": 5,
+      "loss": 0.08380190393833424,
+      "premise_choices": [
+        2,
+        3,
+        4,
+        6,
+        8
+      ],
+      "validation": {
+        "action_accuracy": 0.7208460672350008,
+        "end_to_end_milliseconds_per_episode": 3.152269712726896,
+        "episodes": 1500,
+        "final_accuracy": 0.7253333333333334,
+        "final_accuracy_by_cards": {
+          "13": 0.046511627906976744,
+          "17": 0.04672897196261682,
+          "3": 1.0,
+          "4": 1.0,
+          "5": 1.0,
+          "7": 1.0,
+          "9": 0.986046511627907
+        },
+        "final_confusion_by_cards": {
+          "13": {
+            "correct": 10,
+            "episodes": 215,
+            "predicted_true": 12,
+            "target_true": 105
+          },
+          "17": {
+            "correct": 10,
+            "episodes": 214,
+            "predicted_true": 10,
+            "target_true": 106
+          },
+          "3": {
+            "correct": 214,
+            "episodes": 214,
+            "predicted_true": 108,
+            "target_true": 108
+          },
+          "4": {
+            "correct": 214,
+            "episodes": 214,
+            "predicted_true": 115,
+            "target_true": 115
+          },
+          "5": {
+            "correct": 214,
+            "episodes": 214,
+            "predicted_true": 98,
+            "target_true": 98
+          },
+          "7": {
+            "correct": 214,
+            "episodes": 214,
+            "predicted_true": 106,
+            "target_true": 106
+          },
+          "9": {
+            "correct": 212,
+            "episodes": 215,
+            "predicted_true": 103,
+            "target_true": 106
+          }
+        },
+        "model_milliseconds_per_episode": 0.15980075447199246,
+        "model_milliseconds_per_event": 0.019277877731059087,
+        "object_accuracy": 0.8476757278430112,
+        "relation_accuracy": 1.0,
+        "subject_accuracy": 0.9860865369149108
+      }
+    },
+    {
+      "epoch": 6,
+      "loss": 0.15231110760783173,
+      "premise_choices": [
+        2,
+        3,
+        4,
+        6,
+        8,
+        12,
+        16
+      ],
+      "validation": {
+        "action_accuracy": 0.9975068360945794,
+        "end_to_end_milliseconds_per_episode": 3.2060015453801802,
+        "episodes": 1500,
+        "final_accuracy": 0.9966666666666667,
+        "final_accuracy_by_cards": {
+          "13": 0.9767441860465116,
+          "17": 1.0,
+          "3": 1.0,
+          "4": 1.0,
+          "5": 1.0,
+          "7": 1.0,
+          "9": 1.0
+        },
+        "final_confusion_by_cards": {
+          "13": {
+            "correct": 210,
+            "episodes": 215,
+            "predicted_true": 102,
+            "target_true": 105
+          },
+          "17": {
+            "correct": 214,
+            "episodes": 214,
+            "predicted_true": 106,
+            "target_true": 106
+          },
+          "3": {
+            "correct": 214,
+            "episodes": 214,
+            "predicted_true": 108,
+            "target_true": 108
+          },
+          "4": {
+            "correct": 214,
+            "episodes": 214,
+            "predicted_true": 115,
+            "target_true": 115
+          },
+          "5": {
+            "correct": 214,
+            "episodes": 214,
+            "predicted_true": 98,
+            "target_true": 98
+          },
+          "7": {
+            "correct": 214,
+            "episodes": 214,
+            "predicted_true": 106,
+            "target_true": 106
+          },
+          "9": {
+            "correct": 215,
+            "episodes": 215,
+            "predicted_true": 106,
+            "target_true": 106
+          }
+        },
+        "model_milliseconds_per_episode": 0.23473879663894573,
+        "model_milliseconds_per_event": 0.02831817556364956,
+        "object_accuracy": 0.9905098922309796,
+        "relation_accuracy": 1.0,
+        "subject_accuracy": 0.9978285346630208
+      }
+    }
+  ],
+  "length_curriculum": true,
+  "parameters": 5335054,
+  "recursive_steps": 4,
+  "schema": "syllogimous-latent-agent-checkpoint-v1",
+  "seed": 17,
+  "train_premises": [
+    2,
+    3,
+    4,
+    6,
+    8,
+    12,
+    16
+  ],
+  "training_seconds": 361.8225985120516,
+  "use_positions": false
+}

@@ -1,0 +1,50 @@
+{
+  "config": {
+    "heads": 4,
+    "hidden": 96,
+    "max_thought_steps": 2,
+    "memory_core": "event_transformer",
+    "memory_slots": 8
+  },
+  "eval_premises": [
+    24,
+    32,
+    64
+  ],
+  "evaluation": {
+    "accuracy": 0.7897777777777778,
+    "accuracy_by_premises": {
+      "24": 0.7986666666666666,
+      "32": 0.7986666666666666,
+      "64": 0.772
+    },
+    "episodes": 4500,
+    "latency_reward_active": true,
+    "mean_reward": 0.5795555555555556,
+    "mean_thought_steps": 2.0,
+    "milliseconds_per_episode": 8.987270088685262
+  },
+  "history": [],
+  "initial_checkpoint": "experiments/syllogimous_bitter_lesson/h100_curriculum_2_4_rl.pt",
+  "learning_signal": "reinforce_fixed",
+  "overfit_fixed": false,
+  "parameters": 1271556,
+  "randomize_rendering": true,
+  "reward": {
+    "correct": 1.0,
+    "incorrect": -1.0,
+    "latency_ramp_accuracy": [
+      0.55,
+      0.8
+    ],
+    "max_correct_speed_bonus": 0.0
+  },
+  "scale": "1m",
+  "schema": "syllogimous-bitter-lesson-v1",
+  "seed": 17,
+  "semantic_auxiliary_labels": false,
+  "train_premises": [
+    2
+  ],
+  "training_seconds": 40.44392537791282
+}

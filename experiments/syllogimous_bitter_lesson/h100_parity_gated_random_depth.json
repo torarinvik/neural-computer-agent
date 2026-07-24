@@ -1,0 +1,174 @@
+{
+  "config": {
+    "heads": 4,
+    "hidden": 96,
+    "max_thought_steps": 8,
+    "memory_core": "event_transformer",
+    "memory_slots": 8,
+    "thought_dynamics": "gated_residual"
+  },
+  "consistency_weight": 0.25,
+  "eval_premises": [
+    2,
+    4,
+    8,
+    16,
+    32,
+    64
+  ],
+  "evaluation": {
+    "accuracy": 0.6808333333333333,
+    "accuracy_by_premises": {
+      "16": 0.514,
+      "2": 0.996,
+      "32": 0.497,
+      "4": 0.973,
+      "64": 0.512,
+      "8": 0.593
+    },
+    "episodes": 6000,
+    "latency_reward_active": true,
+    "mean_reward": 0.3616666666666666,
+    "mean_thought_steps": 8.0,
+    "milliseconds_per_episode": 6.990428237845966
+  },
+  "evaluation_tasks": "parity",
+  "history": [
+    {
+      "accuracy": 0.9958465189873418,
+      "consistency_loss": 0.00048794709599100824,
+      "epoch": 1,
+      "latency_multiplier": 0.0,
+      "premise_choices": [
+        2
+      ],
+      "reward": 0.9916930379746836,
+      "thought_steps": 4.513647151898734,
+      "verifier_loss": 0.012090427199779432
+    },
+    {
+      "accuracy": 1.0,
+      "consistency_loss": 3.7150996607274063e-06,
+      "epoch": 2,
+      "latency_multiplier": 0.0,
+      "premise_choices": [
+        2
+      ],
+      "reward": 1.0,
+      "thought_steps": 4.4859572784810124,
+      "verifier_loss": 9.20059465909306e-06
+    },
+    {
+      "accuracy": 1.0,
+      "consistency_loss": 2.526789150774848e-06,
+      "epoch": 3,
+      "latency_multiplier": 0.0,
+      "premise_choices": [
+        2
+      ],
+      "reward": 1.0,
+      "thought_steps": 4.503164556962025,
+      "verifier_loss": 5.581852378724497e-06
+    },
+    {
+      "accuracy": 0.9265229430379747,
+      "consistency_loss": 0.010200430337792131,
+      "epoch": 4,
+      "latency_multiplier": 0.0,
+      "premise_choices": [
+        2,
+        3
+      ],
+      "reward": 0.8530458860759493,
+      "thought_steps": 4.513053797468355,
+      "verifier_loss": 0.2700225092541379
+    },
+    {
+      "accuracy": 0.9265229430379747,
+      "consistency_loss": 0.005333865074112222,
+      "epoch": 5,
+      "latency_multiplier": 0.0,
+      "premise_choices": [
+        2,
+        3,
+        4
+      ],
+      "reward": 0.8530458860759493,
+      "thought_steps": 4.471024525316456,
+      "verifier_loss": 0.275624093210584
+    },
+    {
+      "accuracy": 0.9941653481012658,
+      "consistency_loss": 0.0007337667235402432,
+      "epoch": 6,
+      "latency_multiplier": 0.0,
+      "premise_choices": [
+        2,
+        3,
+        4
+      ],
+      "reward": 0.9883306962025317,
+      "thought_steps": 4.502175632911392,
+      "verifier_loss": 0.021158100376966634
+    },
+    {
+      "accuracy": 0.823378164556962,
+      "consistency_loss": 0.007676487418681478,
+      "epoch": 7,
+      "latency_multiplier": 0.0,
+      "premise_choices": [
+        2,
+        3,
+        4,
+        6
+      ],
+      "reward": 0.646756329113924,
+      "thought_steps": 4.450553797468355,
+      "verifier_loss": 0.4565644432095033
+    },
+    {
+      "accuracy": 0.8338607594936709,
+      "consistency_loss": 0.00147860549917869,
+      "epoch": 8,
+      "latency_multiplier": 0.0,
+      "premise_choices": [
+        2,
+        3,
+        4,
+        6,
+        8
+      ],
+      "reward": 0.6677215189873418,
+      "thought_steps": 4.496934335443038,
+      "verifier_loss": 0.3163791595003273
+    }
+  ],
+  "initial_checkpoint": "experiments/syllogimous_bitter_lesson/h100_parity_pretrained.pt",
+  "learning_signal": "verifier",
+  "overfit_fixed": false,
+  "parameters": 1290084,
+  "random_thought_depth": true,
+  "randomize_rendering": false,
+  "reward": {
+    "correct": 1.0,
+    "incorrect": -1.0,
+    "latency_ramp_accuracy": [
+      0.55,
+      0.8
+    ],
+    "max_correct_speed_bonus": 0.0
+  },
+  "scale": "1m",
+  "schema": "syllogimous-bitter-lesson-v1",
+  "seed": 17,
+  "semantic_auxiliary_labels": false,
+  "train_premises": [
+    2,
+    3,
+    4,
+    6,
+    8
+  ],
+  "training_seconds": 107.2562567590503,
+  "training_tasks": "parity"
+}

@@ -1,0 +1,31 @@
+{
+  "checkpoint": "h100_graph_cached_marked_curriculum_75k.pt",
+  "device": "cuda",
+  "rows": [
+    {
+      "events": 17,
+      "mean_stream_event_ms": 1.3323490841396373,
+      "premises": 16,
+      "stream_sequence_ms": 22.649934430373833
+    },
+    {
+      "events": 25,
+      "mean_stream_event_ms": 1.3780395084060728,
+      "premises": 24,
+      "stream_sequence_ms": 34.45098771015182
+    },
+    {
+      "events": 33,
+      "mean_stream_event_ms": 1.366861062724087,
+      "premises": 32,
+      "stream_sequence_ms": 45.106415069894865
+    },
+    {
+      "events": 65,
+      "mean_stream_event_ms": 1.3561366372383559,
+      "premises": 64,
+      "stream_sequence_ms": 88.14888142049313
+    }
+  ],
+  "schema": "syllogimous-latent-incremental-benchmark-v1"
+}

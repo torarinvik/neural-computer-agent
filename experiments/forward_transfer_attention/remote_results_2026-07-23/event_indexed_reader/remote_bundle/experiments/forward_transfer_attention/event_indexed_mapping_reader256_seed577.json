@@ -1,0 +1,36 @@
+{
+  "schema": "event-indexed-mapping-reader-probe-v1",
+  "agent_weights_frozen": true,
+  "sensory_only": true,
+  "diagnostic_labels_visible_to_reader_only": true,
+  "lifetime_disjoint": true,
+  "train_lifetimes": 256,
+  "test_lifetimes": 256,
+  "reader": {
+    "best_test_accuracy": 0.37109375,
+    "test_accuracy": 0.3515625,
+    "row_swap_accuracy": 0.3515625,
+    "row_swap_prediction_agreement": 1.0,
+    "shuffled_memory_accuracy": 0.126953125
+  },
+  "shuffled_label_control": {
+    "best_test_accuracy": 0.14453125,
+    "test_accuracy": 0.1181640625,
+    "row_swap_accuracy": 0.1181640625,
+    "row_swap_prediction_agreement": 1.0,
+    "shuffled_memory_accuracy": 0.12890625
+  },
+  "chance_action_accuracy": 0.125,
+  "normalization_saved": [
+    "reader_queries_mean",
+    "reader_queries_scale",
+    "reader_rows_mean",
+    "reader_rows_scale"
+  ],
+  "pass_bar": {
+    "test_accuracy": 0.65,
+    "row_swap_prediction_agreement": 0.95,
+    "shuffled_memory_accuracy_max": 0.25,
+    "shuffled_label_accuracy_max": 0.2
+  }
+}

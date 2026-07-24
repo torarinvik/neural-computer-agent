@@ -1,0 +1,569 @@
+# Typed domain model for the clean-room Syllogimous v3 port.
+# Private values in this file must never be serialized directly to model input.
+
+global MAX_PREMISES: i32 = 32
+global MAX_BINARY_NODES: i32 = 511
+global MAX_SORT_CARDS: i32 = 34
+
+refine PremiseCount = i32 where self >= 2 and self <= 32
+refine BinaryDepth = i32 where self >= 0 and self <= 8
+refine DeadlineMs = i64 where self >= 5000 and self <= 300000
+refine UnitPermille = i32 where self >= 0 and self <= 1000
+refine EntityId = i32 where self >= 0 and self < 256
+refine QuestionIndex = i32 where self >= 0 and self < 32
+refine VisibleCardCount = i32 where self >= 1 and self <= 1024
+refine VisibleCardCursor = i32 where self >= 0 and self <= 1024
+
+error GenerationError:
+    NoEnabledFamily
+    TooFewPremises
+    NoEnabledBinaryOperator
+    AnalogyNeedsBaseFamily
+    BinaryNeedsTwoBaseFamilies
+    RetryBudgetExhausted
+    InvalidConfiguration
+    UnsupportedRelation
+    DisconnectedQuestion
+
+error EpisodeError:
+    InvalidAction
+    AnswerBeforeConclusion
+    AlreadyFinished
+    ClockMovedBackwards
+
+enum Vocabulary:
+    Meaningful
+    Abstract
+
+enum EntityLabel:
+    Meaningful(index: i32 where index >= 0 and index < 446)
+    Abstract(index: i32 where index >= 0 and index < 1530)
+
+enum AbstractConsonant:
+    Q
+    W
+    R
+    T
+    P
+    S
+    D
+    F
+    G
+    K
+    L
+    Z
+    X
+    C
+    V
+    B
+    N
+    M
+
+enum AbstractVowel:
+    A
+    E
+    I
+    O
+    U
+
+struct AbstractSyllable:
+    first: AbstractConsonant
+    vowel: AbstractVowel
+    last: AbstractConsonant
+
+struct EntityLexicon:
+    labels: array[EntityLabel, 256]
+    entity_count: i32 where entity_count >= 1 and entity_count <= 256
+
+enum InkColor:
+    White
+    Red
+
+enum ButtonOrder:
+    TrueFirst
+    FalseFirst
+
+enum ButtonPalette:
+    Semantic
+    Inverted
+
+struct PresentationOptions:
+    negation_enabled: bool
+    negation_explainer_enabled: bool
+    stroop_enabled: bool
+
+struct PresentationState:
+    button_order: mutable ButtonOrder
+    button_palette: mutable ButtonPalette
+
+struct PresentationFrame:
+    state: PresentationState
+    stroop_active: bool
+    body_ink: InkColor
+    negated_ink: InkColor
+    show_negation_explainer: bool
+
+enum QuestionFamily:
+    Distinction
+    Comparison
+    Temporal
+    Categorical
+    Direction2D
+    Direction3D
+    Direction4D
+    Analogy
+    Binary
+    NestedBinary
+    Sorting
+    Paradox
+    LogicPuzzle
+
+enum BinaryOperator:
+    And
+    Nand
+    Or
+    Nor
+    Xor
+    Xnor
+
+struct BinaryOperatorConfig:
+    and_enabled: bool
+    nand_enabled: bool
+    or_enabled: bool
+    nor_enabled: bool
+    xor_enabled: bool
+    xnor_enabled: bool
+
+enum Polarity:
+    Positive
+    Negated
+
+enum Truth:
+    False
+    True
+
+# Every truth-valued task entering the runtime carries a private proof that
+# exactly one answer is accepted. The count is deliberately refined to one;
+# generators that cannot establish this contract must be rejected before
+# rendering.
+struct UniqueTruthSolution:
+    answer: Truth
+    candidate_count: i32 where candidate_count >= 1 and candidate_count <= 1
+
+enum ChallengeKind:
+    ArithmeticChain
+    InequalityChain
+    Parity
+    Sequence
+    GraphReachability
+    GraphDistance
+    TemporalOrder
+    Membership
+    BooleanFormula
+    ConstraintAssignment
+    MinimumValue
+    MaximumValue
+    AbsoluteDifference
+    SetIntersection
+    GraphCycle
+    TopologicalOrder
+    CalendarOffset
+    XorFormula
+    LinearEquation
+    DigitCount
+    ThreePremiseChain
+    FourPremiseChain
+    DistractorCheck
+    ContradictionCheck
+    Biconditional
+    UnlessRule
+    OnlyIfRule
+    QuantifierAll
+    QuantifierSome
+    ExclusiveOr
+    TransitiveRelation
+    SymmetricRelation
+    DoubleNegation
+    EarliestEvent
+    LatestEvent
+    PartialOrder
+    GridDistance
+    ManhattanPath
+    Rotation
+    Mirror
+    SumValues
+    ProductValues
+    AverageFloor
+    ValueRange
+    SignCheck
+    Divisibility
+    ModuloCheck
+    PowerOfTwo
+    CountTrue
+    Majority
+    AtLeast
+    ExactlyOne
+    ImplicationChain
+    NandFormula
+    NorFormula
+    MinimumIndex
+    MaximumIndex
+    StableSortCheck
+    PermutationParity
+    UniqueValue
+    AllDistinct
+    PairwiseOrder
+    MedianValue
+    SecondMinimum
+    SecondMaximum
+    CountLess
+    CountGreater
+    WeightedSum
+    LinearInequality
+    IntervalMembership
+    TemporalGap
+    ScheduleConflict
+    ReachTwoSteps
+    DegreeCount
+    BipartiteCheck
+    PathParity
+    CoordinateQuadrant
+    CompassDirection
+    Rotation3D
+    SpaceTimeOrder
+    AllOf
+    AnyOf
+    NoneOf
+    ExactlyK
+    SyllogismMood
+    AnalogyRelation
+    SortingKey
+    PermutationCheck
+    ConstraintCount
+    CompositeProof
+
+struct ChallengeData:
+    kind: ChallengeKind
+    values: array[i32, 16]
+    value_count: i32 where value_count >= 1 and value_count <= 16
+    claim: i32
+    answer: i32
+
+enum LinearRelation:
+    Same
+    Opposite
+    More
+    Less
+    Before
+    After
+
+enum Direction2D:
+    Same
+    North
+    NorthEast
+    East
+    SouthEast
+    South
+    SouthWest
+    West
+    NorthWest
+
+enum Direction3D:
+    Same
+    Offset(dx: i32 where dx >= -1 and dx <= 1,
+           dy: i32 where dy >= -1 and dy <= 1,
+           dz: i32 where dz >= -1 and dz <= 1)
+
+enum TimeRelation:
+    Earlier
+    Simultaneous
+    Later
+
+enum Quantifier:
+    All
+    No
+    Some
+    SomeNot
+
+enum Figure:
+    One
+    Two
+    Three
+    Four
+
+enum MetaRelation:
+    Same
+    Opposite
+
+enum Relation:
+    Linear(value: LinearRelation)
+    Planar(value: Direction2D)
+    Spatial(value: Direction3D)
+    SpaceTime(space: Direction3D, time: TimeRelation)
+    Categorical(value: Quantifier)
+    Meta(source: i32 where source >= 0 and source < 32,
+         comparison: MetaRelation)
+
+struct Premise:
+    left: i32 where left >= 0 and left < 256
+    relation: Relation
+    right: i32 where right >= 0 and right < 256
+    polarity: Polarity
+
+struct RelationalQuestion:
+    premises: array[Premise, 32]
+    premise_count: i32 where premise_count >= 2 and premise_count <= 32
+    conclusion: Premise
+    truth: Truth
+
+struct CategoricalQuestion:
+    premises: array[Premise, 32]
+    premise_count: i32 where premise_count >= 2 and premise_count <= 32
+    conclusion: Premise
+    mood_major: Quantifier
+    mood_minor: Quantifier
+    mood_conclusion: Quantifier
+    figure: Figure
+    truth: Truth
+
+enum BaseQuestion:
+    Relational(question: RelationalQuestion)
+    Categorical(question: CategoricalQuestion)
+
+enum ExpressionNode:
+    Leaf(base: i32 where base >= 0 and base < 256)
+    Apply(op: BinaryOperator, left: i32 where left >= 0 and left < 511,
+          right: i32 where right >= 0 and right < 511)
+
+struct BooleanQuestion:
+    bases: array[BaseQuestion, 256]
+    base_count: i32 where base_count >= 1 and base_count <= 256
+    nodes: array[ExpressionNode, 511]
+    node_count: i32 where node_count >= 1 and node_count <= 511
+    root: i32 where root >= 0 and root < 511
+    depth: i32 where depth >= 0 and depth <= 8
+    truth: Truth
+
+# An analogy asks whether two visible subject-pairs carry the same relation.
+# `claimed_same` is presentation state; `truth` is the rewarded answer.
+struct AnalogyQuestion:
+    family: QuestionFamily
+    evidence: RelationalQuestion
+    first: Premise
+    second: Premise
+    claimed_same: Truth
+    truth: Truth
+
+enum SortColor:
+    Red
+    Orange
+    Yellow
+    Green
+    Blue
+    Indigo
+    Violet
+
+enum SortMaterial:
+    Wood
+    Copper
+    Silver
+    Gold
+    Platinum
+
+enum SortShape:
+    Dot
+    Line
+    Triangle
+    Square
+    Pentagon
+    Hexagon
+    Heptagon
+    Octagon
+    Nonagon
+    Decagon
+    Hendecagon
+    Dodecagon
+
+enum SortSize:
+    Small
+    Medium
+    Large
+    ExtraLarge
+    ExtraExtraLarge
+
+enum SortProperty:
+    Color
+    Material
+    Shape
+    Size
+
+enum SortOrder:
+    Ascending
+    Descending
+
+struct SortKey:
+    property: SortProperty
+    order: SortOrder
+
+struct SortCard:
+    color: SortColor
+    material: SortMaterial
+    shape: SortShape
+    size: SortSize
+    active: array[bool, 4]
+
+struct SortingQuestion:
+    cards: array[SortCard, 34]
+    expected_order: array[i32, 34]
+    card_count: i32 where card_count >= 4 and card_count <= 34
+    keys: array[SortKey, 4]
+    key_count: i32 where key_count >= 2 and key_count <= 4
+
+enum FixedPuzzleAnswer:
+    Undetermined
+    Determinate(value: Truth)
+
+struct FixedPuzzle:
+    family: QuestionFamily
+    puzzle_id: i32 where puzzle_id >= 0 and puzzle_id < 12
+    answer: FixedPuzzleAnswer
+
+enum Question:
+    Relational(family: QuestionFamily, content: RelationalQuestion)
+    Categorical(content: CategoricalQuestion)
+    Boolean(family: QuestionFamily, content: BooleanQuestion)
+    Analogy(content: AnalogyQuestion)
+    Sorting(content: SortingQuestion)
+    Challenge(content: ChallengeData)
+    Fixed(content: FixedPuzzle)
+
+enum PresentationMode:
+    DisplayAll
+    Carousel
+
+enum DifficultyTier:
+    Intro
+    Standard
+    Hard
+    Max
+
+enum Action:
+    Wait
+    Next
+    Previous
+    Answer(value: Truth)
+    MoveCard(source: i32 where source >= 0 and source < 34,
+             destination: i32 where destination >= 0 and destination < 34)
+    SubmitSort
+
+enum Outcome:
+    Correct
+    Wrong
+    Timeout
+
+enum EpisodePhase:
+    Presenting(card: i32 where card >= 0 and card < 1024)
+    AwaitingAnswer
+    Finished(outcome: Outcome)
+
+enum EpisodeTask:
+    TruthAnswer(expected: Truth)
+    SortingAnswer(expected_order: array[i32, 34],
+                  card_count: i32 where card_count >= 4 and card_count <= 34)
+
+enum EpisodeStatus:
+    Active
+    Finished(outcome: Outcome, reward: Reward)
+
+# Private evaluator-owned state. This type must never cross the public sensory
+# boundary; public callers receive only EpisodeObservation below.
+struct RealtimeEpisode:
+    task: EpisodeTask
+    presentation: PresentationMode
+    started_ms: i64 where started_ms >= 0
+    last_event_ms: i64 where last_event_ms >= 0
+    deadline_ms: i64 where deadline_ms >= 5000 and deadline_ms <= 300000
+    cursor: i32 where cursor >= 0 and cursor <= 1024
+    card_count: i32 where card_count >= 1 and card_count <= 1024
+    conclusion_visible: bool
+    user_order: array[i32, 34]
+    status: EpisodeStatus
+
+struct EpisodeObservation:
+    cursor: i32 where cursor >= 0 and cursor <= 1024
+    card_count: i32 where card_count >= 1 and card_count <= 1024
+    conclusion_visible: bool
+    status: EpisodePhase
+
+struct Reward:
+    correctness_milli: i32 where correctness_milli >= -1000 and correctness_milli <= 1000
+    speed_milli: i32 where speed_milli >= 0 and speed_milli <= 50
+
+struct FamilyConfig:
+    enabled: bool
+    deadline_ms: i64 where deadline_ms >= 5000 and deadline_ms <= 300000
+
+struct GameConfig:
+    difficulty: DifficultyTier
+    premises: i32 where premises >= 2 and premises <= 32
+    vocabulary: Vocabulary
+    presentation: PresentationMode
+    negation: bool
+    negation_explainer: bool
+    meta_relations: bool
+    stroop: bool
+    binary_depth: i32 where binary_depth >= 0 and binary_depth <= 8
+    binary_operators: BinaryOperatorConfig
+    sorting_min_width: i32 where sorting_min_width >= 2 and sorting_min_width <= 4
+    rare_puzzle_permille: i32 where rare_puzzle_permille >= 0 and rare_puzzle_permille <= 1000
+    challenge_enabled: bool
+
+struct SelectionConfig:
+    game: GameConfig
+    distinction: FamilyConfig
+    comparison: FamilyConfig
+    temporal: FamilyConfig
+    categorical: FamilyConfig
+    direction2: FamilyConfig
+    direction3: FamilyConfig
+    direction4: FamilyConfig
+    analogy: FamilyConfig
+    binary: FamilyConfig
+    sorting: FamilyConfig
+    only_analogy: bool
+    only_binary: bool
+    only_sorting: bool
+    sorting_viewport_available: bool
+
+enum SelectedQuestionPlan:
+    Generated(family: QuestionFamily, deadline_ms: i64 where deadline_ms >= 5000 and deadline_ms <= 300000)
+    Fixed(question: FixedPuzzle, deadline_ms: i64 where deadline_ms >= 5000 and deadline_ms <= 300000)
+    Sorting(deadline_ms: i64 where deadline_ms >= 5000 and deadline_ms <= 300000)
+
+# Private, fully prepared evaluator state. Rendering must first convert the
+# question through syllogimous_public_view.elisa; this record is never an agent
+# observation.
+struct PreparedSession:
+    question: Question
+    lexicon: EntityLexicon
+    presentation: PresentationFrame
+    episode: RealtimeEpisode
+
+enum SubmittedAnswer:
+    TimedOut
+    TruthValue(value: Truth)
+    SortingOrder
+
+struct RoundRecord:
+    family: QuestionFamily
+    submitted: SubmittedAnswer
+    outcome: Outcome
+    elapsed_ms: i64 where elapsed_ms >= 0
+    correctness_milli: i32 where correctness_milli >= -1000 and correctness_milli <= 1000
+    speed_milli: i32 where speed_milli >= 0 and speed_milli <= 50
+
+struct GameLedger:
+    score: mutable i64
+    rounds: mutable i64 where rounds >= 0
+    recent: mutable array[RoundRecord, 1024]
+    recent_count: mutable i32 where recent_count >= 0 and recent_count <= 1024

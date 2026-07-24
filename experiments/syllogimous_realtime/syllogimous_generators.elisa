@@ -1,0 +1,1750 @@
+# Deterministic clean-room generators. Generator truth is checked again by the
+# independent solvers before a question can enter an episode.
+
+include "syllogimous_game.elisa"
+
+struct Rng:
+    state: mutable u64
+
+def rng_from_seed(seed: u64) -> Rng:
+    state: mutable u64 = seed + 1
+    if state == 0:
+        state <- 0x9e3779b97f4a7c15
+    return Rng{state: state}
+
+def rng_next(rng: lmut Rng) -> u64:
+    x: mutable u64 = rng.state
+    x <- x ^ (x << 13)
+    x <- x ^ (x >> 7)
+    x <- x ^ (x << 17)
+    rng.state <- x
+    return x
+
+def random_below(rng: lmut Rng, upper: i32 where upper > 0) -> i32 where result >= 0 and result < upper:
+    rebind raw: u64, rng = rng_next(rng)
+    value: i32 = (raw % upper.u64()).i32()
+    assert value >= 0 and value < upper
+    return value
+
+def random_truth(rng: lmut Rng) -> Truth:
+    rebind raw: u64, rng = rng_next(rng)
+    return Truth.True if (raw & 1) == 1 else Truth.False
+
+def inverse_linear(relation: LinearRelation) -> LinearRelation:
+    match relation:
+        LinearRelation.Same:
+            return LinearRelation.Opposite
+        LinearRelation.Opposite:
+            return LinearRelation.Same
+        LinearRelation.More:
+            return LinearRelation.Less
+        LinearRelation.Less:
+            return LinearRelation.More
+        LinearRelation.Before:
+            return LinearRelation.After
+        LinearRelation.After:
+            return LinearRelation.Before
+
+def inverse_quantifier(value: Quantifier) -> Quantifier:
+    return match value:
+        Quantifier.All: Quantifier.No
+        Quantifier.No: Quantifier.All
+        Quantifier.Some: Quantifier.SomeNot
+        Quantifier.SomeNot: Quantifier.Some
+
+def inverse_meta(value: MetaRelation) -> MetaRelation:
+    return match value:
+        MetaRelation.Same: MetaRelation.Opposite
+        MetaRelation.Opposite: MetaRelation.Same
+
+# Store the word or symbol actually rendered together with an explicit
+# negation marker. Solvers normalize this pair back to the original relation.
+def negated_surface(item: Premise) -> Premise:
+    assert item.left >= 0 and item.left < 256
+    assert item.right >= 0 and item.right < 256
+    relation: Relation = match item.relation:
+        Relation.Linear(value): Relation.Linear(inverse_linear(value))
+        Relation.Planar(value): Relation.Planar(inverse_direction2(value))
+        Relation.Spatial(value): Relation.Spatial(inverse_direction3(value))
+        Relation.SpaceTime(space, time): Relation.SpaceTime(inverse_direction3(space), time)
+        Relation.Categorical(value): Relation.Categorical(inverse_quantifier(value))
+        Relation.Meta(source, comparison): Relation.Meta(source, inverse_meta(comparison))
+    return Premise{
+        left: item.left,
+        relation: relation,
+        right: item.right,
+        polarity: Polarity.Negated
+    }
+
+def add_relational_negation(rng: lmut Rng,
+                            question: RelationalQuestion) -> RelationalQuestion:
+    assert question.premise_count >= 2 and question.premise_count <= 32
+    premise_count: i32 where premise_count >= 2 and premise_count <= 32 = question.premise_count
+    items: mutable array[Premise, 32] = question.premises
+    for i in 0..<question.premise_count:
+        rebind use_negation: Truth, rng = random_truth(rng)
+        if use_negation == Truth.True:
+            items[i.usize()] <- negated_surface(items[i.usize()])
+    conclusion: mutable Premise = question.conclusion
+    rebind negate_conclusion: Truth, rng = random_truth(rng)
+    if negate_conclusion == Truth.True:
+        conclusion <- negated_surface(conclusion)
+    return RelationalQuestion{
+        premises: items,
+        premise_count: premise_count,
+        conclusion: conclusion,
+        truth: question.truth
+    }
+
+def add_categorical_negation(rng: lmut Rng,
+                             question: CategoricalQuestion) -> CategoricalQuestion:
+    assert question.premise_count >= 2 and question.premise_count <= 32
+    premise_count: i32 where premise_count >= 2 and premise_count <= 32 = question.premise_count
+    items: mutable array[Premise, 32] = question.premises
+    # Upstream chooses one form table for the whole syllogism.
+    rebind use_negation: Truth, rng = random_truth(rng)
+    if use_negation == Truth.True:
+        for i in 0..<question.premise_count:
+            items[i.usize()] <- negated_surface(items[i.usize()])
+        return CategoricalQuestion{
+            premises: items,
+            premise_count: premise_count,
+            conclusion: negated_surface(question.conclusion),
+            mood_major: question.mood_major,
+            mood_minor: question.mood_minor,
+            mood_conclusion: question.mood_conclusion,
+            figure: question.figure,
+            truth: question.truth
+        }
+    return question
+
+def direct_linear_relation(item: Premise) -> LinearRelation error[GenerationError]:
+    match item.relation:
+        Relation.Linear(value):
+            return inverse_linear(value) if item.polarity == Polarity.Negated else value
+        _:
+            raise GenerationError.UnsupportedRelation
+
+# Upstream replaces disjoint pairs of direct premises: the first remains
+# visible evidence, while the second states that its relation is the same as or
+# opposite to the first premise's relation.
+def add_meta_relations(rng: lmut Rng,
+                       question: RelationalQuestion) -> RelationalQuestion error[GenerationError]:
+    assert question.premise_count >= 2 and question.premise_count <= 32
+    premise_count: i32 where premise_count >= 2 and premise_count <= 32 = question.premise_count
+    half: i32 = premise_count / 2
+    assert half > 0
+    rebind pair_offset: i32, rng = random_below(rng, half)
+    pair_count: i32 = pair_offset + 1
+    assert pair_count >= 1 and pair_count <= 16
+
+    indices: mutable array[i32, 32] = zeroed
+    for i in 0..<premise_count:
+        indices[i.usize()] <- i
+    for i in 0..<(pair_count * 2):
+        remaining: i32 = premise_count - i
+        assert remaining > 0
+        rebind offset: i32, rng = random_below(rng, remaining)
+        chosen: i32 = i + offset
+        tmp: i32 = indices[i.usize()]
+        indices[i.usize()] <- indices[chosen.usize()]
+        indices[chosen.usize()] <- tmp
+
+    items: mutable array[Premise, 32] = question.premises
+    for pair in 0..<pair_count:
+        source_index: i32 = indices[(pair * 2).usize()]
+        target_index: i32 = indices[(pair * 2 + 1).usize()]
+        assert source_index >= 0 and source_index < 32
+        assert target_index >= 0 and target_index < 32
+        source_relation: LinearRelation = try direct_linear_relation(items[source_index.usize()])
+        target_relation: LinearRelation = try direct_linear_relation(items[target_index.usize()])
+        comparison: MetaRelation = MetaRelation.Same if (
+            source_relation == target_relation
+        ) else MetaRelation.Opposite
+        target: Premise = items[target_index.usize()]
+        assert target.left >= 0 and target.left < 256
+        assert target.right >= 0 and target.right < 256
+        items[target_index.usize()] <- Premise{
+            left: target.left,
+            relation: Relation.Meta(source_index, comparison),
+            right: target.right,
+            polarity: Polarity.Positive
+        }
+    return RelationalQuestion{
+        premises: items,
+        premise_count: premise_count,
+        conclusion: question.conclusion,
+        truth: question.truth
+    }
+
+def meta_relations_valid(question: RelationalQuestion) -> bool:
+    used: mutable array[bool, 32] = zeroed
+    valid: mutable bool = true
+    meta_count: mutable i32 = 0
+    for i in 0..<question.premise_count:
+        item: Premise = question.premises[i.usize()]
+        match item.relation:
+            Relation.Meta(source, comparison):
+                if source >= question.premise_count or source == i:
+                    valid <- false
+                else:
+                    assert source >= 0 and source < 32
+                    if used[source.usize()] or used[i.usize()]:
+                        valid <- false
+                    match question.premises[source.usize()].relation:
+                        Relation.Linear(value):
+                            valid <- valid
+                        _:
+                            valid <- false
+                    used[source.usize()] <- true
+                    used[i.usize()] <- true
+                    meta_count <- meta_count + 1
+            _:
+                valid <- valid
+    return valid and meta_count >= 1 and meta_count <= question.premise_count / 2
+
+def premise(left: EntityId, relation: LinearRelation, right: EntityId,
+            polarity: Polarity) -> Premise:
+    return Premise{
+        left: left,
+        relation: Relation.Linear(relation),
+        right: right,
+        polarity: polarity
+    }
+
+def shuffle_premises(rng: lmut Rng, items: lmut array[Premise, 32],
+                     count: PremiseCount) -> void:
+    for step in 1..<count:
+        i: i32 = count - step
+        bound: i32 = i + 1
+        assert bound > 0
+        rebind other: i32, rng = random_below(rng, bound)
+        tmp: Premise = items[i.usize()]
+        items[i.usize()] <- items[other.usize()]
+        items[other.usize()] <- tmp
+
+def generate_distinction(rng: lmut Rng, count: PremiseCount) -> RelationalQuestion:
+    items: mutable array[Premise, 32] = zeroed
+    parity: mutable bool = false
+    for i in 0..<count:
+        assert i >= 0 and i < 32
+        assert i + 1 >= 0 and i + 1 < 256
+        rebind edge_truth: Truth, rng = random_truth(rng)
+        edge: LinearRelation = LinearRelation.Opposite if edge_truth == Truth.True else LinearRelation.Same
+        parity <- not parity if edge == LinearRelation.Opposite else parity
+        rebind forward_truth: Truth, rng = random_truth(rng)
+        forward: bool = forward_truth == Truth.True
+        items[i.usize()] <- premise(
+            i if forward else i + 1,
+            edge,
+            i + 1 if forward else i,
+            Polarity.Positive
+        )
+
+    entailed: LinearRelation = LinearRelation.Opposite if parity else LinearRelation.Same
+    rebind valid: Truth, rng = random_truth(rng)
+    claimed: LinearRelation = entailed if valid == Truth.True else inverse_linear(entailed)
+    conclusion: Premise = premise(0, claimed, count, Polarity.Positive)
+    rng, items <- shuffle_premises(rng, items, count)
+    return RelationalQuestion{
+        premises: items,
+        premise_count: count,
+        conclusion: conclusion,
+        truth: valid
+    }
+
+def ordered_relation(left_rank: i32, right_rank: i32,
+                     ascending: LinearRelation,
+                     descending: LinearRelation) -> LinearRelation:
+    requires left_rank != right_rank
+    return ascending if left_rank < right_rank else descending
+
+def generate_ordered_chain(rng: lmut Rng, count: PremiseCount,
+                           ascending: LinearRelation,
+                           descending: LinearRelation) -> RelationalQuestion:
+    items: mutable array[Premise, 32] = zeroed
+    rebind chain_truth: Truth, rng = random_truth(rng)
+    chain_relation: LinearRelation = ascending if chain_truth == Truth.True else descending
+    for i in 0..<count:
+        assert i >= 0 and i < 32
+        assert i + 1 >= 0 and i + 1 < 256
+        rebind forward_truth: Truth, rng = random_truth(rng)
+        forward: bool = forward_truth == Truth.True
+        items[i.usize()] <- premise(
+            i if forward else i + 1,
+            chain_relation if forward else inverse_linear(chain_relation),
+            i + 1 if forward else i,
+            Polarity.Positive
+        )
+
+    entity_count: i32 = count + 1
+    assert entity_count > 0
+    rebind left: i32, rng = random_below(rng, entity_count)
+    rebind offset_zero: i32, rng = random_below(rng, count)
+    right: i32 = (left + offset_zero + 1) % entity_count
+    assert left >= 0 and left < 256
+    assert right >= 0 and right < 256
+    assert left != right
+    entailed: LinearRelation = ordered_relation(
+        left, right,
+        chain_relation,
+        inverse_linear(chain_relation)
+    )
+    rebind valid: Truth, rng = random_truth(rng)
+    claimed: LinearRelation = entailed if valid == Truth.True else inverse_linear(entailed)
+    conclusion: Premise = premise(left, claimed, right, Polarity.Positive)
+    rng, items <- shuffle_premises(rng, items, count)
+    return RelationalQuestion{
+        premises: items,
+        premise_count: count,
+        conclusion: conclusion,
+        truth: valid
+    }
+
+def generate_comparison(rng: lmut Rng, count: PremiseCount) -> RelationalQuestion:
+    rebind question: RelationalQuestion, rng = generate_ordered_chain(rng, count, LinearRelation.Less, LinearRelation.More)
+    return question
+
+def generate_temporal(rng: lmut Rng, count: PremiseCount) -> RelationalQuestion:
+    rebind question: RelationalQuestion, rng = generate_ordered_chain(rng, count, LinearRelation.Before, LinearRelation.After)
+    return question
+
+struct Step2:
+    x: i32 where x >= -1 and x <= 1
+    y: i32 where y >= -1 and y <= 1
+    direction: Direction2D
+
+def direction2_step(index: i32 where index >= 0 and index < 8) -> Step2:
+    return when index:
+        0 -> Step2{x: 0, y: -1, direction: Direction2D.North}
+        1 -> Step2{x: 1, y: -1, direction: Direction2D.NorthEast}
+        2 -> Step2{x: 1, y: 0, direction: Direction2D.East}
+        3 -> Step2{x: 1, y: 1, direction: Direction2D.SouthEast}
+        4 -> Step2{x: 0, y: 1, direction: Direction2D.South}
+        5 -> Step2{x: -1, y: 1, direction: Direction2D.SouthWest}
+        6 -> Step2{x: -1, y: 0, direction: Direction2D.West}
+        7 -> Step2{x: -1, y: -1, direction: Direction2D.NorthWest}
+        _ -> Step2{x: 0, y: 0, direction: Direction2D.Same}
+
+def inverse_direction2(direction: Direction2D) -> Direction2D:
+    match direction:
+        Direction2D.Same:
+            return Direction2D.Same
+        Direction2D.North:
+            return Direction2D.South
+        Direction2D.NorthEast:
+            return Direction2D.SouthWest
+        Direction2D.East:
+            return Direction2D.West
+        Direction2D.SouthEast:
+            return Direction2D.NorthWest
+        Direction2D.South:
+            return Direction2D.North
+        Direction2D.SouthWest:
+            return Direction2D.NorthEast
+        Direction2D.West:
+            return Direction2D.East
+        Direction2D.NorthWest:
+            return Direction2D.SouthEast
+
+def sign_i32(value: i32) -> i32 where result >= -1 and result <= 1:
+    return -1 if value < 0 else (1 if value > 0 else 0)
+
+def direction2_from_delta(x: i32, y: i32) -> Direction2D:
+    sx: i32 where sx >= -1 and sx <= 1 = sign_i32(x)
+    sy: i32 where sy >= -1 and sy <= 1 = sign_i32(y)
+    return when sx, sy:
+        0, 0 -> Direction2D.Same
+        0, -1 -> Direction2D.North
+        1, -1 -> Direction2D.NorthEast
+        1, 0 -> Direction2D.East
+        1, 1 -> Direction2D.SouthEast
+        0, 1 -> Direction2D.South
+        -1, 1 -> Direction2D.SouthWest
+        -1, 0 -> Direction2D.West
+        -1, -1 -> Direction2D.NorthWest
+        _ -> Direction2D.Same
+
+def planar_premise(left: EntityId, direction: Direction2D,
+                   right: EntityId, polarity: Polarity) -> Premise:
+    return Premise{
+        left: left,
+        relation: Relation.Planar(direction),
+        right: right,
+        polarity: polarity
+    }
+
+def generate_direction2(rng: lmut Rng,
+                        count: PremiseCount) -> RelationalQuestion error[GenerationError]:
+    for attempt in 0..<64:
+        items: mutable array[Premise, 32] = zeroed
+        total_x: mutable i32 = 0
+        total_y: mutable i32 = 0
+        for i in 0..<count:
+            rebind step_index: i32, rng = random_below(rng, 8)
+            assert step_index >= 0 and step_index < 8
+            step: Step2 = direction2_step(step_index)
+            total_x <- total_x + step.x
+            total_y <- total_y + step.y
+            assert i >= 0 and i < 32
+            assert i + 1 >= 0 and i + 1 < 256
+            items[i.usize()] <- planar_premise(i + 1, step.direction, i, Polarity.Positive)
+
+        # Upstream retries when the endpoint displacement cancels to zero.
+        if total_x != 0 or total_y != 0:
+            entailed: Direction2D = direction2_from_delta(-total_x, -total_y)
+            rebind valid: Truth, rng = random_truth(rng)
+            claimed: Direction2D = entailed if valid == Truth.True else inverse_direction2(entailed)
+            conclusion: Premise = planar_premise(0, claimed, count, Polarity.Positive)
+            rng, items <- shuffle_premises(rng, items, count)
+            return RelationalQuestion{
+                premises: items,
+                premise_count: count,
+                conclusion: conclusion,
+                truth: valid
+            }
+    raise GenerationError.RetryBudgetExhausted
+
+struct Step3:
+    x: i32 where x >= -1 and x <= 1
+    y: i32 where y >= -1 and y <= 1
+    z: i32 where z >= -1 and z <= 1
+
+def direction3_step(index: i32 where index >= 0 and index < 26) -> Step3:
+    # Upstream enumerates the 3x3x3 cube and skips its zero vector.
+    code: i32 = index if index < 13 else index + 1
+    x: i32 = code / 9 - 1
+    y: i32 = (code % 9) / 3 - 1
+    z: i32 = code % 3 - 1
+    assert x >= -1 and x <= 1
+    assert y >= -1 and y <= 1
+    assert z >= -1 and z <= 1
+    return Step3{x: x, y: y, z: z}
+
+def direction3_from_delta(x: i32, y: i32, z: i32) -> Direction3D:
+    sx: i32 where sx >= -1 and sx <= 1 = sign_i32(x)
+    sy: i32 where sy >= -1 and sy <= 1 = sign_i32(y)
+    sz: i32 where sz >= -1 and sz <= 1 = sign_i32(z)
+    return Direction3D.Same if sx == 0 and sy == 0 and sz == 0 else Direction3D.Offset(sx, sy, sz)
+
+def inverse_direction3(direction: Direction3D) -> Direction3D:
+    match direction:
+        Direction3D.Same:
+            return Direction3D.Same
+        Direction3D.Offset(x, y, z):
+            return Direction3D.Offset(-x, -y, -z)
+
+def step3_of_direction(direction: Direction3D) -> Step3:
+    match direction:
+        Direction3D.Same:
+            return Step3{x: 0, y: 0, z: 0}
+        Direction3D.Offset(x, y, z):
+            assert x >= -1 and x <= 1
+            assert y >= -1 and y <= 1
+            assert z >= -1 and z <= 1
+            return Step3{x: x, y: y, z: z}
+
+def spatial_premise(left: EntityId, direction: Direction3D,
+                    right: EntityId, polarity: Polarity) -> Premise:
+    return Premise{
+        left: left,
+        relation: Relation.Spatial(direction),
+        right: right,
+        polarity: polarity
+    }
+
+def generate_direction3(rng: lmut Rng,
+                        count: PremiseCount) -> RelationalQuestion error[GenerationError]:
+    for attempt in 0..<64:
+        items: mutable array[Premise, 32] = zeroed
+        total_x: mutable i32 = 0
+        total_y: mutable i32 = 0
+        total_z: mutable i32 = 0
+        for i in 0..<count:
+            rebind step_index: i32, rng = random_below(rng, 26)
+            assert step_index >= 0 and step_index < 26
+            step: Step3 = direction3_step(step_index)
+            total_x <- total_x + step.x
+            total_y <- total_y + step.y
+            total_z <- total_z + step.z
+            assert i >= 0 and i < 32
+            assert i + 1 >= 0 and i + 1 < 256
+            items[i.usize()] <- spatial_premise(
+                i + 1, Direction3D.Offset(step.x, step.y, step.z), i, Polarity.Positive
+            )
+
+        if total_x != 0 or total_y != 0 or total_z != 0:
+            entailed: Direction3D = direction3_from_delta(-total_x, -total_y, -total_z)
+            rebind valid: Truth, rng = random_truth(rng)
+            claimed: Direction3D = entailed if valid == Truth.True else inverse_direction3(entailed)
+            conclusion: Premise = spatial_premise(0, claimed, count, Polarity.Positive)
+            rng, items <- shuffle_premises(rng, items, count)
+            return RelationalQuestion{
+                premises: items,
+                premise_count: count,
+                conclusion: conclusion,
+                truth: valid
+            }
+    raise GenerationError.RetryBudgetExhausted
+
+def time_from_delta(delta: i32) -> TimeRelation:
+    return TimeRelation.Earlier if delta < 0 else (
+        TimeRelation.Later if delta > 0 else TimeRelation.Simultaneous
+    )
+
+def inverse_time(time: TimeRelation) -> TimeRelation:
+    match time:
+        TimeRelation.Earlier:
+            return TimeRelation.Later
+        TimeRelation.Simultaneous:
+            return TimeRelation.Simultaneous
+        TimeRelation.Later:
+            return TimeRelation.Earlier
+
+def time_delta(time: TimeRelation) -> i32:
+    match time:
+        TimeRelation.Earlier:
+            return -1
+        TimeRelation.Simultaneous:
+            return 0
+        TimeRelation.Later:
+            return 1
+
+def spacetime_premise(left: EntityId, direction: Direction3D, time: TimeRelation,
+                      right: EntityId, polarity: Polarity) -> Premise:
+    return Premise{
+        left: left,
+        relation: Relation.SpaceTime(direction, time),
+        right: right,
+        polarity: polarity
+    }
+
+def generate_direction4(rng: lmut Rng,
+                        count: PremiseCount) -> RelationalQuestion error[GenerationError]:
+    for attempt in 0..<64:
+        items: mutable array[Premise, 32] = zeroed
+        total_x: mutable i32 = 0
+        total_y: mutable i32 = 0
+        total_z: mutable i32 = 0
+        total_t: mutable i32 = 0
+        for i in 0..<count:
+            rebind step_index: i32, rng = random_below(rng, 26)
+            rebind time_index: i32, rng = random_below(rng, 3)
+            assert step_index >= 0 and step_index < 26
+            step: Step3 = direction3_step(step_index)
+            time_step: i32 = time_index - 1
+            total_x <- total_x + step.x
+            total_y <- total_y + step.y
+            total_z <- total_z + step.z
+            total_t <- total_t + time_step
+            assert i >= 0 and i < 32
+            assert i + 1 >= 0 and i + 1 < 256
+            items[i.usize()] <- spacetime_premise(
+                i + 1,
+                Direction3D.Offset(step.x, step.y, step.z),
+                time_from_delta(time_step),
+                i,
+                Polarity.Positive
+            )
+
+        if total_x != 0 or total_y != 0 or total_z != 0:
+            entailed_space: Direction3D = direction3_from_delta(-total_x, -total_y, -total_z)
+            entailed_time: TimeRelation = time_from_delta(-total_t)
+            rebind valid: Truth, rng = random_truth(rng)
+            claimed_space: Direction3D = entailed_space if valid == Truth.True else inverse_direction3(entailed_space)
+            claimed_time: TimeRelation = entailed_time if valid == Truth.True else inverse_time(entailed_time)
+            conclusion: Premise = spacetime_premise(
+                0, claimed_space, claimed_time, count, Polarity.Positive
+            )
+            rng, items <- shuffle_premises(rng, items, count)
+            return RelationalQuestion{
+                premises: items,
+                premise_count: count,
+                conclusion: conclusion,
+                truth: valid
+            }
+    raise GenerationError.RetryBudgetExhausted
+
+def quantifier_from_index(index: i32 where index >= 0 and index < 4) -> Quantifier:
+    return when index:
+        0 -> Quantifier.All
+        1 -> Quantifier.No
+        2 -> Quantifier.Some
+        3 -> Quantifier.SomeNot
+        _ -> Quantifier.All
+
+def figure_from_index(index: i32 where index >= 0 and index < 4) -> Figure:
+    return when index:
+        0 -> Figure.One
+        1 -> Figure.Two
+        2 -> Figure.Three
+        3 -> Figure.Four
+        _ -> Figure.One
+
+def syllogism_valid(major: Quantifier, minor: Quantifier,
+                    conclusion: Quantifier, figure: Figure) -> bool:
+    # Exact transcription of upstream `validRules` (A/E/I/O =
+    # All/No/Some/SomeNot). `when` guarantees this table is disjoint.
+    return when major, minor, conclusion, figure:
+        Quantifier.All, Quantifier.All, Quantifier.All, Figure.One -> true
+        Quantifier.No, Quantifier.All, Quantifier.No, Figure.One -> true
+        Quantifier.All, Quantifier.Some, Quantifier.Some, Figure.One -> true
+        Quantifier.No, Quantifier.Some, Quantifier.SomeNot, Figure.One -> true
+        Quantifier.All, Quantifier.All, Quantifier.Some, Figure.One -> true
+        Quantifier.No, Quantifier.All, Quantifier.SomeNot, Figure.One -> true
+
+        Quantifier.All, Quantifier.No, Quantifier.No, Figure.Two -> true
+        Quantifier.No, Quantifier.All, Quantifier.No, Figure.Two -> true
+        Quantifier.No, Quantifier.Some, Quantifier.SomeNot, Figure.Two -> true
+        Quantifier.All, Quantifier.SomeNot, Quantifier.SomeNot, Figure.Two -> true
+        Quantifier.All, Quantifier.No, Quantifier.SomeNot, Figure.Two -> true
+        Quantifier.No, Quantifier.All, Quantifier.SomeNot, Figure.Two -> true
+
+        Quantifier.All, Quantifier.Some, Quantifier.Some, Figure.Three -> true
+        Quantifier.Some, Quantifier.All, Quantifier.Some, Figure.Three -> true
+        Quantifier.SomeNot, Quantifier.All, Quantifier.SomeNot, Figure.Three -> true
+        Quantifier.No, Quantifier.Some, Quantifier.SomeNot, Figure.Three -> true
+        Quantifier.All, Quantifier.All, Quantifier.Some, Figure.Three -> true
+        Quantifier.No, Quantifier.All, Quantifier.SomeNot, Figure.Three -> true
+
+        Quantifier.All, Quantifier.No, Quantifier.No, Figure.Four -> true
+        Quantifier.Some, Quantifier.All, Quantifier.Some, Figure.Four -> true
+        Quantifier.No, Quantifier.Some, Quantifier.SomeNot, Figure.Four -> true
+        Quantifier.All, Quantifier.No, Quantifier.SomeNot, Figure.Four -> true
+        Quantifier.No, Quantifier.All, Quantifier.SomeNot, Figure.Four -> true
+        Quantifier.All, Quantifier.All, Quantifier.Some, Figure.Four -> true
+        _ -> false
+
+def categorical_premise(left: EntityId, quantifier: Quantifier,
+                        right: EntityId) -> Premise:
+    return Premise{
+        left: left,
+        relation: Relation.Categorical(quantifier),
+        right: right,
+        polarity: Polarity.Positive
+    }
+
+def generate_categorical(rng: lmut Rng,
+                         count: PremiseCount) -> CategoricalQuestion error[GenerationError]:
+    rebind desired: Truth, rng = random_truth(rng)
+    for attempt in 0..<256:
+        rebind major_index: i32, rng = random_below(rng, 4)
+        rebind minor_index: i32, rng = random_below(rng, 4)
+        rebind conclusion_index: i32, rng = random_below(rng, 4)
+        rebind figure_index: i32, rng = random_below(rng, 4)
+        assert major_index >= 0 and major_index < 4
+        assert minor_index >= 0 and minor_index < 4
+        assert conclusion_index >= 0 and conclusion_index < 4
+        assert figure_index >= 0 and figure_index < 4
+        major: Quantifier = quantifier_from_index(major_index)
+        minor: Quantifier = quantifier_from_index(minor_index)
+        conclusion_mood: Quantifier = quantifier_from_index(conclusion_index)
+        figure: Figure = figure_from_index(figure_index)
+        valid: bool = syllogism_valid(major, minor, conclusion_mood, figure)
+        if valid == (desired == Truth.True):
+            items: mutable array[Premise, 32] = zeroed
+            match figure:
+                Figure.One:
+                    items[0] <- categorical_premise(2, major, 1)
+                    items[1] <- categorical_premise(0, minor, 2)
+                Figure.Two:
+                    items[0] <- categorical_premise(1, major, 2)
+                    items[1] <- categorical_premise(0, minor, 2)
+                Figure.Three:
+                    items[0] <- categorical_premise(2, major, 1)
+                    items[1] <- categorical_premise(2, minor, 0)
+                Figure.Four:
+                    items[0] <- categorical_premise(1, major, 2)
+                    items[1] <- categorical_premise(2, minor, 0)
+
+            for i in 2..<count:
+                rebind distractor_mood_index: i32, rng = random_below(rng, 4)
+                assert distractor_mood_index >= 0 and distractor_mood_index < 4
+                assert i + 1 >= 0 and i + 1 < 256
+                items[i.usize()] <- categorical_premise(
+                    i + 1, quantifier_from_index(distractor_mood_index), i
+                )
+
+            conclusion: Premise = categorical_premise(0, conclusion_mood, 1)
+            rng, items <- shuffle_premises(rng, items, count)
+            return CategoricalQuestion{
+                premises: items,
+                premise_count: count,
+                conclusion: conclusion,
+                mood_major: major,
+                mood_minor: minor,
+                mood_conclusion: conclusion_mood,
+                figure: figure,
+                truth: desired
+            }
+    raise GenerationError.RetryBudgetExhausted
+
+def solve_categorical(question: CategoricalQuestion) -> Truth:
+    valid: bool = syllogism_valid(
+        question.mood_major,
+        question.mood_minor,
+        question.mood_conclusion,
+        question.figure
+    )
+    return Truth.True if valid else Truth.False
+
+def operator_from_index(index: i32 where index >= 0 and index < 6) -> BinaryOperator:
+    return when index:
+        0 -> BinaryOperator.And
+        1 -> BinaryOperator.Nand
+        2 -> BinaryOperator.Or
+        3 -> BinaryOperator.Nor
+        4 -> BinaryOperator.Xor
+        5 -> BinaryOperator.Xnor
+        _ -> BinaryOperator.And
+
+def all_binary_operators() -> BinaryOperatorConfig:
+    return BinaryOperatorConfig{
+        and_enabled: true,
+        nand_enabled: true,
+        or_enabled: true,
+        nor_enabled: true,
+        xor_enabled: true,
+        xnor_enabled: true
+    }
+
+def binary_operator_enabled(config: BinaryOperatorConfig, index: i32) -> bool:
+    return match index:
+        0: config.and_enabled
+        1: config.nand_enabled
+        2: config.or_enabled
+        3: config.nor_enabled
+        4: config.xor_enabled
+        5: config.xnor_enabled
+        _: false
+
+def choose_binary_operator(rng: lmut Rng,
+                           config: BinaryOperatorConfig) -> BinaryOperator error[GenerationError]:
+    count: mutable i32 = 0
+    for i in 0..<6:
+        count <- count + 1 if binary_operator_enabled(config, i) else count
+    if count == 0:
+        raise GenerationError.NoEnabledBinaryOperator
+    assert count > 0 and count <= 6
+    enabled_count: i32 where enabled_count > 0 = count
+    rebind selected_rank: i32, rng = random_below(rng, enabled_count)
+    seen: mutable i32 = 0
+    for i in 0..<6:
+        if binary_operator_enabled(config, i):
+            if seen == selected_rank:
+                assert i >= 0 and i < 6
+                return operator_from_index(i)
+            seen <- seen + 1
+    raise GenerationError.NoEnabledBinaryOperator
+
+def same_relation(left: Relation, right: Relation) -> bool:
+    return match (left, right):
+        Relation.Linear(a), Relation.Linear(b): a == b
+        Relation.Planar(a), Relation.Planar(b): a == b
+        Relation.Spatial(a), Relation.Spatial(b): a == b
+        Relation.SpaceTime(a_space, a_time), Relation.SpaceTime(b_space, b_time):
+            a_space == b_space and a_time == b_time
+        Relation.Categorical(a), Relation.Categorical(b): a == b
+        _: false
+
+def relation_candidate(question: RelationalQuestion, left: EntityId,
+                       relation: Relation, right: EntityId) -> RelationalQuestion:
+    assert question.premise_count >= 2 and question.premise_count <= 32
+    premise_count: i32 where premise_count >= 2 and premise_count <= 32 = question.premise_count
+    return RelationalQuestion{
+        premises: question.premises,
+        premise_count: premise_count,
+        conclusion: Premise{
+            left: left,
+            relation: relation,
+            right: right,
+            polarity: Polarity.Positive
+        },
+        truth: Truth.True
+    }
+
+def direction3_candidate(index: i32 where index >= 0 and index < 27) -> Direction3D:
+    if index == 0:
+        return Direction3D.Same
+    step_index: i32 = index - 1
+    assert step_index >= 0 and step_index < 26
+    step: Step3 = direction3_step(step_index)
+    return Direction3D.Offset(step.x, step.y, step.z)
+
+def time_candidate(index: i32 where index >= 0 and index < 3) -> TimeRelation:
+    return match index:
+        0: TimeRelation.Earlier
+        1: TimeRelation.Simultaneous
+        2: TimeRelation.Later
+        _: TimeRelation.Simultaneous
+
+# Infer the pair relation from the complete shuffled premise graph. No generator
+# coordinate map or private answer is consulted.
+def infer_pair_relation(question: RelationalQuestion, family: QuestionFamily,
+                        left: EntityId, right: EntityId) -> Relation error[GenerationError]:
+    match family:
+        QuestionFamily.Distinction:
+            for index in 0..<2:
+                value: LinearRelation = LinearRelation.Same if index == 0 else LinearRelation.Opposite
+                candidate: RelationalQuestion = relation_candidate(
+                    question, left, Relation.Linear(value), right
+                )
+                solved: Truth = try solve_distinction(candidate)
+                if solved == Truth.True:
+                    return Relation.Linear(value)
+        QuestionFamily.Comparison:
+            for index in 0..<2:
+                value: LinearRelation = LinearRelation.Less if index == 0 else LinearRelation.More
+                candidate: RelationalQuestion = relation_candidate(
+                    question, left, Relation.Linear(value), right
+                )
+                solved: Truth = try solve_ordered(candidate)
+                if solved == Truth.True:
+                    return Relation.Linear(value)
+        QuestionFamily.Temporal:
+            for index in 0..<2:
+                value: LinearRelation = LinearRelation.Before if index == 0 else LinearRelation.After
+                candidate: RelationalQuestion = relation_candidate(
+                    question, left, Relation.Linear(value), right
+                )
+                solved: Truth = try solve_ordered(candidate)
+                if solved == Truth.True:
+                    return Relation.Linear(value)
+        QuestionFamily.Direction2D:
+            for index in 0..<9:
+                assert index >= 0 and index < 9
+                value: mutable Direction2D = Direction2D.Same
+                if index > 0:
+                    step_index: i32 = index - 1
+                    assert step_index >= 0 and step_index < 8
+                    value <- direction2_step(step_index).direction
+                candidate: RelationalQuestion = relation_candidate(
+                    question, left, Relation.Planar(value), right
+                )
+                solved: Truth = try solve_direction2(candidate)
+                if solved == Truth.True:
+                    return Relation.Planar(value)
+        QuestionFamily.Direction3D:
+            for index in 0..<27:
+                assert index >= 0 and index < 27
+                value: Direction3D = direction3_candidate(index)
+                candidate: RelationalQuestion = relation_candidate(
+                    question, left, Relation.Spatial(value), right
+                )
+                solved: Truth = try solve_direction3(candidate)
+                if solved == Truth.True:
+                    return Relation.Spatial(value)
+        QuestionFamily.Direction4D:
+            for space_index in 0..<27:
+                assert space_index >= 0 and space_index < 27
+                space: Direction3D = direction3_candidate(space_index)
+                for time_index in 0..<3:
+                    assert time_index >= 0 and time_index < 3
+                    time: TimeRelation = time_candidate(time_index)
+                    candidate: RelationalQuestion = relation_candidate(
+                        question, left, Relation.SpaceTime(space, time), right
+                    )
+                    solved: Truth = try solve_direction4(candidate)
+                    if solved == Truth.True:
+                        return Relation.SpaceTime(space, time)
+        _:
+            raise GenerationError.AnalogyNeedsBaseFamily
+    raise GenerationError.DisconnectedQuestion
+
+def choose_analogy_entities(rng: lmut Rng,
+                            count: i32 where count >= 3 and count <= 32) -> array[i32, 4]:
+    pool: mutable array[i32, 33] = zeroed
+    entity_count: i32 = count + 1
+    for i in 0..<entity_count:
+        pool[i.usize()] <- i
+    selected: mutable array[i32, 4] = zeroed
+    for i in 0..<4:
+        remaining: i32 = entity_count - i
+        assert remaining > 0
+        rebind offset: i32, rng = random_below(rng, remaining)
+        chosen: i32 = i + offset
+        tmp: i32 = pool[i.usize()]
+        pool[i.usize()] <- pool[chosen.usize()]
+        pool[chosen.usize()] <- tmp
+        selected[i.usize()] <- pool[i.usize()]
+    return selected
+
+def analogy_family(index: i32 where index >= 0 and index < 6) -> QuestionFamily:
+    return match index:
+        0: QuestionFamily.Distinction
+        1: QuestionFamily.Comparison
+        2: QuestionFamily.Temporal
+        3: QuestionFamily.Direction2D
+        4: QuestionFamily.Direction3D
+        5: QuestionFamily.Direction4D
+        _: QuestionFamily.Distinction
+
+def generate_analogy_evidence(rng: lmut Rng, family: QuestionFamily,
+                              count: i32 where count >= 3 and count <= 32) -> RelationalQuestion error[GenerationError]:
+    match family:
+        QuestionFamily.Distinction:
+            rebind question: RelationalQuestion, rng = generate_distinction(rng, count)
+            return question
+        QuestionFamily.Comparison:
+            rebind question: RelationalQuestion, rng = generate_comparison(rng, count)
+            return question
+        QuestionFamily.Temporal:
+            rebind question: RelationalQuestion, rng = generate_temporal(rng, count)
+            return question
+        QuestionFamily.Direction2D:
+            rebind result: RelationalQuestion error[GenerationError], rng = generate_direction2(rng, count)
+            return try result
+        QuestionFamily.Direction3D:
+            rebind result: RelationalQuestion error[GenerationError], rng = generate_direction3(rng, count)
+            return try result
+        QuestionFamily.Direction4D:
+            rebind result: RelationalQuestion error[GenerationError], rng = generate_direction4(rng, count)
+            return try result
+        _:
+            raise GenerationError.AnalogyNeedsBaseFamily
+
+def generate_analogy(rng: lmut Rng,
+                     count: i32 where count >= 3 and count <= 32) -> AnalogyQuestion error[GenerationError]:
+    rebind family_index: i32, rng = random_below(rng, 6)
+    assert family_index >= 0 and family_index < 6
+    family: QuestionFamily = analogy_family(family_index)
+    directional: bool = family_index >= 3
+    rebind desired_same: Truth, rng = random_truth(rng)
+
+    for attempt in 0..<128:
+        rebind evidence_result: RelationalQuestion error[GenerationError], rng = generate_analogy_evidence(rng, family, count)
+        evidence: RelationalQuestion = try evidence_result
+        rebind entities: array[i32, 4], rng = choose_analogy_entities(rng, count)
+        assert entities[0] >= 0 and entities[0] < 256
+        assert entities[1] >= 0 and entities[1] < 256
+        assert entities[2] >= 0 and entities[2] < 256
+        assert entities[3] >= 0 and entities[3] < 256
+        first_left: i32 where first_left >= 0 and first_left < 256 = entities[0]
+        first_right: i32 where first_right >= 0 and first_right < 256 = entities[1]
+        second_left: i32 where second_left >= 0 and second_left < 256 = entities[2]
+        second_right: i32 where second_right >= 0 and second_right < 256 = entities[3]
+        first_relation: Relation = try infer_pair_relation(
+            evidence, family, first_left, first_right
+        )
+        second_relation: Relation = try infer_pair_relation(
+            evidence, family, second_left, second_right
+        )
+        actually_same: bool = same_relation(first_relation, second_relation)
+        if not directional or actually_same == (desired_same == Truth.True):
+            first: Premise = Premise{
+                left: first_left, relation: first_relation, right: first_right,
+                polarity: Polarity.Positive
+            }
+            second: Premise = Premise{
+                left: second_left, relation: second_relation, right: second_right,
+                polarity: Polarity.Positive
+            }
+            rebind claimed_same: Truth, rng = random_truth(rng)
+            answer: Truth = Truth.True if (
+                claimed_same == Truth.True
+            ) == actually_same else Truth.False
+            return AnalogyQuestion{
+                family: family,
+                evidence: evidence,
+                first: first,
+                second: second,
+                claimed_same: claimed_same,
+                truth: answer
+            }
+    raise GenerationError.RetryBudgetExhausted
+
+def solve_analogy(question: AnalogyQuestion) -> Truth error[GenerationError]:
+    assert question.first.left >= 0 and question.first.left < 256
+    assert question.first.right >= 0 and question.first.right < 256
+    assert question.second.left >= 0 and question.second.left < 256
+    assert question.second.right >= 0 and question.second.right < 256
+    first: Relation = try infer_pair_relation(
+        question.evidence, question.family, question.first.left, question.first.right
+    )
+    second: Relation = try infer_pair_relation(
+        question.evidence, question.family, question.second.left, question.second.right
+    )
+    actually_same: bool = same_relation(first, second)
+    return Truth.True if (question.claimed_same == Truth.True) == actually_same else Truth.False
+
+struct BaseExpression:
+    question: BaseQuestion
+    truth: Truth
+
+def generate_base_expression(rng: lmut Rng,
+                             count: PremiseCount) -> BaseExpression error[GenerationError]:
+    rebind family_index: i32, rng = random_below(rng, 7)
+    match family_index:
+        0:
+            rebind question: RelationalQuestion, rng = generate_distinction(rng, count)
+            return BaseExpression{question: BaseQuestion.Relational(question), truth: question.truth}
+        1:
+            rebind question: RelationalQuestion, rng = generate_comparison(rng, count)
+            return BaseExpression{question: BaseQuestion.Relational(question), truth: question.truth}
+        2:
+            rebind question: RelationalQuestion, rng = generate_temporal(rng, count)
+            return BaseExpression{question: BaseQuestion.Relational(question), truth: question.truth}
+        3:
+            rebind result: RelationalQuestion error[GenerationError], rng = generate_direction2(rng, count)
+            question: RelationalQuestion = try result
+            return BaseExpression{question: BaseQuestion.Relational(question), truth: question.truth}
+        4:
+            rebind result: RelationalQuestion error[GenerationError], rng = generate_direction3(rng, count)
+            question: RelationalQuestion = try result
+            return BaseExpression{question: BaseQuestion.Relational(question), truth: question.truth}
+        5:
+            rebind result: RelationalQuestion error[GenerationError], rng = generate_direction4(rng, count)
+            question: RelationalQuestion = try result
+            return BaseExpression{question: BaseQuestion.Relational(question), truth: question.truth}
+        _:
+            rebind result: CategoricalQuestion error[GenerationError], rng = generate_categorical(rng, count)
+            question: CategoricalQuestion = try result
+            return BaseExpression{question: BaseQuestion.Categorical(question), truth: question.truth}
+
+def power_of_two(exponent: BinaryDepth) -> i32 where result >= 1 and result <= 256:
+    result_value: mutable i32 = 1
+    for i in 0..<exponent:
+        result_value <- result_value * 2
+    assert result_value >= 1 and result_value <= 256
+    return result_value
+
+def generate_boolean(rng: lmut Rng, count: PremiseCount,
+                     depth: i32 where depth >= 1 and depth <= 8,
+                     operators: BinaryOperatorConfig) -> BooleanQuestion error[GenerationError]:
+    leaf_count: i32 where leaf_count >= 1 and leaf_count <= 256 = power_of_two(depth)
+    bases: mutable array[BaseQuestion, 256] = zeroed
+    nodes: mutable array[ExpressionNode, 511] = zeroed
+    values: mutable array[Truth, 511] = zeroed
+
+    for i in 0..<leaf_count:
+        rebind base_result: BaseExpression error[GenerationError], rng = generate_base_expression(rng, count)
+        base: BaseExpression = try base_result
+        bases[i.usize()] <- base.question
+        nodes[i.usize()] <- ExpressionNode.Leaf(i)
+        values[i.usize()] <- base.truth
+
+    current_start: mutable i32 = 0
+    current_count: mutable i32 = leaf_count
+    next_index: mutable i32 = leaf_count
+    for level in 0..<depth:
+        parent_start: i32 = next_index
+        pair_count: i32 = current_count / 2
+        for pair in 0..<pair_count:
+            left: i32 = current_start + pair * 2
+            right: i32 = left + 1
+            assert left >= 0 and left < 511
+            assert right >= 0 and right < 511
+            assert next_index >= 0 and next_index < 511
+            rebind operator_result: BinaryOperator error[GenerationError], rng = choose_binary_operator(rng, operators)
+            op: BinaryOperator = try operator_result
+            nodes[next_index.usize()] <- ExpressionNode.Apply(op, left, right)
+            values[next_index.usize()] <- apply_binary(
+                op, values[left.usize()], values[right.usize()]
+            )
+            next_index <- next_index + 1
+        current_start <- parent_start
+        current_count <- pair_count
+
+    root: i32 = next_index - 1
+    assert root >= 0 and root < 511
+    assert next_index >= 1 and next_index <= 511
+    node_count: i32 where node_count >= 1 and node_count <= 511 = next_index
+    return BooleanQuestion{
+        bases: bases,
+        base_count: leaf_count,
+        nodes: nodes,
+        node_count: node_count,
+        root: root,
+        depth: depth,
+        truth: values[root.usize()]
+    }
+
+def evaluate_expression_node(node: ExpressionNode,
+                             bases: array[BaseQuestion, 256]&,
+                             values: array[Truth, 511]&) -> Truth:
+    match node:
+        ExpressionNode.Leaf(base):
+            match bases[base.usize()]:
+                BaseQuestion.Relational(atom):
+                    return atom.truth
+                BaseQuestion.Categorical(atom):
+                    return solve_categorical(atom)
+        ExpressionNode.Apply(op, left, right):
+            return apply_binary(op, values[left.usize()], values[right.usize()])
+
+struct EvaluationContext:
+    question: BooleanQuestion
+    values: mutable array[Truth, 511]
+    cursor: mutable i32
+
+def evaluation_current(context: EvaluationContext&) -> ExpressionNode:
+    assert context.cursor >= 0 and context.cursor < context.question.node_count
+    return context.question.nodes[context.cursor.usize()]
+
+def evaluation_consume(context: lmut EvaluationContext,
+                       node: ExpressionNode) -> void:
+    assert context.cursor >= 0 and context.cursor < context.question.node_count
+    context.values[context.cursor.usize()] <- evaluate_expression_node(
+        node, context.question.bases, context.values
+    )
+    context.cursor <- context.cursor + 1
+
+def solve_boolean(question: BooleanQuestion) -> Truth:
+    context: mutable EvaluationContext = EvaluationContext{
+        question: question,
+        values: zeroed,
+        cursor: 0
+    }
+    machine over evaluation_current(context) while context.cursor < context.question.node_count:
+        state Scan
+        start Scan
+
+        Scan, node:
+            context <- evaluation_consume(context, node)
+            -> Scan
+    return context.values[question.root.usize()]
+
+# WCST-style sorting -------------------------------------------------------
+
+def sort_property(index: i32 where index >= 0 and index < 4) -> SortProperty:
+    return match index:
+        0: SortProperty.Color
+        1: SortProperty.Material
+        2: SortProperty.Shape
+        3: SortProperty.Size
+        _: SortProperty.Color
+
+def random_sort_order(rng: lmut Rng) -> SortOrder:
+    rebind truth: Truth, rng = random_truth(rng)
+    return SortOrder.Descending if truth == Truth.True else SortOrder.Ascending
+
+def random_sort_card(rng: lmut Rng, active: array[bool, 4]&) -> SortCard:
+    rebind color_index: i32, rng = random_below(rng, 7)
+    rebind material_index: i32, rng = random_below(rng, 5)
+    rebind shape_index: i32, rng = random_below(rng, 12)
+    rebind size_index: i32, rng = random_below(rng, 5)
+    color: SortColor = match color_index:
+        0: SortColor.Red
+        1: SortColor.Orange
+        2: SortColor.Yellow
+        3: SortColor.Green
+        4: SortColor.Blue
+        5: SortColor.Indigo
+        _: SortColor.Violet
+    material: SortMaterial = match material_index:
+        0: SortMaterial.Wood
+        1: SortMaterial.Copper
+        2: SortMaterial.Silver
+        3: SortMaterial.Gold
+        _: SortMaterial.Platinum
+    shape: SortShape = match shape_index:
+        0: SortShape.Dot
+        1: SortShape.Line
+        2: SortShape.Triangle
+        3: SortShape.Square
+        4: SortShape.Pentagon
+        5: SortShape.Hexagon
+        6: SortShape.Heptagon
+        7: SortShape.Octagon
+        8: SortShape.Nonagon
+        9: SortShape.Decagon
+        10: SortShape.Hendecagon
+        _: SortShape.Dodecagon
+    size: SortSize = match size_index:
+        0: SortSize.Small
+        1: SortSize.Medium
+        2: SortSize.Large
+        3: SortSize.ExtraLarge
+        _: SortSize.ExtraExtraLarge
+    active_copy: mutable array[bool, 4] = zeroed
+    for i in 0..<4:
+        active_copy[i.usize()] <- active[i.usize()]
+    return SortCard{color, material, shape, size, active: active_copy}
+
+def color_rank(value: SortColor) -> i32:
+    return match value:
+        SortColor.Red: 0
+        SortColor.Orange: 1
+        SortColor.Yellow: 2
+        SortColor.Green: 3
+        SortColor.Blue: 4
+        SortColor.Indigo: 5
+        SortColor.Violet: 6
+
+def material_rank(value: SortMaterial) -> i32:
+    return match value:
+        SortMaterial.Wood: 0
+        SortMaterial.Copper: 1
+        SortMaterial.Silver: 2
+        SortMaterial.Gold: 3
+        SortMaterial.Platinum: 4
+
+def shape_rank(value: SortShape) -> i32:
+    return match value:
+        SortShape.Dot: 0
+        SortShape.Line: 1
+        SortShape.Triangle: 2
+        SortShape.Square: 3
+        SortShape.Pentagon: 4
+        SortShape.Hexagon: 5
+        SortShape.Heptagon: 6
+        SortShape.Octagon: 7
+        SortShape.Nonagon: 8
+        SortShape.Decagon: 9
+        SortShape.Hendecagon: 10
+        SortShape.Dodecagon: 11
+
+def size_rank(value: SortSize) -> i32:
+    return match value:
+        SortSize.Small: 0
+        SortSize.Medium: 1
+        SortSize.Large: 2
+        SortSize.ExtraLarge: 3
+        SortSize.ExtraExtraLarge: 4
+
+def card_property_rank(card: SortCard, property: SortProperty) -> i32:
+    return match property:
+        SortProperty.Color: color_rank(card.color)
+        SortProperty.Material: material_rank(card.material)
+        SortProperty.Shape: shape_rank(card.shape)
+        SortProperty.Size: size_rank(card.size)
+
+def compare_sort_cards(left: SortCard, right: SortCard,
+                       keys: array[SortKey, 4]&,
+                       key_count: i32 where key_count >= 2 and key_count <= 4) -> i32:
+    comparison: mutable i32 = 0
+    for i in 0..<key_count:
+        key: SortKey = keys[i.usize()]
+        left_rank: i32 = card_property_rank(left, key.property)
+        right_rank: i32 = card_property_rank(right, key.property)
+        if comparison == 0 and left_rank != right_rank:
+            direction: i32 = 1 if key.order == SortOrder.Ascending else -1
+            comparison <- direction if left_rank > right_rank else -direction
+    return comparison
+
+def same_sort_card(left: SortCard, right: SortCard) -> bool:
+    return (left.color == right.color and left.material == right.material and
+            left.shape == right.shape and left.size == right.size)
+
+def sorted_card_indices(cards: array[SortCard, 34]&,
+                        count: i32 where count >= 4 and count <= 34,
+                        keys: array[SortKey, 4]&,
+                        key_count: i32 where key_count >= 2 and key_count <= 4) -> array[i32, 34]:
+    order: mutable array[i32, 34] = zeroed
+    for i in 0..<count:
+        order[i.usize()] <- i
+    for pass_index in 0..<count:
+        remaining: i32 = count - pass_index
+        for i in 1..<remaining:
+            if compare_sort_cards(
+                    cards[order[i.usize()].usize()],
+                    cards[order[(i - 1).usize()].usize()], keys, key_count) < 0:
+                tmp: i32 = order[i.usize()]
+                order[i.usize()] <- order[(i - 1).usize()]
+                order[(i - 1).usize()] <- tmp
+    return order
+
+def shuffle_sort_cards(rng: lmut Rng, cards: lmut array[SortCard, 34],
+                       count: i32 where count >= 4 and count <= 34) -> void:
+    for step in 1..<count:
+        i: i32 = count - step
+        bound: i32 = i + 1
+        assert bound > 0
+        rebind other: i32, rng = random_below(rng, bound)
+        tmp: SortCard = cards[i.usize()]
+        cards[i.usize()] <- cards[other.usize()]
+        cards[other.usize()] <- tmp
+
+def generate_sorting(rng: lmut Rng,
+                     count: i32 where count >= 4 and count <= 34,
+                     min_width: i32 where min_width >= 2 and min_width <= 4) -> SortingQuestion error[GenerationError]:
+    width_span: i32 = 4 - min_width
+    key_count_raw: mutable i32 = 4
+    if width_span > 0:
+        rebind width_offset: i32, rng = random_below(rng, width_span)
+        key_count_raw <- min_width + width_offset
+    assert key_count_raw >= 2 and key_count_raw <= 4
+    key_count: i32 where key_count >= 2 and key_count <= 4 = key_count_raw
+
+    rebind start: i32, rng = random_below(rng, 4)
+    keys: mutable array[SortKey, 4] = zeroed
+    active: mutable array[bool, 4] = zeroed
+    for i in 0..<key_count:
+        property_index: i32 = (start + i) % 4
+        assert property_index >= 0 and property_index < 4
+        property: SortProperty = sort_property(property_index)
+        rebind order: SortOrder, rng = random_sort_order(rng)
+        keys[i.usize()] <- SortKey{property, order}
+        active[property_index.usize()] <- true
+    for step in 1..<key_count:
+        i: i32 = key_count - step
+        bound: i32 = i + 1
+        assert bound > 0
+        rebind other: i32, rng = random_below(rng, bound)
+        tmp: SortKey = keys[i.usize()]
+        keys[i.usize()] <- keys[other.usize()]
+        keys[other.usize()] <- tmp
+
+    cards: mutable array[SortCard, 34] = zeroed
+    for i in 0..<count:
+        rebind card: SortCard, rng = random_sort_card(rng, active)
+        cards[i.usize()] <- card
+    for attempt in 0..<64:
+        rng, cards <- shuffle_sort_cards(rng, cards, count)
+        expected: array[i32, 34] = sorted_card_indices(cards, count, keys, key_count)
+        differs: mutable bool = false
+        for i in 0..<count:
+            if not same_sort_card(cards[i.usize()], cards[expected[i.usize()].usize()]):
+                differs <- true
+        if differs:
+            return SortingQuestion{
+                cards: cards,
+                expected_order: expected,
+                card_count: count,
+                keys: keys,
+                key_count: key_count
+            }
+    raise GenerationError.RetryBudgetExhausted
+
+def sorting_solution_valid(question: SortingQuestion) -> bool:
+    assert question.key_count >= 2 and question.key_count <= 4
+    key_count: i32 where key_count >= 2 and key_count <= 4 = question.key_count
+    valid: mutable bool = true
+    for i in 1..<question.card_count:
+        left_index: i32 = question.expected_order[(i - 1).usize()]
+        right_index: i32 = question.expected_order[i.usize()]
+        if compare_sort_cards(question.cards[left_index.usize()],
+                              question.cards[right_index.usize()],
+                              question.keys, key_count) > 0:
+            valid <- false
+    return valid
+
+def sorting_initial_unsolved(question: SortingQuestion) -> bool:
+    differs: mutable bool = false
+    for i in 0..<question.card_count:
+        expected_index: i32 = question.expected_order[i.usize()]
+        if not same_sort_card(question.cards[i.usize()],
+                              question.cards[expected_index.usize()]):
+            differs <- true
+    return differs
+
+# Rare upstream Easter eggs ------------------------------------------------
+
+def logic_puzzle_answer(index: i32 where index >= 0 and index < 12) -> Truth:
+    return when index:
+        0 -> Truth.False
+        1 -> Truth.True
+        2 -> Truth.True
+        3 -> Truth.False
+        4 -> Truth.True
+        5 -> Truth.True
+        6 -> Truth.True
+        7 -> Truth.False
+        8 -> Truth.True
+        9 -> Truth.False
+        10 -> Truth.True
+        11 -> Truth.False
+        _ -> Truth.False
+
+def rare_puzzle_override(rng: lmut Rng,
+                         chance_permille: UnitPermille) -> FixedPuzzle?:
+    selected: mutable FixedPuzzle? = null
+    rebind paradox_roll: i32, rng = random_below(rng, 1000)
+    if paradox_roll < chance_permille:
+        rebind paradox_id: i32, rng = random_below(rng, 12)
+        assert paradox_id >= 0 and paradox_id < 12
+        selected <- FixedPuzzle{
+            family: QuestionFamily.Paradox,
+            puzzle_id: paradox_id,
+            answer: FixedPuzzleAnswer.Undetermined
+        }
+
+    # This second independent roll intentionally overrides a selected paradox,
+    # matching the two sequential `if` statements in the browser original.
+    rebind logic_roll: i32, rng = random_below(rng, 1000)
+    if logic_roll < chance_permille:
+        rebind logic_id: i32, rng = random_below(rng, 12)
+        assert logic_id >= 0 and logic_id < 12
+        selected <- FixedPuzzle{
+            family: QuestionFamily.LogicPuzzle,
+            puzzle_id: logic_id,
+            answer: FixedPuzzleAnswer.Determinate(logic_puzzle_answer(logic_id))
+        }
+    return selected
+
+# Upstream-compatible question-class planning --------------------------------
+
+def analogy_base_count(config: SelectionConfig&) -> i32 where result >= 0 and result <= 6:
+    count: mutable i32 = 0
+    count <- count + 1 if config.distinction.enabled else count
+    count <- count + 1 if config.comparison.enabled else count
+    count <- count + 1 if config.temporal.enabled else count
+    count <- count + 1 if config.direction2.enabled else count
+    count <- count + 1 if config.direction3.enabled else count
+    count <- count + 1 if config.direction4.enabled else count
+    assert count >= 0 and count <= 6
+    return count
+
+def binary_base_count(config: SelectionConfig&) -> i32 where result >= 0 and result <= 7:
+    count: i32 = analogy_base_count(config) + (1 if config.categorical.enabled else 0)
+    assert count >= 0 and count <= 7
+    return count
+
+def select_question_plan(rng: lmut Rng,
+                         config: SelectionConfig&) -> SelectedQuestionPlan error[GenerationError]:
+    game: GameConfig = try validate_config(config.game)
+    analogy_bases: i32 = analogy_base_count(config)
+    binary_bases: i32 = binary_base_count(config)
+
+    if config.only_analogy:
+        raise GenerationError.InvalidConfiguration if config.only_binary or config.only_sorting
+        raise GenerationError.AnalogyNeedsBaseFamily if not config.analogy.enabled or analogy_bases < 1
+        raise GenerationError.TooFewPremises if game.premises < 3
+    if config.only_binary:
+        raise GenerationError.InvalidConfiguration if config.only_sorting
+        raise GenerationError.BinaryNeedsTwoBaseFamilies if not config.binary.enabled or binary_bases < 2
+        raise GenerationError.TooFewPremises if game.premises < 4
+    if config.only_sorting:
+        raise GenerationError.InvalidConfiguration if (
+            not config.sorting.enabled or not config.sorting_viewport_available
+        )
+
+    families: mutable array[QuestionFamily, 11] = zeroed
+    deadlines: mutable array[i64, 11] = zeroed
+    choice_count: mutable i32 = 0
+    exclusive_reasoning: bool = config.only_analogy or config.only_binary
+
+    if config.distinction.enabled and not exclusive_reasoning:
+        families[choice_count.usize()] <- QuestionFamily.Distinction
+        deadlines[choice_count.usize()] <- config.distinction.deadline_ms
+        choice_count <- choice_count + 1
+    if config.comparison.enabled and not exclusive_reasoning:
+        families[choice_count.usize()] <- QuestionFamily.Comparison
+        deadlines[choice_count.usize()] <- config.comparison.deadline_ms
+        choice_count <- choice_count + 1
+    if config.temporal.enabled and not exclusive_reasoning:
+        families[choice_count.usize()] <- QuestionFamily.Temporal
+        deadlines[choice_count.usize()] <- config.temporal.deadline_ms
+        choice_count <- choice_count + 1
+    if config.categorical.enabled and not exclusive_reasoning:
+        families[choice_count.usize()] <- QuestionFamily.Categorical
+        deadlines[choice_count.usize()] <- config.categorical.deadline_ms
+        choice_count <- choice_count + 1
+    if config.direction2.enabled and not exclusive_reasoning:
+        families[choice_count.usize()] <- QuestionFamily.Direction2D
+        deadlines[choice_count.usize()] <- config.direction2.deadline_ms
+        choice_count <- choice_count + 1
+    if config.direction3.enabled and not exclusive_reasoning:
+        families[choice_count.usize()] <- QuestionFamily.Direction3D
+        deadlines[choice_count.usize()] <- config.direction3.deadline_ms
+        choice_count <- choice_count + 1
+    if config.direction4.enabled and not exclusive_reasoning:
+        families[choice_count.usize()] <- QuestionFamily.Direction4D
+        deadlines[choice_count.usize()] <- config.direction4.deadline_ms
+        choice_count <- choice_count + 1
+
+    analogy_eligible: bool = (
+        config.analogy.enabled and not config.only_binary and
+        analogy_bases > 0 and game.premises > 2
+    )
+    if analogy_eligible:
+        families[choice_count.usize()] <- QuestionFamily.Analogy
+        deadlines[choice_count.usize()] <- config.analogy.deadline_ms
+        choice_count <- choice_count + 1
+
+    binary_eligible: bool = (
+        config.binary.enabled and not config.only_analogy and
+        binary_bases > 1 and game.premises > 3
+    )
+    if binary_eligible:
+        families[choice_count.usize()] <- (
+            QuestionFamily.Binary if game.binary_depth < 1 else QuestionFamily.NestedBinary
+        )
+        deadlines[choice_count.usize()] <- config.binary.deadline_ms
+        choice_count <- choice_count + 1
+
+    if game.challenge_enabled and not exclusive_reasoning:
+        families[choice_count.usize()] <- QuestionFamily.LogicPuzzle
+        deadlines[choice_count.usize()] <- config.categorical.deadline_ms
+        choice_count <- choice_count + 1
+
+    raise GenerationError.NoEnabledFamily if choice_count < 1
+    assert choice_count >= 1 and choice_count <= 11
+    rebind selected_rank: i32, rng = random_below(rng, choice_count)
+    selected_family: QuestionFamily = families[selected_rank.usize()]
+    selected_deadline_raw: i64 = deadlines[selected_rank.usize()]
+    assert selected_deadline_raw >= 5000 and selected_deadline_raw <= 300000
+    selected_deadline: i64 where selected_deadline >= 5000 and selected_deadline <= 300000 = selected_deadline_raw
+
+    rebind fixed: FixedPuzzle?, rng = rare_puzzle_override(
+        rng, game.rare_puzzle_permille
+    )
+
+    sorting_selected: mutable bool = false
+    if config.sorting.enabled and config.sorting_viewport_available:
+        if config.only_sorting:
+            sorting_selected <- true
+        else:
+            rebind sorting_roll: i32, rng = random_below(rng, choice_count + 1)
+            sorting_selected <- sorting_roll == choice_count
+
+    if sorting_selected:
+        sorting_deadline_raw: i64 = config.sorting.deadline_ms
+        assert sorting_deadline_raw >= 5000 and sorting_deadline_raw <= 300000
+        sorting_deadline: i64 where sorting_deadline >= 5000 and sorting_deadline <= 300000 = sorting_deadline_raw
+        return SelectedQuestionPlan.Sorting(sorting_deadline)
+    if fixed is puzzle:
+        return SelectedQuestionPlan.Fixed(puzzle, selected_deadline)
+    return SelectedQuestionPlan.Generated(selected_family, selected_deadline)
+
+# Independent solvers -------------------------------------------------------
+
+def premise_linear(item: Premise) -> LinearRelation error[GenerationError]:
+    return try direct_linear_relation(item)
+
+def resolved_linear(question: RelationalQuestion,
+                    index: i32 where index >= 0 and index < question.premise_count) -> LinearRelation error[GenerationError]:
+    item: Premise = question.premises[index.usize()]
+    match item.relation:
+        Relation.Linear(value):
+            return inverse_linear(value) if item.polarity == Polarity.Negated else value
+        Relation.Meta(source, displayed_comparison):
+            if source >= question.premise_count:
+                raise GenerationError.InvalidConfiguration
+            assert source >= 0 and source < 32
+            source_relation: LinearRelation = try direct_linear_relation(
+                question.premises[source.usize()]
+            )
+            comparison: MetaRelation = inverse_meta(displayed_comparison) if (
+                item.polarity == Polarity.Negated
+            ) else displayed_comparison
+            return source_relation if comparison == MetaRelation.Same else inverse_linear(source_relation)
+        _:
+            raise GenerationError.UnsupportedRelation
+
+def solve_distinction(question: RelationalQuestion) -> Truth error[GenerationError]:
+    known: mutable array[bool, 256] = zeroed
+    parity: mutable array[bool, 256] = zeroed
+    root: i32 = question.conclusion.left
+    known[root.usize()] <- true
+
+    for pass_index in 0..<question.premise_count:
+        for i in 0..<question.premise_count:
+            item: Premise = question.premises[i.usize()]
+            assert i >= 0 and i < question.premise_count
+            relation: LinearRelation = try resolved_linear(question, i)
+            opposite: bool = relation == LinearRelation.Opposite
+            if known[item.left.usize()] and not known[item.right.usize()]:
+                known[item.right.usize()] <- true
+                parity[item.right.usize()] <- parity[item.left.usize()] != opposite
+            elif known[item.right.usize()] and not known[item.left.usize()]:
+                known[item.left.usize()] <- true
+                parity[item.left.usize()] <- parity[item.right.usize()] != opposite
+
+    target: i32 = question.conclusion.right
+    raise GenerationError.DisconnectedQuestion if not known[target.usize()]
+    claimed: LinearRelation = try premise_linear(question.conclusion)
+    entailed_opposite: bool = parity[target.usize()]
+    return Truth.True if (
+        claimed == LinearRelation.Opposite and entailed_opposite
+        or claimed == LinearRelation.Same and not entailed_opposite
+    ) else Truth.False
+
+def ordered_delta(relation: LinearRelation) -> i32 error[GenerationError]:
+    match relation:
+        LinearRelation.Less:
+            return 1
+        LinearRelation.Before:
+            return 1
+        LinearRelation.More:
+            return -1
+        LinearRelation.After:
+            return -1
+        _:
+            raise GenerationError.UnsupportedRelation
+
+def solve_ordered(question: RelationalQuestion) -> Truth error[GenerationError]:
+    known: mutable array[bool, 256] = zeroed
+    coordinate: mutable array[i32, 256] = zeroed
+    root: i32 = question.conclusion.left
+    known[root.usize()] <- true
+
+    for pass_index in 0..<question.premise_count:
+        for i in 0..<question.premise_count:
+            item: Premise = question.premises[i.usize()]
+            assert i >= 0 and i < question.premise_count
+            relation: LinearRelation = try resolved_linear(question, i)
+            delta: i32 = try ordered_delta(relation)
+            if known[item.left.usize()] and not known[item.right.usize()]:
+                known[item.right.usize()] <- true
+                coordinate[item.right.usize()] <- coordinate[item.left.usize()] + delta
+            elif known[item.right.usize()] and not known[item.left.usize()]:
+                known[item.left.usize()] <- true
+                coordinate[item.left.usize()] <- coordinate[item.right.usize()] - delta
+
+    target: i32 = question.conclusion.right
+    raise GenerationError.DisconnectedQuestion if not known[target.usize()]
+    claimed: LinearRelation = try premise_linear(question.conclusion)
+    actual_delta: i32 = coordinate[target.usize()] - coordinate[root.usize()]
+    actual: LinearRelation = match claimed:
+        LinearRelation.Less:
+            LinearRelation.Less if actual_delta > 0 else LinearRelation.More
+        LinearRelation.More:
+            LinearRelation.Less if actual_delta > 0 else LinearRelation.More
+        LinearRelation.Before:
+            LinearRelation.Before if actual_delta > 0 else LinearRelation.After
+        LinearRelation.After:
+            LinearRelation.Before if actual_delta > 0 else LinearRelation.After
+        _:
+            raise GenerationError.UnsupportedRelation
+    return Truth.True if actual == claimed else Truth.False
+
+def premise_planar(item: Premise) -> Direction2D error[GenerationError]:
+    match item.relation:
+        Relation.Planar(value):
+            return inverse_direction2(value) if item.polarity == Polarity.Negated else value
+        _:
+            raise GenerationError.UnsupportedRelation
+
+def step2_of_direction(direction: Direction2D) -> Step2:
+    match direction:
+        Direction2D.Same:
+            return Step2{x: 0, y: 0, direction: direction}
+        Direction2D.North:
+            return Step2{x: 0, y: -1, direction: direction}
+        Direction2D.NorthEast:
+            return Step2{x: 1, y: -1, direction: direction}
+        Direction2D.East:
+            return Step2{x: 1, y: 0, direction: direction}
+        Direction2D.SouthEast:
+            return Step2{x: 1, y: 1, direction: direction}
+        Direction2D.South:
+            return Step2{x: 0, y: 1, direction: direction}
+        Direction2D.SouthWest:
+            return Step2{x: -1, y: 1, direction: direction}
+        Direction2D.West:
+            return Step2{x: -1, y: 0, direction: direction}
+        Direction2D.NorthWest:
+            return Step2{x: -1, y: -1, direction: direction}
+
+def solve_direction2(question: RelationalQuestion) -> Truth error[GenerationError]:
+    known: mutable array[bool, 256] = zeroed
+    x: mutable array[i32, 256] = zeroed
+    y: mutable array[i32, 256] = zeroed
+    root: i32 = question.conclusion.left
+    known[root.usize()] <- true
+
+    for pass_index in 0..<question.premise_count:
+        for i in 0..<question.premise_count:
+            item: Premise = question.premises[i.usize()]
+            direction: Direction2D = try premise_planar(item)
+            step: Step2 = step2_of_direction(direction)
+            if known[item.right.usize()] and not known[item.left.usize()]:
+                known[item.left.usize()] <- true
+                x[item.left.usize()] <- x[item.right.usize()] + step.x
+                y[item.left.usize()] <- y[item.right.usize()] + step.y
+            elif known[item.left.usize()] and not known[item.right.usize()]:
+                known[item.right.usize()] <- true
+                x[item.right.usize()] <- x[item.left.usize()] - step.x
+                y[item.right.usize()] <- y[item.left.usize()] - step.y
+
+    target: i32 = question.conclusion.right
+    raise GenerationError.DisconnectedQuestion if not known[target.usize()]
+    claimed: Direction2D = try premise_planar(question.conclusion)
+    actual: Direction2D = direction2_from_delta(
+        x[root.usize()] - x[target.usize()],
+        y[root.usize()] - y[target.usize()]
+    )
+    return Truth.True if actual == claimed else Truth.False
+
+def premise_spatial(item: Premise) -> Direction3D error[GenerationError]:
+    match item.relation:
+        Relation.Spatial(value):
+            return inverse_direction3(value) if item.polarity == Polarity.Negated else value
+        _:
+            raise GenerationError.UnsupportedRelation
+
+def solve_direction3(question: RelationalQuestion) -> Truth error[GenerationError]:
+    known: mutable array[bool, 256] = zeroed
+    x: mutable array[i32, 256] = zeroed
+    y: mutable array[i32, 256] = zeroed
+    z: mutable array[i32, 256] = zeroed
+    root: i32 = question.conclusion.left
+    known[root.usize()] <- true
+
+    for pass_index in 0..<question.premise_count:
+        for i in 0..<question.premise_count:
+            item: Premise = question.premises[i.usize()]
+            direction: Direction3D = try premise_spatial(item)
+            step: Step3 = step3_of_direction(direction)
+            if known[item.right.usize()] and not known[item.left.usize()]:
+                known[item.left.usize()] <- true
+                x[item.left.usize()] <- x[item.right.usize()] + step.x
+                y[item.left.usize()] <- y[item.right.usize()] + step.y
+                z[item.left.usize()] <- z[item.right.usize()] + step.z
+            elif known[item.left.usize()] and not known[item.right.usize()]:
+                known[item.right.usize()] <- true
+                x[item.right.usize()] <- x[item.left.usize()] - step.x
+                y[item.right.usize()] <- y[item.left.usize()] - step.y
+                z[item.right.usize()] <- z[item.left.usize()] - step.z
+
+    target: i32 = question.conclusion.right
+    raise GenerationError.DisconnectedQuestion if not known[target.usize()]
+    claimed: Direction3D = try premise_spatial(question.conclusion)
+    actual: Direction3D = direction3_from_delta(
+        x[root.usize()] - x[target.usize()],
+        y[root.usize()] - y[target.usize()],
+        z[root.usize()] - z[target.usize()]
+    )
+    return Truth.True if actual == claimed else Truth.False
+
+struct SpaceTimeStep:
+    space: Direction3D
+    time: TimeRelation
+
+def premise_spacetime(item: Premise) -> SpaceTimeStep error[GenerationError]:
+    match item.relation:
+        Relation.SpaceTime(space, time):
+            normalized: Direction3D = inverse_direction3(space) if item.polarity == Polarity.Negated else space
+            return SpaceTimeStep{space: normalized, time: time}
+        _:
+            raise GenerationError.UnsupportedRelation
+
+def solve_direction4(question: RelationalQuestion) -> Truth error[GenerationError]:
+    known: mutable array[bool, 256] = zeroed
+    x: mutable array[i32, 256] = zeroed
+    y: mutable array[i32, 256] = zeroed
+    z: mutable array[i32, 256] = zeroed
+    t: mutable array[i32, 256] = zeroed
+    root: i32 = question.conclusion.left
+    known[root.usize()] <- true
+
+    for pass_index in 0..<question.premise_count:
+        for i in 0..<question.premise_count:
+            item: Premise = question.premises[i.usize()]
+            relation: SpaceTimeStep = try premise_spacetime(item)
+            step: Step3 = step3_of_direction(relation.space)
+            dt: i32 = time_delta(relation.time)
+            if known[item.right.usize()] and not known[item.left.usize()]:
+                known[item.left.usize()] <- true
+                x[item.left.usize()] <- x[item.right.usize()] + step.x
+                y[item.left.usize()] <- y[item.right.usize()] + step.y
+                z[item.left.usize()] <- z[item.right.usize()] + step.z
+                t[item.left.usize()] <- t[item.right.usize()] + dt
+            elif known[item.left.usize()] and not known[item.right.usize()]:
+                known[item.right.usize()] <- true
+                x[item.right.usize()] <- x[item.left.usize()] - step.x
+                y[item.right.usize()] <- y[item.left.usize()] - step.y
+                z[item.right.usize()] <- z[item.left.usize()] - step.z
+                t[item.right.usize()] <- t[item.left.usize()] - dt
+
+    target: i32 = question.conclusion.right
+    raise GenerationError.DisconnectedQuestion if not known[target.usize()]
+    claimed: SpaceTimeStep = try premise_spacetime(question.conclusion)
+    actual_space: Direction3D = direction3_from_delta(
+        x[root.usize()] - x[target.usize()],
+        y[root.usize()] - y[target.usize()],
+        z[root.usize()] - z[target.usize()]
+    )
+    actual_time: TimeRelation = time_from_delta(t[root.usize()] - t[target.usize()])
+    return Truth.True if actual_space == claimed.space and actual_time == claimed.time else Truth.False

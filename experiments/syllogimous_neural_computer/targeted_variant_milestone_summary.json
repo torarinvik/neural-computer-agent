@@ -1,0 +1,117 @@
+{
+  "conditions": {
+    "generalization_reward": {
+      "audit_accuracy_after_mean": 0.22819010416666666,
+      "audit_accuracy_before_mean": 0.21940104166666666,
+      "audit_delta_mean": 0.0087890625,
+      "audit_delta_values": [
+        0.0068359375,
+        0.0087890625,
+        0.0107421875
+      ],
+      "full_delta_mean": 0.015299479166666666,
+      "lookup_reduction_mean": 0.4462890625,
+      "rows_after_mean": 4.4296875,
+      "verifier_queries_mean": 64.0
+    },
+    "tournament_five_proposals": {
+      "audit_accuracy_after_mean": 0.24088541666666666,
+      "audit_accuracy_before_mean": 0.21940104166666666,
+      "audit_delta_mean": 0.021484375,
+      "audit_delta_values": [
+        0.021484375,
+        0.017578125,
+        0.025390625
+      ],
+      "full_delta_mean": 0.033854166666666664,
+      "lookup_reduction_mean": 0.5042317708333334,
+      "rows_after_mean": 3.9661458333333335,
+      "verifier_queries_mean": 80.0
+    },
+    "tournament_four_proposals": {
+      "audit_accuracy_after_mean": 0.23860677083333334,
+      "audit_accuracy_before_mean": 0.21940104166666666,
+      "audit_delta_mean": 0.019205729166666668,
+      "audit_delta_values": [
+        0.021484375,
+        0.0146484375,
+        0.021484375
+      ],
+      "full_delta_mean": 0.0302734375,
+      "lookup_reduction_mean": 0.4186197916666667,
+      "rows_after_mean": 4.651041666666667,
+      "verifier_queries_mean": 64.0
+    },
+    "tournament_three_proposals": {
+      "audit_accuracy_after_mean": 0.23502604166666666,
+      "audit_accuracy_before_mean": 0.21940104166666666,
+      "audit_delta_mean": 0.015625,
+      "audit_delta_values": [
+        0.0146484375,
+        0.0126953125,
+        0.01953125
+      ],
+      "full_delta_mean": 0.025390625,
+      "lookup_reduction_mean": 0.3268229166666667,
+      "rows_after_mean": 5.385416666666667,
+      "verifier_queries_mean": 48.0
+    },
+    "trained_four_proposals": {
+      "audit_accuracy_after_mean": 0.22786458333333334,
+      "audit_accuracy_before_mean": 0.21940104166666666,
+      "audit_delta_mean": 0.008463541666666666,
+      "audit_delta_values": [
+        0.0068359375,
+        0.0078125,
+        0.0107421875
+      ],
+      "full_delta_mean": 0.013020833333333334,
+      "lookup_reduction_mean": 0.4505208333333333,
+      "rows_after_mean": 4.395833333333333,
+      "verifier_queries_mean": 64.0
+    },
+    "trained_three_proposals": {
+      "audit_accuracy_after_mean": 0.2265625,
+      "audit_accuracy_before_mean": 0.21940104166666666,
+      "audit_delta_mean": 0.007161458333333333,
+      "audit_delta_values": [
+        0.00390625,
+        0.0068359375,
+        0.0107421875
+      ],
+      "full_delta_mean": 0.0107421875,
+      "lookup_reduction_mean": 0.3440755208333333,
+      "rows_after_mean": 5.247395833333333,
+      "verifier_queries_mean": 48.0
+    },
+    "untrained_five_proposals": {
+      "audit_accuracy_after_mean": 0.2516276041666667,
+      "audit_accuracy_before_mean": 0.21940104166666666,
+      "audit_delta_mean": 0.0322265625,
+      "audit_delta_values": [
+        0.0439453125,
+        0.009765625,
+        0.04296875
+      ],
+      "full_delta_mean": 0.040364583333333336,
+      "lookup_reduction_mean": 0.4459635416666667,
+      "rows_after_mean": 4.432291666666667,
+      "verifier_queries_mean": 80.0
+    },
+    "untrained_four_proposals": {
+      "audit_accuracy_after_mean": 0.24869791666666666,
+      "audit_accuracy_before_mean": 0.21940104166666666,
+      "audit_delta_mean": 0.029296875,
+      "audit_delta_values": [
+        0.0390625,
+        0.005859375,
+        0.04296875
+      ],
+      "full_delta_mean": 0.037434895833333336,
+      "lookup_reduction_mean": 0.3772786458333333,
+      "rows_after_mean": 4.981770833333333,
+      "verifier_queries_mean": 64.0
+    }
+  },
+  "schema": "syllogimous-sensory-variant-consolidation-v1"
+}

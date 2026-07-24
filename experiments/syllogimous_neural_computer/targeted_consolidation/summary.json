@@ -1,0 +1,126 @@
+{
+  "conditions": {
+    "trained": {
+      "consolidated_accuracy": {
+        "mean": 0.2265625,
+        "stdev": 0.009618025197066508,
+        "values": [
+          0.21875,
+          0.2373046875,
+          0.2236328125
+        ]
+      },
+      "consolidated_audit_accuracy": {
+        "mean": 0.234375,
+        "stdev": 0.024394523431243743,
+        "values": [
+          0.26171875,
+          0.21484375,
+          0.2265625
+        ]
+      },
+      "consolidated_rows": {
+        "mean": 4.4375,
+        "stdev": 0.14905300022139775,
+        "values": [
+          4.265625,
+          4.53125,
+          4.515625
+        ]
+      },
+      "lookup_reduction": {
+        "mean": 0.4453125,
+        "stdev": 0.01863162502767472,
+        "values": [
+          0.466796875,
+          0.43359375,
+          0.435546875
+        ]
+      },
+      "verifier_queries": {
+        "mean": 48.0,
+        "stdev": 0.0,
+        "values": [
+          48.0,
+          48.0,
+          48.0
+        ]
+      }
+    },
+    "untrained": {
+      "consolidated_accuracy": {
+        "mean": 0.24055989583333334,
+        "stdev": 0.0014917238590351043,
+        "values": [
+          0.2392578125,
+          0.240234375,
+          0.2421875
+        ]
+      },
+      "consolidated_audit_accuracy": {
+        "mean": 0.18880208333333334,
+        "stdev": 0.014788823817188212,
+        "values": [
+          0.1953125,
+          0.19921875,
+          0.171875
+        ]
+      },
+      "consolidated_rows": {
+        "mean": 5.177083333333333,
+        "stdev": 0.5072913992983553,
+        "values": [
+          5.3359375,
+          4.609375,
+          5.5859375
+        ]
+      },
+      "lookup_reduction": {
+        "mean": 0.3528645833333333,
+        "stdev": 0.06341142491229441,
+        "values": [
+          0.3330078125,
+          0.423828125,
+          0.3017578125
+        ]
+      },
+      "verifier_queries": {
+        "mean": 48.0,
+        "stdev": 0.0,
+        "values": [
+          48.0,
+          48.0,
+          48.0
+        ]
+      }
+    }
+  },
+  "paired_trained_minus_untrained": {
+    "consolidated_accuracy": [
+      -0.0205078125,
+      -0.0029296875,
+      -0.0185546875
+    ],
+    "consolidated_audit_accuracy": [
+      0.06640625,
+      0.015625,
+      0.0546875
+    ],
+    "consolidated_rows": [
+      -1.0703125,
+      -0.078125,
+      -1.0703125
+    ],
+    "lookup_reduction": [
+      0.1337890625,
+      0.009765625,
+      0.1337890625
+    ],
+    "verifier_queries": [
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "schema": "syllogimous-consolidation-replication-v1"
+}

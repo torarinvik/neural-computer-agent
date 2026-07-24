@@ -1,0 +1,27 @@
+{"stream": 16, "reward": 0.012416351437568664, "accepted": 4, "rows_before": 8, "rows_after": 4, "verifier_queries": 64}
+{"stream": 32, "reward": 0.009439704418182373, "accepted": 4, "rows_before": 8, "rows_after": 4, "verifier_queries": 64}
+{"stream": 48, "reward": 0.04234286904335022, "accepted": 4, "rows_before": 8, "rows_after": 4, "verifier_queries": 64}
+{"stream": 64, "reward": 0.009792385101318359, "accepted": 4, "rows_before": 8, "rows_after": 4, "verifier_queries": 64}
+{"stream": 80, "reward": 0.010305837392807007, "accepted": 4, "rows_before": 8, "rows_after": 4, "verifier_queries": 64}
+{"stream": 96, "reward": 0.00999968409538269, "accepted": 4, "rows_before": 8, "rows_after": 4, "verifier_queries": 64}
+{"stream": 112, "reward": 0.0394646441936493, "accepted": 4, "rows_before": 8, "rows_after": 4, "verifier_queries": 64}
+{"stream": 128, "reward": 0.007566008567810059, "accepted": 4, "rows_before": 8, "rows_after": 4, "verifier_queries": 64}
+{"evaluation": {"append_accuracy": 0.208984375, "consolidated_accuracy": 0.228515625, "append_audit_accuracy": 0.2158203125, "consolidated_audit_accuracy": 0.22265625, "append_rows": 8.0, "consolidated_rows": 4.4296875, "accepted_rewrites": 3.5703125, "verifier_queries": 64.0, "lookup_reduction": 0.4462890625}}
+{"stream": 16, "reward": 0.011014459133148193, "accepted": 4, "rows_before": 8, "rows_after": 4, "verifier_queries": 64}
+{"stream": 32, "reward": 0.009815142154693604, "accepted": 4, "rows_before": 8, "rows_after": 4, "verifier_queries": 64}
+{"stream": 48, "reward": -0.17827921748161316, "accepted": 1, "rows_before": 8, "rows_after": 7, "verifier_queries": 64}
+{"stream": 64, "reward": 0.009729132652282715, "accepted": 4, "rows_before": 8, "rows_after": 4, "verifier_queries": 64}
+{"stream": 80, "reward": 0.009453485012054444, "accepted": 4, "rows_before": 8, "rows_after": 4, "verifier_queries": 64}
+{"stream": 96, "reward": 0.009999684095382691, "accepted": 4, "rows_before": 8, "rows_after": 4, "verifier_queries": 64}
+{"stream": 112, "reward": 0.007546452283859253, "accepted": 4, "rows_before": 8, "rows_after": 4, "verifier_queries": 64}
+{"stream": 128, "reward": 0.040997502803802495, "accepted": 4, "rows_before": 8, "rows_after": 4, "verifier_queries": 64}
+{"evaluation": {"append_accuracy": 0.2255859375, "consolidated_accuracy": 0.240234375, "append_audit_accuracy": 0.2265625, "consolidated_audit_accuracy": 0.2353515625, "append_rows": 8.0, "consolidated_rows": 4.484375, "accepted_rewrites": 3.515625, "verifier_queries": 64.0, "lookup_reduction": 0.439453125}}
+{"stream": 16, "reward": 0.012413344383239745, "accepted": 4, "rows_before": 8, "rows_after": 4, "verifier_queries": 64}
+{"stream": 32, "reward": 0.010286906957626343, "accepted": 4, "rows_before": 8, "rows_after": 4, "verifier_queries": 64}
+{"stream": 48, "reward": 0.038929847478866575, "accepted": 4, "rows_before": 8, "rows_after": 4, "verifier_queries": 64}
+{"stream": 64, "reward": 0.01002351999282837, "accepted": 4, "rows_before": 8, "rows_after": 4, "verifier_queries": 64}
+{"stream": 80, "reward": 0.00994153380393982, "accepted": 4, "rows_before": 8, "rows_after": 4, "verifier_queries": 64}
+{"stream": 96, "reward": 0.010189691781997681, "accepted": 4, "rows_before": 8, "rows_after": 4, "verifier_queries": 64}
+{"stream": 112, "reward": 0.04026773333549499, "accepted": 4, "rows_before": 8, "rows_after": 4, "verifier_queries": 64}
+{"stream": 128, "reward": 0.008348742723464966, "accepted": 4, "rows_before": 8, "rows_after": 4, "verifier_queries": 64}
+{"evaluation": {"append_accuracy": 0.2177734375, "consolidated_accuracy": 0.2294921875, "append_audit_accuracy": 0.2158203125, "consolidated_audit_accuracy": 0.2265625, "append_rows": 8.0, "consolidated_rows": 4.375, "accepted_rewrites": 3.625, "verifier_queries": 64.0, "lookup_reduction": 0.453125}}

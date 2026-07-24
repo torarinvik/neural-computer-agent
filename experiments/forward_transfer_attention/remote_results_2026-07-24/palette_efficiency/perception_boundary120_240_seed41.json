@@ -1,0 +1,147 @@
+{
+  "controller_frozen": true,
+  "disposable_supervised_diagnostic": true,
+  "heldout_palette_pairs": [
+    [
+      0,
+      2
+    ],
+    [
+      0,
+      3
+    ],
+    [
+      1,
+      3
+    ]
+  ],
+  "identity_majorities": {
+    "first": 0.3375000059604645,
+    "rewarded": 0.3333333432674408,
+    "second": 0.34166666865348816
+  },
+  "results": {
+    "fused_event": {
+      "first_identity": {
+        "linear": {
+          "best_test_accuracy": 0.98333340883255,
+          "test_accuracy": 0.98333340883255,
+          "train_accuracy": 1.0
+        },
+        "mlp": {
+          "best_test_accuracy": 0.9791667461395264,
+          "test_accuracy": 0.9791667461395264,
+          "train_accuracy": 1.0
+        }
+      },
+      "rewarded_identity": {
+        "linear": {
+          "best_test_accuracy": 0.5541666746139526,
+          "test_accuracy": 0.5541666746139526,
+          "train_accuracy": 0.9250000715255737
+        },
+        "mlp": {
+          "best_test_accuracy": 0.5708333849906921,
+          "test_accuracy": 0.5666667222976685,
+          "train_accuracy": 1.0
+        }
+      },
+      "rule_from_joint_events": {
+        "linear": {
+          "best_test_accuracy": 0.5041667222976685,
+          "test_accuracy": 0.4833333492279053,
+          "train_accuracy": 0.8833333849906921
+        },
+        "mlp": {
+          "best_test_accuracy": 0.48750001192092896,
+          "test_accuracy": 0.4750000238418579,
+          "train_accuracy": 1.0
+        }
+      },
+      "second_identity": {
+        "linear": {
+          "best_test_accuracy": 0.9791667461395264,
+          "test_accuracy": 0.9791667461395264,
+          "train_accuracy": 1.0
+        },
+        "mlp": {
+          "best_test_accuracy": 0.9916667342185974,
+          "test_accuracy": 0.9916667342185974,
+          "train_accuracy": 1.0
+        }
+      }
+    },
+    "fused_rule_shuffled_labels": {
+      "best_test_accuracy": 0.5,
+      "test_accuracy": 0.47083336114883423,
+      "train_accuracy": 1.0
+    },
+    "vision": {
+      "first_identity": {
+        "linear": {
+          "best_test_accuracy": 1.0,
+          "test_accuracy": 1.0,
+          "train_accuracy": 1.0
+        },
+        "mlp": {
+          "best_test_accuracy": 0.9875000715255737,
+          "test_accuracy": 0.9875000715255737,
+          "train_accuracy": 1.0
+        }
+      },
+      "rewarded_identity": {
+        "linear": {
+          "best_test_accuracy": 0.5208333730697632,
+          "test_accuracy": 0.5208333730697632,
+          "train_accuracy": 0.8750000596046448
+        },
+        "mlp": {
+          "best_test_accuracy": 0.6333333849906921,
+          "test_accuracy": 0.6333333849906921,
+          "train_accuracy": 1.0
+        }
+      },
+      "rule_from_joint_events": {
+        "linear": {
+          "best_test_accuracy": 0.48750001192092896,
+          "test_accuracy": 0.44583335518836975,
+          "train_accuracy": 0.9166666865348816
+        },
+        "mlp": {
+          "best_test_accuracy": 0.4958333671092987,
+          "test_accuracy": 0.46666669845581055,
+          "train_accuracy": 1.0
+        }
+      },
+      "second_identity": {
+        "linear": {
+          "best_test_accuracy": 0.98333340883255,
+          "test_accuracy": 0.98333340883255,
+          "train_accuracy": 1.0
+        },
+        "mlp": {
+          "best_test_accuracy": 0.98333340883255,
+          "test_accuracy": 0.98333340883255,
+          "train_accuracy": 1.0
+        }
+      }
+    }
+  },
+  "schema": "palette-perception-boundary-probe-v1",
+  "test_lifetimes": 240,
+  "train_lifetimes": 120,
+  "train_palettes": [
+    [
+      0,
+      1
+    ],
+    [
+      1,
+      2
+    ],
+    [
+      2,
+      3
+    ]
+  ]
+}

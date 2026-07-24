@@ -1,0 +1,64 @@
+# Shared, deterministic logic for the Syllogimous port.
+
+include "syllogimous_types.elisa"
+
+def invert(value: Truth) -> Truth:
+    match value:
+        Truth.False:
+            return Truth.True
+        Truth.True:
+            return Truth.False
+
+def truth_and(left: Truth, right: Truth) -> Truth:
+    return when left, right:
+        Truth.True, Truth.True -> Truth.True
+        _ -> Truth.False
+
+def truth_or(left: Truth, right: Truth) -> Truth:
+    return when left, right:
+        Truth.False, Truth.False -> Truth.False
+        _ -> Truth.True
+
+def truth_xor(left: Truth, right: Truth) -> Truth:
+    return when left, right:
+        Truth.False, Truth.True -> Truth.True
+        Truth.True, Truth.False -> Truth.True
+        _ -> Truth.False
+
+def apply_binary(op: BinaryOperator, left: Truth, right: Truth) -> Truth:
+    match op:
+        BinaryOperator.And:
+            return truth_and(left, right)
+        BinaryOperator.Nand:
+            return invert(truth_and(left, right))
+        BinaryOperator.Or:
+            return truth_or(left, right)
+        BinaryOperator.Nor:
+            return invert(truth_or(left, right))
+        BinaryOperator.Xor:
+            return truth_xor(left, right)
+        BinaryOperator.Xnor:
+            return invert(truth_xor(left, right))
+
+def validate_config(config: GameConfig) -> GameConfig error[GenerationError]:
+    raise GenerationError.TooFewPremises if config.premises < 2
+    raise GenerationError.InvalidConfiguration if config.binary_depth > 8
+    raise GenerationError.InvalidConfiguration if config.sorting_min_width < 2
+    operators: BinaryOperatorConfig = config.binary_operators
+    if (not operators.and_enabled and not operators.nand_enabled and
+        not operators.or_enabled and not operators.nor_enabled and
+        not operators.xor_enabled and not operators.xnor_enabled):
+        raise GenerationError.NoEnabledBinaryOperator
+    return config
+
+def latency_reward(deadline_ms: DeadlineMs, elapsed_ms: i64 where elapsed_ms >= 0,
+                   correct: bool) -> Reward:
+    if not correct:
+        return Reward{correctness_milli: -1000, speed_milli: 0}
+    if elapsed_ms >= deadline_ms:
+        return Reward{correctness_milli: -1000, speed_milli: 0}
+    remaining_ms: i64 = deadline_ms - elapsed_ms
+    speed_raw: i32 = (50 * remaining_ms / deadline_ms).i32()
+    assert speed_raw >= 0 and speed_raw <= 50
+    speed: i32 where speed >= 0 and speed <= 50 = speed_raw
+    return Reward{correctness_milli: 1000, speed_milli: speed}

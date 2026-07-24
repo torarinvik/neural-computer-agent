@@ -1,0 +1,26 @@
+{
+  "by_family_difficulty": {
+    "chain/standard": {
+      "accuracy": 0.489,
+      "episodes": 1000,
+      "mean_inference_ms": 1.0,
+      "mean_latency_ms": 6.0,
+      "mean_reward": 0.0024316624999997567,
+      "mean_sensory_tokens": 0.0,
+      "p95_latency_ms": 6,
+      "timeout_rate": 0.0
+    }
+  },
+  "episodes": 1000,
+  "overall": {
+    "accuracy": 0.489,
+    "episodes": 1000,
+    "mean_inference_ms": 1.0,
+    "mean_latency_ms": 6.0,
+    "mean_reward": 0.0024316624999997567,
+    "mean_sensory_tokens": 0.0,
+    "p95_latency_ms": 6,
+    "timeout_rate": 0.0
+  },
+  "schema": "syllogimous.metrics.v1"
+}

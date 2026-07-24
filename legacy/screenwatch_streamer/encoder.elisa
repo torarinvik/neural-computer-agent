@@ -1,0 +1,594 @@
+# encoder.elisa — the delta-encoding + batch-serialization + Tier-A wiring, factored out of
+# frame_dump so BOTH the live recorder (frame_dump, ScreenCaptureKit source) and the offline
+# scene generator (scenegen, synthetic source) drive the SAME real encoder. There is exactly one
+# implementation of the stream format; a fixture produced by scenegen is byte-for-byte the format a
+# watcher sees in production.
+#
+# A frame source fills SCREEN_GRAB (0x00RRGGBB words, sw*sh) then the batch loop calls:
+#   archive_frame(&SCREEN_GRAB[0], sw, sh, t_ms)         # Tier A exact ring (archive.elisa)
+#   downscale_into(&SCREEN_GRAB[0], sw, sh, dw, dh, base)# box-downscale into the frame ring
+#   write_batch_dir(dir, batch, nframes, dw, dh, ...)    # delta-encode + emit one batch file
+# Stream format contract + directory layout live in SPEC.md. No ScreenCaptureKit here.
+
+include "./archive.elisa"
+
+extern fopen(path: u8&, mode: u8&) -> heap void&?
+extern fwrite(ptr: u8&, size: usize, nmemb: usize, stream: void&) -> usize
+extern fclose(stream: void&) -> int
+extern rename(old: u8&, new: u8&) -> int
+extern remove(path: u8&) -> int
+extern mkdir(path: u8&, mode: u32) -> int
+extern atoi(s: u8&) -> int
+extern system(cmd: u8&) -> int
+extern puts(s: u8&) -> int
+
+module Encoder:
+    public global SCREEN_GRAB: array[u32, 24000000] = zeroed
+    public global GRAB_CAP: i32 = 24000000
+
+    # Frame ring: up to 256 frames of up to 65536 px each (64MB). Batches are built here, then
+    # serialized in one pass.
+    private global mutable RING: array[u32, 16777216] = zeroed
+    public global RING_STRIDE: i32 = 65536
+    public global MAX_BATCH_FRAMES: i32 = 256
+    public global mutable FRAME_MS: array[i64, 256] = zeroed
+    public global MAX_OUT_W: i32 = 256
+
+    # Rendered ASCII grids for delta encoding (dw*dh cells, dh<=256, dw<=256 so dw*dh<=65536).
+    private global mutable CUR_GRID: array[u8, 65536] = zeroed        # current frame's cells
+    private global mutable PREV_GRID: array[u8, 65536] = zeroed       # previous EMITTED frame's cells (recon baseline)
+    public global mutable CHANGED: array[u8, 256] = zeroed           # per-row changed flag for the current diff
+
+    # Per-frame text staging buffer (one frame's text at a time, reused across the batch)
+    public global mutable TXT: array[u8, 2000000] = zeroed
+    public global mutable txt_len: i32 = 0
+
+    private global RAMP: cstr = " .:-=+*#%@"          # 10-step luminance ramp, dark -> bright
+
+    # hue letters (ASCII codes): R O Y G C B M; +32 lowercases = dim shade of the hue
+    private global HUE_R: u8 = 82
+    private global HUE_O: u8 = 79
+    private global HUE_Y: u8 = 89
+    private global HUE_G: u8 = 71
+    private global HUE_C: u8 = 67
+    private global HUE_B: u8 = 66
+    private global HUE_M: u8 = 77
+
+    # path buffers (final + ".tmp" sibling for atomic rename)
+    public global mutable BATCH_PATH: array[u8, 1024] = zeroed
+    public global mutable BATCH_TMP: array[u8, 1024] = zeroed
+    public global mutable LATEST_PATH: array[u8, 1024] = zeroed
+    public global mutable LATEST_TMP: array[u8, 1024] = zeroed
+    private global mutable PRUNE_PATH: array[u8, 1024] = zeroed
+    private global mutable PRUNE_TMP: array[u8, 1024] = zeroed
+    private global mutable PPM_PATH: array[u8, 1024] = zeroed
+    private global mutable PPM_TMP: array[u8, 1024] = zeroed
+    private global mutable CMD_BUF: array[u8, 4096] = zeroed
+
+    # per-batch serialization stats (set by serialize_frames, read by the header/ACTIVITY writer)
+    private global mutable g_same: i32 = 0
+    private global mutable g_shifted: i32 = 0
+    private global mutable g_keyframes: i32 = 0
+    private global mutable g_churn: i32 = 0
+    private global mutable g_emitted: i32 = 0
+    private global mutable g_rate: i32 = 1
+    private global mutable g_bytes: i32 = 0
+
+    # How a captured frame gets serialized: heavy churn restates the scene, light churn diffs it.
+    private enum FrameEmit:
+        Keyframe
+        Delta
+
+    # The bass member's per-batch verdict (SPEC.md triage rules, applied in priority order).
+    private enum Activity:
+        Still
+        Typing
+        Scrolling
+        Video
+        Switching
+
+    # ---- small text/number helpers into TXT ----
+
+    public def txt_byte(b: u8) -> void:
+        TXT[txt_len.usize()] <- b
+        txt_len <- txt_len + 1
+
+    public def txt_str(s: cstr) -> void:
+        i: mutable i32 = 0
+        while s[i.usize()] != 0:
+            txt_byte(s[i.usize()])
+            i <- i + 1
+
+    public def txt_dec(v0: i64) -> void:
+        neg: bool = v0 < 0
+        txt_byte(45) if neg
+        v: mutable i64 = (0 - v0) if neg else v0
+        txt_byte(48) if v == 0
+        tmp: mutable array[u8, 24] = zeroed
+        n: mutable i32 = 0
+        while v > 0:
+            tmp[n.usize()] <- (48 + (v % 10).i32()).u8()
+            v <- v / 10
+            n <- n + 1
+        while n > 0:
+            n <- n - 1
+            txt_byte(tmp[n.usize()])
+
+    # ---- path string builders (write into a caller buffer, return new offset) ----
+
+    public def u8buf_set_str(dst: mutable u8&, off0: i32, s: cstr) -> i32:
+        off: mutable i32 = off0
+        i: mutable i32 = 0
+        while s[i.usize()] != 0:
+            dst[off.usize()] <- s[i.usize()]
+            off <- off + 1
+            i <- i + 1
+        return off
+
+    public def u8buf_set_num(dst: mutable u8&, off0: i32, v0: i64) -> i32:
+        requires v0 >= 0
+        off: mutable i32 = off0
+        v: mutable i64 = v0
+        tmp: mutable array[u8, 24] = zeroed
+        n: mutable i32 = 0
+        while v > 0:
+            tmp[n.usize()] <- (48 + (v % 10).i32()).u8()
+            v <- v / 10
+            n <- n + 1
+        dst[off.usize()] <- 48 if n == 0
+        off <- off + 1 if n == 0
+        while n > 0:
+            n <- n - 1
+            dst[off.usize()] <- tmp[n.usize()]
+            off <- off + 1
+        return off
+
+    # dst = dir + prefix + n + suffix ; tmp = dst + ".tmp"  (both NUL-terminated)
+    private def build_num_path(dst: mutable u8&, tmp: mutable u8&, dir: cstr, prefix: cstr, n: i64, suffix: cstr) -> void:
+        requires n >= 0
+        off: mutable i32 = 0
+        off <- u8buf_set_str(dst, off, dir)
+        off <- u8buf_set_str(dst, off, prefix)
+        off <- u8buf_set_num(dst, off, n)
+        off <- u8buf_set_str(dst, off, suffix)
+        dst[off.usize()] <- 0
+        for j in 0..<off:
+            tmp[j.usize()] <- dst[j.usize()]
+        e: i32 = u8buf_set_str(tmp, off, ".tmp")
+        tmp[e.usize()] <- 0
+
+    # dst = dir + "/" + name ; tmp = dst + ".tmp"
+    public def build_named_path(dst: mutable u8&, tmp: mutable u8&, dir: cstr, name: cstr) -> void:
+        off: mutable i32 = 0
+        off <- u8buf_set_str(dst, off, dir)
+        off <- u8buf_set_str(dst, off, "/")
+        off <- u8buf_set_str(dst, off, name)
+        dst[off.usize()] <- 0
+        for j in 0..<off:
+            tmp[j.usize()] <- dst[j.usize()]
+        e: i32 = u8buf_set_str(tmp, off, ".tmp")
+        tmp[e.usize()] <- 0
+
+    # Hue letter for a clearly-colored pixel, by dominant-channel ordering. Six orderings,
+    # each with a boundary lean toward the neighbouring hue.
+    private def hue_char(r: i32, g: i32, b: i32) -> u8:
+        (HUE_O if g - b > (r - b) / 2 else HUE_R) return if r >= g and g >= b
+        (HUE_G if g - r > (g - b) / 2 else HUE_Y) return if g >= r and r >= b
+        (HUE_C if b - r > (g - r) / 2 else HUE_G) return if g >= b and b >= r
+        (HUE_B if b - g > (b - r) / 2 else HUE_C) return if b >= g and g >= r
+        (HUE_M if r - g > (b - g) / 2 else HUE_B) return if b >= r and r >= g
+        return HUE_M
+
+    # Classify a pixel into a single readable char: low-saturation -> luminance ramp,
+    # otherwise a hue letter, lowercased when dim.
+    private def color_char(p: u32) -> u8:
+        r: i32 = ((p >> 16) & 255).i32()
+        g: i32 = ((p >> 8) & 255).i32()
+        b: i32 = (p & 255).i32()
+        mx: i32 = r if r >= g and r >= b else (g if g >= b else b)
+        mn: i32 = r if r <= g and r <= b else (g if g <= b else b)
+        lum: i32 = (r * 3 + g * 6 + b) / 10          # weights sum to 10 -> lum <= 255, ramp index <= 9
+        RAMP[(lum / 26).usize()] return if mx - mn < 28
+        c: u8 = hue_char(r, g, b)
+        dim: u8 = 32 if lum < 110 else 0
+        return c + dim
+
+    # Box-downscale src (sw x sh) into the ring slot at RING[base..] (dw x dh).
+    public def downscale_into(src: u32&, sw: i32, sh: i32, dw: i32, dh: i32, base: i32) -> void:
+        for dy in 0..<dh:
+            y0: i32 = dy * sh / dh
+            y1: i32 = (dy + 1) * sh / dh if (dy + 1) * sh / dh > y0 else y0 + 1
+            for dx in 0..<dw:
+                x0: i32 = dx * sw / dw
+                x1: i32 = (dx + 1) * sw / dw if (dx + 1) * sw / dw > x0 else x0 + 1
+                rs: mutable u32 = 0
+                gs: mutable u32 = 0
+                bs: mutable u32 = 0
+                cnt: mutable u32 = 0
+                for y in y0..<y1:
+                    for x in x0..<x1:
+                        p: u32 = src[(y * sw + x).usize()]
+                        rs <- rs + ((p >> 16) & 255)
+                        gs <- gs + ((p >> 8) & 255)
+                        bs <- bs + (p & 255)
+                        cnt <- cnt + 1
+                RING[(base + dy * dw + dx).usize()] <- ((rs / cnt) << 16) | ((gs / cnt) << 8) | (bs / cnt)
+
+    # ---- delta-encoding core ----
+
+    # Render RING pixels at `base` into CUR_GRID (luminance ramp cell per pixel).
+    private def render_grid(base: i32, dw: i32, dh: i32) -> void:
+        can Scalar:                                      # RAMP lookup is a gather; ~24k cells/frame scalar is fine
+            for ay in 0..<dh:
+                for ax in 0..<dw:
+                    p: u32 = RING[(base + ay * dw + ax).usize()]
+                    lum: u32 = (((p >> 16) & 255) * 3 + ((p >> 8) & 255) * 6 + (p & 255)) / 10
+                    CUR_GRID[(ay * dw + ax).usize()] <- RAMP[(lum / 26).usize()]
+
+    # True iff CUR_GRID row rc equals PREV_GRID row rp (cell-exact -> lossless change detection).
+    private def cur_prev_row_equal(dw: i32, rc: i32, rp: i32) -> bool:
+        ca: i32 = rc * dw
+        pa: i32 = rp * dw
+        for k in 0..<dw:
+            false return if CUR_GRID[(ca + k).usize()] != PREV_GRID[(pa + k).usize()]
+        return true
+
+    # Count rows that match if the previous grid is shifted by d (predicted cur[r] = prev[r-d]).
+    private def count_matches(dw: i32, dh: i32, d: i32) -> i32:
+        matched: i32 = for r in 0..<dh |c: i32 = 0| -> c:
+            s: i32 = r - d
+            hit: bool = s >= 0 and s < dh and cur_prev_row_equal(dw, r, s)
+            c <- c + 1 if hit
+        return matched
+
+    # Find the vertical scroll offset (rows) that best explains this frame vs the last emitted one.
+    # Returns 0 (no scroll) unless some non-zero shift matches >=70% of rows and beats dy=0.
+    private def detect_shift(dw: i32, dh: i32) -> i32:
+        base_count: i32 = count_matches(dw, dh, 0)          # dy=0 baseline to beat
+        best_count, best_d = for dd in 0..<33 |best_count: i32 = base_count, best_d: i32 = 0| -> best_count, best_d:
+            d: i32 = dd - 16
+            continue if d == 0
+            c: i32 = count_matches(dw, dh, d)
+            better: bool = c > best_count
+            best_count <- c if better
+            best_d <- d if better
+        return best_d if best_d != 0 and best_count >= dh * 7 / 10 else 0
+
+    # Fill CHANGED[0..dh) given shift d; a row is "changed" if its shifted predecessor is out of
+    # range (newly revealed) or differs cell-exact. Returns the count of changed rows.
+    private def mark_changed(dw: i32, dh: i32, d: i32) -> i32:
+        changed: i32 = for r in 0..<dh |c: i32 = 0| -> c:
+            s: i32 = r - d
+            unchanged: bool = s >= 0 and s < dh and cur_prev_row_equal(dw, r, s)
+            CHANGED[r.usize()] <- (0 if unchanged else 1).u8()
+            c <- c + 1 if not unchanged
+        return changed
+
+    private def copy_cur_to_prev(dw: i32, dh: i32) -> void:
+        can Scalar:                                      # ~24KB byte copy per frame; scalar is fine
+            for i in 0..<(dw * dh):
+                PREV_GRID[i.usize()] <- CUR_GRID[i.usize()]
+
+    # emit one CUR_GRID row (dw cells) + newline into TXT
+    private def txt_cur_row(dw: i32, r: i32) -> void:
+        base: i32 = r * dw
+        for k in 0..<dw:
+            txt_byte(CUR_GRID[(base + k).usize()])
+        txt_byte(10)
+
+    # Stage a full self-contained keyframe (ASCII + COLOR) for frame idx into TXT.
+    private def stage_keyframe(idx: i32, base: i32, dw: i32, dh: i32, t_ms: i64) -> void:
+        txt_len <- 0
+        txt_str("KEYFRAME ")
+        txt_dec(idx.i64())
+        txt_str(" t=")
+        txt_dec(t_ms)
+        txt_byte(10)
+        txt_str("ASCII\n")
+        for ay in 0..<dh:
+            txt_cur_row(dw, ay)
+        txt_str("COLOR\n")
+        for cy in 0..<dh:
+            for cx in 0..<dw:
+                txt_byte(color_char(RING[(base + cy * dw + cx).usize()]))
+            txt_byte(10)
+
+    private def emit_shift_line(d: i64) -> void:
+        txt_str("SHIFT dy=")
+        txt_dec(d)
+        txt_byte(10)
+
+    # "ROWS a-b" header + the rows' content
+    private def emit_rows_block(dw: i32, a: i32, b: i32) -> void:
+        txt_str("ROWS ")
+        txt_dec(a.i64())
+        txt_byte(45)
+        txt_dec(b.i64())
+        txt_byte(10)
+        for rr in a..<(b + 1):
+            txt_cur_row(dw, rr)
+
+    # Coalesce CHANGED[0..dh) into ROWS blocks and emit them. A single unchanged gap row between
+    # two changed rows is swallowed into the block (fewer, chunkier blocks). Runs as a 3-state
+    # scanner over the row index: Scan finds a block start, Grow(first, last) extends it (or eats
+    # one gap), Emit(first, last) writes it. Returns the number of blocks emitted.
+    private def emit_changed_blocks(dw: i32, dh: i32) -> i32:
+        state Scan                          # looking for a block start
+        state Grow(first: i32, last: i32)   # extending the current block (or eating one gap row)
+        state Emit(first: i32, last: i32)   # writing the finished block
+        return start Scan |r: i32 = 0, blocks: i32 = 0| decreases 3 * (dh - r) + 2:
+            Scan:
+                at_end: bool = r >= dh
+                row_changed: bool = (not at_end) and CHANGED[r.usize()] != 0
+                r <- r + 1
+                done blocks if at_end
+                next Grow(r - 1, r - 1) if row_changed
+                next Scan
+            Grow(first, last):
+                in_range: bool = r < dh
+                cur_changed: bool = in_range and CHANGED[r.usize()] != 0
+                gap: bool = in_range and (not cur_changed) and (r + 1) < dh and CHANGED[(r + 1).usize()] != 0
+                step: i32 = 1 if cur_changed or gap else 0
+                r <- r + step
+                next Grow(first, r - 1) if cur_changed
+                next Grow(first, last) if gap
+                next Emit(first, last)
+            Emit(first, last):
+                emit_rows_block(dw, first, last)
+                blocks <- blocks + 1
+                next Scan
+
+    # Stage a delta frame (FRAME line + SAME | SHIFT + ROWS blocks) into TXT.
+    # CHANGED[] must already be filled for shift `d`; `changed` is its count.
+    private def stage_delta(idx: i32, dw: i32, dh: i32, t_ms: i64, d: i32, changed: i32) -> void:
+        txt_len <- 0
+        txt_str("FRAME ")
+        txt_dec(idx.i64())
+        txt_str(" t=")
+        txt_dec(t_ms)
+        txt_byte(10)
+        txt_str("SAME\n") if changed == 0
+        return if changed == 0
+        emit_shift_line(d.i64()) if d != 0
+        _ = emit_changed_blocks(dw, dh)
+
+    # Churn guard: past 60% changed rows a fresh keyframe is cheaper to state than to diff,
+    # and it resyncs the reconstruction baseline.
+    private def frame_emit_kind(changed_rows: i32, dh: i32) -> FrameEmit:
+        return FrameEmit.Keyframe if changed_rows > dh * 6 / 10 else FrameEmit.Delta
+
+    private def write_latest(batch: i64) -> int:
+        f: void&? = fopen(&LATEST_TMP[0], "wb".cast[u8&])
+        if f is fp:
+            txt_len <- 0
+            txt_dec(batch)
+            txt_byte(10)
+            _ = fwrite(&TXT[0], 1.usize(), txt_len.usize(), fp)
+            _ = fclose(fp)
+            _ = rename(&LATEST_TMP[0], &LATEST_PATH[0])
+            return 1
+        return 0
+
+    # SPEC.md triage: classify the finished batch from its serialization stats (priority order).
+    private def classify_activity(emitted: i32, same: i32, shifted: i32, kf_mid: i32, churn: i32, rate: i32, dh: i32) -> Activity:
+        Activity.Video return if rate > 1 or kf_mid >= 2 or churn >= emitted * dh * 4 / 10
+        Activity.Switching return if kf_mid == 1
+        Activity.Scrolling return if shifted > 0
+        Activity.Still return if churn <= dh / 8 and same * 10 >= emitted * 9
+        return Activity.Typing
+
+    private def activity_name(a: Activity) -> cstr:
+        return match a:
+            Activity.Still: "still"
+            Activity.Typing: "typing"
+            Activity.Scrolling: "scrolling"
+            Activity.Video: "video"
+            Activity.Switching: "switching"
+
+    # Coarse confidence: 90 when the winning rule's signal is decisive, else 60 (SPEC.md).
+    private def activity_conf(a: Activity, emitted: i32, same: i32, shifted: i32, kf_mid: i32, churn: i32, rate: i32, dh: i32) -> i32:
+        strong: bool = match a:
+            Activity.Video: rate > 1
+            Activity.Switching: kf_mid == 1 and churn <= dh
+            Activity.Scrolling: shifted * 2 >= emitted
+            Activity.Still: churn == 0
+            Activity.Typing: same * 2 >= emitted
+        return 90 if strong else 60
+
+    # Flush the staging buffer to the file only on the emit pass.
+    private def fwrite_txt_if(fp: void&, do_write: i32) -> void:
+        return if do_write == 0
+        _ = fwrite(&TXT[0], 1.usize(), txt_len.usize(), fp)
+
+    # Serialize the frames + trailer of one batch. do_write=0 is the stats pass (nothing hits the
+    # file), do_write=1 is the emit pass; both run the IDENTICAL staging logic so the stats always
+    # describe exactly what pass 2 writes. Results land in the g_* stats globals.
+    private def serialize_frames(fp: void&, do_write: i32, nframes: i32, dw: i32, dh: i32, cap_bytes: i32) -> void:
+        total: mutable i32 = 0
+        same: mutable i32 = 0
+        shifted: mutable i32 = 0
+        keyframes: mutable i32 = 1
+        # frame 0 is always a keyframe
+        render_grid(0, dw, dh)
+        stage_keyframe(0, 0, dw, dh, FRAME_MS[0.usize()])
+        fwrite_txt_if(fp, do_write)
+        total <- total + txt_len
+        copy_cur_to_prev(dw, dh)
+        emitted: mutable i32 = 1
+        changed_total: mutable i32 = 0
+        emit_every: mutable i32 = 1
+        for i in 1..<nframes:
+            is_last: bool = i == nframes - 1
+            # degrade: past the cap, drop frames (baseline unchanged so the stream stays decodable)
+            skip: bool = emit_every > 1 and (not is_last) and (i % emit_every) != 0
+            continue if skip
+            base: i32 = i * RING_STRIDE
+            render_grid(base, dw, dh)
+            d: i32 = detect_shift(dw, dh)
+            cr: i32 = mark_changed(dw, dh, d)
+            same <- same + 1 if cr == 0
+            shifted <- shifted + 1 if d != 0 and cr > 0
+            match frame_emit_kind(cr, dh):
+                FrameEmit.Keyframe:
+                    stage_keyframe(i, base, dw, dh, FRAME_MS[i.usize()])
+                    keyframes <- keyframes + 1
+                FrameEmit.Delta:
+                    stage_delta(i, dw, dh, FRAME_MS[i.usize()], d, cr)
+            fwrite_txt_if(fp, do_write)
+            total <- total + txt_len
+            copy_cur_to_prev(dw, dh)
+            emitted <- emitted + 1
+            changed_total <- changed_total + cr
+            # over budget: halve the emit rate
+            emit_every <- emit_every * 2 if total > cap_bytes and emit_every < 4
+        # trailer
+        txt_len <- 0
+        txt_str("BATCH_END emitted=")
+        txt_dec(emitted.i64())
+        txt_str(" changed_rows=")
+        txt_dec(changed_total.i64())
+        txt_str(" bytes=")
+        txt_dec(total.i64())
+        txt_str(" rate=")
+        txt_dec(emit_every.i64())
+        txt_byte(10)
+        fwrite_txt_if(fp, do_write)
+        g_same <- same
+        g_shifted <- shifted
+        g_keyframes <- keyframes
+        g_churn <- changed_total
+        g_emitted <- emitted
+        g_rate <- emit_every
+        g_bytes <- total
+
+    # BATCH v=2 header + STATS + ACTIVITY lines (needs the stats pass to have run).
+    private def write_header(fp: void&, batch: i64, nframes: i32, dw: i32, dh: i32, fps: i32, tok: i32, with_img: i32) -> void:
+        txt_len <- 0
+        txt_str("BATCH ")
+        txt_dec(batch)
+        txt_str(" v=2 frames=")
+        txt_dec(nframes.i64())
+        txt_str(" ")
+        txt_dec(dw.i64())
+        txt_str("x")
+        txt_dec(dh.i64())
+        txt_str(" fps=")
+        txt_dec(fps.i64())
+        txt_str(" t0=")
+        txt_dec(FRAME_MS[0.usize()])
+        txt_str(" cap=")
+        txt_dec(tok.i64())
+        txt_byte(10)
+        txt_str("STATS same=")
+        txt_dec(g_same.i64())
+        txt_str(" shifted=")
+        txt_dec(g_shifted.i64())
+        txt_str(" keyframes=")
+        txt_dec(g_keyframes.i64())
+        txt_str(" churn_rows=")
+        txt_dec(g_churn.i64())
+        txt_str(" img=")
+        txt_str("none") if with_img == 0
+        txt_str("batch_") if with_img == 1
+        txt_dec(batch) if with_img == 1
+        txt_str(".jpg") if with_img == 1
+        txt_byte(10)
+        kf_mid: i32 = g_keyframes - 1
+        act: Activity = classify_activity(g_emitted, g_same, g_shifted, kf_mid, g_churn, g_rate, dh)
+        txt_str("ACTIVITY ")
+        txt_str(activity_name(act))
+        txt_str(" conf=")
+        txt_dec(activity_conf(act, g_emitted, g_same, g_shifted, kf_mid, g_churn, g_rate, dh).i64())
+        txt_byte(10)
+        _ = fwrite(&TXT[0], 1.usize(), txt_len.usize(), fp)
+
+    # Serialize a whole batch to <dir>/batch_<batch>.txt (atomic), update latest.txt, prune old.
+    public def write_batch_dir(dir: cstr, batch0: i64, nframes: i32, dw: i32, dh: i32, fps: i32, cap_bytes: i32, retain: i32, tok: i32, with_img: i32) -> int:
+        batch: i64 = batch0 if batch0 >= 0 else 0      # provable non-negative for the path builders
+        build_num_path(&BATCH_PATH[0], &BATCH_TMP[0], dir, "/batch_", batch, ".txt")
+        f: void&? = fopen(&BATCH_TMP[0], "wb".cast[u8&])
+        if f is fp:
+            serialize_frames(fp, 0, nframes, dw, dh, cap_bytes)      # pass 1: stats only
+            write_header(fp, batch, nframes, dw, dh, fps, tok, with_img)
+            serialize_frames(fp, 1, nframes, dw, dh, cap_bytes)      # pass 2: the actual emit
+            _ = fclose(fp)
+            _ = rename(&BATCH_TMP[0], &BATCH_PATH[0])
+            _ = write_latest(batch)
+            convert_ppm_async(dir, batch) if with_img == 1
+            prune_batch(dir, batch - retain.i64())
+            return 1
+        return 0
+
+    # ---- full-resolution keyframe image sidecar (active-perception enabler) ----
+
+    # Dump SCREEN_GRAB (the batch's frame-0 grab, full res) as a binary PPM next to the batch file.
+    public def write_frame_ppm(dir: cstr, batch0: i64, w: i32, h: i32) -> void:
+        batch: i64 = batch0 if batch0 >= 0 else 0
+        build_num_path(&PPM_PATH[0], &PPM_TMP[0], dir, "/batch_", batch, ".ppm")
+        f: void&? = fopen(&PPM_PATH[0], "wb".cast[u8&])
+        if f is fp:
+            txt_len <- 0
+            txt_str("P6\n")
+            txt_dec(w.i64())
+            txt_str(" ")
+            txt_dec(h.i64())
+            txt_str("\n255\n")
+            _ = fwrite(&TXT[0], 1.usize(), txt_len.usize(), fp)
+            for y in 0..<h:
+                txt_len <- 0
+                for x in 0..<w:
+                    p: u32 = SCREEN_GRAB[(y * w + x).usize()]
+                    txt_byte(((p >> 16) & 255).u8())
+                    txt_byte(((p >> 8) & 255).u8())
+                    txt_byte((p & 255).u8())
+                _ = fwrite(&TXT[0], 1.usize(), txt_len.usize(), fp)
+            _ = fclose(fp)
+
+    # Fire-and-forget PPM -> JPEG conversion via sips; deletes the PPM when done.
+    private def convert_ppm_async(dir: cstr, batch0: i64) -> void:
+        batch: i64 = batch0 if batch0 >= 0 else 0
+        off: mutable i32 = 0
+        off <- u8buf_set_str(&CMD_BUF[0], off, "(sips -s format jpeg '")
+        off <- u8buf_set_str(&CMD_BUF[0], off, dir)
+        off <- u8buf_set_str(&CMD_BUF[0], off, "/batch_")
+        off <- u8buf_set_num(&CMD_BUF[0], off, batch)
+        off <- u8buf_set_str(&CMD_BUF[0], off, ".ppm' --out '")
+        off <- u8buf_set_str(&CMD_BUF[0], off, dir)
+        off <- u8buf_set_str(&CMD_BUF[0], off, "/batch_")
+        off <- u8buf_set_num(&CMD_BUF[0], off, batch)
+        off <- u8buf_set_str(&CMD_BUF[0], off, ".jpg' && rm -f '")
+        off <- u8buf_set_str(&CMD_BUF[0], off, dir)
+        off <- u8buf_set_str(&CMD_BUF[0], off, "/batch_")
+        off <- u8buf_set_num(&CMD_BUF[0], off, batch)
+        off <- u8buf_set_str(&CMD_BUF[0], off, ".ppm') >/dev/null 2>&1 &")
+        CMD_BUF[off.usize()] <- 0
+        _ = system(&CMD_BUF[0])
+
+    # Delete the batch artifacts that just fell out of the retention window (no-op before it fills).
+    private def prune_batch(dir: cstr, old: i64) -> void:
+        return if old < 0
+        build_num_path(&PRUNE_PATH[0], &PRUNE_TMP[0], dir, "/batch_", old, ".txt")
+        _ = remove(&PRUNE_PATH[0])
+        build_num_path(&PRUNE_PATH[0], &PRUNE_TMP[0], dir, "/batch_", old, ".jpg")
+        _ = remove(&PRUNE_PATH[0])
+        build_num_path(&PRUNE_PATH[0], &PRUNE_TMP[0], dir, "/batch_", old, ".ocr.txt")
+        _ = remove(&PRUNE_PATH[0])
+
+    public def fail(msg: cstr) -> int:
+        _ = puts(msg.cast[u8&])
+        return 1
+
+    # ---- CLI argument readers (values, not a mutable-clamp ladder) ----
+
+    # argv[idx] as an i32, or `dflt` when the argument is absent.
+    public def arg_i32(argc: int, argv: u8&&, idx: int, dflt: i32) -> i32:
+        requires idx >= 0
+        dflt return if argc <= idx
+        return atoi(argv[idx]).i32()
+
+    public def clamp_i32(v: i32, lo: i32, hi: i32) -> i32:
+        requires lo <= hi
+        return lo if v < lo else (hi if v > hi else v)
+
+    public def at_least(v: i32, lo: i32) -> i32:
+        return lo if v < lo else v

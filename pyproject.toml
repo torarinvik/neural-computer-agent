@@ -1,0 +1,11 @@
+[project]
+name = "neural-computer-agent"
+version = "0.1.0"
+description = "Sample-efficient real-time neural computer research"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["experiments"]
+python_files = ["test_*.py"]
+addopts = "-ra"
+

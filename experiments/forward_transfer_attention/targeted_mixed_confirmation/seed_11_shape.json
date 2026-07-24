@@ -1,0 +1,32 @@
+{
+  "condition": "intact",
+  "evaluation": {
+    "compact_early_auc": 0.46533203125,
+    "compact_few_shot_auc": 0.44873046875,
+    "compact_retention": 0.439453125,
+    "full_few_shot_auc": 0.43719482421875,
+    "full_future_accuracy_0_shot": 0.425048828125,
+    "full_future_accuracy_1_shot": 0.440185546875,
+    "full_future_accuracy_2_shot": 0.4423828125,
+    "full_future_accuracy_4_shot": 0.441162109375,
+    "full_old_accuracy_0_shot": 0.43115234375,
+    "full_old_accuracy_1_shot": 0.44677734375,
+    "full_old_accuracy_2_shot": 0.443359375,
+    "full_old_accuracy_4_shot": 0.43994140625,
+    "full_retention": 0.43994140625,
+    "future_accuracy_0_shot": 0.425048828125,
+    "future_accuracy_1_shot": 0.4716796875,
+    "future_accuracy_2_shot": 0.458984375,
+    "future_accuracy_4_shot": 0.439208984375,
+    "old_accuracy_0_shot": 0.43115234375,
+    "old_accuracy_1_shot": 0.46923828125,
+    "old_accuracy_2_shot": 0.46240234375,
+    "old_accuracy_4_shot": 0.439453125,
+    "rows_saved": 4.0
+  },
+  "primitive": "shape",
+  "schema": "cross-primitive-shape-attention-v1",
+  "seed": 11,
+  "sensory_only": true,
+  "weights_frozen": true
+}

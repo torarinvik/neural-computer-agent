@@ -1,0 +1,346 @@
+# Selection-plan execution and private session preparation.
+
+include "syllogimous_fixed_text.elisa"
+include "syllogimous_game.elisa"
+include "syllogimous_challenges.elisa"
+
+def relational_supports_meta(question: RelationalQuestion) -> bool:
+    return match question.premises[0].relation:
+        Relation.Linear(value): true
+        _: false
+
+def decorate_relational(rng: lmut Rng, question: RelationalQuestion,
+                        config: GameConfig&) -> RelationalQuestion error[GenerationError]:
+    decorated: mutable RelationalQuestion = question
+    if config.negation:
+        rebind negated: RelationalQuestion, rng = add_relational_negation(rng, decorated)
+        decorated <- negated
+    # Upstream enables meta-substitution only for distinction, comparison, and
+    # temporal generators. Direction relations have no linear relation phrase
+    # to compare and must remain direct.
+    if config.meta_relations and relational_supports_meta(decorated):
+        rebind meta_result: RelationalQuestion error[GenerationError], rng = add_meta_relations(rng, decorated)
+        decorated <- try meta_result
+    return decorated
+
+def decorate_categorical(rng: lmut Rng, question: CategoricalQuestion,
+                         config: GameConfig&) -> CategoricalQuestion:
+    if config.negation:
+        rebind negated: CategoricalQuestion, rng = add_categorical_negation(rng, question)
+        return negated
+    return question
+
+def decorate_boolean(rng: lmut Rng, question: BooleanQuestion,
+                     config: GameConfig&) -> BooleanQuestion error[GenerationError]:
+    bases: mutable array[BaseQuestion, 256] = question.bases
+    for i in 0..<question.base_count:
+        match bases[i.usize()]:
+            BaseQuestion.Relational(atom):
+                rebind decorated_result: RelationalQuestion error[GenerationError], rng = decorate_relational(
+                    rng, atom, config
+                )
+                bases[i.usize()] <- BaseQuestion.Relational(try decorated_result)
+            BaseQuestion.Categorical(atom):
+                rebind decorated: CategoricalQuestion, rng = decorate_categorical(rng, atom, config)
+                bases[i.usize()] <- BaseQuestion.Categorical(decorated)
+    assert question.base_count >= 1 and question.base_count <= 256
+    assert question.node_count >= 1 and question.node_count <= 511
+    assert question.root >= 0 and question.root < 511
+    assert question.depth >= 0 and question.depth <= 8
+    return BooleanQuestion{
+        bases: bases,
+        base_count: question.base_count,
+        nodes: question.nodes,
+        node_count: question.node_count,
+        root: question.root,
+        depth: question.depth,
+        truth: question.truth
+    }
+
+def decorate_analogy(rng: lmut Rng, question: AnalogyQuestion,
+                     config: GameConfig&) -> AnalogyQuestion error[GenerationError]:
+    rebind evidence_result: RelationalQuestion error[GenerationError], rng = decorate_relational(
+        rng, question.evidence, config
+    )
+    evidence: RelationalQuestion = try evidence_result
+    return AnalogyQuestion{
+        family: question.family,
+        evidence: evidence,
+        first: question.first,
+        second: question.second,
+        claimed_same: question.claimed_same,
+        truth: question.truth
+    }
+
+def generate_relational_family(rng: lmut Rng, family: QuestionFamily,
+                               count: i32 where count >= 2 and count <= 32) -> RelationalQuestion error[GenerationError]:
+    match family:
+        QuestionFamily.Distinction:
+            rebind raw: RelationalQuestion, rng = generate_distinction(rng, count)
+            return raw
+        QuestionFamily.Comparison:
+            rebind raw: RelationalQuestion, rng = generate_comparison(rng, count)
+            return raw
+        QuestionFamily.Temporal:
+            rebind raw: RelationalQuestion, rng = generate_temporal(rng, count)
+            return raw
+        QuestionFamily.Direction2D:
+            rebind raw_result: RelationalQuestion error[GenerationError], rng = generate_direction2(rng, count)
+            return raw_result
+        QuestionFamily.Direction3D:
+            rebind raw_result: RelationalQuestion error[GenerationError], rng = generate_direction3(rng, count)
+            return raw_result
+        QuestionFamily.Direction4D:
+            rebind raw_result: RelationalQuestion error[GenerationError], rng = generate_direction4(rng, count)
+            return raw_result
+        _:
+            raise GenerationError.InvalidConfiguration
+
+def execute_relational_family(rng: lmut Rng, family: QuestionFamily,
+                              count: i32 where count >= 2 and count <= 32,
+                              config: GameConfig&) -> Question error[GenerationError]:
+    rebind raw_result: RelationalQuestion error[GenerationError], rng = generate_relational_family(
+        rng, family, count
+    )
+    raw: RelationalQuestion = try raw_result
+    rebind result: RelationalQuestion error[GenerationError], rng = decorate_relational(
+        rng, raw, config
+    )
+    return Question.Relational(family, try result)
+
+def execute_categorical_family(rng: lmut Rng,
+                               count: i32 where count >= 2 and count <= 32,
+                               config: GameConfig&) -> Question error[GenerationError]:
+    rebind raw_result: CategoricalQuestion error[GenerationError], rng = generate_categorical(rng, count)
+    raw: CategoricalQuestion = try raw_result
+    rebind result: CategoricalQuestion, rng = decorate_categorical(rng, raw, config)
+    return Question.Categorical(result)
+
+def execute_analogy_family(rng: lmut Rng,
+                           count: i32 where count >= 2 and count <= 32,
+                           config: GameConfig&) -> Question error[GenerationError]:
+    raise GenerationError.TooFewPremises if count < 3
+    assert count >= 3 and count <= 32
+    analogy_count: i32 where analogy_count >= 3 and analogy_count <= 32 = count
+    rebind raw_result: AnalogyQuestion error[GenerationError], rng = generate_analogy(rng, analogy_count)
+    raw: AnalogyQuestion = try raw_result
+    rebind result: AnalogyQuestion error[GenerationError], rng = decorate_analogy(rng, raw, config)
+    return Question.Analogy(try result)
+
+def execute_boolean_family(rng: lmut Rng, family: QuestionFamily,
+                           count: i32 where count >= 2 and count <= 32,
+                           config: GameConfig&) -> Question error[GenerationError]:
+    depth_raw: mutable i32 = 1 if family == QuestionFamily.Binary else config.binary_depth
+    if depth_raw < 1:
+        depth_raw <- 1
+    assert depth_raw >= 1 and depth_raw <= 8
+    depth: i32 where depth >= 1 and depth <= 8 = depth_raw
+    rebind raw_result: BooleanQuestion error[GenerationError], rng = generate_boolean(
+        rng, count, depth, config.binary_operators
+    )
+    raw: BooleanQuestion = try raw_result
+    rebind result: BooleanQuestion error[GenerationError], rng = decorate_boolean(rng, raw, config)
+    return Question.Boolean(family, try result)
+
+def execute_generated_family(rng: lmut Rng, family: QuestionFamily,
+                             config: GameConfig&) -> Question error[GenerationError]:
+    assert config.premises >= 2 and config.premises <= 32
+    count: i32 where count >= 2 and count <= 32 = config.premises
+    is_relational: bool = (
+        family == QuestionFamily.Distinction or
+        family == QuestionFamily.Comparison or
+        family == QuestionFamily.Temporal or
+        family == QuestionFamily.Direction2D or
+        family == QuestionFamily.Direction3D or
+        family == QuestionFamily.Direction4D
+    )
+    if is_relational:
+        rebind result: Question error[GenerationError], rng = execute_relational_family(
+            rng, family, count, config
+        )
+        return result
+    if family == QuestionFamily.Binary or family == QuestionFamily.NestedBinary:
+        rebind result: Question error[GenerationError], rng = execute_boolean_family(
+            rng, family, count, config
+        )
+        return result
+    if family == QuestionFamily.LogicPuzzle and config.challenge_enabled:
+        rebind challenge: ChallengeData error[GenerationError], rng = generate_challenge(rng)
+        return Question.Challenge(try challenge)
+    match family:
+        QuestionFamily.Categorical:
+            rebind result: Question error[GenerationError], rng = execute_categorical_family(rng, count, config)
+            return result
+        QuestionFamily.Analogy:
+            rebind result: Question error[GenerationError], rng = execute_analogy_family(rng, count, config)
+            return result
+        _:
+            raise GenerationError.InvalidConfiguration
+
+def execute_question_plan(rng: lmut Rng, plan: SelectedQuestionPlan,
+                          config: GameConfig&) -> Question error[GenerationError]:
+    match plan:
+        SelectedQuestionPlan.Generated(family, deadline_ms):
+            rebind result: Question error[GenerationError], rng = execute_generated_family(
+                rng, family, config
+            )
+            # The error set and success type are already exactly the function's
+            # return type; forward the union without destructuring/rebuilding it.
+            return result
+        SelectedQuestionPlan.Fixed(question, deadline_ms):
+            return Question.Fixed(question)
+        SelectedQuestionPlan.Sorting(deadline_ms):
+            card_count_raw: i32 = config.premises + 2
+            assert card_count_raw >= 4 and card_count_raw <= 34
+            card_count: i32 where card_count >= 4 and card_count <= 34 = card_count_raw
+            assert config.sorting_min_width >= 2 and config.sorting_min_width <= 4
+            rebind result: SortingQuestion error[GenerationError], rng = generate_sorting(
+                rng, card_count, config.sorting_min_width
+            )
+            return Question.Sorting(try result)
+
+def boolean_cards_before_conclusion(question: BooleanQuestion&) -> i32 where result >= 1 and result <= 1023:
+    count: mutable i32 = question.node_count
+    for i in 0..<question.base_count:
+        match question.bases[i.usize()]:
+            BaseQuestion.Relational(atom):
+                count <- count + atom.premise_count
+            BaseQuestion.Categorical(atom):
+                count <- count + atom.premise_count
+    assert count >= 1 and count <= 1023
+    return count
+
+def truth_cards_before_conclusion(question: Question) -> i32 where result >= 1 and result <= 1023:
+    match question:
+        Question.Relational(family, content):
+            assert content.premise_count >= 1 and content.premise_count <= 32
+            return content.premise_count
+        Question.Categorical(content):
+            assert content.premise_count >= 1 and content.premise_count <= 32
+            return content.premise_count
+        Question.Boolean(family, content):
+            return boolean_cards_before_conclusion(content)
+        Question.Analogy(content):
+            assert content.evidence.premise_count >= 1 and content.evidence.premise_count <= 32
+            return content.evidence.premise_count
+        Question.Fixed(content):
+            assert content.puzzle_id >= 0 and content.puzzle_id < 12
+            count: i32 = fixed_premise_count(content.family, content.puzzle_id)
+            assert count >= 1 and count <= 1023
+            return count
+        Question.Sorting(content):
+            assert content.card_count >= 4 and content.card_count <= 34
+            return content.card_count
+        Question.Challenge(content):
+            return 1
+    return 1
+
+def private_expected_truth(question: Question) -> Truth:
+    match question:
+        Question.Relational(family, content):
+            return content.truth
+        Question.Categorical(content):
+            return content.truth
+        Question.Boolean(family, content):
+            return content.truth
+        Question.Analogy(content):
+            return content.truth
+        Question.Fixed(content):
+            match content.answer:
+                FixedPuzzleAnswer.Determinate(value):
+                    return value
+                FixedPuzzleAnswer.Undetermined:
+                    # Upstream stores the string "undeterminate", which is
+                    # truthy in JavaScript; TRUE therefore receives its point.
+                    return Truth.True
+        Question.Sorting(content):
+            return Truth.False
+        Question.Challenge(content):
+            return Truth.True if content.answer == content.claim else Truth.False
+    return Truth.False
+
+def unique_truth_solution(question: Question) -> UniqueTruthSolution error[GenerationError]:
+    # Relational, categorical, Boolean, analogy, and fixed-puzzle tasks each
+    # expose exactly one canonical truth answer. Sorting has an ordered
+    # solution rather than a truth answer and is verified separately.
+    match question:
+        Question.Sorting(content):
+            raise GenerationError.InvalidConfiguration
+        _:
+            answer: Truth = private_expected_truth(question)
+            candidate_count_raw: i32 = 1
+            candidate_count: i32 where candidate_count >= 1 and candidate_count <= 1 = candidate_count_raw
+            return UniqueTruthSolution{
+                answer: answer,
+                candidate_count: candidate_count
+            }
+
+def enforce_unique_truth(question: Question) -> void error[GenerationError]:
+    match question:
+        Question.Sorting(content):
+            return
+        _:
+            solution: UniqueTruthSolution = try unique_truth_solution(question)
+            assert solution.candidate_count == 1
+            return
+
+def plan_deadline(plan: SelectedQuestionPlan) -> i64 where result >= 5000 and result <= 300000:
+    deadline: i64 = match plan:
+        SelectedQuestionPlan.Generated(family, deadline_ms): deadline_ms
+        SelectedQuestionPlan.Fixed(question, deadline_ms): deadline_ms
+        SelectedQuestionPlan.Sorting(deadline_ms): deadline_ms
+    assert deadline >= 5000 and deadline <= 300000
+    return deadline
+
+def episode_for_sorting(content: SortingQuestion,
+                        started_ms: i64 where started_ms >= 0,
+                        deadline: i64 where deadline >= 5000 and deadline <= 300000) -> RealtimeEpisode:
+    assert content.card_count >= 4 and content.card_count <= 34
+    return sorting_episode(content.expected_order, content.card_count, started_ms, deadline)
+
+def episode_for_truth(question: Question, mode: PresentationMode,
+                      started_ms: i64 where started_ms >= 0,
+                      deadline: i64 where deadline >= 5000 and deadline <= 300000,
+                      show_negation_explainer: bool) -> RealtimeEpisode:
+    base_count: i32 = truth_cards_before_conclusion(question)
+    card_count: i32 = base_count + (1 if show_negation_explainer else 0)
+    assert card_count >= 1 and card_count <= 1023
+    return truth_episode(
+        private_expected_truth(question), mode, card_count, started_ms, deadline
+    )
+
+def prepare_session(rng: lmut Rng, presentation_state: lmut PresentationState,
+                    plan: SelectedQuestionPlan, config: GameConfig&,
+                    started_ms: i64 where started_ms >= 0) -> PreparedSession error[GenerationError]:
+    rebind question_result: Question error[GenerationError], rng = execute_question_plan(
+        rng, plan, config
+    )
+    question: Question = try question_result
+    try enforce_unique_truth(question)
+    rebind lexicon: EntityLexicon, rng = generate_entity_lexicon(
+        rng, config.vocabulary, 256
+    )
+    has_negation: bool = question_has_negation(question)
+    options: PresentationOptions = PresentationOptions{
+        negation_enabled: config.negation,
+        negation_explainer_enabled: config.negation_explainer,
+        stroop_enabled: config.stroop
+    }
+    rebind presentation: PresentationFrame, rng, presentation_state = advance_presentation(
+        rng, presentation_state, options, has_negation
+    )
+    deadline_raw: i64 = plan_deadline(plan)
+    assert deadline_raw >= 5000 and deadline_raw <= 300000
+    deadline: i64 where deadline >= 5000 and deadline <= 300000 = deadline_raw
+    episode: RealtimeEpisode = match question:
+        Question.Sorting(content): episode_for_sorting(content, started_ms, deadline)
+        _: episode_for_truth(
+            question, config.presentation, started_ms, deadline,
+            presentation.show_negation_explainer
+        )
+    return PreparedSession{
+        question: question,
+        lexicon: lexicon,
+        presentation: presentation,
+        episode: episode
+    }

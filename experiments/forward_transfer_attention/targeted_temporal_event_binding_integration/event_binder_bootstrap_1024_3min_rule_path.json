@@ -1,0 +1,59 @@
+{
+  "consolidator_frozen": true,
+  "controller_frozen": true,
+  "feedback_mode": "color-button",
+  "results": {
+    "1": {
+      "memory_row": {
+        "linear": {
+          "best_test_accuracy": 0.546875,
+          "test_accuracy": 0.478515625,
+          "train_accuracy": 0.615234375
+        },
+        "mlp": {
+          "best_test_accuracy": 0.53125,
+          "test_accuracy": 0.52734375,
+          "train_accuracy": 0.6953125
+        }
+      },
+      "raw_write_row": {
+        "linear": {
+          "best_test_accuracy": 0.53125,
+          "test_accuracy": 0.490234375,
+          "train_accuracy": 0.609375
+        },
+        "mlp": {
+          "best_test_accuracy": 0.552734375,
+          "test_accuracy": 0.494140625,
+          "train_accuracy": 0.63671875
+        }
+      },
+      "recalled": {
+        "linear": {
+          "best_test_accuracy": 0.55078125,
+          "test_accuracy": 0.486328125,
+          "train_accuracy": 0.607421875
+        },
+        "mlp": {
+          "best_test_accuracy": 0.52734375,
+          "test_accuracy": 0.49609375,
+          "train_accuracy": 0.6796875
+        }
+      }
+    }
+  },
+  "schema": "temporal-rule-memory-probe-v1",
+  "selected_shots": [
+    1
+  ],
+  "selected_taps": [
+    "raw_write_row",
+    "memory_row",
+    "recalled"
+  ],
+  "test_examples": 512,
+  "test_rule_rate": 0.525390625,
+  "train_examples": 512,
+  "train_rule_rate": 0.529296875,
+  "visual_only": true
+}

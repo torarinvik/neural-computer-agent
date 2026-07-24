@@ -1,0 +1,245 @@
+# Real-time protocol core. All times are monotonic integer milliseconds.
+
+include "syllogimous_logic.elisa"
+
+enum PhaseDecision:
+    CheckClock
+    CheckCard
+
+def episode_phase(premise_count: PremiseCount,
+                  card: i32 where card >= 0 and card <= premise_count,
+                  elapsed_ms: i64 where elapsed_ms >= 0,
+                  deadline_ms: DeadlineMs) -> EpisodePhase:
+    return machine from PhaseDecision.CheckClock:
+        PhaseDecision.CheckClock -> {CheckCard}:
+            done EpisodePhase.Finished(Outcome.Timeout) if elapsed_ms >= deadline_ms
+            next PhaseDecision.CheckCard
+        PhaseDecision.CheckCard:
+            done EpisodePhase.AwaitingAnswer if card == premise_count
+            done EpisodePhase.Presenting(card)
+
+def answer_outcome(expected: Truth, received: Truth,
+                   elapsed_ms: i64 where elapsed_ms >= 0,
+                   deadline_ms: DeadlineMs) -> Outcome:
+    return Outcome.Timeout if elapsed_ms >= deadline_ms else (
+        Outcome.Correct if expected == received else Outcome.Wrong
+    )
+
+def outcome_reward(outcome: Outcome, deadline_ms: DeadlineMs,
+                   elapsed_ms: i64 where elapsed_ms >= 0) -> Reward:
+    match outcome:
+        Outcome.Correct:
+            return latency_reward(deadline_ms, elapsed_ms, true)
+        Outcome.Wrong:
+            return latency_reward(deadline_ms, elapsed_ms, false)
+        Outcome.Timeout:
+            return latency_reward(deadline_ms, elapsed_ms, false)
+
+enum EpisodeDecision:
+    CheckClock
+    DispatchAction
+
+def blank_user_order() -> array[i32, 34]:
+    order: array[i32, 34] = zeroed
+    return order
+
+def truth_episode(expected: Truth, presentation: PresentationMode,
+                  card_count: VisibleCardCount,
+                  started_ms: i64 where started_ms >= 0,
+                  deadline_ms: DeadlineMs) -> RealtimeEpisode:
+    display_all: bool = presentation == PresentationMode.DisplayAll
+    cursor_raw: i32 = card_count if display_all else 0
+    assert cursor_raw >= 0 and cursor_raw <= 1024
+    cursor: i32 where cursor >= 0 and cursor <= 1024 = cursor_raw
+    return RealtimeEpisode{
+        task: EpisodeTask.TruthAnswer(expected),
+        presentation: presentation,
+        started_ms: started_ms,
+        last_event_ms: started_ms,
+        deadline_ms: deadline_ms,
+        cursor: cursor,
+        card_count: card_count,
+        conclusion_visible: display_all,
+        user_order: blank_user_order(),
+        status: EpisodeStatus.Active
+    }
+
+def sorting_episode(expected_order: array[i32, 34],
+                    card_count: i32 where card_count >= 4 and card_count <= 34,
+                    started_ms: i64 where started_ms >= 0,
+                    deadline_ms: DeadlineMs) -> RealtimeEpisode:
+    order: mutable array[i32, 34] = zeroed
+    for i in 0..<card_count:
+        order[i.usize()] <- i
+    visible_count: VisibleCardCount = card_count
+    cursor: i32 where cursor >= 0 and cursor <= 1024 = card_count
+    return RealtimeEpisode{
+        task: EpisodeTask.SortingAnswer(expected_order, card_count),
+        presentation: PresentationMode.DisplayAll,
+        started_ms: started_ms,
+        last_event_ms: started_ms,
+        deadline_ms: deadline_ms,
+        cursor: cursor,
+        card_count: visible_count,
+        conclusion_visible: true,
+        user_order: order,
+        status: EpisodeStatus.Active
+    }
+
+def active_episode_with(episode: RealtimeEpisode,
+                        cursor: VisibleCardCursor,
+                        conclusion_visible: bool,
+                        user_order: array[i32, 34],
+                        now_ms: i64 where now_ms >= 0) -> RealtimeEpisode:
+    assert episode.started_ms >= 0
+    assert episode.deadline_ms >= 5000 and episode.deadline_ms <= 300000
+    assert episode.card_count >= 1 and episode.card_count <= 1024
+    return RealtimeEpisode{
+        task: episode.task,
+        presentation: episode.presentation,
+        started_ms: episode.started_ms,
+        last_event_ms: now_ms,
+        deadline_ms: episode.deadline_ms,
+        cursor: cursor,
+        card_count: episode.card_count,
+        conclusion_visible: conclusion_visible,
+        user_order: user_order,
+        status: EpisodeStatus.Active
+    }
+
+def finish_episode(episode: RealtimeEpisode, outcome: Outcome,
+                   now_ms: i64 where now_ms >= 0) -> RealtimeEpisode:
+    assert episode.started_ms >= 0
+    assert episode.deadline_ms >= 5000 and episode.deadline_ms <= 300000
+    assert episode.cursor >= 0 and episode.cursor <= 1024
+    assert episode.card_count >= 1 and episode.card_count <= 1024
+    assert now_ms >= episode.started_ms
+    elapsed_ms: i64 where elapsed_ms >= 0 = now_ms - episode.started_ms
+    reward: Reward = outcome_reward(outcome, episode.deadline_ms, elapsed_ms)
+    return RealtimeEpisode{
+        task: episode.task,
+        presentation: episode.presentation,
+        started_ms: episode.started_ms,
+        last_event_ms: now_ms,
+        deadline_ms: episode.deadline_ms,
+        cursor: episode.cursor,
+        card_count: episode.card_count,
+        conclusion_visible: episode.conclusion_visible,
+        user_order: episode.user_order,
+        status: EpisodeStatus.Finished(outcome, reward)
+    }
+
+def sorting_order_is_correct(actual: array[i32, 34]&,
+                             expected: array[i32, 34]&,
+                             card_count: i32 where card_count >= 4 and card_count <= 34) -> bool:
+    correct: mutable bool = true
+    for i in 0..<card_count:
+        correct <- false if (actual[i.usize()]) != (expected[i.usize()]) else correct
+    return correct
+
+def dispatch_episode_action(episode: RealtimeEpisode, action: Action,
+                            now_ms: i64 where now_ms >= 0) -> RealtimeEpisode error[EpisodeError]:
+    assert episode.started_ms >= 0
+    assert episode.deadline_ms >= 5000 and episode.deadline_ms <= 300000
+    assert episode.cursor >= 0 and episode.cursor <= 1024
+    assert episode.card_count >= 1 and episode.card_count <= 1024
+    match action:
+        Action.Wait:
+            return active_episode_with(episode, episode.cursor,
+                                       episode.conclusion_visible,
+                                       episode.user_order, now_ms)
+        Action.Next:
+            if episode.presentation == PresentationMode.DisplayAll:
+                return active_episode_with(episode, episode.cursor, true,
+                                           episode.user_order, now_ms)
+            next_raw: i32 = episode.cursor + 1 if episode.cursor < episode.card_count else episode.cursor
+            assert next_raw >= 0 and next_raw <= 1024
+            next_cursor: i32 where next_cursor >= 0 and next_cursor <= 1024 = next_raw
+            return active_episode_with(episode, next_cursor,
+                                       next_cursor == episode.card_count,
+                                       episode.user_order, now_ms)
+        Action.Previous:
+            if episode.presentation == PresentationMode.DisplayAll:
+                return active_episode_with(episode, episode.cursor, true,
+                                           episode.user_order, now_ms)
+            previous_raw: i32 = episode.cursor - 1 if episode.cursor > 0 else 0
+            assert previous_raw >= 0 and previous_raw <= 1024
+            previous_cursor: i32 where previous_cursor >= 0 and previous_cursor <= 1024 = previous_raw
+            return active_episode_with(episode, previous_cursor, false,
+                                       episode.user_order, now_ms)
+        Action.Answer(received):
+            raise EpisodeError.AnswerBeforeConclusion if not episode.conclusion_visible
+            match episode.task:
+                EpisodeTask.TruthAnswer(expected):
+                    outcome: Outcome = Outcome.Correct if received == expected else Outcome.Wrong
+                    return finish_episode(episode, outcome, now_ms)
+                EpisodeTask.SortingAnswer(expected_order, card_count):
+                    assert card_count >= 4 and card_count <= 34
+                    raise EpisodeError.InvalidAction
+        Action.MoveCard(source, destination):
+            match episode.task:
+                EpisodeTask.TruthAnswer(expected):
+                    raise EpisodeError.InvalidAction
+                EpisodeTask.SortingAnswer(expected_order, card_count):
+                    assert card_count >= 4 and card_count <= 34
+                    raise EpisodeError.InvalidAction if source >= card_count or destination >= card_count
+                    order: mutable array[i32, 34] = episode.user_order
+                    displaced: i32 = order[destination.usize()]
+                    order[destination.usize()] <- order[source.usize()]
+                    order[source.usize()] <- displaced
+                    return active_episode_with(episode, episode.cursor, true, order, now_ms)
+        Action.SubmitSort:
+            match episode.task:
+                EpisodeTask.TruthAnswer(expected):
+                    raise EpisodeError.InvalidAction
+                EpisodeTask.SortingAnswer(expected_order, card_count):
+                    assert card_count >= 4 and card_count <= 34
+                    correct: bool = sorting_order_is_correct(
+                        episode.user_order, expected_order, card_count
+                    )
+                    outcome: Outcome = Outcome.Correct if correct else Outcome.Wrong
+                    return finish_episode(episode, outcome, now_ms)
+    raise EpisodeError.InvalidAction
+
+def deadline_expired(episode: RealtimeEpisode,
+                     now_ms: i64 where now_ms >= 0) -> bool:
+    assert episode.started_ms >= 0
+    assert episode.deadline_ms >= 5000 and episode.deadline_ms <= 300000
+    return machine from EpisodeDecision.CheckClock:
+        EpisodeDecision.CheckClock -> {DispatchAction}:
+            done true if (
+                now_ms - episode.started_ms >= episode.deadline_ms
+            )
+            next EpisodeDecision.DispatchAction
+        EpisodeDecision.DispatchAction:
+            done false
+
+def step_episode(episode: RealtimeEpisode, action: Action,
+                 now_ms: i64 where now_ms >= 0) -> RealtimeEpisode error[EpisodeError]:
+    assert episode.last_event_ms >= 0
+    raise EpisodeError.ClockMovedBackwards if now_ms < episode.last_event_ms
+    match episode.status:
+        EpisodeStatus.Active:
+            pass
+        EpisodeStatus.Finished(outcome, reward):
+            raise EpisodeError.AlreadyFinished
+    if deadline_expired(episode, now_ms):
+        return finish_episode(episode, Outcome.Timeout, now_ms)
+    return try dispatch_episode_action(episode, action, now_ms)
+
+def observe_episode(episode: RealtimeEpisode) -> EpisodeObservation:
+    assert episode.cursor >= 0 and episode.cursor <= 1024
+    assert episode.card_count >= 1 and episode.card_count <= 1024
+    assert episode.cursor < 1024 if not episode.conclusion_visible else true
+    phase: EpisodePhase = match episode.status:
+        EpisodeStatus.Finished(outcome, reward): EpisodePhase.Finished(outcome)
+        EpisodeStatus.Active: (
+            EpisodePhase.AwaitingAnswer if episode.conclusion_visible else
+            EpisodePhase.Presenting(episode.cursor)
+        )
+    return EpisodeObservation{
+        cursor: episode.cursor,
+        card_count: episode.card_count,
+        conclusion_visible: episode.conclusion_visible,
+        status: phase
+    }

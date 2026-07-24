@@ -1,0 +1,501 @@
+{
+  "arms": {
+    "action_conditioned": {
+      "aulc_above_chance": 0.2109375,
+      "bits_to_75": 16,
+      "curve": [
+        {
+          "examples_processed": 2048,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 8,
+          "unique_reward_bits": 8,
+          "verified_accuracy": 0.4921875
+        },
+        {
+          "examples_processed": 4096,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 16,
+          "unique_reward_bits": 16,
+          "verified_accuracy": 0.7578125
+        },
+        {
+          "examples_processed": 8192,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 32,
+          "unique_reward_bits": 32,
+          "verified_accuracy": 0.5859375
+        },
+        {
+          "examples_processed": 8192,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 64,
+          "unique_reward_bits": 64,
+          "verified_accuracy": 1.0
+        }
+      ],
+      "final_accuracy": 1.0
+    },
+    "action_shuffled_replay": {
+      "aulc_above_chance": 0.0166015625,
+      "bits_to_75": null,
+      "curve": [
+        {
+          "examples_processed": 2048,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 8,
+          "unique_reward_bits": 8,
+          "verified_accuracy": 0.49609375
+        },
+        {
+          "examples_processed": 4096,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 16,
+          "unique_reward_bits": 16,
+          "verified_accuracy": 0.35546875
+        },
+        {
+          "examples_processed": 8192,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 32,
+          "unique_reward_bits": 32,
+          "verified_accuracy": 0.484375
+        },
+        {
+          "examples_processed": 8192,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 64,
+          "unique_reward_bits": 64,
+          "verified_accuracy": 0.56640625
+        }
+      ],
+      "final_accuracy": 0.56640625
+    },
+    "fixed_protocol": {
+      "aulc_above_chance": 0.224609375,
+      "bits_to_75": 16,
+      "curve": [
+        {
+          "examples_processed": 2048,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 8,
+          "unique_reward_bits": 8,
+          "verified_accuracy": 0.51953125
+        },
+        {
+          "examples_processed": 4096,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 16,
+          "unique_reward_bits": 16,
+          "verified_accuracy": 0.75
+        },
+        {
+          "examples_processed": 8192,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 32,
+          "unique_reward_bits": 32,
+          "verified_accuracy": 0.62890625
+        },
+        {
+          "examples_processed": 8192,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 64,
+          "unique_reward_bits": 64,
+          "verified_accuracy": 1.0
+        }
+      ],
+      "final_accuracy": 1.0
+    },
+    "fully_fresh": {
+      "aulc_above_chance": 0.00390625,
+      "bits_to_75": null,
+      "curve": [
+        {
+          "examples_processed": 2048,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 8,
+          "unique_reward_bits": 8,
+          "verified_accuracy": 0.484375
+        },
+        {
+          "examples_processed": 4096,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 16,
+          "unique_reward_bits": 16,
+          "verified_accuracy": 0.484375
+        },
+        {
+          "examples_processed": 8192,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 32,
+          "unique_reward_bits": 32,
+          "verified_accuracy": 0.5078125
+        },
+        {
+          "examples_processed": 8192,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 64,
+          "unique_reward_bits": 64,
+          "verified_accuracy": 0.5078125
+        }
+      ],
+      "final_accuracy": 0.5078125
+    },
+    "no_probe_effect": {
+      "aulc_above_chance": 0.044921875,
+      "bits_to_75": null,
+      "curve": [
+        {
+          "examples_processed": 2048,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 8,
+          "unique_reward_bits": 8,
+          "verified_accuracy": 0.5078125
+        },
+        {
+          "examples_processed": 4096,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 16,
+          "unique_reward_bits": 16,
+          "verified_accuracy": 0.54296875
+        },
+        {
+          "examples_processed": 8192,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 32,
+          "unique_reward_bits": 32,
+          "verified_accuracy": 0.57421875
+        },
+        {
+          "examples_processed": 8192,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 64,
+          "unique_reward_bits": 64,
+          "verified_accuracy": 0.5546875
+        }
+      ],
+      "final_accuracy": 0.5546875
+    },
+    "passive": {
+      "aulc_above_chance": 0.0166015625,
+      "bits_to_75": null,
+      "curve": [
+        {
+          "examples_processed": 2048,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 8,
+          "unique_reward_bits": 8,
+          "verified_accuracy": 0.484375
+        },
+        {
+          "examples_processed": 4096,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 16,
+          "unique_reward_bits": 16,
+          "verified_accuracy": 0.53125
+        },
+        {
+          "examples_processed": 8192,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 32,
+          "unique_reward_bits": 32,
+          "verified_accuracy": 0.53515625
+        },
+        {
+          "examples_processed": 8192,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 64,
+          "unique_reward_bits": 64,
+          "verified_accuracy": 0.48046875
+        }
+      ],
+      "final_accuracy": 0.48046875
+    },
+    "reward_shuffled_replay": {
+      "aulc_above_chance": 0.013671875,
+      "bits_to_75": null,
+      "curve": [
+        {
+          "examples_processed": 2048,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 8,
+          "unique_reward_bits": 8,
+          "verified_accuracy": 0.49609375
+        },
+        {
+          "examples_processed": 4096,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 16,
+          "unique_reward_bits": 16,
+          "verified_accuracy": 0.546875
+        },
+        {
+          "examples_processed": 8192,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 32,
+          "unique_reward_bits": 32,
+          "verified_accuracy": 0.48828125
+        },
+        {
+          "examples_processed": 8192,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 64,
+          "unique_reward_bits": 64,
+          "verified_accuracy": 0.5078125
+        }
+      ],
+      "final_accuracy": 0.5078125
+    },
+    "shuffled_action": {
+      "aulc_above_chance": 0.203125,
+      "bits_to_75": 64,
+      "curve": [
+        {
+          "examples_processed": 2048,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 8,
+          "unique_reward_bits": 8,
+          "verified_accuracy": 0.5078125
+        },
+        {
+          "examples_processed": 4096,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 16,
+          "unique_reward_bits": 16,
+          "verified_accuracy": 0.71875
+        },
+        {
+          "examples_processed": 8192,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 32,
+          "unique_reward_bits": 32,
+          "verified_accuracy": 0.5859375
+        },
+        {
+          "examples_processed": 8192,
+          "optimizer_updates": 256,
+          "unique_lifetimes": 64,
+          "unique_reward_bits": 64,
+          "verified_accuracy": 1.0
+        }
+      ],
+      "final_accuracy": 1.0
+    }
+  },
+  "causal_audit": {
+    "missing_consequence_accuracy": 0.48046875,
+    "missing_consequence_entropy": 0.07300999760627747,
+    "no_probe_effect_accuracy": 0.48046875,
+    "normal_accuracy": 1.0,
+    "normal_entropy": 0.004266567062586546,
+    "protocol_swap_accuracy": 1.0,
+    "protocol_swap_prediction_flip": 1.0,
+    "target_reverse_accuracy": 1.0,
+    "target_reverse_prediction_flip": 1.0
+  },
+  "configuration": {
+    "batch_size": 32,
+    "checkpoint_out": "experiments/forward_transfer_attention/checkpoints/identify_random_fresh_width64_bits64_seed211.pt",
+    "curriculum_rung": "random_probe",
+    "device": "cuda",
+    "fit_updates": 256,
+    "hidden": 64,
+    "initialize_from": null,
+    "intention_width": 64,
+    "learning_rate": 0.003,
+    "policy_lifetimes": 64,
+    "pretrain_learning_rate": 0.0003,
+    "pretrain_lifetimes": 128,
+    "pretrain_steps": 40,
+    "readout_kind": "bottleneck",
+    "report": "experiments/forward_transfer_attention/reports/identify_then_act_random_fresh_width64_bits64_seed211.json",
+    "reset_readout_on_transfer": false,
+    "seed": 211,
+    "test_lifetimes": 256
+  },
+  "gate": {
+    "advance_to_second_seed": false,
+    "aulc_advantage": -0.013671875,
+    "causal_audits_pass": true,
+    "fewer_bits_to_75": false
+  },
+  "learner_visible": [
+    "rendered_rgb",
+    "own_previous_opaque_probe_action",
+    "own_attempted_second_action",
+    "scalar_terminal_success"
+  ],
+  "pretraining": {
+    "action_conditioned": {
+      "examples_processed": 2560,
+      "heldout_predictive_metrics": {
+        "action_binding_loss_increase": 0.012807130813598633,
+        "heldout_action_shuffled_loss": 2.020092487335205,
+        "heldout_standardized_loss": 2.0072853565216064
+      },
+      "history": [
+        {
+          "gradient_norm": 14.317509651184082,
+          "loss": 4.030429840087891,
+          "predictive_loss": 2.0141654014587402,
+          "step": 1
+        },
+        {
+          "gradient_norm": 3.2616920471191406,
+          "loss": 3.2343039512634277,
+          "predictive_loss": 1.7715063095092773,
+          "step": 20
+        },
+        {
+          "gradient_norm": 1.9579280614852905,
+          "loss": 2.550633668899536,
+          "predictive_loss": 1.7035744190216064,
+          "step": 40
+        }
+      ],
+      "optimizer_updates": 40,
+      "unique_lifetimes": 128,
+      "unique_scored_transitions": 256
+    },
+    "fixed_protocol": {
+      "examples_processed": 2560,
+      "heldout_predictive_metrics": {
+        "action_binding_loss_increase": 0.03160750865936279,
+        "heldout_action_shuffled_loss": 1.9625283479690552,
+        "heldout_standardized_loss": 1.9309208393096924
+      },
+      "history": [
+        {
+          "gradient_norm": 24.90256690979004,
+          "loss": 3.9261014461517334,
+          "predictive_loss": 1.9086546897888184,
+          "step": 1
+        },
+        {
+          "gradient_norm": 3.3292994499206543,
+          "loss": 2.6715853214263916,
+          "predictive_loss": 1.1962625980377197,
+          "step": 20
+        },
+        {
+          "gradient_norm": 2.2279655933380127,
+          "loss": 2.2131950855255127,
+          "predictive_loss": 1.3132996559143066,
+          "step": 40
+        }
+      ],
+      "optimizer_updates": 40,
+      "unique_lifetimes": 128,
+      "unique_scored_transitions": 256
+    },
+    "fully_fresh": {
+      "heldout_predictive_metrics": {
+        "action_binding_loss_increase": -0.007638454437255859,
+        "heldout_action_shuffled_loss": 2.011397361755371,
+        "heldout_standardized_loss": 2.019035816192627
+      }
+    },
+    "no_probe_effect": {
+      "examples_processed": 2560,
+      "heldout_predictive_metrics": {
+        "action_binding_loss_increase": -0.0050237178802490234,
+        "heldout_action_shuffled_loss": 2.085785150527954,
+        "heldout_standardized_loss": 2.090808868408203
+      },
+      "history": [
+        {
+          "gradient_norm": 16.706741333007812,
+          "loss": 4.10148286819458,
+          "predictive_loss": 2.0873031616210938,
+          "step": 1
+        },
+        {
+          "gradient_norm": 2.1309680938720703,
+          "loss": 3.137380361557007,
+          "predictive_loss": 1.5557684898376465,
+          "step": 20
+        },
+        {
+          "gradient_norm": 1.6969289779663086,
+          "loss": 2.4766950607299805,
+          "predictive_loss": 1.3672726154327393,
+          "step": 40
+        }
+      ],
+      "optimizer_updates": 40,
+      "unique_lifetimes": 128,
+      "unique_scored_transitions": 256
+    },
+    "passive": {
+      "examples_processed": 2560,
+      "heldout_predictive_metrics": {
+        "action_binding_loss_increase": 0.0,
+        "heldout_action_shuffled_loss": 1.7159842252731323,
+        "heldout_standardized_loss": 1.7159842252731323
+      },
+      "history": [
+        {
+          "gradient_norm": 50.405277252197266,
+          "loss": 4.181202411651611,
+          "predictive_loss": 1.8678739070892334,
+          "step": 1
+        },
+        {
+          "gradient_norm": 3.959904670715332,
+          "loss": 3.2340848445892334,
+          "predictive_loss": 1.4224838018417358,
+          "step": 20
+        },
+        {
+          "gradient_norm": 1.513286828994751,
+          "loss": 2.097446918487549,
+          "predictive_loss": 1.2262316942214966,
+          "step": 40
+        }
+      ],
+      "optimizer_updates": 40,
+      "unique_lifetimes": 128,
+      "unique_scored_transitions": 256
+    },
+    "shuffled_action": {
+      "examples_processed": 2560,
+      "heldout_predictive_metrics": {
+        "action_binding_loss_increase": -0.0050508975982666016,
+        "heldout_action_shuffled_loss": 2.1013011932373047,
+        "heldout_standardized_loss": 2.1063520908355713
+      },
+      "history": [
+        {
+          "gradient_norm": 11.870963096618652,
+          "loss": 4.065616130828857,
+          "predictive_loss": 2.0491280555725098,
+          "step": 1
+        },
+        {
+          "gradient_norm": 2.5626556873321533,
+          "loss": 3.401589870452881,
+          "predictive_loss": 1.7903990745544434,
+          "step": 20
+        },
+        {
+          "gradient_norm": 1.3350944519042969,
+          "loss": 2.6949849128723145,
+          "predictive_loss": 1.792560338973999,
+          "step": 40
+        }
+      ],
+      "optimizer_updates": 40,
+      "unique_lifetimes": 128,
+      "unique_scored_transitions": 256
+    }
+  },
+  "schema": "identify-then-act-v1",
+  "semantic_labels_used_for_training": false,
+  "total_seconds": 42.4026018170116,
+  "unattempted_action_labels_used_for_training": false,
+  "verifier_private": [
+    "actuator_protocol",
+    "effect_directions",
+    "target_direction",
+    "correct_second_action"
+  ]
+}

@@ -1,0 +1,3 @@
+# Optional VLM experiments under experiments/syllogimous_realtime.
+transformers>=4.50
+

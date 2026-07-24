@@ -1,0 +1,147 @@
+{
+  "accuracy_drops": {
+    "no_feedback": 0.3281249701976776,
+    "no_order": 0.0234375
+  },
+  "audit_interventions": "pixel-space frame removal only; no hidden-state swaps",
+  "audits": {
+    "feedback_only": {
+      "brier_all_action_audit": 0.28189313411712646,
+      "ece_all_action_audit": 0.1735581010580063,
+      "mean_action_entropy": 0.4802989661693573,
+      "verified_accuracy": 0.5
+    },
+    "no_feedback": {
+      "brier_all_action_audit": 0.4196706712245941,
+      "ece_all_action_audit": 0.371198832988739,
+      "mean_action_entropy": 0.19676637649536133,
+      "verified_accuracy": 0.4895833432674408
+    },
+    "no_order": {
+      "brier_all_action_audit": 0.2016487717628479,
+      "ece_all_action_audit": 0.2037324607372284,
+      "mean_action_entropy": 0.11515199393033981,
+      "verified_accuracy": 0.7942708134651184
+    },
+    "normal": {
+      "brier_all_action_audit": 0.18763010203838348,
+      "ece_all_action_audit": 0.19458797574043274,
+      "mean_action_entropy": 0.07699677348136902,
+      "verified_accuracy": 0.8177083134651184
+    },
+    "order_only": {
+      "brier_all_action_audit": 0.27328920364379883,
+      "ece_all_action_audit": 0.13945071399211884,
+      "mean_action_entropy": 0.5430580377578735,
+      "verified_accuracy": 0.5
+    },
+    "query_only": {
+      "brier_all_action_audit": 0.4315185546875,
+      "ece_all_action_audit": 0.396510511636734,
+      "mean_action_entropy": 0.16877655684947968,
+      "verified_accuracy": 0.4765625
+    },
+    "support_only": {
+      "brier_all_action_audit": 0.2648852467536926,
+      "ece_all_action_audit": 0.1511814445257187,
+      "mean_action_entropy": 0.4205544888973236,
+      "verified_accuracy": 0.5520833134651184
+    }
+  },
+  "configuration": {
+    "batch_size": 30,
+    "correlation_weight": 0.5,
+    "device": "cuda",
+    "fit_updates": 200,
+    "hidden": 64,
+    "learning_rate": 0.003,
+    "policy_lifetimes": 510,
+    "policy_test_lifetimes": 384,
+    "pretrain_learning_rate": 0.0003,
+    "pretrain_lifetimes": 252,
+    "pretrain_steps": 40,
+    "report": "experiments/forward_transfer_attention/remote_results_2026-07-24/action_conditioned_success/causal_route_audit_seed313.json",
+    "seed": 313,
+    "variance_weight": 2.0
+  },
+  "entropy_increases": {
+    "no_feedback": 0.11976960301399231,
+    "no_order": 0.038155220448970795
+  },
+  "gate": {
+    "grounded_evidence_dependence": false,
+    "missing_evidence_uncertainty": false,
+    "passes_all": false,
+    "query_invariance": false,
+    "reversal_causality": true,
+    "support_binding_causality": false
+  },
+  "learner_training_inputs": [
+    "rendered_rgb_stream",
+    "frozen_recurrent_latent",
+    "attempted_action",
+    "logging_propensity_0.5",
+    "scalar_verifier_reward"
+  ],
+  "pretraining": {
+    "history": [
+      {
+        "correlation_loss": 1.1257798671722412,
+        "gradient_norm": 26.279481887817383,
+        "loss": 4.455284595489502,
+        "predictive_loss": 2.0132312774658203,
+        "step": 1,
+        "variance_loss": 0.9395817518234253
+      },
+      {
+        "correlation_loss": 0.46209579706192017,
+        "gradient_norm": 4.982697010040283,
+        "loss": 2.958226442337036,
+        "predictive_loss": 1.5712610483169556,
+        "step": 20,
+        "variance_loss": 0.5779588222503662
+      },
+      {
+        "correlation_loss": 0.5792083740234375,
+        "gradient_norm": 6.4106621742248535,
+        "loss": 2.450892925262451,
+        "predictive_loss": 1.4502835273742676,
+        "step": 40,
+        "variance_loss": 0.3555026352405548
+      }
+    ],
+    "last_gradient_norm": 6.4106621742248535
+  },
+  "query_only_reversal": {
+    "normal_accuracy": 0.8177083134651184,
+    "prediction_flip_rate": 0.6119791865348816,
+    "reversed_relabeled_accuracy": 0.2213541716337204,
+    "reversed_stale_accuracy": 0.2213541716337204
+  },
+  "reversal": {
+    "normal_accuracy": 0.8177083134651184,
+    "prediction_flip_rate": 0.6380208134651184,
+    "reversed_relabeled_accuracy": 0.8203125,
+    "reversed_stale_accuracy": 0.1796875
+  },
+  "schema": "success-missing-evidence-audit-v1",
+  "semantic_labels_used_for_training": false,
+  "support_only_reversal": {
+    "normal_accuracy": 0.8177083134651184,
+    "prediction_flip_rate": 0.046875,
+    "reversed_relabeled_accuracy": 0.2135416716337204,
+    "reversed_stale_accuracy": 0.7864583134651184
+  },
+  "total_seconds": 19.893700346990954,
+  "training_accounting": {
+    "examples_processed": 6000,
+    "last_gradient_norm": 0.6859992146492004,
+    "last_loss": 0.3146146535873413,
+    "logged_reward_rate": 0.4784314036369324,
+    "logging_mean_propensity": 0.5,
+    "optimizer_updates": 200,
+    "ordered_private_rules_used_only_by_verifier": 510,
+    "unique_reward_bits": 510
+  },
+  "unattempted_action_labels_used_for_training": false
+}

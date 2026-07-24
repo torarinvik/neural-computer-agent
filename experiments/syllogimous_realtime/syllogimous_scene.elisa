@@ -1,0 +1,305 @@
+# Public scene raster/audio rendering for the real-time driver.
+
+include "syllogimous_driver.elisa"
+include "syllogimous_sensory.elisa"
+
+def append_audio_codes(destination: lmut AudioCodeStream,
+                       source: AudioCodeStream&) -> void:
+    for i in 0..<source.count:
+        if destination.count < 256:
+            destination <- append_audio_code(
+                destination, source.codes[i.usize()]
+            )
+
+def scene_packet(audio_codes: AudioCodeStream,
+                 timestamp_ms: i64 where timestamp_ms >= 0) -> SensoryPacket:
+    audio: AudioPacket = synthesize_audio(audio_codes)
+    assert audio.sample_count >= 0 and audio.sample_count <= 20480
+    return SensoryPacket{
+        pcm: audio.samples,
+        pcm_count: audio.sample_count,
+        timestamp_ms: timestamp_ms,
+        width: 640,
+        height: 400
+    }
+
+def raster_compact_entity(x: i32, y: i32,
+                          lexicon: EntityLexicon&,
+                          entity: i32 where entity >= 0 and entity < lexicon.entity_count,
+                          color: u32) -> void:
+    match lexicon.labels[entity.usize()]:
+        EntityLabel.Meaningful(index):
+            assert index >= 0 and index < 446
+            noun: i32 where noun >= 0 and noun < 446 = index
+            raster_text(x, y, 1, meaningful_noun(noun), color)
+        EntityLabel.Abstract(index):
+            assert index >= 0 and index < 1530
+            label: i32 where label >= 0 and label < 1530 = index
+            syllable: AbstractSyllable = decode_abstract_label(label)
+            raster_glyph(x, y, 1, consonant_code(syllable.first), color)
+            raster_glyph(x + 6, y, 1, vowel_code(syllable.vowel), color)
+            raster_glyph(x + 12, y, 1, consonant_code(syllable.last), color)
+
+def compact_relation_name(relation: Relation) -> cstr:
+    return match relation:
+        Relation.Linear(value): linear_name(value)
+        Relation.Planar(value): planar_name(value)
+        Relation.Spatial(value): "3D RELATION".cast[cstr]
+        Relation.SpaceTime(space, time): "4D RELATION".cast[cstr]
+        Relation.Categorical(value): quantifier_name(value)
+        Relation.Meta(source, comparison): (
+            "META SAME".cast[cstr] if comparison == MetaRelation.Same else "META OPPOSITE".cast[cstr]
+        )
+
+def relational_family_name(family: QuestionFamily) -> cstr:
+    return match family:
+        QuestionFamily.Distinction: "DISTINCTION".cast[cstr]
+        QuestionFamily.Comparison: "COMPARISON".cast[cstr]
+        QuestionFamily.Temporal: "TEMPORAL".cast[cstr]
+        QuestionFamily.Direction2D: "SPACE TWO D".cast[cstr]
+        QuestionFamily.Direction3D: "SPACE THREE D".cast[cstr]
+        QuestionFamily.Direction4D: "SPACE TIME".cast[cstr]
+        _: "RELATION".cast[cstr]
+
+def public_question_name(question: PublicQuestion) -> cstr:
+    return match question:
+        PublicQuestion.Relational(family, content): relational_family_name(family)
+        PublicQuestion.Categorical(content): "SYLLOGISM".cast[cstr]
+        PublicQuestion.Boolean(family, content):
+            "NESTED BINARY".cast[cstr] if family == QuestionFamily.NestedBinary else "BINARY".cast[cstr]
+        PublicQuestion.Analogy(content): "ANALOGY".cast[cstr]
+        PublicQuestion.Sorting(content): "SORTING TEST".cast[cstr]
+        PublicQuestion.Challenge(content): "DETERMINISTIC CHALLENGE".cast[cstr]
+        PublicQuestion.Fixed(content):
+            "PARADOX".cast[cstr] if content.family == QuestionFamily.Paradox else "LOGIC PUZZLE".cast[cstr]
+
+def raster_compact_premise(y: i32,
+                           content: PublicPremise&,
+                           lexicon: EntityLexicon&,
+                           color: u32,
+                           conclusion: bool) -> void:
+    assert content.left >= 0 and content.left < lexicon.entity_count
+    assert content.right >= 0 and content.right < lexicon.entity_count
+    left: i32 where left >= 0 and left < lexicon.entity_count = content.left
+    right: i32 where right >= 0 and right < lexicon.entity_count = content.right
+    raster_text(18, y, 1, "C" if conclusion else "P", color)
+    raster_compact_entity(36, y, lexicon, left, color)
+    raster_text(205, y, 1, "NOT", 0xff3030) if content.polarity == Polarity.Negated
+    raster_text(235, y, 1, compact_relation_name(content.relation), color)
+    raster_compact_entity(470, y, lexicon, right, color)
+
+def raster_relational_display_all(content: PublicRelationalQuestion&,
+                                  lexicon: EntityLexicon&,
+                                  frame: PresentationFrame&,
+                                  title: cstr,
+                                  remaining_permille: i32 where remaining_permille >= 0 and remaining_permille <= 1000) -> void:
+    raster_fill(0x0a0e12)
+    raster_rect(8, 8, 624, 384, 0x5ab4d2)
+    raster_rect(12, 12, 616, 376, 0x0a0e12)
+    raster_timer(remaining_permille)
+    body: u32 = 0xff3030 if frame.body_ink == InkColor.Red else 0xf0f4f5
+    raster_text(18, 34, 1, title, 0xf0c850)
+    raster_text(
+        310, 34, 1,
+        "INVERT RED TEXT" if frame.show_negation_explainer else "ALL PREMISES AND CONCLUSION",
+        0xf0c850
+    )
+    row_step: i32 = 10 if content.premise_count <= 31 else 9
+    for i in 0..<content.premise_count:
+        raster_compact_premise(
+            48 + i * row_step, content.premises[i.usize()],
+            lexicon, body, false
+        )
+    conclusion_y: i32 = 48 + content.premise_count * row_step
+    raster_compact_premise(
+        conclusion_y, content.conclusion, lexicon, 0xf0c850, true
+    )
+    raster_buttons(frame)
+
+def raster_categorical_display_all(content: PublicCategoricalQuestion&,
+                                   lexicon: EntityLexicon&,
+                                   frame: PresentationFrame&,
+                                   remaining_permille: i32 where remaining_permille >= 0 and remaining_permille <= 1000) -> void:
+    assert content.premise_count >= 2 and content.premise_count <= 32
+    relational: PublicRelationalQuestion = PublicRelationalQuestion{
+        premises: content.premises,
+        premise_count: content.premise_count,
+        conclusion: content.conclusion
+    }
+    raster_relational_display_all(
+        relational, lexicon, frame, "SYLLOGISM".cast[cstr], remaining_permille
+    )
+
+def question_audio_codes(question: PublicQuestion,
+                         first_card: i32 where first_card >= 0,
+                         card_limit: i32 where card_limit >= 1 and card_limit <= 64) -> AudioCodeStream:
+    cursor: mutable RenderCursor = initial_render_cursor()
+    output: mutable AudioCodeStream = empty_audio_codes()
+    emitted: mutable i32 = 0
+    for index in 0..<2048:
+        rebind card: RenderCard?, cursor = next_render_card(cursor, question)
+        if card is visible and index >= first_card and emitted < card_limit:
+            codes: AudioCodeStream = audio_codes_for_card(visible)
+            output <- append_audio_codes(output, codes)
+            emitted <- emitted + 1
+    return output
+
+def public_question_card_count(question: PublicQuestion) -> i32 where result >= 1 and result <= 2048:
+    cursor: mutable RenderCursor = initial_render_cursor()
+    count: mutable i32 = 0
+    for scan in 0..<2048:
+        rebind card: RenderCard?, cursor = next_render_card(cursor, question)
+        if card is visible:
+            count <- count + 1
+    assert count >= 1 and count <= 2048
+    return count
+
+def render_paged_display_all(question: PublicQuestion,
+                             lexicon: EntityLexicon&,
+                             frame: PresentationFrame&,
+                             remaining_permille: i32 where remaining_permille >= 0 and remaining_permille <= 1000,
+                             timestamp_ms: i64 where timestamp_ms >= 0) -> SensoryPacket error[DriverError]:
+    base_count: i32 = public_question_card_count(question)
+    count: i32 = base_count + (1 if frame.show_negation_explainer else 0)
+    assert count >= 1 and count <= 2048
+    page_raw: i64 = (timestamp_ms / 750) % count.i64()
+    assert page_raw >= 0 and page_raw < count.i64()
+    page: i32 = page_raw.i32()
+    assert page >= 0 and page <= 1024 if page <= 1024 else true
+    # The generated families currently remain within the driver cursor bound.
+    raise DriverError.CardUnavailable if page > 1024
+    page_index: i32 where page_index >= 0 and page_index <= 1024 = page
+    card: mutable RenderCard = RenderCard.NegationExplainer
+    if not frame.show_negation_explainer or page_index > 0:
+        shifted_raw: i32 = page_index - (1 if frame.show_negation_explainer else 0)
+        assert shifted_raw >= 0 and shifted_raw <= 1024
+        shifted: i32 where shifted >= 0 and shifted <= 1024 = shifted_raw
+        card <- try render_card_at(question, shifted)
+    raster_render_card(card, lexicon, frame, remaining_permille)
+    raster_text(430, 34, 1, public_question_name(question), 0xf0c850)
+    return scene_packet(audio_codes_for_card(card), timestamp_ms)
+
+def render_display_all_scene(question: PublicQuestion,
+                             lexicon: EntityLexicon&,
+                             frame: PresentationFrame&,
+                             remaining_permille: i32 where remaining_permille >= 0 and remaining_permille <= 1000,
+                             timestamp_ms: i64 where timestamp_ms >= 0) -> SensoryPacket error[DriverError]:
+    match question:
+        PublicQuestion.Relational(family, content):
+            raster_relational_display_all(
+                content, lexicon, frame,
+                public_question_name(question), remaining_permille
+            )
+            codes: mutable AudioCodeStream = empty_audio_codes()
+            if frame.show_negation_explainer:
+                explainer_codes: AudioCodeStream = audio_codes_for_card(
+                    RenderCard.NegationExplainer
+                )
+                codes <- append_audio_codes(
+                    codes, explainer_codes
+                )
+            question_codes: AudioCodeStream = question_audio_codes(question, 0, 34)
+            codes <- append_audio_codes(codes, question_codes)
+            return scene_packet(codes, timestamp_ms)
+        PublicQuestion.Categorical(content):
+            raster_categorical_display_all(
+                content, lexicon, frame, remaining_permille
+            )
+            codes: mutable AudioCodeStream = empty_audio_codes()
+            if frame.show_negation_explainer:
+                explainer_codes: AudioCodeStream = audio_codes_for_card(
+                    RenderCard.NegationExplainer
+                )
+                codes <- append_audio_codes(
+                    codes, explainer_codes
+                )
+            question_codes: AudioCodeStream = question_audio_codes(question, 0, 34)
+            codes <- append_audio_codes(codes, question_codes)
+            return scene_packet(codes, timestamp_ms)
+        _:
+            # Dense Boolean and long fixed-puzzle layouts use automatic public
+            # pages. Time keeps running; the model may WAIT for later pages.
+            return try render_paged_display_all(
+                question, lexicon, frame, remaining_permille, timestamp_ms
+            )
+
+def raster_sorting_scene(content: PublicSortingQuestion&,
+                         user_order: array[i32, 34]&,
+                         card_count: i32 where card_count >= 4 and card_count <= 34,
+                         frame: PresentationFrame&,
+                         remaining_permille: i32 where remaining_permille >= 0 and remaining_permille <= 1000) -> void:
+    raster_fill(0x0a0e12)
+    raster_rect(8, 8, 624, 384, 0x5ab4d2)
+    raster_rect(12, 12, 616, 376, 0x0a0e12)
+    raster_timer(remaining_permille)
+    body: u32 = 0xff3030 if frame.body_ink == InkColor.Red else 0xf0f4f5
+    raster_text(18, 34, 1, "SORT THE CARDS", 0xf0c850)
+    for position in 0..<card_count:
+        source: i32 = user_order[position.usize()]
+        assert source >= 0 and source < card_count
+        card: PublicSortCard = content.cards[source.usize()]
+        y: i32 = 48 + position * 9
+        raster_number(18, y, 1, position, body)
+        if card.color is value:
+            raster_text(55, y, 1, sort_color_name(value), body)
+        if card.material is value:
+            raster_text(175, y, 1, sort_material_name(value), body)
+        if card.shape is value:
+            raster_text(315, y, 1, sort_shape_name(value), body)
+        if card.size is value:
+            raster_text(485, y, 1, sort_size_name(value), body)
+
+def sorting_audio_codes(content: PublicSortingQuestion&,
+                        user_order: array[i32, 34]&,
+                        card_count: i32 where card_count >= 4 and card_count <= 34) -> AudioCodeStream:
+    output: mutable AudioCodeStream = empty_audio_codes()
+    for position in 0..<card_count:
+        source: i32 = user_order[position.usize()]
+        assert source >= 0 and source < card_count
+        card: RenderCard = RenderCard.SortingCard(
+            position, card_count, content.cards[source.usize()]
+        )
+        codes: AudioCodeStream = audio_codes_for_card(card)
+        output <- append_audio_codes(output, codes)
+    return output
+
+def render_driver_scene(scene: DriverScene,
+                        lexicon: EntityLexicon&,
+                        frame: PresentationFrame&,
+                        remaining_permille: i32 where remaining_permille >= 0 and remaining_permille <= 1000,
+                        timestamp_ms: i64 where timestamp_ms >= 0) -> SensoryPacket error[DriverError]:
+    match scene:
+        DriverScene.Carousel(card):
+            return render_sensory_packet(
+                card, lexicon, frame, remaining_permille, timestamp_ms
+            )
+        DriverScene.Feedback(card):
+            return render_sensory_packet(
+                card, lexicon, frame, remaining_permille, timestamp_ms
+            )
+        DriverScene.DisplayAll(question):
+            return try render_display_all_scene(
+                question, lexicon, frame,
+                remaining_permille, timestamp_ms
+            )
+        DriverScene.Sorting(content, user_order, card_count):
+            assert card_count >= 4 and card_count <= 34
+            raster_sorting_scene(
+                content, user_order, card_count, frame, remaining_permille
+            )
+            return scene_packet(
+                sorting_audio_codes(content, user_order, card_count),
+                timestamp_ms
+            )
+
+# The model-facing observation entry point. It returns PCM/timestamp metadata and
+# writes only the corresponding RGB pixels; `DriverScene` remains host-side.
+def observe_driver_sensory(driver: RealtimeDriver&,
+                           now_ms: i64 where now_ms >= 0) -> SensoryPacket error[DriverError]:
+    scene: DriverScene = try current_driver_scene(driver)
+    remaining_raw: i32 = driver_remaining_permille(driver, now_ms)
+    assert remaining_raw >= 0 and remaining_raw <= 1000
+    remaining: i32 where remaining >= 0 and remaining <= 1000 = remaining_raw
+    return try render_driver_scene(
+        scene, driver.lexicon, driver.presentation, remaining, now_ms
+    )

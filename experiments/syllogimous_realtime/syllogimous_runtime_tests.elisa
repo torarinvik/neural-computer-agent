@@ -1,0 +1,108 @@
+include "syllogimous_runtime.elisa"
+
+def runtime_family(enabled: bool) -> FamilyConfig:
+    return FamilyConfig{enabled: enabled, deadline_ms: 10000}
+
+def runtime_selection() -> SelectionConfig:
+    game: GameConfig = GameConfig{
+        difficulty: DifficultyTier.Standard,
+        premises: 2,
+        vocabulary: Vocabulary.Meaningful,
+        presentation: PresentationMode.Carousel,
+        negation: true,
+        negation_explainer: true,
+        meta_relations: true,
+        stroop: true,
+        binary_depth: 1,
+        binary_operators: all_binary_operators(),
+        sorting_min_width: 2,
+        rare_puzzle_permille: 0,
+        challenge_enabled: false
+    }
+    return SelectionConfig{
+        game: game,
+        distinction: runtime_family(true),
+        comparison: runtime_family(false),
+        temporal: runtime_family(false),
+        categorical: runtime_family(false),
+        direction2: runtime_family(false),
+        direction3: runtime_family(false),
+        direction4: runtime_family(false),
+        analogy: runtime_family(false),
+        binary: runtime_family(false),
+        sorting: runtime_family(false),
+        only_analogy: false,
+        only_binary: false,
+        only_sorting: false,
+        sorting_viewport_available: true
+    }
+
+def current_expected_text(runtime: GameRuntime&) -> cstr error[RuntimeError]:
+    match runtime.state:
+        RuntimeState.Feedback(driver, until_ms):
+            raise RuntimeError.FeedbackActive
+        RuntimeState.Playing(driver):
+            match driver.episode.task:
+                EpisodeTask.TruthAnswer(expected):
+                    return "TRUE" if expected == Truth.True else "FALSE"
+                EpisodeTask.SortingAnswer(expected_order, card_count):
+                    raise RuntimeError.FeedbackActive
+    raise RuntimeError.FeedbackActive
+
+def check_runtime() -> int error[GenerationError, ActionParseError, EpisodeError, LedgerError, DriverError, RuntimeError]:
+    runtime: mutable GameRuntime = try start_game_runtime(
+        9917, runtime_selection(), 1000
+    )
+    packet: SensoryPacket = try observe_game_runtime(runtime, 1000)
+    if packet.timestamp_ms != 1000 or packet.pcm_count <= 0:
+        return 1
+    rebind second_result: DriverScene error[ActionParseError, EpisodeError, LedgerError, DriverError, RuntimeError], runtime = apply_runtime_text(
+        runtime, "NEXT", 1500
+    )
+    _ = try second_result
+    rebind conclusion_result: DriverScene error[ActionParseError, EpisodeError, LedgerError, DriverError, RuntimeError], runtime = apply_runtime_text(
+        runtime, "NEXT", 2000
+    )
+    _ = try conclusion_result
+    rebind visible_conclusion_result: DriverScene error[ActionParseError, EpisodeError, LedgerError, DriverError, RuntimeError], runtime = apply_runtime_text(
+        runtime, "NEXT", 2200
+    )
+    _ = try visible_conclusion_result
+    response: cstr = try current_expected_text(runtime)
+    rebind feedback_result: DriverScene error[ActionParseError, EpisodeError, LedgerError, DriverError, RuntimeError], runtime = apply_runtime_text(
+        runtime, response, 2500
+    )
+    feedback: DriverScene = try feedback_result
+    if not scene_is_feedback(feedback):
+        return 2
+    match runtime.state:
+        RuntimeState.Feedback(driver, until_ms):
+            if until_ms != 3700:
+                return 3
+        _:
+            return 3
+    rebind held_result: DriverScene error[GenerationError, EpisodeError, LedgerError, DriverError, RuntimeError], runtime = tick_game_runtime(
+        runtime, 3699
+    )
+    if not scene_is_feedback(try held_result):
+        return 4
+    rebind next_round_result: DriverScene error[GenerationError, EpisodeError, LedgerError, DriverError, RuntimeError], runtime = tick_game_runtime(
+        runtime, 3700
+    )
+    next_round: DriverScene = try next_round_result
+    if scene_is_feedback(next_round):
+        return 5
+    match runtime.state:
+        RuntimeState.Playing(driver):
+            if driver.episode.started_ms != 3700:
+                return 6
+        _:
+            return 6
+    if runtime.ledger.rounds != 1 or runtime.ledger.score != 1:
+        return 7
+    return 0
+
+def main() -> int:
+    return catch check_runtime():
+        code: code
+        error failure: 99

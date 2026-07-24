@@ -1,0 +1,42 @@
+{
+  "schema": "syllogimous.model-latency.v1",
+  "hardware": "local CPU and Apple MPS",
+  "protocol": "one native SYLLAV1 packet, deterministic greedy generation, max_new_tokens=4",
+  "runs": [
+    {
+      "model": "HuggingFaceTB/SmolVLM2-256M-Video-Instruct",
+      "parameters": 256000000,
+      "packets": 1,
+      "action_emitted": "NEXT",
+      "inference_latency_ms": 3792.7,
+      "status": "superseded-pre-chat-template"
+    },
+    {
+      "model": "HuggingFaceTB/SmolVLM2-500M-Video-Instruct",
+      "parameters": 500000000,
+      "packets": 1,
+      "action_emitted": "TRUE",
+      "inference_latency_ms": 4879.6,
+      "status": "superseded-pre-chat-template"
+    },
+    {
+      "model": "HuggingFaceTB/SmolVLM2-256M-Video-Instruct",
+      "parameters": 256000000,
+      "hardware": "Apple MPS",
+      "packets": 1,
+      "action_emitted": "NEXT",
+      "inference_latency_ms": 3792.7,
+      "status": "passed-real-time-budget"
+    },
+    {
+      "model": "HuggingFaceTB/SmolVLM2-500M-Video-Instruct",
+      "parameters": 500000000,
+      "hardware": "Apple MPS",
+      "packets": 1,
+      "action_emitted": "TRUE",
+      "inference_latency_ms": 4879.6,
+      "status": "passed-real-time-budget"
+    }
+  ],
+  "note": "These are transport/latency smoke measurements, not gameplay accuracy results."
+}

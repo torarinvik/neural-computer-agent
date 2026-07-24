@@ -1,0 +1,72 @@
+{
+  "evaluation_premises": [
+    2,
+    4,
+    6,
+    8,
+    16
+  ],
+  "models": [
+    {
+      "core": "gru",
+      "final_accuracy_by_cards": {
+        "17": 0.0025,
+        "3": 0.9975,
+        "5": 0.9975,
+        "7": 1.0,
+        "9": 0.61
+      },
+      "heldout_final_accuracy": 0.7215,
+      "model_milliseconds_per_event": 0.0271357488307375,
+      "parameters": 4690574,
+      "report": "h100_gru_50k_multialphabet.json",
+      "report_sha256": "a395cfb51b79a2867f4574c6044e21a9b59e4cb2b7dc7fd2bcf96270fa69cd42",
+      "trained_length_final_accuracy": 0.9995
+    },
+    {
+      "core": "graph",
+      "final_accuracy_by_cards": {
+        "17": 0.285,
+        "3": 0.9875,
+        "5": 0.9975,
+        "7": 0.9975,
+        "9": 0.7475
+      },
+      "heldout_final_accuracy": 0.803,
+      "model_milliseconds_per_event": 0.03981661113268673,
+      "parameters": 5296526,
+      "report": "h100_graph_50k_multialphabet.json",
+      "report_sha256": "45dc686774e24f6e73c5e405347c8d6071d584fd11ee7b4f7aa7a66eb61153da",
+      "trained_length_final_accuracy": 0.9935
+    },
+    {
+      "core": "recursive",
+      "final_accuracy_by_cards": {
+        "17": 0.0,
+        "3": 0.995,
+        "5": 1.0,
+        "7": 1.0,
+        "9": 0.7625
+      },
+      "heldout_final_accuracy": 0.7515,
+      "model_milliseconds_per_event": 0.03409418803440952,
+      "parameters": 4395278,
+      "report": "h100_recursive_50k_multialphabet.json",
+      "report_sha256": "a4ec4509f0a8b0869514686b113faa32eed0b58e7ee42a4e5f021e8a5070e74b",
+      "trained_length_final_accuracy": 0.9995
+    }
+  ],
+  "schema": "syllogimous-latent-comparison-v1",
+  "strict_inference_inputs": [
+    "rgb",
+    "pcm",
+    "padding_mask"
+  ],
+  "training_premises": [
+    2,
+    3,
+    4,
+    5,
+    6
+  ]
+}

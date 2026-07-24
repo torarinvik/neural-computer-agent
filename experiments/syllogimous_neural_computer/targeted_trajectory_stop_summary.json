@@ -1,0 +1,40 @@
+{
+  "all_original_accuracy_preserved": true,
+  "all_variant_audit_accuracy_preserved": true,
+  "decision_inputs": "latent memory only",
+  "evaluation_streams_per_seed": 256,
+  "mean_lookup_reduction": 0.5548502604166666,
+  "mean_verifier_queries_saved": 0.6875,
+  "mean_verifier_query_reduction": 0.008593749999999999,
+  "pairs": [
+    {
+      "accuracy_delta": 0.0,
+      "audit_accuracy_delta": 0.0,
+      "lookup_reduction": 0.5537109375,
+      "rows_retained": 3.5703125,
+      "seed": 11,
+      "stop_rate": 0.0546875,
+      "verifier_queries_saved": 1.125
+    },
+    {
+      "accuracy_delta": 0.0,
+      "audit_accuracy_delta": 0.0,
+      "lookup_reduction": 0.5556640625,
+      "rows_retained": 3.5546875,
+      "seed": 23,
+      "stop_rate": 0.0,
+      "verifier_queries_saved": 0.0
+    },
+    {
+      "accuracy_delta": 0.0,
+      "audit_accuracy_delta": 0.0,
+      "lookup_reduction": 0.55517578125,
+      "rows_retained": 3.55859375,
+      "seed": 37,
+      "stop_rate": 0.046875,
+      "verifier_queries_saved": 0.9375
+    }
+  ],
+  "schema": "syllogimous-trajectory-stop-v1",
+  "seeds_with_compute_savings": 2
+}

@@ -1,0 +1,166 @@
+# Private real-time coordinator and public scene boundary.
+#
+# The driver owns the evaluator episode but emits only `DriverScene`, whose
+# variants contain answer-free public question/card data and the player's own
+# current sorting order. Model control enters solely through parsed text.
+
+include "syllogimous_session.elisa"
+include "syllogimous_actions.elisa"
+include "syllogimous_ledger.elisa"
+include "syllogimous_render_stream.elisa"
+
+enum DriverScene:
+    Carousel(card: RenderCard)
+    DisplayAll(question: PublicQuestion)
+    Sorting(content: PublicSortingQuestion,
+            user_order: array[i32, 34],
+            card_count: i32 where card_count >= 4 and card_count <= 34)
+    Feedback(card: RenderCard)
+
+error DriverError:
+    CardUnavailable
+    MissingSubmission
+    InvalidFeedback
+
+struct RealtimeDriver:
+    public_question: PublicQuestion
+    lexicon: EntityLexicon
+    presentation: PresentationFrame
+    family: QuestionFamily
+    episode: mutable RealtimeEpisode
+    feedback: mutable RenderCard?
+
+def question_family(question: Question) -> QuestionFamily:
+    return match question:
+        Question.Relational(family, content): family
+        Question.Categorical(content): QuestionFamily.Categorical
+        Question.Boolean(family, content): family
+        Question.Analogy(content): QuestionFamily.Analogy
+        Question.Sorting(content): QuestionFamily.Sorting
+        Question.Challenge(content): QuestionFamily.LogicPuzzle
+        Question.Fixed(content): content.family
+
+def initial_realtime_driver(session: PreparedSession) -> RealtimeDriver:
+    return RealtimeDriver{
+        public_question: public_question(session.question),
+        lexicon: session.lexicon,
+        presentation: session.presentation,
+        family: question_family(session.question),
+        episode: session.episode,
+        feedback: null
+    }
+
+def render_card_at(question: PublicQuestion,
+                   target: i32 where target >= 0 and target <= 1024) -> RenderCard error[DriverError]:
+    cursor: mutable RenderCursor = initial_render_cursor()
+    for index in 0..=target:
+        rebind card: RenderCard?, cursor = next_render_card(cursor, question)
+        if index == target:
+            if card is visible:
+                return visible
+            raise DriverError.CardUnavailable
+    raise DriverError.CardUnavailable
+
+def render_driver_card_at(driver: RealtimeDriver&,
+                          target: i32 where target >= 0 and target <= 1024) -> RenderCard error[DriverError]:
+    if driver.presentation.show_negation_explainer:
+        if target == 0:
+            return RenderCard.NegationExplainer
+        shifted_raw: i32 = target - 1
+        assert shifted_raw >= 0 and shifted_raw <= 1024
+        shifted: i32 where shifted >= 0 and shifted <= 1024 = shifted_raw
+        return try render_card_at(driver.public_question, shifted)
+    return try render_card_at(driver.public_question, target)
+
+def active_driver_scene(driver: RealtimeDriver&) -> DriverScene error[DriverError]:
+    match driver.episode.task:
+        EpisodeTask.SortingAnswer(expected_order, card_count):
+            assert card_count >= 4 and card_count <= 34
+            match driver.public_question:
+                PublicQuestion.Sorting(content):
+                    return DriverScene.Sorting(
+                        content, driver.episode.user_order, card_count
+                    )
+                _:
+                    raise DriverError.CardUnavailable
+        EpisodeTask.TruthAnswer(expected):
+            if driver.episode.presentation == PresentationMode.DisplayAll:
+                return DriverScene.DisplayAll(driver.public_question)
+            assert driver.episode.cursor >= 0 and driver.episode.cursor <= 1024
+            cursor: i32 where cursor >= 0 and cursor <= 1024 = driver.episode.cursor
+            return DriverScene.Carousel(try render_driver_card_at(driver, cursor))
+
+def current_driver_scene(driver: RealtimeDriver&) -> DriverScene error[DriverError]:
+    match driver.episode.status:
+        EpisodeStatus.Active:
+            return try active_driver_scene(driver)
+        EpisodeStatus.Finished(outcome, reward):
+            if driver.feedback is card:
+                return DriverScene.Feedback(card)
+            raise DriverError.InvalidFeedback
+
+def driver_remaining_permille(driver: RealtimeDriver&,
+                               now_ms: i64 where now_ms >= 0) -> i32 where result >= 0 and result <= 1000:
+    assert driver.episode.started_ms >= 0
+    assert driver.episode.deadline_ms >= 5000 and driver.episode.deadline_ms <= 300000
+    elapsed: i64 = now_ms - driver.episode.started_ms if now_ms >= driver.episode.started_ms else 0
+    remaining: i64 = driver.episode.deadline_ms - elapsed
+    raw: i64 = 0 if remaining <= 0 else (
+        1000 if remaining >= driver.episode.deadline_ms else
+        remaining * 1000 / driver.episode.deadline_ms
+    )
+    assert raw >= 0 and raw <= 1000
+    result: i32 = raw.i32()
+    assert result >= 0 and result <= 1000
+    return result
+
+def submitted_answer_for(action: Action, outcome: Outcome) -> SubmittedAnswer error[DriverError]:
+    if outcome == Outcome.Timeout:
+        return SubmittedAnswer.TimedOut
+    match action:
+        Action.Answer(value):
+            return SubmittedAnswer.TruthValue(value)
+        Action.SubmitSort:
+            return SubmittedAnswer.SortingOrder
+        _:
+            raise DriverError.MissingSubmission
+
+def apply_driver_action(driver: lmut RealtimeDriver,
+                        ledger: lmut GameLedger,
+                        action: Action,
+                        now_ms: i64 where now_ms >= 0) -> DriverScene error[EpisodeError, LedgerError, DriverError]:
+    stepped_result: RealtimeEpisode error[EpisodeError] = step_episode(
+        driver.episode, action, now_ms
+    )
+    stepped: RealtimeEpisode = try stepped_result
+    driver.episode <- stepped
+    match stepped.status:
+        EpisodeStatus.Active:
+            return try active_driver_scene(driver)
+        EpisodeStatus.Finished(outcome, reward):
+            submitted: SubmittedAnswer = try submitted_answer_for(action, outcome)
+            rebind record_result: RoundRecord error[LedgerError], ledger = record_finished_episode(
+                ledger, driver.family, submitted, stepped
+            )
+            record: RoundRecord = try record_result
+            feedback: RenderCard = feedback_render_card(record, ledger)
+            driver.feedback <- feedback
+            return DriverScene.Feedback(feedback)
+
+def apply_driver_text(driver: lmut RealtimeDriver,
+                      ledger: lmut GameLedger,
+                      text: u8&,
+                      now_ms: i64 where now_ms >= 0) -> DriverScene error[ActionParseError, EpisodeError, LedgerError, DriverError]:
+    action: Action = try parse_action_text(text)
+    rebind scene_result: DriverScene error[EpisodeError, LedgerError, DriverError], driver, ledger = apply_driver_action(
+        driver, ledger, action, now_ms
+    )
+    return try scene_result
+
+def tick_driver(driver: lmut RealtimeDriver,
+                ledger: lmut GameLedger,
+                now_ms: i64 where now_ms >= 0) -> DriverScene error[EpisodeError, LedgerError, DriverError]:
+    rebind result: DriverScene error[EpisodeError, LedgerError, DriverError], driver, ledger = apply_driver_action(
+        driver, ledger, Action.Wait, now_ms
+    )
+    return try result

@@ -1,0 +1,80 @@
+{
+  "consolidator_frozen": true,
+  "controller_frozen": true,
+  "feedback_mode": "color-button",
+  "pairwise_transfer": true,
+  "results": {
+    "0": {
+      "latest_row_feature": {
+        "linear": {
+          "best_test_accuracy": 0.5625,
+          "test_accuracy": 0.4296875,
+          "train_accuracy": 0.625
+        },
+        "mlp": {
+          "best_test_accuracy": 0.484375,
+          "test_accuracy": 0.4609375,
+          "train_accuracy": 0.75
+        }
+      }
+    },
+    "1": {
+      "latest_row_feature": {
+        "linear": {
+          "best_test_accuracy": 0.53125,
+          "test_accuracy": 0.484375,
+          "train_accuracy": 0.5859375
+        },
+        "mlp": {
+          "best_test_accuracy": 0.5390625,
+          "test_accuracy": 0.4375,
+          "train_accuracy": 0.7421875
+        }
+      }
+    },
+    "2": {
+      "latest_row_feature": {
+        "linear": {
+          "best_test_accuracy": 0.8671875,
+          "test_accuracy": 0.859375,
+          "train_accuracy": 0.8984375
+        },
+        "mlp": {
+          "best_test_accuracy": 0.90625,
+          "test_accuracy": 0.90625,
+          "train_accuracy": 1.0
+        }
+      }
+    },
+    "4": {
+      "latest_row_feature": {
+        "linear": {
+          "best_test_accuracy": 0.5078125,
+          "test_accuracy": 0.4296875,
+          "train_accuracy": 0.609375
+        },
+        "mlp": {
+          "best_test_accuracy": 0.5078125,
+          "test_accuracy": 0.4765625,
+          "train_accuracy": 0.8125
+        }
+      }
+    }
+  },
+  "schema": "temporal-rule-memory-probe-v1",
+  "selected_shots": [
+    0,
+    1,
+    2,
+    4
+  ],
+  "selected_taps": [
+    "latest_row_feature"
+  ],
+  "test_examples": 128,
+  "test_rule_rate": 0.5390625,
+  "train_examples": 128,
+  "train_rule_rate": 0.4921875,
+  "transfer_strength": 0.01,
+  "visual_only": true
+}

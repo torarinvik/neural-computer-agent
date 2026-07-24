@@ -1,0 +1,148 @@
+{
+  "adaptive_curriculum": false,
+  "best_curriculum_epoch": 0,
+  "best_curriculum_score": -1.0,
+  "best_curriculum_stage": 0,
+  "config": {
+    "heads": 5,
+    "hidden": 160,
+    "max_thought_steps": 2,
+    "memory_core": "event_transformer",
+    "memory_slots": 12,
+    "thought_dynamics": "replace"
+  },
+  "consistency_weight": 0.25,
+  "curriculum_start_stage": 1,
+  "eval_premises": [
+    2
+  ],
+  "evaluation": {
+    "accuracy": 0.98175,
+    "accuracy_by_premises": {
+      "2": 0.98175
+    },
+    "accuracy_by_thought_depth": {
+      "1": 0.98075,
+      "2": 0.98175
+    },
+    "episodes": 4000,
+    "latency_reward_active": true,
+    "mean_reward": 0.9635,
+    "mean_thought_steps": 2.0,
+    "milliseconds_per_episode": 0.6999117895029485
+  },
+  "evaluation_tasks": "chain",
+  "full_precision": false,
+  "history": [
+    {
+      "accuracy": 0.9360071656050956,
+      "epoch": 1,
+      "latency_multiplier": 0.0,
+      "premise_choices": [
+        2
+      ],
+      "reward": 0.8720143312101911,
+      "sampling_choices": [
+        2
+      ],
+      "thought_steps": 2.0,
+      "verifier_loss": 0.18435066572989628
+    },
+    {
+      "accuracy": 0.9572054140127388,
+      "epoch": 2,
+      "latency_multiplier": 0.0,
+      "premise_choices": [
+        2
+      ],
+      "reward": 0.9144108280254777,
+      "sampling_choices": [
+        2
+      ],
+      "thought_steps": 2.0,
+      "verifier_loss": 0.13347751692317095
+    },
+    {
+      "accuracy": 0.9663614649681529,
+      "epoch": 3,
+      "latency_multiplier": 0.0,
+      "premise_choices": [
+        2
+      ],
+      "reward": 0.9327229299363057,
+      "sampling_choices": [
+        2
+      ],
+      "thought_steps": 2.0,
+      "verifier_loss": 0.10081153339261462
+    },
+    {
+      "accuracy": 0.9758160828025477,
+      "epoch": 4,
+      "latency_multiplier": 0.0,
+      "premise_choices": [
+        2
+      ],
+      "reward": 0.9516321656050956,
+      "sampling_choices": [
+        2
+      ],
+      "thought_steps": 2.0,
+      "verifier_loss": 0.07357349858921804
+    },
+    {
+      "accuracy": 0.9818869426751592,
+      "epoch": 5,
+      "latency_multiplier": 0.0,
+      "premise_choices": [
+        2
+      ],
+      "reward": 0.9637738853503185,
+      "sampling_choices": [
+        2
+      ],
+      "thought_steps": 2.0,
+      "verifier_loss": 0.05502537567951497
+    },
+    {
+      "accuracy": 0.9879578025477707,
+      "epoch": 6,
+      "latency_multiplier": 0.0,
+      "premise_choices": [
+        2
+      ],
+      "reward": 0.9759156050955414,
+      "sampling_choices": [
+        2
+      ],
+      "thought_steps": 2.0,
+      "verifier_loss": 0.03886491743622312
+    }
+  ],
+  "initial_checkpoint": "experiments/syllogimous_bitter_lesson/h100_chain_2m_pretrained.pt",
+  "learning_signal": "verifier",
+  "mastery_patience": 2,
+  "mastery_threshold": 0.95,
+  "overfit_fixed": false,
+  "parameters": 2297874,
+  "random_thought_depth": false,
+  "randomize_rendering": false,
+  "reward": {
+    "correct": 1.0,
+    "incorrect": -1.0,
+    "latency_ramp_accuracy": [
+      0.55,
+      0.8
+    ],
+    "max_correct_speed_bonus": 0.0
+  },
+  "scale": "2m",
+  "schema": "syllogimous-bitter-lesson-v1",
+  "seed": 17,
+  "semantic_auxiliary_labels": false,
+  "train_premises": [
+    2
+  ],
+  "training_seconds": 41.851533466018736,
+  "training_tasks": "chain"
+}

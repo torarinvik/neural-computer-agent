@@ -1,0 +1,257 @@
+{
+  "artifacts": [
+    "challenge_validation_max_1m.json",
+    "challenge_validation_max_5m.seeds.json",
+    "challenge_validation_max_5m.json",
+    "challenge_validation_max_1m.seeds.json",
+    "native_challenge_crosscheck.json",
+    "semantic_audit.json",
+    "boundary_leak.json",
+    "gate_ablation.json",
+    "baseline_metrics/random-policy.json",
+    "baseline_metrics/text-only-oracle.json",
+    "baseline_metrics/vision-only.json",
+    "baseline_metrics/vision-plus-audio.json",
+    "baseline_metrics/full-streaming-model.json",
+    "model_latency_results.json",
+    "model_matrix.example.json",
+    "model_matrix.json",
+    "vlm_256m_episode_corrected.json",
+    "vlm_256m_diagnostic_3ep.json",
+    "adapter_256m_smoke_corrected.pt",
+    "adapter_256m_smoke_corrected.pt.json",
+    "adapter_matrix_256m.json",
+    "adapter_256m_coverage_smoke.pt",
+    "adapter_256m_coverage_smoke.pt.json",
+    "adapter_256m_coverage_smoke.json",
+    "cloud_vlm_256m_episode.json",
+    "cloud_vlm_500m_episode.json",
+    "cloud_vlm_2p2b_episode.json",
+    "cloud_model_results.json",
+    "adapter_256m_h100_20ep.pt",
+    "adapter_256m_h100_20ep.pt.json",
+    "adapter_256m_h100_20ep.json",
+    "adapter_matrix_h100_256m.json",
+    "SESSION_STATE.md",
+    "cloud_environment.json"
+  ],
+  "compiler": "~/.elisac/elisac",
+  "compiler_binary_sha256": "6069eb157ad532414129a52d26ba1a45926d38036158bdc515ccf7ec59a93587",
+  "compiler_source_revision": "9f46e5c162b78074d221fb206f550531249d3954",
+  "config": {
+    "ablations": [
+      "rgb-only",
+      "audio-only",
+      "rgb+audio",
+      "full-sparse",
+      "dense-control"
+    ],
+    "accuracy_dominates_latency": true,
+    "adapter_matrix_protocol": {
+      "deadline_ms": 10000,
+      "episodes": 1,
+      "frozen_listener": true,
+      "premises": 2,
+      "stream_interval_ms": 33
+    },
+    "adapter_objective": {
+      "latency_weight": 0.01,
+      "min_emission_rate": 0.1,
+      "modalities": 2,
+      "reward_weight": 1.0,
+      "silence_weight": 0.2
+    },
+    "audio_silence_thresholds_ms": [
+      40,
+      80,
+      120,
+      180,
+      250
+    ],
+    "baseline_protocol": {
+      "deadline_ms": 8000,
+      "episodes": 1000,
+      "inference_ms": 1,
+      "premises": 6,
+      "seed": 0
+    },
+    "boundary_leak_protocol": {
+      "hidden_fields": [
+        "answer",
+        "family"
+      ],
+      "seeds": 256
+    },
+    "cloud_adapter_protocol": {
+      "deadline_ms": 10000,
+      "episodes": 20,
+      "hardware": "NVIDIA H100 NVL",
+      "listener_frozen": true,
+      "premises": 2,
+      "variants": [
+        "dense",
+        "fixed-gate",
+        "random-control",
+        "learned-gate"
+      ]
+    },
+    "cloud_protocol": {
+      "deadline_ms": 10000,
+      "episodes": 1,
+      "hardware": "NVIDIA H100 NVL",
+      "models": [
+        "256m",
+        "500m",
+        "2.2b"
+      ],
+      "premises": 2
+    },
+    "difficulty_profiles": {
+      "hard": {
+        "audio_silence_ms": 120,
+        "boolean_depth": 4,
+        "deadline_ms": 15000,
+        "distractor_count": 5,
+        "interference_permille": 250,
+        "name": "hard",
+        "premise_count": 10,
+        "visual_change_threshold": 2
+      },
+      "intro": {
+        "audio_silence_ms": 250,
+        "boolean_depth": 1,
+        "deadline_ms": 30000,
+        "distractor_count": 0,
+        "interference_permille": 0,
+        "name": "intro",
+        "premise_count": 3,
+        "visual_change_threshold": 0
+      },
+      "max": {
+        "audio_silence_ms": 80,
+        "boolean_depth": 4,
+        "deadline_ms": 10000,
+        "distractor_count": 10,
+        "interference_permille": 450,
+        "name": "max",
+        "premise_count": 16,
+        "visual_change_threshold": 4
+      },
+      "standard": {
+        "audio_silence_ms": 180,
+        "boolean_depth": 2,
+        "deadline_ms": 20000,
+        "distractor_count": 2,
+        "interference_permille": 100,
+        "name": "standard",
+        "premise_count": 6,
+        "visual_change_threshold": 1
+      }
+    },
+    "frame_thresholds": [
+      0,
+      1,
+      2,
+      4,
+      8
+    ],
+    "large_seed_sweep": {
+      "count": 5000000,
+      "difficulty": "max",
+      "failure_count": 0,
+      "families_seen": 90
+    },
+    "llm_frozen": true,
+    "model_matrix_protocol": {
+      "deadline_ms": 30000,
+      "episodes": 1,
+      "packet_only": true,
+      "premises": 2,
+      "registry_actual_parameters": true,
+      "seed": 0
+    },
+    "model_slots": [
+      "1m",
+      "5m",
+      "20m",
+      "100m",
+      "350m",
+      "1b"
+    ],
+    "transport_telemetry": {
+      "modalities": [
+        "frame",
+        "audio"
+      ],
+      "timestamps": [
+        "frame_received_ns",
+        "audio_received_ns",
+        "inference_complete",
+        "action_sent"
+      ]
+    },
+    "variants": [
+      {
+        "audio_mode": "dense",
+        "latency_weight": 0.01,
+        "name": "dense",
+        "reward_weight": 1.0,
+        "train_gate": false,
+        "train_representation": true,
+        "vision_mode": "dense"
+      },
+      {
+        "audio_mode": "fixed-threshold",
+        "latency_weight": 0.01,
+        "name": "fixed-gate",
+        "reward_weight": 1.0,
+        "train_gate": false,
+        "train_representation": true,
+        "vision_mode": "fixed-threshold"
+      },
+      {
+        "audio_mode": "random",
+        "latency_weight": 0.01,
+        "name": "random-control",
+        "reward_weight": 1.0,
+        "train_gate": false,
+        "train_representation": false,
+        "vision_mode": "random"
+      },
+      {
+        "audio_mode": "learned-threshold",
+        "latency_weight": 0.01,
+        "name": "learned-gate",
+        "reward_weight": 1.0,
+        "train_gate": true,
+        "train_representation": true,
+        "vision_mode": "learned-threshold"
+      }
+    ]
+  },
+  "git_commit": "6b4ebef5dc32b0a64d7aef5d34e5f0b6d624563e",
+  "git_diff_sha256": "eef620f528d647f050c70cb8217eb277ceafa5062333851b4d9d46233443bddb",
+  "git_dirty": true,
+  "git_untracked": [
+    "experiments/",
+    "yolo11n-pose.pt",
+    "yolo11n.pt"
+  ],
+  "model_versions": {
+    "100m": "unassigned",
+    "1b": "HuggingFaceTB/SmolVLM2-500M-Video-Instruct (actual 500M)",
+    "1m": "unassigned",
+    "20m": "unassigned",
+    "350m": "HuggingFaceTB/SmolVLM2-256M-Video-Instruct (actual 256M)",
+    "5m": "unassigned"
+  },
+  "platform": "macOS-26.5.2-arm64-arm-64bit",
+  "python": "3.9.6",
+  "schema": "syllogimous.reproducibility.v1",
+  "seed_spec": {
+    "count": 1000000,
+    "first": 0,
+    "last": 999999,
+    "sha256_le_i64": "6f8f1531c1170336132e3a5cf9fde98aa28840393edd4387ab4d7c7e743586fb"
+  }
+}

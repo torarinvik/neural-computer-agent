@@ -1,0 +1,9 @@
+{
+  "schema": "parameter-free-palette-relation-audit-v1",
+  "lifetimes": 240,
+  "majority": 0.5,
+  "raw_cosine_accuracy": 0.5083333253860474,
+  "raw_distance_accuracy": 0.49166667461395264,
+  "standardized_cosine_accuracy": 0.512499988079071,
+  "standardized_distance_accuracy": 0.512499988079071
+}

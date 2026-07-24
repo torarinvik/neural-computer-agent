@@ -1,0 +1,29 @@
+{
+  "accuracy": 1.0,
+  "audio_distractors": 8,
+  "checkpoint": "/tmp/choice_local_hard_attention.pt",
+  "choices": 8,
+  "deadline_miss_rate": 0.0,
+  "deadline_ms": 100.0,
+  "delay_frames": 4,
+  "device": "mps",
+  "distractors": 20,
+  "fps": 60.0,
+  "mean_reward": 1.0440054045850002,
+  "realtime_frame_pacing": true,
+  "response_ms": {
+    "max": 19.995417,
+    "mean": 11.98919083,
+    "min": 8.675541,
+    "p50": 12.0771045,
+    "p95": 13.74549165,
+    "p99": 15.247665090000023
+  },
+  "schema": "choice-reaction-realtime-v1",
+  "target_like_distractors": 6,
+  "temporal_distractors": 3,
+  "thought_depth": 1,
+  "trials": 100,
+  "wall_trials_per_second": 8.949830538793751,
+  "warmup_trials": 10
+}

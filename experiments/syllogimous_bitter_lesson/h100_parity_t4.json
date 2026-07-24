@@ -1,0 +1,163 @@
+{
+  "config": {
+    "heads": 4,
+    "hidden": 96,
+    "max_thought_steps": 4,
+    "memory_core": "event_transformer",
+    "memory_slots": 8
+  },
+  "eval_premises": [
+    2,
+    4,
+    8,
+    16,
+    32,
+    64
+  ],
+  "evaluation": {
+    "accuracy": 0.6778333333333333,
+    "accuracy_by_premises": {
+      "16": 0.515,
+      "2": 1.0,
+      "32": 0.506,
+      "4": 0.974,
+      "64": 0.492,
+      "8": 0.58
+    },
+    "episodes": 6000,
+    "latency_reward_active": true,
+    "mean_reward": 0.3556666666666666,
+    "mean_thought_steps": 4.0,
+    "milliseconds_per_episode": 7.439917861833237
+  },
+  "evaluation_tasks": "parity",
+  "history": [
+    {
+      "accuracy": 0.9972310126582279,
+      "epoch": 1,
+      "latency_multiplier": 0.0,
+      "premise_choices": [
+        2
+      ],
+      "reward": 0.9944620253164557,
+      "thought_steps": 4.0,
+      "verifier_loss": 0.009530415086523641
+    },
+    {
+      "accuracy": 1.0,
+      "epoch": 2,
+      "latency_multiplier": 0.0,
+      "premise_choices": [
+        2
+      ],
+      "reward": 1.0,
+      "thought_steps": 4.0,
+      "verifier_loss": 4.872263562452944e-05
+    },
+    {
+      "accuracy": 1.0,
+      "epoch": 3,
+      "latency_multiplier": 0.0,
+      "premise_choices": [
+        2
+      ],
+      "reward": 1.0,
+      "thought_steps": 4.0,
+      "verifier_loss": 2.7074454988859877e-05
+    },
+    {
+      "accuracy": 0.9797270569620253,
+      "epoch": 4,
+      "latency_multiplier": 0.0,
+      "premise_choices": [
+        2,
+        3
+      ],
+      "reward": 0.9594541139240507,
+      "thought_steps": 4.0,
+      "verifier_loss": 0.12364510359549069
+    },
+    {
+      "accuracy": 0.9708267405063291,
+      "epoch": 5,
+      "latency_multiplier": 0.0,
+      "premise_choices": [
+        2,
+        3,
+        4
+      ],
+      "reward": 0.9416534810126582,
+      "thought_steps": 4.0,
+      "verifier_loss": 0.15322538864904944
+    },
+    {
+      "accuracy": 0.9948575949367089,
+      "epoch": 6,
+      "latency_multiplier": 0.0,
+      "premise_choices": [
+        2,
+        3,
+        4
+      ],
+      "reward": 0.9897151898734177,
+      "thought_steps": 4.0,
+      "verifier_loss": 0.015209091603284396
+    },
+    {
+      "accuracy": 0.8822191455696202,
+      "epoch": 7,
+      "latency_multiplier": 0.0,
+      "premise_choices": [
+        2,
+        3,
+        4,
+        6
+      ],
+      "reward": 0.7644382911392406,
+      "thought_steps": 4.0,
+      "verifier_loss": 0.42636754165721846
+    },
+    {
+      "accuracy": 0.8635284810126582,
+      "epoch": 8,
+      "latency_multiplier": 0.0,
+      "premise_choices": [
+        2,
+        3,
+        4,
+        6,
+        8
+      ],
+      "reward": 0.7270569620253164,
+      "thought_steps": 4.0,
+      "verifier_loss": 0.28519961275631867
+    }
+  ],
+  "initial_checkpoint": "experiments/syllogimous_bitter_lesson/h100_parity_pretrained.pt",
+  "learning_signal": "verifier",
+  "overfit_fixed": false,
+  "parameters": 1271556,
+  "randomize_rendering": false,
+  "reward": {
+    "correct": 1.0,
+    "incorrect": -1.0,
+    "latency_ramp_accuracy": [
+      0.55,
+      0.8
+    ],
+    "max_correct_speed_bonus": 0.0
+  },
+  "scale": "1m",
+  "schema": "syllogimous-bitter-lesson-v1",
+  "seed": 17,
+  "semantic_auxiliary_labels": false,
+  "train_premises": [
+    2,
+    3,
+    4,
+    6,
+    8
+  ],
+  "training_seconds": 109.684639240033,
+  "training_tasks": "parity"
+}

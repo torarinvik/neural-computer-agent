@@ -1,0 +1,86 @@
+{
+  "config": {
+    "heads": 4,
+    "hidden": 96,
+    "max_thought_steps": 2,
+    "memory_core": "event_transformer",
+    "memory_slots": 8
+  },
+  "eval_premises": [
+    2
+  ],
+  "evaluation": {
+    "accuracy": 0.994,
+    "accuracy_by_premises": {
+      "2": 0.994
+    },
+    "episodes": 2000,
+    "latency_reward_active": true,
+    "mean_reward": 0.988,
+    "mean_thought_steps": 2.0,
+    "milliseconds_per_episode": 0.9676914209849201
+  },
+  "history": [
+    {
+      "accuracy": 0.9785403481012658,
+      "actor_loss": -0.061039473810432114,
+      "critic_loss": 0.10668719437303423,
+      "entropy": 0.04303359158950139,
+      "epoch": 1,
+      "latency_multiplier": 0.39923091228950536,
+      "premise_choices": [
+        2
+      ],
+      "reward": 0.9570806962025317,
+      "thought_steps": 2.0
+    },
+    {
+      "accuracy": 0.9909018987341772,
+      "actor_loss": -0.02995509917157425,
+      "critic_loss": 0.03957334236253666,
+      "entropy": 0.02128628987960423,
+      "epoch": 2,
+      "latency_multiplier": 0.982730038094481,
+      "premise_choices": [
+        2
+      ],
+      "reward": 0.9818037974683544,
+      "thought_steps": 2.0
+    },
+    {
+      "accuracy": 0.9919897151898734,
+      "actor_loss": -0.019571214408504695,
+      "critic_loss": 0.03410800310629833,
+      "entropy": 0.014948839805077148,
+      "epoch": 3,
+      "latency_multiplier": 1.0,
+      "premise_choices": [
+        2
+      ],
+      "reward": 0.9839794303797469,
+      "thought_steps": 2.0
+    }
+  ],
+  "initial_checkpoint": "experiments/syllogimous_bitter_lesson/h100_generated_25000.pt",
+  "learning_signal": "reinforce_fixed",
+  "overfit_fixed": false,
+  "parameters": 1271556,
+  "randomize_rendering": true,
+  "reward": {
+    "correct": 1.0,
+    "incorrect": -1.0,
+    "latency_ramp_accuracy": [
+      0.55,
+      0.8
+    ],
+    "max_correct_speed_bonus": 0.0
+  },
+  "scale": "1m",
+  "schema": "syllogimous-bitter-lesson-v1",
+  "seed": 17,
+  "semantic_auxiliary_labels": false,
+  "train_premises": [
+    2
+  ],
+  "training_seconds": 22.63409033906646
+}

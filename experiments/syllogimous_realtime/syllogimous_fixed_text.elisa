@@ -1,0 +1,243 @@
+# Exact model-visible text for the twelve paradoxes and twelve logic puzzles in
+# upstream Syllogimous v3. The total accessors are convenient for the renderer;
+# the checked accessor is the boundary used by tests and future configuration
+# loaders, where an invalid family/line is an expected error rather than a
+# sentinel string.
+
+include "syllogimous_render_stream.elisa"
+
+error FixedTextError:
+    UnsupportedFamily
+    PremiseOutOfRange
+
+def paradox_premise_text(puzzle_id: i32 where puzzle_id >= 0 and puzzle_id < 12,
+                          line: i32 where line >= 0) -> cstr:
+    match puzzle_id:
+        0:
+            return when line:
+                0 -> "The sentence that follows is true"
+                1 -> "The sentence before is false"
+                _ -> ""
+        1:
+            return when line:
+                0 -> "Nothing is better than eternal bliss"
+                1 -> "And a slice of bread is better than nothing"
+                _ -> ""
+        2:
+            return when line:
+                0 -> "Nobody goes to that restaurant"
+                1 -> "It is too crowded"
+                _ -> ""
+        3:
+            return when line:
+                0 -> "Don't go near the water"
+                1 -> "Until you learned how to swim"
+                _ -> ""
+        4:
+            return "The man who wrote such a stupid question can not write at all" if line == 0 else ""
+        5:
+            return when line:
+                0 -> "There's a bullet which can shoot through any barrier"
+                1 -> "There's also an absolutely bullet-proof armor which no object can penetrate"
+                _ -> ""
+        6:
+            return "A man drown in the fountain of eternal life" if line == 0 else ""
+        7:
+            return "Your mission is not to accept the mission" if line == 0 else ""
+        8:
+            return when line:
+                0 -> "A girl goes into the past and kills her Grandma"
+                1 -> "Since her Grandma is dead, the girl was never born"
+                _ -> ""
+        9:
+            return when line:
+                0 -> "The temperature this morning is 0 degrees"
+                1 -> "And the weather channel says that it will be twice as cold tomorrow"
+                _ -> ""
+        10:
+            return "Answer truthfully to the following question:" if line == 0 else ""
+        11:
+            return "If the God Almighty creates a stone, which he is not capable of lifting" if line == 0 else ""
+        _:
+            return ""
+    return ""
+
+def paradox_conclusion_text(puzzle_id: i32 where puzzle_id >= 0 and puzzle_id < 12) -> cstr:
+    return match puzzle_id:
+        0: "Is the former sentence true?"
+        1: "So is a slice of bread better than eternal bliss?"
+        2: "So did anyone go to that restaurant?"
+        3: "Can you?"
+        4: "Could he?"
+        5: "Can such a bullet penetrate such an armor?"
+        6: "Could he?"
+        7: "Do you accept?"
+        8: "If she was never born, then could she kill her grandma?"
+        9: "Will it be colder?"
+        10: "Will the next button you press be 'false'?"
+        11: "Will he be able to lift it?"
+        _: ""
+
+def logic_premise_text(puzzle_id: i32 where puzzle_id >= 0 and puzzle_id < 12,
+                        line: i32 where line >= 0) -> cstr:
+    match puzzle_id:
+        0:
+            return when line:
+                0 -> "There are three fellows"
+                1 -> "You ask the to first: Are you a Swindlecant?"
+                2 -> "The answer is not comprehensible"
+                3 -> "So you ask to the second: What did the first fellow say?"
+                4 -> "The second fellow says: my other fellow said that he is a Swindlecant"
+                5 -> "And to that the last fellow says: Do not believe him, he is lying!"
+                6 -> "Honestants always speak the truth"
+                7 -> "Swindlecants always lie"
+                _ -> ""
+        1:
+            return when line:
+                0 -> "Honestants always speak the truth"
+                1 -> "Swindlecants always lie"
+                2 -> "There are two fellows"
+                3 -> "A fellow says: I'm a Swindlecant or the other one is an Honestant"
+                _ -> ""
+        2:
+            return when line:
+                0 -> "You are condemned to death"
+                1 -> "But there's a chance to save yourself"
+                2 -> "There are 2 doors, one is death and the other is freedom"
+                3 -> "These doors are guarded by 2 guards"
+                4 -> "And only them know which door leads to freedom"
+                5 -> "You can ask one question to one guard"
+                6 -> "And you know that one guard always lie"
+                _ -> ""
+        3:
+            return when line:
+                0 -> "There are two fellows"
+                1 -> "A fellow says: We are all Swindlecants"
+                2 -> "Another fellow concludes: Just one of us is an Honestant"
+                3 -> "Honestants always speak the truth"
+                4 -> "Swindlecants always lie"
+                _ -> ""
+        4:
+            return when line:
+                0 -> "Honestants always speak the truth"
+                1 -> "Swindlecants always lie"
+                2 -> "A guys says: If my wife is an Honestant, then I am a Swindlecant"
+                _ -> ""
+        5:
+            return when line:
+                0 -> "You heard about a buried treasure"
+                1 -> "So you ask another man and he says:"
+                2 -> "On this island there is a treasure only if I'm an Honestant"
+                3 -> "Honestants always speak the truth"
+                4 -> "Swindlecants always lie"
+                _ -> ""
+        6:
+            return when line:
+                0 -> "Honestants always speak the truth"
+                1 -> "Swindlecants always lie"
+                2 -> "You forgot what day is"
+                3 -> "So you ask 4 aborigines:"
+                4 -> "A: Yesterday was Wednesday"
+                5 -> "B: Tomorrow will be Sunday"
+                6 -> "C: Today is Friday"
+                7 -> "D: The day before yesterday was Thursday"
+                _ -> ""
+        7:
+            return when line:
+                0 -> "Two people want to talk with you"
+                1 -> "And you ask: Is at least one of you an Honestant?"
+                2 -> "After the answers there was no doubt"
+                3 -> "Honestants always speak the truth"
+                4 -> "Swindlecants always lie"
+                _ -> ""
+        8:
+            return when line:
+                0 -> "Honestants always speak the truth"
+                1 -> "Swindlecants always lie"
+                2 -> "There was a girl that everybody wanted to marry"
+                3 -> "But she only want to marry a rich Swindlecant"
+                _ -> ""
+        9:
+            return when line:
+                0 -> "A man accused of a crime hired an attorney"
+                1 -> "Statements from that attorney are always true"
+                2 -> "The following exchange took place"
+                3 -> "Prosecutor: If the accused commited the crime, then he had an accomplice"
+                4 -> "Defender: That's not true!"
+                _ -> ""
+        10:
+            return when line:
+                0 -> "You live on an island where there are only two kinds of people"
+                1 -> "The ones who always tell the truth"
+                2 -> "Adn those who always lie"
+                3 -> "You are accused of a crime and brought before the court"
+                4 -> "You are allowed to speak only one sentence in your defense"
+                5 -> "If you were a liar, and you were innocent"
+                6 -> "And it is a fact that a liar commited the crime"
+                _ -> ""
+        11:
+            return when line:
+                0 -> "You live on an island where there are only two kinds of people"
+                1 -> "The ones who always tell the truth"
+                2 -> "Adn those who always lie"
+                3 -> "You are accused of a crime and brought before the court"
+                4 -> "You are allowed to speak only one sentence in your defense"
+                5 -> "If you committed the crime"
+                _ -> ""
+        _:
+            return ""
+    return ""
+
+def logic_conclusion_text(puzzle_id: i32 where puzzle_id >= 0 and puzzle_id < 12) -> cstr:
+    return match puzzle_id:
+        0: "Is the second fellow a Honestant?"
+        1: "Is he an Honestant?"
+        2: "Is there a question that can save you? (if so which one?)"
+        3: "Is the one who has not spoken an Honestant?"
+        4: "Is the guy an Honestant? (what about the wife?)"
+        5: "Should you go and find the treasure?"
+        6: "Is D telling the truth? (what day is?)"
+        7: "Are they both liers? (who are they?)"
+        8: "Is there a sentence that would convince her? (if so which one?)"
+        9: "Did the attorney help his client?"
+        10: "Is there anything you can say to save yourself?"
+        11: "Is there anything you can say to save yourself?"
+        _: ""
+
+def fixed_premise_text(family: QuestionFamily,
+                       puzzle_id: i32 where puzzle_id >= 0 and puzzle_id < 12,
+                       line: i32 where line >= 0) -> cstr:
+    match family:
+        QuestionFamily.Paradox:
+            return paradox_premise_text(puzzle_id, line)
+        QuestionFamily.LogicPuzzle:
+            return logic_premise_text(puzzle_id, line)
+        _:
+            return ""
+    return ""
+
+def fixed_conclusion_text(family: QuestionFamily,
+                          puzzle_id: i32 where puzzle_id >= 0 and puzzle_id < 12) -> cstr:
+    match family:
+        QuestionFamily.Paradox:
+            return paradox_conclusion_text(puzzle_id)
+        QuestionFamily.LogicPuzzle:
+            return logic_conclusion_text(puzzle_id)
+        _:
+            return ""
+    return ""
+
+def checked_fixed_premise_text(family: QuestionFamily,
+                               puzzle_id: i32 where puzzle_id >= 0 and puzzle_id < 12,
+                               line: i32 where line >= 0) -> cstr error[FixedTextError]:
+    match family:
+        QuestionFamily.Paradox:
+            count: i32 = fixed_premise_count(family, puzzle_id)
+            raise FixedTextError.PremiseOutOfRange if line >= count
+            return paradox_premise_text(puzzle_id, line)
+        QuestionFamily.LogicPuzzle:
+            count: i32 = fixed_premise_count(family, puzzle_id)
+            raise FixedTextError.PremiseOutOfRange if line >= count
+            return logic_premise_text(puzzle_id, line)
+        _:
+            raise FixedTextError.UnsupportedFamily

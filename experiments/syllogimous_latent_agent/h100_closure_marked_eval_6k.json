@@ -1,0 +1,41 @@
+{
+  "checkpoint": "h100_closure_marked_curriculum_75k.pt",
+  "metrics": {
+    "action_accuracy": 0.9960731707317073,
+    "end_to_end_milliseconds_per_episode": 11.63813127350295,
+    "episodes": 6000,
+    "final_accuracy": 0.8415,
+    "final_accuracy_by_cards": {
+      "25": 0.838,
+      "33": 0.8365,
+      "65": 0.85
+    },
+    "final_confusion_by_cards": {
+      "25": {
+        "correct": 1676,
+        "episodes": 2000,
+        "predicted_true": 690,
+        "target_true": 1004
+      },
+      "33": {
+        "correct": 1673,
+        "episodes": 2000,
+        "predicted_true": 676,
+        "target_true": 999
+      },
+      "65": {
+        "correct": 1700,
+        "episodes": 2000,
+        "predicted_true": 704,
+        "target_true": 1000
+      }
+    },
+    "final_detection_accuracy": 0.999939024390244,
+    "model_milliseconds_per_episode": 0.9301473272498697,
+    "model_milliseconds_per_event": 0.02268652017682609,
+    "object_accuracy": 0.9359715447154472,
+    "relation_accuracy": 1.0,
+    "subject_accuracy": 0.9956585365853658
+  },
+  "schema": "syllogimous-latent-evaluation-v1"
+}

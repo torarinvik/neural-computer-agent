@@ -1,0 +1,27 @@
+{
+  "accuracy": 1.0,
+  "audio_distractors": 0,
+  "checkpoint": "/tmp/choice_local_2to8.pt",
+  "choices": 8,
+  "deadline_miss_rate": 0.0,
+  "deadline_ms": 100.0,
+  "delay_frames": 0,
+  "device": "mps",
+  "distractors": 0,
+  "fps": 60.0,
+  "mean_reward": 1.0474979384609988,
+  "realtime_frame_pacing": false,
+  "response_ms": {
+    "max": 9.61175,
+    "mean": 5.004123078,
+    "min": 4.291167,
+    "p50": 4.887021,
+    "p95": 5.7041645999999995,
+    "p99": 6.812000829999998
+  },
+  "schema": "choice-reaction-realtime-v1",
+  "thought_depth": 1,
+  "trials": 1000,
+  "wall_trials_per_second": 189.38113166995453,
+  "warmup_trials": 10
+}

@@ -1,0 +1,27 @@
+{
+  "normal": {
+    "best_test_accuracy": 0.90625,
+    "test_accuracy": 0.90625,
+    "train_accuracy": 1.0
+  },
+  "permuted_rows": {
+    "best_test_accuracy": 0.5546875,
+    "test_accuracy": 0.5078125,
+    "train_accuracy": 0.953125
+  },
+  "schema": "temporal-feature-adversarial-audit-v1",
+  "shots": 2,
+  "shuffled_labels": {
+    "best_test_accuracy": 0.703125,
+    "test_accuracy": 0.5234375,
+    "train_accuracy": 0.9453125
+  },
+  "tap": "latest_row_feature",
+  "test_examples": 128,
+  "train_examples": 128,
+  "zero_feature": {
+    "best_test_accuracy": 0.4609375,
+    "test_accuracy": 0.4609375,
+    "train_accuracy": 0.5078125
+  }
+}

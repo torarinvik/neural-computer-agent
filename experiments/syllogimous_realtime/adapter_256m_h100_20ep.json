@@ -1,0 +1,234 @@
+{
+  "config": {
+    "latency_weight": 0.01,
+    "min_emission_rate": 0.1,
+    "modalities": 2,
+    "reward_weight": 1.0,
+    "silence_weight": 0.2,
+    "variant": "learned-gate"
+  },
+  "episodes": 20,
+  "history": [
+    {
+      "episode": 0,
+      "inference_ms": 9828.430243884213,
+      "latency_ms": 10183,
+      "mean_emitted_modalities": 0.9090909090909091,
+      "outcome": "timeout",
+      "reward": -1.0,
+      "shaped_reward": -1.009090909090909,
+      "silence_penalty": 0.0,
+      "task_reward": -1.0
+    },
+    {
+      "episode": 1,
+      "inference_ms": 9888.080896111205,
+      "latency_ms": 10217,
+      "mean_emitted_modalities": 0.9361702127659575,
+      "outcome": "timeout",
+      "reward": -1.0,
+      "shaped_reward": -1.0093617021276595,
+      "silence_penalty": 0.0,
+      "task_reward": -1.0
+    },
+    {
+      "episode": 2,
+      "inference_ms": 10035.501368227415,
+      "latency_ms": 10277,
+      "mean_emitted_modalities": 1.0666666666666667,
+      "outcome": "timeout",
+      "reward": -1.0,
+      "shaped_reward": -1.0106666666666666,
+      "silence_penalty": 0.0,
+      "task_reward": -1.0
+    },
+    {
+      "episode": 3,
+      "inference_ms": 10054.428090690635,
+      "latency_ms": 10292,
+      "mean_emitted_modalities": 0.9534883720930233,
+      "outcome": "timeout",
+      "reward": -1.0,
+      "shaped_reward": -1.0095348837209301,
+      "silence_penalty": 0.0,
+      "task_reward": -1.0
+    },
+    {
+      "episode": 4,
+      "inference_ms": 9957.200728240423,
+      "latency_ms": 10272,
+      "mean_emitted_modalities": 0.8727272727272727,
+      "outcome": "timeout",
+      "reward": -1.0,
+      "shaped_reward": -1.0087272727272727,
+      "silence_penalty": 0.0,
+      "task_reward": -1.0
+    },
+    {
+      "episode": 5,
+      "inference_ms": 10026.615107082762,
+      "latency_ms": 10297,
+      "mean_emitted_modalities": 1.0975609756097562,
+      "outcome": "timeout",
+      "reward": -1.0,
+      "shaped_reward": -1.0109756097560976,
+      "silence_penalty": 0.0,
+      "task_reward": -1.0
+    },
+    {
+      "episode": 6,
+      "inference_ms": 9502.29309592396,
+      "latency_ms": 10092,
+      "mean_emitted_modalities": 0.8888888888888888,
+      "outcome": "timeout",
+      "reward": -1.0,
+      "shaped_reward": -1.008888888888889,
+      "silence_penalty": 0.0,
+      "task_reward": -1.0
+    },
+    {
+      "episode": 7,
+      "inference_ms": 9842.789742862806,
+      "latency_ms": 10165,
+      "mean_emitted_modalities": 1.0,
+      "outcome": "timeout",
+      "reward": -1.0,
+      "shaped_reward": -1.01,
+      "silence_penalty": 0.0,
+      "task_reward": -1.0
+    },
+    {
+      "episode": 8,
+      "inference_ms": 9977.253506076522,
+      "latency_ms": 10206,
+      "mean_emitted_modalities": 1.075,
+      "outcome": "timeout",
+      "reward": -1.0,
+      "shaped_reward": -1.01075,
+      "silence_penalty": 0.0,
+      "task_reward": -1.0
+    },
+    {
+      "episode": 9,
+      "inference_ms": 9787.124306079932,
+      "latency_ms": 10090,
+      "mean_emitted_modalities": 0.9130434782608695,
+      "outcome": "timeout",
+      "reward": -1.0,
+      "shaped_reward": -1.0091304347826087,
+      "silence_penalty": 0.0,
+      "task_reward": -1.0
+    },
+    {
+      "episode": 10,
+      "inference_ms": 9853.693665238097,
+      "latency_ms": 10093,
+      "mean_emitted_modalities": 1.15,
+      "outcome": "timeout",
+      "reward": -1.0,
+      "shaped_reward": -1.0115,
+      "silence_penalty": 0.0,
+      "task_reward": -1.0
+    },
+    {
+      "episode": 11,
+      "inference_ms": 10113.94249170553,
+      "latency_ms": 10374,
+      "mean_emitted_modalities": 1.0,
+      "outcome": "timeout",
+      "reward": -1.0,
+      "shaped_reward": -1.01,
+      "silence_penalty": 0.0,
+      "task_reward": -1.0
+    },
+    {
+      "episode": 12,
+      "inference_ms": 9549.951368942857,
+      "latency_ms": 10205,
+      "mean_emitted_modalities": 1.1081081081081081,
+      "outcome": "timeout",
+      "reward": -1.0,
+      "shaped_reward": -1.011081081081081,
+      "silence_penalty": 0.0,
+      "task_reward": -1.0
+    },
+    {
+      "episode": 13,
+      "inference_ms": 9866.603098227642,
+      "latency_ms": 10094,
+      "mean_emitted_modalities": 1.125,
+      "outcome": "timeout",
+      "reward": -1.0,
+      "shaped_reward": -1.01125,
+      "silence_penalty": 0.0,
+      "task_reward": -1.0
+    },
+    {
+      "episode": 14,
+      "inference_ms": 10077.383057097904,
+      "latency_ms": 10324,
+      "mean_emitted_modalities": 0.9772727272727273,
+      "outcome": "timeout",
+      "reward": -1.0,
+      "shaped_reward": -1.0097727272727273,
+      "silence_penalty": 0.0,
+      "task_reward": -1.0
+    },
+    {
+      "episode": 15,
+      "inference_ms": 9919.124680105597,
+      "latency_ms": 10155,
+      "mean_emitted_modalities": 1.0,
+      "outcome": "timeout",
+      "reward": -1.0,
+      "shaped_reward": -1.01,
+      "silence_penalty": 0.0,
+      "task_reward": -1.0
+    },
+    {
+      "episode": 16,
+      "inference_ms": 9818.136136047542,
+      "latency_ms": 10080,
+      "mean_emitted_modalities": 1.0,
+      "outcome": "timeout",
+      "reward": -1.0,
+      "shaped_reward": -1.01,
+      "silence_penalty": 0.0,
+      "task_reward": -1.0
+    },
+    {
+      "episode": 17,
+      "inference_ms": 10043.320841388777,
+      "latency_ms": 10300,
+      "mean_emitted_modalities": 1.0232558139534884,
+      "outcome": "timeout",
+      "reward": -1.0,
+      "shaped_reward": -1.0102325581395348,
+      "silence_penalty": 0.0,
+      "task_reward": -1.0
+    },
+    {
+      "episode": 18,
+      "inference_ms": 9864.127155160531,
+      "latency_ms": 10175,
+      "mean_emitted_modalities": 0.851063829787234,
+      "outcome": "timeout",
+      "reward": -1.0,
+      "shaped_reward": -1.0085106382978724,
+      "silence_penalty": 0.0,
+      "task_reward": -1.0
+    },
+    {
+      "episode": 19,
+      "inference_ms": 10066.033600480296,
+      "latency_ms": 10298,
+      "mean_emitted_modalities": 1.25,
+      "outcome": "timeout",
+      "reward": -1.0,
+      "shaped_reward": -1.0125,
+      "silence_penalty": 0.0,
+      "task_reward": -1.0
+    }
+  ],
+  "schema": "syllogimous.adapter-training.v1"
+}

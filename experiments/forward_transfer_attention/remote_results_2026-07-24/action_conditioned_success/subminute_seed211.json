@@ -1,0 +1,447 @@
+{
+  "arms": {
+    "action_shuffled_delta": {
+      "learning": {
+        "action_counts": [
+          281,
+          229
+        ],
+        "action_fractions": [
+          0.5509804487228394,
+          0.4490196406841278
+        ],
+        "examples_processed": 510,
+        "heldout_accuracy_final": 0.5026041865348816,
+        "history": [
+          {
+            "brier_all_action_audit": 0.25187012553215027,
+            "ece_all_action_audit": 0.02070109359920025,
+            "mean_action_entropy": 0.6856343150138855,
+            "unique_lifetimes": 0,
+            "verified_accuracy": 0.515625
+          },
+          {
+            "brier_all_action_audit": 0.2528507113456726,
+            "ece_all_action_audit": 0.04017554968595505,
+            "loss": 0.6909833550453186,
+            "mean_action_entropy": 0.6817852854728699,
+            "mean_train_reward": 0.40000003576278687,
+            "unique_lifetimes": 30,
+            "verified_accuracy": 0.4765625
+          },
+          {
+            "brier_all_action_audit": 0.2552555501461029,
+            "ece_all_action_audit": 0.059999655932188034,
+            "loss": 0.6924998164176941,
+            "mean_action_entropy": 0.6796822547912598,
+            "mean_train_reward": 0.3333333432674408,
+            "unique_lifetimes": 120,
+            "verified_accuracy": 0.4921875
+          },
+          {
+            "brier_all_action_audit": 0.2620941996574402,
+            "ece_all_action_audit": 0.11189216375350952,
+            "loss": 0.6690337061882019,
+            "mean_action_entropy": 0.6830779910087585,
+            "mean_train_reward": 0.4333333671092987,
+            "unique_lifetimes": 240,
+            "verified_accuracy": 0.4713541567325592
+          },
+          {
+            "brier_all_action_audit": 0.26897352933883667,
+            "ece_all_action_audit": 0.13245432078838348,
+            "loss": 0.683628261089325,
+            "mean_action_entropy": 0.6784750819206238,
+            "mean_train_reward": 0.5333333611488342,
+            "unique_lifetimes": 360,
+            "verified_accuracy": 0.4791666567325592
+          },
+          {
+            "brier_all_action_audit": 0.26970386505126953,
+            "ece_all_action_audit": 0.13052193820476532,
+            "loss": 0.6874505281448364,
+            "mean_action_entropy": 0.6724867820739746,
+            "mean_train_reward": 0.4333333671092987,
+            "unique_lifetimes": 510,
+            "verified_accuracy": 0.5026041865348816
+          }
+        ],
+        "last_gradient_norm": 0.36578822135925293,
+        "logged_reward_bits": 510,
+        "mean_logging_propensity": 0.5175425410270691,
+        "minimum_action_fraction": 0.4490196406841278,
+        "optimizer_updates": 17,
+        "reward_aulc_above_chance": 0.0030381977558135986,
+        "training_mode": "attempted actions permuted in replay loss",
+        "unique_lifetimes_to_threshold": {
+          "0.6": null,
+          "0.7": null,
+          "0.8": null
+        }
+      },
+      "reversal_audit": {
+        "normal_accuracy": 0.5026041865348816,
+        "prediction_flip_rate": 0.1692708283662796,
+        "reversed_relabeled_accuracy": 0.5208333134651184,
+        "reversed_stale_accuracy": 0.4791666567325592
+      },
+      "seconds": 0.06817976100137457
+    },
+    "reinforce_delta": {
+      "learning": {
+        "action_counts": [
+          214,
+          296
+        ],
+        "action_fractions": [
+          0.41960787773132324,
+          0.5803921818733215
+        ],
+        "examples_processed": 510,
+        "heldout_accuracy_final": 0.4895833432674408,
+        "history": [
+          {
+            "brier_all_action_audit": 0.25187012553215027,
+            "ece_all_action_audit": 0.02070109359920025,
+            "mean_action_entropy": 0.6856343150138855,
+            "unique_lifetimes": 0,
+            "verified_accuracy": 0.515625
+          },
+          {
+            "brier_all_action_audit": 0.25215697288513184,
+            "ece_all_action_audit": 0.02246135100722313,
+            "loss": 0.5934602618217468,
+            "mean_action_entropy": 0.6820586919784546,
+            "mean_train_reward": 0.40000003576278687,
+            "unique_lifetimes": 30,
+            "verified_accuracy": 0.5286458134651184
+          },
+          {
+            "brier_all_action_audit": 0.2606028616428375,
+            "ece_all_action_audit": 0.08890098333358765,
+            "loss": 0.23963245749473572,
+            "mean_action_entropy": 0.6196026802062988,
+            "mean_train_reward": 0.3333333432674408,
+            "unique_lifetimes": 120,
+            "verified_accuracy": 0.5
+          },
+          {
+            "brier_all_action_audit": 0.27585533261299133,
+            "ece_all_action_audit": 0.14755208790302277,
+            "loss": 0.34010523557662964,
+            "mean_action_entropy": 0.5196875333786011,
+            "mean_train_reward": 0.5666667222976685,
+            "unique_lifetimes": 240,
+            "verified_accuracy": 0.5026041865348816
+          },
+          {
+            "brier_all_action_audit": 0.2874946892261505,
+            "ece_all_action_audit": 0.18209221959114075,
+            "loss": 0.09073518961668015,
+            "mean_action_entropy": 0.45661038160324097,
+            "mean_train_reward": 0.36666667461395264,
+            "unique_lifetimes": 360,
+            "verified_accuracy": 0.4817708432674408
+          },
+          {
+            "brier_all_action_audit": 0.29281121492385864,
+            "ece_all_action_audit": 0.19971171021461487,
+            "loss": 0.08631441742181778,
+            "mean_action_entropy": 0.43057021498680115,
+            "mean_train_reward": 0.46666669845581055,
+            "unique_lifetimes": 510,
+            "verified_accuracy": 0.4895833432674408
+          }
+        ],
+        "last_gradient_norm": 0.6864079236984253,
+        "logged_reward_bits": 510,
+        "mean_logging_propensity": 0.558679461479187,
+        "minimum_action_fraction": 0.41960787773132324,
+        "optimizer_updates": 17,
+        "reward_aulc_above_chance": 0.0078125,
+        "training_mode": "matched epsilon-mixture REINFORCE",
+        "unique_lifetimes_to_threshold": {
+          "0.6": null,
+          "0.7": null,
+          "0.8": null
+        }
+      },
+      "reversal_audit": {
+        "normal_accuracy": 0.4895833432674408,
+        "prediction_flip_rate": 0.1067708358168602,
+        "reversed_relabeled_accuracy": 0.5182291865348816,
+        "reversed_stale_accuracy": 0.4817708432674408
+      },
+      "seconds": 0.13391951499215793
+    },
+    "success_delta": {
+      "learning": {
+        "action_counts": [
+          200,
+          310
+        ],
+        "action_fractions": [
+          0.3921568989753723,
+          0.6078431606292725
+        ],
+        "examples_processed": 510,
+        "heldout_accuracy_final": 0.53125,
+        "history": [
+          {
+            "brier_all_action_audit": 0.25187012553215027,
+            "ece_all_action_audit": 0.02070109359920025,
+            "mean_action_entropy": 0.6856343150138855,
+            "unique_lifetimes": 0,
+            "verified_accuracy": 0.515625
+          },
+          {
+            "brier_all_action_audit": 0.2531905174255371,
+            "ece_all_action_audit": 0.04474546015262604,
+            "loss": 0.6841145157814026,
+            "mean_action_entropy": 0.6778349876403809,
+            "mean_train_reward": 0.40000003576278687,
+            "unique_lifetimes": 30,
+            "verified_accuracy": 0.4921875
+          },
+          {
+            "brier_all_action_audit": 0.2620354890823364,
+            "ece_all_action_audit": 0.08259503543376923,
+            "loss": 0.6885958909988403,
+            "mean_action_entropy": 0.6356284618377686,
+            "mean_train_reward": 0.36666667461395264,
+            "unique_lifetimes": 120,
+            "verified_accuracy": 0.5052083134651184
+          },
+          {
+            "brier_all_action_audit": 0.2778567671775818,
+            "ece_all_action_audit": 0.12870928645133972,
+            "loss": 0.6677538752555847,
+            "mean_action_entropy": 0.5577260255813599,
+            "mean_train_reward": 0.3333333432674408,
+            "unique_lifetimes": 240,
+            "verified_accuracy": 0.5130208134651184
+          },
+          {
+            "brier_all_action_audit": 0.29613810777664185,
+            "ece_all_action_audit": 0.15786391496658325,
+            "loss": 0.6546505093574524,
+            "mean_action_entropy": 0.4664626717567444,
+            "mean_train_reward": 0.4333333671092987,
+            "unique_lifetimes": 360,
+            "verified_accuracy": 0.5234375
+          },
+          {
+            "brier_all_action_audit": 0.30168792605400085,
+            "ece_all_action_audit": 0.1718180775642395,
+            "loss": 0.7137067317962646,
+            "mean_action_entropy": 0.4269194006919861,
+            "mean_train_reward": 0.40000003576278687,
+            "unique_lifetimes": 510,
+            "verified_accuracy": 0.53125
+          }
+        ],
+        "last_gradient_norm": 0.5815765261650085,
+        "logged_reward_bits": 510,
+        "mean_logging_propensity": 0.568417489528656,
+        "minimum_action_fraction": 0.3921568989753723,
+        "optimizer_updates": 17,
+        "reward_aulc_above_chance": 0.014756937821706137,
+        "training_mode": "attempted-action-only replay",
+        "unique_lifetimes_to_threshold": {
+          "0.6": null,
+          "0.7": null,
+          "0.8": null
+        }
+      },
+      "reversal_audit": {
+        "normal_accuracy": 0.53125,
+        "prediction_flip_rate": 0.0807291641831398,
+        "reversed_relabeled_accuracy": 0.5234375,
+        "reversed_stale_accuracy": 0.4765625
+      },
+      "seconds": 0.20748870499664918
+    },
+    "success_fresh": {
+      "learning": {
+        "action_counts": [
+          208,
+          302
+        ],
+        "action_fractions": [
+          0.4078431725502014,
+          0.5921568870544434
+        ],
+        "examples_processed": 510,
+        "heldout_accuracy_final": 0.5,
+        "history": [
+          {
+            "brier_all_action_audit": 0.2509422302246094,
+            "ece_all_action_audit": 0.027765661478042603,
+            "mean_action_entropy": 0.6917573809623718,
+            "unique_lifetimes": 0,
+            "verified_accuracy": 0.5
+          },
+          {
+            "brier_all_action_audit": 0.2603173851966858,
+            "ece_all_action_audit": 0.08257406949996948,
+            "loss": 0.6722357869148254,
+            "mean_action_entropy": 0.6390336751937866,
+            "mean_train_reward": 0.40000003576278687,
+            "unique_lifetimes": 30,
+            "verified_accuracy": 0.5
+          },
+          {
+            "brier_all_action_audit": 0.2808842062950134,
+            "ece_all_action_audit": 0.17081479728221893,
+            "loss": 0.7306507229804993,
+            "mean_action_entropy": 0.4893834590911865,
+            "mean_train_reward": 0.40000003576278687,
+            "unique_lifetimes": 120,
+            "verified_accuracy": 0.5
+          },
+          {
+            "brier_all_action_audit": 0.25989726185798645,
+            "ece_all_action_audit": 0.09682530164718628,
+            "loss": 0.7175783514976501,
+            "mean_action_entropy": 0.6214573979377747,
+            "mean_train_reward": 0.40000003576278687,
+            "unique_lifetimes": 240,
+            "verified_accuracy": 0.5
+          },
+          {
+            "brier_all_action_audit": 0.2530003786087036,
+            "ece_all_action_audit": 0.04643714427947998,
+            "loss": 0.6877251863479614,
+            "mean_action_entropy": 0.6863317489624023,
+            "mean_train_reward": 0.5666667222976685,
+            "unique_lifetimes": 360,
+            "verified_accuracy": 0.5
+          },
+          {
+            "brier_all_action_audit": 0.25064513087272644,
+            "ece_all_action_audit": 0.02608906663954258,
+            "loss": 0.7059271931648254,
+            "mean_action_entropy": 0.6905557513237,
+            "mean_train_reward": 0.4333333671092987,
+            "unique_lifetimes": 510,
+            "verified_accuracy": 0.5
+          }
+        ],
+        "last_gradient_norm": 0.4529225528240204,
+        "logged_reward_bits": 510,
+        "mean_logging_propensity": 0.5354838967323303,
+        "minimum_action_fraction": 0.4078431725502014,
+        "optimizer_updates": 17,
+        "reward_aulc_above_chance": 0.0,
+        "training_mode": "attempted-action-only replay",
+        "unique_lifetimes_to_threshold": {
+          "0.6": null,
+          "0.7": null,
+          "0.8": null
+        }
+      },
+      "reversal_audit": {
+        "normal_accuracy": 0.5,
+        "prediction_flip_rate": 0.0,
+        "reversed_relabeled_accuracy": 0.5,
+        "reversed_stale_accuracy": 0.5
+      },
+      "seconds": 0.0588547070074128
+    }
+  },
+  "configuration": {
+    "batch_size": 30,
+    "correlation_weight": 0.5,
+    "device": "cuda",
+    "epsilon": 0.2,
+    "hidden": 64,
+    "learning_rate": 0.003,
+    "policy_lifetimes": 510,
+    "policy_test_lifetimes": 384,
+    "pretrain_learning_rate": 0.0003,
+    "pretrain_lifetimes": 252,
+    "pretrain_steps": 40,
+    "report": "experiments/forward_transfer_attention/remote_results_2026-07-24/action_conditioned_success/subminute_seed211.json",
+    "seed": 211,
+    "variance_weight": 2.0
+  },
+  "data_generation_seconds": 8.101758511998923,
+  "forbidden": [
+    "unattempted_action_target",
+    "inferred_other_action_label",
+    "semantic_rule_target",
+    "game_state",
+    "task_id"
+  ],
+  "gate": {
+    "action_coverage": true,
+    "advance_to_second_seed": false,
+    "advance_to_three_minutes": false,
+    "candidate_aulc_advantage": 0.006944437821706137,
+    "candidate_beats_controls": false,
+    "reversal_causality": false
+  },
+  "learner_visible": [
+    "rendered_rgb_stream",
+    "frozen_recurrent_latent",
+    "attempted_action",
+    "logging_propensity",
+    "scalar_verifier_reward"
+  ],
+  "offline_audit_only": [
+    "all-action_brier_targets",
+    "counterfactual_reversal_labels"
+  ],
+  "pretraining": {
+    "history": [
+      {
+        "correlation_loss": 1.2261114120483398,
+        "gradient_norm": 26.536285400390625,
+        "loss": 4.494326591491699,
+        "predictive_loss": 2.0200231075286865,
+        "step": 1,
+        "variance_loss": 0.9306237697601318
+      },
+      {
+        "correlation_loss": 0.47354695200920105,
+        "gradient_norm": 6.563589096069336,
+        "loss": 2.9376206398010254,
+        "predictive_loss": 1.5402252674102783,
+        "step": 20,
+        "variance_loss": 0.5803109407424927
+      },
+      {
+        "correlation_loss": 0.5246750116348267,
+        "gradient_norm": 4.840152263641357,
+        "loss": 2.4974334239959717,
+        "predictive_loss": 1.4864596128463745,
+        "step": 40,
+        "variance_loss": 0.3743182420730591
+      }
+    ],
+    "last_gradient_norm": 4.840152263641357
+  },
+  "representation": {
+    "distinct_lifetime_pairwise_cosine": 0.15546947717666626,
+    "effective_rank": 6.4279961585998535,
+    "future_alignment_margin": 0.4853239059448242,
+    "heldout_future_loss": 1.5172901153564453,
+    "heldout_shuffled_future_loss": 2.0026140213012695,
+    "prediction_effective_rank": 3.880455732345581,
+    "prediction_std_mean": 0.356892466545105,
+    "state_std_mean": 0.29142051935195923,
+    "target_effective_rank": 2.005171537399292
+  },
+  "schema": "action-conditioned-success-v1",
+  "semantic_labels_used_for_training": false,
+  "total_seconds": 14.129965476007783,
+  "unattempted_action_labels_used_for_training": false,
+  "verifier_private": [
+    "correct_action",
+    "temporal_rule",
+    "object_identity",
+    "palette_id",
+    "event_index",
+    "logical_lifetime_metadata"
+  ]
+}

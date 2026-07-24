@@ -1,0 +1,15 @@
+{
+  "router_hard_action_accuracy": 0.1875,
+  "router_prediction_flip_rate": 0.203125,
+  "router_stale_label_reversal_accuracy": 0.15625,
+  "router_shuffled_support_accuracy": 0.1875,
+  "router_rule_accuracy": 0.53125,
+  "router_first_action_accuracy": 0.203125,
+  "router_second_action_accuracy": 0.2109375,
+  "lifetimes": 64,
+  "lifetime_start": 49000000,
+  "weights_frozen": true,
+  "sensory_only": true,
+  "task": "compositional-temporal",
+  "schema": "integrated-factorized-router-in-situ-audit-v1"
+}

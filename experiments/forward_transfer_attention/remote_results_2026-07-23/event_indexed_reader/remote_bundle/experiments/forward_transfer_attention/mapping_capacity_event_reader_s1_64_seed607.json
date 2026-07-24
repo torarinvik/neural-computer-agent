@@ -1,0 +1,30 @@
+{
+  "schema": "mapping-capacity-probe-v1",
+  "weights_frozen": true,
+  "sensory_only": true,
+  "lifetimes": 64,
+  "two_identity_one_card_per_color": [
+    0.296875,
+    0.40625
+  ],
+  "two_identity_one_card_mean": 0.3515625,
+  "four_identity_first_card_only_per_color": [
+    0.28125,
+    0.359375,
+    0.15625,
+    0.03125
+  ],
+  "four_identity_second_card_only_per_color": [
+    0.09375,
+    0.078125,
+    0.03125,
+    0.5
+  ],
+  "four_identity_both_cards_per_color": [
+    0.3125,
+    0.34375,
+    0.109375,
+    0.03125
+  ],
+  "chance_action_accuracy": 0.125
+}

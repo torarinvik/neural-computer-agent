@@ -1,0 +1,135 @@
+{
+  "adaptive_curriculum": false,
+  "best_curriculum_epoch": 0,
+  "best_curriculum_score": -1.0,
+  "best_curriculum_stage": 0,
+  "choice_audio_distractors": 0,
+  "choice_counts": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "choice_delay_frames": 0,
+  "choice_distractors": 0,
+  "choice_target_like_distractors": 0,
+  "choice_temporal_distractors": 0,
+  "config": {
+    "action_count": 8,
+    "heads": 5,
+    "hidden": 160,
+    "max_thought_steps": 8,
+    "memory_core": "event_transformer",
+    "memory_slots": 12,
+    "thought_dynamics": "gated_residual"
+  },
+  "consistency_weight": 0.25,
+  "curriculum_start_stage": 1,
+  "cyclic_fraction": 0.25,
+  "cyclic_premises": null,
+  "eval_premises": [
+    2
+  ],
+  "evaluation": {
+    "accuracy": 0.504,
+    "accuracy_by_premises": {
+      "2": 0.504
+    },
+    "accuracy_by_thought_depth": {
+      "1": 0.496,
+      "2": 0.498,
+      "3": 0.496,
+      "4": 0.495,
+      "5": 0.503,
+      "6": 0.504,
+      "7": 0.501,
+      "8": 0.504
+    },
+    "episodes": 1000,
+    "latency_reward_active": false,
+    "mean_reward": 0.008000000000000007,
+    "mean_thought_steps": 8.0,
+    "milliseconds_per_episode": 1.3653301409940468
+  },
+  "evaluation_tasks": "cyclic",
+  "full_precision": false,
+  "history": [
+    {
+      "accuracy": 0.43005952380952384,
+      "consistency_loss": 0.05354024866034114,
+      "epoch": 1,
+      "latency_multiplier": 0.0,
+      "premise_choices": [
+        2
+      ],
+      "reward": -0.13988095238095238,
+      "sampling_choices": [
+        2
+      ],
+      "thought_steps": 4.530753968253968,
+      "verifier_loss": 1.8897758779071627
+    },
+    {
+      "accuracy": 0.501984126984127,
+      "consistency_loss": 0.016612560637960478,
+      "epoch": 2,
+      "latency_multiplier": 0.0,
+      "premise_choices": [
+        2
+      ],
+      "reward": 0.003968253968253968,
+      "sampling_choices": [
+        2
+      ],
+      "thought_steps": 4.421378968253968,
+      "verifier_loss": 0.7566999405149429
+    },
+    {
+      "accuracy": 0.4962797619047619,
+      "consistency_loss": 0.0031532096743051496,
+      "epoch": 3,
+      "latency_multiplier": 0.0,
+      "premise_choices": [
+        2
+      ],
+      "reward": -0.00744047619047619,
+      "sampling_choices": [
+        2
+      ],
+      "thought_steps": 4.530753968253968,
+      "verifier_loss": 0.7139243474082341
+    }
+  ],
+  "initial_checkpoint": "experiments/syllogimous_bitter_lesson/small_mixed_75_25_block2.pt",
+  "learning_signal": "verifier",
+  "logic_modulus": 2,
+  "mastery_patience": 2,
+  "mastery_threshold": 0.95,
+  "overfit_fixed": false,
+  "parameters": 2350200,
+  "random_thought_depth": true,
+  "randomize_rendering": false,
+  "reaction_fraction": 0.5,
+  "reasoning_family": "parity",
+  "reward": {
+    "correct": 1.0,
+    "incorrect": -1.0,
+    "latency_ramp_accuracy": [
+      0.55,
+      0.8
+    ],
+    "max_correct_speed_bonus": 0.05
+  },
+  "scale": "2m",
+  "schema": "syllogimous-bitter-lesson-v1",
+  "seed": 17,
+  "semantic_auxiliary_labels": false,
+  "train_premises": [
+    2
+  ],
+  "training_seconds": 16.59039841099002,
+  "training_tasks": "cyclic"
+}

@@ -1,0 +1,181 @@
+{
+  "config": {
+    "batch_size": 8,
+    "checkpoint": "experiments/syllogimous_neural_computer/vast_continual_fullread.pt",
+    "choices": 8,
+    "delay": 2,
+    "device": "cuda",
+    "epochs": 8,
+    "eval_contexts": 8,
+    "eval_streams": 128,
+    "initial_checkpoint": "experiments/syllogimous_neural_computer/vast_hard_memory.pt",
+    "learning_rate": 0.0001,
+    "read_top_k": 64,
+    "report": "experiments/syllogimous_neural_computer/vast_continual_fullread.json",
+    "seed": 17,
+    "threshold": 0.001,
+    "train_contexts": 4,
+    "train_streams": 384,
+    "write_cost": 0.0
+  },
+  "counterfactuals": {
+    "empty": {
+      "first_accuracy": 0.5087890625,
+      "first_by_context": [
+        1.0,
+        0.6015625,
+        0.578125,
+        0.4921875,
+        0.40625,
+        0.296875,
+        0.3515625,
+        0.34375
+      ],
+      "retention_accuracy": 0.1279296875,
+      "retention_by_context": [
+        0.1640625,
+        0.140625,
+        0.1171875,
+        0.1015625,
+        0.15625,
+        0.0859375,
+        0.125,
+        0.1328125
+      ],
+      "stored_rows_per_stream": 0.0,
+      "writes_per_stream": 32.0
+    },
+    "garbage": {
+      "first_accuracy": 0.5087890625,
+      "first_by_context": [
+        1.0,
+        0.6015625,
+        0.578125,
+        0.4921875,
+        0.40625,
+        0.296875,
+        0.3515625,
+        0.34375
+      ],
+      "retention_accuracy": 0.1279296875,
+      "retention_by_context": [
+        0.1640625,
+        0.140625,
+        0.1171875,
+        0.1015625,
+        0.15625,
+        0.0859375,
+        0.125,
+        0.1328125
+      ],
+      "stored_rows_per_stream": 32.0,
+      "writes_per_stream": 32.0
+    },
+    "shuffled": {
+      "first_accuracy": 0.5087890625,
+      "first_by_context": [
+        1.0,
+        0.6015625,
+        0.578125,
+        0.4921875,
+        0.40625,
+        0.296875,
+        0.3515625,
+        0.34375
+      ],
+      "retention_accuracy": 0.1416015625,
+      "retention_by_context": [
+        0.109375,
+        0.1640625,
+        0.109375,
+        0.0703125,
+        0.15625,
+        0.1796875,
+        0.125,
+        0.21875
+      ],
+      "stored_rows_per_stream": 32.0,
+      "writes_per_stream": 32.0
+    }
+  },
+  "evaluation": {
+    "first_accuracy": 0.5087890625,
+    "first_by_context": [
+      1.0,
+      0.6015625,
+      0.578125,
+      0.4921875,
+      0.40625,
+      0.296875,
+      0.3515625,
+      0.34375
+    ],
+    "retention_accuracy": 0.2236328125,
+    "retention_by_context": [
+      0.1640625,
+      0.125,
+      0.2421875,
+      0.25,
+      0.234375,
+      0.171875,
+      0.2890625,
+      0.3125
+    ],
+    "stored_rows_per_stream": 32.0,
+    "writes_per_stream": 32.0
+  },
+  "history": [
+    {
+      "epoch": 1,
+      "first_accuracy": 0.2708333333333333,
+      "retention_accuracy": 0.21223958333333334,
+      "writes_per_stream": 16.0
+    },
+    {
+      "epoch": 2,
+      "first_accuracy": 0.2701822916666667,
+      "retention_accuracy": 0.23763020833333334,
+      "writes_per_stream": 16.0
+    },
+    {
+      "epoch": 3,
+      "first_accuracy": 0.24674479166666666,
+      "retention_accuracy": 0.20442708333333334,
+      "writes_per_stream": 16.0
+    },
+    {
+      "epoch": 4,
+      "first_accuracy": 0.3333333333333333,
+      "retention_accuracy": 0.232421875,
+      "writes_per_stream": 16.0
+    },
+    {
+      "epoch": 5,
+      "first_accuracy": 0.4173177083333333,
+      "retention_accuracy": 0.2545572916666667,
+      "writes_per_stream": 16.0
+    },
+    {
+      "epoch": 6,
+      "first_accuracy": 0.498046875,
+      "retention_accuracy": 0.2701822916666667,
+      "writes_per_stream": 16.0
+    },
+    {
+      "epoch": 7,
+      "first_accuracy": 0.5904947916666666,
+      "retention_accuracy": 0.283203125,
+      "writes_per_stream": 16.0
+    },
+    {
+      "epoch": 8,
+      "first_accuracy": 0.623046875,
+      "retention_accuracy": 0.2819010416666667,
+      "writes_per_stream": 16.0
+    }
+  ],
+  "parameters": 2139149,
+  "schema": "syllogimous-continual-memory-v1",
+  "training_seconds": 276.7126704399707,
+  "weights_frozen_during_evaluation": true
+}

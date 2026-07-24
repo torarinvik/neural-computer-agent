@@ -1,0 +1,99 @@
+# Text-only action boundary. The model emits bytes; the evaluator parses them
+# into the private episode ADT. There are no game callbacks or direct hooks.
+
+include "syllogimous_types.elisa"
+
+error ActionParseError:
+    Empty
+    UnknownCommand
+    MissingIndex
+    InvalidIndex
+    TrailingInput
+
+def action_byte(text: u8&, index: i32) -> u8:
+    assert index >= 0
+    return text[index.usize()]
+
+def action_command_equal(text: u8&, expected: u8&) -> bool:
+    cursor: mutable i32 = skip_action_spaces_at(text, 0)
+    expected_cursor: mutable i32 = 0
+    while action_byte(expected, expected_cursor) != 0:
+        if action_byte(text, cursor) != action_byte(expected, expected_cursor):
+            return false
+        cursor <- cursor + 1
+        expected_cursor <- expected_cursor + 1
+    assert cursor >= 0
+    cursor <- skip_action_spaces_at(text, cursor)
+    return action_byte(text, cursor) == 0
+
+def skip_action_spaces_at(text: u8&, cursor: i32 where cursor >= 0) -> i32:
+    next: mutable i32 = cursor
+    while action_byte(text, next) == 32 or action_byte(text, next) == 9:
+        next <- next + 1
+    assert next >= 0
+    return next
+
+def skip_action_spaces(text: u8&, cursor: lmut i32) -> void:
+    assert cursor >= 0
+    cursor <- skip_action_spaces_at(text, cursor)
+
+def parse_action_index(text: u8&, cursor: lmut i32) -> i32 error[ActionParseError]:
+    cursor <- skip_action_spaces(text, cursor)
+    raise ActionParseError.MissingIndex if action_byte(text, cursor) == 0
+    value: mutable i32 = 0
+    digits: mutable i32 = 0
+    while action_byte(text, cursor) >= 48 and action_byte(text, cursor) <= 57:
+        value <- value * 10 + (action_byte(text, cursor) - 48).i32()
+        digits <- digits + 1
+        cursor <- cursor + 1
+    raise ActionParseError.MissingIndex if digits == 0
+    raise ActionParseError.InvalidIndex if value < 0 or value >= 34
+    return value
+
+def has_move_prefix(text: u8&) -> bool:
+    prefix: u8& = "MOVE_CARD".cast[u8&]
+    cursor: mutable i32 = skip_action_spaces_at(text, 0)
+    prefix_cursor: mutable i32 = 0
+    while action_byte(prefix, prefix_cursor) != 0:
+        if action_byte(text, cursor) != action_byte(prefix, prefix_cursor):
+            return false
+        cursor <- cursor + 1
+        prefix_cursor <- prefix_cursor + 1
+    return action_byte(text, cursor) == 32 or action_byte(text, cursor) == 9
+
+def parse_move_action(text: u8&) -> Action error[ActionParseError]:
+    cursor: mutable i32 = skip_action_spaces_at(text, 0)
+    cursor <- cursor + 9
+    rebind source_result: i32 error[ActionParseError], cursor = parse_action_index(
+        text, cursor
+    )
+    source_raw: i32 = try source_result
+    rebind destination_result: i32 error[ActionParseError], cursor = parse_action_index(
+        text, cursor
+    )
+    destination_raw: i32 = try destination_result
+    cursor <- skip_action_spaces(text, cursor)
+    raise ActionParseError.TrailingInput if action_byte(text, cursor) != 0
+    assert source_raw >= 0 and source_raw < 34
+    assert destination_raw >= 0 and destination_raw < 34
+    source: i32 where source >= 0 and source < 34 = source_raw
+    destination: i32 where destination >= 0 and destination < 34 = destination_raw
+    return Action.MoveCard(source, destination)
+
+def parse_action_text(text: u8&) -> Action error[ActionParseError]:
+    raise ActionParseError.Empty if action_byte(text, 0) == 0
+    if action_command_equal(text, "WAIT".cast[u8&]):
+        return Action.Wait
+    if action_command_equal(text, "NEXT".cast[u8&]):
+        return Action.Next
+    if action_command_equal(text, "PREVIOUS".cast[u8&]):
+        return Action.Previous
+    if action_command_equal(text, "TRUE".cast[u8&]):
+        return Action.Answer(Truth.True)
+    if action_command_equal(text, "FALSE".cast[u8&]):
+        return Action.Answer(Truth.False)
+    if action_command_equal(text, "SUBMIT_SORT".cast[u8&]):
+        return Action.SubmitSort
+    if has_move_prefix(text):
+        return try parse_move_action(text)
+    raise ActionParseError.UnknownCommand

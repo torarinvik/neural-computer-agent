@@ -1,0 +1,61 @@
+{
+  "status": "three-seed proof of concept; intentionally overfit to Snake",
+  "date": "2026-07-16",
+  "hardware": "NVIDIA GeForce RTX 5090 32GB",
+  "listener": "frozen HuggingFaceTB/SmolVLM2-500M-Video-Instruct text core",
+  "shared_setup": {
+    "seeds": [7, 17, 29],
+    "train_samples": 4000,
+    "test_samples": 1000,
+    "supervised_epochs": 10,
+    "learned_rl_episodes": 20,
+    "rollout_episodes": 20,
+    "rollout_horizon": 150,
+    "sensor_ticks_per_action": 3,
+    "dense_sensory_tokens_per_action": 24
+  },
+  "dense": {
+    "offline_action_accuracy_mean": 0.711333,
+    "offline_action_accuracy_std": 0.056512,
+    "apples_per_episode_mean": 0.8,
+    "apples_per_episode_std": 0.414327,
+    "steps_per_episode_mean": 13.116667,
+    "death_rate": 1.0,
+    "vision_tokens_per_action_mean": 12.0,
+    "audio_tokens_per_action_mean": 12.0,
+    "mean_latency_ms": 13.6025
+  },
+  "fixed": {
+    "offline_action_accuracy_mean": 0.722,
+    "offline_action_accuracy_std": 0.028647,
+    "apples_per_episode_mean": 0.75,
+    "apples_per_episode_std": 0.389444,
+    "steps_per_episode_mean": 13.033333,
+    "death_rate": 1.0,
+    "vision_tokens_per_action_mean": 3.535946,
+    "audio_tokens_per_action_mean": 0.172811,
+    "token_reduction_vs_dense": 0.845052,
+    "mean_latency_ms": 13.810258
+  },
+  "learned_thresholds": {
+    "offline_action_accuracy_before_rl_mean": 0.707667,
+    "offline_action_accuracy_after_rl_mean": 0.697333,
+    "offline_action_accuracy_after_rl_std": 0.020237,
+    "apples_per_episode_mean": 0.416667,
+    "apples_per_episode_std": 0.289636,
+    "steps_per_episode_mean": 8.583333,
+    "death_rate": 1.0,
+    "vision_tokens_per_action_mean": 3.291905,
+    "audio_tokens_per_action_mean": 0.11542,
+    "token_reduction_vs_dense": 0.858028,
+    "mean_latency_ms": 13.922448,
+    "final_vision_thresholds": [0.002963, 0.003098, 0.002737],
+    "final_audio_thresholds": [0.044178, 0.04732, 0.048635]
+  },
+  "conclusions": [
+    "Event filtering succeeded: fixed raw change and energy gates removed about 84.5% of sensory tokens without a meaningful loss of Snake behavior.",
+    "Fewer tokens did not reduce end-to-end latency at this scale because frozen-transformer and adapter overhead dominated the short sequence.",
+    "The learned thresholds consistently became stricter, but the current short-segment policy-gradient objective reduced offline accuracy and closed-loop performance.",
+    "All conditions died in every episode; this is an interface-efficiency proof, not competent Snake control."
+  ]
+}

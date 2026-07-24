@@ -1,0 +1,21 @@
+{
+  "status": "single_seed_smoke_not_speed_claim",
+  "latency_target_ms": 50.0,
+  "accuracy_only": {
+    "latency_weight": 0.0,
+    "action_accuracy": 0.30417,
+    "gate_mean": 0.48526,
+    "measured_mean_ms": 3.43698,
+    "measured_p95_ms": 4.61894
+  },
+  "small_latency_reward": {
+    "latency_weight": 0.002,
+    "action_accuracy": 0.30417,
+    "gate_mean": 0.48333,
+    "measured_mean_ms": 2.75476,
+    "measured_p95_ms": 3.46373,
+    "latency_penalty": 0.0001073,
+    "accuracy_dominant_score": 0.30406
+  },
+  "interpretation": "Accuracy was unchanged and routing activity fell slightly; timing difference needs repeated isolated benchmarking."
+}

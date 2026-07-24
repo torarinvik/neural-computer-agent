@@ -1,0 +1,275 @@
+{
+  "arms": {
+    "fresh": {
+      "downstream_reward_only": {
+        "heldout_accuracy_final": 0.5,
+        "history": [
+          {
+            "heldout_accuracy": 0.5,
+            "unique_lifetimes": 0
+          },
+          {
+            "heldout_accuracy": 0.5,
+            "loss": 0.6007928252220154,
+            "mean_train_reward": 0.4333333671092987,
+            "unique_lifetimes": 30
+          },
+          {
+            "heldout_accuracy": 0.5,
+            "loss": 0.1257120668888092,
+            "mean_train_reward": 0.4333333671092987,
+            "unique_lifetimes": 120
+          },
+          {
+            "heldout_accuracy": 0.5,
+            "loss": 0.048960454761981964,
+            "mean_train_reward": 0.5666667222976685,
+            "unique_lifetimes": 240
+          },
+          {
+            "heldout_accuracy": 0.5,
+            "loss": 0.13387790322303772,
+            "mean_train_reward": 0.46666669845581055,
+            "unique_lifetimes": 360
+          },
+          {
+            "heldout_accuracy": 0.5,
+            "loss": 0.17048218846321106,
+            "mean_train_reward": 0.36666667461395264,
+            "unique_lifetimes": 510
+          }
+        ],
+        "reward_aulc_above_chance": 0.0,
+        "unique_lifetimes_to_threshold": {
+          "0.6": null,
+          "0.7": null,
+          "0.8": null
+        }
+      },
+      "pretraining": {
+        "history": [],
+        "last_gradient_norm": 0.0
+      },
+      "representation": {
+        "distinct_lifetime_pairwise_cosine": 0.9910646677017212,
+        "effective_rank": 1.2444796562194824,
+        "future_alignment_margin": -5.1975250244140625e-05,
+        "heldout_future_loss": 1.962774395942688,
+        "heldout_shuffled_future_loss": 1.9627224206924438,
+        "prediction_std_mean": 0.013914791867136955,
+        "state_std_mean": 0.05561143532395363
+      },
+      "seconds": 0.4840661260095658
+    },
+    "predictive": {
+      "downstream_reward_only": {
+        "heldout_accuracy_final": 0.5,
+        "history": [
+          {
+            "heldout_accuracy": 0.5,
+            "unique_lifetimes": 0
+          },
+          {
+            "heldout_accuracy": 0.5,
+            "loss": 0.23640386760234833,
+            "mean_train_reward": 0.40000003576278687,
+            "unique_lifetimes": 30
+          },
+          {
+            "heldout_accuracy": 0.5,
+            "loss": 0.05645134672522545,
+            "mean_train_reward": 0.6333333849906921,
+            "unique_lifetimes": 120
+          },
+          {
+            "heldout_accuracy": 0.5,
+            "loss": 0.1524512618780136,
+            "mean_train_reward": 0.5666667222976685,
+            "unique_lifetimes": 240
+          },
+          {
+            "heldout_accuracy": 0.5,
+            "loss": 0.11549003422260284,
+            "mean_train_reward": 0.4333333671092987,
+            "unique_lifetimes": 360
+          },
+          {
+            "heldout_accuracy": 0.5,
+            "loss": 0.2235725075006485,
+            "mean_train_reward": 0.7000000476837158,
+            "unique_lifetimes": 510
+          }
+        ],
+        "reward_aulc_above_chance": 0.0,
+        "unique_lifetimes_to_threshold": {
+          "0.6": null,
+          "0.7": null,
+          "0.8": null
+        }
+      },
+      "pretraining": {
+        "history": [
+          {
+            "covariance_loss": 1.4809203094046097e-05,
+            "gradient_norm": 50.442867279052734,
+            "loss": 6.626890659332275,
+            "predictive_loss": 1.9737708568572998,
+            "step": 1,
+            "variance_loss": 0.9306237697601318
+          },
+          {
+            "covariance_loss": 0.00014300715702120215,
+            "gradient_norm": 2.489976167678833,
+            "loss": 4.503870964050293,
+            "predictive_loss": 0.23287320137023926,
+            "step": 20,
+            "variance_loss": 0.8541989326477051
+          },
+          {
+            "covariance_loss": 0.001428024610504508,
+            "gradient_norm": 1.6820991039276123,
+            "loss": 3.6438546180725098,
+            "predictive_loss": 0.18264663219451904,
+            "step": 40,
+            "variance_loss": 0.6922358870506287
+          }
+        ],
+        "last_gradient_norm": 1.6820991039276123
+      },
+      "representation": {
+        "distinct_lifetime_pairwise_cosine": 0.9350510239601135,
+        "effective_rank": 1.1417843103408813,
+        "future_alignment_margin": 1.0728836059570312e-06,
+        "heldout_future_loss": 0.189854696393013,
+        "heldout_shuffled_future_loss": 0.18985576927661896,
+        "prediction_std_mean": 0.15018711984157562,
+        "state_std_mean": 0.17029443383216858
+      },
+      "seconds": 5.851460200006841
+    },
+    "shuffled_future": {
+      "downstream_reward_only": {
+        "heldout_accuracy_final": 0.5,
+        "history": [
+          {
+            "heldout_accuracy": 0.5,
+            "unique_lifetimes": 0
+          },
+          {
+            "heldout_accuracy": 0.5,
+            "loss": 0.23627671599388123,
+            "mean_train_reward": 0.40000003576278687,
+            "unique_lifetimes": 30
+          },
+          {
+            "heldout_accuracy": 0.5,
+            "loss": 0.056425899267196655,
+            "mean_train_reward": 0.6333333849906921,
+            "unique_lifetimes": 120
+          },
+          {
+            "heldout_accuracy": 0.5,
+            "loss": 0.15262757241725922,
+            "mean_train_reward": 0.5666667222976685,
+            "unique_lifetimes": 240
+          },
+          {
+            "heldout_accuracy": 0.5,
+            "loss": 0.11536015570163727,
+            "mean_train_reward": 0.4333333671092987,
+            "unique_lifetimes": 360
+          },
+          {
+            "heldout_accuracy": 0.5,
+            "loss": 0.22359400987625122,
+            "mean_train_reward": 0.7000000476837158,
+            "unique_lifetimes": 510
+          }
+        ],
+        "reward_aulc_above_chance": 0.0,
+        "unique_lifetimes_to_threshold": {
+          "0.6": null,
+          "0.7": null,
+          "0.8": null
+        }
+      },
+      "pretraining": {
+        "history": [
+          {
+            "covariance_loss": 1.4809203094046097e-05,
+            "gradient_norm": 50.44590377807617,
+            "loss": 6.626808166503906,
+            "predictive_loss": 1.9736886024475098,
+            "step": 1,
+            "variance_loss": 0.9306237697601318
+          },
+          {
+            "covariance_loss": 0.00014301014016382396,
+            "gradient_norm": 2.490365982055664,
+            "loss": 4.503887176513672,
+            "predictive_loss": 0.2329137772321701,
+            "step": 20,
+            "variance_loss": 0.8541940450668335
+          },
+          {
+            "covariance_loss": 0.001428361632861197,
+            "gradient_norm": 1.6823203563690186,
+            "loss": 3.6437771320343018,
+            "predictive_loss": 0.1826605349779129,
+            "step": 40,
+            "variance_loss": 0.6922175884246826
+          }
+        ],
+        "last_gradient_norm": 1.6823203563690186
+      },
+      "representation": {
+        "distinct_lifetime_pairwise_cosine": 0.9350555539131165,
+        "effective_rank": 1.1417615413665771,
+        "future_alignment_margin": 7.897615432739258e-07,
+        "heldout_future_loss": 0.18986250460147858,
+        "heldout_shuffled_future_loss": 0.18986329436302185,
+        "prediction_std_mean": 0.15020686388015747,
+        "state_std_mean": 0.17029620707035065
+      },
+      "seconds": 4.043627840001136
+    }
+  },
+  "configuration": {
+    "batch_size": 30,
+    "device": "cuda",
+    "hidden": 64,
+    "policy_learning_rate": 0.003,
+    "policy_lifetimes": 510,
+    "policy_test_lifetimes": 384,
+    "pretrain_learning_rate": 0.0003,
+    "pretrain_lifetimes": 252,
+    "pretrain_steps": 40,
+    "pretrain_test_lifetimes": 96,
+    "report": "experiments/forward_transfer_attention/remote_results_2026-07-24/zero_label_predictive/subminute_seed211.json",
+    "seed": 211
+  },
+  "data_generation_seconds": 6.506532313011121,
+  "gate": {
+    "advance_to_three_minutes": false,
+    "noncollapsed": false,
+    "prediction_beats_shuffled": true,
+    "predictive_aulc_advantage": 0.0,
+    "reward_aulc_beats_both_controls": false
+  },
+  "learner_forbidden_inputs": [
+    "rule_label",
+    "object_identity",
+    "palette_id",
+    "event_index",
+    "game_state",
+    "semantic_target"
+  ],
+  "learner_inputs": [
+    "rendered_rgb_stream",
+    "sampled_action_reward"
+  ],
+  "private_verifier_use": "sampled action equality converted to scalar reward",
+  "schema": "zero-label-predictive-state-v1",
+  "semantic_labels_used_for_training": false,
+  "total_seconds": 17.224414758005878
+}
