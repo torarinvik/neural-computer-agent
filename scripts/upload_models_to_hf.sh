@@ -23,9 +23,8 @@ hf upload "$repo_id" artifacts/MODEL_CARD.md README.md \
 hf upload "$repo_id" artifacts/checkpoints checkpoints \
   --include "*.pt" \
   --commit-message "Upload four audited research checkpoints"
-hf upload "$repo_id" artifacts/manifests/curated_checkpoints.sha256 \
+hf upload "$repo_id" artifacts/manifests/hf_checkpoints.sha256 \
   checkpoints/sha256sums.txt \
   --commit-message "Add checkpoint integrity manifest"
 
 echo "Uploaded https://huggingface.co/${repo_id}"
-
