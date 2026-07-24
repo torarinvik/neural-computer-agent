@@ -138,6 +138,32 @@ the full search cost remains part of the accounting.  No general-agent
 checkpoint is promoted until older capabilities are shown to survive
 integration.
 
+## Immutable-parent graduation
+
+CUDA adaptive-pooling backward proved nondeterministic even with deterministic
+cuDNN settings.  Therefore a seed number is not an adequate parent identity.
+The selected seed-263 core was materialized once, stored as immutable weights,
+and pinned by SHA-256:
+
+`d027b80a631f61c3a9769b60a079494e0a669e1211d3324a13e5ad7b65a1006d`
+
+Two reloads of that exact core produced metric-for-metric identical curves.
+After replacing noisy random-permutation controls with exact binary
+complements, the immutable parent passed every behavioral and anti-fluke gate
+at 48 and 64 outcomes.  At 40 outcomes it reached 95.31% normal accuracy but
+correctly failed because missing-evidence entropy was lower than normal
+entropy.  The stable, reproducible threshold is therefore 48—not 40.
+
+The compatibility suite also passed:
+
+- fixed-probe stable mastery at 16 outcomes;
+- fixed-target stable mastery at 48 outcomes, improving the prior 64-outcome
+  threshold;
+- predictive-core parameters bit-identical throughout behavioral learning.
+
+This is a 25% reduction from the previous 64-outcome frontier with stronger
+reproducibility and retention evidence.
+
 ## Population fitness after localization
 
 For clone \(i\), evaluate:

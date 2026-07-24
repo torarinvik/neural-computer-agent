@@ -161,6 +161,20 @@ learner**, with search compute accounted separately. Seed 263 is admitted to
 the prior-primitive retention/compatibility suite; no general-agent checkpoint
 is promoted until that suite passes.
 
+The selected core is now materialized as an immutable 2.9 MB candidate with
+SHA-256
+`d027b80a631f61c3a9769b60a079494e0a669e1211d3324a13e5ad7b65a1006d`.
+Exact reloads reproduce metric-for-metric. With exact complemented negative
+controls it passes every gate at 48 and 64 outcomes. A tempting 40-bit point
+reaches 95.31% accuracy but fails the missing-evidence uncertainty gate and is
+honestly rejected.
+
+Compatibility testing preserves fixed-probe mastery at 16 outcomes and
+fixed-target mastery at 48 outcomes, with the predictive core bit-identical
+throughout behavioral learning. This establishes a reproducible 25% reduction
+from the previous 64-outcome frontier without observed forgetting inside the
+identify-then-act family.
+
 See
 `experiments/forward_transfer_attention/ROBUST_SAMPLE_EFFICIENCY_STRATEGY.md`
 for the population-search decision and pre-registered diagnostic.

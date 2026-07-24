@@ -12,7 +12,7 @@ def test_replication_compares_both_scientific_parents() -> None:
 
 
 def test_replication_uses_gradual_prefixes() -> None:
-    assert PREFIXES == (32, 48, 64)
+    assert PREFIXES == (32, 40, 48, 64)
 
 
 def test_replication_streams_are_disjoint_from_selection() -> None:
