@@ -131,10 +131,15 @@ adapter reached 66.41% blind accuracy on seed 211 but also fell to 55.47% on
 seed 307, with invalid causal reversal behavior. No checkpoint was promoted.
 
 The cheap "more readout capacity or optimizer freedom" branch is closed at 32
-unique outcomes. The next population should change the information curriculum
-or self-supervised predictive objective while preserving the exact 32-bit
-verifier budget. A candidate only earns a longer run after exact-parent
-replication and valid pixel-rerender causal audits.
+unique outcomes. A subsequent eight-clone reward-free predictive-objective
+screen also failed: contrastive refinement reached only 58.59% blind accuracy,
+and the unrefined core had the best final selection score. Extra auxiliary
+prediction losses therefore do not earn a longer run.
+
+The next sub-minute experiment maps the missing sample-efficiency interval at
+40, 48, and 56 unique outcomes using the unchanged baseline. The first point
+that passes valid protocol and target rerenders becomes the gradual curriculum
+rung; only then should another architecture family be considered.
 
 The longer-term optimization is a gradient-trained population with
 successive-halving compute allocation. Fitness is held-out learning AULC,

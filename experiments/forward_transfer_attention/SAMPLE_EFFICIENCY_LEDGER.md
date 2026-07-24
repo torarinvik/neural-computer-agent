@@ -49,6 +49,7 @@ new tasks is evidence of compounding learning.
 | 2026-07-24 | Refined descendants on seed 307 | Best selection 61.33%, blind 55.47%; reversal flips 48.83%/24.61% | Shuffled/fresh controls 44.14–50% | The first-generation advantage did not replicate; no checkpoint retained and the 64-bit frontier remains |
 | 2026-07-24 | Eight-clone conservative learning-mechanism tournament at 32 bits, seed 211 | Zero-initialized rank-16 residual adapter: 68.75% selection, 66.41% blind | Frozen readout 61.72% selection; shuffled/fresh controls 46.09–50% | A bounded one-seed signal, but protocol/target flips were only 51.56%/50.39%; exact-parent replication required |
 | 2026-07-24 | Exact rank-16 residual parent, seed 307 | 58.98% selection, 55.47% blind; target flip 13.67% | Shuffled/fresh controls 45.70–50% | Conservative adaptation did not replicate or learn the causal rule; reject the family at 32 bits and retain no checkpoint |
+| 2026-07-24 | Eight reward-free predictive-objective refinements at 32 bits, seed 211 | Best AULC came from contrastive transition matching; 59.38% selection and 58.59% blind | Unrefined core had the best final selection score at 59.77%; shuffled/fresh controls 47.27–48.44% | Extra delta, cosine, contrastive, action-decode, and consequence-separation training did not improve causal learning; no replication or checkpoint |
 
 The direct-outcome comparison is a supervised probe curve, not an acceptable
 deployed learning method. It is included only to measure whether prior sensory
@@ -130,5 +131,13 @@ eight clones compared a frozen readout, zero-initialized residual adapters, and
 limited action-embedding, predictor, and recurrent adaptation.  A rank-16
 adapter improved the first seed but failed exact-parent replication.  This
 closes the cheap "more adaptable readout" branch at 32 bits.  The next
-experiment should change the information curriculum or pretraining objective,
-not add optimizer freedom to the same 32 outcomes.
+screen changed the reward-free predictive objective while sharing cached
+sensory experience.  Every refinement stayed below 60% blind accuracy and the
+unrefined core had the best final selection score.  This also closes the cheap
+"add an auxiliary predictive loss after pretraining" branch.
+
+The immediate next measurement is the missing interval between the failed
+32-bit and mastered 64-bit points: evaluate 40, 48, and 56 unique outcomes with
+the unchanged baseline and valid causal rerenders.  Finding the first reliable
+ignition point gives the curriculum a genuinely gradual next rung and avoids
+changing architecture without knowing the actual sample threshold.
