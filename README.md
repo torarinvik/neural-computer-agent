@@ -175,6 +175,20 @@ throughout behavioral learning. This establishes a reproducible 25% reduction
 from the previous 64-outcome frontier without observed forgetting inside the
 identify-then-act family.
 
+The first compounding ladder is also complete. With the immutable core frozen,
+novel target-side and observed-effect-side questions each require 8 outcomes,
+and their effect-target composition requires 24. The composition replicated on
+two disjoint streams while matched-fresh stayed at chance through 64 outcomes.
+The gain localizes to the learned vision encoder.
+
+A gradual appearance bridge then changed the palette, object geometry, and
+finally both. Stable composition mastery remained 24 outcomes on every rung;
+the combined shift replicated with 100% normal/counterfactual accuracy and
+100% causal flips. A third-stream retention audit preserved the earlier ladder
+at 8/8/16 outcomes. This is verified surface generalization and earlier ability
+reuse, not yet broad amodal transfer: spatial relation and event structure are
+still shared.
+
 See
 `experiments/forward_transfer_attention/ROBUST_SAMPLE_EFFICIENCY_STRATEGY.md`
 for the population-search decision and pre-registered diagnostic.

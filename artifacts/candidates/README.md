@@ -17,6 +17,14 @@ horse race.  It is a candidate rather than a globally promoted checkpoint.
   - observed-effect-side: stable at 8 verifier outcomes
   - effect-target composition: stable at 24 outcomes on two disjoint streams
   - matched fresh initialization: no pass through 64 outcomes
+- Replicated appearance bridge:
+  - novel palette: stable effect-target composition at 24 outcomes
+  - novel target/cursor geometry: stable at 24 outcomes
+  - palette + geometry: stable at 24 outcomes on two disjoint streams
+  - normal/counterfactual accuracy and causal flips: 100% on replication
+  - matched fresh and recurrent-only: no pass through 64 outcomes
+- Post-promotion retention on a third stream: 8/8/16 outcomes for
+  target-side/effect-side/effect-target, with core weights bit-identical
 
 The authoritative behavioral report is:
 
@@ -26,7 +34,8 @@ This candidate is not yet the complete general neural-computer checkpoint.
 Promotion beyond the identify-then-act family requires retention and forward
 transfer on additional primitive families.
 
-The near-transfer result localizes to the learned vision encoder and is strong
-evidence for reusable visual dynamics, but it remains within a shared rendered
-world. The older unrelated spatial and same/different renderers stayed at
-chance in the sub-minute screen, so global promotion remains deferred.
+The transfer result localizes to the learned vision encoder and is strong
+evidence for reusable visual dynamics. It now survives new colors and object
+geometry, but position and event structure remain shared. The older unrelated
+spatial and same/different renderers stayed at chance in the sub-minute screen,
+so global promotion remains deferred.

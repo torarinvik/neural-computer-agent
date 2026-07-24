@@ -41,6 +41,13 @@ NULL_ACTION = 2
 PROBE_PIXELS = 22
 ACT_PIXELS = 28
 PROTOCOLS = ((-1, 1), (1, -1))
+APPEARANCE_STYLES = ("baseline", "palette", "shape", "combined")
+BRIDGE_COLORS = (
+    (184, 92, 255),
+    (255, 126, 62),
+    (78, 224, 210),
+    (236, 238, 246),
+)
 
 
 class DirectSuccessSystem(nn.Module):
@@ -71,7 +78,11 @@ def make_readout(
 def _render(
         seed: int, frame_index: int, *, cursor_x: int,
         target_direction: int | None, target_color: int,
-        cursor_color: int) -> np.ndarray:
+        cursor_color: int, appearance_style: str = "baseline") -> np.ndarray:
+    if appearance_style not in APPEARANCE_STYLES:
+        raise ValueError(
+            f"unknown appearance style {appearance_style!r}; "
+            f"expected one of {APPEARANCE_STYLES}")
     rng = np.random.default_rng(seed)
     background = tuple(int(value) for value in rng.integers(5, 23, size=3))
     image = Image.new("RGB", (IMAGE_WIDTH, IMAGE_HEIGHT), background)
@@ -84,16 +95,36 @@ def _render(
         y = 18 + nuisance * 8
         color = tuple(int(value) for value in rng.integers(28, 68, size=3))
         draw.ellipse((x - 2, y - 2, x + 2, y + 2), fill=color)
+    palette = (
+        BRIDGE_COLORS
+        if appearance_style in ("palette", "combined")
+        else COLORS)
+    use_novel_shapes = appearance_style in ("shape", "combined")
     if target_direction is not None:
         target_x = IMAGE_WIDTH // 2 + target_direction * ACT_PIXELS
-        draw.ellipse(
-            (target_x - 8, 20, target_x + 8, 36),
-            fill=COLORS[target_color], outline=(245, 245, 250), width=2)
+        if use_novel_shapes:
+            draw.polygon(
+                ((target_x, 18), (target_x + 10, 28),
+                 (target_x, 38), (target_x - 10, 28)),
+                fill=palette[target_color],
+                outline=(245, 245, 250))
+        else:
+            draw.ellipse(
+                (target_x - 8, 20, target_x + 8, 36),
+                fill=palette[target_color],
+                outline=(245, 245, 250), width=2)
     cursor_y = 71
-    draw.rounded_rectangle(
-        (cursor_x - 9, cursor_y - 5, cursor_x + 9, cursor_y + 5),
-        radius=3, fill=COLORS[cursor_color],
-        outline=(245, 245, 250), width=2)
+    if use_novel_shapes:
+        draw.polygon(
+            ((cursor_x, cursor_y - 9), (cursor_x + 8, cursor_y + 6),
+             (cursor_x, cursor_y + 3), (cursor_x - 8, cursor_y + 6)),
+            fill=palette[cursor_color],
+            outline=(245, 245, 250))
+    else:
+        draw.rounded_rectangle(
+            (cursor_x - 9, cursor_y - 5, cursor_x + 9, cursor_y + 5),
+            radius=3, fill=palette[cursor_color],
+            outline=(245, 245, 250), width=2)
     pulse = 25 + frame_index * 9
     draw.rectangle((7, 85, 11, 89), fill=(pulse, pulse, pulse))
     return np.asarray(image, dtype=np.uint8).copy()
@@ -108,9 +139,14 @@ def identify_batch(
         no_probe_effect: bool = False,
         missing_consequence: bool = False,
         swap_protocol: bool = False,
-        reverse_target: bool = False) -> dict[str, torch.Tensor]:
+        reverse_target: bool = False,
+        appearance_style: str = "baseline") -> dict[str, torch.Tensor]:
     if count % 8:
         raise ValueError("count must be divisible by eight")
+    if appearance_style not in APPEARANCE_STYLES:
+        raise ValueError(
+            f"unknown appearance style {appearance_style!r}; "
+            f"expected one of {APPEARANCE_STYLES}")
     seeds = list(range(start, start + count))
     protocol_ids = _ranked_balanced(
         seeds, heldout, "identify-protocol", classes=2)
@@ -166,18 +202,22 @@ def identify_batch(
         frames = [
             _render(
                 base, 0, cursor_x=center, target_direction=None,
-                target_color=target_color, cursor_color=cursor_color),
+                target_color=target_color, cursor_color=cursor_color,
+                appearance_style=appearance_style),
             _render(
                 base, 1, cursor_x=visible_probe_x, target_direction=None,
-                target_color=target_color, cursor_color=cursor_color),
+                target_color=target_color, cursor_color=cursor_color,
+                appearance_style=appearance_style),
             _render(
                 base, 2, cursor_x=center,
                 target_direction=target_direction,
-                target_color=target_color, cursor_color=cursor_color),
+                target_color=target_color, cursor_color=cursor_color,
+                appearance_style=appearance_style),
             _render(
                 base, 3, cursor_x=final_x,
                 target_direction=target_direction,
-                target_color=target_color, cursor_color=cursor_color),
+                target_color=target_color, cursor_color=cursor_color,
+                appearance_style=appearance_style),
         ]
         all_frames.append(np.stack(frames))
         all_actions.append((probe_action, NULL_ACTION, choice))

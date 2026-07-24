@@ -60,6 +60,8 @@ new tasks is evidence of compounding learning.
 | 2026-07-24 | Immutable core-263 → old-renderer spatial and same/different, sub-minute screens | No causal mastery through 120 reward bits; all final scores 44.6–50% | Matched fresh and component-transfer arms also stayed at chance | The renderer/primitive jump was too large; do not scale this branch before adding nearer curriculum rungs |
 | 2026-07-24 | Near-transfer target-side and observed-effect-side, core-263 | Both reached stable 100% causal mastery from 8 reward bits; true rerenders flipped 100% | Matched fresh and recurrent-only stayed at 50% through 64 bits | First verified cross-task sample-efficiency gain; learned visual dynamics are reusable |
 | 2026-07-24 | Near-transfer effect-target composition, two disjoint streams | Core-263 reached stable mastery at 24 bits in both runs; 100% held-out and counterfactual accuracy | Matched fresh never passed through 64 bits (50.0% and 54.7% final); exact-complement controls 0% | Replicated compounding result: two reusable perceived facts compose into a novel relation with fewer verified outcomes |
+| 2026-07-24 | Gradual appearance bridge: new palette → new shapes → both, effect-target composition | Core-263 stayed stable at 24 bits on every rung; the combined shift replicated at 24 bits on a disjoint stream with 100% held-out/counterfactual accuracy and 100% flips | Matched fresh and recurrent-only stayed at 50% through 64 bits; missing evidence 47.7–52.3%; exact complements 0–2.7% | First replicated surface-generalization bridge: learned visual dynamics remain sample-efficient when object colors and geometry both change |
+| 2026-07-24 | Post-appearance retained ladder on a third disjoint stream | Target side 8 bits, effect side 8 bits, effect-target composition 16 bits; all frozen cores bit-identical | Fresh and recurrent-only never passed through 64 bits | No catastrophic forgetting; the promoted appearance rung preserves or improves the previous 8/8/24 frontier |
 
 The direct-outcome comparison is a supervised probe curve, not an acceptable
 deployed learning method. It is included only to measure whether prior sensory
@@ -133,6 +135,35 @@ conclusion is that predictive identify experience created a reusable visual
 dynamics representation, and that representation reduced the verified
 experience needed to learn a novel composition. Broad transfer across
 unrelated renderers and continual consolidation remain open.
+
+## Replicated gradual-appearance bridge
+
+The next curriculum promotion changed public pixels without changing protocol,
+event timing, opaque actions, verifier outcomes, or private logical labels:
+
+1. replace the familiar four-color palette;
+2. replace the circular target and rounded cursor with a diamond and chevron;
+3. combine both shifts.
+
+All three sub-minute horse races passed. Core-263 reached stable causal mastery
+of the effect-target relation at 24 unique verifier bits on every appearance
+rung. The combined shift then reproduced at 24 bits on a disjoint
+logical/render stream and downstream seed. The matched-fresh and
+recurrent-only arms stayed at chance through 64 bits. Vision-only transfer
+matched the complete inherited core, again localizing the reusable capability
+to learned visual dynamics.
+
+The replicated combined run scored 100% on normal episodes and true
+protocol-rerender counterfactuals with a 100% prediction-flip rate. Removing
+the visible probe consequence returned performance to 49.2–52.3%, and exact
+attempted-action/reward complements scored 0%. All inherited weights remained
+bit-identical.
+
+This is stronger than the earlier shared-renderer result, but it is still a
+surface bridge rather than broad amodal transfer. Spatial relation and event
+structure remain shared. The next honest rung preserves event structure while
+replacing left/right position with a non-positional visual attribute such as
+color identity.
 
 ## Accounting correction from the identify-then-act curriculum
 

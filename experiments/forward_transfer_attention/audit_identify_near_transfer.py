@@ -18,6 +18,7 @@ import torch
 from .audit_immutable_core_cross_primitive import _load_arms
 from .train import seed_everything
 from .train_identify_then_act import (
+    APPEARANCE_STYLES,
     PROTOCOLS,
     TEST_START,
     TRAIN_START,
@@ -120,6 +121,12 @@ def main() -> None:
         "--data-offset", type=int, default=0,
         help="Disjoint logical/render stream offset for blind replication.")
     parser.add_argument(
+        "--appearance-style", choices=APPEARANCE_STYLES,
+        default="baseline",
+        help=(
+            "Change only public pixels while preserving the event protocol, "
+            "opaque actions, scalar outcomes, and private verifier logic."))
+    parser.add_argument(
         "--device", default="cuda" if torch.cuda.is_available() else "cpu")
     args = parser.parse_args()
     started = time.perf_counter()
@@ -127,15 +134,15 @@ def main() -> None:
     train_pool = identify_batch(
         TRAIN_START + TRAIN_OFFSET + args.data_offset,
         args.train_lifetimes * 2,
-        heldout=False)
+        heldout=False, appearance_style=args.appearance_style)
     train_indices = _balanced_indices(
         private_label(train_pool, args.task), args.train_lifetimes,
         seed=args.seed + 10)
     train = _subset_data(train_pool, train_indices)
     normal_pool = identify_batch(
         TEST_START + TEST_OFFSET + args.data_offset,
-        args.test_lifetimes * 2,
-        heldout=True)
+        args.test_lifetimes * 2, heldout=True,
+        appearance_style=args.appearance_style)
     test_indices = _balanced_indices(
         private_label(normal_pool, args.task), args.test_lifetimes,
         seed=args.seed + 20)
@@ -143,6 +150,7 @@ def main() -> None:
     counterfactual = _subset_data(identify_batch(
         TEST_START + TEST_OFFSET + args.data_offset,
         args.test_lifetimes * 2, heldout=True,
+        appearance_style=args.appearance_style,
         **_counterfactual_kwargs(args.task)), test_indices)
     datasets = {"train": train, "normal": normal,
                 "counterfactual": counterfactual}
@@ -150,11 +158,13 @@ def main() -> None:
         datasets["missing_consequence"] = _subset_data(identify_batch(
             TEST_START + TEST_OFFSET + args.data_offset,
             args.test_lifetimes * 2,
-            heldout=True, missing_consequence=True), test_indices)
+            heldout=True, missing_consequence=True,
+            appearance_style=args.appearance_style), test_indices)
         datasets["no_probe_effect"] = _subset_data(identify_batch(
             TEST_START + TEST_OFFSET + args.data_offset,
             args.test_lifetimes * 2,
-            heldout=True, no_probe_effect=True), test_indices)
+            heldout=True, no_probe_effect=True,
+            appearance_style=args.appearance_style), test_indices)
     labels = {
         name: private_label(data, args.task)
         for name, data in datasets.items()
@@ -294,10 +304,10 @@ def main() -> None:
         and gate["fewer_bits_than_matched_fresh"]
         and gate["all_cores_bit_identical"])
     report = {
-        "schema": "identify-near-transfer-ladder-v1",
+        "schema": "identify-near-transfer-ladder-v2",
         "claim_boundary": (
-            "Reward-only near-transfer within a shared rendered world; "
-            "private labels are evaluator-only."),
+            "Reward-only near-transfer within shared identify event structure; "
+            "public appearance may vary and private labels are evaluator-only."),
         "semantic_labels_used_for_training": False,
         "unattempted_action_labels_used_for_training": False,
         "learner_visible": [

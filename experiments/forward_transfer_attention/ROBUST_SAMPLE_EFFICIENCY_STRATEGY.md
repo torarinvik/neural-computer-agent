@@ -214,13 +214,18 @@ degradation where applicable, exact-complement controls, and frozen-core
 retention. This is the first evidence that previously learned perception can
 make a genuinely new composition faster to learn.
 
-The next curriculum bridges toward cross-renderer generalization in
+The first cross-renderer bridge is now complete. New palette, new target/cursor
+geometry, and their combination all preserved stable 24-bit effect-target
+mastery; the combined shift replicated on a disjoint stream. Post-promotion
+retention remained 8/8/16, no worse than the prior 8/8/24 frontier.
+
+The remaining curriculum bridges toward broader generalization in
 single-axis steps:
 
-1. preserve left/right logic but vary cursor and target appearance;
-2. preserve event structure but replace position with color identity;
+1. preserve event structure but replace position with color identity;
+2. bridge color identity to another visual attribute such as shape;
 3. only then retry simultaneous spatial and delayed same/different;
-4. after each promotion, rerun the 8/8/24-bit retained ladder.
+4. after each promotion, rerun the retained 8/8/24-bit-or-better ladder.
 
 No rung receives a three-minute budget until a sub-minute screen shows a
 causal advantage over matched fresh. No rung receives ten minutes until the
