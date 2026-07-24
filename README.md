@@ -151,6 +151,16 @@ initializations under identical experience and optimizers, using successive
 halving at 32, 48, and 64 outcomes. A winner must then reproduce on a disjoint
 lifetime stream and pass old-capability retention before promotion.
 
+That race is now complete. Core seed 263 passed every causal and anti-fluke
+gate at 48 and 64 outcomes on a disjoint policy stream with a different
+downstream initialization. Its replicated causal floors were 98.05% and
+97.27%, respectively. Core seed 211 did not reproduce a stable pass.
+
+The new frontier is therefore a **population-selected, replicated 48-bit
+learner**, with search compute accounted separately. Seed 263 is admitted to
+the prior-primitive retention/compatibility suite; no general-agent checkpoint
+is promoted until that suite passes.
+
 See
 `experiments/forward_transfer_attention/ROBUST_SAMPLE_EFFICIENCY_STRATEGY.md`
 for the population-search decision and pre-registered diagnostic.

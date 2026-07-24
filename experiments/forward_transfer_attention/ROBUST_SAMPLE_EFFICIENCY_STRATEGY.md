@@ -116,6 +116,28 @@ holding pretraining sampling, experience, and the downstream optimizer fixed.
 Use successive halving at 32, 48, and 64 outcomes, then replay the exact
 winning core on a disjoint lifetime stream and a second downstream seed.
 
+## Core race and replication result
+
+Six core initializations raced under shared experience.  Four survived at 32
+outcomes and three at 48.  Seeds 43, 211, and 263 passed every blind
+capability, anti-fluke, and frozen-core retention gate at 64 outcomes.
+
+Seed 263 was the early-ignition challenger: it reached a 100% selection causal
+floor at 48 bits.  The two scientific parents, seeds 211 and 263, were then
+retrained on a disjoint policy stream with readout initialization/replay seed
+307:
+
+| Parent | 48-bit replicated floor | 64-bit replicated floor | Stable pass |
+|---:|---:|---:|---:|
+| 211 | 51.56% | 83.98% | none |
+| 263 | 98.05% | 97.27% | 48 bits |
+
+Seed 263 is therefore admitted to the old-primitive retention/compatibility
+suite.  This is a population-selected, replicated sample-efficiency result;
+the full search cost remains part of the accounting.  No general-agent
+checkpoint is promoted until older capabilities are shown to survive
+integration.
+
 ## Population fitness after localization
 
 For clone \(i\), evaluate:
