@@ -5,15 +5,15 @@ __pycache__/
 *.py[cod]
 
 # Disposable training products. Curated milestones are force-added explicitly
-# under artifacts/checkpoints.
+# under artifacts/checkpoints or artifacts/candidates.
 *.pt
 *.pth
 *.bin
 *.idx
+!artifacts/candidates/core263_parent.pt
 
 # Local runtime products.
 *.ppm
 videos/
 runs/
 wandb/
-
