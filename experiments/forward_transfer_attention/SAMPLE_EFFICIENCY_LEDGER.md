@@ -62,6 +62,11 @@ new tasks is evidence of compounding learning.
 | 2026-07-24 | Near-transfer effect-target composition, two disjoint streams | Core-263 reached stable mastery at 24 bits in both runs; 100% held-out and counterfactual accuracy | Matched fresh never passed through 64 bits (50.0% and 54.7% final); exact-complement controls 0% | Replicated compounding result: two reusable perceived facts compose into a novel relation with fewer verified outcomes |
 | 2026-07-24 | Gradual appearance bridge: new palette → new shapes → both, effect-target composition | Core-263 stayed stable at 24 bits on every rung; the combined shift replicated at 24 bits on a disjoint stream with 100% held-out/counterfactual accuracy and 100% flips | Matched fresh and recurrent-only stayed at 50% through 64 bits; missing evidence 47.7–52.3%; exact complements 0–2.7% | First replicated surface-generalization bridge: learned visual dynamics remain sample-efficient when object colors and geometry both change |
 | 2026-07-24 | Post-appearance retained ladder on a third disjoint stream | Target side 8 bits, effect side 8 bits, effect-target composition 16 bits; all frozen cores bit-identical | Fresh and recurrent-only never passed through 64 bits | No catastrophic forgetting; the promoted appearance rung preserves or improves the previous 8/8/24 frontier |
+| 2026-07-24 | Position → color-identity bridge, direct composition and localization | Direct fixed-color composition and both decision-state atoms stayed at chance through 64 bits | Discarded probes decoded effect color at 94.9% from vision but target color at only 60.2%; both decayed toward chance in the recurrent decision state | The event interface erased color, and position-trained vision had learned selective color invariance; scaling the same interface was rejected |
+| 2026-07-24 | Salient color atoms with generic event snapshots and exclusive binary head | Inherited vision learned effect identity at 24 bits; reset vision learned target identity at 64 bits | Inherited target branch stayed at 50%; fresh effect branch required 64 bits | Measured simultaneous positive and negative transfer; retain the learned effect branch but reset the target branch |
+| 2026-07-24 | Twelve-clone shared-experience color-primitive race | Two clones passed; clone 8 reached stable relation mastery from 16 bits with causal-floor sum 3.2969 | Ten clones failed; all clones shared the same 64/24 atom and 64 relation outcomes | Population search changed compute, not environmental experience; exact parent required full audit and blind replay |
+| 2026-07-24 | Acquired color primitives → novel same/different relation, selected parent and blind replay | Stable causal mastery from 16 new relation bits on both streams; blind final normal/protocol-CF/target-CF and both flip rates all 100% | Target-only, effect-only, and neither-acquired controls never passed through 64; complement controls 0–6.6%; stratified shuffled medians 51.2%/55.1%, no causal passes | First replicated cross-attribute compounding: separately acquired continuous primitives reduce new-relation experience by at least 4× |
+| 2026-07-24 | Post-color-compounding retained position ladder | Target side 8 bits, effect side 8 bits, effect-target composition 24 bits; core weights bit-identical | Fresh/recurrent-only never passed through 64 bits | Cross-attribute compounding did not catastrophically forget the earlier position abilities |
 
 The direct-outcome comparison is a supervised probe curve, not an acceptable
 deployed learning method. It is included only to measure whether prior sensory
@@ -164,6 +169,51 @@ surface bridge rather than broad amodal transfer. Spatial relation and event
 structure remain shared. The next honest rung preserves event structure while
 replacing left/right position with a non-positional visual attribute such as
 color identity.
+
+## Replicated cross-attribute compounding breakthrough
+
+The color bridge initially failed for a useful reason. Core-263 had learned to
+ignore colors that were irrelevant to position control. A discarded diagnostic
+probe found effect color strongly present in the event vision embedding but
+target color weakly represented, and both were lost at the final recurrent
+decision state. More outcomes and replay did not repair that interface.
+
+The successful bridge made two task-agnostic changes:
+
+1. retain generic per-event vision embeddings rather than forcing every fact
+   through one leaky final state;
+2. use one antisymmetric binary preference axis, encoding the benchmark's
+   one-correct-answer constraint while still applying loss only to the
+   attempted opaque answer.
+
+The measured transfer was selective. Inherited vision learned the observed
+effect-color atom in 24 outcomes versus 64 fresh, while a reset vision branch
+learned target color in 64 outcomes and inherited vision stayed at chance.
+Keeping both small branches was therefore more honest than forcing harmful
+weight reuse.
+
+After reward-only atom acquisition, a relation head received only the two
+continuous primitive preferences. Twelve initialization clones shared one
+experience stream; two passed and clone 8 was selected at 16 relation bits.
+Search compute multiplied by twelve, but unique environmental experience did
+not.
+
+The exact parent and a fully disjoint replay both reached stable causal mastery
+from 16 new relation outcomes. On the blind run, normal accuracy, both true
+pixel-rerender counterfactual accuracies, and both prediction-flip rates were
+100%. Removing either target or effect returned performance to chance. Either
+primitive alone and the entirely unacquired architecture stayed below the
+causal gate through 64 outcomes, establishing a transfer-ratio lower bound of
+4×. Exact complements scored 0%; three target×effect-stratified shuffled-label
+controls had median normal accuracy 55.1% and no causal pass.
+
+This is the first replicated result in which acquiring two independent
+attributes makes a new composition at least four times faster to learn. It is
+not yet a general amodal concept space: the event structure and binary answer
+interface remain shared, the color objects are deliberately salient, and the
+checkpoint keeps two vision branches. The next steps are to shrink the color
+cue, vary its palette, and then compress the branches without losing the
+verified learning curve.
 
 ## Accounting correction from the identify-then-act curriculum
 

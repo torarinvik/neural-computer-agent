@@ -42,11 +42,17 @@ PROBE_PIXELS = 22
 ACT_PIXELS = 28
 PROTOCOLS = ((-1, 1), (1, -1))
 APPEARANCE_STYLES = ("baseline", "palette", "shape", "combined")
+RELATION_AXES = (
+    "position", "color_salient", "color_fixed", "color_varied",
+)
 BRIDGE_COLORS = (
     (184, 92, 255),
     (255, 126, 62),
     (78, 224, 210),
     (236, 238, 246),
+)
+COLOR_IDENTITY_PAIRS = (
+    (0, 1), (1, 2), (2, 3), (3, 0),
 )
 
 
@@ -66,23 +72,57 @@ class DirectSuccessSystem(nn.Module):
         return self.network(states)
 
 
+class AntisymmetricSuccessSystem(nn.Module):
+    """One binary preference axis for tasks with exactly one correct answer.
+
+    Loss is still applied only to the attempted action. Exact opposite logits
+    encode binary exclusivity, not an unobserved answer label.
+    """
+
+    def __init__(self, hidden: int, width: int = 64) -> None:
+        super().__init__()
+        self.network = nn.Sequential(
+            nn.LayerNorm(hidden),
+            nn.Linear(hidden, width),
+            nn.GELU(),
+            nn.Linear(width, 1),
+        )
+
+    def forward(self, states: torch.Tensor) -> torch.Tensor:
+        preference = self.network(states)
+        return torch.cat([-preference, preference], dim=-1)
+
+
 def make_readout(
         kind: str, hidden: int, intention_width: int) -> nn.Module:
     if kind == "bottleneck":
         return SuccessSystem(hidden, intention_width, actions=2)
     if kind == "direct":
         return DirectSuccessSystem(hidden, width=intention_width)
+    if kind == "antisymmetric":
+        return AntisymmetricSuccessSystem(hidden, width=intention_width)
     raise ValueError(kind)
 
 
 def _render(
         seed: int, frame_index: int, *, cursor_x: int,
         target_direction: int | None, target_color: int,
-        cursor_color: int, appearance_style: str = "baseline") -> np.ndarray:
+        cursor_color: int, appearance_style: str = "baseline",
+        relation_axis: str = "position",
+        identity_pair: tuple[int, int] = (0, 1),
+        cursor_identity: int | None = None) -> np.ndarray:
     if appearance_style not in APPEARANCE_STYLES:
         raise ValueError(
             f"unknown appearance style {appearance_style!r}; "
             f"expected one of {APPEARANCE_STYLES}")
+    if relation_axis not in RELATION_AXES:
+        raise ValueError(
+            f"unknown relation axis {relation_axis!r}; "
+            f"expected one of {RELATION_AXES}")
+    if len(identity_pair) != 2 or any(
+            identity < 0 or identity >= len(COLORS)
+            for identity in identity_pair):
+        raise ValueError("identity_pair must contain two valid palette indices")
     rng = np.random.default_rng(seed)
     background = tuple(int(value) for value in rng.integers(5, 23, size=3))
     image = Image.new("RGB", (IMAGE_WIDTH, IMAGE_HEIGHT), background)
@@ -100,30 +140,58 @@ def _render(
         if appearance_style in ("palette", "combined")
         else COLORS)
     use_novel_shapes = appearance_style in ("shape", "combined")
+    color_salient = relation_axis == "color_salient"
     if target_direction is not None:
-        target_x = IMAGE_WIDTH // 2 + target_direction * ACT_PIXELS
+        target_x = (
+            IMAGE_WIDTH // 2
+            if relation_axis != "position"
+            else IMAGE_WIDTH // 2 + target_direction * ACT_PIXELS)
+        visible_target_color = (
+            palette[identity_pair[int(target_direction == 1)]]
+            if relation_axis != "position"
+            else palette[target_color])
         if use_novel_shapes:
+            target_radius = 18 if color_salient else 10
             draw.polygon(
-                ((target_x, 18), (target_x + 10, 28),
-                 (target_x, 38), (target_x - 10, 28)),
-                fill=palette[target_color],
+                ((target_x, 28 - target_radius),
+                 (target_x + target_radius, 28),
+                 (target_x, 28 + target_radius),
+                 (target_x - target_radius, 28)),
+                fill=visible_target_color,
                 outline=(245, 245, 250))
         else:
+            target_x_radius = 20 if color_salient else 8
+            target_y_radius = 18 if color_salient else 8
             draw.ellipse(
-                (target_x - 8, 20, target_x + 8, 36),
-                fill=palette[target_color],
+                (target_x - target_x_radius, 28 - target_y_radius,
+                 target_x + target_x_radius, 28 + target_y_radius),
+                fill=visible_target_color,
                 outline=(245, 245, 250), width=2)
     cursor_y = 71
+    visible_cursor_color = (
+        (145, 148, 160)
+        if relation_axis != "position" and cursor_identity is None
+        else (
+            palette[identity_pair[int(cursor_identity == 1)]]
+            if relation_axis != "position"
+            else palette[cursor_color]))
     if use_novel_shapes:
+        cursor_x_radius = 18 if color_salient else 8
+        cursor_y_radius = 13 if color_salient else 9
         draw.polygon(
-            ((cursor_x, cursor_y - 9), (cursor_x + 8, cursor_y + 6),
-             (cursor_x, cursor_y + 3), (cursor_x - 8, cursor_y + 6)),
-            fill=palette[cursor_color],
+            ((cursor_x, cursor_y - cursor_y_radius),
+             (cursor_x + cursor_x_radius, cursor_y + 9),
+             (cursor_x, cursor_y + 5),
+             (cursor_x - cursor_x_radius, cursor_y + 9)),
+            fill=visible_cursor_color,
             outline=(245, 245, 250))
     else:
+        cursor_x_radius = 22 if color_salient else 9
+        cursor_y_radius = 11 if color_salient else 5
         draw.rounded_rectangle(
-            (cursor_x - 9, cursor_y - 5, cursor_x + 9, cursor_y + 5),
-            radius=3, fill=palette[cursor_color],
+            (cursor_x - cursor_x_radius, cursor_y - cursor_y_radius,
+             cursor_x + cursor_x_radius, cursor_y + cursor_y_radius),
+            radius=5 if color_salient else 3, fill=visible_cursor_color,
             outline=(245, 245, 250), width=2)
     pulse = 25 + frame_index * 9
     draw.rectangle((7, 85, 11, 89), fill=(pulse, pulse, pulse))
@@ -138,15 +206,21 @@ def identify_batch(
         fixed_target_direction: int | None = None,
         no_probe_effect: bool = False,
         missing_consequence: bool = False,
+        missing_target: bool = False,
         swap_protocol: bool = False,
         reverse_target: bool = False,
-        appearance_style: str = "baseline") -> dict[str, torch.Tensor]:
+        appearance_style: str = "baseline",
+        relation_axis: str = "position") -> dict[str, torch.Tensor]:
     if count % 8:
         raise ValueError("count must be divisible by eight")
     if appearance_style not in APPEARANCE_STYLES:
         raise ValueError(
             f"unknown appearance style {appearance_style!r}; "
             f"expected one of {APPEARANCE_STYLES}")
+    if relation_axis not in RELATION_AXES:
+        raise ValueError(
+            f"unknown relation axis {relation_axis!r}; "
+            f"expected one of {RELATION_AXES}")
     seeds = list(range(start, start + count))
     protocol_ids = _ranked_balanced(
         seeds, heldout, "identify-protocol", classes=2)
@@ -172,6 +246,11 @@ def identify_batch(
         seeds, heldout, "identify-choice", classes=2)
     color_ids = _ranked_balanced(
         seeds, heldout, "identify-color", classes=4)
+    color_pair_ids = _ranked_balanced(
+        seeds, heldout, "identify-color-pair",
+        classes=len(COLOR_IDENTITY_PAIRS))
+    color_pair_orientations = _ranked_balanced(
+        seeds, heldout, "identify-color-pair-orientation", classes=2)
     all_frames, all_actions = [], []
     rewards, correct_actions, private_protocols = [], [], []
     center = IMAGE_WIDTH // 2
@@ -189,6 +268,8 @@ def identify_batch(
             else (-1, 1)[target_ids[index]])
         if reverse_target:
             target_direction = -target_direction
+        visible_target_direction = (
+            None if missing_target else target_direction)
         choice = logged_choices[index]
         probe_effect = 0 if no_probe_effect else protocol[probe_action]
         visible_probe_x = center + probe_effect * PROBE_PIXELS
@@ -199,25 +280,47 @@ def identify_batch(
         base = seed * 17 + (9 if heldout else 0)
         target_color = color_ids[index]
         cursor_color = (target_color + 1) % len(COLORS)
+        identity_pair = (
+            (0, 1)
+            if relation_axis in ("color_salient", "color_fixed")
+            else COLOR_IDENTITY_PAIRS[color_pair_ids[index]])
+        if (
+                relation_axis == "color_varied"
+                and color_pair_orientations[index]):
+            identity_pair = identity_pair[::-1]
+        consequence_identity = (
+            None if visible_probe_x == center else probe_effect)
         frames = [
             _render(
                 base, 0, cursor_x=center, target_direction=None,
                 target_color=target_color, cursor_color=cursor_color,
-                appearance_style=appearance_style),
+                appearance_style=appearance_style,
+                relation_axis=relation_axis, identity_pair=identity_pair),
             _render(
-                base, 1, cursor_x=visible_probe_x, target_direction=None,
+                base, 1,
+                cursor_x=(
+                    visible_probe_x
+                    if relation_axis == "position" else center),
+                target_direction=None,
                 target_color=target_color, cursor_color=cursor_color,
-                appearance_style=appearance_style),
+                appearance_style=appearance_style,
+                relation_axis=relation_axis, identity_pair=identity_pair,
+                cursor_identity=consequence_identity),
             _render(
                 base, 2, cursor_x=center,
-                target_direction=target_direction,
+                target_direction=visible_target_direction,
                 target_color=target_color, cursor_color=cursor_color,
-                appearance_style=appearance_style),
+                appearance_style=appearance_style,
+                relation_axis=relation_axis, identity_pair=identity_pair),
             _render(
-                base, 3, cursor_x=final_x,
-                target_direction=target_direction,
+                base, 3,
+                cursor_x=(
+                    final_x if relation_axis == "position" else center),
+                target_direction=visible_target_direction,
                 target_color=target_color, cursor_color=cursor_color,
-                appearance_style=appearance_style),
+                appearance_style=appearance_style,
+                relation_axis=relation_axis, identity_pair=identity_pair,
+                cursor_identity=protocol[choice]),
         ]
         all_frames.append(np.stack(frames))
         all_actions.append((probe_action, NULL_ACTION, choice))

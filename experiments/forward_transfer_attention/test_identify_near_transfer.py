@@ -6,8 +6,13 @@ from .audit_identify_near_transfer import (
     _balanced_indices,
     _subset_data,
     private_label,
+    transfer_features,
 )
-from .train_identify_then_act import identify_batch
+from .train_identify_then_act import (
+    ActionHistoryCore,
+    identify_batch,
+    make_readout,
+)
 
 
 def test_near_transfer_private_labels_are_balanced() -> None:
@@ -59,3 +64,71 @@ def test_appearance_bridge_preserves_counterfactual_pairing() -> None:
         assert torch.equal(
             private_label(swapped, "effect_target_match"),
             1 - private_label(normal, "effect_target_match"))
+
+
+def test_color_identity_bridge_changes_only_public_pixels() -> None:
+    position = identify_batch(
+        185_000_000, 64, heldout=True, relation_axis="position")
+    for axis in ("color_salient", "color_fixed", "color_varied"):
+        colors = identify_batch(
+            185_000_000, 64, heldout=True, relation_axis=axis)
+        assert not torch.equal(colors["frames"], position["frames"])
+        for key in (
+                "transition_actions", "previous_actions",
+                "attempted_actions", "rewards", "correct_actions",
+                "probe_actions", "private_protocol_ids"):
+            assert torch.equal(colors[key], position[key]), (axis, key)
+
+
+def test_color_identity_bridge_preserves_true_counterfactuals() -> None:
+    for axis in ("color_salient", "color_fixed", "color_varied"):
+        normal = identify_batch(
+            187_000_000, 64, heldout=True, relation_axis=axis)
+        swapped = identify_batch(
+            187_000_000, 64, heldout=True, relation_axis=axis,
+            swap_protocol=True)
+        reversed_target = identify_batch(
+            187_000_000, 64, heldout=True, relation_axis=axis,
+            reverse_target=True)
+        for changed in (swapped, reversed_target):
+            assert torch.equal(
+                private_label(changed, "effect_target_match"),
+                1 - private_label(normal, "effect_target_match"))
+
+
+def test_missing_target_removes_pixels_without_changing_private_problem() -> None:
+    normal = identify_batch(
+        188_000_000, 64, heldout=True, relation_axis="color_salient")
+    missing = identify_batch(
+        188_000_000, 64, heldout=True, relation_axis="color_salient",
+        missing_target=True)
+    assert torch.equal(
+        private_label(normal, "effect_target_match"),
+        private_label(missing, "effect_target_match"))
+    for key in (
+            "transition_actions", "previous_actions", "attempted_actions",
+            "rewards", "correct_actions", "probe_actions",
+            "private_protocol_ids"):
+        assert torch.equal(normal[key], missing[key]), key
+    assert torch.equal(normal["frames"][:, :2], missing["frames"][:, :2])
+    assert not torch.equal(normal["frames"][:, 2:], missing["frames"][:, 2:])
+
+
+def test_antisymmetric_readout_has_one_exclusive_preference_axis() -> None:
+    model = make_readout("antisymmetric", hidden=11, intention_width=7)
+    logits = model(torch.randn(5, 11))
+    assert logits.shape == (5, 2)
+    assert torch.equal(logits[:, 0], -logits[:, 1])
+
+
+def test_event_vision_interface_preserves_every_public_event_embedding() -> None:
+    data = identify_batch(
+        189_000_000, 8, heldout=True, relation_axis="color_fixed")
+    core = ActionHistoryCore(64)
+    event = transfer_features(
+        core, data, interface="event_vision", device=torch.device("cpu"))
+    decision_event = transfer_features(
+        core, data, interface="decision_event_vision",
+        device=torch.device("cpu"))
+    assert event.shape == (8, 64 * 3)
+    assert decision_event.shape == (8, 64 * 6)

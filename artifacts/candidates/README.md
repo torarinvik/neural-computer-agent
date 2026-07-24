@@ -25,6 +25,17 @@ horse race.  It is a candidate rather than a globally promoted checkpoint.
   - matched fresh and recurrent-only: no pass through 64 outcomes
 - Post-promotion retention on a third stream: 8/8/16 outcomes for
   target-side/effect-side/effect-target, with core weights bit-identical
+- Cross-attribute color bridge:
+  - inherited effect-color atom: stable at 24 outcomes versus 64 fresh
+  - reset target-color atom: stable at 64; inherited weights caused negative
+    transfer and were correctly discarded for that branch
+  - acquired target + effect latents: stable novel relation at 16 outcomes on
+    two disjoint streams
+  - either atom alone and neither-acquired: no causal pass through 64
+  - retained position ladder after promotion: 8/8/24
+
+The assembled color checkpoint is curated separately at
+`artifacts/checkpoints/color_primitive_compounder_bits16_seed1901.pt`.
 
 The authoritative behavioral report is:
 
@@ -35,7 +46,8 @@ Promotion beyond the identify-then-act family requires retention and forward
 transfer on additional primitive families.
 
 The transfer result localizes to the learned vision encoder and is strong
-evidence for reusable visual dynamics. It now survives new colors and object
-geometry, but position and event structure remain shared. The older unrelated
-spatial and same/different renderers stayed at chance in the sub-minute screen,
-so global promotion remains deferred.
+evidence for reusable visual dynamics. A separate modular checkpoint now
+composes learned target/effect color preferences into a new relation with a
+replicated ≥4× experience advantage. Event structure and the binary interface
+remain shared, and the older unrelated spatial and delayed same/different
+renderers stayed at chance, so global promotion remains deferred.

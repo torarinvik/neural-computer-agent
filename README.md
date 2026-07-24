@@ -189,6 +189,24 @@ at 8/8/16 outcomes. This is verified surface generalization and earlier ability
 reuse, not yet broad amodal transfer: spatial relation and event structure are
 still shared.
 
+The next bridge replaces position with color identity. It uncovered selective
+negative transfer—position-trained vision accelerated observed-effect color
+but suppressed target color—so the system retained the useful branch and reset
+the harmful one. After acquiring both color primitives from attempted answers
+and scalar outcomes, a new relation head reached stable causal mastery from 16
+new outcomes on both the selected and blind streams. The identical unacquired
+architecture, and either primitive alone, failed through 64 outcomes: a
+replicated transfer-ratio lower bound of 4×.
+
+The blind audit reached 100% normal accuracy, 100% accuracy and flips under
+both protocol and target rerenders, chance with either fact missing, and 0%
+under exact complement controls. Stratified shuffled-label controls produced
+no causal pass. The earlier position ladder remained 8/8/24 with bit-identical
+cores.
+
+The curated 5.5 MB milestone is
+`artifacts/checkpoints/color_primitive_compounder_bits16_seed1901.pt`.
+
 See
 `experiments/forward_transfer_attention/ROBUST_SAMPLE_EFFICIENCY_STRATEGY.md`
 for the population-search decision and pre-registered diagnostic.

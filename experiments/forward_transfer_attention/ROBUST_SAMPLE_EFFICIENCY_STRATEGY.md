@@ -219,13 +219,23 @@ geometry, and their combination all preserved stable 24-bit effect-target
 mastery; the combined shift replicated on a disjoint stream. Post-promotion
 retention remained 8/8/16, no worse than the prior 8/8/24 frontier.
 
+The second bridge is also complete. Replacing position with salient fixed color
+identity exposed selective negative transfer: inherited vision accelerated the
+effect-color atom (24 versus 64 bits) but erased target color. A modular reset
+target branch plus inherited effect branch then composed a novel relation at
+16 bits on two disjoint streams, while unacquired and single-atom controls
+failed through 64. Post-promotion position retention remained 8/8/24.
+
 The remaining curriculum bridges toward broader generalization in
 single-axis steps:
 
-1. preserve event structure but replace position with color identity;
-2. bridge color identity to another visual attribute such as shape;
-3. only then retry simultaneous spatial and delayed same/different;
-4. after each promotion, rerun the retained 8/8/24-bit-or-better ladder.
+1. shrink the salient color objects toward the original visual scale;
+2. vary color pairs per lifetime and across held-out palettes;
+3. compress or distill the two vision branches without losing the 16-bit
+   relation curve;
+4. bridge color identity to shape, then retry simultaneous spatial and delayed
+   same/different;
+5. after each promotion, rerun the retained 8/8/24-bit-or-better ladder.
 
 No rung receives a three-minute budget until a sub-minute screen shows a
 causal advantage over matched fresh. No rung receives ten minutes until the

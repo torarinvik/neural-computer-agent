@@ -20,6 +20,7 @@ from .train import seed_everything
 from .train_identify_then_act import (
     APPEARANCE_STYLES,
     PROTOCOLS,
+    RELATION_AXES,
     TEST_START,
     TRAIN_START,
     decision_features,
@@ -104,6 +105,25 @@ def _passes_behavior(point: dict[str, object]) -> bool:
         and all(float(value) <= 0.60 for value in point["missing"].values()))
 
 
+@torch.no_grad()
+def transfer_features(
+        core: torch.nn.Module, data: dict[str, torch.Tensor], *,
+        interface: str, device: torch.device) -> torch.Tensor:
+    """Expose generic event snapshots without attaching semantic slot labels."""
+    if interface not in (
+            "decision", "event_vision", "decision_event_vision"):
+        raise ValueError(interface)
+    parts = []
+    if interface in ("decision", "decision_event_vision"):
+        parts.append(decision_features(
+            core, data, passive=False, device=device))
+    if interface in ("event_vision", "decision_event_vision"):
+        frames = data["frames"][:, :3].to(device)
+        parts.append(core.vision(frames.flatten(0, 1)).reshape(
+            frames.shape[0], -1))
+    return torch.cat(parts, dim=-1)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint", type=Path, required=True)
@@ -127,6 +147,19 @@ def main() -> None:
             "Change only public pixels while preserving the event protocol, "
             "opaque actions, scalar outcomes, and private verifier logic."))
     parser.add_argument(
+        "--relation-axis", choices=RELATION_AXES, default="position",
+        help=(
+            "Render the controlled effect and target as either spatial "
+            "position or color identity while preserving event structure."))
+    parser.add_argument(
+        "--feature-interface",
+        choices=("decision", "event_vision", "decision_event_vision"),
+        default="decision")
+    parser.add_argument(
+        "--readout-kind",
+        choices=("bottleneck", "direct", "antisymmetric"),
+        default="bottleneck")
+    parser.add_argument(
         "--device", default="cuda" if torch.cuda.is_available() else "cpu")
     args = parser.parse_args()
     started = time.perf_counter()
@@ -134,7 +167,8 @@ def main() -> None:
     train_pool = identify_batch(
         TRAIN_START + TRAIN_OFFSET + args.data_offset,
         args.train_lifetimes * 2,
-        heldout=False, appearance_style=args.appearance_style)
+        heldout=False, appearance_style=args.appearance_style,
+        relation_axis=args.relation_axis)
     train_indices = _balanced_indices(
         private_label(train_pool, args.task), args.train_lifetimes,
         seed=args.seed + 10)
@@ -142,7 +176,8 @@ def main() -> None:
     normal_pool = identify_batch(
         TEST_START + TEST_OFFSET + args.data_offset,
         args.test_lifetimes * 2, heldout=True,
-        appearance_style=args.appearance_style)
+        appearance_style=args.appearance_style,
+        relation_axis=args.relation_axis)
     test_indices = _balanced_indices(
         private_label(normal_pool, args.task), args.test_lifetimes,
         seed=args.seed + 20)
@@ -151,6 +186,7 @@ def main() -> None:
         TEST_START + TEST_OFFSET + args.data_offset,
         args.test_lifetimes * 2, heldout=True,
         appearance_style=args.appearance_style,
+        relation_axis=args.relation_axis,
         **_counterfactual_kwargs(args.task)), test_indices)
     datasets = {"train": train, "normal": normal,
                 "counterfactual": counterfactual}
@@ -159,12 +195,14 @@ def main() -> None:
             TEST_START + TEST_OFFSET + args.data_offset,
             args.test_lifetimes * 2,
             heldout=True, missing_consequence=True,
-            appearance_style=args.appearance_style), test_indices)
+            appearance_style=args.appearance_style,
+            relation_axis=args.relation_axis), test_indices)
         datasets["no_probe_effect"] = _subset_data(identify_batch(
             TEST_START + TEST_OFFSET + args.data_offset,
             args.test_lifetimes * 2,
             heldout=True, no_probe_effect=True,
-            appearance_style=args.appearance_style), test_indices)
+            appearance_style=args.appearance_style,
+            relation_axis=args.relation_axis), test_indices)
     labels = {
         name: private_label(data, args.task)
         for name, data in datasets.items()
@@ -177,8 +215,8 @@ def main() -> None:
     }
     features = {
         arm: {
-            split: decision_features(
-                core, data, passive=False, device=device)
+            split: transfer_features(
+                core, data, interface=args.feature_interface, device=device)
             for split, data in datasets.items()
         }
         for arm, core in arms.items()
@@ -193,8 +231,10 @@ def main() -> None:
     attempted = attempted[order]
     rewards = rewards[order]
     seed_everything(args.seed + 2)
+    feature_width = next(iter(features.values()))["train"].shape[-1]
     template = make_readout(
-        "bottleneck", hidden=64 * 3, intention_width=64).to(device)
+        args.readout_kind, hidden=feature_width,
+        intention_width=64).to(device)
     initial_head = copy.deepcopy(template.state_dict())
     prefixes = [value for value in PREFIXES
                 if value <= args.train_lifetimes]
@@ -210,7 +250,7 @@ def main() -> None:
             model = fit_readout(
                 initial_head, ordered[:prefix],
                 attempted[:prefix], rewards[:prefix],
-                readout_kind="bottleneck", intention_width=64,
+                readout_kind=args.readout_kind, intention_width=64,
                 updates=args.fit_updates, batch_size=args.batch_size,
                 learning_rate=3e-3, seed=fit_seed)
             action_control = reward_control = None
@@ -218,13 +258,13 @@ def main() -> None:
                 action_control = fit_readout(
                     initial_head, ordered[:prefix],
                     1 - attempted[:prefix], rewards[:prefix],
-                    readout_kind="bottleneck", intention_width=64,
+                    readout_kind=args.readout_kind, intention_width=64,
                     updates=args.fit_updates, batch_size=args.batch_size,
                     learning_rate=3e-3, seed=fit_seed)
                 reward_control = fit_readout(
                     initial_head, ordered[:prefix],
                     attempted[:prefix], 1.0 - rewards[:prefix],
-                    readout_kind="bottleneck", intention_width=64,
+                    readout_kind=args.readout_kind, intention_width=64,
                     updates=args.fit_updates, batch_size=args.batch_size,
                     learning_rate=3e-3, seed=fit_seed)
             normal_result = evaluate(
