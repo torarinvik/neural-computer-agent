@@ -1,0 +1,428 @@
+{
+  "arms": {
+    "immutable_core263": {
+      "curve": [
+        {
+          "action_complement_accuracy": 0.0,
+          "counterfactual_accuracy": 1.0,
+          "counterfactual_flip_rate": 1.0,
+          "examples_processed": 512,
+          "missing": {},
+          "normal_accuracy": 1.0,
+          "optimizer_updates": 64,
+          "passes_all_gates": true,
+          "passes_behavior_gates": true,
+          "reward_complement_accuracy": 0.0,
+          "unique_reward_bits": 8
+        },
+        {
+          "action_complement_accuracy": 0.0,
+          "counterfactual_accuracy": 1.0,
+          "counterfactual_flip_rate": 1.0,
+          "examples_processed": 1024,
+          "missing": {},
+          "normal_accuracy": 1.0,
+          "optimizer_updates": 64,
+          "passes_all_gates": true,
+          "passes_behavior_gates": true,
+          "reward_complement_accuracy": 0.0,
+          "unique_reward_bits": 16
+        },
+        {
+          "action_complement_accuracy": 0.0,
+          "counterfactual_accuracy": 1.0,
+          "counterfactual_flip_rate": 1.0,
+          "examples_processed": 1536,
+          "missing": {},
+          "normal_accuracy": 1.0,
+          "optimizer_updates": 64,
+          "passes_all_gates": true,
+          "passes_behavior_gates": true,
+          "reward_complement_accuracy": 0.0,
+          "unique_reward_bits": 24
+        },
+        {
+          "action_complement_accuracy": 0.0,
+          "counterfactual_accuracy": 1.0,
+          "counterfactual_flip_rate": 1.0,
+          "examples_processed": 2048,
+          "missing": {},
+          "normal_accuracy": 1.0,
+          "optimizer_updates": 64,
+          "passes_all_gates": true,
+          "passes_behavior_gates": true,
+          "reward_complement_accuracy": 0.0,
+          "unique_reward_bits": 32
+        },
+        {
+          "action_complement_accuracy": 0.0,
+          "counterfactual_accuracy": 1.0,
+          "counterfactual_flip_rate": 1.0,
+          "examples_processed": 2048,
+          "missing": {},
+          "normal_accuracy": 1.0,
+          "optimizer_updates": 64,
+          "passes_all_gates": true,
+          "passes_behavior_gates": true,
+          "reward_complement_accuracy": 0.0,
+          "unique_reward_bits": 40
+        },
+        {
+          "action_complement_accuracy": 0.0,
+          "counterfactual_accuracy": 1.0,
+          "counterfactual_flip_rate": 1.0,
+          "examples_processed": 2048,
+          "missing": {},
+          "normal_accuracy": 1.0,
+          "optimizer_updates": 64,
+          "passes_all_gates": true,
+          "passes_behavior_gates": true,
+          "reward_complement_accuracy": 0.0,
+          "unique_reward_bits": 48
+        },
+        {
+          "action_complement_accuracy": 0.0,
+          "counterfactual_accuracy": 1.0,
+          "counterfactual_flip_rate": 1.0,
+          "examples_processed": 2048,
+          "missing": {},
+          "normal_accuracy": 1.0,
+          "optimizer_updates": 64,
+          "passes_all_gates": true,
+          "passes_behavior_gates": true,
+          "reward_complement_accuracy": 0.0,
+          "unique_reward_bits": 64
+        }
+      ],
+      "stable_bits_to_all_gates": 8
+    },
+    "matched_fresh263": {
+      "curve": [
+        {
+          "action_complement_accuracy": null,
+          "counterfactual_accuracy": 0.5,
+          "counterfactual_flip_rate": 0.0,
+          "examples_processed": 512,
+          "missing": {},
+          "normal_accuracy": 0.5,
+          "optimizer_updates": 64,
+          "passes_all_gates": false,
+          "passes_behavior_gates": false,
+          "reward_complement_accuracy": null,
+          "unique_reward_bits": 8
+        },
+        {
+          "action_complement_accuracy": null,
+          "counterfactual_accuracy": 0.5,
+          "counterfactual_flip_rate": 0.0,
+          "examples_processed": 1024,
+          "missing": {},
+          "normal_accuracy": 0.5,
+          "optimizer_updates": 64,
+          "passes_all_gates": false,
+          "passes_behavior_gates": false,
+          "reward_complement_accuracy": null,
+          "unique_reward_bits": 16
+        },
+        {
+          "action_complement_accuracy": null,
+          "counterfactual_accuracy": 0.5,
+          "counterfactual_flip_rate": 0.0,
+          "examples_processed": 1536,
+          "missing": {},
+          "normal_accuracy": 0.5,
+          "optimizer_updates": 64,
+          "passes_all_gates": false,
+          "passes_behavior_gates": false,
+          "reward_complement_accuracy": null,
+          "unique_reward_bits": 24
+        },
+        {
+          "action_complement_accuracy": null,
+          "counterfactual_accuracy": 0.5,
+          "counterfactual_flip_rate": 0.0,
+          "examples_processed": 2048,
+          "missing": {},
+          "normal_accuracy": 0.5,
+          "optimizer_updates": 64,
+          "passes_all_gates": false,
+          "passes_behavior_gates": false,
+          "reward_complement_accuracy": null,
+          "unique_reward_bits": 32
+        },
+        {
+          "action_complement_accuracy": null,
+          "counterfactual_accuracy": 0.5,
+          "counterfactual_flip_rate": 0.0,
+          "examples_processed": 2048,
+          "missing": {},
+          "normal_accuracy": 0.5,
+          "optimizer_updates": 64,
+          "passes_all_gates": false,
+          "passes_behavior_gates": false,
+          "reward_complement_accuracy": null,
+          "unique_reward_bits": 40
+        },
+        {
+          "action_complement_accuracy": null,
+          "counterfactual_accuracy": 0.5,
+          "counterfactual_flip_rate": 0.0,
+          "examples_processed": 2048,
+          "missing": {},
+          "normal_accuracy": 0.5,
+          "optimizer_updates": 64,
+          "passes_all_gates": false,
+          "passes_behavior_gates": false,
+          "reward_complement_accuracy": null,
+          "unique_reward_bits": 48
+        },
+        {
+          "action_complement_accuracy": null,
+          "counterfactual_accuracy": 0.5,
+          "counterfactual_flip_rate": 0.0,
+          "examples_processed": 2048,
+          "missing": {},
+          "normal_accuracy": 0.5,
+          "optimizer_updates": 64,
+          "passes_all_gates": false,
+          "passes_behavior_gates": false,
+          "reward_complement_accuracy": null,
+          "unique_reward_bits": 64
+        }
+      ],
+      "stable_bits_to_all_gates": null
+    },
+    "recurrent_only_transfer": {
+      "curve": [
+        {
+          "action_complement_accuracy": null,
+          "counterfactual_accuracy": 0.58203125,
+          "counterfactual_flip_rate": 0.0,
+          "examples_processed": 512,
+          "missing": {},
+          "normal_accuracy": 0.41796875,
+          "optimizer_updates": 64,
+          "passes_all_gates": false,
+          "passes_behavior_gates": false,
+          "reward_complement_accuracy": null,
+          "unique_reward_bits": 8
+        },
+        {
+          "action_complement_accuracy": null,
+          "counterfactual_accuracy": 0.5,
+          "counterfactual_flip_rate": 0.0,
+          "examples_processed": 1024,
+          "missing": {},
+          "normal_accuracy": 0.5,
+          "optimizer_updates": 64,
+          "passes_all_gates": false,
+          "passes_behavior_gates": false,
+          "reward_complement_accuracy": null,
+          "unique_reward_bits": 16
+        },
+        {
+          "action_complement_accuracy": null,
+          "counterfactual_accuracy": 0.5,
+          "counterfactual_flip_rate": 0.0,
+          "examples_processed": 1536,
+          "missing": {},
+          "normal_accuracy": 0.5,
+          "optimizer_updates": 64,
+          "passes_all_gates": false,
+          "passes_behavior_gates": false,
+          "reward_complement_accuracy": null,
+          "unique_reward_bits": 24
+        },
+        {
+          "action_complement_accuracy": null,
+          "counterfactual_accuracy": 0.5,
+          "counterfactual_flip_rate": 0.0,
+          "examples_processed": 2048,
+          "missing": {},
+          "normal_accuracy": 0.5,
+          "optimizer_updates": 64,
+          "passes_all_gates": false,
+          "passes_behavior_gates": false,
+          "reward_complement_accuracy": null,
+          "unique_reward_bits": 32
+        },
+        {
+          "action_complement_accuracy": null,
+          "counterfactual_accuracy": 0.58203125,
+          "counterfactual_flip_rate": 0.0,
+          "examples_processed": 2048,
+          "missing": {},
+          "normal_accuracy": 0.41796875,
+          "optimizer_updates": 64,
+          "passes_all_gates": false,
+          "passes_behavior_gates": false,
+          "reward_complement_accuracy": null,
+          "unique_reward_bits": 40
+        },
+        {
+          "action_complement_accuracy": null,
+          "counterfactual_accuracy": 0.5,
+          "counterfactual_flip_rate": 0.0,
+          "examples_processed": 2048,
+          "missing": {},
+          "normal_accuracy": 0.5,
+          "optimizer_updates": 64,
+          "passes_all_gates": false,
+          "passes_behavior_gates": false,
+          "reward_complement_accuracy": null,
+          "unique_reward_bits": 48
+        },
+        {
+          "action_complement_accuracy": null,
+          "counterfactual_accuracy": 0.5,
+          "counterfactual_flip_rate": 0.0,
+          "examples_processed": 2048,
+          "missing": {},
+          "normal_accuracy": 0.5,
+          "optimizer_updates": 64,
+          "passes_all_gates": false,
+          "passes_behavior_gates": false,
+          "reward_complement_accuracy": null,
+          "unique_reward_bits": 64
+        }
+      ],
+      "stable_bits_to_all_gates": null
+    },
+    "vision_only_transfer": {
+      "curve": [
+        {
+          "action_complement_accuracy": null,
+          "counterfactual_accuracy": 1.0,
+          "counterfactual_flip_rate": 1.0,
+          "examples_processed": 512,
+          "missing": {},
+          "normal_accuracy": 1.0,
+          "optimizer_updates": 64,
+          "passes_all_gates": true,
+          "passes_behavior_gates": true,
+          "reward_complement_accuracy": null,
+          "unique_reward_bits": 8
+        },
+        {
+          "action_complement_accuracy": null,
+          "counterfactual_accuracy": 1.0,
+          "counterfactual_flip_rate": 1.0,
+          "examples_processed": 1024,
+          "missing": {},
+          "normal_accuracy": 1.0,
+          "optimizer_updates": 64,
+          "passes_all_gates": true,
+          "passes_behavior_gates": true,
+          "reward_complement_accuracy": null,
+          "unique_reward_bits": 16
+        },
+        {
+          "action_complement_accuracy": null,
+          "counterfactual_accuracy": 1.0,
+          "counterfactual_flip_rate": 1.0,
+          "examples_processed": 1536,
+          "missing": {},
+          "normal_accuracy": 1.0,
+          "optimizer_updates": 64,
+          "passes_all_gates": true,
+          "passes_behavior_gates": true,
+          "reward_complement_accuracy": null,
+          "unique_reward_bits": 24
+        },
+        {
+          "action_complement_accuracy": null,
+          "counterfactual_accuracy": 1.0,
+          "counterfactual_flip_rate": 1.0,
+          "examples_processed": 2048,
+          "missing": {},
+          "normal_accuracy": 1.0,
+          "optimizer_updates": 64,
+          "passes_all_gates": true,
+          "passes_behavior_gates": true,
+          "reward_complement_accuracy": null,
+          "unique_reward_bits": 32
+        },
+        {
+          "action_complement_accuracy": null,
+          "counterfactual_accuracy": 1.0,
+          "counterfactual_flip_rate": 1.0,
+          "examples_processed": 2048,
+          "missing": {},
+          "normal_accuracy": 1.0,
+          "optimizer_updates": 64,
+          "passes_all_gates": true,
+          "passes_behavior_gates": true,
+          "reward_complement_accuracy": null,
+          "unique_reward_bits": 40
+        },
+        {
+          "action_complement_accuracy": null,
+          "counterfactual_accuracy": 1.0,
+          "counterfactual_flip_rate": 1.0,
+          "examples_processed": 2048,
+          "missing": {},
+          "normal_accuracy": 1.0,
+          "optimizer_updates": 64,
+          "passes_all_gates": true,
+          "passes_behavior_gates": true,
+          "reward_complement_accuracy": null,
+          "unique_reward_bits": 48
+        },
+        {
+          "action_complement_accuracy": null,
+          "counterfactual_accuracy": 1.0,
+          "counterfactual_flip_rate": 1.0,
+          "examples_processed": 2048,
+          "missing": {},
+          "normal_accuracy": 1.0,
+          "optimizer_updates": 64,
+          "passes_all_gates": true,
+          "passes_behavior_gates": true,
+          "reward_complement_accuracy": null,
+          "unique_reward_bits": 64
+        }
+      ],
+      "stable_bits_to_all_gates": 8
+    }
+  },
+  "claim_boundary": "Reward-only near-transfer within a shared rendered world; private labels are evaluator-only.",
+  "configuration": {
+    "batch_size": 32,
+    "checkpoint": "artifacts/candidates/core263_parent.pt",
+    "device": "cuda",
+    "fit_updates": 64,
+    "report": "experiments/forward_transfer_attention/reports/core263_target_side_subminute.json",
+    "seed": 941,
+    "task": "target_side",
+    "test_lifetimes": 256,
+    "train_lifetimes": 64
+  },
+  "frozen_core_parameters_bit_identical": {
+    "immutable_core263": true,
+    "matched_fresh263": true,
+    "recurrent_only_transfer": true,
+    "vision_only_transfer": true
+  },
+  "gate": {
+    "all_cores_bit_identical": true,
+    "candidate_reaches_causal_mastery": true,
+    "fewer_bits_than_matched_fresh": true,
+    "significant_near_transfer_breakthrough": true
+  },
+  "learner_visible": [
+    "rendered_rgb_stream",
+    "own_previous_action",
+    "attempted_opaque_answer",
+    "scalar_verified_outcome"
+  ],
+  "schema": "identify-near-transfer-ladder-v1",
+  "semantic_labels_used_for_training": false,
+  "total_seconds": 16.339313182994374,
+  "unattempted_action_labels_used_for_training": false,
+  "verifier_private": [
+    "protocol",
+    "effect_direction",
+    "target_direction",
+    "logical_counterfactual_pairing"
+  ]
+}

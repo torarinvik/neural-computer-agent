@@ -1,0 +1,457 @@
+{
+  "claim_boundary": "Frozen representation transfer across rendered primitive families; this is not yet continual-learning retention.",
+  "configuration": {
+    "batch_size": 32,
+    "checkpoint": "artifacts/candidates/core263_parent.pt",
+    "device": "cuda",
+    "fit_updates": 64,
+    "report": "experiments/forward_transfer_attention/reports/core263_same_different_subminute.json",
+    "seed": 907,
+    "tasks": [
+      "same_different"
+    ],
+    "test_lifetimes": 240,
+    "train_lifetimes": 120
+  },
+  "frozen_core_parameters_bit_identical": {
+    "immutable_core263": true,
+    "matched_fresh263": true,
+    "recurrent_only_transfer": true,
+    "vision_only_transfer": true
+  },
+  "learner_visible": [
+    "rendered_rgb_stream",
+    "recurrent_state",
+    "attempted_opaque_action",
+    "scalar_verified_outcome"
+  ],
+  "schema": "immutable-core-cross-primitive-audit-v1",
+  "semantic_labels_used_for_training": false,
+  "summary": {
+    "advance_to_replication": false,
+    "cross_primitive_wins_over_matched_fresh": 0,
+    "tested_primitive_families": 1
+  },
+  "tasks": {
+    "same_different": {
+      "arms": {
+        "immutable_core263": {
+          "curve": [
+            {
+              "action_complement_accuracy": 0.49166667461395264,
+              "counterfactual_accuracy": 0.5041666626930237,
+              "counterfactual_flip_rate": 0.05000000074505806,
+              "examples_processed": 1024,
+              "missing": {
+                "missing_first": 0.4416666626930237,
+                "missing_second": 0.5625
+              },
+              "normal_accuracy": 0.512499988079071,
+              "optimizer_updates": 64,
+              "passes_all_gates": false,
+              "passes_behavior_gates": false,
+              "reward_complement_accuracy": 0.49166667461395264,
+              "unique_reward_bits": 16
+            },
+            {
+              "action_complement_accuracy": 0.4958333373069763,
+              "counterfactual_accuracy": 0.48750001192092896,
+              "counterfactual_flip_rate": 0.03333333507180214,
+              "examples_processed": 2048,
+              "missing": {
+                "missing_first": 0.5041666626930237,
+                "missing_second": 0.49166667461395264
+              },
+              "normal_accuracy": 0.5041666626930237,
+              "optimizer_updates": 64,
+              "passes_all_gates": false,
+              "passes_behavior_gates": false,
+              "reward_complement_accuracy": 0.5,
+              "unique_reward_bits": 32
+            },
+            {
+              "action_complement_accuracy": 0.5,
+              "counterfactual_accuracy": 0.5,
+              "counterfactual_flip_rate": 0.06666667014360428,
+              "examples_processed": 2048,
+              "missing": {
+                "missing_first": 0.48750001192092896,
+                "missing_second": 0.44583332538604736
+              },
+              "normal_accuracy": 0.5,
+              "optimizer_updates": 64,
+              "passes_all_gates": false,
+              "passes_behavior_gates": false,
+              "reward_complement_accuracy": 0.48750001192092896,
+              "unique_reward_bits": 48
+            },
+            {
+              "action_complement_accuracy": 0.5625,
+              "counterfactual_accuracy": 0.5,
+              "counterfactual_flip_rate": 0.05416666716337204,
+              "examples_processed": 2048,
+              "missing": {
+                "missing_first": 0.4749999940395355,
+                "missing_second": 0.4583333432674408
+              },
+              "normal_accuracy": 0.4625000059604645,
+              "optimizer_updates": 64,
+              "passes_all_gates": false,
+              "passes_behavior_gates": false,
+              "reward_complement_accuracy": 0.5083333253860474,
+              "unique_reward_bits": 64
+            },
+            {
+              "action_complement_accuracy": 0.5458333492279053,
+              "counterfactual_accuracy": 0.5208333134651184,
+              "counterfactual_flip_rate": 0.05833333358168602,
+              "examples_processed": 2048,
+              "missing": {
+                "missing_first": 0.42500001192092896,
+                "missing_second": 0.5583333373069763
+              },
+              "normal_accuracy": 0.44583332538604736,
+              "optimizer_updates": 64,
+              "passes_all_gates": false,
+              "passes_behavior_gates": false,
+              "reward_complement_accuracy": 0.5041666626930237,
+              "unique_reward_bits": 96
+            },
+            {
+              "action_complement_accuracy": 0.5041666626930237,
+              "counterfactual_accuracy": 0.5,
+              "counterfactual_flip_rate": 0.0,
+              "examples_processed": 2048,
+              "missing": {
+                "missing_first": 0.5,
+                "missing_second": 0.5
+              },
+              "normal_accuracy": 0.5,
+              "optimizer_updates": 64,
+              "passes_all_gates": false,
+              "passes_behavior_gates": false,
+              "reward_complement_accuracy": 0.5041666626930237,
+              "unique_reward_bits": 120
+            }
+          ],
+          "stable_bits_to_all_gates": null
+        },
+        "matched_fresh263": {
+          "curve": [
+            {
+              "action_complement_accuracy": null,
+              "counterfactual_accuracy": 0.5,
+              "counterfactual_flip_rate": 0.0,
+              "examples_processed": 1024,
+              "missing": {
+                "missing_first": 0.5,
+                "missing_second": 0.5
+              },
+              "normal_accuracy": 0.5,
+              "optimizer_updates": 64,
+              "passes_all_gates": false,
+              "passes_behavior_gates": false,
+              "reward_complement_accuracy": null,
+              "unique_reward_bits": 16
+            },
+            {
+              "action_complement_accuracy": null,
+              "counterfactual_accuracy": 0.5,
+              "counterfactual_flip_rate": 0.0,
+              "examples_processed": 2048,
+              "missing": {
+                "missing_first": 0.5,
+                "missing_second": 0.5
+              },
+              "normal_accuracy": 0.5,
+              "optimizer_updates": 64,
+              "passes_all_gates": false,
+              "passes_behavior_gates": false,
+              "reward_complement_accuracy": null,
+              "unique_reward_bits": 32
+            },
+            {
+              "action_complement_accuracy": null,
+              "counterfactual_accuracy": 0.5,
+              "counterfactual_flip_rate": 0.0,
+              "examples_processed": 2048,
+              "missing": {
+                "missing_first": 0.5,
+                "missing_second": 0.5
+              },
+              "normal_accuracy": 0.5,
+              "optimizer_updates": 64,
+              "passes_all_gates": false,
+              "passes_behavior_gates": false,
+              "reward_complement_accuracy": null,
+              "unique_reward_bits": 48
+            },
+            {
+              "action_complement_accuracy": null,
+              "counterfactual_accuracy": 0.5,
+              "counterfactual_flip_rate": 0.0,
+              "examples_processed": 2048,
+              "missing": {
+                "missing_first": 0.5,
+                "missing_second": 0.5
+              },
+              "normal_accuracy": 0.5,
+              "optimizer_updates": 64,
+              "passes_all_gates": false,
+              "passes_behavior_gates": false,
+              "reward_complement_accuracy": null,
+              "unique_reward_bits": 64
+            },
+            {
+              "action_complement_accuracy": null,
+              "counterfactual_accuracy": 0.5,
+              "counterfactual_flip_rate": 0.0,
+              "examples_processed": 2048,
+              "missing": {
+                "missing_first": 0.5,
+                "missing_second": 0.5
+              },
+              "normal_accuracy": 0.5,
+              "optimizer_updates": 64,
+              "passes_all_gates": false,
+              "passes_behavior_gates": false,
+              "reward_complement_accuracy": null,
+              "unique_reward_bits": 96
+            },
+            {
+              "action_complement_accuracy": null,
+              "counterfactual_accuracy": 0.5,
+              "counterfactual_flip_rate": 0.0,
+              "examples_processed": 2048,
+              "missing": {
+                "missing_first": 0.5,
+                "missing_second": 0.5
+              },
+              "normal_accuracy": 0.5,
+              "optimizer_updates": 64,
+              "passes_all_gates": false,
+              "passes_behavior_gates": false,
+              "reward_complement_accuracy": null,
+              "unique_reward_bits": 120
+            }
+          ],
+          "stable_bits_to_all_gates": null
+        },
+        "recurrent_only_transfer": {
+          "curve": [
+            {
+              "action_complement_accuracy": null,
+              "counterfactual_accuracy": 0.5,
+              "counterfactual_flip_rate": 0.0,
+              "examples_processed": 1024,
+              "missing": {
+                "missing_first": 0.5,
+                "missing_second": 0.5
+              },
+              "normal_accuracy": 0.5,
+              "optimizer_updates": 64,
+              "passes_all_gates": false,
+              "passes_behavior_gates": false,
+              "reward_complement_accuracy": null,
+              "unique_reward_bits": 16
+            },
+            {
+              "action_complement_accuracy": null,
+              "counterfactual_accuracy": 0.5,
+              "counterfactual_flip_rate": 0.0,
+              "examples_processed": 2048,
+              "missing": {
+                "missing_first": 0.5,
+                "missing_second": 0.5
+              },
+              "normal_accuracy": 0.5,
+              "optimizer_updates": 64,
+              "passes_all_gates": false,
+              "passes_behavior_gates": false,
+              "reward_complement_accuracy": null,
+              "unique_reward_bits": 32
+            },
+            {
+              "action_complement_accuracy": null,
+              "counterfactual_accuracy": 0.5,
+              "counterfactual_flip_rate": 0.0,
+              "examples_processed": 2048,
+              "missing": {
+                "missing_first": 0.5,
+                "missing_second": 0.5
+              },
+              "normal_accuracy": 0.5,
+              "optimizer_updates": 64,
+              "passes_all_gates": false,
+              "passes_behavior_gates": false,
+              "reward_complement_accuracy": null,
+              "unique_reward_bits": 48
+            },
+            {
+              "action_complement_accuracy": null,
+              "counterfactual_accuracy": 0.5,
+              "counterfactual_flip_rate": 0.0,
+              "examples_processed": 2048,
+              "missing": {
+                "missing_first": 0.5,
+                "missing_second": 0.5
+              },
+              "normal_accuracy": 0.5,
+              "optimizer_updates": 64,
+              "passes_all_gates": false,
+              "passes_behavior_gates": false,
+              "reward_complement_accuracy": null,
+              "unique_reward_bits": 64
+            },
+            {
+              "action_complement_accuracy": null,
+              "counterfactual_accuracy": 0.5,
+              "counterfactual_flip_rate": 0.0,
+              "examples_processed": 2048,
+              "missing": {
+                "missing_first": 0.5,
+                "missing_second": 0.5
+              },
+              "normal_accuracy": 0.5,
+              "optimizer_updates": 64,
+              "passes_all_gates": false,
+              "passes_behavior_gates": false,
+              "reward_complement_accuracy": null,
+              "unique_reward_bits": 96
+            },
+            {
+              "action_complement_accuracy": null,
+              "counterfactual_accuracy": 0.5,
+              "counterfactual_flip_rate": 0.0,
+              "examples_processed": 2048,
+              "missing": {
+                "missing_first": 0.5,
+                "missing_second": 0.5
+              },
+              "normal_accuracy": 0.5,
+              "optimizer_updates": 64,
+              "passes_all_gates": false,
+              "passes_behavior_gates": false,
+              "reward_complement_accuracy": null,
+              "unique_reward_bits": 120
+            }
+          ],
+          "stable_bits_to_all_gates": null
+        },
+        "vision_only_transfer": {
+          "curve": [
+            {
+              "action_complement_accuracy": null,
+              "counterfactual_accuracy": 0.5041666626930237,
+              "counterfactual_flip_rate": 0.05833333358168602,
+              "examples_processed": 1024,
+              "missing": {
+                "missing_first": 0.44999998807907104,
+                "missing_second": 0.574999988079071
+              },
+              "normal_accuracy": 0.512499988079071,
+              "optimizer_updates": 64,
+              "passes_all_gates": false,
+              "passes_behavior_gates": false,
+              "reward_complement_accuracy": null,
+              "unique_reward_bits": 16
+            },
+            {
+              "action_complement_accuracy": null,
+              "counterfactual_accuracy": 0.5,
+              "counterfactual_flip_rate": 0.05000000074505806,
+              "examples_processed": 2048,
+              "missing": {
+                "missing_first": 0.48750001192092896,
+                "missing_second": 0.48750001192092896
+              },
+              "normal_accuracy": 0.49166667461395264,
+              "optimizer_updates": 64,
+              "passes_all_gates": false,
+              "passes_behavior_gates": false,
+              "reward_complement_accuracy": null,
+              "unique_reward_bits": 32
+            },
+            {
+              "action_complement_accuracy": null,
+              "counterfactual_accuracy": 0.5,
+              "counterfactual_flip_rate": 0.04583333432674408,
+              "examples_processed": 2048,
+              "missing": {
+                "missing_first": 0.48750001192092896,
+                "missing_second": 0.4749999940395355
+              },
+              "normal_accuracy": 0.5041666626930237,
+              "optimizer_updates": 64,
+              "passes_all_gates": false,
+              "passes_behavior_gates": false,
+              "reward_complement_accuracy": null,
+              "unique_reward_bits": 48
+            },
+            {
+              "action_complement_accuracy": null,
+              "counterfactual_accuracy": 0.5041666626930237,
+              "counterfactual_flip_rate": 0.03750000149011612,
+              "examples_processed": 2048,
+              "missing": {
+                "missing_first": 0.5,
+                "missing_second": 0.47083333134651184
+              },
+              "normal_accuracy": 0.4833333194255829,
+              "optimizer_updates": 64,
+              "passes_all_gates": false,
+              "passes_behavior_gates": false,
+              "reward_complement_accuracy": null,
+              "unique_reward_bits": 64
+            },
+            {
+              "action_complement_accuracy": null,
+              "counterfactual_accuracy": 0.4791666567325592,
+              "counterfactual_flip_rate": 0.08749999850988388,
+              "examples_processed": 2048,
+              "missing": {
+                "missing_first": 0.44583332538604736,
+                "missing_second": 0.5291666388511658
+              },
+              "normal_accuracy": 0.4833333194255829,
+              "optimizer_updates": 64,
+              "passes_all_gates": false,
+              "passes_behavior_gates": false,
+              "reward_complement_accuracy": null,
+              "unique_reward_bits": 96
+            },
+            {
+              "action_complement_accuracy": null,
+              "counterfactual_accuracy": 0.5,
+              "counterfactual_flip_rate": 0.0,
+              "examples_processed": 2048,
+              "missing": {
+                "missing_first": 0.5041666626930237,
+                "missing_second": 0.5
+              },
+              "normal_accuracy": 0.5,
+              "optimizer_updates": 64,
+              "passes_all_gates": false,
+              "passes_behavior_gates": false,
+              "reward_complement_accuracy": null,
+              "unique_reward_bits": 120
+            }
+          ],
+          "stable_bits_to_all_gates": null
+        }
+      },
+      "transfer_gate": {
+        "fewer_bits_than_matched_fresh": false,
+        "immutable_reaches_causal_mastery": false
+      }
+    }
+  },
+  "total_seconds": 13.083253131000674,
+  "unattempted_action_labels_used_for_training": false,
+  "verifier_private": [
+    "spatial_relation",
+    "same_different_relation",
+    "counterfactual_pairing",
+    "missing-evidence_variant"
+  ]
+}

@@ -192,3 +192,36 @@ Required reporting:
 - Do not increase run length before the sub-minute variance diagnostic points
   to the responsible component.
 - Do not treat the best seed as the system's capability frontier.
+
+## Evidence-driven curriculum after the immutable core
+
+The first cross-renderer screen was intentionally capped below one minute per
+primitive. Core-263, its vision-only and recurrent-only component transfers,
+and its exact fresh initialization all stayed at chance on the older spatial
+and same/different tasks through 120 verified outcomes. Scaling was rejected.
+
+The corrected ladder changed one axis at a time inside the already learned
+identify world:
+
+| New task | Core-263 stable bits | Fresh stable bits | Replicated |
+|---|---:|---:|---:|
+| target side | 8 | none through 64 | not required before composition |
+| observed effect side | 8 | none through 64 | not required before composition |
+| effect matches target | 24 | none through 64 | yes, disjoint stream |
+
+Every passing point requires valid rerender causality, missing-evidence
+degradation where applicable, exact-complement controls, and frozen-core
+retention. This is the first evidence that previously learned perception can
+make a genuinely new composition faster to learn.
+
+The next curriculum bridges toward cross-renderer generalization in
+single-axis steps:
+
+1. preserve left/right logic but vary cursor and target appearance;
+2. preserve event structure but replace position with color identity;
+3. only then retry simultaneous spatial and delayed same/different;
+4. after each promotion, rerun the 8/8/24-bit retained ladder.
+
+No rung receives a three-minute budget until a sub-minute screen shows a
+causal advantage over matched fresh. No rung receives ten minutes until the
+advantage replicates on a disjoint logical/render stream.

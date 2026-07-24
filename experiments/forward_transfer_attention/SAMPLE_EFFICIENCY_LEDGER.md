@@ -57,6 +57,9 @@ new tasks is evidence of compounding learning.
 | 2026-07-24 | Disjoint-stream replication of core seeds 211 and 263 with downstream seed 307 | Seed 263: 98.05% causal floor at 48 bits and 97.27% at 64, every behavior/control gate passed | Seed 211: no stable pass; action-shuffled control reached 67.19% at 64 | First replicated population-selected 48-bit learner; admit seed 263 to old-primitive retention/compatibility, but do not yet promote globally |
 | 2026-07-24 | Core-263 prior-rung compatibility with exact complemented controls | Fixed probe stable at 16 bits; fixed target stable at 48 bits; core weights bit-identical | Anchor fixed probe stable at 32 and fixed target at 48 under the same stricter gates | Candidate does not sacrifice the earlier identify-then-act learning surfaces; no observed weight forgetting |
 | 2026-07-24 | Immutable core-263 replay with SHA-pinned weights | Exact repeated metrics; 48- and 64-bit full passes; 40-bit normal 95.31% but missing-evidence uncertainty failed | Complemented action/reward and fresh-core controls remained below 60% | Stable reproducible frontier is 48 bits, a 25% reduction from 64; reject the tempting but incomplete 40-bit claim |
+| 2026-07-24 | Immutable core-263 → old-renderer spatial and same/different, sub-minute screens | No causal mastery through 120 reward bits; all final scores 44.6–50% | Matched fresh and component-transfer arms also stayed at chance | The renderer/primitive jump was too large; do not scale this branch before adding nearer curriculum rungs |
+| 2026-07-24 | Near-transfer target-side and observed-effect-side, core-263 | Both reached stable 100% causal mastery from 8 reward bits; true rerenders flipped 100% | Matched fresh and recurrent-only stayed at 50% through 64 bits | First verified cross-task sample-efficiency gain; learned visual dynamics are reusable |
+| 2026-07-24 | Near-transfer effect-target composition, two disjoint streams | Core-263 reached stable mastery at 24 bits in both runs; 100% held-out and counterfactual accuracy | Matched fresh never passed through 64 bits (50.0% and 54.7% final); exact-complement controls 0% | Replicated compounding result: two reusable perceived facts compose into a novel relation with fewer verified outcomes |
 
 The direct-outcome comparison is a supervised probe curve, not an acceptable
 deployed learning method. It is included only to measure whether prior sensory
@@ -98,6 +101,38 @@ core by 0.1382 mean AULC. True mirror accuracy averaged 80.38%, missing
 feedback returned to 50.69%, and opposite-rule stale state collapsed to
 21.44%. At least several further transitions are required before fitting or
 claiming a compounding learning curve.
+
+## Replicated near-transfer breakthrough
+
+A direct jump from the immutable identify core to the older spatial and
+same/different renderers produced no causal learning within 120 verified
+outcomes. This was treated as a curriculum-gap result rather than an
+architecture verdict.
+
+A three-rung ladder then kept the rendered world fixed while changing only the
+question asked of the learner:
+
+1. which side contains the visible target;
+2. which direction the learner's own probe visibly caused;
+3. whether the observed effect and target direction match.
+
+The immutable core reached stable causal mastery at 8, 8, and 24 unique
+outcomes respectively. The exact fresh seed-263 initialization stayed at
+chance through 64 outcomes on all three. The composition result replicated at
+24 outcomes on a disjoint logical/render stream and downstream seed.
+
+The result survived lifetime-disjoint held-out evaluation, true rerendered
+counterfactuals with 100% prediction flips, exact complemented attempted-action
+and reward controls at 0%, missing-evidence arms near 50%, and bit-identical
+frozen core weights.
+
+Component ablation localized the gain to the learned vision encoder:
+vision-only transfer matched or slightly beat the complete immutable core,
+whereas recurrent-only transfer stayed at chance. The narrow but important
+conclusion is that predictive identify experience created a reusable visual
+dynamics representation, and that representation reduced the verified
+experience needed to learn a novel composition. Broad transfer across
+unrelated renderers and continual consolidation remain open.
 
 ## Accounting correction from the identify-then-act curriculum
 
