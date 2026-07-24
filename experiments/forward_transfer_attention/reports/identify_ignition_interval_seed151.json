@@ -1,0 +1,225 @@
+{
+  "configuration": {
+    "batch_size": 32,
+    "device": "cuda",
+    "fit_updates": 256,
+    "pretrain_lifetimes": 128,
+    "pretrain_steps": 40,
+    "report": "experiments/forward_transfer_attention/reports/identify_ignition_interval_seed151.json",
+    "seed": 151,
+    "test_lifetimes": 256
+  },
+  "first_passing_bits": null,
+  "independent_fit_at_each_prefix": true,
+  "points": [
+    {
+      "audit": {
+        "missing_consequence_accuracy": 0.4453125,
+        "missing_consequence_entropy": 0.1745530515909195,
+        "no_probe_effect_accuracy": 0.4453125,
+        "normal_accuracy": 0.46875,
+        "normal_entropy": 0.15780009329319,
+        "protocol_swap_accuracy": 0.50390625,
+        "protocol_swap_prediction_flip": 0.12890625,
+        "target_reverse_accuracy": 0.48046875,
+        "target_reverse_prediction_flip": 0.19921875
+      },
+      "controls": {
+        "action_shuffled": {
+          "mean_margin": 5.19027042388916,
+          "normalized_policy_entropy": 0.3417443633079529,
+          "verified_accuracy": 0.5
+        },
+        "fully_fresh_core": {
+          "mean_margin": 1.7060928344726562,
+          "normalized_policy_entropy": 0.6264870762825012,
+          "verified_accuracy": 0.515625
+        },
+        "reward_shuffled": {
+          "mean_margin": 9.582136154174805,
+          "normalized_policy_entropy": 0.14263896644115448,
+          "verified_accuracy": 0.50390625
+        }
+      },
+      "examples_processed": 8192,
+      "optimizer_updates": 256,
+      "passes_all_gates": false,
+      "unique_lifetimes": 32,
+      "unique_reward_bits": 32
+    },
+    {
+      "audit": {
+        "missing_consequence_accuracy": 0.5390625,
+        "missing_consequence_entropy": 0.19544662535190582,
+        "no_probe_effect_accuracy": 0.5390625,
+        "normal_accuracy": 0.54296875,
+        "normal_entropy": 0.1702459305524826,
+        "protocol_swap_accuracy": 0.47265625,
+        "protocol_swap_prediction_flip": 0.1796875,
+        "target_reverse_accuracy": 0.4375,
+        "target_reverse_prediction_flip": 0.28515625
+      },
+      "controls": {
+        "action_shuffled": {
+          "mean_margin": 10.712759017944336,
+          "normalized_policy_entropy": 0.16046753525733948,
+          "verified_accuracy": 0.63671875
+        },
+        "fully_fresh_core": {
+          "mean_margin": 1.5615432262420654,
+          "normalized_policy_entropy": 0.6447135210037231,
+          "verified_accuracy": 0.515625
+        },
+        "reward_shuffled": {
+          "mean_margin": 12.424234390258789,
+          "normalized_policy_entropy": 0.18509851396083832,
+          "verified_accuracy": 0.46484375
+        }
+      },
+      "examples_processed": 8192,
+      "optimizer_updates": 256,
+      "passes_all_gates": false,
+      "unique_lifetimes": 40,
+      "unique_reward_bits": 40
+    },
+    {
+      "audit": {
+        "missing_consequence_accuracy": 0.5,
+        "missing_consequence_entropy": 0.06375604122877121,
+        "no_probe_effect_accuracy": 0.5,
+        "normal_accuracy": 0.5234375,
+        "normal_entropy": 0.10480349510908127,
+        "protocol_swap_accuracy": 0.49609375,
+        "protocol_swap_prediction_flip": 0.19140625,
+        "target_reverse_accuracy": 0.41796875,
+        "target_reverse_prediction_flip": 0.32421875
+      },
+      "controls": {
+        "action_shuffled": {
+          "mean_margin": 10.800064086914062,
+          "normalized_policy_entropy": 0.15805909037590027,
+          "verified_accuracy": 0.47265625
+        },
+        "fully_fresh_core": {
+          "mean_margin": 0.9560548067092896,
+          "normalized_policy_entropy": 0.8174870014190674,
+          "verified_accuracy": 0.515625
+        },
+        "reward_shuffled": {
+          "mean_margin": 5.678445816040039,
+          "normalized_policy_entropy": 0.27458465099334717,
+          "verified_accuracy": 0.5234375
+        }
+      },
+      "examples_processed": 8192,
+      "optimizer_updates": 256,
+      "passes_all_gates": false,
+      "unique_lifetimes": 48,
+      "unique_reward_bits": 48
+    },
+    {
+      "audit": {
+        "missing_consequence_accuracy": 0.47265625,
+        "missing_consequence_entropy": 0.1769767701625824,
+        "no_probe_effect_accuracy": 0.47265625,
+        "normal_accuracy": 0.5,
+        "normal_entropy": 0.21237006783485413,
+        "protocol_swap_accuracy": 0.53125,
+        "protocol_swap_prediction_flip": 0.1328125,
+        "target_reverse_accuracy": 0.44921875,
+        "target_reverse_prediction_flip": 0.39453125
+      },
+      "controls": {
+        "action_shuffled": {
+          "mean_margin": 10.333178520202637,
+          "normalized_policy_entropy": 0.08408275246620178,
+          "verified_accuracy": 0.4375
+        },
+        "fully_fresh_core": {
+          "mean_margin": 0.5181792974472046,
+          "normalized_policy_entropy": 0.9503319263458252,
+          "verified_accuracy": 0.515625
+        },
+        "reward_shuffled": {
+          "mean_margin": 8.579364776611328,
+          "normalized_policy_entropy": 0.09113885462284088,
+          "verified_accuracy": 0.51171875
+        }
+      },
+      "examples_processed": 8192,
+      "optimizer_updates": 256,
+      "passes_all_gates": false,
+      "unique_lifetimes": 56,
+      "unique_reward_bits": 56
+    },
+    {
+      "audit": {
+        "missing_consequence_accuracy": 0.515625,
+        "missing_consequence_entropy": 0.16532936692237854,
+        "no_probe_effect_accuracy": 0.515625,
+        "normal_accuracy": 0.515625,
+        "normal_entropy": 0.21015727519989014,
+        "protocol_swap_accuracy": 0.50390625,
+        "protocol_swap_prediction_flip": 0.05859375,
+        "target_reverse_accuracy": 0.45703125,
+        "target_reverse_prediction_flip": 0.30078125
+      },
+      "controls": {
+        "action_shuffled": {
+          "mean_margin": 5.02740478515625,
+          "normalized_policy_entropy": 0.20750652253627777,
+          "verified_accuracy": 0.5078125
+        },
+        "fully_fresh_core": {
+          "mean_margin": 0.5996590852737427,
+          "normalized_policy_entropy": 0.930808961391449,
+          "verified_accuracy": 0.515625
+        },
+        "reward_shuffled": {
+          "mean_margin": 8.822185516357422,
+          "normalized_policy_entropy": 0.23679575324058533,
+          "verified_accuracy": 0.52734375
+        }
+      },
+      "examples_processed": 8192,
+      "optimizer_updates": 256,
+      "passes_all_gates": false,
+      "unique_lifetimes": 64,
+      "unique_reward_bits": 64
+    }
+  ],
+  "pretraining": {
+    "examples_processed": 2560,
+    "history": [
+      {
+        "gradient_norm": 11.127164840698242,
+        "loss": 3.9872210025787354,
+        "predictive_loss": 2.019388437271118,
+        "step": 1
+      },
+      {
+        "gradient_norm": 1.6731172800064087,
+        "loss": 3.423776626586914,
+        "predictive_loss": 1.8200902938842773,
+        "step": 20
+      },
+      {
+        "gradient_norm": 2.198014736175537,
+        "loss": 2.546569347381592,
+        "predictive_loss": 1.6497102975845337,
+        "step": 40
+      }
+    ],
+    "optimizer_updates": 40,
+    "unique_lifetimes": 128,
+    "unique_scored_transitions": 256
+  },
+  "same_core_and_readout_initialization_across_prefixes": true,
+  "schema": "identify-ignition-interval-v1",
+  "seed_convention": "alternate-readout-v0: readout initialization seed+1000; policy fit seed+2000+prefix; controls used distinct optimizer seeds; fresh core initialization seed+9000",
+  "semantic_labels_used_for_training": false,
+  "stable_passing_bits": null,
+  "total_seconds": 23.79982558300253,
+  "unattempted_action_labels_used_for_training": false,
+  "unique_reward_bits_are_not_replay_examples": true
+}

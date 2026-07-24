@@ -50,6 +50,8 @@ new tasks is evidence of compounding learning.
 | 2026-07-24 | Eight-clone conservative learning-mechanism tournament at 32 bits, seed 211 | Zero-initialized rank-16 residual adapter: 68.75% selection, 66.41% blind | Frozen readout 61.72% selection; shuffled/fresh controls 46.09–50% | A bounded one-seed signal, but protocol/target flips were only 51.56%/50.39%; exact-parent replication required |
 | 2026-07-24 | Exact rank-16 residual parent, seed 307 | 58.98% selection, 55.47% blind; target flip 13.67% | Shuffled/fresh controls 45.70–50% | Conservative adaptation did not replicate or learn the causal rule; reject the family at 32 bits and retain no checkpoint |
 | 2026-07-24 | Eight reward-free predictive-objective refinements at 32 bits, seed 211 | Best AULC came from contrastive transition matching; 59.38% selection and 58.59% blind | Unrefined core had the best final selection score at 59.77%; shuffled/fresh controls 47.27–48.44% | Extra delta, cosine, contrastive, action-decode, and consequence-separation training did not improve causal learning; no replication or checkpoint |
+| 2026-07-24 | Exact-baseline ignition map at 32/40/48/56/64 bits, seeds 151/211/307 | Mean normal accuracy rose 57.42%→66.15%→69.92%→76.04%→78.91%; only seed 211 passed every gate, at 64 bits | Seeds 151 and 307 never passed; mean 64-bit target-reversal flip was 66.67% | The 64-bit result is a valid single-seed capability, not a robust learning threshold; initialization/optimization variance is now the primary blocker |
+| 2026-07-24 | Alternate answer-path initialization/optimizer offsets on the same three ignition curves | Seed 211 passed at 48 and 64 bits | Seeds 151/307 still failed through 64 | Readout randomness moves the ignition point but does not explain the entire seed hierarchy; factorial variance localization is required before population breeding |
 
 The direct-outcome comparison is a supervised probe curve, not an acceptable
 deployed learning method. It is included only to measure whether prior sensory
@@ -136,8 +138,10 @@ sensory experience.  Every refinement stayed below 60% blind accuracy and the
 unrefined core had the best final selection score.  This also closes the cheap
 "add an auxiliary predictive loss after pretraining" branch.
 
-The immediate next measurement is the missing interval between the failed
-32-bit and mastered 64-bit points: evaluate 40, 48, and 56 unique outcomes with
-the unchanged baseline and valid causal rerenders.  Finding the first reliable
-ignition point gives the curriculum a genuinely gradual next rung and avoids
-changing architecture without knowing the actual sample threshold.
+The missing interval has now been measured across three seeds.  There is no
+robust ignition point at or below 64 outcomes: seed 211 passes at 64, seed 307
+approaches the gate, and seed 151 stays near chance.  The next experiment is a
+factorial variance decomposition that independently varies predictive-core
+initialization, lifetime subset, readout initialization, and readout minibatch
+sampling.  Population racing begins only after this identifies what should be
+varied.

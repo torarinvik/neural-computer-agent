@@ -39,7 +39,7 @@ The two-decision identify-then-act task requires the agent to:
 4. observe a target;
 5. emit the correct opaque action.
 
-The current fresh predictive learner reached:
+The current fresh predictive learner reached on seed 211:
 
 - 100% held-out accuracy at 64 unique verifier bits;
 - 100% accuracy and 100% prediction flips under valid protocol rerenders;
@@ -49,6 +49,11 @@ The current fresh predictive learner reached:
 An incremental 8→16→32→64-bit learner reached 93.36% with 256 cumulative
 optimizer updates. A 32-bit arm with 512 updates failed at 52.73%, so extra
 replay does not substitute for the missing unique outcomes.
+
+A subsequent exact three-seed map corrected the robustness claim. At 64 bits,
+normal accuracy was 55.47%, 99.61%, and 81.64% for seeds 151, 211, and 307;
+only seed 211 passed every causal and anti-fluke gate. Thus 64 bits is the
+current single-seed capability frontier, not a robust sample threshold.
 
 Earlier fixed-target weights caused negative transfer to the full task.
 Inherited weights are therefore retained only when they improve the next
@@ -136,10 +141,15 @@ screen also failed: contrastive refinement reached only 58.59% blind accuracy,
 and the unrefined core had the best final selection score. Extra auxiliary
 prediction losses therefore do not earn a longer run.
 
-The next sub-minute experiment maps the missing sample-efficiency interval at
-40, 48, and 56 unique outcomes using the unchanged baseline. The first point
-that passes valid protocol and target rerenders becomes the gradual curriculum
-rung; only then should another architecture family be considered.
+The 40/48/56 interval is now mapped across three seeds. The next sub-minute
+experiment is a variance decomposition: independently vary predictive-core
+initialization, lifetime subset, readout initialization, and readout minibatch
+sampling at 48 and 64 bits. Only after locating the dominant source should a
+successive-halving population vary that component.
+
+See
+`experiments/forward_transfer_attention/ROBUST_SAMPLE_EFFICIENCY_STRATEGY.md`
+for the population-search decision and pre-registered diagnostic.
 
 The longer-term optimization is a gradient-trained population with
 successive-halving compute allocation. Fitness is held-out learning AULC,
