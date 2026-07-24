@@ -123,10 +123,15 @@ python -m experiments.forward_transfer_attention.train_identify_then_act \
 
 ## Next experiment
 
-Before increasing task difficulty, run a 32-bit feature-interface tournament.
-Compare task-agnostic state-only, predicted-consequence difference, and generic
-multiplicative relation features. Use the same outcome bits and causal audits.
-Only a candidate that beats the stable 64-bit frontier should reproduce.
+The first 32-bit feature-interface tournament is complete. A seed-211 clone
+reached 72.27% selection and 69.53% blind accuracy, but the family fell to
+55.47% blind accuracy on seed 307. No checkpoint was promoted.
+
+The next population should change the learning mechanism rather than continue
+interface-width tuning: compare a frozen-core baseline with tiny zero-initialized
+latent adapters and conservative recurrent/predictor fine-tuning. Reproduce
+exact parents on a second seed before mutation. Every clone remains capped at
+32 unique verifier outcomes and must pass blind causal audits.
 
 The longer-term optimization is a gradient-trained population with
 successive-halving compute allocation. Fitness is held-out learning AULC,

@@ -45,6 +45,8 @@ new tasks is evidence of compounding learning.
 | 2026-07-24 | Full random-probe identify-then-act, fresh predictive core | 100% at 64 bits; all valid protocol/target rerenders 100% with 100% flips | Fully fresh 50.78%; fixed-protocol predictive control also 100% at 64 bits | Real zero-label causal capability, but action-conditioned pretraining has not earned a unique efficiency claim |
 | 2026-07-24 | Incremental 8→16→32→64-bit learner | 93.36% at 64 bits; protocol 94.53%, target 95.31%; valid flips 87.89%/88.67% | Fully fresh 48.44%; fixed-protocol control reached stable 75% at 32 bits | Accumulating one readout is stable and causal, but generic predictive pretraining is currently more sample-efficient |
 | 2026-07-24 | Full task capped at 32 bits with 512 replay updates | 52.73%; protocol 54.69%, target 52.34%; no causal flips | Fully fresh 48.44%; no control reached 75% | Extra replay cannot substitute for the missing 32→64 unique outcomes; keep 64 bits as the frontier |
+| 2026-07-24 | Eight-clone 32-bit latent-interface tournament, broad generation, seed 211 | Best selection 72.27%, blind 69.53%; action/reward/fresh controls 44.14–48.44% | Baseline concat/high-rate clone 50.39%; no clone reached stable 75% | Narrow low-rate heads showed a real but sub-gate signal; reversal flips were only 47.66%/39.84%, so no promotion |
+| 2026-07-24 | Refined descendants on seed 307 | Best selection 61.33%, blind 55.47%; reversal flips 48.83%/24.61% | Shuffled/fresh controls 44.14–50% | The first-generation advantage did not replicate; no checkpoint retained and the 64-bit frontier remains |
 
 The direct-outcome comparison is a supervised probe curve, not an acceptable
 deployed learning method. It is included only to measure whether prior sensory
@@ -105,3 +107,24 @@ The latest result also sharpens the compounding rule: retain a prior component
 only when it improves the verified learning curve.  The mastered fixed-target
 bridge made the full task slower, so its weights are not promoted even though
 the bridge itself was a valid capability.
+
+## Population-search lesson
+
+The first clone tournament was computationally efficient: eight readouts shared
+one cached predictive core and completed in 29 seconds.  The selection/blind
+split prevented a nominal 72.27% winner from being mistaken for mastery, and a
+second seed rejected the family.
+
+Future evolutionary searches must use successive halving across seeds:
+
+1. cheap single-seed screen for every clone;
+2. rerun the exact surviving parents on a second seed;
+3. mutate only families whose mean blind and causal scores remain above the
+   pre-registered bar;
+4. never reproduce a one-seed winner merely because it ranks first.
+
+The next 32-bit search should change the learning mechanism rather than continue
+width/rate/interface mutations.  The highest-value family is conservative joint
+adaptation: frozen-core baseline versus tiny zero-initialized latent adapters
+and limited recurrent/predictor fine-tuning, all trained only from attempted
+actions and scalar outcomes.
