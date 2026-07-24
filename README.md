@@ -141,11 +141,15 @@ screen also failed: contrastive refinement reached only 58.59% blind accuracy,
 and the unrefined core had the best final selection score. Extra auxiliary
 prediction losses therefore do not earn a longer run.
 
-The 40/48/56 interval is now mapped across three seeds. The next sub-minute
-experiment is a variance decomposition: independently vary predictive-core
-initialization, lifetime subset, readout initialization, and readout minibatch
-sampling at 48 and 64 bits. Only after locating the dominant source should a
-successive-halving population vary that component.
+The variance decomposition is complete. Across a nine-horse race at 64 bits,
+predictive-core initialization changed the causal floor by 74.22 percentage
+points, versus 7.03 points for readout initialization and 5.86 points for
+readout replay sampling. All frozen cores passed exact retention checks.
+
+The next sub-minute population should therefore race predictive-core
+initializations under identical experience and optimizers, using successive
+halving at 32, 48, and 64 outcomes. A winner must then reproduce on a disjoint
+lifetime stream and pass old-capability retention before promotion.
 
 See
 `experiments/forward_transfer_attention/ROBUST_SAMPLE_EFFICIENCY_STRATEGY.md`

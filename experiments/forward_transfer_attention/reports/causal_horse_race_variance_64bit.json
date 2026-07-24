@@ -1,0 +1,731 @@
+{
+  "configuration": {
+    "batch_size": 32,
+    "device": "cuda",
+    "fit_updates": 256,
+    "pretrain_lifetimes": 128,
+    "pretrain_steps": 40,
+    "report": "experiments/forward_transfer_attention/reports/causal_horse_race_variance_64bit.json",
+    "test_lifetimes": 256
+  },
+  "dominant_variance_factor_by_causal_floor": "core_initialization",
+  "eligible_horses": [
+    "anchor",
+    "pretrain_sampling_307",
+    "readout_init_307"
+  ],
+  "factor_ranges": {
+    "core_initialization": {
+      "causal_floor_range": 0.7421875,
+      "levels": [
+        211,
+        151,
+        307
+      ],
+      "normal_accuracy_range": 0.49609375
+    },
+    "pretrain_sampling": {
+      "causal_floor_range": 0.4609375,
+      "levels": [
+        211,
+        151,
+        307
+      ],
+      "normal_accuracy_range": 0.20703125
+    },
+    "readout_initialization": {
+      "causal_floor_range": 0.0703125,
+      "levels": [
+        211,
+        151,
+        307
+      ],
+      "normal_accuracy_range": 0.03125
+    },
+    "readout_sampling": {
+      "causal_floor_range": 0.05859375,
+      "levels": [
+        211,
+        151,
+        307
+      ],
+      "normal_accuracy_range": 0.02734375
+    }
+  },
+  "horse_count": 9,
+  "horses": {
+    "anchor": {
+      "audit": {
+        "missing_consequence_accuracy": 0.51953125,
+        "missing_consequence_entropy": 0.13065850734710693,
+        "no_probe_effect_accuracy": 0.51953125,
+        "normal_accuracy": 0.99609375,
+        "normal_entropy": 0.0076318541541695595,
+        "protocol_swap_accuracy": 0.9921875,
+        "protocol_swap_prediction_flip": 0.98828125,
+        "target_reverse_accuracy": 0.99609375,
+        "target_reverse_prediction_flip": 0.9921875
+      },
+      "causal_floor": 0.98828125,
+      "configuration": {
+        "core_init_seed": 211,
+        "factor": "anchor",
+        "level": 211,
+        "name": "anchor",
+        "pretrain_sampling_seed": 211,
+        "readout_init_seed": 272,
+        "readout_sampling_seed": 355
+      },
+      "controls": {
+        "action_shuffled": {
+          "mean_margin": 6.4589080810546875,
+          "normalized_policy_entropy": 0.13877837359905243,
+          "verified_accuracy": 0.54296875
+        },
+        "fully_fresh_core": {
+          "mean_margin": 0.3375588655471802,
+          "normalized_policy_entropy": 0.9778813123703003,
+          "verified_accuracy": 0.515625
+        },
+        "reward_shuffled": {
+          "mean_margin": 3.2172937393188477,
+          "normalized_policy_entropy": 0.47587817907333374,
+          "verified_accuracy": 0.51171875
+        }
+      },
+      "eligible": true,
+      "examples_processed": 8192,
+      "optimizer_updates": 256,
+      "retention": {
+        "core_parameters_bit_identical": true,
+        "heldout_predictive_loss_change": 0.0,
+        "passes": true,
+        "predictive_metrics_after": {
+          "action_binding_loss_increase": -0.0006815195083618164,
+          "heldout_action_shuffled_loss": 1.9879897832870483,
+          "heldout_standardized_loss": 1.9886713027954102
+        },
+        "predictive_metrics_before": {
+          "action_binding_loss_increase": -0.0006815195083618164,
+          "heldout_action_shuffled_loss": 1.9879897832870483,
+          "heldout_standardized_loss": 1.9886713027954102
+        }
+      },
+      "unique_reward_bits": 64
+    },
+    "core_init_151": {
+      "audit": {
+        "missing_consequence_accuracy": 0.46484375,
+        "missing_consequence_entropy": 0.1699717789888382,
+        "no_probe_effect_accuracy": 0.46484375,
+        "normal_accuracy": 0.5,
+        "normal_entropy": 0.17428846657276154,
+        "protocol_swap_accuracy": 0.55078125,
+        "protocol_swap_prediction_flip": 0.24609375,
+        "target_reverse_accuracy": 0.51171875,
+        "target_reverse_prediction_flip": 0.37109375
+      },
+      "causal_floor": 0.24609375,
+      "configuration": {
+        "core_init_seed": 151,
+        "factor": "core_initialization",
+        "level": 151,
+        "name": "core_init_151",
+        "pretrain_sampling_seed": 211,
+        "readout_init_seed": 272,
+        "readout_sampling_seed": 355
+      },
+      "controls": {
+        "action_shuffled": {
+          "mean_margin": 11.487966537475586,
+          "normalized_policy_entropy": 0.10369250923395157,
+          "verified_accuracy": 0.4921875
+        },
+        "fully_fresh_core": {
+          "mean_margin": 0.38085126876831055,
+          "normalized_policy_entropy": 0.9701859354972839,
+          "verified_accuracy": 0.515625
+        },
+        "reward_shuffled": {
+          "mean_margin": 6.482683181762695,
+          "normalized_policy_entropy": 0.31185173988342285,
+          "verified_accuracy": 0.4453125
+        }
+      },
+      "eligible": false,
+      "examples_processed": 8192,
+      "optimizer_updates": 256,
+      "retention": {
+        "core_parameters_bit_identical": true,
+        "heldout_predictive_loss_change": 0.0,
+        "passes": true,
+        "predictive_metrics_after": {
+          "action_binding_loss_increase": -0.008981108665466309,
+          "heldout_action_shuffled_loss": 1.8719487190246582,
+          "heldout_standardized_loss": 1.8809298276901245
+        },
+        "predictive_metrics_before": {
+          "action_binding_loss_increase": -0.008981108665466309,
+          "heldout_action_shuffled_loss": 1.8719487190246582,
+          "heldout_standardized_loss": 1.8809298276901245
+        }
+      },
+      "unique_reward_bits": 64
+    },
+    "core_init_307": {
+      "audit": {
+        "missing_consequence_accuracy": 0.4765625,
+        "missing_consequence_entropy": 0.15429340302944183,
+        "no_probe_effect_accuracy": 0.4765625,
+        "normal_accuracy": 0.54296875,
+        "normal_entropy": 0.18559524416923523,
+        "protocol_swap_accuracy": 0.55859375,
+        "protocol_swap_prediction_flip": 0.40625,
+        "target_reverse_accuracy": 0.5078125,
+        "target_reverse_prediction_flip": 0.27734375
+      },
+      "causal_floor": 0.27734375,
+      "configuration": {
+        "core_init_seed": 307,
+        "factor": "core_initialization",
+        "level": 307,
+        "name": "core_init_307",
+        "pretrain_sampling_seed": 211,
+        "readout_init_seed": 272,
+        "readout_sampling_seed": 355
+      },
+      "controls": {
+        "action_shuffled": {
+          "mean_margin": 6.044875144958496,
+          "normalized_policy_entropy": 0.18673016130924225,
+          "verified_accuracy": 0.51171875
+        },
+        "fully_fresh_core": {
+          "mean_margin": 0.384809672832489,
+          "normalized_policy_entropy": 0.9720864295959473,
+          "verified_accuracy": 0.515625
+        },
+        "reward_shuffled": {
+          "mean_margin": 8.119348526000977,
+          "normalized_policy_entropy": 0.20218941569328308,
+          "verified_accuracy": 0.4921875
+        }
+      },
+      "eligible": false,
+      "examples_processed": 8192,
+      "optimizer_updates": 256,
+      "retention": {
+        "core_parameters_bit_identical": true,
+        "heldout_predictive_loss_change": 0.0,
+        "passes": true,
+        "predictive_metrics_after": {
+          "action_binding_loss_increase": -0.028415203094482422,
+          "heldout_action_shuffled_loss": 1.9765501022338867,
+          "heldout_standardized_loss": 2.004965305328369
+        },
+        "predictive_metrics_before": {
+          "action_binding_loss_increase": -0.028415203094482422,
+          "heldout_action_shuffled_loss": 1.9765501022338867,
+          "heldout_standardized_loss": 2.004965305328369
+        }
+      },
+      "unique_reward_bits": 64
+    },
+    "pretrain_sampling_151": {
+      "audit": {
+        "missing_consequence_accuracy": 0.453125,
+        "missing_consequence_entropy": 0.035162050276994705,
+        "no_probe_effect_accuracy": 0.453125,
+        "normal_accuracy": 0.7890625,
+        "normal_entropy": 0.04870057478547096,
+        "protocol_swap_accuracy": 0.796875,
+        "protocol_swap_prediction_flip": 0.6484375,
+        "target_reverse_accuracy": 0.73828125,
+        "target_reverse_prediction_flip": 0.52734375
+      },
+      "causal_floor": 0.52734375,
+      "configuration": {
+        "core_init_seed": 211,
+        "factor": "pretrain_sampling",
+        "level": 151,
+        "name": "pretrain_sampling_151",
+        "pretrain_sampling_seed": 151,
+        "readout_init_seed": 272,
+        "readout_sampling_seed": 355
+      },
+      "controls": {
+        "action_shuffled": {
+          "mean_margin": 7.162001132965088,
+          "normalized_policy_entropy": 0.18193940818309784,
+          "verified_accuracy": 0.54296875
+        },
+        "fully_fresh_core": {
+          "mean_margin": 0.3375588655471802,
+          "normalized_policy_entropy": 0.9778813123703003,
+          "verified_accuracy": 0.515625
+        },
+        "reward_shuffled": {
+          "mean_margin": 2.1715991497039795,
+          "normalized_policy_entropy": 0.6188809275627136,
+          "verified_accuracy": 0.5390625
+        }
+      },
+      "eligible": false,
+      "examples_processed": 8192,
+      "optimizer_updates": 256,
+      "retention": {
+        "core_parameters_bit_identical": true,
+        "heldout_predictive_loss_change": 0.0,
+        "passes": true,
+        "predictive_metrics_after": {
+          "action_binding_loss_increase": 0.007370710372924805,
+          "heldout_action_shuffled_loss": 2.106968402862549,
+          "heldout_standardized_loss": 2.099597692489624
+        },
+        "predictive_metrics_before": {
+          "action_binding_loss_increase": 0.007370710372924805,
+          "heldout_action_shuffled_loss": 2.106968402862549,
+          "heldout_standardized_loss": 2.099597692489624
+        }
+      },
+      "unique_reward_bits": 64
+    },
+    "pretrain_sampling_307": {
+      "audit": {
+        "missing_consequence_accuracy": 0.49609375,
+        "missing_consequence_entropy": 0.038131557404994965,
+        "no_probe_effect_accuracy": 0.49609375,
+        "normal_accuracy": 0.96484375,
+        "normal_entropy": 0.017607763409614563,
+        "protocol_swap_accuracy": 0.9609375,
+        "protocol_swap_prediction_flip": 0.98046875,
+        "target_reverse_accuracy": 0.9609375,
+        "target_reverse_prediction_flip": 0.92578125
+      },
+      "causal_floor": 0.92578125,
+      "configuration": {
+        "core_init_seed": 211,
+        "factor": "pretrain_sampling",
+        "level": 307,
+        "name": "pretrain_sampling_307",
+        "pretrain_sampling_seed": 307,
+        "readout_init_seed": 272,
+        "readout_sampling_seed": 355
+      },
+      "controls": {
+        "action_shuffled": {
+          "mean_margin": 6.759554862976074,
+          "normalized_policy_entropy": 0.13793806731700897,
+          "verified_accuracy": 0.546875
+        },
+        "fully_fresh_core": {
+          "mean_margin": 0.3375588655471802,
+          "normalized_policy_entropy": 0.9778813123703003,
+          "verified_accuracy": 0.515625
+        },
+        "reward_shuffled": {
+          "mean_margin": 2.4294934272766113,
+          "normalized_policy_entropy": 0.5533204674720764,
+          "verified_accuracy": 0.515625
+        }
+      },
+      "eligible": true,
+      "examples_processed": 8192,
+      "optimizer_updates": 256,
+      "retention": {
+        "core_parameters_bit_identical": true,
+        "heldout_predictive_loss_change": 0.0,
+        "passes": true,
+        "predictive_metrics_after": {
+          "action_binding_loss_increase": -0.0008027553558349609,
+          "heldout_action_shuffled_loss": 1.962629795074463,
+          "heldout_standardized_loss": 1.9634325504302979
+        },
+        "predictive_metrics_before": {
+          "action_binding_loss_increase": -0.0008027553558349609,
+          "heldout_action_shuffled_loss": 1.962629795074463,
+          "heldout_standardized_loss": 1.9634325504302979
+        }
+      },
+      "unique_reward_bits": 64
+    },
+    "readout_init_151": {
+      "audit": {
+        "missing_consequence_accuracy": 0.51953125,
+        "missing_consequence_entropy": 0.00395540613681078,
+        "no_probe_effect_accuracy": 0.51953125,
+        "normal_accuracy": 0.96875,
+        "normal_entropy": 0.015858538448810577,
+        "protocol_swap_accuracy": 0.9609375,
+        "protocol_swap_prediction_flip": 0.9296875,
+        "target_reverse_accuracy": 0.96484375,
+        "target_reverse_prediction_flip": 0.93359375
+      },
+      "causal_floor": 0.9296875,
+      "configuration": {
+        "core_init_seed": 211,
+        "factor": "readout_initialization",
+        "level": 151,
+        "name": "readout_init_151",
+        "pretrain_sampling_seed": 211,
+        "readout_init_seed": 212,
+        "readout_sampling_seed": 355
+      },
+      "controls": {
+        "action_shuffled": {
+          "mean_margin": 7.853670597076416,
+          "normalized_policy_entropy": 0.0989239364862442,
+          "verified_accuracy": 0.53125
+        },
+        "fully_fresh_core": {
+          "mean_margin": 0.4297195374965668,
+          "normalized_policy_entropy": 0.9591472148895264,
+          "verified_accuracy": 0.515625
+        },
+        "reward_shuffled": {
+          "mean_margin": 3.7081356048583984,
+          "normalized_policy_entropy": 0.43299031257629395,
+          "verified_accuracy": 0.54296875
+        }
+      },
+      "eligible": false,
+      "examples_processed": 8192,
+      "optimizer_updates": 256,
+      "retention": {
+        "core_parameters_bit_identical": true,
+        "heldout_predictive_loss_change": 0.0,
+        "passes": true,
+        "predictive_metrics_after": {
+          "action_binding_loss_increase": -0.0006815195083618164,
+          "heldout_action_shuffled_loss": 1.9879897832870483,
+          "heldout_standardized_loss": 1.9886713027954102
+        },
+        "predictive_metrics_before": {
+          "action_binding_loss_increase": -0.0006815195083618164,
+          "heldout_action_shuffled_loss": 1.9879897832870483,
+          "heldout_standardized_loss": 1.9886713027954102
+        }
+      },
+      "unique_reward_bits": 64
+    },
+    "readout_init_307": {
+      "audit": {
+        "missing_consequence_accuracy": 0.5234375,
+        "missing_consequence_entropy": 0.022118540480732918,
+        "no_probe_effect_accuracy": 0.5234375,
+        "normal_accuracy": 1.0,
+        "normal_entropy": 0.00028698734240606427,
+        "protocol_swap_accuracy": 1.0,
+        "protocol_swap_prediction_flip": 1.0,
+        "target_reverse_accuracy": 1.0,
+        "target_reverse_prediction_flip": 1.0
+      },
+      "causal_floor": 1.0,
+      "configuration": {
+        "core_init_seed": 211,
+        "factor": "readout_initialization",
+        "level": 307,
+        "name": "readout_init_307",
+        "pretrain_sampling_seed": 211,
+        "readout_init_seed": 368,
+        "readout_sampling_seed": 355
+      },
+      "controls": {
+        "action_shuffled": {
+          "mean_margin": 6.523378849029541,
+          "normalized_policy_entropy": 0.14819423854351044,
+          "verified_accuracy": 0.546875
+        },
+        "fully_fresh_core": {
+          "mean_margin": 0.4049517512321472,
+          "normalized_policy_entropy": 0.966148316860199,
+          "verified_accuracy": 0.515625
+        },
+        "reward_shuffled": {
+          "mean_margin": 3.297879695892334,
+          "normalized_policy_entropy": 0.3576114773750305,
+          "verified_accuracy": 0.5078125
+        }
+      },
+      "eligible": true,
+      "examples_processed": 8192,
+      "optimizer_updates": 256,
+      "retention": {
+        "core_parameters_bit_identical": true,
+        "heldout_predictive_loss_change": 0.0,
+        "passes": true,
+        "predictive_metrics_after": {
+          "action_binding_loss_increase": -0.0006815195083618164,
+          "heldout_action_shuffled_loss": 1.9879897832870483,
+          "heldout_standardized_loss": 1.9886713027954102
+        },
+        "predictive_metrics_before": {
+          "action_binding_loss_increase": -0.0006815195083618164,
+          "heldout_action_shuffled_loss": 1.9879897832870483,
+          "heldout_standardized_loss": 1.9886713027954102
+        }
+      },
+      "unique_reward_bits": 64
+    },
+    "readout_sampling_151": {
+      "audit": {
+        "missing_consequence_accuracy": 0.46484375,
+        "missing_consequence_entropy": 0.14293359220027924,
+        "no_probe_effect_accuracy": 0.46484375,
+        "normal_accuracy": 0.96875,
+        "normal_entropy": 0.005531331989914179,
+        "protocol_swap_accuracy": 0.9765625,
+        "protocol_swap_prediction_flip": 0.9453125,
+        "target_reverse_accuracy": 0.9609375,
+        "target_reverse_prediction_flip": 0.9296875
+      },
+      "causal_floor": 0.9296875,
+      "configuration": {
+        "core_init_seed": 211,
+        "factor": "readout_sampling",
+        "level": 151,
+        "name": "readout_sampling_151",
+        "pretrain_sampling_seed": 211,
+        "readout_init_seed": 272,
+        "readout_sampling_seed": 295
+      },
+      "controls": {
+        "action_shuffled": {
+          "mean_margin": 3.8082709312438965,
+          "normalized_policy_entropy": 0.39399048686027527,
+          "verified_accuracy": 0.6171875
+        },
+        "fully_fresh_core": {
+          "mean_margin": 0.8870290517807007,
+          "normalized_policy_entropy": 0.8301783204078674,
+          "verified_accuracy": 0.515625
+        },
+        "reward_shuffled": {
+          "mean_margin": 1.9379308223724365,
+          "normalized_policy_entropy": 0.6485148668289185,
+          "verified_accuracy": 0.50390625
+        }
+      },
+      "eligible": false,
+      "examples_processed": 8192,
+      "optimizer_updates": 256,
+      "retention": {
+        "core_parameters_bit_identical": true,
+        "heldout_predictive_loss_change": 0.0,
+        "passes": true,
+        "predictive_metrics_after": {
+          "action_binding_loss_increase": -0.0006815195083618164,
+          "heldout_action_shuffled_loss": 1.9879897832870483,
+          "heldout_standardized_loss": 1.9886713027954102
+        },
+        "predictive_metrics_before": {
+          "action_binding_loss_increase": -0.0006815195083618164,
+          "heldout_action_shuffled_loss": 1.9879897832870483,
+          "heldout_standardized_loss": 1.9886713027954102
+        }
+      },
+      "unique_reward_bits": 64
+    },
+    "readout_sampling_307": {
+      "audit": {
+        "missing_consequence_accuracy": 0.51953125,
+        "missing_consequence_entropy": 0.010233579203486443,
+        "no_probe_effect_accuracy": 0.51953125,
+        "normal_accuracy": 0.98046875,
+        "normal_entropy": 0.01579483598470688,
+        "protocol_swap_accuracy": 0.97265625,
+        "protocol_swap_prediction_flip": 0.96875,
+        "target_reverse_accuracy": 0.984375,
+        "target_reverse_prediction_flip": 0.96484375
+      },
+      "causal_floor": 0.96484375,
+      "configuration": {
+        "core_init_seed": 211,
+        "factor": "readout_sampling",
+        "level": 307,
+        "name": "readout_sampling_307",
+        "pretrain_sampling_seed": 211,
+        "readout_init_seed": 272,
+        "readout_sampling_seed": 451
+      },
+      "controls": {
+        "action_shuffled": {
+          "mean_margin": 7.830231189727783,
+          "normalized_policy_entropy": 0.1155497208237648,
+          "verified_accuracy": 0.53515625
+        },
+        "fully_fresh_core": {
+          "mean_margin": 0.5310347080230713,
+          "normalized_policy_entropy": 0.9504904747009277,
+          "verified_accuracy": 0.515625
+        },
+        "reward_shuffled": {
+          "mean_margin": 3.2861506938934326,
+          "normalized_policy_entropy": 0.49306759238243103,
+          "verified_accuracy": 0.515625
+        }
+      },
+      "eligible": false,
+      "examples_processed": 8192,
+      "optimizer_updates": 256,
+      "retention": {
+        "core_parameters_bit_identical": true,
+        "heldout_predictive_loss_change": 0.0,
+        "passes": true,
+        "predictive_metrics_after": {
+          "action_binding_loss_increase": -0.0006815195083618164,
+          "heldout_action_shuffled_loss": 1.9879897832870483,
+          "heldout_standardized_loss": 1.9886713027954102
+        },
+        "predictive_metrics_before": {
+          "action_binding_loss_increase": -0.0006815195083618164,
+          "heldout_action_shuffled_loss": 1.9879897832870483,
+          "heldout_standardized_loss": 1.9886713027954102
+        }
+      },
+      "unique_reward_bits": 64
+    }
+  },
+  "pretraining_by_core": {
+    "init_151_sampling_211": {
+      "examples_processed": 2560,
+      "history": [
+        {
+          "gradient_norm": 11.894290924072266,
+          "loss": 4.000273704528809,
+          "predictive_loss": 2.046725273132324,
+          "step": 1
+        },
+        {
+          "gradient_norm": 1.614927887916565,
+          "loss": 3.356482982635498,
+          "predictive_loss": 1.8037738800048828,
+          "step": 20
+        },
+        {
+          "gradient_norm": 1.7444943189620972,
+          "loss": 2.5261850357055664,
+          "predictive_loss": 1.6887608766555786,
+          "step": 40
+        }
+      ],
+      "optimizer_updates": 40,
+      "unique_lifetimes": 128,
+      "unique_scored_transitions": 256
+    },
+    "init_211_sampling_151": {
+      "examples_processed": 2560,
+      "history": [
+        {
+          "gradient_norm": 16.54741096496582,
+          "loss": 4.03166389465332,
+          "predictive_loss": 2.0075244903564453,
+          "step": 1
+        },
+        {
+          "gradient_norm": 2.376586437225342,
+          "loss": 3.3726677894592285,
+          "predictive_loss": 1.8249151706695557,
+          "step": 20
+        },
+        {
+          "gradient_norm": 1.3506107330322266,
+          "loss": 2.580439567565918,
+          "predictive_loss": 1.6601861715316772,
+          "step": 40
+        }
+      ],
+      "optimizer_updates": 40,
+      "unique_lifetimes": 128,
+      "unique_scored_transitions": 256
+    },
+    "init_211_sampling_211": {
+      "examples_processed": 2560,
+      "history": [
+        {
+          "gradient_norm": 14.317509651184082,
+          "loss": 4.030429840087891,
+          "predictive_loss": 2.0141654014587402,
+          "step": 1
+        },
+        {
+          "gradient_norm": 3.2720935344696045,
+          "loss": 3.238396406173706,
+          "predictive_loss": 1.7733268737792969,
+          "step": 20
+        },
+        {
+          "gradient_norm": 2.453232526779175,
+          "loss": 2.5535614490509033,
+          "predictive_loss": 1.7086862325668335,
+          "step": 40
+        }
+      ],
+      "optimizer_updates": 40,
+      "unique_lifetimes": 128,
+      "unique_scored_transitions": 256
+    },
+    "init_211_sampling_307": {
+      "examples_processed": 2560,
+      "history": [
+        {
+          "gradient_norm": 13.574603080749512,
+          "loss": 4.053594589233398,
+          "predictive_loss": 2.037437915802002,
+          "step": 1
+        },
+        {
+          "gradient_norm": 3.628798484802246,
+          "loss": 3.23166823387146,
+          "predictive_loss": 1.7228243350982666,
+          "step": 20
+        },
+        {
+          "gradient_norm": 1.283561110496521,
+          "loss": 2.496981620788574,
+          "predictive_loss": 1.6331028938293457,
+          "step": 40
+        }
+      ],
+      "optimizer_updates": 40,
+      "unique_lifetimes": 128,
+      "unique_scored_transitions": 256
+    },
+    "init_307_sampling_211": {
+      "examples_processed": 2560,
+      "history": [
+        {
+          "gradient_norm": 14.101387023925781,
+          "loss": 3.9845058917999268,
+          "predictive_loss": 2.007183790206909,
+          "step": 1
+        },
+        {
+          "gradient_norm": 1.7392433881759644,
+          "loss": 3.3105523586273193,
+          "predictive_loss": 1.7299273014068604,
+          "step": 20
+        },
+        {
+          "gradient_norm": 1.3347291946411133,
+          "loss": 2.5823802947998047,
+          "predictive_loss": 1.6727454662322998,
+          "step": 40
+        }
+      ],
+      "optimizer_updates": 40,
+      "unique_lifetimes": 128,
+      "unique_scored_transitions": 256
+    }
+  },
+  "retention_is_an_eligibility_gate": true,
+  "same_sensory_experience_for_every_horse": true,
+  "schema": "causal-horse-race-variance-v1",
+  "search_reward_bit_presentations": 576,
+  "semantic_labels_used_for_training": false,
+  "total_seconds": 46.3564352819958,
+  "unattempted_action_labels_used_for_training": false,
+  "unique_environment_reward_bits_generated": 64,
+  "unique_reward_bits_per_horse": 64,
+  "winner": "readout_init_307"
+}

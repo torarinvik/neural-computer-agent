@@ -92,6 +92,30 @@ Interpretation is pre-registered:
 - Interactions dominate → use a small factorial population, then mutate only
   the measured interaction.
 
+## Variance race result
+
+The nine-horse 64-bit diagnostic completed in 46.36 seconds.  Every horse saw
+the same 64 unique outcomes, all behavioral readouts trained against frozen
+features, and all predictive cores remained bit-identical with exactly
+unchanged held-out predictive metrics.
+
+| Factor varied | Normal-accuracy range | Causal-floor range |
+|---|---:|---:|
+| Predictive-core initialization | 49.61 points | 74.22 points |
+| Predictive pretraining sampling | 20.70 points | 46.09 points |
+| Readout initialization | 3.13 points | 7.03 points |
+| Readout replay sampling | 2.73 points | 5.86 points |
+
+Core initialization is decisively the dominant variance source.  Three horses
+passed every capability, anti-fluke, and retention gate: the anchor,
+pretraining-sampling seed 307, and readout-initialization seed 307.  The last
+had a 100% causal floor, but it is not promoted from a single race.
+
+The next race should therefore vary predictive-core initialization while
+holding pretraining sampling, experience, and the downstream optimizer fixed.
+Use successive halving at 32, 48, and 64 outcomes, then replay the exact
+winning core on a disjoint lifetime stream and a second downstream seed.
+
 ## Population fitness after localization
 
 For clone \(i\), evaluate:
