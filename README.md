@@ -4,6 +4,9 @@ A compact research repository for building a real-time neural computer that
 learns reusable cognitive primitives from sensory streams and deterministic
 outcomes.
 
+Audited model checkpoints are stored in the private Hugging Face repository:
+<https://huggingface.co/torarin87/neural-computer-agent>.
+
 The learner receives rendered vision/audio/text streams, its own opaque
 actions, its own latent state and memory, and scalar verifier outcomes. It
 does not receive game state, coordinates, semantic task labels, rule IDs,
@@ -129,4 +132,3 @@ The longer-term optimization is a gradient-trained population with
 successive-halving compute allocation. Fitness is held-out learning AULC,
 stable bits-to-threshold, retention, latency, and positive transfer to the next
 primitive—not old-task accuracy.
-
