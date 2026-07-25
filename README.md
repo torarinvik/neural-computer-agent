@@ -31,6 +31,30 @@ Final accuracy alone is not an adequate score.
 
 ## Current audited frontier
 
+The new unified-controller line now has its first retained compounding
+milestone. A single 298,252-parameter controller with one vision encoder,
+recurrent state, generic differentiable workspace, latent intention, and
+replaceable actuator adapter learns hidden visual-action functions from its
+own attempted opaque actions and scalar outcomes.
+
+Prior visual grounding changed a matched 600-step four-rule task from a stable
+75% shortcut to 99.85–99.90% on two independent seeds. The next rung inferred
+an identity-versus-flipped mapping after one support outcome; inherited
+training reached 100%, while matched fresh stayed at 49.26%. Balanced rehearsal
+then preserved both the one-support skill and the broader two-support
+four-function skill. The selected checkpoint passed disjoint 2,048-lifetime
+normal, private-rule reversal, prediction-flip, blank-vision,
+shuffled-feedback, and active-state-reset audits:
+
+- one-support bijection: 99.98% normal, 99.95% reversed;
+- retained four-function task: 100% normal and reversed;
+- paired counterfactual flips: 99.93% and 100%.
+
+This is evidence of fast within-lifetime binding, positive forward transfer,
+and behavioral retention in one controller. Persistent disk-memory learning
+and cross-modality transfer remain open. See
+`experiments/unified_cognitive_controller/README.md`.
+
 The two-decision identify-then-act task requires the agent to:
 
 1. emit an opaque probe action;
@@ -69,6 +93,7 @@ See:
 
 | Path | Contents |
 |---|---|
+| `experiments/unified_cognitive_controller/` | Single-controller few-shot binding, retention, and persistent-memory interface |
 | `experiments/forward_transfer_attention/` | Main sample-efficiency, transfer, memory, binding, and causal-audit research |
 | `experiments/syllogimous_neural_computer/` | Learned external-memory neural computer |
 | `experiments/syllogimous_latent_agent/` | Latent real-time agent and sensory models |
