@@ -53,3 +53,30 @@ The final rung used balanced rehearsal with different evidence schedules,
 preserving the broader parent while acquiring the harder one-support mapping.
 Persistent disk memory exists only as an inactive tested interface and is not
 part of this capability claim.
+
+## Persistent-memory ladder
+
+`unified_persistent_capacity16_bridge_seed4006.pt` is the current unified
+controller milestone.
+
+- SHA-256:
+  `7ae568ea2007241dcc167764bd91ba4e4c19bb95431c968d42e0f4c6f766a215`
+- Capacity-16 trained recall: 91.21%
+- Zero-shot capacity-32 recall: 87.48%
+- Capacity-32 retrieval top-1: 73.82%
+- Capacity-64 frontier: 81.69%, honestly rejected
+- Empty, shuffled, and corrupted memory controls: large causal degradation
+- Private-rule reversal and paired prediction-flip controls: passed
+- Original one-support and four-rule behavioral retention: passed
+- Serializable disk read reproduces the hard latent-memory read
+
+The exact gradual parents are:
+
+- `unified_persistent_capacity2_ratio2_seed4004.pt`, SHA-256
+  `2be66cd8b13f4eee86a80bd2c0369a7cb138d1b83f489cef5e962ab0d086a34c`;
+- `unified_persistent_capacity8_bridge_seed4005.pt`, SHA-256
+  `90d4a28c8c855190fc58f4f536a927ef3548229768a9bd5ca6117655fa24528c`.
+
+The memory rows contain controller-created opaque vectors, not semantic
+records. The current rung uses store-all admission; it does not yet claim
+learned selective writes or consolidation.

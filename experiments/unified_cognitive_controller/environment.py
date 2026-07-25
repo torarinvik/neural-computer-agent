@@ -61,8 +61,8 @@ def _balanced_classes(
     return values[torch.randperm(count, generator=generator)]
 
 
-def _mask_bank() -> torch.Tensor:
-    """Two identities at four nuisance positions, with no semantic metadata."""
+def _bar_mask_bank() -> torch.Tensor:
+    """Original rectangular identities at four nuisance positions."""
     masks = torch.zeros(2, 4, IMAGE_SIZE, IMAGE_SIZE)
     centers = ((12, 12), (20, 12), (12, 20), (20, 20))
     for position, (center_x, center_y) in enumerate(centers):
@@ -76,7 +76,45 @@ def _mask_bank() -> torch.Tensor:
     return masks
 
 
-_MASKS = _mask_bank()
+def _diamond_mask_bank() -> torch.Tensor:
+    """Novel contours preserving only the tall-versus-wide relation."""
+    masks = torch.zeros(2, 4, IMAGE_SIZE, IMAGE_SIZE)
+    centers = ((12, 12), (20, 12), (12, 20), (20, 20))
+    coordinates = torch.arange(IMAGE_SIZE)
+    yy, xx = torch.meshgrid(coordinates, coordinates, indexing="ij")
+    for position, (center_x, center_y) in enumerate(centers):
+        dx = (xx - center_x).abs()
+        dy = (yy - center_y).abs()
+        masks[0, position] = (2 * dx + dy <= 8).float()
+        masks[1, position] = (dx + 2 * dy <= 8).float()
+        masks[:, position, center_y - 1:center_y + 2,
+              center_x - 1:center_x + 2] = 0.35
+    return masks
+
+
+def _dot_pair_mask_bank() -> torch.Tensor:
+    """Disconnected objects preserving only vertical/horizontal arrangement."""
+    masks = torch.zeros(2, 4, IMAGE_SIZE, IMAGE_SIZE)
+    centers = ((12, 12), (20, 12), (12, 20), (20, 20))
+    coordinates = torch.arange(IMAGE_SIZE)
+    yy, xx = torch.meshgrid(coordinates, coordinates, indexing="ij")
+    for position, (center_x, center_y) in enumerate(centers):
+        vertical = (
+            ((xx - center_x) ** 2 + (yy - (center_y - 5)) ** 2 <= 5)
+            | ((xx - center_x) ** 2 + (yy - (center_y + 5)) ** 2 <= 5))
+        horizontal = (
+            ((xx - (center_x - 5)) ** 2 + (yy - center_y) ** 2 <= 5)
+            | ((xx - (center_x + 5)) ** 2 + (yy - center_y) ** 2 <= 5))
+        masks[0, position] = vertical.float()
+        masks[1, position] = horizontal.float()
+    return masks
+
+
+_MASK_BANKS = {
+    "bars": _bar_mask_bank(),
+    "diamonds": _diamond_mask_bank(),
+    "dot_pairs": _dot_pair_mask_bank(),
+}
 
 
 def generate_lifetimes(
@@ -84,6 +122,7 @@ def generate_lifetimes(
         reverse_rules: bool = False,
         reverse_stimuli: bool = False,
         task: str = "binary_mapping",
+        appearance: str = "bars",
         support_trials: int = 1,
         device: torch.device | str = "cpu") -> CognitiveLifetimeBatch:
     """Generate a balanced batch with one uniquely correct opaque action.
@@ -98,6 +137,9 @@ def generate_lifetimes(
         raise ValueError(
             "task must be constant_action, visible_identity, "
             "binary_mapping, or four_rule")
+    if appearance not in _MASK_BANKS:
+        raise ValueError(
+            f"appearance must be one of {sorted(_MASK_BANKS)}")
     if count < 2 or count % 2:
         raise ValueError("count must be positive and divisible by two")
     if task == "four_rule" and count % 4:
@@ -145,7 +187,7 @@ def generate_lifetimes(
         position_choices = torch.tensor([0, 3], dtype=torch.long)
     positions = position_choices[torch.randint(
         0, len(position_choices), (count, trials), generator=generator)]
-    masks = _MASKS[identities, positions]
+    masks = _MASK_BANKS[appearance][identities, positions]
 
     backgrounds = (
         0.025 + 0.075 * torch.rand(

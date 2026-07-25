@@ -130,8 +130,70 @@ checkpoint is
 
 This demonstrates fast within-lifetime binding, repeatable positive transfer,
 and rehearsal-based behavioral retention inside one compact controller. It
-does not yet demonstrate persistent disk-memory growth, transfer to a new
-modality, or broad reasoning.
+does not yet demonstrate transfer to a new modality or broad reasoning.
+
+## Zero-shot appearance transfer
+
+The retained controller was audited without weight updates on two appearances
+that never occurred in training:
+
+| Unseen geometry | One-support mapping | Four-rule composition |
+|---|---:|---:|
+| elongated diamonds | 98.34% | not required |
+| disconnected dot pairs | 94.95% | 98.14% |
+
+The dot-pair renderer changes both contour and topology while preserving only
+the tall-versus-wide relation. On the one-support arm, reversed rules reached
+95.24%, paired predictions flipped 90.20%, and blank, shuffled-feedback, and
+active-state-reset controls stayed at chance. The four-rule arm reached 98.43%
+under reversal and 96.57% paired flips. No new verifier outcomes or optimizer
+updates were used.
+
+## Persistent-memory milestone
+
+Recurring-context sessions give each visually identifiable world a private
+binary mapping. A support session supplies ordinary attempted-action feedback.
+The controller emits a context key before feedback and a latent value after
+feedback. Its active state is then erased; a later session must retrieve the
+row by content similarity and act through the same controller.
+
+A frozen-interface probe localized the initial state:
+
+- the post-feedback value carried the private rule at 100% diagnostic
+  decodability;
+- the pre-feedback key had a real but imperfect context signal;
+- the post-feedback key collapsed because outcome processing changed it;
+- feeding the correct value through the dormant read path improved behavior
+  only slightly.
+
+Training therefore paired the pre-feedback key with the post-feedback value.
+No context ID, rule label, correct action, or retrieval target entered the
+learner. Query loss used only the attempted action and its scalar outcome.
+Two ordinary rehearsal streams preserved the earlier capabilities.
+
+The gradual ladder produced:
+
+| Trained memory capacity | Updates | Same-capacity recall | Harder capacity, zero-shot |
+|---:|---:|---:|---:|
+| 2 | 600 | 96.53% blind | 8: 87.48% |
+| 8 | 150 | 93.65% | 16: 90.09% |
+| 16 | 150 | 91.21% | 32: 87.48% |
+
+Every admitted checkpoint passed private-rule reversal, paired prediction
+flips, empty memory, shuffled rows, corrupted latents, disk save/load
+equivalence, one-support retention, and four-rule retention. Capacity 64 is
+the measured frontier failure at 81.69% recall and 62.44% retrieval.
+
+The current checkpoint is
+`artifacts/checkpoints/unified_persistent_capacity16_bridge_seed4006.pt`,
+SHA-256
+`7ae568ea2007241dcc167764bd91ba4e4c19bb95431c968d42e0f4c6f766a215`.
+
+Claim boundary: this demonstrates controller-created, content-addressed latent
+storage and recall across active-state resets, with actual disk serialization.
+The first rung uses generic store-all admission. Selective write decisions,
+consolidation across an unbounded stream, deletion/compression, modality
+transfer, and broad reasoning remain open.
 
 Run the sub-minute GPU experiment:
 

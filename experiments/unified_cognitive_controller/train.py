@@ -108,16 +108,18 @@ def _metrics(
 def evaluate(
         model: UnifiedCognitiveController, *, count: int, trials: int,
         seed: int, device: torch.device,
-        task: str, feedback_trials: int) -> dict[str, object]:
+        task: str, feedback_trials: int,
+        appearance: str = "bars") -> dict[str, object]:
     model.eval()
     normal_batch = generate_lifetimes(
         count, trials, seed=seed, heldout=True, task=task,
-        support_trials=feedback_trials, device=device)
+        appearance=appearance, support_trials=feedback_trials, device=device)
     reversed_batch = generate_lifetimes(
         count, trials, seed=seed, heldout=True,
         reverse_rules=(task != "visible_identity"),
         reverse_stimuli=(task == "visible_identity"),
-        task=task, support_trials=feedback_trials, device=device)
+        task=task, appearance=appearance,
+        support_trials=feedback_trials, device=device)
     normal = rollout(
         model, normal_batch, sample_actions=False,
         feedback_trials=feedback_trials)
@@ -220,6 +222,9 @@ def main() -> None:
             "four_rule"),
         default="constant_action")
     parser.add_argument(
+        "--appearance", choices=("bars", "diamonds", "dot_pairs"),
+        default="bars")
+    parser.add_argument(
         "--rehearsal-task", choices=(
             "constant_action", "visible_identity", "binary_mapping",
             "four_rule"))
@@ -232,6 +237,10 @@ def main() -> None:
             "support outcomes for rehearsal lifetimes; defaults to the "
             "main task's feedback count"))
     parser.add_argument(
+        "--rehearsal-appearance",
+        choices=("bars", "diamonds", "dot_pairs"),
+        help="renderer appearance for rehearsal lifetimes")
+    parser.add_argument(
         "--retention-task", choices=(
             "constant_action", "visible_identity", "binary_mapping",
             "four_rule"))
@@ -240,6 +249,10 @@ def main() -> None:
         help=(
             "support outcomes used by the retention audit; defaults to the "
             "main task's feedback count"))
+    parser.add_argument(
+        "--retention-appearance",
+        choices=("bars", "diamonds", "dot_pairs"),
+        help="renderer appearance used by the retention audit")
     parser.add_argument("--steps", type=int, default=600)
     parser.add_argument("--batch-size", type=int, default=256)
     parser.add_argument("--trials", type=int, default=6)
@@ -305,9 +318,14 @@ def main() -> None:
             if is_rehearsal
             and args.rehearsal_feedback_trials is not None
             else args.feedback_trials)
+        batch_appearance = (
+            args.rehearsal_appearance
+            if is_rehearsal and args.rehearsal_appearance is not None
+            else args.appearance)
         batch = generate_lifetimes(
             args.batch_size, args.trials,
             seed=args.seed * 1_000_000 + step, task=batch_task,
+            appearance=batch_appearance,
             support_trials=batch_feedback_trials,
             device=device)
         result = rollout(
@@ -333,6 +351,7 @@ def main() -> None:
                 "step": step,
                 "batch_task": batch_task,
                 "batch_feedback_trials": batch_feedback_trials,
+                "batch_appearance": batch_appearance,
                 "loss": float(loss.detach()),
                 **_metrics(result, query_start=batch_feedback_trials),
                 "elapsed_seconds": time.perf_counter() - started,
@@ -343,18 +362,23 @@ def main() -> None:
     evaluation = evaluate(
         model, count=args.test_lifetimes, trials=args.trials,
         seed=args.seed + 90_000_000, device=device, task=args.task,
-        feedback_trials=args.feedback_trials)
+        feedback_trials=args.feedback_trials, appearance=args.appearance)
     retention_evaluation = None
     if args.retention_task is not None:
         retention_feedback_trials = (
             args.retention_feedback_trials
             if args.retention_feedback_trials is not None
             else args.feedback_trials)
+        retention_appearance = (
+            args.retention_appearance
+            if args.retention_appearance is not None
+            else args.appearance)
         retention_evaluation = evaluate(
             model, count=args.test_lifetimes, trials=args.trials,
             seed=args.seed + 91_000_000, device=device,
             task=args.retention_task,
-            feedback_trials=retention_feedback_trials)
+            feedback_trials=retention_feedback_trials,
+            appearance=retention_appearance)
     admitted = (
         evaluation["gate"]["accepted"]
         and (

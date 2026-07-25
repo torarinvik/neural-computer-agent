@@ -51,8 +51,23 @@ shuffled-feedback, and active-state-reset audits:
 - paired counterfactual flips: 99.93% and 100%.
 
 This is evidence of fast within-lifetime binding, positive forward transfer,
-and behavioral retention in one controller. Persistent disk-memory learning
-and cross-modality transfer remain open. See
+and behavioral retention in one controller.
+
+The same controller now also performs content-addressed latent recall across
+active-state resets. A 600-update capacity-two rung reached 96.53% blind
+recall; 150-update bridges at capacities 8 and 16 produced zero-shot transfer
+to capacities 16 and 32. The current capacity-16 checkpoint reaches 87.48% at
+capacity 32 without capacity-32 training, while capacity 64 is the honest
+frontier at 81.69%. Empty, shuffled, and corrupted memories collapse toward
+chance; disk save/load reproduces hard retrieval; the earlier one-support and
+four-rule skills remain retained.
+
+Unseen elongated diamonds and disconnected dot-pair stimuli also transfer
+zero-shot at 94.95–98.14%, tightening the evidence that visual identity is
+relational rather than tied to the original rectangles.
+
+Selective writing, consolidation, unbounded memory growth, and cross-modality
+transfer remain open. See
 `experiments/unified_cognitive_controller/README.md`.
 
 The two-decision identify-then-act task requires the agent to:

@@ -1,0 +1,85 @@
+{
+  "agent_weights_changed": false,
+  "checkpoint": "artifacts/checkpoints/unified_compound_rehearsal_seed2505.pt",
+  "checkpoint_sha256": "8e346fd2863f595fd0ee96b5f4a8353cae48e96e7739ad0febd11345a60f9099",
+  "contexts_per_split": 1024,
+  "diagnostic_only": true,
+  "pre_feedback_key_scaling": {
+    "1024": {
+      "shuffled_pair_top1": 0.001953125,
+      "top1": 0.2138671875,
+      "top4": 0.2451171875
+    },
+    "128": {
+      "shuffled_pair_top1": 0.0078125,
+      "top1": 0.28125,
+      "top4": 0.421875
+    },
+    "16": {
+      "shuffled_pair_top1": 0.125,
+      "top1": 0.3125,
+      "top4": 0.4375
+    },
+    "2": {
+      "shuffled_pair_top1": 1.0,
+      "top1": 0.0,
+      "top4": 1.0
+    },
+    "256": {
+      "shuffled_pair_top1": 0.0078125,
+      "top1": 0.23046875,
+      "top4": 0.3359375
+    },
+    "32": {
+      "shuffled_pair_top1": 0.0625,
+      "top1": 0.375,
+      "top4": 0.5
+    },
+    "4": {
+      "shuffled_pair_top1": 0.25,
+      "top1": 0.25,
+      "top4": 1.0
+    },
+    "512": {
+      "shuffled_pair_top1": 0.00390625,
+      "top1": 0.216796875,
+      "top4": 0.2578125
+    },
+    "64": {
+      "shuffled_pair_top1": 0.0625,
+      "top1": 0.296875,
+      "top4": 0.53125
+    },
+    "8": {
+      "shuffled_pair_top1": 0.125,
+      "top1": 0.625,
+      "top4": 0.625
+    }
+  },
+  "probe_weights_discarded": true,
+  "query_to_post_feedback_key": {
+    "shuffled_pair_top1": 0.0009765625,
+    "top1": 0.001953125,
+    "top4": 0.005859375
+  },
+  "query_to_pre_feedback_key": {
+    "shuffled_pair_top1": 0.001953125,
+    "top1": 0.2138671875,
+    "top4": 0.2451171875
+  },
+  "read_path_behavior": {
+    "no_memory": 0.515625,
+    "oracle_same_context_value": 0.5419921875,
+    "shuffled_context_value": 0.51171875
+  },
+  "rule_in_post_feedback_value": {
+    "heldout_accuracy": 1.0,
+    "train_accuracy": 1.0
+  },
+  "schema": "unified-controller-persistent-interface-probe-v1",
+  "shuffled_rule_control": {
+    "heldout_accuracy": 0.35546875,
+    "train_accuracy": 0.544921875
+  },
+  "verifier_private_labels_used_by_probe": true
+}

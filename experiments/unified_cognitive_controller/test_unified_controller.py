@@ -5,7 +5,9 @@ import torch
 from .environment import NULL_ACTION, generate_lifetimes
 from .memory import DiskLatentMemory
 from .model import UnifiedCognitiveController
+from .probe_persistent_interface import _add_context_signatures
 from .train import attempted_success_loss, evaluate, rollout
+from .train_persistent_memory import _grouped_read
 
 
 def test_lifetime_has_one_correct_action_and_balanced_private_rules() -> None:
@@ -58,6 +60,33 @@ def test_heldout_renderer_changes_public_surface() -> None:
     heldout = generate_lifetimes(8, 4, seed=19, heldout=True)
     assert not torch.equal(train.frames, heldout.frames)
     assert torch.equal(train.correct_actions, heldout.correct_actions)
+
+
+def test_novel_appearances_change_only_public_geometry() -> None:
+    bars = generate_lifetimes(
+        16, 6, seed=20, task="binary_mapping",
+        appearance="bars", support_trials=1)
+    for appearance in ("diamonds", "dot_pairs"):
+        novel = generate_lifetimes(
+            16, 6, seed=20, task="binary_mapping",
+            appearance=appearance, support_trials=1)
+        assert not torch.equal(bars.frames, novel.frames)
+        assert torch.equal(
+            bars.stimulus_identities, novel.stimulus_identities)
+        assert torch.equal(bars.rule_bits, novel.rule_bits)
+        assert torch.equal(bars.correct_actions, novel.correct_actions)
+    diamonds = generate_lifetimes(
+        16, 6, seed=20, task="binary_mapping",
+        appearance="diamonds", support_trials=1)
+    reversed_diamonds = generate_lifetimes(
+        16, 6, seed=20, task="binary_mapping",
+        appearance="diamonds", support_trials=1,
+        reverse_rules=True)
+    assert torch.equal(diamonds.frames, reversed_diamonds.frames)
+    assert torch.equal(
+        diamonds.correct_actions,
+        1 - reversed_diamonds.correct_actions)
+
 
 def test_four_rule_support_is_identifiable_and_balanced() -> None:
     batch = generate_lifetimes(
@@ -147,3 +176,28 @@ def test_disk_latent_memory_round_trip(tmp_path: Path) -> None:
     read, confidence = restored.retrieve(keys[:1], top_k=1)
     assert torch.allclose(read, values[:1])
     assert confidence.shape == (1,)
+
+
+def test_recurring_context_signature_is_stable_within_world() -> None:
+    batch = generate_lifetimes(
+        8, 3, seed=31, task="binary_mapping", support_trials=1)
+    marked = _add_context_signatures(batch, seed=41)
+    signatures = marked.frames[:, :, :, 2:5, 2:5]
+    assert torch.equal(signatures[:, 0], signatures[:, 1])
+    assert torch.equal(signatures[:, 1], signatures[:, 2])
+    assert not torch.equal(signatures[0, 0], signatures[1, 0])
+
+
+def test_grouped_memory_read_never_crosses_memory_banks() -> None:
+    keys = torch.tensor([
+        [1.0, 0.0], [0.0, 1.0],
+        [1.0, 0.0], [0.0, 1.0],
+    ])
+    values = torch.tensor([
+        [1.0, 10.0], [2.0, 20.0],
+        [3.0, 30.0], [4.0, 40.0],
+    ])
+    read, selected = _grouped_read(
+        keys, keys, values, capacity=2, mode="hard")
+    assert torch.equal(read, values)
+    assert torch.equal(selected, torch.tensor([0, 1, 0, 1]))

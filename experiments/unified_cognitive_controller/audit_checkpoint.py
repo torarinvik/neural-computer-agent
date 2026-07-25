@@ -33,6 +33,9 @@ def main() -> None:
     parser.add_argument("--lifetimes", type=int, default=1024)
     parser.add_argument("--trials", type=int, default=6)
     parser.add_argument("--feedback-trials", type=int, default=1)
+    parser.add_argument(
+        "--appearance", choices=("bars", "diamonds", "dot_pairs"),
+        default="bars")
     parser.add_argument("--device", default=(
         "cuda" if torch.cuda.is_available() else "cpu"))
     args = parser.parse_args()
@@ -48,7 +51,8 @@ def main() -> None:
     evaluation = evaluate(
         model, count=args.lifetimes, trials=args.trials,
         seed=args.seed, device=device, task=args.task,
-        feedback_trials=args.feedback_trials)
+        feedback_trials=args.feedback_trials,
+        appearance=args.appearance)
     report = {
         "schema": "unified-cognitive-controller-blind-audit-v1",
         "checkpoint": str(args.checkpoint),
@@ -58,6 +62,7 @@ def main() -> None:
         "lifetimes": args.lifetimes,
         "trials": args.trials,
         "feedback_trials": args.feedback_trials,
+        "appearance": args.appearance,
         "semantic_labels_used_for_training": False,
         "unattempted_action_labels_used_for_training": False,
         "evaluation": evaluation,
