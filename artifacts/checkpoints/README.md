@@ -94,5 +94,25 @@ The exact gradual parents are:
   `7ae568ea2007241dcc167764bd91ba4e4c19bb95431c968d42e0f4c6f766a215`.
 
 The memory rows contain controller-created opaque vectors, not semantic
-records. The current rung uses store-all admission; it does not yet claim
-learned selective writes or consolidation.
+records.
+
+## Selective-memory atom
+
+`unified_selective_memory_atom_seed5402.pt` is the first checkpoint with an
+audited learned admission decision.
+
+- SHA-256:
+  `3fa82275e37ba5de686d4ec9966c1345e15b46e89938a8cf9bc0e0da94b15c30`
+- Parent: `unified_persistent_capacity40_temp50_seed4802.pt`
+- Acquisition: 80 write-gate updates and 20,480 generated contexts
+- Blind first-encounter write rate: 61.16%
+- Blind redundant-repeat write rate: 5.10%
+- Blind writes per context: 0.663
+- Query accuracy after either encounter: 99.90%
+- No-write, shuffled-admission, corrupted-value, and hidden-read controls:
+  passed
+- One-support and four-rule retention: passed
+
+The policy emergently uses memory absence as the default case and writes rows
+for exceptions. This is a bounded one-slot admission atom, not yet a claim of
+replacement, merging, compression, or unbounded-stream consolidation.

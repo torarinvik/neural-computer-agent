@@ -62,13 +62,21 @@ zero-shot to capacity 48 at 88.28% and capacity 56 at 87.33%. An independent
 five-second acquisition replicated the result, and the two checkpoints crossed
 the old capacity-64 frontier at 85.57% and 86.33%. Empty, shuffled, and
 corrupted memories collapse toward chance; disk save/load reproduces hard
-retrieval; the earlier one-support and four-rule skills remain retained.
+retrieval; the earlier one-support and four-rule skills remain retained. The
+frozen retrieval frontier is now capacity 72; both parents fail capacity 80.
+
+A subsequent selective-memory atom learned from verified success minus a
+generic write cost. On blind data it wrote on 61.16% of first encounters but
+only 5.10% of redundant repeats, averaging 0.663 writes per context while
+retaining 99.90% query accuracy. Removing writes, shuffling admissions,
+corrupting values, or hiding the prior memory read causally degraded the
+appropriate behavior.
 
 Unseen elongated diamonds and disconnected dot-pair stimuli also transfer
 zero-shot at 94.95–98.14%, tightening the evidence that visual identity is
 relational rather than tied to the original rectangles.
 
-Selective writing, consolidation, unbounded memory growth, and cross-modality
+Replacement, consolidation, unbounded memory growth, and cross-modality
 transfer remain open. See
 `experiments/unified_cognitive_controller/README.md`.
 

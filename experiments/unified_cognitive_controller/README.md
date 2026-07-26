@@ -178,7 +178,7 @@ The gradual ladder produced:
 | 2 | 600 | 96.53% blind | 8: 87.48% |
 | 8 | 150 | 93.65% | 16: 90.09% |
 | 16 | 150 | 91.21% | 32: 87.48% |
-| 40 | 40 total / 20 memory | 90.00% / 89.83% blind | 48: 88.28%; 56: 87.33%; 64: 85.57% / 86.33% |
+| 40 | 40 total / 20 memory | 90.00% / 89.83% blind | 48: 88.28%; 56: 87.33%; 64: 85.57% / 86.33%; 72: 85.81% / 85.17% |
 
 Every admitted checkpoint passed private-rule reversal, paired prediction
 flips, empty memory, shuffled rows, corrupted latents, disk save/load
@@ -191,18 +191,49 @@ temperature to 50 produced a replicated capacity-40 gain after only 20 memory
 updates and transferred zero-shot through capacity 56. Two independently
 trained five-second runs also crossed the old capacity-64 frontier at 85.57%
 and 86.33%, versus the prior parent's rejected 81.69% recall and 62.44%
-retrieval.
+retrieval. Both parents passed capacity 72 narrowly, then failed capacity 80
+at 83.88% and 84.25%. A direct 40-update capacity-80 continuation regressed to
+80.08%, so capacity 72 is the current frozen retrieval frontier.
 
-The current checkpoint is
+The selected persistent-retrieval parent is
 `artifacts/checkpoints/unified_persistent_capacity40_temp50_seed4801.pt`,
 SHA-256
 `3adc437e87e3ec65f02aeb22fe56bb16d0d48b43543d9858762eb2f27e2b3d9d`.
 
+## Selective-memory milestone
+
+The first admission atom adds a read-before-write cycle. An empty-slot
+encounter and an already-occupied repeat are ordinary sensory episodes; the
+controller receives no novelty, repetition, rule, or context label. The
+memory-write gate is rewarded only by later verified query success minus a
+generic write cost.
+
+The first coupled pilot learned the easy always-write policy and was rejected.
+A gradual occupied-memory curriculum separated the two credit-assignment
+problems. After 80 updates, the controller discovered a more compact strategy
+than the pre-registered "always write the first encounter" expectation:
+memory absence represents the controller's default mapping, while a row is
+written for exceptions. On a 4,096-context blind audit:
+
+- first-encounter writes: 61.16%;
+- redundant-repeat writes: 5.10%;
+- total writes: 0.663 per context;
+- query accuracy after either encounter: 99.90%;
+- no-write accuracy: 49.93%;
+- shuffled-admission accuracy: 79.71%;
+- corrupted-value accuracy: 55.18%;
+- hiding the prior read restored repeat writes to 61.16%;
+- the two earlier behavioral capabilities remained at 100%.
+
+The current checkpoint is
+`artifacts/checkpoints/unified_selective_memory_atom_seed5402.pt`, SHA-256
+`3fa82275e37ba5de686d4ec9966c1345e15b46e89938a8cf9bc0e0da94b15c30`.
+
 Claim boundary: this demonstrates controller-created, content-addressed latent
 storage and recall across active-state resets, with actual disk serialization.
-The first rung uses generic store-all admission. Selective write decisions,
-consolidation across an unbounded stream, deletion/compression, modality
-transfer, and broad reasoning remain open.
+It also demonstrates a learned write/skip decision for redundant encounters.
+Replacement between competing memories, consolidation across an unbounded
+stream, deletion/merging, modality transfer, and broad reasoning remain open.
 
 Run the sub-minute GPU experiment:
 
