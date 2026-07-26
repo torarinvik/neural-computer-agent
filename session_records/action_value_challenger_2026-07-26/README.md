@@ -37,3 +37,25 @@ Seed 7973 passes only if:
 
 Only a complete pass permits unchanged seeds 7981 and 7982. Both must pass
 before durable skill integration.
+
+## Initial result
+
+- hard seed 7973: proposed at 240 bits, confirmed at 480, utility `+7.98`
+  points, mastered incumbent unchanged;
+- fresh seed 7982: proposed at 480, confirmed at 720, utility `+4.47` points,
+  mastered incumbent unchanged;
+- fresh seed 7981: safe but no positive proposal within 720 bits.
+
+The learner is substantially stronger but not yet consistent enough for
+persistent integration.
+
+## Fixed-basis consistency fork
+
+The action-value head's hidden basis was previously initialized from each run
+seed, coupling environment randomness to an optimizer lottery. The next
+candidate fixes that basis with task-agnostic seed `424242`; its output remains
+zero-initialized, so no policy or task knowledge is injected.
+
+First replay seeds 7973, 7981, and 7982 as a stability diagnostic. If all three
+protect mastery and confirm a gap promotion by 720 bits, run untouched seeds
+7991 and 7992. Only five-of-five passes authorize persistent integration.

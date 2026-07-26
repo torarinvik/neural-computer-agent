@@ -261,6 +261,11 @@ def main() -> None:
     parser.add_argument(
         "--challenger-objective",
         choices=("advantage", "action_value"), default="advantage")
+    parser.add_argument(
+        "--challenger-initialization-seed", type=int,
+        help=(
+            "Use a fixed task-agnostic challenger basis across environment "
+            "seeds instead of coupling initialization to the run seed."))
     args = parser.parse_args()
     if args.active_pool_multiplier < 1:
         raise ValueError("--active-pool-multiplier must be positive")
@@ -284,9 +289,13 @@ def main() -> None:
         challenger_initial = initial
         if args.challenger_objective == "action_value":
             with torch.random.fork_rng(devices=[]):
+                initialization_seed = (
+                    args.challenger_initialization_seed
+                    if args.challenger_initialization_seed is not None
+                    else args.seed + args.gap_challenger_seed_offset)
                 torch.manual_seed(
-                    args.seed + args.gap_challenger_seed_offset
-                    + (20_000 if name == "mastered" else 30_000))
+                    initialization_seed
+                    + (0 if name == "mastered" else 1))
                 challenger_initial = ActionValueHead(hidden).to(device)
         elif name == "gap" and args.gap_challenger_seed_offset:
             with torch.random.fork_rng(devices=[]):
