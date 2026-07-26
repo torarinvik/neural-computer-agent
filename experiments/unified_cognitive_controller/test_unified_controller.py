@@ -355,6 +355,37 @@ def test_strategy_memory_can_retrieve_with_learned_context_metric() -> None:
     assert result.slot == 0
 
 
+def test_soft_strategy_retrieval_is_a_convex_mixture() -> None:
+    memory = LatentStrategyMemory(
+        capacity=2, key_width=2, value_width=2)
+    memory.upsert(
+        torch.tensor([1.0, 0.0]), torch.tensor([2.0, 0.0]),
+        verified_improvement=1.0)
+    memory.upsert(
+        torch.tensor([0.0, 1.0]), torch.tensor([0.0, 4.0]),
+        verified_improvement=1.0)
+    encoder = VerifierTrainedContextEncoder(width=2)
+    result = memory.retrieve_soft(
+        torch.tensor([1.0, 1.0]), torch.zeros(2),
+        encoder=encoder, temperature=0.5)
+    assert result.mixture_weights is not None
+    assert torch.allclose(
+        result.mixture_weights, torch.tensor([0.5, 0.5]))
+    assert torch.allclose(result.value, torch.tensor([1.0, 2.0]))
+
+
+def test_context_encoder_spsa_step_follows_verified_difference() -> None:
+    encoder = VerifierTrainedContextEncoder(width=3)
+    direction = torch.tensor([1.0, -1.0, 1.0])
+    advantage = encoder.spsa_step(
+        direction, positive_reward=0.8, negative_reward=0.3,
+        step_size=0.2)
+    assert abs(advantage - 0.5) < 1e-6
+    assert torch.allclose(
+        encoder.log_scale,
+        torch.tensor([0.1, -0.1, 0.1]))
+
+
 def test_dynamic_working_memory_mask_accounting_and_persistence(
         tmp_path: Path) -> None:
     memory = DynamicWorkingMemory(

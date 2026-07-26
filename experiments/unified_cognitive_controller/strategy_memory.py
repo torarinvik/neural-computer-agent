@@ -34,6 +34,7 @@ class StrategyRetrieval:
     value: torch.Tensor
     slot: int | None
     similarity: float
+    mixture_weights: torch.Tensor | None = None
 
 
 class VerifierTrainedContextEncoder(nn.Module):
@@ -78,6 +79,19 @@ class VerifierTrainedContextEncoder(nn.Module):
         loss.backward()
         optimizer.step()
         return float(loss.detach())
+
+    def spsa_step(
+            self, direction: torch.Tensor, *,
+            positive_reward: float, negative_reward: float,
+            step_size: float) -> float:
+        """Black-box update from two verifier-scored metric perturbations."""
+        if direction.shape != self.log_scale.shape:
+            raise ValueError("context perturbation has wrong width")
+        advantage = positive_reward - negative_reward
+        with torch.no_grad():
+            self.log_scale.add_(step_size * advantage * direction)
+            self.log_scale.clamp_(-3.0, 3.0)
+        return advantage
 
 
 class LatentStrategyMemory:
@@ -130,6 +144,29 @@ class LatentStrategyMemory:
         return StrategyRetrieval(
             self.values[slot].clone(), slot,
             float(similarities[slot]))
+
+    def retrieve_soft(
+            self, key: torch.Tensor, fallback: torch.Tensor, *,
+            encoder: VerifierTrainedContextEncoder,
+            temperature: float = 0.25) -> StrategyRetrieval:
+        """Return a differentiable-metric, convex mixture of stored values."""
+        if key.shape != (self.key_width,):
+            raise ValueError("strategy key has wrong width")
+        if fallback.shape != (self.value_width,):
+            raise ValueError("fallback strategy has wrong width")
+        if temperature <= 0:
+            raise ValueError("temperature must be positive")
+        if self.count == 0:
+            return StrategyRetrieval(fallback.clone(), None, 0.0)
+        similarities = (
+            encoder(self.keys[:self.count]).detach()
+            @ encoder(key).detach())
+        weights = (similarities / temperature).softmax(dim=0)
+        slot = int(weights.argmax())
+        self.usage[slot] += 1
+        return StrategyRetrieval(
+            weights @ self.values[:self.count], slot,
+            float(similarities[slot]), weights.clone())
 
     def upsert(
             self, key: torch.Tensor, value: torch.Tensor, *,

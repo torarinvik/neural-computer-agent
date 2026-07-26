@@ -71,6 +71,10 @@ def main() -> None:
     parser.add_argument(
         "--context-learning-rate", type=float, default=0.0,
         help="positive enables verifier-trained context feature weighting")
+    parser.add_argument(
+        "--soft-context-perturbation", type=float, default=0.0,
+        help="SPSA radius; positive evaluates two soft retrieval mixtures")
+    parser.add_argument("--soft-context-temperature", type=float, default=0.25)
     parser.add_argument("--device", default=(
         "cuda" if torch.cuda.is_available() else "cpu"))
     args = parser.parse_args()
@@ -137,6 +141,7 @@ def main() -> None:
             and args.context_learning_rate > 0 else None)
         context_updates = 0
         context_losses = []
+        context_advantages = []
         previous_reward_signature = torch.zeros(3, device=device)
         strategy_save_reloads = 0
         strategy_candidate_evaluations = 0
@@ -277,37 +282,64 @@ def main() -> None:
                     tensor_means.append(float(tensor.mean()))
                 post_probe_retrieval = None
                 post_probe_weight = None
+                soft_retrievals = []
+                soft_weights = []
+                context_direction = None
                 if strategy_memory is not None and strategy_memory.count:
-                    strategy_candidate_evaluations += 1
                     reward_signature = torch.tensor(
                         physical_means, device=device)
                     reward_context_key = physical_context_key(
                         features, reward_signature)
-                    post_probe_retrieval = strategy_memory.retrieve(
-                        reward_context_key, current.flatten(),
-                        encoder=context_encoder)
-                    post_probe_weight = (
-                        post_probe_retrieval.value.reshape(1, -1))
-                    model.memory_replacement_extra_gate.weight.copy_(
-                        post_probe_weight)
-                    memory_actions = model.memory_replacement_scores(
-                        features).argmax(-1)
-                    actions_by_candidate.append(memory_actions)
-                    memory_directory = (
-                        root / f"round-{rounds:03d}-candidate-memory")
-                    memory_directory.mkdir()
-                    physical, exact = _physical_rewards(
-                        model, memories, data, row_batch, row_queries,
-                        candidate_batch, candidate_queries,
-                        memory_actions, target, memory_directory,
-                        device=device)
-                    tensor = _tensor_rewards(
-                        model, memories, data, row_batch, row_queries,
-                        candidate_batch, candidate_queries,
-                        memory_actions, target, device=device)
-                    candidate_exact += exact
-                    physical_means.append(float(physical.mean()))
-                    tensor_means.append(float(tensor.mean()))
+                    if args.soft_context_perturbation > 0:
+                        context_direction = torch.randint(
+                            0, 2, (13,), generator=direction_generator,
+                            device=device).float() * 2 - 1
+                        original_scale = (
+                            context_encoder.log_scale.detach().clone())
+                        for context_sign in (1.0, -1.0):
+                            context_encoder.log_scale.data.copy_(
+                                original_scale
+                                + context_sign
+                                * args.soft_context_perturbation
+                                * context_direction)
+                            soft_retrievals.append(
+                                strategy_memory.retrieve_soft(
+                                    reward_context_key, current.flatten(),
+                                    encoder=context_encoder,
+                                    temperature=args.soft_context_temperature))
+                        context_encoder.log_scale.data.copy_(original_scale)
+                    else:
+                        soft_retrievals.append(strategy_memory.retrieve(
+                            reward_context_key, current.flatten(),
+                            encoder=context_encoder))
+                    for retrieval_index, retrieval in enumerate(
+                            soft_retrievals):
+                        strategy_candidate_evaluations += 1
+                        candidate_weight = retrieval.value.reshape(1, -1)
+                        soft_weights.append(candidate_weight)
+                        model.memory_replacement_extra_gate.weight.copy_(
+                            candidate_weight)
+                        memory_actions = model.memory_replacement_scores(
+                            features).argmax(-1)
+                        actions_by_candidate.append(memory_actions)
+                        memory_directory = root / (
+                            f"round-{rounds:03d}-candidate-memory-"
+                            f"{retrieval_index}")
+                        memory_directory.mkdir()
+                        physical, exact = _physical_rewards(
+                            model, memories, data, row_batch, row_queries,
+                            candidate_batch, candidate_queries,
+                            memory_actions, target, memory_directory,
+                            device=device)
+                        tensor = _tensor_rewards(
+                            model, memories, data, row_batch, row_queries,
+                            candidate_batch, candidate_queries,
+                            memory_actions, target, device=device)
+                        candidate_exact += exact
+                        physical_means.append(float(physical.mean()))
+                        tensor_means.append(float(tensor.mean()))
+                    post_probe_retrieval = soft_retrievals[0]
+                    post_probe_weight = soft_weights[0]
                 aligned_rewards = list(physical_means)
                 if args.shuffle_physical_rewards:
                     order = torch.randperm(
@@ -332,6 +364,16 @@ def main() -> None:
                 maximum_cross_choice_regret = max(
                     maximum_cross_choice_regret, cross_regret)
                 if (
+                        context_direction is not None
+                        and len(soft_retrievals) == 2
+                        and args.context_learning_rate > 0):
+                    context_advantages.append(context_encoder.spsa_step(
+                        context_direction,
+                        positive_reward=physical_means[3],
+                        negative_reward=physical_means[4],
+                        step_size=args.context_learning_rate))
+                    context_updates += 1
+                elif (
                         context_optimizer is not None
                         and post_probe_retrieval is not None
                         and post_probe_retrieval.slot is not None):
@@ -349,7 +391,8 @@ def main() -> None:
                         current + winner_sign * args.step_size
                         * direction.unsqueeze(0))
                 else:
-                    winner_weight = post_probe_weight
+                    winner_weight = soft_weights[
+                        physical_winner - len(signs)]
                 model.memory_replacement_extra_gate.weight.copy_(
                     winner_weight)
                 strategy_slot = None
@@ -440,6 +483,12 @@ def main() -> None:
                         if post_probe_retrieval is not None else None),
                     "post_probe_strategy_won":
                         physical_winner >= len(signs),
+                    "soft_context_candidate_count": len(soft_retrievals),
+                    "soft_context_mixture_weights": [
+                        (
+                            retrieval.mixture_weights.tolist()
+                            if retrieval.mixture_weights is not None else None)
+                        for retrieval in soft_retrievals],
                     "context_encoder_updates": context_updates,
                     "strategy_memory_count": (
                         strategy_memory.count
@@ -568,6 +617,9 @@ def main() -> None:
             "context_encoder_mean_loss": (
                 sum(context_losses) / len(context_losses)
                 if context_losses else None),
+            "context_encoder_mean_spsa_advantage": (
+                sum(context_advantages) / len(context_advantages)
+                if context_advantages else None),
             "context_encoder_scales": (
                 context_encoder.log_scale.detach().exp().tolist()
                 if context_encoder is not None else None),

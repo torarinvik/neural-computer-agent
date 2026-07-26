@@ -306,3 +306,28 @@ route. The next context experiment must create informative counterfactual
 credit without privileged labels—for example, a soft mixture over stored
 strategies whose verifier-measured outcome can differentiate key weights.
 Dynamic slot admission and eviction remain disabled.
+
+## Soft context metric: action-boundary localization
+
+Soft retrieval was tested with two opposite SPSA perturbations of the same
+13-parameter context metric. Every arm paid for both mixture candidates, and
+only their physical verifier-reward difference could update the metric.
+
+At perturbation 0.4 and temperature 0.3, mixture weights differed by as much as
+22.5% across paired candidates on two seeds, but every verified outcome stayed
+identical. This localized the immediate bottleneck to the downstream discrete
+action boundary rather than failure to form different mixtures.
+
+A pre-registered sharper screen (perturbation 1.2, temperature 0.08) crossed
+that boundary on seed 7072: one pair differed by 4.17 reward points and the
+metric scales moved by up to 2.1%. The matched learned and frozen arms
+nevertheless had identical target reward/accuracy, while seed 7073 supplied no
+nonzero metric advantage. Shuffling keys harmed target transfer and old-return
+retention on seed 7072, establishing causal dependence on addressing but not
+learned improvement.
+
+The soft mechanism is retained as a diagnostic, but the capability gate is
+rejected. Do not enable dynamic admission or lengthen this exact run. The next
+experiment needs more *informative unique comparisons per verifier bit*, not a
+larger encoder: preserve the sharp setting and vary contexts gradually until
+the proportion of action-divergent paired mixtures is high enough to learn.
