@@ -1,0 +1,37 @@
+{
+  "age_corrupted_physical": {
+    "accuracy": 0.8550781607627869,
+    "after_rows": 2560,
+    "before_rows": 2560,
+    "capacity_growth": 0,
+    "disk_bytes": 3383296
+  },
+  "age_corrupted_tensor_accuracy": 0.8550781011581421,
+  "bank_capacity": 5,
+  "banks": 512,
+  "checkpoint": "artifacts/candidates/unified_memory_replacement_seed6101.pt",
+  "checkpoint_sha256": "0178b15228e3d75a445abdb2376be1291a078f8b47236444fbd1824fab3d3b76",
+  "gate": {
+    "accepted": true,
+    "age_signal_is_physically_causal": true,
+    "bounded_row_count_preserved": true,
+    "physical_accuracy_at_least_94": true,
+    "physical_capacity_never_grew": true,
+    "target_eviction_at_least_80": true,
+    "tensor_disk_gap_at_most_2": true
+  },
+  "generated_contexts": 6144,
+  "physical": {
+    "accuracy": 0.956250011920929,
+    "after_rows": 2560,
+    "before_rows": 2560,
+    "capacity_growth": 0,
+    "disk_bytes": 3383296
+  },
+  "schema": "unified-controller-memory-replacement-disk-audit-v1",
+  "seed": 6301,
+  "semantic_or_utility_labels_used_for_training": false,
+  "target_eviction_rate": 0.87109375,
+  "tensor_accuracy": 0.956250011920929,
+  "weights_changed": false
+}

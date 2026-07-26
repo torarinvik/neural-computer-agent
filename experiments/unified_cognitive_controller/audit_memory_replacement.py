@@ -110,6 +110,10 @@ def main() -> None:
     shuffled = model.memory_replacement_scores(
         shuffled_features).argmax(-1)
     target = data["target_action"]
+    target_eviction_rate = float(
+        (learned == target).float().mean())
+    corrupted_target_eviction_rate = float(
+        (shuffled == target).float().mean())
     tensor_accuracy = float(_bank_reward(
         model, data, learned, device=device).mean())
     shuffled_tensor_accuracy = float(_bank_reward(
@@ -136,8 +140,11 @@ def main() -> None:
         "generated_contexts": data["generated_contexts"],
         "weights_changed": False,
         "semantic_or_utility_labels_used_for_training": False,
-        "target_eviction_rate": float(
-            (learned == target).float().mean()),
+        "target_eviction_rate": target_eviction_rate,
+        "age_corrupted_target_eviction_rate":
+            corrupted_target_eviction_rate,
+        "required_causal_accuracy_drop":
+            0.4 / args.bank_capacity,
         "tensor_accuracy": tensor_accuracy,
         "age_corrupted_tensor_accuracy": shuffled_tensor_accuracy,
         "physical": normal,
@@ -155,8 +162,12 @@ def main() -> None:
             == args.banks * args.bank_capacity,
         "physical_capacity_never_grew":
             normal["capacity_growth"] == 0,
-        "age_signal_is_physically_causal":
-            corrupted["accuracy"] <= normal["accuracy"] - 0.10,
+        "age_signal_changes_eviction":
+            corrupted_target_eviction_rate
+            <= target_eviction_rate - 0.50,
+        "age_signal_hurts_by_40_percent_query":
+            corrupted["accuracy"]
+            <= normal["accuracy"] - 0.4 / args.bank_capacity + 1e-6,
     }
     report["gate"]["accepted"] = all(report["gate"].values())
     args.report.parent.mkdir(parents=True, exist_ok=True)

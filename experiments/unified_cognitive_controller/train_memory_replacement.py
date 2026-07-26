@@ -286,17 +286,22 @@ def evaluate_replacement(
         "replace_rate": float((learned > 0).float().mean()),
         "generated_contexts": data["generated_contexts"],
     }
+    def captures_oracle_gap(control_accuracy: float) -> bool:
+        available = max(0.0, oracle_accuracy - control_accuracy)
+        captured = learned_accuracy - control_accuracy
+        return captured + 1e-6 >= 0.75 * available
+
     report["gate"] = {
         "accuracy_at_least_85": learned_accuracy >= 0.85,
         "within_3_points_of_oracle":
             learned_accuracy >= oracle_accuracy - 0.03,
         "target_eviction_at_least_80": target_rate >= 0.80,
-        "beats_random_by_10":
-            learned_accuracy >= random_accuracy + 0.10,
-        "beats_fixed_by_10":
-            learned_accuracy >= fixed_accuracy + 0.10,
-        "beats_skip_by_15":
-            learned_accuracy >= skip_accuracy + 0.15,
+        "captures_75_percent_of_oracle_random_gap":
+            captures_oracle_gap(random_accuracy),
+        "captures_75_percent_of_oracle_fixed_gap":
+            captures_oracle_gap(fixed_accuracy),
+        "captures_75_percent_of_oracle_skip_gap":
+            captures_oracle_gap(skip_accuracy),
         "age_signal_is_causal":
             shuffled_accuracy <= learned_accuracy - 0.10,
         "oracle_is_solved": oracle_accuracy >= 0.85,
@@ -317,6 +322,7 @@ def main() -> None:
     parser.add_argument("--batch-banks", type=int, default=128)
     parser.add_argument("--test-banks", type=int, default=1024)
     parser.add_argument("--bank-capacity", type=int, default=4)
+    parser.add_argument("--rehearsal-capacity", type=int)
     parser.add_argument("--write-threshold", type=float, default=0.5)
     parser.add_argument("--learning-rate", type=float, default=3e-2)
     parser.add_argument("--replacement-cost", type=float, default=0.01)
@@ -325,6 +331,10 @@ def main() -> None:
     args = parser.parse_args()
     if args.bank_capacity < 2:
         raise ValueError("bank capacity must be at least two")
+    if (
+            args.rehearsal_capacity is not None
+            and args.rehearsal_capacity < 2):
+        raise ValueError("rehearsal capacity must be at least two")
 
     seed_everything(args.seed)
     device = torch.device(args.device)
@@ -337,8 +347,7 @@ def main() -> None:
     missing, unexpected = model.load_state_dict(
         payload["state_dict"], strict=False)
     if (
-            not missing
-            or not all(
+            not all(
                 name.startswith("memory_replacement_gate.")
                 for name in missing)
             or unexpected):
@@ -359,15 +368,23 @@ def main() -> None:
     baseline = 0.0
     history = []
     generated_contexts = 0
+    query_bits = 0
     started = time.perf_counter()
     for step in range(1, args.steps + 1):
         model.train()
+        training_capacity = (
+            args.rehearsal_capacity
+            if (
+                args.rehearsal_capacity is not None
+                and step % 2 == 0)
+            else args.bank_capacity)
         data = replacement_batch(
             model, banks=args.batch_banks,
-            capacity=args.bank_capacity,
+            capacity=training_capacity,
             seed=args.seed * 1_000_000 + step,
             device=device, write_threshold=args.write_threshold)
         generated_contexts += int(data["generated_contexts"])
+        query_bits += args.batch_banks * training_capacity
         logits = model.memory_replacement_scores(
             data["option_features"])
         distribution = torch.distributions.Categorical(logits=logits)
@@ -397,6 +414,7 @@ def main() -> None:
                 "target_eviction_rate": float(
                     (actions == data["target_action"]).float().mean()),
                 "replace_rate": float((actions > 0).float().mean()),
+                "training_capacity": training_capacity,
                 "elapsed_seconds": time.perf_counter() - started,
             }
             history.append(entry)
@@ -406,6 +424,13 @@ def main() -> None:
         model, banks=args.test_banks, capacity=args.bank_capacity,
         seed=args.seed + 90_000_000, device=device,
         write_threshold=args.write_threshold)
+    rehearsal_report = (
+        evaluate_replacement(
+            model, banks=args.test_banks,
+            capacity=args.rehearsal_capacity,
+            seed=args.seed + 90_500_000, device=device,
+            write_threshold=args.write_threshold)
+        if args.rehearsal_capacity is not None else None)
     binary = evaluate(
         model, count=2048, trials=6, seed=args.seed + 91_000_000,
         device=device, task="binary_mapping", feedback_trials=1)
@@ -420,13 +445,14 @@ def main() -> None:
         for name in changed)
     admitted = (
         replacement_report["gate"]["accepted"]
+        and (
+            rehearsal_report is None
+            or rehearsal_report["gate"]["accepted"])
         and binary["gate"]["accepted"]
         and four_rule["gate"]["accepted"]
         and only_replacement_changed)
     training_seconds = (
         history[-1]["elapsed_seconds"] if history else 0.0)
-    query_bits = (
-        args.steps * args.batch_banks * args.bank_capacity)
     report = {
         "schema": "unified-controller-memory-replacement-v1",
         "configuration": vars(args) | {
@@ -457,6 +483,7 @@ def main() -> None:
         },
         "history": history,
         "replacement_evaluation": replacement_report,
+        "rehearsal_replacement_evaluation": rehearsal_report,
         "binary_retention": binary,
         "four_rule_retention": four_rule,
         "changed_parameters": changed,

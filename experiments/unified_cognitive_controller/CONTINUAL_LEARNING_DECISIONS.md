@@ -74,10 +74,11 @@ replay cost becomes a demonstrated bottleneck.
 ## Next continual-learning question
 
 The controller now learns both sparse write/skip and adaptive read/no-read
-decisions, plus bounded replacement at capacity 4, and passes replicated
-physical disk, corruption, and retention gates. Zero-shot capacity 8 was
-behaviorally close but failed causal eviction gates. The next high-value rung
-is therefore capacity 5 with capacity-4 rehearsal, changing only one
-difficulty axis. After that replicates, replace the deterministic
-oldest-is-obsolete distribution with a noisy frequency/recency utility stream.
-Consolidation and merging follow only after replacement survives both changes.
+decisions, plus bounded replacement through capacity 9, and passes replicated
+physical disk, corruption, and retention gates. A 20-update capacity-6 bridge
+with 20 capacity-5 rehearsal updates sharpened the generic rule enough to
+transfer zero-shot through a replicated capacity-9 physical frontier.
+Additional bank-size scaling now repeats the same monotonic recency mechanism.
+The next high-value rung keeps capacity 6 fixed but replaces deterministic
+oldest-is-obsolete utility with a noisy frequency-plus-recency distribution.
+Consolidation and merging follow only after replacement survives that change.

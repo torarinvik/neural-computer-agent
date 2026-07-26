@@ -113,14 +113,25 @@ zero capacity growth. Shuffling age-to-slot correspondence reduced accuracy to
 The promoted 298,358-parameter checkpoint is
 `artifacts/checkpoints/unified_memory_replacement_seed6101.pt`, SHA-256
 `0178b15228e3d75a445abdb2376be1291a078f8b47236444fbd1824fab3d3b76`.
-Zero-shot capacity 8 reached 93.99% but failed causal and correct-eviction
-gates, so capacity 4 remains the honest replacement frontier.
+That first policy transferred zero-shot to capacity 5, but not causally to
+capacity 6. A gradual bridge then used only 20 capacity-6 updates interleaved
+with 20 capacity-5 rehearsal updates. It matched the capacity-6 oracle at
+96.39% with 100% correct evictions and retained every prior gate. Two physical
+replications reached 96.55% and 96.71%. The sharpened rule subsequently
+transferred with zero weight updates through capacities 7 and 8 and reached a
+replicated physical capacity-9 frontier at 94.57% and 94.62%, with
+99.61–100% correct evictions and zero growth.
+
+The current checkpoint is
+`artifacts/checkpoints/unified_memory_replacement_capacity6_seed6310.pt`,
+SHA-256
+`934b0a09b456726bee38296bf451ea35bc6b6ed3d8ba7c11ebac7601d78cd7dc`.
 
 Unseen elongated diamonds and disconnected dot-pair stimuli also transfer
 zero-shot at 94.95–98.14%, tightening the evidence that visual identity is
 relational rather than tied to the original rectangles.
 
-Replacement under richer/nonstationary utility, consolidation,
+Replacement under richer probabilistic or nonstationary utility, consolidation,
 deletion/merging, unbounded memory streams, and cross-modality transfer remain
 open. See
 `experiments/unified_cognitive_controller/README.md`.

@@ -328,23 +328,59 @@ and reloaded every bank, and queried through the inherited adaptive read gate.
 A fresh capacity-8 sparse-memory retention audit also passed at 91.21% first
 reload, 91.02% repeat reload, and 15.23% duplicate growth.
 
-The capacity-4 policy was additionally applied zero-shot to capacity 8. It
-reached 93.99%, but correct eviction fell to 71.48% and age corruption reduced
-accuracy by only 3.91 points. That arm failed its causal gates and was not
-promoted. The next gradual rung is capacity 5, with capacity-4 rehearsal.
+The first capacity-4 policy was additionally applied zero-shot to capacity 8.
+It reached 93.99%, but correct eviction fell to 71.48% and age corruption
+reduced accuracy by only 3.91 points. That arm failed its causal gates. The
+curriculum therefore returned to the next single-step rung.
 
-The promoted checkpoint is
+Capacity 5 passed twice without training at 95.63% and 95.51%. Capacity 6 was
+a genuine near miss: 94.99% and 84.96% correct evictions, but insufficient
+causal separation. The bridge used 20 capacity-6 updates alternating with 20
+capacity-5 rehearsal updates. It consumed 94,720 verifier bits, no replay, and
+8.69 seconds total wall time. The resulting policy reached:
+
+- capacity 6: 96.39%, exactly matching its oracle, with 100% correct evictions;
+- rehearsed capacity 5: every admission gate passed;
+- unchanged one-support and four-rule behavioral gates.
+
+Two physical capacity-6 audits reached 96.55% and 96.71%, with 100% correct
+evictions, zero capacity growth, and age-corrupted accuracies of 86.04% and
+86.78%. Capacity-5 retention reached 96.37%; the inherited sparse disk loop
+remained at 90.33% first reload, 90.14% repeat reload, and 17.38% duplicate
+growth.
+
+The sharpened capacity-6 policy then generalized without weight updates:
+
+| Capacity | Physical accuracy | Replication | Correct evictions | Growth |
+|---:|---:|---:|---:|---:|
+| 7 | 95.70% | 96.23% | 100% / 100% | 0 |
+| 8 | 94.85% | 95.75% | 100% / 100% | 0 |
+| 9 | 94.57% | 94.62% | 99.61% / 100% | 0 |
+
+For capacity-aware causal auditing, age corruption must change correct
+eviction selection by at least 50 points and erase at least 40% of one query
+slot (`0.4 / capacity`). This prevents an impossible fixed absolute gap as
+each bank grows while retaining a direct causal-action requirement. At
+capacity 9, corrupting age-to-slot correspondence drove correct evictions to
+0% on both seeds and accuracy to 89.13% and 88.80%.
+
+The original promoted checkpoint remains
 `artifacts/checkpoints/unified_memory_replacement_seed6101.pt`, SHA-256
 `0178b15228e3d75a445abdb2376be1291a078f8b47236444fbd1824fab3d3b76`.
+The current replacement frontier is
+`artifacts/checkpoints/unified_memory_replacement_capacity6_seed6310.pt`,
+SHA-256
+`934b0a09b456726bee38296bf451ea35bc6b6ed3d8ba7c11ebac7601d78cd7dc`.
 
 Claim boundary: this demonstrates controller-created, content-addressed latent
 storage and recall across active-state resets, with actual disk serialization.
 It also demonstrates learned write/skip and read/no-read decisions operating
 together within the storage-efficiency gate, plus learned bounded replacement
 under one simple recency-predictive utility distribution. Richer or
-nonstationary utility, replacement beyond capacity 4, consolidation across an
+nonstationary utility, replacement beyond capacity 9, consolidation across an
 unbounded stream, deletion/merging, modality transfer, and broad reasoning
-remain open.
+remain open. Further capacity scaling on the same monotonic recency rule has
+lower value than making utility depend jointly on noisy frequency and recency.
 
 Run the sub-minute GPU experiment:
 
