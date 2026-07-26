@@ -110,3 +110,28 @@ Seed 7871 remains rejected under its original gate. Prospectively, fresh seed
   still cost at least `0.02` utility.
 
 A full seed-7873 pass permits unchanged seed-7874 replication.
+
+## Replicated cost-generalization result
+
+Both fresh seeds passed the corrected zero-shot causal gate:
+
+- seed 7873: consolidated lineage stable at `0` target bits, ancestor at
+  `120`, reset at `360`; final accuracy `81.1%`, gap capture `58.5%`;
+- seed 7874: consolidated lineage stable at `0`, ancestor at `120`, reset at
+  `120`; final accuracy `81.7%`, gap capture `59.3%`.
+
+Feature shuffling and missing evidence destroyed the benefit. Both old-skill
+retention gates, gradients, and serialization passed. Reward-shuffled target
+updates did not damage the already-mastered zero-shot policy and are reported
+without being treated as a causal requirement.
+
+The seed-7874 experience was then consolidated into a new checkpoint. Its
+provenance records 720 cost-0.24 source outcomes and 12 updates, on top of the
+earlier capacity lineage. This establishes replicated compounding across a
+second axis: the newer lineage immediately adapts not only to more memory
+slots, but to a substantially different price for extra computation.
+
+The next frontier should test a changed physical compute operation through the
+closest available bridge—preferably read versus re-query—using the
+cost-consolidated checkpoint, its capacity-five ancestor, and reset. A direct
+jump to recurrent thought remains too large.

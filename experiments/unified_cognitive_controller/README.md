@@ -837,6 +837,20 @@ increase should hold capacity fixed and shift one generic evidence
 distribution, then compare the consolidated lineage against both its earlier
 ancestor and reset.
 
+That next axis now also passes. At capacity five, a private zero-training
+frontier search selected read cost 0.24: high enough to make indiscriminate
+extra computation harmful. On two fresh target streams, the
+capacity-five-consolidated lineage was already stably mastered at zero new
+bits. Its capacity-four ancestor required 120 bits on both streams; reset
+required 360 and 120. Final inherited accuracy was 81.1% and 81.7%, with 58.5%
+and 59.3% oracle-gap capture. Evidence interventions and retention audits
+passed.
+
+The updated cost-sensitive checkpoint is persisted for the next rung. The
+frontier is now a gradual physical-operation bridge—external read to re-query
+before recurrent thought—while keeping stable bits-to-threshold, ancestor,
+reset, evidence, and retention controls unchanged.
+
 Run the sub-minute GPU experiment:
 
 ```bash
