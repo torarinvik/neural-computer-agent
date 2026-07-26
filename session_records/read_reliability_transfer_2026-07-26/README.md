@@ -76,3 +76,13 @@ was only barely above the oracle-gap gate at `0.20`, while the consolidated
 lineage retained a growing utility advantage. A final zero-training refinement
 measures `0.22, 0.24, 0.26, 0.28` inside that pre-identified bracket. It adds
 no learner-visible bits and reuses one 4,080-bit private both-action audit.
+
+The refinement selected read cost `0.24`: the capacity-five lineage passed at
+zero bits (`73.5%` choice accuracy, `30.8%` gap capture), while its
+capacity-four ancestor failed (`18.8%` gap capture). This is the smallest
+measured separating cost.
+
+Seed 7871 is pre-registered as the fresh powered training race at capacity
+five, threshold 0.5, and read cost 0.24. It uses the standard 720 target bits,
+12 updates, three-way lineage/ancestor/reset comparison, causal controls, and
+retention gates. A full pass permits one unchanged seed-7872 replication.
