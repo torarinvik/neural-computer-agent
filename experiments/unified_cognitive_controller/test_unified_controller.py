@@ -55,6 +55,7 @@ from .train_cost_aware_requery import (
 )
 from .train_requery_transfer import _candidate_name
 from .train_safe_requery_adaptation import (
+    cross_fitted_action_values,
     cross_fitted_context_baseline,
     paired_ips_improvement,
 )
@@ -112,6 +113,18 @@ def test_cross_fitted_context_baseline_uses_no_heldout_outcome() -> None:
     changed[0] += 100
     perturbed = cross_fitted_context_baseline(features, changed)
     assert torch.equal(original[0], perturbed[0])
+
+
+def test_cross_fitted_action_values_do_not_use_heldout_outcome() -> None:
+    features = torch.arange(32, dtype=torch.float32).reshape(8, 4)
+    actions = torch.tensor([0, 1] * 4)
+    outcomes = features[:, 0] * 0.1 + actions.float() * 0.2
+    original = cross_fitted_action_values(features, actions, outcomes)
+    changed = outcomes.clone()
+    changed[0] += 100
+    perturbed = cross_fitted_action_values(features, actions, changed)
+    assert torch.equal(original[0][0], perturbed[0][0])
+    assert torch.equal(original[1][0], perturbed[1][0])
 
 
 def test_verified_skill_store_is_atomic_hash_checked_and_append_only(

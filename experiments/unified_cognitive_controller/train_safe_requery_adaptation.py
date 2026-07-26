@@ -40,9 +40,11 @@ def paired_ips_improvement(
             incumbent_actions.shape == challenger_actions.shape
             == attempted_actions.shape == attempted_utilities.shape):
         raise ValueError("all logged tensors must have the same shape")
-    if baseline_mode not in ("global", "context_crossfit"):
+    if baseline_mode not in (
+            "global", "context_crossfit", "doubly_robust_crossfit"):
         raise ValueError(baseline_mode)
-    if baseline_mode == "context_crossfit" and (
+    if baseline_mode in (
+            "context_crossfit", "doubly_robust_crossfit") and (
             context_features is None
             or context_features.shape[0] != attempted_utilities.shape[0]):
         raise ValueError(
@@ -51,7 +53,23 @@ def paired_ips_improvement(
         attempted_actions.bool(),
         torch.full_like(attempted_utilities, 1.0 / propensity),
         torch.full_like(attempted_utilities, 1.0 / (1.0 - propensity)))
-    if baseline_mode == "global":
+    if baseline_mode == "doubly_robust_crossfit":
+        assert context_features is not None
+        q0, q1, q_logged = cross_fitted_action_values(
+            context_features, attempted_actions, attempted_utilities)
+        q_incumbent = torch.where(incumbent_actions.bool(), q1, q0)
+        q_challenger = torch.where(challenger_actions.bool(), q1, q0)
+        incumbent_correction = (
+            weights * (attempted_actions == incumbent_actions)
+            * (attempted_utilities - q_logged))
+        challenger_correction = (
+            weights * (attempted_actions == challenger_actions)
+            * (attempted_utilities - q_logged))
+        paired = (
+            q_challenger - q_incumbent
+            + challenger_correction - incumbent_correction)
+        centered_utilities = attempted_utilities - q_logged
+    elif baseline_mode == "global":
         baseline = torch.full_like(
             attempted_utilities, attempted_utilities.mean())
     else:
@@ -62,10 +80,12 @@ def paired_ips_improvement(
     # difference because the two action-match indicators have equal expected
     # mass under the randomized logger.
     centered_utilities = attempted_utilities - baseline
-    paired = weights * centered_utilities * (
-        (attempted_actions == challenger_actions).to(attempted_utilities.dtype)
-        - (attempted_actions == incumbent_actions).to(
-            attempted_utilities.dtype))
+    if baseline_mode != "doubly_robust_crossfit":
+        paired = weights * centered_utilities * (
+            (attempted_actions == challenger_actions).to(
+                attempted_utilities.dtype)
+            - (attempted_actions == incumbent_actions).to(
+                attempted_utilities.dtype))
     mean = float(paired.mean())
     standard_error = (
         float(paired.std(unbiased=True)) / math.sqrt(paired.numel())
@@ -111,6 +131,49 @@ def cross_fitted_context_baseline(
     return predictions
 
 
+def cross_fitted_action_values(
+        features: torch.Tensor, actions: torch.Tensor,
+        outcomes: torch.Tensor, *, ridge: float = 1e-3,
+        ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Cross-fit linear Q(x,a) and return both actions plus the logged one."""
+    if (
+            features.ndim != 2 or actions.ndim != 1
+            or outcomes.ndim != 1
+            or features.shape[0] != actions.numel()
+            or actions.numel() != outcomes.numel()
+            or outcomes.numel() < 4):
+        raise ValueError("invalid action-value cross-fitting tensors")
+
+    def design(action: torch.Tensor) -> torch.Tensor:
+        column = action.to(features.dtype).unsqueeze(1)
+        return torch.cat((
+            features, column, features * column,
+            torch.ones(
+                features.shape[0], 1,
+                device=features.device, dtype=features.dtype)), dim=1)
+
+    logged_design = design(actions)
+    zero_design = design(torch.zeros_like(actions))
+    one_design = design(torch.ones_like(actions))
+    q0 = torch.empty_like(outcomes)
+    q1 = torch.empty_like(outcomes)
+    indices = torch.arange(outcomes.numel(), device=outcomes.device)
+    for heldout_parity in (0, 1):
+        heldout = indices.remainder(2) == heldout_parity
+        training = ~heldout
+        x = logged_design[training]
+        y = outcomes[training]
+        identity = torch.eye(
+            x.shape[1], device=x.device, dtype=x.dtype)
+        identity[-1, -1] = 0
+        coefficients = torch.linalg.solve(
+            x.T @ x + ridge * identity, x.T @ y)
+        q0[heldout] = zero_design[heldout] @ coefficients
+        q1[heldout] = one_design[heldout] @ coefficients
+    q_logged = torch.where(actions.bool(), q1, q0)
+    return q0, q1, q_logged
+
+
 def _load_head(path: Path, device: torch.device) -> ComputeAdvantageHead:
     payload = torch.load(path, map_location=device, weights_only=False)
     head = ComputeAdvantageHead(int(payload["head_hidden"])).to(device)
@@ -137,7 +200,9 @@ def main() -> None:
     parser.add_argument("--promotion-every", type=int, default=4)
     parser.add_argument(
         "--promotion-baseline",
-        choices=("global", "context_crossfit"), default="global")
+        choices=(
+            "global", "context_crossfit",
+            "doubly_robust_crossfit"), default="global")
     parser.add_argument("--skill-store", type=Path)
     parser.add_argument("--parent-audit", type=Path)
     parser.add_argument(

@@ -55,3 +55,25 @@ fresh confirmation is interpreted. Private audit performance and other
 candidates' confirmation results cannot select the winner. If no candidate
 proposes, the population branch closes. A selected-and-confirmed candidate
 must still pass two fresh seeds before persistent integration.
+
+## Population result
+
+None of the four latent initializations produced a positive proposal. Their
+final lower bounds ranged from `−0.0149` to `−0.0442`. Initialization diversity
+is not the limiting factor on this stream, so the population branch is closed.
+
+## Doubly robust evidence fork
+
+The next candidate changes only the promotion estimator. A two-fold
+cross-fitted ridge model predicts attempted utility as a function of the four
+generic context features and action. Promotion uses a doubly robust
+policy-difference estimate: predicted incumbent/challenger values plus
+inverse-propensity residual corrections.
+
+Each record's predictions come from a fold that did not train on its outcome.
+The estimator uses only attempted outcomes and remains unbiased under the
+known randomized logger even if its outcome model is imperfect. Seed 7973 is
+replayed diagnostically with all learning and confirmation settings unchanged.
+It must produce a positive proposal without a mastered-policy promotion. A
+pass requires two fresh seeds before persistent integration; a failure closes
+this estimator.
