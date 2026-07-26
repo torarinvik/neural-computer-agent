@@ -27,7 +27,9 @@ def paired_ips_improvement(
         challenger_actions: torch.Tensor,
         attempted_actions: torch.Tensor,
         attempted_utilities: torch.Tensor,
+        context_features: torch.Tensor | None = None,
         *, propensity: float = 0.5, z: float = 1.96,
+        baseline_mode: str = "global",
         ) -> dict[str, float]:
     """Return paired IPS challenger-minus-incumbent evidence."""
     if not 0 < propensity < 1:
@@ -36,14 +38,28 @@ def paired_ips_improvement(
             incumbent_actions.shape == challenger_actions.shape
             == attempted_actions.shape == attempted_utilities.shape):
         raise ValueError("all logged tensors must have the same shape")
+    if baseline_mode not in ("global", "context_crossfit"):
+        raise ValueError(baseline_mode)
+    if baseline_mode == "context_crossfit" and (
+            context_features is None
+            or context_features.shape[0] != attempted_utilities.shape[0]):
+        raise ValueError(
+            "context_crossfit requires one feature row per logged record")
     weights = torch.where(
         attempted_actions.bool(),
         torch.full_like(attempted_utilities, 1.0 / propensity),
         torch.full_like(attempted_utilities, 1.0 / (1.0 - propensity)))
-    # A common reward baseline is an unbiased control variate for a policy
+    if baseline_mode == "global":
+        baseline = torch.full_like(
+            attempted_utilities, attempted_utilities.mean())
+    else:
+        assert context_features is not None
+        baseline = cross_fitted_context_baseline(
+            context_features, attempted_utilities)
+    # Any context-only baseline is an unbiased control variate for a policy
     # difference because the two action-match indicators have equal expected
-    # mass under the logger. It removes irrelevant reward-level variance.
-    centered_utilities = attempted_utilities - attempted_utilities.mean()
+    # mass under the randomized logger.
+    centered_utilities = attempted_utilities - baseline
     paired = weights * centered_utilities * (
         (attempted_actions == challenger_actions).to(attempted_utilities.dtype)
         - (attempted_actions == incumbent_actions).to(
@@ -59,7 +75,38 @@ def paired_ips_improvement(
         "upper_95": mean + z * standard_error,
         "records": paired.numel(),
         "reward_baseline": float(attempted_utilities.mean()),
+        "baseline_mode": baseline_mode,
+        "baseline_residual_rms": float(
+            centered_utilities.square().mean().sqrt()),
     }
+
+
+def cross_fitted_context_baseline(
+        features: torch.Tensor, outcomes: torch.Tensor,
+        *, ridge: float = 1e-3) -> torch.Tensor:
+    """Predict randomized-policy outcome with two-fold ridge cross-fitting."""
+    if features.ndim != 2 or outcomes.ndim != 1:
+        raise ValueError("features must be 2-D and outcomes 1-D")
+    if features.shape[0] != outcomes.shape[0] or outcomes.numel() < 4:
+        raise ValueError("cross-fitting requires at least four paired rows")
+    design = torch.cat(
+        (features, torch.ones(
+            features.shape[0], 1,
+            device=features.device, dtype=features.dtype)), dim=1)
+    predictions = torch.empty_like(outcomes)
+    indices = torch.arange(outcomes.numel(), device=outcomes.device)
+    for heldout_parity in (0, 1):
+        heldout = indices.remainder(2) == heldout_parity
+        training = ~heldout
+        x = design[training]
+        y = outcomes[training]
+        identity = torch.eye(
+            x.shape[1], device=x.device, dtype=x.dtype)
+        identity[-1, -1] = 0
+        coefficients = torch.linalg.solve(
+            x.T @ x + ridge * identity, x.T @ y)
+        predictions[heldout] = design[heldout] @ coefficients
+    return predictions
 
 
 def _load_head(path: Path, device: torch.device) -> ComputeAdvantageHead:
@@ -86,6 +133,9 @@ def main() -> None:
     parser.add_argument("--requery-cost", type=float, default=0.01)
     parser.add_argument("--learning-rate", type=float, default=0.003)
     parser.add_argument("--promotion-every", type=int, default=4)
+    parser.add_argument(
+        "--promotion-baseline",
+        choices=("global", "context_crossfit"), default="global")
     args = parser.parse_args()
 
     seed_everything(args.seed)
@@ -188,7 +238,8 @@ def main() -> None:
                         arm["challenger"](features_log) > 0).long()
                 evidence = paired_ips_improvement(
                     incumbent_actions, challenger_actions,
-                    attempted_log, utilities_log)
+                    attempted_log, utilities_log, features_log,
+                    baseline_mode=args.promotion_baseline)
                 promoted = evidence["lower_95"] > 0
                 if promoted:
                     arm["incumbent"].load_state_dict(

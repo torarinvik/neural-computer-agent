@@ -54,7 +54,10 @@ from .train_cost_aware_requery import (
     initialize_from_four_feature,
 )
 from .train_requery_transfer import _candidate_name
-from .train_safe_requery_adaptation import paired_ips_improvement
+from .train_safe_requery_adaptation import (
+    cross_fitted_context_baseline,
+    paired_ips_improvement,
+)
 from .train_persistent_memory import _grouped_read
 from .probe_persistent_physical_stream import (
     _future_for_actions,
@@ -98,6 +101,16 @@ def test_paired_ips_promotion_requires_verified_policy_difference() -> None:
         incumbent, incumbent, attempted, utilities)
     assert identical["estimated_improvement"] == 0
     assert identical["lower_95"] == 0
+
+
+def test_cross_fitted_context_baseline_uses_no_heldout_outcome() -> None:
+    features = torch.arange(32, dtype=torch.float32).reshape(8, 4)
+    outcomes = features[:, 0] * 0.1 + 0.5
+    original = cross_fitted_context_baseline(features, outcomes)
+    changed = outcomes.clone()
+    changed[0] += 100
+    perturbed = cross_fitted_context_baseline(features, changed)
+    assert torch.equal(original[0], perturbed[0])
 
 
 def test_lifetime_has_one_correct_action_and_balanced_private_rules() -> None:
