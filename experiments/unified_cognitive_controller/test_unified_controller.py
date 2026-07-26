@@ -58,6 +58,7 @@ from .train_safe_requery_adaptation import (
     cross_fitted_context_baseline,
     paired_ips_improvement,
 )
+from .verified_skill_store import VerifiedSkillStore
 from .train_persistent_memory import _grouped_read
 from .probe_persistent_physical_stream import (
     _future_for_actions,
@@ -111,6 +112,38 @@ def test_cross_fitted_context_baseline_uses_no_heldout_outcome() -> None:
     changed[0] += 100
     perturbed = cross_fitted_context_baseline(features, changed)
     assert torch.equal(original[0], perturbed[0])
+
+
+def test_verified_skill_store_is_atomic_hash_checked_and_append_only(
+        tmp_path: Path) -> None:
+    store = VerifiedSkillStore(tmp_path / "skills")
+    parent = store.commit(
+        {"weights": torch.tensor([1.0])},
+        context_key=torch.tensor([1.0, 0.0]),
+        lower_confidence_bound=0.1, verifier_bits=10,
+        parent_id=None, provenance={"kind": "audit"})
+    child = store.commit(
+        {"weights": torch.tensor([2.0])},
+        context_key=torch.tensor([0.0, 1.0]),
+        lower_confidence_bound=0.2, verifier_bits=20,
+        parent_id=parent, provenance={"kind": "promotion"})
+    assert torch.equal(
+        store.load(parent)["payload"]["weights"], torch.tensor([1.0]))
+    assert len(store.entries()) == 2
+    child_entry = next(
+        row for row in store.entries() if row["skill_id"] == child)
+    child_path = store.root / child_entry["file"]
+    child_path.write_bytes(child_path.read_bytes() + b"corrupt")
+    with pytest.raises(ValueError, match="SHA-256"):
+        store.load(child)
+    assert torch.equal(
+        store.load(parent)["payload"]["weights"], torch.tensor([1.0]))
+    with pytest.raises(ValueError, match="unverified"):
+        store.commit(
+            {"weights": torch.tensor([3.0])},
+            context_key=torch.tensor([1.0, 1.0]),
+            lower_confidence_bound=0.0, verifier_bits=1,
+            parent_id=parent, provenance={})
 
 
 def test_lifetime_has_one_correct_action_and_balanced_private_rules() -> None:

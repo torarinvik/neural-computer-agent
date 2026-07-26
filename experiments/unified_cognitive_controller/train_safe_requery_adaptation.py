@@ -5,6 +5,7 @@ import argparse
 import copy
 import json
 import math
+import shutil
 import tempfile
 import time
 from pathlib import Path
@@ -20,6 +21,7 @@ from .train_shadow_compute_advantage import (
     attempted_advantage_target,
 )
 from .train_thought_compute_transfer import _metrics
+from .verified_skill_store import VerifiedSkillStore
 
 
 def paired_ips_improvement(
@@ -136,6 +138,8 @@ def main() -> None:
     parser.add_argument(
         "--promotion-baseline",
         choices=("global", "context_crossfit"), default="global")
+    parser.add_argument("--skill-store", type=Path)
+    parser.add_argument("--parent-audit", type=Path)
     args = parser.parse_args()
 
     seed_everything(args.seed)
@@ -196,12 +200,16 @@ def main() -> None:
     action_generator = torch.Generator(device=device).manual_seed(
         args.seed + 70_000_000)
     baselines = {name: [0.0, 0] for name in arms}
+    context_sum = torch.zeros(4, device=device)
+    context_count = 0
     started = time.perf_counter()
     for step in range(1, args.steps + 1):
         features, first, second, _ = requery_batch(
             controller, count=args.batch_size, capacity=args.capacity,
             seed=args.seed * 1_000_000 + step, device=device,
             write_threshold=args.write_threshold)
+        context_sum += features.sum(0)
+        context_count += features.shape[0]
         attempted = torch.randint(
             0, 2, (args.batch_size,), generator=action_generator,
             device=device)
@@ -296,6 +304,104 @@ def main() -> None:
                 arm["incumbent"](test_features),
                 restored(test_features))
     gate["all_round_trips_exact"] = all(persistence.values())
+    skill_store_report = None
+    if args.skill_store is not None:
+        if args.parent_audit is None:
+            raise ValueError("--skill-store requires --parent-audit")
+        audit = json.loads(args.parent_audit.read_text())
+        parent_margin = min(
+            row["verified_utility"] - row["strongest_fixed_utility"]
+            for row in audit["streams"])
+        promoted_rows = [
+            row for row in arms["gap"]["promotions"] if row["promoted"]]
+        if not promoted_rows:
+            gate["persistent_skill_committed"] = False
+        else:
+            context_key = torch.nn.functional.normalize(
+                context_sum / context_count, dim=0)
+            store = VerifiedSkillStore(args.skill_store)
+            parent_id = store.commit({
+                "head_hidden": hidden,
+                "head_state_dict": {
+                    key: value.detach().cpu()
+                    for key, value in mastered.state_dict().items()},
+            }, context_key=context_key,
+                lower_confidence_bound=parent_margin,
+                verifier_bits=0, parent_id=None,
+                provenance={
+                    "kind": "fresh_stream_robust_audit",
+                    "report": str(args.parent_audit),
+                })
+            last_promotion = promoted_rows[-1]
+            child_id = store.commit({
+                "head_hidden": hidden,
+                "head_state_dict": {
+                    key: value.detach().cpu()
+                    for key, value in
+                    arms["gap"]["incumbent"].state_dict().items()},
+            }, context_key=context_key,
+                lower_confidence_bound=last_promotion["lower_95"],
+                verifier_bits=last_promotion["step"] * args.batch_size,
+                parent_id=parent_id,
+                provenance={
+                    "kind": "attempted_outcome_safe_promotion",
+                    "seed": args.seed,
+                    "promotion_evidence": last_promotion,
+                })
+            fresh_store = VerifiedSkillStore(args.skill_store)
+            loaded_parent = fresh_store.load(parent_id, device=device)
+            loaded_child = fresh_store.load(child_id, device=device)
+            restored_parent = ComputeAdvantageHead(hidden).to(device)
+            restored_parent.load_state_dict(
+                loaded_parent["payload"]["head_state_dict"])
+            restored_child = ComputeAdvantageHead(hidden).to(device)
+            restored_child.load_state_dict(
+                loaded_child["payload"]["head_state_dict"])
+            parent_exact = torch.equal(
+                mastered(test_features), restored_parent(test_features))
+            child_exact = torch.equal(
+                arms["gap"]["incumbent"](test_features),
+                restored_child(test_features))
+            child_metrics = _metrics(
+                restored_child, test_features, test_first, test_second,
+                thought_cost=args.requery_cost)
+            with tempfile.TemporaryDirectory() as corrupt_directory:
+                corrupt_root = Path(corrupt_directory) / "store"
+                shutil.copytree(args.skill_store, corrupt_root)
+                corrupt_store = VerifiedSkillStore(corrupt_root)
+                child_entry = next(
+                    row for row in corrupt_store.entries()
+                    if row["skill_id"] == child_id)
+                child_path = corrupt_root / child_entry["file"]
+                child_path.write_bytes(child_path.read_bytes() + b"corrupt")
+                corruption_detected = False
+                try:
+                    corrupt_store.load(child_id)
+                except ValueError:
+                    corruption_detected = True
+                parent_survives_corruption = (
+                    corrupt_store.load(parent_id)["schema"]
+                    == "verified-latent-skill-v1")
+            skill_store_report = {
+                "root": str(args.skill_store),
+                "parent_id": parent_id,
+                "child_id": child_id,
+                "parent_margin": parent_margin,
+                "child_lower_95": last_promotion["lower_95"],
+                "entries": fresh_store.entries(),
+                "parent_exact": parent_exact,
+                "child_exact": child_exact,
+                "child_metrics": child_metrics,
+                "corruption_detected": corruption_detected,
+                "parent_survives_child_corruption":
+                    parent_survives_corruption,
+            }
+            gate["persistent_skill_committed"] = all((
+                parent_exact, child_exact, corruption_detected,
+                parent_survives_corruption,
+                child_metrics["verified_utility"]
+                == gap_final["verified_utility"],
+            ))
     gate["accepted_for_replication"] = all(gate.values())
     report = {
         "schema": "safe-requery-adaptation-v1",
@@ -327,6 +433,7 @@ def main() -> None:
         "binary_retention": binary,
         "four_rule_retention": four_rule,
         "persistence_exact": persistence,
+        "verified_skill_store": skill_store_report,
         "accounting": {
             "learner_visible_unique_verifier_bits":
                 args.steps * args.batch_size,
