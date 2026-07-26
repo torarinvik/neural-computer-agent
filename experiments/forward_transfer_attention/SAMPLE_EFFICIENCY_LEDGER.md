@@ -468,3 +468,28 @@ only 4.2%. The evidence supports a contiguity requirement. Do not spend further
 budget optimizing schedule rearrangements until a proposed variant can preserve
 the contiguous acquisition path and improve a pre-registered verifier-only
 selection metric.
+
+## Read-only shadow strategy selector
+
+The next experiment preserved the successful blocked training trajectory and
+added a read-only phase-boundary challenge. After round 18, every stored latent
+strategy was physically evaluated on held-out old-equal and reliability-
+dominant contexts. No audit outcome was returned to the learner and no model,
+strategy-memory, or disk state changed. Four seeds cost 112 held-out logical
+lifetimes and 960 selection verifier bits per clone, with zero optimizer updates
+and exact tensor/physical parity.
+
+This was necessary because ordinary early signals failed on the blind 7074
+population. Early cumulative reward advantage selected non-transferring clone
+7090, while raw behavioral diversity favored harmful clone 7093. The shadow
+audit's conservative minimum context-mean advantage pruned clones 7091 and
+7093, but tied 7090 and 7092 at +2.08 reward points. Only 7092 showed context-
+specific best stored strategies (two of four audit seeds); it later produced
+the population's strongest safe old-return gain (+3.01 reward points and
++18.06 target points). Clone 7093 later failed with negative return.
+
+The selector is promising but remains retrospective. It is not promoted until
+the pre-registered lexicographic rule—minimum cross-context advantage, then
+context-specific specialization—selects a useful clone on a fresh physical
+stream. If positive, reward/context shuffling must break the selection result
+before a causal claim is accepted.

@@ -139,6 +139,102 @@ def _clone_model(
     return model
 
 
+@torch.no_grad()
+def _shadow_strategy_bank_audit(
+        model: UnifiedCognitiveController,
+        frozen: UnifiedCognitiveController,
+        strategy_memory: LatentStrategyMemory,
+        memories: list[DiskLatentMemory],
+        row_batch: object,
+        row_queries: torch.Tensor,
+        *, banks: int, capacity: int, seed: int,
+        root: Path, device: torch.device,
+        ) -> tuple[dict[str, object], int, int, float]:
+    """Score stored strategies on held-out contexts without updating state."""
+    root.mkdir(parents=True, exist_ok=True)
+    saved_weight = model.memory_replacement_extra_gate.weight.detach().clone()
+    data = frequency_recency_batch(
+        model, banks=banks, capacity=capacity, seed=seed,
+        device=device, write_threshold=0.5, noise_scale=0.04,
+        recency_weight=0.5, frequency_weight=0.5)
+    candidate_batch = _candidate_batch(
+        data, banks=banks, capacity=capacity, device=device)
+    candidate_queries = data["query_group"][:, -1]
+    generator = torch.Generator(device=device).manual_seed(
+        seed + 70_000_000)
+    noise = (
+        torch.rand(
+            banks, capacity, generator=generator, device=device) * 2 - 1
+    ) * 0.04
+    contexts = (
+        ("old_equal", (0.5, 0.5, 0.0)),
+        ("reliability_dominant", (0.3, 0.3, 0.4)),
+    )
+    reports = []
+    persisted = 0
+    evaluations = 0
+    maximum_parity_difference = 0.0
+    for context_index, (name, weights) in enumerate(contexts):
+        features, target = _stream_features(
+            model, memories, data["candidate_key"],
+            data["candidate_strength"], weights=weights, noise=noise)
+        slot_rewards = []
+        slot_action_patterns = []
+        for slot in range(strategy_memory.count):
+            model.memory_replacement_extra_gate.weight.copy_(
+                strategy_memory.values[slot].reshape(1, -1))
+            actions = model.memory_replacement_scores(features).argmax(-1)
+            slot_action_patterns.append(actions.tolist())
+            directory = root / (
+                f"shadow-{context_index:02d}-slot-{slot:02d}")
+            directory.mkdir()
+            physical, exact = _physical_rewards(
+                model, memories, data, row_batch, row_queries,
+                candidate_batch, candidate_queries, actions, target,
+                directory, device=device)
+            tensor = _tensor_rewards(
+                model, memories, data, row_batch, row_queries,
+                candidate_batch, candidate_queries, actions, target,
+                device=device)
+            persisted += exact
+            evaluations += 1
+            maximum_parity_difference = max(
+                maximum_parity_difference,
+                float((physical - tensor).abs().max()))
+            slot_rewards.append(float(physical.mean()))
+        frozen_actions = frozen.memory_replacement_scores(
+            features).argmax(-1)
+        frozen_directory = root / f"shadow-{context_index:02d}-frozen"
+        frozen_directory.mkdir()
+        frozen_rewards, exact = _physical_rewards(
+            frozen, memories, data, row_batch, row_queries,
+            candidate_batch, candidate_queries, frozen_actions, target,
+            frozen_directory, device=device)
+        persisted += exact
+        evaluations += 1
+        best_slot = max(range(len(slot_rewards)), key=slot_rewards.__getitem__)
+        frozen_reward = float(frozen_rewards.mean())
+        reports.append({
+            "context": name,
+            "weights": weights,
+            "slot_rewards": slot_rewards,
+            "slot_action_patterns": slot_action_patterns,
+            "best_slot": best_slot,
+            "best_slot_reward": slot_rewards[best_slot],
+            "frozen_reward": frozen_reward,
+            "best_slot_reward_advantage":
+                slot_rewards[best_slot] - frozen_reward,
+        })
+    model.memory_replacement_extra_gate.weight.copy_(saved_weight)
+    return ({
+        "seed": seed,
+        "contexts": reports,
+        "best_slots_differ": reports[0]["best_slot"] != reports[1]["best_slot"],
+        "minimum_best_slot_reward_advantage": min(
+            report["best_slot_reward_advantage"] for report in reports),
+    }, persisted, evaluations, maximum_parity_difference)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint-in", type=Path, required=True)
@@ -205,12 +301,21 @@ def main() -> None:
         help=(
             "cost-free latent directions screened by action disagreement "
             "before evaluating one pair with the physical verifier"))
+    parser.add_argument(
+        "--shadow-strategy-audit", action="store_true",
+        help=(
+            "after the first old-utility block, score every stored strategy "
+            "on held-out old and reliability contexts without updating it"))
+    parser.add_argument(
+        "--shadow-strategy-audit-seeds", type=int, default=1,
+        help="independent held-out seeds in the read-only strategy audit")
     parser.add_argument("--device", default=(
         "cuda" if torch.cuda.is_available() else "cpu"))
     args = parser.parse_args()
     if (
             args.banks < 2 or args.rounds_per_phase < 1
             or args.soft_context_direction_proposals < 1
+            or args.shadow_strategy_audit_seeds < 1
             or (
                 args.max_physical_rounds is not None
                 and args.max_physical_rounds < 1)):
@@ -299,6 +404,9 @@ def main() -> None:
         soft_context_direction_proposals_screened = 0
         soft_context_selected_preverifier_action_disagreements = 0
         target_intervention_applied = False
+        shadow_audits = []
+        shadow_candidate_evaluations = 0
+        shadow_candidate_exact = 0
 
         for phase_index, (phase, weights, phase_rounds) in enumerate(phases):
             if (
@@ -797,6 +905,34 @@ def main() -> None:
             if phase_rows:
                 phase_rows_by_name.setdefault(phase, []).extend(phase_rows)
                 phase_weights_by_name.setdefault(phase, weights)
+            if (
+                    args.shadow_strategy_audit
+                    and not shadow_audits
+                    and phase == "old_equal"
+                    and phase_rows
+                    and strategy_memory is not None
+                    and strategy_memory.count):
+                for shadow_index in range(args.shadow_strategy_audit_seeds):
+                    (
+                        shadow_report,
+                        shadow_exact,
+                        shadow_evaluations,
+                        shadow_parity_difference,
+                    ) = _shadow_strategy_bank_audit(
+                        model, frozen, strategy_memory, memories,
+                        row_batch, row_queries,
+                        banks=args.banks, capacity=args.bank_capacity,
+                        seed=(
+                            experience_seed * 10_000_000
+                            + 88_000_001 + shadow_index * 100_000),
+                        root=root / f"shadow-seed-{shadow_index:02d}",
+                        device=device)
+                    shadow_audits.append(shadow_report)
+                    shadow_candidate_exact += shadow_exact
+                    shadow_candidate_evaluations += shadow_evaluations
+                    maximum_parity_difference = max(
+                        maximum_parity_difference,
+                        shadow_parity_difference)
 
         phase_summaries = []
         for phase, phase_rows in phase_rows_by_name.items():
@@ -836,7 +972,9 @@ def main() -> None:
             rounds + 1
             + (rounds if args.reset_banks_each_round else 0))
         expected_candidates = args.banks * (
-            4 * rounds + strategy_candidate_evaluations)
+            4 * rounds + strategy_candidate_evaluations
+            + shadow_candidate_evaluations)
+        candidate_exact += shadow_candidate_exact
         reliability = max(
             phase_summaries, key=lambda summary: summary["weights"][2])
         old_return = phase_summaries[-1]
@@ -876,6 +1014,30 @@ def main() -> None:
         gate["accepted"] = (
             all(gate.values()) and not args.shuffle_physical_rewards)
 
+    shadow_strategy_summary = None
+    if shadow_audits:
+        context_names = [
+            context["context"]
+            for context in shadow_audits[0]["contexts"]]
+        context_mean_advantages = {
+            name: sum(
+                next(
+                    context["best_slot_reward_advantage"]
+                    for context in audit["contexts"]
+                    if context["context"] == name)
+                for audit in shadow_audits) / len(shadow_audits)
+            for name in context_names
+        }
+        shadow_strategy_summary = {
+            "context_mean_best_slot_reward_advantages":
+                context_mean_advantages,
+            "minimum_context_mean_best_slot_reward_advantage":
+                min(context_mean_advantages.values()),
+            "minimum_single_audit_best_slot_reward_advantage": min(
+                audit["minimum_best_slot_reward_advantage"]
+                for audit in shadow_audits),
+        }
+
     report = {
         "schema":
             "unified-controller-persistent-physical-adaptation-v1",
@@ -907,6 +1069,8 @@ def main() -> None:
         "tensor_arena_role": "parity_audit_only",
         "trace": trace,
         "phase_summaries": phase_summaries,
+        "shadow_strategy_audits": shadow_audits,
+        "shadow_strategy_summary": shadow_strategy_summary,
         "binary_retention": binary,
         "four_rule_retention": four_rule,
         "changed_parameters": changed,
@@ -919,7 +1083,16 @@ def main() -> None:
             "optimizer_updates": rounds,
             "candidate_verifier_bits":
                 args.banks * args.bank_capacity * (
-                    3 * rounds + strategy_candidate_evaluations),
+                    3 * rounds + strategy_candidate_evaluations
+                    + shadow_candidate_evaluations),
+            "shadow_candidate_evaluations":
+                shadow_candidate_evaluations,
+            "shadow_selection_verifier_bits":
+                args.banks * args.bank_capacity
+                * shadow_candidate_evaluations,
+            "shadow_unique_logical_lifetimes": (
+                args.banks * (args.bank_capacity + 1)
+                * len(shadow_audits)),
             "strategy_candidate_evaluations":
                 strategy_candidate_evaluations,
             "strategy_memory_save_reloads": strategy_save_reloads,
@@ -963,7 +1136,8 @@ def main() -> None:
             "verifier_bits_per_reward_divergent_pair": (
                 (
                     args.banks * args.bank_capacity * (
-                        3 * rounds + strategy_candidate_evaluations)
+                        3 * rounds + strategy_candidate_evaluations
+                        + shadow_candidate_evaluations)
                 ) / soft_context_reward_divergent_pairs
                 if soft_context_reward_divergent_pairs else None),
             "replayed_examples": 0,
