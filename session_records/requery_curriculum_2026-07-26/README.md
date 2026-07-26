@@ -56,3 +56,16 @@ uses the smallest change, cost `0.015`, with the complete capacity-five
 re-query head compared against its read ancestor and reset under the same gate.
 Only a complete pass permits unchanged replication; no longer budget is
 authorized.
+
+## Fresh-stream robustness audit
+
+Cost `0.015` seed 7931 also failed: the inherited head retained useful utility
+but reached only `51.4%` choice accuracy and never reached stable mastery.
+Because this is much lower than its original `71.3%` held-out result, no
+additional training is allowed until the saved capacity-five head is audited
+without learning across eight fresh streams.
+
+Robust mastery requires every stream to preserve the original accuracy,
+utility-improvement, and oracle-gap gates. Failure means the original re-query
+result was seed-fragile: it remains evidence of within-run learning, but the
+checkpoint cannot be promoted as a curriculum parent.
