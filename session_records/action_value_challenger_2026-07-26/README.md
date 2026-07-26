@@ -96,3 +96,24 @@ rule remain unchanged.
 
 Seeds 7973, 7981, and 7982 must all confirm by 960 bits before untouched seeds
 7991 and 7992 are permitted. Five-of-five passes remain the persistence gate.
+
+## Maturation result and powered confirmation
+
+All three seeds again produced positive gap proposals and protected mastered
+incumbents, but their 240-bit confirmations remained below zero. Observed
+confirmation standard errors were approximately `0.06`. A real `0.04`–`0.08`
+utility improvement cannot reliably produce a positive 95% lower bound at that
+sample size.
+
+The next run does **not** add challenger training to chase the metric. Once a
+mature proposal is frozen, it remains a shadow policy while the incumbent
+continues acting. Confirmation accumulates 2,400 fresh attempted outcomes
+before one decision. Scaling the observed standard error by
+`sqrt(240/2400)` predicts roughly `0.019`, sufficient to distinguish the
+observed effect sizes without relaxing confidence.
+
+The maximum accounting is 3,120 verifier bits (at least 480 learning/proposal
+bits plus 2,400 disjoint confirmation bits) and 12,480 unlabeled candidate
+contexts. Seeds 7973, 7981, and 7982 must all protect mastery, confirm a gap
+promotion, and improve audited utility. Only then may untouched seeds 7991 and
+7992 run. Five-of-five passes still gate persistent integration.

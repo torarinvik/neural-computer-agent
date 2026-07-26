@@ -272,6 +272,11 @@ def main() -> None:
     parser.add_argument(
         "--minimum-proposal-bits", type=int, default=0,
         help="Do not freeze a challenger proposal before this experience.")
+    parser.add_argument(
+        "--minimum-confirmation-bits", type=int, default=0,
+        help=(
+            "Accumulate at least this many fresh attempted outcomes before "
+            "testing a frozen proposal."))
     args = parser.parse_args()
     if args.active_pool_multiplier < 1:
         raise ValueError("--active-pool-multiplier must be positive")
@@ -423,6 +428,13 @@ def main() -> None:
                 active_log = (
                     arm["confirmation_logged"]
                     if confirmation else arm["logged"])
+                logged_records = sum(
+                    row[1].numel() for row in active_log)
+                if (
+                        confirmation
+                        and logged_records
+                        < args.minimum_confirmation_bits):
+                    continue
                 features_log = torch.cat([row[0] for row in active_log])
                 attempted_log = torch.cat([row[1] for row in active_log])
                 utilities_log = torch.cat([row[2] for row in active_log])
