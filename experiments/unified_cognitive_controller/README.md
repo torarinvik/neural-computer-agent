@@ -178,7 +178,7 @@ The gradual ladder produced:
 | 2 | 600 | 96.53% blind | 8: 87.48% |
 | 8 | 150 | 93.65% | 16: 90.09% |
 | 16 | 150 | 91.21% | 32: 87.48% |
-| 40 | 40 total / 20 memory | 90.00% blind | 48: 88.28%; 56: 87.33% |
+| 40 | 40 total / 20 memory | 90.00% / 89.83% blind | 48: 88.28%; 56: 87.33%; 64: 85.57% / 86.33% |
 
 Every admitted checkpoint passed private-rule reversal, paired prediction
 flips, empty memory, shuffled rows, corrupted latents, disk save/load
@@ -188,9 +188,10 @@ forcing the correct row restored 100% behavior, localizing the frontier to
 keys rather than stored values or the reader. Soft reads at temperature 10
 were badly mismatched to hard top-1 deployment. Raising the training
 temperature to 50 produced a replicated capacity-40 gain after only 20 memory
-updates and transferred zero-shot through capacity 56. Capacity 64 remains
-untested for the new parent; it was the prior parent's measured failure at
-81.69% recall and 62.44% retrieval.
+updates and transferred zero-shot through capacity 56. Two independently
+trained five-second runs also crossed the old capacity-64 frontier at 85.57%
+and 86.33%, versus the prior parent's rejected 81.69% recall and 62.44%
+retrieval.
 
 The current checkpoint is
 `artifacts/checkpoints/unified_persistent_capacity40_temp50_seed4801.pt`,

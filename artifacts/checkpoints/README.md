@@ -64,7 +64,7 @@ controller milestone.
 - Capacity-40 blind recall: 90.00%
 - Zero-shot capacity-48 recall: 88.28%
 - Zero-shot capacity-56 recall: 87.33%
-- Capacity-56 retrieval top-1: 74.06%
+- Zero-shot capacity-64 recall: 85.57%
 - Acquisition cost: 20 memory updates, 4,800 unique recurring contexts,
   and 4.93 seconds on the measured GPU run
 - Empty, shuffled, and corrupted memory controls: large causal degradation
@@ -73,6 +73,16 @@ controller milestone.
 - Serializable disk read reproduces the hard latent-memory read
 - A matched temperature-10 pilot regressed and was rejected; sharpening the
   differentiable training read to temperature 50 was the isolated change
+
+`unified_persistent_capacity40_temp50_seed4802.pt` independently replicated
+the same acquisition in 5.01 seconds:
+
+- SHA-256:
+  `b8244b6e2e1dbbe84578f8f0f48d5689c750d99cee47ff5ddd9f647879a57a69`
+- Capacity-40 blind recall: 89.83%
+- Zero-shot capacity-64 recall: 86.33%
+- Capacity-64 retrieval top-1: 72.34%
+- All causal, disk, and behavioral-retention gates passed
 
 The exact gradual parents are:
 

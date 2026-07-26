@@ -58,8 +58,10 @@ active-state resets. A 600-update capacity-two rung reached 96.53% blind
 recall; 150-update bridges at capacities 8 and 16 produced zero-shot transfer
 to capacities 16 and 32. A later five-second rung used only 20 new-memory
 updates at capacity 40 and reached 90.00% blind recall, then transferred
-zero-shot to capacity 48 at 88.28% and capacity 56 at 87.33%. Empty, shuffled,
-and corrupted memories collapse toward chance; disk save/load reproduces hard
+zero-shot to capacity 48 at 88.28% and capacity 56 at 87.33%. An independent
+five-second acquisition replicated the result, and the two checkpoints crossed
+the old capacity-64 frontier at 85.57% and 86.33%. Empty, shuffled, and
+corrupted memories collapse toward chance; disk save/load reproduces hard
 retrieval; the earlier one-support and four-rule skills remain retained.
 
 Unseen elongated diamonds and disconnected dot-pair stimuli also transfer
