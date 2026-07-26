@@ -616,3 +616,89 @@ positive and worst-round advantage is non-negative; otherwise terminate the
 population. Retrospectively this preserves the useful trajectories on streams
 7077–7079 and correctly abstains on 7080. Prospectively test that frozen rule
 before promotion.
+
+## Prospective abstaining race
+
+The conservative abstention rule was frozen and tested on unseen physical
+stream 7081 with clones 7170–7173. Round-18 shadow advantages ranked 7170,
+7173, and 7171 above zero-score eliminated control 7172. At round 42, 7170
+earned continuation with +2.778 mean verifier-reward points over the first six
+return rounds and no harmful round. Clone 7171 was weaker at +2.083; 7173 was
+zero.
+
+Selected 7170 completed with 59.72% reliability accuracy versus 13.89% frozen,
+and 51.39% old-return accuracy versus 13.89% frozen. Eliminated control 7172
+remained at zero in both transfer phases. Both inherited primitives and every
+full gate passed. Post-gate completion of the other survivors confirmed that
+neither gained anything on return, so the six-round selector chose the only
+substantial acquisition-and-return trajectory.
+
+Reward-alignment shuffling failed the gate and collapsed return to zero. A
+one-time latent-key shuffle did not collapse the learner: it improved immediate
+reliability but reduced return from 51.39% to 36.11%. This bounds the claim.
+Learned key/value association affects retention, but the intervention permits
+36 subsequent adaptation rounds and is not a persistent query-time memory
+ablation.
+
+Production cost was 156 instead of 216 physical rounds, a 27.8% saving.
+Read-only selection cost remained separate: 112 held-out logical lifetimes and
+960 verifier bits per clone, with no optimizer updates. Exact prefix
+continuation and all persistence/parity checks passed.
+
+The conservative abstaining race is provisionally promoted. Replicate once on
+another unseen stream before increasing population size. Replication can pass
+by selecting a valid winner or by correctly abstaining when the completed
+eliminated control is also invalid.
+
+Replication on unseen stream 7082 rejected the round-18 prune. All three
+survivors had exactly zero reward advantage over the first six return rounds,
+so the abstention rule correctly stopped them. But eliminated zero-shadow-score
+clone 7182 later gained +4.17 target points in both reliability and return and
+passed the full gate. Its first six return rounds already averaged +1.389
+reward points with no harmful round, so the return selector would have retained
+it if early pruning had not removed it.
+
+The supported boundary is now precise: the six-round return selector remains
+useful, but no round-18 shadow score safely excludes delayed learners. Remove
+early training elimination. The next prospective ladder trains all four clones
+through round 42, then selects or abstains using the unchanged positive,
+non-harmful return threshold. It saves 16.7% of training rounds when selecting
+and 22.2% when abstaining, while also removing 448 shadow lifetimes and 3,840
+selection verifier bits from production allocation.
+
+The return-only ladder was then tested on unseen stream 7083. Clone 7191 had
+the strongest six-round return signal (+7.639 reward points, no harmful round)
+and completed at 88.89% old-return accuracy, +69.44 points over frozen. Full
+completion of every clone found a genuine trade-off: 7193 was the better
+reliability learner (+44.44 target points versus +25.00), while 7191 was the
+better return learner (+69.44 versus +40.28). Neither dominated both axes, so
+the pre-registered “best under both” validation gate did not pass literally.
+
+Return-only ranking is therefore too narrow for compounding learning, just as
+round-18 acquisition-only pruning was too narrow. The next minimal selector is
+maximin verified reward at round 42: the minimum of mean reliability-phase
+reward advantage and mean first-six-return reward advantage. Both components
+must be positive and no return round may be harmful; otherwise abstain. This
+uses no new experience or privileged labels. Retrospectively it selects 7191
+on stream 7083 with a +3.935-point conservative score versus +3.472 for 7193,
+explicitly balancing new-context acquisition and return retention. Test it
+prospectively with all clones surviving to round 42.
+
+The balanced maximin selector was tested prospectively on unseen stream 7084
+with clones 7200–7203 and no shadow audit. At round 42, clone 7203 had +1.620
+reliability reward points and +3.472 first-six-return points, for a +1.620
+conservative score with no harmful return round. The next-best balanced clone,
+7200, scored +1.389.
+
+Full post-gate completion of every clone confirmed the selection. Clone 7203
+retained a +1.620 final reliability reward gain and +2.083 return gain; its
+final conservative gain of +1.620 exceeded 7200's +0.926 and the zero scores
+of 7201/7202. It reached +19.44 reliability target points and +13.89 return
+points. All inherited retention, parity, persistence, and exact-resume gates
+passed.
+
+The production path used 180 rather than 216 physical rounds (16.7% saved) and
+eliminated all shadow selection cost. The maximin selector is provisionally
+promoted as the first allocation objective aligned directly with both new
+learning and retained reuse. Replicate unchanged before increasing any scale
+or difficulty axis.

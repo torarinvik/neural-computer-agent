@@ -1,0 +1,3069 @@
+{
+  "accounting": {
+    "candidate_save_reloads": 1000,
+    "candidate_verifier_bits": 4992,
+    "context_encoder_mean_loss": null,
+    "context_encoder_mean_spsa_advantage": -2.9075436475800306e-09,
+    "context_encoder_scales": [
+      0.9999999403953552,
+      0.9200444221496582,
+      1.0,
+      1.0425468683242798,
+      1.133148431777954,
+      1.133148431777954,
+      0.9591894149780273,
+      0.9591894149780273,
+      0.9999999403953552,
+      1.0,
+      0.9999999403953552,
+      0.9200443625450134,
+      1.0869040489196777
+    ],
+    "context_encoder_updates": 41,
+    "final_strategy_memory_count": 4,
+    "optimizer_updates": 42,
+    "persistent_banks": 4,
+    "physical_rounds": 42,
+    "replayed_examples": 0,
+    "requested_initial_histories_reproduced_exactly": 3,
+    "shadow_candidate_evaluations": 0,
+    "shadow_selection_verifier_bits": 0,
+    "shadow_unique_logical_lifetimes": 0,
+    "soft_context_action_divergent_fraction": 0.2926829268292683,
+    "soft_context_action_divergent_pairs": 12,
+    "soft_context_direction_proposals_screened": 656,
+    "soft_context_mean_absolute_reward_delta": 0.006097560975609756,
+    "soft_context_pair_count": 41,
+    "soft_context_reward_divergent_fraction": 0.14634146341463414,
+    "soft_context_reward_divergent_pairs": 6,
+    "soft_context_selected_preverifier_action_disagreements": 14,
+    "state_save_reloads": 172,
+    "strategy_candidate_evaluations": 82,
+    "strategy_memory_capacity": 4,
+    "strategy_memory_save_reloads": 42,
+    "total_replacements": 42,
+    "unique_utility_contexts": 2,
+    "verifier_bits_per_reward_divergent_pair": 832.0
+  },
+  "binary_retention": {
+    "active_state_reset": {
+      "accuracy_by_trial": [
+        0.498046875,
+        0.513671875,
+        0.498046875,
+        0.501953125,
+        0.498046875,
+        0.494140625
+      ],
+      "final_accuracy": 0.494140625,
+      "learning_gain": 0.003125011920928955,
+      "post_feedback_accuracy": 0.501171886920929,
+      "query_accuracy": 0.501171886920929,
+      "zero_shot_accuracy": 0.498046875
+    },
+    "blank_vision": {
+      "accuracy_by_trial": [
+        0.5078125,
+        0.513671875,
+        0.490234375,
+        0.53515625,
+        0.4609375,
+        0.4921875
+      ],
+      "final_accuracy": 0.4921875,
+      "learning_gain": -0.009375005960464478,
+      "post_feedback_accuracy": 0.4984374940395355,
+      "query_accuracy": 0.4984374940395355,
+      "zero_shot_accuracy": 0.5078125
+    },
+    "feedback_shuffled": {
+      "accuracy_by_trial": [
+        0.498046875,
+        0.53125,
+        0.53125,
+        0.53125,
+        0.53125,
+        0.53125
+      ],
+      "final_accuracy": 0.53125,
+      "learning_gain": 0.033203125,
+      "post_feedback_accuracy": 0.53125,
+      "query_accuracy": 0.53125,
+      "zero_shot_accuracy": 0.498046875
+    },
+    "gate": {
+      "accepted": true,
+      "active_state_reset_hurts": true,
+      "counterfactual_flip_at_least_80": true,
+      "few_shot_breakthrough": true,
+      "normal_few_shot_at_least_85": true,
+      "reversed_few_shot_at_least_85": true,
+      "shuffled_feedback_hurts": true,
+      "vision_causally_used": true,
+      "zero_shot_near_chance": true
+    },
+    "normal": {
+      "accuracy_by_trial": [
+        0.498046875,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "final_accuracy": 1.0,
+      "learning_gain": 0.501953125,
+      "post_feedback_accuracy": 1.0,
+      "query_accuracy": 1.0,
+      "zero_shot_accuracy": 0.498046875
+    },
+    "post_feedback_prediction_flip_rate": 1.0,
+    "reversed_rule": {
+      "accuracy_by_trial": [
+        0.501953125,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "final_accuracy": 1.0,
+      "learning_gain": 0.498046875,
+      "post_feedback_accuracy": 1.0,
+      "query_accuracy": 1.0,
+      "zero_shot_accuracy": 0.501953125
+    },
+    "workspace_disabled": {
+      "accuracy_by_trial": [
+        0.498046875,
+        0.900390625,
+        0.96875,
+        0.91015625,
+        0.82421875,
+        0.6640625
+      ],
+      "final_accuracy": 0.6640625,
+      "learning_gain": 0.35546875,
+      "post_feedback_accuracy": 0.853515625,
+      "query_accuracy": 0.853515625,
+      "zero_shot_accuracy": 0.498046875
+    }
+  },
+  "changed_parameters": [
+    "memory_replacement_extra_gate.weight"
+  ],
+  "checkpoint_saved": false,
+  "configuration": {
+    "bank_capacity": 6,
+    "banks": 4,
+    "checkpoint_in": "artifacts/candidates/unified_memory_online_utility_seed6810.pt",
+    "checkpoint_out": null,
+    "context_learning_rate": 0.5,
+    "context_proposal_seed": 7192,
+    "curriculum": "standard",
+    "device": "cpu",
+    "experience_seed": 7083,
+    "max_physical_rounds": 42,
+    "perturbation": 3.0,
+    "policy_perturbation_seed": 7192,
+    "prefix_state_out": "artifacts/candidates/race7083_clone7192_round42.pt",
+    "report": "artifacts/candidates/race7083_clone7192_round42.json",
+    "reset_banks_each_round": false,
+    "resolved_context_proposal_seed": 7192,
+    "resolved_experience_seed": 7083,
+    "resolved_policy_perturbation_seed": 7192,
+    "resume_prefix_state": null,
+    "rounds_per_phase": 18,
+    "seed": 7083,
+    "shadow_strategy_audit": false,
+    "shadow_strategy_audit_phase": "old_equal",
+    "shadow_strategy_audit_seeds": 1,
+    "shuffle_physical_rewards": false,
+    "soft_context_direction_proposals": 16,
+    "soft_context_perturbation": 1.2,
+    "soft_context_temperature": 0.08,
+    "step_size": 1.5,
+    "strategy_admission": "value_diversity",
+    "strategy_memory_capacity": 4,
+    "target_intervention": "none"
+  },
+  "fast_adaptation_state": "context_indexed_latent_strategy_memory",
+  "four_rule_retention": {
+    "active_state_reset": {
+      "accuracy_by_trial": [
+        0.4765625,
+        0.5,
+        0.751953125,
+        0.50390625,
+        0.494140625,
+        0.51171875
+      ],
+      "final_accuracy": 0.51171875,
+      "learning_gain": 0.0888671875,
+      "post_feedback_accuracy": 0.5654296875,
+      "query_accuracy": 0.5654296875,
+      "zero_shot_accuracy": 0.4765625
+    },
+    "blank_vision": {
+      "accuracy_by_trial": [
+        0.5078125,
+        0.5,
+        0.748046875,
+        0.7578125,
+        0.77734375,
+        0.740234375
+      ],
+      "final_accuracy": 0.740234375,
+      "learning_gain": 0.248046875,
+      "post_feedback_accuracy": 0.755859375,
+      "query_accuracy": 0.755859375,
+      "zero_shot_accuracy": 0.5078125
+    },
+    "feedback_shuffled": {
+      "accuracy_by_trial": [
+        0.4765625,
+        0.49609375,
+        0.49609375,
+        0.5078125,
+        0.50390625,
+        0.486328125
+      ],
+      "final_accuracy": 0.486328125,
+      "learning_gain": 0.02197265625,
+      "post_feedback_accuracy": 0.49853515625,
+      "query_accuracy": 0.49853515625,
+      "zero_shot_accuracy": 0.4765625
+    },
+    "gate": {
+      "accepted": true,
+      "active_state_reset_hurts": true,
+      "counterfactual_flip_at_least_80": true,
+      "few_shot_breakthrough": true,
+      "normal_few_shot_at_least_85": true,
+      "reversed_few_shot_at_least_85": true,
+      "shuffled_feedback_hurts": true,
+      "vision_causally_used": true,
+      "zero_shot_near_chance": true
+    },
+    "normal": {
+      "accuracy_by_trial": [
+        0.4765625,
+        0.5,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "final_accuracy": 1.0,
+      "learning_gain": 0.5234375,
+      "post_feedback_accuracy": 1.0,
+      "query_accuracy": 1.0,
+      "zero_shot_accuracy": 0.4765625
+    },
+    "post_feedback_prediction_flip_rate": 1.0,
+    "reversed_rule": {
+      "accuracy_by_trial": [
+        0.5234375,
+        0.5,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "final_accuracy": 1.0,
+      "learning_gain": 0.4765625,
+      "post_feedback_accuracy": 1.0,
+      "query_accuracy": 1.0,
+      "zero_shot_accuracy": 0.5234375
+    },
+    "workspace_disabled": {
+      "accuracy_by_trial": [
+        0.4765625,
+        0.537109375,
+        0.994140625,
+        0.818359375,
+        0.724609375,
+        0.662109375
+      ],
+      "final_accuracy": 0.662109375,
+      "learning_gain": 0.3232421875,
+      "post_feedback_accuracy": 0.7998046875,
+      "query_accuracy": 0.7998046875,
+      "zero_shot_accuracy": 0.4765625
+    }
+  },
+  "gate": {
+    "accepted": false,
+    "at_least_one_replacement_persisted": true,
+    "binary_retained": true,
+    "complete_curriculum": false,
+    "every_candidate_remained_bounded": true,
+    "every_history_transition_exact": true,
+    "every_state_save_reload_exact": true,
+    "four_rule_retained": true,
+    "old_utility_recovery_not_worse_than_frozen_by_over_13_points": true,
+    "only_extra_residual_changed": true,
+    "physical_tensor_choices_equivalent_within_1e_6": true,
+    "physical_tensor_rewards_match_within_1e_6": true,
+    "reliability_switch_improves_or_matches_frozen_reward": true,
+    "reliability_switch_improves_or_matches_frozen_target_rate": true,
+    "strategy_memory_save_reload_exact": true
+  },
+  "maximum_cross_choice_regret": 0.0,
+  "maximum_physical_tensor_reward_difference": 0.0,
+  "memory_lifetime": "persistent_across_all_decisions",
+  "phase_summaries": [
+    {
+      "first_round_learned_target_rate": 1.0,
+      "frozen_reward": 0.9166666368643442,
+      "frozen_target_rate": 0.2916666666666667,
+      "last_round_learned_target_rate": 0.0,
+      "learned_reward": 0.9328703416718377,
+      "learned_target_rate": 0.4027777777777778,
+      "phase": "old_equal",
+      "weights": [
+        0.5,
+        0.5,
+        0.0
+      ]
+    },
+    {
+      "first_round_learned_target_rate": 0.0,
+      "frozen_reward": 0.8379629552364349,
+      "frozen_target_rate": 0.041666666666666664,
+      "last_round_learned_target_rate": 0.0,
+      "learned_reward": 0.8402777678436704,
+      "learned_target_rate": 0.05555555555555555,
+      "phase": "reliability_dominant",
+      "weights": [
+        0.3,
+        0.3,
+        0.4
+      ]
+    },
+    {
+      "first_round_learned_target_rate": 0.0,
+      "frozen_reward": 0.8611110945542654,
+      "frozen_target_rate": 0.0,
+      "last_round_learned_target_rate": 0.0,
+      "learned_reward": 0.8611110945542654,
+      "learned_target_rate": 0.0,
+      "phase": "old_return",
+      "weights": [
+        0.5,
+        0.5,
+        0.0
+      ]
+    }
+  ],
+  "physical_reward_is_sovereign": true,
+  "prefix_only": true,
+  "schema": "unified-controller-persistent-physical-adaptation-v1",
+  "semantic_or_utility_labels_used_for_training": false,
+  "shadow_strategy_audits": [],
+  "shadow_strategy_summary": null,
+  "tensor_arena_role": "parity_audit_only",
+  "total_seconds": 28.330495917,
+  "trace": [
+    {
+      "aligned_physical_rewards": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "context_encoder_updates": 0,
+      "frozen_reward": 1.0,
+      "frozen_target_rate": 1.0,
+      "learned_reward": 1.0,
+      "learned_target_rate": 1.0,
+      "phase": "old_equal",
+      "physical_rewards": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": null,
+      "post_probe_strategy_slot": null,
+      "post_probe_strategy_won": false,
+      "replacements": 4,
+      "residual_weights": [
+        -15.657493591308594,
+        -1.5
+      ],
+      "round": 1,
+      "soft_context_actions_diverged": null,
+      "soft_context_candidate_count": 0,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [],
+      "soft_context_reward_delta": null,
+      "strategy_admission_candidate": 0,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 1,
+      "strategy_retrieval_similarity": 0.0,
+      "strategy_retrieved_slot": null,
+      "strategy_slot_max_action_disagreements": 0,
+      "strategy_slot_unique_action_patterns": 0,
+      "strategy_updated_slot": 0,
+      "tensor_rewards": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9583333134651184,
+        0.9166666269302368,
+        0.9166666269302368
+      ],
+      "context_encoder_updates": 1,
+      "frozen_reward": 0.9583333134651184,
+      "frozen_target_rate": 0.5,
+      "learned_reward": 0.9583333134651184,
+      "learned_target_rate": 0.5,
+      "phase": "old_equal",
+      "physical_rewards": [
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9583333134651184,
+        0.9166666269302368,
+        0.9166666269302368
+      ],
+      "physical_winner": 2,
+      "post_probe_strategy_similarity": 0.5449653267860413,
+      "post_probe_strategy_slot": 0,
+      "post_probe_strategy_won": false,
+      "replacements": 2,
+      "residual_weights": [
+        -18.657493591308594,
+        -1.5
+      ],
+      "round": 2,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          1.0
+        ],
+        [
+          1.0
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 2,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 2,
+      "strategy_retrieval_similarity": 0.9922137260437012,
+      "strategy_retrieved_slot": 0,
+      "strategy_slot_max_action_disagreements": 0,
+      "strategy_slot_unique_action_patterns": 1,
+      "strategy_updated_slot": 1,
+      "tensor_rewards": [
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9583333134651184,
+        0.9166666269302368,
+        0.9166666269302368
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368
+      ],
+      "context_encoder_updates": 2,
+      "frozen_reward": 0.9166666269302368,
+      "frozen_target_rate": 0.5,
+      "learned_reward": 0.9166666269302368,
+      "learned_target_rate": 0.0,
+      "phase": "old_equal",
+      "physical_rewards": [
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.9528236389160156,
+      "post_probe_strategy_slot": 1,
+      "post_probe_strategy_won": false,
+      "replacements": 0,
+      "residual_weights": [
+        -18.657493591308594,
+        1.5
+      ],
+      "round": 3,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.06426782160997391,
+          0.9357321858406067
+        ],
+        [
+          0.9770939946174622,
+          0.022905947640538216
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 0,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 3,
+      "strategy_retrieval_similarity": 0.9922655820846558,
+      "strategy_retrieved_slot": 1,
+      "strategy_slot_max_action_disagreements": 0,
+      "strategy_slot_unique_action_patterns": 1,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9166666269302368,
+        0.875,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.875
+      ],
+      "context_encoder_updates": 3,
+      "frozen_reward": 0.9166666269302368,
+      "frozen_target_rate": 0.5,
+      "learned_reward": 0.9166666269302368,
+      "learned_target_rate": 0.5,
+      "phase": "old_equal",
+      "physical_rewards": [
+        0.9166666269302368,
+        0.875,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.875
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.6831113696098328,
+      "post_probe_strategy_slot": 0,
+      "post_probe_strategy_won": false,
+      "replacements": 2,
+      "residual_weights": [
+        -15.657493591308594,
+        1.5
+      ],
+      "round": 4,
+      "soft_context_actions_diverged": true,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.9943245053291321,
+          0.004636614117771387,
+          0.001038791029714048
+        ],
+        [
+          0.09768274426460266,
+          0.00017667212523519993,
+          0.9021405577659607
+        ]
+      ],
+      "soft_context_reward_delta": 0.04166668653488159,
+      "strategy_admission_candidate": 0,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.998084545135498,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 1,
+      "strategy_slot_unique_action_patterns": 2,
+      "strategy_updated_slot": 3,
+      "tensor_rewards": [
+        0.9166666269302368,
+        0.875,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.875
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9166666269302368,
+        0.9583333134651184,
+        0.9583333134651184,
+        0.9166666269302368,
+        0.9166666269302368
+      ],
+      "context_encoder_updates": 4,
+      "frozen_reward": 0.9583333134651184,
+      "frozen_target_rate": 0.25,
+      "learned_reward": 0.9583333134651184,
+      "learned_target_rate": 0.25,
+      "phase": "old_equal",
+      "physical_rewards": [
+        0.9166666269302368,
+        0.9583333134651184,
+        0.9583333134651184,
+        0.9166666269302368,
+        0.9166666269302368
+      ],
+      "physical_winner": 1,
+      "post_probe_strategy_similarity": 0.9949774146080017,
+      "post_probe_strategy_slot": 1,
+      "post_probe_strategy_won": false,
+      "replacements": 1,
+      "residual_weights": [
+        -14.157493591308594,
+        0.0
+      ],
+      "round": 5,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.2528916299343109,
+          0.2668478488922119,
+          0.25265443325042725,
+          0.22760605812072754
+        ],
+        [
+          0.21899467706680298,
+          0.7657247185707092,
+          0.015228107571601868,
+          5.2462313760770485e-05
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 2,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9844477772712708,
+      "strategy_retrieved_slot": 3,
+      "strategy_slot_max_action_disagreements": 1,
+      "strategy_slot_unique_action_patterns": 2,
+      "strategy_updated_slot": 3,
+      "tensor_rewards": [
+        0.9166666269302368,
+        0.9583333134651184,
+        0.9583333134651184,
+        0.9166666269302368,
+        0.9166666269302368
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.8749999403953552,
+        0.8749999403953552,
+        0.9166666269302368,
+        0.8749999403953552,
+        0.8749999403953552
+      ],
+      "context_encoder_updates": 5,
+      "frozen_reward": 0.8749999403953552,
+      "frozen_target_rate": 0.0,
+      "learned_reward": 0.9166666269302368,
+      "learned_target_rate": 0.25,
+      "phase": "old_equal",
+      "physical_rewards": [
+        0.8749999403953552,
+        0.8749999403953552,
+        0.9166666269302368,
+        0.8749999403953552,
+        0.8749999403953552
+      ],
+      "physical_winner": 2,
+      "post_probe_strategy_similarity": 0.9647582173347473,
+      "post_probe_strategy_slot": 2,
+      "post_probe_strategy_won": false,
+      "replacements": 4,
+      "residual_weights": [
+        -9.657493591308594,
+        1.5
+      ],
+      "round": 6,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.0010570705635473132,
+          0.45812931656837463,
+          0.5397444367408752,
+          0.0010690797353163362
+        ],
+        [
+          0.05991004407405853,
+          0.5543476939201355,
+          0.0013443190837278962,
+          0.3843979835510254
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 2,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9839292168617249,
+      "strategy_retrieved_slot": 3,
+      "strategy_slot_max_action_disagreements": 2,
+      "strategy_slot_unique_action_patterns": 2,
+      "strategy_updated_slot": 3,
+      "tensor_rewards": [
+        0.8749999403953552,
+        0.8749999403953552,
+        0.9166666269302368,
+        0.8749999403953552,
+        0.8749999403953552
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9583333134651184,
+        0.9583333134651184,
+        0.9583333134651184,
+        0.9583333134651184,
+        0.9166666269302368
+      ],
+      "context_encoder_updates": 6,
+      "frozen_reward": 0.9166666269302368,
+      "frozen_target_rate": 0.5,
+      "learned_reward": 0.9583333134651184,
+      "learned_target_rate": 0.75,
+      "phase": "old_equal",
+      "physical_rewards": [
+        0.9583333134651184,
+        0.9583333134651184,
+        0.9583333134651184,
+        0.9583333134651184,
+        0.9166666269302368
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.977383553981781,
+      "post_probe_strategy_slot": 3,
+      "post_probe_strategy_won": false,
+      "replacements": 3,
+      "residual_weights": [
+        -9.657493591308594,
+        -1.5
+      ],
+      "round": 7,
+      "soft_context_actions_diverged": true,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.11214832216501236,
+          0.12952017784118652,
+          0.3473883271217346,
+          0.4109431803226471
+        ],
+        [
+          0.892318844795227,
+          0.034184060990810394,
+          0.03469434380531311,
+          0.038802798837423325
+        ]
+      ],
+      "soft_context_reward_delta": 0.04166668653488159,
+      "strategy_admission_candidate": 3,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9936867952346802,
+      "strategy_retrieved_slot": 3,
+      "strategy_slot_max_action_disagreements": 4,
+      "strategy_slot_unique_action_patterns": 4,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.9583333134651184,
+        0.9583333134651184,
+        0.9583333134651184,
+        0.9583333134651184,
+        0.9166666269302368
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9583333134651184,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368
+      ],
+      "context_encoder_updates": 7,
+      "frozen_reward": 0.9166666269302368,
+      "frozen_target_rate": 0.0,
+      "learned_reward": 0.9583333134651184,
+      "learned_target_rate": 0.0,
+      "phase": "old_equal",
+      "physical_rewards": [
+        0.9583333134651184,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.9968353509902954,
+      "post_probe_strategy_slot": 2,
+      "post_probe_strategy_won": false,
+      "replacements": 3,
+      "residual_weights": [
+        -12.347565650939941,
+        2.2057199478149414
+      ],
+      "round": 8,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.24883924424648285,
+          0.24174952507019043,
+          0.27967557311058044,
+          0.2297356277704239
+        ],
+        [
+          0.31755271553993225,
+          0.0004455377929843962,
+          0.6814466714859009,
+          0.0005550685455091298
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 0,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9947085976600647,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 4,
+      "strategy_slot_unique_action_patterns": 2,
+      "strategy_updated_slot": 3,
+      "tensor_rewards": [
+        0.9583333134651184,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.7916666269302368,
+        0.875,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368
+      ],
+      "context_encoder_updates": 8,
+      "frozen_reward": 0.875,
+      "frozen_target_rate": 0.25,
+      "learned_reward": 0.9166666269302368,
+      "learned_target_rate": 0.5,
+      "phase": "old_equal",
+      "physical_rewards": [
+        0.7916666269302368,
+        0.875,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368
+      ],
+      "physical_winner": 2,
+      "post_probe_strategy_similarity": 0.9405971765518188,
+      "post_probe_strategy_slot": 1,
+      "post_probe_strategy_won": false,
+      "replacements": 2,
+      "residual_weights": [
+        -12.347565650939941,
+        2.2057199478149414
+      ],
+      "round": 9,
+      "soft_context_actions_diverged": true,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.039892084896564484,
+          0.9032828211784363,
+          0.05679138004779816,
+          3.3680538763292134e-05
+        ],
+        [
+          0.4176102876663208,
+          0.05641476809978485,
+          0.46910935640335083,
+          0.05686558783054352
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 2,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9975473284721375,
+      "strategy_retrieved_slot": 3,
+      "strategy_slot_max_action_disagreements": 3,
+      "strategy_slot_unique_action_patterns": 3,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.7916666269302368,
+        0.875,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.8749999403953552,
+        0.875
+      ],
+      "context_encoder_updates": 9,
+      "frozen_reward": 0.9166666269302368,
+      "frozen_target_rate": 0.25,
+      "learned_reward": 0.9166666269302368,
+      "learned_target_rate": 0.25,
+      "phase": "old_equal",
+      "physical_rewards": [
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.8749999403953552,
+        0.875
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.9817003011703491,
+      "post_probe_strategy_slot": 1,
+      "post_probe_strategy_won": false,
+      "replacements": 1,
+      "residual_weights": [
+        -12.347565650939941,
+        -0.7942800521850586
+      ],
+      "round": 10,
+      "soft_context_actions_diverged": true,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.10817723721265793,
+          0.7164265513420105,
+          0.17070242762565613,
+          0.0046937596052885056
+        ],
+        [
+          0.002922093728557229,
+          7.704261406615842e-08,
+          2.102172629747656e-06,
+          0.9970756769180298
+        ]
+      ],
+      "soft_context_reward_delta": 5.960464477539063e-08,
+      "strategy_admission_candidate": 2,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9994149208068848,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 2,
+      "strategy_slot_unique_action_patterns": 3,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.8749999403953552,
+        0.875
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9583333134651184,
+        0.9583333134651184,
+        0.9583333134651184,
+        0.9583333134651184,
+        0.9583333134651184
+      ],
+      "context_encoder_updates": 10,
+      "frozen_reward": 0.9583333134651184,
+      "frozen_target_rate": 0.0,
+      "learned_reward": 0.9583333134651184,
+      "learned_target_rate": 0.5,
+      "phase": "old_equal",
+      "physical_rewards": [
+        0.9583333134651184,
+        0.9583333134651184,
+        0.9583333134651184,
+        0.9583333134651184,
+        0.9583333134651184
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.997037410736084,
+      "post_probe_strategy_slot": 2,
+      "post_probe_strategy_won": false,
+      "replacements": 2,
+      "residual_weights": [
+        -18.347564697265625,
+        5.205719947814941
+      ],
+      "round": 11,
+      "soft_context_actions_diverged": true,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.16188988089561462,
+          0.21744437515735626,
+          0.3150182366371155,
+          0.30564749240875244
+        ],
+        [
+          0.9989583492279053,
+          0.00042741559445858,
+          0.00033475799136795104,
+          0.0002794197644107044
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 3,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9995130896568298,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 1,
+      "strategy_slot_unique_action_patterns": 2,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.9583333134651184,
+        0.9583333134651184,
+        0.9583333134651184,
+        0.9583333134651184,
+        0.9583333134651184
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9583333134651184,
+        0.9583333134651184,
+        0.9166666269302368,
+        0.9583333134651184,
+        0.9583333134651184
+      ],
+      "context_encoder_updates": 11,
+      "frozen_reward": 0.9583333134651184,
+      "frozen_target_rate": 0.5,
+      "learned_reward": 0.9583333134651184,
+      "learned_target_rate": 0.5,
+      "phase": "old_equal",
+      "physical_rewards": [
+        0.9583333134651184,
+        0.9583333134651184,
+        0.9166666269302368,
+        0.9583333134651184,
+        0.9583333134651184
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.7802331447601318,
+      "post_probe_strategy_slot": 3,
+      "post_probe_strategy_won": false,
+      "replacements": 2,
+      "residual_weights": [
+        -14.283578872680664,
+        3.3143436908721924
+      ],
+      "round": 12,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.15697568655014038,
+          5.531142232939601e-05,
+          0.31418514251708984,
+          0.528783917427063
+        ],
+        [
+          0.20852932333946228,
+          0.1350545883178711,
+          0.31325310468673706,
+          0.34316304326057434
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 4,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9930203557014465,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 1,
+      "strategy_slot_unique_action_patterns": 2,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.9583333134651184,
+        0.9583333134651184,
+        0.9166666269302368,
+        0.9583333134651184,
+        0.9583333134651184
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9166666269302368,
+        0.9166666269302368,
+        0.8749999403953552,
+        0.8749999403953552,
+        0.9166666269302368
+      ],
+      "context_encoder_updates": 12,
+      "frozen_reward": 0.8749999403953552,
+      "frozen_target_rate": 0.0,
+      "learned_reward": 0.9166666269302368,
+      "learned_target_rate": 0.25,
+      "phase": "old_equal",
+      "physical_rewards": [
+        0.9166666269302368,
+        0.9166666269302368,
+        0.8749999403953552,
+        0.8749999403953552,
+        0.9166666269302368
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.9770023822784424,
+      "post_probe_strategy_slot": 2,
+      "post_probe_strategy_won": false,
+      "replacements": 1,
+      "residual_weights": [
+        -16.466941833496094,
+        2.7144269943237305
+      ],
+      "round": 13,
+      "soft_context_actions_diverged": true,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.34586432576179504,
+          0.06180353835225105,
+          0.5249704718589783,
+          0.06736169010400772
+        ],
+        [
+          0.0006310974713414907,
+          3.1102056485821095e-09,
+          0.8611782193183899,
+          0.13819067180156708
+        ]
+      ],
+      "soft_context_reward_delta": 0.04166668653488159,
+      "strategy_admission_candidate": 0,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9861746430397034,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 1,
+      "strategy_slot_unique_action_patterns": 2,
+      "strategy_updated_slot": 1,
+      "tensor_rewards": [
+        0.9166666269302368,
+        0.9166666269302368,
+        0.8749999403953552,
+        0.8749999403953552,
+        0.9166666269302368
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9583333134651184,
+        0.9583333134651184,
+        1.0,
+        0.9583333134651184,
+        0.9583333134651184
+      ],
+      "context_encoder_updates": 13,
+      "frozen_reward": 0.9583333134651184,
+      "frozen_target_rate": 0.25,
+      "learned_reward": 1.0,
+      "learned_target_rate": 0.5,
+      "phase": "old_equal",
+      "physical_rewards": [
+        0.9583333134651184,
+        0.9583333134651184,
+        1.0,
+        0.9583333134651184,
+        0.9583333134651184
+      ],
+      "physical_winner": 2,
+      "post_probe_strategy_similarity": 0.31691649556159973,
+      "post_probe_strategy_slot": 0,
+      "post_probe_strategy_won": false,
+      "replacements": 2,
+      "residual_weights": [
+        -19.466941833496094,
+        5.7144269943237305
+      ],
+      "round": 14,
+      "soft_context_actions_diverged": true,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.999568521976471,
+          6.31491866442957e-06,
+          4.653927135223057e-06,
+          0.0004205315199214965
+        ],
+        [
+          0.1933346688747406,
+          0.30765777826309204,
+          0.23069393634796143,
+          0.2683136761188507
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 2,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9980809688568115,
+      "strategy_retrieved_slot": 1,
+      "strategy_slot_max_action_disagreements": 1,
+      "strategy_slot_unique_action_patterns": 2,
+      "strategy_updated_slot": 1,
+      "tensor_rewards": [
+        0.9583333134651184,
+        0.9583333134651184,
+        1.0,
+        0.9583333134651184,
+        0.9583333134651184
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368
+      ],
+      "context_encoder_updates": 14,
+      "frozen_reward": 0.9166666269302368,
+      "frozen_target_rate": 0.25,
+      "learned_reward": 0.9166666269302368,
+      "learned_target_rate": 0.5,
+      "phase": "old_equal",
+      "physical_rewards": [
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.9781772494316101,
+      "post_probe_strategy_slot": 3,
+      "post_probe_strategy_won": false,
+      "replacements": 2,
+      "residual_weights": [
+        -19.466941833496094,
+        8.71442699432373
+      ],
+      "round": 15,
+      "soft_context_actions_diverged": true,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.016584258526563644,
+          0.48816347122192383,
+          0.0005665255011990666,
+          0.49468570947647095
+        ],
+        [
+          0.6280236840248108,
+          0.02138725481927395,
+          0.32468903064727783,
+          0.02590002305805683
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 3,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9984486699104309,
+      "strategy_retrieved_slot": 1,
+      "strategy_slot_max_action_disagreements": 2,
+      "strategy_slot_unique_action_patterns": 3,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368
+      ],
+      "context_encoder_updates": 15,
+      "frozen_reward": 0.9166666269302368,
+      "frozen_target_rate": 0.25,
+      "learned_reward": 0.9166666269302368,
+      "learned_target_rate": 0.5,
+      "phase": "old_equal",
+      "physical_rewards": [
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.963042140007019,
+      "post_probe_strategy_slot": 2,
+      "post_probe_strategy_won": false,
+      "replacements": 2,
+      "residual_weights": [
+        -14.394454002380371,
+        6.80592155456543
+      ],
+      "round": 16,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.00630127964541316,
+          8.164113387465477e-05,
+          0.9934604167938232,
+          0.00015668020932935178
+        ],
+        [
+          0.06450020521879196,
+          0.3097456991672516,
+          0.35784903168678284,
+          0.2679051160812378
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 2,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9830416440963745,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 1,
+      "strategy_slot_unique_action_patterns": 3,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.7916666865348816,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8749999403953552,
+        0.7916666865348816
+      ],
+      "context_encoder_updates": 16,
+      "frozen_reward": 0.8333333134651184,
+      "frozen_target_rate": 0.25,
+      "learned_reward": 0.8749999403953552,
+      "learned_target_rate": 0.5,
+      "phase": "old_equal",
+      "physical_rewards": [
+        0.7916666865348816,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8749999403953552,
+        0.7916666865348816
+      ],
+      "physical_winner": 3,
+      "post_probe_strategy_similarity": 0.9014264941215515,
+      "post_probe_strategy_slot": 1,
+      "post_probe_strategy_won": true,
+      "replacements": 2,
+      "residual_weights": [
+        -20.74788475036621,
+        6.664877891540527
+      ],
+      "round": 17,
+      "soft_context_actions_diverged": true,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.025977743789553642,
+          0.9161191582679749,
+          0.05789134278893471,
+          1.1765809176722541e-05
+        ],
+        [
+          0.8323389291763306,
+          0.07798565179109573,
+          0.017013637349009514,
+          0.07266178727149963
+        ]
+      ],
+      "soft_context_reward_delta": 0.08333325386047363,
+      "strategy_admission_candidate": 1,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9884265065193176,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 2,
+      "strategy_slot_unique_action_patterns": 3,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.7916666865348816,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8749999403953552,
+        0.7916666865348816
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184
+      ],
+      "context_encoder_updates": 17,
+      "frozen_reward": 0.8333333134651184,
+      "frozen_target_rate": 0.0,
+      "learned_reward": 0.8333333134651184,
+      "learned_target_rate": 0.0,
+      "phase": "old_equal",
+      "physical_rewards": [
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.9033699035644531,
+      "post_probe_strategy_slot": 0,
+      "post_probe_strategy_won": false,
+      "replacements": 1,
+      "residual_weights": [
+        -17.394454956054688,
+        3.8059215545654297
+      ],
+      "round": 18,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.38032495975494385,
+          0.03290040045976639,
+          0.33275413513183594,
+          0.25402048230171204
+        ],
+        [
+          0.5537952780723572,
+          0.3123919367790222,
+          0.08148546516895294,
+          0.05232730135321617
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 1,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9996787309646606,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 2,
+      "strategy_slot_unique_action_patterns": 3,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.875,
+        0.875,
+        0.875,
+        0.875,
+        0.875
+      ],
+      "context_encoder_updates": 18,
+      "frozen_reward": 0.875,
+      "frozen_target_rate": 0.0,
+      "learned_reward": 0.875,
+      "learned_target_rate": 0.0,
+      "phase": "reliability_dominant",
+      "physical_rewards": [
+        0.875,
+        0.875,
+        0.875,
+        0.875,
+        0.875
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.9995489120483398,
+      "post_probe_strategy_slot": 2,
+      "post_probe_strategy_won": false,
+      "replacements": 1,
+      "residual_weights": [
+        -17.394454956054688,
+        3.8059215545654297
+      ],
+      "round": 1,
+      "soft_context_actions_diverged": true,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.1834316998720169,
+          0.006328275427222252,
+          0.807655394077301,
+          0.002584588248282671
+        ],
+        [
+          0.13461419939994812,
+          0.28055474162101746,
+          0.30337515473365784,
+          0.28145599365234375
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 4,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9995499849319458,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 2,
+      "strategy_slot_unique_action_patterns": 3,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.875,
+        0.875,
+        0.875,
+        0.875,
+        0.875
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184
+      ],
+      "context_encoder_updates": 19,
+      "frozen_reward": 0.8333333134651184,
+      "frozen_target_rate": 0.25,
+      "learned_reward": 0.8333333134651184,
+      "learned_target_rate": 0.5,
+      "phase": "reliability_dominant",
+      "physical_rewards": [
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.9999963641166687,
+      "post_probe_strategy_slot": 2,
+      "post_probe_strategy_won": false,
+      "replacements": 2,
+      "residual_weights": [
+        -18.477237701416016,
+        4.86275577545166
+      ],
+      "round": 2,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.47853225469589233,
+          0.016856610774993896,
+          0.4888516962528229,
+          0.0157594196498394
+        ],
+        [
+          0.02495252527296543,
+          0.34984540939331055,
+          0.39663589000701904,
+          0.22856609523296356
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 1,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9998191595077515,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 2,
+      "strategy_slot_unique_action_patterns": 3,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8749999403953552,
+        0.8333333134651184,
+        0.8749999403953552
+      ],
+      "context_encoder_updates": 20,
+      "frozen_reward": 0.8333333134651184,
+      "frozen_target_rate": 0.25,
+      "learned_reward": 0.8749999403953552,
+      "learned_target_rate": 0.25,
+      "phase": "reliability_dominant",
+      "physical_rewards": [
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8749999403953552,
+        0.8333333134651184,
+        0.8749999403953552
+      ],
+      "physical_winner": 2,
+      "post_probe_strategy_similarity": 0.9994664192199707,
+      "post_probe_strategy_slot": 1,
+      "post_probe_strategy_won": false,
+      "replacements": 2,
+      "residual_weights": [
+        -15.477237701416016,
+        4.86275577545166
+      ],
+      "round": 3,
+      "soft_context_actions_diverged": true,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.20238883793354034,
+          0.5741986632347107,
+          0.22252562642097473,
+          0.0008869057637639344
+        ],
+        [
+          0.008649622090160847,
+          0.9482499957084656,
+          0.04238756000995636,
+          0.0007128585712052882
+        ]
+      ],
+      "soft_context_reward_delta": 0.041666626930236816,
+      "strategy_admission_candidate": 1,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9997426867485046,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 1,
+      "strategy_slot_unique_action_patterns": 3,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8749999403953552,
+        0.8333333134651184,
+        0.8749999403953552
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.875,
+        0.875,
+        0.875,
+        0.875,
+        0.875
+      ],
+      "context_encoder_updates": 21,
+      "frozen_reward": 0.875,
+      "frozen_target_rate": 0.25,
+      "learned_reward": 0.875,
+      "learned_target_rate": 0.25,
+      "phase": "reliability_dominant",
+      "physical_rewards": [
+        0.875,
+        0.875,
+        0.875,
+        0.875,
+        0.875
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.9154056906700134,
+      "post_probe_strategy_slot": 2,
+      "post_probe_strategy_won": false,
+      "replacements": 1,
+      "residual_weights": [
+        -15.477237701416016,
+        1.862755537033081
+      ],
+      "round": 4,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.21199540793895721,
+          0.2579982876777649,
+          0.29257795214653015,
+          0.23742836713790894
+        ],
+        [
+          0.7288444638252258,
+          0.07587139308452606,
+          0.1269054263830185,
+          0.06837864965200424
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 3,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9995360374450684,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 1,
+      "strategy_slot_unique_action_patterns": 3,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.875,
+        0.875,
+        0.875,
+        0.875,
+        0.875
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816
+      ],
+      "context_encoder_updates": 22,
+      "frozen_reward": 0.7916666865348816,
+      "frozen_target_rate": 0.0,
+      "learned_reward": 0.7916666865348816,
+      "learned_target_rate": 0.0,
+      "phase": "reliability_dominant",
+      "physical_rewards": [
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.9846433401107788,
+      "post_probe_strategy_slot": 2,
+      "post_probe_strategy_won": false,
+      "replacements": 0,
+      "residual_weights": [
+        -18.08942985534668,
+        4.5890350341796875
+      ],
+      "round": 5,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.15443778038024902,
+          0.008961192332208157,
+          0.8191516995429993,
+          0.017449388280510902
+        ],
+        [
+          0.15114399790763855,
+          0.2091340273618698,
+          0.5017419457435608,
+          0.13797996938228607
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 4,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9934864044189453,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 2,
+      "strategy_slot_unique_action_patterns": 3,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368
+      ],
+      "context_encoder_updates": 23,
+      "frozen_reward": 0.9166666269302368,
+      "frozen_target_rate": 0.0,
+      "learned_reward": 0.9166666269302368,
+      "learned_target_rate": 0.0,
+      "phase": "reliability_dominant",
+      "physical_rewards": [
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.9512697458267212,
+      "post_probe_strategy_slot": 3,
+      "post_probe_strategy_won": false,
+      "replacements": 0,
+      "residual_weights": [
+        -15.298513412475586,
+        1.6165635585784912
+      ],
+      "round": 6,
+      "soft_context_actions_diverged": true,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.11131402850151062,
+          0.0008298031752929091,
+          0.2642642855644226,
+          0.6235917806625366
+        ],
+        [
+          0.00752458767965436,
+          0.9580820202827454,
+          0.03428403288125992,
+          0.00010934336751233786
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 1,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9874290227890015,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 1,
+      "strategy_slot_unique_action_patterns": 2,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368
+      ],
+      "context_encoder_updates": 24,
+      "frozen_reward": 0.9166666269302368,
+      "frozen_target_rate": 0.0,
+      "learned_reward": 0.9166666269302368,
+      "learned_target_rate": 0.0,
+      "phase": "reliability_dominant",
+      "physical_rewards": [
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.9999541640281677,
+      "post_probe_strategy_slot": 2,
+      "post_probe_strategy_won": false,
+      "replacements": 0,
+      "residual_weights": [
+        -15.298513412475586,
+        1.6165635585784912
+      ],
+      "round": 7,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.07180433720350266,
+          0.0009838065598160028,
+          0.9246702790260315,
+          0.0025415655691176653
+        ],
+        [
+          0.004549653735011816,
+          0.3258618414402008,
+          0.43929532170295715,
+          0.2302931696176529
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 1,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9998819828033447,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 1,
+      "strategy_slot_unique_action_patterns": 2,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368,
+        0.9166666269302368
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816
+      ],
+      "context_encoder_updates": 25,
+      "frozen_reward": 0.7916666865348816,
+      "frozen_target_rate": 0.0,
+      "learned_reward": 0.7916666865348816,
+      "learned_target_rate": 0.0,
+      "phase": "reliability_dominant",
+      "physical_rewards": [
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.8987079858779907,
+      "post_probe_strategy_slot": 3,
+      "post_probe_strategy_won": false,
+      "replacements": 0,
+      "residual_weights": [
+        -18.298513412475586,
+        1.6165635585784912
+      ],
+      "round": 8,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.3385472595691681,
+          0.0511321946978569,
+          0.19958502054214478,
+          0.410735547542572
+        ],
+        [
+          0.3182746469974518,
+          0.3466164767742157,
+          0.29849904775619507,
+          0.03660987317562103
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 1,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9940983057022095,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 1,
+      "strategy_slot_unique_action_patterns": 2,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184
+      ],
+      "context_encoder_updates": 26,
+      "frozen_reward": 0.8333333134651184,
+      "frozen_target_rate": 0.0,
+      "learned_reward": 0.8333333134651184,
+      "learned_target_rate": 0.0,
+      "phase": "reliability_dominant",
+      "physical_rewards": [
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.9999397397041321,
+      "post_probe_strategy_slot": 2,
+      "post_probe_strategy_won": false,
+      "replacements": 0,
+      "residual_weights": [
+        -18.298513412475586,
+        1.6165635585784912
+      ],
+      "round": 9,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.2090216726064682,
+          0.01303001120686531,
+          0.7637569308280945,
+          0.01419133972376585
+        ],
+        [
+          0.05407089367508888,
+          0.27992430329322815,
+          0.4873514473438263,
+          0.17865335941314697
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 1,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9979699850082397,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 1,
+      "strategy_slot_unique_action_patterns": 2,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.8749999403953552,
+        0.8749999403953552,
+        0.8749999403953552,
+        0.8749999403953552,
+        0.8749999403953552
+      ],
+      "context_encoder_updates": 27,
+      "frozen_reward": 0.8749999403953552,
+      "frozen_target_rate": 0.0,
+      "learned_reward": 0.8749999403953552,
+      "learned_target_rate": 0.0,
+      "phase": "reliability_dominant",
+      "physical_rewards": [
+        0.8749999403953552,
+        0.8749999403953552,
+        0.8749999403953552,
+        0.8749999403953552,
+        0.8749999403953552
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.9944035410881042,
+      "post_probe_strategy_slot": 2,
+      "post_probe_strategy_won": false,
+      "replacements": 0,
+      "residual_weights": [
+        -15.298513412475586,
+        4.61656379699707
+      ],
+      "round": 10,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.029498541727662086,
+          0.16796666383743286,
+          0.7915934920310974,
+          0.01094134896993637
+        ],
+        [
+          0.43351948261260986,
+          0.018547305837273598,
+          0.45429375767707825,
+          0.09363944828510284
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 1,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9962771534919739,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 1,
+      "strategy_slot_unique_action_patterns": 2,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.8749999403953552,
+        0.8749999403953552,
+        0.8749999403953552,
+        0.8749999403953552,
+        0.8749999403953552
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816
+      ],
+      "context_encoder_updates": 28,
+      "frozen_reward": 0.7916666865348816,
+      "frozen_target_rate": 0.0,
+      "learned_reward": 0.7916666865348816,
+      "learned_target_rate": 0.0,
+      "phase": "reliability_dominant",
+      "physical_rewards": [
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.989147424697876,
+      "post_probe_strategy_slot": 2,
+      "post_probe_strategy_won": false,
+      "replacements": 0,
+      "residual_weights": [
+        -18.298513412475586,
+        1.6165635585784912
+      ],
+      "round": 11,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.13367246091365814,
+          0.028147157281637192,
+          0.757734477519989,
+          0.08044589310884476
+        ],
+        [
+          0.07178101688623428,
+          0.16113267838954926,
+          0.7542870044708252,
+          0.012799333781003952
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 1,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9917726516723633,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 1,
+      "strategy_slot_unique_action_patterns": 2,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184
+      ],
+      "context_encoder_updates": 29,
+      "frozen_reward": 0.8333333134651184,
+      "frozen_target_rate": 0.0,
+      "learned_reward": 0.8333333134651184,
+      "learned_target_rate": 0.0,
+      "phase": "reliability_dominant",
+      "physical_rewards": [
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.9908778667449951,
+      "post_probe_strategy_slot": 2,
+      "post_probe_strategy_won": false,
+      "replacements": 0,
+      "residual_weights": [
+        -15.298513412475586,
+        1.6165635585784912
+      ],
+      "round": 12,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.03517848998308182,
+          0.22198088467121124,
+          0.39294832944869995,
+          0.34989234805107117
+        ],
+        [
+          0.14570866525173187,
+          0.025512194260954857,
+          0.8110105395317078,
+          0.017768628895282745
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 1,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.997046947479248,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 1,
+      "strategy_slot_unique_action_patterns": 2,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816
+      ],
+      "context_encoder_updates": 30,
+      "frozen_reward": 0.7916666865348816,
+      "frozen_target_rate": 0.0,
+      "learned_reward": 0.7916666865348816,
+      "learned_target_rate": 0.0,
+      "phase": "reliability_dominant",
+      "physical_rewards": [
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.9934572577476501,
+      "post_probe_strategy_slot": 2,
+      "post_probe_strategy_won": false,
+      "replacements": 0,
+      "residual_weights": [
+        -18.298513412475586,
+        1.6165635585784912
+      ],
+      "round": 13,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.17158254981040955,
+          0.026744641363620758,
+          0.6269935369491577,
+          0.17467927932739258
+        ],
+        [
+          0.059920091181993484,
+          0.09220703691244125,
+          0.8381766676902771,
+          0.009696155786514282
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 1,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9956178665161133,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 0,
+      "strategy_slot_unique_action_patterns": 1,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816
+      ],
+      "context_encoder_updates": 31,
+      "frozen_reward": 0.7916666865348816,
+      "frozen_target_rate": 0.0,
+      "learned_reward": 0.7916666865348816,
+      "learned_target_rate": 0.0,
+      "phase": "reliability_dominant",
+      "physical_rewards": [
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.9996920824050903,
+      "post_probe_strategy_slot": 2,
+      "post_probe_strategy_won": false,
+      "replacements": 0,
+      "residual_weights": [
+        -18.298513412475586,
+        1.6165635585784912
+      ],
+      "round": 14,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.08743187040090561,
+          0.27191126346588135,
+          0.4625158905982971,
+          0.1781410276889801
+        ],
+        [
+          0.03386940807104111,
+          0.0012905815383419394,
+          0.9619248509407043,
+          0.0029152221977710724
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 4,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9982070922851562,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 0,
+      "strategy_slot_unique_action_patterns": 1,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.875,
+        0.875,
+        0.875,
+        0.875,
+        0.875
+      ],
+      "context_encoder_updates": 32,
+      "frozen_reward": 0.875,
+      "frozen_target_rate": 0.0,
+      "learned_reward": 0.875,
+      "learned_target_rate": 0.0,
+      "phase": "reliability_dominant",
+      "physical_rewards": [
+        0.875,
+        0.875,
+        0.875,
+        0.875,
+        0.875
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.9984105229377747,
+      "post_probe_strategy_slot": 2,
+      "post_probe_strategy_won": false,
+      "replacements": 0,
+      "residual_weights": [
+        -18.298704147338867,
+        1.416405439376831
+      ],
+      "round": 15,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.07104296237230301,
+          0.01678907498717308,
+          0.8623858094215393,
+          0.0497821643948555
+        ],
+        [
+          0.139737069606781,
+          0.21297018229961395,
+          0.6274022459983826,
+          0.01989046484231949
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 1,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9972946643829346,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 0,
+      "strategy_slot_unique_action_patterns": 1,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.875,
+        0.875,
+        0.875,
+        0.875,
+        0.875
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816
+      ],
+      "context_encoder_updates": 33,
+      "frozen_reward": 0.7916666865348816,
+      "frozen_target_rate": 0.0,
+      "learned_reward": 0.7916666865348816,
+      "learned_target_rate": 0.0,
+      "phase": "reliability_dominant",
+      "physical_rewards": [
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.9908527135848999,
+      "post_probe_strategy_slot": 2,
+      "post_probe_strategy_won": false,
+      "replacements": 0,
+      "residual_weights": [
+        -18.298704147338867,
+        1.416405439376831
+      ],
+      "round": 16,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.033785223960876465,
+          0.10735274106264114,
+          0.8451269865036011,
+          0.0137350307777524
+        ],
+        [
+          0.36832675337791443,
+          0.01263744942843914,
+          0.4934842884540558,
+          0.12555156648159027
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 1,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.993646502494812,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 0,
+      "strategy_slot_unique_action_patterns": 1,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816
+      ],
+      "context_encoder_updates": 34,
+      "frozen_reward": 0.7916666865348816,
+      "frozen_target_rate": 0.0,
+      "learned_reward": 0.7916666865348816,
+      "learned_target_rate": 0.0,
+      "phase": "reliability_dominant",
+      "physical_rewards": [
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.997744083404541,
+      "post_probe_strategy_slot": 2,
+      "post_probe_strategy_won": false,
+      "replacements": 0,
+      "residual_weights": [
+        -18.298704147338867,
+        4.41640567779541
+      ],
+      "round": 17,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.05666402354836464,
+          0.054813023656606674,
+          0.7586003541946411,
+          0.12992264330387115
+        ],
+        [
+          0.7476966381072998,
+          0.014124126173555851,
+          0.2378549873828888,
+          0.0003243128885515034
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 1,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9815943241119385,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 0,
+      "strategy_slot_unique_action_patterns": 1,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816,
+        0.7916666865348816
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.8749999403953552,
+        0.8749999403953552,
+        0.8749999403953552,
+        0.8749999403953552,
+        0.8749999403953552
+      ],
+      "context_encoder_updates": 35,
+      "frozen_reward": 0.8749999403953552,
+      "frozen_target_rate": 0.0,
+      "learned_reward": 0.8749999403953552,
+      "learned_target_rate": 0.0,
+      "phase": "reliability_dominant",
+      "physical_rewards": [
+        0.8749999403953552,
+        0.8749999403953552,
+        0.8749999403953552,
+        0.8749999403953552,
+        0.8749999403953552
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.9904932975769043,
+      "post_probe_strategy_slot": 2,
+      "post_probe_strategy_won": false,
+      "replacements": 0,
+      "residual_weights": [
+        -15.298704147338867,
+        1.416405439376831
+      ],
+      "round": 18,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.09012177586555481,
+          0.03386758267879486,
+          0.7807296514511108,
+          0.09528101980686188
+        ],
+        [
+          0.06948839128017426,
+          0.07669952511787415,
+          0.8447072505950928,
+          0.009104876779019833
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 1,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9929735660552979,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 0,
+      "strategy_slot_unique_action_patterns": 1,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.8749999403953552,
+        0.8749999403953552,
+        0.8749999403953552,
+        0.8749999403953552,
+        0.8749999403953552
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9166666865348816,
+        0.9166666865348816,
+        0.9166666865348816,
+        0.9166666865348816,
+        0.9166666865348816
+      ],
+      "context_encoder_updates": 36,
+      "frozen_reward": 0.9166666865348816,
+      "frozen_target_rate": 0.0,
+      "learned_reward": 0.9166666865348816,
+      "learned_target_rate": 0.0,
+      "phase": "old_return",
+      "physical_rewards": [
+        0.9166666865348816,
+        0.9166666865348816,
+        0.9166666865348816,
+        0.9166666865348816,
+        0.9166666865348816
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.9922106266021729,
+      "post_probe_strategy_slot": 2,
+      "post_probe_strategy_won": false,
+      "replacements": 0,
+      "residual_weights": [
+        -18.298704147338867,
+        1.416405439376831
+      ],
+      "round": 1,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.0750199630856514,
+          0.01114452350884676,
+          0.8763795495033264,
+          0.037455879151821136
+        ],
+        [
+          0.13227756321430206,
+          0.22555160522460938,
+          0.6088360548019409,
+          0.03333473205566406
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 1,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9949367046356201,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 0,
+      "strategy_slot_unique_action_patterns": 1,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.9166666865348816,
+        0.9166666865348816,
+        0.9166666865348816,
+        0.9166666865348816,
+        0.9166666865348816
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184
+      ],
+      "context_encoder_updates": 37,
+      "frozen_reward": 0.8333333134651184,
+      "frozen_target_rate": 0.0,
+      "learned_reward": 0.8333333134651184,
+      "learned_target_rate": 0.0,
+      "phase": "old_return",
+      "physical_rewards": [
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.9948378801345825,
+      "post_probe_strategy_slot": 2,
+      "post_probe_strategy_won": false,
+      "replacements": 0,
+      "residual_weights": [
+        -15.298704147338867,
+        1.416405439376831
+      ],
+      "round": 2,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.41234979033470154,
+          0.13814346492290497,
+          0.4259450137615204,
+          0.023561770096421242
+        ],
+        [
+          0.02120300754904747,
+          0.015358448028564453,
+          0.924689769744873,
+          0.038748692721128464
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 1,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9974748492240906,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 0,
+      "strategy_slot_unique_action_patterns": 1,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.8749999403953552,
+        0.8749999403953552,
+        0.8749999403953552,
+        0.8749999403953552,
+        0.8749999403953552
+      ],
+      "context_encoder_updates": 38,
+      "frozen_reward": 0.8749999403953552,
+      "frozen_target_rate": 0.0,
+      "learned_reward": 0.8749999403953552,
+      "learned_target_rate": 0.0,
+      "phase": "old_return",
+      "physical_rewards": [
+        0.8749999403953552,
+        0.8749999403953552,
+        0.8749999403953552,
+        0.8749999403953552,
+        0.8749999403953552
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.9991177320480347,
+      "post_probe_strategy_slot": 2,
+      "post_probe_strategy_won": false,
+      "replacements": 0,
+      "residual_weights": [
+        -15.298704147338867,
+        1.416405439376831
+      ],
+      "round": 3,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.0053512295708060265,
+          0.04480954632163048,
+          0.9480398297309875,
+          0.0017994133522734046
+        ],
+        [
+          0.39536264538764954,
+          0.025778546929359436,
+          0.4011458456516266,
+          0.17771293222904205
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 1,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9985195398330688,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 0,
+      "strategy_slot_unique_action_patterns": 1,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.8749999403953552,
+        0.8749999403953552,
+        0.8749999403953552,
+        0.8749999403953552,
+        0.8749999403953552
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.875,
+        0.875,
+        0.875,
+        0.875,
+        0.875
+      ],
+      "context_encoder_updates": 39,
+      "frozen_reward": 0.875,
+      "frozen_target_rate": 0.0,
+      "learned_reward": 0.875,
+      "learned_target_rate": 0.0,
+      "phase": "old_return",
+      "physical_rewards": [
+        0.875,
+        0.875,
+        0.875,
+        0.875,
+        0.875
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.9999459981918335,
+      "post_probe_strategy_slot": 2,
+      "post_probe_strategy_won": false,
+      "replacements": 0,
+      "residual_weights": [
+        -18.298704147338867,
+        4.41640567779541
+      ],
+      "round": 4,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.021295389160513878,
+          0.17161835730075836,
+          0.7204368114471436,
+          0.08664939552545547
+        ],
+        [
+          0.47430914640426636,
+          0.010217960923910141,
+          0.5061659812927246,
+          0.009306860156357288
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 1,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9996737241744995,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 0,
+      "strategy_slot_unique_action_patterns": 1,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.875,
+        0.875,
+        0.875,
+        0.875,
+        0.875
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184
+      ],
+      "context_encoder_updates": 40,
+      "frozen_reward": 0.8333333134651184,
+      "frozen_target_rate": 0.0,
+      "learned_reward": 0.8333333134651184,
+      "learned_target_rate": 0.0,
+      "phase": "old_return",
+      "physical_rewards": [
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.998267412185669,
+      "post_probe_strategy_slot": 2,
+      "post_probe_strategy_won": false,
+      "replacements": 0,
+      "residual_weights": [
+        -15.298704147338867,
+        4.41640567779541
+      ],
+      "round": 5,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.030070427805185318,
+          0.005235997959971428,
+          0.9131324291229248,
+          0.05156106501817703
+        ],
+        [
+          0.06707440316677094,
+          0.13068950176239014,
+          0.7818908095359802,
+          0.020345192402601242
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 1,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9936292767524719,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 0,
+      "strategy_slot_unique_action_patterns": 1,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184
+      ]
+    },
+    {
+      "aligned_physical_rewards": [
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184
+      ],
+      "context_encoder_updates": 41,
+      "frozen_reward": 0.8333333134651184,
+      "frozen_target_rate": 0.0,
+      "learned_reward": 0.8333333134651184,
+      "learned_target_rate": 0.0,
+      "phase": "old_return",
+      "physical_rewards": [
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184
+      ],
+      "physical_winner": 0,
+      "post_probe_strategy_similarity": 0.9944165945053101,
+      "post_probe_strategy_slot": 2,
+      "post_probe_strategy_won": false,
+      "replacements": 0,
+      "residual_weights": [
+        -18.298704147338867,
+        4.41640567779541
+      ],
+      "round": 6,
+      "soft_context_actions_diverged": false,
+      "soft_context_candidate_count": 2,
+      "soft_context_direction_proposals": 16,
+      "soft_context_mixture_weights": [
+        [
+          0.07150118798017502,
+          0.040888719260692596,
+          0.8596150279045105,
+          0.027995113283395767
+        ],
+        [
+          0.2660912573337555,
+          0.043175578117370605,
+          0.6529898643493652,
+          0.037743259221315384
+        ]
+      ],
+      "soft_context_reward_delta": 0.0,
+      "strategy_admission_candidate": 1,
+      "strategy_admission_was_novel": true,
+      "strategy_memory_count": 4,
+      "strategy_retrieval_similarity": 0.9947424530982971,
+      "strategy_retrieved_slot": 2,
+      "strategy_slot_max_action_disagreements": 0,
+      "strategy_slot_unique_action_patterns": 1,
+      "strategy_updated_slot": 2,
+      "tensor_rewards": [
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184,
+        0.8333333134651184
+      ]
+    }
+  ],
+  "training_signal": "three_candidate_persistent_physical_verified_horse_race"
+}
