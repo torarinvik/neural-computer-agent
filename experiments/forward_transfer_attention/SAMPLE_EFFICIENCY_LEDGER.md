@@ -791,3 +791,25 @@ The next sub-minute rung is a passive action-conditioned success critic trained
 only from visible statistics, attempted actions, exact propensities, and scalar
 verified outcomes.  It must pass calibration, reward-shuffle, and
 missing-evidence controls before influencing either actions or compute.
+
+That passive critic was implemented and tested without any action influence.
+Each corrected seed used 512 unique attempted lifetimes, 1,536 unique verifier
+bits, eight optimizer updates, zero replay, and about 11.3 seconds.  Every
+logging propensity was exact, gradients were live, save/reload was exact, and
+binary/four-rule retention passed.
+
+Seed 7322 showed a weak ranking signal: intact concordance was 0.588 versus
+0.501 under reward shuffling, with ECE 0.0092.  Its Brier gain over the
+empirical-rate predictor was only 0.00012, however, and an action-only arm
+ranked slightly better at 0.616.  Unchanged seed 7323 did not replicate:
+intact/action-only concordance fell to 0.499/0.514 and no learned arm beat the
+constant Brier baseline.  A separate 256-lifetime audit showed that uniform
+logging still covered all actions and did not increase outcome variation
+relative to the registered epsilon mixture.
+
+This aggregate-outcome critic is therefore rejected for a three-minute run.
+The architecture remains passive and available, but it has not earned the
+right to control answers, memory, or compute.  The next gradual rung is a
+shorter-horizon attempted-action prediction: one immediate verifier event
+first, then longer outcome horizons and cross-context prediction one axis at a
+time.

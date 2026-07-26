@@ -23,6 +23,13 @@ from .train_contextual_full_residual import (
     retrieve_residual,
     select_verified_candidate,
 )
+from .train_passive_replacement_critic import (
+    CRITIC_INPUT_WIDTH,
+    apply_evidence_control,
+    attempted_action_features,
+    concordance,
+    exploration_probabilities,
+)
 from .train_persistent_memory import _grouped_read
 from .probe_persistent_physical_stream import (
     _future_for_actions,
@@ -198,6 +205,50 @@ def test_attempted_loss_has_no_unattempted_target_argument() -> None:
     assert logits.grad is not None
     assert logits.grad[0, 1] == 0
     assert logits.grad[1, 0] == 0
+
+
+def test_passive_critic_features_describe_only_attempted_option() -> None:
+    features = torch.arange(3 * 4 * 8, dtype=torch.float32).reshape(3, 4, 8)
+    scores = torch.tensor([
+        [0.0, 1.0, 2.0, 3.0],
+        [2.0, 1.0, 0.0, -1.0],
+        [0.1, 0.2, 0.3, 0.4],
+    ])
+    actions = torch.tensor([1, 0, 3])
+    propensities = torch.tensor([0.2, 0.4, 0.6])
+    critic_features = attempted_action_features(
+        features, scores, actions, propensities)
+    assert critic_features.shape == (3, CRITIC_INPUT_WIDTH)
+    selected = features[torch.arange(3), actions]
+    assert torch.equal(critic_features[:, 18:26], selected)
+    assert torch.equal(critic_features[:, 26], propensities)
+
+
+def test_passive_critic_controls_remove_only_registered_evidence() -> None:
+    features = torch.randn(5, CRITIC_INPUT_WIDTH)
+    missing_action = apply_evidence_control(features, "missing_action")
+    missing_context = apply_evidence_control(features, "missing_context")
+    assert torch.equal(missing_action[:, :18], features[:, :18])
+    assert torch.count_nonzero(missing_action[:, 18:]) == 0
+    assert torch.count_nonzero(missing_context[:, :18]) == 0
+    assert torch.equal(missing_context[:, 18:], features[:, 18:])
+
+
+def test_passive_critic_logging_propensities_are_exact_mixture() -> None:
+    scores = torch.tensor([[0.0, 1.0, 2.0]])
+    probabilities = exploration_probabilities(
+        scores, epsilon=0.3, temperature=2.0)
+    expected = 0.7 * torch.softmax(scores / 2.0, dim=-1) + 0.1
+    assert torch.allclose(probabilities, expected)
+    assert torch.allclose(probabilities.sum(-1), torch.ones(1))
+
+
+def test_passive_critic_concordance_handles_order_and_ties() -> None:
+    outcomes = torch.tensor([0.0, 0.5, 1.0])
+    assert concordance(outcomes, outcomes) == pytest.approx(1.0)
+    assert concordance(-outcomes, outcomes) == pytest.approx(0.0)
+    assert concordance(torch.zeros_like(outcomes), outcomes) == pytest.approx(
+        0.5)
 
 
 def test_disk_latent_memory_round_trip(tmp_path: Path) -> None:
