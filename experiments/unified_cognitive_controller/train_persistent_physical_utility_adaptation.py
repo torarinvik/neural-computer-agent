@@ -139,6 +139,39 @@ def _clone_model(
     return model
 
 
+def _strategy_memory_payload(
+        memory: LatentStrategyMemory | None) -> dict[str, object] | None:
+    if memory is None:
+        return None
+    return {
+        "capacity": memory.capacity,
+        "key_width": memory.key_width,
+        "value_width": memory.value_width,
+        "count": memory.count,
+        "keys": memory.keys.detach().cpu(),
+        "values": memory.values.detach().cpu(),
+        "usage": memory.usage.detach().cpu(),
+        "success": memory.success.detach().cpu(),
+        "failure": memory.failure.detach().cpu(),
+    }
+
+
+def _restore_strategy_memory(
+        payload: dict[str, object] | None, *,
+        device: torch.device) -> LatentStrategyMemory | None:
+    if payload is None:
+        return None
+    memory = LatentStrategyMemory(
+        capacity=int(payload["capacity"]),
+        key_width=int(payload["key_width"]),
+        value_width=int(payload["value_width"]),
+        device=device)
+    memory.count = int(payload["count"])
+    for field in ("keys", "values", "usage", "success", "failure"):
+        getattr(memory, field).copy_(payload[field].to(device))
+    return memory
+
+
 @torch.no_grad()
 def _shadow_strategy_bank_audit(
         model: UnifiedCognitiveController,
@@ -239,6 +272,12 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint-in", type=Path, required=True)
     parser.add_argument("--checkpoint-out", type=Path)
+    parser.add_argument(
+        "--prefix-state-out", type=Path,
+        help="save exact resumable physical/strategy state at the run endpoint")
+    parser.add_argument(
+        "--resume-prefix-state", type=Path,
+        help="continue an exact prefix state under the same configuration")
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--seed", type=int, default=7031)
     parser.add_argument(
@@ -412,7 +451,104 @@ def main() -> None:
         shadow_audits = []
         shadow_candidate_evaluations = 0
         shadow_candidate_exact = 0
+        resume_rounds = 0
 
+        if args.resume_prefix_state is not None:
+            resume = torch.load(
+                args.resume_prefix_state, map_location=device,
+                weights_only=False)
+            if resume.get("schema") != (
+                    "unified-controller-physical-prefix-state-v1"):
+                raise ValueError("unsupported physical prefix-state schema")
+            expected_signature = {
+                "seed": args.seed,
+                "experience_seed": experience_seed,
+                "policy_perturbation_seed": policy_perturbation_seed,
+                "context_proposal_seed": context_proposal_seed,
+                "banks": args.banks,
+                "bank_capacity": args.bank_capacity,
+                "rounds_per_phase": args.rounds_per_phase,
+                "curriculum": args.curriculum,
+                "strategy_memory_capacity": args.strategy_memory_capacity,
+                "strategy_admission": args.strategy_admission,
+                "perturbation": args.perturbation,
+                "step_size": args.step_size,
+                "soft_context_perturbation":
+                    args.soft_context_perturbation,
+                "soft_context_temperature": args.soft_context_temperature,
+                "soft_context_direction_proposals":
+                    args.soft_context_direction_proposals,
+                "context_learning_rate": args.context_learning_rate,
+                "shuffle_physical_rewards": args.shuffle_physical_rewards,
+                "reset_banks_each_round": args.reset_banks_each_round,
+                "target_intervention": args.target_intervention,
+            }
+            if resume["configuration_signature"] != expected_signature:
+                raise ValueError(
+                    "resume prefix configuration does not match this run")
+            model.load_state_dict(resume["model_state_dict"])
+            memories = []
+            for store in resume["memory_stores"]:
+                memory = DiskLatentMemory.__new__(DiskLatentMemory)
+                memory.store = store.to(device)
+                memories.append(memory)
+            row_batch = resume["row_batch"]
+            row_queries = resume["row_queries"].to(device)
+            strategy_memory = _restore_strategy_memory(
+                resume["strategy_memory"], device=device)
+            if context_encoder is not None:
+                context_encoder.load_state_dict(
+                    resume["context_encoder_state_dict"])
+            if (
+                    context_optimizer is not None
+                    and resume["context_optimizer_state_dict"] is not None):
+                context_optimizer.load_state_dict(
+                    resume["context_optimizer_state_dict"])
+            direction_generator.set_state(
+                resume["direction_generator_state"].to(device))
+            context_direction_generator.set_state(
+                resume["context_direction_generator_state"].to(device))
+            restored = resume["run_state"]
+            context_updates = restored["context_updates"]
+            context_losses = restored["context_losses"]
+            context_advantages = restored["context_advantages"]
+            previous_reward_signature = restored[
+                "previous_reward_signature"].to(device)
+            strategy_save_reloads = restored["strategy_save_reloads"]
+            strategy_candidate_evaluations = restored[
+                "strategy_candidate_evaluations"]
+            trace = restored["trace"]
+            phase_rows_by_name = restored["phase_rows_by_name"]
+            phase_weights_by_name = restored["phase_weights_by_name"]
+            state_exact = restored["state_exact"]
+            candidate_exact = restored["candidate_exact"]
+            transition_exact = restored["transition_exact"]
+            maximum_parity_difference = restored[
+                "maximum_parity_difference"]
+            maximum_cross_choice_regret = restored[
+                "maximum_cross_choice_regret"]
+            total_replacements = restored["total_replacements"]
+            rounds = restored["rounds"]
+            soft_context_pair_count = restored["soft_context_pair_count"]
+            soft_context_action_divergent_pairs = restored[
+                "soft_context_action_divergent_pairs"]
+            soft_context_reward_divergent_pairs = restored[
+                "soft_context_reward_divergent_pairs"]
+            soft_context_reward_delta_sum = restored[
+                "soft_context_reward_delta_sum"]
+            soft_context_direction_proposals_screened = restored[
+                "soft_context_direction_proposals_screened"]
+            soft_context_selected_preverifier_action_disagreements = restored[
+                "soft_context_selected_preverifier_action_disagreements"]
+            target_intervention_applied = restored[
+                "target_intervention_applied"]
+            shadow_audits = restored["shadow_audits"]
+            shadow_candidate_evaluations = restored[
+                "shadow_candidate_evaluations"]
+            shadow_candidate_exact = restored["shadow_candidate_exact"]
+            resume_rounds = rounds
+
+        scheduled_round = 0
         for phase_index, (phase, weights, phase_rounds) in enumerate(phases):
             if (
                     args.max_physical_rounds is not None
@@ -442,6 +578,9 @@ def main() -> None:
                 target_intervention_applied = True
             phase_rows = []
             for round_index in range(phase_rounds):
+                scheduled_round += 1
+                if scheduled_round <= resume_rounds:
+                    continue
                 if (
                         args.max_physical_rounds is not None
                         and rounds >= args.max_physical_rounds):
@@ -939,6 +1078,92 @@ def main() -> None:
                         maximum_parity_difference,
                         shadow_parity_difference)
 
+        if args.prefix_state_out is not None:
+            signature = {
+                "seed": args.seed,
+                "experience_seed": experience_seed,
+                "policy_perturbation_seed": policy_perturbation_seed,
+                "context_proposal_seed": context_proposal_seed,
+                "banks": args.banks,
+                "bank_capacity": args.bank_capacity,
+                "rounds_per_phase": args.rounds_per_phase,
+                "curriculum": args.curriculum,
+                "strategy_memory_capacity": args.strategy_memory_capacity,
+                "strategy_admission": args.strategy_admission,
+                "perturbation": args.perturbation,
+                "step_size": args.step_size,
+                "soft_context_perturbation":
+                    args.soft_context_perturbation,
+                "soft_context_temperature": args.soft_context_temperature,
+                "soft_context_direction_proposals":
+                    args.soft_context_direction_proposals,
+                "context_learning_rate": args.context_learning_rate,
+                "shuffle_physical_rewards": args.shuffle_physical_rewards,
+                "reset_banks_each_round": args.reset_banks_each_round,
+                "target_intervention": args.target_intervention,
+            }
+            args.prefix_state_out.parent.mkdir(parents=True, exist_ok=True)
+            torch.save({
+                "schema": "unified-controller-physical-prefix-state-v1",
+                "configuration_signature": signature,
+                "model_state_dict": model.state_dict(),
+                "memory_stores": [
+                    memory.store.clone().to("cpu") for memory in memories],
+                "row_batch": row_batch,
+                "row_queries": row_queries.detach().cpu(),
+                "strategy_memory":
+                    _strategy_memory_payload(strategy_memory),
+                "context_encoder_state_dict": (
+                    context_encoder.state_dict()
+                    if context_encoder is not None else None),
+                "context_optimizer_state_dict": (
+                    context_optimizer.state_dict()
+                    if context_optimizer is not None else None),
+                "direction_generator_state":
+                    direction_generator.get_state().cpu(),
+                "context_direction_generator_state":
+                    context_direction_generator.get_state().cpu(),
+                "run_state": {
+                    "context_updates": context_updates,
+                    "context_losses": context_losses,
+                    "context_advantages": context_advantages,
+                    "previous_reward_signature":
+                        previous_reward_signature.detach().cpu(),
+                    "strategy_save_reloads": strategy_save_reloads,
+                    "strategy_candidate_evaluations":
+                        strategy_candidate_evaluations,
+                    "trace": trace,
+                    "phase_rows_by_name": phase_rows_by_name,
+                    "phase_weights_by_name": phase_weights_by_name,
+                    "state_exact": state_exact,
+                    "candidate_exact": candidate_exact,
+                    "transition_exact": transition_exact,
+                    "maximum_parity_difference":
+                        maximum_parity_difference,
+                    "maximum_cross_choice_regret":
+                        maximum_cross_choice_regret,
+                    "total_replacements": total_replacements,
+                    "rounds": rounds,
+                    "soft_context_pair_count": soft_context_pair_count,
+                    "soft_context_action_divergent_pairs":
+                        soft_context_action_divergent_pairs,
+                    "soft_context_reward_divergent_pairs":
+                        soft_context_reward_divergent_pairs,
+                    "soft_context_reward_delta_sum":
+                        soft_context_reward_delta_sum,
+                    "soft_context_direction_proposals_screened":
+                        soft_context_direction_proposals_screened,
+                    "soft_context_selected_preverifier_action_disagreements":
+                        soft_context_selected_preverifier_action_disagreements,
+                    "target_intervention_applied":
+                        target_intervention_applied,
+                    "shadow_audits": shadow_audits,
+                    "shadow_candidate_evaluations":
+                        shadow_candidate_evaluations,
+                    "shadow_candidate_exact": shadow_candidate_exact,
+                },
+            }, args.prefix_state_out)
+
         phase_summaries = []
         for phase, phase_rows in phase_rows_by_name.items():
             weights = phase_weights_by_name[phase]
@@ -1051,6 +1276,12 @@ def main() -> None:
             "checkpoint_out": (
                 str(args.checkpoint_out)
                 if args.checkpoint_out is not None else None),
+            "prefix_state_out": (
+                str(args.prefix_state_out)
+                if args.prefix_state_out is not None else None),
+            "resume_prefix_state": (
+                str(args.resume_prefix_state)
+                if args.resume_prefix_state is not None else None),
             "report": str(args.report),
             "resolved_experience_seed": experience_seed,
             "resolved_policy_perturbation_seed":

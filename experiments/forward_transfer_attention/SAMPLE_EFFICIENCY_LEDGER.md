@@ -532,3 +532,23 @@ selected the eventual best safe clone on streams 7074, 7075, and 7076. One
 round was noisy and three rounds tied two clones on 7074. The next engineering
 gate is exact resumable prefix state, followed by a prospective 18-round shadow
 screen → 42-round return screen → 54-round winner ladder.
+
+## Exact resumable race state
+
+The physical trainer now saves and restores the complete learning trajectory:
+controller residual, bounded physical disk banks, current row/query stream,
+latent strategy bank, context encoder and optimizer, explicit RNG states,
+reward signature, intervention flags, trace, and all verifier/accounting
+counters. Resume files are configuration-validated and prefixes remain
+non-graduating.
+
+An initial 3→6-round audit matched uninterrupted execution recursively and
+bit-for-bit. The promoted 18→54 audit used the real strong four-bank,
+four-strategy, sixteen-proposal configuration with the four-seed shadow audit.
+The resumed and uninterrupted final payloads were identical across every
+tensor, physical-memory row, strategy statistic, encoder parameter, generator
+state, trace, phase summary, gate, and accounting field. Both reproduced 81.9%
+old-return target accuracy.
+
+Exact resumability is promoted. The planned 18→42→54 population ladder can now
+save real candidate compute instead of replaying winning prefixes.

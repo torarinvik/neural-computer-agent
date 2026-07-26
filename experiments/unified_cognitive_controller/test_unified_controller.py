@@ -22,6 +22,8 @@ from .strategy_memory import (
 )
 from .train_persistent_physical_utility_adaptation import (
     _curriculum_phases,
+    _restore_strategy_memory,
+    _strategy_memory_payload,
     _value_diverse_admission,
 )
 from .dynamic_working_memory import (
@@ -471,6 +473,24 @@ def test_value_diverse_admission_preserves_latent_extremes() -> None:
         [1.0, 0.5])
     assert candidate == 1
     assert slot == 1
+
+
+def test_prefix_state_strategy_memory_round_trip_is_exact() -> None:
+    source = LatentStrategyMemory(
+        capacity=3, key_width=2, value_width=2)
+    source.upsert(
+        torch.tensor([1.0, 0.0]), torch.tensor([-2.0, 0.5]),
+        verified_improvement=1.0)
+    source.upsert(
+        torch.tensor([0.0, 1.0]), torch.tensor([3.0, -0.5]),
+        verified_improvement=-1.0)
+    source.usage[:2] = torch.tensor([7, 4])
+    restored = _restore_strategy_memory(
+        _strategy_memory_payload(source), device=torch.device("cpu"))
+    assert restored is not None
+    assert restored.count == source.count
+    for field in ("keys", "values", "usage", "success", "failure"):
+        assert torch.equal(getattr(restored, field), getattr(source, field))
 
 
 def test_dynamic_working_memory_mask_accounting_and_persistence(
