@@ -63,7 +63,8 @@ def persistent_rollout(
         model: UnifiedCognitiveController, *, count: int, capacity: int,
         seed: int, device: torch.device, sample_actions: bool,
         exploration: float = 0.10, memory_mode: str = "soft",
-        reverse_rules: bool = False) -> dict[str, torch.Tensor]:
+        reverse_rules: bool = False,
+        memory_temperature: float = 10.0) -> dict[str, torch.Tensor]:
     if count % capacity:
         raise ValueError("count must be divisible by memory capacity")
     batch = _add_context_signatures(
@@ -92,7 +93,8 @@ def persistent_rollout(
         batch.frames[:, 2], fresh, null_action, zeros, zeros)
     recalled, selected = _grouped_read(
         query0.memory_key, support0.memory_key,
-        support1.memory_value, capacity=capacity, mode=memory_mode)
+        support1.memory_value, capacity=capacity, mode=memory_mode,
+        temperature=memory_temperature)
     query, _ = model.step(
         batch.frames[:, 2], fresh, null_action, zeros, zeros,
         retrieved_memory=recalled)
@@ -225,6 +227,9 @@ def main() -> None:
     parser.add_argument("--test-contexts", type=int, default=2048)
     parser.add_argument("--learning-rate", type=float, default=3e-4)
     parser.add_argument("--exploration", type=float, default=0.10)
+    parser.add_argument(
+        "--memory-temperature", type=float, default=10.0,
+        help="soft-memory similarity temperature used during training")
     parser.add_argument("--log-every", type=int, default=100)
     parser.add_argument(
         "--persistent-updates-per-cycle", type=int, default=1,
@@ -238,6 +243,8 @@ def main() -> None:
         raise ValueError("test contexts must divide into memory banks")
     if args.persistent_updates_per_cycle < 1:
         raise ValueError("persistent updates per cycle must be positive")
+    if args.memory_temperature <= 0:
+        raise ValueError("memory temperature must be positive")
     seed_everything(args.seed)
     device = torch.device(args.device)
     payload = torch.load(
@@ -264,7 +271,8 @@ def main() -> None:
                 model, count=args.batch_size,
                 capacity=args.memory_capacity, seed=data_seed,
                 device=device, sample_actions=True,
-                exploration=args.exploration, memory_mode="soft")
+                exploration=args.exploration, memory_mode="soft",
+                memory_temperature=args.memory_temperature)
             loss = attempted_success_loss(
                 result["logits"], result["actions"], result["outcomes"])
             accuracy = float(result["outcomes"].mean())

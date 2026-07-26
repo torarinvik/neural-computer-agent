@@ -56,11 +56,11 @@ and behavioral retention in one controller.
 The same controller now also performs content-addressed latent recall across
 active-state resets. A 600-update capacity-two rung reached 96.53% blind
 recall; 150-update bridges at capacities 8 and 16 produced zero-shot transfer
-to capacities 16 and 32. The current capacity-16 checkpoint reaches 87.48% at
-capacity 32 without capacity-32 training, while capacity 64 is the honest
-frontier at 81.69%. Empty, shuffled, and corrupted memories collapse toward
-chance; disk save/load reproduces hard retrieval; the earlier one-support and
-four-rule skills remain retained.
+to capacities 16 and 32. A later five-second rung used only 20 new-memory
+updates at capacity 40 and reached 90.00% blind recall, then transferred
+zero-shot to capacity 48 at 88.28% and capacity 56 at 87.33%. Empty, shuffled,
+and corrupted memories collapse toward chance; disk save/load reproduces hard
+retrieval; the earlier one-support and four-rule skills remain retained.
 
 Unseen elongated diamonds and disconnected dot-pair stimuli also transfer
 zero-shot at 94.95–98.14%, tightening the evidence that visual identity is

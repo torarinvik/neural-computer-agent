@@ -178,16 +178,24 @@ The gradual ladder produced:
 | 2 | 600 | 96.53% blind | 8: 87.48% |
 | 8 | 150 | 93.65% | 16: 90.09% |
 | 16 | 150 | 91.21% | 32: 87.48% |
+| 40 | 40 total / 20 memory | 90.00% blind | 48: 88.28%; 56: 87.33% |
 
 Every admitted checkpoint passed private-rule reversal, paired prediction
 flips, empty memory, shuffled rows, corrupted latents, disk save/load
-equivalence, one-support retention, and four-rule retention. Capacity 64 is
-the measured frontier failure at 81.69% recall and 62.44% retrieval.
+equivalence, one-support retention, and four-rule retention. The capacity-16
+parent reached only 82.60% at capacity 48 because retrieval fell to 65.49%;
+forcing the correct row restored 100% behavior, localizing the frontier to
+keys rather than stored values or the reader. Soft reads at temperature 10
+were badly mismatched to hard top-1 deployment. Raising the training
+temperature to 50 produced a replicated capacity-40 gain after only 20 memory
+updates and transferred zero-shot through capacity 56. Capacity 64 remains
+untested for the new parent; it was the prior parent's measured failure at
+81.69% recall and 62.44% retrieval.
 
 The current checkpoint is
-`artifacts/checkpoints/unified_persistent_capacity16_bridge_seed4006.pt`,
+`artifacts/checkpoints/unified_persistent_capacity40_temp50_seed4801.pt`,
 SHA-256
-`7ae568ea2007241dcc167764bd91ba4e4c19bb95431c968d42e0f4c6f766a215`.
+`3adc437e87e3ec65f02aeb22fe56bb16d0d48b43543d9858762eb2f27e2b3d9d`.
 
 Claim boundary: this demonstrates controller-created, content-addressed latent
 storage and recall across active-state resets, with actual disk serialization.

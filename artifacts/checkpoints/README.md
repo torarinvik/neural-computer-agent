@@ -56,26 +56,32 @@ part of this capability claim.
 
 ## Persistent-memory ladder
 
-`unified_persistent_capacity16_bridge_seed4006.pt` is the current unified
+`unified_persistent_capacity40_temp50_seed4801.pt` is the current unified
 controller milestone.
 
 - SHA-256:
-  `7ae568ea2007241dcc167764bd91ba4e4c19bb95431c968d42e0f4c6f766a215`
-- Capacity-16 trained recall: 91.21%
-- Zero-shot capacity-32 recall: 87.48%
-- Capacity-32 retrieval top-1: 73.82%
-- Capacity-64 frontier: 81.69%, honestly rejected
+  `3adc437e87e3ec65f02aeb22fe56bb16d0d48b43543d9858762eb2f27e2b3d9d`
+- Capacity-40 blind recall: 90.00%
+- Zero-shot capacity-48 recall: 88.28%
+- Zero-shot capacity-56 recall: 87.33%
+- Capacity-56 retrieval top-1: 74.06%
+- Acquisition cost: 20 memory updates, 4,800 unique recurring contexts,
+  and 4.93 seconds on the measured GPU run
 - Empty, shuffled, and corrupted memory controls: large causal degradation
 - Private-rule reversal and paired prediction-flip controls: passed
 - Original one-support and four-rule behavioral retention: passed
 - Serializable disk read reproduces the hard latent-memory read
+- A matched temperature-10 pilot regressed and was rejected; sharpening the
+  differentiable training read to temperature 50 was the isolated change
 
 The exact gradual parents are:
 
 - `unified_persistent_capacity2_ratio2_seed4004.pt`, SHA-256
   `2be66cd8b13f4eee86a80bd2c0369a7cb138d1b83f489cef5e962ab0d086a34c`;
 - `unified_persistent_capacity8_bridge_seed4005.pt`, SHA-256
-  `90d4a28c8c855190fc58f4f536a927ef3548229768a9bd5ca6117655fa24528c`.
+  `90d4a28c8c855190fc58f4f536a927ef3548229768a9bd5ca6117655fa24528c`;
+- `unified_persistent_capacity16_bridge_seed4006.pt`, SHA-256
+  `7ae568ea2007241dcc167764bd91ba4e4c19bb95431c968d42e0f4c6f766a215`.
 
 The memory rows contain controller-created opaque vectors, not semantic
 records. The current rung uses store-all admission; it does not yet claim
