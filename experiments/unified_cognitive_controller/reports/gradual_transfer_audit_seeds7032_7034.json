@@ -1,0 +1,95 @@
+{
+  "conclusion": "Correct accumulated physical history causally accelerates the related reliability transfer. Reusing learned controller weights helped one seed and tied one seed, so faster ignition from weight reuse is not yet independently replicated.",
+  "empty_visible_history_supporting_arm": {
+    "binary_retained": true,
+    "candidate_verifier_bits_per_round": 288,
+    "first_round_reaching_10_point_target_advantage": null,
+    "four_rule_retained": true,
+    "reward_advantage_auc": 0.0,
+    "target_advantage_auc": 0.0
+  },
+  "gate": {
+    "accepted": true,
+    "all_old_skills_retained": true,
+    "all_seeds_matched": true,
+    "intact_controller_never_worse_than_cold": true,
+    "intact_controller_strictly_beats_cold_in_at_least_one_replica": true,
+    "intact_history_beats_shuffled_reward_in_every_replica": true,
+    "intact_history_beats_shuffled_target_in_every_replica": true
+  },
+  "pairs": [
+    {
+      "cold_controller": {
+        "binary_retained": true,
+        "candidate_verifier_bits_per_round": 288,
+        "first_round_reaching_10_point_target_advantage": 1,
+        "four_rule_retained": true,
+        "reward_advantage_auc": 0.06249988079071045,
+        "target_advantage_auc": 0.75
+      },
+      "intact": {
+        "binary_retained": true,
+        "candidate_verifier_bits_per_round": 288,
+        "first_round_reaching_10_point_target_advantage": 1,
+        "four_rule_retained": true,
+        "reward_advantage_auc": 0.09374994039535522,
+        "target_advantage_auc": 1.0625
+      },
+      "intact_minus_cold": {
+        "reward_advantage_auc": 0.031250059604644775,
+        "target_advantage_auc": 0.3125
+      },
+      "intact_minus_shuffled": {
+        "reward_advantage_auc": 0.09374994039535522,
+        "target_advantage_auc": 1.0625
+      },
+      "seed": 7032,
+      "seed_matched": true,
+      "shuffled_visible_history": {
+        "binary_retained": true,
+        "candidate_verifier_bits_per_round": 288,
+        "first_round_reaching_10_point_target_advantage": null,
+        "four_rule_retained": true,
+        "reward_advantage_auc": 0.0,
+        "target_advantage_auc": 0.0
+      }
+    },
+    {
+      "cold_controller": {
+        "binary_retained": true,
+        "candidate_verifier_bits_per_round": 288,
+        "first_round_reaching_10_point_target_advantage": 1,
+        "four_rule_retained": true,
+        "reward_advantage_auc": 0.03125,
+        "target_advantage_auc": 0.3125
+      },
+      "intact": {
+        "binary_retained": true,
+        "candidate_verifier_bits_per_round": 288,
+        "first_round_reaching_10_point_target_advantage": 1,
+        "four_rule_retained": true,
+        "reward_advantage_auc": 0.03125,
+        "target_advantage_auc": 0.3125
+      },
+      "intact_minus_cold": {
+        "reward_advantage_auc": 0.0,
+        "target_advantage_auc": 0.0
+      },
+      "intact_minus_shuffled": {
+        "reward_advantage_auc": 0.020833373069763184,
+        "target_advantage_auc": 0.25
+      },
+      "seed": 7034,
+      "seed_matched": true,
+      "shuffled_visible_history": {
+        "binary_retained": true,
+        "candidate_verifier_bits_per_round": 288,
+        "first_round_reaching_10_point_target_advantage": null,
+        "four_rule_retained": true,
+        "reward_advantage_auc": 0.010416626930236816,
+        "target_advantage_auc": 0.0625
+      }
+    }
+  ],
+  "schema": "unified-controller-gradual-transfer-audit-v1"
+}

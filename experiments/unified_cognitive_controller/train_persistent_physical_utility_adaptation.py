@@ -10,6 +10,7 @@ from pathlib import Path
 import torch
 
 from .audit_multifeature_utility import _materialize_histories
+from .memory import DiskLatentMemory
 from .model import UnifiedCognitiveController
 from .probe_persistent_physical_stream import (
     _apply_winner,
@@ -49,6 +50,14 @@ def main() -> None:
     parser.add_argument(
         "--reset-banks-each-round", action="store_true",
         help="fresh-bank control: rematerialize physical histories each round")
+    parser.add_argument(
+        "--target-intervention",
+        choices=("none", "cold", "empty_history", "shuffled_history"),
+        default="none",
+        help="one-time intervention immediately before reliability transfer")
+    parser.add_argument(
+        "--curriculum",
+        choices=("standard", "gradual_reliability"), default="standard")
     parser.add_argument("--device", default=(
         "cuda" if torch.cuda.is_available() else "cpu"))
     args = parser.parse_args()
@@ -67,11 +76,20 @@ def main() -> None:
     initial_state = {
         name: value.detach().cpu().clone()
         for name, value in model.state_dict().items()}
-    phases = [
-        ("old_equal", (0.5, 0.5, 0.0)),
-        ("reliability_dominant", (0.3, 0.3, 0.4)),
-        ("old_return", (0.5, 0.5, 0.0)),
-    ]
+    initial_residual = (
+        model.memory_replacement_extra_gate.weight.detach().clone())
+    if args.curriculum == "gradual_reliability":
+        phases = [
+            ("mild_reliability", (0.35, 0.35, 0.3)),
+            ("reliability_dominant", (0.3, 0.3, 0.4)),
+            ("mild_reliability_return", (0.35, 0.35, 0.3)),
+        ]
+    else:
+        phases = [
+            ("old_equal", (0.5, 0.5, 0.0)),
+            ("reliability_dominant", (0.3, 0.3, 0.4)),
+            ("old_return", (0.5, 0.5, 0.0)),
+        ]
     started = time.perf_counter()
     initial = frequency_recency_batch(
         model, banks=args.banks, capacity=args.bank_capacity,
@@ -102,6 +120,10 @@ def main() -> None:
         rounds = 0
 
         for phase_index, (phase, weights) in enumerate(phases):
+            if phase == "reliability_dominant":
+                if args.target_intervention == "cold":
+                    model.memory_replacement_extra_gate.weight.copy_(
+                        initial_residual)
             phase_rows = []
             for round_index in range(args.rounds_per_phase):
                 rounds += 1
@@ -144,6 +166,29 @@ def main() -> None:
                     model, memories, data["candidate_key"],
                     data["candidate_strength"], weights=weights,
                     noise=noise)
+                if (
+                        phase == "reliability_dominant"
+                        and args.target_intervention in (
+                            "empty_history", "shuffled_history")):
+                    visible_memories = []
+                    for source in memories:
+                        visible = DiskLatentMemory.__new__(
+                            DiskLatentMemory)
+                        visible.store = source.store.clone()
+                        for field in (
+                                "access_count", "success_count",
+                                "failure_count"):
+                            values = getattr(visible.store, field)
+                            if args.target_intervention == "empty_history":
+                                values[:visible.count].zero_()
+                            else:
+                                values[:visible.count] = values[
+                                    :visible.count].roll(1)
+                        visible_memories.append(visible)
+                    features, _ = _stream_features(
+                        model, visible_memories, data["candidate_key"],
+                        data["candidate_strength"], weights=weights,
+                        noise=noise)
                 current = (
                     model.memory_replacement_extra_gate.weight
                     .detach().clone())
@@ -303,7 +348,8 @@ def main() -> None:
             "binary_retained": binary["gate"]["accepted"],
             "four_rule_retained": four_rule["gate"]["accepted"],
             "only_extra_residual_changed":
-                changed == ["memory_replacement_extra_gate.weight"],
+                set(changed).issubset({
+                    "memory_replacement_extra_gate.weight"}),
         }
         gate["accepted"] = (
             all(gate.values()) and not args.shuffle_physical_rewards)

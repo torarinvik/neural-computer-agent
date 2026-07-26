@@ -718,6 +718,35 @@ primitive. The next rung is a gradual two-task transfer atom: learn one latent
 utility relation, switch to a related but held-out relation, and compare
 learning curves with intact, empty, shuffled, and fresh long-term memory.
 
+### Gradual transfer and the global-residual limit
+
+The causal memory half of that rung passes. On two paired seeds, an intact
+physical-history view beat a shuffled view on both normalized verified-reward
+AUC and target-selection AUC. Intact memory crossed a ten-point
+target-advantage threshold in the first 288 verifier bits in both replicas;
+the shuffled-history arm never crossed it. Emptying only the controller-visible
+history also removed the advantage in the supporting seed. All old-skill
+retention gates passed.
+
+The learned-weight reuse half did not establish robust compounding. Resetting
+the two-weight utility residual before the held-out phase hurt one seed and tied
+the other. Two deliberately gradual curricula then localized why:
+
+- reliability `0.2 -> 0.4` produced identical warm and cold target curves
+  because the source was too easy to teach the residual anything reusable;
+- reliability `0.3 -> 0.4` taught the source relation, but the warm residual
+  transferred negatively and underperformed a cold reset on the target.
+
+Therefore accumulated physical experience is causally useful, while a single
+global residual is an interference bottleneck. More rounds on that mechanism
+are low ROI. The next architecture atom should keep utility strategies as
+context-indexed fast state in RAM and consolidated long-term memory, with the
+same controller retrieving and composing them. Compare it against the global
+residual at equal verifier bits, and require positive transfer plus retention.
+
+Canonical audit:
+`reports/gradual_transfer_audit_seeds7032_7034.json`.
+
 Run the sub-minute GPU experiment:
 
 ```bash
