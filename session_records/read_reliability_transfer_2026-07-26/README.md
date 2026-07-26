@@ -43,3 +43,18 @@ replication. Failure earns no additional training budget.
 
 Transfer distance increases scientific value only after these verified gates
 pass; novelty itself produces no reward.
+
+## Threshold 0.6 result and frontier diagnostic
+
+The consolidated lineage was stronger at threshold 0.6 (`83.4%` choice
+accuracy versus `80.8%` for its ancestor), but both were already stably
+mastered at zero new bits. It therefore failed the pre-registered
+bits-to-threshold advantage and is not replicated.
+
+This rung was too easy rather than too hard. A zero-training private diagnostic
+now measures thresholds `0.60, 0.65, 0.70, 0.75, 0.80` on 2,040 contexts each.
+It selects the smallest measured threshold where the capacity-five lineage
+passes the fixed mastery gates and the capacity-four ancestor does not. The
+probe uses no learner-visible outcomes or optimizer updates; its 20,400
+private counterfactual verifier bits are reported. The selected threshold must
+still pass a fresh pre-registered training race and replication.
