@@ -823,6 +823,20 @@ It establishes the correct curriculum scale: alter one compute-context axis at
 a time, demand replicated bits-to-threshold improvement, then gradually bridge
 toward a new physical operation.
 
+Sequential consolidation now strengthens this result. Reusing the original
+capacity-three allocator directly at capacity five was slower than reset
+(`240` versus `120` stable bits). After learning capacity four and saving that
+updated 105-parameter allocator, capacity-five mastery required zero new bits
+on two target streams. The older capacity-three lineage required 120 and 240
+bits; reset required 120 on one stream and never crossed within 720 on the
+other. All causal and retention gates passed.
+
+This is the current compounding frontier: intermediate verified experience
+must actually update and persist in the lineage. The next controlled distance
+increase should hold capacity fixed and shift one generic evidence
+distribution, then compare the consolidated lineage against both its earlier
+ancestor and reset.
+
 Run the sub-minute GPU experiment:
 
 ```bash

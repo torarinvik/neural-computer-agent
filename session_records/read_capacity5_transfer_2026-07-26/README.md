@@ -64,3 +64,34 @@ The corrected experiment therefore:
 
 Seed 7841 is the discovery run. Only a complete pass permits one unchanged
 seed-7842 replication.
+
+## Replicated sequential-compounding result
+
+The capacity-four consolidation was reconstructed exactly from seed 7824. It
+passed every original powered gate and saved a checkpoint whose provenance
+records 720 source verifier bits and 12 source updates.
+
+Capacity five then passed twice:
+
+- seed 7841: consolidated lineage stable at `0` new bits; original
+  capacity-three lineage and reset both at `120`; final consolidated accuracy
+  `74.8%` and oracle-gap capture `53.4%`;
+- seed 7842: consolidated lineage stable at `0`; original capacity-three
+  lineage at `240`; reset never stable within `720`; final consolidated
+  accuracy `73.8%` and gap capture `53.5%`.
+
+Every speed, fixed-utility, oracle-gap, control, gradient, persistence, binary
+retention, and four-rule retention gate passed. The capacity-five learner saw
+720 fresh verifier bits per arm and zero replay. The intermediate
+capacity-four checkpoint separately accounts its 720 source bits.
+
+This is stronger than repeated zero-shot transfer: when capacity-four
+experience was not consolidated, capacity-three inheritance lost to reset at
+capacity five. After consolidating the intermediate experience, the same
+architecture immediately mastered capacity five and beat both the older
+lineage and reset on two target streams.
+
+The next frontier is to keep capacity five fixed and change one statistics
+distribution axis, such as occupancy or retrieval reliability. That begins
+testing abstraction beyond pure bank-size scaling while preserving the
+verified compounding chain.
