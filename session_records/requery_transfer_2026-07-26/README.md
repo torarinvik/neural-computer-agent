@@ -61,3 +61,28 @@ changes only that boundary:
 
 Failure closes this second-ranked re-query formulation. A full pass permits
 unchanged seed-7894 replication.
+
+## Final result
+
+The trunk-only repair removed catastrophic negative transfer and learned a
+strong adaptive re-query policy:
+
+- consolidated trunk: stable at 120 bits, `71.3%` choice accuracy, `72.1%`
+  oracle-gap capture;
+- ancestor trunk: also stable at 120 bits, `73.2%` accuracy, `69.6%` capture;
+- fully reset: never stable within 720 bits, `64.7%` final accuracy;
+- intact whole heads remained catastrophically inverted.
+
+All causal, retention, persistence, and gradient checks passed, but the
+consolidated trunk was not faster than the ancestor trunk. The pre-registered
+compounding gate therefore rejects the run, and no replication or scaling is
+allowed.
+
+The result localizes the next architecture requirement. A generic value trunk
+is reusable across read and re-query, but operation-specific output semantics
+must be separated. In addition, the current four-feature head does not receive
+compute cost as an input; cost experience can be stored in an operation output
+that must be reset during transfer. The next candidate should use a shared
+trunk over generic evidence **plus explicit normalized compute cost**, with
+small operation-specific adapters. It must beat this 120-bit trunk-transfer
+baseline on a fresh re-query stream.

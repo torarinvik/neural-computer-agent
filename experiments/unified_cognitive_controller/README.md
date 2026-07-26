@@ -851,6 +851,18 @@ frontier is now a gradual physical-operation bridge—external read to re-query
 before recurrent thought—while keeping stable bits-to-threshold, ancestor,
 reset, evidence, and retention controls unchanged.
 
+The first second-ranked re-query bridge localized the operation boundary.
+Direct whole-head transfer inverted the decision and performed catastrophically.
+Resetting only the one-neuron operation output allowed the inherited trunk to
+master re-query in 120 bits, while a fully reset model did not master within
+720. However, the cost-consolidated trunk tied its capacity-five ancestor at
+120 bits, so no additional compounding gain was established.
+
+The new frontier is a shared compute-value trunk with operation-specific
+outputs and explicit normalized compute cost as a generic input. This preserves
+reusable evidence processing while preventing action-sign semantics and cost
+policy from being entangled in the same output neuron.
+
 Run the sub-minute GPU experiment:
 
 ```bash
