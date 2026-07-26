@@ -331,3 +331,42 @@ rejected. Do not enable dynamic admission or lengthen this exact run. The next
 experiment needs more *informative unique comparisons per verifier bit*, not a
 larger encoder: preserve the sharp setting and vary contexts gradually until
 the proportion of action-divergent paired mixtures is high enough to learn.
+
+## Reliability-context ramp rejection
+
+A matched-cost six-round curriculum replaced repeated utility contexts with a
+reliability ramp of 0.0, 0.1, 0.2, 0.3, 0.4, and a return to 0.0. This exposed
+five unique utility contexts instead of two while preserving the 13-parameter
+encoder, four strategy slots, sharp SPSA setting, and 672 verifier bits.
+
+The ramp produced exactly one action-divergent and reward-divergent soft pair
+out of five eligible comparisons (20%), identical to the best earlier sharp
+screen. The useful comparison again differed by 4.17 reward points, yielding
+672 verifier bits per informative pair. Binary and four-rule retention passed,
+but the context encoder gained no denser learning signal.
+
+This rejects scaling reliability diversity alone. The next sub-minute fork
+changes mixture sharpness by one step while returning to the matched standard
+curriculum; it promotes only if informative pairs per verifier bit increase.
+
+Halving the softmax temperature from 0.08 to 0.04 also reproduced exactly one
+informative pair out of five and 672 verifier bits per informative pair.
+Simple sharpening is therefore rejected. The next fork screens multiple
+cost-free perturbation directions using only the learner's own action
+disagreement, then pays the physical verifier for one selected pair. This is
+active experiment design rather than added supervision.
+
+Sixteen-way active direction screening then examined 80 latent
+counterfactual pairs at the same 672-verifier-bit cost. It still found only one
+action- and reward-divergent pair. Unlucky perturbation direction is therefore
+rejected as the bottleneck. Before changing training, the next diagnostic
+measures whether individual stored strategy values themselves induce distinct
+action patterns.
+
+That diagnostic found two stored action patterns only at the single
+informative round. Every later context reduced the full four-slot bank to one
+behaviorally distinct action pattern, so no context metric or mixture could
+obtain counterfactual credit there. The bottleneck is now localized to
+behavioral strategy diversity. Longer context training, larger encoders, more
+directions, and more reliability contexts are all rejected until the strategy
+bank can preserve alternatives that actually act differently.

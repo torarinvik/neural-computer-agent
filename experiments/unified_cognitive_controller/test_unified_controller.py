@@ -19,6 +19,9 @@ from .strategy_memory import (
     VerifierTrainedContextEncoder,
     physical_context_key,
 )
+from .train_persistent_physical_utility_adaptation import (
+    _curriculum_phases,
+)
 from .dynamic_working_memory import (
     CapabilityLedger,
     DynamicWorkingMemory,
@@ -384,6 +387,19 @@ def test_context_encoder_spsa_step_follows_verified_difference() -> None:
     assert torch.allclose(
         encoder.log_scale,
         torch.tensor([0.1, -0.1, 0.1]))
+
+
+def test_context_reliability_ramp_has_six_rounds_and_one_changing_axis(
+        ) -> None:
+    phases = _curriculum_phases(
+        "context_reliability_ramp", rounds_per_phase=99)
+    assert len(phases) == 6
+    assert all(rounds == 1 for _, _, rounds in phases)
+    reliability = [weights[2] for _, weights, _ in phases]
+    assert reliability == [0.0, 0.1, 0.2, 0.3, 0.4, 0.0]
+    for _, weights, _ in phases:
+        assert abs(sum(weights) - 1.0) < 1e-9
+        assert weights[0] == weights[1]
 
 
 def test_dynamic_working_memory_mask_accounting_and_persistence(

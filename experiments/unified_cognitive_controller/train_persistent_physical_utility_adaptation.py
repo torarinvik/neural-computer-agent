@@ -30,6 +30,40 @@ from .strategy_memory import (
 )
 
 
+def _curriculum_phases(
+        curriculum: str,
+        rounds_per_phase: int,
+        ) -> list[tuple[str, tuple[float, float, float], int]]:
+    if curriculum == "context_reliability_ramp":
+        # Six distinct contexts at the same six-round cost as the usual
+        # three-phase, two-round screen. Only reliability changes.
+        reliability = (0.0, 0.1, 0.2, 0.3, 0.4, 0.0)
+        return [
+            (
+                f"context_reliability_{weight:.1f}",
+                ((1.0 - weight) / 2, (1.0 - weight) / 2, weight),
+                1,
+            )
+            for weight in reliability
+        ]
+    if curriculum == "gradual_reliability":
+        phases = [
+            ("mild_reliability", (0.35, 0.35, 0.3)),
+            ("reliability_dominant", (0.3, 0.3, 0.4)),
+            ("mild_reliability_return", (0.35, 0.35, 0.3)),
+        ]
+    else:
+        phases = [
+            ("old_equal", (0.5, 0.5, 0.0)),
+            ("reliability_dominant", (0.3, 0.3, 0.4)),
+            ("old_return", (0.5, 0.5, 0.0)),
+        ]
+    return [
+        (phase, weights, rounds_per_phase)
+        for phase, weights in phases
+    ]
+
+
 def _clone_model(
         payload: dict[str, object], device: torch.device,
         ) -> UnifiedCognitiveController:
@@ -64,7 +98,10 @@ def main() -> None:
         help="one-time intervention immediately before reliability transfer")
     parser.add_argument(
         "--curriculum",
-        choices=("standard", "gradual_reliability"), default="standard")
+        choices=(
+            "standard", "gradual_reliability",
+            "context_reliability_ramp"),
+        default="standard")
     parser.add_argument(
         "--strategy-memory-capacity", type=int, default=0,
         help="zero uses the global residual; positive enables latent RAM")
@@ -75,10 +112,17 @@ def main() -> None:
         "--soft-context-perturbation", type=float, default=0.0,
         help="SPSA radius; positive evaluates two soft retrieval mixtures")
     parser.add_argument("--soft-context-temperature", type=float, default=0.25)
+    parser.add_argument(
+        "--soft-context-direction-proposals", type=int, default=1,
+        help=(
+            "cost-free latent directions screened by action disagreement "
+            "before evaluating one pair with the physical verifier"))
     parser.add_argument("--device", default=(
         "cuda" if torch.cuda.is_available() else "cpu"))
     args = parser.parse_args()
-    if args.banks < 2 or args.rounds_per_phase < 1:
+    if (
+            args.banks < 2 or args.rounds_per_phase < 1
+            or args.soft_context_direction_proposals < 1):
         raise ValueError("at least two banks and one round are required")
 
     seed_everything(args.seed)
@@ -95,18 +139,8 @@ def main() -> None:
         for name, value in model.state_dict().items()}
     initial_residual = (
         model.memory_replacement_extra_gate.weight.detach().clone())
-    if args.curriculum == "gradual_reliability":
-        phases = [
-            ("mild_reliability", (0.35, 0.35, 0.3)),
-            ("reliability_dominant", (0.3, 0.3, 0.4)),
-            ("mild_reliability_return", (0.35, 0.35, 0.3)),
-        ]
-    else:
-        phases = [
-            ("old_equal", (0.5, 0.5, 0.0)),
-            ("reliability_dominant", (0.3, 0.3, 0.4)),
-            ("old_return", (0.5, 0.5, 0.0)),
-        ]
+    phases = _curriculum_phases(
+        args.curriculum, args.rounds_per_phase)
     started = time.perf_counter()
     initial = frequency_recency_batch(
         model, banks=args.banks, capacity=args.bank_capacity,
@@ -154,9 +188,17 @@ def main() -> None:
         maximum_cross_choice_regret = 0.0
         total_replacements = 0
         rounds = 0
+        soft_context_pair_count = 0
+        soft_context_action_divergent_pairs = 0
+        soft_context_reward_divergent_pairs = 0
+        soft_context_reward_delta_sum = 0.0
+        soft_context_direction_proposals_screened = 0
+        soft_context_selected_preverifier_action_disagreements = 0
 
-        for phase_index, (phase, weights) in enumerate(phases):
-            if phase == "reliability_dominant":
+        for phase_index, (phase, weights, phase_rounds) in enumerate(phases):
+            is_peak_reliability = (
+                weights[2] == max(item[1][2] for item in phases))
+            if is_peak_reliability:
                 if args.target_intervention == "cold":
                     model.memory_replacement_extra_gate.weight.copy_(
                         initial_residual)
@@ -174,7 +216,7 @@ def main() -> None:
                         strategy_memory.keys[:strategy_memory.count].roll(
                             1, dims=0))
             phase_rows = []
-            for round_index in range(args.rounds_per_phase):
+            for round_index in range(phase_rounds):
                 rounds += 1
                 seed = (
                     args.seed * 10_000_000
@@ -241,11 +283,32 @@ def main() -> None:
                 context_key = physical_context_key(
                     features, previous_reward_signature)
                 strategy_retrieval = None
+                strategy_slot_unique_action_patterns = 0
+                strategy_slot_max_action_disagreements = 0
                 if strategy_memory is None:
                     current = (
                         model.memory_replacement_extra_gate.weight
                         .detach().clone())
                 else:
+                    slot_actions = []
+                    for slot in range(strategy_memory.count):
+                        model.memory_replacement_extra_gate.weight.copy_(
+                            strategy_memory.values[slot].reshape(1, -1))
+                        slot_actions.append(
+                            model.memory_replacement_scores(
+                                features).argmax(-1))
+                    if slot_actions:
+                        strategy_slot_unique_action_patterns = len({
+                            tuple(actions.tolist())
+                            for actions in slot_actions
+                        })
+                        strategy_slot_max_action_disagreements = max(
+                            (
+                                int((left != right).sum())
+                                for left in slot_actions
+                                for right in slot_actions
+                            ),
+                            default=0)
                     strategy_retrieval = strategy_memory.retrieve(
                         context_key, initial_residual.flatten(),
                         encoder=context_encoder)
@@ -291,22 +354,50 @@ def main() -> None:
                     reward_context_key = physical_context_key(
                         features, reward_signature)
                     if args.soft_context_perturbation > 0:
-                        context_direction = torch.randint(
-                            0, 2, (13,), generator=direction_generator,
-                            device=device).float() * 2 - 1
                         original_scale = (
                             context_encoder.log_scale.detach().clone())
-                        for context_sign in (1.0, -1.0):
-                            context_encoder.log_scale.data.copy_(
-                                original_scale
-                                + context_sign
-                                * args.soft_context_perturbation
-                                * context_direction)
-                            soft_retrievals.append(
-                                strategy_memory.retrieve_soft(
+                        proposals = []
+                        for _ in range(
+                                args.soft_context_direction_proposals):
+                            proposed_direction = torch.randint(
+                                0, 2, (13,),
+                                generator=direction_generator,
+                                device=device).float() * 2 - 1
+                            proposed_retrievals = []
+                            proposed_actions = []
+                            for context_sign in (1.0, -1.0):
+                                context_encoder.log_scale.data.copy_(
+                                    original_scale
+                                    + context_sign
+                                    * args.soft_context_perturbation
+                                    * proposed_direction)
+                                retrieval = strategy_memory.retrieve_soft(
                                     reward_context_key, current.flatten(),
                                     encoder=context_encoder,
-                                    temperature=args.soft_context_temperature))
+                                    temperature=args.soft_context_temperature)
+                                proposed_retrievals.append(retrieval)
+                                model.memory_replacement_extra_gate.weight.copy_(
+                                    retrieval.value.reshape(1, -1))
+                                proposed_actions.append(
+                                    model.memory_replacement_scores(
+                                        features).argmax(-1))
+                            disagreement = int(
+                                (
+                                    proposed_actions[0]
+                                    != proposed_actions[1]
+                                ).sum())
+                            proposals.append((
+                                disagreement, proposed_direction,
+                                proposed_retrievals))
+                        soft_context_direction_proposals_screened += len(
+                            proposals)
+                        (
+                            selected_disagreement,
+                            context_direction,
+                            soft_retrievals,
+                        ) = max(proposals, key=lambda item: item[0])
+                        soft_context_selected_preverifier_action_disagreements += (
+                            selected_disagreement)
                         context_encoder.log_scale.data.copy_(original_scale)
                     else:
                         soft_retrievals.append(strategy_memory.retrieve(
@@ -340,6 +431,18 @@ def main() -> None:
                         tensor_means.append(float(tensor.mean()))
                     post_probe_retrieval = soft_retrievals[0]
                     post_probe_weight = soft_weights[0]
+                    if len(soft_retrievals) == 2:
+                        soft_context_pair_count += 1
+                        positive_actions = actions_by_candidate[-2]
+                        negative_actions = actions_by_candidate[-1]
+                        soft_context_action_divergent_pairs += int(
+                            not torch.equal(
+                                positive_actions, negative_actions))
+                        reward_delta = abs(
+                            physical_means[-2] - physical_means[-1])
+                        soft_context_reward_delta_sum += reward_delta
+                        soft_context_reward_divergent_pairs += int(
+                            reward_delta > 1e-9)
                 aligned_rewards = list(physical_means)
                 if args.shuffle_physical_rewards:
                     order = torch.randperm(
@@ -484,15 +587,29 @@ def main() -> None:
                     "post_probe_strategy_won":
                         physical_winner >= len(signs),
                     "soft_context_candidate_count": len(soft_retrievals),
+                    "soft_context_direction_proposals":
+                        args.soft_context_direction_proposals,
                     "soft_context_mixture_weights": [
                         (
                             retrieval.mixture_weights.tolist()
                             if retrieval.mixture_weights is not None else None)
                         for retrieval in soft_retrievals],
+                    "soft_context_actions_diverged": (
+                        not torch.equal(
+                            actions_by_candidate[-2],
+                            actions_by_candidate[-1])
+                        if len(soft_retrievals) == 2 else None),
+                    "soft_context_reward_delta": (
+                        abs(physical_means[-2] - physical_means[-1])
+                        if len(soft_retrievals) == 2 else None),
                     "context_encoder_updates": context_updates,
                     "strategy_memory_count": (
                         strategy_memory.count
                         if strategy_memory is not None else 0),
+                    "strategy_slot_unique_action_patterns":
+                        strategy_slot_unique_action_patterns,
+                    "strategy_slot_max_action_disagreements":
+                        strategy_slot_max_action_disagreements,
                     "replacements": replacements,
                 }
                 trace.append(row)
@@ -533,8 +650,9 @@ def main() -> None:
             + (rounds if args.reset_banks_each_round else 0))
         expected_candidates = args.banks * (
             4 * rounds + strategy_candidate_evaluations)
-        reliability = phase_summaries[1]
-        old_return = phase_summaries[2]
+        reliability = max(
+            phase_summaries, key=lambda summary: summary["weights"][2])
+        old_return = phase_summaries[-1]
         gate = {
             "every_state_save_reload_exact":
                 state_exact == expected_state,
@@ -623,6 +741,35 @@ def main() -> None:
             "context_encoder_scales": (
                 context_encoder.log_scale.detach().exp().tolist()
                 if context_encoder is not None else None),
+            "unique_utility_contexts": len({
+                tuple(summary["weights"])
+                for summary in phase_summaries}),
+            "soft_context_pair_count": soft_context_pair_count,
+            "soft_context_action_divergent_pairs":
+                soft_context_action_divergent_pairs,
+            "soft_context_action_divergent_fraction": (
+                soft_context_action_divergent_pairs
+                / soft_context_pair_count
+                if soft_context_pair_count else None),
+            "soft_context_reward_divergent_pairs":
+                soft_context_reward_divergent_pairs,
+            "soft_context_reward_divergent_fraction": (
+                soft_context_reward_divergent_pairs
+                / soft_context_pair_count
+                if soft_context_pair_count else None),
+            "soft_context_mean_absolute_reward_delta": (
+                soft_context_reward_delta_sum / soft_context_pair_count
+                if soft_context_pair_count else None),
+            "soft_context_direction_proposals_screened":
+                soft_context_direction_proposals_screened,
+            "soft_context_selected_preverifier_action_disagreements":
+                soft_context_selected_preverifier_action_disagreements,
+            "verifier_bits_per_reward_divergent_pair": (
+                (
+                    args.banks * args.bank_capacity * (
+                        3 * rounds + strategy_candidate_evaluations)
+                ) / soft_context_reward_divergent_pairs
+                if soft_context_reward_divergent_pairs else None),
             "replayed_examples": 0,
             "requested_initial_histories_reproduced_exactly":
                 requested_exact,
