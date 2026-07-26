@@ -31,3 +31,16 @@ Training remains exactly 720 bits and 12 updates. These are measurement
 diagnostics only: they cannot retroactively pass the original replication.
 Agreement under the powered audit would justify a newly pre-registered
 replication; disagreement closes the rung.
+
+Both powered diagnostics agreed:
+
+- seed 7821: inherited stable at 0 bits, reset at 240; final gap capture
+  `55.9%` versus `42.7%`;
+- seed 7822: inherited stable at 0 bits, reset at 600; final gap capture
+  `48.0%` versus `39.2%`.
+
+Every causal, persistence, gradient, and retention gate passed. Therefore seed
+7823 is pre-registered as the first formal powered run, with the same 2,048
+test contexts, 720 training bits, and all original thresholds. A pass permits
+one unchanged seed-7824 replication. These fresh seeds, not the diagnostics,
+decide promotion.
