@@ -1,0 +1,194 @@
+{
+  "schema": "fourth-option-composition-race-v1",
+  "configuration": {
+    "parent_checkpoint": "artifacts/checkpoints/unified_memory_online_utility_seed6810.pt",
+    "selected_prefix": "artifacts/checkpoints/balanced_maximin_stream7085_clone7211_round54.pt",
+    "champion_head": "artifacts/checkpoints/requery_capacity5_seed7893.pt",
+    "previous_option": "session_records/three_way_requery_2026-07-26/option_replay4_seed8053.pt",
+    "report": "session_records/fourth_option_composition_2026-07-26/inherited7_seed8064.json",
+    "checkpoint": null,
+    "device": "cuda",
+    "seed": 8064,
+    "steps": 16,
+    "batch_size": 60,
+    "test_contexts": 2040,
+    "capacity": 6,
+    "learning_rate": 0.003,
+    "replay_updates": 4,
+    "router_input_width": 7,
+    "practical_gain": 0.02
+  },
+  "old_option": {
+    "verified_utility": 0.7035098671913147,
+    "oracle_action_accuracy": 0.699509859085083,
+    "fourth_read_rate": 0.0
+  },
+  "target_utility": 0.7235098671913147,
+  "oracle_utility": 0.9225245118141174,
+  "first_target_bits": {
+    "option_composition": 960,
+    "flat_reset": null
+  },
+  "histories": {
+    "option_composition": [
+      {
+        "verified_utility": 0.7035098671913147,
+        "oracle_action_accuracy": 0.699509859085083,
+        "fourth_read_rate": 0.0,
+        "step": 0,
+        "verifier_bits": 0,
+        "reaches_target": false
+      },
+      {
+        "verified_utility": 0.625441312789917,
+        "oracle_action_accuracy": 0.2558823823928833,
+        "fourth_read_rate": 0.7848039865493774,
+        "step": 2,
+        "verifier_bits": 120,
+        "reaches_target": false
+      },
+      {
+        "verified_utility": 0.7035098671913147,
+        "oracle_action_accuracy": 0.699509859085083,
+        "fourth_read_rate": 0.0,
+        "step": 4,
+        "verifier_bits": 240,
+        "reaches_target": false
+      },
+      {
+        "verified_utility": 0.7035098671913147,
+        "oracle_action_accuracy": 0.699509859085083,
+        "fourth_read_rate": 0.0,
+        "step": 6,
+        "verifier_bits": 360,
+        "reaches_target": false
+      },
+      {
+        "verified_utility": 0.7035098671913147,
+        "oracle_action_accuracy": 0.699509859085083,
+        "fourth_read_rate": 0.0,
+        "step": 8,
+        "verifier_bits": 480,
+        "reaches_target": false
+      },
+      {
+        "verified_utility": 0.7035000324249268,
+        "oracle_action_accuracy": 0.6985294818878174,
+        "fourth_read_rate": 0.0009803922148421407,
+        "step": 10,
+        "verifier_bits": 600,
+        "reaches_target": false
+      },
+      {
+        "verified_utility": 0.7063382863998413,
+        "oracle_action_accuracy": 0.7000000476837158,
+        "fourth_read_rate": 0.008333333767950535,
+        "step": 12,
+        "verifier_bits": 720,
+        "reaches_target": false
+      },
+      {
+        "verified_utility": 0.7196813821792603,
+        "oracle_action_accuracy": 0.7073529958724976,
+        "fourth_read_rate": 0.030882354825735092,
+        "step": 14,
+        "verifier_bits": 840,
+        "reaches_target": false
+      },
+      {
+        "verified_utility": 0.7560098767280579,
+        "oracle_action_accuracy": 0.7225490808486938,
+        "fourth_read_rate": 0.11127451807260513,
+        "step": 16,
+        "verifier_bits": 960,
+        "reaches_target": true
+      }
+    ],
+    "flat_reset": [
+      {
+        "verified_utility": 0.5666667222976685,
+        "oracle_action_accuracy": 0.6367647647857666,
+        "fourth_read_rate": 0.0,
+        "step": 0,
+        "verifier_bits": 0,
+        "reaches_target": false
+      },
+      {
+        "verified_utility": 0.686147153377533,
+        "oracle_action_accuracy": 0.44656866788864136,
+        "fourth_read_rate": 0.002941176760941744,
+        "step": 2,
+        "verifier_bits": 120,
+        "reaches_target": false
+      },
+      {
+        "verified_utility": 0.6965049505233765,
+        "oracle_action_accuracy": 0.5161765217781067,
+        "fourth_read_rate": 0.009313725866377354,
+        "step": 4,
+        "verifier_bits": 240,
+        "reaches_target": false
+      },
+      {
+        "verified_utility": 0.6900147795677185,
+        "oracle_action_accuracy": 0.5740196704864502,
+        "fourth_read_rate": 0.01666666753590107,
+        "step": 6,
+        "verifier_bits": 360,
+        "reaches_target": false
+      },
+      {
+        "verified_utility": 0.6960833668708801,
+        "oracle_action_accuracy": 0.5794118046760559,
+        "fourth_read_rate": 0.0416666679084301,
+        "step": 8,
+        "verifier_bits": 480,
+        "reaches_target": false
+      },
+      {
+        "verified_utility": 0.6808283925056458,
+        "oracle_action_accuracy": 0.5779412388801575,
+        "fourth_read_rate": 0.08235294371843338,
+        "step": 10,
+        "verifier_bits": 600,
+        "reaches_target": false
+      },
+      {
+        "verified_utility": 0.6944265365600586,
+        "oracle_action_accuracy": 0.5549020171165466,
+        "fourth_read_rate": 0.13823530077934265,
+        "step": 12,
+        "verifier_bits": 720,
+        "reaches_target": false
+      },
+      {
+        "verified_utility": 0.6963726282119751,
+        "oracle_action_accuracy": 0.48676472902297974,
+        "fourth_read_rate": 0.19705884158611298,
+        "step": 14,
+        "verifier_bits": 840,
+        "reaches_target": false
+      },
+      {
+        "verified_utility": 0.7011765837669373,
+        "oracle_action_accuracy": 0.46617650985717773,
+        "fourth_read_rate": 0.2651960849761963,
+        "step": 16,
+        "verifier_bits": 960,
+        "reaches_target": false
+      }
+    ]
+  },
+  "gate": {
+    "oracle_headroom": true,
+    "composition_reaches_target": true,
+    "composition_reaches_before_flat": true,
+    "composition_final_retains_gain": true,
+    "accepted_for_replication": true
+  },
+  "accounting": {
+    "verifier_bits_per_arm": 960,
+    "replay_optimizer_updates_per_arm": 64,
+    "wall_seconds": 0.30703018815256655
+  }
+}

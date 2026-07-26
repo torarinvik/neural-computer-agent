@@ -91,6 +91,16 @@ def ranked_requery_batch(
             ranked_usage[:, :, 1:2],
             ranked_usage[:, :, 2:3],
         ), dim=-1)
+        if candidate_count >= 4:
+            third_margin = scores[:, :, 2] - scores[:, :, 3]
+            third_margin = torch.where(
+                valid_count >= 4, third_margin,
+                torch.zeros_like(third_margin))
+            features = torch.cat((
+                features,
+                third_margin.unsqueeze(-1),
+                ranked_usage[:, :, 3:4],
+            ), dim=-1)
     outcomes = torch.stack([
         _outcomes(
             model, batch, candidate.reshape_as(values), device=device)
