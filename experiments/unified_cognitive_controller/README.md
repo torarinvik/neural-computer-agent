@@ -811,6 +811,18 @@ operations with small operation-specific outputs, evaluated by stable
 bits-to-threshold on a third held-out operation. The verifier remains
 sovereign; only attempted actions and scalar outcomes are learner-visible.
 
+The first gradual bridge now passes and replicates. Moving the learned
+read-advantage allocator from memory capacity three to capacity four required
+zero new bits for stable mastery on two fresh powered seeds; matched reset
+learners required 120 verified outcomes. Final inherited choice accuracy was
+72.1% and 71.1%, with 54.0% and 50.7% oracle-gap capture. Reward, feature, and
+missing-evidence controls removed the benefit, and old skills were retained.
+
+This is narrow environmental transfer, not yet cross-operation abstraction.
+It establishes the correct curriculum scale: alter one compute-context axis at
+a time, demand replicated bits-to-threshold improvement, then gradually bridge
+toward a new physical operation.
+
 Run the sub-minute GPU experiment:
 
 ```bash

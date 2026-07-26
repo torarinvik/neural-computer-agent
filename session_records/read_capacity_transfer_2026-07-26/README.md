@@ -44,3 +44,28 @@ Every causal, persistence, gradient, and retention gate passed. Therefore seed
 test contexts, 720 training bits, and all original thresholds. A pass permits
 one unchanged seed-7824 replication. These fresh seeds, not the diagnostics,
 decide promotion.
+
+## Replicated promoted result
+
+Both fresh, pre-registered powered seeds passed:
+
+- seed 7823: inherited stable mastery at `0` new bits versus reset at `120`;
+  final choice accuracy `72.1%`, utility gain `+0.1922`, and oracle-gap capture
+  `54.0%`;
+- seed 7824: inherited stable mastery at `0` versus reset at `120`; final
+  choice accuracy `71.1%`, utility gain `+0.1965`, and gap capture `50.7%`.
+
+Reward-shuffled, feature-shuffled, and missing-evidence controls lost the
+inherited benefit. Persistence, gradients, binary mapping, and four-rule
+retention passed in both runs. Each learner used 720 fresh verifier bits and
+12 updates; each powered private audit used 4,096 counterfactual bits.
+
+This promotes a narrow but real compounding result: a compute allocator learned
+at capacity three immediately masters capacity four, while a matched reset
+learner requires 120 new verified outcomes. The gain is learning speed, not
+exclusive final capability.
+
+The next rung should change one additional generic-statistics axis—such as a
+held-out occupancy/reliability range or capacity five—while keeping the
+attempted-action objective fixed. Only after that bridge replicates should the
+system revisit a different physical operation such as recurrent thought.
