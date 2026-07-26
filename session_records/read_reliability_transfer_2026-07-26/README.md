@@ -58,3 +58,14 @@ passes the fixed mastery gates and the capacity-four ancestor does not. The
 probe uses no learner-visible outcomes or optimizer updates; its 20,400
 private counterfactual verifier bits are reported. The selected threshold must
 still pass a fresh pre-registered training race and replication.
+
+All measured thresholds left both lineages mastered at zero bits. The newer
+lineage nevertheless improved verified utility by `0.033–0.053`, so the
+representation became better but the threshold metric was saturated.
+
+The next zero-training diagnostic holds capacity five and write threshold 0.5
+fixed, then sweeps read cost `0.01, 0.05, 0.10, 0.20, 0.30`. Both-action
+outcomes are reused across costs, so this adds no learner-visible experience
+and 4,080 private verifier bits. The smallest cost where the consolidated
+lineage masters and its ancestor does not becomes the next candidate; it must
+still pass a fresh attempted-outcome race and replication.

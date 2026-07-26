@@ -39,6 +39,8 @@ def main() -> None:
     parser.add_argument(
         "--thresholds", type=float, nargs="+",
         default=(0.60, 0.65, 0.70, 0.75, 0.80))
+    parser.add_argument(
+        "--read-costs", type=float, nargs="+", default=(0.01,))
     args = parser.parse_args()
 
     seed_everything(args.seed)
@@ -66,25 +68,32 @@ def main() -> None:
             controller, count=args.count, capacity=args.capacity,
             seed=args.seed * 1_000_000 + index,
             device=device, write_threshold=threshold)
-        metrics = {
-            name: advantage_policy_metrics(
-                head, features, no_read, read, read_cost=0.01)
-            for name, head in heads.items()}
-        rows.append({
-            "write_threshold": threshold,
-            "metrics": metrics,
-            "consolidated_mastered": _mastered(metrics["consolidated"]),
-            "ancestor_mastered": _mastered(metrics["ancestor"]),
-            "choice_advantage": (
-                metrics["consolidated"]["compute_choice_accuracy"]
-                - metrics["ancestor"]["compute_choice_accuracy"]),
-            "utility_advantage": (
-                metrics["consolidated"]["shadow_verified_utility"]
-                - metrics["ancestor"]["shadow_verified_utility"]),
-        })
+        for read_cost in args.read_costs:
+            metrics = {
+                name: advantage_policy_metrics(
+                    head, features, no_read, read,
+                    read_cost=read_cost)
+                for name, head in heads.items()}
+            rows.append({
+                "write_threshold": threshold,
+                "read_cost": read_cost,
+                "metrics": metrics,
+                "consolidated_mastered":
+                    _mastered(metrics["consolidated"]),
+                "ancestor_mastered": _mastered(metrics["ancestor"]),
+                "choice_advantage": (
+                    metrics["consolidated"]["compute_choice_accuracy"]
+                    - metrics["ancestor"]["compute_choice_accuracy"]),
+                "utility_advantage": (
+                    metrics["consolidated"]["shadow_verified_utility"]
+                    - metrics["ancestor"]["shadow_verified_utility"]),
+            })
 
     candidates = [
-        row["write_threshold"] for row in rows
+        {
+            "write_threshold": row["write_threshold"],
+            "read_cost": row["read_cost"],
+        } for row in rows
         if row["consolidated_mastered"] and not row["ancestor_mastered"]]
     report = {
         "schema": "read-reliability-frontier-probe-v1",
@@ -102,8 +111,8 @@ def main() -> None:
         "private_probe_both_action_bits":
             len(args.thresholds) * args.count * 2,
         "rows": rows,
-        "smallest_measured_separating_threshold":
-            min(candidates) if candidates else None,
+        "first_measured_separating_configuration":
+            candidates[0] if candidates else None,
     }
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, indent=2) + "\n")
