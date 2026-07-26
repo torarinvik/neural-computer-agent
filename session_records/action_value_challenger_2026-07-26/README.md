@@ -117,3 +117,24 @@ bits plus 2,400 disjoint confirmation bits) and 12,480 unlabeled candidate
 contexts. Seeds 7973, 7981, and 7982 must all protect mastery, confirm a gap
 promotion, and improve audited utility. Only then may untouched seeds 7991 and
 7992 run. Five-of-five passes still gate persistent integration.
+
+## Powered-confirmation diagnostic result
+
+Seeds 7973, 7981, and 7982 all passed:
+
+- gap confirmation lower bounds: `+0.0311`, `+0.0230`, `+0.0021`;
+- audited utility gains: `+6.22`, `+5.34`, `+4.91` points;
+- mastered incumbents: exactly unchanged.
+
+This is the first three-of-three consistent safe-promotion result on the hard
+diagnostic set.
+
+Untouched seeds 7991 and 7992 both produced positive proposals, at 1,200 and
+960 bits respectively, but the 3,120-bit schedule ended before either could
+collect the required 2,400 confirmation outcomes. They are censored, not
+failed confirmations, and nothing was deployed.
+
+The schedule is extended once to 3,600 bits (60 updates), sufficient to finish
+those already-required confirmations. This is confirmation evidence, not a
+weaker confidence rule. If both confirm, untouched seeds 8001 and 8002 must
+also pass under the fixed 3,600-bit schedule before persistence integration.
