@@ -59,3 +59,25 @@ incumbent is unchanged and reset only after a real promotion. This remains
 valid off-policy evidence because the randomized action propensity is fixed
 and the incumbent comparator is unchanged. All learner-visible information,
 training, thresholds, and budgets remain identical.
+
+## Seed 7952 result and robustness audit
+
+The corrected mechanism achieved both substantive objectives:
+
+- mastered arm: all challenger proposals rejected; incumbent retained `71.7%`
+  accuracy and unchanged utility;
+- gap arm: promoted at 240 verifier bits only after the attempted-outcome IPS
+  lower 95% confidence bound reached `+0.0531`; incumbent utility improved by
+  `2.92` points.
+
+The discovery run is still recorded as a formal near-pass, not a pass, because
+the naive control degraded mastered utility by `0.25` points rather than its
+pre-registered `0.50`-point minimum. That auxiliary control is stochastic and
+is not part of the safe mechanism itself.
+
+Seeds 7953 and 7954 are pre-registered as unchanged robustness audits, not as a
+retroactive reclassification of seed 7952. Each must (a) reject every harmful
+promotion to the mastered incumbent, preserving its accuracy and utility, and
+(b) promote the gap challenger only with a positive confidence lower bound and
+improve its audited utility by at least `0.02`. The naive arm remains reported
+but does not gate this separate robustness claim.
