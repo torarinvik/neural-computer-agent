@@ -37,8 +37,9 @@ def _stable_bits(history: list[dict[str, float]]) -> int | None:
 def _features(
         values: torch.Tensor, name: str,
         permutation: torch.Tensor | None = None) -> torch.Tensor:
-    if name in ("inherited", "previous_inherited", "reset",
-                "reward_shuffled"):
+    if name in (
+            "inherited", "inherited_trunk", "previous_inherited",
+            "previous_trunk", "reset", "reward_shuffled"):
         return values
     if name == "missing_evidence":
         return torch.zeros_like(values)
@@ -90,16 +91,24 @@ def main() -> None:
     inherited.load_state_dict(payload["head_state_dict"])
     previous = ComputeAdvantageHead(hidden).to(device)
     previous.load_state_dict(previous_payload["head_state_dict"])
+    inherited_trunk = copy.deepcopy(inherited)
+    nn.init.zeros_(inherited_trunk.network[-1].weight)
+    nn.init.zeros_(inherited_trunk.network[-1].bias)
+    previous_trunk = copy.deepcopy(previous)
+    nn.init.zeros_(previous_trunk.network[-1].weight)
+    nn.init.zeros_(previous_trunk.network[-1].bias)
     with torch.random.fork_rng(devices=[]):
         torch.manual_seed(args.seed + 10_000)
         reset = ComputeAdvantageHead(hidden).to(device)
     heads = {
         "inherited": inherited,
+        "inherited_trunk": inherited_trunk,
         "previous_inherited": previous,
+        "previous_trunk": previous_trunk,
         "reset": reset,
-        "reward_shuffled": copy.deepcopy(inherited),
-        "feature_shuffled": copy.deepcopy(inherited),
-        "missing_evidence": copy.deepcopy(inherited),
+        "reward_shuffled": copy.deepcopy(inherited_trunk),
+        "feature_shuffled": copy.deepcopy(inherited_trunk),
+        "missing_evidence": copy.deepcopy(inherited_trunk),
     }
     optimizers = {
         name: torch.optim.AdamW(
@@ -171,10 +180,10 @@ def main() -> None:
 
     final = {name: rows[-1] for name, rows in histories.items()}
     stable = {name: _stable_bits(rows) for name, rows in histories.items()}
-    inherited_final = final["inherited"]
-    inherited_bits = stable["inherited"]
+    inherited_final = final["inherited_trunk"]
+    inherited_bits = stable["inherited_trunk"]
     reset_bits = stable["reset"]
-    previous_bits = stable["previous_inherited"]
+    previous_bits = stable["previous_trunk"]
     evidence_cost = min(
         inherited_final["verified_utility"]
         - final[name]["verified_utility"]
@@ -183,17 +192,17 @@ def main() -> None:
         inherited_final["verified_utility"]
         - final["reward_shuffled"]["verified_utility"])
     gate = {
-        "inherited_choice_at_least_0_65":
+        "inherited_trunk_choice_at_least_0_65":
             inherited_final["compute_choice_accuracy"] >= 0.65,
-        "inherited_beats_fixed_by_0_03":
+        "inherited_trunk_beats_fixed_by_0_03":
             inherited_final["verified_utility"]
             >= inherited_final["strongest_fixed_utility"] + 0.03,
-        "inherited_captures_20_percent_gap":
+        "inherited_trunk_captures_20_percent_gap":
             inherited_final["captured_oracle_gap_fraction"] >= 0.20,
-        "inherited_strictly_faster_than_reset": (
+        "inherited_trunk_strictly_faster_than_reset": (
             inherited_bits is not None
             and (reset_bits is None or inherited_bits < reset_bits)),
-        "inherited_strictly_faster_than_previous": (
+        "inherited_trunk_strictly_faster_than_previous_trunk": (
             inherited_bits is not None
             and (previous_bits is None or inherited_bits < previous_bits)),
         "evidence_controls_cost_at_least_0_02": evidence_cost >= 0.02,
@@ -278,7 +287,7 @@ def main() -> None:
             "head_hidden": hidden,
             "head_state_dict": {
                 name: value.detach().cpu()
-                for name, value in inherited.state_dict().items()},
+                for name, value in inherited_trunk.state_dict().items()},
             "source_seed": args.seed,
             "source_operation": "second_ranked_requery",
             "source_training_verifier_bits":

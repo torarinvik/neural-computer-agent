@@ -40,3 +40,24 @@ cross earlier than both its capacity-five ancestor and reset. Evidence
 controls, conditional reward-shuffle logic, retention, gradients, and exact
 serialization remain mandatory. A full pass permits unchanged seed-7892
 replication.
+
+## Seed 7891 direct-transfer result and one-axis localization
+
+Direct whole-head transfer failed with severe negative transfer: inherited
+choice accuracy was `27.6%` and its utility fell below both fixed policies.
+Reset learned substantially better. No replication or scaling is allowed.
+
+The action semantics explain a specific possible boundary error: the old
+positive output meant “perform the top read,” while the new positive output
+means “discard the top read and inspect the alternative.” Seed 7893 therefore
+changes only that boundary:
+
+- retain the consolidated hidden value extractor;
+- reset its single operation-specific output neuron;
+- compare against the equivalently reset ancestor trunk and a fully reset
+  learner;
+- retain the intact whole heads as negative-transfer diagnostics;
+- keep all experience, controls, and gates unchanged.
+
+Failure closes this second-ranked re-query formulation. A full pass permits
+unchanged seed-7894 replication.
