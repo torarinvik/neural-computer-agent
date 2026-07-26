@@ -1,0 +1,210 @@
+{
+  "schema": "read-reliability-frontier-probe-v1",
+  "configuration": {
+    "parent_checkpoint": "artifacts/checkpoints/unified_memory_online_utility_seed6810.pt",
+    "selected_prefix": "artifacts/checkpoints/balanced_maximin_stream7085_clone7211_round54.pt",
+    "consolidated_checkpoint": "artifacts/checkpoints/shadow_compute_advantage_capacity5_seed7842.pt",
+    "ancestor_checkpoint": "artifacts/checkpoints/shadow_compute_advantage_capacity4_seed7824.pt",
+    "report": "session_records/read_reliability_transfer_2026-07-26/read_cost_frontier_seed7862.json",
+    "device": "cuda",
+    "seed": 7862,
+    "count": 2040,
+    "capacity": 5,
+    "thresholds": [
+      0.5
+    ],
+    "read_costs": [
+      0.01,
+      0.05,
+      0.1,
+      0.2,
+      0.3
+    ]
+  },
+  "training_performed": false,
+  "learner_visible_verifier_bits": 0,
+  "private_probe_both_action_bits": 4080,
+  "rows": [
+    {
+      "write_threshold": 0.5,
+      "read_cost": 0.01,
+      "metrics": {
+        "consolidated": {
+          "compute_choice_accuracy": 0.7181373238563538,
+          "shadow_verified_utility": 0.7892795205116272,
+          "always_no_read_utility": 0.5004902482032776,
+          "always_read_utility": 0.5973530411720276,
+          "strongest_fixed_utility": 0.5973530411720276,
+          "oracle_utility": 0.9945197105407715,
+          "available_oracle_gap": 0.3971666693687439,
+          "captured_oracle_gap_fraction": 0.4832391389857746,
+          "read_rate": 0.7779412269592285,
+          "advantage_mse_private_audit": 0.6187583208084106,
+          "advantage_sign_accuracy_private_audit": 0.7181373238563538
+        },
+        "ancestor": {
+          "compute_choice_accuracy": 0.6598039865493774,
+          "shadow_verified_utility": 0.7421177625656128,
+          "always_no_read_utility": 0.5004902482032776,
+          "always_read_utility": 0.5973530411720276,
+          "strongest_fixed_utility": 0.5973530411720276,
+          "oracle_utility": 0.9945197105407715,
+          "available_oracle_gap": 0.3971666693687439,
+          "captured_oracle_gap_fraction": 0.3644936309073318,
+          "read_rate": 0.8372549414634705,
+          "advantage_mse_private_audit": 0.7089704275131226,
+          "advantage_sign_accuracy_private_audit": 0.6598039865493774
+        }
+      },
+      "consolidated_mastered": true,
+      "ancestor_mastered": true,
+      "choice_advantage": 0.05833333730697632,
+      "utility_advantage": 0.047161757946014404
+    },
+    {
+      "write_threshold": 0.5,
+      "read_cost": 0.05,
+      "metrics": {
+        "consolidated": {
+          "compute_choice_accuracy": 0.7181373238563538,
+          "shadow_verified_utility": 0.7581617832183838,
+          "always_no_read_utility": 0.5004902482032776,
+          "always_read_utility": 0.5573529601097107,
+          "strongest_fixed_utility": 0.5573529601097107,
+          "oracle_utility": 0.97455894947052,
+          "available_oracle_gap": 0.4172059893608093,
+          "captured_oracle_gap_fraction": 0.4813181695122047,
+          "read_rate": 0.7779412269592285,
+          "advantage_mse_private_audit": 0.627582848072052,
+          "advantage_sign_accuracy_private_audit": 0.7181373238563538
+        },
+        "ancestor": {
+          "compute_choice_accuracy": 0.6598039865493774,
+          "shadow_verified_utility": 0.7086275219917297,
+          "always_no_read_utility": 0.5004902482032776,
+          "always_read_utility": 0.5573529601097107,
+          "strongest_fixed_utility": 0.5573529601097107,
+          "oracle_utility": 0.97455894947052,
+          "available_oracle_gap": 0.4172059893608093,
+          "captured_oracle_gap_fraction": 0.36258962176881243,
+          "read_rate": 0.8372549414634705,
+          "advantage_mse_private_audit": 0.7172823548316956,
+          "advantage_sign_accuracy_private_audit": 0.6598039865493774
+        }
+      },
+      "consolidated_mastered": true,
+      "ancestor_mastered": true,
+      "choice_advantage": 0.05833333730697632,
+      "utility_advantage": 0.04953426122665405
+    },
+    {
+      "write_threshold": 0.5,
+      "read_cost": 0.1,
+      "metrics": {
+        "consolidated": {
+          "compute_choice_accuracy": 0.7181373238563538,
+          "shadow_verified_utility": 0.7192647457122803,
+          "always_no_read_utility": 0.5004902482032776,
+          "always_read_utility": 0.5073529481887817,
+          "strongest_fixed_utility": 0.5073529481887817,
+          "oracle_utility": 0.9496078491210938,
+          "available_oracle_gap": 0.442254900932312,
+          "captured_oracle_gap_fraction": 0.4791621236458204,
+          "read_rate": 0.7779412269592285,
+          "advantage_mse_private_audit": 0.6431136727333069,
+          "advantage_sign_accuracy_private_audit": 0.7181373238563538
+        },
+        "ancestor": {
+          "compute_choice_accuracy": 0.6598039865493774,
+          "shadow_verified_utility": 0.6667647361755371,
+          "always_no_read_utility": 0.5004902482032776,
+          "always_read_utility": 0.5073529481887817,
+          "strongest_fixed_utility": 0.5073529481887817,
+          "oracle_utility": 0.9496078491210938,
+          "available_oracle_gap": 0.442254900932312,
+          "captured_oracle_gap_fraction": 0.36045228136692525,
+          "read_rate": 0.8372549414634705,
+          "advantage_mse_private_audit": 0.7321723699569702,
+          "advantage_sign_accuracy_private_audit": 0.6598039865493774
+        }
+      },
+      "consolidated_mastered": true,
+      "ancestor_mastered": true,
+      "choice_advantage": 0.05833333730697632,
+      "utility_advantage": 0.052500009536743164
+    },
+    {
+      "write_threshold": 0.5,
+      "read_cost": 0.2,
+      "metrics": {
+        "consolidated": {
+          "compute_choice_accuracy": 0.7181373238563538,
+          "shadow_verified_utility": 0.6414706707000732,
+          "always_no_read_utility": 0.5004902482032776,
+          "always_read_utility": 0.4073529541492462,
+          "strongest_fixed_utility": 0.5004902482032776,
+          "oracle_utility": 0.8997058868408203,
+          "available_oracle_gap": 0.3992156386375427,
+          "captured_oracle_gap_fraction": 0.35314353660577685,
+          "read_rate": 0.7779412269592285,
+          "advantage_mse_private_audit": 0.6891751289367676,
+          "advantage_sign_accuracy_private_audit": 0.7181373238563538
+        },
+        "ancestor": {
+          "compute_choice_accuracy": 0.6598039865493774,
+          "shadow_verified_utility": 0.5830392241477966,
+          "always_no_read_utility": 0.5004902482032776,
+          "always_read_utility": 0.4073529541492462,
+          "strongest_fixed_utility": 0.5004902482032776,
+          "oracle_utility": 0.8997058868408203,
+          "available_oracle_gap": 0.3992156386375427,
+          "captured_oracle_gap_fraction": 0.20677791137202217,
+          "read_rate": 0.8372549414634705,
+          "advantage_mse_private_audit": 0.7769522666931152,
+          "advantage_sign_accuracy_private_audit": 0.6598039865493774
+        }
+      },
+      "consolidated_mastered": true,
+      "ancestor_mastered": true,
+      "choice_advantage": 0.05833333730697632,
+      "utility_advantage": 0.05843144655227661
+    },
+    {
+      "write_threshold": 0.5,
+      "read_cost": 0.3,
+      "metrics": {
+        "consolidated": {
+          "compute_choice_accuracy": 0.7181373238563538,
+          "shadow_verified_utility": 0.5636764764785767,
+          "always_no_read_utility": 0.5004902482032776,
+          "always_read_utility": 0.3073529601097107,
+          "strongest_fixed_utility": 0.5004902482032776,
+          "oracle_utility": 0.8498040437698364,
+          "available_oracle_gap": 0.34931379556655884,
+          "captured_oracle_gap_fraction": 0.18088672442156514,
+          "read_rate": 0.7779412269592285,
+          "advantage_mse_private_audit": 0.7552365064620972,
+          "advantage_sign_accuracy_private_audit": 0.7181373238563538
+        },
+        "ancestor": {
+          "compute_choice_accuracy": 0.6598039865493774,
+          "shadow_verified_utility": 0.49931374192237854,
+          "always_no_read_utility": 0.5004902482032776,
+          "always_read_utility": 0.3073529601097107,
+          "strongest_fixed_utility": 0.5004902482032776,
+          "oracle_utility": 0.8498040437698364,
+          "available_oracle_gap": 0.34931379556655884,
+          "captured_oracle_gap_fraction": -0.003368049861846565,
+          "read_rate": 0.8372549414634705,
+          "advantage_mse_private_audit": 0.8417320847511292,
+          "advantage_sign_accuracy_private_audit": 0.6598039865493774
+        }
+      },
+      "consolidated_mastered": false,
+      "ancestor_mastered": false,
+      "choice_advantage": 0.05833333730697632,
+      "utility_advantage": 0.06436273455619812
+    }
+  ],
+  "first_measured_separating_configuration": null
+}

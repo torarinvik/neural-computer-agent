@@ -69,3 +69,10 @@ outcomes are reused across costs, so this adds no learner-visible experience
 and 4,080 private verifier bits. The smallest cost where the consolidated
 lineage masters and its ancestor does not becomes the next candidate; it must
 still pass a fresh attempted-outcome race and replication.
+
+The coarse cost sweep found both lineages mastered at `0.20` and both failed
+at `0.30`; no separating point was present in the original grid. The ancestor
+was only barely above the oracle-gap gate at `0.20`, while the consolidated
+lineage retained a growing utility advantage. A final zero-training refinement
+measures `0.22, 0.24, 0.26, 0.28` inside that pre-identified bracket. It adds
+no learner-visible bits and reuses one 4,080-bit private both-action audit.
