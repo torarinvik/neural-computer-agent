@@ -219,6 +219,37 @@ def _load_head(path: Path, device: torch.device) -> ComputeAdvantageHead:
     return head
 
 
+def skill_head_payload(head: nn.Module) -> dict[str, object]:
+    if isinstance(head, ActionValueHead):
+        kind = "action_value"
+    elif isinstance(head, ComputeAdvantageHead):
+        kind = "advantage"
+    else:
+        raise TypeError(f"unsupported skill head: {type(head)!r}")
+    return {
+        "head_kind": kind,
+        "head_hidden": int(head.network[1].out_features),
+        "head_state_dict": {
+            key: value.detach().cpu()
+            for key, value in head.state_dict().items()},
+    }
+
+
+def head_from_skill_payload(
+        payload: dict[str, object],
+        device: torch.device | str) -> nn.Module:
+    hidden = int(payload["head_hidden"])
+    if payload["head_kind"] == "action_value":
+        head: nn.Module = ActionValueHead(hidden)
+    elif payload["head_kind"] == "advantage":
+        head = ComputeAdvantageHead(hidden)
+    else:
+        raise ValueError("unsupported persisted head kind")
+    head = head.to(device)
+    head.load_state_dict(payload["head_state_dict"])
+    return head
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--parent-checkpoint", type=Path, required=True)
@@ -543,12 +574,9 @@ def main() -> None:
             context_key = torch.nn.functional.normalize(
                 context_sum / context_count, dim=0)
             store = VerifiedSkillStore(args.skill_store)
-            parent_id = store.commit({
-                "head_hidden": hidden,
-                "head_state_dict": {
-                    key: value.detach().cpu()
-                    for key, value in mastered.state_dict().items()},
-            }, context_key=context_key,
+            parent_id = store.commit(
+                skill_head_payload(mastered),
+                context_key=context_key,
                 lower_confidence_bound=parent_margin,
                 verifier_bits=0, parent_id=None,
                 provenance={
@@ -556,13 +584,9 @@ def main() -> None:
                     "report": str(args.parent_audit),
                 })
             last_promotion = promoted_rows[-1]
-            child_id = store.commit({
-                "head_hidden": hidden,
-                "head_state_dict": {
-                    key: value.detach().cpu()
-                    for key, value in
-                    arms["gap"]["incumbent"].state_dict().items()},
-            }, context_key=context_key,
+            child_id = store.commit(
+                skill_head_payload(arms["gap"]["incumbent"]),
+                context_key=context_key,
                 lower_confidence_bound=last_promotion["lower_95"],
                 verifier_bits=last_promotion["step"] * args.batch_size,
                 parent_id=parent_id,
@@ -574,12 +598,10 @@ def main() -> None:
             fresh_store = VerifiedSkillStore(args.skill_store)
             loaded_parent = fresh_store.load(parent_id, device=device)
             loaded_child = fresh_store.load(child_id, device=device)
-            restored_parent = ComputeAdvantageHead(hidden).to(device)
-            restored_parent.load_state_dict(
-                loaded_parent["payload"]["head_state_dict"])
-            restored_child = ComputeAdvantageHead(hidden).to(device)
-            restored_child.load_state_dict(
-                loaded_child["payload"]["head_state_dict"])
+            restored_parent = head_from_skill_payload(
+                loaded_parent["payload"], device)
+            restored_child = head_from_skill_payload(
+                loaded_child["payload"], device)
             parent_exact = torch.equal(
                 mastered(test_features), restored_parent(test_features))
             child_exact = torch.equal(

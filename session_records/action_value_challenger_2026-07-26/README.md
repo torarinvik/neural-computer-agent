@@ -138,3 +138,15 @@ The schedule is extended once to 3,600 bits (60 updates), sufficient to finish
 those already-required confirmations. This is confirmation evidence, not a
 weaker confidence rule. If both confirm, untouched seeds 8001 and 8002 must
 also pass under the fixed 3,600-bit schedule before persistence integration.
+
+## Replicated result
+
+All seven evaluated streams confirmed and promoted the gap action-value skill:
+
+- diagnostic seeds 7973, 7981, 7982: utility gains `+4.91` to `+6.22` points;
+- untouched seeds 7991, 7992: gains `+6.42`, `+8.14` points;
+- final untouched seeds 8001, 8002: gains `+9.11`, `+10.18` points.
+
+Every confirmation used 2,400 disjoint attempted outcomes and retained a
+positive lower-95% bound. No mastered incumbent changed. The capability now
+passes its learning-consistency gate and may enter persistent integration.

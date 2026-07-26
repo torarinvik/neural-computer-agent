@@ -62,7 +62,9 @@ from .train_safe_requery_adaptation import (
     cross_fitted_action_values,
     cross_fitted_context_baseline,
     disagreement_indices,
+    head_from_skill_payload,
     paired_ips_improvement,
+    skill_head_payload,
 )
 from .verified_skill_store import VerifiedSkillStore
 from .train_persistent_memory import _grouped_read
@@ -188,6 +190,10 @@ def test_action_value_head_emits_value_difference() -> None:
     values = head.q_values(features)
     assert values.shape == (6, 2)
     assert torch.equal(head(features), values[:, 1] - values[:, 0])
+    restored = head_from_skill_payload(
+        skill_head_payload(head), torch.device("cpu"))
+    assert isinstance(restored, ActionValueHead)
+    assert torch.equal(head(features), restored(features))
 
 
 def test_lifetime_has_one_correct_action_and_balanced_private_rules() -> None:
