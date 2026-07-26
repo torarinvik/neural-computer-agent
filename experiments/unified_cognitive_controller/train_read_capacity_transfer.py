@@ -56,6 +56,7 @@ def main() -> None:
     parser.add_argument("--bank-capacity", type=int, default=4)
     parser.add_argument("--learning-rate", type=float, default=0.003)
     parser.add_argument("--read-cost", type=float, default=0.01)
+    parser.add_argument("--write-threshold", type=float, default=0.5)
     parser.add_argument("--evaluate-every", type=int, default=2)
     args = parser.parse_args()
     if (
@@ -103,7 +104,7 @@ def main() -> None:
     test_features, _, _, test_no, test_read = _logged_batch(
         controller, count=args.test_contexts,
         capacity=args.bank_capacity, seed=args.seed + 90_000_000,
-        device=device, write_threshold=0.5)
+        device=device, write_threshold=args.write_threshold)
     histories = {name: [] for name in heads}
     gradient_norms = {name: [] for name in heads}
     utility_sum = 0.0
@@ -138,7 +139,7 @@ def main() -> None:
             controller, count=args.batch_size,
             capacity=args.bank_capacity,
             seed=args.seed * 1_000_000 + step,
-            device=device, write_threshold=0.5)
+            device=device, write_threshold=args.write_threshold)
         utility = outcomes - args.read_cost * actions
         utility_sum += float(utility.sum())
         utility_count += utility.numel()
@@ -280,6 +281,7 @@ def main() -> None:
                 for name, value in inherited.state_dict().items()},
             "source_seed": args.seed,
             "source_bank_capacity": args.bank_capacity,
+            "source_write_threshold": args.write_threshold,
             "source_training_lifetimes":
                 args.steps * args.batch_size,
             "source_training_verifier_bits":
