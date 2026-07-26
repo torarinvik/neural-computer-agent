@@ -262,6 +262,9 @@ def main() -> None:
             "parent_checkpoint": str(args.parent_checkpoint),
             "selected_prefix": str(args.selected_prefix),
             "report": str(args.report),
+            "checkpoint_out": (
+                str(args.checkpoint_out)
+                if args.checkpoint_out is not None else None),
         },
         "learner_visible": [
             "four_generic_read_statistics",
