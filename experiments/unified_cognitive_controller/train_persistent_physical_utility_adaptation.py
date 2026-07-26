@@ -46,6 +46,9 @@ def main() -> None:
     parser.add_argument("--perturbation", type=float, default=3.0)
     parser.add_argument("--step-size", type=float, default=1.5)
     parser.add_argument("--shuffle-physical-rewards", action="store_true")
+    parser.add_argument(
+        "--reset-banks-each-round", action="store_true",
+        help="fresh-bank control: rematerialize physical histories each round")
     parser.add_argument("--device", default=(
         "cuda" if torch.cuda.is_available() else "cpu"))
     args = parser.parse_args()
@@ -113,6 +116,19 @@ def main() -> None:
                     recency_weight=weights[0],
                     frequency_weight=weights[1],
                     reliability_weight=weights[2])
+                if args.reset_banks_each_round:
+                    fresh_directory = (
+                        root / f"round-{rounds:03d}-fresh-initial")
+                    fresh_directory.mkdir()
+                    (
+                        memories, _, _, _, exact, fresh_requested_exact,
+                    ) = _materialize_histories(
+                        model, data, fresh_directory, device=device)
+                    state_exact += exact
+                    requested_exact += fresh_requested_exact
+                    row_batch, row_queries = _initial_rows(
+                        data, banks=args.banks,
+                        capacity=args.bank_capacity, device=device)
                 candidate_batch = _candidate_batch(
                     data, banks=args.banks,
                     capacity=args.bank_capacity, device=device)
@@ -257,7 +273,9 @@ def main() -> None:
             name for name, value in model.state_dict().items()
             if not torch.equal(
                 initial_state[name], value.detach().cpu())]
-        expected_state = args.banks * (rounds + 1)
+        expected_state = args.banks * (
+            rounds + 1
+            + (rounds if args.reset_banks_each_round else 0))
         expected_candidates = args.banks * rounds * 4
         reliability = phase_summaries[1]
         old_return = phase_summaries[2]
@@ -302,6 +320,10 @@ def main() -> None:
         },
         "training_signal":
             "three_candidate_persistent_physical_verified_horse_race",
+        "memory_lifetime": (
+            "one_decision_fresh_control"
+            if args.reset_banks_each_round
+            else "persistent_across_all_decisions"),
         "semantic_or_utility_labels_used_for_training": False,
         "physical_reward_is_sovereign": True,
         "tensor_arena_role": "parity_audit_only",

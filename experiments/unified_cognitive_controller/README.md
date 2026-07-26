@@ -686,6 +686,38 @@ run a matched persistent-versus-fresh race from the same initial residual and
 report area under the verified-reward curve per verifier bit, switch-recovery
 bits, retention, and wall time.
 
+### Matched persistent-versus-fresh efficiency
+
+That comparison now passes on two paired seeds. Each arm began from identical
+controller weights, used identical perturbations and task seeds, made nine
+updates, and consumed 2,592 candidate verifier bits. The comparison normalized
+each learned policy against a frozen policy evaluated on the same physical
+states, avoiding the misleading fact that newly generated banks are easier in
+absolute terms.
+
+Across seeds 7032 and 7034:
+
+- persistent normalized verified-reward AUC averaged `0.10417`;
+- fresh-bank normalized verified-reward AUC averaged `0.03125`;
+- persistence therefore produced 3.33 times the reward gain at the same
+  candidate-verifier budget;
+- persistent target-selection advantage AUC averaged `+1.03125`;
+- fresh target-selection advantage AUC averaged `-0.28125`; and
+- persistence beat fresh memory on both reward and target-selection advantage
+  in both independent replicas.
+
+Binary and four-rule retention passed in every arm. The previously recorded
+reward-shuffle control remained rejected. Report:
+`reports/persistent_vs_fresh_efficiency_seeds7032_7034.json`.
+
+This is the first evidence that retaining physical experience compounds
+short-horizon utility-learning efficiency. Its boundary is important: both
+arms learned the same two-feature utility family. It does not yet show that one
+learned cognitive primitive accelerates acquisition of a different novel
+primitive. The next rung is a gradual two-task transfer atom: learn one latent
+utility relation, switch to a related but held-out relation, and compare
+learning curves with intact, empty, shuffled, and fresh long-term memory.
+
 Run the sub-minute GPU experiment:
 
 ```bash

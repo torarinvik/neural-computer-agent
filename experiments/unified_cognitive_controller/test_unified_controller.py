@@ -13,6 +13,7 @@ from .probe_persistent_physical_stream import (
     _future_for_actions,
     _ranked_age,
 )
+from .compare_persistent_fresh_efficiency import _arm_metrics
 
 
 def test_lifetime_has_one_correct_action_and_balanced_private_rules() -> None:
@@ -235,6 +236,32 @@ def test_persistent_stream_future_replaces_only_selected_rows() -> None:
     assert torch.equal(updated_queries[0], queries[0])
     assert torch.equal(updated_queries[1, 0], queries[1, 0])
     assert torch.equal(updated_queries[1, 1], candidate_queries[1])
+
+
+def test_efficiency_metric_normalizes_against_same_state_frozen_policy() -> None:
+    report = {
+        "total_seconds": 1.5,
+        "trace": [
+            {
+                "phase": "reliability_dominant",
+                "learned_reward": 0.8,
+                "frozen_reward": 0.6,
+                "learned_target_rate": 0.7,
+                "frozen_target_rate": 0.4,
+            },
+            {
+                "phase": "old_return",
+                "learned_reward": 0.9,
+                "frozen_reward": 0.85,
+                "learned_target_rate": 0.8,
+                "frozen_target_rate": 0.75,
+            },
+        ],
+    }
+    metrics = _arm_metrics(report)
+    assert abs(metrics["verified_reward_advantage_auc"] - 0.25) < 1e-6
+    assert abs(metrics["target_rate_advantage_auc"] - 0.35) < 1e-6
+    assert abs(metrics["old_return_reward_advantage"] - 0.05) < 1e-6
 
 
 def test_old_disk_schema_loads_with_zero_access_counts(tmp_path: Path) -> None:
