@@ -69,3 +69,30 @@ Robust mastery requires every stream to preserve the original accuracy,
 utility-improvement, and oracle-gap gates. Failure means the original re-query
 result was seed-fragile: it remains evidence of within-run learning, but the
 checkpoint cannot be promoted as a curriculum parent.
+
+## Audit result and corrected conclusion
+
+The saved capacity-five policy is robust:
+
+- capacity five, cost `0.010`, eight fresh streams: minimum accuracy `70.4%`,
+  minimum oracle-gap capture `69.2%`;
+- capacity six, cost `0.010`, eight fresh streams: minimum accuracy `70.4%`,
+  minimum oracle-gap capture `68.6%`;
+- capacity five, cost `0.015`, eight fresh streams: minimum accuracy `69.6%`,
+  minimum oracle-gap capture `70.2%`.
+
+All three frozen audits passed every stream with zero learner-visible verifier
+bits. Thus the policy already transfers robustly across the proposed capacity
+and cost shifts. This is genuine zero-shot reuse and the strongest
+sample-efficiency result at this frontier.
+
+The apparent curriculum failures came from destructive online updates. At
+capacity six, inherited accuracy fell from `70.4%` before learning to `33.7%`
+after 720 bits. At cost `0.015`, it fell from `70.4%` to `51.4%`. Longer
+training is therefore the wrong response.
+
+The new frontier is **safe adaptation control**: the controller must preserve
+or freeze a policy that already performs well, while remaining able to update
+when verified evidence shows a real capability gap. This mechanism must use
+only attempted-action outcomes and generic uncertainty/learning signals—not
+private counterfactual answers or semantic task labels.

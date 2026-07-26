@@ -1,0 +1,27 @@
+{
+  "schema": "second-ranked-requery-probe-v1",
+  "configuration": {
+    "parent_checkpoint": "artifacts/checkpoints/unified_memory_online_utility_seed6810.pt",
+    "selected_prefix": "artifacts/checkpoints/balanced_maximin_stream7085_clone7211_round54.pt",
+    "report": "session_records/requery_curriculum_2026-07-26/capacity6_viability_seed7912.json",
+    "device": "cuda",
+    "seed": 7912,
+    "count": 10200,
+    "capacity": 6,
+    "write_threshold": 0.5,
+    "requery_cost": 0.01
+  },
+  "training_performed": false,
+  "learner_visible_verifier_bits": 0,
+  "private_both_action_verifier_bits": 20400,
+  "alternative_available_fraction": 0.9605882167816162,
+  "requery_helps_fraction": 0.11480391770601273,
+  "requery_harms_fraction": 0.8851960897445679,
+  "requery_neutral_fraction": 0.0,
+  "always_first_utility": 0.5774509906768799,
+  "always_requery_utility": 0.591372549533844,
+  "strongest_fixed_utility": 0.591372549533844,
+  "oracle_utility": 0.6911068558692932,
+  "available_oracle_gap": 0.09973430633544922,
+  "viable_for_adaptive_compute": true
+}
