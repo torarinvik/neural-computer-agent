@@ -93,6 +93,7 @@ def main() -> None:
     parser.add_argument("--parent-checkpoint", type=Path, required=True)
     parser.add_argument("--selected-prefix", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument("--checkpoint-out", type=Path)
     parser.add_argument("--device", default=(
         "cuda" if torch.cuda.is_available() else "cpu"))
     parser.add_argument("--seed", type=int, default=7421)
@@ -297,6 +298,29 @@ def main() -> None:
     }
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, indent=2) + "\n")
+    if args.checkpoint_out is not None:
+        args.checkpoint_out.parent.mkdir(parents=True, exist_ok=True)
+        torch.save({
+            "schema": "shadow-compute-advantage-head-v1",
+            "head_hidden": args.head_hidden,
+            "head_state_dict": {
+                name: value.detach().cpu()
+                for name, value in heads["intact"].state_dict().items()},
+            "source_seed": args.seed,
+            "source_training_lifetimes":
+                args.steps * args.batch_size,
+            "source_training_verifier_bits":
+                args.steps * args.batch_size,
+            "source_optimizer_updates": args.steps,
+            "source_report": str(args.report),
+            "learner_visible": [
+                "four_generic_read_statistics",
+                "opaque_attempted_compute_action",
+                "exact_logging_propensity_0_5",
+                "attempted_action_scalar_verified_outcome",
+                "generic_normalized_read_cost",
+            ],
+        }, args.checkpoint_out)
     print(json.dumps({
         "report": str(args.report),
         "final_metrics": final,

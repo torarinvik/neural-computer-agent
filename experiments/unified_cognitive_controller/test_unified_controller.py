@@ -40,6 +40,11 @@ from .train_shadow_compute_critic import (
     selected_compute_loss,
 )
 from .train_shadow_compute_advantage import attempted_advantage_target
+from .train_thought_compute_transfer import (
+    _active_features as active_thought_features,
+    _metrics as thought_compute_metrics,
+    _stable_bits as stable_thought_bits,
+)
 from .train_persistent_memory import _grouped_read
 from .probe_persistent_physical_stream import (
     _future_for_actions,
@@ -343,6 +348,58 @@ def test_attempted_advantage_target_is_unbiased_under_uniform_logging() -> None:
     shifted = attempted_advantage_target(
         actions, utilities, baseline=0.1, propensity=0.5)
     assert shifted.mean() == pytest.approx(0.6)
+
+
+def test_thought_transfer_controls_only_remove_or_mismatch_evidence() -> None:
+    features = torch.arange(20, dtype=torch.float32).reshape(5, 4)
+    permutation = torch.tensor([4, 3, 2, 1, 0])
+    assert torch.equal(
+        active_thought_features(features, "inherited"), features)
+    assert torch.equal(
+        active_thought_features(
+            features, "feature_shuffled", permutation),
+        features[permutation])
+    assert torch.count_nonzero(
+        active_thought_features(features, "missing_evidence")) == 0
+
+
+def test_thought_transfer_metrics_reward_context_sensitive_choice() -> None:
+    from .train_shadow_compute_advantage import ComputeAdvantageHead
+
+    head = ComputeAdvantageHead(hidden=2)
+    with torch.no_grad():
+        head.network[1].weight.zero_()
+        head.network[1].bias.zero_()
+        head.network[-1].weight.zero_()
+        head.network[-1].bias.fill_(1.0)
+    features = torch.zeros(4, 4)
+    immediate = torch.zeros(4)
+    thought = torch.ones(4)
+    metrics = thought_compute_metrics(
+        head, features, immediate, thought, thought_cost=0.01)
+    assert metrics["thought_rate"] == 1.0
+    assert metrics["compute_choice_accuracy"] == 1.0
+    assert metrics["verified_utility"] == pytest.approx(0.99)
+
+
+def test_thought_transfer_stable_bits_requires_persistent_crossing() -> None:
+    def row(bits: int, choice: float, gain: float, gap: float) -> dict:
+        return {
+            "unique_verifier_bits": bits,
+            "compute_choice_accuracy": choice,
+            "verified_utility": 0.5 + gain,
+            "strongest_fixed_utility": 0.5,
+            "captured_oracle_gap_fraction": gap,
+        }
+
+    history = [
+        row(0, 0.50, 0.00, 0.00),
+        row(120, 0.70, 0.12, 0.30),
+        row(240, 0.60, 0.11, 0.25),
+        row(360, 0.68, 0.13, 0.35),
+        row(480, 0.72, 0.14, 0.40),
+    ]
+    assert stable_thought_bits(history) == 360
 
 
 def test_disk_latent_memory_round_trip(tmp_path: Path) -> None:
