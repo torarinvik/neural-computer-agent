@@ -16,12 +16,14 @@ from .train_redundancy_transfer import build_transfer_arms
 
 
 @torch.no_grad()
-def requery_batch(
+def ranked_requery_batch(
         model, *, count: int, capacity: int, seed: int,
         device: torch.device, write_threshold: float,
-        ) -> tuple[
-            torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-    """Return generic evidence, first-read outcome, and alternative outcome."""
+        candidate_count: int, include_rank_features: bool = False,
+        ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Return generic evidence and outcomes for ranked physical reads."""
+    if not 2 <= candidate_count <= capacity:
+        raise ValueError("candidate_count must be between two and capacity")
     batch = _add_context_signatures(
         generate_lifetimes(
             count, 3, seed=seed, heldout=True,
@@ -42,21 +44,19 @@ def requery_batch(
         cosine
         + strength_group.clamp_min(1e-6).log().unsqueeze(1))
     ranked = ranked.masked_fill(~valid.unsqueeze(1), -1e9)
-    scores, selected = ranked.topk(2, dim=-1)
+    scores, selected = ranked.topk(candidate_count, dim=-1)
     gather_shape = (-1, -1, value_group.shape[-1])
-    first = torch.gather(
-        value_group, 1,
-        selected[:, :, 0].unsqueeze(-1).expand(*gather_shape))
-    second = torch.gather(
-        value_group, 1,
-        selected[:, :, 1].unsqueeze(-1).expand(*gather_shape))
+    candidates = [
+        torch.gather(
+            value_group, 1,
+            selected[:, :, rank].unsqueeze(-1).expand(*gather_shape))
+        for rank in range(candidate_count)]
     valid_count = valid.sum(-1, keepdim=True).expand(-1, capacity)
-    first = torch.where(
-        (valid_count >= 1).unsqueeze(-1), first,
-        torch.zeros_like(first))
-    second = torch.where(
-        (valid_count >= 2).unsqueeze(-1), second,
-        torch.zeros_like(second))
+    candidates = [
+        torch.where(
+            (valid_count >= rank + 1).unsqueeze(-1), candidate,
+            torch.zeros_like(candidate))
+        for rank, candidate in enumerate(candidates)]
     first_index = selected[:, :, 0]
     confidence = torch.gather(
         cosine, 2, first_index.unsqueeze(-1)).squeeze(-1)
@@ -64,6 +64,9 @@ def requery_batch(
     margin = torch.where(
         valid_count == 1, torch.ones_like(margin), margin)
     usage = torch.gather(strength_group, 1, first_index)
+    ranked_usage = torch.gather(
+        strength_group.unsqueeze(1).expand(-1, capacity, -1),
+        2, selected)
     occupancy = (
         valid.to(values.dtype).sum(-1, keepdim=True) / capacity
     ).expand(-1, capacity).clone()
@@ -74,14 +77,41 @@ def requery_batch(
     occupancy[empty] = 0
     features = torch.stack(
         (confidence, margin, usage, occupancy), dim=-1)
-    first_outcome = _outcomes(
-        model, batch, first.reshape_as(values), device=device)
-    second_outcome = _outcomes(
-        model, batch, second.reshape_as(values), device=device)
+    if include_rank_features:
+        if candidate_count < 3:
+            raise ValueError(
+                "expanded rank features require at least three candidates")
+        second_margin = scores[:, :, 1] - scores[:, :, 2]
+        second_margin = torch.where(
+            valid_count >= 3, second_margin,
+            torch.zeros_like(second_margin))
+        features = torch.cat((
+            features,
+            second_margin.unsqueeze(-1),
+            ranked_usage[:, :, 1:2],
+            ranked_usage[:, :, 2:3],
+        ), dim=-1)
+    outcomes = torch.stack([
+        _outcomes(
+            model, batch, candidate.reshape_as(values), device=device)
+        for candidate in candidates
+    ], dim=1)
     return (
-        features.reshape(count, 4),
-        first_outcome, second_outcome,
-        (valid_count >= 2).reshape(-1))
+        features.reshape(count, features.shape[-1]), outcomes,
+        (valid_count >= candidate_count).reshape(-1))
+
+
+@torch.no_grad()
+def requery_batch(
+        model, *, count: int, capacity: int, seed: int,
+        device: torch.device, write_threshold: float,
+        ) -> tuple[
+            torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Return generic evidence, first-read outcome, and alternative outcome."""
+    features, outcomes, available = ranked_requery_batch(
+        model, count=count, capacity=capacity, seed=seed, device=device,
+        write_threshold=write_threshold, candidate_count=2)
+    return features, outcomes[:, 0], outcomes[:, 1], available
 
 
 def main() -> None:

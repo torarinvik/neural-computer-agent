@@ -1,0 +1,91 @@
+{
+  "schema": "third-option-decodability-probe-v1",
+  "configuration": {
+    "parent_checkpoint": "artifacts/checkpoints/unified_memory_online_utility_seed6810.pt",
+    "selected_prefix": "artifacts/checkpoints/balanced_maximin_stream7085_clone7211_round54.pt",
+    "champion_head": "artifacts/checkpoints/requery_capacity5_seed7893.pt",
+    "report": "session_records/three_way_requery_2026-07-26/decodability_seed8051.json",
+    "device": "cuda",
+    "seed": 8051,
+    "train_contexts": 16380,
+    "test_contexts": 4092,
+    "capacity": 6,
+    "updates": 2000,
+    "batch_size": 256
+  },
+  "diagnostic_supervision_only": true,
+  "weights_discarded": true,
+  "third_better_fraction": 0.1515151560306549,
+  "majority_accuracy": 0.8484848737716675,
+  "old_option_utility": 0.6624829173088074,
+  "oracle_option_utility": 0.8121016621589661,
+  "best": {
+    "update": 2000,
+    "loss": 0.05516977608203888,
+    "heldout_accuracy": 0.9738514423370361,
+    "heldout_utility": 0.7874609231948853
+  },
+  "history": [
+    {
+      "update": 200,
+      "loss": 0.14389681816101074,
+      "heldout_accuracy": 0.9279081225395203,
+      "heldout_utility": 0.7482184767723083
+    },
+    {
+      "update": 400,
+      "loss": 0.07246283441781998,
+      "heldout_accuracy": 0.9594330191612244,
+      "heldout_utility": 0.7771652340888977
+    },
+    {
+      "update": 600,
+      "loss": 0.0789506584405899,
+      "heldout_accuracy": 0.9679862856864929,
+      "heldout_utility": 0.782260537147522
+    },
+    {
+      "update": 800,
+      "loss": 0.07058081775903702,
+      "heldout_accuracy": 0.9706745147705078,
+      "heldout_utility": 0.7841764688491821
+    },
+    {
+      "update": 1000,
+      "loss": 0.0799793004989624,
+      "heldout_accuracy": 0.9709188938140869,
+      "heldout_utility": 0.784633457660675
+    },
+    {
+      "update": 1200,
+      "loss": 0.04817795753479004,
+      "heldout_accuracy": 0.9728739261627197,
+      "heldout_utility": 0.7865371704101562
+    },
+    {
+      "update": 1400,
+      "loss": 0.10066717863082886,
+      "heldout_accuracy": 0.973607063293457,
+      "heldout_utility": 0.787204384803772
+    },
+    {
+      "update": 1600,
+      "loss": 0.0704633966088295,
+      "heldout_accuracy": 0.9726295471191406,
+      "heldout_utility": 0.7860410213470459
+    },
+    {
+      "update": 1800,
+      "loss": 0.04905679449439049,
+      "heldout_accuracy": 0.9738514423370361,
+      "heldout_utility": 0.7870136499404907
+    },
+    {
+      "update": 2000,
+      "loss": 0.05516977608203888,
+      "heldout_accuracy": 0.9738514423370361,
+      "heldout_utility": 0.7874609231948853
+    }
+  ],
+  "representation_sufficient": true
+}
