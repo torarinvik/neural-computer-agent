@@ -32,3 +32,20 @@ if:
 
 Only a full pass permits unchanged seed-7962 replication. Otherwise the
 contextual estimator is closed without a longer run.
+
+## Result
+
+Seed 7961 remained safe:
+
+- mastered incumbent: zero promotions and exactly unchanged utility;
+- gap learner: promoted with lower confidence bound `+0.0203`, improving
+  audited utility by `6.37` points.
+
+However, promotion occurred only at 720 verifier bits. This does not beat the
+480-bit replicated global-centered baseline, so the sample-efficiency gate
+failed. No replication or longer run is allowed.
+
+The cross-fitted contextual estimator is closed. The global centered estimator
+remains the best verified safe-adaptation mechanism. The higher-ROI frontier is
+now integrating incumbent/challenger promotion with persistent skill storage,
+so safely promoted knowledge survives future task sequences.
