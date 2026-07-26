@@ -584,3 +584,35 @@ The ladder is provisionally promoted as a compute-efficient population
 mechanism. This fresh stream supports preservation of a better stochastic
 trajectory, not guaranteed selection of an exceptional one. Replicate the
 entire ladder once before increasing population size or training budget.
+
+## Successive-halving replication boundary
+
+The first frozen replication on stream 7078 selected clone 7140, which was also
+the pre-fixed lowest-ID control. The clone itself repeated safe learning:
++9.72 reliability target points and +6.94 old-return points with both inherited
+primitives retained. But the selected-versus-control gate was
+comparative-inconclusive because winner and control were identical. No
+post-hoc substitute was used.
+
+A corrected validation rule defined the control as the strongest clone pruned
+at round 18 and was tested on unseen stream 7079. The two-of-four ladder chose
+7152, which gained +11.11 reliability and +20.83 return target points. However,
+slightly lower-ranked pruned clone 7151 later gained +76.39 return points. Its
+first six genuine return rounds already strongly identified it, so the failure
+was not the retention selector: round-18 pruning had discarded a delayed
+sleeper. Two-of-four acquisition pruning is rejected as too aggressive.
+
+The smallest repair—advance three of four—was then tested on unseen stream
+7080. The selected clone and eliminated control both produced zero reliability
+and zero return advantage. Post-gate completion of the other two survivors
+found no valid hidden winner: one had zero return, while the other had only
+small target gains and failed the reward-based full gate. This population
+contained no acceptable learner.
+
+Do not scale population size. The current evidence supports a conservative,
+abstaining ladder: advance three of four at round 18; at round 42 continue only
+if mean verified reward advantage over the first six return rounds is strictly
+positive and worst-round advantage is non-negative; otherwise terminate the
+population. Retrospectively this preserves the useful trajectories on streams
+7077–7079 and correctly abstains on 7080. Prospectively test that frozen rule
+before promotion.
