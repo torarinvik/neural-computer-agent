@@ -80,3 +80,18 @@ specific high-ROI evidence.
 The main claim is bits-to-threshold transfer, not final accuracy. Private
 screening cost, learner-visible experience, counterfactual audit bits, optimizer
 updates, replay, and wall time are reported separately.
+
+## Seed 7801 result and one-axis localization
+
+Direct whole-head transfer failed. The inherited arm chose thought on `100%`
+of cases from 0 through 600 bits. It finally became causal at 720 bits
+(`57.8%` choice accuracy and `+0.071` utility), but did not pass. The reset
+arm found a smaller signal earlier. No longer run or replication is justified.
+
+Seed 7802 changes exactly one transfer boundary: retain the inherited
+LayerNorm and hidden feature extractor, but reset the one-neuron decision
+output to zero. This tests whether reusable representation was masked by the
+old operation-specific output bias. The direct whole-head arm remains in the
+report as a bounded diagnostic. Controls now share the trunk-transfer
+initialization, and all budgets and gates remain unchanged. A failure closes
+this immediate transfer fork; it will not trigger more experience.

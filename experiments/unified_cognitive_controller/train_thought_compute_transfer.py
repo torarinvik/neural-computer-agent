@@ -21,7 +21,7 @@ from .train_shadow_compute_advantage import (
 
 
 ARM_NAMES = (
-    "inherited", "reset", "reward_shuffled",
+    "inherited", "inherited_trunk", "reset", "reward_shuffled",
     "feature_shuffled", "missing_evidence")
 
 
@@ -142,7 +142,9 @@ def balanced_thought_dataset(
 def _active_features(
         features: torch.Tensor, arm: str,
         permutation: torch.Tensor | None = None) -> torch.Tensor:
-    if arm in ("inherited", "reset", "reward_shuffled"):
+    if arm in (
+            "inherited", "inherited_trunk", "reset",
+            "reward_shuffled"):
         return features
     if arm == "missing_evidence":
         return torch.zeros_like(features)
@@ -235,12 +237,16 @@ def main() -> None:
     with torch.random.fork_rng(devices=[]):
         torch.manual_seed(args.seed + 10_000)
         reset = ComputeAdvantageHead(hidden).to(device)
+    inherited_trunk = copy.deepcopy(inherited)
+    nn.init.zeros_(inherited_trunk.network[-1].weight)
+    nn.init.zeros_(inherited_trunk.network[-1].bias)
     heads = {
         "inherited": inherited,
+        "inherited_trunk": inherited_trunk,
         "reset": reset,
-        "reward_shuffled": copy.deepcopy(inherited),
-        "feature_shuffled": copy.deepcopy(inherited),
-        "missing_evidence": copy.deepcopy(inherited),
+        "reward_shuffled": copy.deepcopy(inherited_trunk),
+        "feature_shuffled": copy.deepcopy(inherited_trunk),
+        "missing_evidence": copy.deepcopy(inherited_trunk),
     }
     optimizers = {
         name: torch.optim.AdamW(
@@ -336,10 +342,10 @@ def main() -> None:
     shuffled_features = test_features[torch.randperm(
         args.test_contexts, generator=shuffle_generator, device=device)]
     evidence_shuffled = _metrics(
-        heads["inherited"], shuffled_features,
+        heads["inherited_trunk"], shuffled_features,
         test_immediate, test_thought,
         thought_cost=args.thought_cost)
-    inherited_final = final["inherited"]
+    inherited_final = final["inherited_trunk"]
     control_margin = min(
         inherited_final["verified_utility"]
         - final[name]["verified_utility"]
@@ -349,7 +355,7 @@ def main() -> None:
     shuffle_cost = (
         inherited_final["verified_utility"]
         - evidence_shuffled["verified_utility"])
-    inherited_bits = stable["inherited"]
+    inherited_bits = stable["inherited_trunk"]
     reset_bits = stable["reset"]
 
     persistence = {}
@@ -370,14 +376,14 @@ def main() -> None:
         model, count=128, trials=6, seed=args.seed + 94_000_000,
         device=device, task="four_rule", feedback_trials=2)
     gate = {
-        "inherited_final_choice_at_least_0_65":
+        "inherited_trunk_final_choice_at_least_0_65":
             inherited_final["compute_choice_accuracy"] >= 0.65,
-        "inherited_final_beats_fixed_by_0_10":
+        "inherited_trunk_final_beats_fixed_by_0_10":
             inherited_final["verified_utility"]
             >= inherited_final["strongest_fixed_utility"] + 0.10,
-        "inherited_captures_20_percent_gap":
+        "inherited_trunk_captures_20_percent_gap":
             inherited_final["captured_oracle_gap_fraction"] >= 0.20,
-        "inherited_strictly_faster_than_reset": (
+        "inherited_trunk_strictly_faster_than_reset": (
             inherited_bits is not None
             and (reset_bits is None or inherited_bits < reset_bits)),
         "causal_controls_cost_at_least_0_05_utility":
