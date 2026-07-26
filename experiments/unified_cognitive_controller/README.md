@@ -652,6 +652,40 @@ these same banks remain alive, then compare switch recovery and verifier bits
 to the fresh-bank baseline. Only after that passes should bank lifetimes or
 learned statistics be enlarged.
 
+### Reward adaptation over persistent physical banks
+
+The next atom passes in a 24.3-second CPU run. Sixteen bounded physical banks
+remained alive for nine decisions across old-equal, reliability-dominant, and
+old-return utility phases. At every decision, three symmetric utility-residual
+candidates competed on verified future outcomes from physical save/reload
+episodes. Only the winning residual was retained, and its action mutated the
+same persistent banks.
+
+During the reliability switch, the adapted controller selected the verifier's
+target row on 50.0% of banks versus 14.6% for the frozen controller on the same
+states. Mean verified future reward rose from 91.67% to 94.79%. When the old
+utility returned, adapted reward remained within 0.35 points of the frozen
+control. Binary-mapping and four-rule retention gates passed, only the
+two-weight utility residual changed, all 736 physical save/reloads remained
+bounded and exact, and the tensor implementation remained a parity-only shadow
+within `1e-6`.
+
+The causal reward-shuffle control failed as intended. Reliability target
+selection fell to 6.25% and verified reward to 88.89%, below its frozen
+control. Therefore persistence or random perturbation alone does not explain
+the useful update; correctly aligned physical verifier reward is necessary.
+
+Reports:
+`reports/persistent_physical_adaptation_seed7032_banks16.json` and
+`reports/persistent_physical_adaptation_shuffled_seed7033_banks16.json`.
+
+This demonstrates fast reward-driven utility adaptation while state truly
+persists. It does not yet demonstrate a compounding learning-speed advantage
+over a fresh-bank learner at matched verifier bits. The next experiment should
+run a matched persistent-versus-fresh race from the same initial residual and
+report area under the verified-reward curve per verifier bit, switch-recovery
+bits, retention, and wall time.
+
 Run the sub-minute GPU experiment:
 
 ```bash
