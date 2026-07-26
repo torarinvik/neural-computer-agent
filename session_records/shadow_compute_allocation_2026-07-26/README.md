@@ -163,13 +163,27 @@ does not yet match the inherited gate's final performance.
 
 ## Exact resume frontier
 
-The next single-axis experiment is already selected but not run:
+The near-matched 57-parameter width-8 head was tested on the RTX PRO 6000
+instance with 1,440 fresh bits and 24 updates. It completed in 0.45 seconds and
+produced a causal improvement:
 
-1. use the near-matched 57-parameter width-8 head;
-2. increase only experience from 720 to 1,440 fresh bits (24 updates);
-3. keep every control and pass gate unchanged;
-4. if it passes, replicate unchanged on an unseen seed;
-5. if it fails, retain the replicated 105-parameter blueprint and do not
-   replace the stronger inherited gate.
+- choice accuracy `62.70%`;
+- utility gain over always-read `0.11238`;
+- oracle-gap capture `35.73%`;
+- reward/feature/zero-evidence controls captured zero gap;
+- evidence shuffling reduced the learned benefit;
+- retention and persistence passed.
 
-No experiment was left running at pause time.
+It nevertheless missed the pre-registered `65%` choice-accuracy gate, so the
+capacity fork is closed without replication or further scaling. The replicated
+105-parameter width-16 blueprint remains the promoted efficient design. The
+stronger inherited 49-parameter weights remain in production on this mastered
+task.
+
+The next scientific rung must move to a genuinely later compute decision:
+reuse the 105-parameter advantage blueprint on a novel setting with more than
+one optional operation (for example answer now versus another read/thought),
+and compare its unique bits-to-threshold against a freshly initialized matched
+learner. Do not spend more experience tuning width 8 on the mastered read task.
+
+No experiment was left running.

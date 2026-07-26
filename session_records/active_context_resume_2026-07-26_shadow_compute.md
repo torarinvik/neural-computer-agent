@@ -27,30 +27,37 @@ Its matched audit is saved at:
 
 `session_records/shadow_compute_allocation_2026-07-26/inherited_gate_audit_7424_7425.json`
 
-## Exact next experiment
+## Latest GPU result
 
-Test whether the near-matched 57-parameter width-8 head only needed a little
-more experience:
+The exact width-8/24-update experiment ran on the RTX PRO 6000 Blackwell
+instance at `47.156.154.165`. It completed in 0.45 seconds and failed only the
+choice-accuracy gate:
 
-```bash
-.venv/bin/python -m \
-  experiments.unified_cognitive_controller.train_shadow_compute_advantage \
-  --parent-checkpoint \
-  artifacts/checkpoints/unified_memory_online_utility_seed6810.pt \
-  --selected-prefix \
-  artifacts/checkpoints/balanced_maximin_stream7085_clone7211_round54.pt \
-  --report \
-  session_records/shadow_compute_allocation_2026-07-26/advantage_width8_24_seed7426.json \
-  --device cpu --seed 7426 --head-hidden 8 --steps 24
-```
+- `62.70%` choice accuracy versus the required `65%`;
+- `35.73%` oracle-gap capture;
+- +`0.11238` utility over always-read;
+- every causal, retention, persistence, and latency control passed.
 
-This changes only experience: 720 → 1,440 fresh bits. Do not alter gates,
-learning rate, capacity, read cost, or controls.
+The report was copied off the nonpersistent instance with matching SHA-256
+`939743ea736787afc1bd1af1dfc6abc184c3f1bf32cee82a9da1a79c3fe40858`.
 
-- If it passes, replicate unchanged with seed 7427.
-- If it fails, stop this capacity fork and retain the replicated
-  105-parameter blueprint.
-- Do not replace the inherited gate weights on this mastered task.
+Do not replicate or further scale width 8. Retain the replicated
+105-parameter width-16 blueprint and the stronger inherited production gate.
+
+## Next scientific frontier
+
+Design a new shadow compute decision with a genuinely novel optional operation,
+then compare:
+
+1. inherited 105-parameter advantage blueprint;
+2. same architecture with reset weights;
+3. inherited production read gate where interface-compatible;
+4. fixed always/never-compute controls.
+
+The primary measurement is stable unique verifier bits to a verified utility
+threshold, with retention and latency as hard gates. This is the next test of
+whether the new objective transfers and compounds rather than merely relearns
+read/no-read.
 
 ## Important files
 
@@ -60,4 +67,4 @@ learning rate, capacity, read cost, or controls.
 - `session_records/shadow_compute_allocation_2026-07-26/README.md`
 - `experiments/forward_transfer_attention/SAMPLE_EFFICIENCY_LEDGER.md`
 
-No training process was running when this session was saved.
+No training process is running.

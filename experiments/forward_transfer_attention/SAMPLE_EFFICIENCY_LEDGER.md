@@ -880,3 +880,14 @@ was 81,920 contexts and 160 updates.  Therefore keep its weights; promote the
 advantage objective as the sample-efficient blueprint.  The next exact rung
 is width 8 (57 parameters) at 1,440 fresh bits, one axis only, followed by an
 unchanged replication if it passes.
+
+That final width-8 capacity test ran on GPU with 1,440 fresh verifier bits and
+24 updates. It completed in 0.45 seconds, reached 62.70% compute-choice
+accuracy, improved utility over always-read by 11.24 points, and captured
+35.73% of the oracle gap. All causal controls, retention, persistence, and
+latency checks behaved correctly, but the pre-registered 65% choice gate
+failed. The width-8 fork is therefore closed without replication or more
+training. Retain the replicated 105-parameter advantage blueprint and the
+stronger inherited production weights. The next transfer ledger must test
+advantage learning on a genuinely novel compute decision rather than continue
+optimizing this mastered read/no-read surface.
