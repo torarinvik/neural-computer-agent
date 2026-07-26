@@ -16,3 +16,18 @@ and cross all three thresholds stably before reset. Controls must cost at least
 0.02 utility; old tasks, gradients, and persistence must pass. One pass permits
 one unchanged replication. Failure closes this representation even on a near
 neighbor and does not earn more experience.
+
+## Initial result and precision diagnostic
+
+Seed 7821 passed from zero new bits while reset first crossed at 240. Seed 7822
+retained a positive inherited utility advantage over reset at every prefix, but
+missed the fixed 65% choice gate (`62.9%`) and therefore rejected formal
+replication.
+
+The 256-context audit has roughly three percentage points of binomial standard
+error near the decision boundary. Before changing the mechanism, both
+deterministic training runs are repeated with 2,048 private test contexts.
+Training remains exactly 720 bits and 12 updates. These are measurement
+diagnostics only: they cannot retroactively pass the original replication.
+Agreement under the powered audit would justify a newly pre-registered
+replication; disagreement closes the rung.
