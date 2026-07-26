@@ -702,3 +702,22 @@ eliminated all shadow selection cost. The maximin selector is provisionally
 promoted as the first allocation objective aligned directly with both new
 learning and retained reuse. Replicate unchanged before increasing any scale
 or difficulty axis.
+
+Unchanged replication on unseen stream 7085 passed. At round 42, clone 7211
+had +1.157 reliability reward points and +2.778 return points, for a +1.157
+maximin score. Clone 7213 had stronger return (+4.861) but a lower acquisition
+floor (+0.926); 7210 lacked return gain and 7212 was harmful.
+
+Full completion preserved the ranking. Selected 7211 finished with +1.157
+reliability and +6.250 return reward points, exceeding 7213's +0.926
+conservative gain. It reached +6.94 reliability target points and +63.89
+return points. Reward-alignment shuffling reversed reliability reward gain to
+-3.472 points and failed the full gate. Inherited skills, exact resumability,
+and persistence passed for the intact winner.
+
+Balanced maximin population selection is promoted across two prospective
+streams. It saves 16.7% production training rounds and requires no shadow
+selection experience. The next scientific gate is a transfer ledger: test
+whether the selected weights reduce unique verifier bits and updates needed
+for a genuinely later held-out primitive versus the shared parent, a fresh
+matched controller, and the same selected architecture with weights reset.

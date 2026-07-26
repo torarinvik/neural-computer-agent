@@ -229,3 +229,28 @@ registered gate:
 - 136.69 seconds; identical verifier-bit and persistence accounting
 
 The matched reward-shuffled control failed and saved no checkpoint.
+
+## Balanced maximin population winner
+
+`balanced_maximin_stream7085_clone7211_round54.pt` is the exact resumable state
+selected by the replicated balanced population objective.
+
+- SHA-256:
+  `a4202886e3a8d712baa0d1e6ee003bb86c93cc3ff3bc96d7f59e3d54b90a1839`
+- Parent controller:
+  `unified_memory_online_utility_seed6810.pt`
+- State includes controller residual weights, bounded physical disk banks,
+  latent strategy memory, context encoder and optimizer, RNG states, trace,
+  and exact accounting
+- Selection used no shadow audit or privileged labels
+- Round-42 score: +1.157 reliability reward points and +2.778 return points;
+  maximin +1.157
+- Final: +1.157 reliability and +6.250 return reward points
+- Final target gains: +6.94 reliability points and +63.89 return points
+- Binary and four-rule retention, physical/tensor parity, persistence, and
+  exact-resume gates passed
+- Matched verifier-reward shuffle failed the full gate
+
+This checkpoint is curated for the next transfer-ledger experiment. Its
+weights are not yet claimed to improve a genuinely later held-out task; that
+is the next scientific gate.
