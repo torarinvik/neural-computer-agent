@@ -23,7 +23,11 @@ from .probe_persistent_physical_stream import (
 from .train import evaluate, seed_everything
 from .train_frequency_recency_replacement import frequency_recency_batch
 from .train_multifeature_utility_adaptation import _expanded_controller
-from .strategy_memory import LatentStrategyMemory, physical_context_key
+from .strategy_memory import (
+    LatentStrategyMemory,
+    VerifierTrainedContextEncoder,
+    physical_context_key,
+)
 
 
 def _clone_model(
@@ -64,6 +68,9 @@ def main() -> None:
     parser.add_argument(
         "--strategy-memory-capacity", type=int, default=0,
         help="zero uses the global residual; positive enables latent RAM")
+    parser.add_argument(
+        "--context-learning-rate", type=float, default=0.0,
+        help="positive enables verifier-trained context feature weighting")
     parser.add_argument("--device", default=(
         "cuda" if torch.cuda.is_available() else "cpu"))
     args = parser.parse_args()
@@ -119,6 +126,17 @@ def main() -> None:
             LatentStrategyMemory(capacity=args.strategy_memory_capacity,
                                  key_width=13, device=device)
             if args.strategy_memory_capacity > 0 else None)
+        context_encoder = (
+            VerifierTrainedContextEncoder(width=13).to(device)
+            if strategy_memory is not None else None)
+        context_optimizer = (
+            torch.optim.Adam(
+                context_encoder.parameters(),
+                lr=args.context_learning_rate)
+            if context_encoder is not None
+            and args.context_learning_rate > 0 else None)
+        context_updates = 0
+        context_losses = []
         previous_reward_signature = torch.zeros(3, device=device)
         strategy_save_reloads = 0
         strategy_candidate_evaluations = 0
@@ -224,7 +242,8 @@ def main() -> None:
                         .detach().clone())
                 else:
                     strategy_retrieval = strategy_memory.retrieve(
-                        context_key, initial_residual.flatten())
+                        context_key, initial_residual.flatten(),
+                        encoder=context_encoder)
                     current = strategy_retrieval.value.reshape(1, -1)
                     model.memory_replacement_extra_gate.weight.copy_(current)
                 direction = torch.randint(
@@ -265,7 +284,8 @@ def main() -> None:
                     reward_context_key = physical_context_key(
                         features, reward_signature)
                     post_probe_retrieval = strategy_memory.retrieve(
-                        reward_context_key, current.flatten())
+                        reward_context_key, current.flatten(),
+                        encoder=context_encoder)
                     post_probe_weight = (
                         post_probe_retrieval.value.reshape(1, -1))
                     model.memory_replacement_extra_gate.weight.copy_(
@@ -311,6 +331,18 @@ def main() -> None:
                     max(physical_means) - physical_means[tensor_winner])
                 maximum_cross_choice_regret = max(
                     maximum_cross_choice_regret, cross_regret)
+                if (
+                        context_optimizer is not None
+                        and post_probe_retrieval is not None
+                        and post_probe_retrieval.slot is not None):
+                    context_losses.append(context_encoder.reinforce(
+                        reward_context_key,
+                        strategy_memory.keys[:strategy_memory.count],
+                        selected_slot=post_probe_retrieval.slot,
+                        verified_improvement=(
+                            physical_means[-1] - physical_means[1]),
+                        optimizer=context_optimizer))
+                    context_updates += 1
                 if physical_winner < len(signs):
                     winner_sign = signs[physical_winner]
                     winner_weight = (
@@ -408,6 +440,7 @@ def main() -> None:
                         if post_probe_retrieval is not None else None),
                     "post_probe_strategy_won":
                         physical_winner >= len(signs),
+                    "context_encoder_updates": context_updates,
                     "strategy_memory_count": (
                         strategy_memory.count
                         if strategy_memory is not None else 0),
@@ -531,6 +564,13 @@ def main() -> None:
                 strategy_memory.count
                 if strategy_memory is not None else 0),
             "strategy_memory_capacity": args.strategy_memory_capacity,
+            "context_encoder_updates": context_updates,
+            "context_encoder_mean_loss": (
+                sum(context_losses) / len(context_losses)
+                if context_losses else None),
+            "context_encoder_scales": (
+                context_encoder.log_scale.detach().exp().tolist()
+                if context_encoder is not None else None),
             "replayed_examples": 0,
             "requested_initial_histories_reproduced_exactly":
                 requested_exact,

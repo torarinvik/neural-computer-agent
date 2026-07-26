@@ -14,7 +14,11 @@ from .probe_persistent_physical_stream import (
     _ranked_age,
 )
 from .compare_persistent_fresh_efficiency import _arm_metrics
-from .strategy_memory import LatentStrategyMemory, physical_context_key
+from .strategy_memory import (
+    LatentStrategyMemory,
+    VerifierTrainedContextEncoder,
+    physical_context_key,
+)
 from .dynamic_working_memory import (
     CapabilityLedger,
     DynamicWorkingMemory,
@@ -314,6 +318,41 @@ def test_physical_context_key_ignores_skip_and_is_normalized() -> None:
         features, torch.tensor([0.4, 0.2, 0.1]))
     assert rewarded.shape == (13,)
     assert torch.allclose(rewarded.norm(), torch.tensor(1.0))
+
+
+def test_context_encoder_learns_only_from_verified_improvement() -> None:
+    encoder = VerifierTrainedContextEncoder(width=3)
+    optimizer = torch.optim.SGD(encoder.parameters(), lr=0.5)
+    keys = torch.tensor([[1.0, 1.0, 0.0], [1.0, -1.0, 0.0]])
+    query = torch.tensor([1.0, 1.0, 0.0])
+    before = encoder.log_scale.detach().clone()
+    loss = encoder.reinforce(
+        query, keys, selected_slot=0, verified_improvement=1.0,
+        optimizer=optimizer)
+    assert loss > 0
+    assert not torch.equal(encoder.log_scale, before)
+    learned = encoder.log_scale.detach().clone()
+    encoder.reinforce(
+        query, keys, selected_slot=0, verified_improvement=0.0,
+        optimizer=optimizer)
+    assert torch.equal(encoder.log_scale, learned)
+
+
+def test_strategy_memory_can_retrieve_with_learned_context_metric() -> None:
+    memory = LatentStrategyMemory(
+        capacity=2, key_width=3, value_width=1)
+    memory.upsert(
+        torch.tensor([1.0, 0.1, 0.0]), torch.tensor([1.0]),
+        verified_improvement=1.0)
+    memory.upsert(
+        torch.tensor([0.1, 1.0, 0.0]), torch.tensor([2.0]),
+        verified_improvement=1.0)
+    encoder = VerifierTrainedContextEncoder(width=3)
+    encoder.log_scale.data.copy_(torch.tensor([3.0, -3.0, 0.0]))
+    result = memory.retrieve(
+        torch.tensor([0.2, 1.0, 0.0]), torch.zeros(1),
+        encoder=encoder)
+    assert result.slot == 0
 
 
 def test_dynamic_working_memory_mask_accounting_and_persistence(

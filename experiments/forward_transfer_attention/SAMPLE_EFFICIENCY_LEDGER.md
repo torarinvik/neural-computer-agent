@@ -287,3 +287,22 @@ factorial variance decomposition that independently varies predictive-core
 initialization, lifetime subset, readout initialization, and readout minibatch
 sampling.  Population racing begins only after this identifies what should be
 varied.
+
+## Context-addressing zero-advantage result
+
+A 13-parameter positive diagonal context metric was connected to the bounded
+strategy bank and updated only from the verified advantage of the retrieved
+strategy over the matched center candidate. The learned and frozen arms paid
+for the same fourth candidate evaluation.
+
+At the sub-minute gate, paired seeds 7060 and 7061 produced exactly identical
+learned and frozen behavior. All ten eligible context updates received zero
+verified advantage, so every learned scale remained exactly 1.0. Shuffling
+stored keys harmed target choice on seed 7060, confirming that addressing can
+matter, but it does not rescue the absent training signal.
+
+This rejects longer training of this particular hard-retrieval reinforcement
+route. The next context experiment must create informative counterfactual
+credit without privileged labels—for example, a soft mixture over stored
+strategies whose verifier-measured outcome can differentiate key weights.
+Dynamic slot admission and eviction remain disabled.

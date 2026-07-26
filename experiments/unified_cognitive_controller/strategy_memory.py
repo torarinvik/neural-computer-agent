@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import torch
+from torch import nn
 
 
 def physical_context_key(
@@ -35,6 +36,50 @@ class StrategyRetrieval:
     similarity: float
 
 
+class VerifierTrainedContextEncoder(nn.Module):
+    """Tiny task-agnostic key metric trained from scalar verifier outcomes.
+
+    The encoder learns only a positive weight per physical context dimension.
+    This intentionally low-capacity first experiment tests whether addressing,
+    rather than a larger strategy bank, is the current bottleneck.
+    """
+
+    def __init__(self, width: int = 13) -> None:
+        super().__init__()
+        if width < 1:
+            raise ValueError("context width must be positive")
+        self.width = width
+        self.log_scale = nn.Parameter(torch.zeros(width))
+
+    def forward(self, contexts: torch.Tensor) -> torch.Tensor:
+        if contexts.shape[-1] != self.width:
+            raise ValueError("context has wrong width")
+        scaled = contexts * self.log_scale.exp()
+        return torch.nn.functional.normalize(scaled, dim=-1)
+
+    def reinforce(
+            self, query: torch.Tensor, stored_keys: torch.Tensor, *,
+            selected_slot: int, verified_improvement: float,
+            optimizer: torch.optim.Optimizer,
+            temperature: float = 0.25) -> float:
+        """Increase/decrease selected-key probability from verified utility."""
+        if stored_keys.ndim != 2 or stored_keys.shape[-1] != self.width:
+            raise ValueError("stored context keys have wrong shape")
+        if not 0 <= selected_slot < stored_keys.shape[0]:
+            raise IndexError("selected context slot out of range")
+        logits = (
+            self(stored_keys) @ self(query)
+        ) / temperature
+        log_probability = logits.log_softmax(dim=0)[selected_slot]
+        advantage = torch.as_tensor(
+            verified_improvement, device=query.device, dtype=query.dtype)
+        loss = -(advantage * log_probability)
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        optimizer.step()
+        return float(loss.detach())
+
+
 class LatentStrategyMemory:
     """A capacity-bounded content-addressed strategy working set."""
 
@@ -63,17 +108,23 @@ class LatentStrategyMemory:
 
     def retrieve(
             self, key: torch.Tensor,
-            fallback: torch.Tensor) -> StrategyRetrieval:
+            fallback: torch.Tensor,
+            encoder: VerifierTrainedContextEncoder | None = None,
+            ) -> StrategyRetrieval:
         if key.shape != (self.key_width,):
             raise ValueError("strategy key has wrong width")
         if fallback.shape != (self.value_width,):
             raise ValueError("fallback strategy has wrong width")
         if self.count == 0:
             return StrategyRetrieval(fallback.clone(), None, 0.0)
-        similarities = (
-            torch.nn.functional.normalize(
+        if encoder is None:
+            stored = torch.nn.functional.normalize(
                 self.keys[:self.count], dim=-1)
-            @ torch.nn.functional.normalize(key, dim=0))
+            query = torch.nn.functional.normalize(key, dim=0)
+        else:
+            stored = encoder(self.keys[:self.count]).detach()
+            query = encoder(key).detach()
+        similarities = stored @ query
         slot = int(similarities.argmax())
         self.usage[slot] += 1
         return StrategyRetrieval(
