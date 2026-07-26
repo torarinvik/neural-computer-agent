@@ -141,7 +141,7 @@ def main() -> None:
         controller, selected_count=args.test_contexts,
         seed=args.seed + 90_000_000, device=device)
     read_test, _, _, read_no, read_yes = _logged_batch(
-        controller, count=255, capacity=3,
+        controller, count=252, capacity=3,
         seed=args.seed + 91_000_000, device=device,
         write_threshold=0.5)
 
