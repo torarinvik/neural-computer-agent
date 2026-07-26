@@ -493,3 +493,24 @@ the pre-registered lexicographic rule—minimum cross-context advantage, then
 context-specific specialization—selects a useful clone on a fresh physical
 stream. If positive, reward/context shuffling must break the selection result
 before a causal claim is accepted.
+
+The prospective gate passed on fresh physical stream 7075. Among clones
+7100–7103, the primary score selected 7101 at +10.42 reward points; the other
+scores were +2.08, 0.00, and +1.04, so no tie-break was needed. Only selected
+7101 and pre-fixed lowest-ID control 7100 were extended. The selected clone
+reached 73.6% reliability target accuracy and 81.9% old-return target accuracy,
+versus 8.3% and 2.8% for control. Return reward advantage was +5.79 points
+versus +0.23.
+
+Adversarial controls localized causality. Shuffling physical reward alignment
+failed the gate and reduced return target accuracy to 36.1%. Shuffling latent
+strategy keys at transfer reduced return accuracy to zero. Every arm retained
+binary and four-rule capability. The result is therefore not explained by
+catastrophic forgetting, a generic lucky controller seed, or strategy values
+used independently of their learned addresses.
+
+The read-only shadow audit is promoted as the current four-clone population
+selector. It trades 112 held-out logical lifetimes and 960 selection verifier
+bits per clone for no extra optimizer updates and leaves the 18-round training
+trace bit-identical. Replicate magnitude once on a new physical stream before
+increasing population or audit scale.

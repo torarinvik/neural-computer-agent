@@ -42,11 +42,37 @@ The primary score safely prunes 7091 and harmful 7093 but ties 7090 and 7092.
 The context-specialization tie-break selects 7092, the eventual best safe
 return clone.
 
+## Prospective result
+
+The rule was frozen before opening physical stream 7075. Four new clones
+(7100–7103) were screened after the unchanged first 18-round block:
+
+| Clone | Conservative shadow advantage | Specialized audit seeds |
+|---|---:|---:|
+| 7100 | +2.08 points | 0/4 |
+| 7101 | **+10.42 points** | 0/4 |
+| 7102 | 0.00 points | 0/4 |
+| 7103 | +1.04 points | 1/4 |
+
+The primary rule selected 7101 without a tie-break. Only 7101 and the
+pre-fixed lowest-ID control 7100 were extended to 54 rounds.
+
+| Arm | Reliability target | Old-return target | Return reward advantage | Final gate |
+|---|---:|---:|---:|---:|
+| selected 7101 | **73.6%** | **81.9%** | **+5.79 points** | pass |
+| fixed control 7100 | 8.3% | 2.8% | +0.23 points | pass |
+| 7101, rewards shuffled | 20.8% | 36.1% | +0.23 points | fail |
+| 7101, strategy keys shuffled | 30.6% | 0.0% | +0.69 points | pass |
+
+All arms retained binary and four-rule capability. Reward shuffling destroyed
+the overall result; shuffling strategy keys at transfer erased old-return
+behavior. The selected gain therefore depends causally on aligned verifier
+outcomes and correct latent-memory addressing.
+
 ## Verdict
 
-Promising candidate selector, not yet promoted. This is retrospective on one
-four-clone blind population. The next gate is prospective: pre-register the
-same lexicographic rule on a fresh physical stream, extend only its selected
-clone plus a blinded control, and require improved return without retention
-loss. A reward/context-shuffled audit is required if the prospective result is
-positive.
+Promoted as the current population selector. It preserves the learning
+trajectory, spends extra verifier compute rather than extra optimizer updates,
+and prospectively selected a vastly more transferable clone. The current
+evidence is one prospective four-clone population; magnitude must replicate on
+another physical stream before increasing population size or audit budget.
