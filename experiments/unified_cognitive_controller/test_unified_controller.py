@@ -9,6 +9,13 @@ from .model import UnifiedCognitiveController
 from .probe_persistent_interface import _add_context_signatures
 from .train import attempted_success_loss, evaluate, rollout
 from .train_frequency_recency_replacement import frequency_recency_batch
+from .train_redundancy_transfer import (
+    _expanded_eight_feature_controller,
+    _stable_crossing,
+    build_transfer_arms,
+    initialize_from_saved_strategy,
+    redundancy_utility_batch,
+)
 from .train_persistent_memory import _grouped_read
 from .probe_persistent_physical_stream import (
     _future_for_actions,
@@ -666,6 +673,145 @@ def test_frequency_recency_utility_weights_are_validated_before_generation(
         pass
     else:
         raise AssertionError("negative reliability weight was accepted")
+
+
+def test_eight_feature_expansion_preserves_old_replacement_scores() -> None:
+    source = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        adaptive_memory_read=True,
+        adaptive_memory_replace=True,
+        adaptive_memory_replace_hidden=8,
+        adaptive_memory_replace_features=6)
+    source.memory_replacement_extra_gate.weight.data.fill_(0.75)
+    configuration = {
+        "width": 32,
+        "workspace_slots": 4,
+        "intention_width": 8,
+        "adaptive_memory_read": True,
+        "adaptive_memory_replace": True,
+        "adaptive_memory_replace_hidden": 8,
+        "adaptive_memory_replace_features": 6,
+    }
+    expanded = _expanded_eight_feature_controller(
+        configuration, source.state_dict(), device=torch.device("cpu"))
+    old_features = torch.randn(3, 5, 6)
+    new_features = torch.cat((
+        old_features, torch.zeros(3, 5, 2)), dim=-1)
+    assert torch.equal(
+        source.memory_replacement_scores(old_features),
+        expanded.memory_replacement_scores(new_features))
+    assert torch.equal(
+        expanded.memory_replacement_extra_gate.weight,
+        torch.tensor([[0.75, 0.0, 0.0]]))
+
+
+def test_full_replacement_policy_reset_preserves_controller_backbone(
+        ) -> None:
+    source = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        adaptive_memory_read=True,
+        adaptive_memory_replace=True,
+        adaptive_memory_replace_hidden=8,
+        adaptive_memory_replace_features=6)
+    configuration = {
+        "width": 32,
+        "workspace_slots": 4,
+        "intention_width": 8,
+        "adaptive_memory_read": True,
+        "adaptive_memory_replace": True,
+        "adaptive_memory_replace_hidden": 8,
+        "adaptive_memory_replace_features": 6,
+    }
+    arms = build_transfer_arms(
+        {
+            "schema": "unified-cognitive-controller-v1",
+            "model_configuration": configuration,
+            "state_dict": source.state_dict(),
+        },
+        {
+            "schema": "unified-controller-physical-prefix-state-v1",
+            "model_state_dict": source.state_dict(),
+        },
+        device=torch.device("cpu"), fresh_seed=7)
+    reset = arms["replacement_policy_reset"]
+    assert all(
+        int(torch.count_nonzero(parameter)) == 0
+        for parameter in reset.memory_replacement_gate.parameters())
+    assert int(torch.count_nonzero(
+        reset.memory_replacement_extra_gate.weight)) == 0
+    assert torch.equal(
+        reset.vision.network[0].weight,
+        arms["selected_experience"].vision.network[0].weight)
+
+
+def test_redundancy_batch_is_seed_exact_and_exposes_only_row_statistic(
+        ) -> None:
+    model = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        adaptive_memory_read=True,
+        adaptive_memory_replace=True,
+        adaptive_memory_replace_hidden=8,
+        adaptive_memory_replace_features=8)
+    kwargs = {
+        "banks": 2,
+        "capacity": 3,
+        "seed": 73,
+        "device": torch.device("cpu"),
+        "write_threshold": 0.0,
+        "noise_scale": 0.01,
+        "weights": (0.3, 0.3, 0.3, 0.1),
+    }
+    first = redundancy_utility_batch(model, **kwargs)
+    second = redundancy_utility_batch(model, **kwargs)
+    assert first["option_features"].shape == (2, 4, 8)
+    assert torch.equal(
+        first["option_features"], second["option_features"])
+    assert torch.equal(first["target_action"], second["target_action"])
+    assert torch.equal(
+        first["option_features"][:, 1:, 7],
+        first["row_novelty"] - 0.5)
+    assert torch.all(first["target_action"] >= 1)
+    assert torch.all(first["target_action"] <= 3)
+
+
+def test_stable_crossing_rejects_transient_threshold_hits() -> None:
+    values = [(0, 0.4), (10, 0.6), (20, 0.5), (30, 0.7)]
+    assert _stable_crossing(values, 0.55) == 30
+    assert _stable_crossing(values, 0.75) is None
+
+
+def test_saved_strategy_initializes_old_dimensions_only() -> None:
+    model = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        adaptive_memory_read=True,
+        adaptive_memory_replace=True,
+        adaptive_memory_replace_hidden=8,
+        adaptive_memory_replace_features=8)
+    features = torch.zeros(2, 4, 8)
+    features[:, 1:, 0] = 0.5
+    selected = {
+        "strategy_memory": {
+            "count": 2,
+            "keys": torch.stack((
+                physical_context_key(
+                    features, torch.tensor([0.8, 0.6, 0.4])),
+                physical_context_key(
+                    features, torch.tensor([0.4, 0.6, 0.8])),
+            )),
+            "values": torch.tensor([[2.0, -3.0], [-4.0, 5.0]]),
+        },
+        "context_encoder_state_dict": {
+            "log_scale": torch.zeros(13),
+        },
+        "run_state": {
+            "previous_reward_signature": torch.tensor([0.8, 0.6, 0.4]),
+        },
+    }
+    report = initialize_from_saved_strategy(model, selected, features)
+    assert report["slot"] == 0
+    assert torch.equal(
+        model.memory_replacement_extra_gate.weight,
+        torch.tensor([[2.0, -3.0, 0.0]]))
 
 
 def test_disk_memory_can_replace_without_growing(tmp_path: Path) -> None:

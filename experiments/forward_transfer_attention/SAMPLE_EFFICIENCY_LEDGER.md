@@ -721,3 +721,40 @@ selection experience. The next scientific gate is a transfer ledger: test
 whether the selected weights reduce unique verifier bits and updates needed
 for a genuinely later held-out primitive versus the shared parent, a fresh
 matched controller, and the same selected architecture with weights reset.
+
+The first held-out transfer ledger used a fourth generic memory-utility
+statistic: row novelty, where low-novelty memory rows are redundant.  Every
+sub-minute arm used eight black-box updates, 1,792 generated logical
+lifetimes, 1,536 candidate verifier bits, zero replay, and 23.2–28.3 seconds.
+Binary mapping and four-rule retention passed throughout.
+
+The selected stream-7085 state did not transfer faster.  At 10% novelty its
+global weights finished at 89.58% verified reward versus 93.23% for the shared
+parent.  Retrieving its saved context-indexed strategy on an unseen seed
+improved over the global residual but still lost to the parent, 95.83% versus
+96.35%; the parent was already across the first two gap thresholds at prefix
+zero.  At 15% and 20% novelty neither selected-state arm produced a causal
+novelty advantage.  Retained population weights are therefore rejected for
+this later primitive; the maximin selector remains valid for its demonstrated
+curriculum but has not yet produced compounding forward transfer.
+
+Curriculum localization found why the mixed task was weak: the
+redundancy-only action agreed with the realized mixed target only 19.5–25.0%
+of the time, near the 16.7% six-way chance baseline.  A deterministic
+capacity-three, zero-noise, pure-redundancy atom was therefore tested.
+
+The atom exposed and corrected one accounting bug: the hand-coded redundancy
+oracle had been included among baseline controls, making the available oracle
+gap zero.  It is now an upper bound; baselines contain only random, fixed,
+skip, recency, frequency, and reliability policies.
+
+On unseen seed 7306, resetting the complete tiny replacement policy produced
+the first causal redundancy-learning signal: verified reward rose from 71.88%
+to 86.46%, above the strongest non-redundancy control at 85.42%, and fell to
+76.04% when novelty was shuffled.  Residual-only reset, the parent, and both
+selected-state variants stayed below the strongest control.
+
+This mechanistic result is not promoted to a longer run because complete
+policy reset discards the old memory-utility skill.  The next gate is a
+zero-initialized, context-retrieved full-feature replacement residual.  It must
+learn the redundancy atom while remaining an exact no-op on old contexts.
