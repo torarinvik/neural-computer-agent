@@ -125,6 +125,11 @@ def test_cross_fitted_action_values_do_not_use_heldout_outcome() -> None:
     perturbed = cross_fitted_action_values(features, actions, changed)
     assert torch.equal(original[0][0], perturbed[0][0])
     assert torch.equal(original[1][0], perturbed[1][0])
+    evidence = paired_ips_improvement(
+        torch.zeros_like(actions), torch.ones_like(actions),
+        actions, outcomes, features,
+        baseline_mode="doubly_robust_crossfit")
+    assert torch.isfinite(torch.tensor(evidence["lower_95"]))
 
 
 def test_verified_skill_store_is_atomic_hash_checked_and_append_only(

@@ -76,11 +76,11 @@ def paired_ips_improvement(
         assert context_features is not None
         baseline = cross_fitted_context_baseline(
             context_features, attempted_utilities)
-    # Any context-only baseline is an unbiased control variate for a policy
-    # difference because the two action-match indicators have equal expected
-    # mass under the randomized logger.
-    centered_utilities = attempted_utilities - baseline
     if baseline_mode != "doubly_robust_crossfit":
+        # Any context-only baseline is an unbiased control variate for a policy
+        # difference because the two action-match indicators have equal
+        # expected mass under the randomized logger.
+        centered_utilities = attempted_utilities - baseline
         paired = weights * centered_utilities * (
             (attempted_actions == challenger_actions).to(
                 attempted_utilities.dtype)
