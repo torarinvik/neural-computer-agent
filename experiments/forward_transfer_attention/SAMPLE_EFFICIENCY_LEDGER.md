@@ -552,3 +552,35 @@ old-return target accuracy.
 
 Exact resumability is promoted. The planned 18→42→54 population ladder can now
 save real candidate compute instead of replaying winning prefixes.
+
+## Prospective two-stage population ladder
+
+The full pre-registered 18→42→54 ladder was tested on fresh physical stream
+7077 with clones 7130–7133. The round-18 read-only shadow screen advanced 7131
+and 7133. Their conservative acquisition scores were nearly tied at +2.08333
+reward points; the other two clones scored zero.
+
+Mean verified reward advantage over the first six old-return rounds then
+separated the survivors cleanly. Clone 7131 averaged +1.389 reward points and
+never fell below frozen. Clone 7133 averaged -4.861 points with a -8.33-point
+worst round. Only 7131 advanced.
+
+At round 54, selected 7131 reached 18.06% reliability accuracy versus 5.56%
+frozen, and 13.89% old-return accuracy versus 5.56% frozen. Fixed control 7130
+remained at zero in both transfer phases. Both clones retained the inherited
+binary and four-rule primitives and passed all persistence and parity gates.
+Shuffling physical verifier-reward alignment made the gate fail and collapsed
+both transfer advantages to zero. Shuffling latent strategy keys also
+collapsed both to zero.
+
+The production ladder used 132 physical rounds instead of 216 for four full
+clones, saving 38.9% of training compute. The first validation additionally
+completed the fixed control, bringing the audited cost to 168 rounds, still
+22.2% below exhaustive training. Read-only selection added 448 held-out
+logical lifetimes and 3,840 explicitly separated verifier bits, with no
+optimizer updates. All resumed trace prefixes matched exactly.
+
+The ladder is provisionally promoted as a compute-efficient population
+mechanism. This fresh stream supports preservation of a better stochastic
+trajectory, not guaranteed selection of an exceptional one. Replicate the
+entire ladder once before increasing population size or training budget.
