@@ -45,11 +45,21 @@ A 12-round prefix for clone 7081 matched the first 12 full-run rows bit-for-bit.
 But this prefix contains only the old-equal phase. It cannot evaluate phase
 switching or retained return.
 
+## Follow-up: interleaved curriculum
+
+The proposed interleaved schedule fixed the short-prefix measurement issue:
+each three-round cycle contained old utility, reliability transfer, and return,
+and a 12-round prefix exactly reproduced the corresponding full trace.
+
+It was nevertheless rejected on the strong all-7073 trajectory. At 54 physical
+rounds, informative verifier comparisons fell from 56.6% to 5.7%, and
+old-return target accuracy fell from 95.8% to 9.7%. Contiguous exposure appears
+important to the present strategy-memory ignition.
+
 ## Verdict
 
 Seed variance is interaction-driven. Value diversity remains promoted, but
 early information density alone is rejected as a clone-selection objective.
-The next race must expose all three behaviors—initial utility, reliability
-switching, and old-utility return—before selection. The efficient candidate is
-a pre-registered interleaved curriculum, compared against the existing blocked
-schedule at equal verifier bits.
+Exact prefixes remain mandatory, but simple interleaving is also rejected.
+The next race must expose a genuine return phase without destroying the
+contiguous trajectory that currently enables learning.

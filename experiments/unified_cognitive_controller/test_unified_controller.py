@@ -420,6 +420,22 @@ def test_context_reliability_ramp_has_six_rounds_and_one_changing_axis(
         assert weights[0] == weights[1]
 
 
+def test_interleaved_reliability_exposes_every_context_in_each_short_cycle(
+        ) -> None:
+    phases = _curriculum_phases(
+        "interleaved_reliability", rounds_per_phase=4)
+    assert len(phases) == 12
+    assert all(rounds == 1 for _, _, rounds in phases)
+    assert [phase for phase, _, _ in phases] == [
+        "old_equal", "reliability_dominant", "old_return",
+    ] * 4
+    assert [weights for _, weights, _ in phases[:3]] == [
+        (0.5, 0.5, 0.0),
+        (0.3, 0.3, 0.4),
+        (0.5, 0.5, 0.0),
+    ]
+
+
 def test_value_diverse_admission_preserves_latent_extremes() -> None:
     memory = LatentStrategyMemory(
         capacity=2, key_width=2, value_width=2)

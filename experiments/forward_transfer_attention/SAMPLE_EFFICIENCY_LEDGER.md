@@ -437,3 +437,25 @@ switching or return retention. Future racing must either wait until the exact
 prefix reaches the old-return phase (round 37 or later in this schedule), or
 pre-register an interleaved curriculum that exposes acquisition, switching,
 and return within every short prefix.
+
+## Interleaved-curriculum rejection
+
+The pre-registered interleaved schedule preserved the same three context
+weights and total physical-round budget as the blocked schedule, but alternated
+`old_equal`, `reliability_dominant`, and `old_return` every round. This repaired
+the measurement problem: a 12-round prefix covered every context four times,
+matched the corresponding full trace bit-for-bit, and was explicitly barred
+from graduation.
+
+The behavioral comparison was negative. On the formerly strong all-7073
+value-diverse trajectory at 54 physical rounds, reward-informative soft pairs
+fell from 56.6% to 5.7% and bits per informative pair rose from 214.4 to
+2,144.0. Reliability target accuracy fell from 41.7% to 9.7%, while old-return
+target accuracy fell from 95.8% to 9.7%. Generic persistence, parity, and
+inherited-primitive retention gates remained intact, so this is a sample-
+efficiency failure rather than a harness error.
+
+Simple interleaving is rejected. Exact-prefix accounting is retained. Future
+clone selection must either pay for a prefix that reaches a genuine return
+phase, or find a schedule that preserves the contiguous trajectory required
+for ignition while producing an earlier verifier-only retention signal.

@@ -52,6 +52,20 @@ def _curriculum_phases(
             ("reliability_dominant", (0.3, 0.3, 0.4)),
             ("mild_reliability_return", (0.35, 0.35, 0.3)),
         ]
+    elif curriculum == "interleaved_reliability":
+        # A short prefix must exercise all three contexts.  This changes only
+        # their temporal ordering relative to ``standard``: the same weights
+        # and the same total number of physical rounds are retained.
+        cycle = [
+            ("old_equal", (0.5, 0.5, 0.0)),
+            ("reliability_dominant", (0.3, 0.3, 0.4)),
+            ("old_return", (0.5, 0.5, 0.0)),
+        ]
+        return [
+            (phase, weights, 1)
+            for _ in range(rounds_per_phase)
+            for phase, weights in cycle
+        ]
     else:
         phases = [
             ("old_equal", (0.5, 0.5, 0.0)),
@@ -147,7 +161,7 @@ def main() -> None:
         "--curriculum",
         choices=(
             "standard", "gradual_reliability",
-            "context_reliability_ramp"),
+            "context_reliability_ramp", "interleaved_reliability"),
         default="standard")
     parser.add_argument(
         "--strategy-memory-capacity", type=int, default=0,
@@ -250,7 +264,8 @@ def main() -> None:
         strategy_save_reloads = 0
         strategy_candidate_evaluations = 0
         trace = []
-        phase_summaries = []
+        phase_rows_by_name: dict[str, list[dict[str, object]]] = {}
+        phase_weights_by_name: dict[str, tuple[float, float, float]] = {}
         state_exact = initial_exact
         candidate_exact = 0
         transition_exact = True
@@ -264,6 +279,7 @@ def main() -> None:
         soft_context_reward_delta_sum = 0.0
         soft_context_direction_proposals_screened = 0
         soft_context_selected_preverifier_action_disagreements = 0
+        target_intervention_applied = False
 
         for phase_index, (phase, weights, phase_rounds) in enumerate(phases):
             if (
@@ -272,7 +288,9 @@ def main() -> None:
                 break
             is_peak_reliability = (
                 weights[2] == max(item[1][2] for item in phases))
-            if is_peak_reliability:
+            intervention_active = (
+                is_peak_reliability and not target_intervention_applied)
+            if intervention_active:
                 if args.target_intervention == "cold":
                     model.memory_replacement_extra_gate.weight.copy_(
                         initial_residual)
@@ -286,9 +304,10 @@ def main() -> None:
                         == "shuffled_strategy_keys"
                         and strategy_memory is not None
                         and strategy_memory.count > 1):
-                    strategy_memory.keys[:strategy_memory.count] = (
-                        strategy_memory.keys[:strategy_memory.count].roll(
+                        strategy_memory.keys[:strategy_memory.count] = (
+                            strategy_memory.keys[:strategy_memory.count].roll(
                             1, dims=0))
+                target_intervention_applied = True
             phase_rows = []
             for round_index in range(phase_rounds):
                 if (
@@ -336,7 +355,7 @@ def main() -> None:
                     data["candidate_strength"], weights=weights,
                     noise=noise)
                 if (
-                        phase == "reliability_dominant"
+                        intervention_active
                         and args.target_intervention in (
                             "empty_history", "shuffled_history")):
                     visible_memories = []
@@ -756,6 +775,13 @@ def main() -> None:
                 }
                 trace.append(row)
                 phase_rows.append(row)
+            if phase_rows:
+                phase_rows_by_name.setdefault(phase, []).extend(phase_rows)
+                phase_weights_by_name.setdefault(phase, weights)
+
+        phase_summaries = []
+        for phase, phase_rows in phase_rows_by_name.items():
+            weights = phase_weights_by_name[phase]
             phase_summaries.append({
                 "phase": phase,
                 "weights": weights,
