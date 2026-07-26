@@ -39,7 +39,10 @@ from .train_shadow_compute_critic import (
     controlled_features,
     selected_compute_loss,
 )
-from .train_shadow_compute_advantage import attempted_advantage_target
+from .train_shadow_compute_advantage import (
+    ComputeAdvantageHead,
+    attempted_advantage_target,
+)
 from .train_thought_compute_transfer import (
     _active_features as active_thought_features,
     _metrics as thought_compute_metrics,
@@ -57,6 +60,7 @@ from .train_requery_transfer import _candidate_name
 from .train_safe_requery_adaptation import (
     cross_fitted_action_values,
     cross_fitted_context_baseline,
+    disagreement_indices,
     paired_ips_improvement,
 )
 from .verified_skill_store import VerifiedSkillStore
@@ -162,6 +166,19 @@ def test_verified_skill_store_is_atomic_hash_checked_and_append_only(
             context_key=torch.tensor([1.0, 1.0]),
             lower_confidence_bound=0.0, verifier_bits=1,
             parent_id=parent, provenance={})
+
+
+def test_active_selection_prefers_policy_disagreements() -> None:
+    incumbent = ComputeAdvantageHead(4)
+    candidate = ComputeAdvantageHead(4)
+    with torch.no_grad():
+        incumbent.network[-1].bias.fill_(-1)
+        candidate.network[-1].bias.fill_(1)
+    features = torch.randn(12, 4)
+    selected, fraction = disagreement_indices(
+        incumbent, candidate, features, count=5)
+    assert fraction == 1.0
+    assert selected.tolist() == [0, 1, 2, 3, 4]
 
 
 def test_lifetime_has_one_correct_action_and_balanced_private_rules() -> None:

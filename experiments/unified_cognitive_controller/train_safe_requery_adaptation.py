@@ -174,6 +174,22 @@ def cross_fitted_action_values(
     return q0, q1, q_logged
 
 
+@torch.no_grad()
+def disagreement_indices(
+        incumbent: ComputeAdvantageHead,
+        candidate: ComputeAdvantageHead,
+        features: torch.Tensor, *, count: int) -> tuple[torch.Tensor, float]:
+    """Prefer random-pool rows where candidate and incumbent actions differ."""
+    if not 0 < count <= features.shape[0]:
+        raise ValueError("selection count must fit the candidate pool")
+    disagreement = (
+        (incumbent(features) > 0) != (candidate(features) > 0))
+    disagree = disagreement.nonzero(as_tuple=False).squeeze(1)
+    agree = (~disagreement).nonzero(as_tuple=False).squeeze(1)
+    selected = torch.cat((disagree, agree))[:count]
+    return selected, float(disagreement.float().mean())
+
+
 def _load_head(path: Path, device: torch.device) -> ComputeAdvantageHead:
     payload = torch.load(path, map_location=device, weights_only=False)
     head = ComputeAdvantageHead(int(payload["head_hidden"])).to(device)
@@ -215,7 +231,14 @@ def main() -> None:
         help=(
             "Reinitialize only the gap challenger latent basis while keeping "
             "the incumbent and logged experience fixed."))
+    parser.add_argument(
+        "--active-pool-multiplier", type=int, default=1,
+        help=(
+            "Generate this many unlabeled candidate contexts per verified "
+            "context and prefer incumbent/challenger disagreements."))
     args = parser.parse_args()
+    if args.active_pool_multiplier < 1:
+        raise ValueError("--active-pool-multiplier must be positive")
 
     seed_everything(args.seed)
     device = torch.device(args.device)
@@ -249,6 +272,7 @@ def main() -> None:
             "confirmation_logged": [],
             "pending": None,
             "promotions": [],
+            "selection": [],
             "history": [],
         }
         arms[name]["optimizer"] = torch.optim.AdamW(
@@ -287,18 +311,38 @@ def main() -> None:
     context_count = 0
     started = time.perf_counter()
     for step in range(1, args.steps + 1):
-        features, first, second, _ = requery_batch(
-            controller, count=args.batch_size, capacity=args.capacity,
+        pool_count = args.batch_size * args.active_pool_multiplier
+        features_pool, first_pool, second_pool, _ = requery_batch(
+            controller, count=pool_count, capacity=args.capacity,
             seed=args.seed * 1_000_000 + step, device=device,
             write_threshold=args.write_threshold)
-        context_sum += features.sum(0)
-        context_count += features.shape[0]
-        attempted = torch.randint(
-            0, 2, (args.batch_size,), generator=action_generator,
-            device=device)
-        utilities = torch.where(
-            attempted.bool(), second - args.requery_cost, first)
         for name, arm in arms.items():
+            active_candidate = (
+                arm["pending"] if arm["pending"] is not None
+                else arm["challenger"])
+            selected, disagreement_fraction = disagreement_indices(
+                arm["incumbent"], active_candidate, features_pool,
+                count=args.batch_size)
+            features = features_pool[selected]
+            first = first_pool[selected]
+            second = second_pool[selected]
+            attempted = torch.randint(
+                0, 2, (args.batch_size,), generator=action_generator,
+                device=device)
+            utilities = torch.where(
+                attempted.bool(), second - args.requery_cost, first)
+            arm["selection"].append({
+                "step": step,
+                "pool_contexts": pool_count,
+                "verified_contexts": args.batch_size,
+                "pool_disagreement_fraction": disagreement_fraction,
+                "selected_disagreements": int(
+                    ((arm["incumbent"](features) > 0)
+                     != (active_candidate(features) > 0)).sum()),
+            })
+            if name == "gap":
+                context_sum += features.sum(0)
+                context_count += features.shape[0]
             baselines[name][0] += float(utilities.sum())
             baselines[name][1] += utilities.numel()
             targets = attempted_advantage_target(
@@ -539,6 +583,7 @@ def main() -> None:
             name: {
                 "history": arm["history"],
                 "promotion_evidence": arm["promotions"],
+                "selection": arm["selection"],
             }
             for name, arm in arms.items()
         },
@@ -551,6 +596,9 @@ def main() -> None:
         "accounting": {
             "learner_visible_unique_verifier_bits":
                 args.steps * args.batch_size,
+            "unlabeled_candidate_contexts":
+                args.steps * args.batch_size
+                * args.active_pool_multiplier,
             "optimizer_updates_per_challenger": args.steps,
             "private_test_both_action_bits": args.test_contexts * 2,
             "wall_seconds": time.perf_counter() - started,
