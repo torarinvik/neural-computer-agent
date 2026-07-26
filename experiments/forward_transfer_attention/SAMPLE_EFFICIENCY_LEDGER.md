@@ -962,3 +962,28 @@ This is the fourth consecutive verified option generation. It also establishes
 a second compounding resource axis: verifier/sample efficiency can improve
 through greater internal reuse of fixed experience, but processing cost must
 now be optimized explicitly rather than treated as free.
+
+## 2026-07-26 — adaptive replay without sample-efficiency loss
+
+A task-agnostic replay controller now treats replay 16 as a maximum and stops
+processing a new batch when full observed-experience Smooth-L1 loss reaches
+0.14. It uses no additional verifier outcomes or privileged information.
+
+Prospective matched fixed/adaptive pairs received identical 7,680 logical
+lifetimes and 15,360 composition verifier bits:
+
+| Seed | Stable bits adaptive/fixed | Updates adaptive/fixed | Saving |
+|---:|---:|---:|---:|
+| 8106 | 5,760 / 5,760 | 1,237 / 2,048 | 39.6% |
+| 8107 | 6,000 / 6,000 | 1,079 / 2,048 | 47.3% |
+
+Wall time fell from 3.77 to 2.24 seconds and from 4.18 to 1.99 seconds.
+Replayed examples fell by the same update ratio. Adaptive asymptotic utility
+was slightly lower than fixed but remained safely above the capability gate.
+
+Both adaptive checkpoints passed independent eight-stream improvement,
+randomized confirmation, feature shuffle, reversal, binary/four-rule
+retention, exact persistence, corruption detection, and lineage-survival
+audits. This is the first verified result in which the controller allocates
+its own processing from a generic learning-state signal while preserving the
+exact stable verifier-bit threshold.

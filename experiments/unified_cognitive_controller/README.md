@@ -929,6 +929,19 @@ mastery. The frontier is therefore adaptive experience processing—learn how
 much replay or internal thought each experience merits, charging processing
 alongside verifier bits and latency.
 
+That adaptive-processing frontier now passes. A generic controller monitors
+loss over its own observed replay memory and treats 16 updates as a maximum,
+stopping once loss reaches 0.14. On two prospective matched seeds it preserved
+the fixed learner’s exact stable mastery thresholds (5,760 and 6,000 verifier
+bits) while reducing optimizer updates by 39.6% and 47.3%. Wall time fell by
+roughly 41% and 52%.
+
+Both adaptive checkpoints retained the six-action gain under the full
+eight-stream, randomized-confirmation, shuffle, reversal, old-skill retention,
+persistence, corruption, and lineage audit ladder. The next frontier is to
+learn the stopping criterion across task generations rather than fixing one
+generic loss target.
+
 Run the sub-minute GPU experiment:
 
 ```bash

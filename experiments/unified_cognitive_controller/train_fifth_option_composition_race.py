@@ -110,6 +110,11 @@ def main() -> None:
     parser.add_argument(
         "--ema-decay", type=float, default=0.0,
         help="Optional task-agnostic weight averaging for both race arms.")
+    parser.add_argument(
+        "--adaptive-replay-loss", type=float,
+        help=(
+            "If set, treat --replay-updates as a maximum and stop replay "
+            "once full observed-experience loss is at or below this value."))
     parser.add_argument("--router-input-width", type=int, default=7)
     parser.add_argument(
         "--feedback-mode",
@@ -252,6 +257,27 @@ def main() -> None:
     }
     replay: dict[str, list[tuple[torch.Tensor, ...]]] = {
         "composition": [], "flat": []}
+    optimizer_updates = {"composition": 0, "flat": 0}
+    replayed_examples = {"composition": 0, "flat": 0}
+    final_replay_loss: dict[str, float | None] = {
+        "composition": None, "flat": None}
+
+    def replay_loss(
+            name: str, head: nn.Module, features: torch.Tensor,
+            actions: torch.Tensor,
+            outcomes: torch.Tensor | None) -> torch.Tensor:
+        q_values = head.q_values(features)
+        if args.feedback_mode == "paired-population":
+            if name == "composition":
+                prediction = q_values[:, 1] - q_values[:, 0]
+                return nn.functional.smooth_l1_loss(
+                    prediction, actions)
+            return nn.functional.smooth_l1_loss(q_values, actions)
+        prediction = q_values.gather(
+            1, actions[:, None]).squeeze(1)
+        assert outcomes is not None
+        return nn.functional.smooth_l1_loss(prediction, outcomes)
+
     started = time.perf_counter()
     for step in range(1, args.steps + 1):
         features, outcomes, _ = ranked_requery_batch(
@@ -312,25 +338,17 @@ def main() -> None:
                 indices = torch.randint(
                     0, all_features.shape[0], (args.batch_size,),
                     generator=generators[f"{name}_replay"], device=device)
-                q_values = head.q_values(all_features[indices])
-                if args.feedback_mode == "paired-population":
-                    if name == "composition":
-                        predicted_advantage = (
-                            q_values[:, 1] - q_values[:, 0])
-                        loss = nn.functional.smooth_l1_loss(
-                            predicted_advantage, all_actions[indices])
-                    else:
-                        loss = nn.functional.smooth_l1_loss(
-                            q_values, all_actions[indices])
-                else:
-                    prediction = q_values.gather(
-                        1, all_actions[indices, None]).squeeze(1)
-                    loss = nn.functional.smooth_l1_loss(
-                        prediction, all_outcomes[indices])
+                loss = replay_loss(
+                    name, head, all_features[indices],
+                    all_actions[indices],
+                    (all_outcomes[indices]
+                     if all_outcomes is not None else None))
                 optimizers[name].zero_grad(set_to_none=True)
                 loss.backward()
                 nn.utils.clip_grad_norm_(head.parameters(), 1.0)
                 optimizers[name].step()
+                optimizer_updates[name] += 1
+                replayed_examples[name] += args.batch_size
                 if args.ema_decay > 0:
                     ema_head = (
                         ema_router if name == "composition" else ema_flat)
@@ -339,6 +357,19 @@ def main() -> None:
                                 ema_head.parameters(), head.parameters()):
                             averaged.mul_(args.ema_decay).add_(
                                 current, alpha=1.0 - args.ema_decay)
+                if args.adaptive_replay_loss is not None:
+                    with torch.no_grad():
+                        observed_loss = replay_loss(
+                            name, head, all_features, all_actions,
+                            all_outcomes)
+                    final_replay_loss[name] = float(observed_loss)
+                    if observed_loss <= args.adaptive_replay_loss:
+                        break
+            if args.adaptive_replay_loss is None:
+                with torch.no_grad():
+                    final_replay_loss[name] = float(replay_loss(
+                        name, head, all_features, all_actions,
+                        all_outcomes))
         if step % 2 == 0 or step == args.steps:
             record(step)
 
@@ -390,10 +421,9 @@ def main() -> None:
                 name: args.steps * args.batch_size * multiplier
                 for name, multiplier in bits_per_context.items()
             },
-            "replay_optimizer_updates_per_arm":
-                args.steps * args.replay_updates,
-            "replayed_examples_per_arm":
-                args.steps * args.replay_updates * args.batch_size,
+            "replay_optimizer_updates_per_arm": optimizer_updates,
+            "replayed_examples_per_arm": replayed_examples,
+            "final_observed_replay_loss": final_replay_loss,
             "unique_logical_lifetimes_per_arm":
                 args.steps * args.batch_size,
             "stable_transfer_ratio_flat_over_composition": (
@@ -428,6 +458,11 @@ def main() -> None:
                 args.steps * args.batch_size
                 * bits_per_context["option_composition"]),
             "replay_updates": args.replay_updates,
+            "actual_optimizer_updates":
+                optimizer_updates["composition"],
+            "actual_replayed_examples":
+                replayed_examples["composition"],
+            "adaptive_replay_loss": args.adaptive_replay_loss,
             "feedback_mode": args.feedback_mode,
             "ema_decay": args.ema_decay,
         }, args.checkpoint)
