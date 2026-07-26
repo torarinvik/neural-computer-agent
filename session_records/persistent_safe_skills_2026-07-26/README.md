@@ -55,3 +55,26 @@ The repaired integration passes only if the mastered proposal is rejected or
 never proposed, the gap learner is independently confirmed and committed,
 both skills reload exactly, corruption isolation passes, and retention holds.
 Only a complete pass permits seed-7973 replication.
+
+## Result
+
+Seed 7972 passed the complete integration:
+
+- mastered incumbent: no positive proposal and no change;
+- gap learner: positive proposal at 480 bits (`lower95=+0.0047`), independently
+  confirmed on the next 240 fresh outcomes (`lower95=+0.0018`);
+- parent and promoted child reloaded bit-exactly from a fresh store instance;
+- child corruption was detected while parent retrieval remained valid;
+- prior controller skills were retained.
+
+Seed 7973 did not replicate the learning half. It remained safe—no mastered
+promotion—but the gap learner produced no positive proposal within 720 bits,
+so no skill was committed. No longer run is authorized.
+
+Therefore the durable-store machinery and one full promote→confirm→commit→load
+path are demonstrated, but persistent safe learning is **not yet replicated**.
+The current bottleneck is conservative-promotion sensitivity: safety is
+reliable, while verified improvement sometimes fails to clear the confidence
+threshold within the tiny budget. The next experiment should improve the
+challenger's learning consistency or evidence efficiency without relaxing the
+fresh-confirmation safeguard.
