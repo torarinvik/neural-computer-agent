@@ -140,6 +140,11 @@ def main() -> None:
         choices=("global", "context_crossfit"), default="global")
     parser.add_argument("--skill-store", type=Path)
     parser.add_argument("--parent-audit", type=Path)
+    parser.add_argument(
+        "--require-fresh-confirmation", action="store_true",
+        help=(
+            "Freeze a positive proposal and require a second positive bound "
+            "on subsequently logged outcomes before promotion."))
     args = parser.parse_args()
 
     seed_everything(args.seed)
@@ -165,6 +170,8 @@ def main() -> None:
             "optimizer": None,
             "naive_optimizer": None,
             "logged": [],
+            "confirmation_logged": [],
+            "pending": None,
             "promotions": [],
             "history": [],
         }
@@ -231,32 +238,57 @@ def main() -> None:
                 loss.backward()
                 nn.utils.clip_grad_norm_(arm[key].parameters(), 1.0)
                 arm[optimizer_key].step()
-            arm["logged"].append((
+            target_log = (
+                arm["confirmation_logged"]
+                if arm["pending"] is not None else arm["logged"])
+            target_log.append((
                 features.detach(), attempted.detach(), utilities.detach()))
 
         if step % args.promotion_every == 0:
             for arm in arms.values():
-                features_log = torch.cat([row[0] for row in arm["logged"]])
-                attempted_log = torch.cat([row[1] for row in arm["logged"]])
-                utilities_log = torch.cat([row[2] for row in arm["logged"]])
+                confirmation = arm["pending"] is not None
+                active_log = (
+                    arm["confirmation_logged"]
+                    if confirmation else arm["logged"])
+                features_log = torch.cat([row[0] for row in active_log])
+                attempted_log = torch.cat([row[1] for row in active_log])
+                utilities_log = torch.cat([row[2] for row in active_log])
+                candidate = (
+                    arm["pending"] if confirmation
+                    else arm["challenger"])
                 with torch.no_grad():
                     incumbent_actions = (
                         arm["incumbent"](features_log) > 0).long()
                     challenger_actions = (
-                        arm["challenger"](features_log) > 0).long()
+                        candidate(features_log) > 0).long()
                 evidence = paired_ips_improvement(
                     incumbent_actions, challenger_actions,
                     attempted_log, utilities_log, features_log,
                     baseline_mode=args.promotion_baseline)
-                promoted = evidence["lower_95"] > 0
+                positive = evidence["lower_95"] > 0
+                promoted = positive and (
+                    confirmation or not args.require_fresh_confirmation)
                 if promoted:
                     arm["incumbent"].load_state_dict(
-                        arm["challenger"].state_dict())
+                        candidate.state_dict())
                     # Earlier records compared against the previous incumbent;
                     # restart the paired audit only after an actual promotion.
                     arm["logged"].clear()
+                elif (
+                        positive and args.require_fresh_confirmation
+                        and not confirmation):
+                    arm["pending"] = copy.deepcopy(arm["challenger"])
+                    arm["confirmation_logged"].clear()
+                    arm["logged"].clear()
+                if confirmation:
+                    arm["pending"] = None
+                    arm["confirmation_logged"].clear()
                 arm["promotions"].append({
-                    "step": step, **evidence, "promoted": promoted})
+                    "step": step, **evidence,
+                    "phase": (
+                        "confirmation" if confirmation else "proposal"),
+                    "positive": positive,
+                    "promoted": promoted})
         if step % 2 == 0 or step == args.steps:
             record(step)
 

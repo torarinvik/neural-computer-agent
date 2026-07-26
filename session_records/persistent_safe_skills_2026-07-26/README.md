@@ -34,3 +34,24 @@ integration passes only if:
 7. prior controller retention checks pass.
 
 Only a full pass permits unchanged replication.
+
+## Seed 7971 result and fresh-confirmation repair
+
+The storage boundary passed: parent and child reloaded exactly, child
+corruption was detected, parent retrieval survived, and controller retention
+held. The run nevertheless failed because the mastered challenger received a
+false-positive promotion at 480 bits. Private audit showed a small utility
+loss (`−0.13` points) and a large decision-pattern change. No persistent-skill
+claim is promoted from this seed.
+
+Seed 7972 changes one safety axis. A positive confidence bound now creates a
+frozen **proposal**, not a deployment. The proposal must achieve a second
+positive lower-95% bound on a fresh attempted-outcome block collected after
+the proposal. Only then may it replace the incumbent or enter disk memory.
+The proposal and confirmation use disjoint verifier outcomes; thresholds,
+learning, task, and hidden-information restrictions remain unchanged.
+
+The repaired integration passes only if the mastered proposal is rejected or
+never proposed, the gap learner is independently confirmed and committed,
+both skills reload exactly, corruption isolation passes, and retention holds.
+Only a complete pass permits seed-7973 replication.
