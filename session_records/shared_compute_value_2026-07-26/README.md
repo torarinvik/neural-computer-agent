@@ -43,3 +43,24 @@ It must also retain at least `+0.05` read utility over the fixed policy, lose at
 least `0.05` thought utility under both causal controls, preserve the mastered
 controller tasks, keep live gradients, and reload exactly. A pass permits one
 unchanged replication. A failure receives no larger budget.
+
+## Seed 7811 result
+
+The prerequisite failed:
+
+- inherited shared read: `74.2%` choice accuracy, `+0.2010` utility, `62.3%`
+  oracle-gap capture;
+- reset shared read: `71.0%`, `+0.1807`, `56.0%`;
+- inherited shared thought: `55.9%`, `+0.0539`, `10.9%`;
+- reset shared thought: `55.9%`, `+0.0540`, `10.9%`.
+
+Read skill remained causal and strong, all controls and mechanical gates
+passed, and no forgetting occurred. But inherited and reset thought learning
+were indistinguishable, so no compounding transfer was demonstrated. The run
+used 1,440 learner-visible bits, 12 joint updates, and zero replay. It also
+required 90,112 privately screened thought lifetimes, confirming that this is
+an inefficient curriculum surface.
+
+The read → thought jump remains too large. The next rung changes only memory
+bank capacity (three → four) to test whether the representation transfers to a
+near neighbor before attempting another operation bridge.
