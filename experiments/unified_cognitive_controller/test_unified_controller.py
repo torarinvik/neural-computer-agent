@@ -15,6 +15,11 @@ from .probe_persistent_physical_stream import (
 )
 from .compare_persistent_fresh_efficiency import _arm_metrics
 from .strategy_memory import LatentStrategyMemory, physical_context_key
+from .dynamic_working_memory import (
+    CapabilityLedger,
+    DynamicWorkingMemory,
+    LatencyTimer,
+)
 
 
 def test_lifetime_has_one_correct_action_and_balanced_private_rules() -> None:
@@ -309,6 +314,50 @@ def test_physical_context_key_ignores_skip_and_is_normalized() -> None:
         features, torch.tensor([0.4, 0.2, 0.1]))
     assert rewarded.shape == (13,)
     assert torch.allclose(rewarded.norm(), torch.tensor(1.0))
+
+
+def test_dynamic_working_memory_mask_accounting_and_persistence(
+        tmp_path: Path) -> None:
+    memory = DynamicWorkingMemory(
+        capacity=8, width=3, fixed_active_slots=4)
+    assert memory.active_count == 4
+    memory.write(1, torch.tensor([1.0, 2.0, 3.0]))
+    assert torch.equal(memory.read(1), torch.tensor([1.0, 2.0, 3.0]))
+    memory.write(4, torch.zeros(3))
+    memory.write(4, torch.zeros(3))
+    assert memory.stats.evictions == 1
+    selected = memory.set_active_from_scores(
+        torch.tensor([-1.0, -1.0, 0.9, 0.8, -1.0, -1.0, -1.0, -1.0]),
+        minimum=2)
+    assert selected.tolist() == [
+        False, False, True, True, False, False, False, False]
+    memory.record_step()
+    assert memory.stats.mean_occupancy == 0.25
+    path = tmp_path / "dynamic-memory.pt"
+    memory.save(path)
+    restored = DynamicWorkingMemory.load(path)
+    assert torch.equal(restored.values, memory.values)
+    assert torch.equal(restored.active, memory.active)
+    assert torch.equal(restored.occupied, memory.occupied)
+    assert torch.equal(restored.usage, memory.usage)
+    assert torch.equal(restored.age, memory.age)
+    assert restored.stats == memory.stats
+
+
+def test_capability_ledger_records_memory_and_latency() -> None:
+    memory = DynamicWorkingMemory(
+        capacity=8, width=2, fixed_active_slots=2)
+    memory.record_step()
+    memory.active_values()
+    ledger = CapabilityLedger(
+        unique_verifier_bits=16, unique_logical_lifetimes=4)
+    ledger.absorb_memory(memory.stats)
+    with LatencyTimer(ledger):
+        _ = sum(range(10))
+    report = ledger.as_report()
+    assert report["memory_reads"] == 2
+    assert report["mean_active_fraction"] == 0.25
+    assert report["latency_seconds"] >= 0.0
 
 
 def test_old_disk_schema_loads_with_zero_access_counts(tmp_path: Path) -> None:
