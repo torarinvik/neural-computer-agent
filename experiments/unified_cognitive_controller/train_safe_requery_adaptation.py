@@ -24,6 +24,28 @@ from .train_thought_compute_transfer import _metrics
 from .verified_skill_store import VerifiedSkillStore
 
 
+class ActionValueHead(nn.Module):
+    """Two action values whose difference is the operation advantage."""
+
+    def __init__(self, hidden: int = 16) -> None:
+        super().__init__()
+        self.network = nn.Sequential(
+            nn.LayerNorm(4),
+            nn.Linear(4, hidden),
+            nn.GELU(),
+            nn.Linear(hidden, 2),
+        )
+        nn.init.zeros_(self.network[-1].weight)
+        nn.init.zeros_(self.network[-1].bias)
+
+    def q_values(self, features: torch.Tensor) -> torch.Tensor:
+        return self.network(features)
+
+    def forward(self, features: torch.Tensor) -> torch.Tensor:
+        values = self.q_values(features)
+        return values[:, 1] - values[:, 0]
+
+
 def paired_ips_improvement(
         incumbent_actions: torch.Tensor,
         challenger_actions: torch.Tensor,
@@ -236,6 +258,9 @@ def main() -> None:
         help=(
             "Generate this many unlabeled candidate contexts per verified "
             "context and prefer incumbent/challenger disagreements."))
+    parser.add_argument(
+        "--challenger-objective",
+        choices=("advantage", "action_value"), default="advantage")
     args = parser.parse_args()
     if args.active_pool_multiplier < 1:
         raise ValueError("--active-pool-multiplier must be positive")
@@ -257,7 +282,13 @@ def main() -> None:
     arms = {}
     for name, initial in (("mastered", mastered), ("gap", reset)):
         challenger_initial = initial
-        if name == "gap" and args.gap_challenger_seed_offset:
+        if args.challenger_objective == "action_value":
+            with torch.random.fork_rng(devices=[]):
+                torch.manual_seed(
+                    args.seed + args.gap_challenger_seed_offset
+                    + (20_000 if name == "mastered" else 30_000))
+                challenger_initial = ActionValueHead(hidden).to(device)
+        elif name == "gap" and args.gap_challenger_seed_offset:
             with torch.random.fork_rng(devices=[]):
                 torch.manual_seed(
                     args.seed + args.gap_challenger_seed_offset)
@@ -352,8 +383,14 @@ def main() -> None:
             for key, optimizer_key in (
                     ("challenger", "optimizer"),
                     ("naive", "naive_optimizer")):
-                loss = nn.functional.smooth_l1_loss(
-                    arm[key](features), targets)
+                if isinstance(arm[key], ActionValueHead):
+                    predicted = arm[key].q_values(features).gather(
+                        1, attempted[:, None]).squeeze(1)
+                    loss = nn.functional.smooth_l1_loss(
+                        predicted, utilities)
+                else:
+                    loss = nn.functional.smooth_l1_loss(
+                        arm[key](features), targets)
                 arm[optimizer_key].zero_grad(set_to_none=True)
                 loss.backward()
                 nn.utils.clip_grad_norm_(arm[key].parameters(), 1.0)
@@ -389,8 +426,7 @@ def main() -> None:
                 promoted = positive and (
                     confirmation or not args.require_fresh_confirmation)
                 if promoted:
-                    arm["incumbent"].load_state_dict(
-                        candidate.state_dict())
+                    arm["incumbent"] = copy.deepcopy(candidate)
                     # Earlier records compared against the previous incumbent;
                     # restart the paired audit only after an actual promotion.
                     arm["logged"].clear()
@@ -449,7 +485,7 @@ def main() -> None:
         for name, arm in arms.items():
             path = Path(directory) / f"{name}.pt"
             torch.save(arm["incumbent"].state_dict(), path)
-            restored = ComputeAdvantageHead(hidden).to(device)
+            restored = copy.deepcopy(arm["incumbent"])
             restored.load_state_dict(torch.load(
                 path, map_location=device, weights_only=True))
             persistence[name] = torch.equal(

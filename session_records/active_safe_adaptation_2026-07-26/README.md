@@ -36,3 +36,16 @@ mandatory confirmation, and pool multiplier four. It passes only if:
 
 Only a full pass permits unchanged fresh seeds 7981 and 7982. Both fresh seeds
 must pass before persistent skill integration is retried.
+
+## Result
+
+The active selector made the previously failed gap stream propose at 480 bits
+with lower bound `+0.0024`, while the mastered incumbent remained untouched.
+Fresh confirmation rejected the proposal (`lower95=−0.0827`), so nothing was
+deployed. The challenger nevertheless improved private audited utility by
+about `2.7` points.
+
+Active allocation therefore improves proposal sensitivity but does not by
+itself produce a reliably better challenger. The next fork changes the
+learner's outcome objective while retaining active allocation and independent
+confirmation.

@@ -58,6 +58,7 @@ from .train_cost_aware_requery import (
 )
 from .train_requery_transfer import _candidate_name
 from .train_safe_requery_adaptation import (
+    ActionValueHead,
     cross_fitted_action_values,
     cross_fitted_context_baseline,
     disagreement_indices,
@@ -179,6 +180,14 @@ def test_active_selection_prefers_policy_disagreements() -> None:
         incumbent, candidate, features, count=5)
     assert fraction == 1.0
     assert selected.tolist() == [0, 1, 2, 3, 4]
+
+
+def test_action_value_head_emits_value_difference() -> None:
+    head = ActionValueHead(4)
+    features = torch.randn(6, 4)
+    values = head.q_values(features)
+    assert values.shape == (6, 2)
+    assert torch.equal(head(features), values[:, 1] - values[:, 0])
 
 
 def test_lifetime_has_one_correct_action_and_balanced_private_rules() -> None:
