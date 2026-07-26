@@ -40,7 +40,11 @@ def paired_ips_improvement(
         attempted_actions.bool(),
         torch.full_like(attempted_utilities, 1.0 / propensity),
         torch.full_like(attempted_utilities, 1.0 / (1.0 - propensity)))
-    paired = weights * attempted_utilities * (
+    # A common reward baseline is an unbiased control variate for a policy
+    # difference because the two action-match indicators have equal expected
+    # mass under the logger. It removes irrelevant reward-level variance.
+    centered_utilities = attempted_utilities - attempted_utilities.mean()
+    paired = weights * centered_utilities * (
         (attempted_actions == challenger_actions).to(attempted_utilities.dtype)
         - (attempted_actions == incumbent_actions).to(
             attempted_utilities.dtype))
@@ -54,6 +58,7 @@ def paired_ips_improvement(
         "lower_95": mean - z * standard_error,
         "upper_95": mean + z * standard_error,
         "records": paired.numel(),
+        "reward_baseline": float(attempted_utilities.mean()),
     }
 
 

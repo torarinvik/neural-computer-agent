@@ -81,3 +81,23 @@ promotion to the mastered incumbent, preserving its accuracy and utility, and
 (b) promote the gap challenger only with a positive confidence lower bound and
 improve its audited utility by at least `0.02`. The naive arm remains reported
 but does not gate this separate robustness claim.
+
+## Robustness result and variance-reduction fork
+
+Seed 7953 passed the core mechanism: mastered knowledge was untouched and the
+gap challenger was promoted at 480 bits with lower bound `+0.0176`, improving
+utility by `5.37` points. Seed 7954 preserved mastered knowledge but correctly
+refused promotion because its lower bound remained negative, despite the
+challenger privately improving by `6.53` points. Safety replicated; promotion
+sensitivity did not.
+
+The dominant variance is the common reward level, which is irrelevant to a
+paired policy difference. Seed 7955 changes one statistical axis: subtract the
+mean attempted utility before forming the paired inverse-propensity estimate.
+This is an unbiased control variate because the incumbent and challenger
+action-match indicators have equal expected mass under the fixed randomized
+logger. No new information, labels, or verifier bits are introduced.
+
+The centered estimator must preserve the mastered incumbent and promote the
+gap learner only with a positive lower bound. A pass permits one unchanged
+replication; a failure closes this estimator.
