@@ -145,6 +145,11 @@ def main() -> None:
         help=(
             "Freeze a positive proposal and require a second positive bound "
             "on subsequently logged outcomes before promotion."))
+    parser.add_argument(
+        "--gap-challenger-seed-offset", type=int, default=0,
+        help=(
+            "Reinitialize only the gap challenger latent basis while keeping "
+            "the incumbent and logged experience fixed."))
     args = parser.parse_args()
 
     seed_everything(args.seed)
@@ -163,10 +168,16 @@ def main() -> None:
         reset = ComputeAdvantageHead(hidden).to(device)
     arms = {}
     for name, initial in (("mastered", mastered), ("gap", reset)):
+        challenger_initial = initial
+        if name == "gap" and args.gap_challenger_seed_offset:
+            with torch.random.fork_rng(devices=[]):
+                torch.manual_seed(
+                    args.seed + args.gap_challenger_seed_offset)
+                challenger_initial = ComputeAdvantageHead(hidden).to(device)
         arms[name] = {
             "incumbent": copy.deepcopy(initial),
-            "challenger": copy.deepcopy(initial),
-            "naive": copy.deepcopy(initial),
+            "challenger": copy.deepcopy(challenger_initial),
+            "naive": copy.deepcopy(challenger_initial),
             "optimizer": None,
             "naive_optimizer": None,
             "logged": [],

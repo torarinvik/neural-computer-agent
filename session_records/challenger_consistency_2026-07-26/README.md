@@ -29,3 +29,29 @@ deployment. If no alternative rate produces a positive proposal within 720
 bits, learning-rate tuning is closed and the next candidate is a parallel
 challenger population. If one wins, it must pass two fresh seeds before
 persistent integration is retried.
+
+## Learning-rate result
+
+No alternative produced a positive proposal. Final lower bounds were:
+
+- `0.001`: `−0.0283`;
+- `0.003`: negative in the original seed-7973 run;
+- `0.006`: `−0.0114`;
+- `0.010`: `−0.0088`.
+
+Learning-rate tuning is closed.
+
+## Shared-experience population fork
+
+The next diagnostic keeps seed 7973, learning rate `0.003`, randomized actions,
+incumbent, budget, and confirmation rule fixed. Four gap challengers use
+different randomly initialized latent bases (seed offsets `11001`–`11004`) but
+consume the identical logged attempted outcomes. The output layer remains
+zero-initialized, so every challenger begins with the same action policy.
+
+Selection is pre-registered from proposal evidence only: earliest positive
+proposal, then largest lower confidence bound. Only that selected candidate's
+fresh confirmation is interpreted. Private audit performance and other
+candidates' confirmation results cannot select the winner. If no candidate
+proposes, the population branch closes. A selected-and-confirmed candidate
+must still pass two fresh seeds before persistent integration.
