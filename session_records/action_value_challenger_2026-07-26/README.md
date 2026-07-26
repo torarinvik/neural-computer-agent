@@ -73,3 +73,26 @@ confirmation setting.
 
 It must pass the same three diagnostic seeds before untouched seeds 7991 and
 7992 are allowed. Five-of-five passes remain required for persistence.
+
+## Width-64 result and maturation fork
+
+Width 64 made proposal learning consistent:
+
+- seed 7973 proposed at 240 bits;
+- seed 7982 proposed at 480 bits;
+- seed 7981 proposed at 720 bits.
+
+Mastered incumbents remained untouched, but the available 240-bit fresh
+confirmation blocks did not clear the 95% threshold. Their estimated
+improvements were positive where confirmation ran; the intervals were wide.
+On seed 7973, the first proposal froze a weaker 240-bit candidate even though
+private audited challenger utility continued rising sharply through 480 bits.
+
+The next candidate adds a generic maturation floor: no proposal may freeze
+before 480 verifier bits. The total budget increases gradually from 720 to 960
+bits, giving even a 720-bit proposal one disjoint 240-bit confirmation block.
+Width 64, fixed seed `424242`, active allocation, and every confidence/safety
+rule remain unchanged.
+
+Seeds 7973, 7981, and 7982 must all confirm by 960 bits before untouched seeds
+7991 and 7992 are permitted. Five-of-five passes remain the persistence gate.

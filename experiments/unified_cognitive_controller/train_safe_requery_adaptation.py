@@ -269,6 +269,9 @@ def main() -> None:
     parser.add_argument(
         "--challenger-hidden", type=int,
         help="Override hidden width for an action-value challenger.")
+    parser.add_argument(
+        "--minimum-proposal-bits", type=int, default=0,
+        help="Do not freeze a challenger proposal before this experience.")
     args = parser.parse_args()
     if args.active_pool_multiplier < 1:
         raise ValueError("--active-pool-multiplier must be positive")
@@ -436,7 +439,12 @@ def main() -> None:
                     attempted_log, utilities_log, features_log,
                     baseline_mode=args.promotion_baseline)
                 positive = evidence["lower_95"] > 0
-                promoted = positive and (
+                mature = (
+                    step * args.batch_size
+                    >= args.minimum_proposal_bits)
+                eligible_positive = positive and (
+                    confirmation or mature)
+                promoted = eligible_positive and (
                     confirmation or not args.require_fresh_confirmation)
                 if promoted:
                     arm["incumbent"] = copy.deepcopy(candidate)
@@ -444,7 +452,8 @@ def main() -> None:
                     # restart the paired audit only after an actual promotion.
                     arm["logged"].clear()
                 elif (
-                        positive and args.require_fresh_confirmation
+                        eligible_positive
+                        and args.require_fresh_confirmation
                         and not confirmation):
                     arm["pending"] = copy.deepcopy(arm["challenger"])
                     arm["confirmation_logged"].clear()
@@ -457,6 +466,7 @@ def main() -> None:
                     "phase": (
                         "confirmation" if confirmation else "proposal"),
                     "positive": positive,
+                    "mature": mature,
                     "promoted": promoted})
         if step % 2 == 0 or step == args.steps:
             record(step)
