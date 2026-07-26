@@ -32,9 +32,16 @@ from .verified_skill_store import VerifiedSkillStore
 
 
 def load_fifth_router(path: Path, device: torch.device) -> OptionValueHead:
+    return load_generation_router(
+        path, device, schema="fifth-option-router-v1")
+
+
+def load_generation_router(
+        path: Path, device: torch.device, *,
+        schema: str) -> OptionValueHead:
     payload = torch.load(path, map_location=device, weights_only=False)
-    if payload.get("schema") != "fifth-option-router-v1":
-        raise ValueError("unsupported fifth-option checkpoint")
+    if payload.get("schema") != schema:
+        raise ValueError(f"unsupported router checkpoint: expected {schema}")
     router = OptionValueHead(
         int(payload["input_width"]), int(payload["hidden"])).to(device)
     router.load_state_dict(payload["state_dict"])
@@ -49,6 +56,9 @@ def main() -> None:
     parser.add_argument("--three-option", type=Path, required=True)
     parser.add_argument("--four-router", type=Path, required=True)
     parser.add_argument("--fifth-router", type=Path, required=True)
+    parser.add_argument(
+        "--sixth-router", type=Path,
+        help="When present, audit this router over the fifth-router parent.")
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--skill-store", type=Path, required=True)
     parser.add_argument("--parent-skill-id", required=True)
@@ -78,9 +88,30 @@ def main() -> None:
     option3 = load_option(args.three_option, device)
     router4 = load_four_router(args.four_router, device)
     router5 = load_fifth_router(args.fifth_router, device)
-    router_width = int(router5.network[0].normalized_shape[0])
-    costs = torch.tensor(
-        [0.0, 0.01, 0.02, 0.03, 0.04], device=device)
+    router_new = (
+        load_generation_router(
+            args.sixth_router, device, schema="sixth-option-router-v1")
+        if args.sixth_router is not None else router5)
+    candidate_count = 6 if args.sixth_router is not None else 5
+    new_action = candidate_count - 1
+    router_width = int(router_new.network[0].normalized_shape[0])
+    costs = torch.arange(
+        candidate_count, device=device, dtype=torch.float32) * 0.01
+
+    @torch.no_grad()
+    def inherited_actions(features: torch.Tensor) -> torch.Tensor:
+        if args.sixth_router is None:
+            return four_action_hierarchy(
+                router4, option3, champion, features)
+        return five_action_hierarchy(
+            router5, router4, option3, champion, features)
+
+    @torch.no_grad()
+    def composed_actions(features: torch.Tensor) -> torch.Tensor:
+        old = inherited_actions(features)
+        use_new = router_new(features[:, :router_width]).bool()
+        return torch.where(
+            use_new, torch.full_like(old, new_action), old)
 
     streams = []
     for stream in range(args.streams):
@@ -88,12 +119,10 @@ def main() -> None:
         features, outcomes, _ = ranked_requery_batch(
             controller, count=args.contexts, capacity=args.capacity,
             seed=stream_seed, device=device, write_threshold=0.5,
-            candidate_count=5, include_rank_features=True)
+            candidate_count=candidate_count, include_rank_features=True)
         utilities = outcomes - costs
-        old = four_action_hierarchy(
-            router4, option3, champion, features)
-        composed = five_action_hierarchy(
-            router5, router4, option3, champion, features)
+        old = inherited_actions(features)
+        composed = composed_actions(features)
         generator = torch.Generator(device=device).manual_seed(
             stream_seed + 90_000_000)
         permutation = torch.randperm(
@@ -101,45 +130,55 @@ def main() -> None:
         shuffled_features = features.clone()
         shuffled_features[:, :router_width] = features[
             permutation, :router_width]
-        shuffled_use_fifth = router5(
+        shuffled_use_fifth = router_new(
             shuffled_features[:, :router_width]).bool()
         shuffled = torch.where(
-            shuffled_use_fifth, torch.full_like(old, 4), old)
-        use_fifth = router5(features[:, :router_width]).bool()
+            shuffled_use_fifth,
+            torch.full_like(old, new_action), old)
+        use_fifth = router_new(features[:, :router_width]).bool()
         reversed_actions = torch.where(
-            ~use_fifth, torch.full_like(old, 4), old)
+            ~use_fifth, torch.full_like(old, new_action), old)
         streams.append({
             "stream": stream,
             "seed": stream_seed,
-            "previous_hierarchy": metrics(old, utilities),
-            "composition": metrics(composed, utilities),
-            "router_features_shuffled": metrics(shuffled, utilities),
-            "router_reversed": metrics(reversed_actions, utilities),
+            "previous_hierarchy": metrics(old, utilities, new_action),
+            "composition": metrics(composed, utilities, new_action),
+            "router_features_shuffled":
+                metrics(shuffled, utilities, new_action),
+            "router_reversed":
+                metrics(reversed_actions, utilities, new_action),
         })
 
     features, outcomes, _ = ranked_requery_batch(
         controller, count=args.confirmation_bits, capacity=args.capacity,
         seed=args.seed + 95_000_000, device=device, write_threshold=0.5,
-        candidate_count=5, include_rank_features=True)
+        candidate_count=candidate_count, include_rank_features=True)
     utilities = outcomes - costs
-    old = four_action_hierarchy(
-        router4, option3, champion, features)
+    old = inherited_actions(features)
     attempted = torch.randint(
         0, 2, (args.confirmation_bits,), device=device,
         generator=torch.Generator(device=device).manual_seed(
             args.seed + 96_000_000))
     attempted_physical = torch.where(
-        attempted.bool(), torch.full_like(old, 4), old)
+        attempted.bool(), torch.full_like(old, new_action), old)
     observed = utilities.gather(
         1, attempted_physical[:, None]).squeeze(1)
-    candidate_options = router5(features[:, :router_width])
+    candidate_options = router_new(features[:, :router_width])
     evidence = paired_ips_improvement(
         torch.zeros_like(attempted), candidate_options,
         attempted, observed, propensity=0.5)
 
-    restored = load_fifth_router(args.fifth_router, device)
+    audited_checkpoint = (
+        args.sixth_router
+        if args.sixth_router is not None else args.fifth_router)
+    restored = load_generation_router(
+        audited_checkpoint, device,
+        schema=(
+            "sixth-option-router-v1"
+            if args.sixth_router is not None
+            else "fifth-option-router-v1"))
     reload_exact = torch.equal(
-        router5(features[:, :router_width]),
+        router_new(features[:, :router_width]),
         restored(features[:, :router_width]))
     binary = evaluate(
         controller, count=args.retention_count, trials=6,
@@ -181,11 +220,11 @@ def main() -> None:
         store = VerifiedSkillStore(args.skill_store)
         store.load(args.parent_skill_id, device=device)
         checkpoint = torch.load(
-            args.fifth_router, map_location="cpu", weights_only=False)
+            audited_checkpoint, map_location="cpu", weights_only=False)
         context_key = torch.nn.functional.normalize(
             features.mean(0), dim=0)
         child_id = store.commit(
-            router_skill_payload(router5),
+            router_skill_payload(router_new),
             context_key=context_key,
             lower_confidence_bound=evidence["lower_95"],
             verifier_bits=(
@@ -194,7 +233,8 @@ def main() -> None:
             parent_id=args.parent_skill_id,
             provenance={
                 "kind": "verified_hierarchical_option_composition",
-                "generation": 3,
+                "generation": (
+                    4 if args.sixth_router is not None else 3),
                 "training_seed": checkpoint["training_seed"],
                 "training_verifier_bits": checkpoint["verifier_bits"],
                 "feedback_mode": checkpoint.get("feedback_mode", "bandit"),
@@ -206,7 +246,7 @@ def main() -> None:
         restored_skill = router_from_skill_payload(
             loaded["payload"], device)
         exact = torch.equal(
-            router5(features[:, :router_width]),
+            router_new(features[:, :router_width]),
             restored_skill(features[:, :router_width]))
         with tempfile.TemporaryDirectory() as directory:
             corrupt_root = Path(directory) / "store"
@@ -240,7 +280,10 @@ def main() -> None:
         gate["persistent_skill_committed"] = False
     gate["accepted"] = all(gate.values())
     report = {
-        "schema": "fifth-option-composition-audit-v1",
+        "schema": (
+            "sixth-option-composition-audit-v1"
+            if args.sixth_router is not None
+            else "fifth-option-composition-audit-v1"),
         "configuration": {
             **vars(args),
             **{
@@ -248,7 +291,8 @@ def main() -> None:
                 for key in (
                     "parent_checkpoint", "selected_prefix",
                     "champion_head", "three_option", "four_router",
-                    "fifth_router", "report", "skill_store")
+                    "fifth_router", "sixth_router",
+                    "report", "skill_store")
             },
         },
         "means": {
@@ -267,7 +311,7 @@ def main() -> None:
             "training_verifier_bits": 0,
             "fresh_confirmation_verifier_bits": args.confirmation_bits,
             "private_audit_both_action_bits":
-                args.streams * args.contexts * 5,
+                args.streams * args.contexts * candidate_count,
         },
     }
     args.report.parent.mkdir(parents=True, exist_ok=True)

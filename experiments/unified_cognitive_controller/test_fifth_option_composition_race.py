@@ -1,7 +1,11 @@
 import torch
 
-from .audit_fifth_option_composition import load_fifth_router
+from .audit_fifth_option_composition import (
+    load_fifth_router,
+    load_generation_router,
+)
 from .train_fifth_option_composition_race import (
+    FlatFiveActionValueHead,
     five_action_hierarchy,
     four_action_hierarchy,
     target_bits,
@@ -48,3 +52,29 @@ def test_stable_target_ignores_isolated_crossing() -> None:
     ]
     assert target_bits(rows, stable=False) == 120
     assert target_bits(rows, stable=True) == 360
+
+
+def test_flat_head_supports_six_action_control() -> None:
+    head = FlatFiveActionValueHead(13, 17, actions=6)
+    assert head.q_values(torch.randn(23, 13)).shape == (23, 6)
+
+
+def test_generation_router_rejects_wrong_schema(tmp_path) -> None:
+    router = OptionValueHead(11, 13)
+    path = tmp_path / "router.pt"
+    torch.save({
+        "schema": "sixth-option-router-v1",
+        "input_width": 11,
+        "hidden": 13,
+        "state_dict": router.state_dict(),
+    }, path)
+    restored = load_generation_router(
+        path, torch.device("cpu"), schema="sixth-option-router-v1")
+    features = torch.randn(7, 11)
+    assert torch.equal(router(features), restored(features))
+    try:
+        load_fifth_router(path, torch.device("cpu"))
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("schema mismatch must be rejected")

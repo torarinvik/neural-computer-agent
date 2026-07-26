@@ -929,3 +929,36 @@ and the first to show that counterfactual scalar experience shared across a
 temporary clone population can unlock a latent action relation that
 single-action feedback used unreliably. The persistent artifact remains one
 controller plus external verified skill memory.
+
+## 2026-07-26 — fourth-generation option composition
+
+The verified five-action hierarchy was retrieved as one option and extended
+with a sixth physical action. A matched flat control learned six actions.
+Paired population experience remained the only successful signal: every
+attempted scalar outcome was charged, with no semantic or correct-action
+labels.
+
+The first race failed at 3,840 unique contexts. At 7,680 contexts and 512
+updates, composition crossed the target earlier than flat but did not remain
+above it. Lower learning rate, EMA, and swapping between the two verified
+five-action parents failed. A discarded probe had used 2,000 updates, so the
+final evidence-backed fork retained the same 7,680 contexts and increased
+experience replay to 2,048 updates.
+
+That configuration passed and replicated:
+
+| Seed | Composition stable bits | Flat stable bits | Transfer ratio |
+|---:|---:|---:|---:|
+| 8098 | 5,280 | 10,800 | 2.05× |
+| 8099 | 5,760 | 6,480 | 1.125× |
+
+Final composition utility rose from 0.83166 to 0.88497 and from 0.83447 to
+0.88922. Two independent eight-stream audits measured gains of +5.37 and
++5.74 points. Every stream improved. Feature shuffle reduced utility to
+0.73208/0.73689, reversal to 0.41300/0.41127, and randomized lower-95% gains
+were +3.18/+4.51 points. Retention and full persistence integrity passed.
+
+This is the fourth consecutive verified option generation. It also establishes
+a second compounding resource axis: verifier/sample efficiency can improve
+through greater internal reuse of fixed experience, but processing cost must
+now be optimized explicitly rather than treated as free.

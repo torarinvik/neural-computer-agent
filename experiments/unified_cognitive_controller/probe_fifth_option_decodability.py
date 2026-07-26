@@ -13,6 +13,7 @@ from .audit_option_composition import load_option
 from .probe_requery_operation import ranked_requery_batch
 from .train import seed_everything
 from .train_fifth_option_composition_race import four_action_hierarchy
+from .train_fifth_option_composition_race import five_action_hierarchy
 from .train_redundancy_transfer import build_transfer_arms
 from .train_safe_requery_adaptation import _load_head
 
@@ -24,6 +25,9 @@ def main() -> None:
     parser.add_argument("--champion-head", type=Path, required=True)
     parser.add_argument("--three-option", type=Path, required=True)
     parser.add_argument("--four-router", type=Path, required=True)
+    parser.add_argument("--fifth-router", type=Path)
+    parser.add_argument(
+        "--candidate-count", type=int, choices=(5, 6), default=5)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--device", default=(
         "cuda" if torch.cuda.is_available() else "cpu"))
@@ -34,6 +38,8 @@ def main() -> None:
     parser.add_argument("--updates", type=int, default=2000)
     parser.add_argument("--batch-size", type=int, default=256)
     args = parser.parse_args()
+    if args.candidate_count == 6 and args.fifth_router is None:
+        raise ValueError("six-action probe requires --fifth-router")
 
     seed_everything(args.seed)
     device = torch.device(args.device)
@@ -47,25 +53,38 @@ def main() -> None:
     champion = _load_head(args.champion_head, device)
     option3 = load_option(args.three_option, device)
     router4 = load_router(args.four_router, device)
-    costs = torch.tensor(
-        [0.0, 0.01, 0.02, 0.03, 0.04], device=device)
+    router5 = None
+    if args.fifth_router is not None:
+        from .audit_fifth_option_composition import load_fifth_router
+        router5 = load_fifth_router(args.fifth_router, device)
+    costs = torch.arange(
+        args.candidate_count, device=device, dtype=torch.float32) * 0.01
+    new_action = args.candidate_count - 1
 
     def dataset(count: int, seed: int):
         features, outcomes, _ = ranked_requery_batch(
             controller, count=count, capacity=args.capacity, seed=seed,
-            device=device, write_threshold=0.5, candidate_count=5,
+            device=device, write_threshold=0.5,
+            candidate_count=args.candidate_count,
             include_rank_features=True)
         utilities = outcomes - costs
-        old = four_action_hierarchy(
-            router4, option3, champion, features)
+        old = (
+            four_action_hierarchy(
+                router4, option3, champion, features)
+            if router5 is None else
+            five_action_hierarchy(
+                router5, router4, option3, champion, features))
         old_utility = utilities.gather(1, old[:, None]).squeeze(1)
-        fifth = utilities[:, 4]
+        fifth = utilities[:, new_action]
         return features, (fifth > old_utility).float(), old_utility, fifth
 
     train = dataset(args.train_contexts, args.seed * 1_000_000)
     test = dataset(args.test_contexts, args.seed * 1_000_000 + 500_000)
     results = {}
-    for width in (7, 9, 11):
+    widths = (
+        (7, 9, 11) if args.candidate_count == 5
+        else (9, 11, 13))
+    for width in widths:
         probe = nn.Sequential(
             nn.LayerNorm(width), nn.Linear(width, 32), nn.GELU(),
             nn.Linear(32, 1)).to(device)
@@ -102,7 +121,9 @@ def main() -> None:
         }
     labels = test[1].bool()
     report = {
-        "schema": "fifth-option-decodability-probe-v1",
+        "schema": (
+            f"{'sixth' if args.candidate_count == 6 else 'fifth'}"
+            "-option-decodability-probe-v1"),
         "configuration": {
             **vars(args),
             "parent_checkpoint": str(args.parent_checkpoint),
@@ -110,6 +131,8 @@ def main() -> None:
             "champion_head": str(args.champion_head),
             "three_option": str(args.three_option),
             "four_router": str(args.four_router),
+            "fifth_router": (
+                str(args.fifth_router) if args.fifth_router else None),
             "report": str(args.report),
         },
         "diagnostic_supervision_only": True,

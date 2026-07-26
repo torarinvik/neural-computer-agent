@@ -915,6 +915,20 @@ value of counterfactual clone experience justifies its extra verifier cost,
 while periodically revisiting apparently unpromising branches so
 phase-transition skills are not starved.
 
+The same mechanism has now compounded once more. The complete verified
+five-action hierarchy was retrieved as one option and extended with a sixth
+action. Two frozen replications reached stable mastery in 5,280 and 5,760
+verifier bits, versus 10,800 and 6,480 for flat six-action reset. Both passed
+independent eight-stream, randomized-confirmation, shuffle, reversal,
+retention, persistence, corruption, and lineage audits.
+
+The six-action experiment revealed a new resource boundary: 512 optimizer
+updates over 7,680 unique contexts found the skill transiently but did not
+retain it; 2,048 updates over the exact same experience produced stable
+mastery. The frontier is therefore adaptive experience processing—learn how
+much replay or internal thought each experience merits, charging processing
+alongside verifier bits and latency.
+
 Run the sub-minute GPU experiment:
 
 ```bash
