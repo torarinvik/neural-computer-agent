@@ -76,6 +76,26 @@ class DiskLatentMemory:
         return self.store.write(
             keys, values, strengths, threshold=threshold)
 
+    @torch.no_grad()
+    def replace(
+            self, index: int, key: torch.Tensor, value: torch.Tensor,
+            strength: torch.Tensor | float) -> None:
+        """Replace one valid row without growing the bounded physical store."""
+        if not 0 <= index < self.store.capacity:
+            raise IndexError("replacement index is outside memory capacity")
+        if not bool(self.store.valid[index]):
+            raise ValueError("replacement requires a valid occupied row")
+        if key.shape != (self.store.width,) or value.shape != (self.store.width,):
+            raise ValueError("replacement key and value must match memory width")
+        self.store.clock += 1
+        self.store.keys[index].copy_(key.detach())
+        self.store.values[index].copy_(value.detach())
+        self.store.usage[index] = torch.as_tensor(
+            strength, device=self.store.usage.device,
+            dtype=self.store.usage.dtype)
+        self.store.age[index] = self.store.clock
+        self.store.valid[index] = True
+
     def save(self, path: Path) -> None:
         self.store.save(path)
 

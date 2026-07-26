@@ -74,9 +74,10 @@ replay cost becomes a demonstrated bottleneck.
 ## Next continual-learning question
 
 The controller now learns both sparse write/skip and adaptive read/no-read
-decisions and passes replicated physical disk, corruption, and retention
-gates. The next high-value question is replacement under a deliberately full
-memory bank: can the controller choose which opaque row to evict using only
-verified future utility, without degrading the mastered sparse loop or the two
-earlier behavioral skills? Consolidation and merging follow only after that
-smaller replacement atom passes.
+decisions, plus bounded replacement at capacity 4, and passes replicated
+physical disk, corruption, and retention gates. Zero-shot capacity 8 was
+behaviorally close but failed causal eviction gates. The next high-value rung
+is therefore capacity 5 with capacity-4 rehearsal, changing only one
+difficulty axis. After that replicates, replace the deterministic
+oldest-is-obsolete distribution with a noisy frequency/recency utility stream.
+Consolidation and merging follow only after replacement survives both changes.

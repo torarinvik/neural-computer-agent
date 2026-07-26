@@ -101,12 +101,28 @@ The selected checkpoint is
 `artifacts/checkpoints/unified_selective_disk_adaptive_seed5962.pt`, SHA-256
 `91822064436fae1d4f799e41c79d9369dacb8aeeee20b711df1c1b6af037fbc4`.
 
+The next gradual atom bounded each disk bank at four rows. A 57-parameter head
+inside the same controller learned whether to skip or which physical row to
+replace, using only generic row metadata and later verified success. After 40
+updates and 7.01 seconds it reached 96.90% held-out accuracy versus 84.35%
+random, 85.11% fixed-slot, and 80.91% skip controls. Two physical disk audits
+replicated at 96.97% and 96.29% with exactly 2,048 rows before and after and
+zero capacity growth. Shuffling age-to-slot correspondence reduced accuracy to
+81.35% and 82.37%. The earlier sparse disk loop still passed at 91.21%.
+
+The promoted 298,358-parameter checkpoint is
+`artifacts/checkpoints/unified_memory_replacement_seed6101.pt`, SHA-256
+`0178b15228e3d75a445abdb2376be1291a078f8b47236444fbd1824fab3d3b76`.
+Zero-shot capacity 8 reached 93.99% but failed causal and correct-eviction
+gates, so capacity 4 remains the honest replacement frontier.
+
 Unseen elongated diamonds and disconnected dot-pair stimuli also transfer
 zero-shot at 94.95–98.14%, tightening the evidence that visual identity is
 relational rather than tied to the original rectangles.
 
-Replacement under full banks, consolidation, deletion/merging, unbounded
-memory growth, and cross-modality transfer remain open. See
+Replacement under richer/nonstationary utility, consolidation,
+deletion/merging, unbounded memory streams, and cross-modality transfer remain
+open. See
 `experiments/unified_cognitive_controller/README.md`.
 
 The two-decision identify-then-act task requires the agent to:

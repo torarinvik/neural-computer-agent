@@ -290,12 +290,61 @@ The promoted checkpoint is
 `artifacts/checkpoints/unified_selective_disk_adaptive_seed5962.pt`, SHA-256
 `91822064436fae1d4f799e41c79d9369dacb8aeeee20b711df1c1b6af037fbc4`.
 
+## Bounded replacement milestone
+
+The next atom deliberately filled a four-row bank, presented one incoming
+controller-created row, and required a choice among skip or four physical
+eviction slots. Physical slot order was randomized. The future sensory query
+stream revisited the candidate and the three still-useful existing contexts;
+the oldest logical row was no longer useful. The policy saw only normalized
+row age, write strength, candidate-key similarity, candidate strength, and a
+skip flag. It received only later verified correctness minus a generic
+replacement cost—never context IDs, utility labels, correct eviction targets,
+or semantic memory contents.
+
+A fresh 57-parameter head inside the controller passed after 40 updates:
+
+- 96.90% held-out accuracy versus 97.73% oracle;
+- 93.55% correct eviction selection;
+- 84.35% random, 85.11% fixed-slot, and 80.91% skip controls;
+- 81.79% when age features were shuffled across physical slots;
+- 51,200 generated support contexts, 20,480 future query outcomes,
+  71,680 total verifier bits, no replay, and 7.01 seconds total wall time;
+- both older behavioral gates remained intact.
+
+The replacement gate scored 1,024 banks with five options each in 0.141 ms
+batched on the RTX PRO 6000 (1,000 iterations after warm-up). This is
+throughput, not end-to-end serial action latency.
+
+The exact checkpoint then passed two physical disk audits:
+
+| Seed | Normal disk | Age-corrupted | Correct eviction | Rows before/after | Capacity growth |
+|---:|---:|---:|---:|---:|---:|
+| 6201 | 96.97% | 81.35% | 92.97% | 2,048 / 2,048 | 0 |
+| 6202 | 96.29% | 82.37% | 91.02% | 2,048 / 2,048 | 0 |
+
+Each audit populated real bounded files, applied the learned choice, serialized
+and reloaded every bank, and queried through the inherited adaptive read gate.
+A fresh capacity-8 sparse-memory retention audit also passed at 91.21% first
+reload, 91.02% repeat reload, and 15.23% duplicate growth.
+
+The capacity-4 policy was additionally applied zero-shot to capacity 8. It
+reached 93.99%, but correct eviction fell to 71.48% and age corruption reduced
+accuracy by only 3.91 points. That arm failed its causal gates and was not
+promoted. The next gradual rung is capacity 5, with capacity-4 rehearsal.
+
+The promoted checkpoint is
+`artifacts/checkpoints/unified_memory_replacement_seed6101.pt`, SHA-256
+`0178b15228e3d75a445abdb2376be1291a078f8b47236444fbd1824fab3d3b76`.
+
 Claim boundary: this demonstrates controller-created, content-addressed latent
 storage and recall across active-state resets, with actual disk serialization.
 It also demonstrates learned write/skip and read/no-read decisions operating
-together within the storage-efficiency gate. Replacement under full banks,
-consolidation across an unbounded stream, deletion/merging, modality transfer,
-and broad reasoning remain open.
+together within the storage-efficiency gate, plus learned bounded replacement
+under one simple recency-predictive utility distribution. Richer or
+nonstationary utility, replacement beyond capacity 4, consolidation across an
+unbounded stream, deletion/merging, modality transfer, and broad reasoning
+remain open.
 
 Run the sub-minute GPU experiment:
 

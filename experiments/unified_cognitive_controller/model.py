@@ -63,17 +63,22 @@ class UnifiedCognitiveController(nn.Module):
             self, width: int = 96, workspace_slots: int = 8,
             intention_width: int = 24,
             adaptive_memory_read: bool = False,
-            adaptive_memory_read_hidden: int = 0) -> None:
+            adaptive_memory_read_hidden: int = 0,
+            adaptive_memory_replace: bool = False,
+            adaptive_memory_replace_hidden: int = 8) -> None:
         super().__init__()
         if (
                 width < 16 or workspace_slots < 1 or intention_width < 2
-                or adaptive_memory_read_hidden < 0):
+                or adaptive_memory_read_hidden < 0
+                or adaptive_memory_replace_hidden < 1):
             raise ValueError("controller dimensions are too small")
         self.width = width
         self.workspace_slots = workspace_slots
         self.intention_width = intention_width
         self.adaptive_memory_read = adaptive_memory_read
         self.adaptive_memory_read_hidden = adaptive_memory_read_hidden
+        self.adaptive_memory_replace = adaptive_memory_replace
+        self.adaptive_memory_replace_hidden = adaptive_memory_replace_hidden
         self.vision = VisionEventEncoder(width)
         self.action_embedding = nn.Embedding(ACTIONS + 1, width // 4)
         feedback_width = width // 4
@@ -107,6 +112,13 @@ class UnifiedCognitiveController(nn.Module):
                 nn.GELU(),
                 nn.Linear(adaptive_memory_read_hidden, 1),
             )
+        self.memory_replacement_gate = (
+            nn.Sequential(
+                nn.Linear(5, adaptive_memory_replace_hidden),
+                nn.GELU(),
+                nn.Linear(adaptive_memory_replace_hidden, 1),
+            )
+            if adaptive_memory_replace else None)
 
     def memory_read_probability(
             self, features: torch.Tensor) -> torch.Tensor:
@@ -117,6 +129,17 @@ class UnifiedCognitiveController(nn.Module):
             raise ValueError("memory read features must have shape [batch, 4]")
         return torch.sigmoid(
             self.memory_read_gate(features)).squeeze(-1)
+
+    def memory_replacement_scores(
+            self, option_features: torch.Tensor) -> torch.Tensor:
+        """Score skip/replace options from generic latent-memory statistics."""
+        if self.memory_replacement_gate is None:
+            raise RuntimeError("adaptive memory replacement is not enabled")
+        if option_features.ndim != 3 or option_features.shape[-1] != 5:
+            raise ValueError(
+                "replacement features must have shape [batch, options, 5]")
+        return self.memory_replacement_gate(
+            option_features).squeeze(-1)
 
     def initial_state(
             self, batch_size: int, *, device: torch.device | str,

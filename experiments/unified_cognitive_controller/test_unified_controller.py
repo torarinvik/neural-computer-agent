@@ -226,6 +226,41 @@ def test_adaptive_memory_read_is_optional_and_bounded() -> None:
         for parameter in nonlinear.memory_read_gate.parameters()) == 49
 
 
+def test_adaptive_memory_replacement_is_optional_and_bounded() -> None:
+    ordinary = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8)
+    assert ordinary.memory_replacement_gate is None
+    model = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        adaptive_memory_replace=True,
+        adaptive_memory_replace_hidden=8)
+    scores = model.memory_replacement_scores(torch.zeros(3, 5, 5))
+    assert scores.shape == (3, 5)
+    assert sum(
+        parameter.numel()
+        for parameter in model.memory_replacement_gate.parameters()) == 57
+
+
+def test_disk_memory_can_replace_without_growing(tmp_path: Path) -> None:
+    memory = DiskLatentMemory(width=4, capacity=2)
+    keys = torch.eye(4)[:2]
+    values = torch.arange(8, dtype=torch.float32).reshape(2, 4)
+    assert memory.commit(
+        keys, values, torch.ones(2), threshold=0.0) == 2
+    replacement_key = torch.eye(4)[2]
+    replacement_value = torch.full((4,), 7.0)
+    memory.replace(0, replacement_key, replacement_value, 0.8)
+    assert memory.count == 2
+    path = tmp_path / "replaced.pt"
+    memory.save(path)
+    restored = DiskLatentMemory.load(path)
+    read, _ = restored.retrieve(
+        replacement_key.unsqueeze(0), top_k=1,
+        confidence_mode="cosine")
+    assert torch.allclose(read, replacement_value.unsqueeze(0))
+    assert restored.count == 2
+
+
 def test_recurring_context_signature_is_stable_within_world() -> None:
     batch = generate_lifetimes(
         8, 3, seed=31, task="binary_mapping", support_trials=1)
