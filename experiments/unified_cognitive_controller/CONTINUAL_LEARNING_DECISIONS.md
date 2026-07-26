@@ -93,10 +93,15 @@ One new outcome-reliability statistic and one zero-initialized coefficient
 produced two independent 48-update passes, a failed reward-shuffled control,
 and a passing physical history/corruption audit without forgetting.
 
-The next high-value question is whether online adaptation itself can operate on
-an evolving physical disk stream rather than training on tensorized histories
-and auditing afterward. Start with tiny banks and batch disk operations so
-serialization does not dominate learning. Compare bit-for-bit against the
-tensor arena and require the same coefficient trajectory, post-switch regret,
-history persistence, corruption causality, and old-skill gates. Only after that
-should consolidation, merging, or learned statistic invention be introduced.
+That physical-loop question has now passed. A parity preflight, two rejected
+undersized pilots, two independent 128-bank successes, and a failed matched
+reward-shuffled control establish that physical save/reload can be sovereign
+during adaptation while the tensor arena remains a bit-level shadow audit.
+
+The next high-value question is whether the same few physical banks can remain
+alive across multiple updates and task switches. Reads, verifier outcomes, and
+replacements must accumulate in those banks rather than regenerating fresh
+histories each update. Require bounded size, exact persistence, causal
+corruptions, tensor-shadow parity, post-switch recovery, and old-skill
+retention before adding consolidation, merging, or learned statistic
+invention.

@@ -208,18 +208,38 @@ growth. Shuffling age, frequency, or reliability changed correct evictions by
 50.29, 60.55, and 30.18 points and reduced actual accuracy by 3.11, 6.75, and
 2.56 points.
 
-The current checkpoint is
+The tensor-trained parent checkpoint is
 `artifacts/checkpoints/unified_memory_multifeature_reliability_seed6932.pt`,
 SHA-256
 `bb5cd158c08f4b92061aca7bfae0751d4e18408e8e37f53cac13dffaed8ac9f4`.
 It has 298,360 parameters.
 
+The adaptation loop itself now also runs through bounded physical disk
+memories. A parity preflight made disk serialization sovereign and kept the
+old tensor arena only as a shadow audit. Two undersized 32-bank pilots were
+rejected before scaling. At the proven 128-bank scale, seeds 7012 and 7015
+both passed the four utility phases, retention, persistence, parameter-scope,
+and physical/tensor parity gates in about 136 seconds. Seed 7015 achieved
+85.74%, 77.25%, 86.72%, and 82.67% across old-equal,
+reliability-dominant, old-return, and all-equal phases. All 6,144 physical
+histories persisted; all 48 physical choices were tensor-equivalent. The
+matched reward-shuffled control failed every adaptation phase and saved no
+checkpoint.
+
+The current checkpoint is
+`artifacts/checkpoints/unified_memory_physical_online_seed7012.pt`, SHA-256
+`2c6e61b5e2689d46dfc43dd5cfc9c5b234736d217aae28f6221501bd5ddeea70`.
+The independent replica is
+`artifacts/checkpoints/unified_memory_physical_online_seed7015.pt`, SHA-256
+`7ae96b44ec6bed0db8eb7f9b78640fe40b621875195303e3e3c604f357bb441d`.
+
 Unseen elongated diamonds and disconnected dot-pair stimuli also transfer
 zero-shot at 94.95–98.14%, tightening the evidence that visual identity is
 relational rather than tied to the original rectangles.
 
-Online adaptation directly inside a physical stream, consolidation,
-deletion/merging, unbounded memory, and cross-modality transfer remain open.
+Long-lived physical banks that accumulate experience across multiple updates,
+consolidation, deletion/merging, unbounded memory, and cross-modality transfer
+remain open.
 See `experiments/unified_cognitive_controller/README.md`.
 
 The two-decision identify-then-act task requires the agent to:

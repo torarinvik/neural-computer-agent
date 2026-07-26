@@ -204,3 +204,28 @@ and retention gates:
 - Correct-target rates: 88.67%, 88.43%, 84.72%, 83.35%
 
 The exact reward-shuffled control failed and saved no checkpoint.
+
+## Physical online utility adaptation
+
+`unified_memory_physical_online_seed7012.pt` is the selected checkpoint whose
+adaptation decisions were made from physical disk-backed memories.
+
+- SHA-256:
+  `2c6e61b5e2689d46dfc43dd5cfc9c5b234736d217aae28f6221501bd5ddeea70`
+- Parent: `unified_memory_multifeature_reliability_seed6932.pt`
+- 298,360 parameters; only the existing two-coefficient residual changed
+- 48 updates, 196,608 unique verifier bits, zero replay, 136.33 seconds
+- 6,144 complete physical histories persisted through save/reload
+- Correct-target rates: 91.06%, 82.13%, 88.23%, 82.91%
+- Physical/tensor choices equivalent on all 48 updates
+- Binary mapping and four-rule retention passed
+
+`unified_memory_physical_online_seed7015.pt` independently replicated every
+registered gate:
+
+- SHA-256:
+  `7ae96b44ec6bed0db8eb7f9b78640fe40b621875195303e3e3c604f357bb441d`
+- Correct-target rates: 85.74%, 77.25%, 86.72%, 82.67%
+- 136.69 seconds; identical verifier-bit and persistence accounting
+
+The matched reward-shuffled control failed and saved no checkpoint.

@@ -580,6 +580,47 @@ the adaptation loop itself running over an evolving physical disk stream.
 Reliability is generic verifier history, but the controller does not yet learn
 which new statistics to invent.
 
+### Physical online adaptation
+
+The next experiment made physical disk memory sovereign during the horse race.
+Every candidate was evaluated by copying, saving, reloading, and querying
+bounded physical memory banks. Tensor rewards were retained only as a shadow
+parity audit and never selected the update.
+
+A 32-bank parity preflight passed exactly in 1.34 seconds. Two 32-bank training
+pilots were rejected: their candidate estimates were too noisy to move the
+coefficients reliably. Scaling only that evidence-backed bottleneck to 128
+banks reproduced the tensor experiment:
+
+| Seed | Seconds | Old equal | Reliability dominant | Old return | All equal |
+|---:|---:|---:|---:|---:|---:|
+| 7012 | 136.33 | 91.06% | 82.13% | 88.23% | 82.91% |
+| 7015 | 136.69 | 85.74% | 77.25% | 86.72% | 82.67% |
+
+Each run used 48 updates, 196,608 unique verifier bits, zero replay, 6,144
+persisted physical histories, and 18,432 bank-candidate evaluations. All old
+behavioral gates passed and only the two-dimensional replacement residual
+changed. Physical and tensor choices were equivalent within `1e-6` on all 48
+updates; the largest raw reward difference was `5.96e-8`. The tolerance is
+tie-aware because an earlier replica exposed an exact physical tie separated
+by one floating-point unit in the tensor shadow.
+
+The matched reward-shuffled control learned the reliability coefficient in the
+wrong direction, failed all four adaptation gates, and saved no checkpoint.
+This rules out mere parameter motion, disk traffic, or the phase schedule as
+the explanation.
+
+Selected checkpoint:
+`artifacts/checkpoints/unified_memory_physical_online_seed7012.pt`, SHA-256
+`2c6e61b5e2689d46dfc43dd5cfc9c5b234736d217aae28f6221501bd5ddeea70`.
+Independent replica:
+`artifacts/checkpoints/unified_memory_physical_online_seed7015.pt`, SHA-256
+`7ae96b44ec6bed0db8eb7f9b78640fe40b621875195303e3e3c604f357bb441d`.
+
+Honest boundary: each update still starts from newly generated bounded banks.
+The next atom is a small set of banks that persists and accumulates reads,
+outcomes, and replacements across multiple updates and utility switches.
+
 Run the sub-minute GPU experiment:
 
 ```bash
