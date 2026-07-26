@@ -863,6 +863,16 @@ outputs and explicit normalized compute cost as a generic input. This preserves
 reusable evidence processing while preventing action-sign semantics and cost
 policy from being entangled in the same output neuron.
 
+The first explicit-cost version did not pass. Variable-cost read experience
+created measurable but weak cost sensitivity, while cost-aware,
+cost-shuffled, ancestor, and reset target learners all required 600 re-query
+bits—substantially worse than the existing 120-bit inherited-trunk result.
+More source data is not justified without a stronger mechanistic signal.
+
+The frontier therefore returns to the successful gradual-curriculum pattern:
+persist the learned re-query trunk, train it through nearby re-query
+difficulty shifts, and only then test transfer toward recurrent thought.
+
 Run the sub-minute GPU experiment:
 
 ```bash

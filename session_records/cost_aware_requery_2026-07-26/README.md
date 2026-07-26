@@ -39,3 +39,19 @@ diagnostic-only telemetry: L2 norm of the new cost-input column and the mean
 change in read-advantage prediction between normalized cost 0 and 1. This
 determines whether the source phase learned any cost dependence. It cannot
 promote the failed configuration.
+
+The diagnostic confirmed weak but real cost dependence:
+
+- correct-cost source: cost-column L2 `0.0808`, prediction change `0.0140`
+  across normalized cost 0→1;
+- cost-shuffled source: L2 `0.0718`, prediction change `0.0099`.
+
+Thus the new input was not dead, but 720 source outcomes produced only a small
+cost effect and no target acceleration. Scaling is not justified because all
+intact target learners—including reset—crossed only at 600 bits, far worse
+than the established 120-bit inherited-trunk baseline.
+
+The explicit-cost source branch is closed. The next higher-ROI curriculum is
+operation-aligned: consolidate the successful 120-bit re-query trunk, then
+introduce progressively harder re-query regimes before attempting another
+physical-operation bridge.
