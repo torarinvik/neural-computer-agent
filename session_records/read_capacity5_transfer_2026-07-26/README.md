@@ -37,3 +37,30 @@ before another mechanism or curriculum change.
 Transfer distance itself creates no reward. It increases the value of a result
 only when stable verified capability, positive transfer over reset, retention,
 and causal evidence all pass.
+
+## Seed 7831 result and corrected compounding test
+
+Direct capacity-three inheritance did not pass capacity five: it crossed
+stably at 240 bits while reset crossed at 120. Final inherited capability was
+real and causal (`68.7%` choice accuracy and `44.9%` gap capture), but it was
+not more sample-efficient than reset. No replication or larger budget is
+allowed.
+
+This exposed a lineage omission. The successful capacity-four experiment
+evaluated transfer but never saved the weights after learning capacity four.
+Testing those original capacity-three weights again at capacity five measures
+repeated zero-shot reach, not sequential compounding.
+
+The corrected experiment therefore:
+
+1. reconstructs the capacity-four learning phase and saves its final allocator;
+2. races that consolidated allocator on capacity five against both the
+   original capacity-three allocator and a matched reset learner;
+3. requires stable mastery strictly earlier than **both** baselines;
+4. keeps the same 720-bit capacity-five budget, powered audit, controls, and
+   retention gates;
+5. accounts the 720 capacity-four source bits separately in checkpoint
+   provenance.
+
+Seed 7841 is the discovery run. Only a complete pass permits one unchanged
+seed-7842 replication.

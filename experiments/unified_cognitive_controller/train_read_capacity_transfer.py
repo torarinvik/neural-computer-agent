@@ -44,6 +44,8 @@ def main() -> None:
     parser.add_argument("--parent-checkpoint", type=Path, required=True)
     parser.add_argument("--selected-prefix", type=Path, required=True)
     parser.add_argument("--advantage-checkpoint", type=Path, required=True)
+    parser.add_argument("--previous-checkpoint", type=Path)
+    parser.add_argument("--checkpoint-out", type=Path)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--device", default=(
         "cuda" if torch.cuda.is_available() else "cpu"))
@@ -87,6 +89,13 @@ def main() -> None:
         "feature_shuffled": copy.deepcopy(inherited),
         "missing_evidence": copy.deepcopy(inherited),
     }
+    if args.previous_checkpoint is not None:
+        previous_payload = torch.load(
+            args.previous_checkpoint, map_location=device,
+            weights_only=False)
+        previous = ComputeAdvantageHead(hidden).to(device)
+        previous.load_state_dict(previous_payload["head_state_dict"])
+        heads["previous_inherited"] = previous
     optimizers = {
         name: torch.optim.AdamW(
             head.parameters(), lr=args.learning_rate, weight_decay=1e-4)
@@ -95,8 +104,8 @@ def main() -> None:
         controller, count=args.test_contexts,
         capacity=args.bank_capacity, seed=args.seed + 90_000_000,
         device=device, write_threshold=0.5)
-    histories = {name: [] for name in ARMS}
-    gradient_norms = {name: [] for name in ARMS}
+    histories = {name: [] for name in heads}
+    gradient_norms = {name: [] for name in heads}
     utility_sum = 0.0
     utility_count = 0
     started = time.perf_counter()
@@ -111,7 +120,9 @@ def main() -> None:
                 **advantage_policy_metrics(
                     head, controlled_features(
                         test_features, (
-                            "intact" if name in ("inherited", "reset")
+                            "intact" if name in (
+                                "inherited", "reset",
+                                "previous_inherited")
                             else name),
                         permutation=reverse),
                     test_no, test_read, read_cost=args.read_cost),
@@ -140,7 +151,9 @@ def main() -> None:
             args.batch_size, generator=feature_generator, device=device)
         for name, head in heads.items():
             control_name = (
-                "intact" if name in ("inherited", "reset") else name)
+                "intact" if name in (
+                    "inherited", "reset", "previous_inherited")
+                else name)
             active = controlled_features(
                 features, control_name,
                 permutation=feature_permutation)
@@ -168,6 +181,7 @@ def main() -> None:
             "missing_evidence"))
     inherited_bits = stable["inherited"]
     reset_bits = stable["reset"]
+    previous_bits = stable.get("previous_inherited")
     gate = {
         "inherited_choice_at_least_0_65":
             inherited_final["compute_choice_accuracy"] >= 0.65,
@@ -183,6 +197,12 @@ def main() -> None:
         "all_gradients_live": all(
             min(values) > 0 for values in gradient_norms.values()),
     }
+    if args.previous_checkpoint is not None:
+        gate["inherited_strictly_faster_than_previous"] = (
+            inherited_bits is not None
+            and (
+                previous_bits is None
+                or inherited_bits < previous_bits))
     binary = evaluate(
         controller, count=128, trials=6,
         seed=args.seed + 93_000_000, device=device,
@@ -211,6 +231,12 @@ def main() -> None:
             "parent_checkpoint": str(args.parent_checkpoint),
             "selected_prefix": str(args.selected_prefix),
             "advantage_checkpoint": str(args.advantage_checkpoint),
+            "previous_checkpoint": (
+                str(args.previous_checkpoint)
+                if args.previous_checkpoint is not None else None),
+            "checkpoint_out": (
+                str(args.checkpoint_out)
+                if args.checkpoint_out is not None else None),
             "report": str(args.report),
         },
         "learner_visible": [
@@ -244,6 +270,25 @@ def main() -> None:
     }
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, indent=2) + "\n")
+    if args.checkpoint_out is not None:
+        args.checkpoint_out.parent.mkdir(parents=True, exist_ok=True)
+        torch.save({
+            "schema": "shadow-compute-advantage-head-v1",
+            "head_hidden": hidden,
+            "head_state_dict": {
+                name: value.detach().cpu()
+                for name, value in inherited.state_dict().items()},
+            "source_seed": args.seed,
+            "source_bank_capacity": args.bank_capacity,
+            "source_training_lifetimes":
+                args.steps * args.batch_size,
+            "source_training_verifier_bits":
+                args.steps * args.batch_size,
+            "source_optimizer_updates": args.steps,
+            "source_report": str(args.report),
+            "parent_advantage_checkpoint":
+                str(args.advantage_checkpoint),
+        }, args.checkpoint_out)
     print(json.dumps({
         "report": str(args.report),
         "stable_unique_verifier_bits": stable,
