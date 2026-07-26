@@ -78,7 +78,14 @@ decisions, plus bounded replacement through capacity 9, and passes replicated
 physical disk, corruption, and retention gates. A 20-update capacity-6 bridge
 with 20 capacity-5 rehearsal updates sharpened the generic rule enough to
 transfer zero-shot through a replicated capacity-9 physical frontier.
-Additional bank-size scaling now repeats the same monotonic recency mechanism.
-The next high-value rung keeps capacity 6 fixed but replaces deterministic
-oldest-is-obsolete utility with a noisy frequency-plus-recency distribution.
-Consolidation and merging follow only after replacement survives that change.
+The next rung also passed: a one-parameter residual composed persistent access
+frequency with inherited recency in two 20-update reward-only runs, then passed
+two physical disk and history-corruption audits without forgetting.
+
+The next high-value question is whether utility can adapt online when its
+frequency-versus-recency mixture changes over time. Start with a tiny
+piecewise-stationary stream at capacity 6. Measure verified regret, adaptation
+bits after each switch, retention of the prior mixture, and whether stored
+access history remains useful. Do not add consolidation or merging until the
+controller can adjust this one generic trade-off without labels or a manually
+selected mode.

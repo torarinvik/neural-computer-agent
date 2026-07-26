@@ -151,6 +151,12 @@ def replacement_batch(
     skip_features[:, 0, 3] = candidate_strength
     skip_features[:, 0, 4] = 1.0
     option_features = torch.cat((skip_features, row_features), dim=1)
+    if model.adaptive_memory_replace_features > 5:
+        extra = torch.zeros(
+            *option_features.shape[:-1],
+            model.adaptive_memory_replace_features - 5,
+            device=device, dtype=keys.dtype)
+        option_features = torch.cat((option_features, extra), dim=-1)
 
     base = (
         torch.arange(banks, device=device).unsqueeze(1)

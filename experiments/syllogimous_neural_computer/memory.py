@@ -22,6 +22,7 @@ class PersistentMemory:
     usage: torch.Tensor
     age: torch.Tensor
     valid: torch.Tensor
+    access_count: torch.Tensor
     clock: int = 0
     growth_chunk: int = 1024
 
@@ -36,7 +37,9 @@ class PersistentMemory:
             torch.zeros(capacity, width, device=device, dtype=dtype),
             torch.zeros(capacity, device=device, dtype=dtype),
             torch.zeros(capacity, device=device, dtype=torch.long),
-            torch.zeros(capacity, device=device, dtype=torch.bool), 0, growth_chunk,
+            torch.zeros(capacity, device=device, dtype=torch.bool),
+            torch.zeros(capacity, device=device, dtype=torch.long),
+            0, growth_chunk,
         )
 
     @property
@@ -54,12 +57,13 @@ class PersistentMemory:
     def to(self, device: torch.device | str) -> "PersistentMemory":
         return PersistentMemory(self.keys.to(device), self.values.to(device),
                                 self.usage.to(device), self.age.to(device),
-                                self.valid.to(device), self.clock, self.growth_chunk)
+                                self.valid.to(device), self.access_count.to(device),
+                                self.clock, self.growth_chunk)
 
     def clone(self) -> "PersistentMemory":
         return PersistentMemory(self.keys.clone(), self.values.clone(), self.usage.clone(),
-                                self.age.clone(), self.valid.clone(), self.clock,
-                                self.growth_chunk)
+                                self.age.clone(), self.valid.clone(),
+                                self.access_count.clone(), self.clock, self.growth_chunk)
 
     def select(self, indices: torch.Tensor | list[int]) -> "PersistentMemory":
         """Copy selected valid rows into a compact active-memory store."""
@@ -77,6 +81,7 @@ class PersistentMemory:
             active.values[:count].copy_(self.values[selected])
             active.usage[:count].copy_(self.usage[selected])
             active.age[:count].copy_(self.age[selected])
+            active.access_count[:count].copy_(self.access_count[selected])
             active.valid[:count] = True
         active.clock = self.clock
         return active
@@ -88,10 +93,13 @@ class PersistentMemory:
         self.usage = torch.cat((self.usage, self.usage.new_zeros(amount)))
         self.age = torch.cat((self.age, self.age.new_zeros(amount)))
         self.valid = torch.cat((self.valid, self.valid.new_zeros(amount)))
+        self.access_count = torch.cat((
+            self.access_count, self.access_count.new_zeros(amount)))
 
     def read(self, queries: torch.Tensor, top_k: int = 4,
              temperature: torch.Tensor | float = 1.0,
-             confidence_mode: str = "ranked"
+             confidence_mode: str = "ranked",
+             record_access: bool = False,
              ) -> tuple[torch.Tensor, torch.Tensor]:
         """Content-addressed sparse reads; returns values and confidence."""
         if queries.ndim != 2 or queries.shape[1] != self.width:
@@ -109,6 +117,12 @@ class PersistentMemory:
         similarity = similarity + self.usage[indices].clamp_min(1e-6).log().unsqueeze(0)
         selected = min(top_k, indices.numel())
         scores, local_indices = similarity.topk(selected, dim=-1)
+        if record_access:
+            with torch.no_grad():
+                chosen = indices[local_indices[:, 0]]
+                increments = torch.ones_like(
+                    chosen, dtype=self.access_count.dtype)
+                self.access_count.scatter_add_(0, chosen, increments)
         weights = torch.softmax(scores, dim=-1)
         values = self.values[indices[local_indices]]
         read = (weights.unsqueeze(-1) * values).sum(dim=1)
@@ -143,6 +157,7 @@ class PersistentMemory:
             self.values[slot].copy_(value.detach())
             self.usage[slot] = strength.detach()
             self.age[slot] = self.clock
+            self.access_count[slot] = 0
             self.valid[slot] = True
             committed += 1
         return committed
@@ -151,10 +166,12 @@ class PersistentMemory:
         path.parent.mkdir(parents=True, exist_ok=True)
         temporary = path.with_suffix(path.suffix + ".tmp")
         torch.save({
-            "schema": "syllogimous-neural-computer-memory-v1",
+            "schema": "syllogimous-neural-computer-memory-v2",
             "keys": self.keys.detach().cpu(), "values": self.values.detach().cpu(),
             "usage": self.usage.detach().cpu(), "age": self.age.detach().cpu(),
-            "valid": self.valid.detach().cpu(), "clock": self.clock,
+            "valid": self.valid.detach().cpu(),
+            "access_count": self.access_count.detach().cpu(),
+            "clock": self.clock,
             "growth_chunk": self.growth_chunk,
         }, temporary)
         temporary.replace(path)
@@ -162,8 +179,13 @@ class PersistentMemory:
     @classmethod
     def load(cls, path: Path, *, device: torch.device | str = "cpu") -> "PersistentMemory":
         payload = torch.load(path, map_location=device, weights_only=False)
-        if payload.get("schema") != "syllogimous-neural-computer-memory-v1":
+        if payload.get("schema") not in {
+                "syllogimous-neural-computer-memory-v1",
+                "syllogimous-neural-computer-memory-v2"}:
             raise ValueError("unsupported persistent-memory schema")
+        access_count = payload.get(
+            "access_count", torch.zeros_like(payload["age"]))
         return cls(payload["keys"], payload["values"], payload["usage"],
-                   payload["age"], payload["valid"], int(payload["clock"]),
+                   payload["age"], payload["valid"], access_count,
+                   int(payload["clock"]),
                    int(payload.get("growth_chunk", 1024)))

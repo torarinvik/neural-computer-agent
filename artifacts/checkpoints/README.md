@@ -116,3 +116,32 @@ audited learned admission decision.
 The policy emergently uses memory absence as the default case and writes rows
 for exceptions. This is a bounded one-slot admission atom, not yet a claim of
 replacement, merging, compression, or unbounded-stream consolidation.
+
+## Frequency–recency replacement
+
+`unified_memory_frequency_recency_capacity6_seed6607.pt` is the promoted
+bounded-memory utility-composition milestone.
+
+- SHA-256:
+  `1346da994de4ba20864c5f1bc1da12684fc13d8dcda480a76cfc6f713da0181c`
+- Parent: `unified_memory_replacement_capacity6_seed6310.pt`
+- Size: approximately 1.2 MB; 298,359 parameters
+- Acquisition: 20 reward-only updates, 51,200 unique verifier bits,
+  no replay, 3.23 seconds training
+- Held-out future accuracy: 95.32%
+- Correct noisy frequency-plus-recency evictions: 87.30%
+- Physical disk audit: 96.81%, 92.97% correct evictions
+- Every audited access history survived save/reload; row count stayed bounded
+- Age and frequency corruption controls both caused material degradation
+- Recency, one-support, and four-rule retention gates passed
+- No semantic utility labels or correct eviction actions entered training
+
+`unified_memory_frequency_recency_capacity6_seed6608.pt` independently
+replicated the milestone:
+
+- SHA-256:
+  `b50a3338ef197c4cd955b45a465994052df6443772c73c2bd97c421f1440bc8f`
+- Acquisition: 20 updates, 51,200 verifier bits, 3.23 seconds training
+- Held-out / physical accuracy: 95.10% / 96.29%
+- Physical correct evictions: 93.36%
+- All causal, bounded-disk, persistence, and retention gates passed

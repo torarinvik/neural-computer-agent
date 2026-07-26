@@ -65,12 +65,14 @@ class UnifiedCognitiveController(nn.Module):
             adaptive_memory_read: bool = False,
             adaptive_memory_read_hidden: int = 0,
             adaptive_memory_replace: bool = False,
-            adaptive_memory_replace_hidden: int = 8) -> None:
+            adaptive_memory_replace_hidden: int = 8,
+            adaptive_memory_replace_features: int = 5) -> None:
         super().__init__()
         if (
                 width < 16 or workspace_slots < 1 or intention_width < 2
                 or adaptive_memory_read_hidden < 0
-                or adaptive_memory_replace_hidden < 1):
+                or adaptive_memory_replace_hidden < 1
+                or adaptive_memory_replace_features < 5):
             raise ValueError("controller dimensions are too small")
         self.width = width
         self.workspace_slots = workspace_slots
@@ -79,6 +81,7 @@ class UnifiedCognitiveController(nn.Module):
         self.adaptive_memory_read_hidden = adaptive_memory_read_hidden
         self.adaptive_memory_replace = adaptive_memory_replace
         self.adaptive_memory_replace_hidden = adaptive_memory_replace_hidden
+        self.adaptive_memory_replace_features = adaptive_memory_replace_features
         self.vision = VisionEventEncoder(width)
         self.action_embedding = nn.Embedding(ACTIONS + 1, width // 4)
         feedback_width = width // 4
@@ -119,6 +122,15 @@ class UnifiedCognitiveController(nn.Module):
                 nn.Linear(adaptive_memory_replace_hidden, 1),
             )
             if adaptive_memory_replace else None)
+        self.memory_replacement_extra_gate = (
+            nn.Linear(
+                adaptive_memory_replace_features - 5, 1, bias=False)
+            if (
+                adaptive_memory_replace
+                and adaptive_memory_replace_features > 5)
+            else None)
+        if self.memory_replacement_extra_gate is not None:
+            nn.init.zeros_(self.memory_replacement_extra_gate.weight)
 
     def memory_read_probability(
             self, features: torch.Tensor) -> torch.Tensor:
@@ -135,11 +147,19 @@ class UnifiedCognitiveController(nn.Module):
         """Score skip/replace options from generic latent-memory statistics."""
         if self.memory_replacement_gate is None:
             raise RuntimeError("adaptive memory replacement is not enabled")
-        if option_features.ndim != 3 or option_features.shape[-1] != 5:
+        if (
+                option_features.ndim != 3
+                or option_features.shape[-1]
+                != self.adaptive_memory_replace_features):
             raise ValueError(
-                "replacement features must have shape [batch, options, 5]")
-        return self.memory_replacement_gate(
-            option_features).squeeze(-1)
+                "replacement features must have shape "
+                f"[batch, options, {self.adaptive_memory_replace_features}]")
+        scores = self.memory_replacement_gate(
+            option_features[..., :5]).squeeze(-1)
+        if self.memory_replacement_extra_gate is not None:
+            scores = scores + self.memory_replacement_extra_gate(
+                option_features[..., 5:]).squeeze(-1)
+        return scores
 
     def initial_state(
             self, batch_size: int, *, device: torch.device | str,

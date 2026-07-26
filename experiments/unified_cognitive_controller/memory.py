@@ -28,11 +28,13 @@ class DiskLatentMemory:
 
     def retrieve(
             self, queries: torch.Tensor, top_k: int = 4,
-            confidence_mode: str = "ranked"
+            confidence_mode: str = "ranked",
+            record_access: bool = False,
             ) -> tuple[torch.Tensor, torch.Tensor]:
         return self.store.read(
             queries, top_k=top_k,
-            confidence_mode=confidence_mode)
+            confidence_mode=confidence_mode,
+            record_access=record_access)
 
     def retrieve_with_features(
             self, queries: torch.Tensor
@@ -94,6 +96,7 @@ class DiskLatentMemory:
             strength, device=self.store.usage.device,
             dtype=self.store.usage.dtype)
         self.store.age[index] = self.store.clock
+        self.store.access_count[index] = 0
         self.store.valid[index] = True
 
     def save(self, path: Path) -> None:

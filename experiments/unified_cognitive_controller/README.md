@@ -368,19 +368,74 @@ The original promoted checkpoint remains
 `artifacts/checkpoints/unified_memory_replacement_seed6101.pt`, SHA-256
 `0178b15228e3d75a445abdb2376be1291a078f8b47236444fbd1824fab3d3b76`.
 The current replacement frontier is
-`artifacts/checkpoints/unified_memory_replacement_capacity6_seed6310.pt`,
+`artifacts/checkpoints/unified_memory_frequency_recency_capacity6_seed6607.pt`,
 SHA-256
-`934b0a09b456726bee38296bf451ea35bc6b6ed3d8ba7c11ebac7601d78cd7dc`.
+`1346da994de4ba20864c5f1bc1da12684fc13d8dcda480a76cfc6f713da0181c`.
+
+### Noisy frequency-plus-recency utility
+
+The next rung held capacity at six and changed the utility distribution rather
+than scaling the same oldest-first task. Each row gained a persistent
+`access_count`. Ordinary content-addressed retrievals can increment it; the
+count survives save/reload, copies into active memory, grows with storage, and
+resets when a row is replaced. Old memory files load with zero counts.
+
+The learner saw centered log access frequency beside the five existing generic
+replacement features. It never saw realized future utility, future query
+identity, or the correct eviction. Training still used only future verified
+success minus the generic replacement cost.
+
+The first useful failure localization was optimization-level:
+
+- the inherited recency head assigned about 91% probability to one action;
+- merely widening its first layer changed a frequency weight but did not change
+  decisions;
+- softened exploration exposed alternatives, but the cold exponential reward
+  baseline reinforced below-average samples during tiny runs;
+- batch-centered verified advantage corrected the sign;
+- a direct zero-initialized residual avoided routing the new statistic through
+  the saturated inherited MLP;
+- centering the statistic prevented all real rows from shifting against the
+  non-row skip option.
+
+The final adapter adds one trainable parameter. The controller has 298,359
+parameters total. Two independent reward-only runs used 20 updates each:
+
+| Seed | Training time | Unique verifier bits | Held-out | Correct eviction | Age shuffle | Frequency shuffle |
+|---:|---:|---:|---:|---:|---:|---:|
+| 6607 | 3.23 s | 51,200 | 95.32% | 87.30% | 89.57% | 89.96% |
+| 6608 | 3.23 s | 51,200 | 95.10% | 86.13% | 89.18% | 89.67% |
+
+Both passed the recency-retention gate and the inherited binary and four-rule
+behavioral audits. Only `memory_replacement_extra_gate.weight` changed. There
+was no replay.
+
+Physical audits then generated history through ordinary content-addressed
+retrievals, serialized and reloaded every bank before making the replacement
+decision, replaced at most one row, serialized and reloaded again, and issued
+the future queries:
+
+| Train / audit seed | Learned | Visible oracle | Strongest single | Correct eviction | Age shuffled | Frequency shuffled | Rows | Growth |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 6607 / 6701 | 96.81% | 97.40% | 94.92% | 92.97% | 92.25% | 90.04% | 1,536 / 1,536 | 0 |
+| 6608 / 6702 | 96.29% | 96.48% | 94.14% | 93.36% | 91.54% | 88.54% | 1,536 / 1,536 | 0 |
+
+The learned policies captured 76.3% and 91.7% of the available composition gap
+above the strongest single-feature control. All 512 realized access histories
+survived disk save/reload exactly. Only 208 matched the requested counters
+exactly because ordinary content addressing sometimes routed a repeated query
+to a competing row. The verifier recomputed utility and future demand from the
+history that the physical memory actually experienced; it did not overwrite
+the counters to make the test easier.
 
 Claim boundary: this demonstrates controller-created, content-addressed latent
 storage and recall across active-state resets, with actual disk serialization.
 It also demonstrates learned write/skip and read/no-read decisions operating
 together within the storage-efficiency gate, plus learned bounded replacement
-under one simple recency-predictive utility distribution. Richer or
-nonstationary utility, replacement beyond capacity 9, consolidation across an
-unbounded stream, deletion/merging, modality transfer, and broad reasoning
-remain open. Further capacity scaling on the same monotonic recency rule has
-lower value than making utility depend jointly on noisy frequency and recency.
+that composes recency and retrieval frequency under noisy utility. It does not
+yet demonstrate online adaptation when the relative utility weights change,
+consolidation across an unbounded stream, deletion/merging, modality transfer,
+or broad reasoning.
 
 Run the sub-minute GPU experiment:
 

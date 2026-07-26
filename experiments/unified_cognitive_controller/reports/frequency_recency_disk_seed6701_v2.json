@@ -1,0 +1,90 @@
+{
+  "access_histories_survived_save_reload_exactly": 256,
+  "available_composition_gap": 0.024739623069763184,
+  "bank_capacity": 6,
+  "banks": 256,
+  "captured_composition_gap": 0.018880248069763184,
+  "checkpoint": "artifacts/candidates/unified_memory_frequency_recency_capacity6_seed6607.pt",
+  "checkpoint_sha256": "1346da994de4ba20864c5f1bc1da12684fc13d8dcda480a76cfc6f713da0181c",
+  "gate": {
+    "accepted": true,
+    "age_corruption_hurts_by_4_points": true,
+    "all_access_histories_persisted": true,
+    "beats_each_single_feature_control": true,
+    "bounded_row_count_preserved": true,
+    "captures_75_percent_of_composition_gap": true,
+    "frequency_corruption_hurts_by_4_points": true,
+    "learned_target_at_least_75": true,
+    "physical_accuracy_at_least_94": true,
+    "physical_capacity_never_grew": true,
+    "within_3_points_of_visible_oracle": true
+  },
+  "generated_contexts": 3584,
+  "history_reads_were_ordinary_content_addressed_retrievals": true,
+  "physical": {
+    "age_shuffled": {
+      "accuracy": 0.9225260615348816,
+      "after_rows": 1536,
+      "before_rows": 1536,
+      "capacity_growth": 0,
+      "disk_bytes": 1966336
+    },
+    "frequency": {
+      "accuracy": 0.94921875,
+      "after_rows": 1536,
+      "before_rows": 1536,
+      "capacity_growth": 0,
+      "disk_bytes": 1966336
+    },
+    "frequency_shuffled": {
+      "accuracy": 0.900390625,
+      "after_rows": 1536,
+      "before_rows": 1536,
+      "capacity_growth": 0,
+      "disk_bytes": 1966336
+    },
+    "learned": {
+      "accuracy": 0.9680989980697632,
+      "after_rows": 1536,
+      "before_rows": 1536,
+      "capacity_growth": 0,
+      "disk_bytes": 1966336
+    },
+    "oracle": {
+      "accuracy": 0.9772135615348816,
+      "after_rows": 1536,
+      "before_rows": 1536,
+      "capacity_growth": 0,
+      "disk_bytes": 1966336
+    },
+    "recency": {
+      "accuracy": 0.91796875,
+      "after_rows": 1536,
+      "before_rows": 1536,
+      "capacity_growth": 0,
+      "disk_bytes": 1966336
+    },
+    "visible_oracle": {
+      "accuracy": 0.9739583730697632,
+      "after_rows": 1536,
+      "before_rows": 1536,
+      "capacity_growth": 0,
+      "disk_bytes": 1966336
+    }
+  },
+  "policy_target_eviction_rates": {
+    "age_shuffled": 0.28125,
+    "frequency": 0.5546875,
+    "frequency_shuffled": 0.234375,
+    "learned": 0.9296875,
+    "oracle": 1.0,
+    "recency": 0.4296875,
+    "visible_oracle": 0.96875
+  },
+  "requested_histories_reproduced_exactly": 103,
+  "schema": "unified-controller-frequency-recency-disk-audit-v1",
+  "seed": 6701,
+  "semantic_or_utility_labels_used_for_training": false,
+  "strongest_single_feature_accuracy": 0.94921875,
+  "weights_changed": false
+}

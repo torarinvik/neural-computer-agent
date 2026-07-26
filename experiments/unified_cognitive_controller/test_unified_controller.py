@@ -178,6 +178,42 @@ def test_disk_latent_memory_round_trip(tmp_path: Path) -> None:
     assert confidence.shape == (1,)
 
 
+def test_disk_memory_records_persists_and_resets_access_counts(
+        tmp_path: Path) -> None:
+    memory = DiskLatentMemory(width=4, capacity=2)
+    keys = torch.eye(4)[:2]
+    values = torch.arange(8, dtype=torch.float32).reshape(2, 4)
+    assert memory.commit(
+        keys, values, torch.ones(2), threshold=0.0) == 2
+    memory.retrieve(
+        keys[:1].repeat(3, 1), top_k=1,
+        confidence_mode="cosine", record_access=True)
+    assert memory.store.access_count.tolist() == [3, 0]
+    path = tmp_path / "access-counts.pt"
+    memory.save(path)
+    restored = DiskLatentMemory.load(path)
+    assert restored.store.access_count.tolist() == [3, 0]
+    restored.replace(0, keys[1], values[1], 0.9)
+    assert restored.store.access_count.tolist() == [0, 0]
+
+
+def test_old_disk_schema_loads_with_zero_access_counts(tmp_path: Path) -> None:
+    path = tmp_path / "old-memory.pt"
+    torch.save({
+        "schema": "syllogimous-neural-computer-memory-v1",
+        "keys": torch.zeros(2, 4),
+        "values": torch.zeros(2, 4),
+        "usage": torch.zeros(2),
+        "age": torch.zeros(2, dtype=torch.long),
+        "valid": torch.tensor([True, False]),
+        "clock": 1,
+        "growth_chunk": 2,
+    }, path)
+    restored = DiskLatentMemory.load(path)
+    assert restored.count == 1
+    assert restored.store.access_count.tolist() == [0, 0]
+
+
 def test_disk_memory_can_report_cosine_match_confidence() -> None:
     memory = DiskLatentMemory(width=4, capacity=2)
     keys = torch.eye(4)[:2]
@@ -239,6 +275,28 @@ def test_adaptive_memory_replacement_is_optional_and_bounded() -> None:
     assert sum(
         parameter.numel()
         for parameter in model.memory_replacement_gate.parameters()) == 57
+    frequency_model = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        adaptive_memory_replace=True,
+        adaptive_memory_replace_hidden=8,
+        adaptive_memory_replace_features=6)
+    frequency_scores = frequency_model.memory_replacement_scores(
+        torch.zeros(3, 5, 6))
+    assert frequency_scores.shape == (3, 5)
+    assert sum(
+        parameter.numel()
+        for name, parameter in frequency_model.named_parameters()
+        if name.startswith("memory_replacement_")) == 58
+    missing, unexpected = frequency_model.load_state_dict(
+        model.state_dict(), strict=False)
+    assert missing == ["memory_replacement_extra_gate.weight"]
+    assert not unexpected
+    base_features = torch.randn(3, 5, 5)
+    expanded_features = torch.cat((
+        base_features, torch.zeros(3, 5, 1)), dim=-1)
+    assert torch.equal(
+        model.memory_replacement_scores(base_features),
+        frequency_model.memory_replacement_scores(expanded_features))
 
 
 def test_disk_memory_can_replace_without_growing(tmp_path: Path) -> None:
