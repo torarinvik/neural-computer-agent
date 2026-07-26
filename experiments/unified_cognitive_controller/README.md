@@ -364,10 +364,10 @@ each bank grows while retaining a direct causal-action requirement. At
 capacity 9, corrupting age-to-slot correspondence drove correct evictions to
 0% on both seeds and accuracy to 89.13% and 88.80%.
 
-The original promoted checkpoint remains
+The original replacement checkpoint remains
 `artifacts/checkpoints/unified_memory_replacement_seed6101.pt`, SHA-256
 `0178b15228e3d75a445abdb2376be1291a078f8b47236444fbd1824fab3d3b76`.
-The current replacement frontier is
+The fixed-utility parent is
 `artifacts/checkpoints/unified_memory_frequency_recency_capacity6_seed6607.pt`,
 SHA-256
 `1346da994de4ba20864c5f1bc1da12684fc13d8dcda480a76cfc6f713da0181c`.
@@ -428,14 +428,87 @@ to a competing row. The verifier recomputed utility and future demand from the
 history that the physical memory actually experienced; it did not overwrite
 the counters to make the test easier.
 
-Claim boundary: this demonstrates controller-created, content-addressed latent
-storage and recall across active-state resets, with actual disk serialization.
+Claim boundary for the fixed-mixture rung: this demonstrates
+controller-created, content-addressed latent storage and recall across
+active-state resets, with actual disk serialization.
 It also demonstrates learned write/skip and read/no-read decisions operating
 together within the storage-efficiency gate, plus learned bounded replacement
-that composes recency and retrieval frequency under noisy utility. It does not
-yet demonstrate online adaptation when the relative utility weights change,
-consolidation across an unbounded stream, deletion/merging, modality transfer,
-or broad reasoning.
+that composes recency and retrieval frequency under noisy utility.
+
+### Online utility adaptation
+
+The next atom made the utility distribution piecewise stationary while keeping
+capacity at six. One continuous stream used four phases:
+
+1. 65% recency / 35% frequency;
+2. 35% recency / 65% frequency;
+3. return to 65% recency / 35% frequency;
+4. return to the inherited 50% / 50% mixture.
+
+The learner received no phase identity or boundary signal, and its optimizer
+was never reset. It saw only sensory-derived generic memory features, attempted
+replacement actions, and later verified future success. It did not see the
+utility weights, correct eviction, future-query identity, or semantic labels.
+
+Several sub-minute failures localized the learning mechanism before the
+successful run:
+
+- a high-temperature policy gradient optimized a stochastic objective whose
+  local gradient pointed opposite to greedy held-out behavior;
+- a paired greedy baseline and a pairwise preference update still reinforced
+  the currently selected action instead of exploring the useful coefficient;
+- exact coefficient sweeps showed the benchmark was learnable and identified
+  different optima for the two utility phases.
+
+The successful mechanism is a generic symmetric perturbation horse race. On
+each fresh bank, two temporary copies of the same coefficient are evaluated at
+`w + 3` and `w - 3` using actual greedy actions and future verified outcomes.
+The surviving controller moves 1.5 units toward the better copy. Only
+`memory_replacement_extra_gate.weight` changes; there is still one controller,
+not a task-specific expert or phase-conditioned mode.
+
+Two independent runs replicated:
+
+| Seed | Seconds | Recency target | Frequency target | Recency return | Equal return |
+|---:|---:|---:|---:|---:|---:|
+| 6809 | 28.66 | 90.67% | 86.43% | 91.16% | 90.53% |
+| 6810 | 28.89 | 90.82% | 87.16% | 91.31% | 89.99% |
+
+Each used 64 updates, 114,688 generated training contexts, 212,992 unique
+verifier bits counting both candidates, and zero replay. Every phase stayed
+within three accuracy points of its visible oracle. Each shifted phase beat
+the frozen parent and added at least four points of correct-target eviction.
+The coefficient moved toward recency, then frequency, then recency again.
+Binary mapping and four-rule retention gates passed, and only the one residual
+coefficient changed.
+
+The reward-alignment control used the identical algorithm and budget but
+randomly swapped which candidate received each paired verified outcome. It
+failed as required: its frequency-dominant target rate was 57.71%, below its
+frozen parent's 69.53%, and it moved the coefficient in the wrong direction.
+No checkpoint was saved.
+
+The selected seed-6810 checkpoint then passed a larger physical disk audit:
+
+- learned accuracy 96.94%, visible oracle 96.81%, full oracle 97.41%;
+- age-shuffled 92.74%, frequency-shuffled 88.66%;
+- 6,144 physical rows before and after, zero capacity growth;
+- all 1,024 access histories survived save/reload exactly;
+- no weights changed during the audit.
+
+Selected checkpoint:
+`artifacts/checkpoints/unified_memory_online_utility_seed6810.pt`, SHA-256
+`c3e837c6512a30c11b1c861b79242296b76cfa0cd9fe62aa414d3e5b2aa10750`.
+Independent replica:
+`artifacts/checkpoints/unified_memory_online_utility_seed6809.pt`, SHA-256
+`d25d26c4d34ff86e50474b5ff38c630a2d92b782dea10d4782b01a363bb64a81`.
+
+Honest boundary: the adaptation stream used tensorized banks, while the final
+adapted policy was audited against actual serialized disk memory. This proves
+fast label-free adaptation of one generic utility coefficient, not online
+learning directly inside an unbounded physical-disk stream and not a learned
+general meta-optimizer. Consolidation, deletion/merging, higher-dimensional
+utility adaptation, modality transfer, and broad reasoning remain open.
 
 Run the sub-minute GPU experiment:
 

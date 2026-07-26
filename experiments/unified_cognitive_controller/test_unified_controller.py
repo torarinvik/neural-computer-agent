@@ -7,6 +7,7 @@ from .memory import DiskLatentMemory
 from .model import UnifiedCognitiveController
 from .probe_persistent_interface import _add_context_signatures
 from .train import attempted_success_loss, evaluate, rollout
+from .train_frequency_recency_replacement import frequency_recency_batch
 from .train_persistent_memory import _grouped_read
 
 
@@ -297,6 +298,24 @@ def test_adaptive_memory_replacement_is_optional_and_bounded() -> None:
     assert torch.equal(
         model.memory_replacement_scores(base_features),
         frequency_model.memory_replacement_scores(expanded_features))
+
+
+def test_frequency_recency_utility_weights_are_validated_before_generation(
+        ) -> None:
+    model = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8)
+    for recency_weight, frequency_weight in (
+            (-0.1, 1.0), (1.0, -0.1), (0.0, 0.0)):
+        try:
+            frequency_recency_batch(
+                model, banks=1, capacity=2, seed=1,
+                device=torch.device("cpu"), write_threshold=0.5,
+                recency_weight=recency_weight,
+                frequency_weight=frequency_weight)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("invalid utility weights were accepted")
 
 
 def test_disk_memory_can_replace_without_growing(tmp_path: Path) -> None:

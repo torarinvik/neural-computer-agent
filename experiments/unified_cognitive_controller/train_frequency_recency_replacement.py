@@ -25,8 +25,14 @@ from .train_memory_replacement import (
 def frequency_recency_batch(
         model: UnifiedCognitiveController, *, banks: int, capacity: int,
         seed: int, device: torch.device, write_threshold: float,
-        noise_scale: float = 0.04) -> dict[str, object]:
+        noise_scale: float = 0.04,
+        recency_weight: float = 0.5,
+        frequency_weight: float = 0.5) -> dict[str, object]:
     """Create a bank where neither oldest-only nor frequency-only is optimal."""
+    if (
+            recency_weight < 0.0 or frequency_weight < 0.0
+            or recency_weight + frequency_weight <= 0.0):
+        raise ValueError("utility weights must be nonnegative with positive sum")
     context_count = banks * (capacity + 1)
     batch, keys, values, strengths, query_keys, generated = _written_contexts(
         model, count=context_count, seed=seed, device=device,
@@ -67,7 +73,12 @@ def frequency_recency_batch(
             banks, capacity, generator=generator,
             dtype=keys.dtype).to(device) * 2.0 - 1.0
     ) * noise_scale
-    visible_utility = 0.5 * normalized_age + 0.5 * normalized_access
+    total_weight = recency_weight + frequency_weight
+    normalized_recency_weight = recency_weight / total_weight
+    normalized_frequency_weight = frequency_weight / total_weight
+    visible_utility = (
+        normalized_recency_weight * normalized_age
+        + normalized_frequency_weight * normalized_access)
     realized_utility = visible_utility + noise
     target_slot = realized_utility.argmin(-1)
     target_action = target_slot + 1
@@ -132,6 +143,8 @@ def frequency_recency_batch(
         "query_group": query_group,
         "slot_to_logical": permutation,
         "utility_noise": noise,
+        "recency_weight": normalized_recency_weight,
+        "frequency_weight": normalized_frequency_weight,
     }
 
 
@@ -139,12 +152,15 @@ def frequency_recency_batch(
 def evaluate_frequency_recency(
         model: UnifiedCognitiveController, *, banks: int, capacity: int,
         seed: int, device: torch.device, write_threshold: float,
-        noise_scale: float) -> dict[str, object]:
+        noise_scale: float, recency_weight: float = 0.5,
+        frequency_weight: float = 0.5) -> dict[str, object]:
     model.eval()
     data = frequency_recency_batch(
         model, banks=banks, capacity=capacity, seed=seed,
         device=device, write_threshold=write_threshold,
-        noise_scale=noise_scale)
+        noise_scale=noise_scale,
+        recency_weight=recency_weight,
+        frequency_weight=frequency_weight)
     scores = model.memory_replacement_scores(data["option_features"])
     learned = scores.argmax(-1)
     generator = torch.Generator(device=device).manual_seed(
@@ -265,6 +281,8 @@ def main() -> None:
     parser.add_argument("--learning-rate", type=float, default=3e-2)
     parser.add_argument("--replacement-cost", type=float, default=0.01)
     parser.add_argument("--noise-scale", type=float, default=0.04)
+    parser.add_argument("--recency-weight", type=float, default=0.5)
+    parser.add_argument("--frequency-weight", type=float, default=0.5)
     parser.add_argument("--exploration-temperature", type=float, default=4.0)
     parser.add_argument(
         "--rehearsal-temperature", type=float, default=2.0)
@@ -306,7 +324,9 @@ def main() -> None:
         model, banks=min(args.test_banks, 512),
         capacity=args.bank_capacity, seed=args.seed + 80_000_000,
         device=device, write_threshold=args.write_threshold,
-        noise_scale=args.noise_scale)
+        noise_scale=args.noise_scale,
+        recency_weight=args.recency_weight,
+        frequency_weight=args.frequency_weight)
     print(json.dumps({
         "preflight": preflight,
     }, sort_keys=True), flush=True)
@@ -326,7 +346,9 @@ def main() -> None:
                 capacity=args.bank_capacity,
                 seed=args.seed * 1_000_000 + step,
                 device=device, write_threshold=args.write_threshold,
-                noise_scale=args.noise_scale)
+                noise_scale=args.noise_scale,
+                recency_weight=args.recency_weight,
+                frequency_weight=args.frequency_weight)
         else:
             data = replacement_batch(
                 model, banks=args.batch_banks,
@@ -381,7 +403,9 @@ def main() -> None:
         model, banks=args.test_banks, capacity=args.bank_capacity,
         seed=args.seed + 90_000_000, device=device,
         write_threshold=args.write_threshold,
-        noise_scale=args.noise_scale)
+        noise_scale=args.noise_scale,
+        recency_weight=args.recency_weight,
+        frequency_weight=args.frequency_weight)
     recency_report = evaluate_replacement(
         model, banks=args.test_banks, capacity=args.bank_capacity,
         seed=args.seed + 90_500_000, device=device,

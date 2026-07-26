@@ -1,0 +1,925 @@
+{
+  "accounting": {
+    "diagnostic_generated_contexts": 71680,
+    "future_query_training_bits": 49152,
+    "generated_training_contexts": 114688,
+    "optimizer_updates": 64,
+    "paired_baseline_query_bits": 49152,
+    "replayed_examples": 0,
+    "training_and_trace_seconds": 19.16052769194357,
+    "unique_training_verifier_bits": 212992
+  },
+  "binary_retention": {
+    "active_state_reset": {
+      "accuracy_by_trial": [
+        0.5068359375,
+        0.50439453125,
+        0.49951171875,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "final_accuracy": 0.5,
+      "learning_gain": -0.006054699420928955,
+      "post_feedback_accuracy": 0.500781238079071,
+      "query_accuracy": 0.500781238079071,
+      "zero_shot_accuracy": 0.5068359375
+    },
+    "blank_vision": {
+      "accuracy_by_trial": [
+        0.50390625,
+        0.50439453125,
+        0.50537109375,
+        0.49267578125,
+        0.51806640625,
+        0.505859375
+      ],
+      "final_accuracy": 0.505859375,
+      "learning_gain": 0.0013672113418579102,
+      "post_feedback_accuracy": 0.5052734613418579,
+      "query_accuracy": 0.5052734613418579,
+      "zero_shot_accuracy": 0.50390625
+    },
+    "feedback_shuffled": {
+      "accuracy_by_trial": [
+        0.5068359375,
+        0.517578125,
+        0.517578125,
+        0.517578125,
+        0.517578125,
+        0.517578125
+      ],
+      "final_accuracy": 0.517578125,
+      "learning_gain": 0.0107421875,
+      "post_feedback_accuracy": 0.517578125,
+      "query_accuracy": 0.517578125,
+      "zero_shot_accuracy": 0.5068359375
+    },
+    "gate": {
+      "accepted": true,
+      "active_state_reset_hurts": true,
+      "counterfactual_flip_at_least_80": true,
+      "few_shot_breakthrough": true,
+      "normal_few_shot_at_least_85": true,
+      "reversed_few_shot_at_least_85": true,
+      "shuffled_feedback_hurts": true,
+      "vision_causally_used": true,
+      "zero_shot_near_chance": true
+    },
+    "normal": {
+      "accuracy_by_trial": [
+        0.5068359375,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "final_accuracy": 1.0,
+      "learning_gain": 0.4931640625,
+      "post_feedback_accuracy": 1.0,
+      "query_accuracy": 1.0,
+      "zero_shot_accuracy": 0.5068359375
+    },
+    "post_feedback_prediction_flip_rate": 1.0,
+    "reversed_rule": {
+      "accuracy_by_trial": [
+        0.4931640625,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "final_accuracy": 1.0,
+      "learning_gain": 0.5068359375,
+      "post_feedback_accuracy": 1.0,
+      "query_accuracy": 1.0,
+      "zero_shot_accuracy": 0.4931640625
+    },
+    "workspace_disabled": {
+      "accuracy_by_trial": [
+        0.5068359375,
+        0.87744140625,
+        0.97119140625,
+        0.9052734375,
+        0.833984375,
+        0.69140625
+      ],
+      "final_accuracy": 0.69140625,
+      "learning_gain": 0.3490234613418579,
+      "post_feedback_accuracy": 0.8558593988418579,
+      "query_accuracy": 0.8558593988418579,
+      "zero_shot_accuracy": 0.5068359375
+    }
+  },
+  "boundary_signal_visible_to_learner": false,
+  "changed_parameters": [
+    "memory_replacement_extra_gate.weight"
+  ],
+  "checkpoint_saved": false,
+  "configuration": {
+    "bank_capacity": 6,
+    "batch_banks": 128,
+    "beta1": 0.0,
+    "checkpoint_in": "artifacts/candidates/unified_memory_frequency_recency_capacity6_seed6607.pt",
+    "checkpoint_out": null,
+    "device": "cuda",
+    "dominant_weight": 0.65,
+    "es_step_size": 1.5,
+    "exploration_temperature": 4.0,
+    "include_equal_return": true,
+    "learning_rate": 1.5,
+    "noise_scale": 0.04,
+    "paired_greedy_baseline": false,
+    "pairwise_preference_update": false,
+    "perturbation": 3.0,
+    "phase_steps": 16,
+    "replacement_cost": 0.01,
+    "report": "experiments/unified_cognitive_controller/reports/online_utility_adaptation_reward_shuffled_seed6808.json",
+    "seed": 6808,
+    "shuffle_rewards": true,
+    "symmetric_perturbation_update": true,
+    "test_banks": 1024,
+    "trace_banks": 256,
+    "trace_every": 4,
+    "write_threshold": 0.5
+  },
+  "endpoint_reports": [
+    {
+      "frequency_weight": 0.35,
+      "frequency_weight_parameter": -11.157492637634277,
+      "frozen": {
+        "accuracy": 0.9410807490348816,
+        "gate": {
+          "accepted": false,
+          "age_feature_is_causal": true,
+          "captures_75_percent_of_best_control_gap": false,
+          "frequency_feature_is_causal": false,
+          "learned_target_at_least_75": true,
+          "oracle_is_solved": true,
+          "visible_oracle_target_at_least_85": true,
+          "within_3_points_of_visible_oracle": true
+        },
+        "generated_contexts": 14336,
+        "policy_accuracies": {
+          "age_shuffled": 0.87939453125,
+          "fixed": 0.876953125,
+          "frequency": 0.8929036855697632,
+          "frequency_shuffled": 0.9052734375,
+          "learned": 0.9410807490348816,
+          "oracle": 0.9601237177848816,
+          "random": 0.8740234375,
+          "recency": 0.9324544668197632,
+          "skip": 0.8595378398895264,
+          "visible_oracle": 0.9508463740348816
+        },
+        "policy_target_eviction_rates": {
+          "age_shuffled": 0.19921875,
+          "fixed": 0.1630859375,
+          "frequency": 0.345703125,
+          "frequency_shuffled": 0.4638671875,
+          "learned": 0.8212890625,
+          "oracle": 1.0,
+          "random": 0.1552734375,
+          "recency": 0.7314453125,
+          "skip": 0.0,
+          "visible_oracle": 0.916015625
+        },
+        "replace_rate": 1.0,
+        "target_eviction_rate": 0.8212890625
+      },
+      "learned": {
+        "accuracy": 0.9410807490348816,
+        "gate": {
+          "accepted": false,
+          "age_feature_is_causal": true,
+          "captures_75_percent_of_best_control_gap": false,
+          "frequency_feature_is_causal": false,
+          "learned_target_at_least_75": true,
+          "oracle_is_solved": true,
+          "visible_oracle_target_at_least_85": true,
+          "within_3_points_of_visible_oracle": true
+        },
+        "generated_contexts": 14336,
+        "policy_accuracies": {
+          "age_shuffled": 0.87939453125,
+          "fixed": 0.876953125,
+          "frequency": 0.8929036855697632,
+          "frequency_shuffled": 0.9052734375,
+          "learned": 0.9410807490348816,
+          "oracle": 0.9601237177848816,
+          "random": 0.8740234375,
+          "recency": 0.9324544668197632,
+          "skip": 0.8595378398895264,
+          "visible_oracle": 0.9508463740348816
+        },
+        "policy_target_eviction_rates": {
+          "age_shuffled": 0.19921875,
+          "fixed": 0.1630859375,
+          "frequency": 0.345703125,
+          "frequency_shuffled": 0.4638671875,
+          "learned": 0.8212890625,
+          "oracle": 1.0,
+          "random": 0.1552734375,
+          "recency": 0.7314453125,
+          "skip": 0.0,
+          "visible_oracle": 0.916015625
+        },
+        "replace_rate": 1.0,
+        "target_eviction_rate": 0.8212890625
+      },
+      "phase": "recency_dominant",
+      "recency_weight": 0.65
+    },
+    {
+      "frequency_weight": 0.65,
+      "frequency_weight_parameter": -8.157492637634277,
+      "frozen": {
+        "accuracy": 0.9326171875,
+        "gate": {
+          "accepted": false,
+          "age_feature_is_causal": false,
+          "captures_75_percent_of_best_control_gap": false,
+          "frequency_feature_is_causal": true,
+          "learned_target_at_least_75": false,
+          "oracle_is_solved": true,
+          "visible_oracle_target_at_least_85": true,
+          "within_3_points_of_visible_oracle": true
+        },
+        "generated_contexts": 14336,
+        "policy_accuracies": {
+          "age_shuffled": 0.9018555283546448,
+          "fixed": 0.87744140625,
+          "frequency": 0.9345703125,
+          "frequency_shuffled": 0.8873698115348816,
+          "learned": 0.9326171875,
+          "oracle": 0.9650065302848816,
+          "random": 0.8792318105697632,
+          "recency": 0.8966471552848816,
+          "skip": 0.8587239980697632,
+          "visible_oracle": 0.9578450918197632
+        },
+        "policy_target_eviction_rates": {
+          "age_shuffled": 0.37109375,
+          "fixed": 0.1640625,
+          "frequency": 0.6982421875,
+          "frequency_shuffled": 0.2314453125,
+          "learned": 0.6953125,
+          "oracle": 1.0,
+          "random": 0.1484375,
+          "recency": 0.3232421875,
+          "skip": 0.0,
+          "visible_oracle": 0.94140625
+        },
+        "replace_rate": 1.0,
+        "target_eviction_rate": 0.6953125
+      },
+      "learned": {
+        "accuracy": 0.9215494990348816,
+        "gate": {
+          "accepted": false,
+          "age_feature_is_causal": false,
+          "captures_75_percent_of_best_control_gap": false,
+          "frequency_feature_is_causal": false,
+          "learned_target_at_least_75": false,
+          "oracle_is_solved": true,
+          "visible_oracle_target_at_least_85": true,
+          "within_3_points_of_visible_oracle": false
+        },
+        "generated_contexts": 14336,
+        "policy_accuracies": {
+          "age_shuffled": 0.8953450918197632,
+          "fixed": 0.87744140625,
+          "frequency": 0.9345703125,
+          "frequency_shuffled": 0.89208984375,
+          "learned": 0.9215494990348816,
+          "oracle": 0.9650065302848816,
+          "random": 0.8792318105697632,
+          "recency": 0.8966471552848816,
+          "skip": 0.8587239980697632,
+          "visible_oracle": 0.9578450918197632
+        },
+        "policy_target_eviction_rates": {
+          "age_shuffled": 0.298828125,
+          "fixed": 0.1640625,
+          "frequency": 0.6982421875,
+          "frequency_shuffled": 0.2626953125,
+          "learned": 0.5771484375,
+          "oracle": 1.0,
+          "random": 0.1484375,
+          "recency": 0.3232421875,
+          "skip": 0.0,
+          "visible_oracle": 0.94140625
+        },
+        "replace_rate": 1.0,
+        "target_eviction_rate": 0.5771484375
+      },
+      "phase": "frequency_dominant",
+      "recency_weight": 0.35
+    },
+    {
+      "frequency_weight": 0.35,
+      "frequency_weight_parameter": -8.157493591308594,
+      "frozen": {
+        "accuracy": 0.9552409648895264,
+        "gate": {
+          "accepted": true,
+          "age_feature_is_causal": true,
+          "captures_75_percent_of_best_control_gap": true,
+          "frequency_feature_is_causal": true,
+          "learned_target_at_least_75": true,
+          "oracle_is_solved": true,
+          "visible_oracle_target_at_least_85": true,
+          "within_3_points_of_visible_oracle": true
+        },
+        "generated_contexts": 14336,
+        "policy_accuracies": {
+          "age_shuffled": 0.884765625,
+          "fixed": 0.8849284648895264,
+          "frequency": 0.90234375,
+          "frequency_shuffled": 0.9137370586395264,
+          "learned": 0.9552409648895264,
+          "oracle": 0.9663086533546448,
+          "random": 0.8831380605697632,
+          "recency": 0.9363607168197632,
+          "skip": 0.8649088740348816,
+          "visible_oracle": 0.9591471552848816
+        },
+        "policy_target_eviction_rates": {
+          "age_shuffled": 0.19140625,
+          "fixed": 0.1708984375,
+          "frequency": 0.35546875,
+          "frequency_shuffled": 0.4443359375,
+          "learned": 0.861328125,
+          "oracle": 1.0,
+          "random": 0.1416015625,
+          "recency": 0.708984375,
+          "skip": 0.0,
+          "visible_oracle": 0.9287109375
+        },
+        "replace_rate": 1.0,
+        "target_eviction_rate": 0.861328125
+      },
+      "learned": {
+        "accuracy": 0.9586588740348816,
+        "gate": {
+          "accepted": true,
+          "age_feature_is_causal": true,
+          "captures_75_percent_of_best_control_gap": true,
+          "frequency_feature_is_causal": true,
+          "learned_target_at_least_75": true,
+          "oracle_is_solved": true,
+          "visible_oracle_target_at_least_85": true,
+          "within_3_points_of_visible_oracle": true
+        },
+        "generated_contexts": 14336,
+        "policy_accuracies": {
+          "age_shuffled": 0.880859375,
+          "fixed": 0.8849284648895264,
+          "frequency": 0.90234375,
+          "frequency_shuffled": 0.9176432490348816,
+          "learned": 0.9586588740348816,
+          "oracle": 0.9663086533546448,
+          "random": 0.8831380605697632,
+          "recency": 0.9363607168197632,
+          "skip": 0.8649088740348816,
+          "visible_oracle": 0.9591471552848816
+        },
+        "policy_target_eviction_rates": {
+          "age_shuffled": 0.1484375,
+          "fixed": 0.1708984375,
+          "frequency": 0.35546875,
+          "frequency_shuffled": 0.52734375,
+          "learned": 0.90234375,
+          "oracle": 1.0,
+          "random": 0.1416015625,
+          "recency": 0.708984375,
+          "skip": 0.0,
+          "visible_oracle": 0.9287109375
+        },
+        "replace_rate": 1.0,
+        "target_eviction_rate": 0.90234375
+      },
+      "phase": "recency_return",
+      "recency_weight": 0.65
+    },
+    {
+      "frequency_weight": 0.5,
+      "frequency_weight_parameter": -11.157493591308594,
+      "frozen": {
+        "accuracy": 0.9503580927848816,
+        "gate": {
+          "accepted": true,
+          "age_feature_is_causal": true,
+          "captures_75_percent_of_best_control_gap": true,
+          "frequency_feature_is_causal": true,
+          "learned_target_at_least_75": true,
+          "oracle_is_solved": true,
+          "visible_oracle_target_at_least_85": true,
+          "within_3_points_of_visible_oracle": true
+        },
+        "generated_contexts": 14336,
+        "policy_accuracies": {
+          "age_shuffled": 0.890625,
+          "fixed": 0.8792318105697632,
+          "frequency": 0.91796875,
+          "frequency_shuffled": 0.8912760615348816,
+          "learned": 0.9503580927848816,
+          "oracle": 0.9627279043197632,
+          "random": 0.87548828125,
+          "recency": 0.9104818105697632,
+          "skip": 0.86279296875,
+          "visible_oracle": 0.9563802480697632
+        },
+        "policy_target_eviction_rates": {
+          "age_shuffled": 0.2841796875,
+          "fixed": 0.1630859375,
+          "frequency": 0.5556640625,
+          "frequency_shuffled": 0.3037109375,
+          "learned": 0.8720703125,
+          "oracle": 1.0,
+          "random": 0.1328125,
+          "recency": 0.466796875,
+          "skip": 0.0,
+          "visible_oracle": 0.9296875
+        },
+        "replace_rate": 1.0,
+        "target_eviction_rate": 0.8720703125
+      },
+      "learned": {
+        "accuracy": 0.9503580927848816,
+        "gate": {
+          "accepted": true,
+          "age_feature_is_causal": true,
+          "captures_75_percent_of_best_control_gap": true,
+          "frequency_feature_is_causal": true,
+          "learned_target_at_least_75": true,
+          "oracle_is_solved": true,
+          "visible_oracle_target_at_least_85": true,
+          "within_3_points_of_visible_oracle": true
+        },
+        "generated_contexts": 14336,
+        "policy_accuracies": {
+          "age_shuffled": 0.890625,
+          "fixed": 0.8792318105697632,
+          "frequency": 0.91796875,
+          "frequency_shuffled": 0.8912760615348816,
+          "learned": 0.9503580927848816,
+          "oracle": 0.9627279043197632,
+          "random": 0.87548828125,
+          "recency": 0.9104818105697632,
+          "skip": 0.86279296875,
+          "visible_oracle": 0.9563802480697632
+        },
+        "policy_target_eviction_rates": {
+          "age_shuffled": 0.2841796875,
+          "fixed": 0.1630859375,
+          "frequency": 0.5556640625,
+          "frequency_shuffled": 0.3037109375,
+          "learned": 0.8720703125,
+          "oracle": 1.0,
+          "random": 0.1328125,
+          "recency": 0.466796875,
+          "skip": 0.0,
+          "visible_oracle": 0.9296875
+        },
+        "replace_rate": 1.0,
+        "target_eviction_rate": 0.8720703125
+      },
+      "phase": "equal_return",
+      "recency_weight": 0.5
+    }
+  ],
+  "four_rule_retention": {
+    "active_state_reset": {
+      "accuracy_by_trial": [
+        0.5,
+        0.5,
+        0.74609375,
+        0.48876953125,
+        0.4833984375,
+        0.50439453125
+      ],
+      "final_accuracy": 0.50439453125,
+      "learning_gain": 0.0556640625,
+      "post_feedback_accuracy": 0.5556640625,
+      "query_accuracy": 0.5556640625,
+      "zero_shot_accuracy": 0.5
+    },
+    "blank_vision": {
+      "accuracy_by_trial": [
+        0.48583984375,
+        0.5,
+        0.75390625,
+        0.7470703125,
+        0.76416015625,
+        0.74560546875
+      ],
+      "final_accuracy": 0.74560546875,
+      "learning_gain": 0.266845703125,
+      "post_feedback_accuracy": 0.752685546875,
+      "query_accuracy": 0.752685546875,
+      "zero_shot_accuracy": 0.48583984375
+    },
+    "feedback_shuffled": {
+      "accuracy_by_trial": [
+        0.5,
+        0.51953125,
+        0.5146484375,
+        0.5224609375,
+        0.50244140625,
+        0.51171875
+      ],
+      "final_accuracy": 0.51171875,
+      "learning_gain": 0.0128173828125,
+      "post_feedback_accuracy": 0.5128173828125,
+      "query_accuracy": 0.5128173828125,
+      "zero_shot_accuracy": 0.5
+    },
+    "gate": {
+      "accepted": true,
+      "active_state_reset_hurts": true,
+      "counterfactual_flip_at_least_80": true,
+      "few_shot_breakthrough": true,
+      "normal_few_shot_at_least_85": true,
+      "reversed_few_shot_at_least_85": true,
+      "shuffled_feedback_hurts": true,
+      "vision_causally_used": true,
+      "zero_shot_near_chance": true
+    },
+    "normal": {
+      "accuracy_by_trial": [
+        0.5,
+        0.5,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "final_accuracy": 1.0,
+      "learning_gain": 0.5,
+      "post_feedback_accuracy": 1.0,
+      "query_accuracy": 1.0,
+      "zero_shot_accuracy": 0.5
+    },
+    "post_feedback_prediction_flip_rate": 1.0,
+    "reversed_rule": {
+      "accuracy_by_trial": [
+        0.5,
+        0.5,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "final_accuracy": 1.0,
+      "learning_gain": 0.5,
+      "post_feedback_accuracy": 1.0,
+      "query_accuracy": 1.0,
+      "zero_shot_accuracy": 0.5
+    },
+    "workspace_disabled": {
+      "accuracy_by_trial": [
+        0.5,
+        0.49365234375,
+        0.998046875,
+        0.85107421875,
+        0.7509765625,
+        0.69970703125
+      ],
+      "final_accuracy": 0.69970703125,
+      "learning_gain": 0.324951171875,
+      "post_feedback_accuracy": 0.824951171875,
+      "query_accuracy": 0.824951171875,
+      "zero_shot_accuracy": 0.5
+    }
+  },
+  "gate": {
+    "accepted": false,
+    "binary_retained": true,
+    "coefficient_tracks_both_switches": false,
+    "each_phase_within_3_points_of_oracle_and_target_at_least_78": false,
+    "each_shift_beats_frozen_and_adds_4_target_points": false,
+    "equal_mixture_skill_restored": true,
+    "four_rule_retained": true,
+    "frequency_phase_target_at_least_78": false,
+    "only_utility_residual_changed": true,
+    "returned_recency_within_5_points": true
+  },
+  "history": [
+    {
+      "elapsed_seconds": 0.8551215259358287,
+      "frequency_weight_parameter": -11.157492637634277,
+      "generated_contexts": 3584,
+      "global_step": 0,
+      "phase": "recency_dominant",
+      "phase_step": 0,
+      "replace_rate": 1.0,
+      "target_eviction_rate": 0.828125,
+      "visible_oracle_target_rate": 0.91796875
+    },
+    {
+      "elapsed_seconds": 1.710031340830028,
+      "frequency_weight_parameter": -11.157492637634277,
+      "generated_contexts": 3584,
+      "global_step": 4,
+      "loss": -0.0039062490686774254,
+      "phase": "recency_dominant",
+      "phase_step": 4,
+      "policy_entropy": 0.0,
+      "replace_rate": 1.0,
+      "sampled_reward": 0.927734375,
+      "sampled_target_eviction_rate": 0.9296875,
+      "target_eviction_rate": 0.86328125,
+      "visible_oracle_target_rate": 0.93359375
+    },
+    {
+      "elapsed_seconds": 2.4836920239031315,
+      "frequency_weight_parameter": -11.157492637634277,
+      "generated_contexts": 3584,
+      "global_step": 8,
+      "loss": 0.0026822909712791443,
+      "phase": "recency_dominant",
+      "phase_step": 8,
+      "policy_entropy": 0.0,
+      "replace_rate": 1.0,
+      "sampled_reward": 0.9536197781562805,
+      "sampled_target_eviction_rate": 0.7734375,
+      "target_eviction_rate": 0.828125,
+      "visible_oracle_target_rate": 0.91015625
+    },
+    {
+      "elapsed_seconds": 3.2616715838667005,
+      "frequency_weight_parameter": -14.157492637634277,
+      "generated_contexts": 3584,
+      "global_step": 12,
+      "loss": 0.0038281241431832314,
+      "phase": "recency_dominant",
+      "phase_step": 12,
+      "policy_entropy": 0.0,
+      "replace_rate": 0.9765625,
+      "sampled_reward": 0.927734375,
+      "sampled_target_eviction_rate": 0.6171875,
+      "target_eviction_rate": 0.67578125,
+      "visible_oracle_target_rate": 0.9375
+    },
+    {
+      "elapsed_seconds": 4.0408686539158225,
+      "frequency_weight_parameter": -11.157492637634277,
+      "generated_contexts": 3584,
+      "global_step": 16,
+      "loss": -9.313225746154785e-10,
+      "phase": "recency_dominant",
+      "phase_step": 16,
+      "policy_entropy": 0.0,
+      "replace_rate": 1.0,
+      "sampled_reward": 0.9407552480697632,
+      "sampled_target_eviction_rate": 0.921875,
+      "target_eviction_rate": 0.88671875,
+      "visible_oracle_target_rate": 0.9453125
+    },
+    {
+      "elapsed_seconds": 6.149704414885491,
+      "frequency_weight_parameter": -11.157492637634277,
+      "generated_contexts": 3584,
+      "global_step": 16,
+      "phase": "frequency_dominant",
+      "phase_step": 0,
+      "replace_rate": 1.0,
+      "target_eviction_rate": 0.66015625,
+      "visible_oracle_target_rate": 0.9609375
+    },
+    {
+      "elapsed_seconds": 6.885103328851983,
+      "frequency_weight_parameter": -8.157492637634277,
+      "generated_contexts": 3584,
+      "global_step": 20,
+      "loss": 0.0013020830228924751,
+      "phase": "frequency_dominant",
+      "phase_step": 4,
+      "policy_entropy": 0.0,
+      "replace_rate": 1.0,
+      "sampled_reward": 0.9196875095367432,
+      "sampled_target_eviction_rate": 0.6796875,
+      "target_eviction_rate": 0.5546875,
+      "visible_oracle_target_rate": 0.9453125
+    },
+    {
+      "elapsed_seconds": 7.654304584953934,
+      "frequency_weight_parameter": -11.157492637634277,
+      "generated_contexts": 3584,
+      "global_step": 24,
+      "loss": 9.313225746154785e-10,
+      "phase": "frequency_dominant",
+      "phase_step": 8,
+      "policy_entropy": 0.0,
+      "replace_rate": 1.0,
+      "sampled_reward": 0.9157812595367432,
+      "sampled_target_eviction_rate": 0.7421875,
+      "target_eviction_rate": 0.7265625,
+      "visible_oracle_target_rate": 0.9609375
+    },
+    {
+      "elapsed_seconds": 8.404446590924636,
+      "frequency_weight_parameter": -11.157492637634277,
+      "generated_contexts": 3584,
+      "global_step": 28,
+      "loss": 0.0052864570170640945,
+      "phase": "frequency_dominant",
+      "phase_step": 12,
+      "policy_entropy": 0.0,
+      "replace_rate": 1.0,
+      "sampled_reward": 0.9054427146911621,
+      "sampled_target_eviction_rate": 0.6640625,
+      "target_eviction_rate": 0.6796875,
+      "visible_oracle_target_rate": 0.9609375
+    },
+    {
+      "elapsed_seconds": 9.153891867026687,
+      "frequency_weight_parameter": -8.157492637634277,
+      "generated_contexts": 3584,
+      "global_step": 32,
+      "loss": 0.0013020834885537624,
+      "phase": "frequency_dominant",
+      "phase_step": 16,
+      "policy_entropy": 0.0,
+      "replace_rate": 1.0,
+      "sampled_reward": 0.91447913646698,
+      "sampled_target_eviction_rate": 0.6328125,
+      "target_eviction_rate": 0.57421875,
+      "visible_oracle_target_rate": 0.953125
+    },
+    {
+      "elapsed_seconds": 11.039598736912012,
+      "frequency_weight_parameter": -8.157492637634277,
+      "generated_contexts": 3584,
+      "global_step": 32,
+      "phase": "recency_return",
+      "phase_step": 0,
+      "replace_rate": 1.0,
+      "target_eviction_rate": 0.9296875,
+      "visible_oracle_target_rate": 0.94921875
+    },
+    {
+      "elapsed_seconds": 11.782729167025536,
+      "frequency_weight_parameter": -11.157492637634277,
+      "generated_contexts": 3584,
+      "global_step": 36,
+      "loss": 0.0013020825572311878,
+      "phase": "recency_return",
+      "phase_step": 4,
+      "policy_entropy": 0.0,
+      "replace_rate": 1.0,
+      "sampled_reward": 0.9496354460716248,
+      "sampled_target_eviction_rate": 0.84375,
+      "target_eviction_rate": 0.84375,
+      "visible_oracle_target_rate": 0.921875
+    },
+    {
+      "elapsed_seconds": 12.548475703923032,
+      "frequency_weight_parameter": -17.157493591308594,
+      "generated_contexts": 3584,
+      "global_step": 40,
+      "loss": 0.005052083637565374,
+      "phase": "recency_return",
+      "phase_step": 8,
+      "policy_entropy": 0.0,
+      "replace_rate": 0.93359375,
+      "sampled_reward": 0.926354169845581,
+      "sampled_target_eviction_rate": 0.6328125,
+      "target_eviction_rate": 0.58203125,
+      "visible_oracle_target_rate": 0.9140625
+    },
+    {
+      "elapsed_seconds": 13.27903869189322,
+      "frequency_weight_parameter": -14.157493591308594,
+      "generated_contexts": 3584,
+      "global_step": 44,
+      "loss": 0.007578123826533556,
+      "phase": "recency_return",
+      "phase_step": 12,
+      "policy_entropy": 0.0,
+      "replace_rate": 0.9765625,
+      "sampled_reward": 0.9340885877609253,
+      "sampled_target_eviction_rate": 0.6484375,
+      "target_eviction_rate": 0.73828125,
+      "visible_oracle_target_rate": 0.94921875
+    },
+    {
+      "elapsed_seconds": 14.04901084699668,
+      "frequency_weight_parameter": -8.157493591308594,
+      "generated_contexts": 3584,
+      "global_step": 48,
+      "loss": -0.0013020825572311878,
+      "phase": "recency_return",
+      "phase_step": 16,
+      "policy_entropy": 0.0,
+      "replace_rate": 1.0,
+      "sampled_reward": 0.94572913646698,
+      "sampled_target_eviction_rate": 0.90625,
+      "target_eviction_rate": 0.88671875,
+      "visible_oracle_target_rate": 0.9375
+    },
+    {
+      "elapsed_seconds": 15.968626326881349,
+      "frequency_weight_parameter": -8.157493591308594,
+      "generated_contexts": 3584,
+      "global_step": 48,
+      "phase": "equal_return",
+      "phase_step": 0,
+      "replace_rate": 1.0,
+      "target_eviction_rate": 0.76171875,
+      "visible_oracle_target_rate": 0.92578125
+    },
+    {
+      "elapsed_seconds": 16.755764501867816,
+      "frequency_weight_parameter": -11.157493591308594,
+      "generated_contexts": 3584,
+      "global_step": 52,
+      "loss": 0.010416664183139801,
+      "phase": "equal_return",
+      "phase_step": 4,
+      "policy_entropy": 0.0,
+      "replace_rate": 1.0,
+      "sampled_reward": 0.9392187595367432,
+      "sampled_target_eviction_rate": 0.9140625,
+      "target_eviction_rate": 0.84375,
+      "visible_oracle_target_rate": 0.89453125
+    },
+    {
+      "elapsed_seconds": 17.534203242044896,
+      "frequency_weight_parameter": -14.157493591308594,
+      "generated_contexts": 3584,
+      "global_step": 56,
+      "loss": 0.008802082389593124,
+      "phase": "equal_return",
+      "phase_step": 8,
+      "policy_entropy": 0.0,
+      "replace_rate": 0.9921875,
+      "sampled_reward": 0.9548437595367432,
+      "sampled_target_eviction_rate": 0.9375,
+      "target_eviction_rate": 0.890625,
+      "visible_oracle_target_rate": 0.921875
+    },
+    {
+      "elapsed_seconds": 18.385084429988638,
+      "frequency_weight_parameter": -11.157493591308594,
+      "generated_contexts": 3584,
+      "global_step": 60,
+      "loss": -0.0011458327062427998,
+      "phase": "equal_return",
+      "phase_step": 12,
+      "policy_entropy": 0.0,
+      "replace_rate": 1.0,
+      "sampled_reward": 0.9471875429153442,
+      "sampled_target_eviction_rate": 0.8828125,
+      "target_eviction_rate": 0.84375,
+      "visible_oracle_target_rate": 0.91015625
+    },
+    {
+      "elapsed_seconds": 19.16052769194357,
+      "frequency_weight_parameter": -11.157493591308594,
+      "generated_contexts": 3584,
+      "global_step": 64,
+      "loss": -0.0011458336375653744,
+      "phase": "equal_return",
+      "phase_step": 16,
+      "policy_entropy": 0.0,
+      "replace_rate": 1.0,
+      "sampled_reward": 0.9393750429153442,
+      "sampled_target_eviction_rate": 0.8046875,
+      "target_eviction_rate": 0.8828125,
+      "visible_oracle_target_rate": 0.96484375
+    }
+  ],
+  "initial_frequency_weight_parameter": -11.157492637634277,
+  "optimizer_reset_at_boundaries": false,
+  "phases": [
+    {
+      "frequency_weight": 0.35,
+      "name": "recency_dominant",
+      "recency_weight": 0.65
+    },
+    {
+      "frequency_weight": 0.65,
+      "name": "frequency_dominant",
+      "recency_weight": 0.35
+    },
+    {
+      "frequency_weight": 0.35,
+      "name": "recency_return",
+      "recency_weight": 0.65
+    },
+    {
+      "frequency_weight": 0.5,
+      "name": "equal_return",
+      "recency_weight": 0.5
+    }
+  ],
+  "reward_alignment_control": "shuffled_across_banks",
+  "schema": "unified-controller-online-utility-adaptation-v1",
+  "semantic_or_utility_labels_used_for_training": false,
+  "total_seconds": 21.746640825876966,
+  "training_signal": "symmetric_perturbation_verified_horse_race"
+}

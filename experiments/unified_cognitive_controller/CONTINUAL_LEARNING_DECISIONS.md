@@ -82,10 +82,17 @@ The next rung also passed: a one-parameter residual composed persistent access
 frequency with inherited recency in two 20-update reward-only runs, then passed
 two physical disk and history-corruption audits without forgetting.
 
-The next high-value question is whether utility can adapt online when its
-frequency-versus-recency mixture changes over time. Start with a tiny
-piecewise-stationary stream at capacity 6. Measure verified regret, adaptation
-bits after each switch, retention of the prior mixture, and whether stored
-access history remains useful. Do not add consolidation or merging until the
-controller can adjust this one generic trade-off without labels or a manually
-selected mode.
+That question has now passed at the one-parameter scale. Two independent
+64-update streams tracked recency→frequency→recency→equal utility changes
+without boundaries, labels, replay, optimizer resets, or forgetting. A
+reward-shuffled control failed, and the selected controller passed a
+1,024-bank physical disk/history audit.
+
+The next high-value question is whether the same verifier-driven horse race can
+adapt a small higher-dimensional latent utility policy rather than a single
+human-chosen coefficient. Begin with two generic features whose relevance
+changes gradually and test one additional parameter at a time. Compare against
+the one-parameter parent at matched unique verifier bits and require lower
+post-switch regret, intact old gates, and causal feature corruptions. Do not
+add consolidation or merging until a sub-minute run shows that the gain is
+from reusable online adaptation rather than a larger fixed policy.

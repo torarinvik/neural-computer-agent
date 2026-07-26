@@ -122,7 +122,7 @@ transferred with zero weight updates through capacities 7 and 8 and reached a
 replicated physical capacity-9 frontier at 94.57% and 94.62%, with
 99.61–100% correct evictions and zero growth.
 
-The current checkpoint is
+The fixed-utility parent is
 `artifacts/checkpoints/unified_memory_frequency_recency_capacity6_seed6607.pt`,
 SHA-256
 `1346da994de4ba20864c5f1bc1da12684fc13d8dcda480a76cfc6f713da0181c`.
@@ -148,13 +148,43 @@ save/reload, kept 3,072 total rows bounded, and never grew capacity. Shuffling
 age reduced accuracy by 4.56–4.75 points; shuffling frequency reduced it by
 6.77–7.75 points.
 
+The next rung removed the fixed utility mixture. In one uninterrupted stream,
+the relative value of recency and access frequency changed from 65:35 to
+35:65, returned to 65:35, and ended at 50:50. No phase identity, boundary
+signal, optimizer reset, utility label, correct eviction label, or replay was
+available to the learner. A symmetric two-candidate horse race changed only
+the controller's existing one-parameter utility residual according to which
+candidate produced more verified future success.
+
+Two independent 64-update runs passed all online, retention, and causal gates
+in 28.66 and 28.89 seconds:
+
+| Seed | Recency target | Frequency target | Recency-return target | Equal-return target |
+|---:|---:|---:|---:|---:|
+| 6809 | 90.67% | 86.43% | 91.16% | 90.53% |
+| 6810 | 90.82% | 87.16% | 91.31% | 89.99% |
+
+The frequency-dominant phase improved held-out accuracy from 93.87% to 95.62%
+and from 93.49% to 95.37% over an unadapted copy. Shuffling which candidate
+received each verified outcome made the adaptation fail: the frequency target
+fell to 57.71%. The selected checkpoint then passed a 1,024-bank physical disk
+audit at 96.94%, within 0.13 points of the visible oracle. Shuffling age or
+frequency reduced it to 92.74% and 88.66%; all 6,144 rows and access histories
+survived save/reload exactly and capacity never grew.
+
+The current checkpoint is
+`artifacts/checkpoints/unified_memory_online_utility_seed6810.pt`, SHA-256
+`c3e837c6512a30c11b1c861b79242296b76cfa0cd9fe62aa414d3e5b2aa10750`.
+This establishes rapid verifier-driven adaptation of one generic controller
+coefficient, not yet a learned general-purpose internal meta-optimizer.
+
 Unseen elongated diamonds and disconnected dot-pair stimuli also transfer
 zero-shot at 94.95–98.14%, tightening the evidence that visual identity is
 relational rather than tied to the original rectangles.
 
-Online adaptation to changing utility weights, consolidation, deletion/merging,
-unbounded memory streams, and cross-modality transfer remain open. See
-`experiments/unified_cognitive_controller/README.md`.
+Online adaptation of a higher-dimensional latent utility policy, consolidation,
+deletion/merging, unbounded memory streams, and cross-modality transfer remain
+open. See `experiments/unified_cognitive_controller/README.md`.
 
 The two-decision identify-then-act task requires the agent to:
 

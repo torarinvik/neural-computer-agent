@@ -145,3 +145,35 @@ replicated the milestone:
 - Held-out / physical accuracy: 95.10% / 96.29%
 - Physical correct evictions: 93.36%
 - All causal, bounded-disk, persistence, and retention gates passed
+
+## Online utility adaptation
+
+`unified_memory_online_utility_seed6810.pt` is the promoted online-adaptation
+milestone.
+
+- SHA-256:
+  `c3e837c6512a30c11b1c861b79242296b76cfa0cd9fe62aa414d3e5b2aa10750`
+- Parent: `unified_memory_frequency_recency_capacity6_seed6607.pt`
+- Size: approximately 1.2 MB; 298,359 parameters
+- Acquisition: 64 symmetric perturbation horse-race updates, 212,992 unique
+  verifier bits counting both candidates, zero replay, 28.89 seconds total
+- Continuous phases: recency-dominant → frequency-dominant → recency return →
+  equal return, with no learner-visible boundary or optimizer reset
+- Correct-target rates: 90.82%, 87.16%, 91.31%, 89.99%
+- Physical disk audit: 96.94% learned versus 96.81% visible oracle
+- 6,144 rows and all 1,024 access histories survived save/reload; zero growth
+- Age/frequency corruption reduced accuracy to 92.74%/88.66%
+- Binary mapping and four-rule retention gates passed
+- Only `memory_replacement_extra_gate.weight` changed
+
+`unified_memory_online_utility_seed6809.pt` independently replicated all online
+and retention gates:
+
+- SHA-256:
+  `d25d26c4d34ff86e50474b5ff38c630a2d92b782dea10d4782b01a363bb64a81`
+- Acquisition: 64 updates, 212,992 unique verifier bits, zero replay,
+  28.66 seconds
+- Correct-target rates: 90.67%, 86.43%, 91.16%, 90.53%
+
+The matched reward-shuffled control failed the frequency switch at 57.71%
+correct targets and saved no checkpoint.
