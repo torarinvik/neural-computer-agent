@@ -49,6 +49,10 @@ from .train_shared_compute_value import (
     SharedComputeValue,
     initialize_from_advantage,
 )
+from .train_cost_aware_requery import (
+    CostAwareComputeValue,
+    initialize_from_four_feature,
+)
 from .train_persistent_memory import _grouped_read
 from .probe_persistent_physical_stream import (
     _future_for_actions,
@@ -421,6 +425,22 @@ def test_shared_compute_value_copies_source_but_resets_novel_adapter() -> None:
     assert torch.equal(
         source(features), shared(features, "read"))
     assert torch.count_nonzero(shared(features, "thought")) == 0
+
+
+def test_cost_aware_expansion_preserves_old_read_at_zero_cost() -> None:
+    from .train_shadow_compute_advantage import ComputeAdvantageHead
+
+    source = ComputeAdvantageHead(hidden=4)
+    expanded = CostAwareComputeValue(hidden=4)
+    initialize_from_four_feature(expanded, {
+        "head_state_dict": source.state_dict(),
+    })
+    features = torch.randn(7, 4)
+    costs = torch.zeros(7)
+    assert torch.equal(
+        source(features), expanded(features, costs, "read"))
+    assert torch.count_nonzero(
+        expanded(features, costs, "requery")) == 0
 
 
 def test_disk_latent_memory_round_trip(tmp_path: Path) -> None:
