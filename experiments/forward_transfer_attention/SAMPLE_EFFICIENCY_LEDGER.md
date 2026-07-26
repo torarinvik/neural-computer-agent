@@ -758,3 +758,36 @@ This mechanistic result is not promoted to a longer run because complete
 policy reset discards the old memory-utility skill.  The next gate is a
 zero-initialized, context-retrieved full-feature replacement residual.  It must
 learn the redundancy atom while remaining an exact no-op on old contexts.
+
+The context-retrieved adapter series then established retention plumbing but
+did not pass its learning gate.  Each sub-minute run used eight updates and
+completed in 17.95–22.62 seconds of measured experiment time.
+
+The first 12-dimensional mean/std context key had overlapping similarity
+tails: new↔new fell to 0.9722 while new↔old reached 0.9844.  Adding generic
+per-feature activity bits produced an 18-dimensional key with new↔new at least
+0.9936 and new↔old at most 0.9294 in a 50-by-50 preflight.  Across all later
+runs, held-out new contexts activated retrieval, three old utility contexts
+rejected it, old replacement scores remained bit-identical, and every external
+strategy save/reload was exact.  Context-local adaptation without forgetting
+is therefore mechanically demonstrated.
+
+Eight-dimensional full-residual SPSA failed.  A two-dimensional arbitrator
+that learns old-policy suppression plus novelty weight produced one partial
+seed-7313 signal (+2.08 reward points, 5.21-point novelty-shuffle cost), but it
+did not replicate.  The trace exposed and fixed unsupported drift from
+candidate ties by making the unchanged center win unless another candidate
+improved verified reward by over `1e-6`.
+
+Per-bank REINFORCE reduced candidate verifier use from 1,152 to 384 bits per
+arm and produced nonzero gradients on every update, but its adapter norm
+reached only 0.058 and behavior stayed flat.  Unit-normalized gradients on
+seed 7317 changed behavior slightly (84.38% to 84.90%) while still missing all
+stable thresholds and novelty causality.  No configuration earned a
+three-minute promotion.
+
+The supported frontier is now credit assignment, not routing or retention.
+The next sub-minute rung is a passive action-conditioned success critic trained
+only from visible statistics, attempted actions, exact propensities, and scalar
+verified outcomes.  It must pass calibration, reward-shuffle, and
+missing-evidence controls before influencing either actions or compute.

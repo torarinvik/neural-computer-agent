@@ -16,6 +16,13 @@ from .train_redundancy_transfer import (
     initialize_from_saved_strategy,
     redundancy_utility_batch,
 )
+from .train_contextual_full_residual import (
+    adapter_scores,
+    full_residual_context_key,
+    residual_scores,
+    retrieve_residual,
+    select_verified_candidate,
+)
 from .train_persistent_memory import _grouped_read
 from .probe_persistent_physical_stream import (
     _future_for_actions,
@@ -812,6 +819,79 @@ def test_saved_strategy_initializes_old_dimensions_only() -> None:
     assert torch.equal(
         model.memory_replacement_extra_gate.weight,
         torch.tensor([[2.0, -3.0, 0.0]]))
+
+
+def test_contextual_full_residual_is_exact_noop_until_retrieved() -> None:
+    model = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        adaptive_memory_read=True,
+        adaptive_memory_replace=True,
+        adaptive_memory_replace_hidden=8,
+        adaptive_memory_replace_features=8)
+    features = torch.randn(2, 4, 8)
+    key = full_residual_context_key(features)
+    assert key.shape == (18,)
+    assert torch.allclose(key.norm(), torch.tensor(1.0))
+    memory = LatentStrategyMemory(
+        capacity=2, key_width=18, value_width=8)
+    residual, accepted, slot, similarity = retrieve_residual(
+        memory, key, threshold=0.982)
+    assert not accepted and slot is None and similarity == 0.0
+    assert torch.count_nonzero(residual) == 0
+    assert torch.equal(
+        residual_scores(model, features, residual),
+        model.memory_replacement_scores(features))
+
+
+def test_contextual_full_residual_rejects_dissimilar_old_context() -> None:
+    memory = LatentStrategyMemory(
+        capacity=2, key_width=18, value_width=8)
+    new_key = torch.nn.functional.normalize(
+        torch.tensor([1.0] + [0.0] * 17), dim=0)
+    old_key = torch.nn.functional.normalize(
+        torch.tensor([0.0, 1.0] + [0.0] * 16), dim=0)
+    value = torch.arange(8, dtype=torch.float32)
+    memory.upsert(new_key, value, verified_improvement=1.0)
+    accepted_value, accepted, slot, _ = retrieve_residual(
+        memory, new_key, threshold=0.982)
+    assert accepted and slot == 0
+    assert torch.equal(accepted_value, value)
+    rejected_value, accepted, slot, similarity = retrieve_residual(
+        memory, old_key, threshold=0.982)
+    assert not accepted and slot is None and similarity == 0.0
+    assert torch.count_nonzero(rejected_value) == 0
+
+
+def test_suppress_novelty_adapter_is_exact_noop_at_zero() -> None:
+    model = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        adaptive_memory_read=True,
+        adaptive_memory_replace=True,
+        adaptive_memory_replace_hidden=8,
+        adaptive_memory_replace_features=8)
+    features = torch.randn(2, 4, 8)
+    assert torch.equal(
+        adapter_scores(
+            model, features, torch.zeros(2),
+            mode="suppress_novelty"),
+        model.memory_replacement_scores(features))
+    adapter = torch.tensor([-6.0, -4.0])
+    scores = adapter_scores(
+        model, features, adapter, mode="suppress_novelty")
+    assert scores.shape == (2, 4)
+    assert not torch.equal(
+        scores, model.memory_replacement_scores(features))
+
+
+def test_verified_candidate_selection_prefers_center_on_ties() -> None:
+    assert select_verified_candidate(
+        torch.tensor([0.8, 0.8, 0.8])) == 1
+    assert select_verified_candidate(
+        torch.tensor([0.8000001, 0.8, 0.7])) == 1
+    assert select_verified_candidate(
+        torch.tensor([0.82, 0.8, 0.7])) == 0
+    assert select_verified_candidate(
+        torch.tensor([0.7, 0.8, 0.83])) == 2
 
 
 def test_disk_memory_can_replace_without_growing(tmp_path: Path) -> None:
