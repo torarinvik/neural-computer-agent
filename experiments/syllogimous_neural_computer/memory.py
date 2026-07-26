@@ -90,7 +90,8 @@ class PersistentMemory:
         self.valid = torch.cat((self.valid, self.valid.new_zeros(amount)))
 
     def read(self, queries: torch.Tensor, top_k: int = 4,
-             temperature: torch.Tensor | float = 1.0
+             temperature: torch.Tensor | float = 1.0,
+             confidence_mode: str = "ranked"
              ) -> tuple[torch.Tensor, torch.Tensor]:
         """Content-addressed sparse reads; returns values and confidence."""
         if queries.ndim != 2 or queries.shape[1] != self.width:
@@ -100,7 +101,8 @@ class PersistentMemory:
         indices = self.valid.nonzero(as_tuple=False).squeeze(1)
         keys = torch.nn.functional.normalize(self.keys[indices], dim=-1)
         queries = torch.nn.functional.normalize(queries, dim=-1)
-        similarity = (queries @ keys.T) * temperature
+        cosine_similarity = queries @ keys.T
+        similarity = cosine_similarity * temperature
         # Learned write strength is both an admission decision and a soft
         # retrieval prior. This lets delayed reward train the write gate in the
         # differentiable lifetime implementation used by the benchmark.
@@ -110,7 +112,14 @@ class PersistentMemory:
         weights = torch.softmax(scores, dim=-1)
         values = self.values[indices[local_indices]]
         read = (weights.unsqueeze(-1) * values).sum(dim=1)
-        return read, scores[:, 0]
+        if confidence_mode == "ranked":
+            confidence = scores[:, 0]
+        elif confidence_mode == "cosine":
+            confidence = torch.gather(
+                cosine_similarity, 1, local_indices[:, :1]).squeeze(1)
+        else:
+            raise ValueError("unsupported confidence mode")
+        return read, confidence
 
     @torch.no_grad()
     def write(self, keys: torch.Tensor, values: torch.Tensor, strengths: torch.Tensor,

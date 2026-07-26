@@ -27,9 +27,12 @@ class DiskLatentMemory:
         return self.store.count
 
     def retrieve(
-            self, queries: torch.Tensor, top_k: int = 4
+            self, queries: torch.Tensor, top_k: int = 4,
+            confidence_mode: str = "ranked"
             ) -> tuple[torch.Tensor, torch.Tensor]:
-        return self.store.read(queries, top_k=top_k)
+        return self.store.read(
+            queries, top_k=top_k,
+            confidence_mode=confidence_mode)
 
     def commit(
             self, keys: torch.Tensor, values: torch.Tensor,

@@ -72,6 +72,14 @@ retaining 99.90% query accuracy. Removing writes, shuffling admissions,
 corrupting values, or hiding the prior memory read causally degraded the
 appropriate behavior.
 
+The first physical integration audit exposed the next boundary: intentionally
+absent default rows retrieve unrelated neighbors in a shared disk bank. A
+reward-learned scalar rejection threshold restored 87.99–88.96% disk accuracy,
+but duplicate growth narrowly missed its gate at 20.02–21.39%. Raw-cosine
+confidence improved the signal but still produced 27–29% false accepts. The
+learned sparse selector and shared disk reader are therefore not yet claimed
+as one admitted end-to-end capability.
+
 Unseen elongated diamonds and disconnected dot-pair stimuli also transfer
 zero-shot at 94.95–98.14%, tightening the evidence that visual identity is
 relational rather than tied to the original rectangles.

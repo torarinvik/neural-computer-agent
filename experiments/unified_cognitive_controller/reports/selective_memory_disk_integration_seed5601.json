@@ -1,0 +1,30 @@
+{
+  "bank_capacity": 8,
+  "banks": 64,
+  "checkpoint": "artifacts/candidates/unified_selective_memory_atom_seed5402_steps80_v2.pt",
+  "checkpoint_sha256": "3fa82275e37ba5de686d4ec9966c1345e15b46e89938a8cf9bc0e0da94b15c30",
+  "contexts": 512,
+  "duplicate_rows_added": 241,
+  "duplicate_rows_per_context": 0.470703125,
+  "final_disk_bytes": 775168,
+  "final_rows": 551,
+  "first_disk_bytes": 574464,
+  "first_disk_reload_accuracy": 0.568359375,
+  "first_rows": 310,
+  "gate": {
+    "accepted": false,
+    "duplicate_rows_at_most_20_percent": false,
+    "first_disk_reload_at_least_85": false,
+    "memory_is_causal": false,
+    "repeat_disk_reload_at_least_85": false,
+    "tensor_policy_at_least_95": true
+  },
+  "no_memory_accuracy": 0.501953125,
+  "repeat_disk_reload_accuracy": 0.599609375,
+  "schema": "unified-controller-selective-disk-audit-v1",
+  "seed": 5601,
+  "semantic_labels_used": false,
+  "tensor_sparse_accuracy": 1.0,
+  "weights_changed": false,
+  "write_threshold": 0.5
+}

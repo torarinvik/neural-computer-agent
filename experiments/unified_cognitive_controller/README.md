@@ -229,11 +229,37 @@ The current checkpoint is
 `artifacts/checkpoints/unified_selective_memory_atom_seed5402.pt`, SHA-256
 `3fa82275e37ba5de686d4ec9966c1345e15b46e89938a8cf9bc0e0da94b15c30`.
 
+## Disk-integration frontier
+
+The learned selector was then connected to actual eight-context disk banks:
+commit admitted rows, serialize files, erase active state, reload, retrieve,
+revisit the contexts, commit any repeat writes, serialize again, and query.
+The ungated reader failed because an intentionally absent default row still
+retrieved the nearest unrelated row: tensor accuracy was 100%, first disk
+reload accuracy fell to 56.84%, and duplicate growth rose from 5.10% to 47.07%.
+
+A one-scalar no-match gate learned from verified outcomes raised held-out
+tensor-bank accuracy to 88.94%. On two physical 1,024-context disk audits it
+preserved 87.99–88.96% accuracy, but duplicate growth reached 20.02% and
+21.39%, missing the pre-registered 20% gate. The failure localized a confidence
+bug: ranking mixed cosine similarity with a write-strength prior. A
+backward-compatible raw-cosine confidence mode fixed exact-repeat confidence,
+but two fresh scalar pilots still exceeded the 25% absent-row false-accept
+gate at 29.13% and 27.00%. Both were rejected and no checkpoint was saved.
+
+Therefore the complete learned RAM/VRAM-to-disk loop is not yet an admitted
+milestone. The next target is an adaptive read/no-read decision conditioned on
+controller state and match confidence, trained through verified outcomes; a
+single global threshold is insufficient.
+
 Claim boundary: this demonstrates controller-created, content-addressed latent
 storage and recall across active-state resets, with actual disk serialization.
 It also demonstrates a learned write/skip decision for redundant encounters.
-Replacement between competing memories, consolidation across an unbounded
-stream, deletion/merging, modality transfer, and broad reasoning remain open.
+It does not yet demonstrate that the learned sparse selector and shared disk
+reader operate together within the storage-efficiency gate. Adaptive
+no-match rejection, replacement between competing memories, consolidation
+across an unbounded stream, deletion/merging, modality transfer, and broad
+reasoning remain open.
 
 Run the sub-minute GPU experiment:
 

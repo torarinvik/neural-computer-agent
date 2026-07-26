@@ -178,6 +178,21 @@ def test_disk_latent_memory_round_trip(tmp_path: Path) -> None:
     assert confidence.shape == (1,)
 
 
+def test_disk_memory_can_report_cosine_match_confidence() -> None:
+    memory = DiskLatentMemory(width=4, capacity=2)
+    keys = torch.eye(4)[:2]
+    values = torch.arange(8, dtype=torch.float32).reshape(2, 4)
+    strengths = torch.tensor([0.5, 0.9])
+    assert memory.commit(
+        keys, values, strengths, threshold=0.0) == 2
+    _, ranked = memory.retrieve(keys[:1], top_k=1)
+    read, cosine = memory.retrieve(
+        keys[:1], top_k=1, confidence_mode="cosine")
+    assert torch.allclose(read, values[:1])
+    assert torch.allclose(cosine, torch.ones_like(cosine))
+    assert ranked.item() < cosine.item()
+
+
 def test_recurring_context_signature_is_stable_within_world() -> None:
     batch = generate_lifetimes(
         8, 3, seed=31, task="binary_mapping", support_trials=1)
