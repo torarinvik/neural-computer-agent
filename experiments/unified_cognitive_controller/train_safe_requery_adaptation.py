@@ -188,9 +188,11 @@ def main() -> None:
                 if promoted:
                     arm["incumbent"].load_state_dict(
                         arm["challenger"].state_dict())
+                    # Earlier records compared against the previous incumbent;
+                    # restart the paired audit only after an actual promotion.
+                    arm["logged"].clear()
                 arm["promotions"].append({
                     "step": step, **evidence, "promoted": promoted})
-                arm["logged"].clear()
         if step % 2 == 0 or step == args.steps:
             record(step)
 
