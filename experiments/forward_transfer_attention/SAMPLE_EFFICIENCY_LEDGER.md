@@ -370,3 +370,41 @@ obtain counterfactual credit there. The bottleneck is now localized to
 behavioral strategy diversity. Longer context training, larger encoders, more
 directions, and more reliability contexts are all rejected until the strategy
 bank can preserve alternatives that actually act differently.
+
+## Replicated value-diverse strategy memory
+
+Action-signature admission was rejected immediately: signatures from different
+physical batches are not comparable, and the informative rate fell to zero.
+The corrected task-agnostic mechanism preserves separation directly in the
+two-dimensional latent strategy values. It stores an already verifier-scored
+candidate that maximizes the bank's minimum pairwise distance, so it adds no
+environmental experience or verifier calls.
+
+An RNG audit found and fixed a confound: context-direction proposals had shared
+the later policy-perturbation random stream. With independent random streams,
+matched winner-only and value-diverse banks used identical physical candidate
+sequences and verifier budgets.
+
+At 54 physical rounds, value diversity improved verifier bits per
+reward-informative soft comparison on both paired seeds:
+
+- seed 7073: 918.9 to 214.4 bits (4.29x);
+- seed 7072: 1,072.0 to 714.7 bits (1.50x).
+
+On seed 7073, 56.6% of soft pairs changed verified reward, reliability target
+accuracy reached 41.7% versus 8.3% frozen, and old-utility return reached 95.8%
+versus 12.5% frozen. On the harder seed 7072, the absolute informative rate
+was lower (17.0%), but the diverse bank reached 27.8% old-return target
+accuracy versus 9.7% frozen; the matched ordinary bank reached 0%.
+
+All intact value-diverse arms retained binary and four-rule capability and
+passed physical/tensor parity and persistence gates. Shuffling physical reward
+alignment on seed 7073 failed the gate and collapsed old-return target accuracy
+to zero. The effect is therefore variable in magnitude but replicated in
+direction and causally dependent on correctly aligned verifier outcomes.
+
+Value-diverse admission plus cost-free active direction screening is promoted
+as the current strategy-memory mechanism. Dynamic slot allocation remains
+disabled. The next frontier is to make the gain less seed-sensitive, using
+matched tiny races and no additional context capacity until the source of the
+7072/7073 variance is localized.

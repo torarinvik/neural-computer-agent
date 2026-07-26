@@ -64,6 +64,39 @@ def _curriculum_phases(
     ]
 
 
+def _value_diverse_admission(
+        memory: LatentStrategyMemory,
+        candidates: list[torch.Tensor],
+        rewards: list[float],
+        ) -> tuple[int, int | None]:
+    """Choose the scored candidate/slot maximizing latent bank separation."""
+    flattened = [candidate.flatten() for candidate in candidates]
+    if memory.count == 0:
+        return max(range(len(rewards)), key=rewards.__getitem__), None
+    if memory.count < memory.capacity:
+        distances = [
+            float(torch.cdist(
+                candidate.unsqueeze(0),
+                memory.values[:memory.count]).min())
+            for candidate in flattened
+        ]
+        index = max(
+            range(len(flattened)),
+            key=lambda candidate: (distances[candidate], rewards[candidate]))
+        return index, None
+    choices = []
+    for candidate_index, candidate in enumerate(flattened):
+        for slot in range(memory.count):
+            proposed = memory.values[:memory.count].clone()
+            proposed[slot] = candidate
+            separation = float(torch.pdist(proposed).min())
+            choices.append((
+                separation, rewards[candidate_index],
+                candidate_index, slot))
+    _, _, candidate_index, slot = max(choices)
+    return candidate_index, slot
+
+
 def _clone_model(
         payload: dict[str, object], device: torch.device,
         ) -> UnifiedCognitiveController:
@@ -105,6 +138,14 @@ def main() -> None:
     parser.add_argument(
         "--strategy-memory-capacity", type=int, default=0,
         help="zero uses the global residual; positive enables latent RAM")
+    parser.add_argument(
+        "--strategy-admission",
+        choices=(
+            "winner", "action_diversity", "value_diversity"),
+        default="winner",
+        help=(
+            "action_diversity preserves a behaviorally novel already-scored "
+            "candidate without adding verifier evaluations"))
     parser.add_argument(
         "--context-learning-rate", type=float, default=0.0,
         help="positive enables verifier-trained context feature weighting")
@@ -160,6 +201,8 @@ def main() -> None:
             device=device)
         direction_generator = torch.Generator(device=device).manual_seed(
             args.seed + 70_000_000)
+        context_direction_generator = torch.Generator(
+            device=device).manual_seed(args.seed + 71_000_000)
         strategy_memory = (
             LatentStrategyMemory(capacity=args.strategy_memory_capacity,
                                  key_width=13, device=device)
@@ -321,10 +364,14 @@ def main() -> None:
                 physical_means = []
                 tensor_means = []
                 actions_by_candidate = []
+                candidate_weights = []
                 for candidate_index, sign in enumerate(signs):
-                    model.memory_replacement_extra_gate.weight.copy_(
+                    candidate_weight = (
                         current + sign * args.perturbation
                         * direction.unsqueeze(0))
+                    candidate_weights.append(candidate_weight)
+                    model.memory_replacement_extra_gate.weight.copy_(
+                        candidate_weight)
                     actions = model.memory_replacement_scores(
                         features).argmax(-1)
                     actions_by_candidate.append(actions)
@@ -361,7 +408,7 @@ def main() -> None:
                                 args.soft_context_direction_proposals):
                             proposed_direction = torch.randint(
                                 0, 2, (13,),
-                                generator=direction_generator,
+                                generator=context_direction_generator,
                                 device=device).float() * 2 - 1
                             proposed_retrievals = []
                             proposed_actions = []
@@ -408,6 +455,7 @@ def main() -> None:
                         strategy_candidate_evaluations += 1
                         candidate_weight = retrieval.value.reshape(1, -1)
                         soft_weights.append(candidate_weight)
+                        candidate_weights.append(candidate_weight)
                         model.memory_replacement_extra_gate.weight.copy_(
                             candidate_weight)
                         memory_actions = model.memory_replacement_scores(
@@ -499,17 +547,72 @@ def main() -> None:
                 model.memory_replacement_extra_gate.weight.copy_(
                     winner_weight)
                 strategy_slot = None
+                strategy_admission_candidate = physical_winner
+                strategy_admission_was_novel = None
                 if strategy_memory is not None:
+                    preferred_slot = None
+                    if args.strategy_admission == "action_diversity":
+                        existing_patterns = [
+                            tuple(actions.tolist())
+                            for actions in slot_actions
+                        ]
+                        ranked_candidates = sorted(
+                            range(len(physical_means)),
+                            key=physical_means.__getitem__, reverse=True)
+                        novel = [
+                            index for index in ranked_candidates
+                            if tuple(
+                                actions_by_candidate[index].tolist()
+                            ) not in existing_patterns
+                        ]
+                        if novel:
+                            strategy_admission_candidate = novel[0]
+                            strategy_admission_was_novel = True
+                            if strategy_memory.count == strategy_memory.capacity:
+                                duplicate_slots = [
+                                    slot for slot, pattern in enumerate(
+                                        existing_patterns)
+                                    if existing_patterns.count(pattern) > 1
+                                ]
+                                if duplicate_slots:
+                                    reliability = (
+                                        (
+                                            strategy_memory.success.float()
+                                            + 1
+                                        ) / (
+                                            strategy_memory.success
+                                            + strategy_memory.failure + 2
+                                        ).float())
+                                    utility = (
+                                        strategy_memory.usage.float()
+                                        + reliability)
+                                    preferred_slot = min(
+                                        duplicate_slots,
+                                        key=lambda slot: float(
+                                            utility[slot]))
+                        else:
+                            strategy_admission_was_novel = False
+                    elif args.strategy_admission == "value_diversity":
+                        (
+                            strategy_admission_candidate,
+                            preferred_slot,
+                        ) = _value_diverse_admission(
+                            strategy_memory, candidate_weights,
+                            physical_means)
+                        strategy_admission_was_novel = True
+                    storage_weight = candidate_weights[
+                        strategy_admission_candidate]
                     reward_signature = torch.tensor(
                         physical_means[:3], device=device)
                     storage_context_key = physical_context_key(
                         features, reward_signature)
                     strategy_slot = strategy_memory.upsert(
                         storage_context_key,
-                        model.memory_replacement_extra_gate.weight.flatten(),
+                        storage_weight.flatten(),
                         verified_improvement=(
-                            physical_means[physical_winner]
-                            - physical_means[1]))
+                            physical_means[strategy_admission_candidate]
+                            - physical_means[1]),
+                        preferred_slot=preferred_slot)
                     strategy_path = (
                         root / f"round-{rounds:03d}-strategy.pt")
                     strategy_memory.save(strategy_path)
@@ -578,6 +681,10 @@ def main() -> None:
                         strategy_retrieval.similarity
                         if strategy_retrieval is not None else None),
                     "strategy_updated_slot": strategy_slot,
+                    "strategy_admission_candidate":
+                        strategy_admission_candidate,
+                    "strategy_admission_was_novel":
+                        strategy_admission_was_novel,
                     "post_probe_strategy_slot": (
                         post_probe_retrieval.slot
                         if post_probe_retrieval is not None else None),

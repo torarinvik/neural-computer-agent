@@ -170,12 +170,17 @@ class LatentStrategyMemory:
 
     def upsert(
             self, key: torch.Tensor, value: torch.Tensor, *,
-            verified_improvement: float) -> int:
+            verified_improvement: float,
+            preferred_slot: int | None = None) -> int:
         if key.shape != (self.key_width,):
             raise ValueError("strategy key has wrong width")
         if value.shape != (self.value_width,):
             raise ValueError("strategy value has wrong width")
-        if self.count < self.capacity:
+        if preferred_slot is not None:
+            if not 0 <= preferred_slot < self.count:
+                raise IndexError("preferred strategy slot is out of range")
+            slot = preferred_slot
+        elif self.count < self.capacity:
             slot = self.count
             self.count += 1
         else:

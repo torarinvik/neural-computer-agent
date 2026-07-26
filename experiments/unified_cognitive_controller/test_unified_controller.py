@@ -21,6 +21,7 @@ from .strategy_memory import (
 )
 from .train_persistent_physical_utility_adaptation import (
     _curriculum_phases,
+    _value_diverse_admission,
 )
 from .dynamic_working_memory import (
     CapabilityLedger,
@@ -307,6 +308,23 @@ def test_strategy_memory_is_bounded_retrievable_and_persistent(
     assert torch.equal(restored.failure, memory.failure)
 
 
+def test_strategy_memory_can_replace_a_preferred_duplicate_slot() -> None:
+    memory = LatentStrategyMemory(
+        capacity=2, key_width=2, value_width=1)
+    memory.upsert(
+        torch.tensor([1.0, 0.0]), torch.tensor([1.0]),
+        verified_improvement=1.0)
+    memory.upsert(
+        torch.tensor([0.0, 1.0]), torch.tensor([2.0]),
+        verified_improvement=1.0)
+    slot = memory.upsert(
+        torch.tensor([-1.0, 0.0]), torch.tensor([3.0]),
+        verified_improvement=1.0, preferred_slot=0)
+    assert slot == 0
+    assert memory.count == 2
+    assert torch.equal(memory.values[:, 0], torch.tensor([3.0, 2.0]))
+
+
 def test_physical_context_key_ignores_skip_and_is_normalized() -> None:
     features = torch.zeros(2, 4, 7)
     features[:, 1:, 0] = 0.5
@@ -400,6 +418,26 @@ def test_context_reliability_ramp_has_six_rounds_and_one_changing_axis(
     for _, weights, _ in phases:
         assert abs(sum(weights) - 1.0) < 1e-9
         assert weights[0] == weights[1]
+
+
+def test_value_diverse_admission_preserves_latent_extremes() -> None:
+    memory = LatentStrategyMemory(
+        capacity=2, key_width=2, value_width=2)
+    memory.upsert(
+        torch.tensor([1.0, 0.0]), torch.tensor([-2.0, 0.0]),
+        verified_improvement=1.0)
+    memory.upsert(
+        torch.tensor([0.0, 1.0]), torch.tensor([0.0, 0.0]),
+        verified_improvement=1.0)
+    candidate, slot = _value_diverse_admission(
+        memory,
+        [
+            torch.tensor([[0.1, 0.0]]),
+            torch.tensor([[3.0, 0.0]]),
+        ],
+        [1.0, 0.5])
+    assert candidate == 1
+    assert slot == 1
 
 
 def test_dynamic_working_memory_mask_accounting_and_persistence(
