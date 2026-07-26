@@ -411,6 +411,12 @@ def main() -> None:
             "selected_prefix": str(args.selected_prefix),
             "head_checkpoint": str(args.head_checkpoint),
             "report": str(args.report),
+            "skill_store": (
+                str(args.skill_store)
+                if args.skill_store is not None else None),
+            "parent_audit": (
+                str(args.parent_audit)
+                if args.parent_audit is not None else None),
         },
         "learner_visible": [
             "four_generic_memory_statistics", "attempted_action",
