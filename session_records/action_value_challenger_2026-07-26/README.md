@@ -59,3 +59,17 @@ zero-initialized, so no policy or task knowledge is injected.
 First replay seeds 7973, 7981, and 7982 as a stability diagnostic. If all three
 protect mastery and confirm a gap promotion by 720 bits, run untouched seeds
 7991 and 7992. Only five-of-five passes authorize persistent integration.
+
+## Fixed-basis result and width fork
+
+The fixed 16-unit basis remained safe but produced no positive proposal on any
+of seeds 7973, 7981, or 7982. That closes basis stabilization alone.
+
+The learner is only about one hundred parameters and may be under-capacity for
+stable action-value regression. The next gradual candidate increases only its
+hidden width from 16 to 64 (still fewer than 500 trainable parameters), keeps
+fixed seed `424242`, and preserves every data, budget, active-selection, and
+confirmation setting.
+
+It must pass the same three diagnostic seeds before untouched seeds 7991 and
+7992 are allowed. Five-of-five passes remain required for persistence.

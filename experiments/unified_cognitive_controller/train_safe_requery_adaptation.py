@@ -266,6 +266,9 @@ def main() -> None:
         help=(
             "Use a fixed task-agnostic challenger basis across environment "
             "seeds instead of coupling initialization to the run seed."))
+    parser.add_argument(
+        "--challenger-hidden", type=int,
+        help="Override hidden width for an action-value challenger.")
     args = parser.parse_args()
     if args.active_pool_multiplier < 1:
         raise ValueError("--active-pool-multiplier must be positive")
@@ -296,7 +299,8 @@ def main() -> None:
                 torch.manual_seed(
                     initialization_seed
                     + (0 if name == "mastered" else 1))
-                challenger_initial = ActionValueHead(hidden).to(device)
+                challenger_initial = ActionValueHead(
+                    args.challenger_hidden or hidden).to(device)
         elif name == "gap" and args.gap_challenger_seed_offset:
             with torch.random.fork_rng(devices=[]):
                 torch.manual_seed(
