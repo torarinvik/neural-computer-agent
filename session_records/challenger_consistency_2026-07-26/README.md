@@ -77,3 +77,22 @@ replayed diagnostically with all learning and confirmation settings unchanged.
 It must produce a positive proposal without a mastered-policy promotion. A
 pass requires two fresh seeds before persistent integration; a failure closes
 this estimator.
+
+## Doubly robust result
+
+The estimator reduced attempted-outcome residual RMS from roughly `0.50` to
+`0.42`, and the gap proposal's final lower bound improved to `−0.0002`.
+However, it never became positive within 720 bits. The mastered arm remained
+safe.
+
+The pre-registered gate therefore fails and this estimator is closed without
+fresh-seed validation. Across the same failed stream:
+
+- learning-rate changes did not unblock proposal;
+- four latent initializations did not unblock proposal;
+- contextual and action-conditioned variance reduction did not unblock it.
+
+The remaining bottleneck is the amount or informativeness of verified
+experience available to the challenger. The next justified experiment should
+change data acquisition or the learner's self-supervised signal—not add more
+optimizer tuning or weaken confirmation.
