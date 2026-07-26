@@ -45,6 +45,10 @@ from .train_thought_compute_transfer import (
     _metrics as thought_compute_metrics,
     _stable_bits as stable_thought_bits,
 )
+from .train_shared_compute_value import (
+    SharedComputeValue,
+    initialize_from_advantage,
+)
 from .train_persistent_memory import _grouped_read
 from .probe_persistent_physical_stream import (
     _future_for_actions,
@@ -400,6 +404,23 @@ def test_thought_transfer_stable_bits_requires_persistent_crossing() -> None:
         row(480, 0.72, 0.14, 0.40),
     ]
     assert stable_thought_bits(history) == 360
+
+
+def test_shared_compute_value_copies_source_but_resets_novel_adapter() -> None:
+    from .train_shadow_compute_advantage import ComputeAdvantageHead
+
+    source = ComputeAdvantageHead(hidden=4)
+    with torch.no_grad():
+        for parameter in source.parameters():
+            parameter.fill_(0.25)
+    shared = SharedComputeValue(hidden=4)
+    initialize_from_advantage(shared, {
+        "head_state_dict": source.state_dict(),
+    })
+    features = torch.randn(7, 4)
+    assert torch.equal(
+        source(features), shared(features, "read"))
+    assert torch.count_nonzero(shared(features, "thought")) == 0
 
 
 def test_disk_latent_memory_round_trip(tmp_path: Path) -> None:
