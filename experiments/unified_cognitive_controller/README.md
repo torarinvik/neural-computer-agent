@@ -621,6 +621,37 @@ Honest boundary: each update still starts from newly generated bounded banks.
 The next atom is a small set of banks that persists and accumulates reads,
 outcomes, and replacements across multiple updates and utility switches.
 
+### Persistent physical stream
+
+That next atom now passes. The same eight bounded physical banks were kept
+alive for six sequential decisions spanning old-equal, reliability-dominant,
+and old-return utility phases. Each winning decision mutated the existing
+bank; ordinary content-addressed reads and binary verifier outcomes updated its
+history; and the bank was saved and reloaded before the next decision.
+
+Two independent CPU replicas completed in 2.14 and 1.92 seconds. In both:
+
+- all 144 candidate bank copies and all 56 stream-state save/reloads per
+  replica remained exactly bounded at six rows;
+- every access/outcome transition matched the previous persisted totals,
+  minus deliberately replaced-row history, plus the six new verified queries;
+- physical rewards matched the tensor shadow within `1e-6`, and all candidate
+  choices were tensor-equivalent within `1e-6`;
+- replacements, access counts, success counts, and failure counts survived
+  serialization; and
+- a causal control that rolled the physical access/outcome histories across
+  rows changed at least one replacement decision in each replica.
+
+Reports:
+`reports/persistent_physical_stream_seed7022_banks8.json` and
+`reports/persistent_physical_stream_seed7023_banks8.json`.
+
+This is a persistence and causal-plumbing result, not yet a learning-speed
+result. The honest frontier is to adapt the utility residual from rewards while
+these same banks remain alive, then compare switch recovery and verifier bits
+to the fresh-bank baseline. Only after that passes should bank lifetimes or
+learned statistics be enlarged.
+
 Run the sub-minute GPU experiment:
 
 ```bash

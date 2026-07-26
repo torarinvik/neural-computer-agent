@@ -9,6 +9,10 @@ from .probe_persistent_interface import _add_context_signatures
 from .train import attempted_success_loss, evaluate, rollout
 from .train_frequency_recency_replacement import frequency_recency_batch
 from .train_persistent_memory import _grouped_read
+from .probe_persistent_physical_stream import (
+    _future_for_actions,
+    _ranked_age,
+)
 
 
 def test_lifetime_has_one_correct_action_and_balanced_private_rules() -> None:
@@ -204,6 +208,33 @@ def test_disk_memory_records_persists_and_resets_access_counts(
     assert restored.store.access_count.tolist() == [0, 0]
     assert restored.store.success_count.tolist() == [0, 0]
     assert restored.store.failure_count.tolist() == [0, 0]
+
+
+def test_persistent_stream_age_uses_current_insertion_rank() -> None:
+    memory = DiskLatentMemory(width=4, capacity=3)
+    memory.commit(
+        torch.eye(4)[:3], torch.eye(4)[:3],
+        torch.ones(3), threshold=0.0)
+    memory.store.age[:3] = torch.tensor([17, 4, 11])
+    assert torch.allclose(
+        _ranked_age(memory),
+        torch.tensor([1.0, 1 / 3, 2 / 3]))
+
+
+def test_persistent_stream_future_replaces_only_selected_rows() -> None:
+    batch = generate_lifetimes(4, 3, seed=330)
+    candidate = generate_lifetimes(2, 3, seed=332)
+    queries = torch.arange(16, dtype=torch.float32).reshape(2, 2, 4)
+    candidate_queries = torch.full((2, 4), -1.0)
+    updated, updated_queries = _future_for_actions(
+        batch, queries, candidate, candidate_queries,
+        torch.tensor([0, 2]), capacity=2)
+    assert torch.equal(updated.seeds[:2], batch.seeds[:2])
+    assert torch.equal(updated.seeds[2], batch.seeds[2])
+    assert torch.equal(updated.seeds[3], candidate.seeds[1])
+    assert torch.equal(updated_queries[0], queries[0])
+    assert torch.equal(updated_queries[1, 0], queries[1, 0])
+    assert torch.equal(updated_queries[1, 1], candidate_queries[1])
 
 
 def test_old_disk_schema_loads_with_zero_access_counts(tmp_path: Path) -> None:
