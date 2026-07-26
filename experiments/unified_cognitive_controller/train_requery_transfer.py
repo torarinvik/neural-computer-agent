@@ -34,6 +34,14 @@ def _stable_bits(history: list[dict[str, float]]) -> int | None:
     return None
 
 
+def _candidate_name(mode: str) -> str:
+    if mode == "full":
+        return "inherited"
+    if mode == "trunk":
+        return "inherited_trunk"
+    raise ValueError(mode)
+
+
 def _features(
         values: torch.Tensor, name: str,
         permutation: torch.Tensor | None = None) -> torch.Tensor:
@@ -69,6 +77,11 @@ def main() -> None:
     parser.add_argument("--requery-cost", type=float, default=0.01)
     parser.add_argument("--learning-rate", type=float, default=0.003)
     parser.add_argument("--evaluate-every", type=int, default=2)
+    parser.add_argument(
+        "--candidate-mode", choices=("trunk", "full"), default="trunk",
+        help=(
+            "Transfer only the generic trunk when operation semantics change, "
+            "or the full head for an operation-aligned curriculum shift."))
     args = parser.parse_args()
 
     seed_everything(args.seed)
@@ -100,15 +113,18 @@ def main() -> None:
     with torch.random.fork_rng(devices=[]):
         torch.manual_seed(args.seed + 10_000)
         reset = ComputeAdvantageHead(hidden).to(device)
+    candidate = (
+        inherited if args.candidate_mode == "full" else inherited_trunk)
+    control_source = candidate
     heads = {
         "inherited": inherited,
         "inherited_trunk": inherited_trunk,
         "previous_inherited": previous,
         "previous_trunk": previous_trunk,
         "reset": reset,
-        "reward_shuffled": copy.deepcopy(inherited_trunk),
-        "feature_shuffled": copy.deepcopy(inherited_trunk),
-        "missing_evidence": copy.deepcopy(inherited_trunk),
+        "reward_shuffled": copy.deepcopy(control_source),
+        "feature_shuffled": copy.deepcopy(control_source),
+        "missing_evidence": copy.deepcopy(control_source),
     }
     optimizers = {
         name: torch.optim.AdamW(
@@ -180,8 +196,9 @@ def main() -> None:
 
     final = {name: rows[-1] for name, rows in histories.items()}
     stable = {name: _stable_bits(rows) for name, rows in histories.items()}
-    inherited_final = final["inherited_trunk"]
-    inherited_bits = stable["inherited_trunk"]
+    candidate_name = _candidate_name(args.candidate_mode)
+    inherited_final = final[candidate_name]
+    inherited_bits = stable[candidate_name]
     reset_bits = stable["reset"]
     previous_bits = stable["previous_trunk"]
     evidence_cost = min(
@@ -192,17 +209,17 @@ def main() -> None:
         inherited_final["verified_utility"]
         - final["reward_shuffled"]["verified_utility"])
     gate = {
-        "inherited_trunk_choice_at_least_0_65":
+        "candidate_choice_at_least_0_65":
             inherited_final["compute_choice_accuracy"] >= 0.65,
-        "inherited_trunk_beats_fixed_by_0_03":
+        "candidate_beats_fixed_by_0_03":
             inherited_final["verified_utility"]
             >= inherited_final["strongest_fixed_utility"] + 0.03,
-        "inherited_trunk_captures_20_percent_gap":
+        "candidate_captures_20_percent_gap":
             inherited_final["captured_oracle_gap_fraction"] >= 0.20,
-        "inherited_trunk_strictly_faster_than_reset": (
+        "candidate_strictly_faster_than_reset": (
             inherited_bits is not None
             and (reset_bits is None or inherited_bits < reset_bits)),
-        "inherited_trunk_strictly_faster_than_previous_trunk": (
+        "candidate_strictly_faster_than_previous_trunk": (
             inherited_bits is not None
             and (previous_bits is None or inherited_bits < previous_bits)),
         "evidence_controls_cost_at_least_0_02": evidence_cost >= 0.02,
@@ -255,6 +272,7 @@ def main() -> None:
             "correct_answer", "semantic_task_identity",
         ],
         "histories": histories,
+        "candidate_name": candidate_name,
         "stable_unique_verifier_bits": stable,
         "final_metrics": final,
         "gradient_norms": gradient_norms,
@@ -287,7 +305,7 @@ def main() -> None:
             "head_hidden": hidden,
             "head_state_dict": {
                 name: value.detach().cpu()
-                for name, value in inherited_trunk.state_dict().items()},
+                for name, value in heads[candidate_name].state_dict().items()},
             "source_seed": args.seed,
             "source_operation": "second_ranked_requery",
             "source_training_verifier_bits":

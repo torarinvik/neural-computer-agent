@@ -53,6 +53,7 @@ from .train_cost_aware_requery import (
     CostAwareComputeValue,
     initialize_from_four_feature,
 )
+from .train_requery_transfer import _candidate_name
 from .train_persistent_memory import _grouped_read
 from .probe_persistent_physical_stream import (
     _future_for_actions,
@@ -75,6 +76,13 @@ from .dynamic_working_memory import (
     DynamicWorkingMemory,
     LatencyTimer,
 )
+
+
+def test_requery_curriculum_preserves_operation_aligned_head() -> None:
+    assert _candidate_name("trunk") == "inherited_trunk"
+    assert _candidate_name("full") == "inherited"
+    with pytest.raises(ValueError):
+        _candidate_name("unknown")
 
 
 def test_lifetime_has_one_correct_action_and_balanced_private_rules() -> None:
