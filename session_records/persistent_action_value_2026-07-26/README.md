@@ -18,3 +18,36 @@ separate empty verified skill stores. Each must:
 Both runs must pass. The child payload is modality/task-name agnostic: an
 opaque latent policy head, generic context key, causal verifier evidence, and
 lineage provenance.
+
+## Result
+
+Both independent persistent runs passed every gate.
+
+| Seed | Proposal | Confirmed | Lower 95% | Utility gain |
+|---|---:|---:|---:|---:|
+| 8011 | 960 bits | 3,360 bits | `+0.1316` | `+7.49` points |
+| 8012 | 1,200 bits | 3,600 bits | `+0.0494` | `+6.66` points |
+
+For both runs:
+
+- mastered incumbent outputs and utility remained unchanged;
+- the confirmed child was an action-value latent head, not a task label;
+- parent and child reloaded bit-exactly from a fresh store instance;
+- reloaded child audited utility matched pre-save utility exactly;
+- child corruption was detected and parent retrieval still succeeded;
+- binary-mapping and four-rule controller retention gates passed;
+- accounting recorded 3,600 attempted-outcome bits and 14,400 unlabeled
+  candidate contexts.
+
+Together with the preceding seven confirmed non-persistent streams, this gives
+nine consecutive safe gap promotions, two of them complete durable
+promote→confirm→commit→reload replications.
+
+This is a real milestone: the system can keep a verified incumbent immutable,
+learn a stronger latent action concept from experience, prove improvement on
+disjoint outcomes, and append it to long-term disk memory without corrupting
+its parent.
+
+The next frontier is sequential retrieval and reuse: begin a new related
+primitive from the stored child, compare samples-to-confirmation against the
+stored parent and reset, and require all ancestor skills to remain retrievable.

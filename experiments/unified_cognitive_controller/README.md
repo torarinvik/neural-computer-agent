@@ -873,6 +873,26 @@ The frontier therefore returns to the successful gradual-curriculum pattern:
 persist the learned re-query trunk, train it through nearby re-query
 difficulty shifts, and only then test transfer toward recurrent thought.
 
+That frontier is now resolved more strongly. A 64-hidden-unit action-value
+challenger learns `Q(ordinary read)` and `Q(re-query)` directly from the scalar
+outcome of the operation actually attempted. Active disagreement allocation
+spends verifier bits where incumbent and challenger differ. The incumbent
+remains immutable; a frozen proposal requires a positive lower-95% bound on
+2,400 disjoint shadow outcomes before deployment.
+
+Across nine consecutive streams, the gap learner was safely confirmed and
+promoted while the mastered incumbent never changed. The final two seeds also
+passed durable integration: opaque parent and action-value child skills were
+atomically committed to a content-addressed disk store, reloaded bit-exactly,
+retained audited utility, detected child corruption, and preserved parent
+retrieval plus earlier controller capabilities.
+
+The learning milestone is therefore no longer “can a candidate improve without
+forgetting?” It can. The next compounding frontier is sequential retrieval:
+load the confirmed child for a related new primitive and measure whether it
+reduces bits-to-confirmation versus the parent and reset while every ancestor
+remains intact.
+
 Run the sub-minute GPU experiment:
 
 ```bash

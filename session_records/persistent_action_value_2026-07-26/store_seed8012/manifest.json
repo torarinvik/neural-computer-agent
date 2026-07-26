@@ -1,0 +1,56 @@
+{
+  "entries": [
+    {
+      "context_key": [
+        0.5359416007995605,
+        0.39481958746910095,
+        0.6398091912269592,
+        0.3840940296649933
+      ],
+      "file": "4367a409804155730734.pt",
+      "lower_confidence_bound": 0.07167649269104004,
+      "parent_id": null,
+      "provenance": {
+        "kind": "fresh_stream_robust_audit",
+        "report": "session_records/requery_curriculum_2026-07-26/fresh_stream_audit_seed7941.json"
+      },
+      "sha256": "4367a4098041557307348da88986f338457df138d8201143987c5fe45971b2b0",
+      "skill_id": "4367a409804155730734",
+      "verifier_bits": 0
+    },
+    {
+      "context_key": [
+        0.5359416007995605,
+        0.39481958746910095,
+        0.6398091912269592,
+        0.3840940296649933
+      ],
+      "file": "6a05ad304f4fd237efad.pt",
+      "lower_confidence_bound": 0.04936456770897104,
+      "parent_id": "4367a409804155730734",
+      "provenance": {
+        "kind": "attempted_outcome_safe_promotion",
+        "promotion_evidence": {
+          "baseline_mode": "global",
+          "baseline_residual_rms": 0.49952730536460876,
+          "estimated_improvement": 0.08918379247188568,
+          "lower_95": 0.04936456770897104,
+          "mature": true,
+          "phase": "confirmation",
+          "positive": true,
+          "promoted": true,
+          "records": 2400,
+          "reward_baseline": 0.49371668696403503,
+          "standard_error": 0.020315931001487063,
+          "step": 60,
+          "upper_95": 0.12900301723480032
+        },
+        "seed": 8012
+      },
+      "sha256": "6a05ad304f4fd237efad72aec5699ce5e1c58d11b693bda36b83710ea17b48d7",
+      "skill_id": "6a05ad304f4fd237efad",
+      "verifier_bits": 3600
+    }
+  ],
+  "schema": "verified-latent-skill-store-v1"
+}
