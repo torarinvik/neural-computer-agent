@@ -459,3 +459,12 @@ Simple interleaving is rejected. Exact-prefix accounting is retained. Future
 clone selection must either pay for a prefix that reaches a genuine return
 phase, or find a schedule that preserves the contiguous trajectory required
 for ignition while producing an earlier verifier-only retention signal.
+
+A six-round-per-context cyclic control supplied a useful gradient rather than
+a rescue: it reached 20.8% reward-informative pairs and 584.7 verifier bits per
+informative pair, better than one-round cycling (5.7%; 2,144.0) but well below
+the 18-round blocked schedule (56.6%; 214.4). Old-return target accuracy was
+only 4.2%. The evidence supports a contiguity requirement. Do not spend further
+budget optimizing schedule rearrangements until a proposed variant can preserve
+the contiguous acquisition path and improve a pre-registered verifier-only
+selection metric.

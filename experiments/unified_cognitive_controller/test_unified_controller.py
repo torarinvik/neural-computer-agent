@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import pytest
 import torch
 
 from .environment import NULL_ACTION, generate_lifetimes
@@ -434,6 +435,22 @@ def test_interleaved_reliability_exposes_every_context_in_each_short_cycle(
         (0.3, 0.3, 0.4),
         (0.5, 0.5, 0.0),
     ]
+
+
+def test_cyclic_reliability_blocks6_preserves_six_round_context_runs(
+        ) -> None:
+    phases = _curriculum_phases(
+        "cyclic_reliability_blocks6", rounds_per_phase=18)
+    assert [phase for phase, _, _ in phases] == [
+        "old_equal", "reliability_dominant", "old_return",
+    ] * 3
+    assert [rounds for _, _, rounds in phases] == [6] * 9
+    assert sum(rounds for _, _, rounds in phases) == 54
+
+
+def test_cyclic_reliability_blocks6_rejects_incompatible_budget() -> None:
+    with pytest.raises(ValueError, match="divisible by six"):
+        _curriculum_phases("cyclic_reliability_blocks6", rounds_per_phase=5)
 
 
 def test_value_diverse_admission_preserves_latent_extremes() -> None:

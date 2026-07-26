@@ -37,9 +37,21 @@ ten times less information-efficient and loses the retained-return advantage.
 It is therefore rejected as a learning schedule. No reward-shuffle control is
 warranted because there is no positive capability result to validate.
 
+## Six-round contiguity control
+
+To distinguish “all interleaving is harmful” from “one round is too short,” a
+second 54-round arm used six consecutive rounds per context and repeated the
+three-context cycle three times. It reached 20.8% reward-informative pairs and
+584.7 verifier bits per informative pair. This is materially better than
+one-round interleaving (5.7%; 2,144.0 bits), but still substantially weaker
+than the contiguous 18-round schedule (56.6%; 214.4 bits). It also reached
+only 4.2% old-return target accuracy.
+
 ## Consequence
 
 Keep exact-prefix reporting; it prevents false successive-halving claims. Do
-not use simple interleaving to shorten selection races. The current frontier is
-to expose switching and retention earlier without breaking the contiguous
-trajectory that appears necessary for strategy-memory ignition.
+not use simple interleaving to shorten selection races. The contiguity control
+shows a graded effect: longer uninterrupted context blocks are currently more
+sample-efficient. The next frontier is to obtain a verifier-only selection
+signal from the existing contiguous schedule, rather than rearrange the
+trajectory that enables ignition.

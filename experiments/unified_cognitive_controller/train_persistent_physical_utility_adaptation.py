@@ -66,6 +66,24 @@ def _curriculum_phases(
             for _ in range(rounds_per_phase)
             for phase, weights in cycle
         ]
+    elif curriculum == "cyclic_reliability_blocks6":
+        if rounds_per_phase % 6:
+            raise ValueError(
+                "cyclic_reliability_blocks6 requires rounds-per-phase "
+                "to be divisible by six")
+        # Intermediate temporal-contiguity control: retain six consecutive
+        # experiences from one context, then revisit all contexts. At a fixed
+        # total budget this exposes return sooner than the blocked schedule.
+        cycle = [
+            ("old_equal", (0.5, 0.5, 0.0)),
+            ("reliability_dominant", (0.3, 0.3, 0.4)),
+            ("old_return", (0.5, 0.5, 0.0)),
+        ]
+        return [
+            (phase, weights, 6)
+            for _ in range(rounds_per_phase // 6)
+            for phase, weights in cycle
+        ]
     else:
         phases = [
             ("old_equal", (0.5, 0.5, 0.0)),
@@ -161,7 +179,8 @@ def main() -> None:
         "--curriculum",
         choices=(
             "standard", "gradual_reliability",
-            "context_reliability_ramp", "interleaved_reliability"),
+            "context_reliability_ramp", "interleaved_reliability",
+            "cyclic_reliability_blocks6"),
         default="standard")
     parser.add_argument(
         "--strategy-memory-capacity", type=int, default=0,
