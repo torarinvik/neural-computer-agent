@@ -54,6 +54,7 @@ from .train_cost_aware_requery import (
     initialize_from_four_feature,
 )
 from .train_requery_transfer import _candidate_name
+from .train_safe_requery_adaptation import paired_ips_improvement
 from .train_persistent_memory import _grouped_read
 from .probe_persistent_physical_stream import (
     _future_for_actions,
@@ -83,6 +84,20 @@ def test_requery_curriculum_preserves_operation_aligned_head() -> None:
     assert _candidate_name("full") == "inherited"
     with pytest.raises(ValueError):
         _candidate_name("unknown")
+
+
+def test_paired_ips_promotion_requires_verified_policy_difference() -> None:
+    attempted = torch.tensor([0, 1] * 128)
+    utilities = attempted.float()
+    incumbent = torch.zeros_like(attempted)
+    challenger = torch.ones_like(attempted)
+    evidence = paired_ips_improvement(
+        incumbent, challenger, attempted, utilities)
+    assert evidence["lower_95"] > 0
+    identical = paired_ips_improvement(
+        incumbent, incumbent, attempted, utilities)
+    assert identical["estimated_improvement"] == 0
+    assert identical["lower_95"] == 0
 
 
 def test_lifetime_has_one_correct_action_and_balanced_private_rules() -> None:
