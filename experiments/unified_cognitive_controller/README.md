@@ -229,7 +229,7 @@ The current checkpoint is
 `artifacts/checkpoints/unified_selective_memory_atom_seed5402.pt`, SHA-256
 `3fa82275e37ba5de686d4ec9966c1345e15b46e89938a8cf9bc0e0da94b15c30`.
 
-## Disk-integration frontier
+## Adaptive disk-integration milestone
 
 The learned selector was then connected to actual eight-context disk banks:
 commit admitted rows, serialize files, erase active state, reload, retrieve,
@@ -247,19 +247,55 @@ backward-compatible raw-cosine confidence mode fixed exact-repeat confidence,
 but two fresh scalar pilots still exceeded the 25% absent-row false-accept
 gate at 29.13% and 27.00%. Both were rejected and no checkpoint was saved.
 
-Therefore the complete learned RAM/VRAM-to-disk loop is not yet an admitted
-milestone. The next target is an adaptive read/no-read decision conditioned on
-controller state and match confidence, trained through verified outcomes; a
-single global threshold is insufficient.
+A discarded capacity probe then tested four task-agnostic retrieval
+statistics: cosine match, top-two ranked margin, selected-row strength, and
+bank occupancy. The five-parameter linear probe reproduced the failure
+(83.01% held-out classification, 33.26% absent false accepts). An eight-unit
+nonlinear probe reached 88.18% and 18.84% respectively. Its private labels and
+weights were discarded; only the evidence that the interface supported the
+decision was retained.
+
+A fresh 49-parameter nonlinear gate was added inside the existing controller
+and trained exclusively from verified query success minus a generic read
+cost. No match, presence, context, rule, or action labels entered this learner.
+The admitted run used 160 optimizer updates, 81,920 unique logical contexts,
+no replay, and 9.71 seconds of GPU wall time. Its held-out tensor-bank audit
+reached:
+
+- 91.55% gated accuracy versus 54.74% ungated and 50.02% empty;
+- 89.67% acceptance when the context had stored a row;
+- 17.33% false acceptance when its row was absent;
+- unchanged one-support and four-rule retention gates.
+
+The gate itself added 0.139 ms for a batch of 4,096 decisions on the RTX PRO
+6000 (1,000 timed iterations after warm-up); this is batched throughput, not a
+claim about end-to-end serial action latency.
+
+The exact checkpoint then passed two independent physical 1,024-context disk
+audits:
+
+| Audit seed | First reload | Repeat reload | Duplicate rows/context | Empty | Wrong-value corruption |
+|---:|---:|---:|---:|---:|---:|
+| 6001 | 91.50% | 91.02% | 17.68% | 50.20% | 70.41% |
+| 6002 | 92.19% | 91.41% | 17.29% | 50.00% | 70.70% |
+
+Each audit created eight-context banks, serialized them, erased active state,
+reloaded them, retrieved through the learned gate, revisited the contexts,
+committed any new writes, serialized again, and queried. The corruption arm
+preserved keys and admission statistics but rotated values between contexts,
+showing that correct stored content—not merely a context match or gate
+activation—caused the gain.
+
+The promoted checkpoint is
+`artifacts/checkpoints/unified_selective_disk_adaptive_seed5962.pt`, SHA-256
+`91822064436fae1d4f799e41c79d9369dacb8aeeee20b711df1c1b6af037fbc4`.
 
 Claim boundary: this demonstrates controller-created, content-addressed latent
 storage and recall across active-state resets, with actual disk serialization.
-It also demonstrates a learned write/skip decision for redundant encounters.
-It does not yet demonstrate that the learned sparse selector and shared disk
-reader operate together within the storage-efficiency gate. Adaptive
-no-match rejection, replacement between competing memories, consolidation
-across an unbounded stream, deletion/merging, modality transfer, and broad
-reasoning remain open.
+It also demonstrates learned write/skip and read/no-read decisions operating
+together within the storage-efficiency gate. Replacement under full banks,
+consolidation across an unbounded stream, deletion/merging, modality transfer,
+and broad reasoning remain open.
 
 Run the sub-minute GPU experiment:
 

@@ -72,20 +72,41 @@ retaining 99.90% query accuracy. Removing writes, shuffling admissions,
 corrupting values, or hiding the prior memory read causally degraded the
 appropriate behavior.
 
-The first physical integration audit exposed the next boundary: intentionally
-absent default rows retrieve unrelated neighbors in a shared disk bank. A
-reward-learned scalar rejection threshold restored 87.99–88.96% disk accuracy,
-but duplicate growth narrowly missed its gate at 20.02–21.39%. Raw-cosine
-confidence improved the signal but still produced 27–29% false accepts. The
-learned sparse selector and shared disk reader are therefore not yet claimed
-as one admitted end-to-end capability.
+The first physical integration audit exposed a boundary: intentionally absent
+default rows retrieve unrelated neighbors in a shared disk bank. Scalar
+rejection gates restored 87.99–88.96% disk accuracy but missed duplicate or
+false-accept gates. A discarded diagnostic localized the limitation: the four
+generic memory statistics supported only 83.01% held-out classification with
+a five-parameter linear gate, while an eight-unit nonlinear gate reached
+88.18%. No diagnostic weights entered the agent.
+
+A fresh 49-parameter gate inside the same controller was then trained only
+from verified query success minus a generic read cost. In 160 updates, 81,920
+unique contexts, and 9.71 seconds it reached 91.55% held-out accuracy, accepted
+89.67% of useful reads, rejected enough absent reads to hold false acceptance
+to 17.33%, and retained both prior behavioral gates.
+
+Two independent physical disk audits then passed every pre-registered gate:
+
+- first save/reload accuracy: 91.50% and 92.19%;
+- accuracy after a repeated encounter: 91.02% and 91.41%;
+- duplicate rows per context: 17.68% and 17.29%;
+- empty-memory controls: 50.20% and 50.00%;
+- wrong-value disk corruption controls: 70.41% and 70.70%.
+
+This admits the first unified learned RAM/VRAM-to-disk loop: the controller
+creates sparse opaque rows, reloads them after active-state erasure, learns
+whether a retrieved row deserves use, and suppresses redundant repeat writes.
+The selected checkpoint is
+`artifacts/checkpoints/unified_selective_disk_adaptive_seed5962.pt`, SHA-256
+`91822064436fae1d4f799e41c79d9369dacb8aeeee20b711df1c1b6af037fbc4`.
 
 Unseen elongated diamonds and disconnected dot-pair stimuli also transfer
 zero-shot at 94.95–98.14%, tightening the evidence that visual identity is
 relational rather than tied to the original rectangles.
 
-Replacement, consolidation, unbounded memory growth, and cross-modality
-transfer remain open. See
+Replacement under full banks, consolidation, deletion/merging, unbounded
+memory growth, and cross-modality transfer remain open. See
 `experiments/unified_cognitive_controller/README.md`.
 
 The two-decision identify-then-act task requires the agent to:

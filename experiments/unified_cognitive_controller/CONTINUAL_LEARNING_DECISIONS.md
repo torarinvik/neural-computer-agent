@@ -73,8 +73,10 @@ replay cost becomes a demonstrated bottleneck.
 
 ## Next continual-learning question
 
-The current store-all persistent-memory policy has a write-strength mean near
-0.5 and does not yet learn selective admission. The next high-value CL
-experiment is not another retention method. It is whether the controller can
-learn what to store, consolidate, or discard while preserving the capacity-32
-recall frontier and the two earlier behavioral skills.
+The controller now learns both sparse write/skip and adaptive read/no-read
+decisions and passes replicated physical disk, corruption, and retention
+gates. The next high-value question is replacement under a deliberately full
+memory bank: can the controller choose which opaque row to evict using only
+verified future utility, without degrading the mastered sparse loop or the two
+earlier behavioral skills? Consolidation and merging follow only after that
+smaller replacement atom passes.

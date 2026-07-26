@@ -84,6 +84,25 @@ def _disk_bytes(directory: Path) -> int:
         path.stat().st_size for path in directory.glob("*.pt"))
 
 
+@torch.no_grad()
+def _gated_retrieve(
+        model: UnifiedCognitiveController, memory: DiskLatentMemory,
+        queries: torch.Tensor, *,
+        read_threshold: float | None) -> torch.Tensor:
+    if model.memory_read_gate is not None:
+        read, features = memory.retrieve_with_features(queries)
+        accepted = model.memory_read_probability(features) >= 0.5
+        return torch.where(
+            accepted.unsqueeze(-1), read, torch.zeros_like(read))
+    read, confidence = memory.retrieve(
+        queries, top_k=1, confidence_mode="cosine")
+    if read_threshold is not None:
+        read = torch.where(
+            (confidence >= read_threshold).unsqueeze(-1),
+            read, torch.zeros_like(read))
+    return read
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint", type=Path, required=True)
@@ -129,6 +148,7 @@ def main() -> None:
     first_reads = []
     repeat_reads = []
     final_reads = []
+    corrupted_reads = []
     first_rows = 0
     final_rows = 0
     with tempfile.TemporaryDirectory() as temporary:
@@ -146,13 +166,9 @@ def main() -> None:
             path = directory / f"bank-{bank:04d}.pt"
             memory.save(path)
             restored = DiskLatentMemory.load(path, device=device)
-            read, confidence = restored.retrieve(
-                query_key[start:stop], top_k=1,
-                confidence_mode="cosine")
-            if read_threshold is not None:
-                read = torch.where(
-                    (confidence >= read_threshold).unsqueeze(-1),
-                    read, torch.zeros_like(read))
+            read = _gated_retrieve(
+                model, restored, query_key[start:stop],
+                read_threshold=read_threshold)
             first_reads.append(read)
             first_rows += restored.count
             memories.append(restored)
@@ -160,18 +176,37 @@ def main() -> None:
         first_disk_accuracy = _query_accuracy(
             model, batch, torch.cat(first_reads), device=device)
 
+        # Preserve keys and admission statistics but rotate values within each
+        # bank. Successful queries must depend on the correct stored content.
+        corrupt_directory = directory / "corrupt"
+        corrupt_directory.mkdir()
+        for bank in range(bank_count):
+            start = bank * args.bank_capacity
+            stop = start + args.bank_capacity
+            corrupt = DiskLatentMemory(
+                model.width, capacity=args.bank_capacity, device=device)
+            corrupt.commit(
+                first_key[start:stop],
+                first_value[start:stop].roll(1, dims=0),
+                first_strength[start:stop],
+                threshold=args.write_threshold)
+            path = corrupt_directory / f"bank-{bank:04d}.pt"
+            corrupt.save(path)
+            restored = DiskLatentMemory.load(path, device=device)
+            corrupted_reads.append(_gated_retrieve(
+                model, restored, query_key[start:stop],
+                read_threshold=read_threshold))
+        corrupted_disk_accuracy = _query_accuracy(
+            model, batch, torch.cat(corrupted_reads), device=device)
+
         # A repeat must first recall from disk before deciding whether another
         # physical row deserves admission.
         for bank, memory in enumerate(memories):
             start = bank * args.bank_capacity
             stop = start + args.bank_capacity
-            read, confidence = memory.retrieve(
-                first_key[start:stop], top_k=1,
-                confidence_mode="cosine")
-            if read_threshold is not None:
-                read = torch.where(
-                    (confidence >= read_threshold).unsqueeze(-1),
-                    read, torch.zeros_like(read))
+            read = _gated_retrieve(
+                model, memory, first_key[start:stop],
+                read_threshold=read_threshold)
             repeat_reads.append(read)
         _, repeat_value, repeat_strength = _support(
             model, batch, device=device,
@@ -186,13 +221,9 @@ def main() -> None:
             path = directory / f"bank-{bank:04d}.pt"
             memory.save(path)
             restored = DiskLatentMemory.load(path, device=device)
-            read, confidence = restored.retrieve(
-                query_key[start:stop], top_k=1,
-                confidence_mode="cosine")
-            if read_threshold is not None:
-                read = torch.where(
-                    (confidence >= read_threshold).unsqueeze(-1),
-                    read, torch.zeros_like(read))
+            read = _gated_retrieve(
+                model, restored, query_key[start:stop],
+                read_threshold=read_threshold)
             final_reads.append(read)
             final_rows += restored.count
         final_disk_bytes = _disk_bytes(directory)
@@ -202,7 +233,7 @@ def main() -> None:
     duplicate_rows = final_rows - first_rows
     duplicate_rate = duplicate_rows / args.contexts
     report = {
-        "schema": "unified-controller-selective-disk-audit-v1",
+        "schema": "unified-controller-selective-disk-audit-v2",
         "checkpoint": str(args.checkpoint),
         "checkpoint_sha256": _sha256(args.checkpoint),
         "seed": args.seed,
@@ -211,6 +242,12 @@ def main() -> None:
         "banks": bank_count,
         "write_threshold": args.write_threshold,
         "read_threshold": read_threshold,
+        "read_policy": (
+            "adaptive_controller_gate"
+            if model.memory_read_gate is not None
+            else (
+                "scalar_cosine_threshold"
+                if read_threshold is not None else "ungated")),
         "weights_changed": False,
         "semantic_labels_used": False,
         "first_rows": first_rows,
@@ -222,6 +259,7 @@ def main() -> None:
         "no_memory_accuracy": no_memory_accuracy,
         "tensor_sparse_accuracy": tensor_sparse_accuracy,
         "first_disk_reload_accuracy": first_disk_accuracy,
+        "corrupted_value_disk_accuracy": corrupted_disk_accuracy,
         "repeat_disk_reload_accuracy": repeat_disk_accuracy,
     }
     report["gate"] = {
@@ -235,6 +273,8 @@ def main() -> None:
             duplicate_rate <= 0.20,
         "memory_is_causal":
             no_memory_accuracy <= first_disk_accuracy - 0.15,
+        "correct_memory_content_is_causal":
+            corrupted_disk_accuracy <= first_disk_accuracy - 0.15,
     }
     report["gate"]["accepted"] = all(report["gate"].values())
     args.report.parent.mkdir(parents=True, exist_ok=True)

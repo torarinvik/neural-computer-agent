@@ -193,6 +193,39 @@ def test_disk_memory_can_report_cosine_match_confidence() -> None:
     assert ranked.item() < cosine.item()
 
 
+def test_disk_memory_reports_adaptive_read_features() -> None:
+    memory = DiskLatentMemory(width=4, capacity=2)
+    keys = torch.eye(4)[:2]
+    values = torch.arange(8, dtype=torch.float32).reshape(2, 4)
+    strengths = torch.tensor([0.5, 0.9])
+    assert memory.commit(
+        keys, values, strengths, threshold=0.0) == 2
+    read, features = memory.retrieve_with_features(keys[:1])
+    assert torch.allclose(read, values[:1])
+    assert features.shape == (1, 4)
+    assert torch.allclose(features[:, 0], torch.ones(1))
+    assert torch.allclose(features[:, 2], strengths[:1])
+    assert torch.allclose(features[:, 3], torch.ones(1))
+
+
+def test_adaptive_memory_read_is_optional_and_bounded() -> None:
+    ordinary = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8)
+    assert ordinary.memory_read_gate is None
+    model = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        adaptive_memory_read=True)
+    probability = model.memory_read_probability(torch.zeros(3, 4))
+    assert probability.shape == (3,)
+    assert torch.all((probability > 0) & (probability < 1))
+    nonlinear = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        adaptive_memory_read=True, adaptive_memory_read_hidden=8)
+    assert sum(
+        parameter.numel()
+        for parameter in nonlinear.memory_read_gate.parameters()) == 49
+
+
 def test_recurring_context_signature_is_stable_within_world() -> None:
     batch = generate_lifetimes(
         8, 3, seed=31, task="binary_mapping", support_trials=1)
