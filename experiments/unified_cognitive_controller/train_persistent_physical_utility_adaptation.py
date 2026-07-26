@@ -309,6 +309,11 @@ def main() -> None:
     parser.add_argument(
         "--shadow-strategy-audit-seeds", type=int, default=1,
         help="independent held-out seeds in the read-only strategy audit")
+    parser.add_argument(
+        "--shadow-strategy-audit-phase",
+        choices=("old_equal", "reliability_dominant"),
+        default="old_equal",
+        help="completed blocked phase after which the audit runs")
     parser.add_argument("--device", default=(
         "cuda" if torch.cuda.is_available() else "cpu"))
     args = parser.parse_args()
@@ -908,7 +913,7 @@ def main() -> None:
             if (
                     args.shadow_strategy_audit
                     and not shadow_audits
-                    and phase == "old_equal"
+                    and phase == args.shadow_strategy_audit_phase
                     and phase_rows
                     and strategy_memory is not None
                     and strategy_memory.count):

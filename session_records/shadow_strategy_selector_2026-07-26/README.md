@@ -76,3 +76,17 @@ trajectory, spends extra verifier compute rather than extra optimizer updates,
 and prospectively selected a vastly more transferable clone. The current
 evidence is one prospective four-clone population; magnitude must replicate on
 another physical stream before increasing population size or audit budget.
+
+## Replication boundary
+
+On fresh stream 7076 the frozen rule selected clone 7112. It again selected the
+better reliability learner (+20.83 target points versus +4.17 for fixed control
+7110), but the spectacular old-return magnitude did not replicate: selected
+7112 gained only +1.39 return target points. The round-18 audit is therefore
+promoted specifically for acquisition potential, not retention.
+
+A round-36 version of the read-only bank audit was rejected because it ranked
+weak 7100 above strong 7101 on stream 7075. The current retention candidate is
+the mean verifier reward advantage over the first six actual return rounds;
+retrospectively, it selects the eventual best clone on all three completed
+populations.

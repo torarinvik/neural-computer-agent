@@ -514,3 +514,21 @@ selector. It trades 112 held-out logical lifetimes and 960 selection verifier
 bits per clone for no extra optimizer updates and leaves the 18-round training
 trace bit-identical. Replicate magnitude once on a new physical stream before
 increasing population or audit scale.
+
+Replication on fresh physical stream 7076 narrowed the claim. The unchanged
+round-18 selector chose clone 7112 at +6.25 shadow reward points. It later
+outperformed fixed control 7110 on reliability target gain (+20.83 versus
++4.17 points), replicating acquisition direction. Old-return magnitude did not
+replicate: selected 7112 gained only +1.39 target points and +0.23 reward
+points. The round-18 shadow audit is now scoped as an acquisition selector.
+
+A read-only round-36 bank audit was also rejected. Although it left every
+training trace bit-identical, it ranked weak 7100 above strong 7101 on stream
+7075. Strategy inventory ceiling is not a reliable retention proxy.
+
+The first six genuine old-return rounds provide the current candidate retention
+rung. Mean verifier reward advantage over those six rounds retrospectively
+selected the eventual best safe clone on streams 7074, 7075, and 7076. One
+round was noisy and three rounds tied two clones on 7074. The next engineering
+gate is exact resumable prefix state, followed by a prospective 18-round shadow
+screen → 42-round return screen → 54-round winner ladder.
