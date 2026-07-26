@@ -1,0 +1,58 @@
+{
+  "conclusion": "The bounded strategy bank is mechanically valid but has not shown replicated sample-efficiency gains. Context keys remain the frontier; do not scale bank capacity or training duration.",
+  "gate": {
+    "accepted": false,
+    "all_old_skills_retained": true,
+    "all_seeds_matched": true,
+    "shuffled_keys_reduce_target_reward": false,
+    "strategy_more_reward_efficient_in_every_replica": false
+  },
+  "pairs": [
+    {
+      "global_residual": {
+        "retained": true,
+        "reward_advantage_auc": -0.010416746139526367,
+        "reward_advantage_per_1000_bits": -0.004018806380990111,
+        "target_advantage_auc": 0.125,
+        "total_candidate_verifier_bits": 2592
+      },
+      "seed": 7042,
+      "seed_matched": true,
+      "strategy_memory": {
+        "retained": true,
+        "reward_advantage_auc": 0.020833313465118408,
+        "reward_advantage_per_1000_bits": 0.0062003909122376214,
+        "target_advantage_auc": 0.1875,
+        "total_candidate_verifier_bits": 3360
+      },
+      "strategy_minus_global_reward_per_1000_bits": 0.010219197293227733
+    },
+    {
+      "global_residual": {
+        "retained": true,
+        "reward_advantage_auc": 0.0625,
+        "reward_advantage_per_1000_bits": 0.024112654320987654,
+        "target_advantage_auc": 0.5625,
+        "total_candidate_verifier_bits": 2592
+      },
+      "seed": 7043,
+      "seed_matched": true,
+      "strategy_memory": {
+        "retained": true,
+        "reward_advantage_auc": 0.0625,
+        "reward_advantage_per_1000_bits": 0.01860119047619048,
+        "target_advantage_auc": 0.5625,
+        "total_candidate_verifier_bits": 3360
+      },
+      "strategy_minus_global_reward_per_1000_bits": -0.005511463844797174
+    }
+  ],
+  "schema": "unified-controller-strategy-memory-audit-v1",
+  "shuffled_strategy_keys": {
+    "retained": true,
+    "reward_advantage_auc": 0.020833313465118408,
+    "reward_advantage_per_1000_bits": 0.0062003909122376214,
+    "target_advantage_auc": 0.375,
+    "total_candidate_verifier_bits": 3360
+  }
+}

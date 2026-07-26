@@ -14,6 +14,7 @@ from .probe_persistent_physical_stream import (
     _ranked_age,
 )
 from .compare_persistent_fresh_efficiency import _arm_metrics
+from .strategy_memory import LatentStrategyMemory, physical_context_key
 
 
 def test_lifetime_has_one_correct_action_and_balanced_private_rules() -> None:
@@ -262,6 +263,52 @@ def test_efficiency_metric_normalizes_against_same_state_frozen_policy() -> None
     assert abs(metrics["verified_reward_advantage_auc"] - 0.25) < 1e-6
     assert abs(metrics["target_rate_advantage_auc"] - 0.35) < 1e-6
     assert abs(metrics["old_return_reward_advantage"] - 0.05) < 1e-6
+
+
+def test_strategy_memory_is_bounded_retrievable_and_persistent(
+        tmp_path: Path) -> None:
+    memory = LatentStrategyMemory(
+        capacity=2, key_width=3, value_width=2)
+    keys = torch.eye(3)
+    memory.upsert(
+        keys[0], torch.tensor([1.0, 0.0]),
+        verified_improvement=0.2)
+    memory.upsert(
+        keys[1], torch.tensor([0.0, 1.0]),
+        verified_improvement=-0.1)
+    retrieved = memory.retrieve(
+        keys[0], torch.zeros(2))
+    assert retrieved.slot == 0
+    assert torch.equal(retrieved.value, torch.tensor([1.0, 0.0]))
+    memory.upsert(
+        keys[2], torch.tensor([-1.0, -1.0]),
+        verified_improvement=0.3)
+    assert memory.count == 2
+    path = tmp_path / "strategy-memory.pt"
+    memory.save(path)
+    restored = LatentStrategyMemory.load(path)
+    assert restored.count == 2
+    assert torch.equal(restored.keys, memory.keys)
+    assert torch.equal(restored.values, memory.values)
+    assert torch.equal(restored.usage, memory.usage)
+    assert torch.equal(restored.success, memory.success)
+    assert torch.equal(restored.failure, memory.failure)
+
+
+def test_physical_context_key_ignores_skip_and_is_normalized() -> None:
+    features = torch.zeros(2, 4, 7)
+    features[:, 1:, 0] = 0.5
+    features[:, 1:, 5] = -0.25
+    features[:, 1:, 6] = 0.25
+    first = physical_context_key(features)
+    features[:, 0] = 999
+    second = physical_context_key(features)
+    assert torch.allclose(first, second)
+    assert torch.allclose(first.norm(), torch.tensor(1.0))
+    rewarded = physical_context_key(
+        features, torch.tensor([0.4, 0.2, 0.1]))
+    assert rewarded.shape == (13,)
+    assert torch.allclose(rewarded.norm(), torch.tensor(1.0))
 
 
 def test_old_disk_schema_loads_with_zero_access_counts(tmp_path: Path) -> None:

@@ -747,6 +747,47 @@ residual at equal verifier bits, and require positive transfer plus retention.
 Canonical audit:
 `reports/gradual_transfer_audit_seeds7032_7034.json`.
 
+### Four-slot latent strategy RAM
+
+The next architecture atom is implemented and mechanically passes. A bounded
+four-slot RAM bank stores ten-dimensional physical-context summaries plus a
+three-dimensional recent verifier-response signature as latent keys, and the
+two generic utility coefficients as values. Retrieval is content-addressed;
+verified candidate improvement updates success/failure statistics; low-utility
+records are replaced at capacity; and every update survives exact
+serialization. No task name, utility weight, semantic label, or verifier target
+enters a key.
+
+The first retrieval protocol failed diagnostically: physical-only keys had
+cosine similarities near `0.99` across all phases and merely reproduced the
+global residual. Adding recent centered candidate outcomes made contexts
+distinguishable. A post-probe protocol then allowed the retrieved strategy to
+compete as a fourth candidate, with its additional verifier bits charged.
+
+That produced one genuine positive pilot on seed 7042: target normalized
+reward-AUC improved from `-0.01042` for the global residual to `+0.02083` for
+strategy RAM, even after accounting for 3,360 versus 2,592 candidate verifier
+bits. However, seed 7043 tied in raw reward and was less efficient after the
+extra probe. Shuffling strategy keys did not reduce target reward. Therefore
+the capability gate is correctly rejected.
+
+This is a useful bounded negative:
+
+- strategy storage, retrieval, replacement, and persistence work;
+- a retrieved strategy can rescue a failing trajectory;
+- the present context representation does not address strategies causally or
+  reliably enough for replicated sample-efficiency gains; and
+- increasing capacity, rounds, or model size is not justified.
+
+Canonical audit:
+`reports/strategy_memory_audit_seeds7042_7043.json`.
+
+The frontier is now a learned context encoder trained only through verified
+strategy usefulness. It should predict which stored strategy will improve
+future reward, using physical history and recent outcomes, while shuffled-key
+and cold-memory controls remain mandatory. The encoder must first beat the
+current fixed key in sub-minute probes before any memory bank is enlarged.
+
 Run the sub-minute GPU experiment:
 
 ```bash

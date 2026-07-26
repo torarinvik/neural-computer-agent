@@ -23,6 +23,7 @@ from .probe_persistent_physical_stream import (
 from .train import evaluate, seed_everything
 from .train_frequency_recency_replacement import frequency_recency_batch
 from .train_multifeature_utility_adaptation import _expanded_controller
+from .strategy_memory import LatentStrategyMemory, physical_context_key
 
 
 def _clone_model(
@@ -52,12 +53,17 @@ def main() -> None:
         help="fresh-bank control: rematerialize physical histories each round")
     parser.add_argument(
         "--target-intervention",
-        choices=("none", "cold", "empty_history", "shuffled_history"),
+        choices=(
+            "none", "cold", "empty_history", "shuffled_history",
+            "shuffled_strategy_keys"),
         default="none",
         help="one-time intervention immediately before reliability transfer")
     parser.add_argument(
         "--curriculum",
         choices=("standard", "gradual_reliability"), default="standard")
+    parser.add_argument(
+        "--strategy-memory-capacity", type=int, default=0,
+        help="zero uses the global residual; positive enables latent RAM")
     parser.add_argument("--device", default=(
         "cuda" if torch.cuda.is_available() else "cpu"))
     args = parser.parse_args()
@@ -109,6 +115,13 @@ def main() -> None:
             device=device)
         direction_generator = torch.Generator(device=device).manual_seed(
             args.seed + 70_000_000)
+        strategy_memory = (
+            LatentStrategyMemory(capacity=args.strategy_memory_capacity,
+                                 key_width=13, device=device)
+            if args.strategy_memory_capacity > 0 else None)
+        previous_reward_signature = torch.zeros(3, device=device)
+        strategy_save_reloads = 0
+        strategy_candidate_evaluations = 0
         trace = []
         phase_summaries = []
         state_exact = initial_exact
@@ -124,6 +137,19 @@ def main() -> None:
                 if args.target_intervention == "cold":
                     model.memory_replacement_extra_gate.weight.copy_(
                         initial_residual)
+                    if strategy_memory is not None:
+                        strategy_memory = LatentStrategyMemory(
+                            capacity=args.strategy_memory_capacity,
+                            key_width=13, device=device)
+                        previous_reward_signature.zero_()
+                elif (
+                        args.target_intervention
+                        == "shuffled_strategy_keys"
+                        and strategy_memory is not None
+                        and strategy_memory.count > 1):
+                    strategy_memory.keys[:strategy_memory.count] = (
+                        strategy_memory.keys[:strategy_memory.count].roll(
+                            1, dims=0))
             phase_rows = []
             for round_index in range(args.rounds_per_phase):
                 rounds += 1
@@ -189,9 +215,18 @@ def main() -> None:
                         model, visible_memories, data["candidate_key"],
                         data["candidate_strength"], weights=weights,
                         noise=noise)
-                current = (
-                    model.memory_replacement_extra_gate.weight
-                    .detach().clone())
+                context_key = physical_context_key(
+                    features, previous_reward_signature)
+                strategy_retrieval = None
+                if strategy_memory is None:
+                    current = (
+                        model.memory_replacement_extra_gate.weight
+                        .detach().clone())
+                else:
+                    strategy_retrieval = strategy_memory.retrieve(
+                        context_key, initial_residual.flatten())
+                    current = strategy_retrieval.value.reshape(1, -1)
+                    model.memory_replacement_extra_gate.weight.copy_(current)
                 direction = torch.randint(
                     0, 2, (2,), generator=direction_generator,
                     device=device).float() * 2 - 1
@@ -221,17 +256,52 @@ def main() -> None:
                     candidate_exact += exact
                     physical_means.append(float(physical.mean()))
                     tensor_means.append(float(tensor.mean()))
+                post_probe_retrieval = None
+                post_probe_weight = None
+                if strategy_memory is not None and strategy_memory.count:
+                    strategy_candidate_evaluations += 1
+                    reward_signature = torch.tensor(
+                        physical_means, device=device)
+                    reward_context_key = physical_context_key(
+                        features, reward_signature)
+                    post_probe_retrieval = strategy_memory.retrieve(
+                        reward_context_key, current.flatten())
+                    post_probe_weight = (
+                        post_probe_retrieval.value.reshape(1, -1))
+                    model.memory_replacement_extra_gate.weight.copy_(
+                        post_probe_weight)
+                    memory_actions = model.memory_replacement_scores(
+                        features).argmax(-1)
+                    actions_by_candidate.append(memory_actions)
+                    memory_directory = (
+                        root / f"round-{rounds:03d}-candidate-memory")
+                    memory_directory.mkdir()
+                    physical, exact = _physical_rewards(
+                        model, memories, data, row_batch, row_queries,
+                        candidate_batch, candidate_queries,
+                        memory_actions, target, memory_directory,
+                        device=device)
+                    tensor = _tensor_rewards(
+                        model, memories, data, row_batch, row_queries,
+                        candidate_batch, candidate_queries,
+                        memory_actions, target, device=device)
+                    candidate_exact += exact
+                    physical_means.append(float(physical.mean()))
+                    tensor_means.append(float(tensor.mean()))
                 aligned_rewards = list(physical_means)
                 if args.shuffle_physical_rewards:
                     order = torch.randperm(
-                        3, generator=direction_generator,
+                        len(physical_means),
+                        generator=direction_generator,
                         device=device).tolist()
                     aligned_rewards = [
                         physical_means[index] for index in order]
                 physical_winner = max(
-                    range(3), key=aligned_rewards.__getitem__)
+                    range(len(aligned_rewards)),
+                    key=aligned_rewards.__getitem__)
                 tensor_winner = max(
-                    range(3), key=tensor_means.__getitem__)
+                    range(len(tensor_means)),
+                    key=tensor_means.__getitem__)
                 maximum_parity_difference = max(
                     maximum_parity_difference,
                     max(abs(a - b) for a, b in zip(
@@ -241,10 +311,50 @@ def main() -> None:
                     max(physical_means) - physical_means[tensor_winner])
                 maximum_cross_choice_regret = max(
                     maximum_cross_choice_regret, cross_regret)
-                winner_sign = signs[physical_winner]
+                if physical_winner < len(signs):
+                    winner_sign = signs[physical_winner]
+                    winner_weight = (
+                        current + winner_sign * args.step_size
+                        * direction.unsqueeze(0))
+                else:
+                    winner_weight = post_probe_weight
                 model.memory_replacement_extra_gate.weight.copy_(
-                    current + winner_sign * args.step_size
-                    * direction.unsqueeze(0))
+                    winner_weight)
+                strategy_slot = None
+                if strategy_memory is not None:
+                    reward_signature = torch.tensor(
+                        physical_means[:3], device=device)
+                    storage_context_key = physical_context_key(
+                        features, reward_signature)
+                    strategy_slot = strategy_memory.upsert(
+                        storage_context_key,
+                        model.memory_replacement_extra_gate.weight.flatten(),
+                        verified_improvement=(
+                            physical_means[physical_winner]
+                            - physical_means[1]))
+                    strategy_path = (
+                        root / f"round-{rounds:03d}-strategy.pt")
+                    strategy_memory.save(strategy_path)
+                    restored_strategy = LatentStrategyMemory.load(
+                        strategy_path, device=device)
+                    strategy_save_reloads += int(
+                        restored_strategy.count == strategy_memory.count
+                        and torch.equal(
+                            restored_strategy.keys, strategy_memory.keys)
+                        and torch.equal(
+                            restored_strategy.values,
+                            strategy_memory.values)
+                        and torch.equal(
+                            restored_strategy.usage,
+                            strategy_memory.usage)
+                        and torch.equal(
+                            restored_strategy.success,
+                            strategy_memory.success)
+                        and torch.equal(
+                            restored_strategy.failure,
+                            strategy_memory.failure))
+                    strategy_memory = restored_strategy
+                    previous_reward_signature = reward_signature
                 learned_actions = actions_by_candidate[physical_winner]
                 frozen_actions = frozen.memory_replacement_scores(
                     features).argmax(-1)
@@ -283,6 +393,24 @@ def main() -> None:
                     "residual_weights": (
                         model.memory_replacement_extra_gate.weight
                         .flatten().tolist()),
+                    "strategy_retrieved_slot": (
+                        strategy_retrieval.slot
+                        if strategy_retrieval is not None else None),
+                    "strategy_retrieval_similarity": (
+                        strategy_retrieval.similarity
+                        if strategy_retrieval is not None else None),
+                    "strategy_updated_slot": strategy_slot,
+                    "post_probe_strategy_slot": (
+                        post_probe_retrieval.slot
+                        if post_probe_retrieval is not None else None),
+                    "post_probe_strategy_similarity": (
+                        post_probe_retrieval.similarity
+                        if post_probe_retrieval is not None else None),
+                    "post_probe_strategy_won":
+                        physical_winner >= len(signs),
+                    "strategy_memory_count": (
+                        strategy_memory.count
+                        if strategy_memory is not None else 0),
                     "replacements": replacements,
                 }
                 trace.append(row)
@@ -321,7 +449,8 @@ def main() -> None:
         expected_state = args.banks * (
             rounds + 1
             + (rounds if args.reset_banks_each_round else 0))
-        expected_candidates = args.banks * rounds * 4
+        expected_candidates = args.banks * (
+            4 * rounds + strategy_candidate_evaluations)
         reliability = phase_summaries[1]
         old_return = phase_summaries[2]
         gate = {
@@ -350,6 +479,9 @@ def main() -> None:
             "only_extra_residual_changed":
                 set(changed).issubset({
                     "memory_replacement_extra_gate.weight"}),
+            "strategy_memory_save_reload_exact": (
+                strategy_memory is None
+                or strategy_save_reloads == rounds),
         }
         gate["accepted"] = (
             all(gate.values()) and not args.shuffle_physical_rewards)
@@ -370,6 +502,10 @@ def main() -> None:
             "one_decision_fresh_control"
             if args.reset_banks_each_round
             else "persistent_across_all_decisions"),
+        "fast_adaptation_state": (
+            "context_indexed_latent_strategy_memory"
+            if args.strategy_memory_capacity > 0
+            else "single_global_residual"),
         "semantic_or_utility_labels_used_for_training": False,
         "physical_reward_is_sovereign": True,
         "tensor_arena_role": "parity_audit_only",
@@ -385,6 +521,16 @@ def main() -> None:
             "state_save_reloads": expected_state,
             "total_replacements": total_replacements,
             "optimizer_updates": rounds,
+            "candidate_verifier_bits":
+                args.banks * args.bank_capacity * (
+                    3 * rounds + strategy_candidate_evaluations),
+            "strategy_candidate_evaluations":
+                strategy_candidate_evaluations,
+            "strategy_memory_save_reloads": strategy_save_reloads,
+            "final_strategy_memory_count": (
+                strategy_memory.count
+                if strategy_memory is not None else 0),
+            "strategy_memory_capacity": args.strategy_memory_capacity,
             "replayed_examples": 0,
             "requested_initial_histories_reproduced_exactly":
                 requested_exact,
