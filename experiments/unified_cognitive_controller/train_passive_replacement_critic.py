@@ -18,7 +18,7 @@ import torch
 from torch import nn
 
 from .train import evaluate, seed_everything
-from .train_memory_replacement import _bank_reward
+from .train_memory_replacement import _apply_replacement, _bank_outcomes
 from .train_redundancy_transfer import (
     build_transfer_arms,
     redundancy_utility_batch,
@@ -98,6 +98,60 @@ def apply_evidence_control(features: torch.Tensor, arm: str) -> torch.Tensor:
     return controlled
 
 
+def critic_evidence(
+        features: torch.Tensor, arm: str, *,
+        primary_evidence: str) -> torch.Tensor:
+    """Apply the registered primary surface before causal ablations."""
+    if primary_evidence not in (
+            "full", "action_only", "action_query", "query_only"):
+        raise ValueError("unknown primary evidence mode")
+    if primary_evidence == "query_only":
+        controlled = torch.zeros_like(features)
+        controlled[:, :4] = features[:, :4]
+        if arm in ("missing_action", "missing_context"):
+            controlled.zero_()
+        elif arm not in ("intact", "reward_shuffled"):
+            raise ValueError(f"unknown critic arm: {arm}")
+        return controlled
+    if primary_evidence in ("action_only", "action_query"):
+        controlled = features.clone()
+        # action_query reserves the first four generic context coordinates for
+        # controller-created read evidence.  Everything else is removed.
+        start = 4 if primary_evidence == "action_query" else 0
+        controlled[:, start:18] = 0
+        features = controlled
+        if arm == "missing_action":
+            features = features.clone()
+            features[:, 18:] = 0
+            return features
+        if arm == "missing_context" and primary_evidence == "action_query":
+            return apply_evidence_control(features, "missing_context")
+        if arm in ("intact", "reward_shuffled", "missing_context"):
+            return features
+        raise ValueError(f"unknown critic arm: {arm}")
+    return apply_evidence_control(features, arm)
+
+
+def immediate_read_evidence(
+        data: dict[str, object], actions: torch.Tensor) -> torch.Tensor:
+    """Generic post-action read features for the next controller query."""
+    keys, _, strengths = _apply_replacement(data, actions)
+    query = data["future_queries"][:, 0]
+    cosine = torch.einsum(
+        "bw,bkw->bk",
+        torch.nn.functional.normalize(query, dim=-1),
+        torch.nn.functional.normalize(keys, dim=-1))
+    ranked = cosine + strengths.clamp_min(1e-6).log()
+    scores, selected = ranked.topk(2, dim=-1)
+    top = selected[:, 0]
+    confidence = cosine.gather(1, top[:, None]).squeeze(1)
+    margin = scores[:, 0] - scores[:, 1]
+    selected_strength = strengths.gather(1, top[:, None]).squeeze(1)
+    occupancy = torch.ones_like(confidence)
+    return torch.stack((
+        confidence, margin, selected_strength, occupancy), dim=-1)
+
+
 def exploration_probabilities(
         scores: torch.Tensor, *, epsilon: float,
         temperature: float) -> torch.Tensor:
@@ -161,7 +215,8 @@ def critic_metrics(
 def collect_attempts(
         policy, reward_model, *, banks: int, capacity: int, seed: int,
         device: torch.device, epsilon: float, temperature: float,
-        write_threshold: float,
+        write_threshold: float, outcome_horizon: int | None = None,
+        include_query_evidence: bool = False,
         ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     data = redundancy_utility_batch(
         reward_model, banks=banks, capacity=capacity, seed=seed,
@@ -174,10 +229,13 @@ def collect_attempts(
     actions = torch.multinomial(
         probabilities, 1, generator=generator).squeeze(1)
     propensities = probabilities.gather(1, actions[:, None]).squeeze(1)
-    outcomes = _bank_reward(
-        reward_model, data, actions, device=device)
+    outcomes = _bank_outcomes(
+        reward_model, data, actions, device=device,
+        horizon=outcome_horizon).mean(-1)
     features = attempted_action_features(
         data["option_features"], scores, actions, propensities)
+    if include_query_evidence:
+        features[:, :4] = immediate_read_evidence(data, actions)
     return features, outcomes, actions, propensities
 
 
@@ -203,6 +261,14 @@ def main() -> None:
     parser.add_argument("--temperature", type=float, default=2.0)
     parser.add_argument("--write-threshold", type=float, default=0.5)
     parser.add_argument("--evaluate-every", type=int, default=2)
+    parser.add_argument(
+        "--primary-evidence",
+        choices=("full", "action_only", "action_query", "query_only"),
+        default="full")
+    parser.add_argument(
+        "--outcome-horizon", type=int, default=0,
+        help="0 averages all future events; 1 predicts only the next event")
+    parser.add_argument("--minimum-concordance", type=float, default=0.55)
     args = parser.parse_args()
     if min(args.steps, args.batch_banks, args.test_banks) < 1:
         raise ValueError("training budgets must be positive")
@@ -224,7 +290,10 @@ def main() -> None:
             capacity=args.bank_capacity, seed=args.seed + 90_000_000,
             device=device, epsilon=args.epsilon,
             temperature=args.temperature,
-            write_threshold=args.write_threshold))
+            write_threshold=args.write_threshold,
+            outcome_horizon=(args.outcome_horizon or None),
+            include_query_evidence=args.primary_evidence in (
+                "action_query", "query_only")))
 
     critics = {}
     optimizers = {}
@@ -256,9 +325,12 @@ def main() -> None:
                 "unique_logical_lifetimes":
                     step * args.batch_banks,
                 "unique_verifier_bits":
-                    step * args.batch_banks * args.bank_capacity,
+                    step * args.batch_banks
+                    * (args.outcome_horizon or args.bank_capacity),
                 **critic_metrics(
-                    critic, apply_evidence_control(test_features, name),
+                    critic, critic_evidence(
+                        test_features, name,
+                        primary_evidence=args.primary_evidence),
                     test_outcomes, constant=constant),
             })
 
@@ -272,7 +344,10 @@ def main() -> None:
             seed=args.seed * 1_000_000 + step,
             device=device, epsilon=args.epsilon,
             temperature=args.temperature,
-            write_threshold=args.write_threshold)
+            write_threshold=args.write_threshold,
+            outcome_horizon=(args.outcome_horizon or None),
+            include_query_evidence=args.primary_evidence in (
+                "action_query", "query_only"))
         train_outcome_sum += float(outcomes.sum())
         train_examples += outcomes.numel()
         empirical_rate = min(max(
@@ -286,7 +361,8 @@ def main() -> None:
             outcomes.numel(), generator=shuffle_generator, device=device)
         for name, critic in critics.items():
             critic.train()
-            controlled = apply_evidence_control(features, name)
+            controlled = critic_evidence(
+                features, name, primary_evidence=args.primary_evidence)
             targets = (
                 outcomes[permutation]
                 if name == "reward_shuffled" else outcomes)
@@ -308,7 +384,9 @@ def main() -> None:
             restored = PassiveReplacementCritic().to(device)
             restored.load_state_dict(torch.load(
                 path, map_location=device, weights_only=True))
-            controlled = apply_evidence_control(test_features, name)
+            controlled = critic_evidence(
+                test_features, name,
+                primary_evidence=args.primary_evidence)
             with torch.no_grad():
                 persistence[name] = torch.equal(
                     critic(controlled), restored(controlled))
@@ -320,11 +398,35 @@ def main() -> None:
         policy, count=128, trials=6, seed=args.seed + 94_000_000,
         device=device, task="four_rule", feedback_trials=2)
     final = {name: history[-1] for name, history in histories.items()}
+    evidence_shuffle_generator = torch.Generator(device=device).manual_seed(
+        args.seed + 79_000_000)
+    evidence_permutation = torch.randperm(
+        test_features.shape[0], generator=evidence_shuffle_generator,
+        device=device)
+    evidence_shuffled_features = test_features.clone()
+    if args.primary_evidence == "query_only":
+        evidence_shuffled_features[:, :4] = (
+            evidence_shuffled_features[evidence_permutation, :4])
+    else:
+        evidence_shuffled_features = (
+            evidence_shuffled_features[evidence_permutation])
+    empirical_constant = (
+        train_outcome_sum / train_examples
+        if train_examples else float(test_outcomes.mean()))
+    evidence_shuffled_metrics = critic_metrics(
+        critics["intact"],
+        critic_evidence(
+            evidence_shuffled_features, "intact",
+            primary_evidence=args.primary_evidence),
+        test_outcomes, constant=empirical_constant)
     intact_advantage = (
         final["intact"]["constant_brier"] - final["intact"]["brier"])
+    causal_control_names = ["reward_shuffled", "missing_action"]
+    if args.primary_evidence in ("full", "action_query"):
+        causal_control_names.append("missing_context")
     control_advantage = min(
         final[name]["brier"] - final["intact"]["brier"]
-        for name in ("reward_shuffled", "missing_action", "missing_context"))
+        for name in causal_control_names)
     stable_last_two = (
         len(histories["intact"]) >= 2
         and all(
@@ -339,8 +441,8 @@ def main() -> None:
             intact_advantage >= 0.005,
         "intact_beats_every_control_by_0_002":
             control_advantage >= 0.002,
-        "intact_concordance_at_least_0_55":
-            final["intact"]["concordance"] >= 0.55,
+        "intact_concordance_meets_threshold":
+            final["intact"]["concordance"] >= args.minimum_concordance,
         "intact_ece_at_most_0_10": final["intact"]["ece"] <= 0.10,
         "improvement_stable_at_last_two_prefixes": stable_last_two,
         "all_gradients_live": all(
@@ -349,6 +451,10 @@ def main() -> None:
         "binary_retained": binary["gate"]["accepted"],
         "four_rule_retained": four_rule["gate"]["accepted"],
     }
+    if args.primary_evidence == "query_only":
+        gate["query_evidence_shuffle_costs_at_least_0_002_brier"] = (
+            evidence_shuffled_metrics["brier"]
+            - final["intact"]["brier"] >= 0.002)
     gate["accepted_for_three_minute_promotion"] = all(gate.values())
     elapsed = time.perf_counter() - started
     report = {
@@ -358,13 +464,25 @@ def main() -> None:
             "selected_prefix": str(args.selected_prefix),
             "report": str(args.report),
         },
-        "learner_visible": [
+        "learner_visible": ([
             "generic_per_bank_memory_statistics",
             "attempted_option_statistics",
             "attempted_action_logging_propensity",
             "attempted_action_policy_margin",
             "later_scalar_verified_outcome",
-        ],
+        ] if args.primary_evidence == "full" else [
+            *(
+                [
+                    "attempted_option_statistics",
+                    "attempted_action_logging_propensity",
+                    "attempted_action_policy_margin",
+                ] if args.primary_evidence != "query_only" else []),
+            *(
+                ["next_query_generic_read_confidence_margin_strength"]
+                if args.primary_evidence in (
+                    "action_query", "query_only") else []),
+            "next_scalar_verified_outcome",
+        ]),
         "hidden_from_learner": [
             "optimal_replacement_action", "unattempted_action_outcomes",
             "utility_or_task_identifier", "future_query_identity",
@@ -373,10 +491,17 @@ def main() -> None:
         "semantic_or_correct_action_labels_used_for_training": False,
         "histories": histories,
         "final_metrics": final,
+        "evidence_shuffled_metrics": evidence_shuffled_metrics,
         "controls": {
             "reward_shuffled": "training outcomes permuted within each batch",
-            "missing_action": "attempted option, propensity, and margin removed",
-            "missing_context": "generic bank context removed",
+            "missing_action": (
+                "all query-read evidence removed"
+                if args.primary_evidence == "query_only"
+                else "attempted option, propensity, and margin removed"),
+            "missing_context": (
+                "all query-read evidence removed"
+                if args.primary_evidence == "query_only"
+                else "generic bank or query context removed"),
         },
         "action_trace_digest": action_digests,
         "propensity_trace_digest": propensity_digests,
@@ -389,14 +514,16 @@ def main() -> None:
             "unique_logical_lifetimes": (
                 args.steps * args.batch_banks),
             "unique_verifier_bits": (
-                args.steps * args.batch_banks * args.bank_capacity),
+                args.steps * args.batch_banks
+                * (args.outcome_horizon or args.bank_capacity)),
             "optimizer_updates_per_critic": args.steps,
             "replayed_examples": 0,
             "training_examples_per_critic": (
                 args.steps * args.batch_banks),
             "heldout_logical_lifetimes": args.test_banks,
             "heldout_verifier_bits": (
-                args.test_banks * args.bank_capacity),
+                args.test_banks
+                * (args.outcome_horizon or args.bank_capacity)),
             "wall_seconds": elapsed,
             "mean_decision_latency_seconds": None,
             "stable_bits_to_threshold": None,

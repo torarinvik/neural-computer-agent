@@ -9,6 +9,7 @@ from .model import UnifiedCognitiveController
 from .probe_persistent_interface import _add_context_signatures
 from .train import attempted_success_loss, evaluate, rollout
 from .train_frequency_recency_replacement import frequency_recency_batch
+from .train_memory_replacement import _bank_outcomes
 from .train_redundancy_transfer import (
     _expanded_eight_feature_controller,
     _stable_crossing,
@@ -28,7 +29,9 @@ from .train_passive_replacement_critic import (
     apply_evidence_control,
     attempted_action_features,
     concordance,
+    critic_evidence,
     exploration_probabilities,
+    immediate_read_evidence,
 )
 from .train_persistent_memory import _grouped_read
 from .probe_persistent_physical_stream import (
@@ -232,6 +235,32 @@ def test_passive_critic_controls_remove_only_registered_evidence() -> None:
     assert torch.count_nonzero(missing_action[:, 18:]) == 0
     assert torch.count_nonzero(missing_context[:, :18]) == 0
     assert torch.equal(missing_context[:, 18:], features[:, 18:])
+    action_only = critic_evidence(
+        features, "intact", primary_evidence="action_only")
+    action_only_missing = critic_evidence(
+        features, "missing_action", primary_evidence="action_only")
+    assert torch.count_nonzero(action_only[:, :18]) == 0
+    assert torch.equal(action_only[:, 18:], features[:, 18:])
+    assert torch.count_nonzero(action_only_missing) == 0
+    action_query = critic_evidence(
+        features, "intact", primary_evidence="action_query")
+    query_missing = critic_evidence(
+        features, "missing_context", primary_evidence="action_query")
+    action_missing = critic_evidence(
+        features, "missing_action", primary_evidence="action_query")
+    assert torch.equal(action_query[:, :4], features[:, :4])
+    assert torch.count_nonzero(action_query[:, 4:18]) == 0
+    assert torch.count_nonzero(query_missing[:, :18]) == 0
+    assert torch.equal(query_missing[:, 18:], features[:, 18:])
+    assert torch.equal(action_missing[:, :4], features[:, :4])
+    assert torch.count_nonzero(action_missing[:, 18:]) == 0
+    query_only = critic_evidence(
+        features, "intact", primary_evidence="query_only")
+    query_only_missing = critic_evidence(
+        features, "missing_action", primary_evidence="query_only")
+    assert torch.equal(query_only[:, :4], features[:, :4])
+    assert torch.count_nonzero(query_only[:, 4:]) == 0
+    assert torch.count_nonzero(query_only_missing) == 0
 
 
 def test_passive_critic_logging_propensities_are_exact_mixture() -> None:
@@ -830,6 +859,32 @@ def test_redundancy_batch_is_seed_exact_and_exposes_only_row_statistic(
         first["row_novelty"] - 0.5)
     assert torch.all(first["target_action"] >= 1)
     assert torch.all(first["target_action"] <= 3)
+
+
+def test_bank_outcome_horizon_returns_only_requested_verifier_events() -> None:
+    model = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        adaptive_memory_read=True,
+        adaptive_memory_replace=True,
+        adaptive_memory_replace_hidden=8,
+        adaptive_memory_replace_features=8)
+    data = redundancy_utility_batch(
+        model, banks=4, capacity=3, seed=79,
+        device=torch.device("cpu"), write_threshold=0.0,
+        noise_scale=0.0, weights=(0.0, 0.0, 0.0, 1.0))
+    actions = torch.tensor([0, 1, 2, 3])
+    complete = _bank_outcomes(
+        model, data, actions, device=torch.device("cpu"))
+    immediate = _bank_outcomes(
+        model, data, actions, device=torch.device("cpu"), horizon=1)
+    assert complete.shape == (4, 3)
+    assert immediate.shape == (4, 1)
+    assert torch.equal(immediate[:, 0], complete[:, 0])
+    assert torch.all((immediate == 0) | (immediate == 1))
+    evidence = immediate_read_evidence(data, actions)
+    assert evidence.shape == (4, 4)
+    assert torch.isfinite(evidence).all()
+    assert torch.equal(evidence[:, 3], torch.ones(4))
 
 
 def test_stable_crossing_rejects_transient_threshold_hits() -> None:

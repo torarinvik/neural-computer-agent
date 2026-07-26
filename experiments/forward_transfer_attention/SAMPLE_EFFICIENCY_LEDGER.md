@@ -813,3 +813,32 @@ right to control answers, memory, or compute.  The next gradual rung is a
 shorter-horizon attempted-action prediction: one immediate verifier event
 first, then longer outcome horizons and cross-context prediction one axis at a
 time.
+
+The horizon-one localization produced the next verified breakthrough.  An
+action-only critic showed an initial ranking signal but missed the Brier gate.
+Adding the controller's own next-query read evidence localized the useful
+surface to only four generic values: confidence, top-two margin, selected
+strength, and occupancy.  A 32-hidden-unit passive critic then learned from
+scalar verifier outcomes with no correct-action or semantic labels.
+
+At the promoted sub-minute budget, every seed used 768 unique logical
+lifetimes, 768 unique verifier bits, 12 updates, zero replay, and 6.0–13.8 CPU
+seconds.  Three of four seeds passed every gate:
+
+- 7334: +0.00893 Brier over constant, 0.913 concordance;
+- 7335: +0.01112 Brier, 0.937 concordance;
+- 7336: +0.01033 Brier, 0.964 concordance, missed only ECE by 0.002;
+- 7337: +0.00866 Brier, 0.802 concordance.
+
+Adversarial evidence permutation collapsed concordance from 0.964 to 0.504
+and from 0.802 to 0.470, costing 0.00933 and 0.01009 Brier.  Reward-shuffled
+critics did not match intact Brier; zero-evidence critics stayed at 0.5
+concordance.  All action-coverage, persistence, binary-retention, and
+four-rule-retention gates passed.
+
+The supported claim is deliberately narrow but new: the unified controller
+can acquire a calibrated, causally evidence-dependent immediate-success model
+from fewer than one thousand scalar outcomes, using only its own abstract
+memory-read state.  The critic remains passive.  The next rung is shadow
+compute allocation—evaluate whether it can rank the verified value of one
+extra thought/read step before allowing it to influence latency or behavior.

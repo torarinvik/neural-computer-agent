@@ -231,18 +231,45 @@ def _hard_bank_read(
 
 
 @torch.no_grad()
+def _bank_outcomes(
+        model: UnifiedCognitiveController, data: dict[str, object],
+        actions: torch.Tensor, *, device: torch.device,
+        horizon: int | None = None,
+        ) -> torch.Tensor:
+    """Return verifier bits per bank, optionally for the earliest events."""
+    keys, values, strengths = _apply_replacement(data, actions)
+    future_queries = data["future_queries"]
+    events = future_queries.shape[1]
+    if horizon is None:
+        horizon = events
+    if not 1 <= horizon <= events:
+        raise ValueError("outcome horizon must cover available future events")
+    if horizon < events:
+        banks = actions.shape[0]
+        flat_indices = (
+            torch.arange(banks, device=device).unsqueeze(1) * events
+            + torch.arange(horizon, device=device).unsqueeze(0)
+        ).reshape(-1)
+        future_batch = _select_batch(data["future_batch"], flat_indices)
+        future_queries = future_queries[:, :horizon]
+    else:
+        future_batch = data["future_batch"]
+    memory = _hard_bank_read(
+        model, keys, values, strengths, future_queries)
+    from .train_adaptive_memory_read import _outcomes
+    outcomes = _outcomes(
+        model, future_batch,
+        memory.reshape(-1, memory.shape[-1]), device=device)
+    return outcomes.reshape(actions.shape[0], horizon)
+
+
+@torch.no_grad()
 def _bank_reward(
         model: UnifiedCognitiveController, data: dict[str, object],
         actions: torch.Tensor, *, device: torch.device
         ) -> torch.Tensor:
-    keys, values, strengths = _apply_replacement(data, actions)
-    memory = _hard_bank_read(
-        model, keys, values, strengths, data["future_queries"])
-    from .train_adaptive_memory_read import _outcomes
-    outcomes = _outcomes(
-        model, data["future_batch"],
-        memory.reshape(-1, memory.shape[-1]), device=device)
-    return outcomes.reshape(actions.shape[0], -1).mean(-1)
+    return _bank_outcomes(
+        model, data, actions, device=device).mean(-1)
 
 
 @torch.no_grad()
