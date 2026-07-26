@@ -176,6 +176,21 @@ def main() -> None:
                 nn.utils.clip_grad_norm_(model.parameters(), 1.0)))
             source_optimizers[name].step()
 
+    source_cost_telemetry = {}
+    with torch.no_grad():
+        for name, model in source_models.items():
+            zeros = torch.zeros(args.batch_size, device=device)
+            ones = torch.ones(args.batch_size, device=device)
+            source_cost_telemetry[name] = {
+                "cost_column_l2": float(
+                    model.hidden.weight[:, 4].norm()),
+                "mean_absolute_read_prediction_change_cost_0_to_0_30":
+                    float((
+                        model(evidence, zeros, "read")
+                        - model(evidence, ones, "read")
+                    ).abs().mean()),
+            }
+
     # A new operation never inherits the old action adapter.
     for model in (source_trained, source_cost_shuffled, ancestor):
         nn.init.zeros_(model.adapters["requery"].weight)
@@ -355,6 +370,7 @@ def main() -> None:
         "stable_target_verifier_bits": stable,
         "final_metrics": final,
         "source_gradient_norms": source_gradient_norms,
+        "source_cost_telemetry": source_cost_telemetry,
         "target_gradient_norms": target_gradient_norms,
         "binary_retention": binary,
         "four_rule_retention": four_rule,

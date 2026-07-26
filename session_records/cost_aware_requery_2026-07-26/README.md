@@ -26,3 +26,16 @@ all three learning baselines, plus the usual choice, utility, oracle-gap,
 causal evidence, gradient, persistence, and retention gates. Seed 7901 is the
 sub-minute discovery run. Only a complete pass permits unchanged seed 7902
 replication.
+
+## Seed 7901 result and source-use diagnostic
+
+The architecture failed: cost-aware, cost-shuffled, ancestor, and reset arms
+all first reached stable target mastery at 600 bits. The established trunk
+baseline is 120 bits, so no replication or scaling is allowed.
+
+The cost-aware and cost-shuffled source arms were behaviorally identical.
+Before rejecting explicit cost itself, the unchanged seed is rerun once with
+diagnostic-only telemetry: L2 norm of the new cost-input column and the mean
+change in read-advantage prediction between normalized cost 0 and 1. This
+determines whether the source phase learned any cost dependence. It cannot
+promote the failed configuration.
