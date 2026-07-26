@@ -788,6 +788,29 @@ future reward, using physical history and recent outcomes, while shuffled-key
 and cold-memory controls remain mandatory. The encoder must first beat the
 current fixed key in sub-minute probes before any memory bank is enlarged.
 
+### Compute allocation and the weight-transfer boundary
+
+A passive inverse-propensity advantage learner made the external-memory read
+decision useful from 720 attempted-action verifier bits and replicated with a
+105-parameter head. It captured roughly 60% of the oracle compute-allocation
+gap; reward, feature, missing-evidence, and evidence-shuffle controls failed.
+The inherited production read gate remained more accurate, so its weights were
+preserved.
+
+The same blueprint was then tested on a distinct optional operation: answer now
+or take one more recurrent thought step. Generic controller statistics
+contained real decision signal, but neither direct whole-head transfer nor
+hidden-trunk-only transfer beat a matched reset learner under the
+pre-registered 720-bit gate. The strongest near-miss reached 64.1% choice
+accuracy, but near-misses are not promoted. Private balancing also required
+screening 86,016 lifetimes per run.
+
+This closes immediate operation-specific weight transfer. The next compounding
+atom is a shared compute-value representation learned across multiple optional
+operations with small operation-specific outputs, evaluated by stable
+bits-to-threshold on a third held-out operation. The verifier remains
+sovereign; only attempted actions and scalar outcomes are learner-visible.
+
 Run the sub-minute GPU experiment:
 
 ```bash

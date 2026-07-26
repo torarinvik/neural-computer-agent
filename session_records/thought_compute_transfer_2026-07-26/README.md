@@ -95,3 +95,28 @@ old operation-specific output bias. The direct whole-head arm remains in the
 report as a bounded diagnostic. Controls now share the trunk-transfer
 initialization, and all budgets and gates remain unchanged. A failure closes
 this immediate transfer fork; it will not trigger more experience.
+
+## Final result
+
+Seed 7802 rejected trunk-only transfer:
+
+- inherited trunk: `57.4%` choice accuracy, `+0.0683` utility, `13.8%`
+  oracle-gap capture;
+- matched reset: `59.0%`, `+0.0853`, `17.2%`;
+- intact inherited head: `64.1%`, `+0.1334`, `26.9%`, but below the
+  pre-registered choice gate and without a stable crossing;
+- binary and four-rule retention, gradients, persistence, and the evidence
+  shuffle passed;
+- the trunk arm failed the main performance, speed, and reward-control gates.
+
+Both runs used 720 learner-visible verifier bits and 12 updates. Each screened
+86,016 logical lifetimes and charged 172,032 private curriculum-verifier bits;
+this high selection cost is another reason not to scale the present task.
+
+The attempted-action advantage **objective and architecture blueprint**
+transfer, but these operation-specific weights do not yet provide reliable
+positive forward transfer. The next high-ROI atom is to align a shared
+compute-value representation across multiple optional operations during
+training, while retaining operation-specific output adapters. It must race
+against matched reset learners on a third held-out operation. No experiment was
+left running.
