@@ -308,9 +308,21 @@ def main() -> None:
         help=(
             "Accumulate at least this many fresh attempted outcomes before "
             "testing a frozen proposal."))
+    parser.add_argument(
+        "--challenger-skill-store", type=Path,
+        help=(
+            "Initialize the gap challenger from a hash-verified persisted "
+            "skill. The mastered arm remains an independent control."))
+    parser.add_argument(
+        "--challenger-skill-id",
+        help="Skill ID to load from --challenger-skill-store.")
     args = parser.parse_args()
     if args.active_pool_multiplier < 1:
         raise ValueError("--active-pool-multiplier must be positive")
+    if bool(args.challenger_skill_store) != bool(args.challenger_skill_id):
+        raise ValueError(
+            "--challenger-skill-store and --challenger-skill-id "
+            "must be supplied together")
 
     seed_everything(args.seed)
     device = torch.device(args.device)
@@ -326,10 +338,29 @@ def main() -> None:
     with torch.random.fork_rng(devices=[]):
         torch.manual_seed(args.seed + 10_000)
         reset = ComputeAdvantageHead(hidden).to(device)
+    persisted_challenger = None
+    if args.challenger_skill_store is not None:
+        stored = VerifiedSkillStore(args.challenger_skill_store).load(
+            args.challenger_skill_id, device=device)
+        persisted_challenger = head_from_skill_payload(
+            stored["payload"], device)
+        if (
+                args.challenger_objective == "action_value"
+                and not isinstance(persisted_challenger, ActionValueHead)):
+            raise ValueError(
+                "action-value training requires an action-value stored skill")
+        if (
+                args.challenger_objective == "advantage"
+                and not isinstance(
+                    persisted_challenger, ComputeAdvantageHead)):
+            raise ValueError(
+                "advantage training requires an advantage stored skill")
     arms = {}
     for name, initial in (("mastered", mastered), ("gap", reset)):
         challenger_initial = initial
-        if args.challenger_objective == "action_value":
+        if name == "gap" and persisted_challenger is not None:
+            challenger_initial = persisted_challenger
+        elif args.challenger_objective == "action_value":
             with torch.random.fork_rng(devices=[]):
                 initialization_seed = (
                     args.challenger_initialization_seed
@@ -589,10 +620,14 @@ def main() -> None:
                 context_key=context_key,
                 lower_confidence_bound=last_promotion["lower_95"],
                 verifier_bits=last_promotion["step"] * args.batch_size,
-                parent_id=parent_id,
+                # This branch is promoted against its reset incumbent, not the
+                # separately mastered skill. Keep optimization ancestry honest.
+                parent_id=None,
                 provenance={
                     "kind": "attempted_outcome_safe_promotion",
                     "seed": args.seed,
+                    "baseline_kind": "reset_action_policy",
+                    "related_skill_id": parent_id,
                     "promotion_evidence": last_promotion,
                 })
             fresh_store = VerifiedSkillStore(args.skill_store)
@@ -662,6 +697,9 @@ def main() -> None:
             "parent_audit": (
                 str(args.parent_audit)
                 if args.parent_audit is not None else None),
+            "challenger_skill_store": (
+                str(args.challenger_skill_store)
+                if args.challenger_skill_store is not None else None),
         },
         "learner_visible": [
             "four_generic_memory_statistics", "attempted_action",

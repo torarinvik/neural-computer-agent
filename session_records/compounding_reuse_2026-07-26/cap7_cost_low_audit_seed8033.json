@@ -1,0 +1,430 @@
+{
+  "schema": "compounding-reuse-audit-v1",
+  "configuration": {
+    "parent_checkpoint": "artifacts/checkpoints/unified_memory_online_utility_seed6810.pt",
+    "selected_prefix": "artifacts/checkpoints/balanced_maximin_stream7085_clone7211_round54.pt",
+    "parent_head_checkpoint": "artifacts/checkpoints/requery_capacity5_seed7893.pt",
+    "skill_store": "session_records/persistent_action_value_2026-07-26/store_seed8011",
+    "skill_id": "041fb282d36d6b1366ba",
+    "report": "session_records/compounding_reuse_2026-07-26/cap7_cost_low_audit_seed8033.json",
+    "device": "cuda",
+    "seed": 8033,
+    "streams": 8,
+    "contexts": 2016,
+    "capacity": 7,
+    "write_threshold": 0.5,
+    "requery_cost": 0.0
+  },
+  "training_performed": false,
+  "new_task_verifier_bits_used_for_learning": 0,
+  "private_audit_both_action_bits": 32256,
+  "means": {
+    "parent_utility": 0.6406870484352112,
+    "stored_child_utility": 0.628038227558136,
+    "reset_utility": 0.5605159029364586,
+    "feature_shuffled_child_utility": 0.5700645223259926,
+    "action_reversed_child_utility": 0.5184772163629532
+  },
+  "streams": [
+    {
+      "stream": 0,
+      "seed": 8033000000,
+      "parent": {
+        "compute_choice_accuracy": 0.7123016119003296,
+        "verified_utility": 0.6274802088737488,
+        "always_answer_utility": 0.5570436716079712,
+        "always_think_utility": 0.5763888955116272,
+        "strongest_fixed_utility": 0.5763888955116272,
+        "oracle_utility": 0.6443452835083008,
+        "available_oracle_gap": 0.06795638799667358,
+        "captured_oracle_gap_fraction": 0.7518250287908543,
+        "thought_rate": 0.3501984477043152
+      },
+      "stored_child": {
+        "compute_choice_accuracy": 0.6855159401893616,
+        "verified_utility": 0.6190476417541504,
+        "always_answer_utility": 0.5570436716079712,
+        "always_think_utility": 0.5763888955116272,
+        "strongest_fixed_utility": 0.5763888955116272,
+        "oracle_utility": 0.6443452835083008,
+        "available_oracle_gap": 0.06795638799667358,
+        "captured_oracle_gap_fraction": 0.6277371046355688,
+        "thought_rate": 0.3720238208770752
+      },
+      "reset": {
+        "compute_choice_accuracy": 0.9126984477043152,
+        "verified_utility": 0.5570436716079712,
+        "always_answer_utility": 0.5570436716079712,
+        "always_think_utility": 0.5763888955116272,
+        "strongest_fixed_utility": 0.5763888955116272,
+        "oracle_utility": 0.6443452835083008,
+        "available_oracle_gap": 0.06795638799667358,
+        "captured_oracle_gap_fraction": -0.2846711615191046,
+        "thought_rate": 0.0
+      },
+      "feature_shuffled_child": {
+        "compute_choice_accuracy": 0.6130952835083008,
+        "verified_utility": 0.5674603581428528,
+        "always_answer_utility": 0.5570436716079712,
+        "always_think_utility": 0.5763888955116272,
+        "strongest_fixed_utility": 0.5763888955116272,
+        "oracle_utility": 0.6443452835083008,
+        "available_oracle_gap": 0.06795638799667358,
+        "captured_oracle_gap_fraction": -0.13138628511585193,
+        "thought_rate": 0.3720238208770752
+      },
+      "action_reversed_child_utility": 0.514384925365448
+    },
+    {
+      "stream": 1,
+      "seed": 8033000001,
+      "parent": {
+        "compute_choice_accuracy": 0.723214328289032,
+        "verified_utility": 0.629464328289032,
+        "always_answer_utility": 0.5530754327774048,
+        "always_think_utility": 0.5783730745315552,
+        "strongest_fixed_utility": 0.5783730745315552,
+        "oracle_utility": 0.6507936716079712,
+        "available_oracle_gap": 0.07242059707641602,
+        "captured_oracle_gap_fraction": 0.7054795986225696,
+        "thought_rate": 0.344742089509964
+      },
+      "stored_child": {
+        "compute_choice_accuracy": 0.6914682984352112,
+        "verified_utility": 0.6210317611694336,
+        "always_answer_utility": 0.5530754327774048,
+        "always_think_utility": 0.5783730745315552,
+        "strongest_fixed_utility": 0.5783730745315552,
+        "oracle_utility": 0.6507936716079712,
+        "available_oracle_gap": 0.07242059707641602,
+        "captured_oracle_gap_fraction": 0.5890408027548608,
+        "thought_rate": 0.378472238779068
+      },
+      "reset": {
+        "compute_choice_accuracy": 0.9022818207740784,
+        "verified_utility": 0.5530754327774048,
+        "always_answer_utility": 0.5530754327774048,
+        "always_think_utility": 0.5783730745315552,
+        "strongest_fixed_utility": 0.5783730745315552,
+        "oracle_utility": 0.6507936716079712,
+        "available_oracle_gap": 0.07242059707641602,
+        "captured_oracle_gap_fraction": -0.34931556456869706,
+        "thought_rate": 0.0
+      },
+      "feature_shuffled_child": {
+        "compute_choice_accuracy": 0.5962302088737488,
+        "verified_utility": 0.5639881491661072,
+        "always_answer_utility": 0.5530754327774048,
+        "always_think_utility": 0.5783730745315552,
+        "strongest_fixed_utility": 0.5783730745315552,
+        "oracle_utility": 0.6507936716079712,
+        "available_oracle_gap": 0.07242059707641602,
+        "captured_oracle_gap_fraction": -0.1986303061029649,
+        "thought_rate": 0.378472238779068
+      },
+      "action_reversed_child_utility": 0.5104166865348816
+    },
+    {
+      "stream": 2,
+      "seed": 8033000002,
+      "parent": {
+        "compute_choice_accuracy": 0.7172619700431824,
+        "verified_utility": 0.638888955116272,
+        "always_answer_utility": 0.5595238208770752,
+        "always_think_utility": 0.5853174924850464,
+        "strongest_fixed_utility": 0.5853174924850464,
+        "oracle_utility": 0.6602182984352112,
+        "available_oracle_gap": 0.0749008059501648,
+        "captured_oracle_gap_fraction": 0.7152321253641694,
+        "thought_rate": 0.355654776096344
+      },
+      "stored_child": {
+        "compute_choice_accuracy": 0.6879960894584656,
+        "verified_utility": 0.6254960894584656,
+        "always_answer_utility": 0.5595238208770752,
+        "always_think_utility": 0.5853174924850464,
+        "strongest_fixed_utility": 0.5853174924850464,
+        "oracle_utility": 0.6602182984352112,
+        "available_oracle_gap": 0.0749008059501648,
+        "captured_oracle_gap_fraction": 0.536424094023127,
+        "thought_rate": 0.3789682686328888
+      },
+      "reset": {
+        "compute_choice_accuracy": 0.8993055820465088,
+        "verified_utility": 0.5595238208770752,
+        "always_answer_utility": 0.5595238208770752,
+        "always_think_utility": 0.5853174924850464,
+        "strongest_fixed_utility": 0.5853174924850464,
+        "oracle_utility": 0.6602182984352112,
+        "available_oracle_gap": 0.0749008059501648,
+        "captured_oracle_gap_fraction": -0.3443710822702361,
+        "thought_rate": 0.0
+      },
+      "feature_shuffled_child": {
+        "compute_choice_accuracy": 0.5977182984352112,
+        "verified_utility": 0.5699405074119568,
+        "always_answer_utility": 0.5595238208770752,
+        "always_think_utility": 0.5853174924850464,
+        "strongest_fixed_utility": 0.5853174924850464,
+        "oracle_utility": 0.6602182984352112,
+        "available_oracle_gap": 0.0749008059501648,
+        "captured_oracle_gap_fraction": -0.20529799216473943,
+        "thought_rate": 0.3789682686328888
+      },
+      "action_reversed_child_utility": 0.5193452835083008
+    },
+    {
+      "stream": 3,
+      "seed": 8033000003,
+      "parent": {
+        "compute_choice_accuracy": 0.7162699103355408,
+        "verified_utility": 0.6428571939468384,
+        "always_answer_utility": 0.5615079402923584,
+        "always_think_utility": 0.5877976417541504,
+        "strongest_fixed_utility": 0.5877976417541504,
+        "oracle_utility": 0.6622024178504944,
+        "available_oracle_gap": 0.074404776096344,
+        "captured_oracle_gap_fraction": 0.7400002403258819,
+        "thought_rate": 0.355654776096344
+      },
+      "stored_child": {
+        "compute_choice_accuracy": 0.6929563879966736,
+        "verified_utility": 0.6289682984352112,
+        "always_answer_utility": 0.5615079402923584,
+        "always_think_utility": 0.5877976417541504,
+        "strongest_fixed_utility": 0.5877976417541504,
+        "oracle_utility": 0.6622024178504944,
+        "available_oracle_gap": 0.074404776096344,
+        "captured_oracle_gap_fraction": 0.5533335202534637,
+        "thought_rate": 0.3750000298023224
+      },
+      "reset": {
+        "compute_choice_accuracy": 0.8993055820465088,
+        "verified_utility": 0.5615079402923584,
+        "always_answer_utility": 0.5615079402923584,
+        "always_think_utility": 0.5877976417541504,
+        "strongest_fixed_utility": 0.5877976417541504,
+        "oracle_utility": 0.6622024178504944,
+        "available_oracle_gap": 0.074404776096344,
+        "captured_oracle_gap_fraction": -0.3533335202534637,
+        "thought_rate": 0.0
+      },
+      "feature_shuffled_child": {
+        "compute_choice_accuracy": 0.6036706566810608,
+        "verified_utility": 0.5714285969734192,
+        "always_answer_utility": 0.5615079402923584,
+        "always_think_utility": 0.5877976417541504,
+        "strongest_fixed_utility": 0.5877976417541504,
+        "oracle_utility": 0.6622024178504944,
+        "available_oracle_gap": 0.074404776096344,
+        "captured_oracle_gap_fraction": -0.2199999198913727,
+        "thought_rate": 0.3750000298023224
+      },
+      "action_reversed_child_utility": 0.5203373432159424
+    },
+    {
+      "stream": 4,
+      "seed": 8033000004,
+      "parent": {
+        "compute_choice_accuracy": 0.720734179019928,
+        "verified_utility": 0.6473214626312256,
+        "always_answer_utility": 0.564484179019928,
+        "always_think_utility": 0.591269850730896,
+        "strongest_fixed_utility": 0.591269850730896,
+        "oracle_utility": 0.6651785969734192,
+        "available_oracle_gap": 0.0739087462425232,
+        "captured_oracle_gap_fraction": 0.7583894295325017,
+        "thought_rate": 0.3561508059501648
+      },
+      "stored_child": {
+        "compute_choice_accuracy": 0.6954365372657776,
+        "verified_utility": 0.6349206566810608,
+        "always_answer_utility": 0.564484179019928,
+        "always_think_utility": 0.591269850730896,
+        "strongest_fixed_utility": 0.591269850730896,
+        "oracle_utility": 0.6651785969734192,
+        "available_oracle_gap": 0.0739087462425232,
+        "captured_oracle_gap_fraction": 0.5906040647331455,
+        "thought_rate": 0.3705357313156128
+      },
+      "reset": {
+        "compute_choice_accuracy": 0.8993055820465088,
+        "verified_utility": 0.564484179019928,
+        "always_answer_utility": 0.564484179019928,
+        "always_think_utility": 0.591269850730896,
+        "strongest_fixed_utility": 0.591269850730896,
+        "oracle_utility": 0.6651785969734192,
+        "available_oracle_gap": 0.0739087462425232,
+        "captured_oracle_gap_fraction": -0.3624154524699129,
+        "thought_rate": 0.0
+      },
+      "feature_shuffled_child": {
+        "compute_choice_accuracy": 0.6041666865348816,
+        "verified_utility": 0.578869104385376,
+        "always_answer_utility": 0.564484179019928,
+        "always_think_utility": 0.591269850730896,
+        "strongest_fixed_utility": 0.591269850730896,
+        "oracle_utility": 0.6651785969734192,
+        "available_oracle_gap": 0.0739087462425232,
+        "captured_oracle_gap_fraction": -0.16778455833668687,
+        "thought_rate": 0.3705357313156128
+      },
+      "action_reversed_child_utility": 0.5208333730697632
+    },
+    {
+      "stream": 5,
+      "seed": 8033000005,
+      "parent": {
+        "compute_choice_accuracy": 0.7291666865348816,
+        "verified_utility": 0.660714328289032,
+        "always_answer_utility": 0.57192462682724,
+        "always_think_utility": 0.5967262387275696,
+        "strongest_fixed_utility": 0.5967262387275696,
+        "oracle_utility": 0.6830357313156128,
+        "available_oracle_gap": 0.08630949258804321,
+        "captured_oracle_gap_fraction": 0.741379512759723,
+        "thought_rate": 0.3511905074119568
+      },
+      "stored_child": {
+        "compute_choice_accuracy": 0.7083333730697632,
+        "verified_utility": 0.6443452835083008,
+        "always_answer_utility": 0.57192462682724,
+        "always_think_utility": 0.5967262387275696,
+        "strongest_fixed_utility": 0.5967262387275696,
+        "oracle_utility": 0.6830357313156128,
+        "available_oracle_gap": 0.08630949258804321,
+        "captured_oracle_gap_fraction": 0.5517243046256542,
+        "thought_rate": 0.3611111342906952
+      },
+      "reset": {
+        "compute_choice_accuracy": 0.888888955116272,
+        "verified_utility": 0.57192462682724,
+        "always_answer_utility": 0.57192462682724,
+        "always_think_utility": 0.5967262387275696,
+        "strongest_fixed_utility": 0.5967262387275696,
+        "oracle_utility": 0.6830357313156128,
+        "available_oracle_gap": 0.08630949258804321,
+        "captured_oracle_gap_fraction": -0.28735671079319325,
+        "thought_rate": 0.0
+      },
+      "feature_shuffled_child": {
+        "compute_choice_accuracy": 0.6021825671195984,
+        "verified_utility": 0.5749008059501648,
+        "always_answer_utility": 0.57192462682724,
+        "always_think_utility": 0.5967262387275696,
+        "strongest_fixed_utility": 0.5967262387275696,
+        "oracle_utility": 0.6830357313156128,
+        "available_oracle_gap": 0.08630949258804321,
+        "captured_oracle_gap_fraction": -0.25287407124008915,
+        "thought_rate": 0.3611111342906952
+      },
+      "action_reversed_child_utility": 0.5243055820465088
+    },
+    {
+      "stream": 6,
+      "seed": 8033000006,
+      "parent": {
+        "compute_choice_accuracy": 0.718254029750824,
+        "verified_utility": 0.6433532238006592,
+        "always_answer_utility": 0.564484179019928,
+        "always_think_utility": 0.5848214626312256,
+        "strongest_fixed_utility": 0.5848214626312256,
+        "oracle_utility": 0.6617063879966736,
+        "available_oracle_gap": 0.076884925365448,
+        "captured_oracle_gap_fraction": 0.7612904726280414,
+        "thought_rate": 0.3521825671195984
+      },
+      "stored_child": {
+        "compute_choice_accuracy": 0.6959325671195984,
+        "verified_utility": 0.629464328289032,
+        "always_answer_utility": 0.564484179019928,
+        "always_think_utility": 0.5848214626312256,
+        "strongest_fixed_utility": 0.5848214626312256,
+        "oracle_utility": 0.6617063879966736,
+        "available_oracle_gap": 0.076884925365448,
+        "captured_oracle_gap_fraction": 0.5806452363140207,
+        "thought_rate": 0.3665674924850464
+      },
+      "reset": {
+        "compute_choice_accuracy": 0.9027778506278992,
+        "verified_utility": 0.564484179019928,
+        "always_answer_utility": 0.564484179019928,
+        "always_think_utility": 0.5848214626312256,
+        "strongest_fixed_utility": 0.5848214626312256,
+        "oracle_utility": 0.6617063879966736,
+        "available_oracle_gap": 0.076884925365448,
+        "captured_oracle_gap_fraction": -0.26451587895326434,
+        "thought_rate": 0.0
+      },
+      "feature_shuffled_child": {
+        "compute_choice_accuracy": 0.5997024178504944,
+        "verified_utility": 0.57192462682724,
+        "always_answer_utility": 0.564484179019928,
+        "always_think_utility": 0.5848214626312256,
+        "strongest_fixed_utility": 0.5848214626312256,
+        "oracle_utility": 0.6617063879966736,
+        "available_oracle_gap": 0.076884925365448,
+        "captured_oracle_gap_fraction": -0.16774206052336782,
+        "thought_rate": 0.3665674924850464
+      },
+      "action_reversed_child_utility": 0.5198413133621216
+    },
+    {
+      "stream": 7,
+      "seed": 8033000007,
+      "parent": {
+        "compute_choice_accuracy": 0.718254029750824,
+        "verified_utility": 0.6354166865348816,
+        "always_answer_utility": 0.5520833730697632,
+        "always_think_utility": 0.5873016119003296,
+        "strongest_fixed_utility": 0.5873016119003296,
+        "oracle_utility": 0.653769850730896,
+        "available_oracle_gap": 0.0664682388305664,
+        "captured_oracle_gap_fraction": 0.7238806907040475,
+        "thought_rate": 0.3576388955116272
+      },
+      "stored_child": {
+        "compute_choice_accuracy": 0.687004029750824,
+        "verified_utility": 0.6210317611694336,
+        "always_answer_utility": 0.5520833730697632,
+        "always_think_utility": 0.5873016119003296,
+        "strongest_fixed_utility": 0.5873016119003296,
+        "oracle_utility": 0.653769850730896,
+        "available_oracle_gap": 0.0664682388305664,
+        "captured_oracle_gap_fraction": 0.5074626597988435,
+        "thought_rate": 0.3849206566810608
+      },
+      "reset": {
+        "compute_choice_accuracy": 0.8983135223388672,
+        "verified_utility": 0.5520833730697632,
+        "always_answer_utility": 0.5520833730697632,
+        "always_think_utility": 0.5873016119003296,
+        "strongest_fixed_utility": 0.5873016119003296,
+        "oracle_utility": 0.653769850730896,
+        "available_oracle_gap": 0.0664682388305664,
+        "captured_oracle_gap_fraction": -0.5298506391953742,
+        "thought_rate": 0.0
+      },
+      "feature_shuffled_child": {
+        "compute_choice_accuracy": 0.578869104385376,
+        "verified_utility": 0.562004029750824,
+        "always_answer_utility": 0.5520833730697632,
+        "always_think_utility": 0.5873016119003296,
+        "strongest_fixed_utility": 0.5873016119003296,
+        "oracle_utility": 0.653769850730896,
+        "available_oracle_gap": 0.0664682388305664,
+        "captured_oracle_gap_fraction": -0.3805965464797624,
+        "thought_rate": 0.3849206566810608
+      },
+      "action_reversed_child_utility": 0.5183532238006592
+    }
+  ],
+  "gate": {
+    "child_beats_parent_by_2_points": false,
+    "child_beats_reset_by_2_points": true,
+    "feature_shuffle_degrades_by_2_points": true,
+    "action_reversal_degrades_by_2_points": true,
+    "every_stream_child_beats_parent": false,
+    "accepted": false
+  }
+}
