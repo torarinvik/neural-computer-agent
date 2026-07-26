@@ -88,11 +88,15 @@ without boundaries, labels, replay, optimizer resets, or forgetting. A
 reward-shuffled control failed, and the selected controller passed a
 1,024-bank physical disk/history audit.
 
-The next high-value question is whether the same verifier-driven horse race can
-adapt a small higher-dimensional latent utility policy rather than a single
-human-chosen coefficient. Begin with two generic features whose relevance
-changes gradually and test one additional parameter at a time. Compare against
-the one-parameter parent at matched unique verifier bits and require lower
-post-switch regret, intact old gates, and causal feature corruptions. Do not
-add consolidation or merging until a sub-minute run shows that the gain is
-from reusable online adaptation rather than a larger fixed policy.
+That higher-dimensional question has also passed at the smallest useful scale.
+One new outcome-reliability statistic and one zero-initialized coefficient
+produced two independent 48-update passes, a failed reward-shuffled control,
+and a passing physical history/corruption audit without forgetting.
+
+The next high-value question is whether online adaptation itself can operate on
+an evolving physical disk stream rather than training on tensorized histories
+and auditing afterward. Start with tiny banks and batch disk operations so
+serialization does not dominate learning. Compare bit-for-bit against the
+tensor arena and require the same coefficient trajectory, post-switch regret,
+history persistence, corruption causality, and old-skill gates. Only after that
+should consolidation, merging, or learned statistic invention be introduced.

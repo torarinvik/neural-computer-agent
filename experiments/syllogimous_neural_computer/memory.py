@@ -23,6 +23,8 @@ class PersistentMemory:
     age: torch.Tensor
     valid: torch.Tensor
     access_count: torch.Tensor
+    success_count: torch.Tensor
+    failure_count: torch.Tensor
     clock: int = 0
     growth_chunk: int = 1024
 
@@ -38,6 +40,8 @@ class PersistentMemory:
             torch.zeros(capacity, device=device, dtype=dtype),
             torch.zeros(capacity, device=device, dtype=torch.long),
             torch.zeros(capacity, device=device, dtype=torch.bool),
+            torch.zeros(capacity, device=device, dtype=torch.long),
+            torch.zeros(capacity, device=device, dtype=torch.long),
             torch.zeros(capacity, device=device, dtype=torch.long),
             0, growth_chunk,
         )
@@ -58,12 +62,17 @@ class PersistentMemory:
         return PersistentMemory(self.keys.to(device), self.values.to(device),
                                 self.usage.to(device), self.age.to(device),
                                 self.valid.to(device), self.access_count.to(device),
+                                self.success_count.to(device),
+                                self.failure_count.to(device),
                                 self.clock, self.growth_chunk)
 
     def clone(self) -> "PersistentMemory":
         return PersistentMemory(self.keys.clone(), self.values.clone(), self.usage.clone(),
                                 self.age.clone(), self.valid.clone(),
-                                self.access_count.clone(), self.clock, self.growth_chunk)
+                                self.access_count.clone(),
+                                self.success_count.clone(),
+                                self.failure_count.clone(),
+                                self.clock, self.growth_chunk)
 
     def select(self, indices: torch.Tensor | list[int]) -> "PersistentMemory":
         """Copy selected valid rows into a compact active-memory store."""
@@ -82,6 +91,8 @@ class PersistentMemory:
             active.usage[:count].copy_(self.usage[selected])
             active.age[:count].copy_(self.age[selected])
             active.access_count[:count].copy_(self.access_count[selected])
+            active.success_count[:count].copy_(self.success_count[selected])
+            active.failure_count[:count].copy_(self.failure_count[selected])
             active.valid[:count] = True
         active.clock = self.clock
         return active
@@ -95,6 +106,33 @@ class PersistentMemory:
         self.valid = torch.cat((self.valid, self.valid.new_zeros(amount)))
         self.access_count = torch.cat((
             self.access_count, self.access_count.new_zeros(amount)))
+        self.success_count = torch.cat((
+            self.success_count, self.success_count.new_zeros(amount)))
+        self.failure_count = torch.cat((
+            self.failure_count, self.failure_count.new_zeros(amount)))
+
+    @torch.no_grad()
+    def record_outcomes(
+            self, queries: torch.Tensor, outcomes: torch.Tensor) -> None:
+        """Attribute verified binary outcomes to content-addressed top-1 rows."""
+        if queries.ndim != 2 or queries.shape[1] != self.width:
+            raise ValueError("queries must have shape [batch, memory width]")
+        if outcomes.shape != (queries.shape[0],):
+            raise ValueError("outcomes must have one value per query")
+        if self.count == 0:
+            return
+        indices = self.valid.nonzero(as_tuple=False).squeeze(1)
+        keys = torch.nn.functional.normalize(self.keys[indices], dim=-1)
+        normalized_queries = torch.nn.functional.normalize(
+            queries, dim=-1)
+        similarity = normalized_queries @ keys.T
+        similarity = similarity + (
+            self.usage[indices].clamp_min(1e-6).log().unsqueeze(0))
+        chosen = indices[similarity.argmax(-1)]
+        successes = (outcomes > 0.5).to(self.success_count.dtype)
+        failures = 1 - successes
+        self.success_count.scatter_add_(0, chosen, successes)
+        self.failure_count.scatter_add_(0, chosen, failures)
 
     def read(self, queries: torch.Tensor, top_k: int = 4,
              temperature: torch.Tensor | float = 1.0,
@@ -158,6 +196,8 @@ class PersistentMemory:
             self.usage[slot] = strength.detach()
             self.age[slot] = self.clock
             self.access_count[slot] = 0
+            self.success_count[slot] = 0
+            self.failure_count[slot] = 0
             self.valid[slot] = True
             committed += 1
         return committed
@@ -166,11 +206,13 @@ class PersistentMemory:
         path.parent.mkdir(parents=True, exist_ok=True)
         temporary = path.with_suffix(path.suffix + ".tmp")
         torch.save({
-            "schema": "syllogimous-neural-computer-memory-v2",
+            "schema": "syllogimous-neural-computer-memory-v3",
             "keys": self.keys.detach().cpu(), "values": self.values.detach().cpu(),
             "usage": self.usage.detach().cpu(), "age": self.age.detach().cpu(),
             "valid": self.valid.detach().cpu(),
             "access_count": self.access_count.detach().cpu(),
+            "success_count": self.success_count.detach().cpu(),
+            "failure_count": self.failure_count.detach().cpu(),
             "clock": self.clock,
             "growth_chunk": self.growth_chunk,
         }, temporary)
@@ -181,11 +223,17 @@ class PersistentMemory:
         payload = torch.load(path, map_location=device, weights_only=False)
         if payload.get("schema") not in {
                 "syllogimous-neural-computer-memory-v1",
-                "syllogimous-neural-computer-memory-v2"}:
+                "syllogimous-neural-computer-memory-v2",
+                "syllogimous-neural-computer-memory-v3"}:
             raise ValueError("unsupported persistent-memory schema")
         access_count = payload.get(
             "access_count", torch.zeros_like(payload["age"]))
+        success_count = payload.get(
+            "success_count", torch.zeros_like(payload["age"]))
+        failure_count = payload.get(
+            "failure_count", torch.zeros_like(payload["age"]))
         return cls(payload["keys"], payload["values"], payload["usage"],
                    payload["age"], payload["valid"], access_count,
+                   success_count, failure_count,
                    int(payload["clock"]),
                    int(payload.get("growth_chunk", 1024)))

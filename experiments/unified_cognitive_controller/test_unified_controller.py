@@ -189,13 +189,21 @@ def test_disk_memory_records_persists_and_resets_access_counts(
     memory.retrieve(
         keys[:1].repeat(3, 1), top_k=1,
         confidence_mode="cosine", record_access=True)
+    memory.store.record_outcomes(
+        keys[:1].repeat(3, 1), torch.tensor([1.0, 1.0, 0.0]))
     assert memory.store.access_count.tolist() == [3, 0]
+    assert memory.store.success_count.tolist() == [2, 0]
+    assert memory.store.failure_count.tolist() == [1, 0]
     path = tmp_path / "access-counts.pt"
     memory.save(path)
     restored = DiskLatentMemory.load(path)
     assert restored.store.access_count.tolist() == [3, 0]
+    assert restored.store.success_count.tolist() == [2, 0]
+    assert restored.store.failure_count.tolist() == [1, 0]
     restored.replace(0, keys[1], values[1], 0.9)
     assert restored.store.access_count.tolist() == [0, 0]
+    assert restored.store.success_count.tolist() == [0, 0]
+    assert restored.store.failure_count.tolist() == [0, 0]
 
 
 def test_old_disk_schema_loads_with_zero_access_counts(tmp_path: Path) -> None:
@@ -213,6 +221,8 @@ def test_old_disk_schema_loads_with_zero_access_counts(tmp_path: Path) -> None:
     restored = DiskLatentMemory.load(path)
     assert restored.count == 1
     assert restored.store.access_count.tolist() == [0, 0]
+    assert restored.store.success_count.tolist() == [0, 0]
+    assert restored.store.failure_count.tolist() == [0, 0]
 
 
 def test_disk_memory_can_report_cosine_match_confidence() -> None:
@@ -316,6 +326,15 @@ def test_frequency_recency_utility_weights_are_validated_before_generation(
             pass
         else:
             raise AssertionError("invalid utility weights were accepted")
+    try:
+        frequency_recency_batch(
+            model, banks=1, capacity=2, seed=1,
+            device=torch.device("cpu"), write_threshold=0.5,
+            reliability_weight=-0.1)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("negative reliability weight was accepted")
 
 
 def test_disk_memory_can_replace_without_growing(tmp_path: Path) -> None:

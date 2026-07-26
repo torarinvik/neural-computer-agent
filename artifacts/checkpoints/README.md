@@ -177,3 +177,30 @@ and retention gates:
 
 The matched reward-shuffled control failed the frequency switch at 57.71%
 correct targets and saved no checkpoint.
+
+## Multi-feature online utility
+
+`unified_memory_multifeature_reliability_seed6932.pt` is the promoted
+two-dimensional online-utility milestone.
+
+- SHA-256:
+  `bb5cd158c08f4b92061aca7bfae0751d4e18408e8e37f53cac13dffaed8ac9f4`
+- Parent: `unified_memory_online_utility_seed6810.pt`
+- 298,360 parameters; one zero-initialized reliability coefficient added
+- 48 move/stay horse-race updates, 196,608 verifier bits, zero replay,
+  29.37 seconds
+- Correct-target rates: 89.75%, 78.22%, 88.48%, 87.45%
+- Physical audit: 96.21% learned versus 96.35% visible oracle
+- All 6,144 rows and 1,024 access/success/failure histories survived reload
+- Age, frequency, and reliability corruption gates passed; zero growth
+- Binary mapping and four-rule retention passed
+
+`unified_memory_multifeature_reliability_seed6938.pt` replicated all training
+and retention gates:
+
+- SHA-256:
+  `0342a8266bde7bc5a0f79004792ce29668f758904aa954755b7bf7130993730d`
+- 48 updates, 196,608 verifier bits, zero replay, 29.34 seconds
+- Correct-target rates: 88.67%, 88.43%, 84.72%, 83.35%
+
+The exact reward-shuffled control failed and saved no checkpoint.

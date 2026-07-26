@@ -172,19 +172,55 @@ audit at 96.94%, within 0.13 points of the visible oracle. Shuffling age or
 frequency reduced it to 92.74% and 88.66%; all 6,144 rows and access histories
 survived save/reload exactly and capacity never grew.
 
-The current checkpoint is
+The one-parameter online parent is
 `artifacts/checkpoints/unified_memory_online_utility_seed6810.pt`, SHA-256
 `c3e837c6512a30c11b1c861b79242296b76cfa0cd9fe62aa414d3e5b2aa10750`.
 This establishes rapid verifier-driven adaptation of one generic controller
 coefficient, not yet a learned general-purpose internal meta-optimizer.
 
+The next gradual rung added one genuinely new task-agnostic statistic:
+verified outcome reliability for each memory row. Physical rows now keep
+success and failure counts attributed through ordinary content-addressed use.
+The counters survive disk save/reload and reset when a row is replaced. Older
+memory schemas load with zero counts.
+
+A redundant write-strength coefficient was first rejected: write strength was
+already visible to the inherited controller, so it added only 2.93 target
+points. Reliability passed the representation gate by over 30 points and then
+learned online. Two independent 48-update runs used a three-candidate
+move/stay horse race, 196,608 verifier bits, no replay, and about 29.4 seconds:
+
+| Seed | Old equal | Reliability dominant | Old return | All equal |
+|---:|---:|---:|---:|---:|
+| 6932 | 89.75% | 78.22% | 88.48% | 87.45% |
+| 6938 | 88.67% | 88.43% | 84.72% | 83.35% |
+
+Frozen target rates were only 57.62–58.40% in the reliability phase and
+63.48–64.60% under all-equal utility. The exact reward-shuffled control failed
+the multi-phase gates and ended all-equal at 64.31%. Both intact runs retained
+binary mapping and four-rule behavior; only the two-coefficient generic
+residual changed.
+
+The selected controller passed an independent 1,024-bank physical audit at
+96.21%, versus 96.35% for the visible oracle. All 6,144 rows and all
+access/success/failure histories survived save/reload, with zero capacity
+growth. Shuffling age, frequency, or reliability changed correct evictions by
+50.29, 60.55, and 30.18 points and reduced actual accuracy by 3.11, 6.75, and
+2.56 points.
+
+The current checkpoint is
+`artifacts/checkpoints/unified_memory_multifeature_reliability_seed6932.pt`,
+SHA-256
+`bb5cd158c08f4b92061aca7bfae0751d4e18408e8e37f53cac13dffaed8ac9f4`.
+It has 298,360 parameters.
+
 Unseen elongated diamonds and disconnected dot-pair stimuli also transfer
 zero-shot at 94.95–98.14%, tightening the evidence that visual identity is
 relational rather than tied to the original rectangles.
 
-Online adaptation of a higher-dimensional latent utility policy, consolidation,
-deletion/merging, unbounded memory streams, and cross-modality transfer remain
-open. See `experiments/unified_cognitive_controller/README.md`.
+Online adaptation directly inside a physical stream, consolidation,
+deletion/merging, unbounded memory, and cross-modality transfer remain open.
+See `experiments/unified_cognitive_controller/README.md`.
 
 The two-decision identify-then-act task requires the agent to:
 

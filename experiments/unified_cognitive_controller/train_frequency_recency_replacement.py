@@ -27,12 +27,16 @@ def frequency_recency_batch(
         seed: int, device: torch.device, write_threshold: float,
         noise_scale: float = 0.04,
         recency_weight: float = 0.5,
-        frequency_weight: float = 0.5) -> dict[str, object]:
+        frequency_weight: float = 0.5,
+        reliability_weight: float = 0.0) -> dict[str, object]:
     """Create a bank where neither oldest-only nor frequency-only is optimal."""
     if (
             recency_weight < 0.0 or frequency_weight < 0.0
-            or recency_weight + frequency_weight <= 0.0):
+            or reliability_weight < 0.0
+            or recency_weight + frequency_weight + reliability_weight <= 0.0):
         raise ValueError("utility weights must be nonnegative with positive sum")
+    if model.adaptive_memory_replace_features < 6:
+        raise ValueError("frequency utility requires at least six features")
     context_count = banks * (capacity + 1)
     batch, keys, values, strengths, query_keys, generated = _written_contexts(
         model, count=context_count, seed=seed, device=device,
@@ -68,17 +72,30 @@ def frequency_recency_batch(
         torch.log1p(bank_access.to(keys.dtype)) / math.log(10.0))
     centered_access = normalized_access - 0.5
     normalized_age = bank_ages / capacity
+    logical_successes = torch.randint(
+        0, 11, (banks, capacity), generator=generator,
+        dtype=torch.long).to(device)
+    logical_failures = 10 - logical_successes
+    bank_successes = torch.gather(
+        logical_successes, 1, permutation)
+    bank_failures = torch.gather(
+        logical_failures, 1, permutation)
+    bank_reliability = (
+        (bank_successes.to(keys.dtype) + 1.0)
+        / (bank_successes + bank_failures + 2).to(keys.dtype))
     noise = (
         torch.rand(
             banks, capacity, generator=generator,
             dtype=keys.dtype).to(device) * 2.0 - 1.0
     ) * noise_scale
-    total_weight = recency_weight + frequency_weight
+    total_weight = recency_weight + frequency_weight + reliability_weight
     normalized_recency_weight = recency_weight / total_weight
     normalized_frequency_weight = frequency_weight / total_weight
+    normalized_reliability_weight = reliability_weight / total_weight
     visible_utility = (
         normalized_recency_weight * normalized_age
-        + normalized_frequency_weight * normalized_access)
+        + normalized_frequency_weight * normalized_access
+        + normalized_reliability_weight * bank_reliability)
     realized_utility = visible_utility + noise
     target_slot = realized_utility.argmin(-1)
     target_action = target_slot + 1
@@ -104,6 +121,18 @@ def frequency_recency_batch(
     skip_features[:, 0, 3] = candidate_strength
     skip_features[:, 0, 4] = 1.0
     option_features = torch.cat((skip_features, row_features), dim=1)
+    if model.adaptive_memory_replace_features > 6:
+        centered_reliability = torch.zeros(
+            banks, capacity + 1, 1, device=device, dtype=keys.dtype)
+        centered_reliability[:, 1:, 0] = bank_reliability - 0.5
+        option_features = torch.cat(
+            (option_features, centered_reliability), dim=-1)
+    if model.adaptive_memory_replace_features > 7:
+        padding = torch.zeros(
+            banks, capacity + 1,
+            model.adaptive_memory_replace_features - 7,
+            device=device, dtype=keys.dtype)
+        option_features = torch.cat((option_features, padding), dim=-1)
 
     target_logical = torch.gather(
         permutation, 1, target_slot.unsqueeze(1)).squeeze(1)
@@ -127,6 +156,9 @@ def frequency_recency_batch(
         "bank_strengths": bank_strengths,
         "bank_ages": bank_ages,
         "bank_access_counts": bank_access,
+        "bank_success_counts": bank_successes,
+        "bank_failure_counts": bank_failures,
+        "bank_reliability": bank_reliability,
         "candidate_key": candidate_key,
         "candidate_value": candidate_value,
         "candidate_strength": candidate_strength,
@@ -145,6 +177,7 @@ def frequency_recency_batch(
         "utility_noise": noise,
         "recency_weight": normalized_recency_weight,
         "frequency_weight": normalized_frequency_weight,
+        "reliability_weight": normalized_reliability_weight,
     }
 
 
@@ -153,14 +186,16 @@ def evaluate_frequency_recency(
         model: UnifiedCognitiveController, *, banks: int, capacity: int,
         seed: int, device: torch.device, write_threshold: float,
         noise_scale: float, recency_weight: float = 0.5,
-        frequency_weight: float = 0.5) -> dict[str, object]:
+        frequency_weight: float = 0.5,
+        reliability_weight: float = 0.0) -> dict[str, object]:
     model.eval()
     data = frequency_recency_batch(
         model, banks=banks, capacity=capacity, seed=seed,
         device=device, write_threshold=write_threshold,
         noise_scale=noise_scale,
         recency_weight=recency_weight,
-        frequency_weight=frequency_weight)
+        frequency_weight=frequency_weight,
+        reliability_weight=reliability_weight)
     scores = model.memory_replacement_scores(data["option_features"])
     learned = scores.argmax(-1)
     generator = torch.Generator(device=device).manual_seed(
@@ -171,6 +206,7 @@ def evaluate_frequency_recency(
     fixed = torch.ones(banks, dtype=torch.long, device=device)
     recency = data["bank_ages"].argmin(-1) + 1
     frequency = data["bank_access_counts"].argmin(-1) + 1
+    reliability = data["bank_reliability"].argmin(-1) + 1
     oracle = data["target_action"]
     visible_oracle = data["visible_oracle_action"]
 
@@ -184,6 +220,12 @@ def evaluate_frequency_recency(
         frequency_shuffled_features[:, 1:, 5].roll(1, dims=1))
     frequency_shuffled = model.memory_replacement_scores(
         frequency_shuffled_features).argmax(-1)
+    reliability_shuffled_features = data["option_features"].clone()
+    if reliability_shuffled_features.shape[-1] > 6:
+        reliability_shuffled_features[:, 1:, 6] = (
+            reliability_shuffled_features[:, 1:, 6].roll(1, dims=1))
+    reliability_shuffled = model.memory_replacement_scores(
+        reliability_shuffled_features).argmax(-1)
 
     policies = {
         "learned": learned,
@@ -192,10 +234,12 @@ def evaluate_frequency_recency(
         "skip": skip,
         "recency": recency,
         "frequency": frequency,
+        "reliability": reliability,
         "visible_oracle": visible_oracle,
         "oracle": oracle,
         "age_shuffled": age_shuffled,
         "frequency_shuffled": frequency_shuffled,
+        "reliability_shuffled": reliability_shuffled,
     }
     accuracies = {
         name: float(_bank_reward(
@@ -206,9 +250,12 @@ def evaluate_frequency_recency(
         name: float((action == oracle).float().mean())
         for name, action in policies.items()
     }
-    strongest_single = max(
+    single_feature_controls = [
         accuracies["recency"], accuracies["frequency"],
-        accuracies["random"], accuracies["fixed"], accuracies["skip"])
+        accuracies["random"], accuracies["fixed"], accuracies["skip"]]
+    if reliability_weight > 0.0:
+        single_feature_controls.append(accuracies["reliability"])
+    strongest_single = max(single_feature_controls)
 
     def captures_oracle_gap(control: float) -> bool:
         available = max(0.0, accuracies["visible_oracle"] - control)
@@ -238,6 +285,10 @@ def evaluate_frequency_recency(
         "frequency_feature_is_causal":
             accuracies["frequency_shuffled"]
             <= accuracies["learned"] - 0.04,
+        "reliability_feature_is_causal": (
+            reliability_weight == 0.0
+            or accuracies["reliability_shuffled"]
+            <= accuracies["learned"] - 0.04),
         "oracle_is_solved": accuracies["oracle"] >= 0.85,
     }
     report["gate"]["accepted"] = all(report["gate"].values())

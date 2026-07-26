@@ -97,6 +97,8 @@ class DiskLatentMemory:
             dtype=self.store.usage.dtype)
         self.store.age[index] = self.store.clock
         self.store.access_count[index] = 0
+        self.store.success_count[index] = 0
+        self.store.failure_count[index] = 0
         self.store.valid[index] = True
 
     def save(self, path: Path) -> None:

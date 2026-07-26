@@ -510,6 +510,76 @@ learning directly inside an unbounded physical-disk stream and not a learned
 general meta-optimizer. Consolidation, deletion/merging, higher-dimensional
 utility adaptation, modality transfer, and broad reasoning remain open.
 
+### Outcome reliability and two-dimensional online utility
+
+The next gradual feature was chosen by a representation gate before training.
+A proposed extra write-strength coefficient was rejected because write
+strength already existed in the inherited five-feature replacement path; at
+the first learnable mixture it added only 2.93 target points. The next feature
+was row reliability: the fraction of verified successful versus failed uses,
+with a one-success/one-failure prior. This statistic is task-agnostic and
+derived only from attempted use plus scalar verifier outcomes.
+
+Physical memory schema v3 adds persistent success and failure counts. Outcomes
+are attributed to whichever row ordinary content addressing selected. Counts
+copy into active memory, survive save/reload, grow with storage, and reset on
+replacement. V1 and V2 files load with zero outcome counts.
+
+The controller grew from 298,359 to 298,360 parameters. Its existing frequency
+coefficient was copied exactly and one reliability coefficient was
+zero-initialized. A generic Rademacher horse race compared `w + d`, `w`, and
+`w - d` on the same fresh banks. Including the center candidate was necessary:
+the earlier forced plus/minus race drifted even when the current policy was
+already best.
+
+The uninterrupted phases were old equal recency/frequency utility, 40%
+reliability-dominant utility, old return, and all three features equal. No
+phase signal, labels, replay, or optimizer reset were exposed.
+
+| Seed | Seconds | Verifier bits | Old equal | Reliability dominant | Old return | All equal |
+|---:|---:|---:|---:|---:|---:|---:|
+| 6932 | 29.37 | 196,608 | 89.75% | 78.22% | 88.48% | 87.45% |
+| 6938 | 29.34 | 196,608 | 88.67% | 88.43% | 84.72% | 83.35% |
+
+The frozen parent's reliability-dominant target rates were 57.62% and 58.40%;
+all-equal rates were 63.48% and 64.60%. Ablating only the learned reliability
+coefficient reduced seed 6932 to 55.27% and 63.67%. Both inherited behavioral
+gates passed, and only `memory_replacement_extra_gate.weight` changed.
+
+The exact reward-shuffled control failed the registered phase gate. It damaged
+old-equal performance to 79.15%, returned to the old mixture at only 75.93%,
+and finished all-equal at 64.31%. No checkpoint was saved.
+
+The selected seed-6932 controller passed a 1,024-bank physical disk audit:
+
+- learned 96.21%, visible oracle 96.35%, full oracle 97.18%;
+- 6,144 rows and 1,024 complete histories survived save/reload; zero growth;
+- learned correct eviction 89.65%;
+- age shuffle: 39.36% correct, 93.10% behavioral accuracy;
+- frequency shuffle: 29.10% correct, 89.45% behavioral accuracy;
+- reliability shuffle: 59.47% correct, 93.65% behavioral accuracy.
+
+The first fixed four-point corruption gate was explicitly rejected after two
+audits showed it was mis-scaled for three features and six future query slots.
+A fresh seed used a capacity-aware registered gate: each corruption had to
+change at least 20% of correct evictions and erase at least 15% of one query
+slot (`0.15 / capacity`) from behavior. All three passed.
+
+Selected checkpoint:
+`artifacts/checkpoints/unified_memory_multifeature_reliability_seed6932.pt`,
+SHA-256
+`bb5cd158c08f4b92061aca7bfae0751d4e18408e8e37f53cac13dffaed8ac9f4`.
+Independent replica:
+`artifacts/checkpoints/unified_memory_multifeature_reliability_seed6938.pt`,
+SHA-256
+`0342a8266bde7bc5a0f79004792ce29668f758904aa954755b7bf7130993730d`.
+
+Honest boundary: training still uses fast tensorized histories, followed by a
+physical audit of the adapted controller. The project has not yet demonstrated
+the adaptation loop itself running over an evolving physical disk stream.
+Reliability is generic verifier history, but the controller does not yet learn
+which new statistics to invent.
+
 Run the sub-minute GPU experiment:
 
 ```bash
