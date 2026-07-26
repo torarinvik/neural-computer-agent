@@ -27,3 +27,16 @@ The operation is viable only if:
 If viable, a fresh attempted-action race will compare the cost-sensitive
 consolidated lineage, its capacity-five ancestor, and reset. If not, no
 training is allowed; the re-query mechanism must be redesigned first.
+
+## Viability result and training gate
+
+The operation passed: re-query helped `14.3%`, harmed `85.7%`, and an adaptive
+oracle improved over the strongest fixed choice by `11.9` points.
+
+Seed 7891 is pre-registered for a 720-bit/12-update race. The cost-sensitive
+lineage must stably reach at least 65% choice accuracy, improve at least 0.03
+utility over the strongest fixed choice, capture 20% of the oracle gap, and
+cross earlier than both its capacity-five ancestor and reset. Evidence
+controls, conditional reward-shuffle logic, retention, gradients, and exact
+serialization remain mandatory. A full pass permits unchanged seed-7892
+replication.

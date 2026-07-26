@@ -66,7 +66,7 @@ def requery_batch(
     usage = torch.gather(strength_group, 1, first_index)
     occupancy = (
         valid.to(values.dtype).sum(-1, keepdim=True) / capacity
-    ).expand(-1, capacity)
+    ).expand(-1, capacity).clone()
     empty = valid_count == 0
     confidence[empty] = 0
     margin[empty] = 0
