@@ -893,6 +893,28 @@ load the confirmed child for a related new primitive and measure whether it
 reduces bits-to-confirmation versus the parent and reset while every ancestor
 remains intact.
 
+That sequential-retrieval frontier has now advanced through three verified
+generations. The two-action champion was wrapped as an option to learn a third
+action, that hierarchy was wrapped to learn a fourth, and the complete
+four-action hierarchy was then wrapped to learn a fifth. The fifth-action
+relation was highly decodable but ordinary single-action reward regression was
+unstable. Paired population exploration solved the credit problem without
+hand labels: temporary clones attempted the old hierarchy and new action on
+the same context, and the router learned their verified scalar advantage.
+
+On two frozen replications, the composed hierarchy reached a stable +2-point
+utility gain in 3,360 and 3,600 verifier bits; flat five-action reset required
+15,600 and 5,400 bits. Transfer ratios were therefore 4.64× and 1.50×. Both
+routers passed eight-stream held-out improvement, feature-shuffle, reversal,
+independent randomized confirmation, old-skill retention, exact reload,
+corruption detection, and parent-lineage survival. The canonical record is
+`session_records/fifth_option_composition_2026-07-26/README.md`.
+
+The new frontier is automatic population allocation: predict when the expected
+value of counterfactual clone experience justifies its extra verifier cost,
+while periodically revisiting apparently unpromising branches so
+phase-transition skills are not starved.
+
 Run the sub-minute GPU experiment:
 
 ```bash

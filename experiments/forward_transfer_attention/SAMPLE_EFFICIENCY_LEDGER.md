@@ -891,3 +891,41 @@ training. Retain the replicated 105-parameter advantage blueprint and the
 stronger inherited production weights. The next transfer ledger must test
 advantage learning on a genuinely novel compute decision rather than continue
 optimizing this mastered read/no-read surface.
+
+## 2026-07-26 — third-generation option composition
+
+The verified two-, three-, and four-action lineage was extended to a fifth
+physical action. The four-action hierarchy remained frozen and was exposed as
+one opaque option. A new binary router learned old-hierarchy versus fifth
+action; the matched flat control relearned all five actions.
+
+Ordinary randomized bandit regression, extra replay, richer features alone,
+and a cost curriculum did not replicate. A population-experience fork did:
+temporary clones attempted the competing actions on the same generated
+context, every scalar verifier outcome was charged, and the router regressed
+the observed fifth-minus-old advantage. No semantic label, correct-action
+hook, task ID, or hidden game state entered the learner.
+
+The frozen configuration used 3,840 unique logical lifetimes and 256 replay
+updates per arm. Composition consumed two verifier bits per lifetime; flat
+reset consumed five. Stable means the first measured +2-point threshold after
+which every remaining prefix also passed.
+
+| Seed | Composition stable bits | Flat stable bits | Transfer ratio |
+|---:|---:|---:|---:|
+| 8083 | 3,360 | 15,600 | 4.64× |
+| 8084 | 3,600 | 5,400 | 1.50× |
+
+Independent audits used eight unseen 2,040-context streams and a separate
+2,400-outcome randomized confirmation set. Seed-8083 utility improved from
+0.78754 to 0.82701; seed-8084 improved from 0.78258 to 0.82962. Every stream
+improved. Router-feature shuffling reduced utility to 0.74274/0.73534 and
+decision reversal to 0.49241/0.48570. Randomized lower-95% gains were +3.52
+and +1.49 points. Binary and four-rule retention, exact reload, corruption
+detection, and parent-lineage survival all passed.
+
+This is the third consecutive verified generation of reusable option growth
+and the first to show that counterfactual scalar experience shared across a
+temporary clone population can unlock a latent action relation that
+single-action feedback used unreliably. The persistent artifact remains one
+controller plus external verified skill memory.
