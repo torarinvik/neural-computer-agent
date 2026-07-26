@@ -101,3 +101,31 @@ logger. No new information, labels, or verifier bits are introduced.
 The centered estimator must preserve the mastered incumbent and promote the
 gap learner only with a positive lower bound. A pass permits one unchanged
 replication; a failure closes this estimator.
+
+## Centered estimator result
+
+Seed 7955 passed:
+
+- mastered incumbent: zero promotions, exactly unchanged utility, `71.7%`
+  accuracy;
+- gap incumbent: promoted at 720 bits with lower bound `+0.0232`, improving
+  audited utility by `7.94` points.
+
+The authorized seed-7956 replication also passed:
+
+- mastered incumbent: zero promotions, exactly unchanged utility, `72.2%`
+  accuracy;
+- gap incumbent: promoted at 480 bits with lower bound `+0.0250`; a second
+  independently positive promotion occurred at 720 bits; final audited utility
+  improved by `6.12` points.
+
+The legacy composite `accepted_for_replication` field remains false because it
+still includes the earlier auxiliary requirement that naive learning degrade
+by at least `0.005` on every seed. We do not rewrite that historical gate.
+The separately pre-registered centered-estimator claim passed and replicated.
+
+This demonstrates a task-agnostic safe-adaptation primitive: preserve a
+verified incumbent, learn a challenger from attempted outcomes, and deploy new
+behavior only after conservative causal evidence. The current frontier is to
+reduce the 480–720-bit promotion delay without increasing false promotions,
+then integrate the mechanism with the persistent skill lineage.
