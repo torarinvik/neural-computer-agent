@@ -408,3 +408,32 @@ as the current strategy-memory mechanism. Dynamic slot allocation remains
 disabled. The next frontier is to make the gain less seed-sensitive, using
 matched tiny races and no additional context capacity until the source of the
 7072/7073 variance is localized.
+
+## Seed-sensitivity localization and exact-prefix correction
+
+Physical experience, policy-perturbation, and context-proposal random streams
+were separated and independently swappable. Starting from the weak 7072
+trajectory, none of the three single swaps and none of the three pairwise swaps
+reproduced the strong 7073 result. Overriding all three streams reproduced the
+strong 54-round trace bit-for-bit even while the bookkeeping/evaluation seed
+remained 7072. The ignition is therefore a genuine three-way trajectory
+interaction, not one lucky data stream or an omitted RNG source.
+
+An initial exploration-clone race appeared promising but was invalid as a
+successive-halving claim: setting four rounds per phase compressed all three
+phases into twelve rounds, whereas the extension used eighteen consecutive
+rounds per phase. The screen was not a prefix of the extension.
+
+The harness now supports `--max-physical-rounds`. It stops an otherwise
+unchanged curriculum, marks the report `prefix_only`, and makes graduation
+impossible. A corrected 12-round report matched the corresponding full trace
+bit-for-bit.
+
+The corrected evidence also rejects information density as a sufficient early
+selector. By round 12, a later non-compounding clone had six informative pairs
+and four action patterns, exceeding a later successful clone with five and
+three. Round 12 contains only the old-equal phase, so it cannot measure
+switching or return retention. Future racing must either wait until the exact
+prefix reaches the old-return phase (round 37 or later in this schedule), or
+pre-register an interleaved curriculum that exposes acquisition, switching,
+and return within every short prefix.

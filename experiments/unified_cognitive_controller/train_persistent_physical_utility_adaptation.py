@@ -113,9 +113,23 @@ def main() -> None:
     parser.add_argument("--checkpoint-out", type=Path)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--seed", type=int, default=7031)
+    parser.add_argument(
+        "--experience-seed", type=int,
+        help="override only physical histories and candidate batches")
+    parser.add_argument(
+        "--policy-perturbation-seed", type=int,
+        help="override only the two-parameter policy horse race")
+    parser.add_argument(
+        "--context-proposal-seed", type=int,
+        help="override only context-metric proposal directions")
     parser.add_argument("--banks", type=int, default=8)
     parser.add_argument("--bank-capacity", type=int, default=6)
     parser.add_argument("--rounds-per-phase", type=int, default=3)
+    parser.add_argument(
+        "--max-physical-rounds", type=int,
+        help=(
+            "stop an otherwise unchanged curriculum at an exact prefix; "
+            "prefix reports can never pass the graduation gate"))
     parser.add_argument("--perturbation", type=float, default=3.0)
     parser.add_argument("--step-size", type=float, default=1.5)
     parser.add_argument("--shuffle-physical-rewards", action="store_true")
@@ -163,10 +177,22 @@ def main() -> None:
     args = parser.parse_args()
     if (
             args.banks < 2 or args.rounds_per_phase < 1
-            or args.soft_context_direction_proposals < 1):
+            or args.soft_context_direction_proposals < 1
+            or (
+                args.max_physical_rounds is not None
+                and args.max_physical_rounds < 1)):
         raise ValueError("at least two banks and one round are required")
 
     seed_everything(args.seed)
+    experience_seed = (
+        args.seed if args.experience_seed is None
+        else args.experience_seed)
+    policy_perturbation_seed = (
+        args.seed if args.policy_perturbation_seed is None
+        else args.policy_perturbation_seed)
+    context_proposal_seed = (
+        args.seed if args.context_proposal_seed is None
+        else args.context_proposal_seed)
     device = torch.device(args.device)
     payload = torch.load(
         args.checkpoint_in, map_location=device, weights_only=False)
@@ -185,7 +211,7 @@ def main() -> None:
     started = time.perf_counter()
     initial = frequency_recency_batch(
         model, banks=args.banks, capacity=args.bank_capacity,
-        seed=args.seed * 10_000, device=device,
+        seed=experience_seed * 10_000, device=device,
         write_threshold=0.5, noise_scale=0.04,
         recency_weight=0.5, frequency_weight=0.5)
 
@@ -200,9 +226,10 @@ def main() -> None:
             initial, banks=args.banks, capacity=args.bank_capacity,
             device=device)
         direction_generator = torch.Generator(device=device).manual_seed(
-            args.seed + 70_000_000)
+            policy_perturbation_seed + 70_000_000)
         context_direction_generator = torch.Generator(
-            device=device).manual_seed(args.seed + 71_000_000)
+            device=device).manual_seed(
+                context_proposal_seed + 71_000_000)
         strategy_memory = (
             LatentStrategyMemory(capacity=args.strategy_memory_capacity,
                                  key_width=13, device=device)
@@ -239,6 +266,10 @@ def main() -> None:
         soft_context_selected_preverifier_action_disagreements = 0
 
         for phase_index, (phase, weights, phase_rounds) in enumerate(phases):
+            if (
+                    args.max_physical_rounds is not None
+                    and rounds >= args.max_physical_rounds):
+                break
             is_peak_reliability = (
                 weights[2] == max(item[1][2] for item in phases))
             if is_peak_reliability:
@@ -260,9 +291,13 @@ def main() -> None:
                             1, dims=0))
             phase_rows = []
             for round_index in range(phase_rounds):
+                if (
+                        args.max_physical_rounds is not None
+                        and rounds >= args.max_physical_rounds):
+                    break
                 rounds += 1
                 seed = (
-                    args.seed * 10_000_000
+                    experience_seed * 10_000_000
                     + phase_index * 1_000_000 + round_index + 1)
                 data = frequency_recency_batch(
                     model, banks=args.banks,
@@ -760,7 +795,10 @@ def main() -> None:
         reliability = max(
             phase_summaries, key=lambda summary: summary["weights"][2])
         old_return = phase_summaries[-1]
+        planned_rounds = sum(item[2] for item in phases)
+        complete_curriculum = rounds == planned_rounds
         gate = {
+            "complete_curriculum": complete_curriculum,
             "every_state_save_reload_exact":
                 state_exact == expected_state,
             "every_candidate_remained_bounded":
@@ -802,6 +840,11 @@ def main() -> None:
                 str(args.checkpoint_out)
                 if args.checkpoint_out is not None else None),
             "report": str(args.report),
+            "resolved_experience_seed": experience_seed,
+            "resolved_policy_perturbation_seed":
+                policy_perturbation_seed,
+            "resolved_context_proposal_seed":
+                context_proposal_seed,
         },
         "training_signal":
             "three_candidate_persistent_physical_verified_horse_race",
@@ -809,6 +852,7 @@ def main() -> None:
             "one_decision_fresh_control"
             if args.reset_banks_each_round
             else "persistent_across_all_decisions"),
+        "prefix_only": not complete_curriculum,
         "fast_adaptation_state": (
             "context_indexed_latent_strategy_memory"
             if args.strategy_memory_capacity > 0
