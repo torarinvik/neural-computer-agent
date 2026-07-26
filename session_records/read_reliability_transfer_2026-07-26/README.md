@@ -86,3 +86,27 @@ Seed 7871 is pre-registered as the fresh powered training race at capacity
 five, threshold 0.5, and read cost 0.24. It uses the standard 720 target bits,
 12 updates, three-way lineage/ancestor/reset comparison, causal controls, and
 retention gates. A full pass permits one unchanged seed-7872 replication.
+
+## Seed 7871 and prospective control correction
+
+Seed 7871 reached stable mastery at zero target bits; its ancestor required
+120 and reset never crossed within 720. Final inherited accuracy was `80.6%`
+with `57.9%` gap capture. Evidence shuffling and missing evidence collapsed
+utility, and all retention/mechanical gates passed.
+
+The run was nevertheless rejected because reward-shuffled **training** did not
+damage the already-mastered inherited policy. That control cannot test
+zero-shot knowledge: the policy passes before seeing any target reward, so
+later shuffled rewards need not erase it.
+
+Seed 7871 remains rejected under its original gate. Prospectively, fresh seed
+7873 uses the following structural rule:
+
+- if inherited stable mastery is at zero target bits, causal lineage/ancestor,
+  reset, feature-shuffle, and missing-evidence controls are mandatory;
+- reward-shuffle performance is recorded but is not required to damage
+  knowledge learned before the target phase;
+- if inherited mastery requires any target learning, reward shuffling must
+  still cost at least `0.02` utility.
+
+A full seed-7873 pass permits unchanged seed-7874 replication.

@@ -174,12 +174,13 @@ def main() -> None:
     final = {name: rows[-1] for name, rows in histories.items()}
     stable = {name: _stable_bits(rows) for name, rows in histories.items()}
     inherited_final = final["inherited"]
-    control_cost = min(
+    evidence_control_cost = min(
         inherited_final["shadow_verified_utility"]
         - final[name]["shadow_verified_utility"]
-        for name in (
-            "reward_shuffled", "feature_shuffled",
-            "missing_evidence"))
+        for name in ("feature_shuffled", "missing_evidence"))
+    reward_shuffle_cost = (
+        inherited_final["shadow_verified_utility"]
+        - final["reward_shuffled"]["shadow_verified_utility"])
     inherited_bits = stable["inherited"]
     reset_bits = stable["reset"]
     previous_bits = stable.get("previous_inherited")
@@ -194,7 +195,10 @@ def main() -> None:
         "inherited_strictly_faster_than_reset": (
             inherited_bits is not None
             and (reset_bits is None or inherited_bits < reset_bits)),
-        "controls_cost_at_least_0_02": control_cost >= 0.02,
+        "evidence_controls_cost_at_least_0_02":
+            evidence_control_cost >= 0.02,
+        "reward_shuffle_costs_0_02_when_target_learning_required": (
+            inherited_bits == 0 or reward_shuffle_cost >= 0.02),
         "all_gradients_live": all(
             min(values) > 0 for values in gradient_norms.values()),
     }
@@ -258,6 +262,12 @@ def main() -> None:
         "binary_retention": binary,
         "four_rule_retention": four_rule,
         "gate": gate,
+        "control_diagnostics": {
+            "evidence_control_minimum_utility_cost":
+                evidence_control_cost,
+            "reward_shuffle_utility_cost": reward_shuffle_cost,
+            "reward_shuffle_required": inherited_bits != 0,
+        },
         "accounting": {
             "learner_visible_unique_lifetimes":
                 args.steps * args.batch_size,
