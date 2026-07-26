@@ -33,6 +33,13 @@ from .train_passive_replacement_critic import (
     exploration_probabilities,
     immediate_read_evidence,
 )
+from .train_shadow_compute_critic import (
+    ShadowComputeCritic,
+    _shadow_metrics,
+    controlled_features,
+    selected_compute_loss,
+)
+from .train_shadow_compute_advantage import attempted_advantage_target
 from .train_persistent_memory import _grouped_read
 from .probe_persistent_physical_stream import (
     _future_for_actions,
@@ -278,6 +285,64 @@ def test_passive_critic_concordance_handles_order_and_ties() -> None:
     assert concordance(-outcomes, outcomes) == pytest.approx(0.0)
     assert concordance(torch.zeros_like(outcomes), outcomes) == pytest.approx(
         0.5)
+
+
+def test_shadow_compute_loss_uses_only_attempted_action_outcome() -> None:
+    logits = torch.tensor(
+        [[0.1, 0.2], [0.3, 0.4]], requires_grad=True)
+    loss = selected_compute_loss(
+        logits, torch.tensor([0, 1]), torch.tensor([1.0, 0.0]))
+    loss.backward()
+    assert logits.grad is not None
+    assert logits.grad[0, 1] == 0
+    assert logits.grad[1, 0] == 0
+
+
+def test_shadow_compute_controls_remove_or_mismatch_only_evidence() -> None:
+    features = torch.arange(20, dtype=torch.float32).reshape(5, 4)
+    permutation = torch.tensor([4, 3, 2, 1, 0])
+    assert torch.equal(
+        controlled_features(features, "intact"), features)
+    assert torch.equal(
+        controlled_features(
+            features, "feature_shuffled", permutation=permutation),
+        features[permutation])
+    assert torch.count_nonzero(
+        controlled_features(features, "missing_evidence")) == 0
+
+
+def test_shadow_compute_audit_rewards_context_sensitive_choice() -> None:
+    critic = ShadowComputeCritic(hidden=4)
+    with torch.no_grad():
+        # Make the read action rise with feature zero and the no-read action
+        # fall with it, yielding a known context-sensitive decision.
+        critic.network[1].weight.zero_()
+        critic.network[1].bias.zero_()
+        critic.network[-1].weight.zero_()
+        critic.network[-1].bias.copy_(torch.tensor([1.0, -1.0]))
+    features = torch.zeros(4, 4)
+    no_read = torch.ones(4)
+    read = torch.zeros(4)
+    metrics = _shadow_metrics(
+        critic, features, no_read, read, torch.zeros(2),
+        read_cost=0.01)
+    assert metrics["read_rate"] == 0.0
+    assert metrics["compute_choice_accuracy"] == 1.0
+    assert metrics["shadow_verified_utility"] == 1.0
+
+
+def test_attempted_advantage_target_is_unbiased_under_uniform_logging() -> None:
+    # For one context, no-read utility=.2 and read utility=.8. Averaging the
+    # two logged pseudo-targets must recover the true advantage .6.
+    actions = torch.tensor([0, 1])
+    utilities = torch.tensor([0.2, 0.8])
+    targets = attempted_advantage_target(
+        actions, utilities, baseline=0.5, propensity=0.5)
+    assert targets.mean() == pytest.approx(0.6)
+    # An action-independent baseline cancels from the expectation.
+    shifted = attempted_advantage_target(
+        actions, utilities, baseline=0.1, propensity=0.5)
+    assert shifted.mean() == pytest.approx(0.6)
 
 
 def test_disk_latent_memory_round_trip(tmp_path: Path) -> None:

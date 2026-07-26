@@ -842,3 +842,41 @@ from fewer than one thousand scalar outcomes, using only its own abstract
 memory-read state.  The critic remains passive.  The next rung is shadow
 compute allocation—evaluate whether it can rank the verified value of one
 extra thought/read step before allowing it to influence latency or behavior.
+
+Shadow compute allocation exposed a distinction between predicting absolute
+success and learning the value of extra computation.  A two-action success
+critic trained from 720–1,440 attempted outcomes beat action-rate Brier and
+every causal control, but remained biased toward always reading; exact choice
+accuracy stayed below 59% and calibration failed.  More data did not repair
+the decision boundary.
+
+A direct inverse-propensity advantage objective solved that conversion without
+counterfactual labels.  For a uniformly logged read/no-read action, the
+learner regressed
+`sign(action) * (observed_utility - running_baseline) / propensity`, whose
+conditional expectation is the verified read-minus-no-read advantage.  It
+saw only four generic read statistics, its attempted action/propensity, the
+small generic read cost, and one scalar outcome.
+
+The 201-parameter head passed twice at 720 bits.  A 57-parameter near-match to
+the inherited read gate retained a causal signal but missed the gate.  The
+intermediate 105-parameter head passed and replicated:
+
+- seed 7424: 69.0% choice accuracy, +19.24 utility points over always-read,
+  59.7% oracle-gap capture;
+- seed 7425: 70.6% choice accuracy, +18.47 utility points,
+  60.2% gap capture.
+
+Both crossed the primary allocation thresholds at the first measured
+120-bit prefix and stayed above them through 720 bits.  Reward-shuffled,
+feature-shuffled, and zero-evidence controls captured essentially none of the
+oracle gap; episode-evidence shuffling made the learned policies worse than
+the fixed baseline.  Retention, persistence, gradients, and latency passed.
+
+The inherited 49-parameter gate remains stronger on this already mastered
+task: a saved matched audit measured 95.2%/82.5% choice accuracy and
+97.4%/81.4% gap capture on seeds 7424/7425.  Its historical training budget
+was 81,920 contexts and 160 updates.  Therefore keep its weights; promote the
+advantage objective as the sample-efficient blueprint.  The next exact rung
+is width 8 (57 parameters) at 1,440 fresh bits, one axis only, followed by an
+unchanged replication if it passes.

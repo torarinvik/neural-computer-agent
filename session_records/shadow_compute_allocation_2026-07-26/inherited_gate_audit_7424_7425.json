@@ -1,0 +1,44 @@
+{
+  "schema": "inherited-compute-gate-audit-v1",
+  "configuration": {
+    "parent_checkpoint": "artifacts/checkpoints/unified_memory_online_utility_seed6810.pt",
+    "selected_prefix": "artifacts/checkpoints/balanced_maximin_stream7085_clone7211_round54.pt",
+    "report": "session_records/shadow_compute_allocation_2026-07-26/inherited_gate_audit_7424_7425.json",
+    "device": "cpu",
+    "seeds": [
+      7424,
+      7425
+    ],
+    "test_contexts": 126,
+    "bank_capacity": 3,
+    "write_threshold": 0.5,
+    "read_cost": 0.01
+  },
+  "inherited_gate_parameters": 49,
+  "training_experience_from_ledger": {
+    "unique_contexts": 81920,
+    "optimizer_updates": 160,
+    "source": "SAMPLE_EFFICIENCY_LEDGER nonlinear adaptive read gate"
+  },
+  "heldout_rows": [
+    {
+      "seed": 7424,
+      "compute_choice_accuracy": 0.9523809552192688,
+      "verified_utility": 0.9865872859954834,
+      "strongest_fixed_utility": 0.6725395321846008,
+      "oracle_utility": 0.9950000643730164,
+      "captured_oracle_gap_fraction": 0.9739106726629809,
+      "read_rate": 0.5476190447807312
+    },
+    {
+      "seed": 7425,
+      "compute_choice_accuracy": 0.8253968358039856,
+      "verified_utility": 0.938095211982727,
+      "strongest_fixed_utility": 0.6884125471115112,
+      "oracle_utility": 0.9950793981552124,
+      "captured_oracle_gap_fraction": 0.8141821133306485,
+      "read_rate": 0.6349206566810608
+    }
+  ],
+  "private_audit_verifier_bits": 504
+}
