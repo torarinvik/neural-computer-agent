@@ -39,3 +39,20 @@ The re-query lineage must:
 Only a complete pass permits an unchanged replication seed. A tie is not
 compounding evidence. A failure or regression closes capacity six at this
 curriculum step; it does not authorize a longer run.
+
+## Capacity-six result and smaller-step fork
+
+Seed 7911 did not pass. The inherited re-query policy captured `67.5%` of the
+available utility gap and retained prior skills, but achieved only `33.7%`
+unweighted compute-choice accuracy. No arm reached stable mastery within 720
+bits. The apparently conflicting utility and accuracy are possible because
+the inherited policy made many low-regret classification errors; the
+pre-registered accuracy gate is retained unchanged.
+
+Capacity six therefore remains too large a first curriculum step. Zero-training
+viability probes at capacity five show that costs `0.015`, `0.020`, and `0.030`
+all retain a meaningful two-sided adaptive decision. The next discovery seed
+uses the smallest change, cost `0.015`, with the complete capacity-five
+re-query head compared against its read ancestor and reset under the same gate.
+Only a complete pass permits unchanged replication; no longer budget is
+authorized.
