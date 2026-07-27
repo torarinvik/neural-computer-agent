@@ -35,3 +35,7 @@ videos/
 runs/
 wandb/
 /experiments/unified_cognitive_controller/reports/
+
+# Session-local experiment sweeps. Selected evidence reports may be
+# force-added alongside promoted milestones.
+/session_records/*/raw/
