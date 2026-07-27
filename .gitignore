@@ -39,3 +39,6 @@ wandb/
 # Session-local experiment sweeps. Selected evidence reports may be
 # force-added alongside promoted milestones.
 /session_records/*/raw/
+# Nested session sweeps (session_records/<run>/<arm>/raw/). Selected evidence
+# reports are force-added alongside promoted milestones.
+/session_records/*/*/raw/
