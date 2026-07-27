@@ -111,6 +111,13 @@ class UnifiedCognitiveController(nn.Module):
         self.skill_adapter_widths = tuple(skill_adapter_widths)
         self.skill_adapter_gate_mode = skill_adapter_gate_mode
         self.skill_adapter_gate_hidden = skill_adapter_gate_hidden
+        # Training-time leak below the rectifier's knee. A rectified gate that
+        # shuts everywhere before it has learned where to open has no gradient
+        # left and stays shut forever; a small leak keeps that recoverable. It
+        # is a schedule, not architecture, so it is a plain runtime attribute
+        # that no checkpoint stores, and it must be returned to zero before any
+        # measurement: only an exact zero leaves an inherited skill untouched.
+        self.skill_adapter_gate_leak = 0.0
         self.vision = VisionEventEncoder(width)
         self.action_embedding = nn.Embedding(ACTIONS + 1, width // 4)
         feedback_width = width // 4
@@ -346,7 +353,10 @@ class UnifiedCognitiveController(nn.Module):
                     self.skill_adapters, self.skill_adapter_gates):
                 score = gate(slot_features)
                 opening = (
-                    torch.relu(score)
+                    # leaky_relu at slope zero is exactly relu, so a finished
+                    # anneal restores exact-zero gating bit for bit.
+                    torch.nn.functional.leaky_relu(
+                        score, self.skill_adapter_gate_leak)
                     if self.skill_adapter_gate_mode == "relu"
                     else torch.sigmoid(score))
                 residual = adapter(slot_features) * opening

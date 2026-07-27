@@ -270,7 +270,7 @@ def main() -> None:
             "constant_action", "visible_identity", "binary_mapping",
             "visible_context", "visible_context_xor", "four_rule",
             "contextual_mapping",
-            "contextual_override", "contextual_composition"),
+            "contextual_override", "contextual_composition", "context_rule_xor"),
         default="constant_action")
     parser.add_argument(
         "--appearance", choices=("bars", "diamonds", "dot_pairs"),
@@ -280,7 +280,7 @@ def main() -> None:
             "constant_action", "visible_identity", "binary_mapping",
             "visible_context", "visible_context_xor", "four_rule",
             "contextual_mapping",
-            "contextual_override", "contextual_composition"))
+            "contextual_override", "contextual_composition", "context_rule_xor"))
     parser.add_argument(
         "--rehearsal-every", type=int, default=2,
         help="use one rehearsal batch every N optimizer steps")
@@ -298,7 +298,7 @@ def main() -> None:
             "constant_action", "visible_identity", "binary_mapping",
             "visible_context", "visible_context_xor", "four_rule",
             "contextual_mapping",
-            "contextual_override", "contextual_composition"))
+            "contextual_override", "contextual_composition", "context_rule_xor"))
     parser.add_argument(
         "--retention-feedback-trials", type=int,
         help=(

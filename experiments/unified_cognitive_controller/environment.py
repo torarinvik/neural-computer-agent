@@ -132,6 +132,12 @@ _OPERATION_CUE_SLOTS = {
     "contextual_composition": ((IMAGE_SIZE - 3, IMAGE_SIZE), (14, 19)),
     "contextual_override": ((0, 3), (5, 10)),
     "contextual_mapping": ((0, 3), (19, 24)),
+    # Deliberately a wider bar rather than another five-column one. The frozen
+    # encoder ends in a global average pool, so two cues of equal area differing
+    # only in position are nearly identical to it, and a slot cannot shut on a
+    # skill it cannot tell apart. Separating by area is what that encoder can
+    # actually see. Check any new slot with probe_cue_separability first.
+    "context_rule_xor": ((IMAGE_SIZE - 3, IMAGE_SIZE), (3, 13)),
 }
 
 
@@ -153,11 +159,12 @@ def generate_lifetimes(
     if task not in (
         "constant_action", "visible_identity", "binary_mapping",
         "visible_context", "visible_context_xor", "four_rule", "contextual_mapping",
-        "contextual_override", "contextual_composition"):
+        "contextual_override", "contextual_composition", "context_rule_xor"):
         raise ValueError(
             "task must be constant_action, visible_identity, "
             "binary_mapping, visible_context, visible_context_xor, four_rule, "
-            "contextual_mapping, contextual_override, or contextual_composition")
+            "contextual_mapping, contextual_override, contextual_composition, "
+            "or context_rule_xor")
     if appearance not in _MASK_BANKS:
         raise ValueError(
             f"appearance must be one of {sorted(_MASK_BANKS)}")
@@ -241,7 +248,7 @@ def generate_lifetimes(
     context_ids = None
     if task in (
             "visible_context", "visible_context_xor", "contextual_mapping",
-            "contextual_override", "contextual_composition"):
+            "contextual_override", "contextual_composition", "context_rule_xor"):
         context_ids = torch.randint(0, 2, (count, trials), generator=generator)
         if support_trials >= 2:
             context_ids[:, 0] = 0
@@ -294,6 +301,12 @@ def generate_lifetimes(
         # mapping and the acquired visible-context bit on every event.
         correct = (
             identities ^ rule_bits.unsqueeze(1) ^ context_ids)
+    elif task == "context_rule_xor":
+        assert context_ids is not None
+        # The hidden rule composed with the visible context, with the stimulus
+        # identity deliberately irrelevant. Neither branch is a constant, so
+        # nothing here is memorisable without tracking the rule.
+        correct = rule_bits.unsqueeze(1) ^ context_ids
     elif task == "visible_context":
         assert context_ids is not None
         correct = context_ids.clone()

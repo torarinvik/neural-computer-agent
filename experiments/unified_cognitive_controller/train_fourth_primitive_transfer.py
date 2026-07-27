@@ -271,11 +271,38 @@ def main() -> None:
               "start above one and the final rung must reach one. Replay "
               "always uses the one support the teacher consolidated at."))
     parser.add_argument(
+        "--final-support-trials", type=int,
+        help=("support outcomes to finish on and to evaluate at; defaults to "
+              "--new-support-trials. Set it lower to reduce support during "
+              "the rung, which is how the original binary mapping was reached"))
+    parser.add_argument(
+        "--support-switch-fraction", type=float, default=0.5,
+        help="fraction of the budget spent before dropping to the final support")
+    parser.add_argument(
+        "--gate-warmup-fraction", type=float, default=0.0,
+        help=("fraction of the budget during which the new slot's gate is held "
+              "open and frozen. A rectified gate that shuts before its adapter "
+              "has any reason to be open is left without gradient and stays "
+              "shut; this stops it closing on an adapter that still outputs "
+              "zero"))
+    parser.add_argument(
+        "--gate-leak-initial", type=float, default=0.0,
+        help=("initial leak below a rectified gate's knee, annealed to exactly "
+              "zero; keeps a gate that shuts everywhere recoverable"))
+    parser.add_argument(
+        "--gate-leak-anneal-fraction", type=float, default=0.25,
+        help="fraction of the budget over which the leak reaches exactly zero")
+    parser.add_argument(
         "--new-task", default=DEFAULT_NEW_TASK,
         help="the primitive this rung acquires")
     parser.add_argument(
         "--replay-tasks", default=",".join(DEFAULT_REPLAY_TASKS),
         help="comma separated primitives the parent already holds")
+    parser.add_argument(
+        "--replay-support-trials",
+        help=("comma separated support counts, one per replay task; defaults "
+              "to one each. A skill must be replayed and audited at the "
+              "support it was acquired at, or its retention is unmeasurable"))
     parser.add_argument(
         "--slot-gate-hidden", type=int, default=0,
         help=("hidden units in the new slot's gate; zero keeps the single "
@@ -314,6 +341,25 @@ def main() -> None:
         raise ValueError("the new plastic slot must have positive width")
     if not 1 <= args.new_support_trials < 6:
         raise ValueError("new-task support trials must be between 1 and 5")
+    final_support_trials = (
+        args.new_support_trials if args.final_support_trials is None
+        else args.final_support_trials)
+    if not 1 <= final_support_trials <= args.new_support_trials:
+        raise ValueError(
+            "final support trials must be between one and the starting value")
+    if not 0.0 <= args.support_switch_fraction <= 1.0:
+        raise ValueError("support switch fraction must be within [0, 1]")
+    if args.gate_leak_initial < 0.0:
+        raise ValueError("gate leak must not be negative")
+    if not 0.0 < args.gate_leak_anneal_fraction <= 1.0:
+        raise ValueError("gate leak anneal fraction must be within (0, 1]")
+    support_switch_update = max(
+        1, int(round(args.steps * args.support_switch_fraction)))
+    leak_anneal_updates = max(
+        1, int(round(args.steps * args.gate_leak_anneal_fraction)))
+    if not 0.0 <= args.gate_warmup_fraction < 1.0:
+        raise ValueError("gate warmup fraction must be within [0, 1)")
+    gate_warmup_updates = int(round(args.steps * args.gate_warmup_fraction))
     new_task = args.new_task
     replay_tasks = tuple(
         name for name in args.replay_tasks.split(",") if name)
@@ -321,6 +367,17 @@ def main() -> None:
         raise ValueError("a rung must replay at least one earlier primitive")
     if new_task in replay_tasks:
         raise ValueError("the new primitive cannot also be a replay task")
+    if args.replay_support_trials:
+        replay_support = tuple(
+            int(value) for value in args.replay_support_trials.split(","))
+        if len(replay_support) != len(replay_tasks):
+            raise ValueError(
+                "replay support counts must match the replay task count")
+        if any(not 1 <= value < 6 for value in replay_support):
+            raise ValueError("replay support counts must be between 1 and 5")
+    else:
+        replay_support = tuple(1 for _ in replay_tasks)
+    replay_support_by_task = dict(zip(replay_tasks, replay_support))
 
     seed_everything(args.seed)
     device = torch.device(args.device)
@@ -377,7 +434,7 @@ def main() -> None:
         task: evaluate(
             teacher, count=args.test_lifetimes, trials=6,
             seed=args.seed + 91_000_000 + index, device=device,
-            task=task, feedback_trials=1)
+            task=task, feedback_trials=replay_support_by_task[task])
         for index, task in enumerate(replay_tasks)
     }
     parent_retention = {
@@ -397,26 +454,41 @@ def main() -> None:
     history: list[dict[str, float | int]] = []
     for update in range(1, args.steps + 1):
         student.train()
+        # Anneal the rectifier's leak linearly to exactly zero, then hold it
+        # there for the rest of the rung so the gate hardens into a gate that
+        # can be exactly shut.
+        student.skill_adapter_gate_leak = (
+            args.gate_leak_initial
+            * max(0.0, 1.0 - (update - 1) / leak_anneal_updates))
+        # Hold the gate open until the adapter is worth gating.
+        for name, parameter in student.named_parameters():
+            if name.startswith(f"skill_adapter_gates.{new_slot}."):
+                parameter.requires_grad_(update > gate_warmup_updates)
+        support_trials = (
+            args.new_support_trials if update < support_switch_update
+            else final_support_trials)
         new_batch = generate_lifetimes(
             args.new_batch_size, 6,
             seed=args.seed * 10_000_000 + update,
-            task=new_task, support_trials=args.new_support_trials,
+            task=new_task, support_trials=support_trials,
             device=device)
         replay_batches = [
             generate_lifetimes(
                 args.replay_batch_size, 6,
                 seed=args.seed * (20_000_000 + 10_000_000 * index) + update,
-                task=task, support_trials=1, device=device)
+                task=task, support_trials=replay_support_by_task[task],
+                device=device)
             for index, task in enumerate(replay_tasks)
         ]
         skill_loss = _new_skill_loss(
             student, new_batch, exploration=args.exploration,
-            support_trials=args.new_support_trials)
+            support_trials=support_trials)
         replay_results = [
             _replay_loss_and_leakage(
-                student, teacher, batch, slot=new_slot, feedback_trials=1,
+                student, teacher, batch, slot=new_slot,
+                feedback_trials=replay_support_by_task[task],
                 shuffled_teacher=args.shuffle_retention_teacher)
-            for batch in replay_batches
+            for task, batch in zip(replay_tasks, replay_batches)
         ]
         replay_losses = [value for value, _, _ in replay_results]
         leakages = [value for _, value, _ in replay_results]
@@ -469,34 +541,37 @@ def main() -> None:
                 "total_loss": float(loss.detach()),
             })
 
+    # Nothing is measured through a leaky gate: the exact-zero property is the
+    # whole mechanism, so the anneal must be finished before any evaluation.
+    student.skill_adapter_gate_leak = 0.0
     evaluations = {
         "new_skill": evaluate(
             student, count=args.test_lifetimes, trials=6,
             seed=args.seed + 90_000_000, device=device,
-            task=new_task, feedback_trials=args.new_support_trials),
+            task=new_task, feedback_trials=final_support_trials),
         **{
             f"{task}_retention": evaluate(
                 student, count=args.test_lifetimes, trials=6,
                 seed=args.seed + 91_000_000 + index, device=device,
-                task=task, feedback_trials=1)
+                task=task, feedback_trials=replay_support_by_task[task])
             for index, task in enumerate(replay_tasks)
         },
     }
     cue_ablation_accuracy = _operation_cue_ablation_accuracy(
         student, count=args.test_lifetimes,
         seed=args.seed + 90_000_000, device=device,
-        support_trials=args.new_support_trials, new_task=new_task)
+        support_trials=final_support_trials, new_task=new_task)
     _openings = {
         new_task: _slot_opening(
             student, slot=new_slot, task=new_task,
             count=args.test_lifetimes, seed=args.seed + 93_000_000,
-            support_trials=args.new_support_trials, device=device),
+            support_trials=final_support_trials, device=device),
         **{
             task: _slot_opening(
                 student, slot=new_slot, task=task,
                 count=args.test_lifetimes,
-                seed=args.seed + 94_000_000 + index, support_trials=1,
-                device=device)
+                seed=args.seed + 94_000_000 + index,
+                support_trials=replay_support_by_task[task], device=device)
             for index, task in enumerate(replay_tasks)
         },
     }
@@ -507,13 +582,13 @@ def main() -> None:
         new_task: _slot_residual_norm(
             student, slot=new_slot, task=new_task,
             count=args.test_lifetimes, seed=args.seed + 93_000_000,
-            support_trials=args.new_support_trials, device=device),
+            support_trials=final_support_trials, device=device),
         **{
             task: _slot_residual_norm(
                 student, slot=new_slot, task=task,
                 count=args.test_lifetimes,
-                seed=args.seed + 94_000_000 + index, support_trials=1,
-                device=device)
+                seed=args.seed + 94_000_000 + index,
+                support_trials=replay_support_by_task[task], device=device)
             for index, task in enumerate(replay_tasks)
         },
     }
@@ -527,7 +602,8 @@ def main() -> None:
     accepted = (
         evaluations["new_skill"]["gate"]["accepted"]
         and retention_gates_passed
-        and cue_causally_used)
+        and cue_causally_used
+        and slot_shut_fraction[new_task] < 1.0)
     frozen_base_identical = all(
         torch.equal(frozen_initial[name], value.detach().cpu())
         for name, value in student.state_dict().items()
@@ -545,6 +621,7 @@ def main() -> None:
         "unattempted_correct_actions_used_as_targets": False,
         "new_task": new_task,
         "replay_tasks": list(replay_tasks),
+        "replay_support_trials": replay_support_by_task,
         "plastic_module": f"skill_adapters.{new_slot}",
         "inherited_frozen_adapters": inherited_frozen_adapters,
         "inherited_skill_adapter_slots": list(inherited_slots),
@@ -587,6 +664,22 @@ def main() -> None:
         },
         "slot_opening": slot_opening,
         "slot_shut_fraction": slot_shut_fraction,
+        # A slot shut on every one of its own task's events learned nothing and
+        # can no longer recover: the rectifier has no gradient below zero. It
+        # is a training failure, not a result, and must never be read as
+        # perfect retention.
+        "slot_dead": slot_shut_fraction[new_task] >= 1.0,
+        "support_schedule": {
+            "initial": args.new_support_trials,
+            "final": final_support_trials,
+            "switch_update": support_switch_update,
+        },
+        "gate_warmup_updates": gate_warmup_updates,
+        "gate_leak_schedule": {
+            "initial": args.gate_leak_initial,
+            "anneal_updates": leak_anneal_updates,
+            "leak_at_evaluation": student.skill_adapter_gate_leak,
+        },
         "slot_residual_norm": slot_residual_norm,
         "slot_selectivity": (
             slot_opening[new_task]

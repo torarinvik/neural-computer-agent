@@ -1111,3 +1111,41 @@ memorisable constant, so nothing at rung 5 is promoted. Full record in
 `session_records/rung5_2026-07-27/`.
 
 **Interference no longer bounds this ladder's length. What does is now unknown.**
+
+## 2026-07-27 — Interference is set by cue separability, not by depth
+
+Closing the rectified-gate loose ends sharpened the previous entry's law.
+
+**Dead gates are solved by a gate warmup, not by a leak.** The same seed dies at
+every leak setting, so death is deterministic in the initialisation and no leak
+can rescue it; the rate is 4.2% over 24 seeds, not the 8% estimated from twelve.
+Holding the new slot's gate open and frozen for the first 5% of the budget takes
+it to zero in every cell measured and *raises* new-skill accuracy (0.977 →
+0.990). The leak still halves residual degradation, so it is kept for that.
+
+**The one-support composition rung is not reached**, and there is a structural
+reason the obvious workaround fails. Graduated support reduction tops out at
+0.62 against a 0.85 gate across every schedule and budget tried. Adding the
+one-support form as a later rung is impossible in principle: the support count
+is not visible in the frame, so the two variants render identically and a slot
+gate cannot be selective between them.
+
+**Depth reached 5 with every rung promoted.** Rung 5 leaves three of four
+inherited skills at exactly zero and damages only `contextual_composition`, its
+single most similar neighbour. That is a pairwise effect, and it is predictable:
+
+| cue pair | frozen-feature separation | interference |
+|---|---:|---:|
+| xor vs composition | 4.05 | +0.0007 |
+| override vs composition | 1.36 | ~0 |
+| composition vs context_rule_xor | 0.25 | −0.0303 |
+
+A slot can only be as selective as the frozen features allow. The encoder ends
+in a global average pool, which discards position, so two equal-area cue bars
+differing only in offset are nearly the same event to it. Widening one cue so
+the pair differs in **area** raised separation 0.25 → 1.18 and the stalled rung
+then learned and promoted. `probe_cue_separability.py` turns this into a
+preflight check, so an interfering rung is identifiable before any training
+compute is spent.
+
+Full record in `session_records/loose_ends_2026-07-27/`.

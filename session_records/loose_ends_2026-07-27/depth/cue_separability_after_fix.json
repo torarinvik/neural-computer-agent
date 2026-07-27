@@ -1,0 +1,71 @@
+{
+  "cue_slots": {
+    "context_rule_xor": [
+      [
+        29,
+        32
+      ],
+      [
+        3,
+        13
+      ]
+    ],
+    "contextual_composition": [
+      [
+        29,
+        32
+      ],
+      [
+        14,
+        19
+      ]
+    ],
+    "contextual_override": [
+      [
+        0,
+        3
+      ],
+      [
+        5,
+        10
+      ]
+    ],
+    "visible_context": null,
+    "visible_context_xor": [
+      [
+        2,
+        5
+      ],
+      [
+        14,
+        19
+      ]
+    ]
+  },
+  "pairs_at_risk": {
+    "visible_context|contextual_composition": 0.9997972846031189
+  },
+  "parent": "artifacts/checkpoints/depth/depth_rung4_8600.pt",
+  "safe": false,
+  "schema": "cue-separability-probe-v1",
+  "separations": {
+    "context_rule_xor|contextual_override": 1.7606735229492188,
+    "contextual_composition|context_rule_xor": 1.1763635873794556,
+    "contextual_composition|contextual_override": 1.3629432916641235,
+    "visible_context_xor|context_rule_xor": 4.928776741027832,
+    "visible_context_xor|contextual_composition": 4.055314540863037,
+    "visible_context_xor|contextual_override": 4.060112476348877,
+    "visible_context|context_rule_xor": 1.9698995351791382,
+    "visible_context|contextual_composition": 0.9997972846031189,
+    "visible_context|contextual_override": 1.7566540241241455,
+    "visible_context|visible_context_xor": 3.6225719451904297
+  },
+  "tasks": [
+    "visible_context",
+    "visible_context_xor",
+    "contextual_composition",
+    "context_rule_xor",
+    "contextual_override"
+  ],
+  "warn_below": 1.0
+}
