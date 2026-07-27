@@ -11,6 +11,7 @@ from .train_fifth_option_composition_race import (
     FlatFiveActionValueHead,
     five_action_hierarchy,
     four_action_hierarchy,
+    replay_updates_for_step,
     target_bits,
 )
 from .train_option_composition_race import OptionValueHead
@@ -65,6 +66,13 @@ def test_stable_target_ignores_isolated_crossing() -> None:
     ]
     assert target_bits(rows, stable=False) == 120
     assert target_bits(rows, stable=True) == 360
+
+
+def test_replay_schedule_keeps_initial_then_switches_to_late_budget() -> None:
+    assert replay_updates_for_step(1, 56, 48, 16) == 56
+    assert replay_updates_for_step(16, 56, 48, 16) == 56
+    assert replay_updates_for_step(17, 56, 48, 16) == 48
+    assert replay_updates_for_step(17, 48, None, None) == 48
 
 
 def test_flat_head_supports_six_action_control() -> None:

@@ -73,5 +73,39 @@ to choose between safe budgets around the sweet spot only from complete matched
 trajectory outcomes—not from local loss reduction—because omission changes all
 later learning dynamics.
 
+## First causal schedule control (audit pending)
+
+Before fitting another allocator, we tested the smallest causal time-schedule
+hypothesis: use the sample-efficient but occasionally overthinking `56`-update
+budget for the first 16 experience batches, then switch to the robust `48`
+budget. This is a fixed, verifier-blind schedule; it is not a learned policy.
+
+The two pilot seeds selected the schedule and four fresh seeds confirmed it:
+
+| Comparison | Fresh paired seeds | Mean stable verifier bits | Mean final utility | Replay updates |
+|---|---:|---:|---:|---:|
+| Fixed 48 | 4 | 1,110 | 0.88950 | 3,072 |
+| 56 for batches 1–16, then 48 | 4 | 960 | 0.89086 | 3,200 |
+
+That is a `13.5%` reduction in verifier experience on the four fresh seeds,
+with a small mean utility increase. The schedule won verifier efficiency on
+three of four fresh seeds; its one loss was 120 bits. Across all six paired
+seeds (including the two selection pilots), it averaged 1,360 stable bits
+versus 1,660 for fixed 48, while staying within the pre-existing utility
+tolerance. The reverse control (48 early, 56 late) used still more internal
+updates and had two material utility regressions, so it is not promoted.
+
+This is evidence that *when* internal replay is spent matters, not just its
+total amount. It is still provisional: a separately trained scheduled
+checkpoint is undergoing the same independent/shuffle/reversal/retention audit
+as the 48-update baseline. It must pass before the schedule is called a new
+breakthrough.
+
+An early-state linear allocator was also tested against full matched
+trajectories. Its apparent single-split success did not survive four disjoint
+seed folds (held-out accuracy `0.17`, `0.67`, `0.67`, and `1.00`), so it is
+rejected rather than scaled. The next learned-controller experiment must use
+more counterfactual trajectory data, not another local-loss proxy.
+
 Raw reports are in [`raw/`](raw/). Tiny diagnostic checkpoints remain local
 artifacts and are intentionally excluded by the repository's weight policy.

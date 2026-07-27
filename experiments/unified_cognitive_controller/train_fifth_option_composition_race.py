@@ -85,6 +85,16 @@ def target_bits(
     return None
 
 
+def replay_updates_for_step(
+        step: int, initial_updates: int, late_updates: int | None,
+        switch_step: int | None,
+) -> int:
+    """Return the fixed replay budget scheduled for this experience batch."""
+    if late_updates is None or switch_step is None or step <= switch_step:
+        return initial_updates
+    return late_updates
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--parent-checkpoint", type=Path, required=True)
@@ -108,6 +118,12 @@ def main() -> None:
     parser.add_argument("--capacity", type=int, default=6)
     parser.add_argument("--learning-rate", type=float, default=0.003)
     parser.add_argument("--replay-updates", type=int, default=4)
+    parser.add_argument(
+        "--late-replay-updates", type=int,
+        help="Replay budget used after --replay-switch-step.")
+    parser.add_argument(
+        "--replay-switch-step", type=int,
+        help="Last experience batch that uses --replay-updates.")
     parser.add_argument(
         "--ema-decay", type=float, default=0.0,
         help="Optional task-agnostic weight averaging for both race arms.")
@@ -187,6 +203,13 @@ def main() -> None:
             "learned replay stopping and fixed loss stopping are exclusive")
     if args.replay_min_updates < 1:
         raise ValueError("replay minimum updates must be positive")
+    if (args.late_replay_updates is None) != (args.replay_switch_step is None):
+        raise ValueError(
+            "late replay updates and replay switch step must be set together")
+    if args.late_replay_updates is not None and args.late_replay_updates < 1:
+        raise ValueError("late replay updates must be positive")
+    if args.replay_switch_step is not None and args.replay_switch_step < 1:
+        raise ValueError("replay switch step must be positive")
     if (args.replay_stopper_quantile is not None
             and not 0 < args.replay_stopper_quantile < 1):
         raise ValueError("replay stopper quantile must be between zero and one")
@@ -200,6 +223,7 @@ def main() -> None:
             "behavioral replay traces require already-charged paired outcomes")
     if (args.record_behavioral_replay_trace
             and (args.replay_updates % 8
+                 or args.late_replay_updates is not None
                  or args.replay_stopper_checkpoint is not None
                  or args.adaptive_replay_loss is not None)):
         raise ValueError(
@@ -420,6 +444,9 @@ def main() -> None:
 
     started = time.perf_counter()
     for step in range(1, args.steps + 1):
+        current_replay_updates = replay_updates_for_step(
+            step, args.replay_updates, args.late_replay_updates,
+            args.replay_switch_step)
         features, outcomes, _ = ranked_requery_batch(
             controller, count=args.batch_size, capacity=args.capacity,
             seed=args.seed * 1_000_000 + step, device=device,
@@ -516,7 +543,7 @@ def main() -> None:
             all_outcomes = (
                 torch.cat([row[2] for row in replay[name]])
                 if args.feedback_mode == "bandit" else None)
-            for replay_index in range(args.replay_updates):
+            for replay_index in range(current_replay_updates):
                 loss_before = None
                 learned_stopping = (
                     name == "composition" and bool(replay_stoppers))
@@ -569,7 +596,7 @@ def main() -> None:
                                 previous_gradient_norm[name],
                             observed_examples=int(all_features.shape[0]),
                             replay_index=replay_index,
-                            replay_updates=args.replay_updates,
+                            replay_updates=current_replay_updates,
                             device=device,
                             state_statistics=decision_statistics)
                         for model, normalization in zip(
@@ -796,6 +823,8 @@ def main() -> None:
                 args.steps * args.batch_size
                 * bits_per_context["option_composition"]),
             "replay_updates": args.replay_updates,
+            "late_replay_updates": args.late_replay_updates,
+            "replay_switch_step": args.replay_switch_step,
             "actual_optimizer_updates":
                 optimizer_updates["composition"],
             "actual_replayed_examples":

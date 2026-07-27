@@ -1,0 +1,300 @@
+{
+  "schema": "causal-budget-probe-v1",
+  "configuration": {
+    "lower_budget": 48,
+    "higher_budget": 56,
+    "early_steps": 8,
+    "capability_tolerance": 0.003,
+    "hidden": 0,
+    "features": [
+      "mean_loss_before",
+      "std_loss_before",
+      "first_loss_before",
+      "last_loss_before",
+      "delta_loss_before",
+      "mean_previous_loss_reduction",
+      "std_previous_loss_reduction",
+      "first_previous_loss_reduction",
+      "last_previous_loss_reduction",
+      "delta_previous_loss_reduction",
+      "mean_previous_gradient_norm",
+      "std_previous_gradient_norm",
+      "first_previous_gradient_norm",
+      "last_previous_gradient_norm",
+      "delta_previous_gradient_norm",
+      "mean_observed_examples",
+      "std_observed_examples",
+      "first_observed_examples",
+      "last_observed_examples",
+      "delta_observed_examples"
+    ]
+  },
+  "train_metadata": [
+    {
+      "seed": 8240,
+      "label": false,
+      "lower_bits": 1680.0,
+      "higher_bits": 1680.0,
+      "lower_utility": 0.8899461030960083,
+      "higher_utility": 0.8894903063774109,
+      "saves_experience": false,
+      "keeps_capability": true
+    },
+    {
+      "seed": 8241,
+      "label": true,
+      "lower_bits": 1440.0,
+      "higher_bits": 1200.0,
+      "lower_utility": 0.8897353410720825,
+      "higher_utility": 0.8889657258987427,
+      "saves_experience": true,
+      "keeps_capability": true
+    },
+    {
+      "seed": 8242,
+      "label": true,
+      "lower_bits": 1680.0,
+      "higher_bits": 1440.0,
+      "lower_utility": 0.8848872780799866,
+      "higher_utility": 0.8874020576477051,
+      "saves_experience": true,
+      "keeps_capability": true
+    },
+    {
+      "seed": 8243,
+      "label": false,
+      "lower_bits": 2400.0,
+      "higher_bits": 2400.0,
+      "lower_utility": 0.891681432723999,
+      "higher_utility": 0.8921225666999817,
+      "saves_experience": false,
+      "keeps_capability": true
+    },
+    {
+      "seed": 8244,
+      "label": true,
+      "lower_bits": 2160.0,
+      "higher_bits": 1920.0,
+      "lower_utility": 0.8923922181129456,
+      "higher_utility": 0.8925245404243469,
+      "saves_experience": true,
+      "keeps_capability": true
+    },
+    {
+      "seed": 8245,
+      "label": true,
+      "lower_bits": 2880.0,
+      "higher_bits": 2160.0,
+      "lower_utility": 0.8877844214439392,
+      "higher_utility": 0.8915196657180786,
+      "saves_experience": true,
+      "keeps_capability": true
+    },
+    {
+      "seed": 8246,
+      "label": false,
+      "lower_bits": 3600.0,
+      "higher_bits": 2880.0,
+      "lower_utility": 0.9012794494628906,
+      "higher_utility": 0.8972795009613037,
+      "saves_experience": true,
+      "keeps_capability": false
+    },
+    {
+      "seed": 8247,
+      "label": true,
+      "lower_bits": 3360.0,
+      "higher_bits": 2640.0,
+      "lower_utility": 0.895098090171814,
+      "higher_utility": 0.8921471238136292,
+      "saves_experience": true,
+      "keeps_capability": true
+    },
+    {
+      "seed": 8248,
+      "label": true,
+      "lower_bits": 2640.0,
+      "higher_bits": 2400.0,
+      "lower_utility": 0.8800196647644043,
+      "higher_utility": 0.8771814107894897,
+      "saves_experience": true,
+      "keeps_capability": true
+    },
+    {
+      "seed": 8249,
+      "label": false,
+      "lower_bits": 2400.0,
+      "higher_bits": 2880.0,
+      "lower_utility": 0.8858481645584106,
+      "higher_utility": 0.8803530335426331,
+      "saves_experience": false,
+      "keeps_capability": false
+    },
+    {
+      "seed": 8250,
+      "label": false,
+      "lower_bits": 2160.0,
+      "higher_bits": 1920.0,
+      "lower_utility": 0.8757010102272034,
+      "higher_utility": 0.8714559674263,
+      "saves_experience": true,
+      "keeps_capability": false
+    },
+    {
+      "seed": 8251,
+      "label": true,
+      "lower_bits": 1920.0,
+      "higher_bits": 1440.0,
+      "lower_utility": 0.8938823938369751,
+      "higher_utility": 0.8909608125686646,
+      "saves_experience": true,
+      "keeps_capability": true
+    },
+    {
+      "seed": 8253,
+      "label": true,
+      "lower_bits": 3120.0,
+      "higher_bits": 2640.0,
+      "lower_utility": 0.8785343170166016,
+      "higher_utility": 0.877406895160675,
+      "saves_experience": true,
+      "keeps_capability": true
+    },
+    {
+      "seed": 8254,
+      "label": true,
+      "lower_bits": 1920.0,
+      "higher_bits": 1440.0,
+      "lower_utility": 0.8877549767494202,
+      "higher_utility": 0.889843225479126,
+      "saves_experience": true,
+      "keeps_capability": true
+    },
+    {
+      "seed": 8255,
+      "label": false,
+      "lower_bits": 1200.0,
+      "higher_bits": 1200.0,
+      "lower_utility": 0.8809412121772766,
+      "higher_utility": 0.8831226229667664,
+      "saves_experience": false,
+      "keeps_capability": true
+    },
+    {
+      "seed": 8256,
+      "label": true,
+      "lower_bits": 2880.0,
+      "higher_bits": 2400.0,
+      "lower_utility": 0.8924510478973389,
+      "higher_utility": 0.8920637965202332,
+      "saves_experience": true,
+      "keeps_capability": true
+    },
+    {
+      "seed": 8257,
+      "label": false,
+      "lower_bits": 960.0,
+      "higher_bits": 1440.0,
+      "lower_utility": 0.89205402135849,
+      "higher_utility": 0.8927696347236633,
+      "saves_experience": false,
+      "keeps_capability": true
+    },
+    {
+      "seed": 8258,
+      "label": true,
+      "lower_bits": 2640.0,
+      "higher_bits": 2160.0,
+      "lower_utility": 0.8877451419830322,
+      "higher_utility": 0.8865784406661987,
+      "saves_experience": true,
+      "keeps_capability": true
+    },
+    {
+      "seed": 8259,
+      "label": false,
+      "lower_bits": 2880.0,
+      "higher_bits": 2880.0,
+      "lower_utility": 0.8972549438476562,
+      "higher_utility": 0.8993333578109741,
+      "saves_experience": false,
+      "keeps_capability": true
+    }
+  ],
+  "test_metadata": [
+    {
+      "seed": 8260,
+      "label": false,
+      "lower_bits": 1920.0,
+      "higher_bits": 1920.0,
+      "lower_utility": 0.8807500600814819,
+      "higher_utility": 0.8820735812187195,
+      "saves_experience": false,
+      "keeps_capability": true
+    },
+    {
+      "seed": 8261,
+      "label": true,
+      "lower_bits": 2400.0,
+      "higher_bits": 1920.0,
+      "lower_utility": 0.8875883221626282,
+      "higher_utility": 0.8897304534912109,
+      "saves_experience": true,
+      "keeps_capability": true
+    },
+    {
+      "seed": 8262,
+      "label": true,
+      "lower_bits": 2400.0,
+      "higher_bits": 1920.0,
+      "lower_utility": 0.901107907295227,
+      "higher_utility": 0.9066471457481384,
+      "saves_experience": true,
+      "keeps_capability": true
+    },
+    {
+      "seed": 8263,
+      "label": true,
+      "lower_bits": 3600.0,
+      "higher_bits": 3120.0,
+      "lower_utility": 0.8842549324035645,
+      "higher_utility": 0.8821029663085938,
+      "saves_experience": true,
+      "keeps_capability": true
+    },
+    {
+      "seed": 8264,
+      "label": true,
+      "lower_bits": 960.0,
+      "higher_bits": 720.0,
+      "lower_utility": 0.8972010612487793,
+      "higher_utility": 0.8948873281478882,
+      "saves_experience": true,
+      "keeps_capability": true
+    }
+  ],
+  "train": {
+    "accuracy": 0.8421052694320679,
+    "positive_rate": 0.5789473652839661,
+    "predicted_positive_rate": 0.5263158082962036,
+    "brier": 0.12342865765094757
+  },
+  "held_out": {
+    "accuracy": 1.0,
+    "positive_rate": 0.800000011920929,
+    "predicted_positive_rate": 0.800000011920929,
+    "brier": 0.052215199917554855
+  },
+  "shuffled_label_control": {
+    "accuracy": 0.6000000238418579,
+    "positive_rate": 0.800000011920929,
+    "predicted_positive_rate": 0.800000011920929,
+    "brier": 0.31473326683044434
+  },
+  "gate": {
+    "held_out_accuracy_at_least_75": true,
+    "held_out_beats_shuffled_by_20_points": true,
+    "both_classes_in_held_out": true,
+    "accepted_for_allocator": true
+  }
+}
