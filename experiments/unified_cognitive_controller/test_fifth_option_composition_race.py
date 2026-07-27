@@ -1,3 +1,5 @@
+import json
+
 import pytest
 import torch
 
@@ -15,6 +17,8 @@ from .train_option_composition_race import OptionValueHead
 from .train_shadow_compute_advantage import ComputeAdvantageHead
 from .replay_stopping_probe import (
     ReplayBenefitProbe,
+    FEATURES,
+    load_trace,
     load_probe,
     predict_replay_benefit,
     save_probe,
@@ -99,7 +103,7 @@ def test_replay_trace_features_exclude_future_outcome() -> None:
         "loss_reduction": 0.7,
     }]
     features = trace_features(rows, replay_updates=16)
-    assert features.shape == (1, 5)
+    assert features.shape == (1, len(FEATURES))
     assert float(features[0, 0]) == pytest.approx(0.3)
     assert float(features[0, 4]) == pytest.approx(3 / 15)
     assert float(trace_targets(rows)[0]) == pytest.approx(0.7)
@@ -113,14 +117,14 @@ def test_replay_benefit_probe_round_trip(tmp_path) -> None:
     for parameter in model.parameters():
         torch.nn.init.constant_(parameter, 0.1)
     path = tmp_path / "probe.pt"
-    mean = torch.zeros(1, 5)
-    scale = torch.ones(1, 5)
+    mean = torch.zeros(1, len(FEATURES))
+    scale = torch.ones(1, len(FEATURES))
     target_mean = torch.tensor([[0.2]])
     target_scale = torch.tensor([[0.5]])
     save_probe(
         path, model, feature_mean=mean, feature_scale=scale,
         target_mean=target_mean, target_scale=target_scale,
-        hidden=7, target_horizon=4)
+        hidden=7, target_horizon=4, target_kind="future-utility")
     restored, normalization = load_probe(path, torch.device("cpu"))
     expected = predict_replay_benefit(
         model, {
@@ -129,6 +133,7 @@ def test_replay_benefit_probe_round_trip(tmp_path) -> None:
             "target_mean": target_mean,
             "target_scale": target_scale,
             "target_horizon": 4,
+            "target_kind": "future-utility",
         },
         loss_before=0.3,
         previous_loss_reduction=0.02,
@@ -150,3 +155,43 @@ def test_replay_benefit_probe_round_trip(tmp_path) -> None:
     )
     assert actual == pytest.approx(expected)
     assert normalization["target_horizon"] == 4
+    assert normalization["target_kind"] == "future-utility"
+
+
+def test_future_utility_trace_uses_only_decision_state_features(
+        tmp_path) -> None:
+    path = tmp_path / "behavior.json"
+    path.write_text(json.dumps({
+        "configuration": {"replay_updates": 16},
+        "behavioral_replay_trace": [{
+            "arm": "composition",
+            "loss_before": 0.2,
+            "previous_loss_reduction": 0.01,
+            "previous_gradient_norm": 0.3,
+            "observed_examples": 120,
+            "replay_index": 8,
+            "replay_horizon": 8,
+            "future_utility_gain": 0.04,
+        }, {
+            "arm": "flat",
+            "loss_before": 9.0,
+            "previous_loss_reduction": 9.0,
+            "previous_gradient_norm": 9.0,
+            "observed_examples": 120,
+            "replay_index": 8,
+            "replay_horizon": 8,
+            "future_utility_gain": 9.0,
+        }],
+    }))
+    features, targets, updates = load_trace(
+        path, "composition", 8, "future-utility")
+    assert features.shape == (1, len(FEATURES))
+    assert targets.shape == (1, 1)
+    assert float(targets[0]) == pytest.approx(0.04)
+    assert updates == 16
+    changed = json.loads(path.read_text())
+    changed["behavioral_replay_trace"][0]["future_utility_gain"] = -9
+    path.write_text(json.dumps(changed))
+    changed_features, _, _ = load_trace(
+        path, "composition", 8, "future-utility")
+    assert torch.equal(features, changed_features)

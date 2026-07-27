@@ -956,6 +956,23 @@ representation: predict long-horizon verified behavioral learning progress and
 retention per unit compute, rather than local replay-loss reduction. See
 `session_records/learned_replay_stopper_2026-07-27/README.md`.
 
+The behavioral-target experiment sharpened that conclusion. Rich learner-state
+features predicted held-out future behavioral improvement with `0.31`
+correlation (`0.34–0.35` with a longer target), and correctly ranked a harmful
+bottom quartile on fixed trajectories. Prospective pruning nevertheless failed:
+omitting a block changes all later learner states, so one-step counterfactual
+rank is not long-run causal value.
+
+Matched full-trajectory budgets then produced the next sample-efficiency
+breakthrough. Eight replay updates lost to sixteen on all eight streams.
+Twenty-four updates beat sixteen on all eight streams, improved final utility
+by `+0.0034` to `+0.0294`, reduced verifier bits to stable mastery by `19–44%`
+whenever both solved, and rescued one stream that sixteen never mastered. More
+internal compute can therefore buy substantially less external experience.
+The current frontier is the causal processing bracket: test 24 versus 32 and
+only learn a budget selector if the winning budget varies across streams. See
+`session_records/causal_replay_budget_2026-07-27/README.md`.
+
 Run the sub-minute GPU experiment:
 
 ```bash

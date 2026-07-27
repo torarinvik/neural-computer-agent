@@ -1,0 +1,71 @@
+{
+  "schema": "cross-generation-replay-benefit-probe-v1",
+  "configuration": {
+    "train_reports": [
+      "/workspace/diagnostics/replay_policy/rich_five_8150.json",
+      "/workspace/diagnostics/replay_policy/rich_five_8151.json",
+      "/workspace/diagnostics/replay_policy/rich_five_8152.json",
+      "/workspace/diagnostics/replay_policy/rich_five_8153.json"
+    ],
+    "test_reports": [
+      "/workspace/diagnostics/replay_policy/rich_six_8154.json",
+      "/workspace/diagnostics/replay_policy/rich_six_8155.json"
+    ],
+    "arm": "composition",
+    "seed": 8157,
+    "steps": 1000,
+    "learning_rate": 0.003,
+    "hidden": 16,
+    "target_horizon": 8,
+    "target_kind": "future-utility",
+    "features": [
+      "loss_before",
+      "previous_loss_reduction",
+      "log_observed_examples",
+      "previous_gradient_norm",
+      "replay_fraction",
+      "prediction_mean",
+      "prediction_std",
+      "target_mean",
+      "target_std",
+      "residual_mean",
+      "residual_std",
+      "prediction_target_correlation",
+      "sign_agreement",
+      "prediction_abs_mean",
+      "uncertain_fraction"
+    ]
+  },
+  "train_rows": 480,
+  "test_rows": 240,
+  "train": {
+    "mae": 0.005336520727723837,
+    "mean_baseline_mae": 0.007303947117179632,
+    "mae_improvement_fraction": 0.269364818486734,
+    "pearson_correlation": 0.745067298412323,
+    "positive_rate": 0.5437500476837158,
+    "sign_accuracy": 0.6645833849906921
+  },
+  "held_out_generation": {
+    "mae": 0.009979967959225178,
+    "mean_baseline_mae": 0.0032873733434826136,
+    "mae_improvement_fraction": -2.0358486598460064,
+    "pearson_correlation": 0.182649165391922,
+    "positive_rate": 0.46250003576278687,
+    "sign_accuracy": 0.5333333611488342
+  },
+  "shuffled_target_control": {
+    "mae": 0.0106434291228652,
+    "mean_baseline_mae": 0.0032873735763132572,
+    "mae_improvement_fraction": -2.237669487750052,
+    "pearson_correlation": -0.042776837944984436,
+    "positive_rate": 0.46250003576278687,
+    "sign_accuracy": 0.5
+  },
+  "gate": {
+    "held_out_beats_mean_mae_by_10_percent": false,
+    "held_out_correlation_at_least_0_25": false,
+    "shuffled_correlation_below_0_10": true,
+    "accepted_for_policy_integration": false
+  }
+}

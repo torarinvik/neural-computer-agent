@@ -18,6 +18,16 @@ FEATURES = (
     "log_observed_examples",
     "previous_gradient_norm",
     "replay_fraction",
+    "prediction_mean",
+    "prediction_std",
+    "target_mean",
+    "target_std",
+    "residual_mean",
+    "residual_std",
+    "prediction_target_correlation",
+    "sign_agreement",
+    "prediction_abs_mean",
+    "uncertain_fraction",
 )
 
 
@@ -32,6 +42,16 @@ def trace_features(
             math.log1p(int(row["observed_examples"])),
             float(row["previous_gradient_norm"]),
             int(row["replay_index"]) / max(1, replay_updates - 1),
+            float(row.get("prediction_mean", 0.0)),
+            float(row.get("prediction_std", 0.0)),
+            float(row.get("target_mean", 0.0)),
+            float(row.get("target_std", 0.0)),
+            float(row.get("residual_mean", 0.0)),
+            float(row.get("residual_std", 0.0)),
+            float(row.get("prediction_target_correlation", 0.0)),
+            float(row.get("sign_agreement", 0.0)),
+            float(row.get("prediction_abs_mean", 0.0)),
+            float(row.get("uncertain_fraction", 0.0)),
         ]
         for row in rows
     ], dtype=torch.float32)
@@ -47,10 +67,13 @@ def trace_targets(rows: list[dict[str, object]]) -> torch.Tensor:
 class ReplayBenefitProbe(nn.Module):
     def __init__(self, width: int = len(FEATURES), hidden: int = 16) -> None:
         super().__init__()
-        self.network = nn.Sequential(
-            nn.Linear(width, hidden),
-            nn.GELU(),
-            nn.Linear(hidden, 1),
+        self.network = (
+            nn.Linear(width, 1)
+            if hidden == 0 else nn.Sequential(
+                nn.Linear(width, hidden),
+                nn.GELU(),
+                nn.Linear(hidden, 1),
+            )
         )
 
     def forward(self, features: torch.Tensor) -> torch.Tensor:
@@ -61,13 +84,14 @@ def save_probe(
         path: Path, model: ReplayBenefitProbe, *,
         feature_mean: torch.Tensor, feature_scale: torch.Tensor,
         target_mean: torch.Tensor, target_scale: torch.Tensor,
-        hidden: int, target_horizon: int) -> None:
+        hidden: int, target_horizon: int, target_kind: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     torch.save({
         "schema": "replay-benefit-probe-v1",
         "features": FEATURES,
         "hidden": hidden,
         "target_horizon": target_horizon,
+        "target_kind": target_kind,
         "state_dict": {
             key: value.detach().cpu()
             for key, value in model.state_dict().items()
@@ -81,7 +105,7 @@ def save_probe(
 
 def load_probe(
         path: Path, device: torch.device,
-) -> tuple[ReplayBenefitProbe, dict[str, torch.Tensor | int]]:
+) -> tuple[ReplayBenefitProbe, dict[str, torch.Tensor | int | str]]:
     payload = torch.load(path, map_location=device, weights_only=False)
     if payload.get("schema") != "replay-benefit-probe-v1":
         raise ValueError("unsupported replay-benefit checkpoint")
@@ -100,13 +124,15 @@ def load_probe(
     }
     normalization["target_horizon"] = int(
         payload.get("target_horizon", 1))
+    normalization["target_kind"] = str(
+        payload.get("target_kind", "loss"))
     return model, normalization
 
 
 @torch.no_grad()
 def predict_replay_benefit(
         model: ReplayBenefitProbe,
-        normalization: dict[str, torch.Tensor | int], *,
+        normalization: dict[str, torch.Tensor | int | str], *,
         loss_before: float,
         previous_loss_reduction: float,
         previous_gradient_norm: float,
@@ -114,14 +140,18 @@ def predict_replay_benefit(
         replay_index: int,
         replay_updates: int,
         device: torch.device,
+        state_statistics: dict[str, float] | None = None,
 ) -> float:
-    features = trace_features([{
+    row = {
         "loss_before": loss_before,
         "previous_loss_reduction": previous_loss_reduction,
         "previous_gradient_norm": previous_gradient_norm,
         "observed_examples": observed_examples,
         "replay_index": replay_index,
-    }], replay_updates).to(device)
+    }
+    if state_statistics is not None:
+        row.update(state_statistics)
+    features = trace_features([row], replay_updates).to(device)
     feature_mean = normalization["feature_mean"]
     feature_scale = normalization["feature_scale"]
     target_mean = normalization["target_mean"]
@@ -138,9 +168,29 @@ def predict_replay_benefit(
 
 def load_trace(
         path: Path, arm: str, target_horizon: int = 1,
+        target_kind: str = "loss",
 ) -> tuple[torch.Tensor, torch.Tensor, int]:
     payload = json.loads(path.read_text())
     replay_updates = int(payload["configuration"]["replay_updates"])
+    if target_kind == "future-utility":
+        rows = [
+            row for row in payload.get("behavioral_replay_trace", [])
+            if row.get("arm", "composition") == arm
+        ]
+        if not rows:
+            raise ValueError(
+                f"{path} has no behavioral replay trace rows for {arm}")
+        if any(int(row["replay_horizon"]) != target_horizon for row in rows):
+            raise ValueError("behavioral trace horizon mismatch")
+        return (
+            trace_features(rows, replay_updates),
+            torch.tensor(
+                [float(row["future_utility_gain"]) for row in rows],
+                dtype=torch.float32)[:, None],
+            replay_updates,
+        )
+    if target_kind != "loss":
+        raise ValueError(f"unsupported target kind: {target_kind}")
     all_rows = [
         row for row in payload["replay_trace"]
         if row["arm"] == arm
@@ -202,6 +252,31 @@ def regression_metrics(
     }
 
 
+def quantile_policy_metrics(
+        prediction: torch.Tensor, target: torch.Tensor,
+        skip_fraction: float = 0.25,
+) -> dict[str, float]:
+    """Audit a rank policy that skips the least-promising replay blocks."""
+    prediction = prediction.flatten()
+    target = target.flatten()
+    skipped_count = max(1, int(target.numel() * skip_fraction))
+    skipped = torch.argsort(prediction)[:skipped_count]
+    kept = torch.argsort(prediction)[skipped_count:]
+    skipped_gain = target[skipped]
+    kept_gain = target[kept]
+    return {
+        "skip_fraction": skipped_count / target.numel(),
+        "skipped_rows": skipped_count,
+        "skipped_true_gain_mean": float(skipped_gain.mean()),
+        "kept_true_gain_mean": float(kept_gain.mean()),
+        "kept_minus_skipped_gain": float(
+            kept_gain.mean() - skipped_gain.mean()),
+        "skipped_true_gain_sum": float(skipped_gain.sum()),
+        "random_expected_skipped_gain_sum": float(
+            target.mean() * skipped_count),
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--train-report", type=Path, action="append", required=True)
@@ -215,17 +290,24 @@ def main() -> None:
     parser.add_argument("--learning-rate", type=float, default=0.003)
     parser.add_argument("--hidden", type=int, default=16)
     parser.add_argument("--target-horizon", type=int, default=1)
+    parser.add_argument(
+        "--target-kind", choices=("loss", "future-utility"),
+        default="loss")
     parser.add_argument("--device", default=(
         "cuda" if torch.cuda.is_available() else "cpu"))
     args = parser.parse_args()
+    if args.hidden < 0:
+        raise ValueError("hidden width must be non-negative")
     seed_everything(args.seed)
     device = torch.device(args.device)
 
     if args.target_horizon < 1:
         raise ValueError("target horizon must be positive")
-    train_parts = [load_trace(path, args.arm, args.target_horizon)[:2]
+    train_parts = [load_trace(
+        path, args.arm, args.target_horizon, args.target_kind)[:2]
                    for path in args.train_report]
-    test_parts = [load_trace(path, args.arm, args.target_horizon)[:2]
+    test_parts = [load_trace(
+        path, args.arm, args.target_horizon, args.target_kind)[:2]
                   for path in args.test_report]
     train_x = torch.cat([part[0] for part in train_parts]).to(device)
     train_y = torch.cat([part[1] for part in train_parts]).to(device)
@@ -271,6 +353,7 @@ def main() -> None:
             "learning_rate": args.learning_rate,
             "hidden": args.hidden,
             "target_horizon": args.target_horizon,
+            "target_kind": args.target_kind,
             "features": FEATURES,
         },
         "train_rows": int(train_x.shape[0]),
@@ -278,6 +361,10 @@ def main() -> None:
         "train": regression_metrics(train_prediction, train_y),
         "held_out_generation": regression_metrics(test_prediction, test_y),
         "shuffled_target_control": regression_metrics(test_prediction, shuffled),
+        "held_out_quartile_policy": quantile_policy_metrics(
+            test_prediction, test_y),
+        "shuffled_quartile_control": quantile_policy_metrics(
+            test_prediction, shuffled),
         "gate": {
             "held_out_beats_mean_mae_by_10_percent":
                 regression_metrics(test_prediction, test_y)[
@@ -292,12 +379,19 @@ def main() -> None:
     }
     report["gate"]["accepted_for_policy_integration"] = all(
         report["gate"].values())
+    report["gate"]["accepted_for_rank_policy"] = (
+        report["gate"]["held_out_correlation_at_least_0_25"]
+        and report["gate"]["shuffled_correlation_below_0_10"]
+        and report["held_out_quartile_policy"][
+            "kept_minus_skipped_gain"] > 0
+    )
     if args.checkpoint is not None:
         save_probe(
             args.checkpoint, model,
             feature_mean=mean, feature_scale=scale,
             target_mean=target_mean, target_scale=target_scale,
-            hidden=args.hidden, target_horizon=args.target_horizon)
+            hidden=args.hidden, target_horizon=args.target_horizon,
+            target_kind=args.target_kind)
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report, indent=2))

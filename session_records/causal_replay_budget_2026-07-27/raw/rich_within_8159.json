@@ -1,0 +1,69 @@
+{
+  "schema": "cross-generation-replay-benefit-probe-v1",
+  "configuration": {
+    "train_reports": [
+      "/workspace/diagnostics/replay_policy/rich_five_8150.json",
+      "/workspace/diagnostics/replay_policy/rich_five_8151.json"
+    ],
+    "test_reports": [
+      "/workspace/diagnostics/replay_policy/rich_five_8152.json",
+      "/workspace/diagnostics/replay_policy/rich_five_8153.json"
+    ],
+    "arm": "composition",
+    "seed": 8159,
+    "steps": 1000,
+    "learning_rate": 0.003,
+    "hidden": 16,
+    "target_horizon": 8,
+    "target_kind": "future-utility",
+    "features": [
+      "loss_before",
+      "previous_loss_reduction",
+      "log_observed_examples",
+      "previous_gradient_norm",
+      "replay_fraction",
+      "prediction_mean",
+      "prediction_std",
+      "target_mean",
+      "target_std",
+      "residual_mean",
+      "residual_std",
+      "prediction_target_correlation",
+      "sign_agreement",
+      "prediction_abs_mean",
+      "uncertain_fraction"
+    ]
+  },
+  "train_rows": 240,
+  "test_rows": 240,
+  "train": {
+    "mae": 0.004589964635670185,
+    "mean_baseline_mae": 0.0074317133985459805,
+    "mae_improvement_fraction": 0.3823813716271386,
+    "pearson_correlation": 0.833271861076355,
+    "positive_rate": 0.5125000476837158,
+    "sign_accuracy": 0.7416667342185974
+  },
+  "held_out_generation": {
+    "mae": 0.009992810897529125,
+    "mean_baseline_mae": 0.007164455950260162,
+    "mae_improvement_fraction": -0.3947759560397963,
+    "pearson_correlation": 0.3010321259498596,
+    "positive_rate": 0.5750000476837158,
+    "sign_accuracy": 0.5666667222976685
+  },
+  "shuffled_target_control": {
+    "mae": 0.011888095177710056,
+    "mean_baseline_mae": 0.007164455950260162,
+    "mae_improvement_fraction": -0.6593158308522178,
+    "pearson_correlation": 0.00940326601266861,
+    "positive_rate": 0.5750000476837158,
+    "sign_accuracy": 0.5
+  },
+  "gate": {
+    "held_out_beats_mean_mae_by_10_percent": false,
+    "held_out_correlation_at_least_0_25": true,
+    "shuffled_correlation_below_0_10": true,
+    "accepted_for_policy_integration": false
+  }
+}

@@ -122,6 +122,16 @@ def main() -> None:
             "Record task-agnostic state before and verified loss reduction "
             "after every replay update for learned-stopping diagnostics."))
     parser.add_argument(
+        "--record-behavioral-replay-trace", action="store_true",
+        help=(
+            "At eight-update boundaries, record how much that replay block "
+            "improves behavior on the next naturally observed paired batch."))
+    parser.add_argument(
+        "--behavioral-target-batches", type=int, default=1,
+        help=(
+            "Number of subsequent naturally observed batches over which to "
+            "average each replay block's verified behavioral effect."))
+    parser.add_argument(
         "--replay-stopper-checkpoint", type=Path, action="append",
         help=(
             "Frozen cross-generation predictor of marginal replay value. "
@@ -137,6 +147,17 @@ def main() -> None:
         help=(
             "How an ensemble combines benefit predictions. Unanimous uses "
             "the conservative maximum; mean uses their arithmetic mean."))
+    parser.add_argument(
+        "--replay-stopper-quantile", type=float,
+        help=(
+            "Instead of absolute calibration, skip blocks whose predicted "
+            "benefit falls in this bottom fraction of prior predictions."))
+    parser.add_argument(
+        "--replay-stopper-warmup-decisions", type=int, default=8,
+        help="Rank-policy decisions collected before it may skip a block.")
+    parser.add_argument(
+        "--replay-stopper-rank-window", type=int, default=16,
+        help="Recent prediction decisions used to calibrate the rank policy.")
     parser.add_argument(
         "--replay-min-updates", type=int, default=1,
         help="Minimum composition updates per new experience batch.")
@@ -166,6 +187,26 @@ def main() -> None:
             "learned replay stopping and fixed loss stopping are exclusive")
     if args.replay_min_updates < 1:
         raise ValueError("replay minimum updates must be positive")
+    if (args.replay_stopper_quantile is not None
+            and not 0 < args.replay_stopper_quantile < 1):
+        raise ValueError("replay stopper quantile must be between zero and one")
+    if args.replay_stopper_warmup_decisions < 1:
+        raise ValueError("replay stopper warmup must be positive")
+    if args.replay_stopper_rank_window < 2:
+        raise ValueError("replay stopper rank window must be at least two")
+    if (args.record_behavioral_replay_trace
+            and args.feedback_mode != "paired-population"):
+        raise ValueError(
+            "behavioral replay traces require already-charged paired outcomes")
+    if (args.record_behavioral_replay_trace
+            and (args.replay_updates % 8
+                 or args.replay_stopper_checkpoint is not None
+                 or args.adaptive_replay_loss is not None)):
+        raise ValueError(
+            "behavioral traces require fixed replay divisible into "
+            "eight-update blocks")
+    if args.behavioral_target_batches < 1:
+        raise ValueError("behavioral target batches must be positive")
     if args.test_contexts % args.capacity:
         raise ValueError("test contexts must divide by capacity")
     if args.batch_size % args.capacity:
@@ -308,11 +349,17 @@ def main() -> None:
     final_replay_loss: dict[str, float | None] = {
         "composition": None, "flat": None}
     replay_trace: list[dict[str, int | float | str]] = []
+    behavioral_replay_trace: list[dict[str, int | float]] = []
     previous_loss_reduction = {"composition": 0.0, "flat": 0.0}
     previous_gradient_norm = {"composition": 0.0, "flat": 0.0}
     predicted_replay_stops = {"composition": 0, "flat": 0}
     predicted_replay_benefits: dict[str, list[float]] = {
         "composition": [], "flat": []}
+    replay_rank_history: list[float] = []
+    behavioral_eval_router = copy.deepcopy(new_router)
+    for parameter in behavioral_eval_router.parameters():
+        parameter.requires_grad_(False)
+    pending_behavioral_windows: list[dict[str, object]] = []
 
     def replay_loss(
             name: str, head: nn.Module, features: torch.Tensor,
@@ -330,6 +377,47 @@ def main() -> None:
         assert outcomes is not None
         return nn.functional.smooth_l1_loss(prediction, outcomes)
 
+    @torch.no_grad()
+    def replay_state_statistics(
+            name: str, head: nn.Module, features: torch.Tensor,
+            actions: torch.Tensor,
+            outcomes: torch.Tensor | None) -> dict[str, float]:
+        q_values = head.q_values(features)
+        if args.feedback_mode == "paired-population":
+            prediction = (
+                q_values[:, 1] - q_values[:, 0]
+                if name == "composition" else q_values.flatten())
+            target = actions.flatten()
+        else:
+            assert outcomes is not None
+            prediction = q_values.gather(
+                1, actions[:, None]).squeeze(1)
+            target = outcomes
+        residual = target - prediction
+        centered_prediction = prediction - prediction.mean()
+        centered_target = target - target.mean()
+        denominator = (
+            centered_prediction.square().sum().sqrt()
+            * centered_target.square().sum().sqrt())
+        correlation = (
+            float((centered_prediction * centered_target).sum()
+                  / denominator)
+            if float(denominator) > 0 else 0.0)
+        return {
+            "prediction_mean": float(prediction.mean()),
+            "prediction_std": float(prediction.std(unbiased=False)),
+            "target_mean": float(target.mean()),
+            "target_std": float(target.std(unbiased=False)),
+            "residual_mean": float(residual.mean()),
+            "residual_std": float(residual.std(unbiased=False)),
+            "prediction_target_correlation": correlation,
+            "sign_agreement": float(
+                ((prediction > 0) == (target > 0)).float().mean()),
+            "prediction_abs_mean": float(prediction.abs().mean()),
+            "uncertain_fraction": float(
+                (prediction.abs() < 0.02).float().mean()),
+        }
+
     started = time.perf_counter()
     for step in range(1, args.steps + 1):
         features, outcomes, _ = ranked_requery_batch(
@@ -346,6 +434,45 @@ def main() -> None:
                                      train_cost_start))
         utilities = outcomes - train_costs
         old = inherited_actions(features)
+        for window in pending_behavioral_windows:
+            snapshots = window["snapshots"]
+            assert isinstance(snapshots, list)
+            future_utilities = []
+            with torch.no_grad():
+                for state_dict, _ in snapshots:
+                    behavioral_eval_router.load_state_dict(state_dict)
+                    use_new = behavioral_eval_router(
+                        features[:, :args.router_input_width]).bool()
+                    snapshot_actions = torch.where(
+                        use_new, torch.full_like(old, new_action), old)
+                    future_utilities.append(float(
+                        utilities.gather(
+                            1, snapshot_actions[:, None]).mean()))
+            sums = window["utility_sums"]
+            assert isinstance(sums, list)
+            window["utility_sums"] = [
+                float(total) + value
+                for total, value in zip(sums, future_utilities)]
+            window["batches_seen"] = int(window["batches_seen"]) + 1
+            if int(window["batches_seen"]) >= args.behavioral_target_batches:
+                averaged = [
+                    float(total) / int(window["batches_seen"])
+                    for total in window["utility_sums"]]
+                for index in range(len(snapshots) - 1):
+                    row = dict(snapshots[index][1])
+                    row.update({
+                        "future_experience_step": step,
+                        "future_batch_count": int(window["batches_seen"]),
+                        "future_utility_before": averaged[index],
+                        "future_utility_after": averaged[index + 1],
+                        "future_utility_gain":
+                            averaged[index + 1] - averaged[index],
+                    })
+                    behavioral_replay_trace.append(row)
+        pending_behavioral_windows[:] = [
+            window for window in pending_behavioral_windows
+            if int(window["batches_seen"])
+            < args.behavioral_target_batches]
         if args.feedback_mode == "paired-population":
             old_observed = utilities.gather(
                 1, old[:, None]).squeeze(1)
@@ -380,6 +507,9 @@ def main() -> None:
                 features[:, :args.router_input_width].detach(),
                 attempted_flat.detach(),
                 flat_observed.detach()))
+        step_behavioral_snapshots: list[
+            tuple[dict[str, torch.Tensor], dict[str, int | float]]
+        ] = []
         for name, head in (("composition", new_router), ("flat", flat)):
             all_features = torch.cat([row[0] for row in replay[name]])
             all_actions = torch.cat([row[1] for row in replay[name]])
@@ -390,15 +520,45 @@ def main() -> None:
                 loss_before = None
                 learned_stopping = (
                     name == "composition" and bool(replay_stoppers))
-                if args.record_replay_trace or learned_stopping:
+                record_behavioral_boundary = (
+                    name == "composition"
+                    and args.record_behavioral_replay_trace
+                    and replay_index % 8 == 0)
+                if (args.record_replay_trace or learned_stopping
+                        or args.record_behavioral_replay_trace):
                     with torch.no_grad():
                         loss_before = float(replay_loss(
                             name, head, all_features, all_actions,
                             all_outcomes))
+                if record_behavioral_boundary:
+                    assert loss_before is not None
+                    state_statistics = replay_state_statistics(
+                        name, head, all_features, all_actions, all_outcomes)
+                    step_behavioral_snapshots.append((
+                        {
+                            key: value.detach().clone()
+                            for key, value in head.state_dict().items()
+                        },
+                        {
+                            "source_experience_step": step,
+                            "replay_index": replay_index,
+                            "replay_horizon": 8,
+                            "observed_examples":
+                                int(all_features.shape[0]),
+                            "loss_before": loss_before,
+                            "previous_loss_reduction":
+                                previous_loss_reduction[name],
+                            "previous_gradient_norm":
+                                previous_gradient_norm[name],
+                            **state_statistics,
+                        },
+                    ))
                 if (learned_stopping
                         and replay_index >= args.replay_min_updates
                         and replay_index % replay_stopper_horizon == 0):
                     assert loss_before is not None
+                    decision_statistics = replay_state_statistics(
+                        name, head, all_features, all_actions, all_outcomes)
                     predictions = [
                         predict_replay_benefit(
                             model, normalization,
@@ -410,7 +570,8 @@ def main() -> None:
                             observed_examples=int(all_features.shape[0]),
                             replay_index=replay_index,
                             replay_updates=args.replay_updates,
-                            device=device)
+                            device=device,
+                            state_statistics=decision_statistics)
                         for model, normalization in zip(
                             replay_stoppers,
                             replay_stopper_normalizations)
@@ -421,7 +582,25 @@ def main() -> None:
                         else sum(predictions) / len(predictions))
                     predicted_replay_benefits[name].append(
                         predicted_benefit)
-                    if predicted_benefit <= args.replay_compute_cost:
+                    rank_stop = False
+                    if args.replay_stopper_quantile is not None:
+                        if (len(replay_rank_history)
+                                >= args.replay_stopper_warmup_decisions):
+                            ordered = sorted(
+                                replay_rank_history[
+                                    -args.replay_stopper_rank_window:])
+                            threshold_index = int(
+                                args.replay_stopper_quantile
+                                * (len(ordered) - 1))
+                            rank_stop = (
+                                predicted_benefit
+                                <= ordered[threshold_index])
+                        replay_rank_history.append(predicted_benefit)
+                    if (
+                        rank_stop
+                        if args.replay_stopper_quantile is not None
+                        else predicted_benefit <= args.replay_compute_cost
+                    ):
                         predicted_replay_stops[name] += 1
                         final_replay_loss[name] = loss_before
                         break
@@ -450,13 +629,15 @@ def main() -> None:
                                 current, alpha=1.0 - args.ema_decay)
                 if (args.adaptive_replay_loss is not None
                         or args.record_replay_trace
-                        or learned_stopping):
+                        or learned_stopping
+                        or args.record_behavioral_replay_trace):
                     with torch.no_grad():
                         observed_loss = replay_loss(
                             name, head, all_features, all_actions,
                             all_outcomes)
                     final_replay_loss[name] = float(observed_loss)
-                    if args.record_replay_trace or learned_stopping:
+                    if (args.record_replay_trace or learned_stopping
+                            or args.record_behavioral_replay_trace):
                         assert loss_before is not None
                         reduction = loss_before - float(observed_loss)
                         if args.record_replay_trace:
@@ -486,6 +667,35 @@ def main() -> None:
                     final_replay_loss[name] = float(replay_loss(
                         name, head, all_features, all_actions,
                         all_outcomes))
+            if (name == "composition"
+                    and args.record_behavioral_replay_trace):
+                final_statistics = replay_state_statistics(
+                    name, head, all_features, all_actions, all_outcomes)
+                step_behavioral_snapshots.append((
+                    {
+                        key: value.detach().clone()
+                        for key, value in head.state_dict().items()
+                    },
+                    {
+                        "arm": name,
+                        "source_experience_step": step,
+                        "replay_index": args.replay_updates,
+                        "replay_horizon": 8,
+                        "observed_examples": int(all_features.shape[0]),
+                        "loss_before": float(final_replay_loss[name]),
+                        "previous_loss_reduction":
+                            previous_loss_reduction[name],
+                        "previous_gradient_norm":
+                            previous_gradient_norm[name],
+                        **final_statistics,
+                    },
+                ))
+                pending_behavioral_windows.append({
+                    "snapshots": step_behavioral_snapshots,
+                    "utility_sums":
+                        [0.0] * len(step_behavioral_snapshots),
+                    "batches_seen": 0,
+                })
         if step % 2 == 0 or step == args.steps:
             record(step)
 
@@ -535,6 +745,7 @@ def main() -> None:
         "stable_target_bits": stable_target,
         "histories": histories,
         "replay_trace": replay_trace,
+        "behavioral_replay_trace": behavioral_replay_trace,
         "gate": gate,
         "accounting": {
             "verifier_bits_per_arm": {
@@ -552,6 +763,7 @@ def main() -> None:
             },
             "unique_logical_lifetimes_per_arm":
                 args.steps * args.batch_size,
+            "behavioral_trace_extra_verifier_bits": 0,
             "stable_transfer_ratio_flat_over_composition": (
                 flat_bits / composed_bits
                 if flat_bits is not None and composed_bits is not None
@@ -593,6 +805,11 @@ def main() -> None:
                 [str(path) for path in args.replay_stopper_checkpoint]
                 if args.replay_stopper_checkpoint else None),
             "replay_compute_cost": args.replay_compute_cost,
+            "replay_stopper_quantile": args.replay_stopper_quantile,
+            "replay_stopper_warmup_decisions":
+                args.replay_stopper_warmup_decisions,
+            "replay_stopper_rank_window":
+                args.replay_stopper_rank_window,
             "replay_min_updates": args.replay_min_updates,
             "feedback_mode": args.feedback_mode,
             "ema_decay": args.ema_decay,
