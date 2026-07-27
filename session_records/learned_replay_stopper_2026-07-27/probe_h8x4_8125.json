@@ -1,0 +1,60 @@
+{
+  "schema": "cross-generation-replay-benefit-probe-v1",
+  "configuration": {
+    "train_reports": [
+      "/workspace/diagnostics/replay_policy/five_8110.json",
+      "/workspace/diagnostics/replay_policy/five_8111.json",
+      "/workspace/diagnostics/replay_policy/five_8123.json",
+      "/workspace/diagnostics/replay_policy/five_8124.json"
+    ],
+    "test_reports": [
+      "/workspace/diagnostics/replay_policy/six_8112.json",
+      "/workspace/diagnostics/replay_policy/six_8113.json"
+    ],
+    "arm": "composition",
+    "seed": 8125,
+    "steps": 1000,
+    "learning_rate": 0.003,
+    "hidden": 16,
+    "target_horizon": 8,
+    "features": [
+      "loss_before",
+      "previous_loss_reduction",
+      "log_observed_examples",
+      "previous_gradient_norm",
+      "replay_fraction"
+    ]
+  },
+  "train_rows": 512,
+  "test_rows": 256,
+  "train": {
+    "mae": 0.001566701103001833,
+    "mean_baseline_mae": 0.002450085710734129,
+    "mae_improvement_fraction": 0.3605525324530806,
+    "pearson_correlation": 0.9162115454673767,
+    "positive_rate": 0.67578125,
+    "sign_accuracy": 0.689453125
+  },
+  "held_out_generation": {
+    "mae": 0.0018089726800099015,
+    "mean_baseline_mae": 0.0023570703342556953,
+    "mae_improvement_fraction": 0.23253343198130294,
+    "pearson_correlation": 0.9139799475669861,
+    "positive_rate": 0.6953125,
+    "sign_accuracy": 0.625
+  },
+  "shuffled_target_control": {
+    "mae": 0.003392730373889208,
+    "mean_baseline_mae": 0.0023570703342556953,
+    "mae_improvement_fraction": -0.4393844445717605,
+    "pearson_correlation": 0.04713597148656845,
+    "positive_rate": 0.6953125,
+    "sign_accuracy": 0.609375
+  },
+  "gate": {
+    "held_out_beats_mean_mae_by_10_percent": true,
+    "held_out_correlation_at_least_0_25": true,
+    "shuffled_correlation_below_0_10": true,
+    "accepted_for_policy_integration": true
+  }
+}

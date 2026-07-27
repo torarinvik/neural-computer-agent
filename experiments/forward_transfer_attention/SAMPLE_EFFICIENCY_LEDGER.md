@@ -987,3 +987,26 @@ retention, exact persistence, corruption detection, and lineage-survival
 audits. This is the first verified result in which the controller allocates
 its own processing from a generic learning-state signal while preserving the
 exact stable verifier-bit threshold.
+
+## 2026-07-27 — cross-generation learned replay stopping
+
+Replay traces from four five-action streams trained a tiny task-agnostic probe
+to predict verified loss reduction over the next eight updates. On two
+held-out six-action streams, independently initialized probes reached
+`0.9140/0.9173` correlation and improved MAE over the mean baseline by
+`23.25%/24.40%`; shuffled-target correlation remained `0.0471/0.0502`.
+Thus reusable information for compute allocation exists in generic learning
+state.
+
+Behavioral integration exposed an alignment failure. A one-update policy was
+myopic and lost mastery. Eight-update patience produced one promising smell
+test, but a prospective single predictor failed one of two seeds through
+overconfident stopping. A unanimous ensemble preserved capability but saved
+only `1.95–9.77%` of updates. The ensemble mean was best: it saved
+`12.89%/17.97%`, preserved the capability gate, and changed stable verifier
+bits from `8,400→8,160` and `6,480→7,200`. The latter is an `11.11%`
+regression and misses the frozen `10%` sample-efficiency limit.
+
+No learned-stopper checkpoint is promoted. The precise frontier is now to
+predict long-horizon held-out verifier improvement and retention per unit
+compute, rather than local replay-loss reduction.

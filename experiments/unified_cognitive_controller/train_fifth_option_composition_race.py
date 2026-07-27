@@ -13,6 +13,7 @@ from torch import nn
 from .audit_fourth_option_composition import load_router
 from .audit_option_composition import load_option
 from .probe_requery_operation import ranked_requery_batch
+from .replay_stopping_probe import load_probe, predict_replay_benefit
 from .train import seed_everything
 from .train_fourth_option_composition_race import composed_physical_actions
 from .train_option_composition_race import OptionValueHead
@@ -115,6 +116,30 @@ def main() -> None:
         help=(
             "If set, treat --replay-updates as a maximum and stop replay "
             "once full observed-experience loss is at or below this value."))
+    parser.add_argument(
+        "--record-replay-trace", action="store_true",
+        help=(
+            "Record task-agnostic state before and verified loss reduction "
+            "after every replay update for learned-stopping diagnostics."))
+    parser.add_argument(
+        "--replay-stopper-checkpoint", type=Path, action="append",
+        help=(
+            "Frozen cross-generation predictor of marginal replay value. "
+            "May be repeated; an ensemble stops only on unanimous evidence."))
+    parser.add_argument(
+        "--replay-compute-cost", type=float, default=0.0,
+        help=(
+            "Generic loss-equivalent price of one replay update; the learned "
+            "stopper continues only when predicted benefit exceeds it."))
+    parser.add_argument(
+        "--replay-stopper-aggregation",
+        choices=("unanimous", "mean"), default="unanimous",
+        help=(
+            "How an ensemble combines benefit predictions. Unanimous uses "
+            "the conservative maximum; mean uses their arithmetic mean."))
+    parser.add_argument(
+        "--replay-min-updates", type=int, default=1,
+        help="Minimum composition updates per new experience batch.")
     parser.add_argument("--router-input-width", type=int, default=7)
     parser.add_argument(
         "--feedback-mode",
@@ -135,6 +160,12 @@ def main() -> None:
         raise ValueError("six-action mode requires --fifth-router")
     if args.candidate_count == 5 and args.fifth_router is not None:
         raise ValueError("--fifth-router is only valid in six-action mode")
+    if (args.replay_stopper_checkpoint is not None
+            and args.adaptive_replay_loss is not None):
+        raise ValueError(
+            "learned replay stopping and fixed loss stopping are exclusive")
+    if args.replay_min_updates < 1:
+        raise ValueError("replay minimum updates must be positive")
     if args.test_contexts % args.capacity:
         raise ValueError("test contexts must divide by capacity")
     if args.batch_size % args.capacity:
@@ -165,6 +196,21 @@ def main() -> None:
     new_router = OptionValueHead(args.router_input_width, 32).to(device)
     flat = FlatFiveActionValueHead(
         args.router_input_width, 32, args.candidate_count).to(device)
+    replay_stoppers = []
+    replay_stopper_normalizations = []
+    if args.replay_stopper_checkpoint is not None:
+        for path in args.replay_stopper_checkpoint:
+            model, normalization = load_probe(path, device)
+            replay_stoppers.append(model)
+            replay_stopper_normalizations.append(normalization)
+    replay_stopper_horizons = {
+        int(row["target_horizon"])
+        for row in replay_stopper_normalizations}
+    if len(replay_stopper_horizons) > 1:
+        raise ValueError("replay-stopper ensemble horizons must match")
+    replay_stopper_horizon = (
+        next(iter(replay_stopper_horizons))
+        if replay_stopper_horizons else 1)
     if not 0.0 <= args.ema_decay < 1.0:
         raise ValueError("EMA decay must be in [0, 1)")
     ema_router = copy.deepcopy(new_router)
@@ -261,6 +307,12 @@ def main() -> None:
     replayed_examples = {"composition": 0, "flat": 0}
     final_replay_loss: dict[str, float | None] = {
         "composition": None, "flat": None}
+    replay_trace: list[dict[str, int | float | str]] = []
+    previous_loss_reduction = {"composition": 0.0, "flat": 0.0}
+    previous_gradient_norm = {"composition": 0.0, "flat": 0.0}
+    predicted_replay_stops = {"composition": 0, "flat": 0}
+    predicted_replay_benefits: dict[str, list[float]] = {
+        "composition": [], "flat": []}
 
     def replay_loss(
             name: str, head: nn.Module, features: torch.Tensor,
@@ -334,7 +386,45 @@ def main() -> None:
             all_outcomes = (
                 torch.cat([row[2] for row in replay[name]])
                 if args.feedback_mode == "bandit" else None)
-            for _ in range(args.replay_updates):
+            for replay_index in range(args.replay_updates):
+                loss_before = None
+                learned_stopping = (
+                    name == "composition" and bool(replay_stoppers))
+                if args.record_replay_trace or learned_stopping:
+                    with torch.no_grad():
+                        loss_before = float(replay_loss(
+                            name, head, all_features, all_actions,
+                            all_outcomes))
+                if (learned_stopping
+                        and replay_index >= args.replay_min_updates
+                        and replay_index % replay_stopper_horizon == 0):
+                    assert loss_before is not None
+                    predictions = [
+                        predict_replay_benefit(
+                            model, normalization,
+                            loss_before=loss_before,
+                            previous_loss_reduction=
+                                previous_loss_reduction[name],
+                            previous_gradient_norm=
+                                previous_gradient_norm[name],
+                            observed_examples=int(all_features.shape[0]),
+                            replay_index=replay_index,
+                            replay_updates=args.replay_updates,
+                            device=device)
+                        for model, normalization in zip(
+                            replay_stoppers,
+                            replay_stopper_normalizations)
+                    ]
+                    predicted_benefit = (
+                        max(predictions)
+                        if args.replay_stopper_aggregation == "unanimous"
+                        else sum(predictions) / len(predictions))
+                    predicted_replay_benefits[name].append(
+                        predicted_benefit)
+                    if predicted_benefit <= args.replay_compute_cost:
+                        predicted_replay_stops[name] += 1
+                        final_replay_loss[name] = loss_before
+                        break
                 indices = torch.randint(
                     0, all_features.shape[0], (args.batch_size,),
                     generator=generators[f"{name}_replay"], device=device)
@@ -345,7 +435,8 @@ def main() -> None:
                      if all_outcomes is not None else None))
                 optimizers[name].zero_grad(set_to_none=True)
                 loss.backward()
-                nn.utils.clip_grad_norm_(head.parameters(), 1.0)
+                gradient_norm = float(nn.utils.clip_grad_norm_(
+                    head.parameters(), 1.0))
                 optimizers[name].step()
                 optimizer_updates[name] += 1
                 replayed_examples[name] += args.batch_size
@@ -357,13 +448,38 @@ def main() -> None:
                                 ema_head.parameters(), head.parameters()):
                             averaged.mul_(args.ema_decay).add_(
                                 current, alpha=1.0 - args.ema_decay)
-                if args.adaptive_replay_loss is not None:
+                if (args.adaptive_replay_loss is not None
+                        or args.record_replay_trace
+                        or learned_stopping):
                     with torch.no_grad():
                         observed_loss = replay_loss(
                             name, head, all_features, all_actions,
                             all_outcomes)
                     final_replay_loss[name] = float(observed_loss)
-                    if observed_loss <= args.adaptive_replay_loss:
+                    if args.record_replay_trace or learned_stopping:
+                        assert loss_before is not None
+                        reduction = loss_before - float(observed_loss)
+                        if args.record_replay_trace:
+                            replay_trace.append({
+                                "arm": name,
+                                "experience_step": step,
+                                "replay_index": replay_index,
+                                "updates_before":
+                                    optimizer_updates[name] - 1,
+                                "observed_examples":
+                                    int(all_features.shape[0]),
+                                "loss_before": loss_before,
+                                "previous_loss_reduction":
+                                    previous_loss_reduction[name],
+                                "previous_gradient_norm":
+                                    previous_gradient_norm[name],
+                                "loss_after": float(observed_loss),
+                                "loss_reduction": reduction,
+                            })
+                        previous_loss_reduction[name] = reduction
+                        previous_gradient_norm[name] = gradient_norm
+                    if (args.adaptive_replay_loss is not None
+                            and observed_loss <= args.adaptive_replay_loss):
                         break
             if args.adaptive_replay_loss is None:
                 with torch.no_grad():
@@ -408,6 +524,9 @@ def main() -> None:
             "report": str(args.report),
             "checkpoint": (
                 str(args.checkpoint) if args.checkpoint else None),
+            "replay_stopper_checkpoint": (
+                [str(path) for path in args.replay_stopper_checkpoint]
+                if args.replay_stopper_checkpoint else None),
         },
         "old_option": old_metrics,
         "target_utility": target,
@@ -415,6 +534,7 @@ def main() -> None:
         "first_target_bits": first_target,
         "stable_target_bits": stable_target,
         "histories": histories,
+        "replay_trace": replay_trace,
         "gate": gate,
         "accounting": {
             "verifier_bits_per_arm": {
@@ -424,6 +544,12 @@ def main() -> None:
             "replay_optimizer_updates_per_arm": optimizer_updates,
             "replayed_examples_per_arm": replayed_examples,
             "final_observed_replay_loss": final_replay_loss,
+            "predicted_replay_stops": predicted_replay_stops,
+            "predicted_replay_benefit_mean": {
+                name: (
+                    sum(values) / len(values) if values else None)
+                for name, values in predicted_replay_benefits.items()
+            },
             "unique_logical_lifetimes_per_arm":
                 args.steps * args.batch_size,
             "stable_transfer_ratio_flat_over_composition": (
@@ -463,6 +589,11 @@ def main() -> None:
             "actual_replayed_examples":
                 replayed_examples["composition"],
             "adaptive_replay_loss": args.adaptive_replay_loss,
+            "replay_stopper_checkpoint": (
+                [str(path) for path in args.replay_stopper_checkpoint]
+                if args.replay_stopper_checkpoint else None),
+            "replay_compute_cost": args.replay_compute_cost,
+            "replay_min_updates": args.replay_min_updates,
             "feedback_mode": args.feedback_mode,
             "ema_decay": args.ema_decay,
         }, args.checkpoint)

@@ -942,6 +942,20 @@ persistence, corruption, and lineage audit ladder. The next frontier is to
 learn the stopping criterion across task generations rather than fixing one
 generic loss target.
 
+That learned-stopping fork has now been localized. Generic replay state from
+four five-action streams predicted eight-update loss reduction on held-out
+six-action streams with `0.91–0.92` correlation and `23–24%` lower MAE than a
+mean predictor; shuffled targets stayed near zero. The corresponding behavioral
+policy did not replicate inside its frozen gate. An ensemble mean saved
+`12.9–18.0%` of updates and preserved capability, but one seed required
+`11.11%` more verifier bits than fixed replay, just outside the `10%` limit.
+No stopper checkpoint was promoted.
+
+The frontier is now objective alignment rather than replay-state
+representation: predict long-horizon verified behavioral learning progress and
+retention per unit compute, rather than local replay-loss reduction. See
+`session_records/learned_replay_stopper_2026-07-27/README.md`.
+
 Run the sub-minute GPU experiment:
 
 ```bash

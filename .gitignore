@@ -29,6 +29,7 @@ dist/
 !artifacts/candidates/core263_parent.pt
 
 # Local runtime products.
+*.log
 *.ppm
 videos/
 runs/
