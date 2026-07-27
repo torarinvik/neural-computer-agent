@@ -969,8 +969,14 @@ Twenty-four updates beat sixteen on all eight streams, improved final utility
 by `+0.0034` to `+0.0294`, reduced verifier bits to stable mastery by `19–44%`
 whenever both solved, and rescued one stream that sixteen never mastered. More
 internal compute can therefore buy substantially less external experience.
-The current frontier is the causal processing bracket: test 24 versus 32 and
-only learn a budget selector if the winning budget varies across streams. See
+The completed causal ladder established a 48-update sweet spot for this task
+family: it beat 40 updates on verifier efficiency in 9/12 fresh streams and
+on final utility in 9/12. At 56 updates the experience cost still fell in 9/12
+streams, but final utility regressed in 8/12: more thought became overthinking.
+A 48-update checkpoint passed independent confirmation, causal shuffle and
+reversal, old-skill retention, persistence, and corruption audits. The current
+frontier is a causal budget allocator around this verified operating region;
+it must train on whole-trajectory outcomes, not local replay-loss targets. See
 `session_records/causal_replay_budget_2026-07-27/README.md`.
 
 Run the sub-minute GPU experiment:

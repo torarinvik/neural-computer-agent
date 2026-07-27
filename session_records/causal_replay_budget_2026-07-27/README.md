@@ -46,19 +46,32 @@ sixteen on every seed:
 | 8226 | 6,480 | 3,600 | 44.4% | +0.02936 | 432 / 360 |
 | 8227 | 6,480 | 5,040 | 22.2% | +0.01453 | 432 / 504 |
 
-## Conclusion
+## Extended causal ladder
 
-The next processing frontier is not “stop 16-update replay early.” Sixteen is
-often under-compute. Spending 50% more internal compute reduced scarce verifier
-experience by 19–44% on every jointly solved stream and rescued one failure.
-This is a verified sample-efficiency gain, though not always an optimizer-step
-gain: five seeds paid modestly more internal updates to reach mastery, one tied,
-and one used fewer.
+The fixed ladder kept improving well beyond 24 updates:
 
-The next bracket should test 24 versus 32 before attempting another learned
-budget policy. A learned controller is only justified if the causally optimal
-budget varies across streams; otherwise the evidence supports a better fixed
-budget.
+| Comparison | Matched streams | Median stable bits | Verifier-bit wins | Utility wins | Mean utility change |
+|---|---:|---:|---:|---:|---:|
+| 32 vs. 24 | 8 | 3,240 vs. 4,680 | 7/8 | 6/8 | +0.00319 |
+| 40 vs. 32 | 8 | 2,640 vs. 3,240 | 7/8 | 6/8 | +0.00319 |
+| 48 vs. 40 | 12 | 2,280 vs. 2,880 | 9/12 | 9/12 | +0.00364 |
+| 56 vs. 48 | 12 | 2,040 vs. 2,280 | 9/12 | 4/12 | -0.00140 |
+
+Forty-eight is therefore the current verified sweet spot for this six-action
+family: it substantially reduces scarce verifier experience while retaining a
+positive utility trend. Fifty-six is an overthinking regime: it usually reduces
+the bits to mastery, but its final capability regresses often enough to fail the
+accuracy-first objective.
+
+An independently trained 48-update checkpoint also passed the full six-action
+audit ladder: independent confirmation, feature-shuffle and reversal causality,
+exact reload, binary and four-rule retention, persistent skill commit, and
+corruption detection.
+
+The next frontier is now causal compute allocation. The controller should learn
+to choose between safe budgets around the sweet spot only from complete matched
+trajectory outcomes—not from local loss reduction—because omission changes all
+later learning dynamics.
 
 Raw reports are in [`raw/`](raw/). Tiny diagnostic checkpoints remain local
 artifacts and are intentionally excluded by the repository's weight policy.
