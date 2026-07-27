@@ -1,8 +1,24 @@
+# Operating-system and editor metadata.
 .DS_Store
-.pytest_cache/
+.idea/
+.vscode/
+*~
+
+# Python environments, caches, coverage, and packaging output.
 .venv/
+venv/
 __pycache__/
 *.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+build/
+dist/
+*.egg-info/
+.ipynb_checkpoints/
 
 # Disposable training products. Curated milestones are force-added explicitly
 # under artifacts/checkpoints or artifacts/candidates.
@@ -17,3 +33,4 @@ __pycache__/
 videos/
 runs/
 wandb/
+/experiments/unified_cognitive_controller/reports/

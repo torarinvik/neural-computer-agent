@@ -290,7 +290,6 @@ See:
 | `artifacts/checkpoints/` | Curated current checkpoints that are small enough for Git |
 | `artifacts/manifests/` | Checksums for curated and excluded historical artifacts |
 | `session_records/` | Compact historical reports and continuation notes |
-| `legacy/screenwatch_streamer/` | Original sensory-streamer sources, without compiled binaries |
 
 ## Setup
 
