@@ -34,10 +34,13 @@ def rollout(
         feedback_trials: int = 1,
         reset_workspace_each_trial: bool = False,
         shuffle_feedback: bool = False,
+        drop_feedback_at: int | None = None,
         disable_workspace: bool = False) -> dict[str, torch.Tensor]:
     if feedback_trials < 0 or feedback_trials >= batch.trials:
         raise ValueError(
             "feedback_trials must be between zero and trials - 1")
+    if drop_feedback_at is not None and not 1 <= drop_feedback_at <= feedback_trials:
+        raise ValueError("drop_feedback_at must identify a delivered support outcome")
     state = model.initial_state(
         batch.batch_size, device=batch.frames.device,
         dtype=batch.frames.dtype)
@@ -56,6 +59,9 @@ def rollout(
             previous_reward,
             float(0 < trial <= feedback_trials))
         delivered_reward = previous_reward * has_feedback
+        if drop_feedback_at == trial:
+            has_feedback = torch.zeros_like(has_feedback)
+            delivered_reward = torch.zeros_like(delivered_reward)
         if shuffle_feedback and bool(has_feedback[0]):
             delivered_reward = delivered_reward.roll(1)
         output, state = model.step(
@@ -116,8 +122,9 @@ def evaluate(
         appearance=appearance, support_trials=feedback_trials, device=device)
     reversed_batch = generate_lifetimes(
         count, trials, seed=seed, heldout=True,
-        reverse_rules=(task != "visible_identity"),
+        reverse_rules=(task not in ("visible_identity", "visible_context")),
         reverse_stimuli=(task == "visible_identity"),
+        reverse_contexts=(task == "visible_context"),
         task=task, appearance=appearance,
         support_trials=feedback_trials, device=device)
     normal = rollout(
@@ -133,6 +140,12 @@ def evaluate(
     shuffled = rollout(
         model, normal_batch, sample_actions=False,
         feedback_trials=feedback_trials, shuffle_feedback=True)
+    second_support_removed = None
+    if task in ("contextual_mapping", "contextual_override") and feedback_trials >= 2:
+        second_support_removed = rollout(
+            model, normal_batch, sample_actions=False,
+            feedback_trials=feedback_trials,
+            drop_feedback_at=feedback_trials)
     disabled = rollout(
         model, normal_batch, sample_actions=False,
         feedback_trials=feedback_trials, disable_workspace=True)
@@ -141,7 +154,8 @@ def evaluate(
         correct_actions=normal_batch.correct_actions,
         stimulus_identities=normal_batch.stimulus_identities,
         rule_bits=normal_batch.rule_bits,
-        seeds=normal_batch.seeds)
+        seeds=normal_batch.seeds,
+        context_ids=normal_batch.context_ids)
     blank = rollout(
         model, blank_batch, sample_actions=False,
         feedback_trials=feedback_trials)
@@ -167,7 +181,17 @@ def evaluate(
             blank, query_start=feedback_trials),
         "post_feedback_prediction_flip_rate": float(flip_rate),
     }
-    if task == "visible_identity":
+    if second_support_removed is not None:
+        report["second_support_feedback_removed"] = _metrics(
+            second_support_removed, query_start=feedback_trials)
+        assert normal_batch.context_ids is not None
+        query_contexts = normal_batch.context_ids[:, feedback_trials:]
+        normal_rewards = normal["rewards"][:, feedback_trials:]
+        report["normal_query_accuracy_by_context"] = {
+            str(context): float(normal_rewards[query_contexts == context].float().mean())
+            for context in (0, 1)
+        }
+    if task in ("visible_identity", "visible_context"):
         normal_accuracy = float(normal["rewards"].mean())
         reversed_accuracy = float(reversed_result["rewards"].mean())
         blank_accuracy = float(blank["rewards"].mean())
@@ -202,6 +226,15 @@ def evaluate(
             report["feedback_shuffled"]["post_feedback_accuracy"]
             <= normal_post - 0.15),
     }
+    if task in ("contextual_mapping", "contextual_override"):
+        assert second_support_removed is not None
+        report["gate"]["both_contexts_mastered"] = all(
+            accuracy >= 0.85
+            for accuracy in report["normal_query_accuracy_by_context"].values())
+        if task == "contextual_mapping":
+            report["gate"]["second_support_evidence_hurts"] = (
+                report["second_support_feedback_removed"]["post_feedback_accuracy"]
+                <= normal_post - 0.15)
     report["gate"]["few_shot_breakthrough"] = all(
         report["gate"].values())
     report["gate"]["accepted"] = report["gate"]["few_shot_breakthrough"]
@@ -212,6 +245,10 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--checkpoint-out", type=Path)
+    parser.add_argument(
+        "--candidate-checkpoint-out", type=Path,
+        help=("save an explicitly unpromoted continuation checkpoint even "
+              "when the behavioral admission gate has not passed"))
     parser.add_argument("--checkpoint-in", type=Path)
     parser.add_argument("--device", default=(
         "cuda" if torch.cuda.is_available() else "cpu"))
@@ -219,7 +256,8 @@ def main() -> None:
     parser.add_argument(
         "--task", choices=(
             "constant_action", "visible_identity", "binary_mapping",
-            "four_rule"),
+            "visible_context", "four_rule", "contextual_mapping",
+            "contextual_override"),
         default="constant_action")
     parser.add_argument(
         "--appearance", choices=("bars", "diamonds", "dot_pairs"),
@@ -227,7 +265,8 @@ def main() -> None:
     parser.add_argument(
         "--rehearsal-task", choices=(
             "constant_action", "visible_identity", "binary_mapping",
-            "four_rule"))
+            "visible_context", "four_rule", "contextual_mapping",
+            "contextual_override"))
     parser.add_argument(
         "--rehearsal-every", type=int, default=2,
         help="use one rehearsal batch every N optimizer steps")
@@ -243,7 +282,8 @@ def main() -> None:
     parser.add_argument(
         "--retention-task", choices=(
             "constant_action", "visible_identity", "binary_mapping",
-            "four_rule"))
+            "visible_context", "four_rule", "contextual_mapping",
+            "contextual_override"))
     parser.add_argument(
         "--retention-feedback-trials", type=int,
         help=(
@@ -263,6 +303,13 @@ def main() -> None:
     parser.add_argument("--width", type=int, default=96)
     parser.add_argument("--workspace-slots", type=int, default=8)
     parser.add_argument("--intention-width", type=int, default=24)
+    parser.add_argument(
+        "--relation-adapter-width", type=int,
+        help=("insert a zero-initialized generic prior-state/query-event "
+              "relation residual; omit to preserve checkpoint architecture"))
+    parser.add_argument(
+        "--train-relation-adapter-only", action="store_true",
+        help="freeze inherited parameters and optimize only the relation residual")
     parser.add_argument("--learning-rate", type=float, default=3e-4)
     parser.add_argument("--exploration", type=float, default=0.10)
     parser.add_argument("--log-every", type=int, default=50)
@@ -280,31 +327,64 @@ def main() -> None:
                 f"{name} must be between zero and trials - 1")
     seed_everything(args.seed)
     device = torch.device(args.device)
-    model = UnifiedCognitiveController(
-        width=args.width, workspace_slots=args.workspace_slots,
-        intention_width=args.intention_width).to(device)
-    initialization = "fresh"
+    checkpoint_payload = None
+    model_configuration: dict[str, object] = {
+        "width": args.width,
+        "workspace_slots": args.workspace_slots,
+        "intention_width": args.intention_width,
+    }
     if args.checkpoint_in is not None:
-        payload = torch.load(
+        checkpoint_payload = torch.load(
             args.checkpoint_in, map_location=device, weights_only=False)
-        if payload.get("schema") != "unified-cognitive-controller-v1":
+        if checkpoint_payload.get("schema") != "unified-cognitive-controller-v1":
             raise ValueError("unsupported controller checkpoint")
-        expected = {
-            "width": args.width,
-            "workspace_slots": args.workspace_slots,
-            "intention_width": args.intention_width,
-        }
-        if payload.get("model_configuration") != expected:
+        checkpoint_configuration = checkpoint_payload.get("model_configuration")
+        if not isinstance(checkpoint_configuration, dict):
+            raise ValueError("controller checkpoint lacks model configuration")
+        for key, expected in model_configuration.items():
+            if checkpoint_configuration.get(key) != expected:
+                raise ValueError(
+                    f"checkpoint {key} does not match requested configuration")
+        # Preserve optional architectural fields (adaptive reads/replacement,
+        # etc.) rather than silently constructing a different controller.
+        model_configuration = dict(checkpoint_configuration)
+    if args.relation_adapter_width is not None:
+        model_configuration["relation_adapter_width"] = args.relation_adapter_width
+    model = UnifiedCognitiveController(**model_configuration).to(device)
+    initialization = "fresh"
+    if checkpoint_payload is not None:
+        missing, unexpected = model.load_state_dict(
+            checkpoint_payload["state_dict"], strict=False)
+        allowed_missing = (
+            {name for name in model.state_dict()
+             if name.startswith("relation_adapter.")}
+            if args.relation_adapter_width is not None
+            and args.relation_adapter_width > 0
+            and "relation_adapter_width" not in checkpoint_configuration
+            else set())
+        if set(missing) != allowed_missing or unexpected:
             raise ValueError(
-                "checkpoint model configuration does not match arguments")
-        model.load_state_dict(payload["state_dict"])
+                "checkpoint/model architecture mismatch: "
+                f"missing={missing}, unexpected={unexpected}")
         initialization = str(args.checkpoint_in)
     initial = {
         name: value.detach().cpu().clone()
         for name, value in model.state_dict().items()
     }
+    if args.train_relation_adapter_only:
+        if model.relation_adapter is None:
+            raise ValueError("--train-relation-adapter-only needs a relation adapter")
+        for name, parameter in model.named_parameters():
+            parameter.requires_grad_(name.startswith("relation_adapter."))
+    trainable_parameters = [
+        parameter for parameter in model.parameters() if parameter.requires_grad]
     optimizer = torch.optim.AdamW(
-        model.parameters(), lr=args.learning_rate, weight_decay=1e-5)
+        trainable_parameters, lr=args.learning_rate, weight_decay=1e-5)
+    optimizer_initialized_from = "fresh"
+    if checkpoint_payload is not None and isinstance(
+            checkpoint_payload.get("optimizer_state_dict"), dict):
+        optimizer.load_state_dict(checkpoint_payload["optimizer_state_dict"])
+        optimizer_initialized_from = "checkpoint"
     history = []
     started = time.perf_counter()
     for step in range(1, args.steps + 1):
@@ -405,13 +485,19 @@ def main() -> None:
             "checkpoint_out": (
                 str(args.checkpoint_out)
                 if args.checkpoint_out is not None else None),
+            "candidate_checkpoint_out": (
+                str(args.candidate_checkpoint_out)
+                if args.candidate_checkpoint_out is not None else None),
             "checkpoint_in": (
                 str(args.checkpoint_in)
                 if args.checkpoint_in is not None else None),
         },
         "initialization": initialization,
+        "optimizer_initialization": optimizer_initialized_from,
         "parameters": sum(
             parameter.numel() for parameter in model.parameters()),
+        "trainable_parameters": sum(
+            parameter.numel() for parameter in trainable_parameters),
         "history": history,
         "evaluation": evaluation,
         "retention_evaluation": retention_evaluation,
@@ -426,17 +512,27 @@ def main() -> None:
         args.checkpoint_out.parent.mkdir(parents=True, exist_ok=True)
         torch.save({
             "schema": "unified-cognitive-controller-v1",
-            "model_configuration": {
-                "width": args.width,
-                "workspace_slots": args.workspace_slots,
-                "intention_width": args.intention_width,
-            },
+            "model_configuration": model_configuration,
             "state_dict": model.state_dict(),
             "source_report": str(args.report),
         }, args.checkpoint_out)
         report["checkpoint_saved"] = True
     else:
         report["checkpoint_saved"] = False
+    if args.candidate_checkpoint_out is not None:
+        args.candidate_checkpoint_out.parent.mkdir(parents=True, exist_ok=True)
+        torch.save({
+            "schema": "unified-cognitive-controller-v1",
+            "model_configuration": model_configuration,
+            "state_dict": model.state_dict(),
+            "source_report": str(args.report),
+            "admission_status": "unpromoted_candidate",
+            "all_admission_gates_passed": admitted,
+            "optimizer_state_dict": optimizer.state_dict(),
+        }, args.candidate_checkpoint_out)
+        report["candidate_checkpoint_saved"] = True
+    else:
+        report["candidate_checkpoint_saved"] = False
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(
         report, indent=2, sort_keys=True) + "\n")

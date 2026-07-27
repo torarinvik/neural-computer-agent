@@ -254,3 +254,25 @@ selected by the replicated balanced population objective.
 This checkpoint is curated for the next transfer-ledger experiment. Its
 weights are not yet claimed to improve a genuinely later held-out task; that
 is the next scientific gate.
+
+## Integrated binary and visible-context controller
+
+`unified_binary_context_integrated_seed8397.pt` is the first one-controller
+integration of two independently acquired skills.
+
+- SHA-256:
+  `332fb1d2d51eea210ac695e101b64fa53ef8ec5059cf1f5bd26755a297089d9c`
+- Parent: `unified_memory_online_utility_seed6810.pt`
+- Context specialist: `unified_visible_context_seed8383.pt`
+- Integration: static behavior routing into a zero-initialized, learned gated
+  action residual, then 32 updates of whole-trajectory rehearsal.
+- Held-out binary few-shot: 97.42% normal / 98.01% reversed; all binary
+  vision, feedback, state-reset, and reversal gates passed.
+- Held-out visible context: 95.54% normal / 94.79% counterfactual; blank
+  vision was 48.63% and prediction flips were 88.40%.
+- An independently seeded static-routing and trajectory-rehearsal pipeline
+  replicated both complete gates. The shuffled-specialist control was rejected.
+
+The integration target contained only the two learned controllers' opaque
+behavior distributions. Verifier labels, semantic context IDs, and correct
+unattempted actions were never used as distillation targets.

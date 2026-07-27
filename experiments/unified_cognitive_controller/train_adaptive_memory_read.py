@@ -87,18 +87,19 @@ def _batch(
 @torch.no_grad()
 def _outcomes(
         model: UnifiedCognitiveController, batch,
-        memory: torch.Tensor, *, device: torch.device) -> torch.Tensor:
+        memory: torch.Tensor, *, device: torch.device,
+        query_trial: int = 2) -> torch.Tensor:
     count = batch.batch_size
     state = model.initial_state(count, device=device)
     null_action = torch.full(
         (count,), NULL_ACTION, dtype=torch.long, device=device)
     zeros = torch.zeros(count, device=device)
     output, _ = model.step(
-        batch.frames[:, 2], state, null_action, zeros, zeros,
+        batch.frames[:, query_trial], state, null_action, zeros, zeros,
         retrieved_memory=memory)
     return (
         output.logits.argmax(-1)
-        == batch.correct_actions[:, 2]).to(torch.float32)
+        == batch.correct_actions[:, query_trial]).to(torch.float32)
 
 
 @torch.no_grad()

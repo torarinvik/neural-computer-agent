@@ -40,6 +40,10 @@ class CognitiveLifetimeBatch:
     stimulus_identities: torch.Tensor
     rule_bits: torch.Tensor
     seeds: torch.Tensor
+    # Context is public sensory structure for contextual tasks, but remains
+    # verifier-private metadata in reports/tests.  Older callers that build a
+    # batch directly need not supply it.
+    context_ids: torch.Tensor | None = None
 
     @property
     def batch_size(self) -> int:
@@ -121,6 +125,7 @@ def generate_lifetimes(
         count: int, trials: int, *, seed: int, heldout: bool = False,
         reverse_rules: bool = False,
         reverse_stimuli: bool = False,
+        reverse_contexts: bool = False,
         task: str = "binary_mapping",
         appearance: str = "bars",
         support_trials: int = 1,
@@ -132,19 +137,21 @@ def generate_lifetimes(
     position cannot reveal whether the stimulus matches the support event.
     """
     if task not in (
-            "constant_action", "visible_identity", "binary_mapping",
-            "four_rule"):
+        "constant_action", "visible_identity", "binary_mapping",
+        "visible_context", "four_rule", "contextual_mapping",
+        "contextual_override"):
         raise ValueError(
             "task must be constant_action, visible_identity, "
-            "binary_mapping, or four_rule")
+            "binary_mapping, visible_context, four_rule, contextual_mapping, or "
+            "contextual_override")
     if appearance not in _MASK_BANKS:
         raise ValueError(
             f"appearance must be one of {sorted(_MASK_BANKS)}")
     if count < 2 or count % 2:
         raise ValueError("count must be positive and divisible by two")
-    if task == "four_rule" and count % 4:
+    if task in ("four_rule", "contextual_mapping") and count % 4:
         raise ValueError(
-            "four_rule count must be divisible by four")
+            "four-rule tasks require a count divisible by four")
     if trials < 2:
         raise ValueError("at least two trials are required")
     if support_trials < 1 or support_trials >= trials:
@@ -152,11 +159,12 @@ def generate_lifetimes(
             "support_trials must be between one and trials - 1")
     generator = torch.Generator().manual_seed(seed)
     rule_bits = _balanced_classes(
-        count, 4 if task == "four_rule" else 2, generator)
+        count, 4 if task in ("four_rule", "contextual_mapping") else 2,
+        generator)
     if reverse_rules:
         rule_bits = (
-            rule_bits ^ 1
-            if task == "four_rule"
+            rule_bits ^ (3 if task == "contextual_mapping" else 1)
+            if task in ("four_rule", "contextual_mapping")
             else 1 - rule_bits)
     first_identity = _balanced_bits(count, generator)
     identities = torch.randint(
@@ -211,6 +219,25 @@ def generate_lifetimes(
         batch_indices, trial_indices, :, nuisance_y, nuisance_x
     ] = nuisance_value.unsqueeze(-1)
 
+    # A context-conditioned mapping contains two independent hidden binary
+    # associations.  Its first two support events deliberately cover both
+    # contexts, so each outcome supplies information the other cannot.  The
+    # visible context token is a public sensory cue; its identity and the
+    # mapping remain unavailable to the learner except through RGB/outcomes.
+    context_ids = None
+    if task in (
+            "visible_context", "contextual_mapping", "contextual_override"):
+        context_ids = torch.randint(0, 2, (count, trials), generator=generator)
+        if support_trials >= 2:
+            context_ids[:, 0] = 0
+            context_ids[:, 1] = 1
+        if reverse_contexts:
+            context_ids = 1 - context_ids
+        context_positions = ((3, 3), (IMAGE_SIZE - 4, IMAGE_SIZE - 4))
+        for context, (y, x) in enumerate(context_positions):
+            selected = context_ids == context
+            frames[selected, :, y - 1:y + 2, x - 1:x + 2] = 0.98
+
     if task == "constant_action":
         correct = rule_bits.unsqueeze(1).expand(-1, trials).clone()
     elif task == "visible_identity":
@@ -221,9 +248,27 @@ def generate_lifetimes(
             expanded_rule < 2,
             expanded_rule,
             identities ^ (expanded_rule - 2))
+    elif task == "contextual_mapping":
+        assert context_ids is not None
+        context_rule = (rule_bits.unsqueeze(1) >> context_ids) & 1
+        correct = identities ^ context_rule
+    elif task == "contextual_override":
+        assert context_ids is not None
+        mapping_action = identities ^ rule_bits.unsqueeze(1)
+        # The context-one response is a simpler invariant. Counterfactual
+        # rerendering complements it together with the hidden context-zero
+        # mapping, preserving the standard reversal audit.
+        override_action = 1 if reverse_rules else 0
+        correct = torch.where(
+            context_ids == 0, mapping_action,
+            torch.full_like(mapping_action, override_action))
+    elif task == "visible_context":
+        assert context_ids is not None
+        correct = context_ids.clone()
     else:
         correct = identities ^ rule_bits.unsqueeze(1)
     seeds = torch.arange(seed, seed + count, dtype=torch.long)
     return CognitiveLifetimeBatch(
         frames.to(device), correct.to(device), identities.to(device),
-        rule_bits.to(device), seeds.to(device))
+        rule_bits.to(device), seeds.to(device),
+        context_ids.to(device) if context_ids is not None else None)

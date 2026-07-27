@@ -26,39 +26,53 @@ def _sha256(path: Path) -> str:
 @torch.no_grad()
 def _support(
         model: UnifiedCognitiveController, batch, *,
-        device: torch.device, retrieved: torch.Tensor | None = None
+        device: torch.device, retrieved: torch.Tensor | None = None,
+        support_trials: int = 1,
         ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Encode one or more feedback-bearing supports into a memory value.
+
+    A support action's reward arrives alongside the following frame. Hence a
+    lifetime with ``n`` supports needs one feedback frame and a separate query
+    frame after them. Defaults preserve the historical one-support protocol.
+    """
+    if support_trials < 1 or batch.trials < support_trials + 2:
+        raise ValueError("batch needs support trials plus feedback and query frames")
     count = batch.batch_size
     state = model.initial_state(count, device=device)
     null_action = torch.full(
         (count,), NULL_ACTION, dtype=torch.long, device=device)
     zeros = torch.zeros(count, device=device)
-    output0, state = model.step(
-        batch.frames[:, 0], state, null_action, zeros, zeros,
-        retrieved_memory=retrieved)
-    action = output0.logits.argmax(-1)
-    outcome = (
-        action == batch.correct_actions[:, 0]).to(torch.float32)
-    output1, _ = model.step(
-        batch.frames[:, 1], state, action, outcome,
-        torch.ones_like(outcome))
+    action, outcome, feedback = null_action, zeros, zeros
+    output0 = None
+    for trial in range(support_trials):
+        output, state = model.step(
+            batch.frames[:, trial], state, action, outcome, feedback,
+            retrieved_memory=retrieved if trial == 0 else None)
+        if output0 is None:
+            output0 = output
+        action = output.logits.argmax(-1)
+        outcome = (action == batch.correct_actions[:, trial]).to(torch.float32)
+        feedback = torch.ones_like(outcome)
+    output_after_feedback, _ = model.step(
+        batch.frames[:, support_trials], state, action, outcome, feedback)
+    assert output0 is not None
     return (
         output0.memory_key,
-        output1.memory_value,
-        output1.memory_write_strength)
+        output_after_feedback.memory_value,
+        output_after_feedback.memory_write_strength)
 
 
 @torch.no_grad()
 def _query_keys(
         model: UnifiedCognitiveController, batch, *,
-        device: torch.device) -> torch.Tensor:
+        device: torch.device, query_trial: int = 2) -> torch.Tensor:
     count = batch.batch_size
     state = model.initial_state(count, device=device)
     null_action = torch.full(
         (count,), NULL_ACTION, dtype=torch.long, device=device)
     zeros = torch.zeros(count, device=device)
     output, _ = model.step(
-        batch.frames[:, 2], state, null_action, zeros, zeros)
+        batch.frames[:, query_trial], state, null_action, zeros, zeros)
     return output.memory_key
 
 

@@ -66,13 +66,18 @@ class UnifiedCognitiveController(nn.Module):
             adaptive_memory_read_hidden: int = 0,
             adaptive_memory_replace: bool = False,
             adaptive_memory_replace_hidden: int = 8,
-            adaptive_memory_replace_features: int = 5) -> None:
+            adaptive_memory_replace_features: int = 5,
+            relation_adapter_width: int = 0,
+            action_adapter_width: int = 0,
+            action_adapter_gated: bool = False) -> None:
         super().__init__()
         if (
                 width < 16 or workspace_slots < 1 or intention_width < 2
                 or adaptive_memory_read_hidden < 0
                 or adaptive_memory_replace_hidden < 1
-                or adaptive_memory_replace_features < 5):
+                or adaptive_memory_replace_features < 5
+                or relation_adapter_width < 0
+                or action_adapter_width < 0):
             raise ValueError("controller dimensions are too small")
         self.width = width
         self.workspace_slots = workspace_slots
@@ -82,6 +87,9 @@ class UnifiedCognitiveController(nn.Module):
         self.adaptive_memory_replace = adaptive_memory_replace
         self.adaptive_memory_replace_hidden = adaptive_memory_replace_hidden
         self.adaptive_memory_replace_features = adaptive_memory_replace_features
+        self.relation_adapter_width = relation_adapter_width
+        self.action_adapter_width = action_adapter_width
+        self.action_adapter_gated = action_adapter_gated
         self.vision = VisionEventEncoder(width)
         self.action_embedding = nn.Embedding(ACTIONS + 1, width // 4)
         feedback_width = width // 4
@@ -102,6 +110,38 @@ class UnifiedCognitiveController(nn.Module):
         # This is the replaceable device/protocol adapter. The controller emits
         # an abstract intention before this final mapping.
         self.actuator = nn.Linear(intention_width, ACTIONS)
+        # Optional generic answer-path relation adapter. It combines the
+        # controller state available before a query with that query's sensory
+        # event; it has no task, context, or action-label input. A zero final
+        # projection makes insertion exactly behavior-preserving.
+        self.relation_adapter = (
+            nn.Sequential(
+                nn.Linear(width * 2, relation_adapter_width),
+                nn.GELU(),
+                nn.Linear(relation_adapter_width, intention_width),
+            )
+            if relation_adapter_width else None)
+        if self.relation_adapter is not None:
+            nn.init.zeros_(self.relation_adapter[-1].weight)
+            nn.init.zeros_(self.relation_adapter[-1].bias)
+        self.action_adapter = (
+            nn.Sequential(
+                nn.Linear(width * 2, action_adapter_width),
+                nn.GELU(),
+                nn.Linear(action_adapter_width, ACTIONS),
+            )
+            if action_adapter_width else None)
+        if self.action_adapter is not None:
+            nn.init.zeros_(self.action_adapter[-1].weight)
+            nn.init.zeros_(self.action_adapter[-1].bias)
+        self.action_adapter_gate = (
+            nn.Linear(width * 2, 1) if action_adapter_width and action_adapter_gated else None)
+        if self.action_adapter_gate is not None:
+            nn.init.zeros_(self.action_adapter_gate.weight)
+            # The residual output itself is exactly zero at insertion, so a
+            # moderately open gate preserves behavior while avoiding the
+            # near-zero gradients caused by a saturated closed gate.
+            nn.init.constant_(self.action_adapter_gate.bias, -2.0)
         self.memory_key = nn.Linear(width * 2, width)
         self.memory_value = nn.Linear(width * 2, width)
         self.memory_write = nn.Linear(width * 2, 1)
@@ -215,9 +255,20 @@ class UnifiedCognitiveController(nn.Module):
 
         combined = torch.cat([hidden, read, event], dim=-1)
         intention = self.intention(combined)
+        if self.relation_adapter is not None:
+            intention = intention + self.relation_adapter(torch.cat([
+                state.hidden, event], dim=-1))
         memory_context = torch.cat([hidden, read], dim=-1)
+        logits = self.actuator(intention)
+        if self.action_adapter is not None:
+            adapter_features = torch.cat([state.hidden, event], dim=-1)
+            adapter_residual = self.action_adapter(adapter_features)
+            if self.action_adapter_gate is not None:
+                adapter_residual = adapter_residual * torch.sigmoid(
+                    self.action_adapter_gate(adapter_features))
+            logits = logits + adapter_residual
         output = ControllerOutput(
-            logits=self.actuator(intention),
+            logits=logits,
             intention=intention,
             memory_key=self.memory_key(memory_context),
             memory_value=self.memory_value(memory_context),

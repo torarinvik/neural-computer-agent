@@ -20,17 +20,24 @@ def ranked_requery_batch(
         model, *, count: int, capacity: int, seed: int,
         device: torch.device, write_threshold: float,
         candidate_count: int, include_rank_features: bool = False,
+        support_trials: int = 1,
+        include_latent_summary: bool = False,
         ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Return generic evidence and outcomes for ranked physical reads."""
     if not 2 <= candidate_count <= capacity:
         raise ValueError("candidate_count must be between two and capacity")
+    if support_trials < 1:
+        raise ValueError("support trials must be positive")
     batch = _add_context_signatures(
         generate_lifetimes(
-            count, 3, seed=seed, heldout=True,
-            task="binary_mapping", support_trials=1, device=device),
+            count, support_trials + 2, seed=seed, heldout=True,
+            task="binary_mapping",
+            support_trials=support_trials, device=device),
         seed=seed + 10_000_000)
-    keys, values, strengths = _support(model, batch, device=device)
-    queries = _query_keys(model, batch, device=device)
+    keys, values, strengths = _support(
+        model, batch, device=device, support_trials=support_trials)
+    query_trial = support_trials + 1
+    queries = _query_keys(model, batch, device=device, query_trial=query_trial)
     groups = count // capacity
     key_group = torch.nn.functional.normalize(
         keys.reshape(groups, capacity, -1), dim=-1)
@@ -121,9 +128,25 @@ def ranked_requery_batch(
                 fifth_margin.unsqueeze(-1),
                 ranked_usage[:, :, 5:6],
             ), dim=-1)
+    if include_latent_summary:
+        # Low-dimensional statistics of controller-produced support/query
+        # latents. Keeping this compact prevents a tiny branch dataset from
+        # merely memorizing opaque high-dimensional vectors.
+        normalized_keys = torch.nn.functional.normalize(keys, dim=-1)
+        normalized_values = torch.nn.functional.normalize(values, dim=-1)
+        normalized_queries = torch.nn.functional.normalize(queries, dim=-1)
+        latent_summary = torch.stack((
+            keys.norm(dim=-1), values.norm(dim=-1), queries.norm(dim=-1),
+            keys.mean(dim=-1), values.mean(dim=-1), queries.mean(dim=-1),
+            (normalized_keys * normalized_values).sum(-1),
+            (normalized_keys * normalized_queries).sum(-1),
+            (normalized_values * normalized_queries).sum(-1),
+        ), dim=-1).reshape(groups, capacity, -1)
+        features = torch.cat((features, latent_summary), dim=-1)
     outcomes = torch.stack([
         _outcomes(
-            model, batch, candidate.reshape_as(values), device=device)
+            model, batch, candidate.reshape_as(values), device=device,
+            query_trial=query_trial)
         for candidate in candidates
     ], dim=1)
     return (

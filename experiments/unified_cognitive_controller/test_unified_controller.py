@@ -295,6 +295,58 @@ def test_four_rule_support_is_identifiable_and_balanced() -> None:
         batch.correct_actions, 1 - reversed_batch.correct_actions)
 
 
+def test_contextual_mapping_requires_two_independent_supports() -> None:
+    batch = generate_lifetimes(
+        16, 6, seed=22, task="contextual_mapping", support_trials=2)
+    assert batch.context_ids is not None
+    assert sorted(batch.rule_bits.tolist()) == [0] * 4 + [1] * 4 + (
+        [2] * 4 + [3] * 4)
+    assert torch.equal(batch.context_ids[:, 0], torch.zeros(16, dtype=torch.long))
+    assert torch.equal(batch.context_ids[:, 1], torch.ones(16, dtype=torch.long))
+    expected = batch.stimulus_identities ^ (
+        (batch.rule_bits.unsqueeze(1) >> batch.context_ids) & 1)
+    assert torch.equal(batch.correct_actions, expected)
+
+    reversed_batch = generate_lifetimes(
+        16, 6, seed=22, task="contextual_mapping", support_trials=2,
+        reverse_rules=True)
+    assert torch.equal(batch.frames, reversed_batch.frames)
+    assert torch.equal(batch.context_ids, reversed_batch.context_ids)
+    assert torch.equal(
+        batch.correct_actions, 1 - reversed_batch.correct_actions)
+
+
+def test_contextual_override_is_a_strictly_easier_context_rung() -> None:
+    batch = generate_lifetimes(
+        16, 6, seed=23, task="contextual_override", support_trials=2)
+    assert batch.context_ids is not None
+    assert torch.equal(batch.context_ids[:, 0], torch.zeros(16, dtype=torch.long))
+    assert torch.equal(batch.context_ids[:, 1], torch.ones(16, dtype=torch.long))
+    mapping = batch.stimulus_identities ^ batch.rule_bits.unsqueeze(1)
+    expected = torch.where(
+        batch.context_ids == 0, mapping, torch.zeros_like(mapping))
+    assert torch.equal(batch.correct_actions, expected)
+    reversed_batch = generate_lifetimes(
+        16, 6, seed=23, task="contextual_override", support_trials=2,
+        reverse_rules=True)
+    assert torch.equal(batch.frames, reversed_batch.frames)
+    assert torch.equal(
+        batch.correct_actions, 1 - reversed_batch.correct_actions)
+
+
+def test_visible_context_counterfactual_changes_only_the_public_cue() -> None:
+    batch = generate_lifetimes(16, 6, seed=25, task="visible_context")
+    reversed_batch = generate_lifetimes(
+        16, 6, seed=25, task="visible_context", reverse_contexts=True)
+    assert batch.context_ids is not None
+    assert reversed_batch.context_ids is not None
+    assert not torch.equal(batch.frames, reversed_batch.frames)
+    assert torch.equal(batch.context_ids, 1 - reversed_batch.context_ids)
+    assert torch.equal(batch.correct_actions, batch.context_ids)
+    assert torch.equal(reversed_batch.correct_actions, reversed_batch.context_ids)
+    assert torch.equal(batch.correct_actions, 1 - reversed_batch.correct_actions)
+
+
 def test_hidden_rule_gate_requires_real_vision(monkeypatch) -> None:
     """A feedback-only shortcut must never be admitted as composition."""
     model = UnifiedCognitiveController()
@@ -336,6 +388,26 @@ def test_unified_controller_rollout_and_workspace_shapes() -> None:
     no_feedback = rollout(
         model, batch, sample_actions=False, feedback_trials=0)
     assert no_feedback["actions"].shape == (4, 3)
+
+
+def test_zero_initialized_relation_adapter_preserves_behavior() -> None:
+    base = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8)
+    adapted = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        relation_adapter_width=16, action_adapter_width=16,
+        action_adapter_gated=True)
+    missing, unexpected = adapted.load_state_dict(base.state_dict(), strict=False)
+    assert not unexpected
+    assert set(missing) == {
+        name for name in adapted.state_dict()
+        if name.startswith((
+            "relation_adapter.", "action_adapter.", "action_adapter_gate."))}
+    batch = generate_lifetimes(8, 4, seed=24)
+    base_result = rollout(base, batch, sample_actions=False)
+    adapted_result = rollout(adapted, batch, sample_actions=False)
+    assert torch.equal(base_result["logits"], adapted_result["logits"])
+    assert torch.equal(base_result["actions"], adapted_result["actions"])
 
 
 def test_attempted_loss_has_no_unattempted_target_argument() -> None:
