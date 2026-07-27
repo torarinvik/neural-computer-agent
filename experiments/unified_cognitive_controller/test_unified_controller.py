@@ -390,6 +390,98 @@ def test_visible_context_xor_is_a_pixel_level_composition_atom() -> None:
     assert not torch.equal(batch.frames, plain.frames)
 
 
+def test_every_contextual_operation_is_observationally_distinct() -> None:
+    """No two requested operations may share a rendering.
+
+    Identical frames with conflicting correct actions make the later task
+    unlearnable in principle and silently cap accuracy at chance, so the
+    operation cue must separate every contextual task we train on.
+    """
+    tasks = (
+        "visible_context", "visible_context_xor", "contextual_composition")
+    batches = {
+        task: generate_lifetimes(16, 6, seed=31, task=task, support_trials=1)
+        for task in tasks
+    }
+    for task, batch in batches.items():
+        assert batch.context_ids is not None, task
+    for first in tasks:
+        for second in tasks:
+            if first >= second:
+                continue
+            # Public events are shared by construction at a fixed seed, so any
+            # separation has to come from the cue rather than the content.
+            assert torch.equal(
+                batches[first].stimulus_identities,
+                batches[second].stimulus_identities)
+            assert torch.equal(
+                batches[first].context_ids, batches[second].context_ids)
+            assert not torch.equal(
+                batches[first].frames, batches[second].frames), (
+                    f"{first} and {second} render identically")
+
+
+def test_operation_cues_never_occlude_stimulus_or_context_pixels() -> None:
+    """A cue announces the operation; it must not damage the content.
+
+    A cue bar overlapping a glyph silently removes identity evidence, which
+    looks like a hard task rather than a broken rendering.
+    """
+    from experiments.unified_cognitive_controller.environment import (
+        _MASK_BANKS, _OPERATION_CUE_ROWS, IMAGE_SIZE)
+    glyphs = torch.zeros(IMAGE_SIZE, IMAGE_SIZE, dtype=torch.bool)
+    for bank in _MASK_BANKS.values():
+        glyphs |= bank.sum(dim=(0, 1)) > 0
+    contexts = torch.zeros_like(glyphs)
+    for y, x in ((3, 3), (IMAGE_SIZE - 4, IMAGE_SIZE - 4)):
+        contexts[y - 1:y + 2, x - 1:x + 2] = True
+    center = IMAGE_SIZE // 2
+    assert _OPERATION_CUE_ROWS, "expected at least one cued operation"
+    for task, (first, last) in _OPERATION_CUE_ROWS.items():
+        cue = torch.zeros_like(glyphs)
+        cue[first:last, center - 2:center + 3] = True
+        assert cue.any(), task
+        assert not (cue & glyphs).any(), f"{task} cue overlaps a stimulus glyph"
+        assert not (cue & contexts).any(), f"{task} cue overlaps a context bit"
+
+
+def test_contextual_composition_cue_does_not_disturb_the_xor_slot() -> None:
+    """The XOR cue is fixed by consolidated controllers and must not move."""
+    composition = generate_lifetimes(
+        16, 6, seed=33, task="contextual_composition", support_trials=1)
+    xor = generate_lifetimes(
+        16, 6, seed=33, task="visible_context_xor", support_trials=1)
+    plain = generate_lifetimes(
+        16, 6, seed=33, task="visible_context", support_trials=1)
+    from experiments.unified_cognitive_controller.environment import (
+        _OPERATION_CUE_ROWS)
+    size = composition.frames.shape[-1]
+    center = size // 2
+    columns = slice(center - 2, center + 3)
+    # The XOR span is a literal on purpose: promoted controllers read that
+    # exact band, so it is a contract rather than a detail to follow around.
+    assert _OPERATION_CUE_ROWS["visible_context_xor"] == (2, 5)
+    composition_rows = _OPERATION_CUE_ROWS["contextual_composition"]
+    assert composition_rows != (2, 5)
+    # Each operation lights its own slot and leaves the other one alone.
+    assert torch.all(xor.frames[:, :, :, 2:5, columns] == 0.98)
+    assert torch.equal(
+        composition.frames[:, :, :, 2:5, columns],
+        plain.frames[:, :, :, 2:5, columns])
+    first, last = composition_rows
+    assert torch.all(composition.frames[:, :, :, first:last, columns] == 0.98)
+    assert torch.equal(
+        xor.frames[:, :, :, first:last, columns],
+        plain.frames[:, :, :, first:last, columns])
+    # Removing a cue bar recovers the direct-context rendering exactly, which
+    # is what the cue-ablation audit relies on.
+    for batch, rows in ((xor, (2, 5)), (composition, composition_rows)):
+        restored = batch.frames.clone()
+        restored[:, :, :, rows[0]:rows[1], columns] = (
+            plain.frames[:, :, :, rows[0]:rows[1], columns])
+        assert torch.equal(restored, plain.frames)
+
+
 def test_hidden_rule_gate_requires_real_vision(monkeypatch) -> None:
     """A feedback-only shortcut must never be admitted as composition."""
     model = UnifiedCognitiveController()
@@ -453,6 +545,65 @@ def test_zero_initialized_relation_adapter_preserves_behavior() -> None:
     adapted_result = rollout(adapted, batch, sample_actions=False)
     assert torch.equal(base_result["logits"], adapted_result["logits"])
     assert torch.equal(base_result["actions"], adapted_result["actions"])
+
+
+def test_skill_adapter_stack_inserts_exactly_behavior_preserving_slots(
+        ) -> None:
+    """Successor slots must be free to add and inert until they are trained."""
+    occupied = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        relation_adapter_width=16, relation_adapter_gated=True,
+        action_adapter_width=16, action_adapter_gated=True)
+    # An empty stack contributes no state at all, so promoted checkpoints
+    # written before the stack existed still load strictly.
+    assert not [
+        name for name in occupied.state_dict()
+        if name.startswith("skill_adapter")]
+    for slots in ((16,), (16, 24)):
+        extended = UnifiedCognitiveController(
+            width=32, workspace_slots=4, intention_width=8,
+            relation_adapter_width=16, relation_adapter_gated=True,
+            action_adapter_width=16, action_adapter_gated=True,
+            skill_adapter_widths=slots)
+        missing, unexpected = extended.load_state_dict(
+            occupied.state_dict(), strict=False)
+        assert not unexpected
+        assert set(missing) == {
+            name for name in extended.state_dict()
+            if name.startswith("skill_adapter")}
+        assert len(extended.skill_adapters) == len(slots)
+        batch = generate_lifetimes(8, 4, seed=41)
+        before = rollout(occupied, batch, sample_actions=False)
+        after = rollout(extended, batch, sample_actions=False)
+        assert torch.equal(before["logits"], after["logits"])
+        assert torch.equal(before["actions"], after["actions"])
+    # A trained slot must actually be able to change behavior, otherwise the
+    # exactness above would be hiding a dead module.
+    live = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        skill_adapter_widths=(16,))
+    with torch.no_grad():
+        live.skill_adapters[0][-1].bias.fill_(1.5)
+    plain = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8)
+    live.load_state_dict(plain.state_dict(), strict=False)
+    with torch.no_grad():
+        live.skill_adapters[0][-1].bias.fill_(1.5)
+    batch = generate_lifetimes(8, 4, seed=42)
+    assert not torch.equal(
+        rollout(plain, batch, sample_actions=False)["logits"],
+        rollout(live, batch, sample_actions=False)["logits"])
+
+
+def test_skill_adapter_widths_are_validated() -> None:
+    for slots in ((0,), (16, -1)):
+        try:
+            UnifiedCognitiveController(
+                width=32, workspace_slots=4, intention_width=8,
+                skill_adapter_widths=slots)
+        except ValueError:
+            continue
+        raise AssertionError(f"accepted invalid skill adapter widths {slots}")
 
 
 def test_attempted_loss_has_no_unattempted_target_argument() -> None:

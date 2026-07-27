@@ -190,7 +190,9 @@ def evaluate(
     if second_support_removed is not None:
         report["second_support_feedback_removed"] = _metrics(
             second_support_removed, query_start=feedback_trials)
-        assert normal_batch.context_ids is not None
+    if normal_batch.context_ids is not None:
+        # Per-context accuracy needs only the normal rollout, so it is
+        # available at every support budget, including the one-support rungs.
         query_contexts = normal_batch.context_ids[:, feedback_trials:]
         normal_rewards = normal["rewards"][:, feedback_trials:]
         report["normal_query_accuracy_by_context"] = {
@@ -235,11 +237,13 @@ def evaluate(
     if task in (
             "contextual_mapping", "contextual_override",
             "contextual_composition"):
-        assert second_support_removed is not None
         report["gate"]["both_contexts_mastered"] = all(
             accuracy >= 0.85
             for accuracy in report["normal_query_accuracy_by_context"].values())
         if task == "contextual_mapping":
+            # Only this task gates on the second support outcome, which the
+            # one-support rungs never render.
+            assert second_support_removed is not None
             report["gate"]["second_support_evidence_hurts"] = (
                 report["second_support_feedback_removed"]["post_feedback_accuracy"]
                 <= normal_post - 0.15)

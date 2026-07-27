@@ -1030,3 +1030,35 @@ and 2,304 verifier bits on all three seeds. Median transfer ratio: **1.118×**.
 The fresh learner remained at chance through 80 updates. The promoted
 seed-8413 run also passed operation-cue removal, blank-vision, pixel reversal,
 dual-retention, frozen-base, checkpoint-reload, and shuffled-teacher controls.
+
+## 2026-07-27 — Correction: that threshold estimator was not robust
+
+The three-seed table above does not reproduce. Rerunning the identical
+configurations on CUDA moved the thresholds by up to twelve updates, and the
+runs are bit-deterministic there, so nothing but floating-point rounding
+changed. A step function over single runs on a coarse budget grid cannot carry
+this claim. Re-measured on eight seeds, that same estimator puts the old parent
+ahead on two of them and gives a median of 1.098×.
+
+The finding itself is real and larger than reported; only the metric was
+fragile. Interpolating each seed's held-out accuracy curve to a fixed target and
+pairing within seed:
+
+| Rung | New task | Ratio at 85% | Ratio at 90% | Pooled accuracy advantage |
+|---|---|---:|---:|---:|
+| third | `visible_context_xor` (visible, 1 support) | **1.231** (8/8, p=0.008) | 1.192 (7/8, p=0.070) | +4.81 pts, 104 cells, p=1.5e-8 |
+| fourth | `contextual_composition` (hidden rule, 2 support) | **1.083** (8/8, p=0.008) | 1.116 (6/8, p=0.289) | +1.16 pts, 56 cells, p=0.105 |
+
+Arms differ by exactly one rung of ancestry; eight paired seeds each.
+
+**The advantage does not compound — it shrank.** The fourth rung keeps a small
+consistently signed saving at the 85% target and loses it by 95%. Its cost
+appears instead as interference: the three-skill ancestry failed the
+`visible_context` retention gate 14 times in 32 runs against the two-skill
+arm's 1, that skill being the new composition's nearest neighbour. Retention
+burden, not acquisition speed, limits this ladder.
+
+Caveats: the two rungs differ in task family and in budget scale (tens of
+updates against hundreds), and the fourth is mastered at two support outcomes
+rather than one. Full record in
+`session_records/rung4_race_2026-07-27/`.

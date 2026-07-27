@@ -120,6 +120,15 @@ _MASK_BANKS = {
     "dot_pairs": _dot_pair_mask_bank(),
 }
 
+# Row span of each requested operation's public cue bar. Contextual tasks
+# without an entry carry no bar, which is itself the direct-context code. Every
+# span must fall in a band no stimulus glyph and no corner context marker can
+# reach, so announcing the operation never occludes the content it applies to.
+_OPERATION_CUE_ROWS = {
+    "visible_context_xor": (2, 5),
+    "contextual_composition": (IMAGE_SIZE - 3, IMAGE_SIZE),
+}
+
 
 def generate_lifetimes(
         count: int, trials: int, *, seed: int, heldout: bool = False,
@@ -238,12 +247,17 @@ def generate_lifetimes(
         for context, (y, x) in enumerate(context_positions):
             selected = context_ids == context
             frames[selected, :, y - 1:y + 2, x - 1:x + 2] = 0.98
-        if task in ("visible_context_xor", "contextual_composition"):
-            # Public visual operation cue. Without it, the old direct-context
-            # task and its XOR successor have identical observations while
-            # demanding conflicting actions.
-            center = IMAGE_SIZE // 2
-            frames[:, :, :, 2:5, center - 2:center + 3] = 0.98
+        # Public visual operation cue. Without it, the direct-context task and
+        # its successors have identical observations while demanding
+        # conflicting actions. Each requested operation owns one cue slot, so
+        # every contextual task remains observationally distinguishable; the
+        # XOR slot is fixed by already-consolidated controllers.
+        center = IMAGE_SIZE // 2
+        cue_rows = _OPERATION_CUE_ROWS.get(task)
+        if cue_rows is not None:
+            frames[
+                :, :, :, cue_rows[0]:cue_rows[1],
+                center - 2:center + 3] = 0.98
 
     if task == "constant_action":
         correct = rule_bits.unsqueeze(1).expand(-1, trials).clone()

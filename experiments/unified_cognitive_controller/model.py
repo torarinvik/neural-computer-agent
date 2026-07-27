@@ -70,7 +70,8 @@ class UnifiedCognitiveController(nn.Module):
             relation_adapter_width: int = 0,
             relation_adapter_gated: bool = False,
             action_adapter_width: int = 0,
-            action_adapter_gated: bool = False) -> None:
+            action_adapter_gated: bool = False,
+            skill_adapter_widths: tuple[int, ...] = ()) -> None:
         super().__init__()
         if (
                 width < 16 or workspace_slots < 1 or intention_width < 2
@@ -78,7 +79,8 @@ class UnifiedCognitiveController(nn.Module):
                 or adaptive_memory_replace_hidden < 1
                 or adaptive_memory_replace_features < 5
                 or relation_adapter_width < 0
-                or action_adapter_width < 0):
+                or action_adapter_width < 0
+                or any(value < 1 for value in skill_adapter_widths)):
             raise ValueError("controller dimensions are too small")
         self.width = width
         self.workspace_slots = workspace_slots
@@ -92,6 +94,7 @@ class UnifiedCognitiveController(nn.Module):
         self.relation_adapter_gated = relation_adapter_gated
         self.action_adapter_width = action_adapter_width
         self.action_adapter_gated = action_adapter_gated
+        self.skill_adapter_widths = tuple(skill_adapter_widths)
         self.vision = VisionEventEncoder(width)
         self.action_embedding = nn.Embedding(ACTIONS + 1, width // 4)
         feedback_width = width // 4
@@ -150,6 +153,26 @@ class UnifiedCognitiveController(nn.Module):
             # moderately open gate preserves behavior while avoiding the
             # near-zero gradients caused by a saturated closed gate.
             nn.init.constant_(self.action_adapter_gate.bias, -2.0)
+        # Indexable successor slots for later primitives. The two adapters
+        # above were each claimed by one earlier rung; this stack lets rung N
+        # add exactly one fresh zero-output residual without renaming or
+        # reshaping anything an already promoted checkpoint stored. An empty
+        # stack contributes no state, so older checkpoints load unchanged.
+        self.skill_adapters = nn.ModuleList()
+        self.skill_adapter_gates = nn.ModuleList()
+        for slot_width in self.skill_adapter_widths:
+            adapter = nn.Sequential(
+                nn.Linear(width * 2, slot_width),
+                nn.GELU(),
+                nn.Linear(slot_width, intention_width),
+            )
+            nn.init.zeros_(adapter[-1].weight)
+            nn.init.zeros_(adapter[-1].bias)
+            self.skill_adapters.append(adapter)
+            gate = nn.Linear(width * 2, 1)
+            nn.init.zeros_(gate.weight)
+            nn.init.constant_(gate.bias, -2.0)
+            self.skill_adapter_gates.append(gate)
         self.memory_key = nn.Linear(width * 2, width)
         self.memory_value = nn.Linear(width * 2, width)
         self.memory_write = nn.Linear(width * 2, 1)
@@ -202,8 +225,12 @@ class UnifiedCognitiveController(nn.Module):
             raise ValueError(
                 "replacement features must have shape "
                 f"[batch, options, {self.adaptive_memory_replace_features}]")
+        # The leading slice is contiguous only when no extra feature is
+        # present. Materializing it keeps the base-five scores bit-identical
+        # across widths, so adding a zero-initialized statistic is exactly
+        # behavior-preserving rather than merely close.
         scores = self.memory_replacement_gate(
-            option_features[..., :5]).squeeze(-1)
+            option_features[..., :5].contiguous()).squeeze(-1)
         if self.memory_replacement_extra_gate is not None:
             scores = scores + self.memory_replacement_extra_gate(
                 option_features[..., 5:]).squeeze(-1)
@@ -270,6 +297,14 @@ class UnifiedCognitiveController(nn.Module):
                 relation_residual = relation_residual * torch.sigmoid(
                     self.relation_adapter_gate(relation_features))
             intention = intention + relation_residual
+        if len(self.skill_adapters):
+            # Successor slots read the same generic prior-state/query-event
+            # pair as the legacy adapters: no task, context, or action label.
+            slot_features = torch.cat([state.hidden, event], dim=-1)
+            for adapter, gate in zip(
+                    self.skill_adapters, self.skill_adapter_gates):
+                intention = intention + adapter(slot_features) * torch.sigmoid(
+                    gate(slot_features))
         memory_context = torch.cat([hidden, read], dim=-1)
         logits = self.actuator(intention)
         if self.action_adapter is not None:
