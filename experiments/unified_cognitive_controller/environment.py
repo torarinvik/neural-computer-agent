@@ -120,13 +120,18 @@ _MASK_BANKS = {
     "dot_pairs": _dot_pair_mask_bank(),
 }
 
-# Row span of each requested operation's public cue bar. Contextual tasks
-# without an entry carry no bar, which is itself the direct-context code. Every
-# span must fall in a band no stimulus glyph and no corner context marker can
-# reach, so announcing the operation never occludes the content it applies to.
-_OPERATION_CUE_ROWS = {
-    "visible_context_xor": (2, 5),
-    "contextual_composition": (IMAGE_SIZE - 3, IMAGE_SIZE),
+# Public cue slot of each requested operation, as (rows, columns). Contextual
+# tasks without an entry carry no bar, which is itself the direct-context code.
+# Every slot must fall where no stimulus glyph and no corner context marker can
+# reach, so announcing the operation never occludes the content it applies to,
+# and no two operations may share a slot or they render identically while
+# demanding different actions. The XOR and composition slots are fixed by
+# already promoted controllers and must not move.
+_OPERATION_CUE_SLOTS = {
+    "visible_context_xor": ((2, 5), (14, 19)),
+    "contextual_composition": ((IMAGE_SIZE - 3, IMAGE_SIZE), (14, 19)),
+    "contextual_override": ((0, 3), (5, 10)),
+    "contextual_mapping": ((0, 3), (19, 24)),
 }
 
 
@@ -252,12 +257,12 @@ def generate_lifetimes(
         # conflicting actions. Each requested operation owns one cue slot, so
         # every contextual task remains observationally distinguishable; the
         # XOR slot is fixed by already-consolidated controllers.
-        center = IMAGE_SIZE // 2
-        cue_rows = _OPERATION_CUE_ROWS.get(task)
-        if cue_rows is not None:
+        cue_slot = _OPERATION_CUE_SLOTS.get(task)
+        if cue_slot is not None:
+            (first_row, last_row), (first_column, last_column) = cue_slot
             frames[
-                :, :, :, cue_rows[0]:cue_rows[1],
-                center - 2:center + 3] = 0.98
+                :, :, :, first_row:last_row,
+                first_column:last_column] = 0.98
 
     if task == "constant_action":
         correct = rule_bits.unsqueeze(1).expand(-1, trials).clone()

@@ -1062,3 +1062,52 @@ Caveats: the two rungs differ in task family and in budget scale (tens of
 updates against hundreds), and the fourth is mastered at two support outcomes
 rather than one. Full record in
 `session_records/rung4_race_2026-07-27/`.
+
+## 2026-07-27 — Rungs that cost the earlier skills nothing
+
+The entry above found that interference, not acquisition speed, limits this
+ladder: each rung took about 1.8 accuracy points off `visible_context`, its
+nearest neighbour, against a 0.90 gate, which put the ladder about three rungs
+from failing.
+
+That constraint is removed by one change. A successor slot adds
+`adapter(features) * gate(features)` to the intention on **every** event,
+including events of skills it has nothing to do with. A sigmoid gate is bounded
+away from zero, so that perturbation is never absent, only small — the shape of
+a quantity that accumulates. A **rectified** gate reaches exact zero, and on a
+frozen bit-identical base an exactly-zero residual leaves old behavior untouched
+by construction rather than by training pressure.
+
+Same evaluation lifetimes for every row:
+
+| controller | binary_mapping | visible_context | visible_context_xor | composition |
+|---|---:|---:|---:|---:|
+| rung 3 (inherited) | 0.9781 | 0.9359 | 0.9250 | 0.4797 |
+| rung 4, sigmoid gate | 0.9736 | 0.9224 | 0.9235 | 0.9949 |
+| **rung 4, rectified gate** | **0.9781** | **0.9362** | **0.9250** | **1.0000** |
+
+The rectified rung adds a fourth primitive at 100% while leaving all three
+inherited skills unchanged, two of them to four decimal places.
+
+It holds across a further rung. Training `contextual_override` on the rectified
+four-skill controller, replaying all four earlier primitives, the sigmoid arm
+loses **2.9 points** of `visible_context` in that single rung (6/6 seeds
+negative, p=0.031) while the rectified arm loses **0.004** — 725× less — with a
+higher new-skill accuracy (0.9999 against 0.9989). Measured selectivity: the
+rectified slot is exactly shut on 99.1% of old-skill events; a sigmoid slot is
+exactly shut on 0.0%, structurally.
+
+Three interventions that failed first, and are worth not repeating: pricing the
+gate opening (opening fell fortyfold, degradation got *worse*, because the
+adapter grew its output to compensate); raising the fixed retention price (a
+hard frontier — weight 8 removes degradation and drops the new skill to 0.63);
+and proportional set-point control on that price (flat to worse in gain). All
+three tried to pay for locality the architecture could not represent.
+
+Caveats: rectified gates die on about 8% of seeds (dying rectifier, detectable
+because the slot is shut on 100% of its own events); rung 5's task fails the
+counterfactual gates for both arms because its context-one branch is a
+memorisable constant, so nothing at rung 5 is promoted. Full record in
+`session_records/rung5_2026-07-27/`.
+
+**Interference no longer bounds this ladder's length. What does is now unknown.**

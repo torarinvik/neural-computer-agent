@@ -1,0 +1,116 @@
+{
+  "schema": "non-accumulation-ledger-v1",
+  "question": "Can a new rung be added without degrading the skills already held?",
+  "answer": "Yes, once a successor slot's gate can shut exactly. Per-rung cost to the nearest-neighbour skill falls from about 1.4 accuracy points to zero, with no loss of new-skill accuracy.",
+  "device": "2x NVIDIA RTX 5090, torch 2.12.0+cu130, runs verified bit-deterministic",
+  "mechanism": {
+    "statement": "A slot adds adapter(features) * gate(features) to the intention on every event, including events of skills it has nothing to do with. A sigmoid gate is bounded away from zero, so that perturbation is never absent, only small, which is the shape of a quantity that accumulates. A rectified gate reaches exact zero, and an exactly-zero residual on a frozen bit-identical base leaves old behavior untouched by construction.",
+    "measured_selectivity_promoted": {
+      "open_fraction_on_own_task": 1.0,
+      "exactly_shut_fraction_binary_mapping": 0.9848,
+      "exactly_shut_fraction_visible_context": 0.9659,
+      "exactly_shut_fraction_visible_context_xor": 0.9869,
+      "sigmoid_exactly_shut_fraction": 0.0,
+      "sigmoid_note": "structurally zero; a sigmoid cannot output exact zero"
+    }
+  },
+  "ladder_on_identical_evaluation_lifetimes": {
+    "evaluation_seed": 555000,
+    "lifetimes": 1024,
+    "rows": [
+      {"controller": "rung3 inherited", "binary_mapping": 0.9781, "visible_context": 0.9359, "visible_context_xor": 0.9250, "contextual_composition": 0.4797},
+      {"controller": "rung4 sigmoid gate", "binary_mapping": 0.9736, "visible_context": 0.9224, "visible_context_xor": 0.9235, "contextual_composition": 0.9949},
+      {"controller": "rung4 rectified gate", "binary_mapping": 0.9781, "visible_context": 0.9362, "visible_context_xor": 0.9250, "contextual_composition": 1.0}
+    ],
+    "conclusion": "The rectified rung adds a fourth primitive at 100% while leaving all three inherited skills unchanged, two of them to four decimal places. The sigmoid rung costs 1.35 points of visible_context, 0.45 of binary_mapping and 0.15 of the XOR."
+  },
+  "rung5_interference_probe": {
+    "new_task": "contextual_override",
+    "parent": "artifacts/checkpoints/unified_four_skill_rectified_seed8414.pt",
+    "replay_tasks": ["binary_mapping", "visible_context", "visible_context_xor", "contextual_composition"],
+    "seeds": 6,
+    "steps": 6144,
+    "rectified": {
+      "live_runs": 4,
+      "dead_gate_runs": 2,
+      "new_skill": 0.9999,
+      "exactly_shut_on_old_events": 0.991,
+      "delta_binary_mapping": -0.00005,
+      "delta_visible_context": -0.00004,
+      "delta_visible_context_xor": 0.00016,
+      "delta_contextual_composition": 0.0,
+      "worst_delta_mean": -0.00005,
+      "worst_delta_exactly_zero_runs": 3
+    },
+    "sigmoid": {
+      "live_runs": 6,
+      "dead_gate_runs": 0,
+      "new_skill": 0.9989,
+      "exactly_shut_on_old_events": 0.0,
+      "delta_binary_mapping": -0.01439,
+      "delta_visible_context": -0.029,
+      "delta_visible_context_xor": -0.00429,
+      "delta_contextual_composition": -0.00055,
+      "sign_test_p_visible_context": 0.031,
+      "sign_test_p_binary_mapping": 0.031,
+      "worst_delta_mean": -0.029,
+      "worst_delta_exactly_zero_runs": 0
+    },
+    "ratio_of_nearest_neighbour_degradation": 725,
+    "status": "interference probe, not a promoted rung"
+  },
+  "robustness_panel": {
+    "seeds": 12,
+    "rung": 4,
+    "gate": "rectified linear",
+    "live": 11,
+    "dead_gate": 1,
+    "dead_gate_rate": 0.08,
+    "gates_passed_among_live": "11/11",
+    "mean_new_skill": 0.9929,
+    "mean_worst_delta": -0.00095,
+    "exactly_zero_worst_delta_runs": 5,
+    "mean_exactly_shut_on_old_events": 0.938
+  },
+  "rejected_interventions": [
+    {
+      "name": "price the gate opening on replayed events",
+      "result": "opening fell from 0.410 to 0.0101 while degradation worsened from -0.0132 to -0.0327",
+      "cause": "the adapter grew its output to compensate; residual norm fell only 0.80 to 0.48 while the norm on the new task rose 4.76 to 6.06",
+      "lesson": "a price on a proxy the model can route around buys nothing"
+    },
+    {
+      "name": "raise the fixed retention price",
+      "result": "weight 2.0 halves degradation at no accuracy cost; weight 8 nearly removes it with the new skill at 0.63; weight 32 removes it with the new skill at chance",
+      "lesson": "a hard frontier; no scalar setting buys both"
+    },
+    {
+      "name": "proportional set-point control on the retention price",
+      "result": "flat to worse in gain, -0.0063 at gain 0 against -0.0096 at gain 160",
+      "lesson": "more pressure cannot buy selectivity the mechanism cannot express"
+    }
+  ],
+  "promoted": {
+    "checkpoint": "artifacts/checkpoints/unified_four_skill_rectified_seed8414.pt",
+    "sha256": "5b31db65ff84fea10aec6c711f358c089066cde55558a33080e78d0c3f22acb7",
+    "seed": 8414,
+    "optimizer_updates": 6144,
+    "gate_mode": "relu",
+    "held_out_lifetimes": 2048,
+    "new_skill_accuracy": 0.9995,
+    "delta_binary_mapping": 0.0,
+    "delta_visible_context": 0.00073,
+    "delta_visible_context_xor": -0.00008,
+    "operation_cue_ablation_accuracy": 0.5034,
+    "frozen_base_bit_identical": true,
+    "reload_audit_all_four_skills_pass": true,
+    "reload_composition_accuracy": 1.0
+  },
+  "open": [
+    "Rectified gates die on about 8% of seeds, the classic dying-rectifier failure in which the gate shuts everywhere before learning where to open and is then without gradient. Detectable because the slot is shut on 100% of its own task's events, but unfixed.",
+    "Rung 5's task fails the counterfactual gates for both arms because contextual_override's context-one branch is a memorisable constant, so no rung-5 controller is promoted here.",
+    "The rung-5 harness replays and evaluates every old skill at one support outcome while contextual_composition was acquired at two, so that skill's retention gate is not required of either arm.",
+    "Interference no longer bounds the ladder's length. What does bound it is now unknown."
+  ],
+  "claim_boundary": "Two consecutive rungs, one architecture, one task family, six to twelve seeds per measurement. This shows exact-zero gating removes the measured per-rung interference in this ladder; it is not a general claim about continual learning."
+}

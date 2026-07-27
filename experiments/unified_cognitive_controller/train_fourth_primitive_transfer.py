@@ -26,19 +26,149 @@ from pathlib import Path
 import torch
 from torch import nn
 
-from .distill_visible_context import _trajectory_loss
-from .environment import CognitiveLifetimeBatch, generate_lifetimes
+from .distill_visible_context import _distillation_loss, _trajectory_loss
+from .environment import (
+    NULL_ACTION, CognitiveLifetimeBatch, generate_lifetimes)
 from .model import UnifiedCognitiveController
 from .train import attempted_success_loss, evaluate, rollout, seed_everything
 
 
-NEW_TASK = "contextual_composition"
-REPLAY_TASKS = ("binary_mapping", "visible_context", "visible_context_xor")
+DEFAULT_NEW_TASK = "contextual_composition"
+DEFAULT_REPLAY_TASKS = (
+    "binary_mapping", "visible_context", "visible_context_xor")
+# Kept for importers and tests that pin the fourth rung's own pair.
+NEW_TASK = DEFAULT_NEW_TASK
+REPLAY_TASKS = DEFAULT_REPLAY_TASKS
 
 
 def _plastic_prefixes(slot: int) -> tuple[str, ...]:
     """Name only the slot this rung appends, so earlier slots stay frozen."""
     return (f"skill_adapters.{slot}.", f"skill_adapter_gates.{slot}.")
+
+
+def _replay_loss_and_leakage(
+        student: UnifiedCognitiveController,
+        teacher: UnifiedCognitiveController, batch, *, slot: int,
+        feedback_trials: int,
+        shuffled_teacher: bool,
+        ) -> tuple[torch.Tensor, torch.Tensor, float]:
+    """Distil old behavior and measure how far the new slot opens doing it.
+
+    Same trajectory distillation as the third rung, but it also returns the
+    mean opening of this rung's slot on these replayed events. A slot that
+    stays shut here cannot disturb the skill being replayed, so the opening is
+    a direct, label-free price for interference: the verifier already chose
+    which generator produced this batch, and the controller still sees no task
+    identity.
+    """
+    count = batch.batch_size
+    device = batch.frames.device
+    student_state = student.initial_state(count, device=device)
+    teacher_state = teacher.initial_state(count, device=device)
+    null = torch.full((count,), NULL_ACTION, dtype=torch.long, device=device)
+    student_action = teacher_action = null
+    student_reward = teacher_reward = torch.zeros(count, device=device)
+    losses = []
+    openings = []
+    query_rewards = []
+    for trial in range(batch.trials):
+        feedback = torch.full_like(
+            student_reward, float(0 < trial <= feedback_trials))
+        student_output, student_state = student.step(
+            batch.frames[:, trial], student_state, student_action,
+            student_reward * feedback, feedback)
+        with torch.no_grad():
+            teacher_output, teacher_state = teacher.step(
+                batch.frames[:, trial], teacher_state, teacher_action,
+                teacher_reward * feedback, feedback)
+            target = (
+                teacher_output.logits.roll(1, dims=0) if shuffled_teacher
+                else teacher_output.logits)
+        losses.append(_distillation_loss(student_output.logits, target))
+        # The disturbance to price is the residual the slot actually adds, not
+        # the gate opening: penalising the opening alone lets the adapter grow
+        # its output to compensate, which is what happened when the opening
+        # fell fortyfold and retention still got worse.
+        assert student_output.skill_adapter_residual_norms is not None
+        openings.append(
+            student_output.skill_adapter_residual_norms[:, slot])
+        student_action = student_output.logits.detach().argmax(-1)
+        teacher_action = teacher_output.logits.argmax(-1)
+        student_reward = (
+            student_action == batch.correct_actions[:, trial]).float()
+        teacher_reward = (
+            teacher_action == batch.correct_actions[:, trial]).float()
+        if trial >= feedback_trials:
+            query_rewards.append(student_reward)
+    student_accuracy = float(torch.stack(query_rewards).mean())
+    return (
+        torch.stack(losses).mean(), torch.stack(openings).mean(),
+        student_accuracy)
+
+
+@torch.no_grad()
+def _slot_opening(
+        model: UnifiedCognitiveController, *, slot: int, task: str,
+        count: int, seed: int, support_trials: int,
+        device: torch.device) -> tuple[float, float]:
+    """Mean opening of one slot, and how often it is exactly shut."""
+    batch = generate_lifetimes(
+        count, 6, seed=seed, heldout=True, task=task,
+        support_trials=support_trials, device=device)
+    state = model.initial_state(count, device=device)
+    action = torch.full(
+        (count,), NULL_ACTION, dtype=torch.long, device=device)
+    reward = torch.zeros(count, device=device)
+    openings = []
+    for trial in range(batch.trials):
+        feedback = torch.full_like(
+            reward, float(0 < trial <= support_trials))
+        output, state = model.step(
+            batch.frames[:, trial], state, action, reward * feedback,
+            feedback)
+        assert output.skill_adapter_openings is not None
+        openings.append(output.skill_adapter_openings[:, slot])
+        action = output.logits.argmax(-1)
+        reward = (action == batch.correct_actions[:, trial]).float()
+    stacked = torch.stack(openings)
+    # The fraction of events the slot is exactly shut on is the property that
+    # matters: only an exact zero leaves an inherited skill untouched, and a
+    # sigmoid gate can never produce one.
+    return float(stacked.mean()), float((stacked == 0).float().mean())
+
+
+@torch.no_grad()
+def _slot_residual_norm(
+        model: UnifiedCognitiveController, *, slot: int, task: str,
+        count: int, seed: int, support_trials: int,
+        device: torch.device) -> float:
+    """Mean norm of the perturbation one slot actually adds to the intention.
+
+    The gate opening alone is not the disturbance: a nearly shut gate on a
+    large residual still moves the answer, so this is the quantity a locality
+    price has to act on.
+    """
+    batch = generate_lifetimes(
+        count, 6, seed=seed, heldout=True, task=task,
+        support_trials=support_trials, device=device)
+    state = model.initial_state(count, device=device)
+    action = torch.full(
+        (count,), NULL_ACTION, dtype=torch.long, device=device)
+    reward = torch.zeros(count, device=device)
+    norms = []
+    for trial in range(batch.trials):
+        feedback = torch.full_like(
+            reward, float(0 < trial <= support_trials))
+        output, state = model.step(
+            batch.frames[:, trial], state, action, reward * feedback,
+            feedback)
+        # Read the norm the controller itself computed, so this never has to
+        # reimplement the gate and cannot drift from the active gate mode.
+        assert output.skill_adapter_residual_norms is not None
+        norms.append(output.skill_adapter_residual_norms[:, slot])
+        action = output.logits.argmax(-1)
+        reward = (action == batch.correct_actions[:, trial]).float()
+    return float(torch.stack(norms).mean())
 
 
 def _headline_accuracy(evaluation: dict) -> float:
@@ -88,7 +218,8 @@ def _new_skill_loss(
 @torch.no_grad()
 def _operation_cue_ablation_accuracy(
         model: UnifiedCognitiveController, *, count: int, seed: int,
-        device: torch.device, support_trials: int) -> float:
+        device: torch.device, support_trials: int,
+        new_task: str = DEFAULT_NEW_TASK) -> float:
     """Rerender the same public events without the operation-mode symbol.
 
     The composition cue is the only pixel difference from the direct-context
@@ -97,7 +228,7 @@ def _operation_cue_ablation_accuracy(
     """
     marked = generate_lifetimes(
         count, 6, seed=seed, heldout=True,
-        task=NEW_TASK, support_trials=support_trials, device=device)
+        task=new_task, support_trials=support_trials, device=device)
     unmarked = generate_lifetimes(
         count, 6, seed=seed, heldout=True,
         task="visible_context", support_trials=support_trials,
@@ -139,6 +270,32 @@ def main() -> None:
         help=("support outcomes on the new task only; the graduated rungs "
               "start above one and the final rung must reach one. Replay "
               "always uses the one support the teacher consolidated at."))
+    parser.add_argument(
+        "--new-task", default=DEFAULT_NEW_TASK,
+        help="the primitive this rung acquires")
+    parser.add_argument(
+        "--replay-tasks", default=",".join(DEFAULT_REPLAY_TASKS),
+        help="comma separated primitives the parent already holds")
+    parser.add_argument(
+        "--slot-gate-hidden", type=int, default=0,
+        help=("hidden units in the new slot's gate; zero keeps the single "
+              "hyperplane, which limits how cleanly a slot can separate its "
+              "own events from every earlier skill's"))
+    parser.add_argument(
+        "--slot-gate-mode", choices=("sigmoid", "relu"), default="sigmoid",
+        help=("rectified gates can shut exactly, so a slot can be genuinely "
+              "inert outside its own operation; sigmoid never reaches zero"))
+    parser.add_argument(
+        "--retention-control-gain", type=float, default=0.0,
+        help=("proportional gain on each old skill's shortfall against the "
+              "level it was inherited at; zero reproduces the fixed price"))
+    parser.add_argument(
+        "--retention-tracking-decay", type=float, default=0.9,
+        help="smoothing on the measured replay accuracy the control acts on")
+    parser.add_argument(
+        "--locality-weight", type=float, default=0.0,
+        help=("price the new slot's mean opening on replayed old-skill "
+              "events; zero reproduces the unpriced rung"))
     parser.add_argument("--learning-rate", type=float, default=1e-2)
     parser.add_argument(
         "--shuffle-retention-teacher", action="store_true",
@@ -157,6 +314,13 @@ def main() -> None:
         raise ValueError("the new plastic slot must have positive width")
     if not 1 <= args.new_support_trials < 6:
         raise ValueError("new-task support trials must be between 1 and 5")
+    new_task = args.new_task
+    replay_tasks = tuple(
+        name for name in args.replay_tasks.split(",") if name)
+    if not replay_tasks:
+        raise ValueError("a rung must replay at least one earlier primitive")
+    if new_task in replay_tasks:
+        raise ValueError("the new primitive cannot also be a replay task")
 
     seed_everything(args.seed)
     device = torch.device(args.device)
@@ -170,6 +334,8 @@ def main() -> None:
     plastic_prefixes = _plastic_prefixes(new_slot)
     configuration["skill_adapter_widths"] = (
         inherited_slots + (args.skill_adapter_width,))
+    configuration["skill_adapter_gate_mode"] = args.slot_gate_mode
+    configuration["skill_adapter_gate_hidden"] = args.slot_gate_hidden
     student = UnifiedCognitiveController(**configuration).to(device)
     missing, unexpected = student.load_state_dict(
         teacher.state_dict(), strict=False)
@@ -203,13 +369,29 @@ def main() -> None:
 
     # A retention gate is only required where the frozen parent already had
     # the skill, so arms with different histories stay comparable.
-    parent_retention = {
+    # Evaluated on exactly the seeds the student's retention will use. A set
+    # point measured on different lifetimes than the outcome would make the
+    # per-rung degradation a difference of two noisy numbers, and evaluation
+    # noise here is the same size as the effect being measured.
+    parent_evaluations = {
         task: evaluate(
             teacher, count=args.test_lifetimes, trials=6,
-            seed=args.seed + 80_000_000 + index, device=device,
-            task=task, feedback_trials=1)["gate"]["accepted"]
-        for index, task in enumerate(REPLAY_TASKS)
+            seed=args.seed + 91_000_000 + index, device=device,
+            task=task, feedback_trials=1)
+        for index, task in enumerate(replay_tasks)
     }
+    parent_retention = {
+        task: evaluation["gate"]["accepted"]
+        for task, evaluation in parent_evaluations.items()
+    }
+    # The level each old skill arrives at is the level it should leave at. These
+    # are the controller's set points; nothing here reaches the learner, which
+    # still sees only frames, its own actions, and scalar outcomes.
+    retention_set_point = {
+        task: _headline_accuracy(evaluation)
+        for task, evaluation in parent_evaluations.items()
+    }
+    tracked_accuracy = dict(retention_set_point)
 
     started = time.perf_counter()
     history: list[dict[str, float | int]] = []
@@ -218,27 +400,47 @@ def main() -> None:
         new_batch = generate_lifetimes(
             args.new_batch_size, 6,
             seed=args.seed * 10_000_000 + update,
-            task=NEW_TASK, support_trials=args.new_support_trials,
+            task=new_task, support_trials=args.new_support_trials,
             device=device)
         replay_batches = [
             generate_lifetimes(
                 args.replay_batch_size, 6,
                 seed=args.seed * (20_000_000 + 10_000_000 * index) + update,
                 task=task, support_trials=1, device=device)
-            for index, task in enumerate(REPLAY_TASKS)
+            for index, task in enumerate(replay_tasks)
         ]
         skill_loss = _new_skill_loss(
             student, new_batch, exploration=args.exploration,
             support_trials=args.new_support_trials)
-        replay_losses = [
-            _trajectory_loss(
-                student, teacher, batch, feedback_trials=1,
+        replay_results = [
+            _replay_loss_and_leakage(
+                student, teacher, batch, slot=new_slot, feedback_trials=1,
                 shuffled_teacher=args.shuffle_retention_teacher)
             for batch in replay_batches
         ]
-        loss = (
-            skill_loss
-            + args.retention_weight * torch.stack(replay_losses).sum())
+        replay_losses = [value for value, _, _ in replay_results]
+        leakages = [value for _, value, _ in replay_results]
+        leakage = torch.stack(leakages).mean()
+        # Proportional set-point control on the retention price. A skill at or
+        # above the level it was inherited at costs nothing extra, so pressure
+        # never competes with new learning unless a skill is actually slipping.
+        weights = []
+        deficits = []
+        for index, task in enumerate(replay_tasks):
+            measured = replay_results[index][2]
+            tracked_accuracy[task] = (
+                args.retention_tracking_decay * tracked_accuracy[task]
+                + (1.0 - args.retention_tracking_decay) * measured)
+            deficit = max(
+                0.0, retention_set_point[task] - tracked_accuracy[task])
+            deficits.append(deficit)
+            weights.append(
+                args.retention_weight + args.retention_control_gain * deficit)
+        loss = skill_loss + sum(
+            weight * value for weight, value in zip(weights, replay_losses))
+        if args.locality_weight:
+            # Price opening the new slot on events that belong to old skills.
+            loss = loss + args.locality_weight * leakage
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
         nn.utils.clip_grad_norm_(student.parameters(), 1.0)
@@ -249,8 +451,21 @@ def main() -> None:
                 "skill_loss": float(skill_loss.detach()),
                 **{
                     f"{task}_distillation_loss": float(value.detach())
-                    for task, value in zip(REPLAY_TASKS, replay_losses)
+                    for task, value in zip(replay_tasks, replay_losses)
                 },
+                **{
+                    f"{task}_slot_opening": float(value.detach())
+                    for task, value in zip(replay_tasks, leakages)
+                },
+                **{
+                    f"{task}_retention_weight": weight
+                    for task, weight in zip(replay_tasks, weights)
+                },
+                **{
+                    f"{task}_retention_deficit": deficit
+                    for task, deficit in zip(replay_tasks, deficits)
+                },
+                "replay_slot_opening": float(leakage.detach()),
                 "total_loss": float(loss.detach()),
             })
 
@@ -258,23 +473,54 @@ def main() -> None:
         "new_skill": evaluate(
             student, count=args.test_lifetimes, trials=6,
             seed=args.seed + 90_000_000, device=device,
-            task=NEW_TASK, feedback_trials=args.new_support_trials),
+            task=new_task, feedback_trials=args.new_support_trials),
         **{
             f"{task}_retention": evaluate(
                 student, count=args.test_lifetimes, trials=6,
                 seed=args.seed + 91_000_000 + index, device=device,
                 task=task, feedback_trials=1)
-            for index, task in enumerate(REPLAY_TASKS)
+            for index, task in enumerate(replay_tasks)
         },
     }
     cue_ablation_accuracy = _operation_cue_ablation_accuracy(
         student, count=args.test_lifetimes,
         seed=args.seed + 90_000_000, device=device,
-        support_trials=args.new_support_trials)
+        support_trials=args.new_support_trials, new_task=new_task)
+    _openings = {
+        new_task: _slot_opening(
+            student, slot=new_slot, task=new_task,
+            count=args.test_lifetimes, seed=args.seed + 93_000_000,
+            support_trials=args.new_support_trials, device=device),
+        **{
+            task: _slot_opening(
+                student, slot=new_slot, task=task,
+                count=args.test_lifetimes,
+                seed=args.seed + 94_000_000 + index, support_trials=1,
+                device=device)
+            for index, task in enumerate(replay_tasks)
+        },
+    }
+    slot_opening = {task: value for task, (value, _) in _openings.items()}
+    slot_shut_fraction = {
+        task: shut for task, (_, shut) in _openings.items()}
+    slot_residual_norm = {
+        new_task: _slot_residual_norm(
+            student, slot=new_slot, task=new_task,
+            count=args.test_lifetimes, seed=args.seed + 93_000_000,
+            support_trials=args.new_support_trials, device=device),
+        **{
+            task: _slot_residual_norm(
+                student, slot=new_slot, task=task,
+                count=args.test_lifetimes,
+                seed=args.seed + 94_000_000 + index, support_trials=1,
+                device=device)
+            for index, task in enumerate(replay_tasks)
+        },
+    }
     new_skill_accuracy = _headline_accuracy(evaluations["new_skill"])
     cue_causally_used = cue_ablation_accuracy <= new_skill_accuracy - 0.15
     required_retention = {
-        f"{task}_retention": parent_retention[task] for task in REPLAY_TASKS}
+        f"{task}_retention": parent_retention[task] for task in replay_tasks}
     retention_gates_passed = all(
         evaluations[name]["gate"]["accepted"]
         for name, required in required_retention.items() if required)
@@ -287,7 +533,7 @@ def main() -> None:
         for name, value in student.state_dict().items()
         if name in frozen_initial)
     total_lifetimes = args.steps * (
-        args.new_batch_size + len(REPLAY_TASKS) * args.replay_batch_size)
+        args.new_batch_size + len(replay_tasks) * args.replay_batch_size)
     report = {
         "schema": "fourth-primitive-transfer-v1",
         "claim_boundary": (
@@ -297,8 +543,8 @@ def main() -> None:
             "gates are required only for skills the frozen parent had."),
         "semantic_labels_used_for_training": False,
         "unattempted_correct_actions_used_as_targets": False,
-        "new_task": NEW_TASK,
-        "replay_tasks": list(REPLAY_TASKS),
+        "new_task": new_task,
+        "replay_tasks": list(replay_tasks),
         "plastic_module": f"skill_adapters.{new_slot}",
         "inherited_frozen_adapters": inherited_frozen_adapters,
         "inherited_skill_adapter_slots": list(inherited_slots),
@@ -321,6 +567,14 @@ def main() -> None:
             "optimizer_updates": args.steps,
         },
         "parent_retention_gates": parent_retention,
+        "retention_set_point": retention_set_point,
+        "retention_delta_against_set_point": {
+            task: (
+                _headline_accuracy(evaluations[f"{task}_retention"])
+                - retention_set_point[task])
+            for task in replay_tasks
+        },
+        "final_tracked_replay_accuracy": dict(tracked_accuracy),
         "required_retention_gates": required_retention,
         "evaluations": evaluations,
         "headline_accuracy": {
@@ -328,9 +582,15 @@ def main() -> None:
             **{
                 f"{task}_retention": _headline_accuracy(
                     evaluations[f"{task}_retention"])
-                for task in REPLAY_TASKS
+                for task in replay_tasks
             },
         },
+        "slot_opening": slot_opening,
+        "slot_shut_fraction": slot_shut_fraction,
+        "slot_residual_norm": slot_residual_norm,
+        "slot_selectivity": (
+            slot_opening[new_task]
+            - max(slot_opening[task] for task in replay_tasks)),
         "operation_cue_ablation_accuracy": cue_ablation_accuracy,
         "operation_cue_causally_used": cue_causally_used,
         "all_gates_passed": accepted,
@@ -358,7 +618,7 @@ def main() -> None:
         "cue_ablation": cue_ablation_accuracy,
         "retention": {
             task: evaluations[f"{task}_retention"]["gate"]["accepted"]
-            for task in REPLAY_TASKS
+            for task in replay_tasks
         },
         "total_unique_lifetimes": total_lifetimes,
         "total_seconds": report["total_seconds"],

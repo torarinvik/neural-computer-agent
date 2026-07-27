@@ -398,7 +398,8 @@ def test_every_contextual_operation_is_observationally_distinct() -> None:
     operation cue must separate every contextual task we train on.
     """
     tasks = (
-        "visible_context", "visible_context_xor", "contextual_composition")
+        "visible_context", "visible_context_xor", "contextual_composition",
+        "contextual_override")
     batches = {
         task: generate_lifetimes(16, 6, seed=31, task=task, support_trials=1)
         for task in tasks
@@ -428,21 +429,30 @@ def test_operation_cues_never_occlude_stimulus_or_context_pixels() -> None:
     looks like a hard task rather than a broken rendering.
     """
     from experiments.unified_cognitive_controller.environment import (
-        _MASK_BANKS, _OPERATION_CUE_ROWS, IMAGE_SIZE)
+        _MASK_BANKS, _OPERATION_CUE_SLOTS, IMAGE_SIZE)
     glyphs = torch.zeros(IMAGE_SIZE, IMAGE_SIZE, dtype=torch.bool)
     for bank in _MASK_BANKS.values():
         glyphs |= bank.sum(dim=(0, 1)) > 0
     contexts = torch.zeros_like(glyphs)
     for y, x in ((3, 3), (IMAGE_SIZE - 4, IMAGE_SIZE - 4)):
         contexts[y - 1:y + 2, x - 1:x + 2] = True
-    center = IMAGE_SIZE // 2
-    assert _OPERATION_CUE_ROWS, "expected at least one cued operation"
-    for task, (first, last) in _OPERATION_CUE_ROWS.items():
+    assert _OPERATION_CUE_SLOTS, "expected at least one cued operation"
+    masks = {}
+    for task, ((first, last), (left, right)) in _OPERATION_CUE_SLOTS.items():
         cue = torch.zeros_like(glyphs)
-        cue[first:last, center - 2:center + 3] = True
+        cue[first:last, left:right] = True
         assert cue.any(), task
         assert not (cue & glyphs).any(), f"{task} cue overlaps a stimulus glyph"
         assert not (cue & contexts).any(), f"{task} cue overlaps a context bit"
+        masks[task] = cue
+    # Two operations sharing a slot would render identically, which is the
+    # aliasing this whole cue scheme exists to prevent.
+    for first_task, first_mask in masks.items():
+        for second_task, second_mask in masks.items():
+            if first_task >= second_task:
+                continue
+            assert not (first_mask & second_mask).any(), (
+                f"{first_task} and {second_task} share a cue slot")
 
 
 def test_contextual_composition_cue_does_not_disturb_the_xor_slot() -> None:
@@ -454,14 +464,14 @@ def test_contextual_composition_cue_does_not_disturb_the_xor_slot() -> None:
     plain = generate_lifetimes(
         16, 6, seed=33, task="visible_context", support_trials=1)
     from experiments.unified_cognitive_controller.environment import (
-        _OPERATION_CUE_ROWS)
+        _OPERATION_CUE_SLOTS)
     size = composition.frames.shape[-1]
     center = size // 2
     columns = slice(center - 2, center + 3)
     # The XOR span is a literal on purpose: promoted controllers read that
     # exact band, so it is a contract rather than a detail to follow around.
-    assert _OPERATION_CUE_ROWS["visible_context_xor"] == (2, 5)
-    composition_rows = _OPERATION_CUE_ROWS["contextual_composition"]
+    assert _OPERATION_CUE_SLOTS["visible_context_xor"] == ((2, 5), (14, 19))
+    composition_rows = _OPERATION_CUE_SLOTS["contextual_composition"][0]
     assert composition_rows != (2, 5)
     # Each operation lights its own slot and leaves the other one alone.
     assert torch.all(xor.frames[:, :, :, 2:5, columns] == 0.98)
@@ -593,6 +603,93 @@ def test_skill_adapter_stack_inserts_exactly_behavior_preserving_slots(
     assert not torch.equal(
         rollout(plain, batch, sample_actions=False)["logits"],
         rollout(live, batch, sample_actions=False)["logits"])
+
+
+def test_rectified_slot_gate_can_shut_exactly_and_sigmoid_cannot() -> None:
+    """Exact zero is the whole point: only it leaves an old skill untouched.
+
+    A sigmoid gate is bounded away from zero, so a slot always perturbs every
+    event it sees. That residual perturbation is what accumulates into the
+    nearest-neighbour skill rung after rung.
+    """
+    features = torch.randn(16, 64)
+    for mode, reachable in (("relu", True), ("sigmoid", False)):
+        model = UnifiedCognitiveController(
+            width=32, workspace_slots=4, intention_width=8,
+            skill_adapter_widths=(16,), skill_adapter_gate_mode=mode)
+        gate = model.skill_adapter_gates[0]
+        with torch.no_grad():
+            gate.bias.fill_(-5.0)
+            gate.weight.zero_()
+        opening = (
+            torch.relu(gate(features)) if mode == "relu"
+            else torch.sigmoid(gate(features)))
+        assert (opening == 0).all().item() is reachable, mode
+    # Both modes still insert exactly behavior-preserving slots.
+    base = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8)
+    batch = generate_lifetimes(8, 4, seed=61)
+    for mode in ("relu", "sigmoid"):
+        extended = UnifiedCognitiveController(
+            width=32, workspace_slots=4, intention_width=8,
+            skill_adapter_widths=(16,), skill_adapter_gate_mode=mode)
+        extended.load_state_dict(base.state_dict(), strict=False)
+        assert torch.equal(
+            rollout(base, batch, sample_actions=False)["logits"],
+            rollout(extended, batch, sample_actions=False)["logits"]), mode
+
+
+def test_slot_gate_hidden_layer_is_optional_and_preserves_behavior() -> None:
+    base = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8)
+    batch = generate_lifetimes(8, 4, seed=62)
+    for hidden in (0, 16):
+        model = UnifiedCognitiveController(
+            width=32, workspace_slots=4, intention_width=8,
+            skill_adapter_widths=(16,), skill_adapter_gate_mode="relu",
+            skill_adapter_gate_hidden=hidden)
+        model.load_state_dict(base.state_dict(), strict=False)
+        assert torch.equal(
+            rollout(base, batch, sample_actions=False)["logits"],
+            rollout(model, batch, sample_actions=False)["logits"]), hidden
+
+
+def test_controller_reports_slot_openings_and_residual_norms() -> None:
+    model = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        skill_adapter_widths=(16, 16))
+    plain = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8)
+    assert plain.initial_state(2, device="cpu") is not None
+    batch = generate_lifetimes(4, 4, seed=63)
+    state = model.initial_state(4, device="cpu")
+    output, _ = model.step(
+        batch.frames[:, 0], state,
+        torch.zeros(4, dtype=torch.long), torch.zeros(4), torch.zeros(4))
+    assert output.skill_adapter_openings is not None
+    assert output.skill_adapter_openings.shape == (4, 2)
+    assert output.skill_adapter_residual_norms is not None
+    assert output.skill_adapter_residual_norms.shape == (4, 2)
+    # A freshly inserted slot outputs exactly zero, so it perturbs nothing.
+    assert torch.equal(
+        output.skill_adapter_residual_norms,
+        torch.zeros_like(output.skill_adapter_residual_norms))
+    # A controller with no successor slots reports nothing rather than zeros.
+    plain_output, _ = plain.step(
+        batch.frames[:, 0], plain.initial_state(4, device="cpu"),
+        torch.zeros(4, dtype=torch.long), torch.zeros(4), torch.zeros(4))
+    assert plain_output.skill_adapter_openings is None
+    assert plain_output.skill_adapter_residual_norms is None
+
+
+def test_skill_adapter_gate_mode_is_validated() -> None:
+    try:
+        UnifiedCognitiveController(
+            width=32, workspace_slots=4, intention_width=8,
+            skill_adapter_widths=(16,), skill_adapter_gate_mode="tanh")
+    except ValueError:
+        return
+    raise AssertionError("accepted an unknown skill adapter gate mode")
 
 
 def test_skill_adapter_widths_are_validated() -> None:

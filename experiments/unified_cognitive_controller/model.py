@@ -47,6 +47,15 @@ class ControllerOutput:
     memory_value: torch.Tensor
     memory_write_strength: torch.Tensor
     workspace_read: torch.Tensor
+    # Per-slot opening of the successor residuals, shape [batch, slots]. It is
+    # exposed so a rung can measure and price how far its own new slot fires
+    # outside the events it was added for. Empty when no slot exists.
+    skill_adapter_openings: torch.Tensor | None = None
+    # Norm of the perturbation each successor slot actually adds to the
+    # intention, shape [batch, slots]. The opening alone understates this: a
+    # nearly shut gate on a large residual still moves the answer, so this is
+    # the quantity a locality price has to act on.
+    skill_adapter_residual_norms: torch.Tensor | None = None
 
 
 class UnifiedCognitiveController(nn.Module):
@@ -71,8 +80,13 @@ class UnifiedCognitiveController(nn.Module):
             relation_adapter_gated: bool = False,
             action_adapter_width: int = 0,
             action_adapter_gated: bool = False,
-            skill_adapter_widths: tuple[int, ...] = ()) -> None:
+            skill_adapter_widths: tuple[int, ...] = (),
+            skill_adapter_gate_mode: str = "sigmoid",
+            skill_adapter_gate_hidden: int = 0) -> None:
         super().__init__()
+        if skill_adapter_gate_mode not in ("sigmoid", "relu"):
+            raise ValueError(
+                "skill adapter gate mode must be sigmoid or relu")
         if (
                 width < 16 or workspace_slots < 1 or intention_width < 2
                 or adaptive_memory_read_hidden < 0
@@ -95,6 +109,8 @@ class UnifiedCognitiveController(nn.Module):
         self.action_adapter_width = action_adapter_width
         self.action_adapter_gated = action_adapter_gated
         self.skill_adapter_widths = tuple(skill_adapter_widths)
+        self.skill_adapter_gate_mode = skill_adapter_gate_mode
+        self.skill_adapter_gate_hidden = skill_adapter_gate_hidden
         self.vision = VisionEventEncoder(width)
         self.action_embedding = nn.Embedding(ACTIONS + 1, width // 4)
         feedback_width = width // 4
@@ -169,9 +185,30 @@ class UnifiedCognitiveController(nn.Module):
             nn.init.zeros_(adapter[-1].weight)
             nn.init.zeros_(adapter[-1].bias)
             self.skill_adapters.append(adapter)
-            gate = nn.Linear(width * 2, 1)
-            nn.init.zeros_(gate.weight)
-            nn.init.constant_(gate.bias, -2.0)
+            # A linear gate has to separate this slot's own events from every
+            # other skill's with one hyperplane. A hidden layer lets the
+            # boundary bend, which is what decides how cleanly a slot can be
+            # both fully available to its operation and fully absent elsewhere.
+            if skill_adapter_gate_hidden:
+                gate = nn.Sequential(
+                    nn.Linear(width * 2, skill_adapter_gate_hidden),
+                    nn.GELU(),
+                    nn.Linear(skill_adapter_gate_hidden, 1),
+                )
+                output_layer = gate[-1]
+            else:
+                gate = nn.Linear(width * 2, 1)
+                output_layer = gate
+            nn.init.zeros_(output_layer.weight)
+            # A sigmoid gate can never be exactly shut, so a slot always
+            # perturbs every event it sees a little. The rectified gate can
+            # reach exact zero and therefore be genuinely inert outside the
+            # events it was added for. Either way the zero-initialized output
+            # layer makes insertion exactly behavior-preserving; the positive
+            # rectified bias only keeps the gate's own gradient alive.
+            nn.init.constant_(
+                output_layer.bias,
+                1.0 if skill_adapter_gate_mode == "relu" else -2.0)
             self.skill_adapter_gates.append(gate)
         self.memory_key = nn.Linear(width * 2, width)
         self.memory_value = nn.Linear(width * 2, width)
@@ -297,14 +334,28 @@ class UnifiedCognitiveController(nn.Module):
                 relation_residual = relation_residual * torch.sigmoid(
                     self.relation_adapter_gate(relation_features))
             intention = intention + relation_residual
+        skill_adapter_openings = None
+        skill_adapter_residual_norms = None
         if len(self.skill_adapters):
             # Successor slots read the same generic prior-state/query-event
             # pair as the legacy adapters: no task, context, or action label.
             slot_features = torch.cat([state.hidden, event], dim=-1)
+            openings = []
+            residual_norms = []
             for adapter, gate in zip(
                     self.skill_adapters, self.skill_adapter_gates):
-                intention = intention + adapter(slot_features) * torch.sigmoid(
-                    gate(slot_features))
+                score = gate(slot_features)
+                opening = (
+                    torch.relu(score)
+                    if self.skill_adapter_gate_mode == "relu"
+                    else torch.sigmoid(score))
+                residual = adapter(slot_features) * opening
+                openings.append(opening)
+                residual_norms.append(
+                    residual.norm(dim=-1, keepdim=True))
+                intention = intention + residual
+            skill_adapter_openings = torch.cat(openings, dim=-1)
+            skill_adapter_residual_norms = torch.cat(residual_norms, dim=-1)
         memory_context = torch.cat([hidden, read], dim=-1)
         logits = self.actuator(intention)
         if self.action_adapter is not None:
@@ -322,5 +373,7 @@ class UnifiedCognitiveController(nn.Module):
             memory_write_strength=torch.sigmoid(
                 self.memory_write(memory_context)).squeeze(-1),
             workspace_read=read,
+            skill_adapter_openings=skill_adapter_openings,
+            skill_adapter_residual_norms=skill_adapter_residual_norms,
         )
         return output, ControllerState(hidden, workspace)
