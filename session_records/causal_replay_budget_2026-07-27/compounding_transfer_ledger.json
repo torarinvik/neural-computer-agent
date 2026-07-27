@@ -1,0 +1,40 @@
+{
+  "schema": "compounding-transfer-ledger-v1",
+  "task": "visible_context_xor",
+  "stable_threshold_definition": "First measured prefix passing the new-skill causal gate and applicable retention gates at every later measured prefix.",
+  "experience_per_update": {
+    "new_unique_lifetimes": 32,
+    "binary_replay_lifetimes": 8,
+    "context_replay_lifetimes": 8,
+    "total_unique_lifetimes": 48,
+    "total_verifier_bits": 288
+  },
+  "paired_thresholds": [
+    {
+      "seed": 8411,
+      "old_parent_updates": 76,
+      "integrated_parent_updates": 68
+    },
+    {
+      "seed": 8412,
+      "old_parent_updates": 80,
+      "integrated_parent_updates": 72
+    },
+    {
+      "seed": 8413,
+      "old_parent_updates": 72,
+      "integrated_parent_updates": 64
+    }
+  ],
+  "per_seed_savings": {
+    "optimizer_updates": 8,
+    "new_unique_lifetimes": 256,
+    "total_unique_lifetimes": 384,
+    "total_verifier_bits": 2304
+  },
+  "median_parent_to_integrated_experience_ratio": 1.1176470588235294,
+  "integrated_fraction_of_parent_experience": 0.8947368421052632,
+  "promoted_checkpoint": "artifacts/checkpoints/unified_three_skill_compounding_seed8413.pt",
+  "promoted_checkpoint_sha256": "0192403bc3d3655a7861947303a42a221645ea9200d8ba508076103fcebb785f",
+  "claim_boundary": "Narrow replicated compounding gain on one later deterministic visual composition; not yet evidence of acceleration across a long primitive sequence."
+}

@@ -122,9 +122,10 @@ def evaluate(
         appearance=appearance, support_trials=feedback_trials, device=device)
     reversed_batch = generate_lifetimes(
         count, trials, seed=seed, heldout=True,
-        reverse_rules=(task not in ("visible_identity", "visible_context")),
+        reverse_rules=(task not in (
+            "visible_identity", "visible_context", "visible_context_xor")),
         reverse_stimuli=(task == "visible_identity"),
-        reverse_contexts=(task == "visible_context"),
+        reverse_contexts=(task in ("visible_context", "visible_context_xor")),
         task=task, appearance=appearance,
         support_trials=feedback_trials, device=device)
     normal = rollout(
@@ -141,7 +142,9 @@ def evaluate(
         model, normal_batch, sample_actions=False,
         feedback_trials=feedback_trials, shuffle_feedback=True)
     second_support_removed = None
-    if task in ("contextual_mapping", "contextual_override") and feedback_trials >= 2:
+    if task in (
+            "contextual_mapping", "contextual_override",
+            "contextual_composition") and feedback_trials >= 2:
         second_support_removed = rollout(
             model, normal_batch, sample_actions=False,
             feedback_trials=feedback_trials,
@@ -162,7 +165,10 @@ def evaluate(
     # Hidden-rule tasks are only identifiable after all support outcomes have
     # arrived. Counterfactual sensitivity belongs on the query suffix, not on
     # support actions the controller could not yet infer.
-    flip_start = 0 if task == "visible_identity" else feedback_trials
+    flip_start = (
+        0 if task in (
+            "visible_identity", "visible_context", "visible_context_xor")
+        else feedback_trials)
     flip_rate = (
         normal["actions"][:, flip_start:]
         != reversed_result["actions"][:, flip_start:]
@@ -191,7 +197,7 @@ def evaluate(
             str(context): float(normal_rewards[query_contexts == context].float().mean())
             for context in (0, 1)
         }
-    if task in ("visible_identity", "visible_context"):
+    if task in ("visible_identity", "visible_context", "visible_context_xor"):
         normal_accuracy = float(normal["rewards"].mean())
         reversed_accuracy = float(reversed_result["rewards"].mean())
         blank_accuracy = float(blank["rewards"].mean())
@@ -226,7 +232,9 @@ def evaluate(
             report["feedback_shuffled"]["post_feedback_accuracy"]
             <= normal_post - 0.15),
     }
-    if task in ("contextual_mapping", "contextual_override"):
+    if task in (
+            "contextual_mapping", "contextual_override",
+            "contextual_composition"):
         assert second_support_removed is not None
         report["gate"]["both_contexts_mastered"] = all(
             accuracy >= 0.85
@@ -256,8 +264,9 @@ def main() -> None:
     parser.add_argument(
         "--task", choices=(
             "constant_action", "visible_identity", "binary_mapping",
-            "visible_context", "four_rule", "contextual_mapping",
-            "contextual_override"),
+            "visible_context", "visible_context_xor", "four_rule",
+            "contextual_mapping",
+            "contextual_override", "contextual_composition"),
         default="constant_action")
     parser.add_argument(
         "--appearance", choices=("bars", "diamonds", "dot_pairs"),
@@ -265,8 +274,9 @@ def main() -> None:
     parser.add_argument(
         "--rehearsal-task", choices=(
             "constant_action", "visible_identity", "binary_mapping",
-            "visible_context", "four_rule", "contextual_mapping",
-            "contextual_override"))
+            "visible_context", "visible_context_xor", "four_rule",
+            "contextual_mapping",
+            "contextual_override", "contextual_composition"))
     parser.add_argument(
         "--rehearsal-every", type=int, default=2,
         help="use one rehearsal batch every N optimizer steps")
@@ -282,8 +292,9 @@ def main() -> None:
     parser.add_argument(
         "--retention-task", choices=(
             "constant_action", "visible_identity", "binary_mapping",
-            "visible_context", "four_rule", "contextual_mapping",
-            "contextual_override"))
+            "visible_context", "visible_context_xor", "four_rule",
+            "contextual_mapping",
+            "contextual_override", "contextual_composition"))
     parser.add_argument(
         "--retention-feedback-trials", type=int,
         help=(
@@ -307,6 +318,9 @@ def main() -> None:
         "--relation-adapter-width", type=int,
         help=("insert a zero-initialized generic prior-state/query-event "
               "relation residual; omit to preserve checkpoint architecture"))
+    parser.add_argument(
+        "--relation-adapter-gated", action="store_true",
+        help="learn a sensory gate for an inserted relation residual")
     parser.add_argument(
         "--train-relation-adapter-only", action="store_true",
         help="freeze inherited parameters and optimize only the relation residual")
@@ -350,6 +364,8 @@ def main() -> None:
         model_configuration = dict(checkpoint_configuration)
     if args.relation_adapter_width is not None:
         model_configuration["relation_adapter_width"] = args.relation_adapter_width
+        model_configuration["relation_adapter_gated"] = (
+            args.relation_adapter_gated)
     model = UnifiedCognitiveController(**model_configuration).to(device)
     initialization = "fresh"
     if checkpoint_payload is not None:
@@ -357,7 +373,8 @@ def main() -> None:
             checkpoint_payload["state_dict"], strict=False)
         allowed_missing = (
             {name for name in model.state_dict()
-             if name.startswith("relation_adapter.")}
+             if name.startswith((
+                 "relation_adapter.", "relation_adapter_gate."))}
             if args.relation_adapter_width is not None
             and args.relation_adapter_width > 0
             and "relation_adapter_width" not in checkpoint_configuration
@@ -375,7 +392,8 @@ def main() -> None:
         if model.relation_adapter is None:
             raise ValueError("--train-relation-adapter-only needs a relation adapter")
         for name, parameter in model.named_parameters():
-            parameter.requires_grad_(name.startswith("relation_adapter."))
+            parameter.requires_grad_(name.startswith((
+                "relation_adapter.", "relation_adapter_gate.")))
     trainable_parameters = [
         parameter for parameter in model.parameters() if parameter.requires_grad]
     optimizer = torch.optim.AdamW(

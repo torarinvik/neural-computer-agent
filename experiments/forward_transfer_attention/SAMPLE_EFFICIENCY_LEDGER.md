@@ -1010,3 +1010,23 @@ regression and misses the frozen `10%` sample-efficiency limit.
 No learned-stopper checkpoint is promoted. The precise frontier is now to
 predict long-horizon held-out verifier improvement and retention per unit
 compute, rather than local replay-loss reduction.
+## 2026-07-27 — Retained context accelerates a later visual composition
+
+The unified controller's `visible_context_xor` successor task is the first
+paired transfer result in this branch where inherited knowledge improves the
+stable learning threshold while all inherited gates remain passed.
+
+| Seed | Old binary parent | Integrated binary+context parent | Ratio |
+|---|---:|---:|---:|
+| 8411 | 76 updates / 21,888 bits | 68 updates / 19,584 bits | 1.118× |
+| 8412 | 80 updates / 23,040 bits | 72 updates / 20,736 bits | 1.111× |
+| 8413 | 72 updates / 20,736 bits | 64 updates / 18,432 bits | 1.125× |
+
+Each update contained 32 new, eight binary-replay, and eight context-replay
+lifetimes. Stable means the full new-skill causal gate and applicable retention
+gates passed at that prefix and every later measured prefix. The integrated
+controller saved exactly eight updates, 256 new lifetimes, 384 total lifetimes,
+and 2,304 verifier bits on all three seeds. Median transfer ratio: **1.118×**.
+The fresh learner remained at chance through 80 updates. The promoted
+seed-8413 run also passed operation-cue removal, blank-vision, pixel reversal,
+dual-retention, frozen-base, checkpoint-reload, and shuffled-teacher controls.

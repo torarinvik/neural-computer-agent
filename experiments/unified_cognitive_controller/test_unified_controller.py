@@ -334,6 +334,25 @@ def test_contextual_override_is_a_strictly_easier_context_rung() -> None:
         batch.correct_actions, 1 - reversed_batch.correct_actions)
 
 
+def test_contextual_composition_reuses_both_acquired_primitives() -> None:
+    batch = generate_lifetimes(
+        16, 6, seed=27, task="contextual_composition", support_trials=2)
+    assert batch.context_ids is not None
+    expected = (
+        batch.stimulus_identities
+        ^ batch.rule_bits.unsqueeze(1)
+        ^ batch.context_ids)
+    assert torch.equal(batch.correct_actions, expected)
+
+    reversed_batch = generate_lifetimes(
+        16, 6, seed=27, task="contextual_composition", support_trials=2,
+        reverse_rules=True)
+    assert torch.equal(batch.frames, reversed_batch.frames)
+    assert torch.equal(batch.context_ids, reversed_batch.context_ids)
+    assert torch.equal(
+        batch.correct_actions, 1 - reversed_batch.correct_actions)
+
+
 def test_visible_context_counterfactual_changes_only_the_public_cue() -> None:
     batch = generate_lifetimes(16, 6, seed=25, task="visible_context")
     reversed_batch = generate_lifetimes(
@@ -345,6 +364,30 @@ def test_visible_context_counterfactual_changes_only_the_public_cue() -> None:
     assert torch.equal(batch.correct_actions, batch.context_ids)
     assert torch.equal(reversed_batch.correct_actions, reversed_batch.context_ids)
     assert torch.equal(batch.correct_actions, 1 - reversed_batch.correct_actions)
+
+
+def test_visible_context_xor_is_a_pixel_level_composition_atom() -> None:
+    batch = generate_lifetimes(
+        16, 6, seed=29, task="visible_context_xor")
+    reversed_batch = generate_lifetimes(
+        16, 6, seed=29, task="visible_context_xor",
+        reverse_contexts=True)
+    assert batch.context_ids is not None
+    assert reversed_batch.context_ids is not None
+    assert torch.equal(
+        batch.correct_actions,
+        batch.stimulus_identities ^ batch.context_ids)
+    assert torch.equal(batch.stimulus_identities,
+                       reversed_batch.stimulus_identities)
+    assert torch.equal(batch.context_ids, 1 - reversed_batch.context_ids)
+    assert torch.equal(
+        batch.correct_actions, 1 - reversed_batch.correct_actions)
+    plain = generate_lifetimes(
+        16, 6, seed=29, task="visible_context")
+    center = batch.frames.shape[-1] // 2
+    assert torch.all(
+        batch.frames[:, :, :, 2:5, center - 2:center + 3] == 0.98)
+    assert not torch.equal(batch.frames, plain.frames)
 
 
 def test_hidden_rule_gate_requires_real_vision(monkeypatch) -> None:
@@ -395,14 +438,16 @@ def test_zero_initialized_relation_adapter_preserves_behavior() -> None:
         width=32, workspace_slots=4, intention_width=8)
     adapted = UnifiedCognitiveController(
         width=32, workspace_slots=4, intention_width=8,
-        relation_adapter_width=16, action_adapter_width=16,
+        relation_adapter_width=16, relation_adapter_gated=True,
+        action_adapter_width=16,
         action_adapter_gated=True)
     missing, unexpected = adapted.load_state_dict(base.state_dict(), strict=False)
     assert not unexpected
     assert set(missing) == {
         name for name in adapted.state_dict()
         if name.startswith((
-            "relation_adapter.", "action_adapter.", "action_adapter_gate."))}
+            "relation_adapter.", "relation_adapter_gate.",
+            "action_adapter.", "action_adapter_gate."))}
     batch = generate_lifetimes(8, 4, seed=24)
     base_result = rollout(base, batch, sample_actions=False)
     adapted_result = rollout(adapted, batch, sample_actions=False)

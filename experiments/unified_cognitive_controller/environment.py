@@ -138,12 +138,12 @@ def generate_lifetimes(
     """
     if task not in (
         "constant_action", "visible_identity", "binary_mapping",
-        "visible_context", "four_rule", "contextual_mapping",
-        "contextual_override"):
+        "visible_context", "visible_context_xor", "four_rule", "contextual_mapping",
+        "contextual_override", "contextual_composition"):
         raise ValueError(
             "task must be constant_action, visible_identity, "
-            "binary_mapping, visible_context, four_rule, contextual_mapping, or "
-            "contextual_override")
+            "binary_mapping, visible_context, visible_context_xor, four_rule, "
+            "contextual_mapping, contextual_override, or contextual_composition")
     if appearance not in _MASK_BANKS:
         raise ValueError(
             f"appearance must be one of {sorted(_MASK_BANKS)}")
@@ -226,7 +226,8 @@ def generate_lifetimes(
     # mapping remain unavailable to the learner except through RGB/outcomes.
     context_ids = None
     if task in (
-            "visible_context", "contextual_mapping", "contextual_override"):
+            "visible_context", "visible_context_xor", "contextual_mapping",
+            "contextual_override", "contextual_composition"):
         context_ids = torch.randint(0, 2, (count, trials), generator=generator)
         if support_trials >= 2:
             context_ids[:, 0] = 0
@@ -237,6 +238,12 @@ def generate_lifetimes(
         for context, (y, x) in enumerate(context_positions):
             selected = context_ids == context
             frames[selected, :, y - 1:y + 2, x - 1:x + 2] = 0.98
+        if task in ("visible_context_xor", "contextual_composition"):
+            # Public visual operation cue. Without it, the old direct-context
+            # task and its XOR successor have identical observations while
+            # demanding conflicting actions.
+            center = IMAGE_SIZE // 2
+            frames[:, :, :, 2:5, center - 2:center + 3] = 0.98
 
     if task == "constant_action":
         correct = rule_bits.unsqueeze(1).expand(-1, trials).clone()
@@ -262,9 +269,18 @@ def generate_lifetimes(
         correct = torch.where(
             context_ids == 0, mapping_action,
             torch.full_like(mapping_action, override_action))
+    elif task == "contextual_composition":
+        assert context_ids is not None
+        # The minimal aligned composition: reuse the old identity/rule
+        # mapping and the acquired visible-context bit on every event.
+        correct = (
+            identities ^ rule_bits.unsqueeze(1) ^ context_ids)
     elif task == "visible_context":
         assert context_ids is not None
         correct = context_ids.clone()
+    elif task == "visible_context_xor":
+        assert context_ids is not None
+        correct = identities ^ context_ids
     else:
         correct = identities ^ rule_bits.unsqueeze(1)
     seeds = torch.arange(seed, seed + count, dtype=torch.long)

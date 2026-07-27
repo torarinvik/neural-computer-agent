@@ -68,6 +68,7 @@ class UnifiedCognitiveController(nn.Module):
             adaptive_memory_replace_hidden: int = 8,
             adaptive_memory_replace_features: int = 5,
             relation_adapter_width: int = 0,
+            relation_adapter_gated: bool = False,
             action_adapter_width: int = 0,
             action_adapter_gated: bool = False) -> None:
         super().__init__()
@@ -88,6 +89,7 @@ class UnifiedCognitiveController(nn.Module):
         self.adaptive_memory_replace_hidden = adaptive_memory_replace_hidden
         self.adaptive_memory_replace_features = adaptive_memory_replace_features
         self.relation_adapter_width = relation_adapter_width
+        self.relation_adapter_gated = relation_adapter_gated
         self.action_adapter_width = action_adapter_width
         self.action_adapter_gated = action_adapter_gated
         self.vision = VisionEventEncoder(width)
@@ -124,6 +126,12 @@ class UnifiedCognitiveController(nn.Module):
         if self.relation_adapter is not None:
             nn.init.zeros_(self.relation_adapter[-1].weight)
             nn.init.zeros_(self.relation_adapter[-1].bias)
+        self.relation_adapter_gate = (
+            nn.Linear(width * 2, 1)
+            if relation_adapter_width and relation_adapter_gated else None)
+        if self.relation_adapter_gate is not None:
+            nn.init.zeros_(self.relation_adapter_gate.weight)
+            nn.init.constant_(self.relation_adapter_gate.bias, -2.0)
         self.action_adapter = (
             nn.Sequential(
                 nn.Linear(width * 2, action_adapter_width),
@@ -256,8 +264,12 @@ class UnifiedCognitiveController(nn.Module):
         combined = torch.cat([hidden, read, event], dim=-1)
         intention = self.intention(combined)
         if self.relation_adapter is not None:
-            intention = intention + self.relation_adapter(torch.cat([
-                state.hidden, event], dim=-1))
+            relation_features = torch.cat([state.hidden, event], dim=-1)
+            relation_residual = self.relation_adapter(relation_features)
+            if self.relation_adapter_gate is not None:
+                relation_residual = relation_residual * torch.sigmoid(
+                    self.relation_adapter_gate(relation_features))
+            intention = intention + relation_residual
         memory_context = torch.cat([hidden, read], dim=-1)
         logits = self.actuator(intention)
         if self.action_adapter is not None:

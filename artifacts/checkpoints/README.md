@@ -276,3 +276,28 @@ integration of two independently acquired skills.
 The integration target contained only the two learned controllers' opaque
 behavior distributions. Verifier labels, semantic context IDs, and correct
 unattempted actions were never used as distillation targets.
+
+## Three-skill compounding controller
+
+`unified_three_skill_compounding_seed8413.pt` is the first controller in this
+lineage to acquire a later compositional primitive faster because it retained
+the two prerequisite skills.
+
+- SHA-256:
+  `0192403bc3d3655a7861947303a42a221645ea9200d8ba508076103fcebb785f`
+- Parent: `unified_binary_context_integrated_seed8397.pt`
+- New primitive: rendered identity XOR rendered context, selected by a learned
+  public visual operation cue.
+- A zero-output, sensory-gated relation adapter was added; every pre-existing
+  parameter remained bit-identical.
+- At 64 updates: 2,048 new lifetimes plus 512 binary and 512 context replay
+  lifetimes, or 18,432 total verifier bits.
+- On 1,024 held-out lifetimes: 91.57% normal and 91.83% pixel-counterfactual
+  new-skill accuracy; removing only the operation cue reduced it to 53.92%.
+- Retention: 97.40% binary few-shot and 93.98% direct visible context.
+- A shuffled-teacher consolidation control failed the complete gate.
+
+Across paired seeds 8411–8413, the integrated controller reached stable,
+retention-safe mastery at 68/72/64 updates versus 76/80/72 for the old parent:
+exactly eight updates, 256 new lifetimes, and 384 total lifetimes earlier on
+every seed.

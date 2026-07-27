@@ -227,3 +227,47 @@ not a general-controller promotion. The next integration experiment must
 preserve independently acquired useful representations while testing whether a
 single controller can combine them, rather than assuming ordinary joint
 fine-tuning will do so.
+
+## Replicated compounding sample-efficiency breakthrough — 2026-07-27
+
+The first proposed successor tasks were rejected before promotion. The original
+`contextual_override` contradicted the learned context policy, and the first
+composition draft demanded an unseen reversed constant. A direct visual XOR
+without an operation cue also made two tasks observationally identical while
+requiring different actions. These were verifier/interface flaws, not evidence
+against transfer.
+
+The corrected `visible_context_xor` task renders a public nonsemantic operation
+symbol. It requires identity XOR context on every event. A fresh learner
+remained at chance through 80 updates. Ordinary inherited fine-tuning learned
+quickly but erased binary behavior. Static replay exposed a stability/plasticity
+tradeoff. The successful mechanism freezes the consolidated controller, inserts
+a zero-output sensory-gated relation adapter, and trains only that adapter from
+attempted-action outcomes while matching the frozen controller's opaque
+behavior on eight newly rendered binary and eight context replay lifetimes per
+update.
+
+The paired stable-threshold results were:
+
+| Seed | Old parent | Integrated parent | Total-lifetime reduction |
+|---|---:|---:|---:|
+| 8411 | 76 updates | 68 updates | 384 |
+| 8412 | 80 updates | 72 updates | 384 |
+| 8413 | 72 updates | 64 updates | 384 |
+
+Every update used 32 new lifetimes and 16 replay lifetimes. The integrated
+controller therefore used 256 fewer new lifetimes and 2,304 fewer total
+verifier bits on every seed. The median parent/integrated experience ratio is
+1.118; equivalently, the retained prerequisites reduced experience to stable
+mastery by 10.5%.
+
+The promoted seed-8413 checkpoint passed a larger 1,024-lifetime audit:
+91.57% normal and 91.83% counterfactual XOR accuracy, 97.40% binary retention,
+and 93.98% context retention. Blank vision was at chance. Removing only the
+operation cue reduced XOR accuracy to 53.92%. All inherited weights were
+bit-identical, and a shuffled-teacher consolidation control was rejected.
+
+This is evidence of a narrow but genuine compounding gain: retained perceptual
+and action primitives made a later deterministic composition reliably faster
+to acquire without catastrophic forgetting. It does not yet establish an
+accelerating trend across many successive primitives.
