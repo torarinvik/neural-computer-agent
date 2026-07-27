@@ -239,6 +239,8 @@ def main() -> None:
                 "training_verifier_bits": checkpoint["verifier_bits"],
                 "feedback_mode": checkpoint.get("feedback_mode", "bandit"),
                 "replay_updates": checkpoint["replay_updates"],
+                "late_replay_updates": checkpoint.get("late_replay_updates"),
+                "replay_switch_step": checkpoint.get("replay_switch_step"),
                 "actual_optimizer_updates": checkpoint.get(
                     "actual_optimizer_updates"),
                 "actual_replayed_examples": checkpoint.get(

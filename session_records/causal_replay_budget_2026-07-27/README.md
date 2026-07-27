@@ -96,10 +96,14 @@ tolerance. The reverse control (48 early, 56 late) used still more internal
 updates and had two material utility regressions, so it is not promoted.
 
 This is evidence that *when* internal replay is spent matters, not just its
-total amount. It is still provisional: a separately trained scheduled
-checkpoint is undergoing the same independent/shuffle/reversal/retention audit
-as the 48-update baseline. It must pass before the schedule is called a new
-breakthrough.
+total amount. A separately trained scheduled checkpoint (seed `8278`) passed
+the full six-action audit ladder: independent paired confirmation lower-95
+bound `+0.04208`, mean gain `+0.06322`, every fresh stream improved, feature
+shuffle and action-reversal both collapsed performance, exact checkpoint reload,
+binary and four-rule retention, and persistent-store corruption detection. The
+result therefore graduates from a curve-only lead to a verified causal schedule
+breakthrough. The raw training report and audit are
+`early56_late48_s16_8278.json` and `early56_late48_s16_audit_8279.json`.
 
 An early-state linear allocator was also tested against full matched
 trajectories. Its apparent single-split success did not survive four disjoint
