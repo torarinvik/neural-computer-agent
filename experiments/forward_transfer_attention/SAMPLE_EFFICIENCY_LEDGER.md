@@ -1235,3 +1235,44 @@ live: both conditions pass 6/6, and the read path's worst retention delta is
 0.9749). Reading costs nothing that gating was protecting.
 
 Full record in `session_records/read_path_2026-07-28/`.
+
+## 2026-07-28 — The full controller learns temporal memory volatility in 6,144 verifier bits
+
+The verified-use volatility atom now survives integration into the unified
+visual controller. The existing replacement policy already consumed generic
+age, write strength, candidate similarity, access frequency, and aggregate
+reliability. A zero-initialized eighth feature exposed each row's volatility;
+only its one scalar coefficient trained.
+
+The task removes the shortcuts those earlier statistics allow. Stable and
+decoy rows have identical access counts, five successes, and five failures.
+Only outcome **order** differs: recent verified success protects a stable row,
+while recent failure thaws a decoy.
+
+| arm | stable bits to 95% valid replacement | held-out valid replacement | total time |
+|---|---:|---:|---:|
+| normal seed 17105 | **6,144** | **99.61%** | 79.59 s |
+| normal seed 17107 | **6,144** | **98.83%** | 71.70 s |
+| reward shuffled seed 17106 | never | 57.81% | 79.74 s |
+
+Each normal run used 24 updates, 10,752 unique logical contexts, and no replay
+to reach the first 95% prefix that remained above threshold. Shuffling
+volatility-to-row correspondence reduced valid replacement to 47–49%.
+Reversing only the order of the same ten outcome bits reversed 98.4–99.6% of
+choices. Old memory utility, binary mapping, and four-rule behavior all passed.
+
+Three real bounded disk audits then reached 100% valid replacement and
+91.80–95.12% visual accuracy. Every key, value, access count, success count,
+failure count, and volatility scalar survived save/reload exactly; capacity
+never grew. Shuffled/constant volatility returned replacement toward chance,
+and reversed histories flipped every choice.
+
+This is a sample-efficient learned-plasticity milestone, not yet a compounding
+transfer claim. One boundary is deliberately recorded: unequal write-strength
+priors can redirect a content query before its outcome is attributed. In the
+first unequal-prior physical audit valid replacement was 67.19%. The next rung
+must bind each verifier outcome to the actually retrieved row while separating
+retrieval confidence from admission strength.
+
+Full record in
+`session_records/controller_memory_volatility_2026-07-28/README.md`.

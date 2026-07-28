@@ -301,3 +301,23 @@ Across paired seeds 8411–8413, the integrated controller reached stable,
 retention-safe mastery at 68/72/64 updates versus 76/80/72 for the old parent:
 exactly eight updates, 256 new lifetimes, and 384 total lifetimes earlier on
 every seed.
+
+## Verified-use memory-volatility controller
+
+`unified_controller_memory_volatility_seed17107.pt` adds one generic temporal
+plasticity feature to the seven-feature physical replacement parent.
+
+- SHA-256:
+  `da89893ffe67a20907755c48b4dfbd0755a1469dd05ed7211473e07d95c21c07`
+- Parent: `unified_memory_persistent_physical_seed7032.pt`
+- Only the new volatility coefficient differs from the behavior-preserving
+  expanded parent; inherited replacement coefficients are bit-identical.
+- Stable mastery arrived after 24 updates and 6,144 verifier bits.
+- Held-out valid replacement was 98.83%, versus 57.81% for matched
+  reward-shuffled training.
+- The selected state passed a 128-bank physical save/reload audit at 100%
+  valid replacement; shuffled volatility fell to 52.34% and reversing outcome
+  histories reversed 100% of choices.
+
+The promoted physical claim holds admission strength equal during history
+collection. Unequal retrieval priors remain an explicitly recorded frontier.

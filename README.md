@@ -54,8 +54,34 @@ or correct replacement action. Four independent 192-update runs each reached
 retained 100% of stable rows and installed 100% of new rows; shuffling
 volatility among rows reduced stable retention to 51.0–53.4%. Access-only and
 uniform controls lost roughly one stable skill per episode. This establishes
-learned selective stability in external memory, not yet learned volatility for
-controller weights or a full end-to-end cognitive-task campaign.
+learned selective stability in external memory.
+
+That mechanism is now integrated into the full visual controller. The parent
+replacement policy already saw age, strength, similarity, access frequency,
+and aggregate reliability. A zero-initialized eighth feature added volatility;
+the only trainable quantity was its single scalar coefficient. Stable and decoy
+rows were deliberately matched on access count and on total successes/failures
+(five each). Only the *order* of scalar verifier outcomes differed.
+
+Two independent 32-update runs reached 99.61% and 98.83% valid replacement on
+held-out visual lifetimes, within 0.3 points of their perceptual oracles. Both
+crossed and retained 95% after 24 updates, 6,144 unique verifier bits, and
+10,752 logical contexts, with no replay. A matched reward-shuffled run remained
+at 57.81% and never crossed threshold. Shuffling volatility reduced correct
+replacement to 47–49%; reversing outcome order made the controller evict the
+previously stable row on 98.4–99.6% of banks. All inherited behavioral and
+memory-utility gates remained intact. Each complete run took 72–80 seconds,
+well inside the five-minute cap.
+
+Three physical disk-backed audits then achieved 100% valid replacement,
+91.80–95.12% visual accuracy, exact persistence of keys, values, access,
+success, failure, and volatility fields, and zero capacity growth. Shuffled or
+constant volatility fell to 46.9–52.3%; reversing histories flipped 100% of
+replacement choices. This physical claim currently assumes equal admission
+strength while histories are accumulated. With unequal learned strength priors,
+content retrieval redirected some exact queries to other rows and correct
+replacement fell to 67.19%. Credit attribution under unequal retrieval priors
+is the next explicit frontier, not part of the promoted claim.
 
 The new unified-controller line now has its first retained compounding
 milestone. A single 298,252-parameter controller with one vision encoder,

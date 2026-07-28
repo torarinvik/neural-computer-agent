@@ -1,0 +1,57 @@
+{
+  "schema": "unified-controller-physical-memory-volatility-audit-v1",
+  "normal": {
+    "accuracy": 0.953125,
+    "replace_rate": 1.0,
+    "stable_eviction_rate": 0.328125,
+    "valid_replacement_rate": 0.671875,
+    "exact_histories_after_reload": 64,
+    "bounded_banks_after_replacement": 64,
+    "banks": 64,
+    "all_history_fields_persist_exactly": true,
+    "all_banks_remain_bounded": true
+  },
+  "volatility_shuffled": {
+    "accuracy": 0.90234375,
+    "replace_rate": 1.0,
+    "stable_eviction_rate": 0.484375,
+    "valid_replacement_rate": 0.515625,
+    "exact_histories_after_reload": 64,
+    "bounded_banks_after_replacement": 64,
+    "banks": 64,
+    "all_history_fields_persist_exactly": true,
+    "all_banks_remain_bounded": true
+  },
+  "volatility_constant": {
+    "accuracy": 0.8203125,
+    "replace_rate": 1.0,
+    "stable_eviction_rate": 0.5,
+    "valid_replacement_rate": 0.5,
+    "exact_histories_after_reload": 64,
+    "bounded_banks_after_replacement": 64,
+    "banks": 64,
+    "all_history_fields_persist_exactly": true,
+    "all_banks_remain_bounded": true
+  },
+  "outcome_histories_reversed": {
+    "accuracy": 0.8984375,
+    "replace_rate": 1.0,
+    "stable_eviction_rate": 0.71875,
+    "valid_replacement_rate": 0.28125,
+    "exact_histories_after_reload": 64,
+    "bounded_banks_after_replacement": 64,
+    "banks": 64,
+    "all_history_fields_persist_exactly": true,
+    "all_banks_remain_bounded": true
+  },
+  "gates": {
+    "normal_valid_replacement_at_least_90_percent": false,
+    "normal_accuracy_at_least_90_percent": true,
+    "shuffle_costs_30_points_valid_replacement": false,
+    "constant_costs_30_points_valid_replacement": false,
+    "reversal_flips_at_least_90_percent": false,
+    "histories_persist_exactly": true,
+    "capacity_remains_bounded": true,
+    "accepted": false
+  }
+}

@@ -1023,6 +1023,49 @@ def test_elastic_replace_obeys_row_volatility() -> None:
     assert torch.equal(memory.store.values[1], -keys[0])
 
 
+def test_outcome_order_volatility_preserves_temporal_information() -> None:
+    from .train_controller_memory_volatility import outcome_order_volatility
+
+    failures_then_successes = torch.tensor(
+        [[0.0] * 5 + [1.0] * 5])
+    successes_then_failures = 1.0 - failures_then_successes
+    stable = outcome_order_volatility(failures_then_successes)
+    decoy = outcome_order_volatility(successes_then_failures)
+    assert failures_then_successes.sum() == successes_then_failures.sum()
+    assert stable.item() < decoy.item() - 0.4
+
+
+def test_volatility_expansion_is_exactly_behavior_preserving() -> None:
+    from .train_controller_memory_volatility import expand_with_volatility
+
+    source = UnifiedCognitiveController(
+        width=16, workspace_slots=2, intention_width=4,
+        adaptive_memory_replace=True,
+        adaptive_memory_replace_hidden=4,
+        adaptive_memory_replace_features=7)
+    payload = {
+        "model_configuration": {
+            "width": 16,
+            "workspace_slots": 2,
+            "intention_width": 4,
+            "adaptive_memory_replace": True,
+            "adaptive_memory_replace_hidden": 4,
+            "adaptive_memory_replace_features": 7,
+        },
+        "state_dict": source.state_dict(),
+    }
+    expanded, configuration = expand_with_volatility(
+        payload, device=torch.device("cpu"))
+    old_features = torch.randn(11, 5, 7)
+    new_features = torch.cat((
+        old_features, torch.randn(11, 5, 1)), dim=-1)
+    assert configuration["adaptive_memory_replace_features"] == 8
+    assert torch.equal(
+        source.memory_replacement_scores(old_features),
+        expanded.memory_replacement_scores(new_features))
+    assert expanded.memory_replacement_extra_gate.weight[0, 2] == 0
+
+
 def test_persistent_stream_age_uses_current_insertion_rank() -> None:
     memory = DiskLatentMemory(width=4, capacity=3)
     memory.commit(
