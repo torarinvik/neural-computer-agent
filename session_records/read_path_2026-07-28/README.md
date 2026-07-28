@@ -64,6 +64,36 @@ over six budgets, otherwise identical. Ancestry 3 → 4 was chosen because it
 previously measured −0.0002 at p = 0.44 — as close to exactly nothing as the
 design produces — so any real recovery is unambiguous.
 
+## Result: the read path restores transfer
+
+Ancestry 3 → 4, twelve seeds, six budgets, everything else identical.
+
+| condition | pooled paired delta | sign test |
+|---|---:|---|
+| slot cannot read prior slots | +0.0001 | 30W/42L, p = 0.19 |
+| **slot reads prior slots** | **+0.0242** | **48W/22L, p = 2.5e-3** |
+
+Mid-curve, where the arms are still learning, the advantage reaches +0.0501 at
+160 updates and +0.0625 at 256 — the range the first composition produces.
+
+The internal check holds: the shallow arm is numerically identical in both
+conditions at every budget (0.7486, 0.7788, 0.8855, 0.9719, 0.9793, 0.9933), as
+it must be, since a three-skill parent has no prior slots to read and the flag
+therefore does nothing to it. The only thing that differs between the two rows
+is whether the deep arm can see its own ancestry.
+
+This is the first measured transfer past the first composition in this ladder.
+
+## Still to confirm before this is a claim
+
+A reading slot has a wider first layer than a non-reading one, so part of the
+gain could be capacity rather than inherited information. The control keeps the
+shape and the parameter count and zeroes the content of the read
+(`--ablate-prior-read`); it was written before this result was seen. And the
+read path was designed to leave writes gated, so the retention deltas should
+still be at zero — that needs the full audit, since a curve-mode sweep does not
+run the gates.
+
 ## Reading the result
 
 The reference points, same regime:
