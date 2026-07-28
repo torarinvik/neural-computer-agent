@@ -1276,3 +1276,38 @@ retrieval confidence from admission strength.
 
 Full record in
 `session_records/controller_memory_volatility_2026-07-28/README.md`.
+
+## 2026-07-28 — 1,280 reward bits remove the unequal-prior retrieval failure
+
+The volatility milestone initially required equal write strengths. With the
+parent's naturally unequal learned strengths, retrieval's
+`cosine + log(write_strength)` score redirected exact queries and valid
+replacement fell to 64–73%.
+
+A backward-compatible scalar now controls how much write strength influences
+retrieval. It starts at `1.0`, preserving every old score. A five-clone race
+evaluated scales `0, 0.25, 0.5, 0.75, 1.0` on matched physical banks and selected
+solely by pixel-task verifier reward.
+
+| race | unique contexts | verifier bits | selected scale | valid replacement | total time |
+|---|---:|---:|---:|---:|---:|
+| seed 17401 | 448 | **1,280** | **0.0** | **100%** | 23.84 s |
+| seed 17402 | 448 | **1,280** | **0.0** | **100%** | 24.19 s |
+| reward-shuffled 17403 | 896 | 2,560 | 0.5 | 69.53% | 29.86 s |
+
+The unchanged scale-one parent scored 64.06% on both normal held-out streams.
+The selected scale reached 98.05% and 99.02% visual accuracy, preserved every
+physical history field exactly, never grew capacity, lost 50+ points when
+volatility was shuffled, and reversed every choice when histories reversed.
+
+This was not purchased by breaking ordinary retrieval. Two independent
+512-context selective-disk audits passed all gates at 92.77–93.55% first-reload
+and 93.36% repeat-reload accuracy. Corrupting values reduced accuracy to
+66.4–66.6%, and duplicate rows remained below 12%.
+
+This is population-selected sample-efficient resource adaptation, not gradient
+learning and not yet per-query control. The next ledger must test a conditional
+prior: exact novel content should dominate, while verified utility may still
+help choose among genuinely ambiguous or duplicate rows.
+
+Full record in `session_records/memory_usage_prior_2026-07-28/README.md`.

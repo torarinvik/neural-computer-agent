@@ -102,14 +102,19 @@ def _disk_bytes(directory: Path) -> int:
 def _gated_retrieve(
         model: UnifiedCognitiveController, memory: DiskLatentMemory,
         queries: torch.Tensor, *,
-        read_threshold: float | None) -> torch.Tensor:
+        read_threshold: float | None,
+        usage_prior_scale: torch.Tensor | float | None = None) -> torch.Tensor:
+    if usage_prior_scale is None:
+        usage_prior_scale = model.effective_memory_usage_prior_scale()
     if model.memory_read_gate is not None:
-        read, features = memory.retrieve_with_features(queries)
+        read, features = memory.retrieve_with_features(
+            queries, usage_prior_scale=usage_prior_scale)
         accepted = model.memory_read_probability(features) >= 0.5
         return torch.where(
             accepted.unsqueeze(-1), read, torch.zeros_like(read))
     read, confidence = memory.retrieve(
-        queries, top_k=1, confidence_mode="cosine")
+        queries, top_k=1, confidence_mode="cosine",
+        usage_prior_scale=usage_prior_scale)
     if read_threshold is not None:
         read = torch.where(
             (confidence >= read_threshold).unsqueeze(-1),
@@ -126,6 +131,9 @@ def main() -> None:
     parser.add_argument("--bank-capacity", type=int, default=8)
     parser.add_argument("--write-threshold", type=float, default=0.5)
     parser.add_argument("--read-threshold", type=float)
+    parser.add_argument(
+        "--usage-prior-scale", type=float,
+        help="override the controller/default write-strength retrieval prior")
     parser.add_argument("--device", default=(
         "cuda" if torch.cuda.is_available() else "cpu"))
     args = parser.parse_args()
@@ -142,6 +150,11 @@ def main() -> None:
         **payload["model_configuration"]).to(device)
     model.load_state_dict(payload["state_dict"])
     model.eval()
+    usage_prior_scale = (
+        args.usage_prior_scale
+        if args.usage_prior_scale is not None
+        else float(
+            model.effective_memory_usage_prior_scale().detach()))
     batch = _add_context_signatures(
         generate_lifetimes(
             args.contexts, 3, seed=args.seed, heldout=True,
@@ -182,7 +195,8 @@ def main() -> None:
             restored = DiskLatentMemory.load(path, device=device)
             read = _gated_retrieve(
                 model, restored, query_key[start:stop],
-                read_threshold=read_threshold)
+                read_threshold=read_threshold,
+                usage_prior_scale=usage_prior_scale)
             first_reads.append(read)
             first_rows += restored.count
             memories.append(restored)
@@ -209,7 +223,8 @@ def main() -> None:
             restored = DiskLatentMemory.load(path, device=device)
             corrupted_reads.append(_gated_retrieve(
                 model, restored, query_key[start:stop],
-                read_threshold=read_threshold))
+                read_threshold=read_threshold,
+                usage_prior_scale=usage_prior_scale))
         corrupted_disk_accuracy = _query_accuracy(
             model, batch, torch.cat(corrupted_reads), device=device)
 
@@ -220,7 +235,8 @@ def main() -> None:
             stop = start + args.bank_capacity
             read = _gated_retrieve(
                 model, memory, first_key[start:stop],
-                read_threshold=read_threshold)
+                read_threshold=read_threshold,
+                usage_prior_scale=usage_prior_scale)
             repeat_reads.append(read)
         _, repeat_value, repeat_strength = _support(
             model, batch, device=device,
@@ -237,7 +253,8 @@ def main() -> None:
             restored = DiskLatentMemory.load(path, device=device)
             read = _gated_retrieve(
                 model, restored, query_key[start:stop],
-                read_threshold=read_threshold)
+                read_threshold=read_threshold,
+                usage_prior_scale=usage_prior_scale)
             final_reads.append(read)
             final_rows += restored.count
         final_disk_bytes = _disk_bytes(directory)
@@ -256,6 +273,7 @@ def main() -> None:
         "banks": bank_count,
         "write_threshold": args.write_threshold,
         "read_threshold": read_threshold,
+        "usage_prior_scale": usage_prior_scale,
         "read_policy": (
             "adaptive_controller_gate"
             if model.memory_read_gate is not None

@@ -81,7 +81,25 @@ replacement choices. This physical claim currently assumes equal admission
 strength while histories are accumulated. With unequal learned strength priors,
 content retrieval redirected some exact queries to other rows and correct
 replacement fell to 67.19%. Credit attribution under unequal retrieval priors
-is the next explicit frontier, not part of the promoted claim.
+was therefore the next explicit frontier, not part of that promoted claim.
+
+That frontier is now closed for the audited exact-content regime. Retrieval's
+write-strength prior now has a backward-compatible controller scalar, initialized
+at the old value `1.0`. A five-candidate population race compared scales
+`0, 0.25, 0.5, 0.75, 1` on matched physical banks using only pixel-task reward.
+Two independent races selected content-first scale `0.0` from 1,280 verifier
+bits and 448 unique logical contexts in 23.8–24.2 seconds.
+
+Under unequal learned admission strengths, the unadapted parent reached 64.06%
+valid replacement. Both selected controllers reached 100%, with 98.05% and
+99.02% visual accuracy. Volatility shuffling returned replacement to
+46.88–50%; reversing histories flipped every choice. A reward-shuffled race
+selected `0.5`, reached only 69.53%, and failed the causal gates. Two independent
+512-context selective-disk audits retained the older loop at 92.77–93.55%
+first-reload and 93.36% repeat-reload accuracy, with value corruption causal and
+duplicate rates below 12%. The next frontier is a per-query—not global—prior
+controller for ambiguous or genuinely duplicate memories where past verified
+utility may deserve influence without overriding exact content.
 
 The new unified-controller line now has its first retained compounding
 milestone. A single 298,252-parameter controller with one vision encoder,

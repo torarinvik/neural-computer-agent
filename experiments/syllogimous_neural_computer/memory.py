@@ -124,7 +124,8 @@ class PersistentMemory:
             update_volatility: bool = False,
             success_protection_rate: float = 0.1,
             failure_thaw_rate: float = 0.2,
-            stale_thaw_rate: float = 0.005) -> None:
+            stale_thaw_rate: float = 0.005,
+            usage_prior_scale: float = 1.0) -> None:
         """Attribute verified binary outcomes to content-addressed top-1 rows."""
         if queries.ndim != 2 or queries.shape[1] != self.width:
             raise ValueError("queries must have shape [batch, memory width]")
@@ -138,12 +139,14 @@ class PersistentMemory:
                 ("stale_thaw_rate", stale_thaw_rate)):
             if not 0.0 <= rate <= 1.0:
                 raise ValueError(f"{name} must be between zero and one")
+        if usage_prior_scale < 0.0:
+            raise ValueError("usage_prior_scale must be nonnegative")
         indices = self.valid.nonzero(as_tuple=False).squeeze(1)
         keys = torch.nn.functional.normalize(self.keys[indices], dim=-1)
         normalized_queries = torch.nn.functional.normalize(
             queries, dim=-1)
         similarity = normalized_queries @ keys.T
-        similarity = similarity + (
+        similarity = similarity + usage_prior_scale * (
             self.usage[indices].clamp_min(1e-6).log().unsqueeze(0))
         chosen = indices[similarity.argmax(-1)]
         successes = (outcomes > 0.5).to(self.success_count.dtype)
@@ -177,6 +180,7 @@ class PersistentMemory:
              temperature: torch.Tensor | float = 1.0,
              confidence_mode: str = "ranked",
              record_access: bool = False,
+             usage_prior_scale: torch.Tensor | float = 1.0,
              ) -> tuple[torch.Tensor, torch.Tensor]:
         """Content-addressed sparse reads; returns values and confidence."""
         if queries.ndim != 2 or queries.shape[1] != self.width:
@@ -191,7 +195,9 @@ class PersistentMemory:
         # Learned write strength is both an admission decision and a soft
         # retrieval prior. This lets delayed reward train the write gate in the
         # differentiable lifetime implementation used by the benchmark.
-        similarity = similarity + self.usage[indices].clamp_min(1e-6).log().unsqueeze(0)
+        similarity = similarity + (
+            self.usage[indices].clamp_min(1e-6).log().unsqueeze(0)
+            * usage_prior_scale)
         selected = min(top_k, indices.numel())
         scores, local_indices = similarity.topk(selected, dim=-1)
         if record_access:

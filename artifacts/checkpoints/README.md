@@ -321,3 +321,25 @@ plasticity feature to the seven-feature physical replacement parent.
 
 The promoted physical claim holds admission strength equal during history
 collection. Unequal retrieval priors remain an explicitly recorded frontier.
+
+## Reward-selected memory usage-prior controller
+
+`unified_memory_usage_prior_seed17401.pt` closes that unequal-strength boundary
+for exact-content retrieval.
+
+- SHA-256:
+  `2c1fe6c47a7b13efa1f3cfdc6349260b0f7959443e98e9c3c5a1841ed594cc65`
+- Parent: `unified_controller_memory_volatility_seed17107.pt`
+- One scalar was added at the old behavior-preserving value `1.0`.
+- Five physical candidate clones competed at scales
+  `0, 0.25, 0.5, 0.75, 1.0`; only scalar visual verifier reward selected the
+  survivor.
+- The race used 1,280 verifier bits and selected scale `0.0`.
+- Unequal-strength valid replacement improved from 64.06% to 100%, with 98.05%
+  visual accuracy.
+- Volatility shuffle fell to 46.88%; reversing histories reversed every choice.
+- An independent 512-context selective-disk audit passed all gates at 93.55%
+  first-reload and 93.36% repeat-reload accuracy.
+
+This checkpoint uses a global content-first scale. Conditional per-query
+retrieval remains the next frontier.

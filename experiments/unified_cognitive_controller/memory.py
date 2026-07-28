@@ -30,14 +30,17 @@ class DiskLatentMemory:
             self, queries: torch.Tensor, top_k: int = 4,
             confidence_mode: str = "ranked",
             record_access: bool = False,
+            usage_prior_scale: torch.Tensor | float = 1.0,
             ) -> tuple[torch.Tensor, torch.Tensor]:
         return self.store.read(
             queries, top_k=top_k,
             confidence_mode=confidence_mode,
-            record_access=record_access)
+            record_access=record_access,
+            usage_prior_scale=usage_prior_scale)
 
     def retrieve_with_features(
-            self, queries: torch.Tensor
+            self, queries: torch.Tensor,
+            usage_prior_scale: torch.Tensor | float = 1.0,
             ) -> tuple[torch.Tensor, torch.Tensor]:
         """Return hard top-1 values and task-agnostic match statistics."""
         if queries.ndim != 2 or queries.shape[1] != self.store.width:
@@ -54,7 +57,7 @@ class DiskLatentMemory:
             queries, dim=-1)
         cosine = normalized_queries @ keys.T
         usage = self.store.usage[indices].clamp_min(1e-6)
-        ranked = cosine + usage.log().unsqueeze(0)
+        ranked = cosine + usage.log().unsqueeze(0) * usage_prior_scale
         selected_count = min(2, indices.numel())
         scores, local = ranked.topk(selected_count, dim=-1)
         selected = local[:, 0]

@@ -204,13 +204,18 @@ def _apply_replacement(
 def _hard_bank_read(
         model: UnifiedCognitiveController,
         keys: torch.Tensor, values: torch.Tensor,
-        strengths: torch.Tensor, queries: torch.Tensor
+        strengths: torch.Tensor, queries: torch.Tensor,
+        usage_prior_scale: torch.Tensor | float | None = None,
         ) -> torch.Tensor:
+    if usage_prior_scale is None:
+        usage_prior_scale = model.effective_memory_usage_prior_scale()
     cosine = torch.einsum(
         "bqw,bkw->bqk",
         torch.nn.functional.normalize(queries, dim=-1),
         torch.nn.functional.normalize(keys, dim=-1))
-    ranked = cosine + strengths.clamp_min(1e-6).log().unsqueeze(1)
+    ranked = cosine + (
+        strengths.clamp_min(1e-6).log().unsqueeze(1)
+        * usage_prior_scale)
     scores, selected = ranked.topk(2, dim=-1)
     top = selected[:, :, 0]
     read = torch.gather(

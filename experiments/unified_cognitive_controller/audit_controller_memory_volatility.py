@@ -36,7 +36,10 @@ def _model_from_checkpoint(
 def audit(
         model: UnifiedCognitiveController, *, banks: int, capacity: int,
         seed: int, device: torch.device, write_threshold: float,
-        intervention: str = "none") -> dict[str, float | int | bool]:
+        intervention: str = "none",
+        equal_strength: bool = True,
+        usage_prior_scale: float = 1.0,
+        ) -> dict[str, float | int | bool]:
     if intervention not in {
             "none", "shuffle_volatility", "constant_volatility",
             "reverse_histories"}:
@@ -53,12 +56,12 @@ def audit(
         for bank in range(banks):
             memory = DiskLatentMemory(
                 width=model.width, capacity=capacity, device=device)
-            # Equal admission strength isolates the volatility mechanism and
-            # makes each exact content query address its own row. The broader
-            # unequal-prior interaction is a separate retrieval-credit rung.
+            strengths = (
+                torch.ones_like(data["bank_strengths"][bank])
+                if equal_strength else data["bank_strengths"][bank])
             memory.commit(
                 data["bank_keys"][bank], data["bank_values"][bank],
-                torch.ones_like(data["bank_strengths"][bank]), threshold=0.0)
+                strengths, threshold=0.0)
             keys = memory.store.keys[:capacity]
             stable = data["stable_mask"][bank]
             stable_history = torch.tensor(
@@ -70,13 +73,15 @@ def audit(
             for event in range(10):
                 memory.retrieve(
                     keys, top_k=1, confidence_mode="cosine",
-                    record_access=True)
+                    record_access=True,
+                    usage_prior_scale=usage_prior_scale)
                 outcomes = torch.where(
                     stable, stable_history[event], decoy_history[event])
                 memory.store.record_outcomes(
                     keys, outcomes, update_volatility=True,
                     success_protection_rate=0.2,
-                    failure_thaw_rate=0.25, stale_thaw_rate=0.0)
+                    failure_thaw_rate=0.25, stale_thaw_rate=0.0,
+                    usage_prior_scale=usage_prior_scale)
             if intervention == "shuffle_volatility":
                 order = torch.randperm(capacity, generator=generator).to(device)
                 memory.store.volatility[:capacity] = (
@@ -141,7 +146,8 @@ def audit(
                 and restored.store.capacity == capacity)
             reads.append(_gated_retrieve(
                 model, restored, data["future_queries"][bank],
-                read_threshold=None))
+                read_threshold=None,
+                usage_prior_scale=usage_prior_scale))
         outcomes = _outcomes(
             model, data["future_batch"], torch.cat(reads), device=device)
         accuracy = outcomes.reshape(banks, -1).float().mean(-1)
@@ -156,6 +162,8 @@ def audit(
         "banks": banks,
         "all_history_fields_persist_exactly": exact_histories == banks,
         "all_banks_remain_bounded": persisted_after == banks,
+        "equal_strength": equal_strength,
+        "usage_prior_scale": usage_prior_scale,
     }
 
 
@@ -169,24 +177,34 @@ def main() -> None:
     parser.add_argument("--banks", type=int, default=128)
     parser.add_argument("--capacity", type=int, default=6)
     parser.add_argument("--write-threshold", type=float, default=0.5)
+    parser.add_argument("--unequal-strength", action="store_true")
+    parser.add_argument("--usage-prior-scale", type=float, default=1.0)
     args = parser.parse_args()
     device = torch.device(args.device)
     model = _model_from_checkpoint(args.checkpoint, device)
     normal = audit(
         model, banks=args.banks, capacity=args.capacity, seed=args.seed,
-        device=device, write_threshold=args.write_threshold)
+        device=device, write_threshold=args.write_threshold,
+        equal_strength=not args.unequal_strength,
+        usage_prior_scale=args.usage_prior_scale)
     shuffled = audit(
         model, banks=args.banks, capacity=args.capacity, seed=args.seed,
         device=device, write_threshold=args.write_threshold,
-        intervention="shuffle_volatility")
+        intervention="shuffle_volatility",
+        equal_strength=not args.unequal_strength,
+        usage_prior_scale=args.usage_prior_scale)
     constant = audit(
         model, banks=args.banks, capacity=args.capacity, seed=args.seed,
         device=device, write_threshold=args.write_threshold,
-        intervention="constant_volatility")
+        intervention="constant_volatility",
+        equal_strength=not args.unequal_strength,
+        usage_prior_scale=args.usage_prior_scale)
     reversed_histories = audit(
         model, banks=args.banks, capacity=args.capacity, seed=args.seed,
         device=device, write_threshold=args.write_threshold,
-        intervention="reverse_histories")
+        intervention="reverse_histories",
+        equal_strength=not args.unequal_strength,
+        usage_prior_scale=args.usage_prior_scale)
     report = {
         "schema": "unified-controller-physical-memory-volatility-audit-v1",
         "normal": normal,

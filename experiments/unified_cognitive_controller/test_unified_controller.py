@@ -951,6 +951,26 @@ def test_disk_latent_memory_round_trip(tmp_path: Path) -> None:
     assert confidence.shape == (1,)
 
 
+def test_usage_prior_scale_can_restore_exact_content_retrieval() -> None:
+    memory = DiskLatentMemory(width=2, capacity=2)
+    keys = torch.tensor([[1.0, 0.0], [0.8, 0.6]])
+    values = torch.eye(2)
+    memory.commit(
+        keys, values, torch.tensor([0.1, 1.0]), threshold=0.0)
+    query = keys[:1]
+    prior_read, _ = memory.retrieve(
+        query, top_k=1, confidence_mode="cosine",
+        usage_prior_scale=1.0)
+    content_read, _ = memory.retrieve(
+        query, top_k=1, confidence_mode="cosine",
+        usage_prior_scale=0.0)
+    assert torch.equal(prior_read, values[1:2])
+    assert torch.equal(content_read, values[:1])
+    memory.store.record_outcomes(
+        query, torch.ones(1), usage_prior_scale=0.0)
+    assert memory.store.success_count.tolist() == [1, 0]
+
+
 def test_disk_memory_records_persists_and_resets_access_counts(
         tmp_path: Path) -> None:
     memory = DiskLatentMemory(width=4, capacity=2)
@@ -1064,6 +1084,37 @@ def test_volatility_expansion_is_exactly_behavior_preserving() -> None:
         source.memory_replacement_scores(old_features),
         expanded.memory_replacement_scores(new_features))
     assert expanded.memory_replacement_extra_gate.weight[0, 2] == 0
+
+
+def test_usage_prior_expansion_preserves_controller_and_starts_at_one() -> None:
+    from .train_memory_usage_prior_race import (
+        expand_with_adaptive_usage_prior,
+    )
+
+    source = UnifiedCognitiveController(
+        width=16, workspace_slots=2, intention_width=4,
+        adaptive_memory_replace=True,
+        adaptive_memory_replace_hidden=4,
+        adaptive_memory_replace_features=8)
+    payload = {
+        "model_configuration": {
+            "width": 16,
+            "workspace_slots": 2,
+            "intention_width": 4,
+            "adaptive_memory_replace": True,
+            "adaptive_memory_replace_hidden": 4,
+            "adaptive_memory_replace_features": 8,
+        },
+        "state_dict": source.state_dict(),
+    }
+    expanded, configuration = expand_with_adaptive_usage_prior(
+        payload, device=torch.device("cpu"))
+    features = torch.randn(9, 7, 8)
+    assert configuration["adaptive_memory_usage_prior"] is True
+    assert torch.equal(
+        source.memory_replacement_scores(features),
+        expanded.memory_replacement_scores(features))
+    assert expanded.effective_memory_usage_prior_scale() == 1.0
 
 
 def test_persistent_stream_age_uses_current_insertion_rank() -> None:

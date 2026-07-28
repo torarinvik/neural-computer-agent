@@ -76,6 +76,7 @@ class UnifiedCognitiveController(nn.Module):
             adaptive_memory_replace: bool = False,
             adaptive_memory_replace_hidden: int = 8,
             adaptive_memory_replace_features: int = 5,
+            adaptive_memory_usage_prior: bool = False,
             relation_adapter_width: int = 0,
             relation_adapter_gated: bool = False,
             action_adapter_width: int = 0,
@@ -110,6 +111,7 @@ class UnifiedCognitiveController(nn.Module):
         self.adaptive_memory_replace = adaptive_memory_replace
         self.adaptive_memory_replace_hidden = adaptive_memory_replace_hidden
         self.adaptive_memory_replace_features = adaptive_memory_replace_features
+        self.adaptive_memory_usage_prior = adaptive_memory_usage_prior
         self.relation_adapter_width = relation_adapter_width
         self.relation_adapter_gated = relation_adapter_gated
         self.action_adapter_width = action_adapter_width
@@ -319,6 +321,17 @@ class UnifiedCognitiveController(nn.Module):
             else None)
         if self.memory_replacement_extra_gate is not None:
             nn.init.zeros_(self.memory_replacement_extra_gate.weight)
+        self.memory_usage_prior_scale = (
+            nn.Parameter(torch.ones(()))
+            if adaptive_memory_usage_prior else None)
+
+    def effective_memory_usage_prior_scale(self) -> torch.Tensor:
+        """Return the task-agnostic nonnegative retrieval-prior strength."""
+        if self.memory_usage_prior_scale is None:
+            return torch.ones(
+                (), device=self.memory_key.weight.device,
+                dtype=self.memory_key.weight.dtype)
+        return self.memory_usage_prior_scale.clamp(0.0, 1.0)
 
     def memory_read_probability(
             self, features: torch.Tensor) -> torch.Tensor:
