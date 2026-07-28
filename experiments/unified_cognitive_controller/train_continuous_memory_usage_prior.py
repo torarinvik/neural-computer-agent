@@ -13,7 +13,7 @@ import torch
 from .audit_selective_disk import _add_context_signatures, _query_keys, _support
 from .environment import generate_lifetimes
 from .memory import DiskLatentMemory
-from .model import UnifiedCognitiveController
+from .model import UnifiedCognitiveController, full_memory_usage_features
 from .train import evaluate, seed_everything
 from .train_adaptive_memory_read import _outcomes
 from .train_conditional_memory_usage_prior import (
@@ -165,8 +165,11 @@ def continuous_batch(
         content_usage,
         torch.ones_like(content_usage),
     ), dim=-1)
+    policy_features = full_memory_usage_features(
+        features, queries, keys, usage)
     if shuffle_features:
         features = features.roll(1, dims=0)
+        policy_features = policy_features.roll(1, dims=0)
     return {
         "target_batch": batches[0],
         "queries": queries,
@@ -174,6 +177,7 @@ def continuous_batch(
         "values": values,
         "usage": usage,
         "features": features,
+        "policy_features": policy_features,
         "arm": arm,
         "target_index": target_index,
         "decision_boundary": boundary,
@@ -210,7 +214,8 @@ def evaluate_policy(
         heldout=True, difficulty=difficulty,
         shuffle_features=shuffle_features,
         corrupt_values=corrupt_values)
-    continuous = model.memory_usage_prior_probability(data["features"])
+    continuous = model.memory_usage_prior_probability(
+        data.get("policy_features", data["features"]))
     policies = {
         "continuous": continuous,
         "thresholded": (continuous >= 0.5).to(torch.float32),
@@ -255,7 +260,8 @@ def physical_audit(
     data = continuous_batch(
         model, count=count, rows=rows, seed=seed, device=device,
         heldout=True, difficulty=difficulty)
-    scales = model.memory_usage_prior_probability(data["features"])
+    scales = model.memory_usage_prior_probability(
+        data.get("policy_features", data["features"]))
     correct_rows = []
     reads = []
     exact_reloads = 0

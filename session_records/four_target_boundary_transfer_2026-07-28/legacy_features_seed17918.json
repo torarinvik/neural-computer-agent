@@ -1,0 +1,2096 @@
+{
+  "schema": "unified-controller-four-target-boundary-transfer-v1",
+  "configuration": {
+    "checkpoint_in": "artifacts/checkpoints/unified_four_target_memory_retrieval_seed17828.pt",
+    "checkpoint_out": "/tmp/shift_center_legacy_formal_seed17918.pt",
+    "report": "session_records/four_target_boundary_transfer_2026-07-28/legacy_features_seed17918.json",
+    "device": "cpu",
+    "seed": 17918,
+    "steps": 8,
+    "batch_size": 128,
+    "test_count": 512,
+    "physical_count": 64,
+    "retention_count": 128,
+    "learning_rate": 0.01,
+    "exploration_std": 0.5,
+    "scale_cost": 0.02,
+    "critic_hidden": 0,
+    "critic_learning_rate": 0.01,
+    "critic_warmup": 8,
+    "paired_delta": 0.0,
+    "es_delta": 0.0,
+    "verified_imitation_candidates": 101,
+    "imitation_target": "center",
+    "imitation_replay_updates": 125,
+    "accumulate_imitation_replay": true,
+    "parent_distillation_weight": 1.0,
+    "parent_distillation_count": 256,
+    "shuffle_rewards": false,
+    "reset_policy": false,
+    "training_classes": "0,1,2,3",
+    "training_shift_min": -0.09,
+    "training_shift_max": 0.12,
+    "transfer_negative_min": -0.099,
+    "transfer_negative_max": -0.095,
+    "transfer_positive_min": 0.13,
+    "transfer_positive_max": 0.16,
+    "expand_usage_residual_hidden": 8,
+    "usage_residual_features": 4
+  },
+  "model_configuration": {
+    "width": 96,
+    "workspace_slots": 8,
+    "intention_width": 24,
+    "adaptive_memory_read": true,
+    "adaptive_memory_read_hidden": 8,
+    "adaptive_memory_replace": true,
+    "adaptive_memory_replace_hidden": 8,
+    "adaptive_memory_replace_features": 8,
+    "adaptive_memory_usage_prior": true,
+    "adaptive_memory_usage_prior_hidden": 8,
+    "adaptive_memory_usage_prior_residual_hidden": 8,
+    "adaptive_memory_usage_prior_residual_features": 4
+  },
+  "preflight": {
+    "learned": {
+      "visual_accuracy": 1.0,
+      "row_accuracy": 1.0,
+      "class_row_accuracy": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mean_scale": 0.4317689538002014,
+      "verified_utility": 0.991364598274231
+    },
+    "fixed_0.000": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mean_scale": 0.0,
+      "verified_utility": 0.25
+    },
+    "fixed_0.125": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mean_scale": 0.125,
+      "verified_utility": 0.2475000023841858
+    },
+    "fixed_0.250": {
+      "visual_accuracy": 0.1484375,
+      "row_accuracy": 0.1484375,
+      "class_row_accuracy": [
+        0.59375,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mean_scale": 0.25,
+      "verified_utility": 0.14343750476837158
+    },
+    "fixed_0.375": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        1.0,
+        0.0,
+        0.0
+      ],
+      "mean_scale": 0.375,
+      "verified_utility": 0.24250000715255737
+    },
+    "fixed_0.500": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        0.0,
+        1.0,
+        0.0
+      ],
+      "mean_scale": 0.5,
+      "verified_utility": 0.23999999463558197
+    },
+    "fixed_0.625": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mean_scale": 0.625,
+      "verified_utility": 0.23749999701976776
+    },
+    "fixed_0.750": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mean_scale": 0.75,
+      "verified_utility": 0.23499999940395355
+    },
+    "fixed_0.875": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mean_scale": 0.875,
+      "verified_utility": 0.23250000178813934
+    },
+    "fixed_1.000": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mean_scale": 1.0,
+      "verified_utility": 0.23000000417232513
+    },
+    "best_fixed_row_accuracy": 0.25
+  },
+  "history": [
+    {
+      "step": 1,
+      "row_accuracy": 0.75,
+      "minimum_class_accuracy": 0.0,
+      "visual_accuracy": 0.75,
+      "mean_scale": 0.4695682227611542,
+      "critic_loss": null,
+      "elapsed_seconds": 1.3085080830205698,
+      "transfer_row_accuracy": 0.25,
+      "transfer_minimum_class_accuracy": 0.0
+    },
+    {
+      "step": 2,
+      "row_accuracy": 0.75,
+      "minimum_class_accuracy": 0.0,
+      "visual_accuracy": 0.75,
+      "mean_scale": 0.478362500667572,
+      "critic_loss": null,
+      "elapsed_seconds": 4.449148208019324,
+      "transfer_row_accuracy": 0.25,
+      "transfer_minimum_class_accuracy": 0.0
+    },
+    {
+      "step": 3,
+      "row_accuracy": 0.75,
+      "minimum_class_accuracy": 0.0,
+      "visual_accuracy": 0.75,
+      "mean_scale": 0.47791415452957153,
+      "critic_loss": null,
+      "elapsed_seconds": 7.560890082997503,
+      "transfer_row_accuracy": 0.25,
+      "transfer_minimum_class_accuracy": 0.0
+    },
+    {
+      "step": 4,
+      "row_accuracy": 0.75,
+      "minimum_class_accuracy": 0.0,
+      "visual_accuracy": 0.75,
+      "mean_scale": 0.47735023498535156,
+      "critic_loss": null,
+      "elapsed_seconds": 10.84520933299791,
+      "transfer_row_accuracy": 0.25,
+      "transfer_minimum_class_accuracy": 0.0
+    },
+    {
+      "step": 5,
+      "row_accuracy": 0.75,
+      "minimum_class_accuracy": 0.0,
+      "visual_accuracy": 0.75,
+      "mean_scale": 0.46859797835350037,
+      "critic_loss": null,
+      "elapsed_seconds": 14.074340582999866,
+      "transfer_row_accuracy": 0.5,
+      "transfer_minimum_class_accuracy": 0.0
+    },
+    {
+      "step": 6,
+      "row_accuracy": 0.75,
+      "minimum_class_accuracy": 0.0,
+      "visual_accuracy": 0.75,
+      "mean_scale": 0.4647269546985626,
+      "critic_loss": null,
+      "elapsed_seconds": 17.267443500022637,
+      "transfer_row_accuracy": 0.5,
+      "transfer_minimum_class_accuracy": 0.0
+    },
+    {
+      "step": 7,
+      "row_accuracy": 0.75,
+      "minimum_class_accuracy": 0.0,
+      "visual_accuracy": 0.75,
+      "mean_scale": 0.45855146646499634,
+      "critic_loss": null,
+      "elapsed_seconds": 20.49320920801256,
+      "transfer_row_accuracy": 0.5,
+      "transfer_minimum_class_accuracy": 0.0
+    },
+    {
+      "step": 8,
+      "row_accuracy": 1.0,
+      "minimum_class_accuracy": 1.0,
+      "visual_accuracy": 1.0,
+      "mean_scale": 0.46118202805519104,
+      "critic_loss": null,
+      "elapsed_seconds": 23.85815941702458,
+      "transfer_row_accuracy": 0.5,
+      "transfer_minimum_class_accuracy": 0.0
+    }
+  ],
+  "held_out": {
+    "learned": {
+      "visual_accuracy": 1.0,
+      "row_accuracy": 1.0,
+      "class_row_accuracy": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mean_scale": 0.46118199825286865,
+      "verified_utility": 0.9907763600349426
+    },
+    "fixed_0.000": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mean_scale": 0.0,
+      "verified_utility": 0.25
+    },
+    "fixed_0.125": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mean_scale": 0.125,
+      "verified_utility": 0.2475000023841858
+    },
+    "fixed_0.250": {
+      "visual_accuracy": 0.11328125,
+      "row_accuracy": 0.11328125,
+      "class_row_accuracy": [
+        0.453125,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mean_scale": 0.25,
+      "verified_utility": 0.10828124731779099
+    },
+    "fixed_0.375": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        1.0,
+        0.0,
+        0.0
+      ],
+      "mean_scale": 0.375,
+      "verified_utility": 0.24250000715255737
+    },
+    "fixed_0.500": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        0.0,
+        1.0,
+        0.0
+      ],
+      "mean_scale": 0.5,
+      "verified_utility": 0.23999999463558197
+    },
+    "fixed_0.625": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mean_scale": 0.625,
+      "verified_utility": 0.23749999701976776
+    },
+    "fixed_0.750": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mean_scale": 0.75,
+      "verified_utility": 0.23499999940395355
+    },
+    "fixed_0.875": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mean_scale": 0.875,
+      "verified_utility": 0.23250000178813934
+    },
+    "fixed_1.000": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mean_scale": 1.0,
+      "verified_utility": 0.23000000417232513
+    },
+    "best_fixed_row_accuracy": 0.25
+  },
+  "feature_shuffled": {
+    "learned": {
+      "visual_accuracy": 0.2421875,
+      "row_accuracy": 0.2421875,
+      "class_row_accuracy": [
+        0.2109375,
+        0.2265625,
+        0.2890625,
+        0.2421875
+      ],
+      "mean_scale": 0.46118202805519104,
+      "verified_utility": 0.23296386003494263
+    },
+    "fixed_0.000": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mean_scale": 0.0,
+      "verified_utility": 0.25
+    },
+    "fixed_0.125": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mean_scale": 0.125,
+      "verified_utility": 0.2475000023841858
+    },
+    "fixed_0.250": {
+      "visual_accuracy": 0.11328125,
+      "row_accuracy": 0.11328125,
+      "class_row_accuracy": [
+        0.453125,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mean_scale": 0.25,
+      "verified_utility": 0.10828124731779099
+    },
+    "fixed_0.375": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        1.0,
+        0.0,
+        0.0
+      ],
+      "mean_scale": 0.375,
+      "verified_utility": 0.24250000715255737
+    },
+    "fixed_0.500": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        0.0,
+        1.0,
+        0.0
+      ],
+      "mean_scale": 0.5,
+      "verified_utility": 0.23999999463558197
+    },
+    "fixed_0.625": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mean_scale": 0.625,
+      "verified_utility": 0.23749999701976776
+    },
+    "fixed_0.750": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mean_scale": 0.75,
+      "verified_utility": 0.23499999940395355
+    },
+    "fixed_0.875": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mean_scale": 0.875,
+      "verified_utility": 0.23250000178813934
+    },
+    "fixed_1.000": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mean_scale": 1.0,
+      "verified_utility": 0.23000000417232513
+    },
+    "best_fixed_row_accuracy": 0.25
+  },
+  "value_corrupted": {
+    "learned": {
+      "visual_accuracy": 0.0,
+      "row_accuracy": 1.0,
+      "class_row_accuracy": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mean_scale": 0.46118199825286865,
+      "verified_utility": -0.009223639965057373
+    },
+    "fixed_0.000": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mean_scale": 0.0,
+      "verified_utility": 0.25
+    },
+    "fixed_0.125": {
+      "visual_accuracy": 0.0,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mean_scale": 0.125,
+      "verified_utility": -0.0024999999441206455
+    },
+    "fixed_0.250": {
+      "visual_accuracy": 0.13671875,
+      "row_accuracy": 0.11328125,
+      "class_row_accuracy": [
+        0.453125,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mean_scale": 0.25,
+      "verified_utility": 0.13171875476837158
+    },
+    "fixed_0.375": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        1.0,
+        0.0,
+        0.0
+      ],
+      "mean_scale": 0.375,
+      "verified_utility": 0.24250000715255737
+    },
+    "fixed_0.500": {
+      "visual_accuracy": 0.5,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        0.0,
+        1.0,
+        0.0
+      ],
+      "mean_scale": 0.5,
+      "verified_utility": 0.49000000953674316
+    },
+    "fixed_0.625": {
+      "visual_accuracy": 0.5,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mean_scale": 0.625,
+      "verified_utility": 0.48750001192092896
+    },
+    "fixed_0.750": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mean_scale": 0.75,
+      "verified_utility": 0.23499999940395355
+    },
+    "fixed_0.875": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mean_scale": 0.875,
+      "verified_utility": 0.23250000178813934
+    },
+    "fixed_1.000": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mean_scale": 1.0,
+      "verified_utility": 0.23000000417232513
+    },
+    "best_fixed_row_accuracy": 0.25
+  },
+  "unpermuted_rows": {
+    "learned": {
+      "visual_accuracy": 1.0,
+      "row_accuracy": 1.0,
+      "class_row_accuracy": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mean_scale": 0.46118199825286865,
+      "verified_utility": 0.9907763600349426
+    },
+    "fixed_0.000": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mean_scale": 0.0,
+      "verified_utility": 0.25
+    },
+    "fixed_0.125": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mean_scale": 0.125,
+      "verified_utility": 0.2475000023841858
+    },
+    "fixed_0.250": {
+      "visual_accuracy": 0.1328125,
+      "row_accuracy": 0.1328125,
+      "class_row_accuracy": [
+        0.53125,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mean_scale": 0.25,
+      "verified_utility": 0.12781250476837158
+    },
+    "fixed_0.375": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        1.0,
+        0.0,
+        0.0
+      ],
+      "mean_scale": 0.375,
+      "verified_utility": 0.24250000715255737
+    },
+    "fixed_0.500": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        0.0,
+        1.0,
+        0.0
+      ],
+      "mean_scale": 0.5,
+      "verified_utility": 0.23999999463558197
+    },
+    "fixed_0.625": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mean_scale": 0.625,
+      "verified_utility": 0.23749999701976776
+    },
+    "fixed_0.750": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mean_scale": 0.75,
+      "verified_utility": 0.23499999940395355
+    },
+    "fixed_0.875": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mean_scale": 0.875,
+      "verified_utility": 0.23250000178813934
+    },
+    "fixed_1.000": {
+      "visual_accuracy": 0.25,
+      "row_accuracy": 0.25,
+      "class_row_accuracy": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mean_scale": 1.0,
+      "verified_utility": 0.23000000417232513
+    },
+    "best_fixed_row_accuracy": 0.25
+  },
+  "physical": {
+    "banks": 64,
+    "visual_accuracy": 1.0,
+    "row_accuracy": 1.0,
+    "exact_reload_count": 64,
+    "all_banks_reload_exactly": true
+  },
+  "transfer_evaluation": {
+    "negative": {
+      "shift_range": [
+        -0.099,
+        -0.095
+      ],
+      "held_out": {
+        "learned": {
+          "visual_accuracy": 0.5,
+          "row_accuracy": 0.5,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 0.4618450403213501,
+          "verified_utility": 0.4907630980014801
+        },
+        "fixed_0.000": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.0,
+          "verified_utility": 0.25
+        },
+        "fixed_0.125": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.125,
+          "verified_utility": 0.2475000023841858
+        },
+        "fixed_0.250": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.25,
+          "verified_utility": 0.24500000476837158
+        },
+        "fixed_0.375": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            1.0,
+            0.0
+          ],
+          "mean_scale": 0.375,
+          "verified_utility": 0.24250000715255737
+        },
+        "fixed_0.500": {
+          "visual_accuracy": 0.0,
+          "row_accuracy": 0.0,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.5,
+          "verified_utility": -0.009999999776482582
+        },
+        "fixed_0.625": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 0.625,
+          "verified_utility": 0.23749999701976776
+        },
+        "fixed_0.750": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 0.75,
+          "verified_utility": 0.23499999940395355
+        },
+        "fixed_0.875": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 0.875,
+          "verified_utility": 0.23250000178813934
+        },
+        "fixed_1.000": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 1.0,
+          "verified_utility": 0.23000000417232513
+        },
+        "best_fixed_row_accuracy": 0.25
+      },
+      "feature_shuffled": {
+        "learned": {
+          "visual_accuracy": 0.23046875,
+          "row_accuracy": 0.23046875,
+          "class_row_accuracy": [
+            0.2109375,
+            0.0,
+            0.21875,
+            0.4921875
+          ],
+          "mean_scale": 0.4618450403213501,
+          "verified_utility": 0.2212318480014801
+        },
+        "fixed_0.000": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.0,
+          "verified_utility": 0.25
+        },
+        "fixed_0.125": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.125,
+          "verified_utility": 0.2475000023841858
+        },
+        "fixed_0.250": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.25,
+          "verified_utility": 0.24500000476837158
+        },
+        "fixed_0.375": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            1.0,
+            0.0
+          ],
+          "mean_scale": 0.375,
+          "verified_utility": 0.24250000715255737
+        },
+        "fixed_0.500": {
+          "visual_accuracy": 0.0,
+          "row_accuracy": 0.0,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.5,
+          "verified_utility": -0.009999999776482582
+        },
+        "fixed_0.625": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 0.625,
+          "verified_utility": 0.23749999701976776
+        },
+        "fixed_0.750": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 0.75,
+          "verified_utility": 0.23499999940395355
+        },
+        "fixed_0.875": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 0.875,
+          "verified_utility": 0.23250000178813934
+        },
+        "fixed_1.000": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 1.0,
+          "verified_utility": 0.23000000417232513
+        },
+        "best_fixed_row_accuracy": 0.25
+      },
+      "value_corrupted": {
+        "learned": {
+          "visual_accuracy": 0.5,
+          "row_accuracy": 0.5,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 0.4618450403213501,
+          "verified_utility": 0.4907630980014801
+        },
+        "fixed_0.000": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.0,
+          "verified_utility": 0.25
+        },
+        "fixed_0.125": {
+          "visual_accuracy": 0.0,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.125,
+          "verified_utility": -0.0024999999441206455
+        },
+        "fixed_0.250": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.25,
+          "verified_utility": 0.24500000476837158
+        },
+        "fixed_0.375": {
+          "visual_accuracy": 0.5,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            1.0,
+            0.0
+          ],
+          "mean_scale": 0.375,
+          "verified_utility": 0.4925000071525574
+        },
+        "fixed_0.500": {
+          "visual_accuracy": 0.5,
+          "row_accuracy": 0.0,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.5,
+          "verified_utility": 0.49000000953674316
+        },
+        "fixed_0.625": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 0.625,
+          "verified_utility": 0.23749999701976776
+        },
+        "fixed_0.750": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 0.75,
+          "verified_utility": 0.23499999940395355
+        },
+        "fixed_0.875": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 0.875,
+          "verified_utility": 0.23250000178813934
+        },
+        "fixed_1.000": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 1.0,
+          "verified_utility": 0.23000000417232513
+        },
+        "best_fixed_row_accuracy": 0.25
+      },
+      "unpermuted_rows": {
+        "learned": {
+          "visual_accuracy": 0.5,
+          "row_accuracy": 0.5,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 0.4618450403213501,
+          "verified_utility": 0.4907630980014801
+        },
+        "fixed_0.000": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.0,
+          "verified_utility": 0.25
+        },
+        "fixed_0.125": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.125,
+          "verified_utility": 0.2475000023841858
+        },
+        "fixed_0.250": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.25,
+          "verified_utility": 0.24500000476837158
+        },
+        "fixed_0.375": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            1.0,
+            0.0
+          ],
+          "mean_scale": 0.375,
+          "verified_utility": 0.24250000715255737
+        },
+        "fixed_0.500": {
+          "visual_accuracy": 0.0,
+          "row_accuracy": 0.0,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.5,
+          "verified_utility": -0.009999999776482582
+        },
+        "fixed_0.625": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 0.625,
+          "verified_utility": 0.23749999701976776
+        },
+        "fixed_0.750": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 0.75,
+          "verified_utility": 0.23499999940395355
+        },
+        "fixed_0.875": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 0.875,
+          "verified_utility": 0.23250000178813934
+        },
+        "fixed_1.000": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 1.0,
+          "verified_utility": 0.23000000417232513
+        },
+        "best_fixed_row_accuracy": 0.25
+      },
+      "physical": {
+        "banks": 64,
+        "visual_accuracy": 0.5,
+        "row_accuracy": 0.5,
+        "exact_reload_count": 64,
+        "all_banks_reload_exactly": true
+      }
+    },
+    "positive": {
+      "shift_range": [
+        0.13,
+        0.16
+      ],
+      "held_out": {
+        "learned": {
+          "visual_accuracy": 0.5,
+          "row_accuracy": 0.5,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 0.45252156257629395,
+          "verified_utility": 0.4909495711326599
+        },
+        "fixed_0.000": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.0,
+          "verified_utility": 0.25
+        },
+        "fixed_0.125": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.125,
+          "verified_utility": 0.2475000023841858
+        },
+        "fixed_0.250": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.25,
+          "verified_utility": 0.24500000476837158
+        },
+        "fixed_0.375": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.375,
+          "verified_utility": 0.24250000715255737
+        },
+        "fixed_0.500": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.5,
+          "verified_utility": 0.23999999463558197
+        },
+        "fixed_0.625": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            1.0,
+            0.0
+          ],
+          "mean_scale": 0.625,
+          "verified_utility": 0.23749999701976776
+        },
+        "fixed_0.750": {
+          "visual_accuracy": 0.166015625,
+          "row_accuracy": 0.166015625,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            0.6640625
+          ],
+          "mean_scale": 0.75,
+          "verified_utility": 0.15101562440395355
+        },
+        "fixed_0.875": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 0.875,
+          "verified_utility": 0.23250000178813934
+        },
+        "fixed_1.000": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 1.0,
+          "verified_utility": 0.23000000417232513
+        },
+        "best_fixed_row_accuracy": 0.25
+      },
+      "feature_shuffled": {
+        "learned": {
+          "visual_accuracy": 0.1796875,
+          "row_accuracy": 0.1796875,
+          "class_row_accuracy": [
+            0.4921875,
+            0.0,
+            0.0,
+            0.2265625
+          ],
+          "mean_scale": 0.45252156257629395,
+          "verified_utility": 0.1706370711326599
+        },
+        "fixed_0.000": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.0,
+          "verified_utility": 0.25
+        },
+        "fixed_0.125": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.125,
+          "verified_utility": 0.2475000023841858
+        },
+        "fixed_0.250": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.25,
+          "verified_utility": 0.24500000476837158
+        },
+        "fixed_0.375": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.375,
+          "verified_utility": 0.24250000715255737
+        },
+        "fixed_0.500": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.5,
+          "verified_utility": 0.23999999463558197
+        },
+        "fixed_0.625": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            1.0,
+            0.0
+          ],
+          "mean_scale": 0.625,
+          "verified_utility": 0.23749999701976776
+        },
+        "fixed_0.750": {
+          "visual_accuracy": 0.166015625,
+          "row_accuracy": 0.166015625,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            0.6640625
+          ],
+          "mean_scale": 0.75,
+          "verified_utility": 0.15101562440395355
+        },
+        "fixed_0.875": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 0.875,
+          "verified_utility": 0.23250000178813934
+        },
+        "fixed_1.000": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 1.0,
+          "verified_utility": 0.23000000417232513
+        },
+        "best_fixed_row_accuracy": 0.25
+      },
+      "value_corrupted": {
+        "learned": {
+          "visual_accuracy": 0.0,
+          "row_accuracy": 0.5,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 0.45252156257629395,
+          "verified_utility": -0.009050430729985237
+        },
+        "fixed_0.000": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.0,
+          "verified_utility": 0.25
+        },
+        "fixed_0.125": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.125,
+          "verified_utility": 0.2475000023841858
+        },
+        "fixed_0.250": {
+          "visual_accuracy": 0.083984375,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.25,
+          "verified_utility": 0.07898437231779099
+        },
+        "fixed_0.375": {
+          "visual_accuracy": 0.0,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.375,
+          "verified_utility": -0.007499999832361937
+        },
+        "fixed_0.500": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.5,
+          "verified_utility": 0.23999999463558197
+        },
+        "fixed_0.625": {
+          "visual_accuracy": 0.5,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            1.0,
+            0.0
+          ],
+          "mean_scale": 0.625,
+          "verified_utility": 0.48750001192092896
+        },
+        "fixed_0.750": {
+          "visual_accuracy": 0.5,
+          "row_accuracy": 0.166015625,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            0.6640625
+          ],
+          "mean_scale": 0.75,
+          "verified_utility": 0.48500001430511475
+        },
+        "fixed_0.875": {
+          "visual_accuracy": 0.298828125,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 0.875,
+          "verified_utility": 0.28132811188697815
+        },
+        "fixed_1.000": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 1.0,
+          "verified_utility": 0.23000000417232513
+        },
+        "best_fixed_row_accuracy": 0.25
+      },
+      "unpermuted_rows": {
+        "learned": {
+          "visual_accuracy": 0.5,
+          "row_accuracy": 0.5,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 0.45252156257629395,
+          "verified_utility": 0.4909495711326599
+        },
+        "fixed_0.000": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.0,
+          "verified_utility": 0.25
+        },
+        "fixed_0.125": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.125,
+          "verified_utility": 0.2475000023841858
+        },
+        "fixed_0.250": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.25,
+          "verified_utility": 0.24500000476837158
+        },
+        "fixed_0.375": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.375,
+          "verified_utility": 0.24250000715255737
+        },
+        "fixed_0.500": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          "mean_scale": 0.5,
+          "verified_utility": 0.23999999463558197
+        },
+        "fixed_0.625": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            1.0,
+            0.0
+          ],
+          "mean_scale": 0.625,
+          "verified_utility": 0.23749999701976776
+        },
+        "fixed_0.750": {
+          "visual_accuracy": 0.166015625,
+          "row_accuracy": 0.166015625,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            0.6640625
+          ],
+          "mean_scale": 0.75,
+          "verified_utility": 0.15101562440395355
+        },
+        "fixed_0.875": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 0.875,
+          "verified_utility": 0.23250000178813934
+        },
+        "fixed_1.000": {
+          "visual_accuracy": 0.25,
+          "row_accuracy": 0.25,
+          "class_row_accuracy": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "mean_scale": 1.0,
+          "verified_utility": 0.23000000417232513
+        },
+        "best_fixed_row_accuracy": 0.25
+      },
+      "physical": {
+        "banks": 64,
+        "visual_accuracy": 0.5,
+        "row_accuracy": 0.5,
+        "exact_reload_count": 64,
+        "all_banks_reload_exactly": true
+      }
+    }
+  },
+  "retention": {
+    "parent_continuous": {
+      "continuous": {
+        "visual_accuracy": 0.853515625,
+        "row_accuracy": 0.716796875,
+        "exact_row_accuracy": 0.43359375,
+        "ambiguous_row_accuracy": 1.0,
+        "mean_scale": 0.4960022568702698,
+        "ambiguous_mean_scale": 0.8391427993774414,
+        "verified_utility": 0.7047149538993835
+      },
+      "thresholded": {
+        "visual_accuracy": 1.0,
+        "row_accuracy": 1.0,
+        "exact_row_accuracy": 1.0,
+        "ambiguous_row_accuracy": 1.0,
+        "mean_scale": 0.5,
+        "ambiguous_mean_scale": 1.0,
+        "verified_utility": 0.8500000238418579
+      },
+      "fixed_zero": {
+        "visual_accuracy": 0.740234375,
+        "row_accuracy": 0.5,
+        "exact_row_accuracy": 1.0,
+        "ambiguous_row_accuracy": 0.0,
+        "mean_scale": 0.0,
+        "ambiguous_mean_scale": 0.0,
+        "verified_utility": 0.740234375
+      },
+      "fixed_one": {
+        "visual_accuracy": 0.73828125,
+        "row_accuracy": 0.5,
+        "exact_row_accuracy": 0.0,
+        "ambiguous_row_accuracy": 1.0,
+        "mean_scale": 1.0,
+        "ambiguous_mean_scale": 1.0,
+        "verified_utility": 0.43828123807907104
+      },
+      "ambiguous_minimum_required_scale": {
+        "mean": 0.4535793960094452,
+        "maximum": 0.54933100938797
+      },
+      "exact_maximum_allowed_scale": {
+        "mean": 0.14929383993148804,
+        "minimum": 0.1201106533408165
+      }
+    },
+    "parent_conditional": {
+      "mean_probability": 0.3646685481071472,
+      "scale_action_accuracy": 0.5,
+      "learned": {
+        "accuracy": 0.76171875,
+        "exact_accuracy": 1.0,
+        "ambiguous_accuracy": 0.5234375
+      },
+      "fixed_zero": {
+        "accuracy": 0.76171875,
+        "exact_accuracy": 1.0,
+        "ambiguous_accuracy": 0.5234375
+      },
+      "fixed_one": {
+        "accuracy": 0.7890625,
+        "exact_accuracy": 0.578125,
+        "ambiguous_accuracy": 1.0
+      }
+    },
+    "binary_mapping": {
+      "normal": {
+        "accuracy_by_trial": [
+          0.53125,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "zero_shot_accuracy": 0.53125,
+        "post_feedback_accuracy": 1.0,
+        "query_accuracy": 1.0,
+        "final_accuracy": 1.0,
+        "learning_gain": 0.46875
+      },
+      "reversed_rule": {
+        "accuracy_by_trial": [
+          0.46875,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "zero_shot_accuracy": 0.46875,
+        "post_feedback_accuracy": 1.0,
+        "query_accuracy": 1.0,
+        "final_accuracy": 1.0,
+        "learning_gain": 0.53125
+      },
+      "active_state_reset": {
+        "accuracy_by_trial": [
+          0.53125,
+          0.5390625,
+          0.5078125,
+          0.5,
+          0.4921875,
+          0.5
+        ],
+        "zero_shot_accuracy": 0.53125,
+        "post_feedback_accuracy": 0.5078125,
+        "query_accuracy": 0.5078125,
+        "final_accuracy": 0.5,
+        "learning_gain": -0.0234375
+      },
+      "feedback_shuffled": {
+        "accuracy_by_trial": [
+          0.53125,
+          0.421875,
+          0.421875,
+          0.421875,
+          0.421875,
+          0.421875
+        ],
+        "zero_shot_accuracy": 0.53125,
+        "post_feedback_accuracy": 0.421875,
+        "query_accuracy": 0.421875,
+        "final_accuracy": 0.421875,
+        "learning_gain": -0.109375
+      },
+      "workspace_disabled": {
+        "accuracy_by_trial": [
+          0.53125,
+          0.921875,
+          0.984375,
+          0.953125,
+          0.7734375,
+          0.6171875
+        ],
+        "zero_shot_accuracy": 0.53125,
+        "post_feedback_accuracy": 0.8500000238418579,
+        "query_accuracy": 0.8500000238418579,
+        "final_accuracy": 0.6171875,
+        "learning_gain": 0.3187500238418579
+      },
+      "blank_vision": {
+        "accuracy_by_trial": [
+          0.4375,
+          0.5390625,
+          0.4765625,
+          0.4375,
+          0.4453125,
+          0.5
+        ],
+        "zero_shot_accuracy": 0.4375,
+        "post_feedback_accuracy": 0.47968751192092896,
+        "query_accuracy": 0.47968751192092896,
+        "final_accuracy": 0.5,
+        "learning_gain": 0.042187511920928955
+      },
+      "post_feedback_prediction_flip_rate": 1.0,
+      "gate": {
+        "zero_shot_near_chance": true,
+        "normal_few_shot_at_least_85": true,
+        "reversed_few_shot_at_least_85": true,
+        "counterfactual_flip_at_least_80": true,
+        "vision_causally_used": true,
+        "active_state_reset_hurts": true,
+        "shuffled_feedback_hurts": true,
+        "few_shot_breakthrough": true,
+        "accepted": true
+      }
+    },
+    "four_rule": {
+      "normal": {
+        "accuracy_by_trial": [
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "zero_shot_accuracy": 0.5,
+        "post_feedback_accuracy": 1.0,
+        "query_accuracy": 1.0,
+        "final_accuracy": 1.0,
+        "learning_gain": 0.5
+      },
+      "reversed_rule": {
+        "accuracy_by_trial": [
+          0.5,
+          0.5,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "zero_shot_accuracy": 0.5,
+        "post_feedback_accuracy": 1.0,
+        "query_accuracy": 1.0,
+        "final_accuracy": 1.0,
+        "learning_gain": 0.5
+      },
+      "active_state_reset": {
+        "accuracy_by_trial": [
+          0.5,
+          0.5,
+          0.7734375,
+          0.5,
+          0.5546875,
+          0.5
+        ],
+        "zero_shot_accuracy": 0.5,
+        "post_feedback_accuracy": 0.58203125,
+        "query_accuracy": 0.58203125,
+        "final_accuracy": 0.5,
+        "learning_gain": 0.08203125
+      },
+      "feedback_shuffled": {
+        "accuracy_by_trial": [
+          0.5,
+          0.546875,
+          0.421875,
+          0.34375,
+          0.4921875,
+          0.453125
+        ],
+        "zero_shot_accuracy": 0.5,
+        "post_feedback_accuracy": 0.427734375,
+        "query_accuracy": 0.427734375,
+        "final_accuracy": 0.453125,
+        "learning_gain": -0.072265625
+      },
+      "workspace_disabled": {
+        "accuracy_by_trial": [
+          0.5,
+          0.484375,
+          1.0,
+          0.8515625,
+          0.6875,
+          0.640625
+        ],
+        "zero_shot_accuracy": 0.5,
+        "post_feedback_accuracy": 0.794921875,
+        "query_accuracy": 0.794921875,
+        "final_accuracy": 0.640625,
+        "learning_gain": 0.294921875
+      },
+      "blank_vision": {
+        "accuracy_by_trial": [
+          0.453125,
+          0.5,
+          0.7265625,
+          0.71875,
+          0.7578125,
+          0.734375
+        ],
+        "zero_shot_accuracy": 0.453125,
+        "post_feedback_accuracy": 0.734375,
+        "query_accuracy": 0.734375,
+        "final_accuracy": 0.734375,
+        "learning_gain": 0.28125
+      },
+      "post_feedback_prediction_flip_rate": 1.0,
+      "gate": {
+        "zero_shot_near_chance": true,
+        "normal_few_shot_at_least_85": true,
+        "reversed_few_shot_at_least_85": true,
+        "counterfactual_flip_at_least_80": true,
+        "vision_causally_used": true,
+        "active_state_reset_hurts": true,
+        "shuffled_feedback_hurts": true,
+        "few_shot_breakthrough": true,
+        "accepted": true
+      }
+    }
+  },
+  "changed_parameters": [
+    "memory_usage_prior_residual.0.weight",
+    "memory_usage_prior_residual.0.bias",
+    "memory_usage_prior_residual.2.weight",
+    "memory_usage_prior_residual.2.bias"
+  ],
+  "accounting": {
+    "unique_logical_contexts": 4096,
+    "unique_verifier_bits": 4096,
+    "parent_rehearsal_contexts": 1536,
+    "environment_steps": 8,
+    "optimizer_updates": 1000,
+    "replayed_examples": 1086976,
+    "training_seconds": 25.808660458016675,
+    "total_seconds": 54.89766775001772,
+    "stable_updates_to_90_percent": null,
+    "stable_verifier_bits_to_90_percent": null
+  },
+  "gates": {
+    "row_accuracy_at_least_90": true,
+    "every_class_at_least_85": true,
+    "best_fixed_scale_at_most_35": true,
+    "feature_shuffle_costs_20_points": true,
+    "values_are_causal": true,
+    "row_permutation_invariant": true,
+    "physical_accuracy_at_least_90": true,
+    "physical_reload_exact": true,
+    "parent_continuous_retained": false,
+    "parent_conditional_retained": false,
+    "binary_retained": true,
+    "four_rule_retained": true,
+    "only_policy_changed": true,
+    "under_five_minutes": true,
+    "transfer_each_band_at_least_90": false,
+    "transfer_every_class_at_least_85": false,
+    "transfer_best_fixed_at_most_35": true,
+    "transfer_feature_shuffle_costs_20_points": true,
+    "transfer_values_are_causal": false,
+    "transfer_row_permutation_invariant": false,
+    "transfer_physical_at_least_90": false,
+    "transfer_physical_reload_exact": true,
+    "accepted": false
+  }
+}

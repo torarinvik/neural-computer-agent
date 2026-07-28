@@ -17,7 +17,7 @@ from .audit_selective_disk import (
 )
 from .environment import generate_lifetimes
 from .memory import DiskLatentMemory
-from .model import UnifiedCognitiveController
+from .model import UnifiedCognitiveController, full_memory_usage_features
 from .train import evaluate, seed_everything
 from .train_adaptive_memory_read import _outcomes
 from .train_memory_replacement import _select_batch
@@ -119,8 +119,11 @@ def conditional_batch(
         top_usage,
         torch.ones_like(top_usage),
     ), dim=-1)
+    policy_features = full_memory_usage_features(
+        features, queries, keys, usage)
     if shuffle_features:
         features = features.roll(1, dims=0)
+        policy_features = policy_features.roll(1, dims=0)
     return {
         "target_batch": target,
         "queries": queries,
@@ -128,6 +131,7 @@ def conditional_batch(
         "values": values,
         "usage": usage,
         "features": features,
+        "policy_features": policy_features,
         "target_scale": arm.to(torch.float32),
         "arm": arm,
         "generated_contexts": count * 2,
@@ -158,7 +162,8 @@ def evaluate_conditional(
     data = conditional_batch(
         model, count=count, seed=seed, device=device, heldout=True,
         shuffle_features=shuffle_features, corrupt_values=corrupt_values)
-    probability = model.memory_usage_prior_probability(data["features"])
+    probability = model.memory_usage_prior_probability(
+        data.get("policy_features", data["features"]))
     learned_scale = (probability >= 0.5).to(torch.float32)
     policies = {
         "learned": learned_scale,
@@ -188,7 +193,8 @@ def physical_audit(
         device: torch.device) -> dict[str, object]:
     data = conditional_batch(
         model, count=count, seed=seed, device=device, heldout=True)
-    probability = model.memory_usage_prior_probability(data["features"])
+    probability = model.memory_usage_prior_probability(
+        data.get("policy_features", data["features"]))
     scales = (probability >= 0.5).to(torch.float32)
     reads = []
     exact = 0
@@ -278,7 +284,8 @@ def main() -> None:
             seed=args.seed * 1_000_000 + step,
             device=device, heldout=False)
         generated_contexts += int(data["generated_contexts"])
-        probability = model.memory_usage_prior_probability(data["features"])
+        probability = model.memory_usage_prior_probability(
+            data.get("policy_features", data["features"]))
         distribution = torch.distributions.Bernoulli(probs=probability)
         scales = distribution.sample()
         with torch.no_grad():

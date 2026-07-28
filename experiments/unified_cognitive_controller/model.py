@@ -9,6 +9,36 @@ from torch import nn
 from .environment import ACTIONS, NULL_ACTION
 
 
+def full_memory_usage_features(
+        base_features: torch.Tensor, queries: torch.Tensor,
+        keys: torch.Tensor, usage: torch.Tensor,
+        *, retained_rows: int = 4) -> torch.Tensor:
+    """Append sorted per-row content and usage evidence to legacy features."""
+    if retained_rows < 1:
+        raise ValueError("retained_rows must be positive")
+    if base_features.ndim != 2 or base_features.shape[1] != 4:
+        raise ValueError("base features must have shape [batch, 4]")
+    if keys.ndim != 3 or usage.shape != keys.shape[:2]:
+        raise ValueError("keys/usage shapes do not describe row banks")
+    normalized_queries = torch.nn.functional.normalize(queries, dim=-1)
+    normalized_keys = torch.nn.functional.normalize(keys, dim=-1)
+    cosine = torch.einsum(
+        "bw,bkw->bk", normalized_queries, normalized_keys)
+    order = cosine.argsort(dim=-1, descending=True)
+    cosine = torch.gather(cosine, 1, order)
+    sorted_usage = torch.gather(usage, 1, order)
+    missing = retained_rows - cosine.shape[1]
+    if missing > 0:
+        cosine = torch.nn.functional.pad(
+            cosine, (0, missing), value=-1.0)
+        sorted_usage = torch.nn.functional.pad(
+            sorted_usage, (0, missing), value=0.0)
+    return torch.cat((
+        base_features,
+        cosine[:, :retained_rows],
+        sorted_usage[:, :retained_rows]), dim=-1)
+
+
 class VisionEventEncoder(nn.Module):
     """Small modality encoder; it receives pixels and emits one event latent."""
 
@@ -78,6 +108,8 @@ class UnifiedCognitiveController(nn.Module):
             adaptive_memory_replace_features: int = 5,
             adaptive_memory_usage_prior: bool = False,
             adaptive_memory_usage_prior_hidden: int = 0,
+            adaptive_memory_usage_prior_residual_hidden: int = 0,
+            adaptive_memory_usage_prior_residual_features: int = 4,
             relation_adapter_width: int = 0,
             relation_adapter_gated: bool = False,
             action_adapter_width: int = 0,
@@ -100,6 +132,8 @@ class UnifiedCognitiveController(nn.Module):
                 or adaptive_memory_replace_hidden < 1
                 or adaptive_memory_replace_features < 5
                 or adaptive_memory_usage_prior_hidden < 0
+                or adaptive_memory_usage_prior_residual_hidden < 0
+                or adaptive_memory_usage_prior_residual_features < 4
                 or relation_adapter_width < 0
                 or action_adapter_width < 0
                 or skill_adapter_prior_read_limit < 0
@@ -116,6 +150,10 @@ class UnifiedCognitiveController(nn.Module):
         self.adaptive_memory_usage_prior = adaptive_memory_usage_prior
         self.adaptive_memory_usage_prior_hidden = (
             adaptive_memory_usage_prior_hidden)
+        self.adaptive_memory_usage_prior_residual_hidden = (
+            adaptive_memory_usage_prior_residual_hidden)
+        self.adaptive_memory_usage_prior_residual_features = (
+            adaptive_memory_usage_prior_residual_features)
         self.relation_adapter_width = relation_adapter_width
         self.relation_adapter_gated = relation_adapter_gated
         self.action_adapter_width = action_adapter_width
@@ -341,6 +379,21 @@ class UnifiedCognitiveController(nn.Module):
             # Hard inference remains exactly content-first (< 0.5), while
             # stochastic training still explores the usage-prior action.
             nn.init.constant_(output.bias, -2.0)
+        self.memory_usage_prior_residual = (
+            nn.Sequential(
+                nn.Linear(
+                    adaptive_memory_usage_prior_residual_features,
+                    adaptive_memory_usage_prior_residual_hidden),
+                nn.GELU(),
+                nn.Linear(
+                    adaptive_memory_usage_prior_residual_hidden, 1),
+            )
+            if adaptive_memory_usage_prior_residual_hidden > 0 else None)
+        if self.memory_usage_prior_residual is not None:
+            # Adding the branch is bit-identical until verified experience
+            # earns a departure from the inherited retrieval function.
+            nn.init.zeros_(self.memory_usage_prior_residual[-1].weight)
+            nn.init.zeros_(self.memory_usage_prior_residual[-1].bias)
 
     def effective_memory_usage_prior_scale(self) -> torch.Tensor:
         """Return the task-agnostic nonnegative retrieval-prior strength."""
@@ -350,16 +403,33 @@ class UnifiedCognitiveController(nn.Module):
                 dtype=self.memory_key.weight.dtype)
         return self.memory_usage_prior_scale.clamp(0.0, 1.0)
 
+    def memory_usage_prior_logits(
+            self, features: torch.Tensor) -> torch.Tensor:
+        """Return inherited retrieval logits plus any learned residual."""
+        if self.memory_usage_prior_policy is None:
+            raise RuntimeError("conditional memory usage prior is not enabled")
+        if features.ndim != 2 or features.shape[1] < 4:
+            raise ValueError(
+                "usage-prior features must have shape [queries, >=4]")
+        logits = self.memory_usage_prior_policy(
+            features[:, :4]).squeeze(-1)
+        if self.memory_usage_prior_residual is not None:
+            expected = self.adaptive_memory_usage_prior_residual_features
+            residual_features = features[:, :expected]
+            if residual_features.shape[1] < expected:
+                residual_features = torch.nn.functional.pad(
+                    residual_features,
+                    (0, expected - residual_features.shape[1]))
+            logits = (
+                logits
+                + self.memory_usage_prior_residual(
+                    residual_features).squeeze(-1))
+        return logits
+
     def memory_usage_prior_probability(
             self, features: torch.Tensor) -> torch.Tensor:
         """Choose whether verified usage should influence each memory query."""
-        if self.memory_usage_prior_policy is None:
-            raise RuntimeError("conditional memory usage prior is not enabled")
-        if features.ndim != 2 or features.shape[1] != 4:
-            raise ValueError(
-                "usage-prior features must have shape [queries, 4]")
-        return torch.sigmoid(
-            self.memory_usage_prior_policy(features)).squeeze(-1)
+        return torch.sigmoid(self.memory_usage_prior_logits(features))
 
     def memory_read_probability(
             self, features: torch.Tensor) -> torch.Tensor:

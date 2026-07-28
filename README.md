@@ -161,8 +161,24 @@ reloaded disk banks. No fixed scalar exceeded 25%; feature shuffling fell to
 24.8–25.4%, value corruption fell to 0%, and shuffled reward learned only one
 class at 25%.
 
-The next frontier is zero-shot transfer to unseen retrieval boundaries and
-progressive narrowing of the third/fourth interval, followed by naturally
+That zero-shot boundary frontier is now closed. The fixed-envelope parent
+collapsed to 0% when its crossing points moved in an unfamiliar direction.
+The cause was observational aliasing: its four statistics described only the
+best two rows. A zero-output 113-parameter residual now also observes four
+sorted cosine values and their four usage values. The inherited controller is
+frozen and insertion is exactly behavior-preserving.
+
+Training shifts were sampled continuously from `[-0.09, 0.12]`; evaluation
+used disjoint bands `[-0.099, -0.095]` and `[0.13, 0.16]`. Two independent
+runs reached 100% in all four classes on both unseen bands and stable mastery
+after 1,536 verifier bits, using 4,096 bits total. Both retained parent
+continuous/conditional retrieval at 98.9–100% and every older behavioral gate.
+All 512 shifted physical bank evaluations were correct after exact disk
+reload. Feature shuffling fell to 23.3–25.0%, value corruption to 0%, shuffled
+reward to 0–25%, and the exact four-feature ablation to 50%.
+
+The next frontier varies envelope widths and slopes independently so a shared
+global shift can no longer summarize the relation, followed by naturally
 occurring duplicate memories rather than generator-declared opposites.
 
 The new unified-controller line now has its first retained compounding

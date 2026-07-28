@@ -5,7 +5,7 @@ import torch
 
 from .environment import NULL_ACTION, generate_lifetimes
 from .memory import DiskLatentMemory
-from .model import UnifiedCognitiveController
+from .model import UnifiedCognitiveController, full_memory_usage_features
 from .probe_persistent_interface import _add_context_signatures
 from .train import attempted_success_loss, evaluate, rollout
 from .train_frequency_recency_replacement import frequency_recency_batch
@@ -1224,6 +1224,15 @@ def test_four_target_memory_rows_are_all_selectable_after_permutation() -> None:
     assert torch.equal(
         outcomes.gather(1, data["target_slot"].unsqueeze(-1)).squeeze(-1),
         torch.ones(data["target_slot"].shape[0]))
+    shifted = four_target_batch(
+        model, count=64, seed=17801,
+        device=torch.device("cpu"), heldout=True,
+        boundary_shift_range=(0.04, 0.04))
+    shifted_scales = (
+        representative_scales[shifted["target_class"]]
+        + shifted["boundary_shift"])
+    shifted_selected, _ = select_rows(shifted, shifted_scales)
+    assert torch.equal(shifted_selected, shifted["target_slot"])
 
 
 def test_verified_scale_interval_penalizes_only_behavior_changes() -> None:
@@ -1243,6 +1252,52 @@ def test_verified_scale_interval_penalizes_only_behavior_changes() -> None:
     assert torch.equal(
         predicted.grad[:2], torch.zeros_like(predicted.grad[:2]))
     assert predicted.grad[2] > 0
+
+
+def test_usage_prior_residual_is_exact_noop_at_insertion() -> None:
+    payload = torch.load(
+        "artifacts/checkpoints/"
+        "unified_four_target_memory_retrieval_seed17828.pt",
+        map_location="cpu", weights_only=False)
+    parent = UnifiedCognitiveController(**payload["model_configuration"])
+    parent.load_state_dict(payload["state_dict"])
+    configuration = dict(payload["model_configuration"])
+    configuration["adaptive_memory_usage_prior_residual_hidden"] = 8
+    configuration["adaptive_memory_usage_prior_residual_features"] = 12
+    expanded = UnifiedCognitiveController(**configuration)
+    missing, unexpected = expanded.load_state_dict(
+        payload["state_dict"], strict=False)
+    assert set(missing) == {
+        "memory_usage_prior_residual.0.weight",
+        "memory_usage_prior_residual.0.bias",
+        "memory_usage_prior_residual.2.weight",
+        "memory_usage_prior_residual.2.bias",
+    }
+    assert not unexpected
+    features = torch.randn(64, 4)
+    assert torch.equal(
+        parent.memory_usage_prior_probability(features),
+        expanded.memory_usage_prior_probability(features))
+    rich_features = torch.randn(64, 12)
+    rich_features[:, :4] = features
+    assert torch.equal(
+        parent.memory_usage_prior_probability(features),
+        expanded.memory_usage_prior_probability(rich_features))
+
+
+def test_full_memory_usage_features_are_row_permutation_invariant() -> None:
+    base = torch.randn(8, 4)
+    queries = torch.randn(8, 16)
+    keys = torch.randn(8, 4, 16)
+    usage = torch.rand(8, 4)
+    permutation = torch.rand(8, 4).argsort(-1)
+    gather_keys = permutation.unsqueeze(-1).expand(-1, -1, 16)
+    expected = full_memory_usage_features(base, queries, keys, usage)
+    actual = full_memory_usage_features(
+        base, queries,
+        torch.gather(keys, 1, gather_keys),
+        torch.gather(usage, 1, permutation))
+    assert torch.equal(expected, actual)
 
 
 def test_persistent_stream_age_uses_current_insertion_rank() -> None:

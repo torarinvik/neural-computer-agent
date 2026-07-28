@@ -243,6 +243,31 @@ The learner uses only successful scalar-action intervals. Parent rehearsal
 preserves behaviorally equivalent action regions rather than exact numeric
 outputs, which permits plasticity without catastrophic forgetting.
 
+## Unseen-boundary four-way retrieval
+
+`unified_four_target_boundary_transfer_seed17915.pt` is the promoted
+out-of-distribution retrieval milestone.
+
+- SHA-256:
+  `f36a42d95e3cf20b93091ae62b1924540efb456a094013c96a2438dd76ada345`
+- Parent: `unified_four_target_memory_retrieval_seed17828.pt`
+- 298,524 total parameters; only a new 113-parameter residual changed
+- Residual input: four legacy statistics plus sorted cosine/usage for four rows
+- Training shift range: `[-0.09, 0.12]`
+- Disjoint held-out bands: `[-0.099, -0.095]` and `[0.13, 0.16]`
+- Stable unseen mastery: 1,536 verifier bits; 4,096 total
+- Every class in both unseen bands: 100%
+- Best fixed scalar: 25%; feature shuffle: 23.3–25.0%
+- Value corruption: 0% visual success
+- 256 unseen-band physical banks: 100% correct, every reload exact
+- Parent continuous/conditional retrieval: 98.93%/100%
+- Binary-mapping and four-rule retention: passed
+- Independent seed 17916 replicated every gate
+- Shuffled reward and exact four-feature controls were rejected
+
+The residual is zero-output at insertion. Its full-row evidence is generic,
+sorted, and invariant to physical memory-row permutation.
+
 ## Multi-feature online utility
 
 `unified_memory_multifeature_reliability_seed6932.pt` is the promoted

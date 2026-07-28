@@ -13,7 +13,7 @@ import torch
 from .audit_selective_disk import _add_context_signatures, _query_keys, _support
 from .environment import generate_lifetimes
 from .memory import DiskLatentMemory
-from .model import UnifiedCognitiveController
+from .model import UnifiedCognitiveController, full_memory_usage_features
 from .train import evaluate, seed_everything
 from .train_adaptive_memory_read import _outcomes
 from .train_conditional_memory_usage_prior import (
@@ -46,6 +46,7 @@ def four_target_batch(
         model: UnifiedCognitiveController, *, count: int, seed: int,
         device: torch.device, heldout: bool,
         target_classes: tuple[int, ...] = (0, 1, 2, 3),
+        boundary_shift_range: tuple[float, float] = (0.0, 0.0),
         shuffle_features: bool = False,
         corrupt_values: bool = False,
         permute_rows: bool = True) -> dict[str, object]:
@@ -89,7 +90,22 @@ def four_target_batch(
     target_class = target_class[
         torch.randperm(count, generator=generator).to(device)]
 
-    crossings = _CROSSINGS.to(device)[target_class]
+    shift_min, shift_max = boundary_shift_range
+    if shift_min > shift_max:
+        raise ValueError("boundary shift minimum exceeds maximum")
+    boundary_shift = (
+        shift_min
+        + (shift_max - shift_min)
+        * torch.rand(count, generator=generator).to(device))
+    crossings = (
+        _CROSSINGS.to(device)[target_class]
+        + boundary_shift.unsqueeze(-1))
+    if bool(
+            (crossings <= 0.0).any()
+            or (crossings >= 1.0).any()
+            or (crossings[:, 1:] <= crossings[:, :-1]).any()):
+        raise ValueError(
+            "boundary shift produces invalid or unordered crossings")
     top_usage = _TOP_USAGE.to(device)[target_class]
     top_slope = top_usage.log()
     slopes = torch.stack((
@@ -156,8 +172,11 @@ def four_target_batch(
         content_usage,
         torch.ones_like(content_usage),
     ), dim=-1)
+    policy_features = full_memory_usage_features(
+        features, queries, keys, usage)
     if shuffle_features:
         features = features.roll(1, dims=0)
+        policy_features = policy_features.roll(1, dims=0)
     return {
         "target_batch": batches[0],
         "queries": queries,
@@ -165,8 +184,11 @@ def four_target_batch(
         "values": values,
         "usage": usage,
         "features": features,
+        "policy_features": policy_features,
         "target_class": target_class,
         "target_slot": target_slot,
+        "boundary_shift": boundary_shift,
+        "crossings": crossings,
         "generated_contexts": count * 4,
     }
 
@@ -183,6 +205,10 @@ def behavioral_row_outcomes(
             model, data["target_batch"], data["values"][:, row],
             device=device).float())
     return torch.stack(outcomes, dim=-1)
+
+
+def policy_features(data: dict[str, object]) -> torch.Tensor:
+    return data.get("policy_features", data["features"])
 
 
 def scale_interval_loss(
@@ -225,14 +251,16 @@ def select_rows(
 def evaluate_four_target(
         model: UnifiedCognitiveController, *, count: int, seed: int,
         device: torch.device, scale_cost: float,
+        boundary_shift_range: tuple[float, float] = (0.0, 0.0),
         shuffle_features: bool = False,
         corrupt_values: bool = False,
         permute_rows: bool = True) -> dict[str, object]:
     data = four_target_batch(
         model, count=count, seed=seed, device=device, heldout=True,
+        boundary_shift_range=boundary_shift_range,
         shuffle_features=shuffle_features,
         corrupt_values=corrupt_values, permute_rows=permute_rows)
-    learned = model.memory_usage_prior_probability(data["features"])
+    learned = model.memory_usage_prior_probability(policy_features(data))
     grid = torch.linspace(0.0, 1.0, 9, device=device)
     policies = {"learned": learned}
     policies.update({
@@ -267,10 +295,13 @@ def evaluate_four_target(
 @torch.no_grad()
 def physical_audit(
         model: UnifiedCognitiveController, *, count: int, seed: int,
-        device: torch.device) -> dict[str, object]:
+        device: torch.device,
+        boundary_shift_range: tuple[float, float] = (0.0, 0.0),
+        ) -> dict[str, object]:
     data = four_target_batch(
-        model, count=count, seed=seed, device=device, heldout=True)
-    scales = model.memory_usage_prior_probability(data["features"])
+        model, count=count, seed=seed, device=device, heldout=True,
+        boundary_shift_range=boundary_shift_range)
+    scales = model.memory_usage_prior_probability(policy_features(data))
     reads = []
     correct = 0
     exact_reloads = 0
@@ -340,10 +371,21 @@ def main() -> None:
             "explore this many uniformly spaced scales and imitate the "
             "center of scales whose retrieved value earns verifier reward"))
     parser.add_argument(
+        "--imitation-target", choices=("interval", "center"),
+        default="interval",
+        help=(
+            "stop anywhere in the verified successful interval, or regress "
+            "to its outcome-derived center"))
+    parser.add_argument(
         "--imitation-replay-updates", type=int, default=1,
         help=(
             "optimizer steps taken from each verified-imitation batch; "
             "extra passes consume compute and count as replay, not experience"))
+    parser.add_argument(
+        "--accumulate-imitation-replay", action="store_true",
+        help=(
+            "retain verified feature/interval pairs from earlier environment "
+            "steps and optimize their union"))
     parser.add_argument(
         "--parent-distillation-weight", type=float, default=0.0,
         help=(
@@ -355,6 +397,21 @@ def main() -> None:
     parser.add_argument(
         "--training-classes", default="0,1,2,3",
         help="comma-separated private generator classes used in training")
+    parser.add_argument("--training-shift-min", type=float, default=0.0)
+    parser.add_argument("--training-shift-max", type=float, default=0.0)
+    parser.add_argument("--transfer-negative-min", type=float)
+    parser.add_argument("--transfer-negative-max", type=float)
+    parser.add_argument("--transfer-positive-min", type=float)
+    parser.add_argument("--transfer-positive-max", type=float)
+    parser.add_argument(
+        "--expand-usage-residual-hidden", type=int, default=0,
+        help=(
+            "add a zero-output residual branch of this width and train it "
+            "while freezing the inherited usage-prior policy"))
+    parser.add_argument(
+        "--usage-residual-features", type=int, default=4,
+        choices=(4, 12),
+        help="legacy four features or full sorted four-row evidence")
     args = parser.parse_args()
     if sum((
             args.paired_delta > 0.0,
@@ -374,6 +431,37 @@ def main() -> None:
         parser.error("--parent-distillation-weight must be nonnegative")
     if args.parent_distillation_count < 2:
         parser.error("--parent-distillation-count must be at least two")
+    if args.expand_usage_residual_hidden < 0:
+        parser.error("--expand-usage-residual-hidden must be nonnegative")
+    if args.reset_policy and args.expand_usage_residual_hidden > 0:
+        parser.error("reset-policy and residual expansion are exclusive")
+    transfer_values = (
+        args.transfer_negative_min, args.transfer_negative_max,
+        args.transfer_positive_min, args.transfer_positive_max)
+    if any(value is not None for value in transfer_values):
+        if any(value is None for value in transfer_values):
+            parser.error("all four transfer boundaries are required")
+        assert args.transfer_negative_min is not None
+        assert args.transfer_negative_max is not None
+        assert args.transfer_positive_min is not None
+        assert args.transfer_positive_max is not None
+        if not (
+                args.transfer_negative_min
+                <= args.transfer_negative_max
+                < args.training_shift_min
+                <= args.training_shift_max
+                < args.transfer_positive_min
+                <= args.transfer_positive_max):
+            parser.error(
+                "transfer bands must be ordered and disjoint from training")
+        transfer_ranges = {
+            "negative": (
+                args.transfer_negative_min, args.transfer_negative_max),
+            "positive": (
+                args.transfer_positive_min, args.transfer_positive_max),
+        }
+    else:
+        transfer_ranges = None
     if (
             args.verified_imitation_candidates <= 0
             and args.imitation_replay_updates != 1):
@@ -385,7 +473,41 @@ def main() -> None:
     device = torch.device(args.device)
     payload = torch.load(
         args.checkpoint_in, map_location=device, weights_only=False)
-    model = load_conditional_controller(payload, device)
+    model_configuration = dict(payload["model_configuration"])
+    inherited_residual_hidden = int(
+        model_configuration.get(
+            "adaptive_memory_usage_prior_residual_hidden", 0))
+    if (
+            args.expand_usage_residual_hidden > 0
+            and inherited_residual_hidden == 0):
+        model_configuration[
+            "adaptive_memory_usage_prior_residual_hidden"
+        ] = args.expand_usage_residual_hidden
+        model_configuration[
+            "adaptive_memory_usage_prior_residual_features"
+        ] = args.usage_residual_features
+        model = UnifiedCognitiveController(**model_configuration).to(device)
+        missing, unexpected = model.load_state_dict(
+            payload["state_dict"], strict=False)
+        expected = {
+            "memory_usage_prior_residual.0.weight",
+            "memory_usage_prior_residual.0.bias",
+            "memory_usage_prior_residual.2.weight",
+            "memory_usage_prior_residual.2.bias",
+        }
+        if set(missing) != expected or unexpected:
+            raise ValueError(
+                f"unexpected usage-residual mismatch: "
+                f"{missing=}, {unexpected=}")
+    else:
+        if (
+                args.expand_usage_residual_hidden > 0
+                and inherited_residual_hidden
+                != args.expand_usage_residual_hidden):
+            raise ValueError(
+                "requested residual width differs from checkpoint")
+        model = UnifiedCognitiveController(**model_configuration).to(device)
+        model.load_state_dict(payload["state_dict"])
     if args.reset_policy:
         assert model.memory_usage_prior_policy is not None
         for module in model.memory_usage_prior_policy:
@@ -401,11 +523,17 @@ def main() -> None:
     for parameter in model.parameters():
         parameter.requires_grad_(False)
     assert model.memory_usage_prior_policy is not None
-    for parameter in model.memory_usage_prior_policy.parameters():
+    if args.expand_usage_residual_hidden > 0:
+        assert model.memory_usage_prior_residual is not None
+        trainable_parameters = list(
+            model.memory_usage_prior_residual.parameters())
+    else:
+        trainable_parameters = list(
+            model.memory_usage_prior_policy.parameters())
+    for parameter in trainable_parameters:
         parameter.requires_grad_(True)
     optimizer = torch.optim.Adam(
-        model.memory_usage_prior_policy.parameters(),
-        lr=args.learning_rate)
+        trainable_parameters, lr=args.learning_rate)
     parent_features = parent_allowed = parent_candidate_scales = None
     rehearsal_contexts = 0
     if args.parent_distillation_weight > 0.0:
@@ -421,17 +549,17 @@ def main() -> None:
             model, count=args.parent_distillation_count,
             seed=args.seed + 88_000_000, device=device, heldout=False)
         parent_features = torch.cat((
-            parent_continuous_data["features"],
-            parent_conditional_data["features"]), dim=0)
+            policy_features(parent_continuous_data),
+            policy_features(parent_conditional_data)), dim=0)
         with torch.no_grad():
             continuous_teacher_scales = (
                 model.memory_usage_prior_probability(
-                    parent_continuous_data["features"]))
+                    policy_features(parent_continuous_data)))
             continuous_teacher_selected, _ = select_rows(
                 parent_continuous_data, continuous_teacher_scales)
             conditional_teacher_scales = (
                 model.memory_usage_prior_probability(
-                    parent_conditional_data["features"]))
+                    policy_features(parent_conditional_data)))
             conditional_teacher_actions = (
                 conditional_teacher_scales >= 0.5)
             parent_candidate_scales = torch.linspace(
@@ -477,15 +605,18 @@ def main() -> None:
     history = []
     contexts = verifier_bits = 0
     optimizer_updates = replayed_examples = 0
+    imitation_feature_replay: list[torch.Tensor] = []
+    imitation_allowed_replay: list[torch.Tensor] = []
     for step in range(1, args.steps + 1):
         data = four_target_batch(
             model, count=args.batch_size,
             seed=args.seed * 1_000_000 + step,
             device=device, heldout=False,
-            target_classes=training_classes)
+            target_classes=training_classes,
+            boundary_shift_range=(
+                args.training_shift_min, args.training_shift_max))
         contexts += int(data["generated_contexts"])
-        mean = model.memory_usage_prior_policy(
-            data["features"]).squeeze(-1)
+        mean = model.memory_usage_prior_logits(policy_features(data))
         critic_loss_value = None
         if args.verified_imitation_candidates > 0:
             # Search is expressed entirely in the controller's generic scalar
@@ -521,12 +652,34 @@ def main() -> None:
             if not bool(valid.any()):
                 raise RuntimeError(
                     "verified imitation found no successful action")
+            if args.accumulate_imitation_replay:
+                imitation_feature_replay.append(
+                    policy_features(data)[valid].detach())
+                imitation_allowed_replay.append(
+                    successful[valid].detach())
+                replay_features = torch.cat(
+                    imitation_feature_replay, dim=0)
+                replay_allowed = torch.cat(
+                    imitation_allowed_replay, dim=0)
+            else:
+                replay_features = policy_features(data)[valid]
+                replay_allowed = successful[valid]
+            current_examples = int(valid.sum())
+            old_examples = replay_features.shape[0] - current_examples
             for replay_update in range(args.imitation_replay_updates):
-                replay_mean = model.memory_usage_prior_policy(
-                    data["features"]).squeeze(-1)
+                replay_mean = model.memory_usage_prior_logits(
+                    replay_features)
                 predicted_scale = torch.sigmoid(replay_mean)
-                loss = scale_interval_loss(
-                    predicted_scale, successful, candidate_scales)
+                if args.imitation_target == "center":
+                    replay_target = (
+                        replay_allowed.to(predicted_scale.dtype)
+                        * candidate_scales.unsqueeze(0)
+                    ).sum(-1) / replay_allowed.sum(-1)
+                    loss = torch.nn.functional.mse_loss(
+                        predicted_scale, replay_target.detach())
+                else:
+                    loss = scale_interval_loss(
+                        predicted_scale, replay_allowed, candidate_scales)
                 if parent_features is not None:
                     assert parent_allowed is not None
                     assert parent_candidate_scales is not None
@@ -539,11 +692,13 @@ def main() -> None:
                 optimizer.zero_grad(set_to_none=True)
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(
-                    model.memory_usage_prior_policy.parameters(), 1.0)
+                    trainable_parameters, 1.0)
                 optimizer.step()
                 optimizer_updates += 1
                 if replay_update > 0:
-                    replayed_examples += int(valid.sum())
+                    replayed_examples += replay_features.shape[0]
+                else:
+                    replayed_examples += old_examples
                 if parent_features is not None:
                     replayed_examples += parent_features.shape[0]
         elif args.es_delta > 0.0:
@@ -580,7 +735,7 @@ def main() -> None:
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(
-                model.memory_usage_prior_policy.parameters(), 1.0)
+                trainable_parameters, 1.0)
             optimizer.step()
             optimizer_updates += 1
         elif args.paired_delta > 0.0:
@@ -612,7 +767,7 @@ def main() -> None:
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(
-                model.memory_usage_prior_policy.parameters(), 1.0)
+                trainable_parameters, 1.0)
             optimizer.step()
             optimizer_updates += 1
         else:
@@ -645,7 +800,7 @@ def main() -> None:
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(
-                model.memory_usage_prior_policy.parameters(), 1.0)
+                trainable_parameters, 1.0)
             optimizer.step()
             optimizer_updates += 1
         elif (
@@ -675,7 +830,7 @@ def main() -> None:
                 optimizer.zero_grad(set_to_none=True)
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(
-                    model.memory_usage_prior_policy.parameters(), 1.0)
+                    trainable_parameters, 1.0)
                 optimizer.step()
                 optimizer_updates += 1
                 for parameter in critic.parameters():
@@ -689,7 +844,7 @@ def main() -> None:
                 model, count=min(args.test_count, 256),
                 seed=args.seed + 90_000_000, device=device,
                 scale_cost=args.scale_cost)
-            history.append({
+            entry = {
                 "step": step,
                 "row_accuracy": prefix["learned"]["row_accuracy"],
                 "minimum_class_accuracy": min(
@@ -698,7 +853,24 @@ def main() -> None:
                 "mean_scale": prefix["learned"]["mean_scale"],
                 "critic_loss": critic_loss_value,
                 "elapsed_seconds": time.perf_counter() - started,
-            })
+            }
+            if transfer_ranges is not None:
+                transfer_prefixes = [
+                    evaluate_four_target(
+                        model, count=min(args.test_count, 256),
+                        seed=args.seed + 90_100_000 + index,
+                        device=device, scale_cost=args.scale_cost,
+                        boundary_shift_range=shift_range)
+                    for index, shift_range
+                    in enumerate(transfer_ranges.values())
+                ]
+                entry["transfer_row_accuracy"] = min(
+                    report["learned"]["row_accuracy"]
+                    for report in transfer_prefixes)
+                entry["transfer_minimum_class_accuracy"] = min(
+                    min(report["learned"]["class_row_accuracy"])
+                    for report in transfer_prefixes)
+            history.append(entry)
     training_seconds = time.perf_counter() - started
     held_out = evaluate_four_target(
         model, count=args.test_count, seed=args.seed + 91_000_000,
@@ -718,6 +890,38 @@ def main() -> None:
     physical = physical_audit(
         model, count=args.physical_count,
         seed=args.seed + 92_000_000, device=device)
+    transfer_evaluation = None
+    if transfer_ranges is not None:
+        transfer_evaluation = {}
+        for index, (name, shift_range) in enumerate(
+                transfer_ranges.items()):
+            seed = args.seed + 97_000_000 + index * 10_000
+            transfer_evaluation[name] = {
+                "shift_range": shift_range,
+                "held_out": evaluate_four_target(
+                    model, count=args.test_count, seed=seed,
+                    device=device, scale_cost=args.scale_cost,
+                    boundary_shift_range=shift_range),
+                "feature_shuffled": evaluate_four_target(
+                    model, count=args.test_count, seed=seed,
+                    device=device, scale_cost=args.scale_cost,
+                    boundary_shift_range=shift_range,
+                    shuffle_features=True),
+                "value_corrupted": evaluate_four_target(
+                    model, count=args.test_count, seed=seed,
+                    device=device, scale_cost=args.scale_cost,
+                    boundary_shift_range=shift_range,
+                    corrupt_values=True),
+                "unpermuted_rows": evaluate_four_target(
+                    model, count=args.test_count, seed=seed,
+                    device=device, scale_cost=args.scale_cost,
+                    boundary_shift_range=shift_range,
+                    permute_rows=False),
+                "physical": physical_audit(
+                    model, count=args.physical_count,
+                    seed=seed + 1_000, device=device,
+                    boundary_shift_range=shift_range),
+            }
     parent_continuous = evaluate_parent_continuous(
         model, count=args.test_count, rows=4,
         seed=args.seed + 93_000_000, device=device,
@@ -766,24 +970,83 @@ def main() -> None:
         "four_rule_retained": four_rule["gate"]["accepted"],
         "only_policy_changed":
             all(
-                name.startswith("memory_usage_prior_policy.")
+                name.startswith((
+                    "memory_usage_prior_policy.",
+                    "memory_usage_prior_residual."))
                 for name in changed),
         "under_five_minutes": total_seconds <= 300.0,
     }
+    if transfer_evaluation is not None:
+        transfer_held = [
+            report["held_out"]["learned"]
+            for report in transfer_evaluation.values()]
+        transfer_shuffled = [
+            report["feature_shuffled"]["learned"]
+            for report in transfer_evaluation.values()]
+        transfer_corrupted = [
+            report["value_corrupted"]["learned"]
+            for report in transfer_evaluation.values()]
+        gates.update({
+            "transfer_each_band_at_least_90":
+                min(item["row_accuracy"] for item in transfer_held) >= 0.90,
+            "transfer_every_class_at_least_85":
+                min(
+                    min(item["class_row_accuracy"])
+                    for item in transfer_held) >= 0.85,
+            "transfer_best_fixed_at_most_35":
+                max(
+                    report["held_out"]["best_fixed_row_accuracy"]
+                    for report in transfer_evaluation.values()) <= 0.35,
+            "transfer_feature_shuffle_costs_20_points":
+                min(
+                    held["row_accuracy"] - shuffled["row_accuracy"]
+                    for held, shuffled
+                    in zip(transfer_held, transfer_shuffled)) >= 0.20,
+            "transfer_values_are_causal":
+                min(
+                    held["visual_accuracy"] - corrupted["visual_accuracy"]
+                    for held, corrupted
+                    in zip(transfer_held, transfer_corrupted)) >= 0.15,
+            "transfer_row_permutation_invariant":
+                min(
+                    report["unpermuted_rows"]["learned"]["row_accuracy"]
+                    for report in transfer_evaluation.values()) >= 0.90,
+            "transfer_physical_at_least_90":
+                min(
+                    report["physical"]["row_accuracy"]
+                    for report in transfer_evaluation.values()) >= 0.90,
+            "transfer_physical_reload_exact":
+                all(
+                    report["physical"]["all_banks_reload_exactly"]
+                    for report in transfer_evaluation.values()),
+        })
     gates["accepted"] = all(gates.values())
     stable_threshold = None
     for index, entry in enumerate(history):
         if (
-                entry["row_accuracy"] >= 0.90
-                and entry["minimum_class_accuracy"] >= 0.85
+                (
+                    entry["transfer_row_accuracy"] >= 0.90
+                    and entry["transfer_minimum_class_accuracy"] >= 0.85
+                    if transfer_ranges is not None
+                    else (
+                        entry["row_accuracy"] >= 0.90
+                        and entry["minimum_class_accuracy"] >= 0.85))
                 and all(
-                    later["row_accuracy"] >= 0.90
-                    and later["minimum_class_accuracy"] >= 0.85
+                    (
+                        later["transfer_row_accuracy"] >= 0.90
+                        and later["transfer_minimum_class_accuracy"] >= 0.85
+                        if transfer_ranges is not None
+                        else (
+                            later["row_accuracy"] >= 0.90
+                            and later["minimum_class_accuracy"] >= 0.85))
                     for later in history[index:])):
             stable_threshold = entry["step"]
             break
     report = {
-        "schema": "unified-controller-four-target-retrieval-v1",
+        "schema": (
+            "unified-controller-four-target-boundary-transfer-v1"
+            if transfer_ranges is not None
+            else "unified-controller-four-target-retrieval-v1"),
         "configuration": {
             **vars(args),
             "checkpoint_in": str(args.checkpoint_in),
@@ -791,7 +1054,7 @@ def main() -> None:
                 str(args.checkpoint_out) if args.checkpoint_out else None),
             "report": str(args.report),
         },
-        "model_configuration": payload["model_configuration"],
+        "model_configuration": model_configuration,
         "preflight": preflight,
         "history": history,
         "held_out": held_out,
@@ -799,6 +1062,7 @@ def main() -> None:
         "value_corrupted": value_corrupted,
         "unpermuted_rows": unpermuted,
         "physical": physical,
+        "transfer_evaluation": transfer_evaluation,
         "retention": {
             "parent_continuous": parent_continuous,
             "parent_conditional": parent_conditional,
@@ -833,7 +1097,7 @@ def main() -> None:
         args.checkpoint_out.parent.mkdir(parents=True, exist_ok=True)
         torch.save({
             "schema": "unified-cognitive-controller-v1",
-            "model_configuration": payload["model_configuration"],
+            "model_configuration": model_configuration,
             "state_dict": model.state_dict(),
             "source_report": str(args.report),
         }, args.checkpoint_out)
