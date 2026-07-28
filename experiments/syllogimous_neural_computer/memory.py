@@ -25,6 +25,7 @@ class PersistentMemory:
     access_count: torch.Tensor
     success_count: torch.Tensor
     failure_count: torch.Tensor
+    volatility: torch.Tensor
     clock: int = 0
     growth_chunk: int = 1024
 
@@ -43,6 +44,7 @@ class PersistentMemory:
             torch.zeros(capacity, device=device, dtype=torch.long),
             torch.zeros(capacity, device=device, dtype=torch.long),
             torch.zeros(capacity, device=device, dtype=torch.long),
+            torch.ones(capacity, device=device, dtype=dtype),
             0, growth_chunk,
         )
 
@@ -64,6 +66,7 @@ class PersistentMemory:
                                 self.valid.to(device), self.access_count.to(device),
                                 self.success_count.to(device),
                                 self.failure_count.to(device),
+                                self.volatility.to(device),
                                 self.clock, self.growth_chunk)
 
     def clone(self) -> "PersistentMemory":
@@ -72,6 +75,7 @@ class PersistentMemory:
                                 self.access_count.clone(),
                                 self.success_count.clone(),
                                 self.failure_count.clone(),
+                                self.volatility.clone(),
                                 self.clock, self.growth_chunk)
 
     def select(self, indices: torch.Tensor | list[int]) -> "PersistentMemory":
@@ -93,6 +97,7 @@ class PersistentMemory:
             active.access_count[:count].copy_(self.access_count[selected])
             active.success_count[:count].copy_(self.success_count[selected])
             active.failure_count[:count].copy_(self.failure_count[selected])
+            active.volatility[:count].copy_(self.volatility[selected])
             active.valid[:count] = True
         active.clock = self.clock
         return active
@@ -110,10 +115,16 @@ class PersistentMemory:
             self.success_count, self.success_count.new_zeros(amount)))
         self.failure_count = torch.cat((
             self.failure_count, self.failure_count.new_zeros(amount)))
+        self.volatility = torch.cat((
+            self.volatility, self.volatility.new_ones(amount)))
 
     @torch.no_grad()
     def record_outcomes(
-            self, queries: torch.Tensor, outcomes: torch.Tensor) -> None:
+            self, queries: torch.Tensor, outcomes: torch.Tensor, *,
+            update_volatility: bool = False,
+            success_protection_rate: float = 0.1,
+            failure_thaw_rate: float = 0.2,
+            stale_thaw_rate: float = 0.005) -> None:
         """Attribute verified binary outcomes to content-addressed top-1 rows."""
         if queries.ndim != 2 or queries.shape[1] != self.width:
             raise ValueError("queries must have shape [batch, memory width]")
@@ -121,6 +132,12 @@ class PersistentMemory:
             raise ValueError("outcomes must have one value per query")
         if self.count == 0:
             return
+        for name, rate in (
+                ("success_protection_rate", success_protection_rate),
+                ("failure_thaw_rate", failure_thaw_rate),
+                ("stale_thaw_rate", stale_thaw_rate)):
+            if not 0.0 <= rate <= 1.0:
+                raise ValueError(f"{name} must be between zero and one")
         indices = self.valid.nonzero(as_tuple=False).squeeze(1)
         keys = torch.nn.functional.normalize(self.keys[indices], dim=-1)
         normalized_queries = torch.nn.functional.normalize(
@@ -133,6 +150,28 @@ class PersistentMemory:
         failures = 1 - successes
         self.success_count.scatter_add_(0, chosen, successes)
         self.failure_count.scatter_add_(0, chosen, failures)
+        if update_volatility:
+            # Every outcome interval makes untouched rows slightly easier to
+            # rewrite. Verified success protects the row; verified failure
+            # thaws it. Access alone never grants protection.
+            current_volatility = self.volatility[indices]
+            self.volatility[indices] = current_volatility + (
+                stale_thaw_rate * (1.0 - current_volatility))
+            unique, inverse = chosen.unique(return_inverse=True)
+            success_totals = torch.zeros(
+                unique.shape[0], device=chosen.device,
+                dtype=self.volatility.dtype)
+            failure_totals = torch.zeros_like(success_totals)
+            success_totals.scatter_add_(
+                0, inverse, successes.to(success_totals.dtype))
+            failure_totals.scatter_add_(
+                0, inverse, failures.to(failure_totals.dtype))
+            protected = self.volatility[unique] * (
+                (1.0 - success_protection_rate) ** success_totals)
+            self.volatility[unique] = 1.0 - (
+                (1.0 - protected)
+                * ((1.0 - failure_thaw_rate) ** failure_totals))
+            self.volatility.clamp_(0.0, 1.0)
 
     def read(self, queries: torch.Tensor, top_k: int = 4,
              temperature: torch.Tensor | float = 1.0,
@@ -198,6 +237,7 @@ class PersistentMemory:
             self.access_count[slot] = 0
             self.success_count[slot] = 0
             self.failure_count[slot] = 0
+            self.volatility[slot] = 1.0
             self.valid[slot] = True
             committed += 1
         return committed
@@ -206,13 +246,14 @@ class PersistentMemory:
         path.parent.mkdir(parents=True, exist_ok=True)
         temporary = path.with_suffix(path.suffix + ".tmp")
         torch.save({
-            "schema": "syllogimous-neural-computer-memory-v3",
+            "schema": "syllogimous-neural-computer-memory-v4",
             "keys": self.keys.detach().cpu(), "values": self.values.detach().cpu(),
             "usage": self.usage.detach().cpu(), "age": self.age.detach().cpu(),
             "valid": self.valid.detach().cpu(),
             "access_count": self.access_count.detach().cpu(),
             "success_count": self.success_count.detach().cpu(),
             "failure_count": self.failure_count.detach().cpu(),
+            "volatility": self.volatility.detach().cpu(),
             "clock": self.clock,
             "growth_chunk": self.growth_chunk,
         }, temporary)
@@ -224,7 +265,8 @@ class PersistentMemory:
         if payload.get("schema") not in {
                 "syllogimous-neural-computer-memory-v1",
                 "syllogimous-neural-computer-memory-v2",
-                "syllogimous-neural-computer-memory-v3"}:
+                "syllogimous-neural-computer-memory-v3",
+                "syllogimous-neural-computer-memory-v4"}:
             raise ValueError("unsupported persistent-memory schema")
         access_count = payload.get(
             "access_count", torch.zeros_like(payload["age"]))
@@ -232,8 +274,10 @@ class PersistentMemory:
             "success_count", torch.zeros_like(payload["age"]))
         failure_count = payload.get(
             "failure_count", torch.zeros_like(payload["age"]))
+        volatility = payload.get(
+            "volatility", torch.ones_like(payload["usage"]))
         return cls(payload["keys"], payload["values"], payload["usage"],
                    payload["age"], payload["valid"], access_count,
-                   success_count, failure_count,
+                   success_count, failure_count, volatility,
                    int(payload["clock"]),
                    int(payload.get("growth_chunk", 1024)))

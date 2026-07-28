@@ -1,0 +1,116 @@
+{
+  "schema": "verified-memory-volatility-selector-v1",
+  "training": {
+    "signal": "scalar final verifier reward only",
+    "semantic_task_ids": false,
+    "correct_replacement_labels": false,
+    "unique_environments": 1024,
+    "updates": 192,
+    "trace": [
+      {
+        "update": 1,
+        "reward": 0.7924107313156128,
+        "perfect_rate": 0.09375
+      },
+      {
+        "update": 16,
+        "reward": 0.8125000596046448,
+        "perfect_rate": 0.0625
+      },
+      {
+        "update": 32,
+        "reward": 0.8169642686843872,
+        "perfect_rate": 0.140625
+      },
+      {
+        "update": 48,
+        "reward": 0.8504464626312256,
+        "perfect_rate": 0.25
+      },
+      {
+        "update": 64,
+        "reward": 0.8705357313156128,
+        "perfect_rate": 0.234375
+      },
+      {
+        "update": 80,
+        "reward": 0.8816964626312256,
+        "perfect_rate": 0.34375
+      },
+      {
+        "update": 96,
+        "reward": 0.9241071343421936,
+        "perfect_rate": 0.515625
+      },
+      {
+        "update": 112,
+        "reward": 0.9419642686843872,
+        "perfect_rate": 0.59375
+      },
+      {
+        "update": 128,
+        "reward": 0.9464285969734192,
+        "perfect_rate": 0.65625
+      },
+      {
+        "update": 144,
+        "reward": 0.96875,
+        "perfect_rate": 0.78125
+      },
+      {
+        "update": 160,
+        "reward": 0.9620535969734192,
+        "perfect_rate": 0.734375
+      },
+      {
+        "update": 176,
+        "reward": 0.9709821343421936,
+        "perfect_rate": 0.796875
+      },
+      {
+        "update": 192,
+        "reward": 0.9910714626312256,
+        "perfect_rate": 0.9375
+      }
+    ]
+  },
+  "held_out": {
+    "intact_verified_volatility": {
+      "mean_verified_score": 1.0,
+      "perfect_episode_rate": 1.0,
+      "mean_stable_rows_rewritten": 0.0
+    },
+    "access_only": {
+      "mean_verified_score": 0.8588168621063232,
+      "perfect_episode_rate": 0.20703125,
+      "mean_stable_rows_rewritten": 0.9882811307907104
+    },
+    "shuffled_row_correspondence": {
+      "mean_verified_score": 0.8041294813156128,
+      "perfect_episode_rate": 0.09765625,
+      "mean_stable_rows_rewritten": 1.3710936307907104
+    },
+    "uniform": {
+      "mean_verified_score": 0.852399468421936,
+      "perfect_episode_rate": 0.169921875,
+      "mean_stable_rows_rewritten": 1.0332030057907104
+    },
+    "physical_memory": {
+      "mean_verified_score": 1.0,
+      "stable_retention": 1.0,
+      "new_acquisition": 1.0
+    },
+    "physical_memory_shuffled": {
+      "mean_verified_score": 0.7901785714285714,
+      "stable_retention": 0.5104166666666666,
+      "new_acquisition": 1.0
+    }
+  },
+  "gates": {
+    "held_out_perfect_rate_at_least_95_percent": true,
+    "causal_shuffle_costs_at_least_15_points": true,
+    "verified_signal_beats_access_only_by_12_points": true,
+    "physical_memory_retains_and_acquires_at_least_95_percent": true,
+    "physical_shuffle_costs_at_least_15_points": true
+  }
+}

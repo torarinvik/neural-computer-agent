@@ -31,6 +31,32 @@ Final accuracy alone is not an adequate score.
 
 ## Current audited frontier
 
+The persistent-memory line now has a verified-use plasticity milestone. Every
+physical row carries a modality- and task-agnostic volatility scalar. Successful
+retrieval gradually protects a row, failure thaws it, and disuse slowly restores
+plasticity; access frequency alone cannot freeze a memory. The field survives
+RAM/VRAM movement, selection, growth, disk save/reload, and old v1-v3 memories
+load as fully plastic.
+
+In a non-stationary bounded-memory atom, three stable skills, three equally
+frequent but consistently failing decoys, and two stale skills competed with
+four new skills. Verified-use volatility retained 100% of stable skills while
+acquiring 100% of the new skills over 64 seeds. Uniform replacement scored
+77.46%, access-only plasticity 71.43%, and shuffled row/volatility
+correspondence 79.02%. This directly falsifies the tempting shortcut “frequent
+means important”: stable and decoy rows had identical access counts, but only
+verified usefulness separated them.
+
+A fresh 321-parameter generic replacement selector then learned to use the
+scalar from final verifier reward alone—no task identity, semantic row label,
+or correct replacement action. Four independent 192-update runs each reached
+100% perfect episodes on 512 held-out environments. Physical disk-backed audits
+retained 100% of stable rows and installed 100% of new rows; shuffling
+volatility among rows reduced stable retention to 51.0–53.4%. Access-only and
+uniform controls lost roughly one stable skill per episode. This establishes
+learned selective stability in external memory, not yet learned volatility for
+controller weights or a full end-to-end cognitive-task campaign.
+
 The new unified-controller line now has its first retained compounding
 milestone. A single 298,252-parameter controller with one vision encoder,
 recurrent state, generic differentiable workspace, latent intention, and

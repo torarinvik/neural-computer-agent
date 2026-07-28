@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import time
 from pathlib import Path
 
@@ -52,6 +53,103 @@ def _plastic_prefixes(slot: int) -> tuple[str, ...]:
         f"skill_adapters.{slot}.",
         f"skill_adapter_gates.{slot}.",
         f"skill_adapter_read_projections.{slot}.")
+
+
+def _prior_slot_prefixes(
+        inherited_slot_count: int, thawed_slot_count: int,
+        ) -> tuple[str, ...]:
+    """Name the most recent inherited slots allowed to change.
+
+    A fixed volatility is only an existence test for learned metaplasticity.
+    Keeping this helper index-based makes the no-thaw default exactly reproduce
+    the established frozen-parent path.
+    """
+    if thawed_slot_count < 0:
+        raise ValueError("thawed slot count must not be negative")
+    first = max(0, inherited_slot_count - thawed_slot_count)
+    return tuple(
+        prefix
+        for slot in range(first, inherited_slot_count)
+        for prefix in (
+            f"skill_adapters.{slot}.",
+            f"skill_adapter_gates.{slot}.",
+            f"skill_adapter_read_projections.{slot}."))
+
+
+def _relative_state_drift(
+        model: nn.Module, initial: dict[str, torch.Tensor],
+        ) -> float:
+    """Relative L2 movement of the intentionally plastic inherited state."""
+    if not initial:
+        return 0.0
+    changed = 0.0
+    scale = 0.0
+    current = model.state_dict()
+    for name, before in initial.items():
+        after = current[name].detach().cpu()
+        changed += float((after - before).square().sum())
+        scale += float(before.square().sum())
+    return (changed / max(scale, 1e-24)) ** 0.5
+
+
+def _alignment_volatility(alignment: float, maximum: float) -> float:
+    """Smoothly thaw when acquisition and retention gradients agree.
+
+    Orthogonal evidence gets half the available plasticity. Agreement moves
+    toward the maximum; conflict approaches hard freezing. This consumes no
+    extra verifier outcomes and has no semantic task input.
+    """
+    return maximum / (1.0 + math.exp(-8.0 * alignment))
+
+
+def _gradient_alignment(
+        new_loss: torch.Tensor, retention_loss: torch.Tensor,
+        parameters: list[nn.Parameter],
+        ) -> float:
+    """Cosine agreement between acquisition and retention on one slot."""
+    if not parameters:
+        return 0.0
+    new_grads = torch.autograd.grad(
+        new_loss, parameters, retain_graph=True, allow_unused=True)
+    retention_grads = torch.autograd.grad(
+        retention_loss, parameters, retain_graph=True, allow_unused=True)
+    dot = new_loss.new_zeros(())
+    new_norm = new_loss.new_zeros(())
+    retention_norm = new_loss.new_zeros(())
+    for new_grad, retention_grad in zip(new_grads, retention_grads):
+        if new_grad is None or retention_grad is None:
+            continue
+        dot = dot + (new_grad * retention_grad).sum()
+        new_norm = new_norm + new_grad.square().sum()
+        retention_norm = retention_norm + retention_grad.square().sum()
+    denominator = (new_norm * retention_norm).sqrt()
+    if float(denominator) == 0.0:
+        return 0.0
+    return float((dot / denominator).clamp(-1.0, 1.0))
+
+
+def _importance_volatility(
+        importance: torch.Tensor, maximum: float, strength: float,
+        ) -> torch.Tensor:
+    """Protect frequently retention-critical hidden units.
+
+    Importance is normalized within the slot, so the control depends on
+    relative use rather than an arbitrary loss scale. An unused unit stays
+    maximally plastic; a heavily used one changes slowly.
+    """
+    normalized = importance / importance.mean().clamp_min(1e-12)
+    return maximum / (1.0 + strength * normalized)
+
+
+@torch.no_grad()
+def _blend_unit_update(
+        parameter: nn.Parameter, before: torch.Tensor,
+        volatility: torch.Tensor,
+        ) -> None:
+    """Scale an Adam update by one volatility scalar per output unit."""
+    shape = (volatility.numel(),) + (1,) * (parameter.ndim - 1)
+    scale = volatility.reshape(shape)
+    parameter.copy_(before + scale * (parameter - before))
 
 
 def _replay_loss_and_leakage(
@@ -220,7 +318,9 @@ def _load(
 
 def _new_skill_loss(
         model: UnifiedCognitiveController, batch, *,
-        exploration: float, support_trials: int) -> torch.Tensor:
+        exploration: float, support_trials: int,
+        return_accuracy: bool = False,
+        ) -> torch.Tensor | tuple[torch.Tensor, float]:
     result = rollout(
         model, batch, sample_actions=True, exploration=exploration,
         feedback_trials=support_trials)
@@ -233,7 +333,12 @@ def _new_skill_loss(
         # Support trials precede the outcomes that identify the hidden rule,
         # so their gradient is deliberately discounted.
         losses.append(loss * (0.20 if trial < support_trials else 1.0))
-    return torch.stack(losses).mean()
+    loss = torch.stack(losses).mean()
+    if return_accuracy:
+        accuracy = float(
+            result["rewards"][:, support_trials:].float().mean())
+        return loss, accuracy
+    return loss
 
 
 @torch.no_grad()
@@ -358,6 +463,44 @@ def main() -> None:
               "reads all earlier slots. One ancestor improved absolute learning "
               "while a second added no transfer gain, so one tests local reuse"))
     parser.add_argument(
+        "--prior-slot-volatility", type=float, default=0.0,
+        help=("learning-rate multiplier in [0,1] for inherited skill slots. "
+              "Zero preserves hard freezing; positive values are a diagnostic "
+              "existence test for usage-aware learned plasticity"))
+    parser.add_argument(
+        "--volatility-policy", choices=("fixed", "gradient_alignment"),
+        default="fixed",
+        help=("fixed uses --prior-slot-volatility directly; gradient_alignment "
+              "treats it as a maximum and reduces plasticity when acquisition "
+              "and retention gradients conflict"))
+    parser.add_argument(
+        "--volatility-alignment-decay", type=float, default=0.9,
+        help="EMA decay for the gradient-alignment volatility controller")
+    parser.add_argument(
+        "--unit-volatility-policy",
+        choices=("none", "retention_importance", "shuffled_importance"),
+        default="none",
+        help=("adapt only the prior slot's latent hidden units. Retention "
+              "gradient magnitude protects useful units; shuffled_importance "
+              "keeps the same scalar distribution but breaks attribution"))
+    parser.add_argument(
+        "--unit-volatility-max", type=float, default=0.2,
+        help="maximum Adam update fraction for an unused hidden unit")
+    parser.add_argument(
+        "--unit-importance-strength", type=float, default=4.0,
+        help="how strongly normalized retention importance suppresses updates")
+    parser.add_argument(
+        "--unit-importance-decay", type=float, default=0.9,
+        help="EMA decay for per-hidden-unit retention importance")
+    parser.add_argument(
+        "--volatile-prior-slots", type=int, default=1,
+        help=("number of immediately preceding inherited skill slots governed "
+              "by --prior-slot-volatility"))
+    parser.add_argument(
+        "--telemetry-every", type=int, default=0,
+        help=("record already-observed training reward and loss every N updates; "
+              "zero records only the first and final update"))
+    parser.add_argument(
         "--read-legacy-adapters", action="store_true",
         help=("also let this rung's slot read the two legacy adapters, which is "
               "where rungs two and three consolidated. Only the slot this rung "
@@ -419,6 +562,25 @@ def main() -> None:
         raise ValueError("the new plastic slot must have positive width")
     if args.prior_read_limit < 0:
         raise ValueError("prior read limit must not be negative")
+    if not 0.0 <= args.prior_slot_volatility <= 1.0:
+        raise ValueError("prior slot volatility must be within [0, 1]")
+    if not 0.0 <= args.volatility_alignment_decay < 1.0:
+        raise ValueError("volatility alignment decay must be within [0, 1)")
+    if not 0.0 < args.unit_volatility_max <= 1.0:
+        raise ValueError("unit volatility maximum must be within (0, 1]")
+    if args.unit_importance_strength < 0.0:
+        raise ValueError("unit importance strength must not be negative")
+    if not 0.0 <= args.unit_importance_decay < 1.0:
+        raise ValueError("unit importance decay must be within [0, 1)")
+    if (
+            args.unit_volatility_policy != "none"
+            and args.prior_slot_volatility > 0.0):
+        raise ValueError(
+            "slot-level and unit-level volatility are separate experiments")
+    if args.volatile_prior_slots < 1:
+        raise ValueError("volatile prior slots must be positive")
+    if args.telemetry_every < 0:
+        raise ValueError("telemetry interval must not be negative")
     if not 1 <= args.new_support_trials < 6:
         raise ValueError("new-task support trials must be between 1 and 5")
     final_support_trials = (
@@ -496,6 +658,23 @@ def main() -> None:
         inherited_slots = tuple(configuration.get("skill_adapter_widths", ()))
         new_slot = len(inherited_slots)
         plastic_prefixes = _plastic_prefixes(new_slot)
+        thawed_prefixes = (
+            _prior_slot_prefixes(new_slot, args.volatile_prior_slots)
+            if args.prior_slot_volatility > 0.0 else ())
+        unit_thawed_names = (
+            {
+                f"skill_adapters.{new_slot - 1}.0.weight",
+                f"skill_adapters.{new_slot - 1}.0.bias",
+            }
+            if args.unit_volatility_policy != "none" and new_slot > 0
+            else set())
+        if args.unit_volatility_policy != "none" and not unit_thawed_names:
+            raise ValueError("unit volatility requires an inherited skill slot")
+        trainable_prefixes = plastic_prefixes + thawed_prefixes
+        def is_trainable(name: str) -> bool:
+            return (
+                name.startswith(trainable_prefixes)
+                or name in unit_thawed_names)
         configuration["skill_adapter_widths"] = (
             inherited_slots + (args.skill_adapter_width,))
         configuration["skill_adapter_gate_mode"] = args.slot_gate_mode
@@ -519,25 +698,66 @@ def main() -> None:
                 f"unexpected modular insertion mismatch: "
                 f"missing={missing}, unexpected={unexpected}")
         for name, parameter in student.named_parameters():
-            parameter.requires_grad_(name.startswith(plastic_prefixes))
+            parameter.requires_grad_(is_trainable(name))
         inherited_frozen_adapters = sorted({
             name.split(".")[0] for name in teacher.state_dict()
             if "adapter" in name})
         frozen_initial = {
             name: value.detach().cpu().clone()
             for name, value in student.state_dict().items()
-            if not name.startswith(plastic_prefixes)
+            if not is_trainable(name)
+        }
+        thawed_initial = {
+            name: value.detach().cpu().clone()
+            for name, value in student.state_dict().items()
+            if name.startswith(thawed_prefixes) or name in unit_thawed_names
         }
         plastic_parameters = sum(
             parameter.numel() for name, parameter in student.named_parameters()
-            if name.startswith(plastic_prefixes))
+            if is_trainable(name))
         frozen_parameters = sum(
             parameter.numel() for name, parameter in student.named_parameters()
-            if not name.startswith(plastic_prefixes))
+            if not is_trainable(name))
+        new_parameters = [
+            parameter for name, parameter in student.named_parameters()
+            if name.startswith(plastic_prefixes)]
+        parameter_groups = [{
+            "params": new_parameters,
+            "lr": args.learning_rate,
+        }]
+        if thawed_prefixes:
+            thawed_parameters = [
+                parameter for name, parameter in student.named_parameters()
+                if name.startswith(thawed_prefixes)]
+            parameter_groups.append({
+                "params": thawed_parameters,
+                "lr": args.learning_rate * args.prior_slot_volatility,
+            })
+        else:
+            thawed_parameters = []
+        unit_thawed_parameters = [
+            parameter for name, parameter in student.named_parameters()
+            if name in unit_thawed_names]
+        if unit_thawed_parameters:
+            parameter_groups.append({
+                "params": unit_thawed_parameters,
+                "lr": args.learning_rate,
+            })
         optimizer = torch.optim.AdamW(
-            [parameter for parameter in student.parameters()
-             if parameter.requires_grad],
-            lr=args.learning_rate, weight_decay=1e-5)
+            parameter_groups, lr=args.learning_rate, weight_decay=1e-5)
+        unit_layer = (
+            student.skill_adapters[new_slot - 1][0]
+            if unit_thawed_parameters else None)
+        if unit_layer is not None and not isinstance(unit_layer, nn.Linear):
+            raise TypeError("skill adapter hidden projection must be linear")
+        unit_importance = (
+            torch.zeros(unit_layer.out_features, device=device)
+            if unit_layer is not None else None)
+        current_unit_volatility = (
+            torch.full(
+                (unit_layer.out_features,), args.unit_volatility_max,
+                device=device)
+            if unit_layer is not None else None)
 
         # A retention gate is only required where the frozen parent already had
         # the skill, so arms with different histories stay comparable.
@@ -583,6 +803,10 @@ def main() -> None:
 
         started = time.perf_counter()
         history: list[dict[str, float | int]] = []
+        tracked_new_accuracy = 0.0
+        tracked_gradient_alignment = 0.0
+        current_volatility = args.prior_slot_volatility
+        volatility_sum = 0.0
         selected_replay = {task: True for task in replay_tasks}
         replay_batches_spent = 0
         for update in range(1, args.steps + 1):
@@ -631,9 +855,12 @@ def main() -> None:
                 for index, task in active_replay
             ]
             replay_batches_spent += len(replay_batches)
-            skill_loss = _new_skill_loss(
+            skill_loss, new_batch_accuracy = _new_skill_loss(
                 student, new_batch, exploration=args.exploration,
-                support_trials=support_trials)
+                support_trials=support_trials, return_accuracy=True)
+            tracked_new_accuracy = (
+                0.9 * tracked_new_accuracy + 0.1 * new_batch_accuracy
+                if update > 1 else new_batch_accuracy)
             replay_results = [
                 _replay_loss_and_leakage(
                     student, teacher, batch, slot=new_slot,
@@ -662,19 +889,88 @@ def main() -> None:
                 deficits.append(deficit)
                 weights.append(
                     args.retention_weight + args.retention_control_gain * deficit)
-            loss = skill_loss + sum(
+            retention_loss = sum(
                 weight * value for weight, value in zip(weights, replay_losses))
+            loss = skill_loss + retention_loss
             if args.locality_weight:
                 # Price opening the new slot on events that belong to old skills.
                 loss = loss + args.locality_weight * leakage
+            gradient_alignment = 0.0
+            if (
+                    thawed_parameters
+                    and args.volatility_policy == "gradient_alignment"):
+                gradient_alignment = _gradient_alignment(
+                    skill_loss, retention_loss, thawed_parameters)
+                tracked_gradient_alignment = (
+                    args.volatility_alignment_decay
+                    * tracked_gradient_alignment
+                    + (1.0 - args.volatility_alignment_decay)
+                    * gradient_alignment
+                    if update > 1 else gradient_alignment)
+                current_volatility = _alignment_volatility(
+                    tracked_gradient_alignment,
+                    args.prior_slot_volatility)
+                optimizer.param_groups[1]["lr"] = (
+                    args.learning_rate * current_volatility)
+            unit_before: tuple[torch.Tensor, torch.Tensor] | None = None
+            if unit_layer is not None:
+                assert unit_importance is not None
+                retention_grads = torch.autograd.grad(
+                    retention_loss,
+                    (unit_layer.weight, unit_layer.bias),
+                    retain_graph=True, allow_unused=True)
+                weight_grad, bias_grad = retention_grads
+                observed_importance = torch.zeros_like(unit_importance)
+                if weight_grad is not None:
+                    observed_importance.add_(
+                        weight_grad.detach().square().mean(dim=1))
+                if bias_grad is not None:
+                    observed_importance.add_(
+                        bias_grad.detach().square())
+                unit_importance.mul_(args.unit_importance_decay).add_(
+                    observed_importance,
+                    alpha=1.0 - args.unit_importance_decay)
+                current_unit_volatility = _importance_volatility(
+                    unit_importance, args.unit_volatility_max,
+                    args.unit_importance_strength)
+                if args.unit_volatility_policy == "shuffled_importance":
+                    current_unit_volatility = current_unit_volatility.roll(1)
+                current_volatility = float(
+                    current_unit_volatility.mean())
+                unit_before = (
+                    unit_layer.weight.detach().clone(),
+                    unit_layer.bias.detach().clone())
+            volatility_sum += current_volatility
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
             nn.utils.clip_grad_norm_(student.parameters(), 1.0)
             optimizer.step()
-            if update in (1, args.steps):
+            if unit_before is not None:
+                assert current_unit_volatility is not None
+                _blend_unit_update(
+                    unit_layer.weight, unit_before[0],
+                    current_unit_volatility)
+                _blend_unit_update(
+                    unit_layer.bias, unit_before[1],
+                    current_unit_volatility)
+            if (
+                    update in (1, args.steps)
+                    or (args.telemetry_every
+                        and update % args.telemetry_every == 0)):
                 history.append({
                     "update": update,
                     "skill_loss": float(skill_loss.detach()),
+                    "new_batch_accuracy": new_batch_accuracy,
+                    "tracked_new_accuracy": tracked_new_accuracy,
+                    "gradient_alignment": gradient_alignment,
+                    "tracked_gradient_alignment": tracked_gradient_alignment,
+                    "prior_slot_volatility": current_volatility,
+                    "unit_volatility_min": (
+                        float(current_unit_volatility.min())
+                        if current_unit_volatility is not None else 0.0),
+                    "unit_volatility_max": (
+                        float(current_unit_volatility.max())
+                        if current_unit_volatility is not None else 0.0),
                     **{
                         f"{task}_distillation_loss": float(value.detach())
                         for task, value in zip(active_tasks, replay_losses)
@@ -722,10 +1018,20 @@ def main() -> None:
                 "new_task": new_task,
                 "replay_tasks": list(replay_tasks),
                 "plastic_module": f"skill_adapters.{new_slot}",
+                "thawed_prior_prefixes": list(thawed_prefixes),
+                "unit_thawed_parameter_names": sorted(unit_thawed_names),
+                "thawed_prior_relative_drift": _relative_state_drift(
+                    student, thawed_initial),
+                "mean_prior_slot_volatility": (
+                    volatility_sum / max(1, args.steps)),
+                "final_unit_volatility": (
+                    current_unit_volatility.detach().cpu().tolist()
+                    if current_unit_volatility is not None else []),
                 "configuration": {
                     **vars(args), "seed": seed,
                     "parent": str(args.parent), "report": str(report_path),
                     "checkpoint_out": None},
+                "history": history,
                 "accounting": {
                     "new_unique_lifetimes": args.steps * args.new_batch_size,
                     "optimizer_updates": args.steps,
@@ -826,6 +1132,15 @@ def main() -> None:
             "replay_tasks": list(replay_tasks),
             "replay_support_trials": replay_support_by_task,
             "plastic_module": f"skill_adapters.{new_slot}",
+            "thawed_prior_prefixes": list(thawed_prefixes),
+            "unit_thawed_parameter_names": sorted(unit_thawed_names),
+            "thawed_prior_relative_drift": _relative_state_drift(
+                student, thawed_initial),
+            "mean_prior_slot_volatility": (
+                volatility_sum / max(1, args.steps)),
+            "final_unit_volatility": (
+                current_unit_volatility.detach().cpu().tolist()
+                if current_unit_volatility is not None else []),
             "inherited_frozen_adapters": inherited_frozen_adapters,
             "inherited_skill_adapter_slots": list(inherited_slots),
             "plastic_parameters": plastic_parameters,

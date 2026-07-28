@@ -48,6 +48,14 @@ from .train_thought_compute_transfer import (
     _metrics as thought_compute_metrics,
     _stable_bits as stable_thought_bits,
 )
+from .train_fourth_primitive_transfer import (
+    _alignment_volatility,
+    _blend_unit_update,
+    _gradient_alignment,
+    _importance_volatility,
+    _prior_slot_prefixes,
+    _relative_state_drift,
+)
 from .train_shared_compute_value import (
     SharedComputeValue,
     initialize_from_advantage,
@@ -970,6 +978,51 @@ def test_disk_memory_records_persists_and_resets_access_counts(
     assert restored.store.failure_count.tolist() == [0, 0]
 
 
+def test_verified_outcomes_protect_successful_rows_and_thaw_failures() -> None:
+    memory = DiskLatentMemory(width=4, capacity=3)
+    keys = torch.eye(4)[:3]
+    memory.commit(keys, keys, torch.ones(3), threshold=0.0)
+    memory.store.record_outcomes(
+        keys, torch.tensor([1.0, 0.0, 1.0]),
+        update_volatility=True, success_protection_rate=0.5,
+        failure_thaw_rate=0.5, stale_thaw_rate=0.0)
+    assert torch.allclose(
+        memory.store.volatility[:3],
+        torch.tensor([0.5, 1.0, 0.5]))
+    memory.store.record_outcomes(
+        keys[1:2], torch.tensor([1.0]),
+        update_volatility=True, success_protection_rate=0.5,
+        failure_thaw_rate=0.5, stale_thaw_rate=0.1)
+    assert torch.allclose(
+        memory.store.volatility[:3],
+        torch.tensor([0.55, 0.5, 0.55]))
+
+
+def test_volatility_persists_and_old_memories_default_to_plastic(
+        tmp_path: Path) -> None:
+    memory = DiskLatentMemory(width=4, capacity=2)
+    memory.commit(
+        torch.eye(4)[:1], torch.eye(4)[:1],
+        torch.ones(1), threshold=0.0)
+    memory.store.volatility[0] = 0.125
+    path = tmp_path / "volatility.pt"
+    memory.save(path)
+    restored = DiskLatentMemory.load(path)
+    assert restored.store.volatility.tolist() == [0.125, 1.0]
+
+
+def test_elastic_replace_obeys_row_volatility() -> None:
+    memory = DiskLatentMemory(width=2, capacity=2)
+    keys = torch.eye(2)
+    memory.commit(keys, keys, torch.ones(2), threshold=0.0)
+    memory.store.volatility[:2] = torch.tensor([0.0, 1.0])
+    frozen_before = memory.store.values[0].clone()
+    assert memory.elastic_replace(0, keys[1], -keys[1], 0.5) == 0.0
+    assert torch.equal(memory.store.values[0], frozen_before)
+    assert memory.elastic_replace(1, keys[0], -keys[0], 0.5) == 1.0
+    assert torch.equal(memory.store.values[1], -keys[0])
+
+
 def test_persistent_stream_age_uses_current_insertion_rank() -> None:
     memory = DiskLatentMemory(width=4, capacity=3)
     memory.commit(
@@ -1092,6 +1145,67 @@ def test_zero_prior_read_limit_keeps_all_earlier_slots() -> None:
         skill_adapter_prior_read_limit=0,
     )
     assert model.skill_adapters[2][0].in_features == 32 + 5 + 7
+
+
+def test_prior_slot_volatility_names_only_recent_inherited_slots() -> None:
+    assert _prior_slot_prefixes(3, 1) == (
+        "skill_adapters.2.",
+        "skill_adapter_gates.2.",
+        "skill_adapter_read_projections.2.",
+    )
+    assert _prior_slot_prefixes(3, 2) == (
+        "skill_adapters.1.",
+        "skill_adapter_gates.1.",
+        "skill_adapter_read_projections.1.",
+        "skill_adapters.2.",
+        "skill_adapter_gates.2.",
+        "skill_adapter_read_projections.2.",
+    )
+
+
+def test_relative_state_drift_is_zero_then_detects_change() -> None:
+    model = torch.nn.Linear(2, 1, bias=False)
+    initial = {"weight": model.weight.detach().cpu().clone()}
+    assert _relative_state_drift(model, initial) == 0.0
+    model.weight.data.add_(0.25)
+    assert _relative_state_drift(model, initial) > 0.0
+
+
+def test_alignment_volatility_protects_conflicts_and_thaws_agreement() -> None:
+    assert _alignment_volatility(-1.0, 0.2) < 0.001
+    assert _alignment_volatility(0.0, 0.2) == pytest.approx(0.1)
+    assert _alignment_volatility(1.0, 0.2) > 0.199
+
+
+def test_gradient_alignment_identifies_agreement_and_conflict() -> None:
+    parameter = torch.nn.Parameter(torch.tensor([1.0, -1.0]))
+    positive = (parameter.square()).sum()
+    aligned = (parameter * 2).square().sum()
+    opposed = -aligned
+    assert _gradient_alignment(positive, aligned, [parameter]) > 0.99
+    assert _gradient_alignment(positive, opposed, [parameter]) < -0.99
+
+
+def test_importance_volatility_protects_used_hidden_units() -> None:
+    volatility = _importance_volatility(
+        torch.tensor([0.0, 1.0, 4.0]), maximum=0.2, strength=4.0)
+    assert volatility[0] == pytest.approx(0.2)
+    assert volatility[0] > volatility[1] > volatility[2]
+
+
+def test_unit_update_blending_applies_one_scalar_per_output_unit() -> None:
+    parameter = torch.nn.Parameter(torch.tensor([
+        [2.0, 4.0],
+        [6.0, 8.0],
+    ]))
+    before = torch.tensor([
+        [1.0, 1.0],
+        [2.0, 2.0],
+    ])
+    _blend_unit_update(
+        parameter, before, torch.tensor([0.0, 0.5]))
+    assert torch.equal(parameter[0], before[0])
+    assert torch.equal(parameter[1], torch.tensor([4.0, 5.0]))
 
 
 def test_physical_context_key_ignores_skip_and_is_normalized() -> None:

@@ -74,6 +74,19 @@ def test_training_only_moves_the_appended_slot() -> None:
     assert all(name.startswith(prefixes) for name in moved), moved
 
 
+def test_new_skill_loss_can_report_observed_training_accuracy() -> None:
+    model = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        skill_adapter_widths=(16,))
+    batch = generate_lifetimes(
+        8, 6, seed=52, task=NEW_TASK, support_trials=2)
+    loss, accuracy = _new_skill_loss(
+        model, batch, exploration=0.1, support_trials=2,
+        return_accuracy=True)
+    assert loss.ndim == 0
+    assert 0.0 <= accuracy <= 1.0
+
+
 def test_cue_ablation_compares_the_same_events() -> None:
     """The ablation must change only the cue, never the task content."""
     model = UnifiedCognitiveController(

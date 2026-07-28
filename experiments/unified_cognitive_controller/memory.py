@@ -99,7 +99,41 @@ class DiskLatentMemory:
         self.store.access_count[index] = 0
         self.store.success_count[index] = 0
         self.store.failure_count[index] = 0
+        self.store.volatility[index] = 1.0
         self.store.valid[index] = True
+
+    @torch.no_grad()
+    def elastic_replace(
+            self, index: int, key: torch.Tensor, value: torch.Tensor,
+            strength: torch.Tensor | float, *,
+            minimum_rewrite: float = 0.0) -> float:
+        """Rewrite a row in proportion to its learned generic volatility."""
+        if not 0.0 <= minimum_rewrite <= 1.0:
+            raise ValueError("minimum_rewrite must be between zero and one")
+        if not 0 <= index < self.store.capacity:
+            raise IndexError("replacement index is outside memory capacity")
+        if not bool(self.store.valid[index]):
+            raise ValueError("replacement requires a valid occupied row")
+        if key.shape != (self.store.width,) or value.shape != (self.store.width,):
+            raise ValueError("replacement key and value must match memory width")
+        prior_volatility = float(self.store.volatility[index])
+        rewrite = max(minimum_rewrite, prior_volatility)
+        self.store.clock += 1
+        self.store.keys[index].lerp_(key.detach(), rewrite)
+        self.store.values[index].lerp_(value.detach(), rewrite)
+        strength_tensor = torch.as_tensor(
+            strength, device=self.store.usage.device,
+            dtype=self.store.usage.dtype)
+        self.store.usage[index].lerp_(strength_tensor, rewrite)
+        self.store.age[index] = self.store.clock
+        if rewrite >= 0.5:
+            self.store.access_count[index] = 0
+            self.store.success_count[index] = 0
+            self.store.failure_count[index] = 0
+        self.store.volatility[index] = min(
+            1.0, prior_volatility
+            + rewrite * (1.0 - prior_volatility))
+        return rewrite
 
     def save(self, path: Path) -> None:
         self.store.save(path)
