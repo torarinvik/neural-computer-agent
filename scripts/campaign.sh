@@ -65,6 +65,16 @@ rsync -az -e "ssh -o ConnectTimeout=20 -p $VAST_PORT" \
   "root@$VAST_HOST:$REPO/session_records/" "$LOCAL_REPO/session_records/" 2>/dev/null
 echo "[campaign:$NAME] results pulled to $LOCAL_REPO/session_records/"
 
+# A campaign that produced nothing must say so. The runner once resolved its
+# working directory to / and every job failed silently; the scorer then printed
+# an empty table that looked like a real negative result.
+produced=$("${SSH[@]}" "ls $REPO/session_records/*/raw/*.json 2>/dev/null | wc -l" 2>/dev/null | tail -1)
+if [ "${produced:-0}" = "0" ]; then
+  echo "[campaign:$NAME] WARNING: the run produced no reports at all."
+  echo "[campaign:$NAME] last runner output:"
+  "${SSH[@]}" "tail -15 /workspace/$NAME.log" 2>/dev/null
+fi
+
 if [ -n "$SCORER" ] && [ -f "$SCORER" ]; then
   echo "[campaign:$NAME] ---- score ----"
   ( cd "$LOCAL_REPO" && PYTHONPATH="$LOCAL_REPO" .venv/bin/python "$SCORER" )
