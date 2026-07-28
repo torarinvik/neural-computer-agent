@@ -84,15 +84,35 @@ is whether the deep arm can see its own ancestry.
 
 This is the first measured transfer past the first composition in this ladder.
 
-## Still to confirm before this is a claim
+## It is the information, not the capacity
 
-A reading slot has a wider first layer than a non-reading one, so part of the
-gain could be capacity rather than inherited information. The control keeps the
-shape and the parameter count and zeroes the content of the read
-(`--ablate-prior-read`); it was written before this result was seen. And the
-read path was designed to leave writes gated, so the retention deltas should
-still be at zero — that needs the full audit, since a curve-mode sweep does not
-run the gates.
+A reading slot has a wider first layer than a non-reading one, so the gain could
+have been parameters rather than inheritance. The control keeps the shape and
+the parameter count and zeroes only the content of the read. It was written
+before the main result was seen.
+
+| condition | pooled paired delta | sign test |
+|---|---:|---|
+| cannot read prior slots | +0.0001 | 30W/42L, p = 0.19 |
+| reads prior slots, **content zeroed** | −0.0014 | 28W/43L, p = 0.096 |
+| **reads prior slots** | **+0.0242** | **48W/22L, p = 2.5e-3** |
+
+The extra width buys nothing. What the earlier slots computed is what the new
+slot uses.
+
+## Reading does not cost the retention that gating bought
+
+A curve sweep does not run the gates, so the audit was run separately at full
+strength: 768 updates, 1,024 held-out lifetimes, six seeds, every gate live.
+
+| condition | new skill | all gates | worst retention delta |
+|---|---:|---|---:|
+| cannot read prior slots | 0.9749 | 6/6 | −0.00204 |
+| **reads prior slots** | **0.9952** | **6/6** | **−0.00079** |
+
+Every gate passes in both. Retention with the read path open is not merely no
+worse — it is better, and so is the new skill. Letting a slot be consulted while
+its writes stay gated costs nothing that closing the gate was protecting.
 
 ## Reading the result
 

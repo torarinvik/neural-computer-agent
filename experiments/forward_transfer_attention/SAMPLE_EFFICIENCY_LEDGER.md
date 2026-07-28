@@ -1194,3 +1194,44 @@ dominates because the encoder closes with a global average pool. The frozen
 encoder can only tell so many operations apart and that budget is nearly spent.
 
 Full record in `session_records/depth_vs_family_2026-07-28/`.
+
+## 2026-07-28 — Compounding is architectural: separate what a slot reads from what it writes
+
+The entry above closed with transfer as a first-composition effect. That was a
+property of the architecture, not of learning, and changing one thing undoes it.
+
+**Diagnosis.** A new slot reads `cat([state.hidden, event])`. The shared base is
+bit-identical across the whole ancestry (44/44 tensors), so a previous rung can
+only reach that input behaviorally — through the logits, hence the action, hence
+the recurrent state. A rectified gate that is *exactly shut* on a foreign task's
+events changes none of them. Measured directly, the features a new slot receives
+are **0.000000 apart** between the three, four and five skill parents. Nothing
+about the ancestry arrives, so nothing can be inherited.
+
+This unifies the two previous findings rather than adding to them. Under sigmoid
+gates rung four showed a small advantage (+0.0116) and degraded its neighbour;
+under rectified gates it showed neither. **Transfer and interference are the same
+channel.** Closing it for safety closed it for learning.
+
+**Fix.** An earlier slot's gate should decide whether it *speaks*, not whether it
+can be *consulted*. Slots now read earlier slots' pre-gate hidden layers while
+their writes stay gated exactly as before.
+
+Ancestry 3 → 4, twelve seeds, six budgets:
+
+| condition | pooled paired delta | sign test |
+|---|---:|---|
+| cannot read prior slots | +0.0001 | 30W/42L, p = 0.19 |
+| reads prior slots, content zeroed (capacity control) | −0.0014 | 28W/43L, p = 0.096 |
+| **reads prior slots** | **+0.0242** | **48W/22L, p = 2.5e-3** |
+
+Mid-curve the advantage reaches +0.0501 and +0.0625, the range the first
+composition produces. The shallow arm is numerically identical across all three
+rows, as it must be, since a three-skill parent has no prior slot to read.
+
+**Retention is not the price.** Full audit, 768 updates, 1,024 lifetimes, gates
+live: both conditions pass 6/6, and the read path's worst retention delta is
+−0.00079 against −0.00204 without it, with a better new skill (0.9952 vs
+0.9749). Reading costs nothing that gating was protecting.
+
+Full record in `session_records/read_path_2026-07-28/`.
