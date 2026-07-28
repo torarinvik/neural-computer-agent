@@ -15,6 +15,16 @@
 # Environment: VAST_HOST, VAST_PORT, REPO (remote path), LOCAL_REPO.
 set -uo pipefail
 
+# Run from a snapshot of this file. Bash reads a script incrementally, so
+# editing campaign.sh while a campaign is running makes the live shell resume
+# into whatever the file now says -- which killed a watcher mid-run with a
+# syntax error while the remote work carried on fine.
+if [ "${CAMPAIGN_SNAPSHOT:-0}" != "1" ]; then
+  _snap=$(mktemp "${TMPDIR:-/tmp}/campaign.XXXXXX.sh")
+  cp "$0" "$_snap"
+  CAMPAIGN_SNAPSHOT=1 exec bash "$_snap" "$@"
+fi
+
 NAME="${1:?campaign name}"
 JOBFILE="${2:?job file}"
 WORKERS="${3:-6}"
