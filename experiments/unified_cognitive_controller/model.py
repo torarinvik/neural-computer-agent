@@ -84,7 +84,9 @@ class UnifiedCognitiveController(nn.Module):
             skill_adapter_gate_mode: str = "sigmoid",
             skill_adapter_gate_hidden: int = 0,
             skill_adapter_reads_prior: bool = False,
-            skill_adapter_legacy_read_from: int | None = None) -> None:
+            skill_adapter_legacy_read_from: int | None = None,
+            skill_adapter_reads_prior_from: int | None = None,
+            skill_adapter_read_bottleneck: int = 0) -> None:
         super().__init__()
         if skill_adapter_gate_mode not in ("sigmoid", "relu"):
             raise ValueError(
@@ -133,6 +135,18 @@ class UnifiedCognitiveController(nn.Module):
         # that slots written before this existed keep their original input
         # width and their checkpoints still load.
         self.skill_adapter_legacy_read_from = skill_adapter_legacy_read_from
+        # Index of the first slot that reads earlier slots. Without this, turning
+        # reads on widens EVERY slot's input, and a checkpoint holding two or
+        # more slots trained without reads will not load at all. Making it an
+        # index means only the slot a rung adds takes the wider input, exactly
+        # as for the legacy reads.
+        self.skill_adapter_reads_prior_from = skill_adapter_reads_prior_from
+        # Width to compress everything a slot reads down to. Reading one prior
+        # slot (64 extra inputs) helped; reading two, or the legacy pair (128),
+        # hurt, and hurt absolute learning badly in the legacy case. A slot has
+        # only its own hidden width to work with, so a wide read appears to
+        # dilute rather than inform. Zero keeps the raw concatenation.
+        self.skill_adapter_read_bottleneck = skill_adapter_read_bottleneck
         # Training-time leak below the rectifier's knee. A rectified gate that
         # shuts everywhere before it has learned where to open has no gradient
         # left and stays shut forever; a small leak keeps that recoverable. It
@@ -205,6 +219,7 @@ class UnifiedCognitiveController(nn.Module):
         # stack contributes no state, so older checkpoints load unchanged.
         self.skill_adapters = nn.ModuleList()
         self.skill_adapter_gates = nn.ModuleList()
+        self.skill_adapter_read_projections = nn.ModuleList()
         legacy_read_width = (
             (relation_adapter_width if relation_adapter_width else 0)
             + (action_adapter_width if action_adapter_width else 0))
@@ -213,9 +228,16 @@ class UnifiedCognitiveController(nn.Module):
             reads_legacy = (
                 skill_adapter_legacy_read_from is not None
                 and slot_index >= skill_adapter_legacy_read_from)
-            slot_input = width * 2 + (
-                prior_read_width if skill_adapter_reads_prior else 0) + (
-                legacy_read_width if reads_legacy else 0)
+            reads_prior = skill_adapter_reads_prior and (
+                skill_adapter_reads_prior_from is None
+                or slot_index >= skill_adapter_reads_prior_from)
+            raw_read = (
+                (prior_read_width if reads_prior else 0)
+                + (legacy_read_width if reads_legacy else 0))
+            if raw_read and skill_adapter_read_bottleneck:
+                slot_input = width * 2 + skill_adapter_read_bottleneck
+            else:
+                slot_input = width * 2 + raw_read
             adapter = nn.Sequential(
                 nn.Linear(slot_input, slot_width),
                 nn.GELU(),
@@ -224,6 +246,10 @@ class UnifiedCognitiveController(nn.Module):
             nn.init.zeros_(adapter[-1].weight)
             nn.init.zeros_(adapter[-1].bias)
             self.skill_adapters.append(adapter)
+            self.skill_adapter_read_projections.append(
+                nn.Linear(raw_read, skill_adapter_read_bottleneck)
+                if raw_read and skill_adapter_read_bottleneck
+                else nn.Identity())
             prior_read_width += slot_width
             # A linear gate has to separate this slot's own events from every
             # other skill's with one hyperplane. A hidden layer lets the
@@ -405,7 +431,10 @@ class UnifiedCognitiveController(nn.Module):
                 # deeper ancestry produce bit-identical inputs here, and a new
                 # slot has nothing to inherit.
                 reads = []
-                if self.skill_adapter_reads_prior and prior_reads:
+                if (self.skill_adapter_reads_prior and prior_reads
+                        and (self.skill_adapter_reads_prior_from is None
+                             or slot_index
+                             >= self.skill_adapter_reads_prior_from)):
                     reads += prior_reads
                 if (self.skill_adapter_legacy_read_from is not None
                         and slot_index >= self.skill_adapter_legacy_read_from):
@@ -413,7 +442,10 @@ class UnifiedCognitiveController(nn.Module):
                 if reads:
                     if self.skill_adapter_ablate_prior_read:
                         reads = [torch.zeros_like(r) for r in reads]
-                    own_features = torch.cat([slot_features, *reads], dim=-1)
+                    read_vector = torch.cat(reads, dim=-1)
+                    projection = self.skill_adapter_read_projections[slot_index]
+                    own_features = torch.cat(
+                        [slot_features, projection(read_vector)], dim=-1)
                 else:
                     own_features = slot_features
                 score = gate(own_features)

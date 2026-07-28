@@ -20,10 +20,20 @@ set -uo pipefail
 # into whatever the file now says -- which killed a watcher mid-run with a
 # syntax error while the remote work carried on fine.
 if [ "${CAMPAIGN_SNAPSHOT:-0}" != "1" ]; then
-  _snap=$(mktemp "${TMPDIR:-/tmp}/campaign.XXXXXX.sh")
+  # Resolve the repo from the real path BEFORE relocating, otherwise the
+  # snapshot's $0 points into the temp dir and every relative path downstream
+  # is wrong. This is the same mistake that made runq.sh run from /.
+  export LOCAL_REPO="${LOCAL_REPO:-$(cd "$(dirname "$0")/.." && pwd)}"
+  # BSD mktemp rejects a template with anything after the X's, so no .sh suffix
+  _snap=$(mktemp "${TMPDIR:-/tmp}/campaign_snapshot.XXXXXX") || exit 1
+  trap 'rm -f "$_snap"' EXIT
   cp "$0" "$_snap"
   CAMPAIGN_SNAPSHOT=1 exec bash "$_snap" "$@"
 fi
+
+LOCAL_REPO="${LOCAL_REPO:?campaign: LOCAL_REPO unresolved}"
+[ -d "$LOCAL_REPO/experiments" ] || {
+  echo "campaign: $LOCAL_REPO is not the repo" >&2; exit 1; }
 
 NAME="${1:?campaign name}"
 JOBFILE="${2:?job file}"
@@ -33,7 +43,8 @@ SCORER="${4:-}"
 VAST_HOST="${VAST_HOST:?set VAST_HOST}"
 VAST_PORT="${VAST_PORT:?set VAST_PORT}"
 REPO="${REPO:-/workspace/repos/neural-computer-agent}"
-LOCAL_REPO="${LOCAL_REPO:-$(cd "$(dirname "$0")/.." && pwd)}"
+LOCAL_REPO="${LOCAL_REPO:?campaign: LOCAL_REPO unresolved}"
+[ -d "$LOCAL_REPO/experiments" ] || { echo "campaign: $LOCAL_REPO is not the repo" >&2; exit 1; }
 STREAM_SECONDS="${STREAM_SECONDS:-30}"
 # Hard cap. A campaign returns within this many seconds no matter what, scoring
 # whatever has landed. Every scorer here globs the reports that exist, so a

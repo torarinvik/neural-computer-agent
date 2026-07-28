@@ -42,8 +42,16 @@ REPLAY_TASKS = DEFAULT_REPLAY_TASKS
 
 
 def _plastic_prefixes(slot: int) -> tuple[str, ...]:
-    """Name only the slot this rung appends, so earlier slots stay frozen."""
-    return (f"skill_adapters.{slot}.", f"skill_adapter_gates.{slot}.")
+    """Name only the slot this rung appends, so earlier slots stay frozen.
+
+    The read projection belongs to the slot that reads through it, so it is
+    plastic with the rest of the slot; every earlier slot's projection stays
+    frozen along with the adapter it feeds.
+    """
+    return (
+        f"skill_adapters.{slot}.",
+        f"skill_adapter_gates.{slot}.",
+        f"skill_adapter_read_projections.{slot}.")
 
 
 def _replay_loss_and_leakage(
@@ -340,6 +348,11 @@ def main() -> None:
               "makes every deeper ancestry hand the new slot bit-identical "
               "features, so there is nothing to inherit"))
     parser.add_argument(
+        "--read-bottleneck", type=int, default=0,
+        help=("compress everything the slot reads to this width. One prior slot "
+              "helped raw; two, or the legacy pair, hurt, so a wide read looks "
+              "like dilution rather than information"))
+    parser.add_argument(
         "--read-legacy-adapters", action="store_true",
         help=("also let this rung's slot read the two legacy adapters, which is "
               "where rungs two and three consolidated. Only the slot this rung "
@@ -481,6 +494,9 @@ def main() -> None:
         configuration["skill_adapter_gate_mode"] = args.slot_gate_mode
         configuration["skill_adapter_gate_hidden"] = args.slot_gate_hidden
         configuration["skill_adapter_reads_prior"] = args.slot_reads_prior
+        configuration["skill_adapter_read_bottleneck"] = args.read_bottleneck
+        configuration["skill_adapter_reads_prior_from"] = (
+            new_slot if args.slot_reads_prior else None)
         configuration["skill_adapter_legacy_read_from"] = (
             new_slot if args.read_legacy_adapters else None)
         student = UnifiedCognitiveController(**configuration).to(device)
