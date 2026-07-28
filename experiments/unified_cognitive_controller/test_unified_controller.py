@@ -1233,6 +1233,24 @@ def test_four_target_memory_rows_are_all_selectable_after_permutation() -> None:
         + shifted["boundary_shift"])
     shifted_selected, _ = select_rows(shifted, shifted_scales)
     assert torch.equal(shifted_selected, shifted["target_slot"])
+    deformed = four_target_batch(
+        model, count=64, seed=17802,
+        device=torch.device("cpu"), heldout=True,
+        crossing_jitter_range=(-0.02, 0.02),
+        slope_jitter_range=(-0.06, 0.06))
+    target_class = deformed["target_class"]
+    crossings = deformed["crossings"]
+    lower = torch.zeros(64)
+    upper = torch.ones(64)
+    lower = torch.where(target_class == 1, crossings[:, 0], lower)
+    lower = torch.where(target_class == 2, crossings[:, 1], lower)
+    lower = torch.where(target_class == 3, crossings[:, 2], lower)
+    upper = torch.where(target_class == 0, crossings[:, 0], upper)
+    upper = torch.where(target_class == 1, crossings[:, 1], upper)
+    upper = torch.where(target_class == 2, crossings[:, 2], upper)
+    deformed_selected, _ = select_rows(
+        deformed, (lower + upper) / 2)
+    assert torch.equal(deformed_selected, deformed["target_slot"])
 
 
 def test_verified_scale_interval_penalizes_only_behavior_changes() -> None:
@@ -1283,6 +1301,45 @@ def test_usage_prior_residual_is_exact_noop_at_insertion() -> None:
     assert torch.equal(
         parent.memory_usage_prior_probability(features),
         expanded.memory_usage_prior_probability(rich_features))
+
+
+def test_usage_prior_relational_proposer_is_exact_noop_with_live_gradient() -> None:
+    payload = torch.load(
+        "artifacts/checkpoints/"
+        "unified_four_target_boundary_transfer_seed17915.pt",
+        map_location="cpu", weights_only=False)
+    parent = UnifiedCognitiveController(**payload["model_configuration"])
+    parent.load_state_dict(payload["state_dict"])
+    configuration = dict(payload["model_configuration"])
+    configuration["adaptive_memory_usage_prior_proposer_hidden"] = 16
+    expanded = UnifiedCognitiveController(**configuration)
+    missing, unexpected = expanded.load_state_dict(
+        payload["state_dict"], strict=False)
+    assert set(missing) == {
+        "memory_usage_prior_proposer.0.weight",
+        "memory_usage_prior_proposer.0.bias",
+        "memory_usage_prior_proposer.2.weight",
+        "memory_usage_prior_proposer.2.bias",
+    }
+    assert not unexpected
+    features = torch.randn(64, 12)
+    features[:, 8:12] = torch.tensor([0.2, 0.4, 0.7, 1.0])
+    inherited = parent.memory_usage_prior_probability(features)
+    proposed = expanded.memory_usage_prior_probability(features)
+    assert torch.equal(inherited, proposed)
+    proposed.mean().backward()
+    assert expanded.memory_usage_prior_proposer is not None
+    output = expanded.memory_usage_prior_proposer[-1]
+    assert output.weight.grad is not None
+    assert output.weight.grad[4].abs().sum() > 0
+    expanded.zero_grad(set_to_none=True)
+    with torch.no_grad():
+        output.bias[4] = -1.0
+    assert torch.equal(
+        inherited, expanded.memory_usage_prior_probability(features))
+    expanded.memory_usage_prior_probability(features).mean().backward()
+    assert output.bias.grad is not None
+    assert output.bias.grad[4].abs() > 0
 
 
 def test_full_memory_usage_features_are_row_permutation_invariant() -> None:

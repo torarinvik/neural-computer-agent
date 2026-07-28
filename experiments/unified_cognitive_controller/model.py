@@ -110,6 +110,7 @@ class UnifiedCognitiveController(nn.Module):
             adaptive_memory_usage_prior_hidden: int = 0,
             adaptive_memory_usage_prior_residual_hidden: int = 0,
             adaptive_memory_usage_prior_residual_features: int = 4,
+            adaptive_memory_usage_prior_proposer_hidden: int = 0,
             relation_adapter_width: int = 0,
             relation_adapter_gated: bool = False,
             action_adapter_width: int = 0,
@@ -134,6 +135,7 @@ class UnifiedCognitiveController(nn.Module):
                 or adaptive_memory_usage_prior_hidden < 0
                 or adaptive_memory_usage_prior_residual_hidden < 0
                 or adaptive_memory_usage_prior_residual_features < 4
+                or adaptive_memory_usage_prior_proposer_hidden < 0
                 or relation_adapter_width < 0
                 or action_adapter_width < 0
                 or skill_adapter_prior_read_limit < 0
@@ -154,6 +156,8 @@ class UnifiedCognitiveController(nn.Module):
             adaptive_memory_usage_prior_residual_hidden)
         self.adaptive_memory_usage_prior_residual_features = (
             adaptive_memory_usage_prior_residual_features)
+        self.adaptive_memory_usage_prior_proposer_hidden = (
+            adaptive_memory_usage_prior_proposer_hidden)
         self.relation_adapter_width = relation_adapter_width
         self.relation_adapter_gated = relation_adapter_gated
         self.action_adapter_width = action_adapter_width
@@ -394,6 +398,23 @@ class UnifiedCognitiveController(nn.Module):
             # earns a departure from the inherited retrieval function.
             nn.init.zeros_(self.memory_usage_prior_residual[-1].weight)
             nn.init.zeros_(self.memory_usage_prior_residual[-1].bias)
+        self.memory_usage_prior_proposer = (
+            nn.Sequential(
+                nn.Linear(7, adaptive_memory_usage_prior_proposer_hidden),
+                nn.GELU(),
+                nn.Linear(
+                    adaptive_memory_usage_prior_proposer_hidden, 5),
+            )
+            if adaptive_memory_usage_prior_proposer_hidden > 0 else None)
+        if self.memory_usage_prior_proposer is not None:
+            # Begin from an unbiased distribution over the four generic
+            # intervals.  Verified candidate outcomes, rather than random
+            # initialization, should decide which proposal becomes useful.
+            nn.init.zeros_(self.memory_usage_prior_proposer[-1].weight)
+            nn.init.zeros_(self.memory_usage_prior_proposer[-1].bias)
+            # The fifth output opens the proposal path.  Its zero value makes
+            # the inherited probability bit-identical while the
+            # straight-through gate below retains a live derivative.
 
     def effective_memory_usage_prior_scale(self) -> torch.Tensor:
         """Return the task-agnostic nonnegative retrieval-prior strength."""
@@ -429,7 +450,52 @@ class UnifiedCognitiveController(nn.Module):
     def memory_usage_prior_probability(
             self, features: torch.Tensor) -> torch.Tensor:
         """Choose whether verified usage should influence each memory query."""
-        return torch.sigmoid(self.memory_usage_prior_logits(features))
+        probability = torch.sigmoid(self.memory_usage_prior_logits(features))
+        if self.memory_usage_prior_proposer is None:
+            return probability
+        proposal_features, candidates = (
+            self.memory_usage_prior_proposal_features(features))
+        proposal_outputs = self.memory_usage_prior_proposer(
+            proposal_features)
+        proposal = (
+            proposal_outputs[:, :4].softmax(dim=-1) * candidates
+        ).sum(dim=-1)
+        # Forward behavior is a bounded, exactly zero no-op at insertion.
+        # The straight-through derivative remains live outside the interval,
+        # so one negative exploratory update cannot permanently kill the new
+        # path before verifier experience has had a chance to shape it.
+        raw_opening = proposal_outputs[:, 4]
+        bounded_opening = raw_opening.clamp(0.0, 1.0)
+        opening = (
+            raw_opening + (bounded_opening - raw_opening).detach())
+        return probability + opening * (proposal - probability)
+
+    @staticmethod
+    def memory_usage_prior_proposal_features(
+            features: torch.Tensor
+            ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Describe the four generic intervals where row rank is constant."""
+        if features.ndim != 2 or features.shape[1] < 12:
+            raise ValueError(
+                "relational usage proposer requires twelve row features")
+        cosine = features[:, 4:8]
+        log_usage = features[:, 8:12].clamp_min(1e-6).log()
+        slope_gap = (log_usage[:, 1:] - log_usage[:, :-1]).clamp_min(1e-5)
+        crossings = (
+            (cosine[:, :-1] - cosine[:, 1:]) / slope_gap
+        ).clamp(0.0, 1.0)
+        candidates = torch.stack((
+            crossings[:, 0] / 2.0,
+            (crossings[:, 0] + crossings[:, 1]) / 2.0,
+            (crossings[:, 1] + crossings[:, 2]) / 2.0,
+            (crossings[:, 2] + 1.0) / 2.0,
+        ), dim=-1).clamp(0.001, 0.999)
+        return torch.cat((crossings, log_usage), dim=-1), candidates
+
+    def memory_usage_prior_candidates(
+            self, features: torch.Tensor) -> torch.Tensor:
+        """Return task-agnostic scales that sample every rank interval."""
+        return self.memory_usage_prior_proposal_features(features)[1]
 
     def memory_read_probability(
             self, features: torch.Tensor) -> torch.Tensor:

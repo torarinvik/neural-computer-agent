@@ -177,9 +177,26 @@ All 512 shifted physical bank evaluations were correct after exact disk
 reload. Feature shuffling fell to 23.3–25.0%, value corruption to 0%, shuffled
 reward to 0–25%, and the exact four-feature ablation to 50%.
 
-The next frontier varies envelope widths and slopes independently so a shared
-global shift can no longer summarize the relation, followed by naturally
-occurring duplicate memories rather than generator-declared opposites.
+That independent-shape frontier is now closed. A zero-effect 421-parameter
+relational proposer computes four generic regions where candidate memory rows
+exchange rank. The learner executes those four proposals and uses only their
+scalar verifier outcomes to train both the candidate selector and the final
+continuous action. This breaks the former closed-gate credit-assignment loop
+without exposing a target row, private boundary, or correct action.
+
+Training crossing and slope deformations were bounded by `±0.07` and `±0.12`.
+Two disjoint held-out shape families used crossing magnitudes
+`[0.075, 0.085]` and slope-ratio magnitudes `[0.13, 0.15]`. Two independent
+runs reached 100% in every class on both families, retained every older gate,
+and completed 512 physical disk-bank audits with exact reloads. Feature
+shuffling fell to 23.2–26.8%, value corruption and shuffled rewards fell to
+0%, and a matched selector-credit ablation left the hard middle class at 0%.
+The conservative replicated stable-learning threshold was 8,192 verifier
+bits; the best seed stabilized after 512.
+
+The next frontier replaces generator-declared opposites with naturally
+occurring duplicate and near-duplicate memories, so equivalence and conflict
+must be learned from experience.
 
 The new unified-controller line now has its first retained compounding
 milestone. A single 298,252-parameter controller with one vision encoder,

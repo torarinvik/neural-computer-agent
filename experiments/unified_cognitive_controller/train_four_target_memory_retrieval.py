@@ -39,6 +39,12 @@ _CROSSINGS = torch.tensor([
     [0.10, 0.30, 0.60],
 ])
 _TOP_USAGE = torch.tensor([0.25, 0.45, 0.70, 0.90])
+_ALTERNATING_CROSSING_PATTERN = (
+    (-1, 1, -1), (1, -1, 1),
+    (-1, 1, -1), (1, -1, 1))
+_GROUPED_CROSSING_PATTERN = (
+    (-1, -1, -1), (-1, -1, 1),
+    (1, 1, 1), (1, 1, 1))
 
 
 @torch.no_grad()
@@ -47,6 +53,10 @@ def four_target_batch(
         device: torch.device, heldout: bool,
         target_classes: tuple[int, ...] = (0, 1, 2, 3),
         boundary_shift_range: tuple[float, float] = (0.0, 0.0),
+        crossing_jitter_range: tuple[float, float] = (0.0, 0.0),
+        crossing_jitter_pattern: tuple[float, float, float] | None = None,
+        slope_jitter_range: tuple[float, float] = (0.0, 0.0),
+        slope_jitter_pattern: tuple[float, float] | None = None,
         shuffle_features: bool = False,
         corrupt_values: bool = False,
         permute_rows: bool = True) -> dict[str, object]:
@@ -97,9 +107,28 @@ def four_target_batch(
         shift_min
         + (shift_max - shift_min)
         * torch.rand(count, generator=generator).to(device))
+    crossing_min, crossing_max = crossing_jitter_range
+    if crossing_min > crossing_max:
+        raise ValueError("crossing jitter minimum exceeds maximum")
+    crossing_jitter = (
+        crossing_min
+        + (crossing_max - crossing_min)
+        * torch.rand(count, 3, generator=generator).to(device))
+    if crossing_jitter_pattern is not None:
+        crossing_pattern = torch.tensor(
+            crossing_jitter_pattern, device=device)
+        if crossing_pattern.ndim == 2:
+            if crossing_pattern.shape != (4, 3):
+                raise ValueError(
+                    "class-specific crossing pattern must have shape [4, 3]")
+            crossing_pattern = crossing_pattern[target_class]
+        elif crossing_pattern.shape != (3,):
+            raise ValueError("crossing pattern must have shape [3]")
+        crossing_jitter = crossing_jitter * crossing_pattern
     crossings = (
         _CROSSINGS.to(device)[target_class]
-        + boundary_shift.unsqueeze(-1))
+        + boundary_shift.unsqueeze(-1)
+        + crossing_jitter).sort(dim=-1).values
     if bool(
             (crossings <= 0.0).any()
             or (crossings >= 1.0).any()
@@ -108,10 +137,35 @@ def four_target_batch(
             "boundary shift produces invalid or unordered crossings")
     top_usage = _TOP_USAGE.to(device)[target_class]
     top_slope = top_usage.log()
+    slope_min, slope_max = slope_jitter_range
+    if slope_min > slope_max:
+        raise ValueError("slope jitter minimum exceeds maximum")
+    slope_jitter = (
+        slope_min
+        + (slope_max - slope_min)
+        * torch.rand(count, 2, generator=generator).to(device))
+    if slope_jitter_pattern is not None:
+        slope_pattern = torch.tensor(
+            slope_jitter_pattern, device=device)
+        if slope_pattern.ndim == 2:
+            if slope_pattern.shape != (4, 2):
+                raise ValueError(
+                    "class-specific slope pattern must have shape [4, 2]")
+            slope_pattern = slope_pattern[target_class]
+        elif slope_pattern.shape != (2,):
+            raise ValueError("slope pattern must have shape [2]")
+        slope_jitter = slope_jitter * slope_pattern
+    middle_ratio = 2.0 / 3.0 + slope_jitter[:, 0]
+    lower_ratio = 1.0 / 3.0 + slope_jitter[:, 1]
+    if bool(
+            (middle_ratio >= 1.0).any()
+            or (lower_ratio <= 0.0).any()
+            or (middle_ratio <= lower_ratio).any()):
+        raise ValueError("slope jitter produces unordered line slopes")
     slopes = torch.stack((
         top_slope,
-        top_slope * (2.0 / 3.0),
-        top_slope * (1.0 / 3.0),
+        top_slope * middle_ratio,
+        top_slope * lower_ratio,
         torch.zeros_like(top_slope),
     ), dim=-1)
     cosine = torch.ones(count, 4, device=device)
@@ -189,6 +243,8 @@ def four_target_batch(
         "target_slot": target_slot,
         "boundary_shift": boundary_shift,
         "crossings": crossings,
+        "crossing_jitter": crossing_jitter,
+        "slope_jitter": slope_jitter,
         "generated_contexts": count * 4,
     }
 
@@ -252,12 +308,20 @@ def evaluate_four_target(
         model: UnifiedCognitiveController, *, count: int, seed: int,
         device: torch.device, scale_cost: float,
         boundary_shift_range: tuple[float, float] = (0.0, 0.0),
+        crossing_jitter_range: tuple[float, float] = (0.0, 0.0),
+        crossing_jitter_pattern: tuple[float, float, float] | None = None,
+        slope_jitter_range: tuple[float, float] = (0.0, 0.0),
+        slope_jitter_pattern: tuple[float, float] | None = None,
         shuffle_features: bool = False,
         corrupt_values: bool = False,
         permute_rows: bool = True) -> dict[str, object]:
     data = four_target_batch(
         model, count=count, seed=seed, device=device, heldout=True,
         boundary_shift_range=boundary_shift_range,
+        crossing_jitter_range=crossing_jitter_range,
+        crossing_jitter_pattern=crossing_jitter_pattern,
+        slope_jitter_range=slope_jitter_range,
+        slope_jitter_pattern=slope_jitter_pattern,
         shuffle_features=shuffle_features,
         corrupt_values=corrupt_values, permute_rows=permute_rows)
     learned = model.memory_usage_prior_probability(policy_features(data))
@@ -297,10 +361,18 @@ def physical_audit(
         model: UnifiedCognitiveController, *, count: int, seed: int,
         device: torch.device,
         boundary_shift_range: tuple[float, float] = (0.0, 0.0),
+        crossing_jitter_range: tuple[float, float] = (0.0, 0.0),
+        crossing_jitter_pattern: tuple[float, float, float] | None = None,
+        slope_jitter_range: tuple[float, float] = (0.0, 0.0),
+        slope_jitter_pattern: tuple[float, float] | None = None,
         ) -> dict[str, object]:
     data = four_target_batch(
         model, count=count, seed=seed, device=device, heldout=True,
-        boundary_shift_range=boundary_shift_range)
+        boundary_shift_range=boundary_shift_range,
+        crossing_jitter_range=crossing_jitter_range,
+        crossing_jitter_pattern=crossing_jitter_pattern,
+        slope_jitter_range=slope_jitter_range,
+        slope_jitter_pattern=slope_jitter_pattern)
     scales = model.memory_usage_prior_probability(policy_features(data))
     reads = []
     correct = 0
@@ -399,10 +471,23 @@ def main() -> None:
         help="comma-separated private generator classes used in training")
     parser.add_argument("--training-shift-min", type=float, default=0.0)
     parser.add_argument("--training-shift-max", type=float, default=0.0)
+    parser.add_argument("--training-crossing-jitter-min", type=float, default=0.0)
+    parser.add_argument("--training-crossing-jitter-max", type=float, default=0.0)
+    parser.add_argument("--training-slope-jitter-min", type=float, default=0.0)
+    parser.add_argument("--training-slope-jitter-max", type=float, default=0.0)
+    parser.add_argument(
+        "--structured-shape-curriculum", action="store_true",
+        help=(
+            "cycle random deformations with two hard class-specific sign "
+            "patterns, always inside the configured training magnitudes"))
     parser.add_argument("--transfer-negative-min", type=float)
     parser.add_argument("--transfer-negative-max", type=float)
     parser.add_argument("--transfer-positive-min", type=float)
     parser.add_argument("--transfer-positive-max", type=float)
+    parser.add_argument("--transfer-shape-crossing-min", type=float)
+    parser.add_argument("--transfer-shape-crossing-max", type=float)
+    parser.add_argument("--transfer-shape-slope-min", type=float)
+    parser.add_argument("--transfer-shape-slope-max", type=float)
     parser.add_argument(
         "--expand-usage-residual-hidden", type=int, default=0,
         help=(
@@ -412,6 +497,16 @@ def main() -> None:
         "--usage-residual-features", type=int, default=4,
         choices=(4, 12),
         help="legacy four features or full sorted four-row evidence")
+    parser.add_argument(
+        "--expand-usage-proposer-hidden", type=int, default=0,
+        help=(
+            "add a zero-effect relational rank-exchange proposer of this "
+            "width and train it while freezing the inherited policy"))
+    parser.add_argument(
+        "--ablate-proposer-credit-loss", action="store_true",
+        help=(
+            "diagnostic control: withhold verified candidate credit from "
+            "the selector while leaving architecture and experience fixed"))
     args = parser.parse_args()
     if sum((
             args.paired_delta > 0.0,
@@ -433,8 +528,26 @@ def main() -> None:
         parser.error("--parent-distillation-count must be at least two")
     if args.expand_usage_residual_hidden < 0:
         parser.error("--expand-usage-residual-hidden must be nonnegative")
+    if args.expand_usage_proposer_hidden < 0:
+        parser.error("--expand-usage-proposer-hidden must be nonnegative")
+    if (
+            args.expand_usage_residual_hidden > 0
+            and args.expand_usage_proposer_hidden > 0):
+        parser.error("residual and proposer expansion are exclusive")
     if args.reset_policy and args.expand_usage_residual_hidden > 0:
         parser.error("reset-policy and residual expansion are exclusive")
+    if args.reset_policy and args.expand_usage_proposer_hidden > 0:
+        parser.error("reset-policy and proposer expansion are exclusive")
+    if (
+            args.expand_usage_proposer_hidden > 0
+            and args.imitation_target != "center"):
+        parser.error(
+            "the relational proposer requires center imitation")
+    if (
+            args.ablate_proposer_credit_loss
+            and args.expand_usage_proposer_hidden <= 0):
+        parser.error(
+            "proposer-credit ablation requires proposer expansion")
     transfer_values = (
         args.transfer_negative_min, args.transfer_negative_max,
         args.transfer_positive_min, args.transfer_positive_max)
@@ -462,6 +575,66 @@ def main() -> None:
         }
     else:
         transfer_ranges = None
+    shape_transfer_values = (
+        args.transfer_shape_crossing_min,
+        args.transfer_shape_crossing_max,
+        args.transfer_shape_slope_min,
+        args.transfer_shape_slope_max,
+    )
+    if any(value is not None for value in shape_transfer_values):
+        if any(value is None for value in shape_transfer_values):
+            parser.error("all four shape-transfer boundaries are required")
+        if transfer_ranges is not None:
+            parser.error(
+                "boundary and shape transfer audits are mutually exclusive")
+        assert args.transfer_shape_crossing_min is not None
+        assert args.transfer_shape_crossing_max is not None
+        assert args.transfer_shape_slope_min is not None
+        assert args.transfer_shape_slope_max is not None
+        if not (
+                max(
+                    abs(args.training_crossing_jitter_min),
+                    abs(args.training_crossing_jitter_max))
+                < args.transfer_shape_crossing_min
+                <= args.transfer_shape_crossing_max
+                and max(
+                    abs(args.training_slope_jitter_min),
+                    abs(args.training_slope_jitter_max))
+                < args.transfer_shape_slope_min
+                <= args.transfer_shape_slope_max):
+            parser.error(
+                "shape-transfer magnitudes must be positive, ordered, and "
+                "strictly outside both training envelopes")
+        transfer_variants = {
+            "alternating": {
+                "crossing_jitter_range": (
+                    args.transfer_shape_crossing_min,
+                    args.transfer_shape_crossing_max),
+                "crossing_jitter_pattern": (
+                    _ALTERNATING_CROSSING_PATTERN),
+                "slope_jitter_range": (
+                    args.transfer_shape_slope_min,
+                    args.transfer_shape_slope_max),
+                "slope_jitter_pattern": (1, -1),
+            },
+            "grouped": {
+                "crossing_jitter_range": (
+                    args.transfer_shape_crossing_min,
+                    args.transfer_shape_crossing_max),
+                "crossing_jitter_pattern": (
+                    _GROUPED_CROSSING_PATTERN),
+                "slope_jitter_range": (
+                    args.transfer_shape_slope_min,
+                    args.transfer_shape_slope_max),
+                "slope_jitter_pattern": (-1, 1),
+            },
+        }
+    elif transfer_ranges is not None:
+        transfer_variants = {
+            name: {"boundary_shift_range": shift_range}
+            for name, shift_range in transfer_ranges.items()}
+    else:
+        transfer_variants = None
     if (
             args.verified_imitation_candidates <= 0
             and args.imitation_replay_updates != 1):
@@ -477,6 +650,9 @@ def main() -> None:
     inherited_residual_hidden = int(
         model_configuration.get(
             "adaptive_memory_usage_prior_residual_hidden", 0))
+    inherited_proposer_hidden = int(
+        model_configuration.get(
+            "adaptive_memory_usage_prior_proposer_hidden", 0))
     if (
             args.expand_usage_residual_hidden > 0
             and inherited_residual_hidden == 0):
@@ -499,6 +675,25 @@ def main() -> None:
             raise ValueError(
                 f"unexpected usage-residual mismatch: "
                 f"{missing=}, {unexpected=}")
+    elif (
+            args.expand_usage_proposer_hidden > 0
+            and inherited_proposer_hidden == 0):
+        model_configuration[
+            "adaptive_memory_usage_prior_proposer_hidden"
+        ] = args.expand_usage_proposer_hidden
+        model = UnifiedCognitiveController(**model_configuration).to(device)
+        missing, unexpected = model.load_state_dict(
+            payload["state_dict"], strict=False)
+        expected = {
+            "memory_usage_prior_proposer.0.weight",
+            "memory_usage_prior_proposer.0.bias",
+            "memory_usage_prior_proposer.2.weight",
+            "memory_usage_prior_proposer.2.bias",
+        }
+        if set(missing) != expected or unexpected:
+            raise ValueError(
+                f"unexpected usage-proposer mismatch: "
+                f"{missing=}, {unexpected=}")
     else:
         if (
                 args.expand_usage_residual_hidden > 0
@@ -506,6 +701,12 @@ def main() -> None:
                 != args.expand_usage_residual_hidden):
             raise ValueError(
                 "requested residual width differs from checkpoint")
+        if (
+                args.expand_usage_proposer_hidden > 0
+                and inherited_proposer_hidden
+                != args.expand_usage_proposer_hidden):
+            raise ValueError(
+                "requested proposer width differs from checkpoint")
         model = UnifiedCognitiveController(**model_configuration).to(device)
         model.load_state_dict(payload["state_dict"])
     if args.reset_policy:
@@ -527,6 +728,14 @@ def main() -> None:
         assert model.memory_usage_prior_residual is not None
         trainable_parameters = list(
             model.memory_usage_prior_residual.parameters())
+    elif args.expand_usage_proposer_hidden > 0:
+        if args.verified_imitation_candidates <= 0:
+            parser.error(
+                "the relational proposer currently requires "
+                "verified-imitation training")
+        assert model.memory_usage_prior_proposer is not None
+        trainable_parameters = list(
+            model.memory_usage_prior_proposer.parameters())
     else:
         trainable_parameters = list(
             model.memory_usage_prior_policy.parameters())
@@ -534,6 +743,8 @@ def main() -> None:
         parameter.requires_grad_(True)
     optimizer = torch.optim.Adam(
         trainable_parameters, lr=args.learning_rate)
+    use_relational_candidates = (
+        args.expand_usage_proposer_hidden > 0)
     parent_features = parent_allowed = parent_candidate_scales = None
     rehearsal_contexts = 0
     if args.parent_distillation_weight > 0.0:
@@ -608,13 +819,44 @@ def main() -> None:
     imitation_feature_replay: list[torch.Tensor] = []
     imitation_allowed_replay: list[torch.Tensor] = []
     for step in range(1, args.steps + 1):
+        crossing_jitter_range = (
+            args.training_crossing_jitter_min,
+            args.training_crossing_jitter_max)
+        slope_jitter_range = (
+            args.training_slope_jitter_min,
+            args.training_slope_jitter_max)
+        crossing_jitter_pattern = None
+        slope_jitter_pattern = None
+        if args.structured_shape_curriculum and step % 3 != 1:
+            # Keep the magnitudes strictly inside the declared training
+            # envelope while ensuring narrow, decision-changing intervals are
+            # not left to chance in a small sample-efficiency run.
+            crossing_magnitude = max(
+                abs(args.training_crossing_jitter_min),
+                abs(args.training_crossing_jitter_max))
+            slope_magnitude = max(
+                abs(args.training_slope_jitter_min),
+                abs(args.training_slope_jitter_max))
+            crossing_jitter_range = (0.0, crossing_magnitude)
+            slope_jitter_range = (0.0, slope_magnitude)
+            if step % 3 == 2:
+                crossing_jitter_pattern = (
+                    _ALTERNATING_CROSSING_PATTERN)
+                slope_jitter_pattern = (1, -1)
+            else:
+                crossing_jitter_pattern = _GROUPED_CROSSING_PATTERN
+                slope_jitter_pattern = (-1, 1)
         data = four_target_batch(
             model, count=args.batch_size,
             seed=args.seed * 1_000_000 + step,
             device=device, heldout=False,
             target_classes=training_classes,
             boundary_shift_range=(
-                args.training_shift_min, args.training_shift_max))
+                args.training_shift_min, args.training_shift_max),
+            crossing_jitter_range=crossing_jitter_range,
+            crossing_jitter_pattern=crossing_jitter_pattern,
+            slope_jitter_range=slope_jitter_range,
+            slope_jitter_pattern=slope_jitter_pattern)
         contexts += int(data["generated_contexts"])
         mean = model.memory_usage_prior_logits(policy_features(data))
         critic_loss_value = None
@@ -625,9 +867,13 @@ def main() -> None:
             # No target row, private scale interval, or correct action label
             # enters the loss. The controller is penalized only while its
             # prediction lies outside the empirically successful region.
-            candidate_scales = torch.linspace(
-                0.0, 1.0, args.verified_imitation_candidates,
-                device=device)
+            if use_relational_candidates:
+                candidate_scales = model.memory_usage_prior_candidates(
+                    policy_features(data))
+            else:
+                candidate_scales = torch.linspace(
+                    0.0, 1.0, args.verified_imitation_candidates,
+                    device=device)
             row_outcomes = behavioral_row_outcomes(
                 model, data, device=device)
             verifier_bits += row_outcomes.numel()
@@ -638,9 +884,18 @@ def main() -> None:
                         generator=reward_generator, device=device)
                 ].reshape_as(row_outcomes)
             candidate_outcomes = []
-            for scale in candidate_scales:
+            candidate_count = (
+                candidate_scales.shape[1]
+                if candidate_scales.ndim == 2
+                else candidate_scales.numel())
+            for candidate_index in range(candidate_count):
+                scale = (
+                    candidate_scales[:, candidate_index]
+                    if candidate_scales.ndim == 2
+                    else candidate_scales[candidate_index])
                 selected, _ = select_rows(
-                    data, torch.full_like(mean, scale))
+                    data, torch.full_like(mean, scale)
+                    if scale.ndim == 0 else scale)
                 candidate_outcomes.append(
                     row_outcomes.gather(
                         1, selected.unsqueeze(-1)).squeeze(-1))
@@ -670,13 +925,48 @@ def main() -> None:
                 replay_mean = model.memory_usage_prior_logits(
                     replay_features)
                 predicted_scale = torch.sigmoid(replay_mean)
+                if use_relational_candidates:
+                    # The learned no-op gate is part of the actual action
+                    # policy, so optimize the final probability rather than
+                    # the inherited logits.
+                    predicted_scale = (
+                        model.memory_usage_prior_probability(replay_features))
+                    replay_candidate_scales = (
+                        model.memory_usage_prior_candidates(replay_features))
+                else:
+                    replay_candidate_scales = candidate_scales
                 if args.imitation_target == "center":
                     replay_target = (
                         replay_allowed.to(predicted_scale.dtype)
-                        * candidate_scales.unsqueeze(0)
+                        * (
+                            replay_candidate_scales
+                            if replay_candidate_scales.ndim == 2
+                            else replay_candidate_scales.unsqueeze(0))
                     ).sum(-1) / replay_allowed.sum(-1)
                     loss = torch.nn.functional.mse_loss(
                         predicted_scale, replay_target.detach())
+                    if (
+                            use_relational_candidates
+                            and not args.ablate_proposer_credit_loss):
+                        assert model.memory_usage_prior_proposer is not None
+                        proposal_features, _ = (
+                            model.memory_usage_prior_proposal_features(
+                                replay_features))
+                        proposal_logits = (
+                            model.memory_usage_prior_proposer(
+                                proposal_features)[:, :4])
+                        verified_distribution = (
+                            replay_allowed.to(proposal_logits.dtype)
+                            / replay_allowed.sum(
+                                -1, keepdim=True).clamp_min(1))
+                        # Candidate success comes exclusively from scalar
+                        # verifier outcomes.  This trains the selector even
+                        # while its exact no-op opening is still closed,
+                        # breaking the otherwise circular credit path.
+                        loss = loss - (
+                            verified_distribution.detach()
+                            * proposal_logits.log_softmax(-1)
+                        ).sum(-1).mean()
                 else:
                     loss = scale_interval_loss(
                         predicted_scale, replay_allowed, candidate_scales)
@@ -854,15 +1144,15 @@ def main() -> None:
                 "critic_loss": critic_loss_value,
                 "elapsed_seconds": time.perf_counter() - started,
             }
-            if transfer_ranges is not None:
+            if transfer_variants is not None:
                 transfer_prefixes = [
                     evaluate_four_target(
                         model, count=min(args.test_count, 256),
                         seed=args.seed + 90_100_000 + index,
                         device=device, scale_cost=args.scale_cost,
-                        boundary_shift_range=shift_range)
-                    for index, shift_range
-                    in enumerate(transfer_ranges.values())
+                        **variant)
+                    for index, variant
+                    in enumerate(transfer_variants.values())
                 ]
                 entry["transfer_row_accuracy"] = min(
                     report["learned"]["row_accuracy"]
@@ -891,36 +1181,36 @@ def main() -> None:
         model, count=args.physical_count,
         seed=args.seed + 92_000_000, device=device)
     transfer_evaluation = None
-    if transfer_ranges is not None:
+    if transfer_variants is not None:
         transfer_evaluation = {}
-        for index, (name, shift_range) in enumerate(
-                transfer_ranges.items()):
+        for index, (name, variant) in enumerate(
+                transfer_variants.items()):
             seed = args.seed + 97_000_000 + index * 10_000
             transfer_evaluation[name] = {
-                "shift_range": shift_range,
+                "evaluation_parameters": variant,
                 "held_out": evaluate_four_target(
                     model, count=args.test_count, seed=seed,
                     device=device, scale_cost=args.scale_cost,
-                    boundary_shift_range=shift_range),
+                    **variant),
                 "feature_shuffled": evaluate_four_target(
                     model, count=args.test_count, seed=seed,
                     device=device, scale_cost=args.scale_cost,
-                    boundary_shift_range=shift_range,
+                    **variant,
                     shuffle_features=True),
                 "value_corrupted": evaluate_four_target(
                     model, count=args.test_count, seed=seed,
                     device=device, scale_cost=args.scale_cost,
-                    boundary_shift_range=shift_range,
+                    **variant,
                     corrupt_values=True),
                 "unpermuted_rows": evaluate_four_target(
                     model, count=args.test_count, seed=seed,
                     device=device, scale_cost=args.scale_cost,
-                    boundary_shift_range=shift_range,
+                    **variant,
                     permute_rows=False),
                 "physical": physical_audit(
                     model, count=args.physical_count,
                     seed=seed + 1_000, device=device,
-                    boundary_shift_range=shift_range),
+                    **variant),
             }
     parent_continuous = evaluate_parent_continuous(
         model, count=args.test_count, rows=4,
@@ -972,7 +1262,8 @@ def main() -> None:
             all(
                 name.startswith((
                     "memory_usage_prior_policy.",
-                    "memory_usage_prior_residual."))
+                    "memory_usage_prior_residual.",
+                    "memory_usage_prior_proposer."))
                 for name in changed),
         "under_five_minutes": total_seconds <= 300.0,
     }
@@ -1027,7 +1318,7 @@ def main() -> None:
                 (
                     entry["transfer_row_accuracy"] >= 0.90
                     and entry["transfer_minimum_class_accuracy"] >= 0.85
-                    if transfer_ranges is not None
+                    if transfer_variants is not None
                     else (
                         entry["row_accuracy"] >= 0.90
                         and entry["minimum_class_accuracy"] >= 0.85))
@@ -1035,7 +1326,7 @@ def main() -> None:
                     (
                         later["transfer_row_accuracy"] >= 0.90
                         and later["transfer_minimum_class_accuracy"] >= 0.85
-                        if transfer_ranges is not None
+                        if transfer_variants is not None
                         else (
                             later["row_accuracy"] >= 0.90
                             and later["minimum_class_accuracy"] >= 0.85))
@@ -1044,8 +1335,11 @@ def main() -> None:
             break
     report = {
         "schema": (
-            "unified-controller-four-target-boundary-transfer-v1"
-            if transfer_ranges is not None
+            (
+                "unified-controller-four-target-shape-transfer-v1"
+                if any(value is not None for value in shape_transfer_values)
+                else "unified-controller-four-target-boundary-transfer-v1")
+            if transfer_variants is not None
             else "unified-controller-four-target-retrieval-v1"),
         "configuration": {
             **vars(args),
