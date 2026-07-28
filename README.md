@@ -144,9 +144,26 @@ skill are necessary. The original conditional task, selective disk,
 unequal-strength volatility, binary mapping, and four-rule behavior all remain
 retained.
 
-The next frontier is a broader continuum with genuinely competing third and
-fourth rows, followed by naturally occurring duplicate memories rather than
-generator-separated query regimes.
+That four-way frontier is now closed on its first robust curriculum rung.
+Every query contains four behaviorally distinct values, any one of the four
+rows can be correct, and physical row order is independently permuted. The
+controller explores its generic continuous retrieval action, retains only
+regions that earn real verifier reward, and reuses one verified batch for
+intensive internal optimization. Parent rehearsal constrains deployed
+retrieval behavior rather than freezing obsolete numeric activations.
+
+Three independent runs reached 100% in every target regime from one batch:
+512 unique verifier bits and 512 new logical contexts. Training took
+1.47–2.72 seconds despite 1,000 internal replay updates. All runs retained
+100% parent continuous and conditional retrieval plus binary-mapping and
+four-rule gates. They also reached 100% across 128 independently saved and
+reloaded disk banks. No fixed scalar exceeded 25%; feature shuffling fell to
+24.8–25.4%, value corruption fell to 0%, and shuffled reward learned only one
+class at 25%.
+
+The next frontier is zero-shot transfer to unseen retrieval boundaries and
+progressive narrowing of the third/fourth interval, followed by naturally
+occurring duplicate memories rather than generator-declared opposites.
 
 The new unified-controller line now has its first retained compounding
 milestone. A single 298,252-parameter controller with one vision encoder,

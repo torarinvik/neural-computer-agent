@@ -219,6 +219,30 @@ resource-control milestone.
 The checkpoint was selected on a task where no constant scale can solve both
 arms. Correctness dominates a smaller generic cost on retrieval strength.
 
+## Four-way physical memory retrieval
+
+`unified_four_target_memory_retrieval_seed17828.pt` is the promoted four-way
+retrieval milestone.
+
+- SHA-256:
+  `22152214154e1935b35539954c22f8f9bbfb3acd3dee9aaeddde6e3ddcafa00f`
+- Parent: `unified_continuous_memory_usage_prior_seed17718.pt`
+- Same architecture and parameter count; only the 49-parameter policy changed
+- One new batch: 512 verifier bits and 512 logical contexts
+- 1,000 internal updates and 639,872 explicitly counted replayed examples
+- Four held-out target regimes: 100% each
+- Best fixed scalar: 25%; feature shuffle: 25.39%
+- Value corruption: 0% visual success
+- 128 physical banks: 100% correct and every reload exact
+- Parent continuous/conditional retrieval: 100%/100%
+- Binary-mapping and four-rule retention: passed
+- Independent seeds 17827 and 17829 replicated every gate
+- Shuffled verifier reward learned one class at 25% and was rejected
+
+The learner uses only successful scalar-action intervals. Parent rehearsal
+preserves behaviorally equivalent action regions rather than exact numeric
+outputs, which permits plasticity without catastrophic forgetting.
+
 ## Multi-feature online utility
 
 `unified_memory_multifeature_reliability_seed6932.pt` is the promoted

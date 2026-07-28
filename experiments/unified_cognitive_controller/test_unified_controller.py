@@ -1191,6 +1191,60 @@ def test_continuous_usage_batch_has_valid_query_dependent_intervals() -> None:
         (data["decision_boundary"][ambiguous] < 1.0).all())
 
 
+def test_four_target_memory_rows_are_all_selectable_after_permutation() -> None:
+    from .train_four_target_memory_retrieval import (
+        behavioral_row_outcomes,
+        four_target_batch,
+        select_rows,
+    )
+
+    payload = torch.load(
+        "artifacts/checkpoints/"
+        "unified_continuous_memory_usage_prior_seed17718.pt",
+        map_location="cpu", weights_only=False)
+    model = UnifiedCognitiveController(**payload["model_configuration"])
+    model.load_state_dict(payload["state_dict"])
+    data = four_target_batch(
+        model, count=64, seed=17800,
+        device=torch.device("cpu"), heldout=True)
+    representative_scales = torch.tensor([0.10, 0.35, 0.50, 0.80])
+    scales = representative_scales[data["target_class"]]
+    selected, values = select_rows(data, scales)
+    assert torch.equal(selected, data["target_slot"])
+    expected = torch.gather(
+        data["values"], 1,
+        data["target_slot"][:, None, None].expand(
+            -1, 1, model.width)).squeeze(1)
+    assert torch.equal(values, expected)
+    assert data["target_slot"].unique().numel() == 4
+    outcomes = behavioral_row_outcomes(
+        model, data, device=torch.device("cpu"))
+    assert torch.equal(
+        outcomes.sum(-1), torch.ones(data["target_slot"].shape[0]))
+    assert torch.equal(
+        outcomes.gather(1, data["target_slot"].unsqueeze(-1)).squeeze(-1),
+        torch.ones(data["target_slot"].shape[0]))
+
+
+def test_verified_scale_interval_penalizes_only_behavior_changes() -> None:
+    from .train_four_target_memory_retrieval import scale_interval_loss
+
+    predicted = torch.tensor([0.20, 0.50, 0.90], requires_grad=True)
+    candidates = torch.tensor([0.0, 0.5, 1.0])
+    allowed = torch.tensor([
+        [True, True, False],
+        [False, True, False],
+        [True, True, False],
+    ])
+    loss = scale_interval_loss(predicted, allowed, candidates)
+    assert loss.item() == pytest.approx((0.90 - 0.50) ** 2 / 3)
+    loss.backward()
+    assert predicted.grad is not None
+    assert torch.equal(
+        predicted.grad[:2], torch.zeros_like(predicted.grad[:2]))
+    assert predicted.grad[2] > 0
+
+
 def test_persistent_stream_age_uses_current_insertion_rank() -> None:
     memory = DiskLatentMemory(width=4, capacity=3)
     memory.commit(
