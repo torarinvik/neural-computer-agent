@@ -340,6 +340,12 @@ def main() -> None:
               "makes every deeper ancestry hand the new slot bit-identical "
               "features, so there is nothing to inherit"))
     parser.add_argument(
+        "--read-legacy-adapters", action="store_true",
+        help=("also let this rung's slot read the two legacy adapters, which is "
+              "where rungs two and three consolidated. Only the slot this rung "
+              "adds reads them, so earlier slots keep their input width and "
+              "their checkpoints still load"))
+    parser.add_argument(
         "--ablate-prior-read", action="store_true",
         help=("control for --slot-reads-prior: keep the wider input and zero "
               "its content, so a speedup from inherited information is "
@@ -475,6 +481,8 @@ def main() -> None:
         configuration["skill_adapter_gate_mode"] = args.slot_gate_mode
         configuration["skill_adapter_gate_hidden"] = args.slot_gate_hidden
         configuration["skill_adapter_reads_prior"] = args.slot_reads_prior
+        configuration["skill_adapter_legacy_read_from"] = (
+            new_slot if args.read_legacy_adapters else None)
         student = UnifiedCognitiveController(**configuration).to(device)
         student.skill_adapter_ablate_prior_read = args.ablate_prior_read
         missing, unexpected = student.load_state_dict(

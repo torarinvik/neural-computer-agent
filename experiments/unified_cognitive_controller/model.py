@@ -83,7 +83,8 @@ class UnifiedCognitiveController(nn.Module):
             skill_adapter_widths: tuple[int, ...] = (),
             skill_adapter_gate_mode: str = "sigmoid",
             skill_adapter_gate_hidden: int = 0,
-            skill_adapter_reads_prior: bool = False) -> None:
+            skill_adapter_reads_prior: bool = False,
+            skill_adapter_legacy_read_from: int | None = None) -> None:
         super().__init__()
         if skill_adapter_gate_mode not in ("sigmoid", "relu"):
             raise ValueError(
@@ -126,6 +127,12 @@ class UnifiedCognitiveController(nn.Module):
         # the parameter count and removes only the content, which is the
         # comparison that separates the two.
         self.skill_adapter_ablate_prior_read = False
+        # Index of the first slot allowed to read the two legacy adapters.
+        # Rungs two and three consolidated into those, so they are ancestry a
+        # later slot cannot otherwise see. It is an index rather than a flag so
+        # that slots written before this existed keep their original input
+        # width and their checkpoints still load.
+        self.skill_adapter_legacy_read_from = skill_adapter_legacy_read_from
         # Training-time leak below the rectifier's knee. A rectified gate that
         # shuts everywhere before it has learned where to open has no gradient
         # left and stays shut forever; a small leak keeps that recoverable. It
@@ -198,10 +205,17 @@ class UnifiedCognitiveController(nn.Module):
         # stack contributes no state, so older checkpoints load unchanged.
         self.skill_adapters = nn.ModuleList()
         self.skill_adapter_gates = nn.ModuleList()
+        legacy_read_width = (
+            (relation_adapter_width if relation_adapter_width else 0)
+            + (action_adapter_width if action_adapter_width else 0))
         prior_read_width = 0
-        for slot_width in self.skill_adapter_widths:
+        for slot_index, slot_width in enumerate(self.skill_adapter_widths):
+            reads_legacy = (
+                skill_adapter_legacy_read_from is not None
+                and slot_index >= skill_adapter_legacy_read_from)
             slot_input = width * 2 + (
-                prior_read_width if skill_adapter_reads_prior else 0)
+                prior_read_width if skill_adapter_reads_prior else 0) + (
+                legacy_read_width if reads_legacy else 0)
             adapter = nn.Sequential(
                 nn.Linear(slot_input, slot_width),
                 nn.GELU(),
@@ -369,18 +383,36 @@ class UnifiedCognitiveController(nn.Module):
             openings = []
             residual_norms = []
             prior_reads: list[torch.Tensor] = []
-            for adapter, gate in zip(
-                    self.skill_adapters, self.skill_adapter_gates):
+            # The legacy adapters hold what rungs two and three consolidated.
+            # Their hidden layers are read on the same terms as a slot's: their
+            # writes remain gated exactly as before.
+            legacy_reads: list[torch.Tensor] = []
+            if self.skill_adapter_legacy_read_from is not None:
+                if self.relation_adapter is not None:
+                    legacy_reads.append(
+                        self.relation_adapter[1](
+                            self.relation_adapter[0](slot_features)))
+                if self.action_adapter is not None:
+                    legacy_reads.append(
+                        self.action_adapter[1](
+                            self.action_adapter[0](slot_features)))
+            for slot_index, (adapter, gate) in enumerate(zip(
+                    self.skill_adapters, self.skill_adapter_gates)):
                 # A slot sees the generic event pair plus what earlier slots
                 # computed. The read is ungated on purpose: an earlier slot's
                 # gate decides whether it speaks, not whether it can be
                 # consulted. Without this, an exactly shut gate makes every
                 # deeper ancestry produce bit-identical inputs here, and a new
                 # slot has nothing to inherit.
+                reads = []
                 if self.skill_adapter_reads_prior and prior_reads:
-                    reads = (
-                        [torch.zeros_like(r) for r in prior_reads]
-                        if self.skill_adapter_ablate_prior_read else prior_reads)
+                    reads += prior_reads
+                if (self.skill_adapter_legacy_read_from is not None
+                        and slot_index >= self.skill_adapter_legacy_read_from):
+                    reads += legacy_reads
+                if reads:
+                    if self.skill_adapter_ablate_prior_read:
+                        reads = [torch.zeros_like(r) for r in reads]
                     own_features = torch.cat([slot_features, *reads], dim=-1)
                 else:
                     own_features = slot_features
