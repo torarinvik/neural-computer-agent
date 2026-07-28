@@ -426,3 +426,23 @@ The longer-term optimization is a gradient-trained population with
 successive-halving compute allocation. Fitness is held-out learning AULC,
 stable bits-to-threshold, retention, latency, and positive transfer to the next
 primitive—not old-task accuracy.
+
+## Latest ancestry frontier
+
+Exact-zero skill gates protected retention but made deeper ancestry invisible.
+Separating reads from writes restored transfer at ancestry 3 → 4: readable
+latent content produced a +0.0242 pooled advantage (48W/22L, p = 2.5e-3), while
+a zero-content capacity control did not.
+
+At 4 → 5, reading still improves absolute new-skill learning substantially:
++0.0944 for the four-skill parent and +0.0785 for the five-skill parent against
+matched no-read controls. The open problem is accumulation—a second readable
+ancestor adds no further depth advantage. Compressing the combined read does
+not fix it. A sub-minute recent-only pilot preserved +0.0807 over no read and
+was +0.0191 above reading both ancestors, but did not yet reverse the
+deep-versus-shallow gap, so no longer run was promoted.
+
+The next tiny diagnostic compares one immediate ancestor with one older
+ancestor. A causal difference would justify learned task-agnostic latent
+selection; a flat result would rule routing out before more compute is spent.
+See `session_records/strategy_accounting_2026-07-28/README.md`.

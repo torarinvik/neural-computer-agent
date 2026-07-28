@@ -86,7 +86,8 @@ class UnifiedCognitiveController(nn.Module):
             skill_adapter_reads_prior: bool = False,
             skill_adapter_legacy_read_from: int | None = None,
             skill_adapter_reads_prior_from: int | None = None,
-            skill_adapter_read_bottleneck: int = 0) -> None:
+            skill_adapter_read_bottleneck: int = 0,
+            skill_adapter_prior_read_limit: int = 0) -> None:
         super().__init__()
         if skill_adapter_gate_mode not in ("sigmoid", "relu"):
             raise ValueError(
@@ -98,6 +99,7 @@ class UnifiedCognitiveController(nn.Module):
                 or adaptive_memory_replace_features < 5
                 or relation_adapter_width < 0
                 or action_adapter_width < 0
+                or skill_adapter_prior_read_limit < 0
                 or any(value < 1 for value in skill_adapter_widths)):
             raise ValueError("controller dimensions are too small")
         self.width = width
@@ -147,6 +149,12 @@ class UnifiedCognitiveController(nn.Module):
         # only its own hidden width to work with, so a wide read appears to
         # dilute rather than inform. Zero keeps the raw concatenation.
         self.skill_adapter_read_bottleneck = skill_adapter_read_bottleneck
+        # Zero reads every earlier slot. A positive value keeps only that many
+        # immediately preceding slots. The first readable ancestor helped
+        # strongly, while exposing a second did not improve the learning gain;
+        # this selector tests whether local reuse can compound without carrying
+        # every older intermediate representation into every new rung.
+        self.skill_adapter_prior_read_limit = skill_adapter_prior_read_limit
         # Training-time leak below the rectifier's knee. A rectified gate that
         # shuts everywhere before it has learned where to open has no gradient
         # left and stays shut forever; a small leak keeps that recoverable. It
@@ -231,8 +239,14 @@ class UnifiedCognitiveController(nn.Module):
             reads_prior = skill_adapter_reads_prior and (
                 skill_adapter_reads_prior_from is None
                 or slot_index >= skill_adapter_reads_prior_from)
+            selected_prior_width = prior_read_width
+            if skill_adapter_prior_read_limit:
+                selected_prior_width = sum(
+                    self.skill_adapter_widths[
+                        max(0, slot_index - skill_adapter_prior_read_limit):
+                        slot_index])
             raw_read = (
-                (prior_read_width if reads_prior else 0)
+                (selected_prior_width if reads_prior else 0)
                 + (legacy_read_width if reads_legacy else 0))
             if raw_read and skill_adapter_read_bottleneck:
                 slot_input = width * 2 + skill_adapter_read_bottleneck
@@ -435,7 +449,10 @@ class UnifiedCognitiveController(nn.Module):
                         and (self.skill_adapter_reads_prior_from is None
                              or slot_index
                              >= self.skill_adapter_reads_prior_from)):
-                    reads += prior_reads
+                    reads += (
+                        prior_reads[-self.skill_adapter_prior_read_limit:]
+                        if self.skill_adapter_prior_read_limit
+                        else prior_reads)
                 if (self.skill_adapter_legacy_read_from is not None
                         and slot_index >= self.skill_adapter_legacy_read_from):
                     reads += legacy_reads

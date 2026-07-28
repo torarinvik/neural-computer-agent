@@ -1070,6 +1070,30 @@ def test_strategy_memory_can_replace_a_preferred_duplicate_slot() -> None:
     assert torch.equal(memory.values[:, 0], torch.tensor([3.0, 2.0]))
 
 
+def test_skill_adapter_can_read_only_the_immediately_prior_slot() -> None:
+    model = UnifiedCognitiveController(
+        width=16,
+        intention_width=4,
+        skill_adapter_widths=(5, 7, 11),
+        skill_adapter_reads_prior=True,
+        skill_adapter_prior_read_limit=1,
+    )
+    assert model.skill_adapters[0][0].in_features == 32
+    assert model.skill_adapters[1][0].in_features == 32 + 5
+    assert model.skill_adapters[2][0].in_features == 32 + 7
+
+
+def test_zero_prior_read_limit_keeps_all_earlier_slots() -> None:
+    model = UnifiedCognitiveController(
+        width=16,
+        intention_width=4,
+        skill_adapter_widths=(5, 7, 11),
+        skill_adapter_reads_prior=True,
+        skill_adapter_prior_read_limit=0,
+    )
+    assert model.skill_adapters[2][0].in_features == 32 + 5 + 7
+
+
 def test_physical_context_key_ignores_skip_and_is_normalized() -> None:
     features = torch.zeros(2, 4, 7)
     features[:, 1:, 0] = 0.5

@@ -353,6 +353,11 @@ def main() -> None:
               "helped raw; two, or the legacy pair, hurt, so a wide read looks "
               "like dilution rather than information"))
     parser.add_argument(
+        "--prior-read-limit", type=int, default=0,
+        help=("read only this many immediately preceding skill slots; zero "
+              "reads all earlier slots. One ancestor improved absolute learning "
+              "while a second added no transfer gain, so one tests local reuse"))
+    parser.add_argument(
         "--read-legacy-adapters", action="store_true",
         help=("also let this rung's slot read the two legacy adapters, which is "
               "where rungs two and three consolidated. Only the slot this rung "
@@ -412,6 +417,8 @@ def main() -> None:
         raise ValueError("retention weight must be positive")
     if args.skill_adapter_width < 1:
         raise ValueError("the new plastic slot must have positive width")
+    if args.prior_read_limit < 0:
+        raise ValueError("prior read limit must not be negative")
     if not 1 <= args.new_support_trials < 6:
         raise ValueError("new-task support trials must be between 1 and 5")
     final_support_trials = (
@@ -495,6 +502,7 @@ def main() -> None:
         configuration["skill_adapter_gate_hidden"] = args.slot_gate_hidden
         configuration["skill_adapter_reads_prior"] = args.slot_reads_prior
         configuration["skill_adapter_read_bottleneck"] = args.read_bottleneck
+        configuration["skill_adapter_prior_read_limit"] = args.prior_read_limit
         configuration["skill_adapter_reads_prior_from"] = (
             new_slot if args.slot_reads_prior else None)
         configuration["skill_adapter_legacy_read_from"] = (
