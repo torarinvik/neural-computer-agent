@@ -82,7 +82,8 @@ class UnifiedCognitiveController(nn.Module):
             action_adapter_gated: bool = False,
             skill_adapter_widths: tuple[int, ...] = (),
             skill_adapter_gate_mode: str = "sigmoid",
-            skill_adapter_gate_hidden: int = 0) -> None:
+            skill_adapter_gate_hidden: int = 0,
+            skill_adapter_reads_prior: bool = False) -> None:
         super().__init__()
         if skill_adapter_gate_mode not in ("sigmoid", "relu"):
             raise ValueError(
@@ -111,6 +112,14 @@ class UnifiedCognitiveController(nn.Module):
         self.skill_adapter_widths = tuple(skill_adapter_widths)
         self.skill_adapter_gate_mode = skill_adapter_gate_mode
         self.skill_adapter_gate_hidden = skill_adapter_gate_hidden
+        # Whether a slot may read what earlier slots computed, separately from
+        # whether those slots write to the answer. An exactly shut gate makes an
+        # earlier slot silent on this event -- which is what removes
+        # interference, and also what makes deeper ancestry invisible to the
+        # next slot, since its features are then bit-identical whatever came
+        # before. Reading a prior slot's pre-gate hidden layer restores the
+        # information without restoring the disturbance.
+        self.skill_adapter_reads_prior = skill_adapter_reads_prior
         # Training-time leak below the rectifier's knee. A rectified gate that
         # shuts everywhere before it has learned where to open has no gradient
         # left and stays shut forever; a small leak keeps that recoverable. It
@@ -183,28 +192,32 @@ class UnifiedCognitiveController(nn.Module):
         # stack contributes no state, so older checkpoints load unchanged.
         self.skill_adapters = nn.ModuleList()
         self.skill_adapter_gates = nn.ModuleList()
+        prior_read_width = 0
         for slot_width in self.skill_adapter_widths:
+            slot_input = width * 2 + (
+                prior_read_width if skill_adapter_reads_prior else 0)
             adapter = nn.Sequential(
-                nn.Linear(width * 2, slot_width),
+                nn.Linear(slot_input, slot_width),
                 nn.GELU(),
                 nn.Linear(slot_width, intention_width),
             )
             nn.init.zeros_(adapter[-1].weight)
             nn.init.zeros_(adapter[-1].bias)
             self.skill_adapters.append(adapter)
+            prior_read_width += slot_width
             # A linear gate has to separate this slot's own events from every
             # other skill's with one hyperplane. A hidden layer lets the
             # boundary bend, which is what decides how cleanly a slot can be
             # both fully available to its operation and fully absent elsewhere.
             if skill_adapter_gate_hidden:
                 gate = nn.Sequential(
-                    nn.Linear(width * 2, skill_adapter_gate_hidden),
+                    nn.Linear(slot_input, skill_adapter_gate_hidden),
                     nn.GELU(),
                     nn.Linear(skill_adapter_gate_hidden, 1),
                 )
                 output_layer = gate[-1]
             else:
-                gate = nn.Linear(width * 2, 1)
+                gate = nn.Linear(slot_input, 1)
                 output_layer = gate
             nn.init.zeros_(output_layer.weight)
             # A sigmoid gate can never be exactly shut, so a slot always
@@ -349,9 +362,20 @@ class UnifiedCognitiveController(nn.Module):
             slot_features = torch.cat([state.hidden, event], dim=-1)
             openings = []
             residual_norms = []
+            prior_reads: list[torch.Tensor] = []
             for adapter, gate in zip(
                     self.skill_adapters, self.skill_adapter_gates):
-                score = gate(slot_features)
+                # A slot sees the generic event pair plus what earlier slots
+                # computed. The read is ungated on purpose: an earlier slot's
+                # gate decides whether it speaks, not whether it can be
+                # consulted. Without this, an exactly shut gate makes every
+                # deeper ancestry produce bit-identical inputs here, and a new
+                # slot has nothing to inherit.
+                own_features = (
+                    torch.cat([slot_features, *prior_reads], dim=-1)
+                    if (self.skill_adapter_reads_prior and prior_reads)
+                    else slot_features)
+                score = gate(own_features)
                 opening = (
                     # leaky_relu at slope zero is exactly relu, so a finished
                     # anneal restores exact-zero gating bit for bit.
@@ -359,7 +383,10 @@ class UnifiedCognitiveController(nn.Module):
                         score, self.skill_adapter_gate_leak)
                     if self.skill_adapter_gate_mode == "relu"
                     else torch.sigmoid(score))
-                residual = adapter(slot_features) * opening
+                hidden_read = adapter[1](adapter[0](own_features))
+                residual = adapter[2](hidden_read) * opening
+                if self.skill_adapter_reads_prior:
+                    prior_reads.append(hidden_read)
                 openings.append(opening)
                 residual_norms.append(
                     residual.norm(dim=-1, keepdim=True))

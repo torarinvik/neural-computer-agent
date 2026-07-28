@@ -334,6 +334,12 @@ def main() -> None:
               "to one each. A skill must be replayed and audited at the "
               "support it was acquired at, or its retention is unmeasurable"))
     parser.add_argument(
+        "--slot-reads-prior", action="store_true",
+        help=("let this rung's slot read what earlier slots computed, while "
+              "leaving their writes gated. Without it an exactly shut gate "
+              "makes every deeper ancestry hand the new slot bit-identical "
+              "features, so there is nothing to inherit"))
+    parser.add_argument(
         "--slot-gate-hidden", type=int, default=0,
         help=("hidden units in the new slot's gate; zero keeps the single "
               "hyperplane, which limits how cleanly a slot can separate its "
@@ -463,6 +469,7 @@ def main() -> None:
             inherited_slots + (args.skill_adapter_width,))
         configuration["skill_adapter_gate_mode"] = args.slot_gate_mode
         configuration["skill_adapter_gate_hidden"] = args.slot_gate_hidden
+        configuration["skill_adapter_reads_prior"] = args.slot_reads_prior
         student = UnifiedCognitiveController(**configuration).to(device)
         missing, unexpected = student.load_state_dict(
             teacher.state_dict(), strict=False)
