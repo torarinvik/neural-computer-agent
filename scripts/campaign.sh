@@ -24,7 +24,12 @@ VAST_HOST="${VAST_HOST:?set VAST_HOST}"
 VAST_PORT="${VAST_PORT:?set VAST_PORT}"
 REPO="${REPO:-/workspace/repos/neural-computer-agent}"
 LOCAL_REPO="${LOCAL_REPO:-$(cd "$(dirname "$0")/.." && pwd)}"
-STREAM_SECONDS="${STREAM_SECONDS:-90}"
+STREAM_SECONDS="${STREAM_SECONDS:-30}"
+# Hard cap. A campaign returns within this many seconds no matter what, scoring
+# whatever has landed. Every scorer here globs the reports that exist, so a
+# partial score is a real partial answer rather than an error. Waiting half an
+# hour for one number is what this exists to prevent.
+CAMPAIGN_MAX_SECONDS="${CAMPAIGN_MAX_SECONDS:-300}"
 SSH=(ssh -o ConnectTimeout=20 -o ServerAliveInterval=20 -p "$VAST_PORT" "root@$VAST_HOST")
 
 retry() {  # a rented box refuses connections often enough to matter
@@ -44,9 +49,16 @@ retry scp -o ConnectTimeout=20 -q -P "$VAST_PORT" "$LOCAL_REPO/scripts/runq.sh" 
 retry "${SSH[@]}" "cd $REPO && setsid nohup bash /workspace/runq.sh /workspace/$NAME.jobs $WORKERS \
   > /workspace/$NAME.log 2>&1 < /dev/null & echo started" || exit 1
 
-echo "[campaign:$NAME] running with $WORKERS workers; streaming results every ${STREAM_SECONDS}s"
+echo "[campaign:$NAME] running with $WORKERS workers; cap ${CAMPAIGN_MAX_SECONDS}s"
+CAMPAIGN_STARTED=$(date +%s)
+TIMED_OUT=0
 while true; do
   sleep "$STREAM_SECONDS"
+  if [ $(( $(date +%s) - CAMPAIGN_STARTED )) -ge "$CAMPAIGN_MAX_SECONDS" ]; then
+    echo "[campaign:$NAME] hit the ${CAMPAIGN_MAX_SECONDS}s cap; scoring what landed"
+    TIMED_OUT=1
+    break
+  fi
   # stream partial results home so a lost box never costs finished work
   rsync -az -e "ssh -o ConnectTimeout=20 -p $VAST_PORT" \
     "root@$VAST_HOST:$REPO/session_records/" "$LOCAL_REPO/session_records/" 2>/dev/null
@@ -75,6 +87,10 @@ if [ "${produced:-0}" = "0" ]; then
   "${SSH[@]}" "tail -15 /workspace/$NAME.log" 2>/dev/null
 fi
 
+if [ "$TIMED_OUT" = "1" ]; then
+  echo "[campaign:$NAME] NOTE: partial. The remainder is still running on the box;"
+  echo "[campaign:$NAME] rerun this command to collect and rescore, or shrink the grid."
+fi
 if [ -n "$SCORER" ] && [ -f "$SCORER" ]; then
   echo "[campaign:$NAME] ---- score ----"
   ( cd "$LOCAL_REPO" && PYTHONPATH="$LOCAL_REPO" .venv/bin/python "$SCORER" )

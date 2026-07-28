@@ -13,6 +13,9 @@ cd "$REPO" || { echo "runq: cannot enter repo $REPO" >&2; exit 1; }
 source /venv/main/bin/activate 2>/dev/null
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-4}" MKL_NUM_THREADS="${MKL_NUM_THREADS:-4}"
 JOBS="${1:?job file}"; P="${2:-6}"
+# A single job may never outlast the campaign cap. Anything slower than this is
+# a design error to fix at the grid, not something to sit and wait through.
+export MAX_JOB_SECONDS="${MAX_JOB_SECONDS:-300}"
 fifo=$(mktemp -u); mkfifo "$fifo"; exec 3<>"$fifo"; rm -f "$fifo"
 for _ in $(seq "$P"); do printf '.' >&3; done
 n=0
@@ -20,7 +23,9 @@ while IFS= read -r line; do
   [ -z "$line" ] && continue
   read -r -n1 -u3 _
   n=$((n+1))
-  ( eval "$line"; printf '.' >&3 ) &
+  ( timeout "${MAX_JOB_SECONDS:-300}" bash -c "$line" \
+      || echo "runq: job exceeded ${MAX_JOB_SECONDS:-300}s or failed: $line" >&2
+    printf '.' >&3 ) &
 done < "$JOBS"
 wait
 echo "RUNQ_DONE launched=$n"
