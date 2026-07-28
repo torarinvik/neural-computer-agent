@@ -1149,3 +1149,48 @@ preflight check, so an interfering rung is identifiable before any training
 compute is spent.
 
 Full record in `session_records/loose_ends_2026-07-27/`.
+
+## 2026-07-28 — Transfer is a first-composition effect, not a compounding one
+
+Measured across four ancestry depths under rectified (exact-zero) gates, so per-rung
+interference is at zero and no advantage can be a borrowing artifact.
+
+| new task | family | ancestry | pooled paired delta | sign test |
+|---|---|---|---:|---|
+| `visible_context_xor` | visible | **1 → 2** | **+0.0870** | 105W/39L, p=3.5e-8 |
+| `context_rule_xor` | hidden rule | **1 → 2** | **+0.0648** | 76W/20L, p=7.3e-9 |
+| `contextual_composition` | hidden rule | 2 → 3 | −0.0163 | 22W/33L, p=0.18 |
+| `context_identity_and` | hidden rule | 3 → 4 | −0.0002 | 37W/45L, p=0.44 |
+
+**Going from one skill to two makes the next skill dramatically cheaper. Going
+from two to three, or three to four, does nothing measurable.**
+
+Depth and family were confounded before: the rung that transferred was visible
+and zero-shot, the ones that did not were hidden-rule and few-shot. Row two
+breaks that — a hidden-rule task at ancestry 1 → 2 transfers at p = 7.3e-9 while
+the *same family* at 2 → 3 and 3 → 4 gives nothing. The effect is set by depth.
+
+This retires the earlier reading that the advantage shrank across rungs
+(1.231 → 1.083) with interference as the binding constraint. Removing
+interference did not restore compounding; there was never a compounding curve,
+only a first-composition effect measured twice at different depths.
+
+Note on estimators: at ancestry 1 → 2 hidden, the pooled delta is +0.0648 at
+p = 7.3e-9 while the interpolated threshold ratio is 1.059 and not significant.
+They disagree because the advantage is concentrated mid-curve (+0.119 and +0.141
+at 72 and 96 updates) and the curves reconverge by threshold. A threshold ratio
+samples one point of a curve; prefer the pooled delta.
+
+Which family extends is forced by the gate suite, which needs the audited
+reversal to flip ≥80% of actions. Visible `f(identity, context)` admits only
+XOR-type `f` and those are exhausted (`and`/`or` flip 50%); hidden-rule
+`rule ^ f(identity, context)` admits any `f`. Adds `context_identity_and` and
+`context_identity_or` from that family.
+
+Next hard limit: cue capacity. Placing those two slots needed a preflight
+separability search — bottom-band candidates scored 0.22–0.58 against existing
+cues, top-band ones 1.01–1.09, regardless of area or intensity. Position band
+dominates because the encoder closes with a global average pool. The frozen
+encoder can only tell so many operations apart and that budget is nearly spent.
+
+Full record in `session_records/depth_vs_family_2026-07-28/`.

@@ -1,0 +1,471 @@
+{
+  "accounting": {
+    "new_unique_lifetimes": 2560,
+    "optimizer_updates": 80,
+    "replay_lifetimes_per_task": 640,
+    "total_unique_lifetimes": 3840,
+    "total_verifier_bits": 23040
+  },
+  "all_gates_passed": true,
+  "checkpoint_saved": false,
+  "claim_boundary": "New behavior learned from attempted-action verifier outcomes; retention uses only a frozen learned controller's opaque action distributions on newly rendered replay lifetimes. Retention gates are required only for skills the frozen parent had.",
+  "configuration": {
+    "checkpoint_out": null,
+    "device": "cuda",
+    "exploration": 0.1,
+    "final_support_trials": null,
+    "gate_leak_anneal_fraction": 0.25,
+    "gate_leak_initial": 0.0,
+    "gate_warmup_fraction": 0.0,
+    "learning_rate": 0.01,
+    "locality_weight": 0.0,
+    "new_batch_size": 32,
+    "new_support_trials": 1,
+    "new_task": "visible_context_xor",
+    "parent": "artifacts/checkpoints/unified_binary_context_integrated_seed8397.pt",
+    "replay_batch_size": 8,
+    "replay_support_trials": null,
+    "replay_tasks": "binary_mapping,visible_context",
+    "report": "session_records/rung3_gatemode_2026-07-28/raw/g3_sigmoid_two_skill_80_8422.json",
+    "retention_control_gain": 0.0,
+    "retention_tracking_decay": 0.9,
+    "retention_weight": 2.0,
+    "seed": 8422,
+    "shuffle_retention_teacher": false,
+    "skill_adapter_width": 64,
+    "slot_gate_hidden": 0,
+    "slot_gate_mode": "sigmoid",
+    "steps": 80,
+    "support_switch_fraction": 0.5,
+    "test_lifetimes": 512
+  },
+  "evaluations": {
+    "binary_mapping_retention": {
+      "active_state_reset": {
+        "accuracy_by_trial": [
+          0.498046875,
+          0.49609375,
+          0.49609375,
+          0.50390625,
+          0.515625,
+          0.513671875
+        ],
+        "final_accuracy": 0.513671875,
+        "learning_gain": 0.007031261920928955,
+        "post_feedback_accuracy": 0.505078136920929,
+        "query_accuracy": 0.505078136920929,
+        "zero_shot_accuracy": 0.498046875
+      },
+      "blank_vision": {
+        "accuracy_by_trial": [
+          0.5234375,
+          0.5,
+          0.5078125,
+          0.482421875,
+          0.482421875,
+          0.478515625
+        ],
+        "final_accuracy": 0.478515625,
+        "learning_gain": -0.033203125,
+        "post_feedback_accuracy": 0.490234375,
+        "query_accuracy": 0.490234375,
+        "zero_shot_accuracy": 0.5234375
+      },
+      "feedback_shuffled": {
+        "accuracy_by_trial": [
+          0.498046875,
+          0.498046875,
+          0.494140625,
+          0.49609375,
+          0.498046875,
+          0.498046875
+        ],
+        "final_accuracy": 0.498046875,
+        "learning_gain": -0.0011718571186065674,
+        "post_feedback_accuracy": 0.49687501788139343,
+        "query_accuracy": 0.49687501788139343,
+        "zero_shot_accuracy": 0.498046875
+      },
+      "gate": {
+        "accepted": true,
+        "active_state_reset_hurts": true,
+        "counterfactual_flip_at_least_80": true,
+        "few_shot_breakthrough": true,
+        "normal_few_shot_at_least_85": true,
+        "reversed_few_shot_at_least_85": true,
+        "shuffled_feedback_hurts": true,
+        "vision_causally_used": true,
+        "zero_shot_near_chance": true
+      },
+      "normal": {
+        "accuracy_by_trial": [
+          0.498046875,
+          0.892578125,
+          0.990234375,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "final_accuracy": 1.0,
+        "learning_gain": 0.478515625,
+        "post_feedback_accuracy": 0.9765625,
+        "query_accuracy": 0.9765625,
+        "zero_shot_accuracy": 0.498046875
+      },
+      "post_feedback_prediction_flip_rate": 0.953125,
+      "reversed_rule": {
+        "accuracy_by_trial": [
+          0.501953125,
+          0.890625,
+          0.99609375,
+          1.0,
+          0.998046875,
+          0.998046875
+        ],
+        "final_accuracy": 0.998046875,
+        "learning_gain": 0.474609375,
+        "post_feedback_accuracy": 0.9765625,
+        "query_accuracy": 0.9765625,
+        "zero_shot_accuracy": 0.501953125
+      },
+      "workspace_disabled": {
+        "accuracy_by_trial": [
+          0.498046875,
+          0.837890625,
+          0.953125,
+          0.92578125,
+          0.8359375,
+          0.6953125
+        ],
+        "final_accuracy": 0.6953125,
+        "learning_gain": 0.3515625,
+        "post_feedback_accuracy": 0.849609375,
+        "query_accuracy": 0.849609375,
+        "zero_shot_accuracy": 0.498046875
+      }
+    },
+    "new_skill": {
+      "active_state_reset": {
+        "accuracy_by_trial": [
+          0.892578125,
+          0.919921875,
+          0.9375,
+          0.9375,
+          0.9375,
+          0.919921875
+        ],
+        "final_accuracy": 0.919921875,
+        "learning_gain": 0.037890613079071045,
+        "post_feedback_accuracy": 0.930468738079071,
+        "query_accuracy": 0.930468738079071,
+        "zero_shot_accuracy": 0.892578125
+      },
+      "blank_vision": {
+        "accuracy_by_trial": [
+          0.5,
+          0.5234375,
+          0.45703125,
+          0.4609375,
+          0.482421875,
+          0.46875
+        ],
+        "final_accuracy": 0.46875,
+        "learning_gain": -0.021484375,
+        "post_feedback_accuracy": 0.478515625,
+        "query_accuracy": 0.478515625,
+        "zero_shot_accuracy": 0.5
+      },
+      "blank_vision_overall_accuracy": 0.4820963740348816,
+      "counterfactual_overall_accuracy": 0.9537760615348816,
+      "feedback_shuffled": {
+        "accuracy_by_trial": [
+          0.892578125,
+          0.9453125,
+          0.95703125,
+          0.9296875,
+          0.9609375,
+          0.958984375
+        ],
+        "final_accuracy": 0.958984375,
+        "learning_gain": 0.057812511920928955,
+        "post_feedback_accuracy": 0.950390636920929,
+        "query_accuracy": 0.950390636920929,
+        "zero_shot_accuracy": 0.892578125
+      },
+      "gate": {
+        "accepted": true,
+        "blank_vision_at_chance": true,
+        "counterfactual_accuracy_at_least_90": true,
+        "normal_accuracy_at_least_90": true,
+        "pixel_counterfactual_flip_at_least_80": true,
+        "primitive_mastery": true
+      },
+      "normal": {
+        "accuracy_by_trial": [
+          0.892578125,
+          0.955078125,
+          0.953125,
+          0.931640625,
+          0.962890625,
+          0.95703125
+        ],
+        "final_accuracy": 0.95703125,
+        "learning_gain": 0.059374988079071045,
+        "post_feedback_accuracy": 0.951953113079071,
+        "query_accuracy": 0.951953113079071,
+        "zero_shot_accuracy": 0.892578125
+      },
+      "normal_query_accuracy_by_context": {
+        "0": 0.9449685215950012,
+        "1": 0.9588509202003479
+      },
+      "overall_accuracy": 0.9420573115348816,
+      "post_feedback_prediction_flip_rate": 0.8958333730697632,
+      "reversed_rule": {
+        "accuracy_by_trial": [
+          0.939453125,
+          0.947265625,
+          0.9609375,
+          0.9453125,
+          0.962890625,
+          0.966796875
+        ],
+        "final_accuracy": 0.966796875,
+        "learning_gain": 0.017187535762786865,
+        "post_feedback_accuracy": 0.9566406607627869,
+        "query_accuracy": 0.9566406607627869,
+        "zero_shot_accuracy": 0.939453125
+      },
+      "workspace_disabled": {
+        "accuracy_by_trial": [
+          0.892578125,
+          0.955078125,
+          0.95703125,
+          0.939453125,
+          0.95703125,
+          0.95703125
+        ],
+        "final_accuracy": 0.95703125,
+        "learning_gain": 0.060546875,
+        "post_feedback_accuracy": 0.953125,
+        "query_accuracy": 0.953125,
+        "zero_shot_accuracy": 0.892578125
+      }
+    },
+    "visible_context_retention": {
+      "active_state_reset": {
+        "accuracy_by_trial": [
+          1.0,
+          0.978515625,
+          0.984375,
+          0.994140625,
+          0.99609375,
+          0.98828125
+        ],
+        "final_accuracy": 0.98828125,
+        "learning_gain": -0.01171875,
+        "post_feedback_accuracy": 0.98828125,
+        "query_accuracy": 0.98828125,
+        "zero_shot_accuracy": 1.0
+      },
+      "blank_vision": {
+        "accuracy_by_trial": [
+          0.501953125,
+          0.509765625,
+          0.486328125,
+          0.494140625,
+          0.52734375,
+          0.4765625
+        ],
+        "final_accuracy": 0.4765625,
+        "learning_gain": -0.0031249821186065674,
+        "post_feedback_accuracy": 0.49882814288139343,
+        "query_accuracy": 0.49882814288139343,
+        "zero_shot_accuracy": 0.501953125
+      },
+      "blank_vision_overall_accuracy": 0.4993489682674408,
+      "counterfactual_overall_accuracy": 0.9583333730697632,
+      "feedback_shuffled": {
+        "accuracy_by_trial": [
+          1.0,
+          0.96484375,
+          0.94921875,
+          0.94921875,
+          0.9453125,
+          0.9375
+        ],
+        "final_accuracy": 0.9375,
+        "learning_gain": -0.05078125,
+        "post_feedback_accuracy": 0.94921875,
+        "query_accuracy": 0.94921875,
+        "zero_shot_accuracy": 1.0
+      },
+      "gate": {
+        "accepted": true,
+        "blank_vision_at_chance": true,
+        "counterfactual_accuracy_at_least_90": true,
+        "normal_accuracy_at_least_90": true,
+        "pixel_counterfactual_flip_at_least_80": true,
+        "primitive_mastery": true
+      },
+      "normal": {
+        "accuracy_by_trial": [
+          1.0,
+          0.96484375,
+          0.94921875,
+          0.94921875,
+          0.9453125,
+          0.9375
+        ],
+        "final_accuracy": 0.9375,
+        "learning_gain": -0.05078125,
+        "post_feedback_accuracy": 0.94921875,
+        "query_accuracy": 0.94921875,
+        "zero_shot_accuracy": 1.0
+      },
+      "normal_query_accuracy_by_context": {
+        "0": 0.9419847130775452,
+        "1": 0.9567999839782715
+      },
+      "overall_accuracy": 0.9576823115348816,
+      "post_feedback_prediction_flip_rate": 0.9166666865348816,
+      "reversed_rule": {
+        "accuracy_by_trial": [
+          1.0,
+          0.9609375,
+          0.955078125,
+          0.94921875,
+          0.9296875,
+          0.955078125
+        ],
+        "final_accuracy": 0.955078125,
+        "learning_gain": -0.050000011920928955,
+        "post_feedback_accuracy": 0.949999988079071,
+        "query_accuracy": 0.949999988079071,
+        "zero_shot_accuracy": 1.0
+      },
+      "workspace_disabled": {
+        "accuracy_by_trial": [
+          1.0,
+          0.970703125,
+          0.96484375,
+          0.978515625,
+          0.9765625,
+          0.96875
+        ],
+        "final_accuracy": 0.96875,
+        "learning_gain": -0.028124988079071045,
+        "post_feedback_accuracy": 0.971875011920929,
+        "query_accuracy": 0.971875011920929,
+        "zero_shot_accuracy": 1.0
+      }
+    }
+  },
+  "final_tracked_replay_accuracy": {
+    "binary_mapping": 0.9736989054266962,
+    "visible_context": 0.9536918956273345
+  },
+  "frozen_base_bit_identical": true,
+  "frozen_parameters": 311034,
+  "gate_leak_schedule": {
+    "anneal_updates": 20,
+    "initial": 0.0,
+    "leak_at_evaluation": 0.0
+  },
+  "gate_warmup_updates": 0,
+  "headline_accuracy": {
+    "binary_mapping_retention": 0.9765625,
+    "new_skill": 0.9420573115348816,
+    "visible_context_retention": 0.9576823115348816
+  },
+  "history": [
+    {
+      "binary_mapping_distillation_loss": 1.8177768179583609e-09,
+      "binary_mapping_retention_deficit": 0.0001562476158142312,
+      "binary_mapping_retention_weight": 2.0,
+      "binary_mapping_slot_opening": 0.0,
+      "replay_slot_opening": 0.0,
+      "skill_loss": 1.5738029479980469,
+      "total_loss": 1.5738029479980469,
+      "update": 1,
+      "visible_context_distillation_loss": 1.6408854275340445e-09,
+      "visible_context_retention_deficit": 0.0,
+      "visible_context_retention_weight": 2.0,
+      "visible_context_slot_opening": 0.0
+    },
+    {
+      "binary_mapping_distillation_loss": 0.00010680120612960309,
+      "binary_mapping_retention_deficit": 0.0028635945733037627,
+      "binary_mapping_retention_weight": 2.0,
+      "binary_mapping_slot_opening": 0.019808024168014526,
+      "replay_slot_opening": 0.05482564866542816,
+      "skill_loss": 0.09701655805110931,
+      "total_loss": 0.11284277588129044,
+      "update": 80,
+      "visible_context_distillation_loss": 0.007806308567523956,
+      "visible_context_retention_deficit": 0.003013853407547118,
+      "visible_context_retention_weight": 2.0,
+      "visible_context_slot_opening": 0.0898432731628418
+    }
+  ],
+  "inherited_frozen_adapters": [
+    "action_adapter",
+    "action_adapter_gate"
+  ],
+  "inherited_skill_adapter_slots": [],
+  "new_task": "visible_context_xor",
+  "operation_cue_ablation_accuracy": 0.5211588740348816,
+  "operation_cue_causally_used": true,
+  "parent_retention_gates": {
+    "binary_mapping": true,
+    "visible_context": true
+  },
+  "plastic_module": "skill_adapters.0",
+  "plastic_parameters": 14105,
+  "replay_support_trials": {
+    "binary_mapping": 1,
+    "visible_context": 1
+  },
+  "replay_tasks": [
+    "binary_mapping",
+    "visible_context"
+  ],
+  "required_retention_gates": {
+    "binary_mapping_retention": true,
+    "visible_context_retention": true
+  },
+  "retention_delta_against_set_point": {
+    "binary_mapping": 0.0,
+    "visible_context": 0.0009765625
+  },
+  "retention_set_point": {
+    "binary_mapping": 0.9765625,
+    "visible_context": 0.9567057490348816
+  },
+  "schema": "fourth-primitive-transfer-v1",
+  "semantic_labels_used_for_training": false,
+  "slot_dead": false,
+  "slot_opening": {
+    "binary_mapping": 0.008124275133013725,
+    "visible_context": 0.03285976126790047,
+    "visible_context_xor": 0.3249673545360565
+  },
+  "slot_residual_norm": {
+    "binary_mapping": 0.013312270864844322,
+    "visible_context": 0.06590712070465088,
+    "visible_context_xor": 3.2720565795898438
+  },
+  "slot_selectivity": 0.29210759326815605,
+  "slot_shut_fraction": {
+    "binary_mapping": 0.0,
+    "visible_context": 0.0,
+    "visible_context_xor": 0.0
+  },
+  "support_schedule": {
+    "final": 1,
+    "initial": 1,
+    "switch_update": 40
+  },
+  "total_seconds": 3.2753652699757367,
+  "unattempted_correct_actions_used_as_targets": false
+}

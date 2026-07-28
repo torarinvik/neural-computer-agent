@@ -138,6 +138,15 @@ _OPERATION_CUE_SLOTS = {
     # skill it cannot tell apart. Separating by area is what that encoder can
     # actually see. Check any new slot with probe_cue_separability first.
     "context_rule_xor": ((IMAGE_SIZE - 3, IMAGE_SIZE), (3, 13)),
+    # Both slots were chosen by searching candidates against
+    # probe_cue_separability rather than by eye. What that search showed is that
+    # the band matters far more than the mass: every bottom-band candidate
+    # scored 0.22 to 0.58 against the two cues already there, while top-band
+    # ones reached 1.01 to 1.09 regardless of area or intensity. Cue capacity is
+    # bounded by the frozen encoder, so new slots have to be measured, not
+    # assumed.
+    "context_identity_and": ((0, 2), (12, 17)),
+    "context_identity_or": ((0, 2), (24, 32), 0.45),
 }
 
 
@@ -159,12 +168,13 @@ def generate_lifetimes(
     if task not in (
         "constant_action", "visible_identity", "binary_mapping",
         "visible_context", "visible_context_xor", "four_rule", "contextual_mapping",
-        "contextual_override", "contextual_composition", "context_rule_xor"):
+        "contextual_override", "contextual_composition", "context_rule_xor",
+        "context_identity_and", "context_identity_or"):
         raise ValueError(
             "task must be constant_action, visible_identity, "
             "binary_mapping, visible_context, visible_context_xor, four_rule, "
             "contextual_mapping, contextual_override, contextual_composition, "
-            "or context_rule_xor")
+            "context_rule_xor, context_identity_and, or context_identity_or")
     if appearance not in _MASK_BANKS:
         raise ValueError(
             f"appearance must be one of {sorted(_MASK_BANKS)}")
@@ -248,7 +258,8 @@ def generate_lifetimes(
     context_ids = None
     if task in (
             "visible_context", "visible_context_xor", "contextual_mapping",
-            "contextual_override", "contextual_composition", "context_rule_xor"):
+            "contextual_override", "contextual_composition", "context_rule_xor",
+        "context_identity_and", "context_identity_or"):
         context_ids = torch.randint(0, 2, (count, trials), generator=generator)
         if support_trials >= 2:
             context_ids[:, 0] = 0
@@ -266,10 +277,15 @@ def generate_lifetimes(
         # XOR slot is fixed by already-consolidated controllers.
         cue_slot = _OPERATION_CUE_SLOTS.get(task)
         if cue_slot is not None:
-            (first_row, last_row), (first_column, last_column) = cue_slot
+            # A slot is (rows, columns) or (rows, columns, intensity). The
+            # frozen encoder pools globally, so what it can actually read is
+            # roughly lit area times intensity; intensity is the second axis
+            # available once distinct areas run out.
+            (first_row, last_row), (first_column, last_column) = cue_slot[:2]
+            value = cue_slot[2] if len(cue_slot) > 2 else 0.98
             frames[
                 :, :, :, first_row:last_row,
-                first_column:last_column] = 0.98
+                first_column:last_column] = value
 
     if task == "constant_action":
         correct = rule_bits.unsqueeze(1).expand(-1, trials).clone()
@@ -301,6 +317,15 @@ def generate_lifetimes(
         # mapping and the acquired visible-context bit on every event.
         correct = (
             identities ^ rule_bits.unsqueeze(1) ^ context_ids)
+    elif task == "context_identity_and":
+        assert context_ids is not None
+        # The hidden rule composed with a conjunction of the two visible bits.
+        # Reversing the rule still flips every action, so the whole gate suite
+        # applies unchanged; only the composition being learned is different.
+        correct = rule_bits.unsqueeze(1) ^ (identities & context_ids)
+    elif task == "context_identity_or":
+        assert context_ids is not None
+        correct = rule_bits.unsqueeze(1) ^ (identities | context_ids)
     elif task == "context_rule_xor":
         assert context_ids is not None
         # The hidden rule composed with the visible context, with the stimulus

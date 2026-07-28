@@ -438,7 +438,8 @@ def test_operation_cues_never_occlude_stimulus_or_context_pixels() -> None:
         contexts[y - 1:y + 2, x - 1:x + 2] = True
     assert _OPERATION_CUE_SLOTS, "expected at least one cued operation"
     masks = {}
-    for task, ((first, last), (left, right)) in _OPERATION_CUE_SLOTS.items():
+    for task, slot in _OPERATION_CUE_SLOTS.items():
+        (first, last), (left, right) = slot[:2]
         cue = torch.zeros_like(glyphs)
         cue[first:last, left:right] = True
         assert cue.any(), task
@@ -470,7 +471,7 @@ def test_contextual_composition_cue_does_not_disturb_the_xor_slot() -> None:
     columns = slice(center - 2, center + 3)
     # The XOR span is a literal on purpose: promoted controllers read that
     # exact band, so it is a contract rather than a detail to follow around.
-    assert _OPERATION_CUE_SLOTS["visible_context_xor"] == ((2, 5), (14, 19))
+    assert _OPERATION_CUE_SLOTS["visible_context_xor"][:2] == ((2, 5), (14, 19))
     composition_rows = _OPERATION_CUE_SLOTS["contextual_composition"][0]
     assert composition_rows != (2, 5)
     # Each operation lights its own slot and leaves the other one alone.
