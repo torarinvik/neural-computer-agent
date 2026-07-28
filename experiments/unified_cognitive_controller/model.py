@@ -77,6 +77,7 @@ class UnifiedCognitiveController(nn.Module):
             adaptive_memory_replace_hidden: int = 8,
             adaptive_memory_replace_features: int = 5,
             adaptive_memory_usage_prior: bool = False,
+            adaptive_memory_usage_prior_hidden: int = 0,
             relation_adapter_width: int = 0,
             relation_adapter_gated: bool = False,
             action_adapter_width: int = 0,
@@ -98,6 +99,7 @@ class UnifiedCognitiveController(nn.Module):
                 or adaptive_memory_read_hidden < 0
                 or adaptive_memory_replace_hidden < 1
                 or adaptive_memory_replace_features < 5
+                or adaptive_memory_usage_prior_hidden < 0
                 or relation_adapter_width < 0
                 or action_adapter_width < 0
                 or skill_adapter_prior_read_limit < 0
@@ -112,6 +114,8 @@ class UnifiedCognitiveController(nn.Module):
         self.adaptive_memory_replace_hidden = adaptive_memory_replace_hidden
         self.adaptive_memory_replace_features = adaptive_memory_replace_features
         self.adaptive_memory_usage_prior = adaptive_memory_usage_prior
+        self.adaptive_memory_usage_prior_hidden = (
+            adaptive_memory_usage_prior_hidden)
         self.relation_adapter_width = relation_adapter_width
         self.relation_adapter_gated = relation_adapter_gated
         self.action_adapter_width = action_adapter_width
@@ -324,6 +328,19 @@ class UnifiedCognitiveController(nn.Module):
         self.memory_usage_prior_scale = (
             nn.Parameter(torch.ones(()))
             if adaptive_memory_usage_prior else None)
+        self.memory_usage_prior_policy = (
+            nn.Sequential(
+                nn.Linear(4, adaptive_memory_usage_prior_hidden),
+                nn.GELU(),
+                nn.Linear(adaptive_memory_usage_prior_hidden, 1),
+            )
+            if adaptive_memory_usage_prior_hidden > 0 else None)
+        if self.memory_usage_prior_policy is not None:
+            output = self.memory_usage_prior_policy[-1]
+            nn.init.zeros_(output.weight)
+            # Hard inference remains exactly content-first (< 0.5), while
+            # stochastic training still explores the usage-prior action.
+            nn.init.constant_(output.bias, -2.0)
 
     def effective_memory_usage_prior_scale(self) -> torch.Tensor:
         """Return the task-agnostic nonnegative retrieval-prior strength."""
@@ -332,6 +349,17 @@ class UnifiedCognitiveController(nn.Module):
                 (), device=self.memory_key.weight.device,
                 dtype=self.memory_key.weight.dtype)
         return self.memory_usage_prior_scale.clamp(0.0, 1.0)
+
+    def memory_usage_prior_probability(
+            self, features: torch.Tensor) -> torch.Tensor:
+        """Choose whether verified usage should influence each memory query."""
+        if self.memory_usage_prior_policy is None:
+            raise RuntimeError("conditional memory usage prior is not enabled")
+        if features.ndim != 2 or features.shape[1] != 4:
+            raise ValueError(
+                "usage-prior features must have shape [queries, 4]")
+        return torch.sigmoid(
+            self.memory_usage_prior_policy(features)).squeeze(-1)
 
     def memory_read_probability(
             self, features: torch.Tensor) -> torch.Tensor:

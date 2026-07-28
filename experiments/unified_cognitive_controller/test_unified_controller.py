@@ -971,6 +971,19 @@ def test_usage_prior_scale_can_restore_exact_content_retrieval() -> None:
     assert memory.store.success_count.tolist() == [1, 0]
 
 
+def test_usage_prior_scale_can_vary_per_query() -> None:
+    memory = DiskLatentMemory(width=2, capacity=2)
+    keys = torch.tensor([[1.0, 0.0], [0.8, 0.6]])
+    values = torch.eye(2)
+    memory.commit(
+        keys, values, torch.tensor([0.1, 1.0]), threshold=0.0)
+    reads, _ = memory.retrieve(
+        keys[:1].repeat(2, 1), top_k=1,
+        confidence_mode="cosine",
+        usage_prior_scale=torch.tensor([0.0, 1.0]))
+    assert torch.equal(reads, values)
+
+
 def test_disk_memory_records_persists_and_resets_access_counts(
         tmp_path: Path) -> None:
     memory = DiskLatentMemory(width=4, capacity=2)
@@ -1115,6 +1128,40 @@ def test_usage_prior_expansion_preserves_controller_and_starts_at_one() -> None:
         source.memory_replacement_scores(features),
         expanded.memory_replacement_scores(features))
     assert expanded.effective_memory_usage_prior_scale() == 1.0
+
+
+def test_conditional_usage_prior_starts_with_hard_content_first_action() -> None:
+    from .train_conditional_memory_usage_prior import (
+        expand_with_conditional_usage_prior,
+    )
+
+    source = UnifiedCognitiveController(
+        width=16, workspace_slots=2, intention_width=4,
+        adaptive_memory_replace=True,
+        adaptive_memory_replace_hidden=4,
+        adaptive_memory_replace_features=8,
+        adaptive_memory_usage_prior=True)
+    with torch.no_grad():
+        source.memory_usage_prior_scale.zero_()
+    payload = {
+        "model_configuration": {
+            "width": 16,
+            "workspace_slots": 2,
+            "intention_width": 4,
+            "adaptive_memory_replace": True,
+            "adaptive_memory_replace_hidden": 4,
+            "adaptive_memory_replace_features": 8,
+            "adaptive_memory_usage_prior": True,
+        },
+        "state_dict": source.state_dict(),
+    }
+    expanded, configuration = expand_with_conditional_usage_prior(
+        payload, hidden=8, device=torch.device("cpu"))
+    features = torch.randn(32, 4)
+    probability = expanded.memory_usage_prior_probability(features)
+    assert configuration["adaptive_memory_usage_prior_hidden"] == 8
+    assert bool((probability < 0.5).all())
+    assert expanded.effective_memory_usage_prior_scale() == 0.0
 
 
 def test_persistent_stream_age_uses_current_insertion_rank() -> None:

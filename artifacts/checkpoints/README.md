@@ -178,6 +178,26 @@ and retention gates:
 The matched reward-shuffled control failed the frequency switch at 57.71%
 correct targets and saved no checkpoint.
 
+## Conditional memory retrieval
+
+`unified_conditional_memory_usage_prior_seed17603.pt` is the promoted per-query
+content-versus-verified-strength retrieval milestone.
+
+- SHA-256:
+  `1f52e037ff9af5e116f2b6b7ca8852242d8e560a248ed01e6b998cddcbd03b1e`
+- Parent: `unified_memory_usage_prior_seed17401.pt`
+- Approximately 1.2 MB; only the new 49-parameter policy changed
+- Stable mastery: 5,120 verifier bits, 40 updates, no replay
+- Held-out exact/ambiguous accuracy: 100%/100%
+- Fixed scale-zero / scale-one controls: 74.22%/74.41%
+- Physical audit: 256/256 banks correct after exact disk reload
+- Feature-shuffle and value-corruption controls: passed
+- Reward-shuffled control: no mastery
+- Binary mapping, four-rule, selective-disk, and volatility retention: passed
+
+The policy consumes only generic retrieval statistics and scalar visual-task
+outcomes. Private arm identity is audit metadata and was not a training label.
+
 ## Multi-feature online utility
 
 `unified_memory_multifeature_reliability_seed6932.pt` is the promoted

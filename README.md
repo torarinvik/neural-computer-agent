@@ -97,9 +97,30 @@ valid replacement. Both selected controllers reached 100%, with 98.05% and
 selected `0.5`, reached only 69.53%, and failed the causal gates. Two independent
 512-context selective-disk audits retained the older loop at 92.77–93.55%
 first-reload and 93.36% repeat-reload accuracy, with value corruption causal and
-duplicate rates below 12%. The next frontier is a per-query—not global—prior
-controller for ambiguous or genuinely duplicate memories where past verified
-utility may deserve influence without overriding exact content.
+duplicate rates below 12%.
+
+That per-query frontier is now closed on a balanced exact-versus-ambiguous
+retrieval atom. A dormant 49-parameter policy observes four generic retrieval
+statistics and chooses whether each query should be content-first or should
+also use verified row strength. It is trained only from the controller's
+attempted retrieval and scalar visual-task outcome.
+
+Two independent 80-update runs reached 100% held-out accuracy on both arms and
+remained perfect from update 40 onward: 5,120 unique verifier bits to stable
+95%, 10,240 bits total, no replay, and 27.4–34.6 seconds end to end. Either
+global rule is insufficient: fixed content-first reached 73.0–74.2%, while
+fixed strength-aware retrieval reached 74.4–74.8%. Shuffling the policy's
+generic features reduced its action accuracy to chance and task accuracy to
+73.8%; corrupting retrieved values reduced task accuracy to 47.9–48.6%.
+
+The result survives 256 independently saved and reloaded two-row physical
+banks per seed at 100% accuracy with exact persistence. A reward-shuffled run
+never learned the conditional action and stayed at 73.6%. The earlier
+selective-disk loop still passed at 92.8–94.1% reload accuracy, and the
+unequal-strength volatility audit retained 100% valid replacement with exact
+histories. The new frontier is to learn a continuous retrieval trade-off and
+test zero-shot transfer to more than two competing rows and naturally occurring
+duplicate memories.
 
 The new unified-controller line now has its first retained compounding
 milestone. A single 298,252-parameter controller with one vision encoder,

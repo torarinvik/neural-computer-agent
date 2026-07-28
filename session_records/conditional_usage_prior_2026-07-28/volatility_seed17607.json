@@ -1,0 +1,65 @@
+{
+  "schema": "unified-controller-physical-memory-volatility-audit-v1",
+  "normal": {
+    "accuracy": 0.9895833134651184,
+    "replace_rate": 1.0,
+    "stable_eviction_rate": 0.0,
+    "valid_replacement_rate": 1.0,
+    "exact_histories_after_reload": 128,
+    "bounded_banks_after_replacement": 128,
+    "banks": 128,
+    "all_history_fields_persist_exactly": true,
+    "all_banks_remain_bounded": true,
+    "equal_strength": false,
+    "usage_prior_scale": 0.0
+  },
+  "volatility_shuffled": {
+    "accuracy": 0.8776041865348816,
+    "replace_rate": 1.0,
+    "stable_eviction_rate": 0.484375,
+    "valid_replacement_rate": 0.515625,
+    "exact_histories_after_reload": 128,
+    "bounded_banks_after_replacement": 128,
+    "banks": 128,
+    "all_history_fields_persist_exactly": true,
+    "all_banks_remain_bounded": true,
+    "equal_strength": false,
+    "usage_prior_scale": 0.0
+  },
+  "volatility_constant": {
+    "accuracy": 0.6458333134651184,
+    "replace_rate": 1.0,
+    "stable_eviction_rate": 0.5546875,
+    "valid_replacement_rate": 0.4453125,
+    "exact_histories_after_reload": 128,
+    "bounded_banks_after_replacement": 128,
+    "banks": 128,
+    "all_history_fields_persist_exactly": true,
+    "all_banks_remain_bounded": true,
+    "equal_strength": false,
+    "usage_prior_scale": 0.0
+  },
+  "outcome_histories_reversed": {
+    "accuracy": 0.7786457538604736,
+    "replace_rate": 1.0,
+    "stable_eviction_rate": 1.0,
+    "valid_replacement_rate": 0.0,
+    "exact_histories_after_reload": 128,
+    "bounded_banks_after_replacement": 128,
+    "banks": 128,
+    "all_history_fields_persist_exactly": true,
+    "all_banks_remain_bounded": true,
+    "equal_strength": false,
+    "usage_prior_scale": 0.0
+  },
+  "gates": {
+    "normal_valid_replacement_at_least_90_percent": true,
+    "normal_accuracy_at_least_90_percent": true,
+    "shuffle_costs_30_points_valid_replacement": true,
+    "constant_costs_30_points_valid_replacement": true,
+    "reversal_flips_at_least_90_percent": true,
+    "histories_persist_exactly": true,
+    "capacity_remains_bounded": true,
+    "accepted": true
+  }
+}

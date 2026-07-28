@@ -57,7 +57,14 @@ class DiskLatentMemory:
             queries, dim=-1)
         cosine = normalized_queries @ keys.T
         usage = self.store.usage[indices].clamp_min(1e-6)
-        ranked = cosine + usage.log().unsqueeze(0) * usage_prior_scale
+        scale = torch.as_tensor(
+            usage_prior_scale, device=cosine.device, dtype=cosine.dtype)
+        if scale.ndim == 1:
+            if scale.shape[0] != queries.shape[0]:
+                raise ValueError(
+                    "per-query usage_prior_scale must match query batch")
+            scale = scale.unsqueeze(-1)
+        ranked = cosine + usage.log().unsqueeze(0) * scale
         selected_count = min(2, indices.numel())
         scores, local = ranked.topk(selected_count, dim=-1)
         selected = local[:, 0]

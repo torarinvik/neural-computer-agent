@@ -1311,3 +1311,46 @@ prior: exact novel content should dominate, while verified utility may still
 help choose among genuinely ambiguous or duplicate rows.
 
 Full record in `session_records/memory_usage_prior_2026-07-28/README.md`.
+
+## 2026-07-28 — Per-query retrieval control closes the mixed-memory failure
+
+The global content-versus-write-strength choice was deliberately made
+insufficient. Exact queries require scale zero because content is decisive;
+near-duplicate queries require scale one because verified row strength breaks
+the tie. Either fixed policy therefore solves only one arm.
+
+A dormant 49-parameter policy receives four task-agnostic statistics: top
+cosine, cosine margin, top-row usage, and occupancy. It chooses a binary scale
+per query and learns through Bernoulli policy gradients from the visual
+controller's scalar verifier outcome. The private arm identity is used only for
+auditing, never as a training target.
+
+| run | stable bits to 95% | held-out | fixed scale 0 | fixed scale 1 | physical |
+|---|---:|---:|---:|---:|---:|
+| seed 17603 | **5,120** | **100%** | 74.22% | 74.41% | **100%** |
+| seed 17604 | **5,120** | **100%** | 73.05% | 74.80% | **100%** |
+| reward-shuffled 17605 | never | 73.63% | 73.63% | 75.20% | 73.44% |
+
+Both normal runs used 80 updates, 20,480 unique logical contexts, 10,240
+verifier bits, and no replay. They first reached the threshold at update 40 and
+remained perfect at every later eight-update prefix. Training took 18.1 and
+24.4 seconds; full training plus audits took 27.4 and 34.6 seconds.
+
+Feature shuffling reduced conditional-action accuracy from 100% to 50–51.4%
+and task accuracy to 73.83%. Value corruption reduced learned task accuracy to
+47.85–48.63%. Each normal run then recreated 256 physical two-row banks,
+persisted them to disk, reloaded them, and achieved 100% exact and ambiguous
+retrieval with exact row persistence.
+
+The selected seed-17603 checkpoint also preserved the older physical
+milestones: selective-disk first/repeat reload reached 94.14%/92.77% with
+causal value corruption, and unequal-strength volatility achieved 100% valid
+replacement and 98.96% visual accuracy across 128 bounded banks. Binary mapping
+and four-rule retention gates passed in every arm.
+
+This is conditional resource allocation learned from verified experience. It
+is not yet a claim of continuous trade-off learning, transfer beyond two rows,
+or naturally discovered duplicate structure.
+
+Full record in
+`session_records/conditional_usage_prior_2026-07-28/README.md`.
