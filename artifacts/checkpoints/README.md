@@ -198,6 +198,27 @@ content-versus-verified-strength retrieval milestone.
 The policy consumes only generic retrieval statistics and scalar visual-task
 outcomes. Private arm identity is audit metadata and was not a training label.
 
+## Continuous memory retrieval
+
+`unified_continuous_memory_usage_prior_seed17718.pt` is the promoted continuous
+resource-control milestone.
+
+- SHA-256:
+  `dbd8b5306be515d8abcedaf95ea6c16f16797e760d6ac5f06f0a6c76fe02189a`
+- Parent: `unified_conditional_memory_usage_prior_seed17603.pt`
+- Same architecture and parameter count; only the 49-parameter policy changed
+- Stable improvement: 640 verifier bits, five updates, no replay
+- Final acquisition: 1,024 bits, eight updates, 5.17 seconds
+- Held-out two-/three-/four-row accuracy: 100%/100%/100%
+- Mean usage-prior scale: 0.312 versus the inherited binary policy's 0.50
+- Reward-shuffled and reset-policy controls: 50% row accuracy
+- Feature-shuffle and value-corruption controls: passed
+- 128 physical banks per row count reloaded exactly and scored 100%
+- Parent conditional retrieval and all older retention gates: passed
+
+The checkpoint was selected on a task where no constant scale can solve both
+arms. Correctness dominates a smaller generic cost on retrieval strength.
+
 ## Multi-feature online utility
 
 `unified_memory_multifeature_reliability_seed6932.pt` is the promoted

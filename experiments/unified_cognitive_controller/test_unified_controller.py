@@ -1164,6 +1164,33 @@ def test_conditional_usage_prior_starts_with_hard_content_first_action() -> None
     assert expanded.effective_memory_usage_prior_scale() == 0.0
 
 
+def test_continuous_usage_batch_has_valid_query_dependent_intervals() -> None:
+    from .train_continuous_memory_usage_prior import (
+        continuous_batch,
+        select_rows,
+    )
+
+    payload = torch.load(
+        "artifacts/checkpoints/"
+        "unified_conditional_memory_usage_prior_seed17603.pt",
+        map_location="cpu", weights_only=False)
+    model = UnifiedCognitiveController(**payload["model_configuration"])
+    model.load_state_dict(payload["state_dict"])
+    data = continuous_batch(
+        model, count=32, rows=4, seed=17700,
+        device=torch.device("cpu"), heldout=True)
+    exact = data["arm"] == 0
+    ambiguous = ~exact
+    scales = torch.zeros(32)
+    scales[ambiguous] = data["decision_boundary"][ambiguous] + 0.01
+    selected, _ = select_rows(data, scales)
+    assert torch.equal(selected, data["target_index"])
+    assert bool(
+        (data["decision_boundary"][ambiguous] > 0.0).all())
+    assert bool(
+        (data["decision_boundary"][ambiguous] < 1.0).all())
+
+
 def test_persistent_stream_age_uses_current_insertion_rank() -> None:
     memory = DiskLatentMemory(width=4, capacity=3)
     memory.commit(

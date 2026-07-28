@@ -118,9 +118,35 @@ banks per seed at 100% accuracy with exact persistence. A reward-shuffled run
 never learned the conditional action and stayed at 73.6%. The earlier
 selective-disk loop still passed at 92.8–94.1% reload accuracy, and the
 unequal-strength volatility audit retained 100% valid replacement with exact
-histories. The new frontier is to learn a continuous retrieval trade-off and
-test zero-shot transfer to more than two competing rows and naturally occurring
-duplicate memories.
+histories.
+
+The binary policy has now compounded into continuous resource control. A
+hardened task makes any constant scale impossible: exact queries require usage
+influence below `0.12–0.18`, while ambiguous queries require it above
+`0.35–0.55`. Fixed scale zero and one therefore each retrieve the correct row
+exactly 50% of the time. Correctness remains the primary reward, with a smaller
+generic cost for stronger historical influence.
+
+Two independent eight-update runs retained 100% exact and ambiguous retrieval
+while reducing mean scale from the inherited binary policy's `0.50` to `0.312`
+and `0.347`. Both reached the joint correctness-and-efficiency gate at update
+five and remained above it through updates six, seven, and eight: 640 unique
+verifier bits to stable improvement, 1,024 total, no replay, and about five
+seconds of training.
+
+Without any further training, both controllers achieved 100% on three- and
+four-row banks, including 128 independently saved and reloaded physical banks
+at each size. Shuffling generic query features reduced row accuracy to
+49.4–53.3%; corrupting values reduced visual success to 45.7–48.9%. Reward
+shuffling and resetting the inherited conditional policy each collapsed row
+accuracy to 50%, showing that both new verified feedback and the old learned
+skill are necessary. The original conditional task, selective disk,
+unequal-strength volatility, binary mapping, and four-rule behavior all remain
+retained.
+
+The next frontier is a broader continuum with genuinely competing third and
+fourth rows, followed by naturally occurring duplicate memories rather than
+generator-separated query regimes.
 
 The new unified-controller line now has its first retained compounding
 milestone. A single 298,252-parameter controller with one vision encoder,

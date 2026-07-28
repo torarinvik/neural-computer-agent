@@ -1354,3 +1354,56 @@ or naturally discovered duplicate structure.
 
 Full record in
 `session_records/conditional_usage_prior_2026-07-28/README.md`.
+
+## 2026-07-28 — A discrete memory skill compounds into continuous control in 640 bits
+
+The first continuous pilot was rejected despite attractive numbers. Its valid
+scale intervals overlapped, so a constant scalar could solve both arms. The
+physical audit also compared a returned confidence value as though it were a
+row index. The benchmark was hardened and the audit corrected before any
+promotion.
+
+In the corrected task, exact-content queries require scale below `0.12–0.18`;
+ambiguous queries require scale above `0.35–0.55`. No constant scale can solve
+both. The already-learned conditional policy begins at 100%, while either fixed
+endpoint and a reset policy begin at exactly 50% row accuracy.
+
+Correctness is the primary scalar outcome. A smaller generic penalty prices
+the controller's own chosen retrieval scale. Only the existing 49 policy
+parameters train.
+
+| run | stable verifier bits | row accuracy | mean scale | 4-row zero-shot |
+|---|---:|---:|---:|---:|
+| seed 17718 | **640** | **100%** | **0.312** | **100%** |
+| seed 17719 | **640** | **100%** | **0.347** | **100%** |
+| reward-shuffled 17720 | never | 50% | 0.121 | 50% |
+| reset-policy 17721 | never | 50% | 0.091 | 50% |
+
+Each normal run used eight updates, 2,048 unique logical contexts, 1,024
+verifier bits, no replay, and 5.17–5.23 seconds of training. Both crossed the
+joint gate at update five and retained it at every later measured prefix. The
+inherited hard policy used mean scale `0.50`; the continuous descendants
+therefore cut historical-bias strength by 30.6–37.6% without losing a single
+held-out row.
+
+The same weights transferred with zero updates to three- and four-row banks at
+100%. For each seed, 128 physical banks at every size were saved, reloaded
+exactly, and retrieved at 100%. Feature shuffling reduced four-row accuracy to
+49.4–53.3%; value corruption reduced visual success to 45.7–48.9%.
+
+The compounding control is decisive. With identical experience and optimizer,
+resetting the inherited conditional policy left the learner at 50%. Shuffling
+new verifier outcomes also drove the inherited policy to 50%. The improvement
+therefore needs both the earlier discrete skill and the new verified outcomes.
+The original conditional retrieval task remained at 100% in both descendants.
+
+Older physical capabilities also passed: selective-disk first/repeat reload was
+92.58%/92.97%, and unequal-strength volatility achieved 100% valid replacement
+with 99.74% visual accuracy and exact bounded histories.
+
+This is verified skill reuse and continuous resource adaptation. It is not yet
+a claim about naturally discovered duplicates or a third row that becomes the
+correct target.
+
+Full record in
+`session_records/continuous_usage_prior_2026-07-28/README.md`.
