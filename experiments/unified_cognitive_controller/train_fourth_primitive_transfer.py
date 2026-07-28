@@ -343,6 +343,19 @@ def main() -> None:
         help=("rectified gates can shut exactly, so a slot can be genuinely "
               "inert outside its own operation; sigmoid never reaches zero"))
     parser.add_argument(
+        "--replay-selection", choices=("all", "gate"), default="all",
+        help=("all replays every earlier skill each update; gate replays only "
+              "the skills this slot can still reach. Replay is what grows once "
+              "interference is gone -- it is linear per rung and quadratic over "
+              "a ladder -- and the slot's own gate already measures which old "
+              "skills it can disturb at all"))
+    parser.add_argument(
+        "--replay-gate-threshold", type=float, default=0.98,
+        help="skip replay of a skill the slot is exactly shut on this often")
+    parser.add_argument(
+        "--replay-selection-every", type=int, default=64,
+        help="updates between remeasuring which skills the slot can reach")
+    parser.add_argument(
         "--retention-control-gain", type=float, default=0.0,
         help=("proportional gain on each old skill's shortfall against the "
               "level it was inherited at; zero reproduces the fixed price"))
@@ -525,6 +538,8 @@ def main() -> None:
 
         started = time.perf_counter()
         history: list[dict[str, float | int]] = []
+        selected_replay = {task: True for task in replay_tasks}
+        replay_batches_spent = 0
         for update in range(1, args.steps + 1):
             student.train()
             # Anneal the rectifier's leak linearly to exactly zero, then hold it
@@ -545,14 +560,32 @@ def main() -> None:
                 seed=seed * 10_000_000 + update,
                 task=new_task, support_trials=support_trials,
                 device=device)
+            if (args.replay_selection == "gate"
+                    and update > gate_warmup_updates
+                    and (update - 1) % args.replay_selection_every == 0):
+                # A slot exactly shut on a skill's events cannot perturb it, so
+                # replaying that skill is buying a guarantee already held.
+                student.eval()
+                for task in replay_tasks:
+                    _, shut = _slot_opening(
+                        student, slot=new_slot, task=task, count=64,
+                        seed=seed + 95_000_000 + hash(task) % 1000,
+                        support_trials=replay_support_by_task[task],
+                        device=device)
+                    selected_replay[task] = shut < args.replay_gate_threshold
+                student.train()
+            active_replay = [
+                (index, task) for index, task in enumerate(replay_tasks)
+                if selected_replay[task]]
             replay_batches = [
                 generate_lifetimes(
                     args.replay_batch_size, 6,
                     seed=seed * (20_000_000 + 10_000_000 * index) + update,
                     task=task, support_trials=replay_support_by_task[task],
                     device=device)
-                for index, task in enumerate(replay_tasks)
+                for index, task in active_replay
             ]
+            replay_batches_spent += len(replay_batches)
             skill_loss = _new_skill_loss(
                 student, new_batch, exploration=args.exploration,
                 support_trials=support_trials)
@@ -561,18 +594,21 @@ def main() -> None:
                     student, teacher, batch, slot=new_slot,
                     feedback_trials=replay_support_by_task[task],
                     shuffled_teacher=args.shuffle_retention_teacher)
-                for task, batch in zip(replay_tasks, replay_batches)
+                for (_, task), batch in zip(active_replay, replay_batches)
             ]
             replay_losses = [value for value, _, _ in replay_results]
             leakages = [value for _, value, _ in replay_results]
-            leakage = torch.stack(leakages).mean()
+            leakage = (
+                torch.stack(leakages).mean() if leakages
+                else torch.zeros((), device=device))
             # Proportional set-point control on the retention price. A skill at or
             # above the level it was inherited at costs nothing extra, so pressure
             # never competes with new learning unless a skill is actually slipping.
             weights = []
             deficits = []
-            for index, task in enumerate(replay_tasks):
-                measured = replay_results[index][2]
+            active_tasks = [task for _, task in active_replay]
+            for position, task in enumerate(active_tasks):
+                measured = replay_results[position][2]
                 tracked_accuracy[task] = (
                     args.retention_tracking_decay * tracked_accuracy[task]
                     + (1.0 - args.retention_tracking_decay) * measured)
@@ -596,19 +632,19 @@ def main() -> None:
                     "skill_loss": float(skill_loss.detach()),
                     **{
                         f"{task}_distillation_loss": float(value.detach())
-                        for task, value in zip(replay_tasks, replay_losses)
+                        for task, value in zip(active_tasks, replay_losses)
                     },
                     **{
                         f"{task}_slot_opening": float(value.detach())
-                        for task, value in zip(replay_tasks, leakages)
+                        for task, value in zip(active_tasks, leakages)
                     },
                     **{
                         f"{task}_retention_weight": weight
-                        for task, weight in zip(replay_tasks, weights)
+                        for task, weight in zip(active_tasks, weights)
                     },
                     **{
                         f"{task}_retention_deficit": deficit
-                        for task, deficit in zip(replay_tasks, deficits)
+                        for task, deficit in zip(active_tasks, deficits)
                     },
                     "replay_slot_opening": float(leakage.detach()),
                     "total_loss": float(loss.detach()),
@@ -758,6 +794,14 @@ def main() -> None:
                     if checkpoint_out is not None else None),
             },
             "history": history,
+            "replay_selection": {
+                "mode": args.replay_selection,
+                "final_selection": dict(selected_replay),
+                "replay_batches_spent": replay_batches_spent,
+                "replay_batches_if_all": args.steps * len(replay_tasks),
+                "replay_fraction_spent": (
+                    replay_batches_spent / max(1, args.steps * len(replay_tasks))),
+            },
             "accounting": {
                 "new_unique_lifetimes": args.steps * args.new_batch_size,
                 "replay_lifetimes_per_task": args.steps * args.replay_batch_size,

@@ -19,18 +19,21 @@ VAST_PORT="${VAST_PORT:?set VAST_PORT}"
 REPO="${REPO:-/workspace/repos/neural-computer-agent}"
 
 started=$(date +%s)
+# the host prints a login banner on every connection; it is not output
 out=$(ssh -o ConnectTimeout=20 -p "$VAST_PORT" "root@$VAST_HOST" \
-  "cd $REPO && source /venv/main/bin/activate >/dev/null 2>&1; $CMD" 2>&1 | tail -20)
+  "cd $REPO && source /venv/main/bin/activate >/dev/null 2>&1; $CMD" 2>&1 \
+  | grep -vE '^(Welcome to vast|Have fun|AI agents: READ|Activated conda|>>>|$)' \
+  | tail -20)
 elapsed=$(( $(date +%s) - started ))
 
 echo "$out"
 echo "---- pilot verdict ----"
 echo "wall clock: ${elapsed}s for this configuration"
 
-python3 - "$elapsed" <<'PY' <<< "$out"
-import sys, json, re
+PILOT_OUT="$out" python3 - "$elapsed" <<'PY' 
+import os, sys, json, re
 elapsed = int(sys.argv[1])
-text = sys.stdin.read()
+text = os.environ.get("PILOT_OUT", "")
 accs = [json.loads(m).get("new_skill") for m in re.findall(r'^\{.*\}$', text, re.M)
         if "new_skill" in m]
 accs = [a for a in accs if a is not None]
