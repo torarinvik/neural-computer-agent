@@ -120,6 +120,12 @@ class UnifiedCognitiveController(nn.Module):
         # before. Reading a prior slot's pre-gate hidden layer restores the
         # information without restoring the disturbance.
         self.skill_adapter_reads_prior = skill_adapter_reads_prior
+        # Ablation for the read path. A reading slot has a wider first layer
+        # than a non-reading one, so a speedup could be extra capacity rather
+        # than inherited information. Zeroing the prior read keeps the shape and
+        # the parameter count and removes only the content, which is the
+        # comparison that separates the two.
+        self.skill_adapter_ablate_prior_read = False
         # Training-time leak below the rectifier's knee. A rectified gate that
         # shuts everywhere before it has learned where to open has no gradient
         # left and stays shut forever; a small leak keeps that recoverable. It
@@ -371,10 +377,13 @@ class UnifiedCognitiveController(nn.Module):
                 # consulted. Without this, an exactly shut gate makes every
                 # deeper ancestry produce bit-identical inputs here, and a new
                 # slot has nothing to inherit.
-                own_features = (
-                    torch.cat([slot_features, *prior_reads], dim=-1)
-                    if (self.skill_adapter_reads_prior and prior_reads)
-                    else slot_features)
+                if self.skill_adapter_reads_prior and prior_reads:
+                    reads = (
+                        [torch.zeros_like(r) for r in prior_reads]
+                        if self.skill_adapter_ablate_prior_read else prior_reads)
+                    own_features = torch.cat([slot_features, *reads], dim=-1)
+                else:
+                    own_features = slot_features
                 score = gate(own_features)
                 opening = (
                     # leaky_relu at slope zero is exactly relu, so a finished

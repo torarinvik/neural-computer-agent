@@ -340,6 +340,11 @@ def main() -> None:
               "makes every deeper ancestry hand the new slot bit-identical "
               "features, so there is nothing to inherit"))
     parser.add_argument(
+        "--ablate-prior-read", action="store_true",
+        help=("control for --slot-reads-prior: keep the wider input and zero "
+              "its content, so a speedup from inherited information is "
+              "distinguishable from one from extra capacity"))
+    parser.add_argument(
         "--slot-gate-hidden", type=int, default=0,
         help=("hidden units in the new slot's gate; zero keeps the single "
               "hyperplane, which limits how cleanly a slot can separate its "
@@ -471,6 +476,7 @@ def main() -> None:
         configuration["skill_adapter_gate_hidden"] = args.slot_gate_hidden
         configuration["skill_adapter_reads_prior"] = args.slot_reads_prior
         student = UnifiedCognitiveController(**configuration).to(device)
+        student.skill_adapter_ablate_prior_read = args.ablate_prior_read
         missing, unexpected = student.load_state_dict(
             teacher.state_dict(), strict=False)
         expected_missing = {
