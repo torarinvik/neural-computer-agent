@@ -234,6 +234,29 @@ The next frontier is compounding utility: test whether the clean,
 capacity-limited bank reduces the verifier experience required to acquire a
 genuinely new primitive while retaining both old skills.
 
+The first zero-shot transfer arm exposed a useful correction to that plan:
+merging every equivalent memory to one prototype over-compressed future-useful
+variation. One representative per behavior retained roughly 97.2–97.5% when
+bar-shaped memories were queried through a never-trained disconnected
+dot-pair geometry, while the uncompressed bank remained near 99.5%.
+
+A diversity-preserving policy now keeps two relation-equivalent
+representatives per behavior. On two independent 4,096-stream audits it
+reached 98.36% and 98.57% on dot pairs with zero new training outcomes,
+retained 100% on bars and 99.69–99.72% on unseen diamonds, and preserved both
+skills in every bank. The four-row bank is 4× smaller logically than the
+16-row source and 2.41× smaller in serialized bytes. Naively keeping the first
+four rows reached only 91.99–92.13%, and zeroed memory fell to chance.
+
+All 2,048 physical banks reloaded exactly. Counterfactual reruns kept RGB and
+bank tensors fixed, reached 98.46–98.54% in both rule worlds, and flipped the
+selected row in 98.07–98.36% of cases. No parameters changed and every
+inherited gate passed.
+
+The current frontier is adaptive diversity budgeting: learn when an
+equivalence class needs one, two, or more representatives from verifier
+history and resource pressure, rather than fixing that allowance by hand.
+
 The new unified-controller line now has its first retained compounding
 milestone. A single 298,252-parameter controller with one vision encoder,
 recurrent state, generic differentiable workspace, latent intention, and

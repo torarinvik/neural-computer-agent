@@ -98,6 +98,16 @@ promoted. This is a high-return pattern: diagnose what the frozen system
 already represents, then learn the smallest missing action boundary before
 adding architecture.
 
+### 11. Preserve bounded variation inside behavioral equivalence classes
+
+Compressing all equivalent experiences to one prototype was optimal on the
+observed distribution but lost 2–3 points under a disconnected-object shift.
+Keeping two learned-equivalent representatives per behavior recovered the
+cross-appearance gate with zero new training outcomes while retaining a 4×
+logical compression. The lesson is not “keep redundancy”; it is “distinguish
+useless duplication from variation whose future value is uncertain.” The next
+resource learner should adapt this allowance from verified transfer value.
+
 ## Bounded negatives and dead ends
 
 These are rejected only within the measured regime; a fixed-budget negative is

@@ -1443,6 +1443,31 @@ def test_equivalence_consolidation_never_exceeds_capacity() -> None:
     assert bool((bank["usage"] >= 0).all())
 
 
+def test_equivalence_consolidation_can_reserve_in_class_diversity() -> None:
+    from .train_equivalence_consolidation import (
+        consolidate,
+        natural_memory_streams,
+    )
+
+    payload = torch.load(
+        "artifacts/checkpoints/"
+        "unified_equivalence_consolidation_seed20541.pt",
+        map_location="cpu", weights_only=False)
+    model = UnifiedCognitiveController(**payload["model_configuration"])
+    model.load_state_dict(payload["state_dict"])
+    data = natural_memory_streams(
+        model, streams=8, length=16, seed=20560,
+        device=torch.device("cpu"), heldout=True)
+    compact = consolidate(
+        model, data, capacity=2, representatives_per_class=1)
+    diverse = consolidate(
+        model, data, capacity=4, representatives_per_class=2)
+    assert bool((compact["valid"].sum(-1) <= 2).all())
+    assert bool((diverse["valid"].sum(-1) <= 4).all())
+    assert float(diverse["valid"].sum(-1).float().mean()) > float(
+        compact["valid"].sum(-1).float().mean())
+
+
 def test_usage_prior_residual_is_exact_noop_at_insertion() -> None:
     payload = torch.load(
         "artifacts/checkpoints/"

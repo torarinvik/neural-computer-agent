@@ -55,6 +55,7 @@ def consolidate(
         data: dict[str, torch.Tensor | int], *,
         capacity: int = 2, policy: str = "learned",
         invert_relation: bool = False,
+        representatives_per_class: int = 1,
         ) -> dict[str, torch.Tensor]:
     """Online merge/store decisions using only controller-created latents."""
     values = data["values"]
@@ -68,6 +69,9 @@ def consolidate(
     streams, length, width = values.shape
     if capacity < 1 or capacity > length:
         raise ValueError("capacity must fit the stream")
+    if not 1 <= representatives_per_class <= capacity:
+        raise ValueError(
+            "representatives per class must fit the memory capacity")
     if policy in ("first", "last"):
         indices = (
             torch.arange(capacity, device=values.device)
@@ -105,7 +109,7 @@ def consolidate(
         if policy == "cosine":
             scores = torch.nn.functional.cosine_similarity(
                 decision.unsqueeze(1), bank_values, dim=-1)
-            matched = scores.max(-1).values >= 0.40
+            equivalent = scores >= 0.40
         else:
             raw = model.memory_equivalence_logits(decision, bank_values)
             scores = (
@@ -114,10 +118,19 @@ def consolidate(
                 if policy == "learned" else raw)
             if invert_relation:
                 scores = -scores
-            matched = scores.max(-1).values >= 0.0
+            equivalent = scores >= 0.0
+        equivalent = equivalent & valid
         scores = scores.masked_fill(~valid, float("-inf"))
+        matched = equivalent.any(-1)
         matched_slot = scores.argmax(-1)
-        matched = matched & valid.any(-1)
+        # Behavioral equivalence is task-relative. Keeping a small diversity
+        # reserve within each discovered class preserves appearance variation
+        # that may become useful under a future distribution shift.
+        retain_diverse = (
+            matched
+            & (equivalent.sum(-1) < representatives_per_class)
+            & (~valid).any(-1))
+        matched = matched & ~retain_diverse
         if bool(matched.any()):
             bank_usage[row[matched], matched_slot[matched]] += 1.0
         unmatched = ~matched

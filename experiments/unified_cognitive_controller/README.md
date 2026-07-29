@@ -1055,3 +1055,26 @@ reduction: serialized bytes fell to 32.41% because metadata is fixed.
 
 Full record:
 `session_records/equivalence_consolidation_2026-07-29/README.md`.
+
+## Preserve diversity inside learned equivalence classes
+
+The 8× consolidation result revealed a future-distribution cost: one
+representative per hidden behavior reached only 97.17–97.47% when memories
+acquired from bars were queried through never-trained disconnected dot-pair
+objects. The uncompressed bank remained near 99.5%, localizing the gap to
+discarded representative variation.
+
+The online policy now permits a bounded diversity reserve inside each class
+discovered by the learned relation. With two representatives per behavior,
+two independent zero-update audits reached 98.36% and 98.57% on dot pairs,
+100% on bars, and 99.69–99.72% on unseen diamonds. This uses four of sixteen
+logical rows. A matched first-four control reached only 91.99–92.13%.
+
+Across 2,048 physical banks every reload was exact. Zeroed values fell to
+chance; counterfactual rule reversal retained 98.46–98.54% accuracy and
+flipped the selected row in 98.07–98.36% of cases. No model tensor changed,
+so the result is zero-shot reuse of the learned memory relation rather than
+additional training.
+
+Full record:
+`session_records/diversity_preserving_consolidation_2026-07-29/README.md`.
