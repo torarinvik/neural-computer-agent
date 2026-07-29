@@ -1032,3 +1032,26 @@ physical row flipped in 100% of cases, with 100% behavior in both worlds.
 
 Full record:
 `session_records/natural_memory_equivalence_2026-07-29/README.md`.
+
+## Learned equivalence drives online consolidation
+
+The learned relation now controls a real capacity-two memory bank. A stream of
+16 independently rendered experiences contains two hidden binary behaviors.
+New values merge with relation-equivalent rows, fill a free row when novel,
+or replace the least-used row when full. Only a scalar calibration scale and
+bias train from observed verifier outcomes; semantic rule/equivalence labels
+and correct memory actions stay hidden.
+
+Two independent 64-verifier-bit runs reached 99.46–99.51% held-out visual
+accuracy and retained both behaviors in 98.93–99.02% of 1,024 streams. A
+32-bit race passed only one of two seeds and was not promoted. Shuffled
+verifier outcomes produced 50% behavior on both matched seeds, and relation
+inversion reduced distinct-skill retention below 0.9%. All 256 promoted
+physical banks reloaded exactly, inherited behavior remained intact, and the
+counterfactual selection flipped in 100% of cases.
+
+The physical claim is an 8× logical-row reduction (16 to 2), not an 8× file
+reduction: serialized bytes fell to 32.41% because metadata is fixed.
+
+Full record:
+`session_records/equivalence_consolidation_2026-07-29/README.md`.

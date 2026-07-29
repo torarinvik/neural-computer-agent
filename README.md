@@ -215,10 +215,24 @@ pixel stream fixed, reversed only the verifier rule, and caused the fresh
 latent and selected physical row to flip in 100% of cases while behavior
 remained 100% correct. Every older retention gate passed.
 
-The next frontier uses learned equivalence for capacity-limited
-consolidation: remove or merge redundant memories without losing any distinct
-skill, then measure whether the smaller, cleaner bank accelerates the next
-novel primitive.
+That capacity-limited consolidation frontier is now closed for streams of two
+hidden binary behaviors. Only a scalar scale and bias were trained from
+verifier outcomes; rule bits, equivalence labels, and merge/store targets
+remained private. Two independent 64-bit runs compressed 16 natural
+controller-created memories to two rows and reached 99.46–99.51% held-out
+behavior, with both distinct skills retained in 98.93–99.02% of streams.
+Every physical bank reloaded exactly. The reduction is 8× in logical rows and
+3.09× in serialized bytes because fixed metadata dominates tiny files.
+
+The 64-bit result passed all inherited retention and counterfactual gates.
+Inverting the learned relation reduced two-skill retention below 0.9%, and
+shuffling the verifier outcomes reduced behavior to 50% on both seeds. A
+32-bit race passed one seed but failed the other, so 64 bits is the smallest
+replicated frontier rather than a selected lucky run.
+
+The next frontier is compounding utility: test whether the clean,
+capacity-limited bank reduces the verifier experience required to acquire a
+genuinely new primitive while retaining both old skills.
 
 The new unified-controller line now has its first retained compounding
 milestone. A single 298,252-parameter controller with one vision encoder,

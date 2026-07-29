@@ -1297,6 +1297,23 @@ def test_memory_equivalence_selector_is_exact_noop_with_live_credit() -> None:
         (model.memory_equivalence_selector[-1].weight.grad != 0).any())
 
 
+def test_memory_equivalence_calibration_starts_as_identity() -> None:
+    model = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        adaptive_memory_equivalence_hidden=8,
+        adaptive_memory_equivalence_calibration=True)
+    probe = torch.randn(6, 32)
+    rows = torch.randn(6, 3, 32)
+    raw = model.memory_equivalence_logits(probe, rows)
+    calibrated = model.calibrated_memory_equivalence_logits(probe, rows)
+    assert torch.equal(calibrated, raw)
+    calibrated.sum().backward()
+    assert model.memory_equivalence_logit_scale is not None
+    assert model.memory_equivalence_logit_bias is not None
+    assert model.memory_equivalence_logit_scale.grad is not None
+    assert model.memory_equivalence_logit_bias.grad is not None
+
+
 def test_natural_equivalence_batch_uses_only_mixed_behavioral_banks() -> None:
     from .train_natural_memory_equivalence import natural_equivalence_batch
 
@@ -1401,6 +1418,29 @@ def test_nearest_verified_candidate_loss_preserves_disconnected_modes() -> None:
     assert loss.item() == pytest.approx((0.01 + 0.01 + 0.16) / 3)
     loss.backward()
     assert predicted.grad is not None
+
+
+def test_equivalence_consolidation_never_exceeds_capacity() -> None:
+    from .train_equivalence_consolidation import (
+        consolidate,
+        natural_memory_streams,
+    )
+
+    payload = torch.load(
+        "artifacts/checkpoints/"
+        "unified_natural_memory_equivalence_seed20252.pt",
+        map_location="cpu", weights_only=False)
+    configuration = dict(payload["model_configuration"])
+    configuration["adaptive_memory_equivalence_calibration"] = True
+    model = UnifiedCognitiveController(**configuration)
+    model.load_state_dict(payload["state_dict"], strict=False)
+    data = natural_memory_streams(
+        model, streams=8, length=8, seed=20500,
+        device=torch.device("cpu"), heldout=True)
+    bank = consolidate(model, data, capacity=2, policy="learned")
+    assert bank["values"].shape == (8, 2, model.width)
+    assert bool((bank["valid"].sum(-1) <= 2).all())
+    assert bool((bank["usage"] >= 0).all())
 
 
 def test_usage_prior_residual_is_exact_noop_at_insertion() -> None:

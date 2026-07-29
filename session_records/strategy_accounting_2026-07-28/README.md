@@ -86,6 +86,18 @@ memory-corruption, active-state-reset, and exact-reload audits have caught
 watermarks, malformed hidden-state swaps, false thresholds, and reward-hacking
 shortcuts. These controls are part of the capability definition.
 
+### 10. Learn the smallest decision boundary around frozen reusable structure
+
+The natural-memory relation scorer already separated behavioral equivalence
+well but used an arbitrary raw-logit threshold poorly. Training only a scalar
+scale and bias from 64 verifier outcomes converted that frozen representation
+into a reliable online consolidation policy: 16 natural memories became two,
+with roughly 99% held-out behavior and both skills retained. Thirty-two bits
+were seed-sensitive, so the replicated threshold—not the lucky minimum—was
+promoted. This is a high-return pattern: diagnose what the frozen system
+already represents, then learn the smallest missing action boundary before
+adding architecture.
+
 ## Bounded negatives and dead ends
 
 These are rejected only within the measured regime; a fixed-budget negative is

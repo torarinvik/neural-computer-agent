@@ -112,6 +112,7 @@ class UnifiedCognitiveController(nn.Module):
             adaptive_memory_usage_prior_residual_features: int = 4,
             adaptive_memory_usage_prior_proposer_hidden: int = 0,
             adaptive_memory_equivalence_hidden: int = 0,
+            adaptive_memory_equivalence_calibration: bool = False,
             relation_adapter_width: int = 0,
             relation_adapter_gated: bool = False,
             action_adapter_width: int = 0,
@@ -162,6 +163,8 @@ class UnifiedCognitiveController(nn.Module):
             adaptive_memory_usage_prior_proposer_hidden)
         self.adaptive_memory_equivalence_hidden = (
             adaptive_memory_equivalence_hidden)
+        self.adaptive_memory_equivalence_calibration = (
+            adaptive_memory_equivalence_calibration)
         self.relation_adapter_width = relation_adapter_width
         self.relation_adapter_gated = relation_adapter_gated
         self.action_adapter_width = action_adapter_width
@@ -435,6 +438,12 @@ class UnifiedCognitiveController(nn.Module):
             # credit can shape the selector before the opening earns influence.
             nn.init.zeros_(self.memory_equivalence_selector[-1].weight)
             nn.init.zeros_(self.memory_equivalence_selector[-1].bias)
+        self.memory_equivalence_logit_scale = (
+            nn.Parameter(torch.ones(()))
+            if adaptive_memory_equivalence_calibration else None)
+        self.memory_equivalence_logit_bias = (
+            nn.Parameter(torch.zeros(()))
+            if adaptive_memory_equivalence_calibration else None)
 
     def effective_memory_usage_prior_scale(self) -> torch.Tensor:
         """Return the task-agnostic nonnegative retrieval-prior strength."""
@@ -531,14 +540,15 @@ class UnifiedCognitiveController(nn.Module):
         if (
                 probe_values.ndim != 2
                 or sorted_row_values.ndim != 3
-                or sorted_row_values.shape[:2]
-                != (probe_values.shape[0], 4)
+                or sorted_row_values.shape[0] != probe_values.shape[0]
+                or sorted_row_values.shape[1] < 1
                 or probe_values.shape[1] != self.width
                 or sorted_row_values.shape[2] != self.width):
             raise ValueError(
                 "equivalence inputs must have shapes [batch, width] and "
-                "[batch, 4, width]")
-        probe = probe_values.unsqueeze(1).expand(-1, 4, -1)
+                "[batch, rows, width]")
+        probe = probe_values.unsqueeze(1).expand(
+            -1, sorted_row_values.shape[1], -1)
         pair = torch.cat((
             probe,
             sorted_row_values,
@@ -546,6 +556,20 @@ class UnifiedCognitiveController(nn.Module):
             probe * sorted_row_values,
         ), dim=-1)
         return self.memory_equivalence_selector(pair).squeeze(-1)
+
+    def calibrated_memory_equivalence_logits(
+            self, probe_values: torch.Tensor,
+            row_values: torch.Tensor) -> torch.Tensor:
+        """Return absolute same-behavior evidence for merge/store decisions."""
+        if (
+                self.memory_equivalence_logit_scale is None
+                or self.memory_equivalence_logit_bias is None):
+            raise RuntimeError("memory equivalence calibration is not enabled")
+        logits = self.memory_equivalence_logits(probe_values, row_values)
+        # A nonnegative scale preserves the already-audited relation ordering;
+        # the learned bias supplies the absolute equivalence threshold.
+        scale = self.memory_equivalence_logit_scale.clamp_min(0.0)
+        return logits * scale + self.memory_equivalence_logit_bias
 
     def memory_equivalence_probability(
             self, features: torch.Tensor, probe_values: torch.Tensor,
@@ -561,6 +585,9 @@ class UnifiedCognitiveController(nn.Module):
         inherited = self.memory_usage_prior_probability(features)
         logits = self.memory_equivalence_logits(
             probe_values, sorted_row_values)
+        if logits.shape[1] != 4:
+            raise ValueError(
+                "retrieval probability requires exactly four stored rows")
         soft = logits.softmax(dim=-1)
         hard = torch.nn.functional.one_hot(
             logits.argmax(dim=-1), num_classes=4).to(soft.dtype)
