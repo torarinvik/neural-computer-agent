@@ -1132,3 +1132,34 @@ reserve remains disposable.
 
 Full record:
 `session_records/adaptive_physical_pruning_2026-07-29/README.md`.
+
+## Lossless cold archive with a self-thinning hot working set
+
+Permanent pruning saves disk but cannot recover a discarded variant when an old
+difficulty returns. The next rung separates preservation from attention:
+six-row consolidated memories remain losslessly on disk while a roughly
+four-row working set is materialized in RAM/VRAM. A cold row is promoted only
+after it causally rescues a failed hot attempt; its generic protection trace
+decays during quiet intervals.
+
+A six-way verifier-side race selected decay `0.90`: faster decay failed
+reactivation gates, while slower `0.97` retained too much stale context. The
+selection stream and all counterfactual search compute are accounted separately
+from three untouched 4,096-bank graduation seeds.
+
+During an easy interlude, the adaptive hot set falls to 4.07–4.08 rows versus
+4.24–4.26 for permanent cumulative protection and about 5.995 on cold disk,
+while accuracy remains 99.97–100%. When the hard dot-pair distribution returns,
+first-attempt accuracy beats fixed-core and matched shuffled-evidence
+controls on every seed. Its paired advantage over fixed core grows from
+0.027–0.052 percentage points in the first four returning rounds to
+0.116–0.140 points in the final four.
+
+The reusable `TieredLatentMemory` persists cold tensors, learned representative
+ranks, protection and threshold. All 384 physical archives reload exactly,
+promote after a rescue, thaw after quiet intervals, and retain every cold row.
+Only 0.68–0.69% of hot events execute a cold retry. Corrupting cold values falls
+to chance, and every controller tensor stays bit-identical.
+
+Full record:
+`session_records/adaptive_hot_cold_memory_2026-07-29/README.md`.

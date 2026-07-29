@@ -4,7 +4,7 @@ import pytest
 import torch
 
 from .environment import NULL_ACTION, generate_lifetimes
-from .memory import DiskLatentMemory
+from .memory import DiskLatentMemory, TieredLatentMemory
 from .model import UnifiedCognitiveController, full_memory_usage_features
 from .probe_persistent_interface import _add_context_signatures
 from .train import attempted_success_loss, evaluate, rollout
@@ -998,6 +998,64 @@ def test_bankwise_physical_survival_uses_only_protection_scalar() -> None:
         bank, selected, seed=19)
     assert shuffled.sum(-1).sort().values.tolist() == [4, 4, 6, 6]
     assert not torch.equal(selected, shuffled)
+
+
+def test_tiered_memory_promotes_thaws_and_preserves_cold_archive(
+        tmp_path: Path) -> None:
+    cold = DiskLatentMemory(width=6, capacity=6)
+    keys = torch.eye(6)
+    values = torch.arange(36, dtype=torch.float32).reshape(6, 6)
+    cold.commit(keys, values, torch.ones(6), threshold=0.0)
+    ranks = torch.tensor([0, 0, 1, 1, 2, 2])
+    memory = TieredLatentMemory(
+        cold, ranks, protection=0.0, threshold=0.5)
+    assert memory.hot().count == 4
+    memory.observe_verified_rescue(True, decay=0.9)
+    assert memory.hot().count == 6
+    for _ in range(7):
+        memory.observe_verified_rescue(False, decay=0.9)
+    assert memory.protection < 0.5
+    assert memory.hot().count == 4
+    assert memory.cold.count == 6
+
+    path = tmp_path / "tiered"
+    memory.save(path)
+    restored = TieredLatentMemory.load(path)
+    assert restored.protection == pytest.approx(memory.protection)
+    assert restored.threshold == memory.threshold
+    assert torch.equal(restored.representative_ranks, ranks)
+    assert torch.equal(restored.cold.store.keys, keys)
+    assert restored.hot().count == 4
+
+
+def test_hot_memory_decay_selection_is_accuracy_constrained() -> None:
+    from .select_hot_memory_decay import select_candidate
+
+    def report(
+            decay: float, accepted: bool, rows: float,
+            accuracy: float) -> dict[str, object]:
+        return {
+            "decay": decay,
+            "gates": {"accepted": accepted},
+            "phases": {
+                "easy_interlude": {
+                    "decaying": {"mean_hot_rows": rows}},
+                "hard_return": {
+                    "decaying": {
+                        "first_attempt_accuracy": accuracy}},
+            },
+            "reactivation": {
+                "last_four_gain_over_fixed_core": 0.01,
+                "last_four_gain_over_shuffled_evidence": 0.01,
+            },
+        }
+
+    selected, _ = select_candidate([
+        report(0.5, False, 4.0, 0.90),
+        report(0.9, True, 4.1, 0.99),
+        report(0.95, True, 4.2, 0.995),
+    ])
+    assert selected["decay"] == 0.9
 
 
 def test_usage_prior_scale_can_restore_exact_content_retrieval() -> None:

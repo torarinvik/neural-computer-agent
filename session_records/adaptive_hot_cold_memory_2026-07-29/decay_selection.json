@@ -1,0 +1,67 @@
+{
+  "schema": "adaptive-hot-memory-decay-selection-v1",
+  "selection_rule": "pass every accuracy, causality, reactivation, corruption, persistence, and thaw gate; then minimize easy-phase hot rows",
+  "selected": {
+    "decay": 0.9,
+    "accepted": true,
+    "easy_mean_hot_rows": 4.0805463790893555,
+    "returned_first_attempt_accuracy": 0.9864501953125,
+    "late_gain_over_fixed": 0.001220703125,
+    "late_gain_over_shuffled": 0.0010986328125
+  },
+  "candidates": [
+    {
+      "decay": 0.5,
+      "accepted": false,
+      "easy_mean_hot_rows": 4.064046382904053,
+      "returned_first_attempt_accuracy": 0.9858805537223816,
+      "late_gain_over_fixed": 0.00054931640625,
+      "late_gain_over_shuffled": 0.00042724609375
+    },
+    {
+      "decay": 0.7,
+      "accepted": false,
+      "easy_mean_hot_rows": 4.06500244140625,
+      "returned_first_attempt_accuracy": 0.9859212636947632,
+      "late_gain_over_fixed": 0.00054931640625,
+      "late_gain_over_shuffled": 0.00042724609375
+    },
+    {
+      "decay": 0.8,
+      "accepted": false,
+      "easy_mean_hot_rows": 4.0691938400268555,
+      "returned_first_attempt_accuracy": 0.9861246943473816,
+      "late_gain_over_fixed": 0.00079345703125,
+      "late_gain_over_shuffled": 0.00067138671875
+    },
+    {
+      "decay": 0.9,
+      "accepted": true,
+      "easy_mean_hot_rows": 4.0805463790893555,
+      "returned_first_attempt_accuracy": 0.9864501953125,
+      "late_gain_over_fixed": 0.001220703125,
+      "late_gain_over_shuffled": 0.0010986328125
+    },
+    {
+      "decay": 0.95,
+      "accepted": true,
+      "easy_mean_hot_rows": 4.113729000091553,
+      "returned_first_attempt_accuracy": 0.9866536855697632,
+      "late_gain_over_fixed": 0.00177001953125,
+      "late_gain_over_shuffled": 0.00164794921875
+    },
+    {
+      "decay": 0.97,
+      "accepted": false,
+      "easy_mean_hot_rows": 4.1847944259643555,
+      "returned_first_attempt_accuracy": 0.9867350459098816,
+      "late_gain_over_fixed": 0.00177001953125,
+      "late_gain_over_shuffled": 0.00164794921875
+    }
+  ],
+  "search_accounting": {
+    "hot_events": 1277952,
+    "audit_computed_cold_counterfactuals": 1277952,
+    "fixed_baseline_events": 2555904
+  }
+}

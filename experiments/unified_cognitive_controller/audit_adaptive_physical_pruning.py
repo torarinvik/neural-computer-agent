@@ -43,6 +43,7 @@ def query_event(
         bank: dict[str, torch.Tensor], *,
         seed: int, appearance: str, physical_mask: torch.Tensor,
         device: torch.device, reverse_rules: bool = False,
+        force_deep: bool | None = None,
         ) -> dict[str, torch.Tensor]:
     """Replay one balanced future event per rule for every physical bank."""
     streams, capacity, _ = bank["values"].shape
@@ -80,6 +81,8 @@ def query_event(
     deep_requested = (
         model.representative_deep_read_probability(features)
         >= model.adaptive_representative_read_threshold)
+    if force_deep is not None:
+        deep_requested.fill_(force_deep)
     shallow_row = shallow_scores.argmax(-1)
     deep_scores = scores.masked_fill(~physical, float("-inf"))
     deep_row = deep_scores.argmax(-1)

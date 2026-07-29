@@ -163,3 +163,86 @@ class DiskLatentMemory:
         instance = cls.__new__(cls)
         instance.store = PersistentMemory.load(path, device=device)
         return instance
+
+
+class TieredLatentMemory:
+    """Lossless cold memory plus a verified, compact hot working set.
+
+    Representative ranks are created by the learned equivalence relation, not
+    semantic task labels. Ranks below two form the safe core. A generic scalar
+    protection trace controls whether the remaining diversity reserve is
+    promoted into RAM/VRAM.
+    """
+
+    def __init__(
+            self, cold: DiskLatentMemory,
+            representative_ranks: torch.Tensor, *,
+            protection: float = 0.0, threshold: float = 0.5,
+            ) -> None:
+        if representative_ranks.shape != (cold.store.capacity,):
+            raise ValueError(
+                "representative ranks must match cold-memory capacity")
+        if representative_ranks.dtype != torch.long:
+            raise ValueError("representative ranks must use torch.long")
+        if not 0.0 <= protection <= 1.0:
+            raise ValueError("protection must be between zero and one")
+        if not 0.0 < threshold <= 1.0:
+            raise ValueError("threshold must be within (0, 1]")
+        self.cold = cold
+        self.representative_ranks = representative_ranks.to(
+            cold.store.keys.device).clone()
+        self.protection = float(protection)
+        self.threshold = float(threshold)
+
+    @property
+    def active_indices(self) -> torch.Tensor:
+        valid = self.cold.store.valid
+        core = self.representative_ranks < 2
+        reserve = torch.full_like(
+            valid, self.protection >= self.threshold)
+        return torch.where(valid & (core | reserve))[0]
+
+    def hot(self) -> DiskLatentMemory:
+        """Materialize only the currently relevant rows in fast memory."""
+        return self.cold.compact(self.active_indices)
+
+    def observe_verified_rescue(
+            self, rescued: bool, *, decay: float = 0.9,
+            ) -> float:
+        """Update hot-set protection from a scalar causal-rescue receipt."""
+        if not 0.0 <= decay <= 1.0:
+            raise ValueError("decay must be between zero and one")
+        self.protection = min(
+            1.0, self.protection * decay + float(bool(rescued)))
+        return self.protection
+
+    def save(self, directory: Path) -> None:
+        directory.mkdir(parents=True, exist_ok=True)
+        self.cold.save(directory / "cold.pt")
+        path = directory / "tier.pt"
+        temporary = directory / "tier.pt.tmp"
+        torch.save({
+            "schema": "tiered-latent-memory-v1",
+            "representative_ranks":
+                self.representative_ranks.detach().cpu(),
+            "protection": self.protection,
+            "threshold": self.threshold,
+        }, temporary)
+        temporary.replace(path)
+
+    @classmethod
+    def load(
+            cls, directory: Path, *,
+            device: torch.device | str = "cpu",
+            ) -> "TieredLatentMemory":
+        cold = DiskLatentMemory.load(
+            directory / "cold.pt", device=device)
+        payload = torch.load(
+            directory / "tier.pt", map_location=device,
+            weights_only=False)
+        if payload.get("schema") != "tiered-latent-memory-v1":
+            raise ValueError("unsupported tiered-memory schema")
+        return cls(
+            cold, payload["representative_ranks"],
+            protection=float(payload["protection"]),
+            threshold=float(payload["threshold"]))
