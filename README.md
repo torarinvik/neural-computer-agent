@@ -733,3 +733,22 @@ The next tiny diagnostic compares one immediate ancestor with one older
 ancestor. A causal difference would justify learned task-agnostic latent
 selection; a flat result would rule routing out before more compute is spent.
 See `session_records/strategy_accounting_2026-07-28/README.md`.
+
+## Latest verified frontier: causal magnitude compounding
+
+The 369,926-parameter unified controller now learns a genuinely new
+larger/smaller visual relation while retaining its earlier repertoire. Two
+independent causal audits scored 92.05% and 91.96%; deleting the second object
+fell to about 60%, and disabling the inherited same/different representation
+cost 10.70 and 10.34 percentage points. All old relation appearances and
+unrelated cognitive skills retained their gates.
+
+The acquisition used no semantic labels: only pixels, opaque attempted
+actions, and scalar outcomes. It required 131,072 new-task lifetimes and is
+already compiled to one controller pass per event; additional thought reduced
+accuracy. The checkpoint is stored on Hugging Face as
+`checkpoints/unified_pair_magnitude_compound_seed21475.pt`.
+
+The next gradual rung is magnitude across morphed, diamond, and disconnected
+dot-pair appearances, with sample efficiency measured before optional thought.
+See `session_records/pair_magnitude_compounding_2026-07-29/README.md`.

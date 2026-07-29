@@ -35,6 +35,7 @@ from .train import attempted_success_loss, evaluate, rollout, seed_everything
 
 
 DEFAULT_NEW_TASK = "contextual_composition"
+PAIR_RELATION_APPEARANCES = ("bars", "diamonds", "dot_pairs")
 DEFAULT_REPLAY_TASKS = (
     "binary_mapping", "visible_context", "visible_context_xor")
 # Kept for importers and tests that pin the fourth rung's own pair.
@@ -302,6 +303,16 @@ def _headline_accuracy(evaluation: dict) -> float:
     return float(evaluation["normal"]["post_feedback_accuracy"])
 
 
+def _replay_appearance(task: str, policy: str, update: int) -> str:
+    """Protect a visual repertoire without buying more replay experience."""
+    if task != "pair_relation":
+        return "bars"
+    if policy == "cycle":
+        return PAIR_RELATION_APPEARANCES[
+            (update - 1) % len(PAIR_RELATION_APPEARANCES)]
+    return policy
+
+
 def _load(
         path: Path, device: torch.device,
         ) -> tuple[dict[str, object], UnifiedCognitiveController]:
@@ -357,14 +368,22 @@ def _operation_cue_ablation_accuracy(
         count, 6, seed=seed, heldout=True,
         task=new_task, appearance=appearance,
         support_trials=support_trials, device=device)
-    if new_task == "pair_relation":
+    if new_task in (
+            "pair_relation", "pair_magnitude",
+            "visible_pair_magnitude"):
         # Remove only the second held-out-position object. Its mask is confined
         # to rows 13:28, columns 5:20; filling that box from a clean corner
         # preserves the per-frame background while deleting the relational
         # evidence. This is a valid pixel ablation, not a hidden-state edit.
         ablated_frames = marked.frames.clone()
         background = marked.frames[:, :, :, -1:, -1:]
-        ablated_frames[:, :, :, 13:28, 5:20] = background
+        if new_task == "pair_relation":
+            ablated_frames[:, :, :, 13:28, 5:20] = background
+        else:
+            # Magnitude's held-out second object is centred at (16, 26).
+            # This box covers its largest dilation without touching the first
+            # object centred at (16, 6).
+            ablated_frames[:, :, :, 16:32, 4:29] = background
         ablated = CognitiveLifetimeBatch(
             frames=ablated_frames,
             correct_actions=marked.correct_actions,
@@ -460,6 +479,12 @@ def main() -> None:
         "--new-task", default=DEFAULT_NEW_TASK,
         help="the primitive this rung acquires")
     parser.add_argument(
+        "--new-position-augmentation", action="store_true",
+        help=(
+            "alternate the new task across the train and held-out nuisance "
+            "positions while retaining the training palette; this separates "
+            "position invariance from held-out-colour generalization"))
+    parser.add_argument(
         "--replay-tasks", default=",".join(DEFAULT_REPLAY_TASKS),
         help="comma separated primitives the parent already holds")
     parser.add_argument(
@@ -467,6 +492,13 @@ def main() -> None:
         help=("comma separated support counts, one per replay task; defaults "
               "to one each. A skill must be replayed and audited at the "
               "support it was acquired at, or its retention is unmeasurable"))
+    parser.add_argument(
+        "--pair-relation-replay-appearance",
+        choices=(*PAIR_RELATION_APPEARANCES, "cycle"),
+        default="bars",
+        help=(
+            "appearance used for pair_relation replay. 'cycle' rotates "
+            "through its full learned contour repertoire at unchanged cost"))
     parser.add_argument(
         "--slot-reads-prior", action="store_true",
         help=("let this rung's slot read what earlier slots computed, while "
@@ -567,6 +599,14 @@ def main() -> None:
               "events; zero reproduces the unpriced rung"))
     parser.add_argument("--learning-rate", type=float, default=1e-2)
     parser.add_argument(
+        "--final-learning-rate", type=float,
+        help=(
+            "optional cosine-decayed learning rate reached at the final "
+            "update; decay begins at --learning-rate-decay-start"))
+    parser.add_argument(
+        "--learning-rate-decay-start", type=float, default=0.5,
+        help="fraction of updates completed before cosine decay begins")
+    parser.add_argument(
         "--shuffle-retention-teacher", action="store_true",
         help="negative control: mismatch teacher behavior across lifetimes")
     parser.add_argument("--test-lifetimes", type=int, default=512)
@@ -579,6 +619,16 @@ def main() -> None:
         raise ValueError("steps and batch sizes must be positive")
     if args.retention_weight <= 0:
         raise ValueError("retention weight must be positive")
+    if args.learning_rate <= 0:
+        raise ValueError("learning rate must be positive")
+    if (
+            args.final_learning_rate is not None
+            and not 0 < args.final_learning_rate <= args.learning_rate):
+        raise ValueError(
+            "final learning rate must be positive and no larger than initial")
+    if not 0.0 <= args.learning_rate_decay_start < 1.0:
+        raise ValueError(
+            "learning-rate decay start must be within [0, 1)")
     if args.skill_adapter_width < 1:
         raise ValueError("the new plastic slot must have positive width")
     if args.prior_read_limit < 0:
@@ -766,6 +816,8 @@ def main() -> None:
             })
         optimizer = torch.optim.AdamW(
             parameter_groups, lr=args.learning_rate, weight_decay=1e-5)
+        initial_group_lrs = [
+            float(group["lr"]) for group in optimizer.param_groups]
         unit_layer = (
             student.skill_adapters[new_slot - 1][0]
             if unit_thawed_parameters else None)
@@ -832,6 +884,22 @@ def main() -> None:
         replay_batches_spent = 0
         for update in range(1, args.steps + 1):
             student.train()
+            if args.final_learning_rate is not None:
+                decay_start = max(
+                    1, int(round(
+                        args.steps * args.learning_rate_decay_start)))
+                progress = min(
+                    1.0,
+                    max(0.0, (update - decay_start)
+                        / max(1, args.steps - decay_start)))
+                cosine = 0.5 * (1.0 + math.cos(math.pi * progress))
+                ratio = (
+                    args.final_learning_rate / args.learning_rate
+                    + (1.0 - args.final_learning_rate / args.learning_rate)
+                    * cosine)
+                for group, initial_lr in zip(
+                        optimizer.param_groups, initial_group_lrs):
+                    group["lr"] = initial_lr * ratio
             # Anneal the rectifier's leak linearly to exactly zero, then hold it
             # there for the rest of the rung so the gate hardens into a gate that
             # can be exactly shut.
@@ -848,7 +916,11 @@ def main() -> None:
             new_batch = generate_lifetimes(
                 args.new_batch_size, 6,
                 seed=seed * 10_000_000 + update,
-                task=new_task, support_trials=support_trials,
+                task=new_task,
+                position_holdout=(
+                    bool(update % 2)
+                    if args.new_position_augmentation else None),
+                support_trials=support_trials,
                 device=device)
             if (args.replay_selection == "gate"
                     and update > gate_warmup_updates
@@ -872,6 +944,8 @@ def main() -> None:
                     args.replay_batch_size, 6,
                     seed=seed * (20_000_000 + 10_000_000 * index) + update,
                     task=task, support_trials=replay_support_by_task[task],
+                    appearance=_replay_appearance(
+                        task, args.pair_relation_replay_appearance, update),
                     device=device)
                 for index, task in active_replay
             ]
@@ -1010,6 +1084,8 @@ def main() -> None:
                     },
                     "replay_slot_opening": float(leakage.detach()),
                     "total_loss": float(loss.detach()),
+                    "learning_rate": float(
+                        optimizer.param_groups[0]["lr"]),
                 })
 
         # Nothing is measured through a leaky gate: the exact-zero property is the
@@ -1087,6 +1163,20 @@ def main() -> None:
                 for index, task in enumerate(replay_tasks)
             },
         }
+        relation_repertoire_evaluations = {}
+        if (
+                "pair_relation" in replay_tasks
+                and args.pair_relation_replay_appearance == "cycle"):
+            relation_repertoire_evaluations = {
+                appearance: evaluate(
+                    student, count=args.test_lifetimes, trials=6,
+                    seed=seed + 92_000_000 + 10_000 * index,
+                    device=device, task="pair_relation",
+                    feedback_trials=replay_support_by_task["pair_relation"],
+                    appearance=appearance)
+                for index, appearance in enumerate(
+                    PAIR_RELATION_APPEARANCES)
+            }
         cue_ablation_accuracy = _operation_cue_ablation_accuracy(
             student, count=args.test_lifetimes,
             seed=seed + 90_000_000, device=device,
@@ -1129,9 +1219,15 @@ def main() -> None:
         retention_gates_passed = all(
             evaluations[name]["gate"]["accepted"]
             for name, required in required_retention.items() if required)
+        relation_repertoire_retained = (
+            not relation_repertoire_evaluations
+            or all(
+                evaluation["gate"]["accepted"]
+                for evaluation in relation_repertoire_evaluations.values()))
         accepted = (
             evaluations["new_skill"]["gate"]["accepted"]
             and retention_gates_passed
+            and relation_repertoire_retained
             and cue_causally_used
             and slot_shut_fraction[new_task] < 1.0)
         frozen_base_identical = all(
@@ -1201,12 +1297,22 @@ def main() -> None:
             "final_tracked_replay_accuracy": dict(tracked_accuracy),
             "required_retention_gates": required_retention,
             "evaluations": evaluations,
+            "pair_relation_repertoire_retention":
+                relation_repertoire_evaluations,
+            "pair_relation_repertoire_retained":
+                relation_repertoire_retained,
             "headline_accuracy": {
                 "new_skill": new_skill_accuracy,
                 **{
                     f"{task}_retention": _headline_accuracy(
                         evaluations[f"{task}_retention"])
                     for task in replay_tasks
+                },
+                **{
+                    f"pair_relation_{appearance}_retention":
+                        _headline_accuracy(evaluation)
+                    for appearance, evaluation
+                    in relation_repertoire_evaluations.items()
                 },
             },
             "slot_opening": slot_opening,

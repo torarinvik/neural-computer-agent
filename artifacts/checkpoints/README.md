@@ -519,3 +519,25 @@ change.
 A matched zero-output gate extension also replicated, but the unchanged
 architecture passed the same seeds and budget.  The promoted claim is
 therefore a robust curriculum threshold, not an architecture improvement.
+
+## Causal pair-magnitude compounder
+
+`unified_pair_magnitude_compound_seed21475.pt` is hosted in the Hugging Face
+model repository under `checkpoints/`.
+
+- SHA-256:
+  `3717bc318a35c7508c6d9fe7be0b2a196b0883af99d9f08c7205f196c61a7dfa`
+- Parent: `unified_pair_relation_robust_three_appearance_seed9672.pt`
+- Size: approximately 1.4 MB; 369,926 controller parameters
+- Acquisition: 4,096 updates, 131,072 new-task lifetimes, 1,179,648 total
+  verifier bits including balanced retention replay
+- Independent 8,192/16,384-lifetime magnitude audits: 92.05%/91.96%
+- Missing-second-object controls: 60.53%/60.40%; the task's optimal
+  one-object shortcut is bounded at 62.5%
+- Removing the inherited relation read costs 10.70/10.34 percentage points
+- Bars, diamonds, and dot-pair relation skills plus all unrelated replay
+  skills retain their complete causal gates
+- Inference: one controller pass per event; extra thought reduces accuracy
+
+The promoted skill is bars magnitude. Zero-shot magnitude on unseen diamonds
+and dot pairs remains near 60% and is the next gradual appearance bridge.

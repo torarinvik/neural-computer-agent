@@ -14,7 +14,8 @@ from experiments.unified_cognitive_controller.model import (
     UnifiedCognitiveController)
 from experiments.unified_cognitive_controller.train_fourth_primitive_transfer import (
     NEW_TASK, REPLAY_TASKS, _headline_accuracy, _new_skill_loss,
-    _operation_cue_ablation_accuracy, _plastic_prefixes)
+    _operation_cue_ablation_accuracy, _plastic_prefixes,
+    _replay_appearance)
 
 
 def test_plastic_prefixes_name_only_the_appended_slot() -> None:
@@ -119,3 +120,14 @@ def test_replay_covers_every_earlier_primitive() -> None:
     assert NEW_TASK not in REPLAY_TASKS
     assert set(REPLAY_TASKS) == {
         "binary_mapping", "visible_context", "visible_context_xor"}
+
+
+def test_relation_replay_can_cycle_its_full_appearance_repertoire() -> None:
+    observed = [
+        _replay_appearance("pair_relation", "cycle", update)
+        for update in range(1, 7)]
+    assert observed == [
+        "bars", "diamonds", "dot_pairs",
+        "bars", "diamonds", "dot_pairs"]
+    assert _replay_appearance("pair_relation", "dot_pairs", 99) == "dot_pairs"
+    assert _replay_appearance("binary_mapping", "cycle", 3) == "bars"

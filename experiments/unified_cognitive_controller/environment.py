@@ -11,6 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import torch
+import torch.nn.functional as F
 
 
 IMAGE_SIZE = 32
@@ -67,8 +68,13 @@ def _balanced_classes(
 
 def _bar_mask_bank() -> torch.Tensor:
     """Original rectangular identities at four nuisance positions."""
-    masks = torch.zeros(2, 4, IMAGE_SIZE, IMAGE_SIZE)
-    centers = ((12, 12), (20, 12), (12, 20), (20, 20))
+    centers = (
+        (12, 12), (20, 12), (12, 20), (20, 20),
+        # Non-overlapping comparison positions.  The first pair is horizontal
+        # and the held-out pair vertical, so magnitude can graduate across
+        # layout without either object touching the other at maximum dilation.
+        (6, 16), (26, 16), (16, 6), (16, 26))
+    masks = torch.zeros(2, len(centers), IMAGE_SIZE, IMAGE_SIZE)
     for position, (center_x, center_y) in enumerate(centers):
         masks[0, position, center_y - 7:center_y + 8,
               center_x - 3:center_x + 4] = 1.0
@@ -82,8 +88,10 @@ def _bar_mask_bank() -> torch.Tensor:
 
 def _diamond_mask_bank() -> torch.Tensor:
     """Novel contours preserving only the tall-versus-wide relation."""
-    masks = torch.zeros(2, 4, IMAGE_SIZE, IMAGE_SIZE)
-    centers = ((12, 12), (20, 12), (12, 20), (20, 20))
+    centers = (
+        (12, 12), (20, 12), (12, 20), (20, 20),
+        (6, 16), (26, 16), (16, 6), (16, 26))
+    masks = torch.zeros(2, len(centers), IMAGE_SIZE, IMAGE_SIZE)
     coordinates = torch.arange(IMAGE_SIZE)
     yy, xx = torch.meshgrid(coordinates, coordinates, indexing="ij")
     for position, (center_x, center_y) in enumerate(centers):
@@ -98,8 +106,10 @@ def _diamond_mask_bank() -> torch.Tensor:
 
 def _dot_pair_mask_bank() -> torch.Tensor:
     """Disconnected objects preserving only vertical/horizontal arrangement."""
-    masks = torch.zeros(2, 4, IMAGE_SIZE, IMAGE_SIZE)
-    centers = ((12, 12), (20, 12), (12, 20), (20, 20))
+    centers = (
+        (12, 12), (20, 12), (12, 20), (20, 20),
+        (6, 16), (26, 16), (16, 6), (16, 26))
+    masks = torch.zeros(2, len(centers), IMAGE_SIZE, IMAGE_SIZE)
     coordinates = torch.arange(IMAGE_SIZE)
     yy, xx = torch.meshgrid(coordinates, coordinates, indexing="ij")
     for position, (center_x, center_y) in enumerate(centers):
@@ -114,11 +124,51 @@ def _dot_pair_mask_bank() -> torch.Tensor:
     return masks
 
 
-_MASK_BANKS = {
+_ALL_POSITION_MASK_BANKS = {
     "bars": _bar_mask_bank(),
     "diamonds": _diamond_mask_bank(),
     "dot_pairs": _dot_pair_mask_bank(),
 }
+# Legacy tasks must retain their original four-position renderer exactly.
+# Magnitude alone needs the four extra non-overlapping comparison positions.
+_MASK_BANKS = {
+    name: bank[:, :4].clone()
+    for name, bank in _ALL_POSITION_MASK_BANKS.items()
+}
+_MAGNITUDE_MASK_BANKS = _ALL_POSITION_MASK_BANKS
+
+
+def _magnitude_mask_levels(mask_bank: torch.Tensor) -> torch.Tensor:
+    """Five overlapping absolute sizes for a genuine comparison task.
+
+    Adjacent levels form each pair.  Either object in isolation is therefore
+    ambiguous at the three interior sizes; only the two-object comparison is
+    deterministic.  Thresholding removes the decorative opacity code before
+    resizing, leaving occupied extent as the only magnitude signal.
+    """
+    binary = (mask_bank > 0).to(mask_bank.dtype)
+    dilated_two = F.max_pool2d(
+        binary, kernel_size=5, stride=1, padding=2)
+    dilated_one = F.max_pool2d(
+        binary, kernel_size=3, stride=1, padding=1)
+    eroded_one = 1.0 - F.max_pool2d(
+        1.0 - binary, kernel_size=3, stride=1, padding=1)
+    eroded_two = 1.0 - F.max_pool2d(
+        1.0 - binary, kernel_size=5, stride=1, padding=2)
+    return torch.stack((
+        dilated_two, dilated_one, binary, eroded_one, eroded_two))
+
+
+def _magnitude_level_indices(
+        interval: torch.Tensor, relation: torch.Tensor,
+        ) -> tuple[torch.Tensor, torch.Tensor]:
+    """Map an adjacent interval and order bit to two absolute size levels."""
+    larger_level = interval
+    smaller_level = interval + 1
+    first_large = relation == 0
+    return (
+        torch.where(first_large, larger_level, smaller_level),
+        torch.where(first_large, smaller_level, larger_level))
 
 # Public cue slot of each requested operation, as (rows, columns). Contextual
 # tasks without an entry carry no bar, which is itself the direct-context code.
@@ -158,6 +208,7 @@ def generate_lifetimes(
         task: str = "binary_mapping",
         appearance: str = "bars",
         appearance_blend: float | None = None,
+        position_holdout: bool | None = None,
         support_trials: int = 1,
         device: torch.device | str = "cpu") -> CognitiveLifetimeBatch:
     """Generate a balanced batch with one uniquely correct opaque action.
@@ -168,12 +219,14 @@ def generate_lifetimes(
     """
     if task not in (
         "constant_action", "visible_identity", "pair_relation",
+        "pair_magnitude", "visible_pair_magnitude",
         "binary_mapping",
         "visible_context", "visible_context_xor", "four_rule", "contextual_mapping",
         "contextual_override", "contextual_composition", "context_rule_xor",
         "context_identity_and", "context_identity_or"):
         raise ValueError(
             "task must be constant_action, visible_identity, pair_relation, "
+            "pair_magnitude, visible_pair_magnitude, "
             "binary_mapping, visible_context, visible_context_xor, four_rule, "
             "contextual_mapping, contextual_override, contextual_composition, "
             "context_rule_xor, context_identity_and, or context_identity_or")
@@ -226,25 +279,34 @@ def generate_lifetimes(
         for index, flip in enumerate(color_flip.tolist())
     ])
 
-    if heldout:
+    use_heldout_positions = (
+        heldout if position_holdout is None else position_holdout)
+    if use_heldout_positions:
         position_choices = torch.tensor([1, 2], dtype=torch.long)
     else:
         position_choices = torch.tensor([0, 3], dtype=torch.long)
     positions = position_choices[torch.randint(
         0, len(position_choices), (count, trials), generator=generator)]
+    task_mask_banks = (
+        _MAGNITUDE_MASK_BANKS
+        if task in ("pair_magnitude", "visible_pair_magnitude")
+        else _MASK_BANKS)
     if appearance_blend is None:
-        mask_bank = _MASK_BANKS[appearance]
+        mask_bank = task_mask_banks[appearance]
     else:
         # A task-preserving difficulty continuum. Endpoints are the exact bars
         # and diamond renderers; intermediate pixels expose progressively more
         # contour change without revealing a semantic curriculum stage.
         mask_bank = (
-            (1.0 - appearance_blend) * _MASK_BANKS["bars"]
-            + appearance_blend * _MASK_BANKS["diamonds"])
+            (1.0 - appearance_blend) * task_mask_banks["bars"]
+            + appearance_blend * task_mask_banks["diamonds"])
     masks = mask_bank[identities, positions]
     pair_identities = None
     pair_masks = None
-    if task == "pair_relation":
+    pair_context_ids = None
+    if task in (
+            "pair_relation", "pair_magnitude",
+            "visible_pair_magnitude"):
         # A second simultaneously visible object creates a genuinely different
         # perceptual primitive: infer whether two identities match.  The
         # verifier-private relation is balanced independently of nuisance
@@ -255,18 +317,44 @@ def generate_lifetimes(
         # let recurrence solve the task from feedback while ignoring vision.
         pair_relation = torch.stack([
             _balanced_bits(trials, generator) for _ in range(count)])
-        pair_identities = identities ^ pair_relation
-        if reverse_contexts:
-            # A valid pixel-level counterfactual: change the second object,
-            # which flips same<->different on every event while preserving the
-            # first object and all private sampling decisions.
-            pair_identities = 1 - pair_identities
-        first_pair_position = 0 if not heldout else 1
-        second_pair_position = 3 if not heldout else 2
+        if task == "pair_relation":
+            pair_identities = identities ^ pair_relation
+            if reverse_contexts:
+                # A valid pixel-level counterfactual: change the second object,
+                # which flips same<->different on every event while preserving
+                # the first object and all private sampling decisions.
+                pair_identities = 1 - pair_identities
+            pair_context_ids = pair_identities
+        else:
+            # Identity and size order vary independently.  The previous
+            # same/different primitive may help parse the two objects, but its
+            # answer cannot solve this task.  Size order is balanced separately
+            # inside every lifetime, so one reward cannot reveal later trials.
+            pair_identities = torch.randint(
+                0, 2, (count, trials), generator=generator)
+            magnitude_interval = torch.randint(
+                0, 4, (count, trials), generator=generator)
+            if reverse_contexts:
+                pair_relation = 1 - pair_relation
+            pair_context_ids = pair_relation
+        if task == "pair_relation":
+            first_pair_position = 1 if use_heldout_positions else 0
+            second_pair_position = 2 if use_heldout_positions else 3
+        else:
+            first_pair_position = 6 if use_heldout_positions else 4
+            second_pair_position = 7 if use_heldout_positions else 5
         positions = torch.full_like(identities, first_pair_position)
         pair_positions = torch.full_like(identities, second_pair_position)
-        masks = mask_bank[identities, positions]
-        pair_masks = mask_bank[pair_identities, pair_positions]
+        if task == "pair_relation":
+            masks = mask_bank[identities, positions]
+            pair_masks = mask_bank[pair_identities, pair_positions]
+        else:
+            magnitude_levels = _magnitude_mask_levels(mask_bank)
+            first_level, second_level = _magnitude_level_indices(
+                magnitude_interval, pair_relation)
+            masks = magnitude_levels[first_level, identities, positions]
+            pair_masks = magnitude_levels[
+                second_level, pair_identities, pair_positions]
 
     backgrounds = (
         0.025 + 0.075 * torch.rand(
@@ -345,6 +433,18 @@ def generate_lifetimes(
         # Opaque action zero happens to mean "same" to the verifier and action
         # one "different"; those meanings are never shown to the learner.
         correct = identities ^ pair_identities
+    elif task == "pair_magnitude":
+        assert pair_context_ids is not None
+        # One support outcome identifies the lifetime-private opaque action
+        # orientation.  Subsequent answers still require comparing the two
+        # visible objects because their size order changes on every event.
+        correct = pair_context_ids ^ rule_bits.unsqueeze(1)
+    elif task == "visible_pair_magnitude":
+        assert pair_context_ids is not None
+        # The easiest atom: the verifier's two opaque actions consistently
+        # distinguish which visible object is larger.  No semantic action name
+        # is exposed; attempted actions receive only scalar outcomes.
+        correct = pair_context_ids.clone()
     elif task == "four_rule":
         expanded_rule = rule_bits.unsqueeze(1).expand(-1, trials)
         correct = torch.where(
@@ -399,6 +499,6 @@ def generate_lifetimes(
         frames.to(device), correct.to(device), identities.to(device),
         rule_bits.to(device), seeds.to(device),
         (
-            pair_identities.to(device)
-            if pair_identities is not None
+            pair_context_ids.to(device)
+            if pair_context_ids is not None
             else context_ids.to(device) if context_ids is not None else None))

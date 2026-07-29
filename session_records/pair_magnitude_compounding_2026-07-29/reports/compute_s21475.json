@@ -1,0 +1,83 @@
+{
+  "already_compiled_to_physical_minimum": true,
+  "checkpoint": "/workspace/results/true_pair_magnitude_repertoire_graduation/candidate_s21475.pt",
+  "claim_boundary": "The checkpoint and external event stream are fixed. Extra thought reprocesses the same pixels without a new action, outcome, task identity or verifier fact.",
+  "configuration": {
+    "count": 8192,
+    "device": "cuda",
+    "extra_thought_budgets": [
+      0,
+      1,
+      2,
+      4,
+      8
+    ],
+    "seed": 23475,
+    "trials": 6
+  },
+  "minimum_controller_steps_per_event": 1,
+  "minimum_extra_thought_budget_preserving_mastery": 0,
+  "results": {
+    "0": {
+      "controller_steps_per_event": 1,
+      "controller_steps_per_lifetime": 6,
+      "counterfactual_accuracy": 0.9195353388786316,
+      "extra_thought_steps_per_event": 0,
+      "logical_lifetimes": 8192,
+      "mastery": true,
+      "normal_accuracy": 0.9192098379135132,
+      "prediction_flip_rate": 0.8395182490348816,
+      "seconds": 0.3745598509995034,
+      "verifier_bits": 98304
+    },
+    "1": {
+      "controller_steps_per_event": 2,
+      "controller_steps_per_lifetime": 12,
+      "counterfactual_accuracy": 0.9124349355697632,
+      "extra_thought_steps_per_event": 1,
+      "logical_lifetimes": 8192,
+      "mastery": true,
+      "normal_accuracy": 0.913330078125,
+      "prediction_flip_rate": 0.826171875,
+      "seconds": 0.15393047799443593,
+      "verifier_bits": 98304
+    },
+    "2": {
+      "controller_steps_per_event": 3,
+      "controller_steps_per_lifetime": 18,
+      "counterfactual_accuracy": 0.8948974609375,
+      "extra_thought_steps_per_event": 2,
+      "logical_lifetimes": 8192,
+      "mastery": false,
+      "normal_accuracy": 0.89532470703125,
+      "prediction_flip_rate": 0.79119873046875,
+      "seconds": 0.23072567200142657,
+      "verifier_bits": 98304
+    },
+    "4": {
+      "controller_steps_per_event": 5,
+      "controller_steps_per_lifetime": 30,
+      "counterfactual_accuracy": 0.8813883662223816,
+      "extra_thought_steps_per_event": 4,
+      "logical_lifetimes": 8192,
+      "mastery": false,
+      "normal_accuracy": 0.8820394277572632,
+      "prediction_flip_rate": 0.7642415761947632,
+      "seconds": 0.38387510800384916,
+      "verifier_bits": 98304
+    },
+    "8": {
+      "controller_steps_per_event": 9,
+      "controller_steps_per_lifetime": 54,
+      "counterfactual_accuracy": 0.8726603388786316,
+      "extra_thought_steps_per_event": 8,
+      "logical_lifetimes": 8192,
+      "mastery": false,
+      "normal_accuracy": 0.8721720576286316,
+      "prediction_flip_rate": 0.7456868886947632,
+      "seconds": 0.6916566540021449,
+      "verifier_bits": 98304
+    }
+  },
+  "schema": "pair-magnitude-compute-audit-v1"
+}

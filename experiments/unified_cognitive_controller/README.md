@@ -1224,3 +1224,34 @@ The next curriculum axis is a new relation on the familiar appearances.
 
 Full record:
 `session_records/pair_relation_robust_compound_2026-07-29/README.md`.
+
+## Compound a genuinely new visual relation
+
+The robust three-appearance same/different controller acquired a new
+larger/smaller relation on familiar bars. The corrected renderer samples
+adjacent pairs from five overlapping absolute sizes, bounding any one-object
+shortcut at 62.5%. An earlier two-size renderer was rejected after its
+one-object ablation remained at 75.5%.
+
+The replay loop now cycles the full earlier relation repertoire at unchanged
+experience cost. A 512-update probe repaired dot-pair retention in 35 seconds;
+a 2,048-update rung preserved every relation appearance; only then did four
+4,096-update population members run. Three passed internal mastery and
+retention. Seed 21475 alone passed every independent compounding gate and was
+promoted.
+
+Two fresh 8,192/16,384-lifetime audits scored 92.05%/91.96%. Removing the
+second object reduced accuracy to 60.53%/60.40%; disabling the inherited
+same/different read reduced it by 10.70/10.34 points. Every bars, diamonds,
+dot-pair, binary-mapping, visible-context, and XOR retention gate passed.
+
+The skill already runs at the physical minimum of one controller pass per
+event. Optional thought monotonically reduced accuracy from 91.92% at zero
+extra steps to 87.22% at eight. Experience efficiency must therefore be
+optimized first and compute second, with accuracy and retention as hard gates.
+
+Magnitude has not transferred to unseen diamond or dot-pair contours. The next
+frontier is a gradual magnitude appearance bridge with a reset-read control.
+
+Full record:
+`session_records/pair_magnitude_compounding_2026-07-29/README.md`.
