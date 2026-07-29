@@ -42,6 +42,8 @@ held-out verifier audits.
 | `identify_fixed_target_width64_bits64_audit_seed307.pt` | Independent bridge readout seed |
 | `identify_random_fresh_width64_bits64_seed211.pt` | Full varying-probe/varying-target task; 100% audited endpoint |
 | `identify_random_fresh_incremental64_seed211.pt` | Incremental 8→16→32→64-bit learner |
+| `unified_pair_magnitude_repeated_compounding_seed23105.pt` | Repeated-compounding magnitude frontier learned from 44 new lifetimes |
+| `unified_pair_numerosity_adjacent_bridge_seed23602.pt` | Adjacent magnitude→numerosity bridge learned from 16 new lifetimes |
 
 ## Audited results
 
@@ -65,6 +67,17 @@ A 32-outcome learner with 512 replay updates achieved only 52.73% and failed
 the causal audits. The current honest stable frontier is therefore 64 unique
 verifier outcomes, not 32.
 
+### Compounding magnitude and adjacent numerosity
+
+- progressively harder magnitude frontiers required 128, then 96, then 44
+  new lifetimes;
+- the adjacent magnitude→numerosity bridge reused the learned greater-than
+  representation and required 16 new lifetimes / 96 verifier bits;
+- the selected numerosity checkpoint passed 3/3 independent 32,768-lifetime
+  causal audits at the conservative 22.4% dot-appearance frontier;
+- matched shuffled-outcome controls failed, and every inherited skill remained
+  within two percentage points of its frozen parent.
+
 ## Important negative result
 
 The mastered fixed-target checkpoint caused negative transfer when its weights
@@ -86,14 +99,12 @@ print(checkpoint.keys())
 ```
 
 The implementation and reproducibility instructions live in the companion
-source repository. Until that remote is published, the checkpoint architecture
-is in:
-
-`experiments/forward_transfer_attention/train_identify_then_act.py`
+[source repository](https://github.com/torarinvik/neural-computer-agent).
 
 ## Status
 
-This is experimental research. It demonstrates a causally audited elementary
-identify→observe→act capability. It does not yet demonstrate general
-intelligence or compounding transfer across a long sequence of primitives.
-
+This is experimental research. It now demonstrates causally audited elementary
+identify→observe→act behavior, repeated sample-efficiency gains within a
+magnitude lineage, and one adjacent transfer into discrete numerosity. It does
+not yet demonstrate general intelligence, pure-dot numerosity mastery, or
+unbounded compounding across many unrelated primitives.

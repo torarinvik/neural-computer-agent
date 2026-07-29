@@ -358,7 +358,9 @@ def _operation_cue_ablation_accuracy(
         device: torch.device, support_trials: int,
         new_task: str = DEFAULT_NEW_TASK,
         appearance: str = "bars",
-        appearance_blend: float | None = None) -> float:
+        appearance_blend: float | None = None,
+        numerosity_mass_control: float = 0.0,
+        numerosity_appearance_blend: float = 1.0) -> float:
     """Rerender the same public events without the operation-mode symbol.
 
     The composition cue is the only pixel difference from the direct-context
@@ -369,10 +371,12 @@ def _operation_cue_ablation_accuracy(
         count, 6, seed=seed, heldout=True,
         task=new_task, appearance=appearance,
         appearance_blend=appearance_blend,
+        numerosity_mass_control=numerosity_mass_control,
+        numerosity_appearance_blend=numerosity_appearance_blend,
         support_trials=support_trials, device=device)
     if new_task in (
             "pair_relation", "pair_magnitude",
-            "visible_pair_magnitude"):
+            "visible_pair_magnitude", "visible_pair_numerosity"):
         # Remove only the second held-out-position object. Its mask is confined
         # to rows 13:28, columns 5:20; filling that box from a clean corner
         # preserves the per-frame background while deleting the relational
@@ -381,6 +385,9 @@ def _operation_cue_ablation_accuracy(
         background = marked.frames[:, :, :, -1:, -1:]
         if new_task == "pair_relation":
             ablated_frames[:, :, :, 13:28, 5:20] = background
+        elif new_task == "visible_pair_numerosity":
+            # Delete the complete right count field while preserving the left.
+            ablated_frames[:, :, :, :, 16:32] = background
         else:
             # Magnitude's held-out second object is centred at (16, 26).
             # This box covers its largest dilation without touching the first

@@ -210,6 +210,10 @@ class UnifiedCognitiveController(nn.Module):
         # the parameter count and removes only the content, which is the
         # comparison that separates the two.
         self.skill_adapter_ablate_prior_read = False
+        # A matched causal control can remove inherited content only from one
+        # newly appended slot while leaving every older slot's behavior
+        # untouched. This is runtime diagnostic state, not learned structure.
+        self.skill_adapter_ablate_prior_read_slot: int | None = None
         # Index of the first slot allowed to read the two legacy adapters.
         # Rungs two and three consolidated into those, so they are ancestry a
         # later slot cannot otherwise see. It is an index rather than a flag so
@@ -843,7 +847,10 @@ class UnifiedCognitiveController(nn.Module):
                         and slot_index >= self.skill_adapter_legacy_read_from):
                     reads += legacy_reads
                 if reads:
-                    if self.skill_adapter_ablate_prior_read:
+                    if (
+                            self.skill_adapter_ablate_prior_read
+                            or self.skill_adapter_ablate_prior_read_slot
+                            == slot_index):
                         reads = [torch.zeros_like(r) for r in reads]
                     read_vector = torch.cat(reads, dim=-1)
                     projection = self.skill_adapter_read_projections[slot_index]

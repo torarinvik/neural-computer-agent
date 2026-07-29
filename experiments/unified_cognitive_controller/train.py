@@ -116,25 +116,33 @@ def evaluate(
         seed: int, device: torch.device,
         task: str, feedback_trials: int,
         appearance: str = "bars",
-        appearance_blend: float | None = None) -> dict[str, object]:
+        appearance_blend: float | None = None,
+        numerosity_mass_control: float = 0.0,
+        numerosity_appearance_blend: float = 1.0) -> dict[str, object]:
     model.eval()
     normal_batch = generate_lifetimes(
         count, trials, seed=seed, heldout=True, task=task,
         appearance=appearance, appearance_blend=appearance_blend,
+        numerosity_mass_control=numerosity_mass_control,
+        numerosity_appearance_blend=numerosity_appearance_blend,
         support_trials=feedback_trials, device=device)
     reversed_batch = generate_lifetimes(
         count, trials, seed=seed, heldout=True,
         reverse_rules=(task not in (
             "visible_identity", "pair_relation",
             "pair_magnitude", "visible_pair_magnitude",
+            "visible_pair_numerosity",
             "visible_context", "visible_context_xor")),
         reverse_stimuli=(task == "visible_identity"),
         reverse_contexts=(task in (
             "pair_relation", "pair_magnitude",
             "visible_pair_magnitude",
+            "visible_pair_numerosity",
             "visible_context", "visible_context_xor")),
         task=task, appearance=appearance,
         appearance_blend=appearance_blend,
+        numerosity_mass_control=numerosity_mass_control,
+        numerosity_appearance_blend=numerosity_appearance_blend,
         support_trials=feedback_trials, device=device)
     normal = rollout(
         model, normal_batch, sample_actions=False,
@@ -176,6 +184,7 @@ def evaluate(
     flip_start = (
         0 if task in (
             "visible_identity", "pair_relation",
+            "visible_pair_numerosity",
             "visible_context", "visible_context_xor")
         else feedback_trials)
     flip_rate = (
@@ -211,6 +220,7 @@ def evaluate(
     if task in (
             "visible_identity", "pair_relation",
             "visible_pair_magnitude",
+            "visible_pair_numerosity",
             "visible_context", "visible_context_xor"):
         normal_accuracy = float(normal["rewards"].mean())
         reversed_accuracy = float(reversed_result["rewards"].mean())

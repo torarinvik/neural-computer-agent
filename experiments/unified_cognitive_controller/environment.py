@@ -170,6 +170,64 @@ def _magnitude_level_indices(
         torch.where(first_large, larger_level, smaller_level),
         torch.where(first_large, smaller_level, larger_level))
 
+
+def _numerosity_mask_bank() -> torch.Tensor:
+    """Five dot counts under eight layouts in two non-overlapping fields.
+
+    The first four layouts are used for acquisition and the last four only for
+    held-out evaluation.  Layout permutations are nested within a count so the
+    number of disconnected components is the stable fact; absolute dot
+    positions are nuisance.
+    """
+    left_slots = (
+        (7, 4), (14, 10), (22, 6), (9, 13), (25, 13),
+        (18, 3), (5, 10), (18, 13))
+    right_slots = tuple((y, IMAGE_SIZE - 1 - x) for y, x in left_slots)
+    permutations = (
+        (0, 1, 2, 3, 4, 5, 6, 7),
+        (2, 4, 1, 5, 0, 7, 3, 6),
+        (5, 0, 3, 6, 2, 1, 7, 4),
+        (7, 3, 5, 1, 6, 4, 0, 2),
+        (1, 6, 4, 0, 7, 2, 5, 3),
+        (3, 7, 0, 4, 1, 6, 2, 5),
+        (4, 2, 6, 7, 5, 0, 3, 1),
+        (6, 5, 7, 2, 3, 1, 4, 0),
+    )
+    bank = torch.zeros(
+        2, 5, len(permutations), IMAGE_SIZE, IMAGE_SIZE)
+    for side, slots in enumerate((left_slots, right_slots)):
+        for layout, permutation in enumerate(permutations):
+            for count in range(1, 6):
+                for slot in permutation[:count]:
+                    y, x = slots[slot]
+                    bank[side, count - 1, layout,
+                         y - 1:y + 2, x - 1:x + 2] = 1.0
+    return bank
+
+
+_NUMEROSITY_MASK_BANK = _numerosity_mask_bank()
+
+
+def _numerosity_count_indices(
+        interval: torch.Tensor, relation: torch.Tensor,
+        ) -> tuple[torch.Tensor, torch.Tensor]:
+    """Map an adjacent count interval and order bit to zero-based counts."""
+    smaller = interval
+    larger = interval + 1
+    first_large = relation == 0
+    return (
+        torch.where(first_large, larger, smaller),
+        torch.where(first_large, smaller, larger))
+
+
+def _numerosity_mass_scale(
+        zero_based_count: torch.Tensor, control: float,
+        ) -> torch.Tensor:
+    """Blend from opaque dots to exactly count-normalized total opacity."""
+    count = zero_based_count.to(torch.float32) + 1.0
+    return (1.0 - control) + control / count
+
+
 # Public cue slot of each requested operation, as (rows, columns). Contextual
 # tasks without an entry carry no bar, which is itself the direct-context code.
 # Every slot must fall where no stimulus glyph and no corner context marker can
@@ -208,6 +266,8 @@ def generate_lifetimes(
         task: str = "binary_mapping",
         appearance: str = "bars",
         appearance_blend: float | None = None,
+        numerosity_mass_control: float = 0.0,
+        numerosity_appearance_blend: float = 1.0,
         position_holdout: bool | None = None,
         support_trials: int = 1,
         device: torch.device | str = "cpu") -> CognitiveLifetimeBatch:
@@ -220,6 +280,7 @@ def generate_lifetimes(
     if task not in (
         "constant_action", "visible_identity", "pair_relation",
         "pair_magnitude", "visible_pair_magnitude",
+        "visible_pair_numerosity",
         "binary_mapping",
         "visible_context", "visible_context_xor", "four_rule", "contextual_mapping",
         "contextual_override", "contextual_composition", "context_rule_xor",
@@ -227,6 +288,7 @@ def generate_lifetimes(
         raise ValueError(
             "task must be constant_action, visible_identity, pair_relation, "
             "pair_magnitude, visible_pair_magnitude, "
+            "visible_pair_numerosity, "
             "binary_mapping, visible_context, visible_context_xor, four_rule, "
             "contextual_mapping, contextual_override, contextual_composition, "
             "context_rule_xor, context_identity_and, or context_identity_or")
@@ -237,6 +299,18 @@ def generate_lifetimes(
             appearance_blend is not None
             and not 0.0 <= appearance_blend <= 1.0):
         raise ValueError("appearance blend must be within [0, 1]")
+    if not 0.0 <= numerosity_mass_control <= 1.0:
+        raise ValueError("numerosity mass control must be within [0, 1]")
+    if not 0.0 <= numerosity_appearance_blend <= 1.0:
+        raise ValueError(
+            "numerosity appearance blend must be within [0, 1]")
+    if (
+            task != "visible_pair_numerosity"
+            and (
+                numerosity_mass_control != 0.0
+                or numerosity_appearance_blend != 1.0)):
+        raise ValueError(
+            "numerosity controls are only valid for numerosity")
     if count < 2 or count % 2:
         raise ValueError("count must be positive and divisible by two")
     if task in ("four_rule", "contextual_mapping") and count % 4:
@@ -306,7 +380,7 @@ def generate_lifetimes(
     pair_context_ids = None
     if task in (
             "pair_relation", "pair_magnitude",
-            "visible_pair_magnitude"):
+            "visible_pair_magnitude", "visible_pair_numerosity"):
         # A second simultaneously visible object creates a genuinely different
         # perceptual primitive: infer whether two identities match.  The
         # verifier-private relation is balanced independently of nuisance
@@ -325,7 +399,7 @@ def generate_lifetimes(
                 # the first object and all private sampling decisions.
                 pair_identities = 1 - pair_identities
             pair_context_ids = pair_identities
-        else:
+        elif task in ("pair_magnitude", "visible_pair_magnitude"):
             # Identity and size order vary independently.  The previous
             # same/different primitive may help parse the two objects, but its
             # answer cannot solve this task.  Size order is balanced separately
@@ -337,18 +411,30 @@ def generate_lifetimes(
             if reverse_contexts:
                 pair_relation = 1 - pair_relation
             pair_context_ids = pair_relation
+        else:
+            # The adjacent primitive preserves the already learned abstract
+            # greater/less action relation while replacing continuous extent
+            # with the number of disconnected visible components.
+            pair_identities = identities.clone()
+            numerosity_interval = torch.randint(
+                0, 4, (count, trials), generator=generator)
+            if reverse_contexts:
+                pair_relation = 1 - pair_relation
+            pair_context_ids = pair_relation
         if task == "pair_relation":
             first_pair_position = 1 if use_heldout_positions else 0
             second_pair_position = 2 if use_heldout_positions else 3
-        else:
-            first_pair_position = 6 if use_heldout_positions else 4
-            second_pair_position = 7 if use_heldout_positions else 5
-        positions = torch.full_like(identities, first_pair_position)
-        pair_positions = torch.full_like(identities, second_pair_position)
-        if task == "pair_relation":
+            positions = torch.full_like(identities, first_pair_position)
+            pair_positions = torch.full_like(
+                identities, second_pair_position)
             masks = mask_bank[identities, positions]
             pair_masks = mask_bank[pair_identities, pair_positions]
-        else:
+        elif task in ("pair_magnitude", "visible_pair_magnitude"):
+            first_pair_position = 6 if use_heldout_positions else 4
+            second_pair_position = 7 if use_heldout_positions else 5
+            positions = torch.full_like(identities, first_pair_position)
+            pair_positions = torch.full_like(
+                identities, second_pair_position)
             if appearance_blend is None:
                 magnitude_levels = _magnitude_mask_levels(mask_bank)
             else:
@@ -367,6 +453,51 @@ def generate_lifetimes(
             masks = magnitude_levels[first_level, identities, positions]
             pair_masks = magnitude_levels[
                 second_level, pair_identities, pair_positions]
+        else:
+            first_count, second_count = _numerosity_count_indices(
+                numerosity_interval, pair_relation)
+            layout_start = 4 if use_heldout_positions else 0
+            first_layout = (
+                layout_start
+                + torch.randint(
+                    0, 4, (count, trials), generator=generator))
+            second_layout = (
+                layout_start
+                + torch.randint(
+                    0, 4, (count, trials), generator=generator))
+            dot_masks = _NUMEROSITY_MASK_BANK[
+                0, first_count, first_layout]
+            pair_dot_masks = _NUMEROSITY_MASK_BANK[
+                1, second_count, second_layout]
+            magnitude_levels = _magnitude_mask_levels(
+                _MAGNITUDE_MASK_BANKS["bars"])
+            first_pair_position = 6 if use_heldout_positions else 4
+            second_pair_position = 7 if use_heldout_positions else 5
+            first_positions = torch.full_like(
+                identities, first_pair_position)
+            second_positions = torch.full_like(
+                identities, second_pair_position)
+            # Magnitude level zero is largest while count index four is five
+            # dots. Reversing the index makes both endpoints express the same
+            # abstract greater-than relation.
+            bar_masks = magnitude_levels[
+                4 - first_count, identities, first_positions]
+            pair_bar_masks = magnitude_levels[
+                4 - second_count, pair_identities, second_positions]
+            masks = (
+                (1.0 - numerosity_appearance_blend) * bar_masks
+                + numerosity_appearance_blend * dot_masks)
+            pair_masks = (
+                (1.0 - numerosity_appearance_blend) * pair_bar_masks
+                + numerosity_appearance_blend * pair_dot_masks)
+            first_scale = _numerosity_mass_scale(
+                first_count, numerosity_mass_control)
+            second_scale = _numerosity_mass_scale(
+                second_count, numerosity_mass_control)
+            masks = masks * first_scale.unsqueeze(-1).unsqueeze(-1)
+            pair_masks = (
+                pair_masks
+                * second_scale.unsqueeze(-1).unsqueeze(-1))
 
     backgrounds = (
         0.025 + 0.075 * torch.rand(
@@ -456,6 +587,11 @@ def generate_lifetimes(
         # The easiest atom: the verifier's two opaque actions consistently
         # distinguish which visible object is larger.  No semantic action name
         # is exposed; attempted actions receive only scalar outcomes.
+        correct = pair_context_ids.clone()
+    elif task == "visible_pair_numerosity":
+        assert pair_context_ids is not None
+        # The action semantics are deliberately aligned with magnitude:
+        # opaque action zero means the first field has more components.
         correct = pair_context_ids.clone()
     elif task == "four_rule":
         expanded_rule = rule_bits.unsqueeze(1).expand(-1, trials)
