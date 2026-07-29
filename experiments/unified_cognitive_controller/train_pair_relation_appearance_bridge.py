@@ -65,6 +65,7 @@ def _slot_prefixes(slot: int) -> tuple[str, ...]:
         f"skill_adapters.{slot}.",
         f"skill_adapter_gates.{slot}.",
         f"skill_adapter_gate_refiners.{slot}.",
+        f"skill_adapter_gate_extensions.{slot}.",
         f"skill_adapter_read_projections.{slot}.")
 
 
@@ -143,11 +144,54 @@ def _unrelated_locality(
     return torch.stack(unrelated).mean()
 
 
+def _prioritized_replay_loss(
+        replay_losses: list[torch.Tensor], *,
+        temperature: float,
+        base_weights: tuple[float, ...] | None = None,
+        ) -> tuple[torch.Tensor, torch.Tensor]:
+    """Concentrate rehearsal on the behavior currently drifting most.
+
+    Detached weights prevent the optimizer from changing the prioritizer
+    rather than repairing behavior.  Temperature zero preserves the historical
+    uniform mean exactly.
+    """
+    if not replay_losses:
+        raise ValueError("at least one replay loss is required")
+    losses = torch.stack(replay_losses)
+    if temperature < 0:
+        raise ValueError("replay priority temperature must not be negative")
+    if base_weights is None:
+        prior = torch.ones_like(losses)
+    else:
+        if (
+                len(base_weights) != len(replay_losses)
+                or any(value <= 0 for value in base_weights)):
+            raise ValueError(
+                "replay base weights must align and be positive")
+        prior = losses.new_tensor(base_weights)
+    if temperature == 0:
+        weights = prior / prior.sum()
+    else:
+        weights = torch.softmax(
+            losses.detach() / temperature + prior.log(), dim=0)
+    return (weights * losses).sum(), weights
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--parent", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--checkpoint-out", type=Path)
+    parser.add_argument(
+        "--candidate-checkpoint-out", type=Path,
+        help=(
+            "save an explicitly unpromoted training-only checkpoint for an "
+            "external held-out population selector"))
+    parser.add_argument(
+        "--skip-final-evaluation", action="store_true",
+        help=(
+            "skip the expensive causal suite; requires "
+            "--candidate-checkpoint-out and never promotes the candidate"))
     parser.add_argument("--seed", type=int, default=9301)
     parser.add_argument("--steps", type=int, default=32)
     parser.add_argument("--batch-size", type=int, default=32)
@@ -161,9 +205,33 @@ def main() -> None:
     parser.add_argument(
         "--consolidation-locality-weight", type=float, default=0.1)
     parser.add_argument(
+        "--consolidation-replay-temperature", type=float, default=0.0,
+        help=(
+            "positive values prioritize replay streams with the largest "
+            "current behavioral divergence; zero keeps the uniform mean"))
+    parser.add_argument(
+        "--consolidation-replay-weights",
+        help=(
+            "positive comma-separated base weights aligned with the replay "
+            "specification; normalized to keep total loss scale fixed"))
+    parser.add_argument(
         "--gate-refiner-width", type=int, default=0,
         help=("zero-output nonlinear correction to the existing slot gate; "
               "zero preserves the parent architecture"))
+    parser.add_argument(
+        "--acquisition-refiner-only", action="store_true",
+        help=(
+            "freeze relation content and learn only where the existing "
+            "nonlinear gate refiner should open"))
+    parser.add_argument(
+        "--gate-extension-width", type=int, default=0,
+        help=(
+            "insert a zero-output additive gate branch on the selected slot"))
+    parser.add_argument(
+        "--acquisition-gate-extension-only", action="store_true",
+        help=(
+            "freeze relation content and established gates; train only the "
+            "new additive gate extension"))
     parser.add_argument(
         "--gate-leak-initial", type=float, default=0.0,
         help=("temporary negative-side slope for a shut rectified skill gate; "
@@ -212,10 +280,18 @@ def main() -> None:
         raise ValueError("consolidation steps must not be negative")
     if (
             args.consolidation_retention_weight <= 0
-            or args.consolidation_locality_weight < 0):
+            or args.consolidation_locality_weight < 0
+            or args.consolidation_replay_temperature < 0):
         raise ValueError("consolidation loss weights are out of range")
     if args.gate_refiner_width < 0:
         raise ValueError("gate refiner width must not be negative")
+    if args.gate_extension_width < 0:
+        raise ValueError("gate extension width must not be negative")
+    if (
+            args.acquisition_refiner_only
+            and args.acquisition_gate_extension_only):
+        raise ValueError(
+            "acquisition cannot target two gate branches at once")
     if not 0.0 <= args.blend_start <= args.blend_end <= 1.0:
         raise ValueError(
             "blend curriculum must satisfy 0 <= start <= end <= 1")
@@ -231,6 +307,9 @@ def main() -> None:
         raise ValueError("gate leak must not be negative")
     if not 0.0 < args.gate_leak_anneal_fraction <= 1.0:
         raise ValueError("gate leak anneal fraction must be within (0, 1]")
+    if args.skip_final_evaluation and args.candidate_checkpoint_out is None:
+        raise ValueError(
+            "skipping final evaluation requires a candidate checkpoint path")
 
     seed_everything(args.seed)
     device = torch.device(args.device)
@@ -244,6 +323,20 @@ def main() -> None:
         if task == "pair_relation")
     relation_replay_count = sum(
         task == "pair_relation" for task, _ in replay_specs)
+    consolidation_replay_weights = (
+        tuple(
+            float(value)
+            for value in args.consolidation_replay_weights.split(","))
+        if args.consolidation_replay_weights is not None else None)
+    if (
+            consolidation_replay_weights is not None
+            and (
+                len(consolidation_replay_weights) != len(replay_specs)
+                or any(
+                    value <= 0 for value
+                    in consolidation_replay_weights))):
+        raise ValueError(
+            "consolidation replay weights must align and be positive")
     payload, teacher = _load(args.parent, device)
     teacher.eval()
     for parameter in teacher.parameters():
@@ -275,6 +368,34 @@ def main() -> None:
         configuration["skill_adapter_gate_refiner_widths"] = (
             existing_refiners)
     refiner_width = existing_refiners[slot]
+    if args.acquisition_refiner_only and not refiner_width:
+        raise ValueError(
+            "refiner-only acquisition requires an existing gate refiner")
+    existing_extensions = tuple(
+        configuration.get("skill_adapter_gate_extension_widths", ()))
+    if len(existing_extensions) < len(slots):
+        existing_extensions = existing_extensions + (
+            0,) * (len(slots) - len(existing_extensions))
+    parent_extension_width = existing_extensions[slot]
+    inserting_extension = (
+        args.gate_extension_width > 0 and parent_extension_width == 0)
+    if (
+            args.gate_extension_width > 0
+            and parent_extension_width not in (
+                0, args.gate_extension_width)):
+        raise ValueError(
+            "requested gate extension width conflicts with the parent")
+    if inserting_extension:
+        existing_extensions = (
+            existing_extensions[:slot]
+            + (args.gate_extension_width,)
+            + existing_extensions[slot + 1:])
+        configuration["skill_adapter_gate_extension_widths"] = (
+            existing_extensions)
+    extension_width = existing_extensions[slot]
+    if args.acquisition_gate_extension_only and not extension_width:
+        raise ValueError(
+            "extension-only acquisition requires a gate extension")
 
     student = UnifiedCognitiveController(**configuration).to(device)
     missing, unexpected = student.load_state_dict(
@@ -282,21 +403,32 @@ def main() -> None:
     expected_missing = {
         name for name in student.state_dict()
         if (
-            inserting_refiner
-            and name.startswith(
-                f"skill_adapter_gate_refiners.{slot}."))}
+            (
+                inserting_refiner
+                and name.startswith(
+                    f"skill_adapter_gate_refiners.{slot}."))
+            or (
+                inserting_extension
+                and name.startswith(
+                    f"skill_adapter_gate_extensions.{slot}.")))}
     if set(missing) != expected_missing or unexpected:
         raise RuntimeError(
             f"unexpected refiner insertion mismatch: "
             f"missing={missing}, unexpected={unexpected}")
     if args.initialization == "reset":
         _reset_slot(student, configuration, slot=slot)
+    acquisition_prefixes = (
+        (f"skill_adapter_gate_refiners.{slot}.",)
+        if args.acquisition_refiner_only
+        else (
+            (f"skill_adapter_gate_extensions.{slot}.",)
+            if args.acquisition_gate_extension_only else prefixes))
     for name, parameter in student.named_parameters():
-        parameter.requires_grad_(name.startswith(prefixes))
+        parameter.requires_grad_(name.startswith(acquisition_prefixes))
     frozen_initial = {
         name: value.detach().cpu().clone()
         for name, value in student.state_dict().items()
-        if not name.startswith(prefixes)}
+        if not name.startswith(acquisition_prefixes)}
     slot_initial = {
         name: value.detach().cpu().clone()
         for name, value in student.state_dict().items()
@@ -371,7 +503,8 @@ def main() -> None:
         ]
         replay_losses = [value for value, _, _ in replay_results]
         residual_norms = [value for _, value, _ in replay_results]
-        retention_loss = torch.stack(replay_losses).mean()
+        retention_loss, replay_weights = _prioritized_replay_loss(
+            replay_losses, temperature=0.0)
         locality = _unrelated_locality(residual_norms, replay_specs)
         loss = (
             skill_loss
@@ -394,6 +527,8 @@ def main() -> None:
                     else appearance_blend),
                 "skill_loss": float(skill_loss.detach()),
                 "retention_loss": float(retention_loss.detach()),
+                "replay_weights": [
+                    float(value) for value in replay_weights.detach()],
                 "unrelated_event_residual_norm": float(locality.detach()),
                 "relation_residual_norms": [
                     float(value.detach())
@@ -405,14 +540,19 @@ def main() -> None:
         # Freeze the broadened relation and learn only where it should speak.
         # Joint optimization otherwise changes content faster than the gate can
         # learn the relation-family boundary.
-        if not refiner_width:
+        if not (
+                extension_width
+                if args.acquisition_gate_extension_only
+                else refiner_width):
             raise ValueError(
-                "staged consolidation requires a nonlinear gate refiner")
+                "staged consolidation requires a nonlinear gate branch")
         # The old linear gate offers a cheap but invalid solution: close on
         # every event. Freeze it and train only the nonlinear correction, so
         # localization has to depend on event structure.
         gate_prefixes = (
-            f"skill_adapter_gate_refiners.{slot}.",)
+            (f"skill_adapter_gate_extensions.{slot}.",)
+            if args.acquisition_gate_extension_only
+            else (f"skill_adapter_gate_refiners.{slot}.",))
         acquisition_teacher = copy.deepcopy(student).eval()
         for parameter in acquisition_teacher.parameters():
             parameter.requires_grad_(False)
@@ -459,7 +599,10 @@ def main() -> None:
             ]
             replay_losses = [value for value, _, _ in replay_results]
             residual_norms = [value for _, value, _ in replay_results]
-            retention_loss = torch.stack(replay_losses).mean()
+            retention_loss, replay_weights = _prioritized_replay_loss(
+                replay_losses,
+                temperature=args.consolidation_replay_temperature,
+                base_weights=consolidation_replay_weights)
             locality = _unrelated_locality(residual_norms, replay_specs)
             loss = (
                 skill_loss
@@ -476,6 +619,8 @@ def main() -> None:
                     "new_batch_accuracy": observed_accuracy,
                     "skill_loss": float(skill_loss.detach()),
                     "retention_loss": float(retention_loss.detach()),
+                    "replay_weights": [
+                        float(value) for value in replay_weights.detach()],
                     "unrelated_event_residual_norm":
                         float(locality.detach()),
                     "relation_residual_norms": [
@@ -486,6 +631,90 @@ def main() -> None:
 
     # All capability and retention claims use the deployed exact-zero gate.
     student.skill_adapter_gate_leak = 0.0
+    if args.skip_final_evaluation:
+        # Population arms are not promoted individually.  Avoid running seven
+        # complete causal suites per arm: a compact held-out selector chooses
+        # one candidate, and only that winner receives the full audit.
+        frozen_bit_identical = all(
+            torch.equal(
+                frozen_initial[name],
+                student.state_dict()[name].detach().cpu())
+            for name in frozen_initial)
+        slot_change = sum(
+            float(
+                (student.state_dict()[name].detach().cpu() - before)
+                .square().sum())
+            for name, before in slot_initial.items()) ** 0.5
+        accounting = {
+            "new_unique_lifetimes":
+                (args.steps + args.consolidation_steps) * args.batch_size,
+            "new_verifier_bits":
+                (args.steps + args.consolidation_steps)
+                * args.batch_size * 6,
+            "replay_lifetimes_per_stream":
+                (args.steps + args.consolidation_steps)
+                * args.replay_batch_size,
+            "replay_streams": len(replay_specs),
+            "replay_specs": replay_specs,
+            "total_verifier_bits":
+                (args.steps + args.consolidation_steps) * (
+                    args.batch_size
+                    + len(replay_specs) * args.replay_batch_size) * 6,
+            "optimizer_updates": args.steps + args.consolidation_steps,
+        }
+        candidate_path = args.candidate_checkpoint_out
+        assert candidate_path is not None
+        candidate_path.parent.mkdir(parents=True, exist_ok=True)
+        torch.save({
+            "schema": "unified-cognitive-controller-v1",
+            "model_configuration": configuration,
+            "state_dict": student.state_dict(),
+            "source_report": str(args.report),
+            "admission_status": "unpromoted_population_candidate",
+        }, candidate_path)
+        report = {
+            "schema": "pair-relation-appearance-bridge-candidate-v1",
+            "claim_boundary": (
+                "This training-only population arm has no capability claim. "
+                "It received pixels, opaque attempted actions, scalar "
+                "outcomes, and opaque behavior rehearsal, without semantic "
+                "labels or correct unattempted actions."),
+            "configuration": {
+                **vars(args),
+                "parent": str(args.parent),
+                "report": str(args.report),
+                "checkpoint_out": (
+                    str(args.checkpoint_out)
+                    if args.checkpoint_out is not None else None),
+                "candidate_checkpoint_out": str(candidate_path),
+                "parent_gate_refiner_width": parent_refiner_width,
+                "effective_gate_refiner_width": refiner_width,
+                "inserted_gate_refiner": inserting_refiner,
+                "parent_gate_extension_width": parent_extension_width,
+                "effective_gate_extension_width": extension_width,
+                "inserted_gate_extension": inserting_extension,
+                "acquisition_trainable_prefixes": acquisition_prefixes,
+            },
+            "history": history,
+            "accounting": accounting,
+            "frozen_base_bit_identical": frozen_bit_identical,
+            "slot_l2_change": slot_change,
+            "total_seconds": time.perf_counter() - started,
+            "candidate_checkpoint_saved": True,
+            "required_gates_passed": None,
+            "checkpoint_saved": False,
+        }
+        args.report.parent.mkdir(parents=True, exist_ok=True)
+        args.report.write_text(
+            json.dumps(report, indent=2, sort_keys=True) + "\n")
+        print(json.dumps({
+            "initialization": args.initialization,
+            "candidate_checkpoint_saved": True,
+            "evaluation_skipped": True,
+            "seconds": report["total_seconds"],
+        }, sort_keys=True))
+        return
+
     evaluations = {
         "new_appearance": evaluate(
             student, count=args.test_lifetimes, trials=6,
@@ -548,9 +777,16 @@ def main() -> None:
             "checkpoint_out": (
                 str(args.checkpoint_out)
                 if args.checkpoint_out is not None else None),
+            "candidate_checkpoint_out": (
+                str(args.candidate_checkpoint_out)
+                if args.candidate_checkpoint_out is not None else None),
             "parent_gate_refiner_width": parent_refiner_width,
             "effective_gate_refiner_width": refiner_width,
             "inserted_gate_refiner": inserting_refiner,
+            "parent_gate_extension_width": parent_extension_width,
+            "effective_gate_extension_width": extension_width,
+            "inserted_gate_extension": inserting_extension,
+            "acquisition_trainable_prefixes": acquisition_prefixes,
         },
         "history": history,
         "accounting": {

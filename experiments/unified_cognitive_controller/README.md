@@ -1209,9 +1209,18 @@ optional-compute audit found that zero extra recurrent thoughts already
 masters all three appearances, so the relation is deployed at one controller
 pass per sensory event.
 
-The fixed endpoint is still seed-sensitive.  The next training mechanism
-should select or stop candidates from verifier-held-out trajectories while
-accounting all population search outcomes separately.
+The original 56-update endpoint was seed-sensitive.  A later fixed
+64-acquisition plus 32-consolidation schedule crossed the ignition valley on
+three of three fresh seeds without changing the architecture.  Mean held-out
+bars, diamonds, and dot-pair accuracy was 99.61%, 96.62%, and 97.81%, with
+every unrelated retention score above 90%.
+
+A proposed additive gate extension and a matched whole-slot version also
+worked, but the old architecture passed the same seeds and budget.  Added
+capacity and population selection are therefore not credited for the gain.
+The promoted seed-9672 checkpoint passed a fresh 8,192-lifetime causal audit
+at 99.65%, 97.85%, and 97.78%, and already operates at zero optional thoughts.
+The next curriculum axis is a new relation on the familiar appearances.
 
 Full record:
-`session_records/pair_relation_acquire_compile_compound_2026-07-29/README.md`.
+`session_records/pair_relation_robust_compound_2026-07-29/README.md`.

@@ -497,3 +497,25 @@ repertoire.
 
 The 56-update endpoint is seed-sensitive and is not claimed as a robust
 stable-bits threshold.
+
+## Robust three-appearance pair-relation controller
+
+`unified_pair_relation_robust_three_appearance_seed9672.pt` replaces the
+seed-sensitive endpoint with a replicated fixed recipe and no architecture
+change.
+
+- SHA-256:
+  `1ff5d38258a8c683fbc7dcfd6a1098e20c18ae35d5372d377fd8874e29544f54`
+- Parent: `unified_pair_relation_appearance_bridge_seed9303.pt`
+- Training: 64 acquisition plus 32 consolidation updates
+- Experience: 3,072 new lifetimes, 18,432 new verifier bits, and 64,512 total
+  verifier bits including balanced rehearsal
+- Three fresh seeds: 3/3 complete capability and retention gates passed
+- Mean held-out bars/diamonds/dot-pairs: 99.61%/96.62%/97.81%
+- Independent 8,192-lifetime audit: 99.65%/97.85%/97.78%
+- Missing-second-object controls: 49.41%/49.81%/50.01%
+- Inference: one controller pass per event and zero optional thought passes
+
+A matched zero-output gate extension also replicated, but the unchanged
+architecture passed the same seeds and budget.  The promoted claim is
+therefore a robust curriculum threshold, not an architecture improvement.

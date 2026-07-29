@@ -5,8 +5,8 @@ import torch
 
 from .model import UnifiedCognitiveController
 from .train_pair_relation_appearance_bridge import (
-    _concatenate, _pair_loss, _replay_specs, _reset_slot, _slot_prefixes,
-    _unrelated_locality)
+    _concatenate, _pair_loss, _prioritized_replay_loss, _replay_specs,
+    _reset_slot, _slot_prefixes, _unrelated_locality)
 from .environment import generate_lifetimes
 
 
@@ -18,6 +18,7 @@ def test_reset_replaces_only_selected_slot() -> None:
         "skill_adapter_widths": (16,),
         "skill_adapter_gate_mode": "relu",
         "skill_adapter_gate_refiner_widths": (8,),
+        "skill_adapter_gate_extension_widths": (8,),
     }
     model = UnifiedCognitiveController(**configuration)
     before = {
@@ -26,6 +27,7 @@ def test_reset_replaces_only_selected_slot() -> None:
     # Make the learned slot observably different from its initializer.
     with torch.no_grad():
         model.skill_adapters[0][-1].bias.fill_(3.0)
+        model.skill_adapter_gate_extensions[0][-1].bias.fill_(2.0)
     _reset_slot(model, configuration, slot=0)
     prefixes = _slot_prefixes(0)
     for name, value in model.state_dict().items():
@@ -35,6 +37,10 @@ def test_reset_replaces_only_selected_slot() -> None:
     assert torch.equal(
         model.skill_adapters[0][-1].bias,
         torch.zeros_like(model.skill_adapters[0][-1].bias))
+    assert torch.equal(
+        model.skill_adapter_gate_extensions[0][-1].bias,
+        torch.zeros_like(
+            model.skill_adapter_gate_extensions[0][-1].bias))
 
 
 def test_pair_loss_uses_every_event() -> None:
@@ -137,3 +143,62 @@ def test_zero_output_gate_refiner_is_bit_identical() -> None:
     expanded_result = rollout(
         expanded, batch, sample_actions=False, feedback_trials=1)
     assert torch.equal(base_result["logits"], expanded_result["logits"])
+
+
+def test_zero_output_gate_extension_is_bit_identical() -> None:
+    base_configuration = {
+        "width": 32,
+        "workspace_slots": 4,
+        "intention_width": 8,
+        "skill_adapter_widths": (16,),
+        "skill_adapter_gate_mode": "relu",
+        "skill_adapter_gate_refiner_widths": (8,),
+    }
+    base = UnifiedCognitiveController(**base_configuration)
+    expanded = UnifiedCognitiveController(
+        **base_configuration,
+        skill_adapter_gate_extension_widths=(8,))
+    missing, unexpected = expanded.load_state_dict(
+        base.state_dict(), strict=False)
+    assert missing
+    assert all(
+        name.startswith("skill_adapter_gate_extensions.0.")
+        for name in missing)
+    assert not unexpected
+    batch = generate_lifetimes(
+        8, 6, seed=9406, task="pair_relation",
+        appearance="dot_pairs")
+    from .train import rollout
+    base_result = rollout(
+        base, batch, sample_actions=False, feedback_trials=1)
+    expanded_result = rollout(
+        expanded, batch, sample_actions=False, feedback_trials=1)
+    assert torch.equal(base_result["logits"], expanded_result["logits"])
+
+
+def test_replay_priority_is_uniform_at_zero_temperature() -> None:
+    losses = [torch.tensor(1.0), torch.tensor(2.0), torch.tensor(3.0)]
+    loss, weights = _prioritized_replay_loss(losses, temperature=0.0)
+    assert torch.equal(loss, torch.tensor(2.0))
+    assert torch.allclose(weights, torch.full((3,), 1 / 3))
+
+
+def test_replay_priority_concentrates_on_largest_detached_loss() -> None:
+    losses = [
+        torch.tensor(1.0, requires_grad=True),
+        torch.tensor(3.0, requires_grad=True),
+    ]
+    loss, weights = _prioritized_replay_loss(losses, temperature=0.1)
+    assert weights[1] > 0.99
+    loss.backward()
+    assert losses[1].grad is not None
+    assert float(losses[1].grad) > 0.99
+
+
+def test_replay_base_weights_reallocate_without_changing_scale() -> None:
+    losses = [torch.tensor(1.0), torch.tensor(1.0), torch.tensor(1.0)]
+    loss, weights = _prioritized_replay_loss(
+        losses, temperature=0.0, base_weights=(1.0, 2.0, 1.0))
+    assert torch.equal(loss, torch.tensor(1.0))
+    assert torch.allclose(
+        weights, torch.tensor((0.25, 0.5, 0.25)))

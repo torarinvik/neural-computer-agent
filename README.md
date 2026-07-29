@@ -31,24 +31,26 @@ Final accuracy alone is not an adequate score.
 
 ## Current audited frontier
 
-The same/different repertoire now spans bars, diamonds, and disconnected dot
-pairs in one controller.  The promoted checkpoint scored 99.96%, 97.83%, and
-96.44% on an independent 8,192-lifetime audit.  Missing-second-object controls
-were 49.60–50.05%, and blank-vision, valid pixel-counterfactual accuracy, and
-prediction-flip gates passed for every appearance.
+The same/different repertoire now robustly spans bars, diamonds, and
+disconnected dot pairs in one unchanged controller architecture.  A fixed
+64-update acquisition plus 32-update consolidation recipe replicated on all
+three fresh seeds.  Mean held-out accuracy was 99.61%, 96.62%, and 97.81%;
+every inherited primitive remained above 90%.
 
-Dot-pair acquisition used 1,792 new lifetimes—5.71× fewer than the preceding
-diamond bridge.  At the same new-experience budget, the two-contour lineage
-beat the bars-only lineage by 9.66, 6.29, and 7.42 percentage points across
-three paired seeds.  A reset-slot control learned dots only by losing the old
-relation forms.  This is the first replicated lineage-level evidence that a
-larger retained repertoire accelerates acquisition of the next appearance.
+The robust threshold uses 3,072 new lifetimes and 64,512 total verifier bits:
+3.33 times fewer new lifetimes and 2.86 times fewer total outcomes than the
+preceding diamond bridge.  A fresh 8,192-lifetime audit of the promoted
+checkpoint scored 99.65%, 97.85%, and 97.78%, while missing-second-object
+controls remained at 49.41–50.01%.
 
-The controller also masters all three forms at the physical inference minimum:
-one controller pass per sensory event and zero optional recurrent thoughts.
-The fixed training duration remains seed-sensitive, so adaptive stopping is
-the next sample-efficiency frontier.  See
-`session_records/pair_relation_acquire_compile_compound_2026-07-29/README.md`.
+Matched controls showed that a proposed additive gate extension was not
+necessary.  The gain came from letting the existing architecture cross its
+ignition valley and then consolidating it, not from adding capacity or running
+a population search.  Inference is already at one controller pass per event
+with zero optional thoughts.  The next frontier is a genuinely new relation
+on familiar appearances, with experience-to-threshold measured before any
+execution-step compression.  See
+`session_records/pair_relation_robust_compound_2026-07-29/README.md`.
 
 The repertoire now includes its first cross-family simultaneous visual
 relation. The same one-controller lineage learned whether two rendered objects
