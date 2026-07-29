@@ -349,7 +349,19 @@ def generate_lifetimes(
             masks = mask_bank[identities, positions]
             pair_masks = mask_bank[pair_identities, pair_positions]
         else:
-            magnitude_levels = _magnitude_mask_levels(mask_bank)
+            if appearance_blend is None:
+                magnitude_levels = _magnitude_mask_levels(mask_bank)
+            else:
+                # Resize each binary endpoint before blending. Thresholding a
+                # blended mask first turns every nonzero blend into the same
+                # union contour, destroying the intended gradual curriculum.
+                magnitude_levels = (
+                    (1.0 - appearance_blend)
+                    * _magnitude_mask_levels(
+                        _MAGNITUDE_MASK_BANKS["bars"])
+                    + appearance_blend
+                    * _magnitude_mask_levels(
+                        _MAGNITUDE_MASK_BANKS["diamonds"]))
             first_level, second_level = _magnitude_level_indices(
                 magnitude_interval, pair_relation)
             masks = magnitude_levels[first_level, identities, positions]

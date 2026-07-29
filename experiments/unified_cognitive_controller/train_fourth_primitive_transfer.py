@@ -357,7 +357,8 @@ def _operation_cue_ablation_accuracy(
         model: UnifiedCognitiveController, *, count: int, seed: int,
         device: torch.device, support_trials: int,
         new_task: str = DEFAULT_NEW_TASK,
-        appearance: str = "bars") -> float:
+        appearance: str = "bars",
+        appearance_blend: float | None = None) -> float:
     """Rerender the same public events without the operation-mode symbol.
 
     The composition cue is the only pixel difference from the direct-context
@@ -367,6 +368,7 @@ def _operation_cue_ablation_accuracy(
     marked = generate_lifetimes(
         count, 6, seed=seed, heldout=True,
         task=new_task, appearance=appearance,
+        appearance_blend=appearance_blend,
         support_trials=support_trials, device=device)
     if new_task in (
             "pair_relation", "pair_magnitude",

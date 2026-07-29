@@ -541,3 +541,26 @@ model repository under `checkpoints/`.
 
 The promoted skill is bars magnitude. Zero-shot magnitude on unseen diamonds
 and dot pairs remains near 60% and is the next gradual appearance bridge.
+
+## Gradual magnitude appearance bridge
+
+`unified_pair_magnitude_gradual_bridge_seed21515.pt` is hosted in the
+Hugging Face model repository under `checkpoints/`.
+
+- SHA-256:
+  `594f9f45b99c3d6d78536d2d0d1af40cb988e62cb6d128a774a95496ffb4f392`
+- Parent: `unified_pair_magnitude_compound_seed21475.pt`
+- Size: approximately 1.5 MB; 388,191 controller parameters
+- Acquisition: 256 new lifetimes, 1,536 new verifier bits, 8 updates
+- Total with seven complete replay streams: 480 lifetimes / 2,880 bits
+- Three fresh seeds: 3/3 complete acquisition, causality, and retention gates
+- Independent 16,384-lifetime target audit: 91.36%
+- Missing-second-object control: 60.52%
+- Inherited-read ablation: 79.20%, a 12.16-point causal loss
+- Original magnitude, three relation appearances, and all unrelated skills
+  retained
+- Zero-shot next-rung transfer: 88.57% parent versus 90.68% child
+- Inference: one controller pass per event; optional thought hurts
+
+The controller learns the first just-beyond-ability bars→diamonds morph and
+zero-shot masters the next two harder morph levels. Full diamonds remain open.

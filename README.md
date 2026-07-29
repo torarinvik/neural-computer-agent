@@ -752,3 +752,22 @@ accuracy. The checkpoint is stored on Hugging Face as
 The next gradual rung is magnitude across morphed, diamond, and disconnected
 dot-pair appearances, with sample efficiency measured before optional thought.
 See `session_records/pair_magnitude_compounding_2026-07-29/README.md`.
+
+## Latest breakthrough: learned skill advances the next unseen frontier
+
+The magnitude controller now learns a gradual contour change from only 256 new
+lifetimes while preserving every older capability. Three of three seeds pass.
+On a fresh 16,384-lifetime audit, the promoted controller scores 91.36%;
+deleting one object falls to 60.52%, and disabling inherited latent reads costs
+12.16 percentage points.
+
+This learned rung produces a verified compounding gain. On identical unseen
+17.1875% contour events, the parent scores 88.57% and fails mastery; the child
+scores 90.68% and passes without any training on that rung. It also zero-shot
+masters 18.75%. The exact reset-memory control remains near chance.
+
+The controller still requires only one pass per event. Its next gradual
+boundary is 20.3125% bars→diamonds morph.
+
+See
+`session_records/pair_magnitude_gradual_bridge_2026-07-29/README.md`.

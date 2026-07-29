@@ -115,11 +115,13 @@ def evaluate(
         model: UnifiedCognitiveController, *, count: int, trials: int,
         seed: int, device: torch.device,
         task: str, feedback_trials: int,
-        appearance: str = "bars") -> dict[str, object]:
+        appearance: str = "bars",
+        appearance_blend: float | None = None) -> dict[str, object]:
     model.eval()
     normal_batch = generate_lifetimes(
         count, trials, seed=seed, heldout=True, task=task,
-        appearance=appearance, support_trials=feedback_trials, device=device)
+        appearance=appearance, appearance_blend=appearance_blend,
+        support_trials=feedback_trials, device=device)
     reversed_batch = generate_lifetimes(
         count, trials, seed=seed, heldout=True,
         reverse_rules=(task not in (
@@ -132,6 +134,7 @@ def evaluate(
             "visible_pair_magnitude",
             "visible_context", "visible_context_xor")),
         task=task, appearance=appearance,
+        appearance_blend=appearance_blend,
         support_trials=feedback_trials, device=device)
     normal = rollout(
         model, normal_batch, sample_actions=False,

@@ -23,14 +23,17 @@ from .environment import generate_lifetimes
 def evaluate_budget(
         model, *, count: int, trials: int, seed: int,
         extra_thought_steps: int, device: torch.device,
+        appearance_blend: float = 0.0,
         ) -> dict[str, float | int | bool]:
     normal = generate_lifetimes(
         count, trials, seed=seed, heldout=True,
         task="visible_pair_magnitude", appearance="bars",
+        appearance_blend=appearance_blend,
         support_trials=1, device=device)
     reversed_batch = generate_lifetimes(
         count, trials, seed=seed, heldout=True,
         task="visible_pair_magnitude", appearance="bars",
+        appearance_blend=appearance_blend,
         support_trials=1, reverse_contexts=True, device=device)
     if device.type == "cuda":
         torch.cuda.synchronize(device)
@@ -73,6 +76,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=23461)
     parser.add_argument("--count", type=int, default=8192)
     parser.add_argument("--trials", type=int, default=6)
+    parser.add_argument("--appearance-blend", type=float, default=0.0)
     parser.add_argument("--extra-thought-budgets", default="0,1,2,4,8")
     parser.add_argument(
         "--device",
@@ -86,6 +90,8 @@ def main() -> None:
         raise ValueError("thought budgets must be unique nonnegative integers")
     if args.count < 2 or args.count % 2:
         raise ValueError("count must be positive and divisible by two")
+    if not 0.0 <= args.appearance_blend <= 1.0:
+        raise ValueError("appearance blend must be within [0, 1]")
 
     device = torch.device(args.device)
     model = _load(args.checkpoint, device)
@@ -93,7 +99,8 @@ def main() -> None:
         str(budget): evaluate_budget(
             model, count=args.count, trials=args.trials,
             seed=args.seed + 100_000 * budget,
-            extra_thought_steps=budget, device=device)
+            extra_thought_steps=budget, device=device,
+            appearance_blend=args.appearance_blend)
         for budget in budgets
     }
     passing = [budget for budget in budgets if results[str(budget)]["mastery"]]
@@ -109,6 +116,7 @@ def main() -> None:
             "seed": args.seed,
             "count": args.count,
             "trials": args.trials,
+            "appearance_blend": args.appearance_blend,
             "extra_thought_budgets": budgets,
             "device": str(device),
         },

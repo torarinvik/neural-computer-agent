@@ -1255,3 +1255,34 @@ frontier is a gradual magnitude appearance bridge with a reset-read control.
 
 Full record:
 `session_records/pair_magnitude_compounding_2026-07-29/README.md`.
+
+## Gradual magnitude learning compounds forward
+
+The first magnitude appearance bridge now closes the compounding loop. A
+renderer audit first caught and fixed a false morph in which thresholding made
+every nonzero blend the same union contour. With a real continuous
+bars→diamonds axis, the parent masters 14.0625% morph and first fails at
+15.625%.
+
+Editing the mastered magnitude slot damaged bars and was rejected. The
+successful controller freezes every mastered tensor and appends one zero-output
+64-unit successor that reads the immediately preceding magnitude slot. Eight
+updates on 256 new lifetimes, with 224 replay lifetimes, pass every gate on
+three of three seeds. Target accuracy is 90.37–91.22%; a matched reset
+immediate-magnitude control remains at 52.60%.
+
+The promoted checkpoint passes a fresh 16,384-lifetime audit at 91.36%.
+Deleting object two falls to 60.52%; disabling inherited reads falls to
+79.20%. Bars magnitude, all three relation appearances, binary mapping,
+visible context, and XOR remain mastered.
+
+Most importantly, a paired parent/child frontier audit shows real forward
+transfer. At the next unseen 17.1875% morph, the parent scores 88.57% and
+fails; the child scores 90.68% and passes with zero new training. The child
+also masters 18.75%, and its advantage grows to +3.51 points by 25%.
+
+Zero optional thought remains optimal. The next exact rung is 20.3125%, the
+first point beyond the child’s current causal mastery.
+
+Full record:
+`session_records/pair_magnitude_gradual_bridge_2026-07-29/README.md`.

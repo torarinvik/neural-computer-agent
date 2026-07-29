@@ -36,6 +36,29 @@ def test_magnitude_positions_do_not_change_legacy_renderer_banks() -> None:
             _MAGNITUDE_MASK_BANKS[appearance][:, :4])
 
 
+def test_pair_magnitude_blend_has_exact_distinct_endpoints() -> None:
+    bars = generate_lifetimes(
+        32, 6, seed=21108, task="visible_pair_magnitude",
+        appearance="bars")
+    zero = generate_lifetimes(
+        32, 6, seed=21108, task="visible_pair_magnitude",
+        appearance="diamonds", appearance_blend=0.0)
+    diamonds = generate_lifetimes(
+        32, 6, seed=21108, task="visible_pair_magnitude",
+        appearance="diamonds")
+    one = generate_lifetimes(
+        32, 6, seed=21108, task="visible_pair_magnitude",
+        appearance="bars", appearance_blend=1.0)
+    middle = generate_lifetimes(
+        32, 6, seed=21108, task="visible_pair_magnitude",
+        appearance="bars", appearance_blend=0.5)
+    assert torch.equal(zero.frames, bars.frames)
+    assert torch.equal(one.frames, diamonds.frames)
+    assert not torch.equal(middle.frames, bars.frames)
+    assert not torch.equal(middle.frames, diamonds.frames)
+    assert torch.equal(middle.correct_actions, bars.correct_actions)
+
+
 def test_pair_magnitude_counterfactual_swaps_order_and_every_answer() -> None:
     normal = generate_lifetimes(
         32, 6, seed=21102, heldout=True, task="pair_magnitude")
