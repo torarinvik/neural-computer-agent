@@ -1,0 +1,72 @@
+{
+  "schema": "pair-numerosity-small-experiment-ladder-v1",
+  "parent": "unified_pair_numerosity_compounding_seed23712.pt",
+  "target_blend": 0.248,
+  "experiments": [
+    {
+      "batch_size": 4,
+      "epochs_per_batch": 16,
+      "new_lifetimes": 4,
+      "overall_accuracy": 0.8993327021598816,
+      "passed": false,
+      "seed": 24011,
+      "steps": 1
+    },
+    {
+      "batch_size": 4,
+      "epochs_per_batch": 24,
+      "new_lifetimes": 4,
+      "overall_accuracy": 0.9021809697151184,
+      "passed": true,
+      "seed": 24011,
+      "steps": 1
+    },
+    {
+      "batch_size": 4,
+      "epochs_per_batch": 24,
+      "new_lifetimes": 4,
+      "overall_accuracy": 0.8951008915901184,
+      "passed": false,
+      "seed": 24012,
+      "steps": 1
+    },
+    {
+      "batch_size": 4,
+      "epochs_per_batch": 32,
+      "new_lifetimes": 4,
+      "overall_accuracy": 0.8956705927848816,
+      "passed": false,
+      "seed": 24012,
+      "steps": 1
+    },
+    {
+      "batch_size": 4,
+      "blend_start": 0.244,
+      "epochs_per_batch": 16,
+      "new_lifetimes": 8,
+      "overall_accuracy": 0.8779296875,
+      "passed": false,
+      "seed": 24021,
+      "steps": 2
+    },
+    {
+      "batch_size": 8,
+      "epochs_per_batch": 16,
+      "new_lifetimes": 8,
+      "overall_accuracy": 0.9029133915901184,
+      "passed": true,
+      "seed": 24031,
+      "steps": 1
+    },
+    {
+      "batch_size": 8,
+      "epochs_per_batch": 16,
+      "new_lifetimes": 8,
+      "overall_accuracy": 0.9033203125,
+      "passed": false,
+      "reason": "small-screen counterfactual accuracy was 0.8980; large shared audit passed",
+      "seed": 24032,
+      "steps": 1
+    }
+  ]
+}

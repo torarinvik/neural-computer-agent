@@ -45,6 +45,7 @@ held-out verifier audits.
 | `unified_pair_magnitude_repeated_compounding_seed23105.pt` | Repeated-compounding magnitude frontier learned from 44 new lifetimes |
 | `unified_pair_numerosity_adjacent_bridge_seed23602.pt` | Adjacent magnitude→numerosity bridge learned from 16 new lifetimes |
 | `unified_pair_numerosity_compounding_seed23712.pt` | Same-slot numerosity continuation learned from four new lifetimes |
+| `unified_pair_numerosity_second_compounding_seed24031.pt` | Second prospective same-slot continuation learned from eight new lifetimes |
 
 ## Audited results
 
@@ -94,6 +95,18 @@ verifier outcomes, not 32.
 - two-lifetime continuation passed only 1/2 real seeds, so four is the current
   replicated sample-efficiency floor.
 
+The next prospective experiment advanced the same slot from 23.0% to a 24.8%
+dot-appearance blend:
+
+- the frozen parent failed 3/3 boundary seeds at 24.8%;
+- four lifetimes were unstable, while eight diverse lifetimes replicated on
+  2/2 real-outcome seeds in a shared 32,768-lifetime audit;
+- matched shuffled-outcome controls failed on 2/2 seeds;
+- the selected child passed the complete 8,192-lifetime causal and retention
+  suite, with every inherited family within two points of its frozen parent;
+- no parameter was added, and eight new lifetimes remain a 50% reduction from
+  the initial 16-lifetime numerosity acquisition.
+
 ## Important negative result
 
 The mastered fixed-target checkpoint caused negative transfer when its weights
@@ -123,5 +136,8 @@ This is experimental research. It now demonstrates causally audited elementary
 identify→observe→act behavior, repeated sample-efficiency gains within a
 magnitude lineage, adjacent transfer into discrete numerosity, and one
 replicated within-numerosity compounding step that used 75% less new
-experience. It does not yet demonstrate general intelligence, pure-dot
-numerosity mastery, or unbounded compounding across many unrelated primitives.
+experience. A second prospective continuation now shows that the effect
+repeats at a harder frontier with 50% less experience than initial acquisition.
+It does not yet demonstrate general intelligence, pure-dot numerosity mastery,
+monotonically decreasing sample cost, or unbounded compounding across many
+unrelated primitives.
