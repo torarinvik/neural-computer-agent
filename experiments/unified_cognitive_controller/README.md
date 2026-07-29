@@ -1078,3 +1078,28 @@ additional training.
 
 Full record:
 `session_records/diversity_preserving_consolidation_2026-07-29/README.md`.
+
+## Predict when extra representatives are worth reading
+
+An ordinary success predictor collapsed to the shallow action because shallow
+reading already succeeds on roughly 99% of events. A marginal-success
+diagnostic instead asked whether deep reading corrects a shallow failure. The
+latent query plus first representative from each learned class made that event
+0.994 AUC decodable.
+
+A 32,097-parameter critic now predicts this marginal benefit from those
+latents. It trains only from executed shallow/deep scalar outcomes. At the
+replicated 16,392-bit frontier, held-out adaptive accuracy is 99.57% on both
+seeds while mean comparisons fall from about 5.997 to 2.092–2.094. The
+accuracy-first utility exceeds always-deep in both replicas. A 8,196-bit rung
+was seed-sensitive and rejected.
+
+The critic deep-reads only 1.34–1.49% of events, with the highest rate on
+disconnected dot pairs. Feature shuffling removes the advantage, memory
+zeroing falls to chance, verifier shuffling fails, all physical reloads are
+exact, and inherited behavior is bit-identical. The population search used
+147,456 separately accounted verifier outcomes shared across twelve critic
+initializations.
+
+Full record:
+`session_records/adaptive_representative_read_2026-07-29/README.md`.

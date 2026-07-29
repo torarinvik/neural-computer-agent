@@ -85,6 +85,10 @@ def consolidate(
             "valid": torch.ones(
                 streams, capacity, device=values.device, dtype=torch.bool),
             "rule_bits": rules[:, indices].clone(),
+            "cluster_ids": torch.arange(
+                capacity, device=values.device).expand(streams, -1).clone(),
+            "representative_ranks": torch.zeros(
+                streams, capacity, device=values.device, dtype=torch.long),
         }
     if policy not in ("learned", "uncalibrated", "cosine"):
         raise ValueError("unknown consolidation policy")
@@ -93,6 +97,8 @@ def consolidate(
     bank_keys = keys.new_zeros(streams, capacity, width)
     bank_usage = values.new_zeros(streams, capacity)
     bank_rules = rules.new_full((streams, capacity), -1)
+    bank_clusters = rules.new_full((streams, capacity), -1)
+    representative_ranks = rules.new_full((streams, capacity), -1)
     valid = torch.zeros(
         streams, capacity, device=values.device, dtype=torch.bool)
     row = torch.arange(streams, device=values.device)
@@ -104,6 +110,8 @@ def consolidate(
             bank_keys[:, 0] = keys[:, step]
             bank_usage[:, 0] = 1.0
             bank_rules[:, 0] = rules[:, step]
+            bank_clusters[:, 0] = 0
+            representative_ranks[:, 0] = 0
             valid[:, 0] = True
             continue
         if policy == "cosine":
@@ -144,6 +152,19 @@ def consolidate(
             bank_keys[row[has_space], target] = keys[has_space, step]
             bank_usage[row[has_space], target] = 1.0
             bank_rules[row[has_space], target] = rules[has_space, step]
+            next_cluster = bank_clusters.max(-1).values + 1
+            bank_clusters[row[has_space], target] = next_cluster[has_space]
+            representative_ranks[row[has_space], target] = 0
+            diverse_with_space = retain_diverse & has_space
+            if bool(diverse_with_space.any()):
+                diverse_target = free[diverse_with_space]
+                source = matched_slot[diverse_with_space]
+                bank_clusters[
+                    row[diverse_with_space], diverse_target
+                ] = bank_clusters[row[diverse_with_space], source]
+                representative_ranks[
+                    row[diverse_with_space], diverse_target
+                ] = equivalent[diverse_with_space].sum(-1)
             valid[row[has_space], target] = True
         full = unmatched & ~has_space
         if bool(full.any()):
@@ -152,12 +173,17 @@ def consolidate(
             bank_keys[row[full], target] = keys[full, step]
             bank_usage[row[full], target] = 1.0
             bank_rules[row[full], target] = rules[full, step]
+            bank_clusters[row[full], target] = (
+                bank_clusters[full].max(-1).values + 1)
+            representative_ranks[row[full], target] = 0
     return {
         "keys": bank_keys,
         "values": bank_values,
         "usage": bank_usage,
         "valid": valid,
         "rule_bits": bank_rules,
+        "cluster_ids": bank_clusters,
+        "representative_ranks": representative_ranks,
     }
 
 

@@ -113,6 +113,8 @@ class UnifiedCognitiveController(nn.Module):
             adaptive_memory_usage_prior_proposer_hidden: int = 0,
             adaptive_memory_equivalence_hidden: int = 0,
             adaptive_memory_equivalence_calibration: bool = False,
+            adaptive_representative_read_hidden: int = 0,
+            adaptive_representative_read_threshold: float = 0.01,
             relation_adapter_width: int = 0,
             relation_adapter_gated: bool = False,
             action_adapter_width: int = 0,
@@ -139,6 +141,8 @@ class UnifiedCognitiveController(nn.Module):
                 or adaptive_memory_usage_prior_residual_features < 4
                 or adaptive_memory_usage_prior_proposer_hidden < 0
                 or adaptive_memory_equivalence_hidden < 0
+                or adaptive_representative_read_hidden < 0
+                or not 0.0 < adaptive_representative_read_threshold < 1.0
                 or relation_adapter_width < 0
                 or action_adapter_width < 0
                 or skill_adapter_prior_read_limit < 0
@@ -165,6 +169,10 @@ class UnifiedCognitiveController(nn.Module):
             adaptive_memory_equivalence_hidden)
         self.adaptive_memory_equivalence_calibration = (
             adaptive_memory_equivalence_calibration)
+        self.adaptive_representative_read_hidden = (
+            adaptive_representative_read_hidden)
+        self.adaptive_representative_read_threshold = (
+            adaptive_representative_read_threshold)
         self.relation_adapter_width = relation_adapter_width
         self.relation_adapter_gated = relation_adapter_gated
         self.action_adapter_width = action_adapter_width
@@ -444,6 +452,29 @@ class UnifiedCognitiveController(nn.Module):
         self.memory_equivalence_logit_bias = (
             nn.Parameter(torch.zeros(()))
             if adaptive_memory_equivalence_calibration else None)
+        representative_features = width * 5 + 4
+        self.representative_read_critic = (
+            nn.Sequential(
+                nn.Linear(
+                    representative_features,
+                    adaptive_representative_read_hidden),
+                nn.GELU(),
+                nn.Linear(
+                    adaptive_representative_read_hidden,
+                    max(adaptive_representative_read_hidden // 4, 4)),
+                nn.GELU(),
+                nn.Linear(
+                    max(adaptive_representative_read_hidden // 4, 4), 1),
+            )
+            if adaptive_representative_read_hidden > 0 else None)
+        self.register_buffer(
+            "representative_read_feature_mean",
+            torch.zeros(representative_features)
+            if adaptive_representative_read_hidden > 0 else None)
+        self.register_buffer(
+            "representative_read_feature_scale",
+            torch.ones(representative_features)
+            if adaptive_representative_read_hidden > 0 else None)
 
     def effective_memory_usage_prior_scale(self) -> torch.Tensor:
         """Return the task-agnostic nonnegative retrieval-prior strength."""
@@ -570,6 +601,25 @@ class UnifiedCognitiveController(nn.Module):
         # the learned bias supplies the absolute equivalence threshold.
         scale = self.memory_equivalence_logit_scale.clamp_min(0.0)
         return logits * scale + self.memory_equivalence_logit_bias
+
+    def representative_deep_read_probability(
+            self, features: torch.Tensor) -> torch.Tensor:
+        """Predict whether consulting extra within-class rows will help."""
+        if self.representative_read_critic is None:
+            raise RuntimeError(
+                "adaptive representative reading is not enabled")
+        expected = self.width * 5 + 4
+        if features.ndim != 2 or features.shape[1] != expected:
+            raise ValueError(
+                f"representative read features must have shape "
+                f"[batch, {expected}]")
+        assert self.representative_read_feature_mean is not None
+        assert self.representative_read_feature_scale is not None
+        normalized = (
+            (features - self.representative_read_feature_mean)
+            / self.representative_read_feature_scale.clamp_min(1e-4))
+        return torch.sigmoid(
+            self.representative_read_critic(normalized).squeeze(-1))
 
     def memory_equivalence_probability(
             self, features: torch.Tensor, probe_values: torch.Tensor,

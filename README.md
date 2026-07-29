@@ -257,6 +257,28 @@ The current frontier is adaptive diversity budgeting: learn when an
 equivalence class needs one, two, or more representatives from verifier
 history and resource pressure, rather than fixing that allowance by hand.
 
+The read-compute half of that frontier now passes. A 32,097-parameter
+action-conditioned critic reads the fresh latent and the first representative
+from each learned class, then predicts whether consulting the remaining
+representatives will improve verified success. It receives only the two
+attempted read budgets' scalar outcomes.
+
+At the replicated 16,392-verifier-bit frontier, two independent controllers
+reached 99.57% held-out accuracy versus 99.56% and 99.62% for always reading
+all six rows. They averaged only 2.092 and 2.094 comparisons instead of about
+5.997—a 65.1% reduction—and beat the full-read latency-aware verified utility
+in both seeds. A 8,196-bit rung passed one seed and failed the other, so it was
+not promoted.
+
+Shuffled critic features fall near the shallow baseline, zeroed memory falls
+to chance, and shuffled verifier training fails every capability-specific
+gate. All 1,024 physical banks reload exactly, reversed-rule behavior remains
+99.53–99.58%, inherited skills pass, and every old tensor is bit-identical.
+
+The remaining frontier is adaptive physical storage: use accumulated marginal
+read value to prune representatives that are not worth their disk/RAM cost,
+while retaining uncertain diversity until evidence justifies deletion.
+
 The new unified-controller line now has its first retained compounding
 milestone. A single 298,252-parameter controller with one vision encoder,
 recurrent state, generic differentiable workspace, latent intention, and

@@ -1314,6 +1314,53 @@ def test_memory_equivalence_calibration_starts_as_identity() -> None:
     assert model.memory_equivalence_logit_bias.grad is not None
 
 
+def test_representative_read_critic_is_separate_and_trainable() -> None:
+    model = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        adaptive_representative_read_hidden=16)
+    frames = torch.rand(4, 3, 32, 32)
+    state = model.initial_state(4, device=torch.device("cpu"))
+    action = torch.full((4,), 2, dtype=torch.long)
+    zeros = torch.zeros(4)
+    before, _ = model.step(
+        frames, state, action, zeros, zeros)
+    features = torch.randn(4, 32 * 5 + 4)
+    probability = model.representative_deep_read_probability(features)
+    assert probability.shape == (4,)
+    probability.sum().backward()
+    assert model.representative_read_critic is not None
+    assert any(
+        parameter.grad is not None
+        for parameter in model.representative_read_critic.parameters())
+    after, _ = model.step(
+        frames, state, action, zeros, zeros)
+    assert torch.equal(before.logits, after.logits)
+    assert torch.equal(before.memory_value, after.memory_value)
+
+
+def test_representative_read_examples_use_exact_interaction_budget() -> None:
+    from .train_adaptive_representative_read import (
+        representative_read_examples,
+    )
+
+    payload = torch.load(
+        "artifacts/checkpoints/"
+        "unified_equivalence_consolidation_seed20541.pt",
+        map_location="cpu", weights_only=False)
+    configuration = dict(payload["model_configuration"])
+    configuration["adaptive_representative_read_hidden"] = 16
+    model = UnifiedCognitiveController(**configuration)
+    model.load_state_dict(payload["state_dict"], strict=False)
+    examples = representative_read_examples(
+        model, examples=6, seed=20700,
+        reverse_rules=False, corrupt_memory=False,
+        device=torch.device("cpu"))
+    assert examples["features"].shape == (6, model.width * 5 + 4)
+    assert examples["outcomes"].shape == (6, 2)
+    assert examples["comparisons"].shape == (6, 2)
+    assert set(examples["appearance_ids"].tolist()) == {0, 1, 2}
+
+
 def test_natural_equivalence_batch_uses_only_mixed_behavioral_banks() -> None:
     from .train_natural_memory_equivalence import natural_equivalence_batch
 
@@ -1466,6 +1513,18 @@ def test_equivalence_consolidation_can_reserve_in_class_diversity() -> None:
     assert bool((diverse["valid"].sum(-1) <= 4).all())
     assert float(diverse["valid"].sum(-1).float().mean()) > float(
         compact["valid"].sum(-1).float().mean())
+    assert bool((diverse["cluster_ids"][diverse["valid"]] >= 0).all())
+    assert bool(
+        (diverse["representative_ranks"][diverse["valid"]] >= 0).all())
+    for stream in range(8):
+        for cluster in diverse["cluster_ids"][stream].unique():
+            if int(cluster) < 0:
+                continue
+            selected = diverse["cluster_ids"][stream] == cluster
+            ranks = diverse["representative_ranks"][stream, selected]
+            assert torch.equal(
+                ranks.sort().values,
+                torch.arange(ranks.numel(), dtype=torch.long))
 
 
 def test_usage_prior_residual_is_exact_noop_at_insertion() -> None:

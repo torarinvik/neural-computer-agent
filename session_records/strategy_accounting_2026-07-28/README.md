@@ -108,6 +108,16 @@ logical compression. The lesson is not “keep redundancy”; it is “distingui
 useless duplication from variation whose future value is uncertain.” The next
 resource learner should adapt this allowance from verified transfer value.
 
+### 12. Predict marginal success, not absolute success, for compute allocation
+
+When the cheap action already succeeds around 99% of the time, an ordinary
+success predictor learns only the majority answer. Predicting the verified
+difference between shallow and deep execution exposes the rare decision that
+matters. The resulting critic preserves 99.57% accuracy while reducing latent
+comparisons by 65.1%. This is the operational form of “think more only when it
+helps”: action-conditioned marginal value, with ground-truth outcomes
+sovereign and compute cost secondary.
+
 ## Bounded negatives and dead ends
 
 These are rejected only within the measured regime; a fixed-budget negative is
