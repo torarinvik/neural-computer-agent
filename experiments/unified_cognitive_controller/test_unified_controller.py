@@ -1272,6 +1272,137 @@ def test_verified_scale_interval_penalizes_only_behavior_changes() -> None:
     assert predicted.grad[2] > 0
 
 
+def test_memory_equivalence_selector_is_exact_noop_with_live_credit() -> None:
+    model = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        adaptive_memory_usage_prior=True,
+        adaptive_memory_usage_prior_hidden=8,
+        adaptive_memory_usage_prior_proposer_hidden=8,
+        adaptive_memory_equivalence_hidden=8)
+    features = torch.zeros(6, 12)
+    features[:, 4:8] = torch.tensor([1.0, 0.9, 0.8, 0.7])
+    features[:, 8:12] = torch.tensor([0.2, 0.3, 0.5, 0.9])
+    probe = torch.randn(6, 32)
+    rows = torch.randn(6, 4, 32)
+    inherited = model.memory_usage_prior_probability(features)
+    expanded = model.memory_equivalence_probability(features, probe, rows)
+    assert torch.equal(expanded, inherited)
+    logits = model.memory_equivalence_logits(probe, rows)
+    loss = torch.nn.functional.cross_entropy(
+        logits, torch.arange(6) % 4)
+    loss.backward()
+    assert model.memory_equivalence_selector is not None
+    assert model.memory_equivalence_selector[-1].weight.grad is not None
+    assert bool(
+        (model.memory_equivalence_selector[-1].weight.grad != 0).any())
+
+
+def test_natural_equivalence_batch_uses_only_mixed_behavioral_banks() -> None:
+    from .train_natural_memory_equivalence import natural_equivalence_batch
+
+    payload = torch.load(
+        "artifacts/checkpoints/"
+        "unified_four_target_shape_transfer_seed19511.pt",
+        map_location="cpu", weights_only=False)
+    configuration = dict(payload["model_configuration"])
+    configuration["adaptive_memory_equivalence_hidden"] = 8
+    model = UnifiedCognitiveController(**configuration)
+    model.load_state_dict(payload["state_dict"], strict=False)
+    data = natural_equivalence_batch(
+        model, count=16, seed=20200, device=torch.device("cpu"),
+        heldout=True, exact_fraction=0.0)
+    assert data["sorted_values"].shape == (16, 4, model.width)
+    assert data["sorted_outcomes"].shape == (16, 4)
+    assert bool((data["duplicate_count"] >= 1).all())
+    assert bool((data["duplicate_count"] <= 3).all())
+    assert data["mining_verifier_bits"] == 16 * 2 * 4
+    assert data["generated_contexts"] == 16 * 2 * 5
+
+
+def test_natural_equivalence_counterfactual_preserves_bank_and_flips_outcomes(
+        ) -> None:
+    from .train_natural_memory_equivalence import natural_equivalence_batch
+
+    payload = torch.load(
+        "artifacts/checkpoints/"
+        "unified_four_target_shape_transfer_seed19511.pt",
+        map_location="cpu", weights_only=False)
+    configuration = dict(payload["model_configuration"])
+    configuration["adaptive_memory_equivalence_hidden"] = 8
+    model = UnifiedCognitiveController(**configuration)
+    model.load_state_dict(payload["state_dict"], strict=False)
+    common = {
+        "model": model,
+        "count": 16,
+        "seed": 20209,
+        "device": torch.device("cpu"),
+        "heldout": True,
+        "exact_fraction": 0.0,
+    }
+    ordinary = natural_equivalence_batch(**common)
+    reversed_data = natural_equivalence_batch(
+        **common, reverse_target_rule=True)
+    for name in ("keys", "values", "usage", "queries", "sorted_values"):
+        assert torch.equal(ordinary[name], reversed_data[name])
+    assert torch.equal(
+        reversed_data["sorted_outcomes"],
+        1.0 - ordinary["sorted_outcomes"])
+    assert bool(
+        (ordinary["probe_values"] != reversed_data["probe_values"])
+        .any(-1).all())
+
+
+def test_natural_equivalence_relation_is_physical_row_invariant() -> None:
+    from .train_four_target_memory_retrieval import policy_features
+    from .train_natural_memory_equivalence import natural_equivalence_batch
+
+    payload = torch.load(
+        "artifacts/checkpoints/"
+        "unified_four_target_shape_transfer_seed19511.pt",
+        map_location="cpu", weights_only=False)
+    configuration = dict(payload["model_configuration"])
+    configuration["adaptive_memory_equivalence_hidden"] = 8
+    model = UnifiedCognitiveController(**configuration)
+    model.load_state_dict(payload["state_dict"], strict=False)
+    common = {
+        "model": model,
+        "count": 16,
+        "seed": 20210,
+        "device": torch.device("cpu"),
+        "heldout": True,
+        "exact_fraction": 0.0,
+    }
+    permuted = natural_equivalence_batch(**common, permute_rows=True)
+    ordered = natural_equivalence_batch(**common, permute_rows=False)
+    assert torch.equal(permuted["sorted_values"], ordered["sorted_values"])
+    assert torch.equal(permuted["sorted_outcomes"], ordered["sorted_outcomes"])
+    assert torch.equal(
+        policy_features(permuted), policy_features(ordered))
+
+
+def test_nearest_verified_candidate_loss_preserves_disconnected_modes() -> None:
+    from .train_natural_memory_equivalence import (
+        nearest_verified_candidate_loss,
+    )
+
+    predicted = torch.tensor([0.2, 0.8, 0.5], requires_grad=True)
+    candidates = torch.tensor([
+        [0.1, 0.4, 0.7, 0.9],
+        [0.1, 0.4, 0.7, 0.9],
+        [0.1, 0.4, 0.7, 0.9],
+    ])
+    successful = torch.tensor([
+        [True, False, False, True],
+        [True, False, False, True],
+        [True, False, False, True],
+    ])
+    loss = nearest_verified_candidate_loss(
+        predicted, candidates, successful)
+    assert loss.item() == pytest.approx((0.01 + 0.01 + 0.16) / 3)
+    loss.backward()
+    assert predicted.grad is not None
+
+
 def test_usage_prior_residual_is_exact_noop_at_insertion() -> None:
     payload = torch.load(
         "artifacts/checkpoints/"

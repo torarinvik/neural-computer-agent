@@ -1004,3 +1004,31 @@ python -m experiments.unified_cognitive_controller.audit_checkpoint \
   --seed 2707 \
   --report experiments/unified_cognitive_controller/reports/constant_action_blind_seed2707.json
 ```
+
+## Natural equivalence between independently acquired memories
+
+The four-target shape-transfer parent still relied on a generator-created
+opposite latent. The next rung replaces it with values produced by independent
+visual support lifetimes. A fresh feedback-derived value is compared against
+four stored values; any stored value that earns the same verifier behavior is
+valid.
+
+A discarded probe established that the relation is present in the frozen
+latents. The deployed repair is a shared 32-unit pair scorer plus a
+zero-initialized opening (12,354 parameters). A straight-through hard row
+choice avoids averaging across disconnected successful retrieval intervals.
+Only scalar candidate outcomes train it.
+
+Two seeds reached 100% on held-out banks containing one, two, or three
+equivalent rows after 1,024 verifier bits. The parent stayed near 50%.
+Reward-shuffled training reached 43.55%; exact-duplicate-only training reached
+86.91%. Probe, stored-relation, and retrieved-value interventions all caused
+large collapses. Across both accepted seeds, 256 physical disk banks reloaded
+exactly and behaved at 100%, and every older retention gate passed.
+
+A valid counterfactual replay kept pixels and every candidate-bank tensor
+fixed while reversing the target verifier rule. The fresh latent and selected
+physical row flipped in 100% of cases, with 100% behavior in both worlds.
+
+Full record:
+`session_records/natural_memory_equivalence_2026-07-29/README.md`.

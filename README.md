@@ -194,9 +194,31 @@ shuffling fell to 23.2–26.8%, value corruption and shuffled rewards fell to
 The conservative replicated stable-learning threshold was 8,192 verifier
 bits; the best seed stabilized after 512.
 
-The next frontier replaces generator-declared opposites with naturally
-occurring duplicate and near-duplicate memories, so equivalence and conflict
-must be learned from experience.
+That natural-equivalence frontier is now closed for the binary hidden-rule
+family. A discarded probe first established that independently acquired
+same-rule memory values carry a decodable relation (99.79% linear and 100%
+with a 32-unit pair scorer on held-out appearances). The deployed controller
+then gained a zero-effect 12,354-parameter shared relation scorer. It compares
+a fresh feedback-derived memory value with four independently stored values
+and chooses one of the existing generic rank intervals. Training uses only
+the four scalar outcomes earned by actually retrieving the candidate values.
+
+Two independent 1,024-verifier-bit runs reached 100% when one, two, or three
+stored rows were behaviorally equivalent, while the inherited policy remained
+at 46.9–50.6%. All 256 physical disk banks behaved correctly after exact
+reload. Probe shuffling fell to 49.2–52.0%, stored-relation shuffling to
+52.7–53.5%, retrieved-value corruption to 35.2–35.4%, and matched reward
+shuffling to 43.6%. An exact-duplicate-only curriculum stopped at 86.9%, so
+the gradual bridge to independently acquired equivalents is causal at this
+budget. A valid counterfactual replay held every candidate bank tensor and
+pixel stream fixed, reversed only the verifier rule, and caused the fresh
+latent and selected physical row to flip in 100% of cases while behavior
+remained 100% correct. Every older retention gate passed.
+
+The next frontier uses learned equivalence for capacity-limited
+consolidation: remove or merge redundant memories without losing any distinct
+skill, then measure whether the smaller, cleaner bank accelerates the next
+novel primitive.
 
 The new unified-controller line now has its first retained compounding
 milestone. A single 298,252-parameter controller with one vision encoder,

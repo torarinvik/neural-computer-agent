@@ -246,6 +246,9 @@ def four_target_batch(
         "crossing_jitter": crossing_jitter,
         "slope_jitter": slope_jitter,
         "generated_contexts": count * 4,
+        # Private generator material for the next natural-memory curriculum.
+        # It is never passed to a learner or serialized in a report.
+        "_source_batches": batches,
     }
 
 

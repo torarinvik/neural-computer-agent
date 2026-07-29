@@ -1407,3 +1407,39 @@ correct target.
 
 Full record in
 `session_records/continuous_usage_prior_2026-07-28/README.md`.
+
+## 2026-07-29 — Natural latent-memory equivalence in 1,024 verifier bits
+
+A discarded probe found that independent memory values implementing the same
+binary visual rule are relationally decodable: 99.79% with a linear pair
+feature map and 100% with a 32-unit MLP on held-out appearances. Probe weights
+were discarded.
+
+The deployed controller added a zero-effect 12,354-parameter shared pair
+scorer. A four-batch curriculum moved from exact duplicates through partial
+equivalence to fully independent stored memories. At fixed 512 optimizer
+updates, successive-halving reduced the first 4,096-bit success to a
+replicated 1,024 verifier bits. A 768-bit best case failed replication at
+92.77% and was not promoted.
+
+| run | unique verifier bits | optimizer updates | held-out | physical |
+|---|---:|---:|---:|---:|
+| seed 20252 | **1,024** | 512 | **100%** | **128/128** |
+| seed 20253 | **1,024** | 512 | **100%** | **128/128** |
+| reward shuffled 20252 | 1,024 | 512 | 43.55% | 41.41% |
+| exact-only 20252 | 1,024 | 512 | 86.91% | 84.38% |
+
+Both accepted runs scored 100% with one, two, or three valid equivalent rows,
+retained every parent gate, and changed only the new relation module.
+Counterfactual replay held the whole candidate bank fixed, reversed only the
+verifier rule, and produced 100% probe changes, selection flips, and behavior.
+
+The compounding lesson is twofold: previously learned latent memories already
+contained a much richer relation than the retrieval policy could use, and
+intensive internal replay converted a very small amount of diverse verified
+experience into perfect behavior. Exact identity alone did not teach the full
+relation; the gradual bridge to independently acquired equivalents was
+necessary at the matched budget.
+
+Full record:
+`session_records/natural_memory_equivalence_2026-07-29/README.md`.

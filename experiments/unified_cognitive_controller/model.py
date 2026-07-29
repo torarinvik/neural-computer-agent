@@ -111,6 +111,7 @@ class UnifiedCognitiveController(nn.Module):
             adaptive_memory_usage_prior_residual_hidden: int = 0,
             adaptive_memory_usage_prior_residual_features: int = 4,
             adaptive_memory_usage_prior_proposer_hidden: int = 0,
+            adaptive_memory_equivalence_hidden: int = 0,
             relation_adapter_width: int = 0,
             relation_adapter_gated: bool = False,
             action_adapter_width: int = 0,
@@ -136,6 +137,7 @@ class UnifiedCognitiveController(nn.Module):
                 or adaptive_memory_usage_prior_residual_hidden < 0
                 or adaptive_memory_usage_prior_residual_features < 4
                 or adaptive_memory_usage_prior_proposer_hidden < 0
+                or adaptive_memory_equivalence_hidden < 0
                 or relation_adapter_width < 0
                 or action_adapter_width < 0
                 or skill_adapter_prior_read_limit < 0
@@ -158,6 +160,8 @@ class UnifiedCognitiveController(nn.Module):
             adaptive_memory_usage_prior_residual_features)
         self.adaptive_memory_usage_prior_proposer_hidden = (
             adaptive_memory_usage_prior_proposer_hidden)
+        self.adaptive_memory_equivalence_hidden = (
+            adaptive_memory_equivalence_hidden)
         self.relation_adapter_width = relation_adapter_width
         self.relation_adapter_gated = relation_adapter_gated
         self.action_adapter_width = action_adapter_width
@@ -415,6 +419,22 @@ class UnifiedCognitiveController(nn.Module):
             # The fifth output opens the proposal path.  Its zero value makes
             # the inherited probability bit-identical while the
             # straight-through gate below retains a live derivative.
+        self.memory_equivalence_selector = (
+            nn.Sequential(
+                nn.Linear(width * 4, adaptive_memory_equivalence_hidden),
+                nn.GELU(),
+                nn.Linear(adaptive_memory_equivalence_hidden, 1),
+            )
+            if adaptive_memory_equivalence_hidden > 0 else None)
+        self.memory_equivalence_opening = (
+            nn.Parameter(torch.zeros(()))
+            if adaptive_memory_equivalence_hidden > 0 else None)
+        if self.memory_equivalence_selector is not None:
+            # The relation itself starts unbiased, and the scalar opening makes
+            # adding this path exactly behavior preserving.  Candidate outcome
+            # credit can shape the selector before the opening earns influence.
+            nn.init.zeros_(self.memory_equivalence_selector[-1].weight)
+            nn.init.zeros_(self.memory_equivalence_selector[-1].bias)
 
     def effective_memory_usage_prior_scale(self) -> torch.Tensor:
         """Return the task-agnostic nonnegative retrieval-prior strength."""
@@ -496,6 +516,61 @@ class UnifiedCognitiveController(nn.Module):
             self, features: torch.Tensor) -> torch.Tensor:
         """Return task-agnostic scales that sample every rank interval."""
         return self.memory_usage_prior_proposal_features(features)[1]
+
+    def memory_equivalence_logits(
+            self, probe_values: torch.Tensor,
+            sorted_row_values: torch.Tensor) -> torch.Tensor:
+        """Score stored values against a fresh, learner-visible memory value.
+
+        Rows must use the same descending-content order as the generic
+        retrieval candidates.  The shared scorer has no row identity and sees
+        only learned latents; verifier-private rules never enter this path.
+        """
+        if self.memory_equivalence_selector is None:
+            raise RuntimeError("memory equivalence selector is not enabled")
+        if (
+                probe_values.ndim != 2
+                or sorted_row_values.ndim != 3
+                or sorted_row_values.shape[:2]
+                != (probe_values.shape[0], 4)
+                or probe_values.shape[1] != self.width
+                or sorted_row_values.shape[2] != self.width):
+            raise ValueError(
+                "equivalence inputs must have shapes [batch, width] and "
+                "[batch, 4, width]")
+        probe = probe_values.unsqueeze(1).expand(-1, 4, -1)
+        pair = torch.cat((
+            probe,
+            sorted_row_values,
+            (probe - sorted_row_values).abs(),
+            probe * sorted_row_values,
+        ), dim=-1)
+        return self.memory_equivalence_selector(pair).squeeze(-1)
+
+    def memory_equivalence_probability(
+            self, features: torch.Tensor, probe_values: torch.Tensor,
+            sorted_row_values: torch.Tensor) -> torch.Tensor:
+        """Retrieve through a hard relational choice with soft credit.
+
+        The forward pass chooses one physical rank interval, avoiding invalid
+        averages between disconnected but behaviorally equivalent intervals.
+        The straight-through one-hot retains the softmax derivative.
+        """
+        if self.memory_equivalence_opening is None:
+            raise RuntimeError("memory equivalence selector is not enabled")
+        inherited = self.memory_usage_prior_probability(features)
+        logits = self.memory_equivalence_logits(
+            probe_values, sorted_row_values)
+        soft = logits.softmax(dim=-1)
+        hard = torch.nn.functional.one_hot(
+            logits.argmax(dim=-1), num_classes=4).to(soft.dtype)
+        choice = soft + (hard - soft).detach()
+        candidates = self.memory_usage_prior_candidates(features)
+        proposal = (choice * candidates).sum(dim=-1)
+        raw_opening = self.memory_equivalence_opening
+        bounded_opening = raw_opening.clamp(0.0, 1.0)
+        opening = raw_opening + (bounded_opening - raw_opening).detach()
+        return inherited + opening * (proposal - inherited)
 
     def memory_read_probability(
             self, features: torch.Tensor) -> torch.Tensor:
