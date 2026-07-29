@@ -1375,3 +1375,28 @@ frontier.
 
 Full record:
 `session_records/pair_magnitude_experience_compounding_2026-07-29/README.md`.
+
+## Compounding sample efficiency repeats
+
+The 21.484375% controller generalized zero-shot through contours 56/256 and
+57/256, then failed three fresh 16,384-lifetime streams at 58/256
+(`22.65625%`). This established the next genuine frontier before training.
+
+The first 48-lifetime pilot passed 3/3. A downward experience search found that
+32 and 40 failed, 42 passed only 1/3 complete gates, and 44 passed 3/3. The
+selected recipe therefore uses 44 new lifetimes / 264 verifier bits—54.2% less
+than the preceding 96-lifetime acquisition—with the same twelve private
+consolidation passes and unchanged parameter count.
+
+At the exact 44-lifetime budget, reset inherited knowledge scored 87.62% and
+shuffled outcomes 88.66%; both failed. A complete 32,768-lifetime audit passed
+at 90.26% with every magnitude, relation, unrelated-skill, missing-evidence,
+counterfactual, and inherited-read gate intact.
+
+On eight matched population streams, the parent mastered 2/8 and the child
+8/8; every child stream improved. This is the second consecutive verified
+experience reduction in the magnitude curriculum: 128 → 96 → 44 new
+lifetimes on progressively harder contours.
+
+Full record:
+`session_records/pair_magnitude_repeated_compounding_2026-07-29/README.md`.

@@ -845,3 +845,23 @@ parameter was added, and every older cognitive skill retained its gate.
 
 See
 `session_records/pair_magnitude_experience_compounding_2026-07-29/README.md`.
+
+## Latest breakthrough: sample efficiency compounds again
+
+The same 388,191-parameter controller stabilized the next harder 22.65625%
+magnitude contour from only 44 new lifetimes / 264 verifier bits. The preceding
+frontier required 96 lifetimes, so accumulated skill cut new experience by a
+further 54.2% while retaining every older capability.
+
+The threshold was searched rather than guessed: 32 and 40 lifetimes failed,
+42 passed only 1/3 complete gates, and 44 passed 3/3. Resetting inherited
+magnitude knowledge fell to 87.62%; shuffling the new outcomes fell to 88.66%.
+A 32,768-lifetime causal audit passed at 90.26%.
+
+Across eight matched streams the untouched parent mastered 2/8 and the child
+8/8. Every child stream improved. The acquisition sequence now requires
+128 → 96 → 44 new lifetimes on progressively harder contours: two consecutive
+verified reductions in external experience.
+
+See
+`session_records/pair_magnitude_repeated_compounding_2026-07-29/README.md`.

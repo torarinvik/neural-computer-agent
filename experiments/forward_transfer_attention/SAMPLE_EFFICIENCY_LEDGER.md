@@ -1526,3 +1526,34 @@ the next genuinely unmastered capability.
 
 Full record:
 `session_records/pair_magnitude_experience_compounding_2026-07-29/README.md`.
+
+## 2026-07-29 — Sample efficiency compounds again: 96 → 44 lifetimes
+
+The 21.484375% magnitude controller generalized without new experience through
+two harder contour increments, then failed three of three fresh preflights at
+the genuine 22.65625% frontier.
+
+| new lifetimes | complete fresh-seed gate |
+|---:|:---:|
+| 32 | 0/1 |
+| 40 | 0/1 |
+| 42 | 1/3 |
+| **44** | **3/3** |
+| 48 | 3/3, dominated |
+
+The selected rung uses 44 new lifetimes / 264 verifier bits, 54.2% less than
+the preceding 96-lifetime frontier. Total unique evidence falls from 228 to
+188 lifetimes despite adding a replay stream for the preceding contour.
+Consolidation remains twelve passes.
+
+Resetting inherited magnitude knowledge reached 87.62%, and shuffling the 44
+new scalar outcomes reached 88.66%; both failed. The selected checkpoint passed
+a 32,768-lifetime causal audit at 90.26% with every prior skill retained.
+
+Across eight paired streams, the untouched parent mastered 2/8 and the child
+8/8. Every stream improved by at least 0.206 percentage points. The magnitude
+lineage now requires 128 → 96 → 44 new lifetimes on progressively harder
+frontiers, establishing a second consecutive verified experience reduction.
+
+Full record:
+`session_records/pair_magnitude_repeated_compounding_2026-07-29/README.md`.

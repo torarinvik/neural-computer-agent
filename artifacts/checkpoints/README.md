@@ -636,3 +636,27 @@ Face model repository under `checkpoints/`.
 This is the first magnitude rung in this lineage where accumulated skill
 reduces the next genuine acquisition's new verifier experience. It deliberately
 spends more private consolidation compute to do so.
+
+## Repeated-compounding magnitude successor
+
+`unified_pair_magnitude_repeated_compounding_seed23105.pt` is hosted in the
+Hugging Face model repository under `checkpoints/`.
+
+- SHA-256:
+  `c136841d60a5220bd09cd12029b6d59d903dc73d5deddb39248e7327ae48f2a2`
+- Parent: `unified_pair_magnitude_compounding_seed22022.pt`
+- Size: approximately 1.5 MB; unchanged 388,191 controller parameters
+- Genuine frontier: 22.65625% bars→diamonds contour
+- New experience: 44 lifetimes / 264 verifier bits, down 54.2% from the
+  preceding 96-lifetime acquisition
+- Total unique evidence: 188 lifetimes / 1,128 bits
+- Consolidation: 12 passes / 2,256 lifetime exposures
+- Evidence floor: 32 failed; 40 failed; 42 passed 1/3; 44 passed 3/3
+- Matched population: parent 2/8 mastery, child 8/8, +0.2683 percentage
+  points mean accuracy; every stream improved
+- Reset inherited knowledge: 87.62%; shuffled outcomes: 88.66%
+- Independent 32,768-lifetime audit: 90.26%; every causality and retention
+  gate passed
+
+This is the second consecutive magnitude rung where accumulated skill reduces
+the experience needed for a harder frontier.
