@@ -68,7 +68,9 @@ def test_pair_relation_uses_visible_task_audit_contract() -> None:
 def test_pair_relation_ablation_removes_only_second_object_region() -> None:
     model = UnifiedCognitiveController(
         width=32, workspace_slots=4, intention_width=8)
-    accuracy = _operation_cue_ablation_accuracy(
-        model, count=32, seed=4105, device=torch.device("cpu"),
-        support_trials=1, new_task="pair_relation")
-    assert 0.0 <= accuracy <= 1.0
+    for appearance in ("bars", "diamonds", "dot_pairs"):
+        accuracy = _operation_cue_ablation_accuracy(
+            model, count=32, seed=4105, device=torch.device("cpu"),
+            support_trials=1, new_task="pair_relation",
+            appearance=appearance)
+        assert 0.0 <= accuracy <= 1.0

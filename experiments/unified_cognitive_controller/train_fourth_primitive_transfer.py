@@ -345,7 +345,8 @@ def _new_skill_loss(
 def _operation_cue_ablation_accuracy(
         model: UnifiedCognitiveController, *, count: int, seed: int,
         device: torch.device, support_trials: int,
-        new_task: str = DEFAULT_NEW_TASK) -> float:
+        new_task: str = DEFAULT_NEW_TASK,
+        appearance: str = "bars") -> float:
     """Rerender the same public events without the operation-mode symbol.
 
     The composition cue is the only pixel difference from the direct-context
@@ -354,7 +355,8 @@ def _operation_cue_ablation_accuracy(
     """
     marked = generate_lifetimes(
         count, 6, seed=seed, heldout=True,
-        task=new_task, support_trials=support_trials, device=device)
+        task=new_task, appearance=appearance,
+        support_trials=support_trials, device=device)
     if new_task == "pair_relation":
         # Remove only the second held-out-position object. Its mask is confined
         # to rows 13:28, columns 5:20; filling that box from a clean corner

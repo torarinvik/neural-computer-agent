@@ -31,20 +31,24 @@ Final accuracy alone is not an adequate score.
 
 ## Current audited frontier
 
-The same/different repertoire has crossed its first appearance boundary. A
-zero-output nonlinear gate refiner and staged acquire-then-localize training
-let the existing relation slot master diamonds at 97.52% while retaining bars
-at 99.61%, binary mapping at 93.37%, visible context at 91.74%, and
-visible-context XOR at 90.58%. All complete causal gates passed on 4,096
-held-out lifetimes; blank and missing-object controls remained at chance.
+The same/different repertoire now spans bars, diamonds, and disconnected dot
+pairs in one controller.  The promoted checkpoint scored 99.96%, 97.83%, and
+96.44% on an independent 8,192-lifetime audit.  Missing-second-object controls
+were 49.60–50.05%, and blank-vision, valid pixel-counterfactual accuracy, and
+prediction-flip gates passed for every appearance.
 
-A matched reset-slot controller received the identical architecture, pixels,
-320 updates, replay, and 184,320 total verifier bits. It learned diamonds at
-97.69% but retained bars at only 72.03%. The combined capability therefore
-depends causally on the earlier relation experience rather than extra capacity.
-The fixed stopping point remains seed-sensitive, and disconnected dot pairs
-remain unmastered at 70.61%; those are the next frontiers. See
-`session_records/pair_relation_appearance_bridge_2026-07-29/README.md`.
+Dot-pair acquisition used 1,792 new lifetimes—5.71× fewer than the preceding
+diamond bridge.  At the same new-experience budget, the two-contour lineage
+beat the bars-only lineage by 9.66, 6.29, and 7.42 percentage points across
+three paired seeds.  A reset-slot control learned dots only by losing the old
+relation forms.  This is the first replicated lineage-level evidence that a
+larger retained repertoire accelerates acquisition of the next appearance.
+
+The controller also masters all three forms at the physical inference minimum:
+one controller pass per sensory event and zero optional recurrent thoughts.
+The fixed training duration remains seed-sensitive, so adaptive stopping is
+the next sample-efficiency frontier.  See
+`session_records/pair_relation_acquire_compile_compound_2026-07-29/README.md`.
 
 The repertoire now includes its first cross-family simultaneous visual
 relation. The same one-controller lineage learned whether two rendered objects

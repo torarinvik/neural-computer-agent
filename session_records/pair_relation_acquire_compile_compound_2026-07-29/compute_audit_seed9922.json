@@ -1,0 +1,198 @@
+{
+  "already_compiled_to_physical_minimum": true,
+  "checkpoint": "/workspace/results/dotpairs/promoted_full_s9622.pt",
+  "claim_boundary": "Each extra thought reprocesses the same learner-visible frame with no new action, reward, task ID, or verifier information.",
+  "configuration": {
+    "count": 4096,
+    "device": "cuda",
+    "extra_thought_budgets": [
+      0,
+      1,
+      2,
+      4,
+      8
+    ],
+    "seed": 9922,
+    "trials": 6
+  },
+  "minimum_controller_steps_per_event": 1,
+  "minimum_extra_thought_budget_mastering_all_appearances": 0,
+  "results": {
+    "0": {
+      "bars": {
+        "controller_steps_per_lifetime": 6,
+        "counterfactual_accuracy": 0.9994710683822632,
+        "extra_thought_steps_per_event": 0,
+        "logical_lifetimes": 4096,
+        "mastery_at_95": true,
+        "normal_accuracy": 0.999755859375,
+        "prediction_flip_rate": 0.9992269277572632,
+        "seconds": 0.37565623500267975,
+        "verifier_bits": 49152
+      },
+      "diamonds": {
+        "controller_steps_per_lifetime": 6,
+        "counterfactual_accuracy": 0.9799398183822632,
+        "extra_thought_steps_per_event": 0,
+        "logical_lifetimes": 4096,
+        "mastery_at_95": true,
+        "normal_accuracy": 0.9784749746322632,
+        "prediction_flip_rate": 0.9589030146598816,
+        "seconds": 0.0367883150029229,
+        "verifier_bits": 49152
+      },
+      "dot_pairs": {
+        "controller_steps_per_lifetime": 6,
+        "counterfactual_accuracy": 0.9677327871322632,
+        "extra_thought_steps_per_event": 0,
+        "logical_lifetimes": 4096,
+        "mastery_at_95": true,
+        "normal_accuracy": 0.9643148183822632,
+        "prediction_flip_rate": 0.93408203125,
+        "seconds": 0.03691719800553983,
+        "verifier_bits": 49152
+      }
+    },
+    "1": {
+      "bars": {
+        "controller_steps_per_lifetime": 12,
+        "counterfactual_accuracy": 0.9989420771598816,
+        "extra_thought_steps_per_event": 1,
+        "logical_lifetimes": 4096,
+        "mastery_at_95": true,
+        "normal_accuracy": 0.9982096552848816,
+        "prediction_flip_rate": 0.9971517324447632,
+        "seconds": 0.07309836299828021,
+        "verifier_bits": 49152
+      },
+      "diamonds": {
+        "controller_steps_per_lifetime": 12,
+        "counterfactual_accuracy": 0.9824625849723816,
+        "extra_thought_steps_per_event": 1,
+        "logical_lifetimes": 4096,
+        "mastery_at_95": true,
+        "normal_accuracy": 0.9823405146598816,
+        "prediction_flip_rate": 0.9648030996322632,
+        "seconds": 0.0732161600026302,
+        "verifier_bits": 49152
+      },
+      "dot_pairs": {
+        "controller_steps_per_lifetime": 12,
+        "counterfactual_accuracy": 0.9679769277572632,
+        "extra_thought_steps_per_event": 1,
+        "logical_lifetimes": 4096,
+        "mastery_at_95": true,
+        "normal_accuracy": 0.9674886465072632,
+        "prediction_flip_rate": 0.9356282949447632,
+        "seconds": 0.0732160190018476,
+        "verifier_bits": 49152
+      }
+    },
+    "2": {
+      "bars": {
+        "controller_steps_per_lifetime": 18,
+        "counterfactual_accuracy": 0.9984945058822632,
+        "extra_thought_steps_per_event": 2,
+        "logical_lifetimes": 4096,
+        "mastery_at_95": true,
+        "normal_accuracy": 0.9986572265625,
+        "prediction_flip_rate": 0.9971517324447632,
+        "seconds": 0.10957476000476163,
+        "verifier_bits": 49152
+      },
+      "diamonds": {
+        "controller_steps_per_lifetime": 18,
+        "counterfactual_accuracy": 0.9740397334098816,
+        "extra_thought_steps_per_event": 2,
+        "logical_lifetimes": 4096,
+        "mastery_at_95": true,
+        "normal_accuracy": 0.9739583730697632,
+        "prediction_flip_rate": 0.947998046875,
+        "seconds": 0.10963271700165933,
+        "verifier_bits": 49152
+      },
+      "dot_pairs": {
+        "controller_steps_per_lifetime": 18,
+        "counterfactual_accuracy": 0.9733073115348816,
+        "extra_thought_steps_per_event": 2,
+        "logical_lifetimes": 4096,
+        "mastery_at_95": true,
+        "normal_accuracy": 0.974609375,
+        "prediction_flip_rate": 0.947998046875,
+        "seconds": 0.10978312299994286,
+        "verifier_bits": 49152
+      }
+    },
+    "4": {
+      "bars": {
+        "controller_steps_per_lifetime": 30,
+        "counterfactual_accuracy": 0.99560546875,
+        "extra_thought_steps_per_event": 4,
+        "logical_lifetimes": 4096,
+        "mastery_at_95": true,
+        "normal_accuracy": 0.9952392578125,
+        "prediction_flip_rate": 0.9908447265625,
+        "seconds": 0.18227282300358638,
+        "verifier_bits": 49152
+      },
+      "diamonds": {
+        "controller_steps_per_lifetime": 30,
+        "counterfactual_accuracy": 0.9724935293197632,
+        "extra_thought_steps_per_event": 4,
+        "logical_lifetimes": 4096,
+        "mastery_at_95": true,
+        "normal_accuracy": 0.9727783203125,
+        "prediction_flip_rate": 0.9452718496322632,
+        "seconds": 0.1824014759986312,
+        "verifier_bits": 49152
+      },
+      "dot_pairs": {
+        "controller_steps_per_lifetime": 30,
+        "counterfactual_accuracy": 0.9752197265625,
+        "extra_thought_steps_per_event": 4,
+        "logical_lifetimes": 4096,
+        "mastery_at_95": true,
+        "normal_accuracy": 0.97607421875,
+        "prediction_flip_rate": 0.9512939453125,
+        "seconds": 0.1823143860019627,
+        "verifier_bits": 49152
+      }
+    },
+    "8": {
+      "bars": {
+        "controller_steps_per_lifetime": 54,
+        "counterfactual_accuracy": 0.9869384765625,
+        "extra_thought_steps_per_event": 8,
+        "logical_lifetimes": 4096,
+        "mastery_at_95": true,
+        "normal_accuracy": 0.9862467646598816,
+        "prediction_flip_rate": 0.9731852412223816,
+        "seconds": 0.32850753700040514,
+        "verifier_bits": 49152
+      },
+      "diamonds": {
+        "controller_steps_per_lifetime": 54,
+        "counterfactual_accuracy": 0.9774984121322632,
+        "extra_thought_steps_per_event": 8,
+        "logical_lifetimes": 4096,
+        "mastery_at_95": true,
+        "normal_accuracy": 0.9757080078125,
+        "prediction_flip_rate": 0.9532064199447632,
+        "seconds": 0.32868241899996065,
+        "verifier_bits": 49152
+      },
+      "dot_pairs": {
+        "controller_steps_per_lifetime": 54,
+        "counterfactual_accuracy": 0.9862467646598816,
+        "extra_thought_steps_per_event": 8,
+        "logical_lifetimes": 4096,
+        "mastery_at_95": true,
+        "normal_accuracy": 0.9847819209098816,
+        "prediction_flip_rate": 0.9710286855697632,
+        "seconds": 0.32850331100053154,
+        "verifier_bits": 49152
+      }
+    }
+  },
+  "schema": "pair-relation-compute-audit-v1"
+}

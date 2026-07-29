@@ -55,12 +55,16 @@ def main() -> None:
             seed=args.seed + 10_000 * index, device=device,
             task="pair_relation", feedback_trials=1,
             appearance=appearance)
-    missing_second_accuracy = _operation_cue_ablation_accuracy(
-        model, count=args.count, seed=args.seed,
-        device=device, support_trials=1, new_task="pair_relation")
-    bars_accuracy = float(appearances["bars"]["overall_accuracy"])
+    missing_second_accuracy = {
+        appearance: _operation_cue_ablation_accuracy(
+            model, count=args.count, seed=args.seed + 10_000 * index,
+            device=device, support_trials=1, new_task="pair_relation",
+            appearance=appearance)
+        for index, appearance in enumerate(
+            ("bars", "diamonds", "dot_pairs"))
+    }
     report = {
-        "schema": "pair-relation-repertoire-audit-v1",
+        "schema": "pair-relation-repertoire-audit-v2",
         "claim_boundary": (
             "One shared controller acquired a simultaneous visual relation "
             "from attempted-action scalar outcomes. No semantic relation "
@@ -84,7 +88,10 @@ def main() -> None:
             "blank_vision_at_chance":
                 appearances["bars"]["gate"]["blank_vision_at_chance"],
             "second_object_causally_used":
-                missing_second_accuracy <= bars_accuracy - 0.15,
+                all(
+                    missing_second_accuracy[name]
+                    <= float(appearances[name]["overall_accuracy"]) - 0.15
+                    for name in appearances),
             # Cross-contour transfer is deliberately reported separately. It
             # is evidence of stronger abstraction if it passes, but not a
             # requirement for mastering the trained bars relation.

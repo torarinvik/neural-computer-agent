@@ -1187,3 +1187,31 @@ to chance, and every controller tensor stays bit-identical.
 
 Full record:
 `session_records/adaptive_hot_cold_memory_2026-07-29/README.md`.
+
+## Acquire, compile, compound a third appearance
+
+The pair-relation bridge now rehearses every previously mastered appearance,
+not only the first bars form.  This closes a false-promotion hole in which dots
+could reach 95% while diamonds silently fell to 82.54%.  Relation replay is
+also excluded from the unrelated-skill locality cost: the relation slot must
+remain active on all of its learned renderings.
+
+Eight permissive acquisition updates followed by 48 refiner-only consolidation
+updates produced 99.96% bars, 97.83% diamonds, and 96.44% disconnected dot
+pairs on an independent 8,192-lifetime audit.  Every appearance passed blank,
+missing-object, valid pixel-counterfactual, and prediction-flip controls.  The
+run used 1,792 new lifetimes and 37,632 total verifier outcomes.
+
+At that same new-experience budget, the two-contour ancestor beat the earlier
+bars-only ancestor by +9.66, +6.29, and +7.42 percentage points on paired
+seeds.  A reset-slot control could not retain the combined repertoire.  An
+optional-compute audit found that zero extra recurrent thoughts already
+masters all three appearances, so the relation is deployed at one controller
+pass per sensory event.
+
+The fixed endpoint is still seed-sensitive.  The next training mechanism
+should select or stop candidates from verifier-held-out trajectories while
+accounting all population search outcomes separately.
+
+Full record:
+`session_records/pair_relation_acquire_compile_compound_2026-07-29/README.md`.

@@ -476,3 +476,24 @@ relation across bars and diamonds.
 The fixed consolidation duration is seed-sensitive and dot pairs remain
 unmastered at 70.61%, so this is a capability/causal-reuse milestone rather
 than a robust stable-bits threshold.
+
+## Three-appearance pair-relation compounder
+
+`unified_pair_relation_three_appearance_seed9622.pt` extends the same relation
+to disconnected dot pairs without losing bars, diamonds, or the unrelated
+repertoire.
+
+- SHA-256:
+  `6dee3d9545f537d041edfe4e7a29df579f41be2b50eae8740d1c06318998ba4e`
+- Parent: `unified_pair_relation_appearance_bridge_seed9303.pt`
+- Training: 8 acquisition plus 48 consolidation updates
+- Experience: 1,792 new lifetimes and 37,632 total verifier bits with replay
+- Independent audit: 99.96% bars, 97.83% diamonds, 96.44% dot pairs
+- Missing-second-object controls: 49.60%, 50.05%, and 49.90%
+- Two-contour versus bars-only lineage advantage: +7.79 percentage points
+  averaged over three paired seeds, positive in every pair
+- Inference: all three appearances master at one controller pass per event,
+  with zero optional thought passes
+
+The 56-update endpoint is seed-sensitive and is not claimed as a robust
+stable-bits threshold.

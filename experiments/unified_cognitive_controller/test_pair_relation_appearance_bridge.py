@@ -5,7 +5,7 @@ import torch
 
 from .model import UnifiedCognitiveController
 from .train_pair_relation_appearance_bridge import (
-    _concatenate, _pair_loss, _reset_slot, _slot_prefixes,
+    _concatenate, _pair_loss, _replay_specs, _reset_slot, _slot_prefixes,
     _unrelated_locality)
 from .environment import generate_lifetimes
 
@@ -91,9 +91,23 @@ def test_training_leak_does_not_change_checkpoint_architecture() -> None:
 
 def test_locality_excludes_mastered_relation_stream() -> None:
     bars = torch.tensor(100.0)
+    diamonds = torch.tensor(200.0)
     unrelated = [torch.tensor(1.0), torch.tensor(2.0), torch.tensor(3.0)]
+    specs = _replay_specs("dot_pairs")
     assert torch.equal(
-        _unrelated_locality([bars, *unrelated]), torch.tensor(2.0))
+        _unrelated_locality(
+            [bars, diamonds, *unrelated], specs), torch.tensor(2.0))
+
+
+def test_dot_pair_bridge_rehearses_every_mastered_relation_form() -> None:
+    assert _replay_specs("diamonds")[:1] == (
+        ("pair_relation", "bars"),)
+    assert _replay_specs("dot_pairs")[:2] == (
+        ("pair_relation", "bars"),
+        ("pair_relation", "diamonds"),
+    )
+    assert _replay_specs("dot_pairs", ("bars",))[:1] == (
+        ("pair_relation", "bars"),)
 
 
 def test_zero_output_gate_refiner_is_bit_identical() -> None:

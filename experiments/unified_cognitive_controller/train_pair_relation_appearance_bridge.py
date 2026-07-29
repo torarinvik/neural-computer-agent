@@ -26,12 +26,38 @@ from .train_fourth_primitive_transfer import (
     _headline_accuracy, _load, _replay_loss_and_leakage)
 
 
-REPLAY_SPECS = (
-    ("pair_relation", "bars"),
+UNRELATED_REPLAY_SPECS = (
     ("binary_mapping", "bars"),
     ("visible_context", "bars"),
     ("visible_context_xor", "bars"),
 )
+
+
+def _replay_specs(
+        new_appearance: str,
+        inherited_relation_appearances: tuple[str, ...] | None = None,
+        ) -> tuple[tuple[str, str], ...]:
+    """Return every inherited relation form plus unrelated skills.
+
+    The original bridge only inherited bars.  Once diamonds are promoted, a
+    dot-pair bridge must rehearse both earlier renderings or it can replace the
+    diamond form while appearing to preserve the abstract relation.
+    """
+    relation_appearances = (
+        inherited_relation_appearances
+        if inherited_relation_appearances is not None
+        else (
+            ("bars",)
+            if new_appearance == "diamonds"
+            else ("bars", "diamonds")))
+    if not relation_appearances:
+        raise ValueError("at least one inherited relation appearance is required")
+    if len(set(relation_appearances)) != len(relation_appearances):
+        raise ValueError("inherited relation appearances must be unique")
+    return (
+        tuple(("pair_relation", appearance)
+              for appearance in relation_appearances)
+        + UNRELATED_REPLAY_SPECS)
 
 
 def _slot_prefixes(slot: int) -> tuple[str, ...]:
@@ -98,17 +124,23 @@ def _concatenate(
 
 
 def _unrelated_locality(
-        residual_norms: list[torch.Tensor]) -> torch.Tensor:
+        residual_norms: list[torch.Tensor],
+        replay_specs: tuple[tuple[str, str], ...]) -> torch.Tensor:
     """Price disturbance only outside the relation being extended.
 
-    The first replay stream is the already-mastered bars form of this same
-    relation, where the slot must remain active. Pricing that residual asks the
-    skill to erase itself. Every later stream is an unrelated inherited skill,
-    where silence is the correct non-interference target.
+    Relation streams are earlier appearances where the slot must remain active.
+    Pricing those residuals asks the skill to erase itself.  Only unrelated
+    inherited skills have silence as the correct non-interference target.
     """
-    if len(residual_norms) < 2:
+    if len(residual_norms) != len(replay_specs):
+        raise ValueError("residuals and replay specifications must align")
+    unrelated = [
+        residual for residual, (task, _) in zip(
+            residual_norms, replay_specs, strict=True)
+        if task != "pair_relation"]
+    if not unrelated:
         raise ValueError("bridge requires relation plus unrelated replay")
-    return torch.stack(residual_norms[1:]).mean()
+    return torch.stack(unrelated).mean()
 
 
 def main() -> None:
@@ -143,6 +175,12 @@ def main() -> None:
     parser.add_argument(
         "--new-appearance",
         choices=("diamonds", "dot_pairs"), default="diamonds")
+    parser.add_argument(
+        "--inherited-relation-appearances", nargs="+",
+        choices=("bars", "diamonds"), default=None,
+        help=(
+            "relation appearances already mastered by the parent; defaults "
+            "to bars for a diamond bridge and bars+diamonds for dot pairs"))
     parser.add_argument(
         "--blend-start", type=float, default=1.0,
         help=("bars-to-diamonds pixel blend at the first update; 1 keeps the "
@@ -196,6 +234,16 @@ def main() -> None:
 
     seed_everything(args.seed)
     device = torch.device(args.device)
+    inherited_relation_appearances = (
+        tuple(args.inherited_relation_appearances)
+        if args.inherited_relation_appearances is not None else None)
+    replay_specs = _replay_specs(
+        args.new_appearance, inherited_relation_appearances)
+    inherited_relation_appearances = tuple(
+        appearance for task, appearance in replay_specs
+        if task == "pair_relation")
+    relation_replay_count = sum(
+        task == "pair_relation" for task, _ in replay_specs)
     payload, teacher = _load(args.parent, device)
     teacher.eval()
     for parameter in teacher.parameters():
@@ -211,13 +259,22 @@ def main() -> None:
     if len(existing_refiners) < len(slots):
         existing_refiners = existing_refiners + (
             0,) * (len(slots) - len(existing_refiners))
-    if args.gate_refiner_width:
+    parent_refiner_width = existing_refiners[slot]
+    inserting_refiner = (
+        args.gate_refiner_width > 0 and parent_refiner_width == 0)
+    if (
+            args.gate_refiner_width > 0
+            and parent_refiner_width not in (0, args.gate_refiner_width)):
+        raise ValueError(
+            "requested gate refiner width conflicts with the parent")
+    if inserting_refiner:
         existing_refiners = (
             existing_refiners[:slot]
             + (args.gate_refiner_width,)
             + existing_refiners[slot + 1:])
         configuration["skill_adapter_gate_refiner_widths"] = (
             existing_refiners)
+    refiner_width = existing_refiners[slot]
 
     student = UnifiedCognitiveController(**configuration).to(device)
     missing, unexpected = student.load_state_dict(
@@ -225,7 +282,7 @@ def main() -> None:
     expected_missing = {
         name for name in student.state_dict()
         if (
-            args.gate_refiner_width
+            inserting_refiner
             and name.startswith(
                 f"skill_adapter_gate_refiners.{slot}."))}
     if set(missing) != expected_missing or unexpected:
@@ -302,7 +359,7 @@ def main() -> None:
                     + update),
                 task=task, appearance=appearance,
                 support_trials=1, device=device)
-            for index, (task, appearance) in enumerate(REPLAY_SPECS)
+            for index, (task, appearance) in enumerate(replay_specs)
         ]
         skill_loss, observed_accuracy = _pair_loss(
             student, new_batch, exploration=args.exploration)
@@ -315,7 +372,7 @@ def main() -> None:
         replay_losses = [value for value, _, _ in replay_results]
         residual_norms = [value for _, value, _ in replay_results]
         retention_loss = torch.stack(replay_losses).mean()
-        locality = _unrelated_locality(residual_norms)
+        locality = _unrelated_locality(residual_norms, replay_specs)
         loss = (
             skill_loss
             + args.retention_weight * retention_loss
@@ -338,7 +395,9 @@ def main() -> None:
                 "skill_loss": float(skill_loss.detach()),
                 "retention_loss": float(retention_loss.detach()),
                 "unrelated_event_residual_norm": float(locality.detach()),
-                "bars_residual_norm": float(residual_norms[0].detach()),
+                "relation_residual_norms": [
+                    float(value.detach())
+                    for value in residual_norms[:relation_replay_count]],
                 "total_loss": float(loss.detach()),
             })
 
@@ -346,7 +405,7 @@ def main() -> None:
         # Freeze the broadened relation and learn only where it should speak.
         # Joint optimization otherwise changes content faster than the gate can
         # learn the relation-family boundary.
-        if not args.gate_refiner_width:
+        if not refiner_width:
             raise ValueError(
                 "staged consolidation requires a nonlinear gate refiner")
         # The old linear gate offers a cheap but invalid solution: close on
@@ -384,7 +443,7 @@ def main() -> None:
                         + update_seed),
                     task=task, appearance=appearance,
                     support_trials=1, device=device)
-                for index, (task, appearance) in enumerate(REPLAY_SPECS)
+                for index, (task, appearance) in enumerate(replay_specs)
             ]
             # Consolidate the controller's own verified successful behavior.
             # This is opaque self-distillation, not a semantic relation label
@@ -401,7 +460,7 @@ def main() -> None:
             replay_losses = [value for value, _, _ in replay_results]
             residual_norms = [value for _, value, _ in replay_results]
             retention_loss = torch.stack(replay_losses).mean()
-            locality = _unrelated_locality(residual_norms)
+            locality = _unrelated_locality(residual_norms, replay_specs)
             loss = (
                 skill_loss
                 + args.consolidation_retention_weight * retention_loss
@@ -419,8 +478,9 @@ def main() -> None:
                     "retention_loss": float(retention_loss.detach()),
                     "unrelated_event_residual_norm":
                         float(locality.detach()),
-                    "bars_residual_norm":
-                        float(residual_norms[0].detach()),
+                    "relation_residual_norms": [
+                        float(value.detach())
+                        for value in residual_norms[:relation_replay_count]],
                     "total_loss": float(loss.detach()),
                 })
 
@@ -437,6 +497,11 @@ def main() -> None:
             seed=args.seed + 91_000_000, device=device,
             task="pair_relation", feedback_trials=1,
             appearance="bars"),
+        "diamonds_retention": evaluate(
+            student, count=args.test_lifetimes, trials=6,
+            seed=args.seed + 91_500_000, device=device,
+            task="pair_relation", feedback_trials=1,
+            appearance="diamonds"),
         "dot_pair_transfer": evaluate(
             student, count=args.test_lifetimes, trials=6,
             seed=args.seed + 92_000_000, device=device,
@@ -448,13 +513,16 @@ def main() -> None:
                 seed=args.seed + 93_000_000 + index,
                 device=device, task=task, feedback_trials=1,
                 appearance=appearance)
-            for index, (task, appearance) in enumerate(REPLAY_SPECS[1:])
+            for index, (task, appearance) in enumerate(
+                UNRELATED_REPLAY_SPECS)
         },
     }
     required = (
         "new_appearance", "bars_retention",
         "binary_mapping_retention", "visible_context_retention",
         "visible_context_xor_retention")
+    if "diamonds" in inherited_relation_appearances:
+        required = (*required, "diamonds_retention")
     accepted = all(evaluations[name]["gate"]["accepted"] for name in required)
     frozen_bit_identical = all(
         torch.equal(
@@ -480,6 +548,9 @@ def main() -> None:
             "checkpoint_out": (
                 str(args.checkpoint_out)
                 if args.checkpoint_out is not None else None),
+            "parent_gate_refiner_width": parent_refiner_width,
+            "effective_gate_refiner_width": refiner_width,
+            "inserted_gate_refiner": inserting_refiner,
         },
         "history": history,
         "accounting": {
@@ -491,11 +562,12 @@ def main() -> None:
             "replay_lifetimes_per_stream":
                 (args.steps + args.consolidation_steps)
                 * args.replay_batch_size,
-            "replay_streams": len(REPLAY_SPECS),
+            "replay_streams": len(replay_specs),
+            "replay_specs": replay_specs,
             "total_verifier_bits": (
                 args.steps + args.consolidation_steps) * (
-                args.batch_size
-                + len(REPLAY_SPECS) * args.replay_batch_size) * 6,
+                    args.batch_size
+                    + len(replay_specs) * args.replay_batch_size) * 6,
             "optimizer_updates": args.steps + args.consolidation_steps,
         },
         "evaluations": evaluations,
