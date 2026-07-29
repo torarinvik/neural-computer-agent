@@ -951,6 +951,55 @@ def test_disk_latent_memory_round_trip(tmp_path: Path) -> None:
     assert confidence.shape == (1,)
 
 
+def test_disk_latent_memory_compacts_selected_history_exactly(
+        tmp_path: Path) -> None:
+    memory = DiskLatentMemory(width=4, capacity=4)
+    keys = torch.eye(4)
+    values = torch.arange(16, dtype=torch.float32).reshape(4, 4)
+    memory.commit(keys, values, torch.ones(4), threshold=0.0)
+    memory.store.access_count.copy_(torch.tensor([1, 2, 3, 4]))
+    memory.store.success_count.copy_(torch.tensor([4, 3, 2, 1]))
+    memory.store.volatility.copy_(torch.tensor([0.1, 0.2, 0.8, 0.9]))
+    compact = memory.compact([0, 2])
+    assert compact.count == 2
+    assert compact.store.capacity == 2
+    assert torch.equal(compact.store.keys, keys[[0, 2]])
+    assert compact.store.access_count.tolist() == [1, 3]
+    assert compact.store.success_count.tolist() == [4, 2]
+    assert torch.allclose(
+        compact.store.volatility, torch.tensor([0.1, 0.8]))
+    path = tmp_path / "compact.pt"
+    compact.save(path)
+    restored = DiskLatentMemory.load(path)
+    assert restored.store.capacity == 2
+    assert torch.equal(restored.store.keys, compact.store.keys)
+    assert torch.equal(
+        restored.store.volatility, compact.store.volatility)
+
+
+def test_bankwise_physical_survival_uses_only_protection_scalar() -> None:
+    from .audit_adaptive_physical_pruning import (
+        bankwise_survival_mask,
+        shuffled_bankwise_mask,
+    )
+
+    bank = {
+        "valid": torch.ones(4, 6, dtype=torch.bool),
+        "representative_ranks": torch.tensor(
+            [[0, 0, 1, 1, 2, 2]]).repeat(4, 1),
+    }
+    scores = torch.zeros(4, 6)
+    scores[1, 4] = 1.0
+    scores[3, 5] = 2.0
+    selected = bankwise_survival_mask(
+        bank, scores, threshold=1.0)
+    assert selected.sum(-1).tolist() == [4, 6, 4, 6]
+    shuffled = shuffled_bankwise_mask(
+        bank, selected, seed=19)
+    assert shuffled.sum(-1).sort().values.tolist() == [4, 4, 6, 6]
+    assert not torch.equal(selected, shuffled)
+
+
 def test_usage_prior_scale_can_restore_exact_content_retrieval() -> None:
     memory = DiskLatentMemory(width=2, capacity=2)
     keys = torch.tensor([[1.0, 0.0], [0.8, 0.6]])

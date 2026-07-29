@@ -1103,3 +1103,32 @@ initializations.
 
 Full record:
 `session_records/adaptive_representative_read_2026-07-29/README.md`.
+
+## Let verified use determine physical memory survival
+
+The adaptive read critic established when extra representatives are useful, but
+all six physical rows still survived forever. The next rung attaches a generic
+protection signal to memory experience. An extra row earns protection only
+when a requested deep read succeeds and the corresponding shallow read fails.
+Rule bits, appearance names, semantic clusters, and correct pruning actions
+remain verifier-private.
+
+Protecting an exact third row did not generalize and was rejected. Protecting
+the bank's diversity reserve after any extra row causally rescues an error did.
+Across three 4,096-bank graduation replicas, physical memory falls from about
+5.996 to 4.34–4.37 rows while accuracy stays at 99.53–99.56%, within 0.063
+percentage points of the full store. A matched history shuffle performs worse
+on every seed.
+
+The controller is unchanged. Compaction physically removes rows using the
+existing disk-backed memory boundary. All 384 audited compact stores reload
+their latent and history tensors exactly; logical rows fall roughly 28% and
+serialized bytes roughly 15%. Reversed-task behavior remains intact and
+zeroed memory falls to chance.
+
+This is a concrete bridge from the previously learned volatility principle to
+adaptive *capacity*: frequently proven diversity becomes stable, while unused
+reserve remains disposable.
+
+Full record:
+`session_records/adaptive_physical_pruning_2026-07-29/README.md`.

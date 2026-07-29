@@ -148,6 +148,14 @@ class DiskLatentMemory:
     def save(self, path: Path) -> None:
         self.store.save(path)
 
+    def compact(
+            self, indices: torch.Tensor | list[int],
+            ) -> "DiskLatentMemory":
+        """Create a physically smaller store containing selected valid rows."""
+        instance = self.__class__.__new__(self.__class__)
+        instance.store = self.store.select(indices)
+        return instance
+
     @classmethod
     def load(
             cls, path: Path, *, device: torch.device | str = "cpu"

@@ -1,0 +1,111 @@
+{
+  "checkpoint": "artifacts/checkpoints/unified_adaptive_representative_read_seed20721.pt",
+  "checkpoint_training_examples": null,
+  "future_rounds": 3,
+  "history_rounds": 8,
+  "results": {
+    "causal_rescue": {
+      "accuracy": 0.9952935112847222,
+      "deep_read_rate": 0.014634874131944444,
+      "mean_comparisons": 2.0694444444444446,
+      "mean_physical_rows": 4.147216796875,
+      "physical_row_ratio_vs_six": 0.6916812658309937
+    },
+    "causal_rescue_bankwise": {
+      "accuracy": 0.9952935112847222,
+      "deep_read_rate": 0.014634874131944444,
+      "mean_comparisons": 2.0747612847222223,
+      "mean_physical_rows": 4.23193359375,
+      "physical_row_ratio_vs_six": 0.7058104872703552
+    },
+    "causal_rescue_bankwise_shuffled": {
+      "accuracy": 0.9949273003472222,
+      "deep_read_rate": 0.014634874131944444,
+      "mean_comparisons": 2.0646294487847223,
+      "mean_physical_rows": 4.227294921875,
+      "physical_row_ratio_vs_six": 0.7050368785858154
+    },
+    "causal_rescue_shuffled_matched": {
+      "accuracy": 0.9950222439236112,
+      "deep_read_rate": 0.014634874131944444,
+      "mean_comparisons": 2.0694444444444446,
+      "mean_physical_rows": 4.147216796875,
+      "physical_row_ratio_vs_six": 0.6916812658309937
+    },
+    "correct_use": {
+      "accuracy": 0.9953342013888888,
+      "deep_read_rate": 0.014634874131944444,
+      "mean_comparisons": 2.0714518229166665,
+      "mean_physical_rows": 4.167724609375,
+      "physical_row_ratio_vs_six": 0.6951016187667847
+    },
+    "correct_use_bankwise": {
+      "accuracy": 0.9953342013888888,
+      "deep_read_rate": 0.014634874131944444,
+      "mean_comparisons": 2.0765380859375,
+      "mean_physical_rows": 4.267578125,
+      "physical_row_ratio_vs_six": 0.7117553353309631
+    },
+    "correct_use_bankwise_shuffled": {
+      "accuracy": 0.9949273003472222,
+      "deep_read_rate": 0.014634874131944444,
+      "mean_comparisons": 2.0649278428819446,
+      "mean_physical_rows": 4.26171875,
+      "physical_row_ratio_vs_six": 0.7107781171798706
+    },
+    "correct_use_shuffled_matched": {
+      "accuracy": 0.9950900607638888,
+      "deep_read_rate": 0.014634874131944444,
+      "mean_comparisons": 2.0714518229166665,
+      "mean_physical_rows": 4.167724609375,
+      "physical_row_ratio_vs_six": 0.6951016187667847
+    },
+    "fixed_four": {
+      "accuracy": 0.9947645399305556,
+      "deep_read_rate": 0.014634874131944444,
+      "mean_comparisons": 2.0628662109375,
+      "mean_physical_rows": 4.056884765625,
+      "physical_row_ratio_vs_six": 0.6766154766082764
+    },
+    "full_six": {
+      "accuracy": 0.99609375,
+      "deep_read_rate": 0.014634874131944444,
+      "mean_comparisons": 2.0910237630208335,
+      "mean_physical_rows": 5.995849609375,
+      "physical_row_ratio_vs_six": 1.0
+    },
+    "requested": {
+      "accuracy": 0.9953342013888888,
+      "deep_read_rate": 0.014634874131944444,
+      "mean_comparisons": 2.072048611111111,
+      "mean_physical_rows": 4.196533203125,
+      "physical_row_ratio_vs_six": 0.6999063491821289
+    },
+    "requested_bankwise": {
+      "accuracy": 0.9953477647569444,
+      "deep_read_rate": 0.014634874131944444,
+      "mean_comparisons": 2.0773247612847223,
+      "mean_physical_rows": 4.318359375,
+      "physical_row_ratio_vs_six": 0.7202247381210327
+    },
+    "requested_bankwise_shuffled": {
+      "accuracy": 0.9949544270833334,
+      "deep_read_rate": 0.014634874131944444,
+      "mean_comparisons": 2.0656331380208335,
+      "mean_physical_rows": 4.311767578125,
+      "physical_row_ratio_vs_six": 0.7191253900527954
+    },
+    "requested_shuffled_matched": {
+      "accuracy": 0.9950493706597222,
+      "deep_read_rate": 0.014634874131944444,
+      "mean_comparisons": 2.072048611111111,
+      "mean_physical_rows": 4.196533203125,
+      "physical_row_ratio_vs_six": 0.6999063491821289
+    }
+  },
+  "schema": "adaptive-physical-pruning-audit-v1",
+  "streams": 4096,
+  "threshold": 1.0,
+  "verifier_future_events": 73728,
+  "verifier_history_events": 196608
+}

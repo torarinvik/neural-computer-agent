@@ -1,0 +1,111 @@
+{
+  "checkpoint": "artifacts/checkpoints/unified_adaptive_representative_read_seed20721.pt",
+  "checkpoint_training_examples": null,
+  "future_rounds": 2,
+  "history_rounds": 4,
+  "results": {
+    "causal_rescue": {
+      "accuracy": 0.9949747721354166,
+      "deep_read_rate": 0.013570149739583334,
+      "mean_comparisons": 2.0691935221354165,
+      "mean_physical_rows": 4.116943359375,
+      "physical_row_ratio_vs_six": 0.6866601705551147
+    },
+    "causal_rescue_bankwise": {
+      "accuracy": 0.9949544270833334,
+      "deep_read_rate": 0.013570149739583334,
+      "mean_comparisons": 2.07354736328125,
+      "mean_physical_rows": 4.171630859375,
+      "physical_row_ratio_vs_six": 0.695781409740448
+    },
+    "causal_rescue_bankwise_shuffled": {
+      "accuracy": 0.9947713216145834,
+      "deep_read_rate": 0.013570149739583334,
+      "mean_comparisons": 2.0659586588541665,
+      "mean_physical_rows": 4.170166015625,
+      "physical_row_ratio_vs_six": 0.6955370903015137
+    },
+    "causal_rescue_shuffled_matched": {
+      "accuracy": 0.9947713216145834,
+      "deep_read_rate": 0.013570149739583334,
+      "mean_comparisons": 2.0691935221354165,
+      "mean_physical_rows": 4.116943359375,
+      "physical_row_ratio_vs_six": 0.6866601705551147
+    },
+    "correct_use": {
+      "accuracy": 0.9949951171875,
+      "deep_read_rate": 0.013570149739583334,
+      "mean_comparisons": 2.071044921875,
+      "mean_physical_rows": 4.131591796875,
+      "physical_row_ratio_vs_six": 0.689103364944458
+    },
+    "correct_use_bankwise": {
+      "accuracy": 0.9949747721354166,
+      "deep_read_rate": 0.013570149739583334,
+      "mean_comparisons": 2.0750935872395835,
+      "mean_physical_rows": 4.196533203125,
+      "physical_row_ratio_vs_six": 0.6999348402023315
+    },
+    "correct_use_bankwise_shuffled": {
+      "accuracy": 0.9947713216145834,
+      "deep_read_rate": 0.013570149739583334,
+      "mean_comparisons": 2.0662027994791665,
+      "mean_physical_rows": 4.196044921875,
+      "physical_row_ratio_vs_six": 0.6998534202575684
+    },
+    "correct_use_shuffled_matched": {
+      "accuracy": 0.9947102864583334,
+      "deep_read_rate": 0.013570149739583334,
+      "mean_comparisons": 2.071044921875,
+      "mean_physical_rows": 4.131591796875,
+      "physical_row_ratio_vs_six": 0.689103364944458
+    },
+    "fixed_four": {
+      "accuracy": 0.9946492513020834,
+      "deep_read_rate": 0.013570149739583334,
+      "mean_comparisons": 2.0638631184895835,
+      "mean_physical_rows": 4.057373046875,
+      "physical_row_ratio_vs_six": 0.6767244935035706
+    },
+    "full_six": {
+      "accuracy": 0.9959920247395834,
+      "deep_read_rate": 0.013570149739583334,
+      "mean_comparisons": 2.0899454752604165,
+      "mean_physical_rows": 5.99560546875,
+      "physical_row_ratio_vs_six": 1.0
+    },
+    "requested": {
+      "accuracy": 0.9949951171875,
+      "deep_read_rate": 0.013570149739583334,
+      "mean_comparisons": 2.0711669921875,
+      "mean_physical_rows": 4.145263671875,
+      "physical_row_ratio_vs_six": 0.6913836598396301
+    },
+    "requested_bankwise": {
+      "accuracy": 0.9949747721354166,
+      "deep_read_rate": 0.013570149739583334,
+      "mean_comparisons": 2.0753377278645835,
+      "mean_physical_rows": 4.2236328125,
+      "physical_row_ratio_vs_six": 0.704454779624939
+    },
+    "requested_bankwise_shuffled": {
+      "accuracy": 0.99481201171875,
+      "deep_read_rate": 0.013570149739583334,
+      "mean_comparisons": 2.0663655598958335,
+      "mean_physical_rows": 4.22265625,
+      "physical_row_ratio_vs_six": 0.7042918801307678
+    },
+    "requested_shuffled_matched": {
+      "accuracy": 0.994873046875,
+      "deep_read_rate": 0.013570149739583334,
+      "mean_comparisons": 2.0711669921875,
+      "mean_physical_rows": 4.145263671875,
+      "physical_row_ratio_vs_six": 0.6913836598396301
+    }
+  },
+  "schema": "adaptive-physical-pruning-audit-v1",
+  "streams": 4096,
+  "threshold": 1.0,
+  "verifier_future_events": 49152,
+  "verifier_history_events": 98304
+}
