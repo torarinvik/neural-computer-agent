@@ -824,3 +824,24 @@ budget.
 
 See
 `session_records/pair_magnitude_half_compute_2026-07-29/README.md`.
+
+## Latest breakthrough: accumulated skill reduces new experience
+
+The fixed 388,191-parameter magnitude controller now stabilizes its first
+genuinely unmastered 21.484375% contour from 96 new lifetimes—25% fewer than
+the preceding 128-lifetime acquisition rung. It does this by spending twelve
+private consolidation passes, preserving the rule that accuracy and retention
+come first, external experience second, and private compute third.
+
+The untouched parent failed three of three preflight streams. The selected
+recipe passed three of three acquisition runs and a complete 32,768-lifetime
+audit at 90.45%. On eight additional paired streams the parent mastered 0/8
+and the child 8/8; mean accuracy increased by 0.4677 percentage points and
+every stream improved.
+
+The gain is causal. Resetting inherited magnitude knowledge reached 87.95%,
+and shuffling the new scalar outcomes reached 89.39%. Both failed. No
+parameter was added, and every older cognitive skill retained its gate.
+
+See
+`session_records/pair_magnitude_experience_compounding_2026-07-29/README.md`.

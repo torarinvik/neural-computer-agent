@@ -1494,3 +1494,35 @@ consolidation-compute efficiency, not a new forward-transfer milestone.
 
 Full record:
 `session_records/pair_magnitude_half_compute_2026-07-29/README.md`.
+
+## 2026-07-29 — Accumulated magnitude skill cuts next-frontier experience 25%
+
+The half-compute magnitude controller was evaluated at its first genuinely
+unmastered contour, 21.484375%. The untouched parent failed three of three
+preflight streams. Holding architecture fixed, the learner then received only
+pixels, opaque attempted actions, scalar outcomes, and opaque retained-skill
+rehearsal.
+
+| new lifetimes | passes | complete fresh-seed gate |
+|---:|---:|:---:|
+| 64 | 8 | 0/3 |
+| 96 | 8 | 1/3 |
+| **96** | **12** | **3/3** |
+
+The prior acquisition rung required 128 new lifetimes. The new rung therefore
+uses 25% fewer new lifetimes/bits and 20.8% less total unique evidence. It
+spends 50% more consolidation passes: experience is optimized before private
+compute, with accuracy and retention as hard constraints.
+
+The causal controls failed at the identical budget. Resetting inherited
+magnitude knowledge reached 87.95%; shuffling the new scalar outcomes reached
+89.39%. A 32,768-lifetime audit passed every gate at 90.45%.
+
+On eight further paired streams the parent mastered 0/8 and the child 8/8.
+Mean normal/counterfactual accuracy improved by 0.4677 percentage points, with
+every stream improving. This closes the compounding ledger for this rung:
+retained skill measurably reduces the verified experience needed to stabilize
+the next genuinely unmastered capability.
+
+Full record:
+`session_records/pair_magnitude_experience_compounding_2026-07-29/README.md`.

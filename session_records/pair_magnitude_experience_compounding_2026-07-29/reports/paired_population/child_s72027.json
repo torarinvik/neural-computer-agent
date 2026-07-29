@@ -1,0 +1,32 @@
+{
+  "already_compiled_to_physical_minimum": true,
+  "checkpoint": "/workspace/results/compounding_magnitude_true_frontier_22020/experienced96_e12_s22022.pt",
+  "claim_boundary": "The checkpoint and external event stream are fixed. Extra thought reprocesses the same pixels without a new action, outcome, task identity or verifier fact.",
+  "configuration": {
+    "appearance_blend": 0.21484375,
+    "count": 16384,
+    "device": "cuda",
+    "extra_thought_budgets": [
+      0
+    ],
+    "seed": 72027,
+    "trials": 6
+  },
+  "minimum_controller_steps_per_event": 1,
+  "minimum_extra_thought_budget_preserving_mastery": 0,
+  "results": {
+    "0": {
+      "controller_steps_per_event": 1,
+      "controller_steps_per_lifetime": 6,
+      "counterfactual_accuracy": 0.9027506709098816,
+      "extra_thought_steps_per_event": 0,
+      "logical_lifetimes": 16384,
+      "mastery": true,
+      "normal_accuracy": 0.9016520380973816,
+      "prediction_flip_rate": 0.8050130605697632,
+      "seconds": 0.44856950899702497,
+      "verifier_bits": 196608
+    }
+  },
+  "schema": "pair-magnitude-compute-audit-v1"
+}

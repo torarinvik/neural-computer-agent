@@ -86,7 +86,7 @@ def _reset_slot(
 
 def _pair_loss(
         model: UnifiedCognitiveController, batch, *,
-        exploration: float) -> tuple[torch.Tensor, float]:
+        exploration: float, return_diagnostics: bool = False):
     """Attempted-action loss with every independently sampled event priced."""
     result = rollout(
         model, batch, sample_actions=True, exploration=exploration,
@@ -98,9 +98,36 @@ def _pair_loss(
             result["rewards"][:, trial])
         for trial in range(batch.trials)
     ]
-    return (
-        torch.stack(losses).mean(),
-        float(result["rewards"].float().mean()))
+    loss = torch.stack(losses).mean()
+    accuracy = float(result["rewards"].float().mean())
+    if not return_diagnostics:
+        return loss, accuracy
+    logits = result["logits"].detach()
+    probabilities = logits.softmax(dim=-1)
+    entropy = -(
+        probabilities * probabilities.clamp_min(1e-8).log()
+    ).sum(dim=-1)
+    top_two = probabilities.topk(2, dim=-1).values
+    margin = top_two[..., 0] - top_two[..., 1]
+    rewards = result["rewards"].float()
+    lifetime_accuracy = rewards.mean(dim=1)
+    diagnostics = {
+        "lifetime_accuracy_std": float(
+            lifetime_accuracy.std(unbiased=False)),
+        "lifetime_accuracy_min": float(lifetime_accuracy.min()),
+        "lifetime_accuracy_max": float(lifetime_accuracy.max()),
+        "prediction_entropy_mean": float(entropy.mean()),
+        "prediction_entropy_std": float(entropy.std(unbiased=False)),
+        "prediction_margin_mean": float(margin.mean()),
+        "prediction_margin_std": float(margin.std(unbiased=False)),
+        "accuracy_by_trial": [
+            float(value) for value in rewards.mean(dim=0)],
+        "entropy_by_trial": [
+            float(value) for value in entropy.mean(dim=0)],
+        "margin_by_trial": [
+            float(value) for value in margin.mean(dim=0)],
+    }
+    return loss, accuracy, diagnostics
 
 
 def _concatenate(

@@ -83,11 +83,28 @@ def _annealed_gate_leak(
         1.0 - (optimizer_update - 1) / max(1, anneal_updates - 1))
 
 
+@torch.no_grad()
+def _sensory_summary(
+        model: UnifiedCognitiveController, batch,
+        ) -> list[float]:
+    """Summarize only the controller-visible sensory latent stream."""
+    latents = model.vision(batch.frames.flatten(0, 1))
+    return torch.cat((
+        latents.mean(dim=0),
+        latents.std(dim=0, unbiased=False),
+    )).detach().cpu().tolist()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--parent", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--checkpoint-out", type=Path)
+    parser.add_argument(
+        "--candidate-checkpoint-out", type=Path,
+        help=(
+            "save an explicitly unpromoted prefix for a later high-precision "
+            "audit even when the small-run gate has not passed"))
     parser.add_argument("--seed", type=int, default=21501)
     parser.add_argument("--steps", type=int, default=8)
     parser.add_argument(
@@ -239,6 +256,12 @@ def main() -> None:
             appearance_blend=blend,
             position_holdout=bool(update % 2),
             support_trials=1, device=device)
+        # The stopping policy may inspect the controller's own sensory
+        # representation, but never private generator metadata such as the
+        # contour blend.  Cache a task-agnostic summary before optimization so
+        # passive probes can test whether the observed stream itself predicts
+        # how much consolidation it needs.
+        sensory_summary = _sensory_summary(student, new_batch)
         if args.shuffle_new_verifier_outcomes:
             new_batch = _shuffle_verifier_outcomes(
                 new_batch, seed=args.seed * 30_000_000 + update)
@@ -261,8 +284,9 @@ def main() -> None:
                 args.gate_leak_initial,
                 optimizer_update=optimizer_update,
                 anneal_updates=leak_updates)
-            skill_loss, observed_accuracy = _pair_loss(
-                student, new_batch, exploration=args.exploration)
+            skill_loss, observed_accuracy, learner_diagnostics = _pair_loss(
+                student, new_batch, exploration=args.exploration,
+                return_diagnostics=True)
             replay_results = [
                 _replay_loss_and_leakage(
                     student, teacher, batch, slot=slot,
@@ -299,6 +323,8 @@ def main() -> None:
                     "retention_loss": float(retention_loss.detach()),
                     "locality": float(locality.detach()),
                     "total_loss": float(loss.detach()),
+                    "sensory_summary": sensory_summary,
+                    "learner_diagnostics": learner_diagnostics,
                 })
 
     student.skill_adapter_gate_leak = 0.0
@@ -392,6 +418,9 @@ def main() -> None:
             "checkpoint_out": (
                 str(args.checkpoint_out)
                 if args.checkpoint_out is not None else None),
+            "candidate_checkpoint_out": (
+                str(args.candidate_checkpoint_out)
+                if args.candidate_checkpoint_out is not None else None),
         },
         "history": history,
         "accounting": {
@@ -429,18 +458,28 @@ def main() -> None:
         "slot_l2_change": slot_change,
         "total_seconds": time.perf_counter() - started,
     }
+    checkpoint_payload = {
+        "schema": "unified-cognitive-controller-v1",
+        "model_configuration": configuration,
+        "state_dict": student.state_dict(),
+        "source_report": str(args.report),
+        "admission_status": (
+            "pair_magnitude_appearance_bridge"
+            if accepted else "unpromoted_pair_magnitude_prefix"),
+    }
     if accepted and args.checkpoint_out is not None:
         args.checkpoint_out.parent.mkdir(parents=True, exist_ok=True)
-        torch.save({
-            "schema": "unified-cognitive-controller-v1",
-            "model_configuration": configuration,
-            "state_dict": student.state_dict(),
-            "source_report": str(args.report),
-            "admission_status": "pair_magnitude_appearance_bridge",
-        }, args.checkpoint_out)
+        torch.save(checkpoint_payload, args.checkpoint_out)
         report["checkpoint_saved"] = True
     else:
         report["checkpoint_saved"] = False
+    if args.candidate_checkpoint_out is not None:
+        args.candidate_checkpoint_out.parent.mkdir(
+            parents=True, exist_ok=True)
+        torch.save(checkpoint_payload, args.candidate_checkpoint_out)
+        report["candidate_checkpoint_saved"] = True
+    else:
+        report["candidate_checkpoint_saved"] = False
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(
         json.dumps(report, indent=2, sort_keys=True) + "\n")

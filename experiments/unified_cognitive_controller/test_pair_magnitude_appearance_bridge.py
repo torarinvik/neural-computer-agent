@@ -64,6 +64,7 @@ def test_epochs_per_batch_reuse_experience_without_double_counting(
         "--parent", str(tmp_path / "parent.pt"),
         "--report", str(tmp_path / "report.json"),
         "--checkpoint-out", str(tmp_path / "child.pt"),
+        "--candidate-checkpoint-out", str(tmp_path / "candidate.pt"),
         "--steps", "2",
         "--epochs-per-batch", "3",
         "--plasticity-mode", "refine",
@@ -109,9 +110,13 @@ def test_epochs_per_batch_reuse_experience_without_double_counting(
 
     monkeypatch.setattr(magnitude_bridge, "generate_lifetimes", fake_generate)
     monkeypatch.setattr(
+        magnitude_bridge, "_sensory_summary",
+        lambda *_args, **_kwargs: [0.0, 1.0])
+    monkeypatch.setattr(
         magnitude_bridge, "_pair_loss",
         lambda model, *_args, **_kwargs:
-            (model.skill_adapter.square() + 1.0, 0.5))
+            (model.skill_adapter.square() + 1.0, 0.5, {
+                "lifetime_accuracy_std": 0.0}))
     monkeypatch.setattr(
         magnitude_bridge, "_replay_loss_and_leakage",
         lambda model, *_args, **_kwargs:
@@ -156,3 +161,8 @@ def test_epochs_per_batch_reuse_experience_without_double_counting(
     # Two unique acquisition batches plus seven unique replay batches per
     # outer step. The three epochs consume no additional generated events.
     assert len(generated) == 16
+    assert report["candidate_checkpoint_saved"]
+    candidate = torch.load(
+        tmp_path / "candidate.pt", map_location="cpu", weights_only=False)
+    assert candidate["admission_status"] == (
+        "unpromoted_pair_magnitude_prefix")

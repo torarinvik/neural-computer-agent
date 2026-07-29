@@ -1346,3 +1346,32 @@ learn when to stop consolidation from task-agnostic learner-visible signals.
 
 Full record:
 `session_records/pair_magnitude_half_compute_2026-07-29/README.md`.
+
+## Accumulated skill reduces next-frontier experience
+
+The next experiment first rejected two false shortcuts. A learned stopping
+probe made unsafe held-out decisions even after receiving sensory-latent and
+attempted-outcome consistency features, so fixed consolidation remained. A
+21.09375% training arm was also discarded when matched audits showed the
+parent already mastered that contour.
+
+At the genuine 21.484375% frontier, the untouched parent failed three of three
+preflights. Sixty-four new lifetimes with eight passes failed 0/3. Ninety-six
+lifetimes with eight passes passed only 1/3. Holding the 96-lifetime evidence
+fixed and increasing private consolidation to twelve passes passed 3/3 while
+preserving every older capability.
+
+This reduces new experience from 128 to 96 lifetimes (25%) and total unique
+evidence from 288 to 228 lifetimes (20.8%) relative to the preceding
+acquisition rung. Resetting inherited magnitude knowledge fell to 87.95%;
+shuffling new outcomes fell to 89.39%.
+
+The selected fixed-size controller passed a 32,768-lifetime audit at 90.45%.
+Across eight more paired streams the untouched parent mastered 0/8 and the
+child 8/8, with +0.4677 percentage points mean accuracy and an improvement on
+every stream. This is verified compounding sample efficiency: accumulated
+skill reduces the new verifier evidence required for the next genuine
+frontier.
+
+Full record:
+`session_records/pair_magnitude_experience_compounding_2026-07-29/README.md`.

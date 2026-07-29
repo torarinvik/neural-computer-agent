@@ -611,3 +611,28 @@ Face model repository under `checkpoints/`.
 
 The separate unseen-rung gain gate missed its registered threshold and is not
 part of this checkpoint's promoted claim.
+
+## Compounding magnitude successor
+
+`unified_pair_magnitude_compounding_seed22022.pt` is hosted in the Hugging
+Face model repository under `checkpoints/`.
+
+- SHA-256:
+  `5aa030f0fb11d0765752f05cf6c6ecb6334ee31fa1b12a41eeef2603212fe1d4`
+- Parent: `unified_pair_magnitude_half_compute_seed21702.pt`
+- Size: approximately 1.5 MB; unchanged 388,191 controller parameters
+- Genuine frontier: 21.484375% bars→diamonds contour
+- New experience: 96 lifetimes / 576 verifier bits, down 25% from the
+  preceding 128-lifetime acquisition rung
+- Total unique evidence: 228 lifetimes / 1,368 bits
+- Consolidation: 12 passes / 2,736 lifetime exposures
+- Evidence/compute ladder: 64×8 failed 0/3; 96×8 passed 1/3; 96×12 passed 3/3
+- Matched population: parent 0/8 mastery, child 8/8, +0.4677 percentage
+  points mean accuracy; every stream improved
+- Reset inherited knowledge: 87.95%; shuffled outcomes: 89.39%
+- Independent 32,768-lifetime audit: 90.45%; every causality and retention
+  gate passed
+
+This is the first magnitude rung in this lineage where accumulated skill
+reduces the next genuine acquisition's new verifier experience. It deliberately
+spends more private consolidation compute to do so.

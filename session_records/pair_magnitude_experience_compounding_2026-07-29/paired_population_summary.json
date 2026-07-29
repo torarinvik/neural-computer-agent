@@ -1,0 +1,25 @@
+{
+  "schema": "pair-magnitude-compounding-population-v1",
+  "configuration": {
+    "appearance_blend": 0.21484375,
+    "count_per_stream": 16384,
+    "seeds": [72020, 72021, 72022, 72023, 72024, 72025, 72026, 72027]
+  },
+  "summary": {
+    "parent_mastery_count": 0,
+    "child_mastery_count": 8,
+    "stream_count": 8,
+    "mean_parent_accuracy": 0.8987344279885292,
+    "mean_child_accuracy": 0.9034112580120564,
+    "mean_paired_gain": 0.004676830023527145,
+    "minimum_paired_gain": 0.004506468772888184,
+    "maximum_paired_gain": 0.004893004894256592,
+    "every_stream_improved": true
+  },
+  "gate": {
+    "parent_mastery_at_most_3_of_8": true,
+    "child_mastery_at_least_7_of_8": true,
+    "positive_mean_paired_gain": true,
+    "accepted": true
+  }
+}
