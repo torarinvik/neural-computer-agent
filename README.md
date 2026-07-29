@@ -771,3 +771,31 @@ boundary is 20.3125% bars→diamonds morph.
 
 See
 `session_records/pair_magnitude_gradual_bridge_2026-07-29/README.md`.
+
+## Latest breakthrough: internal consolidation substitutes for experience
+
+The same 388,191-parameter controller now extends its magnitude concept from
+15.625% to 20.3125% bars→diamonds morph without adding a new adapter. It uses
+one balanced packet of 128 new lifetimes (768 verifier bits) and 128 rehearsal
+lifetimes, then performs 16 private optimizer passes over that fixed evidence.
+Three of three seeds pass acquisition, causal reversal, and complete retention
+gates.
+
+The organization of experience is causal. A matched 512-fresh-lifetime arm
+failed at 89.90% despite using the same 16 optimizer updates. Resetting the
+inherited magnitude skill reached 89.08%, one pass over the selected packet
+failed counterfactual mastery, and shuffling its verifier outcomes reached
+89.48%.
+
+A fresh 32,768-lifetime audit passed at 90.22%; deleting the second object
+reduced accuracy to 60.61%, and disabling inherited reads cost 11.71 points.
+The child also masters two unseen morph levels through 20.7031%, while the
+parent fails. It already runs at one controller pass per event—extra thought
+hurts.
+
+The result shows a fixed-size learned representation getting more capability
+from the same verifier evidence by internal consolidation. The next exact
+frontier is 20.8984375%.
+
+See
+`session_records/pair_magnitude_experience_consolidation_2026-07-29/README.md`.

@@ -1443,3 +1443,32 @@ necessary at the matched budget.
 
 Full record:
 `session_records/natural_memory_equivalence_2026-07-29/README.md`.
+
+## 2026-07-29 — A fixed controller substitutes consolidation for experience
+
+The 388,191-parameter magnitude controller extended its existing visual
+concept from 15.625% to 20.3125% contour morph using 128 new lifetimes and 768
+new verifier bits. One balanced 128-lifetime rehearsal packet brought the
+total to 1,536 unique verifier bits. The learner then reused the fixed packet
+for 16 optimizer passes.
+
+| arm | new lifetimes | optimizer updates | target | accepted |
+|---|---:|---:|---:|:---:|
+| inherited, consolidated packet | **128** | 16 | **90.47%** | yes |
+| reset inherited slot | 128 | 16 | 89.08% | no |
+| inherited, one pass | 128 | 1 | 90.08% | no |
+| inherited, fresh stream | 512 | 16 | 89.90% | no |
+| verifier outcomes shuffled | 128 | 16 | 89.48% | no |
+
+The selected recipe passed three of three seeds at 90.02–90.47%, retained the
+entire repertoire, and did not add parameters. The fresh-stream comparison is
+a fourfold new-experience saving at the matched optimizer budget, but this is
+an endpoint budget rather than a minimum stable bits-to-threshold claim.
+
+On 32,768 independent lifetimes, the child scored 90.22%, required both
+objects, and lost 11.71 points under inherited-read ablation. It mastered two
+untrained contours through 20.7031%, where the parent failed. Zero optional
+thought was already optimal.
+
+Full record:
+`session_records/pair_magnitude_experience_consolidation_2026-07-29/README.md`.

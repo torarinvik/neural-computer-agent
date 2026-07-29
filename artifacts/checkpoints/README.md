@@ -564,3 +564,28 @@ Hugging Face model repository under `checkpoints/`.
 
 The controller learns the first just-beyond-ability bars→diamonds morph and
 zero-shot masters the next two harder morph levels. Full diamonds remain open.
+
+## Fixed-parameter magnitude experience consolidation
+
+`unified_pair_magnitude_experience_consolidation_seed21653.pt` is hosted in
+the Hugging Face model repository under `checkpoints/`.
+
+- SHA-256:
+  `ffb09143b452f5b9e94b74bc382cf82e83b0e80d7edb1638631d60d4b8d3d6ce`
+- Parent: `unified_pair_magnitude_gradual_bridge_seed21515.pt`
+- Size: approximately 1.5 MB; 388,191 controller parameters
+- Acquisition: 128 new lifetimes / 768 new verifier bits
+- Rehearsal: 128 unique lifetimes / 768 verifier bits
+- Internal consolidation: 16 optimizer passes / 4,096 lifetime exposures
+- Three fresh seeds: 3/3 acquisition, causality, and retention gates
+- Independent 32,768-lifetime target audit: 90.22%
+- Missing-second-object control: 60.61%
+- Inherited-read ablation: 78.50%, an 11.71-point causal loss
+- Parent fails at unseen 20.5078%; child passes at 90.17% and also masters
+  20.7031%
+- Inference: one controller pass per event; optional thought hurts
+
+The architecture does not grow. Reusing one diverse experience packet beats
+both one-pass learning and a four-times-larger fresh stream at the matched
+optimizer budget. This is an endpoint experience budget, not yet a minimum
+stable bits-to-threshold.

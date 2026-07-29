@@ -1286,3 +1286,39 @@ first point beyond the child’s current causal mastery.
 
 Full record:
 `session_records/pair_magnitude_gradual_bridge_2026-07-29/README.md`.
+
+## Consolidate experience before advancing
+
+The next boundary exposed a fixed-size plasticity failure rather than a need
+for more data. Refining the latest magnitude slot on 512 fresh lifetimes
+reached only 89.29–89.65%, and sometimes damaged mastered contours. A gradient
+probe found the reason: frozen-teacher rehearsal has essentially zero gradient
+before the first student update, so preservation reacts only after the shared
+slot has moved.
+
+The successful schedule generated one balanced packet of 128 new target
+lifetimes and 128 rehearsal lifetimes, then made 16 internal optimizer passes
+over that fixed packet. This consumed 768 new verifier bits and 1,536 total
+unique bits. The 388,191-parameter architecture did not grow. Three of three
+seeds passed complete acquisition, causality, and repertoire gates at
+20.3125%, with target accuracy of 90.02–90.47%.
+
+Matched controls failed: resetting inherited magnitude reached 89.08%; one
+pass over the same packet failed counterfactual mastery; 512 fresh lifetimes
+at the same 16 updates reached 89.90%; shuffling new outcomes reached 89.48%.
+Thus both inherited knowledge and repeated consolidation of aligned experience
+are necessary.
+
+The selected checkpoint passed a fresh 32,768-lifetime audit at 90.22%.
+Deleting object two fell to 60.61%; disabling inherited reads cost 11.71
+points; every old skill remained mastered. It also generalized without
+training to 20.5078% and 20.7031%, where its parent failed. Zero optional
+thought remains optimal.
+
+This establishes that private computation can substitute for additional
+verifier experience in a fixed-size learned concept, not yet a general
+stable-bits threshold across task families. The next exact contour failure is
+20.8984375%.
+
+Full record:
+`session_records/pair_magnitude_experience_consolidation_2026-07-29/README.md`.
