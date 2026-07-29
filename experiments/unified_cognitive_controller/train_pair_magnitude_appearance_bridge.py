@@ -75,6 +75,14 @@ def _shuffle_verifier_outcomes(
         correct_actions=batch.correct_actions[permutation])
 
 
+def _annealed_gate_leak(
+        initial: float, *, optimizer_update: int, anneal_updates: int,
+        ) -> float:
+    return initial * max(
+        0.0,
+        1.0 - (optimizer_update - 1) / max(1, anneal_updates - 1))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--parent", type=Path, required=True)
@@ -117,6 +125,12 @@ def main() -> None:
         "--initialization", choices=("experienced", "reset"),
         default="experienced")
     parser.add_argument("--gate-leak-initial", type=float, default=0.05)
+    parser.add_argument(
+        "--gate-leak-anneal-updates", type=int, default=0,
+        help=(
+            "number of optimizer updates over which gate leak reaches zero; "
+            "0 uses the complete run length, while a fixed value makes "
+            "different consolidation prefixes share the same trajectory"))
     parser.add_argument("--test-lifetimes", type=int, default=2048)
     parser.add_argument(
         "--device",
@@ -135,7 +149,8 @@ def main() -> None:
         raise ValueError("loss weights are out of range")
     if (
             args.learning_rate <= 0 or args.bridge_slot_width < 1
-            or not 0.0 <= args.gate_leak_initial):
+            or not 0.0 <= args.gate_leak_initial
+            or args.gate_leak_anneal_updates < 0):
         raise ValueError("learning rate and gate leak are out of range")
     inherited_magnitude_blends = tuple(
         float(value)
@@ -208,6 +223,8 @@ def main() -> None:
     started = time.perf_counter()
     history = []
     optimizer_updates = args.steps * args.epochs_per_batch
+    leak_updates = (
+        args.gate_leak_anneal_updates or optimizer_updates)
     optimizer_update = 0
     for update in range(1, args.steps + 1):
         progress = (
@@ -240,13 +257,10 @@ def main() -> None:
         for epoch in range(1, args.epochs_per_batch + 1):
             optimizer_update += 1
             student.train()
-            student.skill_adapter_gate_leak = (
-                args.gate_leak_initial
-                * max(
-                    0.0,
-                    1.0
-                    - (optimizer_update - 1)
-                    / max(1, optimizer_updates - 1)))
+            student.skill_adapter_gate_leak = _annealed_gate_leak(
+                args.gate_leak_initial,
+                optimizer_update=optimizer_update,
+                anneal_updates=leak_updates)
             skill_loss, observed_accuracy = _pair_loss(
                 student, new_batch, exploration=args.exploration)
             replay_results = [
@@ -372,6 +386,7 @@ def main() -> None:
             "action, or hidden generator state."),
         "configuration": {
             **vars(args),
+            "resolved_gate_leak_anneal_updates": leak_updates,
             "parent": str(args.parent),
             "report": str(args.report),
             "checkpoint_out": (

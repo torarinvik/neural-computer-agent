@@ -1322,3 +1322,27 @@ stable-bits threshold across task families. The next exact contour failure is
 
 Full record:
 `session_records/pair_magnitude_experience_consolidation_2026-07-29/README.md`.
+
+## Halve consolidation compute on the next exact contour
+
+The fixed-size magnitude controller advanced to the first non-robust
+20.8984375% contour using the same 128 new lifetimes and no new parameters.
+Fixing gate-leak annealing to 16 updates made acquisition prefixes directly
+comparable. Four, six, and seven passes failed; eight, twelve, and sixteen
+passed. The first robust prefix therefore cuts optimizer work from 16 to 8
+passes and lifetime exposures from 4,608 to 2,304.
+
+The eight-pass recipe passed three of three fresh seeds. Reset and
+verifier-outcome-shuffled controls failed at 88.10% and 89.62%. On 32,768
+independent lifetimes the selected checkpoint reached 90.21%, lost 29.57
+points when object two was removed, lost 12.09 points when inherited reads
+were disabled, and retained four magnitude contours plus every older skill.
+It remains optimal at zero optional thoughts.
+
+A separate forward-transfer gate was deliberately not promoted: the child
+mastered two unseen contours but improved the registered next rung by +0.188
+points, just below the fixed +0.200 requirement. The next mechanism should
+learn when to stop consolidation from task-agnostic learner-visible signals.
+
+Full record:
+`session_records/pair_magnitude_half_compute_2026-07-29/README.md`.

@@ -589,3 +589,25 @@ The architecture does not grow. Reusing one diverse experience packet beats
 both one-pass learning and a four-times-larger fresh stream at the matched
 optimizer budget. This is an endpoint experience budget, not yet a minimum
 stable bits-to-threshold.
+
+## Half-compute magnitude successor
+
+`unified_pair_magnitude_half_compute_seed21702.pt` is hosted in the Hugging
+Face model repository under `checkpoints/`.
+
+- SHA-256:
+  `e3ae0cd90ec0dc6f2e98c829c2c064d7a6a6008b36fb982213b3b50c795e8ba9`
+- Parent: `unified_pair_magnitude_experience_consolidation_seed21653.pt`
+- Size: approximately 1.5 MB; 388,191 controller parameters
+- New experience: 128 lifetimes / 768 verifier bits
+- Total unique evidence with ten replay streams: 288 lifetimes / 1,728 bits
+- Consolidation: 8 optimizer passes / 2,304 lifetime exposures
+- Stable prefix ladder: 4/6/7 failed; 8/12/16 passed
+- Three fresh seeds: 3/3 acquisition, causality, and retention gates
+- Independent 32,768-lifetime audit: 90.21%
+- Missing-second-object control: 60.64%
+- Inherited-read ablation: 78.12%, a 12.09-point causal loss
+- Inference: one controller pass per event; optional thought hurts
+
+The separate unseen-rung gain gate missed its registered threshold and is not
+part of this checkpoint's promoted claim.

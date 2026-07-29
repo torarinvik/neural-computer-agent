@@ -1472,3 +1472,25 @@ thought was already optimal.
 
 Full record:
 `session_records/pair_magnitude_experience_consolidation_2026-07-29/README.md`.
+
+## 2026-07-29 — Next-rung acquisition at half consolidation compute
+
+The fixed magnitude controller reused the same 128-new-lifetime packet to
+acquire the 20.8984375% contour. With a prefix-invariant gate-leak schedule,
+the complete gate failed after 4/6/7 optimizer passes and passed after
+8/12/16. The first stable measured prefix therefore cut optimizer work from
+16 to 8 and optimizer-lifetime exposures from 4,608 to 2,304, without
+increasing the 768-new-verifier-bit budget.
+
+| arm | new bits | optimizer passes | target | accepted |
+|---|---:|---:|---:|:---:|
+| inherited, aligned | **768** | **8** | **90.01–90.24%** | 3/3 |
+| reset inherited slot | 768 | 8 | 88.10% | no |
+| outcome shuffled | 768 | 8 | 89.62% | no |
+
+All older gates passed on 32,768 fresh lifetimes. The next-rung transfer gate
+did not: +0.188 points versus the registered +0.200 minimum. This entry credits
+consolidation-compute efficiency, not a new forward-transfer milestone.
+
+Full record:
+`session_records/pair_magnitude_half_compute_2026-07-29/README.md`.

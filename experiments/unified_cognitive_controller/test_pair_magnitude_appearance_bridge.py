@@ -8,7 +8,7 @@ import torch
 from . import train_pair_magnitude_appearance_bridge as magnitude_bridge
 from .environment import generate_lifetimes
 from .train_pair_magnitude_appearance_bridge import (
-    _replay_specs, _shuffle_verifier_outcomes)
+    _annealed_gate_leak, _replay_specs, _shuffle_verifier_outcomes)
 
 
 def test_magnitude_bridge_replays_every_inherited_capability() -> None:
@@ -41,6 +41,20 @@ def test_verifier_shuffle_preserves_pixels_and_outcome_marginal() -> None:
         shuffled.correct_actions.sort(dim=0).values,
         batch.correct_actions.sort(dim=0).values)
     assert not torch.equal(shuffled.correct_actions, batch.correct_actions)
+
+
+def test_fixed_gate_leak_schedule_is_prefix_invariant() -> None:
+    short = [
+        _annealed_gate_leak(0.05, optimizer_update=update, anneal_updates=16)
+        for update in range(1, 9)
+    ]
+    long = [
+        _annealed_gate_leak(0.05, optimizer_update=update, anneal_updates=16)
+        for update in range(1, 25)
+    ]
+    assert short == long[:8]
+    assert long[0] == pytest.approx(0.05)
+    assert long[15:] == [0.0] * 9
 
 
 def test_epochs_per_batch_reuse_experience_without_double_counting(

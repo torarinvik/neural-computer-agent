@@ -799,3 +799,28 @@ frontier is 20.8984375%.
 
 See
 `session_records/pair_magnitude_experience_consolidation_2026-07-29/README.md`.
+
+## Latest breakthrough: the next skill uses half the consolidation compute
+
+The fixed 388,191-parameter controller acquired the exact next 20.8984375%
+contour from 128 new lifetimes while preserving its entire repertoire. A
+prefix-controlled experiment held the experience packet and gate-leak schedule
+fixed: four, six, and seven optimizer passes failed the complete gate, while
+eight, twelve, and sixteen passed. Eight therefore halves acquisition work
+relative to the previous 16-pass recipe without consuming more verifier
+evidence.
+
+The eight-pass schedule replicated on three of three seeds at 90.01–90.24%.
+Resetting inherited magnitude knowledge reached 88.10%; shuffling new outcomes
+reached 89.62%. A fresh 32,768-lifetime audit passed at 90.21%; deleting object
+two fell to 60.64%, inherited-read ablation cost 12.09 points, and every older
+skill retained.
+
+The separate forward-transfer gain gate did not pass: +0.188 points versus a
+pre-registered +0.200 requirement. Although the child mastered two unseen
+contours, no new compounding-transfer claim is promoted. The next frontier is
+learning a task-agnostic stopping rule rather than using the fixed eight-pass
+budget.
+
+See
+`session_records/pair_magnitude_half_compute_2026-07-29/README.md`.
