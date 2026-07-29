@@ -65,14 +65,54 @@ def _target_evaluation(
 def _shuffle_verifier_outcomes(
         batch, *, seed: int,
         ):
-    """Break the pixel/outcome relation without changing either marginal."""
+    """Break the pixel/outcome relation without changing label counts.
+
+    Prefer whole-lifetime permutations, which preserve each trial's marginal.
+    Tiny batches can contain duplicate outcome rows; only then fall back to a
+    cell permutation, which still preserves the exact global marginal.
+    """
     generator = torch.Generator().manual_seed(seed)
-    permutation = torch.randperm(
-        batch.batch_size, generator=generator).to(
+    permutations = [
+        torch.randperm(batch.batch_size, generator=generator)]
+    permutations.extend(
+        torch.arange(batch.batch_size).roll(offset)
+        for offset in range(1, batch.batch_size))
+    row_permutation = next(
+        (
+            candidate
+            for candidate in permutations
+            if not torch.equal(
+                batch.correct_actions[candidate.to(
+                    batch.correct_actions.device)],
+                batch.correct_actions)
+        ),
+        None)
+    if row_permutation is not None:
+        row_permutation = row_permutation.to(
             batch.correct_actions.device)
-    return replace(
-        batch,
-        correct_actions=batch.correct_actions[permutation])
+        return replace(
+            batch,
+            correct_actions=batch.correct_actions[row_permutation])
+    flattened = batch.correct_actions.flatten()
+    cell_permutations = [
+        torch.randperm(flattened.numel(), generator=generator)]
+    cell_permutations.extend(
+        torch.arange(flattened.numel()).roll(offset)
+        for offset in range(1, flattened.numel()))
+    cell_permutation = next(
+        (
+            candidate
+            for candidate in cell_permutations
+            if not torch.equal(
+                flattened[candidate.to(flattened.device)], flattened)
+        ),
+        None)
+    if cell_permutation is None:
+        raise ValueError("verifier shuffle cannot change a constant batch")
+    shuffled = flattened[
+        cell_permutation.to(flattened.device)].reshape_as(
+            batch.correct_actions)
+    return replace(batch, correct_actions=shuffled)
 
 
 def _annealed_gate_leak(

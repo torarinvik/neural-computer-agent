@@ -43,6 +43,35 @@ def test_verifier_shuffle_preserves_pixels_and_outcome_marginal() -> None:
     assert not torch.equal(shuffled.correct_actions, batch.correct_actions)
 
 
+def test_verifier_shuffle_falls_back_to_cells_for_duplicate_rows() -> None:
+    from dataclasses import replace
+
+    batch = generate_lifetimes(
+        2, 6, seed=21652, task="visible_pair_magnitude",
+        appearance="bars", appearance_blend=0.203125)
+    batch = replace(
+        batch, correct_actions=batch.correct_actions[:1].expand(2, -1))
+    shuffled = _shuffle_verifier_outcomes(batch, seed=21653)
+    assert torch.equal(shuffled.frames, batch.frames)
+    assert torch.equal(
+        shuffled.correct_actions.flatten().sort().values,
+        batch.correct_actions.flatten().sort().values)
+    assert not torch.equal(
+        shuffled.correct_actions, batch.correct_actions)
+
+
+def test_verifier_shuffle_rejects_a_constant_batch() -> None:
+    from dataclasses import replace
+
+    batch = generate_lifetimes(
+        2, 6, seed=21654, task="visible_pair_magnitude",
+        appearance="bars", appearance_blend=0.203125)
+    batch = replace(
+        batch, correct_actions=torch.zeros_like(batch.correct_actions))
+    with pytest.raises(ValueError, match="cannot change"):
+        _shuffle_verifier_outcomes(batch, seed=21655)
+
+
 def test_fixed_gate_leak_schedule_is_prefix_invariant() -> None:
     short = [
         _annealed_gate_leak(0.05, optimizer_update=update, anneal_updates=16)

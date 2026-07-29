@@ -3,7 +3,10 @@ from __future__ import annotations
 
 import torch
 
+from .audit_pair_numerosity_continuation import _parse_values
 from .model import UnifiedCognitiveController
+from .train_pair_numerosity_transfer import (
+    _build_student, _retained_within_parent_floor)
 
 
 def test_slot_specific_read_ablation_preserves_older_slots() -> None:
@@ -37,3 +40,87 @@ def test_slot_specific_read_ablation_preserves_older_slots() -> None:
     matched_ablation = model.step(
         frames, state, actions, rewards, feedback)[0].logits
     assert not torch.equal(normal, matched_ablation)
+
+
+def test_continuation_reuses_the_existing_final_slot_bit_identically() -> None:
+    parent = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        skill_adapter_widths=(8, 8),
+        skill_adapter_reads_prior=True,
+        skill_adapter_reads_prior_from=1)
+    payload = {
+        "model_configuration": {
+            "width": 32,
+            "workspace_slots": 4,
+            "intention_width": 8,
+            "skill_adapter_widths": (8, 8),
+            "skill_adapter_reads_prior": True,
+            "skill_adapter_reads_prior_from": 1,
+        },
+        "state_dict": parent.state_dict(),
+    }
+    student, configuration, slot, prefixes = _build_student(
+        payload, device=torch.device("cpu"), slot_width=8,
+        continue_last_slot=True)
+    assert configuration["skill_adapter_widths"] == (8, 8)
+    assert slot == 1
+    assert prefixes == (
+        "skill_adapters.1.", "skill_adapter_gates.1.",
+        "skill_adapter_gate_refiners.1.",
+        "skill_adapter_gate_extensions.1.",
+        "skill_adapter_read_projections.1.")
+    for name, value in parent.state_dict().items():
+        assert torch.equal(value, student.state_dict()[name])
+
+
+def test_first_numerosity_rung_appends_exactly_one_zero_output_slot() -> None:
+    parent = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        skill_adapter_widths=(8,))
+    payload = {
+        "model_configuration": {
+            "width": 32,
+            "workspace_slots": 4,
+            "intention_width": 8,
+            "skill_adapter_widths": (8,),
+        },
+        "state_dict": parent.state_dict(),
+    }
+    student, configuration, slot, _ = _build_student(
+        payload, device=torch.device("cpu"), slot_width=8,
+        continue_last_slot=False)
+    assert configuration["skill_adapter_widths"] == (8, 8)
+    assert slot == 1
+    assert torch.count_nonzero(
+        student.skill_adapters[1][-1].weight) == 0
+    assert torch.count_nonzero(
+        student.skill_adapters[1][-1].bias) == 0
+
+
+def test_retention_floor_is_matched_per_stream() -> None:
+    parent = {
+        "a": {"overall_accuracy": 0.91},
+        "b": {"overall_accuracy": 0.96},
+    }
+    assert _retained_within_parent_floor(
+        {
+            "a": {"overall_accuracy": 0.90},
+            "b": {"overall_accuracy": 0.941},
+        },
+        parent)
+    assert not _retained_within_parent_floor(
+        {
+            "a": {"overall_accuracy": 0.90},
+            "b": {"overall_accuracy": 0.939},
+        },
+        parent)
+
+
+def test_continuation_audit_values_are_strictly_validated() -> None:
+    assert _parse_values("0.224,0.23") == (0.224, 0.23)
+    for invalid in ("", "0.2,0.2", "-0.1", "1.1"):
+        try:
+            _parse_values(invalid)
+        except ValueError:
+            continue
+        raise AssertionError(f"accepted invalid audit values {invalid!r}")

@@ -1,10 +1,10 @@
-"""Learn discrete numerosity from pixels while testing magnitude reuse.
+"""Learn and progressively refine discrete numerosity from pixels.
 
 The deployed learner receives RGB frames, its own sampled opaque actions,
-scalar outcomes, and frozen-controller behavioral rehearsal.  A new
-zero-output successor may read the immediately preceding magnitude slot.
-The matched read-ablation arm keeps identical capacity and old behavior while
-zeroing only that inherited input to the new slot.
+scalar outcomes, and frozen-controller behavioral rehearsal. The first
+numerosity rung appends one zero-output successor that may read the immediately
+preceding magnitude slot. Later rungs refine that same slot and rehearse the
+last promoted numerosity frontier rather than growing one slot per increment.
 """
 from __future__ import annotations
 
@@ -41,6 +41,54 @@ def _target_evaluation(
         numerosity_appearance_blend=appearance_blend)
 
 
+def _retained_within_parent_floor(
+        candidate: dict[str, dict[str, object]],
+        parent: dict[str, dict[str, object]], *,
+        tolerance: float = 0.02) -> bool:
+    """Require every matched inherited stream to stay near its parent."""
+    if candidate.keys() != parent.keys():
+        raise ValueError("candidate and parent retention streams differ")
+    return all(
+        _headline_accuracy(candidate[name])
+        >= _headline_accuracy(parent[name]) - tolerance
+        for name in candidate)
+
+
+def _build_student(
+        payload: dict[str, object], *, device: torch.device,
+        slot_width: int, continue_last_slot: bool,
+        ) -> tuple[
+            UnifiedCognitiveController, dict[str, object], int,
+            tuple[str, ...]]:
+    """Build either the first numerosity slot or a same-slot continuation."""
+    configuration = dict(payload["model_configuration"])
+    inherited_slots = tuple(configuration.get("skill_adapter_widths", ()))
+    if not inherited_slots:
+        raise ValueError("numerosity transfer requires inherited skill slots")
+    if continue_last_slot:
+        slot = len(inherited_slots) - 1
+        if inherited_slots[slot] != slot_width:
+            raise ValueError(
+                "continuation slot width must match the existing final slot")
+    else:
+        slot = len(inherited_slots)
+        configuration["skill_adapter_widths"] = (
+            *inherited_slots, slot_width)
+    prefixes = _slot_prefixes(slot)
+    student = UnifiedCognitiveController(**configuration).to(device)
+    missing, unexpected = student.load_state_dict(
+        payload["state_dict"], strict=continue_last_slot)
+    expected_missing = (
+        set() if continue_last_slot else {
+            name for name in student.state_dict()
+            if name.startswith(prefixes)})
+    if set(missing) != expected_missing or unexpected:
+        mode = "continuation" if continue_last_slot else "new slot"
+        raise RuntimeError(
+            f"{mode} mismatch: missing={missing}, unexpected={unexpected}")
+    return student, configuration, slot, prefixes
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--parent", type=Path, required=True)
@@ -68,6 +116,16 @@ def main() -> None:
         default=(
             "0.0,0.15625,0.203125,0.20703125,"
             "0.208984375,0.21484375,0.2265625"))
+    parser.add_argument(
+        "--continue-last-slot", action="store_true",
+        help=(
+            "refine the parent's final numerosity slot instead of appending "
+            "another slot"))
+    parser.add_argument(
+        "--inherited-numerosity-blends", default="",
+        help=(
+            "comma-separated promoted numerosity appearance frontiers to "
+            "rehearse; required for same-slot continuation"))
     parser.add_argument(
         "--ablate-inherited-read", action="store_true",
         help=(
@@ -114,6 +172,27 @@ def main() -> None:
             or any(not 0.0 <= value <= 1.0
                    for value in inherited_magnitude_blends)):
         raise ValueError("inherited magnitude contours are invalid")
+    inherited_numerosity_blends = tuple(
+        float(value)
+        for value in args.inherited_numerosity_blends.split(",")
+        if value)
+    if (
+            len(set(inherited_numerosity_blends))
+            != len(inherited_numerosity_blends)
+            or any(not 0.0 <= value <= 1.0
+                   for value in inherited_numerosity_blends)):
+        raise ValueError("inherited numerosity frontiers are invalid")
+    if args.continue_last_slot and not inherited_numerosity_blends:
+        raise ValueError(
+            "same-slot continuation requires inherited numerosity rehearsal")
+    if not args.continue_last_slot and inherited_numerosity_blends:
+        raise ValueError(
+            "numerosity rehearsal is only valid for same-slot continuation")
+    if any(
+            value > args.numerosity_appearance_start
+            for value in inherited_numerosity_blends):
+        raise ValueError(
+            "inherited numerosity frontier exceeds the acquisition start")
     replay_specs = _replay_specs(inherited_magnitude_blends)
 
     seed_everything(args.seed)
@@ -122,24 +201,9 @@ def main() -> None:
     teacher.eval()
     for parameter in teacher.parameters():
         parameter.requires_grad_(False)
-    configuration = dict(payload["model_configuration"])
-    inherited_slots = tuple(configuration.get("skill_adapter_widths", ()))
-    if not inherited_slots:
-        raise ValueError("numerosity transfer requires inherited skill slots")
-    slot = len(inherited_slots)
-    configuration["skill_adapter_widths"] = (
-        *inherited_slots, args.slot_width)
-    prefixes = _slot_prefixes(slot)
-    student = UnifiedCognitiveController(**configuration).to(device)
-    missing, unexpected = student.load_state_dict(
-        payload["state_dict"], strict=False)
-    expected_missing = {
-        name for name in student.state_dict()
-        if name.startswith(prefixes)}
-    if set(missing) != expected_missing or unexpected:
-        raise RuntimeError(
-            f"new numerosity slot mismatch: missing={missing}, "
-            f"unexpected={unexpected}")
+    student, configuration, slot, prefixes = _build_student(
+        payload, device=device, slot_width=args.slot_width,
+        continue_last_slot=args.continue_last_slot)
     if args.ablate_inherited_read:
         student.skill_adapter_ablate_prior_read_slot = slot
     for name, parameter in student.named_parameters():
@@ -197,6 +261,17 @@ def main() -> None:
             for index, (task, appearance, appearance_blend)
             in enumerate(replay_specs)
         ]
+        replay_batches.extend(
+            generate_lifetimes(
+                args.replay_batch_size, 6,
+                seed=(
+                    args.seed * (160_000_000 + 10_000_000 * index)
+                    + update),
+                task="visible_pair_numerosity",
+                numerosity_appearance_blend=blend,
+                support_trials=1, device=device)
+            for index, blend in enumerate(
+                inherited_numerosity_blends))
         for epoch in range(1, args.epochs_per_batch + 1):
             optimizer_update += 1
             student.train()
@@ -274,6 +349,13 @@ def main() -> None:
         for index, task in enumerate(
             ("binary_mapping", "visible_context", "visible_context_xor"))
     }
+    numerosity_retention = {
+        str(blend): _target_evaluation(
+            student, count=args.test_lifetimes,
+            seed=args.seed + 94_000_000 + 10_000 * index,
+            mass_control=0.0, appearance_blend=blend, device=device)
+        for index, blend in enumerate(inherited_numerosity_blends)
+    }
     parent_magnitude = {
         str(blend): evaluate(
             teacher, count=args.test_lifetimes, trials=6,
@@ -300,14 +382,13 @@ def main() -> None:
         for index, task in enumerate(
             ("binary_mapping", "visible_context", "visible_context_xor"))
     }
-
-    def retained_within_parent_floor(
-            candidate: dict[str, dict[str, object]],
-            parent: dict[str, dict[str, object]]) -> bool:
-        return all(
-            _headline_accuracy(candidate[name])
-            >= _headline_accuracy(parent[name]) - 0.02
-            for name in candidate)
+    parent_numerosity = {
+        str(blend): _target_evaluation(
+            teacher, count=args.test_lifetimes,
+            seed=args.seed + 94_000_000 + 10_000 * index,
+            mass_control=0.0, appearance_blend=blend, device=device)
+        for index, blend in enumerate(inherited_numerosity_blends)
+    }
 
     missing_second = _operation_cue_ablation_accuracy(
         student, count=args.test_lifetimes, seed=target_seed,
@@ -331,22 +412,43 @@ def main() -> None:
         "second_count_field_causally_required":
             missing_second <= target_accuracy - 0.15,
         "magnitude_repertoire_retained_within_2pp_of_parent":
-            retained_within_parent_floor(
+            _retained_within_parent_floor(
                 magnitude_retention, parent_magnitude),
         "relation_repertoire_retained_within_2pp_of_parent":
-            retained_within_parent_floor(
+            _retained_within_parent_floor(
                 relation_retention, parent_relation),
         "unrelated_repertoire_retained_within_2pp_of_parent":
-            retained_within_parent_floor(
+            _retained_within_parent_floor(
                 unrelated_retention, parent_unrelated),
     }
+    if inherited_numerosity_blends:
+        gates[
+            "numerosity_frontier_retained_within_2pp_of_parent"
+        ] = _retained_within_parent_floor(
+            numerosity_retention, parent_numerosity)
     accepted = all(gates.values())
     frozen_bit_identical = all(
         torch.equal(
             before, student.state_dict()[name].detach().cpu())
         for name, before in frozen_initial.items())
+    replay_streams = (
+        len(replay_specs) + len(inherited_numerosity_blends))
     total_unique_lifetimes = args.steps * (
-        args.batch_size + len(replay_specs) * args.replay_batch_size)
+        args.batch_size + replay_streams * args.replay_batch_size)
+    replay_spec_records = [
+        {
+            "task": task,
+            "appearance": appearance,
+            "appearance_blend": appearance_blend,
+        }
+        for task, appearance, appearance_blend in replay_specs
+    ] + [
+        {
+            "task": "visible_pair_numerosity",
+            "numerosity_appearance_blend": blend,
+        }
+        for blend in inherited_numerosity_blends
+    ]
     report = {
         "schema": "pair-numerosity-transfer-v1",
         "claim_boundary": (
@@ -370,10 +472,10 @@ def main() -> None:
         "accounting": {
             "new_unique_lifetimes": args.steps * args.batch_size,
             "new_verifier_bits": args.steps * args.batch_size * 6,
-            "replay_streams": len(replay_specs),
-            "replay_specs": replay_specs,
+            "replay_streams": replay_streams,
+            "replay_specs": replay_spec_records,
             "replay_unique_lifetimes":
-                args.steps * len(replay_specs) * args.replay_batch_size,
+                args.steps * replay_streams * args.replay_batch_size,
             "total_unique_lifetimes": total_unique_lifetimes,
             "total_unique_verifier_bits": total_unique_lifetimes * 6,
             "optimizer_updates": optimizer_updates,
@@ -386,9 +488,11 @@ def main() -> None:
             "magnitude_repertoire_retention": magnitude_retention,
             "relation_repertoire_retention": relation_retention,
             "unrelated_repertoire_retention": unrelated_retention,
+            "numerosity_frontier_retention": numerosity_retention,
             "frozen_parent_magnitude_baseline": parent_magnitude,
             "frozen_parent_relation_baseline": parent_relation,
             "frozen_parent_unrelated_baseline": parent_unrelated,
+            "frozen_parent_numerosity_baseline": parent_numerosity,
         },
         "headline_accuracy": {
             "target": target_accuracy,

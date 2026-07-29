@@ -44,6 +44,7 @@ held-out verifier audits.
 | `identify_random_fresh_incremental64_seed211.pt` | Incremental 8→16→32→64-bit learner |
 | `unified_pair_magnitude_repeated_compounding_seed23105.pt` | Repeated-compounding magnitude frontier learned from 44 new lifetimes |
 | `unified_pair_numerosity_adjacent_bridge_seed23602.pt` | Adjacent magnitude→numerosity bridge learned from 16 new lifetimes |
+| `unified_pair_numerosity_compounding_seed23712.pt` | Same-slot numerosity continuation learned from four new lifetimes |
 
 ## Audited results
 
@@ -78,6 +79,21 @@ verifier outcomes, not 32.
 - matched shuffled-outcome controls failed, and every inherited skill remained
   within two percentage points of its frozen parent.
 
+### Numerosity compounding
+
+- the existing numerosity slot advanced from the 22.4% to the 23.0%
+  dot-appearance frontier using four new lifetimes / 24 verifier bits;
+- this reduced new experience by 75% relative to the initial 16-lifetime
+  magnitude→numerosity acquisition, without adding parameters;
+- real outcomes passed on 2/2 seeds while matched shuffled-outcome controls
+  failed on 2/2;
+- both children passed one shared 32,768-lifetime causal audit and the selected
+  child passed the full 8,192-lifetime retention suite;
+- all registered magnitude, relation, numerosity, and unrelated skills remained
+  within two percentage points of the frozen parent;
+- two-lifetime continuation passed only 1/2 real seeds, so four is the current
+  replicated sample-efficiency floor.
+
 ## Important negative result
 
 The mastered fixed-target checkpoint caused negative transfer when its weights
@@ -105,6 +121,7 @@ The implementation and reproducibility instructions live in the companion
 
 This is experimental research. It now demonstrates causally audited elementary
 identify→observe→act behavior, repeated sample-efficiency gains within a
-magnitude lineage, and one adjacent transfer into discrete numerosity. It does
-not yet demonstrate general intelligence, pure-dot numerosity mastery, or
-unbounded compounding across many unrelated primitives.
+magnitude lineage, adjacent transfer into discrete numerosity, and one
+replicated within-numerosity compounding step that used 75% less new
+experience. It does not yet demonstrate general intelligence, pure-dot
+numerosity mastery, or unbounded compounding across many unrelated primitives.
