@@ -157,6 +157,7 @@ def generate_lifetimes(
         reverse_contexts: bool = False,
         task: str = "binary_mapping",
         appearance: str = "bars",
+        appearance_blend: float | None = None,
         support_trials: int = 1,
         device: torch.device | str = "cpu") -> CognitiveLifetimeBatch:
     """Generate a balanced batch with one uniquely correct opaque action.
@@ -179,6 +180,10 @@ def generate_lifetimes(
     if appearance not in _MASK_BANKS:
         raise ValueError(
             f"appearance must be one of {sorted(_MASK_BANKS)}")
+    if (
+            appearance_blend is not None
+            and not 0.0 <= appearance_blend <= 1.0):
+        raise ValueError("appearance blend must be within [0, 1]")
     if count < 2 or count % 2:
         raise ValueError("count must be positive and divisible by two")
     if task in ("four_rule", "contextual_mapping") and count % 4:
@@ -227,7 +232,16 @@ def generate_lifetimes(
         position_choices = torch.tensor([0, 3], dtype=torch.long)
     positions = position_choices[torch.randint(
         0, len(position_choices), (count, trials), generator=generator)]
-    masks = _MASK_BANKS[appearance][identities, positions]
+    if appearance_blend is None:
+        mask_bank = _MASK_BANKS[appearance]
+    else:
+        # A task-preserving difficulty continuum. Endpoints are the exact bars
+        # and diamond renderers; intermediate pixels expose progressively more
+        # contour change without revealing a semantic curriculum stage.
+        mask_bank = (
+            (1.0 - appearance_blend) * _MASK_BANKS["bars"]
+            + appearance_blend * _MASK_BANKS["diamonds"])
+    masks = mask_bank[identities, positions]
     pair_identities = None
     pair_masks = None
     if task == "pair_relation":
@@ -251,9 +265,8 @@ def generate_lifetimes(
         second_pair_position = 3 if not heldout else 2
         positions = torch.full_like(identities, first_pair_position)
         pair_positions = torch.full_like(identities, second_pair_position)
-        masks = _MASK_BANKS[appearance][identities, positions]
-        pair_masks = _MASK_BANKS[appearance][
-            pair_identities, pair_positions]
+        masks = mask_bank[identities, positions]
+        pair_masks = mask_bank[pair_identities, pair_positions]
 
     backgrounds = (
         0.025 + 0.075 * torch.rand(

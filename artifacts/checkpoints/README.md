@@ -455,3 +455,24 @@ retaining the three-skill parent.
 The checkpoint does not yet carry an appearance-independent same/different
 concept: zero-shot diamonds scored 26.20% and dot pairs 68.65%. Those numbers
 are the next gradual curriculum boundary.
+
+## Cross-appearance pair-relation bridge
+
+`unified_pair_relation_appearance_bridge_seed9303.pt` extends the same learned
+relation across bars and diamonds.
+
+- SHA-256:
+  `3fbb53049a1ecb5496c308eba195371531d1ec87c8be3edb0c3ddf980a0b9919`
+- Parent: `unified_pair_relation_repertoire_seed9112.pt`
+- Architecture change: 64-unit zero-output nonlinear gate refiner
+- Training: 32 acquisition plus 288 consolidation updates
+- Experience: 61,440 new-relation verifier bits; 184,320 total with replay
+- Held-out: 99.61% bars, 97.52% diamonds
+- Retention: 93.37% binary mapping, 91.74% visible context, 90.58%
+  visible-context XOR; every complete causal gate passed
+- Matched reset-slot control: 97.69% diamonds but only 72.03% bars
+- Independent missing-object audit: 49.61%
+
+The fixed consolidation duration is seed-sensitive and dot pairs remain
+unmastered at 70.61%, so this is a capability/causal-reuse milestone rather
+than a robust stable-bits threshold.

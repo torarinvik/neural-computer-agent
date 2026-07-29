@@ -31,6 +31,21 @@ Final accuracy alone is not an adequate score.
 
 ## Current audited frontier
 
+The same/different repertoire has crossed its first appearance boundary. A
+zero-output nonlinear gate refiner and staged acquire-then-localize training
+let the existing relation slot master diamonds at 97.52% while retaining bars
+at 99.61%, binary mapping at 93.37%, visible context at 91.74%, and
+visible-context XOR at 90.58%. All complete causal gates passed on 4,096
+held-out lifetimes; blank and missing-object controls remained at chance.
+
+A matched reset-slot controller received the identical architecture, pixels,
+320 updates, replay, and 184,320 total verifier bits. It learned diamonds at
+97.69% but retained bars at only 72.03%. The combined capability therefore
+depends causally on the earlier relation experience rather than extra capacity.
+The fixed stopping point remains seed-sensitive, and disconnected dot pairs
+remain unmastered at 70.61%; those are the next frontiers. See
+`session_records/pair_relation_appearance_bridge_2026-07-29/README.md`.
+
 The repertoire now includes its first cross-family simultaneous visual
 relation. The same one-controller lineage learned whether two rendered objects
 were the same or different from its own opaque attempted actions and scalar

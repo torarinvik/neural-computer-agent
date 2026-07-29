@@ -122,6 +122,7 @@ class UnifiedCognitiveController(nn.Module):
             skill_adapter_widths: tuple[int, ...] = (),
             skill_adapter_gate_mode: str = "sigmoid",
             skill_adapter_gate_hidden: int = 0,
+            skill_adapter_gate_refiner_widths: tuple[int, ...] = (),
             skill_adapter_reads_prior: bool = False,
             skill_adapter_legacy_read_from: int | None = None,
             skill_adapter_reads_prior_from: int | None = None,
@@ -146,7 +147,12 @@ class UnifiedCognitiveController(nn.Module):
                 or relation_adapter_width < 0
                 or action_adapter_width < 0
                 or skill_adapter_prior_read_limit < 0
-                or any(value < 1 for value in skill_adapter_widths)):
+                or any(value < 1 for value in skill_adapter_widths)
+                or any(
+                    value < 0
+                    for value in skill_adapter_gate_refiner_widths)
+                or len(skill_adapter_gate_refiner_widths)
+                > len(skill_adapter_widths)):
             raise ValueError("controller dimensions are too small")
         self.width = width
         self.workspace_slots = workspace_slots
@@ -180,6 +186,8 @@ class UnifiedCognitiveController(nn.Module):
         self.skill_adapter_widths = tuple(skill_adapter_widths)
         self.skill_adapter_gate_mode = skill_adapter_gate_mode
         self.skill_adapter_gate_hidden = skill_adapter_gate_hidden
+        self.skill_adapter_gate_refiner_widths = tuple(
+            skill_adapter_gate_refiner_widths)
         # Whether a slot may read what earlier slots computed, separately from
         # whether those slots write to the answer. An exactly shut gate makes an
         # earlier slot silent on this event -- which is what removes
@@ -290,6 +298,7 @@ class UnifiedCognitiveController(nn.Module):
         # stack contributes no state, so older checkpoints load unchanged.
         self.skill_adapters = nn.ModuleList()
         self.skill_adapter_gates = nn.ModuleList()
+        self.skill_adapter_gate_refiners = nn.ModuleList()
         self.skill_adapter_read_projections = nn.ModuleList()
         legacy_read_width = (
             (relation_adapter_width if relation_adapter_width else 0)
@@ -353,6 +362,24 @@ class UnifiedCognitiveController(nn.Module):
                 output_layer.bias,
                 1.0 if skill_adapter_gate_mode == "relu" else -2.0)
             self.skill_adapter_gates.append(gate)
+            refiner_width = (
+                self.skill_adapter_gate_refiner_widths[slot_index]
+                if slot_index < len(
+                    self.skill_adapter_gate_refiner_widths)
+                else 0)
+            if refiner_width:
+                refiner = nn.Sequential(
+                    nn.Linear(slot_input, refiner_width),
+                    nn.GELU(),
+                    nn.Linear(refiner_width, 1),
+                )
+                # Exact behavior preservation: the refiner initially adds
+                # zero to the established gate score on every possible event.
+                nn.init.zeros_(refiner[-1].weight)
+                nn.init.zeros_(refiner[-1].bias)
+                self.skill_adapter_gate_refiners.append(refiner)
+            else:
+                self.skill_adapter_gate_refiners.append(nn.Identity())
         self.memory_key = nn.Linear(width * 2, width)
         self.memory_value = nn.Linear(width * 2, width)
         self.memory_write = nn.Linear(width * 2, 1)
@@ -765,8 +792,9 @@ class UnifiedCognitiveController(nn.Module):
                     legacy_reads.append(
                         self.action_adapter[1](
                             self.action_adapter[0](slot_features)))
-            for slot_index, (adapter, gate) in enumerate(zip(
-                    self.skill_adapters, self.skill_adapter_gates)):
+            for slot_index, (adapter, gate, gate_refiner) in enumerate(zip(
+                    self.skill_adapters, self.skill_adapter_gates,
+                    self.skill_adapter_gate_refiners)):
                 # A slot sees the generic event pair plus what earlier slots
                 # computed. The read is ungated on purpose: an earlier slot's
                 # gate decides whether it speaks, not whether it can be
@@ -795,6 +823,8 @@ class UnifiedCognitiveController(nn.Module):
                 else:
                     own_features = slot_features
                 score = gate(own_features)
+                if not isinstance(gate_refiner, nn.Identity):
+                    score = score + gate_refiner(own_features)
                 opening = (
                     # leaky_relu at slope zero is exactly relu, so a finished
                     # anneal restores exact-zero gating bit for bit.

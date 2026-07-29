@@ -147,6 +147,15 @@ Unseen contour transfer remains open: diamonds are ~26%, and disconnected dot
 pairs are 68–71%. The next rung adds contour diversity gradually before
 delayed matching.
 
+The next bridge now holds the same relation across bars and diamonds. A
+zero-output nonlinear correction to the slot gate preserves exact behavior at
+insertion. Acquisition broadens the relation residual; consolidation freezes
+that content and self-distils its verified diamond behavior while the refiner
+learns to shut on unrelated skills. The promoted checkpoint reaches 99.61%
+bars and 97.52% diamonds with all three earlier behavioral gates intact. A
+matched reset relation slot reaches 97.69% diamonds but only 72.03% bars,
+causally establishing reuse. Dot pairs remain at 70.61%.
+
 ## Zero-shot appearance transfer
 
 The retained controller was audited without weight updates on two appearances
