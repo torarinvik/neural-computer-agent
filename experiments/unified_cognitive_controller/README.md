@@ -132,6 +132,21 @@ This demonstrates fast within-lifetime binding, repeatable positive transfer,
 and rehearsal-based behavioral retention inside one compact controller. It
 does not yet demonstrate transfer to a new modality or broad reasoning.
 
+## Cross-family same/different repertoire
+
+The controller now also supports a simultaneous two-object relation rather
+than only single-glyph mappings and context compositions. `pair_relation`
+renders two identities at different positions and makes the correct opaque
+action depend on same versus different. The relation changes independently on
+every event, preventing reward history from substituting for visual evidence.
+
+Three promoted runs reached 99.02–99.56% on held-out bars while retaining
+binary mapping, visible context, and visible context XOR. Pixel-level relation
+reversal, blank vision, missing-second-object, and retention audits passed.
+Unseen contour transfer remains open: diamonds are ~26%, and disconnected dot
+pairs are 68–71%. The next rung adds contour diversity gradually before
+delayed matching.
+
 ## Zero-shot appearance transfer
 
 The retained controller was audited without weight updates on two appearances

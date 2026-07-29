@@ -166,12 +166,13 @@ def generate_lifetimes(
     position cannot reveal whether the stimulus matches the support event.
     """
     if task not in (
-        "constant_action", "visible_identity", "binary_mapping",
+        "constant_action", "visible_identity", "pair_relation",
+        "binary_mapping",
         "visible_context", "visible_context_xor", "four_rule", "contextual_mapping",
         "contextual_override", "contextual_composition", "context_rule_xor",
         "context_identity_and", "context_identity_or"):
         raise ValueError(
-            "task must be constant_action, visible_identity, "
+            "task must be constant_action, visible_identity, pair_relation, "
             "binary_mapping, visible_context, visible_context_xor, four_rule, "
             "contextual_mapping, contextual_override, contextual_composition, "
             "context_rule_xor, context_identity_and, or context_identity_or")
@@ -227,6 +228,32 @@ def generate_lifetimes(
     positions = position_choices[torch.randint(
         0, len(position_choices), (count, trials), generator=generator)]
     masks = _MASK_BANKS[appearance][identities, positions]
+    pair_identities = None
+    pair_masks = None
+    if task == "pair_relation":
+        # A second simultaneously visible object creates a genuinely different
+        # perceptual primitive: infer whether two identities match.  The
+        # verifier-private relation is balanced independently of nuisance
+        # position, colour, and the unused hidden-rule bit.  The controller
+        # receives no relation label, task ID, or correct unattempted action.
+        # Balance separately within every lifetime so a previous reward never
+        # reveals the next event's answer. A lifetime-constant relation would
+        # let recurrence solve the task from feedback while ignoring vision.
+        pair_relation = torch.stack([
+            _balanced_bits(trials, generator) for _ in range(count)])
+        pair_identities = identities ^ pair_relation
+        if reverse_contexts:
+            # A valid pixel-level counterfactual: change the second object,
+            # which flips same<->different on every event while preserving the
+            # first object and all private sampling decisions.
+            pair_identities = 1 - pair_identities
+        first_pair_position = 0 if not heldout else 1
+        second_pair_position = 3 if not heldout else 2
+        positions = torch.full_like(identities, first_pair_position)
+        pair_positions = torch.full_like(identities, second_pair_position)
+        masks = _MASK_BANKS[appearance][identities, positions]
+        pair_masks = _MASK_BANKS[appearance][
+            pair_identities, pair_positions]
 
     backgrounds = (
         0.025 + 0.075 * torch.rand(
@@ -236,6 +263,15 @@ def generate_lifetimes(
     frames = backgrounds.expand(-1, trials, -1, IMAGE_SIZE, IMAGE_SIZE).clone()
     frames = frames * (1.0 - masks.unsqueeze(2))
     frames = frames + selected_colors.unsqueeze(-1).unsqueeze(-1) * masks.unsqueeze(2)
+    if pair_masks is not None:
+        assert pair_identities is not None
+        pair_colors = colors[
+            torch.arange(count).unsqueeze(1), pair_identities]
+        frames = frames * (1.0 - pair_masks.unsqueeze(2))
+        frames = (
+            frames
+            + pair_colors.unsqueeze(-1).unsqueeze(-1)
+            * pair_masks.unsqueeze(2))
 
     # Public nuisance markers change every trial and are independent of rules.
     nuisance_x = torch.randint(
@@ -291,6 +327,11 @@ def generate_lifetimes(
         correct = rule_bits.unsqueeze(1).expand(-1, trials).clone()
     elif task == "visible_identity":
         correct = identities.clone()
+    elif task == "pair_relation":
+        assert pair_identities is not None
+        # Opaque action zero happens to mean "same" to the verifier and action
+        # one "different"; those meanings are never shown to the learner.
+        correct = identities ^ pair_identities
     elif task == "four_rule":
         expanded_rule = rule_bits.unsqueeze(1).expand(-1, trials)
         correct = torch.where(
@@ -344,4 +385,7 @@ def generate_lifetimes(
     return CognitiveLifetimeBatch(
         frames.to(device), correct.to(device), identities.to(device),
         rule_bits.to(device), seeds.to(device),
-        context_ids.to(device) if context_ids is not None else None)
+        (
+            pair_identities.to(device)
+            if pair_identities is not None
+            else context_ids.to(device) if context_ids is not None else None))

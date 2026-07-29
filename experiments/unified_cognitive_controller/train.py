@@ -123,9 +123,11 @@ def evaluate(
     reversed_batch = generate_lifetimes(
         count, trials, seed=seed, heldout=True,
         reverse_rules=(task not in (
-            "visible_identity", "visible_context", "visible_context_xor")),
+            "visible_identity", "pair_relation",
+            "visible_context", "visible_context_xor")),
         reverse_stimuli=(task == "visible_identity"),
-        reverse_contexts=(task in ("visible_context", "visible_context_xor")),
+        reverse_contexts=(task in (
+            "pair_relation", "visible_context", "visible_context_xor")),
         task=task, appearance=appearance,
         support_trials=feedback_trials, device=device)
     normal = rollout(
@@ -167,7 +169,8 @@ def evaluate(
     # support actions the controller could not yet infer.
     flip_start = (
         0 if task in (
-            "visible_identity", "visible_context", "visible_context_xor")
+            "visible_identity", "pair_relation",
+            "visible_context", "visible_context_xor")
         else feedback_trials)
     flip_rate = (
         normal["actions"][:, flip_start:]
@@ -199,7 +202,9 @@ def evaluate(
             str(context): float(normal_rewards[query_contexts == context].float().mean())
             for context in (0, 1)
         }
-    if task in ("visible_identity", "visible_context", "visible_context_xor"):
+    if task in (
+            "visible_identity", "pair_relation",
+            "visible_context", "visible_context_xor"):
         normal_accuracy = float(normal["rewards"].mean())
         reversed_accuracy = float(reversed_result["rewards"].mean())
         blank_accuracy = float(blank["rewards"].mean())
@@ -267,7 +272,8 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=2501)
     parser.add_argument(
         "--task", choices=(
-            "constant_action", "visible_identity", "binary_mapping",
+            "constant_action", "visible_identity", "pair_relation",
+            "binary_mapping",
             "visible_context", "visible_context_xor", "four_rule",
             "contextual_mapping",
             "contextual_override", "contextual_composition", "context_rule_xor",
@@ -278,7 +284,8 @@ def main() -> None:
         default="bars")
     parser.add_argument(
         "--rehearsal-task", choices=(
-            "constant_action", "visible_identity", "binary_mapping",
+            "constant_action", "visible_identity", "pair_relation",
+            "binary_mapping",
             "visible_context", "visible_context_xor", "four_rule",
             "contextual_mapping",
             "contextual_override", "contextual_composition", "context_rule_xor",
@@ -297,7 +304,8 @@ def main() -> None:
         help="renderer appearance for rehearsal lifetimes")
     parser.add_argument(
         "--retention-task", choices=(
-            "constant_action", "visible_identity", "binary_mapping",
+            "constant_action", "visible_identity", "pair_relation",
+            "binary_mapping",
             "visible_context", "visible_context_xor", "four_rule",
             "contextual_mapping",
             "contextual_override", "contextual_composition", "context_rule_xor",

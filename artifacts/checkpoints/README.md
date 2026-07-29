@@ -433,3 +433,25 @@ for exact-content retrieval.
 
 This checkpoint uses a global content-first scale. Conditional per-query
 retrieval remains the next frontier.
+
+## Cross-family pair-relation repertoire
+
+`unified_pair_relation_repertoire_seed9112.pt` is the first unified-controller
+checkpoint to add a simultaneous same/different visual primitive while
+retaining the three-skill parent.
+
+- SHA-256:
+  `50cad66c1853a691e3d426ec522c5758e3d645b354add5c6b31f0891f41f7908`
+- Parent: `unified_three_skill_compounding_seed8413.pt`
+- Acquisition: 64 updates, 12,288 new-task verifier bits, 30,720 total bits
+  including balanced rehearsal, 4.39 seconds on the measured GPU run
+- Held-out colors/positions: 99.56%
+- Missing second object: 49.12%
+- Valid relation counterfactual, prediction-flip, blank-vision, and all three
+  inherited retention gates: passed
+- Learner-visible information: RGB, opaque attempted action, scalar verifier
+  outcome, and the controller's own latent state
+
+The checkpoint does not yet carry an appearance-independent same/different
+concept: zero-shot diamonds scored 26.20% and dot pairs 68.65%. Those numbers
+are the next gradual curriculum boundary.

@@ -31,6 +31,24 @@ Final accuracy alone is not an adequate score.
 
 ## Current audited frontier
 
+The repertoire now includes its first cross-family simultaneous visual
+relation. The same one-controller lineage learned whether two rendered objects
+were the same or different from its own opaque attempted actions and scalar
+outcomes—no semantic relation labels, task IDs, coordinates, or correct
+unattempted actions. Three independent promoted runs reached 99.02%, 99.56%,
+and 99.46% on held-out colors and positions while all three inherited behavior
+gates passed. Valid second-object counterfactuals passed; blank vision and
+removing the second object returned performance to 48–49%.
+
+The audit rejected an earlier false positive whose relation was accidentally
+constant within a lifetime: recurrence could infer every later answer from one
+reward while ignoring vision. After making the relation vary on every event, a
+generic residual-locality price—not extra replay—removed the remaining
+retention interference. The honest next boundary is contour abstraction:
+zero-shot diamonds remain at ~26% and disconnected dot pairs at 68–71%.
+See
+`session_records/repertoire_pair_relation_2026-07-29/README.md`.
+
 The persistent-memory line now has a verified-use plasticity milestone. Every
 physical row carries a modality- and task-agnostic volatility scalar. Successful
 retrieval gradually protects a row, failure thaws it, and disuse slowly restores

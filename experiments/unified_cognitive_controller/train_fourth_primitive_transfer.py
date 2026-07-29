@@ -355,6 +355,25 @@ def _operation_cue_ablation_accuracy(
     marked = generate_lifetimes(
         count, 6, seed=seed, heldout=True,
         task=new_task, support_trials=support_trials, device=device)
+    if new_task == "pair_relation":
+        # Remove only the second held-out-position object. Its mask is confined
+        # to rows 13:28, columns 5:20; filling that box from a clean corner
+        # preserves the per-frame background while deleting the relational
+        # evidence. This is a valid pixel ablation, not a hidden-state edit.
+        ablated_frames = marked.frames.clone()
+        background = marked.frames[:, :, :, -1:, -1:]
+        ablated_frames[:, :, :, 13:28, 5:20] = background
+        ablated = CognitiveLifetimeBatch(
+            frames=ablated_frames,
+            correct_actions=marked.correct_actions,
+            stimulus_identities=marked.stimulus_identities,
+            rule_bits=marked.rule_bits,
+            seeds=marked.seeds,
+            context_ids=marked.context_ids)
+        result = rollout(
+            model, ablated, sample_actions=False,
+            feedback_trials=support_trials)
+        return float(result["rewards"].float().mean())
     unmarked = generate_lifetimes(
         count, 6, seed=seed, heldout=True,
         task="visible_context", support_trials=support_trials,
