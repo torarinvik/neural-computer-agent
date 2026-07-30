@@ -88,6 +88,31 @@ def nuisance_from_level(level: float) -> ShapeNuisance:
     )
 
 
+def nuisance_with_overrides(
+        base: ShapeNuisance, *, position_px: float | None = None,
+        size_fraction: float | None = None,
+        rotation_degrees: float | None = None,
+        color_delta: float | None = None,
+        background_delta: float | None = None,
+        deformation: float | None = None) -> ShapeNuisance:
+    """Replace selected axes while leaving all other axes unchanged."""
+    values = asdict(base)
+    overrides = {
+        "position_px": position_px,
+        "size_fraction": size_fraction,
+        "rotation_degrees": rotation_degrees,
+        "color_delta": color_delta,
+        "background_delta": background_delta,
+        "deformation": deformation,
+    }
+    values.update({
+        name: value for name, value in overrides.items()
+        if value is not None})
+    result = ShapeNuisance(**values)
+    result.validate()
+    return result
+
+
 def _balanced_logical_content(
         count: int, span: int, vocabulary: int,
         generator: torch.Generator,
@@ -390,6 +415,22 @@ def main() -> None:
         "--objective", choices=("visible_identity", "recognition"),
         default="recognition")
     parser.add_argument("--randomness", type=float, default=0.0)
+    parser.add_argument("--position-px", type=float)
+    parser.add_argument("--size-fraction", type=float)
+    parser.add_argument("--rotation-degrees", type=float)
+    parser.add_argument("--color-delta", type=float)
+    parser.add_argument("--background-delta", type=float)
+    parser.add_argument("--deformation", type=float)
+    parser.add_argument(
+        "--rehearse-floor", action="store_true",
+        help=(
+            "alternate the target nuisance with the mastered randomness-zero "
+            "floor; target experience is accounted separately"))
+    parser.add_argument(
+        "--rehearsal-randomness", default="",
+        help=(
+            "comma-separated mastered scalar rungs to interleave with the "
+            "target; each is audited and accounted separately"))
     parser.add_argument("--width", type=int, default=64)
     parser.add_argument("--workspace-slots", type=int, default=4)
     parser.add_argument("--intention-width", type=int, default=16)
@@ -407,7 +448,27 @@ def main() -> None:
 
     seed_everything(args.seed)
     device = torch.device(args.device)
-    nuisance = nuisance_from_level(args.randomness)
+    floor_nuisance = nuisance_from_level(0.0)
+    nuisance = nuisance_with_overrides(
+        nuisance_from_level(args.randomness),
+        position_px=args.position_px,
+        size_fraction=args.size_fraction,
+        rotation_degrees=args.rotation_degrees,
+        color_delta=args.color_delta,
+        background_delta=args.background_delta,
+        deformation=args.deformation)
+    rehearsal_levels = [
+        float(value) for value in args.rehearsal_randomness.split(",")
+        if value]
+    if args.rehearse_floor and 0.0 not in rehearsal_levels:
+        rehearsal_levels.insert(0, 0.0)
+    if any(
+            not 0.0 <= level <= 1.0 or level == args.randomness
+            for level in rehearsal_levels):
+        raise ValueError(
+            "rehearsal randomness must be in [0, 1] and differ from target")
+    rehearsal_nuisances = [
+        nuisance_from_level(level) for level in rehearsal_levels]
     configuration: dict[str, object] = {
         "width": args.width, "workspace_slots": args.workspace_slots,
         "intention_width": args.intention_width}
@@ -422,12 +483,28 @@ def main() -> None:
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=args.learning_rate, weight_decay=1e-5)
     history: list[dict[str, object]] = []
+    target_updates = 0
+    rehearsal_update_counts = {
+        str(level): 0 for level in rehearsal_levels}
     started = perf_counter()
     for step in range(1, args.steps + 1):
         model.train()
+        schedule_index = (step - 1) % (1 + len(rehearsal_levels))
+        train_on_target = schedule_index == 0
+        if train_on_target:
+            train_nuisance = nuisance
+            train_distribution = "target"
+            target_updates += 1
+        else:
+            rehearsal_index = schedule_index - 1
+            train_nuisance = rehearsal_nuisances[rehearsal_index]
+            train_distribution = (
+                f"rehearsal:{rehearsal_levels[rehearsal_index]}")
+            key = str(rehearsal_levels[rehearsal_index])
+            rehearsal_update_counts[key] += 1
         batch = generate_procedural_shape_batch(
             args.batch_size, span=args.span, vocabulary=args.vocabulary,
-            seed=args.seed + step * args.batch_size, nuisance=nuisance,
+            seed=args.seed + step * args.batch_size, nuisance=train_nuisance,
             objective=args.objective, device=device)
         result = rollout_procedural_shape_span(
             model, batch, sample_actions=True,
@@ -443,6 +520,12 @@ def main() -> None:
                 "unique_logical_lifetimes": step * args.batch_size,
                 "unique_verifier_bits": (
                     step * args.batch_size * args.span),
+                "target_verifier_bits": (
+                    target_updates * args.batch_size * args.span),
+                "floor_rehearsal_bits": (
+                    rehearsal_update_counts.get(
+                        "0.0", 0) * args.batch_size * args.span),
+                "train_distribution": train_distribution,
                 "training_accuracy": float(result["rewards"].mean()),
                 "loss": float(result["loss"].detach())}
             if (
@@ -464,13 +547,25 @@ def main() -> None:
         model, count=args.test_episodes, span=args.span,
         vocabulary=args.vocabulary, seed=args.seed + 10_000_000,
         nuisance=nuisance, device=device, objective=args.objective)
+    floor_audit = evaluate_procedural_shape_span(
+        model, count=args.test_episodes, span=args.span,
+        vocabulary=args.vocabulary, seed=args.seed + 11_000_000,
+        nuisance=floor_nuisance, device=device, objective=args.objective)
+    rehearsal_audits = {
+        str(level): evaluate_procedural_shape_span(
+            model, count=args.test_episodes, span=args.span,
+            vocabulary=args.vocabulary,
+            seed=args.seed + 12_000_000 + index,
+            nuisance=rehearsal_nuisances[index], device=device,
+            objective=args.objective)
+        for index, level in enumerate(rehearsal_levels)}
     prefixes = [row for row in history if "heldout_accuracy" in row]
     stable_bits = None
     for index, row in enumerate(prefixes):
         if all(
                 float(later["heldout_accuracy"]) >= args.mastery_threshold
                 for later in prefixes[index:]):
-            stable_bits = int(row["unique_verifier_bits"])
+            stable_bits = int(row["target_verifier_bits"])
             break
     report = {
         "schema": "procedural-shape-span-experiment-v1",
@@ -481,9 +576,18 @@ def main() -> None:
         "objective": args.objective,
         "randomness": args.randomness,
         "nuisance": asdict(nuisance),
+        "floor_nuisance": asdict(floor_nuisance),
+        "rehearse_floor": args.rehearse_floor,
+        "rehearsal_randomness": rehearsal_levels,
+        "rehearsal_update_counts": rehearsal_update_counts,
         "optimizer_updates": args.steps,
         "unique_logical_lifetimes": args.steps * args.batch_size,
         "unique_verifier_bits": args.steps * args.batch_size * args.span,
+        "target_verifier_bits": (
+            target_updates * args.batch_size * args.span),
+        "floor_rehearsal_bits": (
+            rehearsal_update_counts.get(
+                "0.0", 0) * args.batch_size * args.span),
         "replayed_examples": 0,
         "outcomes_shuffled": args.shuffle_outcomes,
         "mastery_threshold": args.mastery_threshold,
@@ -492,6 +596,8 @@ def main() -> None:
         "model_configuration": configuration,
         "history": history,
         "audit": audit,
+        "floor_retention_audit": floor_audit,
+        "rehearsal_retention_audits": rehearsal_audits,
     }
     print(json.dumps(report, indent=2), flush=True)
     if args.report:

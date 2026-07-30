@@ -1,0 +1,45 @@
+{
+  "schema": "procedural-shape-randomness-staircase-ledger-v1",
+  "scalar_increment": 0.005,
+  "fallback_increment": 0.0025,
+  "starting_mastered_randomness": 0.09,
+  "ending_mastered_randomness": 0.135,
+  "replayed_examples": 0,
+  "rungs": [
+    {
+      "randomness": 0.095,
+      "stable_target_bits": 512,
+      "final_accuracy": 0.98681640625
+    },
+    {
+      "randomness": 0.12,
+      "stable_target_bits": 512,
+      "final_accuracy": 0.96435546875
+    },
+    {
+      "randomness": 0.135,
+      "stable_target_bits": 1536,
+      "final_accuracy": 0.962646484375
+    }
+  ],
+  "replica_0.135": {
+    "stable_target_bits": 1024,
+    "final_accuracy": 0.936279296875
+  },
+  "fresh_0.135": {
+    "target_bits_observed": 8192,
+    "stable_threshold_reached": false,
+    "final_accuracy": 0.5
+  },
+  "shuffled_outcomes_0.135": {
+    "target_bits_observed": 4096,
+    "stable_threshold_reached": false,
+    "final_accuracy": 0.5
+  },
+  "new_rung_transfer_ratio_lower_bound": 5.333333333333333,
+  "replica_transfer_ratio_lower_bound": 8.0,
+  "floor_retention": 1.0,
+  "visible_identity_retention": 1.0,
+  "span1_retention": 1.0,
+  "next_rule": "probe by 0.005; halve to 0.0025 on any acquisition or retention issue"
+}

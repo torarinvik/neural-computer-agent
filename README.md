@@ -31,6 +31,26 @@ Final accuracy alone is not an adequate score.
 
 ## Current audited frontier
 
+The procedural-shape controller now has a replicated ultra-gradual nuisance
+curriculum. Starting from the audited span-2 checkpoint, the scalar was mapped
+in increments of 0.005. Already-mastered rungs received no updates; only the
+first sub-90% rung was trained, interleaved with its immediately preceding
+mastered rung.
+
+The frontier advanced from randomness 0.090 to 0.135. Rungs 0.095 and 0.120
+each needed only 512 target verifier bits; 0.135 needed 1,536 bits, and an
+independent replica needed 1,024. A fresh learner remained at exactly 50%
+after 8,192 target bits, so the conservative new-rung transfer advantage is
+greater than 5.33x (greater than 8x in the replica). Shuffled outcomes also
+remained at chance.
+
+The final model scores 95.70% at 0.135 while retaining 100% at the original
+floor, 98.73% at 0.120, 99.93% at 0.090–0.095, and 100% on visible identity
+and span-1 recognition. Missing evidence and full memory reset return to
+chance. Any future instability now halves the scalar increment to 0.0025.
+See
+`session_records/procedural_shape_randomness_staircase_2026-07-30/README.md`.
+
 The procedural-shape memory track now demonstrates compounding acquisition
 under an exact, shortcut-resistant design. A single controller first learns
 two visible shape identities, then one-item recognition, then two-item
@@ -47,7 +67,8 @@ presentation and 50.05% after complete fast-memory reset; valid presentation
 and candidate counterfactuals retain 100% accuracy and flip every affected
 prediction. It also retains visible identity and span-1 recognition at 100%.
 This is the first rung only: increasing nuisance randomness and span 3 remain
-unproven. See
+unproven in this checkpoint; the successor staircase above establishes the
+first randomness expansion. See
 `session_records/procedural_shape_span_2026-07-30/README.md`.
 
 The working-memory branch is now position invariant and distractor resistant.

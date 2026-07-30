@@ -3,7 +3,7 @@ import torch
 from .model import UnifiedCognitiveController
 from .train_procedural_shape_span import (
     ShapeNuisance, generate_procedural_shape_batch, nuisance_from_level,
-    rollout_procedural_shape_span)
+    nuisance_with_overrides, rollout_procedural_shape_span)
 
 
 def test_shape_batch_is_deterministic_balanced_and_independently_rendered() -> None:
@@ -48,6 +48,17 @@ def test_nuisance_level_has_nonzero_floor_and_monotonic_axes() -> None:
             "color_delta", "background_delta", "deformation"):
         assert getattr(floor, field) <= getattr(middle, field)
         assert getattr(middle, field) <= getattr(maximum, field)
+
+
+def test_nuisance_overrides_change_only_selected_axes() -> None:
+    floor = nuisance_from_level(0.0)
+    rotation = nuisance_with_overrides(floor, rotation_degrees=19.0)
+    assert rotation.rotation_degrees == 19.0
+    assert rotation.position_px == floor.position_px
+    assert rotation.size_fraction == floor.size_fraction
+    assert rotation.color_delta == floor.color_delta
+    assert rotation.background_delta == floor.background_delta
+    assert rotation.deformation == floor.deformation
 
 
 def test_blank_presentation_removes_evidence_only() -> None:
