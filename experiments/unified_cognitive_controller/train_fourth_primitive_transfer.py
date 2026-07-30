@@ -54,7 +54,8 @@ def _plastic_prefixes(slot: int) -> tuple[str, ...]:
     return (
         f"skill_adapters.{slot}.",
         f"skill_adapter_gates.{slot}.",
-        f"skill_adapter_read_projections.{slot}.")
+        f"skill_adapter_read_projections.{slot}.",
+        f"skill_adapter_intention_interactions.{slot}.")
 
 
 def _prior_slot_prefixes(
@@ -330,6 +331,57 @@ def _curve_accuracy(
     return float(result["rewards"][:, support_trials:].float().mean())
 
 
+@torch.no_grad()
+def _operation_counterfactual_metrics(
+        model: UnifiedCognitiveController, *, count: int, seed: int,
+        device: torch.device, numerosity_appearance_blend: float,
+        operation_cue_scale: float = 1.0,
+        ) -> dict[str, float]:
+    """Audit cue causality with independent, history-free event replays.
+
+    Each two-event lifetime contains one request for each operation. Flattening
+    those events and resetting controller state prevents reward history or
+    recurrent timing from explaining a flip. The counterfactual preserves
+    every stimulus pixel and complements only the public operation symbol and
+    verifier answer.
+    """
+    def actions_and_accuracy(reverse: bool) -> tuple[torch.Tensor, float]:
+        batch = generate_lifetimes(
+            count, 2, seed=seed, heldout=True,
+            task="visible_pair_numerosity_operation",
+            reverse_operations=reverse,
+            numerosity_appearance_blend=numerosity_appearance_blend,
+            operation_cue_scale=operation_cue_scale,
+            operation_cue_prestimulus=True,
+            support_trials=1, device=device)
+        assert batch.prestimulus_frames is not None
+        events = count * 2
+        state = model.initial_state(events, device=device)
+        null_action = torch.full(
+            (events,), NULL_ACTION, dtype=torch.long, device=device)
+        zeros = torch.zeros(events, device=device)
+        _, state = model.step(
+            batch.prestimulus_frames.flatten(0, 1),
+            state, null_action, zeros, zeros)
+        output, _ = model.step(
+            batch.frames.flatten(0, 1),
+            state, null_action, zeros, zeros)
+        actions = output.logits.argmax(-1)
+        answers = batch.correct_actions.flatten()
+        return actions.cpu(), float((actions == answers).float().mean())
+
+    normal_actions, normal_accuracy = actions_and_accuracy(False)
+    reversed_actions, reversed_accuracy = actions_and_accuracy(True)
+    return {
+        "normal_accuracy": normal_accuracy,
+        "reversed_operation_accuracy": reversed_accuracy,
+        "prediction_flip_rate": float(
+            (normal_actions != reversed_actions).float().mean()),
+        "paired_mean_accuracy":
+            (normal_accuracy + reversed_accuracy) / 2.0,
+    }
+
+
 def _headline_accuracy(evaluation: dict) -> float:
     """The comparable accuracy for either task family.
 
@@ -495,6 +547,7 @@ def _operation_cue_ablation_accuracy(
             "pair_relation", "pair_magnitude",
             "visible_pair_magnitude", "visible_pair_numerosity",
             "visible_pair_numerosity_smaller",
+            "visible_pair_numerosity_operation",
             "visible_numerosity_equality"):
         # Remove only the second held-out-position object. Its mask is confined
         # to rows 13:28, columns 5:20; filling that box from a clean corner
@@ -507,6 +560,7 @@ def _operation_cue_ablation_accuracy(
         elif new_task in (
                 "visible_pair_numerosity",
                 "visible_pair_numerosity_smaller",
+                "visible_pair_numerosity_operation",
                 "visible_numerosity_equality"):
             # Delete the complete right count field while preserving the left.
             ablated_frames[:, :, :, :, 16:32] = background
@@ -677,6 +731,12 @@ def main() -> None:
             "let the newly appended slot read the parent's accumulated latent "
             "intention, enabling learned transformations of an existing "
             "decision without exposing action labels or logits"))
+    parser.add_argument(
+        "--multiply-parent-intention", action="store_true",
+        help=(
+            "append a generic learned state-by-intention interaction to the "
+            "new slot. This supplies a bilinear binding bias without task IDs, "
+            "semantic labels, or verifier-private values"))
     parser.add_argument(
         "--canonicalize-action-adapter", action="store_true",
         help=(
@@ -869,6 +929,7 @@ def main() -> None:
             new_task not in (
                 "visible_pair_numerosity",
                 "visible_pair_numerosity_smaller",
+                "visible_pair_numerosity_operation",
                 "visible_numerosity_equality")
             and args.new_numerosity_appearance_blend != 1.0):
         raise ValueError(
@@ -997,6 +1058,22 @@ def main() -> None:
             inherited_intention_read_from
             if inherited_intention_read_from is not None
             else new_slot if args.read_parent_intention else None)
+        inherited_multiplicative_read_from = configuration.get(
+            "skill_adapter_multiplies_intention_from")
+        if (
+                inherited_multiplicative_read_from is not None
+                and not args.multiply_parent_intention):
+            raise ValueError(
+                "a multiplicative-intention parent must append the same "
+                "generic binding interface")
+        if args.multiply_parent_intention and not args.read_parent_intention:
+            raise ValueError(
+                "multiplicative intention binding requires "
+                "--read-parent-intention")
+        configuration["skill_adapter_multiplies_intention_from"] = (
+            inherited_multiplicative_read_from
+            if inherited_multiplicative_read_from is not None
+            else new_slot if args.multiply_parent_intention else None)
         student = UnifiedCognitiveController(**configuration).to(device)
         # Remove inherited content only from the newly appended slot. A global
         # ablation would also alter readable parent slots and make the
@@ -1382,6 +1459,19 @@ def main() -> None:
                 },
             }
             if args.new_operation_cue_prestimulus:
+                # Preserve the extra recurrent timestep while removing only
+                # the operation symbol.  Comparing this against ``new_skill``
+                # rules out a timing/presence shortcut that the older
+                # no-prestimulus control could not distinguish.
+                headline["new_skill_blank_prestimulus"] = _curve_accuracy(
+                    student, task=new_task, count=args.test_lifetimes,
+                    seed=seed + 90_000_000,
+                    support_trials=final_support_trials, device=device,
+                    numerosity_appearance_blend=(
+                        args.new_numerosity_appearance_blend),
+                    operation_cue_scale=0.0,
+                    operation_cue_trials=new_operation_cue_trials,
+                    operation_cue_prestimulus=True)
                 headline["new_skill_without_operation_cue"] = _curve_accuracy(
                     student, task=new_task, count=args.test_lifetimes,
                     seed=seed + 90_000_000,
@@ -1391,6 +1481,23 @@ def main() -> None:
                     operation_cue_scale=args.new_operation_cue_scale,
                     operation_cue_trials=new_operation_cue_trials,
                     operation_cue_prestimulus=False)
+            operation_counterfactual = (
+                _operation_counterfactual_metrics(
+                    student, count=args.test_lifetimes,
+                    seed=seed + 92_000_000, device=device,
+                    numerosity_appearance_blend=(
+                        args.new_numerosity_appearance_blend))
+                if new_task == "visible_pair_numerosity_operation"
+                else None)
+            blank_operation_counterfactual = (
+                _operation_counterfactual_metrics(
+                    student, count=args.test_lifetimes,
+                    seed=seed + 92_000_000, device=device,
+                    numerosity_appearance_blend=(
+                        args.new_numerosity_appearance_blend),
+                    operation_cue_scale=0.0)
+                if new_task == "visible_pair_numerosity_operation"
+                else None)
             report = {
                 "schema": "fourth-primitive-transfer-curve-v1",
                 "eval_mode": "curve",
@@ -1409,7 +1516,9 @@ def main() -> None:
                 "configuration": {
                     **vars(args), "seed": seed,
                     "parent": str(args.parent), "report": str(report_path),
-                    "checkpoint_out": None},
+                    "checkpoint_out": (
+                        str(checkpoint_out)
+                        if checkpoint_out is not None else None)},
                 "history": history,
                 "accounting": {
                     "new_unique_lifetimes": args.steps * args.new_batch_size,
@@ -1425,13 +1534,28 @@ def main() -> None:
                             if args.new_operation_cue_prestimulus else 1)),
                 },
                 "headline_accuracy": headline,
+                "operation_counterfactual": operation_counterfactual,
+                "blank_operation_counterfactual":
+                    blank_operation_counterfactual,
                 "frozen_base_bit_identical": all(
                     torch.equal(frozen_initial[name], value.detach().cpu())
                     for name, value in student.state_dict().items()
                     if name in frozen_initial),
-                "checkpoint_saved": False,
+                "checkpoint_saved": checkpoint_out is not None,
                 "total_seconds": time.perf_counter() - started,
             }
+            if checkpoint_out is not None:
+                checkpoint_out.parent.mkdir(parents=True, exist_ok=True)
+                torch.save({
+                    "schema": "unified-cognitive-controller-v1",
+                    "model_configuration": configuration,
+                    "state_dict": student.state_dict(),
+                    "source_report": str(report_path),
+                    # Curve-mode candidates have not passed the >=90% mastery
+                    # gates and must never be mistaken for promoted parents.
+                    "admission_status":
+                        "unpromoted-causal-operation-research-candidate",
+                }, checkpoint_out)
             report_path.parent.mkdir(parents=True, exist_ok=True)
             report_path.write_text(
                 json.dumps(report, indent=2, sort_keys=True) + "\n")

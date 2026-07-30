@@ -894,13 +894,13 @@ lifetimes.
 See
 `session_records/cross_operation_policy_gradient_2026-07-30/README.md`.
 
-## Latest breakthrough: separate sensory streams unlock operation reuse
+## Retracted result: fixed-operation streamed cue
 
-The controller now acquires the inverse numerosity operation at 83.96% and
-83.65% on two fresh 8,192-lifetime audits, up from the earlier 57.20% mean
-without consuming more verifier experience. Each run uses 1,024 new lifetimes
-/ 6,144 scalar verifier bits and retains relation, magnitude, and inherited
-numerosity.
+The controller scored 83.96% and 83.65% on the fixed “choose smaller” task,
+but a stronger control has now retracted the interpretation that it read the
+operation cue. Keeping the prestimulus timestep while blanking only its cue
+pixels retained 81.93% accuracy. The old missing-cue control had also removed
+the timestep and therefore confounded visual content with recurrent timing.
 
 The bottleneck was a confounded visual stream. Drawing the operation cue over
 the count frame reduced the frozen parent's reusable comparison from 90.46% to
@@ -913,11 +913,44 @@ A compatibility migration also moves the legacy post-intention action residual
 back into the amodal intention through the learned actuator's right inverse.
 It changed zero of 36,864 audited old-skill actions.
 
-Matched controls are decisive: shuffled verifier outcomes reached 13.08%,
-removing inherited intention reached 14.40%, and removing the cue at evaluation
-reduced truthful replicas to 38–40%. The streamed protocol costs two sensory
-controller steps per action, so the next frontier is 90% mastery plus learned
-latency allocation.
+The outcome and inheritance controls remain evidence that the adapter learned
+from reward and reused the parent, but they do not establish conditional
+operation reading. The corrected experiment below randomizes larger versus
+smaller on every event.
 
 See
 `session_records/stream_separated_operation_2026-07-30/README.md`.
+
+## Latest breakthrough: causal conditional-operation learning
+
+`visible_pair_numerosity_operation` requests larger or smaller independently
+on every event. Every six-event lifetime contains three of each operation, so a
+fixed inverse-operation adapter is exactly chance. A counterfactual preserves
+all count pixels, flips only the public operation symbol, and complements every
+verifier answer.
+
+Two independent 256-update runs reached **81.08%** and **79.68%** held-out
+accuracy from 2,048 unique lifetimes / 12,288 scalar verifier outcomes.
+Timing-matched blank cues scored **50.18%** and **49.82%**. Relation remained
+at 99.20–99.34%, magnitude at 90.42–91.29%, and inherited numerosity at
+88.23–88.25%.
+
+A history-free audit resets the controller for every event. It reached 70.26%
+and 67.27% under true cue reversal, with 46.25% and 40.11% prediction flips.
+The paired blank-cue audit is exactly 50% with zero flips. Shuffled verifier
+outcomes scored 49.87%, and removing inherited latent/intention content with
+the same parameter count scored 49.78%.
+
+The new task-agnostic interface multiplies a learned recurrent latent by the
+inherited amodal intention. At a matched 128-update seed it improved 71.60%
+concatenation-only learning to 75.76%. Extending training from 256 to 512
+updates improved only 81.08% to 82.60%, so the project stopped buying duration.
+
+This is the first causal reward-grounded selection between opposite operations
+on otherwise identical scenes. It is not promoted mastery; the research
+checkpoint is explicitly marked unpromoted. The frontier is ≥90% conditional
+operation accuracy, especially on independent history-free events, without
+lowering inherited numerosity.
+
+See
+`session_records/conditional_operation_2026-07-30/README.md`.

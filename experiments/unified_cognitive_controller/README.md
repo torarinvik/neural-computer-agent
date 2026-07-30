@@ -1424,7 +1424,7 @@ races.
 Full record:
 `session_records/cross_operation_policy_gradient_2026-07-30/README.md`.
 
-## Separate cue and stimulus frames remove the operation bottleneck
+## Retracted fixed-operation cue interpretation
 
 The overlaid public operation cue was not a harmless task marker. At full
 strength it reduced the frozen parent's larger-count accuracy from 90.46% to
@@ -1437,10 +1437,46 @@ delivering reward, then processes the clean action-bearing frame. No task
 metadata reaches the controller.
 
 With the legacy action residual canonicalized into amodal intention, two
-reward-only replicas reach 83.96% and 83.65% from 1,024 lifetimes. Shuffled
-outcomes reach 13.08%, intention ablation 14.40%, and missing-cue evaluation
-38–40%. Every prior skill remains retained. The price is explicit: two sensory
-frames per action instead of one.
+reward-only replicas reached 83.96% and 83.65% from 1,024 lifetimes. However,
+the original 38–40% missing-cue control also removed the entire prestimulus
+timestep. A corrected control kept the extra frame and blanked only its cue
+pixels; accuracy remained 81.93%. The model had primarily identified the
+fixed-smaller task from stream timing, so visual cue use was not established.
 
 Full record:
 `session_records/stream_separated_operation_2026-07-30/README.md`.
+
+## Conditional operation closes the shortcut
+
+`visible_pair_numerosity_operation` presents the same clean count relation but
+requests larger or smaller on every event through one of two cue-only frames.
+Each lifetime is operation-balanced. `reverse_operations=True` preserves all
+stimulus pixels while swapping cue identity and complementing every answer.
+When cue intensity is zero, the forward and counterfactual public streams are
+bit-identical and their paired verifier answers are complementary.
+
+A generic zero-output successor slot reads the inherited amodal intention and
+adds a learned multiplicative feature:
+
+```text
+tanh(W × recurrent_state) × inherited_intention
+```
+
+No task ID, semantic operation, count, action label, or unattempted outcome
+enters this path. At the matched 128-update seed, the product interface reaches
+75.76% versus 71.60% for concatenation alone.
+
+Two independent 256-update runs reach 81.08% and 79.68% from 2,048 lifetimes.
+Timing-matched blank cues score 50.18% and 49.82%. Shuffled outcomes score
+49.87%; removing inherited read content with identical architecture scores
+49.78%. All three inherited skills remain near or above their arrival levels.
+
+The stronger history-free counterfactual resets state for every event and
+measures the same count scene under opposite cues. It reaches 70.26% and
+67.27%, with 46.25% and 40.11% prediction flips; the paired blank control is
+exactly 50% with zero flips. This establishes causal conditional-operation
+learning, but the checkpoint remains unpromoted until it reaches 90% mastery
+without retention loss.
+
+Full record:
+`session_records/conditional_operation_2026-07-30/README.md`.

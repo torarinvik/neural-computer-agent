@@ -138,6 +138,37 @@ def test_late_intention_read_preserves_older_slot_shapes() -> None:
     assert model.skill_adapter_gates[1].in_features == 72
 
 
+def test_late_multiplicative_intention_binding_is_behavior_preserving() -> None:
+    base = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8)
+    bound = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        skill_adapter_widths=(16,),
+        skill_adapter_gate_mode="relu",
+        skill_adapter_reads_intention_from=0,
+        skill_adapter_multiplies_intention_from=0)
+    missing, unexpected = bound.load_state_dict(
+        base.state_dict(), strict=False)
+    assert missing
+    assert not unexpected
+    assert bound.skill_adapters[0][0].in_features == 80
+    assert isinstance(
+        bound.skill_adapter_intention_interactions[0], torch.nn.Linear)
+    assert bound.skill_adapter_intention_interactions[0].in_features == 32
+    assert bound.skill_adapter_intention_interactions[0].out_features == 8
+
+    frames = torch.randn(32, 3, 32, 32)
+    actions = torch.full((32,), 2, dtype=torch.long)
+    zeros = torch.zeros(32)
+    base_output = base.step(
+        frames, base.initial_state(32, device="cpu"),
+        actions, zeros, zeros)[0]
+    bound_output = bound.step(
+        frames, bound.initial_state(32, device="cpu"),
+        actions, zeros, zeros)[0]
+    assert torch.equal(bound_output.logits, base_output.logits)
+
+
 def test_late_hidden_gate_preserves_older_gate_shapes() -> None:
     model = UnifiedCognitiveController(
         width=32, workspace_slots=4, intention_width=8,

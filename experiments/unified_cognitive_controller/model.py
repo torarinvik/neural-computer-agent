@@ -130,6 +130,7 @@ class UnifiedCognitiveController(nn.Module):
             skill_adapter_legacy_read_from: int | None = None,
             skill_adapter_reads_prior_from: int | None = None,
             skill_adapter_reads_intention_from: int | None = None,
+            skill_adapter_multiplies_intention_from: int | None = None,
             skill_adapter_read_bottleneck: int = 0,
             skill_adapter_prior_read_limit: int = 0) -> None:
         super().__init__()
@@ -235,6 +236,12 @@ class UnifiedCognitiveController(nn.Module):
         # unchanged when this interface is introduced on a new rung.
         self.skill_adapter_reads_intention_from = (
             skill_adapter_reads_intention_from)
+        # A generic bilinear binding feature lets a later skill condition an
+        # inherited amodal intention on state carried from an earlier sensory
+        # event. The index preserves every older slot's shape. No operation or
+        # task identity is supplied: both factors are learned latents.
+        self.skill_adapter_multiplies_intention_from = (
+            skill_adapter_multiplies_intention_from)
         # Width to compress everything a slot reads down to. Reading one prior
         # slot (64 extra inputs) helped; reading two, or the legacy pair (128),
         # hurt, and hurt absolute learning badly in the legacy case. A slot has
@@ -322,6 +329,7 @@ class UnifiedCognitiveController(nn.Module):
         self.skill_adapter_gate_refiners = nn.ModuleList()
         self.skill_adapter_gate_extensions = nn.ModuleList()
         self.skill_adapter_read_projections = nn.ModuleList()
+        self.skill_adapter_intention_interactions = nn.ModuleList()
         legacy_read_width = (
             (relation_adapter_width if relation_adapter_width else 0)
             + (action_adapter_width if action_adapter_width else 0))
@@ -336,6 +344,14 @@ class UnifiedCognitiveController(nn.Module):
             reads_intention = (
                 skill_adapter_reads_intention_from is not None
                 and slot_index >= skill_adapter_reads_intention_from)
+            multiplies_intention = (
+                skill_adapter_multiplies_intention_from is not None
+                and slot_index
+                >= skill_adapter_multiplies_intention_from)
+            if multiplies_intention and not reads_intention:
+                raise ValueError(
+                    "multiplicative intention binding requires an intention "
+                    "read on the same slot")
             selected_prior_width = prior_read_width
             if skill_adapter_prior_read_limit:
                 selected_prior_width = sum(
@@ -345,7 +361,8 @@ class UnifiedCognitiveController(nn.Module):
             raw_read = (
                 (selected_prior_width if reads_prior else 0)
                 + (legacy_read_width if reads_legacy else 0)
-                + (intention_width if reads_intention else 0))
+                + (intention_width if reads_intention else 0)
+                + (intention_width if multiplies_intention else 0))
             if raw_read and skill_adapter_read_bottleneck:
                 slot_input = width * 2 + skill_adapter_read_bottleneck
             else:
@@ -362,6 +379,9 @@ class UnifiedCognitiveController(nn.Module):
                 nn.Linear(raw_read, skill_adapter_read_bottleneck)
                 if raw_read and skill_adapter_read_bottleneck
                 else nn.Identity())
+            self.skill_adapter_intention_interactions.append(
+                nn.Linear(width, intention_width)
+                if multiplies_intention else nn.Identity())
             prior_read_width += slot_width
             # A linear gate has to separate this slot's own events from every
             # other skill's with one hyperplane. A hidden layer lets the
@@ -890,6 +910,18 @@ class UnifiedCognitiveController(nn.Module):
                         and slot_index
                         >= self.skill_adapter_reads_intention_from):
                     reads.append(intention)
+                    if (
+                            self.skill_adapter_multiplies_intention_from
+                            is not None
+                            and slot_index
+                            >= self.skill_adapter_multiplies_intention_from):
+                        interaction_projection = (
+                            self.skill_adapter_intention_interactions[
+                                slot_index])
+                        reads.append(
+                            torch.tanh(
+                                interaction_projection(state.hidden))
+                            * intention)
                 if reads:
                     if (
                             self.skill_adapter_ablate_prior_read

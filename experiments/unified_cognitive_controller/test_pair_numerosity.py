@@ -246,3 +246,70 @@ def test_operation_cue_can_precede_each_clean_stimulus() -> None:
     assert torch.equal(streamed.frames, larger.frames)
     cue = streamed.prestimulus_frames[:, :, :, 5:29, 2:4]
     assert torch.equal(cue, torch.full_like(cue, 0.45))
+
+
+def test_conditional_numerosity_operation_is_balanced_and_deterministic() -> None:
+    first = generate_lifetimes(
+        32, 6, seed=23216, task="visible_pair_numerosity_operation",
+        numerosity_appearance_blend=0.248,
+        operation_cue_prestimulus=True)
+    duplicate = generate_lifetimes(
+        32, 6, seed=23216, task="visible_pair_numerosity_operation",
+        numerosity_appearance_blend=0.248,
+        operation_cue_prestimulus=True)
+
+    assert first.context_ids is not None
+    assert first.prestimulus_frames is not None
+    assert torch.equal(first.frames, duplicate.frames)
+    assert torch.equal(
+        first.prestimulus_frames, duplicate.prestimulus_frames)
+    assert torch.equal(first.correct_actions, duplicate.correct_actions)
+    # Both operations occur equally often inside every lifetime, preventing a
+    # lifetime-constant or globally fixed inverse-operation shortcut.
+    assert torch.equal(
+        first.context_ids.sum(dim=1),
+        torch.full((32,), 3, dtype=torch.long))
+
+
+def test_conditional_operation_counterfactual_flips_only_cue_and_answer() -> None:
+    normal = generate_lifetimes(
+        32, 6, seed=23217, task="visible_pair_numerosity_operation",
+        numerosity_appearance_blend=0.248,
+        operation_cue_prestimulus=True)
+    reversed_operation = generate_lifetimes(
+        32, 6, seed=23217, task="visible_pair_numerosity_operation",
+        numerosity_appearance_blend=0.248,
+        operation_cue_prestimulus=True, reverse_operations=True)
+
+    assert normal.context_ids is not None
+    assert reversed_operation.context_ids is not None
+    assert torch.equal(normal.frames, reversed_operation.frames)
+    assert torch.equal(
+        reversed_operation.context_ids, 1 - normal.context_ids)
+    assert torch.equal(
+        reversed_operation.correct_actions, 1 - normal.correct_actions)
+    assert not torch.equal(
+        normal.prestimulus_frames,
+        reversed_operation.prestimulus_frames)
+
+
+def test_blank_conditional_operation_is_paired_information_theoretic_chance() -> None:
+    normal = generate_lifetimes(
+        32, 6, seed=23218, task="visible_pair_numerosity_operation",
+        numerosity_appearance_blend=0.248,
+        operation_cue_prestimulus=True, operation_cue_scale=0.0)
+    reversed_operation = generate_lifetimes(
+        32, 6, seed=23218, task="visible_pair_numerosity_operation",
+        numerosity_appearance_blend=0.248,
+        operation_cue_prestimulus=True, operation_cue_scale=0.0,
+        reverse_operations=True)
+
+    # Every public tensor is identical while every verifier answer is
+    # complementary. Any deterministic controller must average exactly 50%
+    # across this paired audit when the operation symbol is absent.
+    assert torch.equal(normal.frames, reversed_operation.frames)
+    assert torch.equal(
+        normal.prestimulus_frames,
+        reversed_operation.prestimulus_frames)
+    assert torch.equal(
+        reversed_operation.correct_actions, 1 - normal.correct_actions)

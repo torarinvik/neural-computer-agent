@@ -146,6 +146,7 @@ def evaluate(
             "visible_identity", "pair_relation",
             "pair_magnitude", "visible_pair_magnitude",
             "visible_pair_numerosity", "visible_pair_numerosity_smaller",
+            "visible_pair_numerosity_operation",
             "visible_numerosity_equality",
             "visible_context", "visible_context_xor")),
         reverse_stimuli=(task == "visible_identity"),
@@ -155,6 +156,8 @@ def evaluate(
             "visible_pair_numerosity", "visible_pair_numerosity_smaller",
             "visible_numerosity_equality",
             "visible_context", "visible_context_xor")),
+        reverse_operations=(
+            task == "visible_pair_numerosity_operation"),
         task=task, appearance=appearance,
         appearance_blend=appearance_blend,
         numerosity_mass_control=numerosity_mass_control,
@@ -193,7 +196,10 @@ def evaluate(
         stimulus_identities=normal_batch.stimulus_identities,
         rule_bits=normal_batch.rule_bits,
         seeds=normal_batch.seeds,
-        context_ids=normal_batch.context_ids)
+        context_ids=normal_batch.context_ids,
+        prestimulus_frames=(
+            torch.zeros_like(normal_batch.prestimulus_frames)
+            if normal_batch.prestimulus_frames is not None else None))
     blank = rollout(
         model, blank_batch, sample_actions=False,
         feedback_trials=feedback_trials)
@@ -204,6 +210,7 @@ def evaluate(
         0 if task in (
             "visible_identity", "pair_relation",
             "visible_pair_numerosity",
+            "visible_pair_numerosity_operation",
             "visible_context", "visible_context_xor")
         else feedback_trials)
     flip_rate = (
@@ -240,6 +247,7 @@ def evaluate(
             "visible_identity", "pair_relation",
             "visible_pair_magnitude",
             "visible_pair_numerosity", "visible_pair_numerosity_smaller",
+            "visible_pair_numerosity_operation",
             "visible_numerosity_equality",
             "visible_context", "visible_context_xor"):
         normal_accuracy = float(normal["rewards"].mean())

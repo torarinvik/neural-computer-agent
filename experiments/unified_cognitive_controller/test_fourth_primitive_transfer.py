@@ -16,6 +16,7 @@ from experiments.unified_cognitive_controller.train_fourth_primitive_transfer im
     NEW_TASK, REPLAY_TASKS, _attempted_policy_gradient_loss,
     _headline_accuracy, _new_skill_loss,
     _shuffle_verifier_outcomes,
+    _operation_counterfactual_metrics,
     _operation_cue_ablation_accuracy, _plastic_prefixes,
     _replay_appearance)
 
@@ -63,6 +64,16 @@ def test_attempted_policy_gradient_uses_success_and_failure() -> None:
         failed_logits, attempted, torch.zeros(1)).backward()
     assert failed_logits.grad[0, 0] > 0
     assert failed_logits.grad[0, 1] < 0
+
+
+def test_blank_operation_counterfactual_is_exactly_paired_at_chance() -> None:
+    model = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8)
+    metrics = _operation_counterfactual_metrics(
+        model, count=32, seed=25019, device=torch.device("cpu"),
+        numerosity_appearance_blend=0.248,
+        operation_cue_scale=0.0)
+    assert metrics["paired_mean_accuracy"] == 0.5
 
 
 def test_plastic_prefixes_name_only_the_appended_slot() -> None:
