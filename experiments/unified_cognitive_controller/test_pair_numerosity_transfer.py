@@ -203,6 +203,41 @@ def test_event_snapshot_is_generic_one_step_ram_and_preserves_insertion() -> Non
     assert torch.equal(bound_state.latest_event, bound.vision(second))
 
 
+def test_outer_operator_is_pairwise_and_preserves_insertion() -> None:
+    base = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8)
+    bound = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        skill_adapter_widths=(16,),
+        skill_adapter_gate_mode="relu",
+        skill_adapter_reads_intention_from=0,
+        skill_adapter_reads_event_snapshot_from=0,
+        skill_adapter_outer_multiplies_intention_from=0,
+        skill_adapter_outer_interaction_width=4)
+    missing, unexpected = bound.load_state_dict(
+        base.state_dict(), strict=False)
+    assert missing
+    assert not unexpected
+    # Raw hidden/event pair (64), intention (8), event snapshot (32), and all
+    # 4x4 pairwise products.
+    assert bound.skill_adapters[0][0].in_features == 120
+    assert isinstance(
+        bound.skill_adapter_outer_event_projections[0], torch.nn.Linear)
+    assert isinstance(
+        bound.skill_adapter_outer_intention_projections[0], torch.nn.Linear)
+
+    frames = torch.randn(32, 3, 32, 32)
+    actions = torch.full((32,), 2, dtype=torch.long)
+    zeros = torch.zeros(32)
+    base_output = base.step(
+        frames, base.initial_state(32, device="cpu"),
+        actions, zeros, zeros)[0]
+    bound_output = bound.step(
+        frames, bound.initial_state(32, device="cpu"),
+        actions, zeros, zeros)[0]
+    assert torch.equal(bound_output.logits, base_output.logits)
+
+
 def test_late_hidden_gate_preserves_older_gate_shapes() -> None:
     model = UnifiedCognitiveController(
         width=32, workspace_slots=4, intention_width=8,

@@ -985,3 +985,39 @@ frontier is the shared residual error rather than more recurrent context.
 
 See
 `session_records/event_snapshot_operation_2026-07-30/README.md`.
+
+## Latest breakthrough: explicit pairwise latent operation binding
+
+The remaining conditional-operation error was decomposed before another
+repair. The inherited numerosity relation is only about 91% accurate, but even
+when that relation is correct the elementwise operation binder still loses
+roughly ten points. Balanced exploration, residual regularization, longer
+prerequisite refinement, full-budget appearance curricula, and additional
+duration did not close that gap.
+
+The new generic interface projects the immediately preceding sensory event and
+the inherited amodal intention to eight learned dimensions each, then exposes
+all 64 outer-product terms to the appended zero-output slot. It supplies no
+operation ID, count, answer, task label, or verifier-private state and adds no
+controller step.
+
+At 256 updates, two prospective seeds reach **86.05%** and **85.41%**
+history-free counterfactual accuracy. Seed 25301 improves over the previous
+event-snapshot candidate from 84.58% to 86.05%, while cue-reversal prediction
+flips rise from 82.25% to 86.47%. Seed 25311 crosses 85% in both cue directions
+after its previous 128-update elementwise run reached only 73.52%
+history-free.
+
+A matched module with only outer-product content zeroed falls to 61.95%
+history-free and 29.53% flips. Shuffled outcomes reach 52.04%, blank cues are
+exactly 50% paired with zero flips, and relation, magnitude, and numerosity
+retention all remain above 90%.
+
+This is an explicitly unpromoted architectural breakthrough, not mastery:
+sequential accuracy remains 84–85%, below the 90% gate. The error audit now
+localizes the next frontier to the asymmetric action-zero boundary and the
+91% inherited numerosity ceiling—not missing temporal context or insufficient
+pairwise binding.
+
+See
+`session_records/outer_product_operation_2026-07-30/README.md`.

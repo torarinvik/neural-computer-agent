@@ -55,7 +55,9 @@ def _plastic_prefixes(slot: int) -> tuple[str, ...]:
         f"skill_adapters.{slot}.",
         f"skill_adapter_gates.{slot}.",
         f"skill_adapter_read_projections.{slot}.",
-        f"skill_adapter_intention_interactions.{slot}.")
+        f"skill_adapter_intention_interactions.{slot}.",
+        f"skill_adapter_outer_event_projections.{slot}.",
+        f"skill_adapter_outer_intention_projections.{slot}.")
 
 
 def _prior_slot_prefixes(
@@ -457,14 +459,16 @@ def _new_skill_loss(
         independent_result = _new_skill_loss(
             model, subset(0, independent_count),
             exploration=exploration, support_trials=support_trials,
-            learning_rule=learning_rule, independent_events=True,
+            learning_rule=learning_rule,
+            independent_events=True,
             independent_action_augmentation=(
                 independent_action_augmentation),
             return_accuracy=return_accuracy)
         recurrent_result = _new_skill_loss(
             model, subset(independent_count, batch.batch_size),
             exploration=exploration, support_trials=support_trials,
-            learning_rule=learning_rule, independent_events=False,
+            learning_rule=learning_rule,
+            independent_events=False,
             independent_action_augmentation=False,
             return_accuracy=return_accuracy)
         weight = independent_count / batch.batch_size
@@ -848,6 +852,19 @@ def main() -> None:
             "append a generic learned state-by-intention interaction to the "
             "new slot. This supplies a bilinear binding bias without task IDs, "
             "semantic labels, or verifier-private values"))
+    parser.add_argument(
+        "--outer-product-parent-intention", action="store_true",
+        help=(
+            "append every pairwise product between low-dimensional learned "
+            "event and inherited-intention projections"))
+    parser.add_argument(
+        "--outer-product-width", type=int, default=8,
+        help="projection width on each side of the generic outer product")
+    parser.add_argument(
+        "--ablate-outer-product", action="store_true",
+        help=(
+            "matched capacity control: keep the widened module but zero only "
+            "the outer-product content"))
     parser.add_argument(
         "--canonicalize-action-adapter", action="store_true",
         help=(
@@ -1259,6 +1276,20 @@ def main() -> None:
             raise ValueError(
                 "multiplicative intention binding requires "
                 "--read-parent-intention")
+        if (
+                args.outer_product_parent_intention
+                and (
+                    not args.read_parent_intention
+                    or args.outer_product_width < 1)):
+            raise ValueError(
+                "outer-product intention binding requires "
+                "--read-parent-intention and positive width")
+        if (
+                args.ablate_outer_product
+                and not args.outer_product_parent_intention):
+            raise ValueError(
+                "outer-product ablation requires "
+                "--outer-product-parent-intention")
         if args.ablate_event_snapshot and not args.read_event_snapshot:
             raise ValueError(
                 "event-snapshot ablation requires --read-event-snapshot")
@@ -1266,6 +1297,31 @@ def main() -> None:
             inherited_multiplicative_read_from
             if inherited_multiplicative_read_from is not None
             else new_slot if args.multiply_parent_intention else None)
+        inherited_outer_read_from = configuration.get(
+            "skill_adapter_outer_multiplies_intention_from")
+        if (
+                inherited_outer_read_from is not None
+                and not args.outer_product_parent_intention):
+            raise ValueError(
+                "an outer-product parent must append the same generic "
+                "binding interface")
+        inherited_outer_width = int(
+            configuration.get("skill_adapter_outer_interaction_width", 0))
+        if (
+                inherited_outer_width
+                and args.outer_product_width != inherited_outer_width):
+            raise ValueError(
+                "an inherited outer-product width cannot change")
+        configuration["skill_adapter_outer_multiplies_intention_from"] = (
+            inherited_outer_read_from
+            if inherited_outer_read_from is not None
+            else new_slot if args.outer_product_parent_intention else None)
+        configuration["skill_adapter_outer_interaction_width"] = (
+            inherited_outer_width
+            if inherited_outer_width
+            else (
+                args.outer_product_width
+                if args.outer_product_parent_intention else 0))
         student = UnifiedCognitiveController(**configuration).to(device)
         # Remove inherited content only from the newly appended slot. A global
         # ablation would also alter readable parent slots and make the
@@ -1275,6 +1331,8 @@ def main() -> None:
             new_slot if args.ablate_prior_read else None)
         student.skill_adapter_ablate_event_snapshot_slot = (
             new_slot if args.ablate_event_snapshot else None)
+        student.skill_adapter_ablate_outer_interaction_slot = (
+            new_slot if args.ablate_outer_product else None)
         missing, unexpected = student.load_state_dict(
             teacher.state_dict(), strict=False)
         expected_missing = {
