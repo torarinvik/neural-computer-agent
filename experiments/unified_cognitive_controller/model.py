@@ -64,9 +64,12 @@ class VisionEventEncoder(nn.Module):
 class ControllerState:
     hidden: torch.Tensor
     workspace: torch.Tensor
+    latest_event: torch.Tensor
 
     def detach(self) -> "ControllerState":
-        return ControllerState(self.hidden.detach(), self.workspace.detach())
+        return ControllerState(
+            self.hidden.detach(), self.workspace.detach(),
+            self.latest_event.detach())
 
 
 @dataclass
@@ -130,6 +133,7 @@ class UnifiedCognitiveController(nn.Module):
             skill_adapter_legacy_read_from: int | None = None,
             skill_adapter_reads_prior_from: int | None = None,
             skill_adapter_reads_intention_from: int | None = None,
+            skill_adapter_reads_event_snapshot_from: int | None = None,
             skill_adapter_multiplies_intention_from: int | None = None,
             skill_adapter_read_bottleneck: int = 0,
             skill_adapter_prior_read_limit: int = 0) -> None:
@@ -219,6 +223,9 @@ class UnifiedCognitiveController(nn.Module):
         # newly appended slot while leaving every older slot's behavior
         # untouched. This is runtime diagnostic state, not learned structure.
         self.skill_adapter_ablate_prior_read_slot: int | None = None
+        # Matched diagnostic: preserve the slot's full shape and every other
+        # inherited read while removing only the one-event sensory RAM content.
+        self.skill_adapter_ablate_event_snapshot_slot: int | None = None
         # Index of the first slot allowed to read the two legacy adapters.
         # Rungs two and three consolidated into those, so they are ancestry a
         # later slot cannot otherwise see. It is an index rather than a flag so
@@ -236,6 +243,11 @@ class UnifiedCognitiveController(nn.Module):
         # unchanged when this interface is introduced on a new rung.
         self.skill_adapter_reads_intention_from = (
             skill_adapter_reads_intention_from)
+        # A generic one-event sensory RAM trace. It carries no frame-type or
+        # task metadata: every step overwrites it with the latest learned event
+        # latent. An index keeps older slot input shapes checkpoint-compatible.
+        self.skill_adapter_reads_event_snapshot_from = (
+            skill_adapter_reads_event_snapshot_from)
         # A generic bilinear binding feature lets a later skill condition an
         # inherited amodal intention on state carried from an earlier sensory
         # event. The index preserves every older slot's shape. No operation or
@@ -344,6 +356,10 @@ class UnifiedCognitiveController(nn.Module):
             reads_intention = (
                 skill_adapter_reads_intention_from is not None
                 and slot_index >= skill_adapter_reads_intention_from)
+            reads_event_snapshot = (
+                skill_adapter_reads_event_snapshot_from is not None
+                and slot_index
+                >= skill_adapter_reads_event_snapshot_from)
             multiplies_intention = (
                 skill_adapter_multiplies_intention_from is not None
                 and slot_index
@@ -362,6 +378,7 @@ class UnifiedCognitiveController(nn.Module):
                 (selected_prior_width if reads_prior else 0)
                 + (legacy_read_width if reads_legacy else 0)
                 + (intention_width if reads_intention else 0)
+                + (width if reads_event_snapshot else 0)
                 + (intention_width if multiplies_intention else 0))
             if raw_read and skill_adapter_read_bottleneck:
                 slot_input = width * 2 + skill_adapter_read_bottleneck
@@ -792,6 +809,7 @@ class UnifiedCognitiveController(nn.Module):
             torch.zeros(
                 batch_size, self.workspace_slots, self.width,
                 device=device, dtype=dtype),
+            torch.zeros(batch_size, self.width, device=device, dtype=dtype),
         )
 
     def step(
@@ -894,6 +912,11 @@ class UnifiedCognitiveController(nn.Module):
                 # deeper ancestry produce bit-identical inputs here, and a new
                 # slot has nothing to inherit.
                 reads = []
+                event_snapshot = state.latest_event
+                if (
+                        self.skill_adapter_ablate_event_snapshot_slot
+                        == slot_index):
+                    event_snapshot = torch.zeros_like(event_snapshot)
                 if (self.skill_adapter_reads_prior and prior_reads
                         and (self.skill_adapter_reads_prior_from is None
                              or slot_index
@@ -920,8 +943,21 @@ class UnifiedCognitiveController(nn.Module):
                                 slot_index])
                         reads.append(
                             torch.tanh(
-                                interaction_projection(state.hidden))
+                                interaction_projection(
+                                    event_snapshot
+                                    if (
+                                        self.skill_adapter_reads_event_snapshot_from
+                                        is not None
+                                        and slot_index
+                                        >= self.skill_adapter_reads_event_snapshot_from)
+                                    else state.hidden))
                             * intention)
+                if (
+                        self.skill_adapter_reads_event_snapshot_from
+                        is not None
+                        and slot_index
+                        >= self.skill_adapter_reads_event_snapshot_from):
+                    reads.append(event_snapshot)
                 if reads:
                     if (
                             self.skill_adapter_ablate_prior_read
@@ -972,4 +1008,4 @@ class UnifiedCognitiveController(nn.Module):
             skill_adapter_openings=skill_adapter_openings,
             skill_adapter_residual_norms=skill_adapter_residual_norms,
         )
-        return output, ControllerState(hidden, workspace)
+        return output, ControllerState(hidden, workspace, event)

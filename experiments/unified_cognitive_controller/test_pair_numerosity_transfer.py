@@ -169,6 +169,40 @@ def test_late_multiplicative_intention_binding_is_behavior_preserving() -> None:
     assert torch.equal(bound_output.logits, base_output.logits)
 
 
+def test_event_snapshot_is_generic_one_step_ram_and_preserves_insertion() -> None:
+    base = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8)
+    bound = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        skill_adapter_widths=(16,),
+        skill_adapter_gate_mode="relu",
+        skill_adapter_reads_intention_from=0,
+        skill_adapter_reads_event_snapshot_from=0,
+        skill_adapter_multiplies_intention_from=0)
+    bound.load_state_dict(base.state_dict(), strict=False)
+    assert bound.skill_adapters[0][0].in_features == 112
+
+    first = torch.randn(32, 3, 32, 32)
+    second = torch.randn(32, 3, 32, 32)
+    actions = torch.full((32,), 2, dtype=torch.long)
+    zeros = torch.zeros(32)
+    base_first, base_state = base.step(
+        first, base.initial_state(32, device="cpu"),
+        actions, zeros, zeros)
+    bound_first, bound_state = bound.step(
+        first, bound.initial_state(32, device="cpu"),
+        actions, zeros, zeros)
+    assert torch.equal(bound_first.logits, base_first.logits)
+    assert torch.equal(bound_state.latest_event, bound.vision(first))
+
+    base_second = base.step(
+        second, base_state, actions, zeros, zeros)[0]
+    bound_second, bound_state = bound.step(
+        second, bound_state, actions, zeros, zeros)
+    assert torch.equal(bound_second.logits, base_second.logits)
+    assert torch.equal(bound_state.latest_event, bound.vision(second))
+
+
 def test_late_hidden_gate_preserves_older_gate_shapes() -> None:
     model = UnifiedCognitiveController(
         width=32, workspace_slots=4, intention_width=8,

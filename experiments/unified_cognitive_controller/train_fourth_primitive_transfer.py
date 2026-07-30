@@ -30,7 +30,7 @@ from torch import nn
 
 from .distill_visible_context import _distillation_loss, _trajectory_loss
 from .environment import (
-    NULL_ACTION, CognitiveLifetimeBatch, generate_lifetimes)
+    ACTIONS, NULL_ACTION, CognitiveLifetimeBatch, generate_lifetimes)
 from .model import UnifiedCognitiveController
 from .train import attempted_success_loss, evaluate, rollout, seed_everything
 
@@ -422,8 +422,109 @@ def _new_skill_loss(
         model: UnifiedCognitiveController, batch, *,
         exploration: float, support_trials: int,
         learning_rule: str = "bce",
+        independent_events: bool = False,
+        independent_event_share: float = 0.0,
+        independent_action_augmentation: bool = False,
         return_accuracy: bool = False,
         ) -> torch.Tensor | tuple[torch.Tensor, float]:
+    if independent_event_share:
+        if independent_events:
+            raise ValueError(
+                "an all-independent batch cannot also request a mixed share")
+        if not 0.0 < independent_event_share < 1.0:
+            raise ValueError(
+                "independent event share must lie strictly within (0, 1)")
+        independent_count = int(round(
+            batch.batch_size * independent_event_share))
+        independent_count = min(
+            batch.batch_size - 1, max(1, independent_count))
+
+        def subset(start: int, stop: int):
+            return replace(
+                batch,
+                frames=batch.frames[start:stop],
+                correct_actions=batch.correct_actions[start:stop],
+                stimulus_identities=batch.stimulus_identities[start:stop],
+                rule_bits=batch.rule_bits[start:stop],
+                seeds=batch.seeds[start:stop],
+                context_ids=(
+                    batch.context_ids[start:stop]
+                    if batch.context_ids is not None else None),
+                prestimulus_frames=(
+                    batch.prestimulus_frames[start:stop]
+                    if batch.prestimulus_frames is not None else None))
+
+        independent_result = _new_skill_loss(
+            model, subset(0, independent_count),
+            exploration=exploration, support_trials=support_trials,
+            learning_rule=learning_rule, independent_events=True,
+            independent_action_augmentation=(
+                independent_action_augmentation),
+            return_accuracy=return_accuracy)
+        recurrent_result = _new_skill_loss(
+            model, subset(independent_count, batch.batch_size),
+            exploration=exploration, support_trials=support_trials,
+            learning_rule=learning_rule, independent_events=False,
+            independent_action_augmentation=False,
+            return_accuracy=return_accuracy)
+        weight = independent_count / batch.batch_size
+        if return_accuracy:
+            independent_loss, independent_accuracy = independent_result
+            recurrent_loss, recurrent_accuracy = recurrent_result
+            return (
+                weight * independent_loss + (1.0 - weight) * recurrent_loss,
+                weight * independent_accuracy
+                + (1.0 - weight) * recurrent_accuracy)
+        return (
+            weight * independent_result
+            + (1.0 - weight) * recurrent_result)
+
+    if independent_events:
+        events = batch.batch_size * batch.trials
+        state = model.initial_state(
+            events, device=batch.frames.device, dtype=batch.frames.dtype)
+        previous_action = torch.full(
+            (events,), NULL_ACTION, dtype=torch.long,
+            device=batch.frames.device)
+        if independent_action_augmentation:
+            # Previous action is an irrelevant nuisance for a fully visible
+            # operation. Sampling all opaque actions plus the true reset token
+            # prevents a fresh-state learner from keying on NULL and failing
+            # when embedded in an uninterrupted real-time stream.
+            previous_action = torch.randint(
+                0, ACTIONS + 1, (events,), device=batch.frames.device)
+        zeros = torch.zeros(events, device=batch.frames.device)
+        if batch.prestimulus_frames is not None:
+            _, state = model.step(
+                batch.prestimulus_frames.flatten(0, 1), state,
+                previous_action, zeros, zeros)
+        output, _ = model.step(
+            batch.frames.flatten(0, 1), state,
+            previous_action, zeros, zeros)
+        probabilities = output.logits.softmax(dim=-1)
+        behavior = (
+            probabilities * (1.0 - exploration)
+            + exploration / ACTIONS)
+        actions = torch.multinomial(behavior, 1).squeeze(1)
+        outcomes = (
+            actions == batch.correct_actions.flatten()).to(
+                output.logits.dtype)
+        if learning_rule == "bce":
+            loss = attempted_success_loss(
+                output.logits, actions, outcomes)
+        elif learning_rule == "policy_gradient":
+            if exploration != 1.0:
+                raise ValueError(
+                    "policy-gradient control requires exact uniform logging")
+            loss = _attempted_policy_gradient_loss(
+                output.logits, actions, outcomes)
+        else:
+            raise ValueError(
+                f"unknown new-skill learning rule {learning_rule}")
+        if return_accuracy:
+            return loss, float(outcomes.mean())
+        return loss
+
     result = rollout(
         model, batch, sample_actions=True, exploration=exploration,
         feedback_trials=support_trials)
@@ -732,6 +833,16 @@ def main() -> None:
             "intention, enabling learned transformations of an existing "
             "decision without exposing action labels or logits"))
     parser.add_argument(
+        "--read-event-snapshot", action="store_true",
+        help=(
+            "let the new slot read the generic one-event sensory RAM trace; "
+            "each controller step overwrites it, without a cue or task flag"))
+    parser.add_argument(
+        "--ablate-event-snapshot", action="store_true",
+        help=(
+            "matched control: keep the event-snapshot interface and parameter "
+            "count but zero only its content for the appended slot"))
+    parser.add_argument(
         "--multiply-parent-intention", action="store_true",
         help=(
             "append a generic learned state-by-intention interaction to the "
@@ -845,6 +956,30 @@ def main() -> None:
             "loss for attempted actions. policy_gradient uses exact uniform "
             "logging and a task-agnostic chance baseline"))
     parser.add_argument(
+        "--new-independent-events", action="store_true",
+        help=(
+            "train every new-task cue/stimulus pair from a fresh active state; "
+            "the same attempted-action outcomes are used, but episode history "
+            "cannot substitute for the current sensory operation"))
+    parser.add_argument(
+        "--new-independent-event-updates", type=int, default=0,
+        help=(
+            "number of initial updates trained as independent events before "
+            "consolidating on the ordinary recurrent stream; zero disables "
+            "this staged curriculum"))
+    parser.add_argument(
+        "--new-independent-event-share", type=float, default=0.0,
+        help=(
+            "fraction of each new-task batch trained from fresh active state; "
+            "the remaining lifetimes use the ordinary recurrent stream, so "
+            "the verifier-outcome budget is unchanged"))
+    parser.add_argument(
+        "--new-independent-action-augmentation", action="store_true",
+        help=(
+            "randomize the learner-visible previous opaque action on fresh-"
+            "state events, making current sensory evidence invariant to this "
+            "generic real-time history channel"))
+    parser.add_argument(
         "--shuffle-new-verifier-outcomes", action="store_true",
         help=(
             "negative control: permute new-task verifier outcomes across "
@@ -912,6 +1047,48 @@ def main() -> None:
         raise ValueError("gate warmup fraction must be within [0, 1)")
     gate_warmup_updates = int(round(args.steps * args.gate_warmup_fraction))
     new_task = args.new_task
+    if args.new_independent_event_updates < 0:
+        raise ValueError(
+            "independent-event update count must not be negative")
+    if (
+            args.new_independent_events
+            and (
+                args.new_independent_event_updates
+                or args.new_independent_event_share)):
+        raise ValueError(
+            "choose either all-independent training or a staged independent "
+            "configuration")
+    if (
+            args.new_independent_event_updates
+            and args.new_independent_event_share):
+        raise ValueError(
+            "staged and within-batch independent-event curricula are "
+            "mutually exclusive")
+    if not 0.0 <= args.new_independent_event_share < 1.0:
+        raise ValueError(
+            "independent-event share must lie within [0, 1)")
+    if (
+            args.new_independent_action_augmentation
+            and not (
+                args.new_independent_events
+                or args.new_independent_event_updates
+                or args.new_independent_event_share)):
+        raise ValueError(
+            "independent action augmentation requires an independent-event "
+            "training mode")
+    if args.new_independent_event_updates >= args.steps:
+        raise ValueError(
+            "a staged independent-event phase must leave at least one "
+            "recurrent consolidation update")
+    if (
+            (
+                args.new_independent_events
+                or args.new_independent_event_updates
+                or args.new_independent_event_share)
+            and new_task != "visible_pair_numerosity_operation"):
+        raise ValueError(
+            "independent-event training currently requires the fully visible "
+            "conditional numerosity operation")
     if not 0.0 <= args.new_numerosity_appearance_blend <= 1.0:
         raise ValueError("new numerosity appearance blend must be within [0, 1]")
     if not 0.0 <= args.new_operation_cue_scale <= 1.0:
@@ -1058,6 +1235,18 @@ def main() -> None:
             inherited_intention_read_from
             if inherited_intention_read_from is not None
             else new_slot if args.read_parent_intention else None)
+        inherited_event_snapshot_read_from = configuration.get(
+            "skill_adapter_reads_event_snapshot_from")
+        if (
+                inherited_event_snapshot_read_from is not None
+                and not args.read_event_snapshot):
+            raise ValueError(
+                "an event-snapshot-reading parent must append the same "
+                "generic sensory RAM interface")
+        configuration["skill_adapter_reads_event_snapshot_from"] = (
+            inherited_event_snapshot_read_from
+            if inherited_event_snapshot_read_from is not None
+            else new_slot if args.read_event_snapshot else None)
         inherited_multiplicative_read_from = configuration.get(
             "skill_adapter_multiplies_intention_from")
         if (
@@ -1070,6 +1259,9 @@ def main() -> None:
             raise ValueError(
                 "multiplicative intention binding requires "
                 "--read-parent-intention")
+        if args.ablate_event_snapshot and not args.read_event_snapshot:
+            raise ValueError(
+                "event-snapshot ablation requires --read-event-snapshot")
         configuration["skill_adapter_multiplies_intention_from"] = (
             inherited_multiplicative_read_from
             if inherited_multiplicative_read_from is not None
@@ -1081,6 +1273,8 @@ def main() -> None:
         student.skill_adapter_ablate_prior_read = False
         student.skill_adapter_ablate_prior_read_slot = (
             new_slot if args.ablate_prior_read else None)
+        student.skill_adapter_ablate_event_snapshot_slot = (
+            new_slot if args.ablate_event_snapshot else None)
         missing, unexpected = student.load_state_dict(
             teacher.state_dict(), strict=False)
         expected_missing = {
@@ -1292,6 +1486,12 @@ def main() -> None:
                 student, new_batch, exploration=args.exploration,
                 support_trials=support_trials,
                 learning_rule=args.new_learning_rule,
+                independent_events=(
+                    args.new_independent_events
+                    or update <= args.new_independent_event_updates),
+                independent_event_share=args.new_independent_event_share,
+                independent_action_augmentation=(
+                    args.new_independent_action_augmentation),
                 return_accuracy=True)
             tracked_new_accuracy = (
                 0.9 * tracked_new_accuracy + 0.1 * new_batch_accuracy

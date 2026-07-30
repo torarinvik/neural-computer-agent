@@ -1480,3 +1480,34 @@ without retention loss.
 
 Full record:
 `session_records/conditional_operation_2026-07-30/README.md`.
+
+## One-event sensory RAM removes the history shift
+
+Fresh-state training localized a representation problem: it produced 84.21%
+history-free operation accuracy but only 49.83% in a continuous sequence.
+Previous-action augmentation, staged training, and a 50/50 distribution mixture
+did not make one slot robust to both regimes.
+
+`ControllerState.latest_event` is a generic one-step sensory buffer. Each call
+to `step` overwrites it with the current vision latent. A new slot can read the
+immediately preceding latent and bind it to the inherited intention:
+
+```text
+tanh(W × latest_event) × inherited_intention
+```
+
+Older checkpoints and slots do not read this field, and the appended slot
+starts with exactly zero output. The interface adds state, not a task-specific
+head or an extra inference step.
+
+At 1,024 new lifetimes, two replicas reach 84.75% and 84.33% sequential
+accuracy and 78.15% and 73.52% history-free accuracy. A matched snapshot-content
+ablation reaches only 72.18% and 55.54%; matched shuffled outcomes reach
+50.03%. Blank cues remain exactly chance and inherited skills remain above 90%.
+
+At 2,048 lifetimes, the selected research candidate reaches 84.82% sequential
+and 84.58% history-free with 82.25% counterfactual cue flips. It remains
+unpromoted pending the 90% mastery gate.
+
+Full record:
+`session_records/event_snapshot_operation_2026-07-30/README.md`.

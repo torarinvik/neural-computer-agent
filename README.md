@@ -954,3 +954,34 @@ lowering inherited numerosity.
 
 See
 `session_records/conditional_operation_2026-07-30/README.md`.
+
+## Latest breakthrough: one-event sensory RAM
+
+The controller now carries a generic `latest_event` latent in temporary RAM.
+Every sensory step overwrites it; a later skill may read it on the next step.
+This is not an operation-specific register and receives no frame type, cue
+flag, task ID, or verifier metadata.
+
+At the same 128-update / 1,024-lifetime budget, two replicas reach **84.75%**
+and **84.33%** sequential conditional-operation accuracy. Their history-free
+counterfactual scores are 78.15% and 73.52%, while timing-matched blank cues
+remain at chance. All inherited relation, magnitude, and numerosity skills
+remain above 90%.
+
+A matched-capacity control zeroes only the snapshot content. Sequential
+accuracy falls from 84.75% to 72.18%; history-free accuracy falls from 78.15%
+to 55.54%; causal cue flips fall from 66.95% to 15.27%. A matched-seed
+shuffled-outcome run reaches 50.03%.
+
+The selected 256-update candidate reaches **84.82% sequential and 84.58%
+history-free**, with 82.25% prediction flips under cue-only reversal. It
+retains relation at 99.17%, magnitude at 91.25%, and numerosity at 90.13%.
+This closes the recurrent-history distribution gap without adding another
+controller pass.
+
+The checkpoint remains explicitly unpromoted because neither mode has crossed
+90%. Further duration did not improve the sequential ceiling, so the next
+frontier is the shared residual error rather than more recurrent context.
+
+See
+`session_records/event_snapshot_operation_2026-07-30/README.md`.

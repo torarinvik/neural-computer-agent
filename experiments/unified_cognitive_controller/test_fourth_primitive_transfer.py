@@ -146,6 +146,44 @@ def test_new_skill_loss_can_report_observed_training_accuracy() -> None:
     assert 0.0 <= accuracy <= 1.0
 
 
+def test_independent_event_loss_uses_every_cue_scene_from_fresh_state() -> None:
+    model = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        skill_adapter_widths=(16,),
+        skill_adapter_gate_mode="relu",
+        skill_adapter_reads_intention_from=0,
+        skill_adapter_multiplies_intention_from=0)
+    batch = generate_lifetimes(
+        8, 6, seed=54, task="visible_pair_numerosity_operation",
+        numerosity_appearance_blend=0.248,
+        operation_cue_prestimulus=True)
+    loss, accuracy = _new_skill_loss(
+        model, batch, exploration=0.2, support_trials=1,
+        independent_events=True, return_accuracy=True)
+    loss.backward()
+    assert loss.ndim == 0
+    assert 0.0 <= accuracy <= 1.0
+    assert model.skill_adapters[0][-1].weight.grad is not None
+    # The latent interaction itself receives credit after the zero-output
+    # layer has moved; insertion remains exactly behavior preserving.
+    assert torch.count_nonzero(
+        model.skill_adapters[0][-1].weight) == 0
+
+
+def test_mixed_event_loss_partitions_lifetimes_without_duplication() -> None:
+    model = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8)
+    batch = generate_lifetimes(
+        8, 6, seed=55, task="visible_pair_numerosity_operation",
+        numerosity_appearance_blend=0.248,
+        operation_cue_prestimulus=True)
+    loss, accuracy = _new_skill_loss(
+        model, batch, exploration=0.2, support_trials=1,
+        independent_event_share=0.5, return_accuracy=True)
+    assert loss.ndim == 0
+    assert 0.0 <= accuracy <= 1.0
+
+
 def test_cue_ablation_compares_the_same_events() -> None:
     """The ablation must change only the cue, never the task content."""
     model = UnifiedCognitiveController(
