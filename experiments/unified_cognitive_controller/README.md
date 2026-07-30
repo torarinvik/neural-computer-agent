@@ -1423,3 +1423,24 @@ races.
 
 Full record:
 `session_records/cross_operation_policy_gradient_2026-07-30/README.md`.
+
+## Separate cue and stimulus frames remove the operation bottleneck
+
+The overlaid public operation cue was not a harmless task marker. At full
+strength it reduced the frozen parent's larger-count accuracy from 90.46% to
+63.15%, explaining why both reward learning and disposable supervision
+plateaued near 60%.
+
+`CognitiveLifetimeBatch` can now carry an optional cue-only prestimulus frame.
+`rollout` consumes it as ordinary sensory time without taking an action or
+delivering reward, then processes the clean action-bearing frame. No task
+metadata reaches the controller.
+
+With the legacy action residual canonicalized into amodal intention, two
+reward-only replicas reach 83.96% and 83.65% from 1,024 lifetimes. Shuffled
+outcomes reach 13.08%, intention ablation 14.40%, and missing-cue evaluation
+38–40%. Every prior skill remains retained. The price is explicit: two sensory
+frames per action instead of one.
+
+Full record:
+`session_records/stream_separated_operation_2026-07-30/README.md`.

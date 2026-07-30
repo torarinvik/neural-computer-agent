@@ -55,6 +55,14 @@ def rollout(
             state = model.initial_state(
                 batch.batch_size, device=batch.frames.device,
                 dtype=batch.frames.dtype)
+        if batch.prestimulus_frames is not None:
+            # A cue frame is ordinary sensory time: no action is taken and no
+            # verifier outcome is delivered until the following stimulus.
+            _, state = model.step(
+                batch.prestimulus_frames[:, trial], state,
+                previous_action, torch.zeros_like(previous_reward),
+                torch.zeros_like(previous_reward),
+                disable_workspace=disable_workspace)
         has_feedback = torch.full_like(
             previous_reward,
             float(0 < trial <= feedback_trials))
@@ -118,13 +126,19 @@ def evaluate(
         appearance: str = "bars",
         appearance_blend: float | None = None,
         numerosity_mass_control: float = 0.0,
-        numerosity_appearance_blend: float = 1.0) -> dict[str, object]:
+        numerosity_appearance_blend: float = 1.0,
+        operation_cue_scale: float = 1.0,
+        operation_cue_trials: int | None = None,
+        operation_cue_prestimulus: bool = False) -> dict[str, object]:
     model.eval()
     normal_batch = generate_lifetimes(
         count, trials, seed=seed, heldout=True, task=task,
         appearance=appearance, appearance_blend=appearance_blend,
         numerosity_mass_control=numerosity_mass_control,
         numerosity_appearance_blend=numerosity_appearance_blend,
+        operation_cue_scale=operation_cue_scale,
+        operation_cue_trials=operation_cue_trials,
+        operation_cue_prestimulus=operation_cue_prestimulus,
         support_trials=feedback_trials, device=device)
     reversed_batch = generate_lifetimes(
         count, trials, seed=seed, heldout=True,
@@ -145,6 +159,9 @@ def evaluate(
         appearance_blend=appearance_blend,
         numerosity_mass_control=numerosity_mass_control,
         numerosity_appearance_blend=numerosity_appearance_blend,
+        operation_cue_scale=operation_cue_scale,
+        operation_cue_trials=operation_cue_trials,
+        operation_cue_prestimulus=operation_cue_prestimulus,
         support_trials=feedback_trials, device=device)
     normal = rollout(
         model, normal_batch, sample_actions=False,

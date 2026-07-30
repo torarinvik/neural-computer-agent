@@ -192,3 +192,57 @@ def test_smaller_operation_has_valid_counterfactual() -> None:
     assert torch.equal(
         reversed_batch.correct_actions, 1 - normal.correct_actions)
     assert not torch.equal(normal.frames, reversed_batch.frames)
+
+
+def test_operation_cue_scale_is_a_label_preserving_difficulty_axis() -> None:
+    absent = generate_lifetimes(
+        32, 6, seed=23213, task="visible_pair_numerosity_smaller",
+        numerosity_appearance_blend=0.248, operation_cue_scale=0.0)
+    gradual = generate_lifetimes(
+        32, 6, seed=23213, task="visible_pair_numerosity_smaller",
+        numerosity_appearance_blend=0.248, operation_cue_scale=0.125)
+    full = generate_lifetimes(
+        32, 6, seed=23213, task="visible_pair_numerosity_smaller",
+        numerosity_appearance_blend=0.248, operation_cue_scale=1.0)
+    default = generate_lifetimes(
+        32, 6, seed=23213, task="visible_pair_numerosity_smaller",
+        numerosity_appearance_blend=0.248)
+
+    assert torch.equal(absent.correct_actions, gradual.correct_actions)
+    assert torch.equal(gradual.correct_actions, full.correct_actions)
+    assert torch.equal(full.frames, default.frames)
+    assert not torch.equal(absent.frames, gradual.frames)
+    assert not torch.equal(gradual.frames, full.frames)
+
+
+def test_operation_cue_can_be_a_first_event_instruction() -> None:
+    always = generate_lifetimes(
+        32, 6, seed=23214, task="visible_pair_numerosity_smaller",
+        numerosity_appearance_blend=0.248)
+    first_only = generate_lifetimes(
+        32, 6, seed=23214, task="visible_pair_numerosity_smaller",
+        numerosity_appearance_blend=0.248, operation_cue_trials=1)
+    larger = generate_lifetimes(
+        32, 6, seed=23214, task="visible_pair_numerosity",
+        numerosity_appearance_blend=0.248)
+
+    assert torch.equal(always.correct_actions, first_only.correct_actions)
+    assert torch.equal(always.frames[:, 0], first_only.frames[:, 0])
+    # After the instruction event, the smaller task presents the same clean
+    # perceptual relation as the inherited larger task.
+    assert torch.equal(first_only.frames[:, 1:], larger.frames[:, 1:])
+
+
+def test_operation_cue_can_precede_each_clean_stimulus() -> None:
+    streamed = generate_lifetimes(
+        32, 6, seed=23215, task="visible_pair_numerosity_smaller",
+        numerosity_appearance_blend=0.248,
+        operation_cue_prestimulus=True)
+    larger = generate_lifetimes(
+        32, 6, seed=23215, task="visible_pair_numerosity",
+        numerosity_appearance_blend=0.248)
+
+    assert streamed.prestimulus_frames is not None
+    assert torch.equal(streamed.frames, larger.frames)
+    cue = streamed.prestimulus_frames[:, :, :, 5:29, 2:4]
+    assert torch.equal(cue, torch.full_like(cue, 0.45))

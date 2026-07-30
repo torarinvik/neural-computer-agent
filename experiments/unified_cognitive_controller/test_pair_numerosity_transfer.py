@@ -136,3 +136,50 @@ def test_late_intention_read_preserves_older_slot_shapes() -> None:
     assert model.skill_adapters[1][0].in_features == 72
     assert model.skill_adapter_gates[0].in_features == 64
     assert model.skill_adapter_gates[1].in_features == 72
+
+
+def test_late_hidden_gate_preserves_older_gate_shapes() -> None:
+    model = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        skill_adapter_widths=(16, 16),
+        skill_adapter_gate_mode="relu",
+        skill_adapter_gate_hidden=12,
+        skill_adapter_gate_hidden_from=1)
+    assert isinstance(model.skill_adapter_gates[0], torch.nn.Linear)
+    assert isinstance(model.skill_adapter_gates[1], torch.nn.Sequential)
+    assert model.skill_adapter_gates[1][0].out_features == 12
+
+
+def test_action_adapter_canonicalization_preserves_emitted_logits() -> None:
+    configuration = {
+        "width": 32,
+        "workspace_slots": 4,
+        "intention_width": 8,
+        "action_adapter_width": 16,
+        "action_adapter_gated": True,
+    }
+    legacy = UnifiedCognitiveController(**configuration)
+    legacy.action_adapter[-1].bias.data.copy_(
+        torch.tensor((0.35, -0.20)))
+    canonical = UnifiedCognitiveController(
+        **configuration, action_adapter_into_intention=True)
+    canonical.load_state_dict(legacy.state_dict())
+    frames = torch.randn(32, 3, 32, 32)
+    actions = torch.full((32,), 2, dtype=torch.long)
+    zeros = torch.zeros(32)
+
+    legacy_output = legacy.step(
+        frames, legacy.initial_state(32, device="cpu"),
+        actions, zeros, zeros)[0]
+    canonical_output = canonical.step(
+        frames, canonical.initial_state(32, device="cpu"),
+        actions, zeros, zeros)[0]
+
+    assert torch.allclose(
+        canonical_output.logits, legacy_output.logits,
+        atol=2e-6, rtol=2e-6)
+    assert torch.equal(
+        canonical_output.logits.argmax(-1),
+        legacy_output.logits.argmax(-1))
+    assert not torch.equal(
+        canonical_output.intention, legacy_output.intention)

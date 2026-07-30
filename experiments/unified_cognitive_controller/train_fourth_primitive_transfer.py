@@ -220,12 +220,18 @@ def _slot_opening(
         count: int, seed: int, support_trials: int,
         device: torch.device,
         numerosity_appearance_blend: float = 1.0,
+        operation_cue_scale: float = 1.0,
+        operation_cue_trials: int | None = None,
+        operation_cue_prestimulus: bool = False,
         ) -> tuple[float, float]:
     """Mean opening of one slot, and how often it is exactly shut."""
     batch = generate_lifetimes(
         count, 6, seed=seed, heldout=True, task=task,
         support_trials=support_trials,
         numerosity_appearance_blend=numerosity_appearance_blend,
+        operation_cue_scale=operation_cue_scale,
+        operation_cue_trials=operation_cue_trials,
+        operation_cue_prestimulus=operation_cue_prestimulus,
         device=device)
     state = model.initial_state(count, device=device)
     action = torch.full(
@@ -233,6 +239,10 @@ def _slot_opening(
     reward = torch.zeros(count, device=device)
     openings = []
     for trial in range(batch.trials):
+        if batch.prestimulus_frames is not None:
+            _, state = model.step(
+                batch.prestimulus_frames[:, trial], state, action,
+                torch.zeros_like(reward), torch.zeros_like(reward))
         feedback = torch.full_like(
             reward, float(0 < trial <= support_trials))
         output, state = model.step(
@@ -255,6 +265,9 @@ def _slot_residual_norm(
         count: int, seed: int, support_trials: int,
         device: torch.device,
         numerosity_appearance_blend: float = 1.0,
+        operation_cue_scale: float = 1.0,
+        operation_cue_trials: int | None = None,
+        operation_cue_prestimulus: bool = False,
         ) -> float:
     """Mean norm of the perturbation one slot actually adds to the intention.
 
@@ -266,6 +279,9 @@ def _slot_residual_norm(
         count, 6, seed=seed, heldout=True, task=task,
         support_trials=support_trials,
         numerosity_appearance_blend=numerosity_appearance_blend,
+        operation_cue_scale=operation_cue_scale,
+        operation_cue_trials=operation_cue_trials,
+        operation_cue_prestimulus=operation_cue_prestimulus,
         device=device)
     state = model.initial_state(count, device=device)
     action = torch.full(
@@ -273,6 +289,10 @@ def _slot_residual_norm(
     reward = torch.zeros(count, device=device)
     norms = []
     for trial in range(batch.trials):
+        if batch.prestimulus_frames is not None:
+            _, state = model.step(
+                batch.prestimulus_frames[:, trial], state, action,
+                torch.zeros_like(reward), torch.zeros_like(reward))
         feedback = torch.full_like(
             reward, float(0 < trial <= support_trials))
         output, state = model.step(
@@ -292,12 +312,18 @@ def _curve_accuracy(
         model: UnifiedCognitiveController, *, task: str, count: int,
         seed: int, support_trials: int, device: torch.device,
         numerosity_appearance_blend: float = 1.0,
+        operation_cue_scale: float = 1.0,
+        operation_cue_trials: int | None = None,
+        operation_cue_prestimulus: bool = False,
         ) -> float:
     """One rollout's post-support accuracy: the cheapest honest curve sample."""
     batch = generate_lifetimes(
         count, 6, seed=seed, heldout=True, task=task,
         support_trials=support_trials,
         numerosity_appearance_blend=numerosity_appearance_blend,
+        operation_cue_scale=operation_cue_scale,
+        operation_cue_trials=operation_cue_trials,
+        operation_cue_prestimulus=operation_cue_prestimulus,
         device=device)
     result = rollout(
         model, batch, sample_actions=False, feedback_trials=support_trials)
@@ -445,7 +471,10 @@ def _operation_cue_ablation_accuracy(
         appearance: str = "bars",
         appearance_blend: float | None = None,
         numerosity_mass_control: float = 0.0,
-        numerosity_appearance_blend: float = 1.0) -> float:
+        numerosity_appearance_blend: float = 1.0,
+        operation_cue_scale: float = 1.0,
+        operation_cue_trials: int | None = None,
+        operation_cue_prestimulus: bool = False) -> float:
     """Rerender the same public events without the operation-mode symbol.
 
     The composition cue is the only pixel difference from the direct-context
@@ -458,6 +487,9 @@ def _operation_cue_ablation_accuracy(
         appearance_blend=appearance_blend,
         numerosity_mass_control=numerosity_mass_control,
         numerosity_appearance_blend=numerosity_appearance_blend,
+        operation_cue_scale=operation_cue_scale,
+        operation_cue_trials=operation_cue_trials,
+        operation_cue_prestimulus=operation_cue_prestimulus,
         support_trials=support_trials, device=device)
     if new_task in (
             "pair_relation", "pair_magnitude",
@@ -583,6 +615,21 @@ def main() -> None:
             "bar-to-dot appearance blend for a new numerosity task; this is "
             "sensory difficulty only and never reveals the answer"))
     parser.add_argument(
+        "--new-operation-cue-scale", type=float, default=1.0,
+        help=(
+            "salience of the public operation cue. This is an explicit "
+            "perceptual curriculum axis, not a semantic label"))
+    parser.add_argument(
+        "--new-operation-cue-trials", type=int, default=0,
+        help=(
+            "number of initial real-time events carrying the operation cue; "
+            "zero keeps it visible on every event"))
+    parser.add_argument(
+        "--new-operation-cue-prestimulus", action="store_true",
+        help=(
+            "show the public cue as a separate sensory frame immediately "
+            "before each action-bearing stimulus"))
+    parser.add_argument(
         "--replay-numerosity-appearance-blend", type=float, default=1.0,
         help=(
             "bar-to-dot appearance blend for replayed numerosity skills; "
@@ -630,6 +677,11 @@ def main() -> None:
             "let the newly appended slot read the parent's accumulated latent "
             "intention, enabling learned transformations of an existing "
             "decision without exposing action labels or logits"))
+    parser.add_argument(
+        "--canonicalize-action-adapter", action="store_true",
+        help=(
+            "map a legacy action-logit residual through the learned actuator "
+            "right inverse so later slots see the complete amodal intention"))
     parser.add_argument(
         "--prior-slot-volatility", type=float, default=0.0,
         help=("learning-rate multiplier in [0,1] for inherited skill slots. "
@@ -802,6 +854,14 @@ def main() -> None:
     new_task = args.new_task
     if not 0.0 <= args.new_numerosity_appearance_blend <= 1.0:
         raise ValueError("new numerosity appearance blend must be within [0, 1]")
+    if not 0.0 <= args.new_operation_cue_scale <= 1.0:
+        raise ValueError("new operation cue scale must be within [0, 1]")
+    if not 0 <= args.new_operation_cue_trials <= 6:
+        raise ValueError("new operation cue trials must be between zero and 6")
+    new_operation_cue_trials = (
+        None
+        if args.new_operation_cue_trials == 0
+        else args.new_operation_cue_trials)
     if not 0.0 <= args.replay_numerosity_appearance_blend <= 1.0:
         raise ValueError(
             "replay numerosity appearance blend must be within [0, 1]")
@@ -887,8 +947,22 @@ def main() -> None:
                 or name in unit_thawed_names)
         configuration["skill_adapter_widths"] = (
             inherited_slots + (args.skill_adapter_width,))
+        configuration["action_adapter_into_intention"] = (
+            bool(configuration.get("action_adapter_into_intention", False))
+            or args.canonicalize_action_adapter)
         configuration["skill_adapter_gate_mode"] = args.slot_gate_mode
+        inherited_gate_hidden = int(
+            configuration.get("skill_adapter_gate_hidden", 0))
+        inherited_gate_hidden_from = configuration.get(
+            "skill_adapter_gate_hidden_from")
+        if inherited_gate_hidden and args.slot_gate_hidden != inherited_gate_hidden:
+            raise ValueError(
+                "an inherited hidden gate must keep its established width")
         configuration["skill_adapter_gate_hidden"] = args.slot_gate_hidden
+        configuration["skill_adapter_gate_hidden_from"] = (
+            inherited_gate_hidden_from
+            if inherited_gate_hidden_from is not None
+            else new_slot if args.slot_gate_hidden else None)
         inherited_reads_prior = bool(
             configuration.get("skill_adapter_reads_prior", False))
         inherited_reads_prior_from = configuration.get(
@@ -1093,6 +1167,10 @@ def main() -> None:
                 task=new_task,
                 numerosity_appearance_blend=(
                     args.new_numerosity_appearance_blend),
+                operation_cue_scale=args.new_operation_cue_scale,
+                operation_cue_trials=new_operation_cue_trials,
+                operation_cue_prestimulus=(
+                    args.new_operation_cue_prestimulus),
                 position_holdout=(
                     bool(update % 2)
                     if args.new_position_augmentation else None),
@@ -1286,7 +1364,11 @@ def main() -> None:
                     seed=seed + 90_000_000,
                     support_trials=final_support_trials, device=device,
                     numerosity_appearance_blend=(
-                        args.new_numerosity_appearance_blend)),
+                        args.new_numerosity_appearance_blend),
+                    operation_cue_scale=args.new_operation_cue_scale,
+                    operation_cue_trials=new_operation_cue_trials,
+                    operation_cue_prestimulus=(
+                        args.new_operation_cue_prestimulus)),
                 **{
                     f"{task}_retention": _curve_accuracy(
                         student, task=task, count=args.test_lifetimes,
@@ -1299,6 +1381,16 @@ def main() -> None:
                     for index, task in enumerate(replay_tasks)
                 },
             }
+            if args.new_operation_cue_prestimulus:
+                headline["new_skill_without_operation_cue"] = _curve_accuracy(
+                    student, task=new_task, count=args.test_lifetimes,
+                    seed=seed + 90_000_000,
+                    support_trials=final_support_trials, device=device,
+                    numerosity_appearance_blend=(
+                        args.new_numerosity_appearance_blend),
+                    operation_cue_scale=args.new_operation_cue_scale,
+                    operation_cue_trials=new_operation_cue_trials,
+                    operation_cue_prestimulus=False)
             report = {
                 "schema": "fourth-primitive-transfer-curve-v1",
                 "eval_mode": "curve",
@@ -1324,6 +1416,13 @@ def main() -> None:
                     "new_verifier_bits":
                         args.steps * args.new_batch_size * 6,
                     "optimizer_updates": args.steps,
+                    "sensory_frames_per_action": (
+                        2 if args.new_operation_cue_prestimulus else 1),
+                    "new_sensory_frames": (
+                        args.steps * args.new_batch_size * 6
+                        * (
+                            2
+                            if args.new_operation_cue_prestimulus else 1)),
                 },
                 "headline_accuracy": headline,
                 "frozen_base_bit_identical": all(
@@ -1348,7 +1447,11 @@ def main() -> None:
                 seed=seed + 90_000_000, device=device,
                 task=new_task, feedback_trials=final_support_trials,
                 numerosity_appearance_blend=(
-                    args.new_numerosity_appearance_blend)),
+                    args.new_numerosity_appearance_blend),
+                operation_cue_scale=args.new_operation_cue_scale,
+                operation_cue_trials=new_operation_cue_trials,
+                operation_cue_prestimulus=(
+                    args.new_operation_cue_prestimulus)),
             **{
                 f"{task}_retention": evaluate(
                     student, count=args.test_lifetimes, trials=6,
@@ -1379,14 +1482,22 @@ def main() -> None:
             seed=seed + 90_000_000, device=device,
             support_trials=final_support_trials, new_task=new_task,
             numerosity_appearance_blend=(
-                args.new_numerosity_appearance_blend))
+                args.new_numerosity_appearance_blend),
+            operation_cue_scale=args.new_operation_cue_scale,
+            operation_cue_trials=new_operation_cue_trials,
+            operation_cue_prestimulus=(
+                args.new_operation_cue_prestimulus))
         _openings = {
             new_task: _slot_opening(
                 student, slot=new_slot, task=new_task,
                 count=args.test_lifetimes, seed=seed + 93_000_000,
                 support_trials=final_support_trials, device=device,
                 numerosity_appearance_blend=(
-                    args.new_numerosity_appearance_blend)),
+                    args.new_numerosity_appearance_blend),
+                operation_cue_scale=args.new_operation_cue_scale,
+                operation_cue_trials=new_operation_cue_trials,
+                operation_cue_prestimulus=(
+                    args.new_operation_cue_prestimulus)),
             **{
                 task: _slot_opening(
                     student, slot=new_slot, task=task,
@@ -1408,7 +1519,11 @@ def main() -> None:
                 count=args.test_lifetimes, seed=seed + 93_000_000,
                 support_trials=final_support_trials, device=device,
                 numerosity_appearance_blend=(
-                    args.new_numerosity_appearance_blend)),
+                    args.new_numerosity_appearance_blend),
+                operation_cue_scale=args.new_operation_cue_scale,
+                operation_cue_trials=new_operation_cue_trials,
+                operation_cue_prestimulus=(
+                    args.new_operation_cue_prestimulus)),
             **{
                 task: _slot_residual_norm(
                     student, slot=new_slot, task=task,
@@ -1493,6 +1608,11 @@ def main() -> None:
                 "new_unique_lifetimes": args.steps * args.new_batch_size,
                 "new_verifier_bits":
                     args.steps * args.new_batch_size * 6,
+                "sensory_frames_per_action": (
+                    2 if args.new_operation_cue_prestimulus else 1),
+                "new_sensory_frames": (
+                    args.steps * args.new_batch_size * 6
+                    * (2 if args.new_operation_cue_prestimulus else 1)),
                 "replay_lifetimes_per_task": args.steps * args.replay_batch_size,
                 "total_unique_lifetimes": total_lifetimes,
                 "total_verifier_bits": total_verifier_bits,

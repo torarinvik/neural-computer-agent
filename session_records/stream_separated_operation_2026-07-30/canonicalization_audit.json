@@ -1,0 +1,18 @@
+{
+  "schema": "legacy-action-canonicalization-audit-v1",
+  "events_per_task": 12288,
+  "pair_relation": {
+    "max_logit_delta": 4.76837158203125e-06,
+    "action_mismatches": 0
+  },
+  "visible_pair_magnitude": {
+    "max_logit_delta": 1.52587890625e-05,
+    "action_mismatches": 0
+  },
+  "visible_pair_numerosity": {
+    "max_logit_delta": 7.62939453125e-06,
+    "action_mismatches": 0
+  },
+  "total_events": 36864,
+  "total_action_mismatches": 0
+}

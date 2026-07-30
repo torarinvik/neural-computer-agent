@@ -119,9 +119,11 @@ class UnifiedCognitiveController(nn.Module):
             relation_adapter_gated: bool = False,
             action_adapter_width: int = 0,
             action_adapter_gated: bool = False,
+            action_adapter_into_intention: bool = False,
             skill_adapter_widths: tuple[int, ...] = (),
             skill_adapter_gate_mode: str = "sigmoid",
             skill_adapter_gate_hidden: int = 0,
+            skill_adapter_gate_hidden_from: int | None = None,
             skill_adapter_gate_refiner_widths: tuple[int, ...] = (),
             skill_adapter_gate_extension_widths: tuple[int, ...] = (),
             skill_adapter_reads_prior: bool = False,
@@ -193,6 +195,7 @@ class UnifiedCognitiveController(nn.Module):
         self.skill_adapter_widths = tuple(skill_adapter_widths)
         self.skill_adapter_gate_mode = skill_adapter_gate_mode
         self.skill_adapter_gate_hidden = skill_adapter_gate_hidden
+        self.skill_adapter_gate_hidden_from = skill_adapter_gate_hidden_from
         self.skill_adapter_gate_refiner_widths = tuple(
             skill_adapter_gate_refiner_widths)
         self.skill_adapter_gate_extension_widths = tuple(
@@ -364,7 +367,12 @@ class UnifiedCognitiveController(nn.Module):
             # other skill's with one hyperplane. A hidden layer lets the
             # boundary bend, which is what decides how cleanly a slot can be
             # both fully available to its operation and fully absent elsewhere.
-            if skill_adapter_gate_hidden:
+            has_hidden_gate = (
+                bool(skill_adapter_gate_hidden)
+                and (
+                    skill_adapter_gate_hidden_from is None
+                    or slot_index >= skill_adapter_gate_hidden_from))
+            if has_hidden_gate:
                 gate = nn.Sequential(
                     nn.Linear(slot_input, skill_adapter_gate_hidden),
                     nn.GELU(),
@@ -448,6 +456,12 @@ class UnifiedCognitiveController(nn.Module):
                 adaptive_memory_replace
                 and adaptive_memory_replace_features > 5)
             else None)
+        # Compatibility migration for early checkpoints whose last adapter
+        # wrote directly into two actuator logits. Mapping that residual
+        # through the learned actuator's right inverse makes the complete
+        # decision available as one composable amodal intention while
+        # preserving the emitted logits.
+        self.action_adapter_into_intention = action_adapter_into_intention
         if self.memory_replacement_extra_gate is not None:
             nn.init.zeros_(self.memory_replacement_extra_gate.weight)
         self.memory_usage_prior_scale = (
@@ -811,6 +825,21 @@ class UnifiedCognitiveController(nn.Module):
                 relation_residual = relation_residual * torch.sigmoid(
                     self.relation_adapter_gate(relation_features))
             intention = intention + relation_residual
+        deferred_action_residual = None
+        if self.action_adapter is not None:
+            adapter_features = torch.cat([state.hidden, event], dim=-1)
+            action_residual = self.action_adapter(adapter_features)
+            if self.action_adapter_gate is not None:
+                action_residual = action_residual * torch.sigmoid(
+                    self.action_adapter_gate(adapter_features))
+            if self.action_adapter_into_intention:
+                actuator_weight = self.actuator.weight
+                coefficients = torch.linalg.solve(
+                    actuator_weight @ actuator_weight.T,
+                    action_residual.T).T
+                intention = intention + coefficients @ actuator_weight
+            else:
+                deferred_action_residual = action_residual
         skill_adapter_openings = None
         skill_adapter_residual_norms = None
         if len(self.skill_adapters):
@@ -898,13 +927,8 @@ class UnifiedCognitiveController(nn.Module):
             skill_adapter_residual_norms = torch.cat(residual_norms, dim=-1)
         memory_context = torch.cat([hidden, read], dim=-1)
         logits = self.actuator(intention)
-        if self.action_adapter is not None:
-            adapter_features = torch.cat([state.hidden, event], dim=-1)
-            adapter_residual = self.action_adapter(adapter_features)
-            if self.action_adapter_gate is not None:
-                adapter_residual = adapter_residual * torch.sigmoid(
-                    self.action_adapter_gate(adapter_features))
-            logits = logits + adapter_residual
+        if deferred_action_residual is not None:
+            logits = logits + deferred_action_residual
         output = ControllerOutput(
             logits=logits,
             intention=intention,

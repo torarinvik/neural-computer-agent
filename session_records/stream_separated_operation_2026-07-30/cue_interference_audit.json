@@ -1,0 +1,17 @@
+{
+  "schema": "operation-cue-interference-audit-v1",
+  "heldout_lifetimes_per_scale": 4096,
+  "task": "visible_pair_numerosity_smaller",
+  "numerosity_appearance_blend": 0.248,
+  "metric": "accuracy of inherited larger-count decision on smaller-task pixels",
+  "overlay_cue_scale_to_retained_accuracy": {
+    "0.0": 0.9046386480331421,
+    "0.0625": 0.8948730230331421,
+    "0.125": 0.880322277545929,
+    "0.25": 0.8365722894668579,
+    "0.5": 0.7403320074081421,
+    "1.0": 0.6314941644668579
+  },
+  "separate_cue_frame_then_clean_stimulus_query_accuracy": 0.875439453125,
+  "conclusion": "overlay salience trades operation separability against inherited comparison; a separate sensory frame preserves both"
+}

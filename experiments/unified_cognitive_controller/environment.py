@@ -45,6 +45,9 @@ class CognitiveLifetimeBatch:
     # verifier-private metadata in reports/tests.  Older callers that build a
     # batch directly need not supply it.
     context_ids: torch.Tensor | None = None
+    # Optional cue-only frame immediately preceding each action-bearing frame.
+    # It is part of the sensory stream, never verifier metadata.
+    prestimulus_frames: torch.Tensor | None = None
 
     @property
     def batch_size(self) -> int:
@@ -274,6 +277,9 @@ def generate_lifetimes(
         appearance_blend: float | None = None,
         numerosity_mass_control: float = 0.0,
         numerosity_appearance_blend: float = 1.0,
+        operation_cue_scale: float = 1.0,
+        operation_cue_trials: int | None = None,
+        operation_cue_prestimulus: bool = False,
         position_holdout: bool | None = None,
         support_trials: int = 1,
         device: torch.device | str = "cpu") -> CognitiveLifetimeBatch:
@@ -312,6 +318,20 @@ def generate_lifetimes(
     if not 0.0 <= numerosity_appearance_blend <= 1.0:
         raise ValueError(
             "numerosity appearance blend must be within [0, 1]")
+    if not 0.0 <= operation_cue_scale <= 1.0:
+        raise ValueError("operation cue scale must be within [0, 1]")
+    if (
+            operation_cue_trials is not None
+            and not 1 <= operation_cue_trials <= trials):
+        raise ValueError(
+            "operation cue trials must be between one and total trials")
+    cue_trial_stop = (
+        trials if operation_cue_trials is None else operation_cue_trials)
+    if (
+            operation_cue_prestimulus
+            and task not in _OPERATION_CUE_SLOTS):
+        raise ValueError(
+            "prestimulus cue requires a task with a public operation cue")
     if (
             task not in (
                 "visible_pair_numerosity",
@@ -569,21 +589,38 @@ def generate_lifetimes(
     frames[
         batch_indices, trial_indices, :, nuisance_y, nuisance_x
     ] = nuisance_value.unsqueeze(-1)
+    prestimulus_frames = (
+        backgrounds.expand(
+            -1, trials, -1, IMAGE_SIZE, IMAGE_SIZE).clone()
+        if operation_cue_prestimulus else None)
+    cue_frames = (
+        prestimulus_frames
+        if prestimulus_frames is not None else frames)
 
     if task == "visible_numerosity_equality":
         cue_slot = _OPERATION_CUE_SLOTS[task]
         (first_row, last_row), (first_column, last_column) = cue_slot[:2]
         value = cue_slot[2] if len(cue_slot) > 2 else 0.98
-        frames[
-            :, :, :, first_row:last_row,
-            first_column:last_column] = value
+        cue_region = cue_frames[
+            :, :cue_trial_stop, :, first_row:last_row,
+            first_column:last_column]
+        cue_frames[
+            :, :cue_trial_stop, :, first_row:last_row,
+            first_column:last_column] = (
+                cue_region * (1.0 - operation_cue_scale)
+                + value * operation_cue_scale)
     elif task == "visible_pair_numerosity_smaller":
         cue_slot = _OPERATION_CUE_SLOTS[task]
         (first_row, last_row), (first_column, last_column) = cue_slot[:2]
         value = cue_slot[2] if len(cue_slot) > 2 else 0.98
-        frames[
-            :, :, :, first_row:last_row,
-            first_column:last_column] = value
+        cue_region = cue_frames[
+            :, :cue_trial_stop, :, first_row:last_row,
+            first_column:last_column]
+        cue_frames[
+            :, :cue_trial_stop, :, first_row:last_row,
+            first_column:last_column] = (
+                cue_region * (1.0 - operation_cue_scale)
+                + value * operation_cue_scale)
 
     # A context-conditioned mapping contains two independent hidden binary
     # associations.  Its first two support events deliberately cover both
@@ -618,9 +655,14 @@ def generate_lifetimes(
             # available once distinct areas run out.
             (first_row, last_row), (first_column, last_column) = cue_slot[:2]
             value = cue_slot[2] if len(cue_slot) > 2 else 0.98
-            frames[
-                :, :, :, first_row:last_row,
-                first_column:last_column] = value
+            cue_region = cue_frames[
+                :, :cue_trial_stop, :, first_row:last_row,
+                first_column:last_column]
+            cue_frames[
+                :, :cue_trial_stop, :, first_row:last_row,
+                first_column:last_column] = (
+                    cue_region * (1.0 - operation_cue_scale)
+                    + value * operation_cue_scale)
 
     if task == "constant_action":
         correct = rule_bits.unsqueeze(1).expand(-1, trials).clone()
@@ -714,4 +756,7 @@ def generate_lifetimes(
         (
             pair_context_ids.to(device)
             if pair_context_ids is not None
-            else context_ids.to(device) if context_ids is not None else None))
+            else context_ids.to(device) if context_ids is not None else None),
+        (
+            prestimulus_frames.to(device)
+            if prestimulus_frames is not None else None))

@@ -893,3 +893,31 @@ lifetimes.
 
 See
 `session_records/cross_operation_policy_gradient_2026-07-30/README.md`.
+
+## Latest breakthrough: separate sensory streams unlock operation reuse
+
+The controller now acquires the inverse numerosity operation at 83.96% and
+83.65% on two fresh 8,192-lifetime audits, up from the earlier 57.20% mean
+without consuming more verifier experience. Each run uses 1,024 new lifetimes
+/ 6,144 scalar verifier bits and retains relation, magnitude, and inherited
+numerosity.
+
+The bottleneck was a confounded visual stream. Drawing the operation cue over
+the count frame reduced the frozen parent's reusable comparison from 90.46% to
+63.15%. The new protocol presents a cue-only visual frame immediately before
+each clean count frame. It still exposes only sensory pixels, opaque actions,
+and scalar outcomes, but cleanly factors the requested operation from its
+arguments.
+
+A compatibility migration also moves the legacy post-intention action residual
+back into the amodal intention through the learned actuator's right inverse.
+It changed zero of 36,864 audited old-skill actions.
+
+Matched controls are decisive: shuffled verifier outcomes reached 13.08%,
+removing inherited intention reached 14.40%, and removing the cue at evaluation
+reduced truthful replicas to 38–40%. The streamed protocol costs two sensory
+controller steps per action, so the next frontier is 90% mastery plus learned
+latency allocation.
+
+See
+`session_records/stream_separated_operation_2026-07-30/README.md`.
