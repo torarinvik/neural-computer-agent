@@ -209,6 +209,7 @@ def generate_procedural_shape_batch(
         query_count: int | None = None,
         new_slot_difficulty: float = 1.0,
         query_frontier_difficulty: float = 1.0,
+        query_history_difficulty: float = 1.0,
         blank_presentation: bool = False,
         reverse_presentation: bool = False,
         flip_candidates: bool = False,
@@ -232,6 +233,8 @@ def generate_procedural_shape_batch(
         raise ValueError("new slot difficulty must be within [0, 1]")
     if not 0.0 <= query_frontier_difficulty <= 1.0:
         raise ValueError("query frontier difficulty must be within [0, 1]")
+    if not 0.0 <= query_history_difficulty <= 1.0:
+        raise ValueError("query history difficulty must be within [0, 1]")
     if not 2 <= vocabulary <= 4:
         raise ValueError("vocabulary must be within [2, 4]")
     generator = torch.Generator().manual_seed(seed)
@@ -293,6 +296,21 @@ def generate_procedural_shape_batch(
         moved = query_ordinals[demote, 1].clone()
         query_ordinals[demote, 1] = query_ordinals[demote, 2]
         query_ordinals[demote, 2] = moved
+    if span == 3 and query_count >= 2 and query_history_difficulty < 1.0:
+        # Keep the hard third-ordinal query frequent while varying only what
+        # precedes it. At zero, those rows repeat the third lookup; as the
+        # scalar rises, a deterministic fraction retain the original different
+        # first lookup. This avoids starving the learner of frontier evidence.
+        frontier_rows = query_ordinals[:, 1] == span - 1
+        frontier_indices = torch.where(frontier_rows)[0]
+        cross_count = round(
+            len(frontier_indices) * query_history_difficulty)
+        cross = frontier_indices[
+            torch.randperm(
+                len(frontier_indices), generator=generator)[:cross_count]]
+        repeat = frontier_rows.clone()
+        repeat[cross] = False
+        query_ordinals[repeat, 0] = span - 1
     gather_frames = query_ordinals[:, :, None, None, None].expand_as(queries)
     queries = torch.gather(queries, 1, gather_frames)
     candidates = torch.gather(candidates, 1, query_ordinals)
@@ -332,6 +350,7 @@ def rollout_procedural_shape_span(
         model: UnifiedCognitiveController, batch: ProceduralShapeBatch, *,
         sample_actions: bool, exploration: float = 0.10,
         new_slot_novelty_weight: float = 1.0,
+        query_history_novelty_weight: float = 1.0,
         complete_binary_outcomes: bool = False,
         disable_workspace: bool = False,
         reset_active_before_query: bool = False,
@@ -401,6 +420,16 @@ def rollout_procedural_shape_span(
                 torch.full_like(
                     per_attempt_loss, new_slot_novelty_weight),
                 torch.ones_like(per_attempt_loss))
+            crossed_history = (
+                (batch.query_ordinals[:, index] == batch.span - 1)
+                & (batch.query_ordinals[:, 0] != batch.span - 1)
+                if batch.span >= 3 and index > 0
+                else torch.zeros_like(frontier))
+            weights = weights * torch.where(
+                crossed_history,
+                torch.full_like(
+                    per_attempt_loss, query_history_novelty_weight),
+                torch.ones_like(per_attempt_loss))
             losses.append((per_attempt_loss * weights).sum() / weights.sum())
         actions.append(action)
         rewards.append(reward)
@@ -424,13 +453,15 @@ def evaluate_procedural_shape_span(
         objective: str = "recognition",
         query_count: int | None = None,
         new_slot_difficulty: float = 1.0,
-        query_frontier_difficulty: float = 1.0) -> dict[str, object]:
+        query_frontier_difficulty: float = 1.0,
+        query_history_difficulty: float = 1.0) -> dict[str, object]:
     model.eval()
     kwargs = dict(
         count=count, span=span, vocabulary=vocabulary, seed=seed,
         nuisance=nuisance, heldout=True, objective=objective,
         query_count=query_count, new_slot_difficulty=new_slot_difficulty,
         query_frontier_difficulty=query_frontier_difficulty,
+        query_history_difficulty=query_history_difficulty,
         device=device)
     normal_batch = generate_procedural_shape_batch(**kwargs)
     blank_batch = generate_procedural_shape_batch(
@@ -483,6 +514,18 @@ def evaluate_procedural_shape_span(
         & (
             normal_batch.sequence_identities[:, -1:]
             != normal_batch.sequence_identities[:, :1]))
+    crossed_history = (
+        (normal_batch.query_ordinals[:, 1] == span - 1)
+        & (normal_batch.query_ordinals[:, 0] != span - 1)
+        if span >= 3 and normal_batch.query_ordinals.shape[1] >= 2
+        else torch.zeros(
+            normal_batch.batch_size, dtype=torch.bool, device=device))
+    repeated_history = (
+        (normal_batch.query_ordinals[:, 1] == span - 1)
+        & (normal_batch.query_ordinals[:, 0] == span - 1)
+        if span >= 3 and normal_batch.query_ordinals.shape[1] >= 2
+        else torch.zeros(
+            normal_batch.batch_size, dtype=torch.bool, device=device))
     reverse_changed = (
         normal_batch.correct_actions != reverse_batch.correct_actions)
     candidate_changed = (
@@ -502,6 +545,14 @@ def evaluate_procedural_shape_span(
         "conflicting_new_slot_accuracy": (
             float(normal["rewards"][new_slot_conflict].mean())
             if bool(new_slot_conflict.any()) else None),
+        "crossed_history_frontier_queries": int(crossed_history.sum()),
+        "crossed_history_frontier_accuracy": (
+            float(normal["rewards"][:, 1][crossed_history].mean())
+            if bool(crossed_history.any()) else None),
+        "repeated_history_frontier_queries": int(repeated_history.sum()),
+        "repeated_history_frontier_accuracy": (
+            float(normal["rewards"][:, 1][repeated_history].mean())
+            if bool(repeated_history.any()) else None),
         "blank_presentation_accuracy": accuracy(blank),
         "blank_ordinal_cue_accuracy": accuracy(cue_blank),
         "workspace_disabled_accuracy": accuracy(workspace_off),
@@ -546,10 +597,20 @@ def main() -> None:
             "fraction of balanced third-ordinal second queries admitted; "
             "zero restricts query two to mastered earlier ordinals"))
     parser.add_argument(
+        "--query-history-difficulty", type=float, default=1.0,
+        help=(
+            "fraction of third-ordinal second queries preceded by a different "
+            "lookup; zero repeats the same lookup and one is fully crossed"))
+    parser.add_argument(
         "--new-slot-novelty-weight", type=float, default=1.0,
         help=(
             "loss weight for verifier outcomes on independent new-slot "
             "queries; values above one prioritize rare frontier experience"))
+    parser.add_argument(
+        "--query-history-novelty-weight", type=float, default=1.0,
+        help=(
+            "loss weight for rare third-ordinal second queries that follow a "
+            "different lookup"))
     parser.add_argument(
         "--complete-binary-outcomes", action="store_true",
         help=(
@@ -673,6 +734,8 @@ def main() -> None:
         raise ValueError("query count must be within target span")
     if args.new_slot_novelty_weight < 1.0:
         raise ValueError("new-slot novelty weight must be at least one")
+    if args.query_history_novelty_weight < 1.0:
+        raise ValueError("query-history novelty weight must be at least one")
     rehearsal_query_counts = [
         int(value) for value in args.rehearsal_query_counts.split(",")
         if value]
@@ -865,12 +928,17 @@ def main() -> None:
                 if train_on_target else train_slot_difficulty),
             query_frontier_difficulty=(
                 args.query_frontier_difficulty if train_on_target else 1.0),
+            query_history_difficulty=(
+                args.query_history_difficulty if train_on_target else 1.0),
             device=device)
         result = rollout_procedural_shape_span(
             model, batch, sample_actions=True,
             exploration=args.exploration,
             new_slot_novelty_weight=(
                 args.new_slot_novelty_weight if train_on_target else 1.0),
+            query_history_novelty_weight=(
+                args.query_history_novelty_weight
+                if train_on_target else 1.0),
             complete_binary_outcomes=args.complete_binary_outcomes,
             shuffle_outcomes=args.shuffle_outcomes)
         optimizer.zero_grad(set_to_none=True)
@@ -908,7 +976,8 @@ def main() -> None:
                     objective=args.objective,
                     query_count=target_query_count,
                     new_slot_difficulty=args.new_slot_difficulty,
-                    query_frontier_difficulty=args.query_frontier_difficulty)
+                    query_frontier_difficulty=args.query_frontier_difficulty,
+                    query_history_difficulty=args.query_history_difficulty)
                 row["heldout_accuracy"] = curve["accuracy"]
                 row["heldout_accuracy_by_presented_ordinal"] = (
                     curve["accuracy_by_presented_ordinal"])
@@ -918,6 +987,8 @@ def main() -> None:
                     "accuracy_by_query_position_and_presented_ordinal"]
                 row["heldout_independent_new_slot_accuracy"] = (
                     curve["independent_new_slot_accuracy"])
+                row["heldout_crossed_history_frontier_accuracy"] = (
+                    curve["crossed_history_frontier_accuracy"])
                 row["blank_presentation_accuracy"] = (
                     curve["blank_presentation_accuracy"])
             history.append(row)
@@ -929,14 +1000,16 @@ def main() -> None:
         nuisance=nuisance, device=device, objective=args.objective,
         query_count=target_query_count,
         new_slot_difficulty=args.new_slot_difficulty,
-        query_frontier_difficulty=args.query_frontier_difficulty)
+        query_frontier_difficulty=args.query_frontier_difficulty,
+        query_history_difficulty=args.query_history_difficulty)
     floor_audit = evaluate_procedural_shape_span(
         model, count=args.test_episodes, span=args.span,
         vocabulary=args.vocabulary, seed=args.seed + 11_000_000,
         nuisance=floor_nuisance, device=device, objective=args.objective,
         query_count=target_query_count,
         new_slot_difficulty=args.new_slot_difficulty,
-        query_frontier_difficulty=args.query_frontier_difficulty)
+        query_frontier_difficulty=args.query_frontier_difficulty,
+        query_history_difficulty=args.query_history_difficulty)
     rehearsal_audits = {
         f"span{span}:queries{query_count}:slot{slot}:randomness{level}":
         evaluate_procedural_shape_span(
@@ -963,6 +1036,10 @@ def main() -> None:
                     later["heldout_independent_new_slot_accuracy"] is None
                     or later["heldout_independent_new_slot_accuracy"]
                     >= args.mastery_threshold)
+                and (
+                    later["heldout_crossed_history_frontier_accuracy"] is None
+                    or later["heldout_crossed_history_frontier_accuracy"]
+                    >= args.mastery_threshold)
                 for later in prefixes[index:]):
             stable_bits = int(row["target_verifier_bits"])
             break
@@ -974,7 +1051,10 @@ def main() -> None:
         "query_count": target_query_count,
         "new_slot_difficulty": args.new_slot_difficulty,
         "query_frontier_difficulty": args.query_frontier_difficulty,
+        "query_history_difficulty": args.query_history_difficulty,
         "new_slot_novelty_weight": args.new_slot_novelty_weight,
+        "query_history_novelty_weight": (
+            args.query_history_novelty_weight),
         "binary_outcomes_completed": args.complete_binary_outcomes,
         "train_relation_adapter_only": args.train_relation_adapter_only,
         "train_action_adapter_only": args.train_action_adapter_only,

@@ -145,6 +145,8 @@ def test_evaluation_exposes_every_query_position_by_ordinal_cell() -> None:
     assert len(cells) == 2
     assert all(len(row) == 3 for row in cells)
     assert all(value is not None for row in cells for value in row)
+    assert audit["crossed_history_frontier_queries"] == 128
+    assert audit["repeated_history_frontier_queries"] == 0
 
 
 def test_addressed_workspace_breaks_content_addressing_symmetry() -> None:
@@ -205,6 +207,25 @@ def test_query_frontier_starts_without_third_ordinal_second_queries() -> None:
         query_frontier_difficulty=1.0)
     assert not bool((floor.query_ordinals[:, 1] == 2).any())
     assert int((full.query_ordinals[:, 1] == 2).sum()) == 128
+
+
+def test_query_history_bridge_repeats_third_lookup_without_starving_it() -> None:
+    repeat = generate_procedural_shape_batch(
+        384, span=3, query_count=2, vocabulary=2, seed=27013,
+        nuisance=nuisance_from_level(0.135),
+        query_history_difficulty=0.0)
+    crossed = generate_procedural_shape_batch(
+        384, span=3, query_count=2, vocabulary=2, seed=27013,
+        nuisance=nuisance_from_level(0.135),
+        query_history_difficulty=1.0)
+    repeat_frontier = repeat.query_ordinals[:, 1] == 2
+    crossed_frontier = crossed.query_ordinals[:, 1] == 2
+    assert int(repeat_frontier.sum()) == 128
+    assert torch.equal(
+        repeat.query_ordinals[repeat_frontier, 0],
+        repeat.query_ordinals[repeat_frontier, 1])
+    assert bool(
+        (crossed.query_ordinals[crossed_frontier, 0] != 2).all())
 
 
 def test_zero_difficulty_third_slot_is_redundant_but_fully_visible() -> None:
