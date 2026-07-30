@@ -76,6 +76,8 @@ def generate_sequence_memory_batch(
         count: int, *, span: int, distractors: int, seed: int,
         operation: str = "mixed", heldout: bool = False,
         position_shift: bool = False,
+        position_blend: float = 0.0,
+        position_augmentation: bool = False,
         reverse_operations: bool = False,
         reverse_sequence: bool = False,
         blank_sequence: bool = False,
@@ -89,6 +91,10 @@ def generate_sequence_memory_batch(
         raise ValueError("distractors must not be negative")
     if operation not in ("forward", "reverse", "mixed"):
         raise ValueError("operation must be forward, reverse, or mixed")
+    if not 0.0 <= position_blend <= 1.0:
+        raise ValueError("position blend must be within [0, 1]")
+    if position_shift:
+        position_blend = 1.0
 
     generator = torch.Generator().manual_seed(seed)
     sequence = _balanced_binary_sequences(count, span, generator)
@@ -105,13 +111,27 @@ def generate_sequence_memory_batch(
 
     # Train and held-out positions are disjoint. Colour remains nuisance:
     # identity is shape, not a stable RGB code.
-    position_bank = (
-        torch.tensor(((7, 7), (25, 25), (7, 25), (25, 7)))
-        if position_shift else
-        torch.tensor(((10, 10), (22, 22), (10, 22), (22, 10))))
+    base_positions = torch.tensor(
+        ((10, 10), (22, 22), (10, 22), (22, 10)),
+        dtype=torch.float32)
+    shifted_positions = torch.tensor(
+        ((7, 7), (25, 25), (7, 25), (25, 7)),
+        dtype=torch.float32)
+    if position_augmentation:
+        position_generator = torch.Generator().manual_seed(
+            seed ^ 0x5A17)
+        row_blends = (torch.arange(count) % 5).float() / 4.0
+        row_blends = row_blends[
+            torch.randperm(count, generator=position_generator)]
+    else:
+        row_blends = torch.full((count,), position_blend)
+    position_banks = torch.lerp(
+        base_positions.unsqueeze(0), shifted_positions.unsqueeze(0),
+        row_blends[:, None, None]).round().long()
     position_ids = torch.randint(
-        0, len(position_bank), (count, span), generator=generator)
-    positions = position_bank[position_ids]
+        0, len(base_positions), (count, span), generator=generator)
+    positions = position_banks[
+        torch.arange(count).unsqueeze(1), position_ids]
     masks = _identity_masks(positions, sequence)
     colors = 0.35 + 0.60 * torch.rand(
         count, span, 3, generator=generator)
@@ -187,9 +207,12 @@ def rollout_sequence_memory(
         reset_all_memory_before_query: bool = False,
         operation_cue_blank: bool = False,
         shuffle_outcomes: bool = False,
+        loss_output: str = "all",
         ) -> dict[str, torch.Tensor]:
     """Run one real-time episode and return attempted-action evidence."""
     device = batch.input_frames.device
+    if loss_output not in ("all", "first", "last"):
+        raise ValueError("loss output must be all, first, or last")
     state = model.initial_state(batch.batch_size, device=device)
     null = torch.full(
         (batch.batch_size,), NULL_ACTION, dtype=torch.long, device=device)
@@ -244,11 +267,14 @@ def rollout_sequence_memory(
         logits.append(output.logits)
         previous_action = action
         previous_reward = delivered_outcome
+    selected_losses = (
+        losses if loss_output == "all"
+        else [losses[0] if loss_output == "first" else losses[-1]])
     return {
         "actions": torch.stack(actions, dim=1),
         "rewards": torch.stack(rewards, dim=1),
         "logits": torch.stack(logits, dim=1),
-        "loss": torch.stack(losses).mean(),
+        "loss": torch.stack(selected_losses).mean(),
         "final_workspace": state.workspace,
         "final_hidden": state.hidden,
     }
@@ -276,10 +302,17 @@ def evaluate_sequence_memory(
         count, span=span, distractors=distractors, seed=seed,
         operation=operation, heldout=True, blank_sequence=True,
         device=device)
-    shifted_batch = generate_sequence_memory_batch(
-        count, span=span, distractors=distractors, seed=seed,
-        operation=operation, heldout=True, position_shift=True,
-        device=device)
+    position_batches = {
+        blend: generate_sequence_memory_batch(
+            count, span=span, distractors=distractors, seed=seed,
+            operation=operation, heldout=True, position_blend=blend,
+            device=device)
+        for blend in (0.25, 0.50, 0.75, 1.0)}
+    zero_distractor_batch = (
+        generate_sequence_memory_batch(
+            count, span=span, distractors=0, seed=seed,
+            operation=operation, heldout=True, device=device)
+        if distractors else None)
 
     def run(
             batch: SequenceMemoryBatch, **kwargs: bool,
@@ -296,7 +329,11 @@ def evaluate_sequence_memory(
     active_reset = run(
         normal_batch, reset_active_state_before_query=True)
     all_reset = run(normal_batch, reset_all_memory_before_query=True)
-    shifted = run(shifted_batch)
+    position_results = {
+        blend: run(batch) for blend, batch in position_batches.items()}
+    zero_distractor = (
+        run(zero_distractor_batch)
+        if zero_distractor_batch is not None else normal)
     nonpalindrome = (
         normal_batch.sequence != normal_batch.sequence.flip(1)).any(dim=1)
     operation_flip = (
@@ -332,7 +369,11 @@ def evaluate_sequence_memory(
         "workspace_disabled_accuracy": accuracy(workspace_disabled),
         "active_state_reset_accuracy": accuracy(active_reset),
         "all_memory_reset_accuracy": accuracy(all_reset),
-        "heldout_position_accuracy": accuracy(shifted),
+        "zero_distractor_accuracy": accuracy(zero_distractor),
+        "heldout_position_accuracy": accuracy(position_results[1.0]),
+        "position_accuracy_by_blend": {
+            str(blend): accuracy(result)
+            for blend, result in position_results.items()},
     }
 
 
@@ -345,6 +386,24 @@ def main() -> None:
     parser.add_argument("--test-episodes", type=int, default=2048)
     parser.add_argument("--span", type=int, default=2)
     parser.add_argument("--distractors", type=int, default=1)
+    parser.add_argument(
+        "--position-blend", type=float, default=0.0,
+        help="fixed train-position interpolation from base (0) to shifted (1)")
+    parser.add_argument(
+        "--position-curriculum", default="",
+        help=(
+            "comma-separated increasing position blends. Training divides "
+            "updates into stages and rehearses every prior level."))
+    parser.add_argument(
+        "--position-augmentation", action="store_true",
+        help=(
+            "balance base, intermediate, and shifted positions inside every "
+            "training batch; no position value is exposed to the learner"))
+    parser.add_argument(
+        "--rehearse-zero-distractor", action="store_true",
+        help=(
+            "alternate target-distractor episodes with the already mastered "
+            "zero-distractor stream to prevent retention loss"))
     parser.add_argument(
         "--operation", choices=("forward", "reverse", "mixed"),
         default="mixed")
@@ -362,6 +421,11 @@ def main() -> None:
     parser.add_argument(
         "--shuffle-outcomes", action="store_true",
         help="negative control: deliver another lifetime's scalar outcome")
+    parser.add_argument(
+        "--loss-output", choices=("all", "first", "last"), default="all",
+        help=(
+            "temporal curriculum: optimize all outputs or one endpoint while "
+            "still learning only from that attempted action's scalar outcome"))
     parser.add_argument("--checkpoint-in", type=Path)
     parser.add_argument("--checkpoint-out", type=Path)
     parser.add_argument("--report", type=Path)
@@ -369,6 +433,16 @@ def main() -> None:
 
     seed_everything(args.seed)
     device = torch.device(args.device)
+    curriculum = (
+        tuple(float(value) for value in args.position_curriculum.split(","))
+        if args.position_curriculum else ())
+    if any(
+            not 0.0 < value <= 1.0 for value in curriculum
+            ) or any(
+                later <= earlier
+                for earlier, later in zip(curriculum, curriculum[1:])):
+        raise ValueError(
+            "position curriculum must be strictly increasing within (0, 1]")
     configuration: dict[str, object] = {
         "width": args.width,
         "workspace_slots": args.workspace_slots,
@@ -385,17 +459,43 @@ def main() -> None:
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=args.learning_rate, weight_decay=1e-5)
     history: list[dict[str, float | int]] = []
+    position_counts: dict[str, int] = {}
+    distractor_counts: dict[str, int] = {}
     started = perf_counter()
     for step in range(1, args.steps + 1):
         model.train()
+        if curriculum:
+            stage_length = max(1, (args.steps + len(curriculum) - 1)
+                               // len(curriculum))
+            stage = min((step - 1) // stage_length, len(curriculum) - 1)
+            available_blends = (0.0,) + curriculum[:stage + 1]
+            train_position_blend = available_blends[
+                (step - 1) % len(available_blends)]
+        else:
+            train_position_blend = args.position_blend
+        blend_key = str(train_position_blend)
+        position_counts[blend_key] = position_counts.get(blend_key, 0) + 1
+        train_distractors = (
+            0 if (
+                args.rehearse_zero_distractor
+                and args.distractors
+                and step % 2 == 1)
+            else args.distractors)
+        distractor_key = str(train_distractors)
+        distractor_counts[distractor_key] = (
+            distractor_counts.get(distractor_key, 0) + 1)
         batch = generate_sequence_memory_batch(
-            args.batch_size, span=args.span, distractors=args.distractors,
+            args.batch_size, span=args.span, distractors=train_distractors,
             seed=args.seed + step * args.batch_size,
-            operation=args.operation, device=device)
+            operation=args.operation,
+            position_blend=train_position_blend,
+            position_augmentation=args.position_augmentation,
+            device=device)
         result = rollout_sequence_memory(
             model, batch, sample_actions=True,
             exploration=args.exploration,
-            shuffle_outcomes=args.shuffle_outcomes)
+            shuffle_outcomes=args.shuffle_outcomes,
+            loss_output=args.loss_output)
         optimizer.zero_grad(set_to_none=True)
         result["loss"].backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -408,6 +508,8 @@ def main() -> None:
                     step * args.batch_size * args.span),
                 "training_accuracy": float(result["rewards"].mean()),
                 "loss": float(result["loss"].detach()),
+                "train_position_blend": train_position_blend,
+                "train_distractors": train_distractors,
             }
             if args.eval_every and (
                     step % args.eval_every == 0 or step == args.steps):
@@ -445,11 +547,18 @@ def main() -> None:
         "operation": args.operation,
         "span": args.span,
         "distractors": args.distractors,
+        "fixed_position_blend": args.position_blend,
+        "position_curriculum": curriculum,
+        "position_augmentation": args.position_augmentation,
+        "position_update_counts": position_counts,
+        "rehearse_zero_distractor": args.rehearse_zero_distractor,
+        "distractor_update_counts": distractor_counts,
         "optimizer_updates": args.steps,
         "unique_logical_episodes": args.steps * args.batch_size,
         "unique_verifier_bits": args.steps * args.batch_size * args.span,
         "replayed_examples": 0,
         "outcomes_shuffled": args.shuffle_outcomes,
+        "loss_output": args.loss_output,
         "mastery_threshold": args.mastery_threshold,
         "stable_bits_to_threshold": stable_bits_to_threshold,
         "wall_seconds": perf_counter() - started,

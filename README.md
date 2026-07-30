@@ -31,6 +31,26 @@ Final accuracy alone is not an adequate score.
 
 ## Current audited frontier
 
+The working-memory branch is now position invariant and distractor resistant.
+Balanced nuisance positions introduced during the forward-retention primitive
+remove the previous stride-phase shortcut: forward span reaches 100% at the
+base, intermediate, and fully shifted layouts. Retrofitting the same invariance
+after specialization failed, establishing that diverse early experience—not
+more duration—is the effective intervention.
+
+That invariant retention skill compounds into manipulation. After only 4,096
+new verifier bits, two forward-parent replicas reach 93.70% and 91.55% mixed
+forward/reverse accuracy; matched fresh learners score 53.99% and 44.73%.
+The first fresh learner needs 16,384 bits to reach the same plateau, a measured
+4x new-skill sample-efficiency gain.
+
+One-distractor adaptation then preserves zero-distractor accuracy and
+generalizes without additional training to two distractors: two replicas score
+93.58% and 93.48%. Blank evidence, complete fast-memory reset, and
+reward-shuffled adaptation all return to chance. Four distractors reduce
+accuracy to 82.12%, defining the next selective-retention boundary. See
+`session_records/sequence_working_memory_robustness_2026-07-30/README.md`.
+
 The controller now has its first causally audited working-memory atom. It
 observes two abstract visual events and conditionally emits either the original
 sequence or its reversal. The sequence, requested operation, and correct

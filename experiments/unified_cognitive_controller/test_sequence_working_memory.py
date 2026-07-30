@@ -59,6 +59,39 @@ def test_blank_sequence_removes_only_evidence() -> None:
     assert torch.equal(normal.correct_actions, blank.correct_actions)
 
 
+def test_position_blend_is_a_gradual_label_preserving_axis() -> None:
+    base = generate_sequence_memory_batch(
+        16, span=2, distractors=0, seed=26006, operation="mixed",
+        position_blend=0.0)
+    middle = generate_sequence_memory_batch(
+        16, span=2, distractors=0, seed=26006, operation="mixed",
+        position_blend=0.5)
+    shifted = generate_sequence_memory_batch(
+        16, span=2, distractors=0, seed=26006, operation="mixed",
+        position_blend=1.0)
+    assert torch.equal(base.sequence, middle.sequence)
+    assert torch.equal(base.sequence, shifted.sequence)
+    assert torch.equal(base.correct_actions, middle.correct_actions)
+    assert torch.equal(base.correct_actions, shifted.correct_actions)
+    assert torch.equal(base.query_frames, middle.query_frames)
+    assert torch.equal(base.query_frames, shifted.query_frames)
+    assert not torch.equal(base.input_frames, middle.input_frames)
+    assert not torch.equal(middle.input_frames, shifted.input_frames)
+
+
+def test_position_augmentation_changes_only_nuisance_pixels() -> None:
+    fixed = generate_sequence_memory_batch(
+        20, span=2, distractors=0, seed=26007, operation="mixed")
+    augmented = generate_sequence_memory_batch(
+        20, span=2, distractors=0, seed=26007, operation="mixed",
+        position_augmentation=True)
+    assert torch.equal(fixed.sequence, augmented.sequence)
+    assert torch.equal(fixed.operation_bits, augmented.operation_bits)
+    assert torch.equal(fixed.correct_actions, augmented.correct_actions)
+    assert torch.equal(fixed.query_frames, augmented.query_frames)
+    assert not torch.equal(fixed.input_frames, augmented.input_frames)
+
+
 def test_rollout_keeps_all_fast_memory_on_the_model_device() -> None:
     model = UnifiedCognitiveController(
         width=32, workspace_slots=2, intention_width=8)
