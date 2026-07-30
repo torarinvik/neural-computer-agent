@@ -246,6 +246,171 @@ def test_third_query_history_stages_are_minimal_and_deterministic() -> None:
         (novel.query_ordinals[:, 2] != novel.query_ordinals[:, 1]).all())
 
 
+def test_previous_query_curriculum_changes_one_operation_at_a_time() -> None:
+    batches = [
+        generate_procedural_shape_batch(
+            384, span=3, query_count=3, vocabulary=2, seed=27015,
+            nuisance=nuisance_from_level(0.135),
+            previous_query_stage=stage)
+        for stage in range(3)]
+    direct, first_anchor, both_anchors = batches
+    assert not bool(direct.query_operations.any())
+    assert torch.equal(direct.query_cue_ordinals, direct.query_ordinals)
+
+    assert torch.equal(
+        first_anchor.query_operations.bool(),
+        first_anchor.query_ordinals == 0)
+    assert torch.equal(
+        first_anchor.query_cue_ordinals,
+        first_anchor.query_ordinals + first_anchor.query_operations)
+
+    assert bool(
+        both_anchors.query_operations[both_anchors.query_ordinals == 0]
+        .bool().all())
+    assert not bool(
+        both_anchors.query_operations[both_anchors.query_ordinals == 2]
+        .bool().any())
+    middle_operations = both_anchors.query_operations[
+        both_anchors.query_ordinals == 1]
+    assert middle_operations.bincount(minlength=2).tolist() == [192, 192]
+    assert torch.equal(
+        both_anchors.query_cue_ordinals,
+        both_anchors.query_ordinals + both_anchors.query_operations)
+
+
+def test_previous_query_atom_crosses_operations_on_span_two() -> None:
+    batch = generate_procedural_shape_batch(
+        384, span=2, query_count=1, vocabulary=2, seed=27019,
+        nuisance=nuisance_from_level(0.135), previous_query_stage=1)
+    assert batch.query_cue_ordinals.unique().tolist() == [1]
+    assert batch.query_operations.flatten().bincount(
+        minlength=2).tolist() == [192, 192]
+    for operation in range(2):
+        selected = batch.query_operations == operation
+        assert batch.correct_actions[selected].bincount(
+            minlength=2).tolist() == [96, 96]
+
+
+def test_previous_query_scope_focuses_without_starving_either_operation() -> None:
+    focused = generate_procedural_shape_batch(
+        384, span=3, query_count=1, vocabulary=2, seed=27020,
+        nuisance=nuisance_from_level(0.135), previous_query_stage=1,
+        previous_query_scope_difficulty=0.0)
+    full = generate_procedural_shape_batch(
+        384, span=3, query_count=1, vocabulary=2, seed=27020,
+        nuisance=nuisance_from_level(0.135), previous_query_stage=1,
+        previous_query_scope_difficulty=1.0)
+    assert focused.query_ordinals.flatten().bincount(
+        minlength=3).tolist() == [192, 192, 0]
+    assert focused.query_operations.flatten().bincount(
+        minlength=2).tolist() == [192, 192]
+    assert full.query_ordinals.flatten().bincount(
+        minlength=3).tolist() == [128, 128, 128]
+    for operation in range(2):
+        selected = focused.query_operations == operation
+        assert focused.correct_actions[selected].bincount(
+            minlength=2).tolist() == [96, 96]
+
+
+def test_previous_query_position_changes_only_history_depth() -> None:
+    first = generate_procedural_shape_batch(
+        384, span=3, query_count=2, vocabulary=2, seed=27021,
+        nuisance=nuisance_from_level(0.135), previous_query_stage=1,
+        previous_query_position=0)
+    second = generate_procedural_shape_batch(
+        384, span=3, query_count=2, vocabulary=2, seed=27021,
+        nuisance=nuisance_from_level(0.135), previous_query_stage=1,
+        previous_query_position=1)
+    assert bool((first.query_ordinals[:, 0] == 0).all())
+    assert bool((second.query_ordinals[:, 1] == 0).all())
+    assert bool(first.query_operations[:, 0].bool().all())
+    assert bool(second.query_operations[:, 1].bool().all())
+    assert torch.equal(
+        first.sequence_identities, second.sequence_identities)
+    assert first.correct_actions.flatten().bincount(
+        minlength=2).tolist() == [384, 384]
+    assert second.correct_actions.flatten().bincount(
+        minlength=2).tolist() == [384, 384]
+
+
+def test_second_anchor_focus_crosses_previous_and_direct_with_same_cue() -> None:
+    batch = generate_procedural_shape_batch(
+        384, span=3, query_count=1, vocabulary=2, seed=27022,
+        nuisance=nuisance_from_level(0.135), previous_query_stage=2,
+        previous_query_anchor_focus=1)
+    assert batch.query_ordinals.flatten().bincount(
+        minlength=3).tolist() == [0, 192, 192]
+    assert batch.query_operations.flatten().bincount(
+        minlength=2).tolist() == [192, 192]
+    assert batch.query_cue_ordinals.unique().tolist() == [2]
+    assert bool(
+        (batch.query_operations[batch.query_ordinals[:, :1] == 1] == 1)
+        .all())
+    for operation in range(2):
+        selected = batch.query_operations == operation
+        assert batch.correct_actions[selected].bincount(
+            minlength=2).tolist() == [96, 96]
+
+
+def test_second_anchor_can_be_forced_to_a_later_query_position() -> None:
+    batch = generate_procedural_shape_batch(
+        384, span=3, query_count=2, vocabulary=2, seed=27023,
+        nuisance=nuisance_from_level(0.135), previous_query_stage=2,
+        previous_query_anchor_focus=1, previous_query_position=1)
+    assert bool((batch.query_ordinals[:, 1] == 1).all())
+    assert bool(batch.query_operations[:, 1].bool().all())
+    assert bool((batch.query_cue_ordinals[:, 1] == 2).all())
+    assert not bool(batch.query_operations[:, 0].bool().any())
+    assert batch.correct_actions.flatten().bincount(
+        minlength=2).tolist() == [384, 384]
+
+
+def test_previous_query_cues_disambiguate_shared_anchors() -> None:
+    batch = generate_procedural_shape_batch(
+        384, span=3, query_count=3, vocabulary=2, seed=27016,
+        nuisance=nuisance_from_level(0.135), previous_query_stage=2)
+    for cue in (1, 2):
+        selected = batch.query_cue_ordinals == cue
+        assert sorted(
+            batch.query_operations[selected].unique().tolist()) == [0, 1]
+        assert batch.correct_actions[selected].bincount(
+            minlength=2).tolist() == [288, 288]
+
+
+def test_operation_glyph_bridge_preserves_all_other_pixels() -> None:
+    legacy = generate_procedural_shape_batch(
+        384, span=3, query_count=3, vocabulary=2, seed=27017,
+        nuisance=nuisance_from_level(0.135), previous_query_stage=-1)
+    bridge = generate_procedural_shape_batch(
+        384, span=3, query_count=3, vocabulary=2, seed=27017,
+        nuisance=nuisance_from_level(0.135), previous_query_stage=0)
+    mask = torch.ones_like(legacy.query_frames, dtype=torch.bool)
+    mask[:, :, :, 2:8, 2:8] = False
+    mask[:, :, :, 2:8, 24:30] = False
+    assert torch.equal(legacy.query_frames[mask], bridge.query_frames[mask])
+    assert not torch.equal(legacy.query_frames, bridge.query_frames)
+    assert torch.equal(legacy.correct_actions, bridge.correct_actions)
+
+
+def test_operation_flip_is_a_valid_pixel_level_counterfactual() -> None:
+    normal = generate_procedural_shape_batch(
+        384, span=3, query_count=3, vocabulary=2, seed=27018,
+        nuisance=nuisance_from_level(0.135), previous_query_stage=2)
+    flipped = generate_procedural_shape_batch(
+        384, span=3, query_count=3, vocabulary=2, seed=27018,
+        nuisance=nuisance_from_level(0.135), previous_query_stage=2,
+        flip_query_operations=True)
+    assert torch.equal(
+        normal.query_operations + flipped.query_operations,
+        torch.ones_like(normal.query_operations))
+    assert torch.equal(
+        normal.query_cue_ordinals, flipped.query_cue_ordinals)
+    assert torch.equal(
+        normal.candidate_identities, flipped.candidate_identities)
+    changed = normal.correct_actions != flipped.correct_actions
+    assert 0.45 < float(changed.float().mean()) < 0.55
+
+
 def test_zero_difficulty_third_slot_is_redundant_but_fully_visible() -> None:
     batch = generate_procedural_shape_batch(
         384, span=3, query_count=1, vocabulary=2, seed=27007,

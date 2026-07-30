@@ -1511,3 +1511,47 @@ unpromoted pending the 90% mastery gate.
 
 Full record:
 `session_records/event_snapshot_operation_2026-07-30/README.md`.
+
+## Replicated previous-item sequence operation
+
+The procedural-shape branch now crosses from passive short-term lookup into a
+minimal sequence manipulation. A visual operation glyph selects direct lookup
+or `previous item` while a separate unary visual cue selects the anchor. The
+learner sees neither name: both are ordinary pixels, and learning still uses
+only the scalar outcome of its own attempted opaque action.
+
+The generator keeps the visual anchor separate from the verifier-private target
+ordinal. At span three, direct and previous operations share cue identities but
+can require different answers. Training can focus either valid previous anchor
+and can place the operation at query position one, two, or three. Evaluation
+reports every operation × cue and query-position × target cell, plus the
+conflict subset where following the directly cued item would be wrong.
+
+The curriculum is deliberately one-dimensional:
+
+1. neutral operation glyph;
+2. span-two previous atom;
+3. first span-three anchor;
+4. first anchor after one and two prior queries;
+5. second anchor;
+6. second anchor after one and two prior queries;
+7. both anchors in natural query order.
+
+Two independent lineages pass the final 24,576-lifetime audit at 98.30% and
+98.59% overall. Previous-item accuracy is 97.78% and 98.23%; conflict accuracy
+is 96.65% and 97.43%; every populated position/target cell exceeds 96.4%.
+Complete memory reset returns to chance.
+
+The operation audit is a valid pixel-level counterfactual: the same logical
+lifetime is rerendered with the other glyph and its verifier target recomputed,
+then replayed through the recurrent controller. Final counterfactual accuracy
+is 97.57% and 97.84%. A matched shuffled-outcome control leaves conflict
+accuracy near chance at 52.57% and damages inherited behavior.
+
+The replica provides direct compounding evidence. Learning the second anchor in
+isolation required 41,472 target verifier bits; delaying it to query two used
+23,040; delaying it to query three began at 94.92% zero-shot and crossed every
+gate after only 5,760 bits.
+
+Full record:
+`session_records/procedural_shape_previous_operation_2026-07-30/README.md`.

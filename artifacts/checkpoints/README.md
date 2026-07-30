@@ -178,6 +178,31 @@ and retention gates:
 The matched reward-shuffled control failed the frequency switch at 57.71%
 correct targets and saved no checkpoint.
 
+## Previous-item sequence operation
+
+`unified_procedural_shape_previous_primary_seed37201.pt` and
+`unified_procedural_shape_previous_replica_seed39251.pt` are the first
+replicated procedural-shape sequence-manipulation checkpoints.
+
+- SHA-256 primary:
+  `2b359ea78595ecca06030c86c46d0306e0149a732cbd3d06b4edff0119f14a95`
+- SHA-256 replica:
+  `00c87374b2f734e83f2115c0bed2c8411802e9fecd570a34a316f1666a03e152`
+- Size: approximately 650 KB each
+- Natural held-out accuracy: 98.30% / 98.59%
+- Previous-item accuracy: 97.78% / 98.23%
+- Previous-item conflict accuracy: 96.65% / 97.43%
+- Weakest query-position/target cell: 96.44% / 96.88%
+- Complete fast-memory reset: 49.95% / 49.90%
+- Valid operation-counterfactual accuracy: 97.57% / 97.84%
+- Matched shuffled-outcome conflict accuracy: 52.57%
+
+The checkpoints retain three abstract visual events in RAM/VRAM and use an
+arbitrary visual operation glyph to select direct or previous-item lookup. No
+operation ID, ordinal, correct action, target identity, or unattempted outcome
+entered training. Full evidence and the ultra-gradual lineage are recorded in
+`session_records/procedural_shape_previous_operation_2026-07-30/README.md`.
+
 ## Conditional memory retrieval
 
 `unified_conditional_memory_usage_prior_seed17603.pt` is the promoted per-query

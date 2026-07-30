@@ -31,6 +31,28 @@ Final accuracy alone is not an adequate score.
 
 ## Current audited frontier
 
+The procedural-shape controller now has a replicated sequence-manipulation
+primitive at fixed span three. An arbitrary visual operation glyph selects
+either direct lookup or the relative operation `previous item`; the controller
+must read its fast memory and compare the candidate with the resulting item.
+It still receives only pixels, its own opaque actions, and scalar attempted-
+action outcomes.
+
+Two independent lineages score 98.30% and 98.59% on 24,576 fresh natural
+lifetimes. Previous-item accuracy is 97.78% and 98.23%, conflict accuracy is
+96.65% and 97.43%, and the weakest query-position/target cells are 96.44% and
+96.88%. Both anchor-specific operation cells pass. Complete memory reset
+returns to chance, and valid operation counterfactuals score 97.57–97.84% while
+flipping 93.89–94.84% of predictions whose correct answer changes.
+
+The replica exposes compounding acquisition: learning the second anchor in
+isolation required 41,472 target verifier bits, delaying it to query two
+required 23,040, and delaying it to query three required only 5,760 after a
+94.92% zero-shot start. A matched shuffled-outcome control leaves conflict
+accuracy near chance at 52.57% and damages old skills. The next frontier is the
+adjacent `next item` operation at the same span, not a larger memory load. See
+`session_records/procedural_shape_previous_operation_2026-07-30/README.md`.
+
 The procedural-shape controller now has a replicated three-query short-term
 memory primitive. It stores three independently rerendered shapes and answers
 three sequential visual equality queries using only pixels, its own opaque
