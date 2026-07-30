@@ -1,0 +1,72 @@
+import torch
+
+from .model import UnifiedCognitiveController
+from .train_sequence_working_memory import (
+    generate_sequence_memory_batch, rollout_sequence_memory)
+
+
+def test_sequence_memory_generation_is_deterministic_and_balanced() -> None:
+    first = generate_sequence_memory_batch(
+        32, span=2, distractors=1, seed=26001, operation="mixed")
+    duplicate = generate_sequence_memory_batch(
+        32, span=2, distractors=1, seed=26001, operation="mixed")
+    assert torch.equal(first.input_frames, duplicate.input_frames)
+    assert torch.equal(first.query_frames, duplicate.query_frames)
+    assert torch.equal(first.correct_actions, duplicate.correct_actions)
+    assert first.operation_bits.bincount(minlength=2).tolist() == [16, 16]
+    sequence_ids = first.sequence[:, 0] * 2 + first.sequence[:, 1]
+    assert sequence_ids.bincount(minlength=4).tolist() == [8, 8, 8, 8]
+
+
+def test_operation_counterfactual_changes_only_query_cue_and_answers() -> None:
+    normal = generate_sequence_memory_batch(
+        32, span=2, distractors=1, seed=26002, operation="mixed")
+    reversed_operation = generate_sequence_memory_batch(
+        32, span=2, distractors=1, seed=26002, operation="mixed",
+        reverse_operations=True)
+    assert torch.equal(normal.input_frames, reversed_operation.input_frames)
+    assert torch.equal(
+        normal.distractor_frames, reversed_operation.distractor_frames)
+    assert torch.equal(normal.sequence, reversed_operation.sequence)
+    assert torch.equal(
+        normal.operation_bits, 1 - reversed_operation.operation_bits)
+    assert torch.equal(
+        normal.correct_actions, reversed_operation.correct_actions.flip(1))
+
+
+def test_sequence_counterfactual_is_a_valid_pixel_rerender() -> None:
+    normal = generate_sequence_memory_batch(
+        32, span=2, distractors=1, seed=26003, operation="mixed")
+    reversed_sequence = generate_sequence_memory_batch(
+        32, span=2, distractors=1, seed=26003, operation="mixed",
+        reverse_sequence=True)
+    assert torch.equal(
+        normal.input_frames.flip(1), reversed_sequence.input_frames)
+    assert torch.equal(
+        normal.distractor_frames, reversed_sequence.distractor_frames)
+    assert torch.equal(normal.query_frames, reversed_sequence.query_frames)
+    assert torch.equal(normal.sequence.flip(1), reversed_sequence.sequence)
+
+
+def test_blank_sequence_removes_only_evidence() -> None:
+    normal = generate_sequence_memory_batch(
+        16, span=2, distractors=1, seed=26004, operation="mixed")
+    blank = generate_sequence_memory_batch(
+        16, span=2, distractors=1, seed=26004, operation="mixed",
+        blank_sequence=True)
+    assert not torch.equal(normal.input_frames, blank.input_frames)
+    assert torch.equal(normal.query_frames, blank.query_frames)
+    assert torch.equal(normal.correct_actions, blank.correct_actions)
+
+
+def test_rollout_keeps_all_fast_memory_on_the_model_device() -> None:
+    model = UnifiedCognitiveController(
+        width=32, workspace_slots=2, intention_width=8)
+    batch = generate_sequence_memory_batch(
+        8, span=2, distractors=1, seed=26005, operation="mixed")
+    result = rollout_sequence_memory(
+        model, batch, sample_actions=False)
+    assert result["final_hidden"].device == model.actuator.weight.device
+    assert result["final_workspace"].device == model.actuator.weight.device
+    assert result["final_workspace"].shape == (8, 2, 32)
+    assert result["actions"].shape == (8, 2)

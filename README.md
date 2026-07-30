@@ -31,6 +31,32 @@ Final accuracy alone is not an adequate score.
 
 ## Current audited frontier
 
+The controller now has its first causally audited working-memory atom. It
+observes two abstract visual events and conditionally emits either the original
+sequence or its reversal. The sequence, requested operation, and correct
+actions remain verifier-private; learning uses only RGB streams, opaque
+attempted actions, and scalar outcomes. Fast state and workspace tensors stay
+resident in RAM/VRAM throughout the episode.
+
+Mastering forward retention before mixed forward/reverse training produces a
+large and replicated transfer gain. At 16,384 new verifier bits, curriculum
+seeds reach 99.11% and 93.84% held-out versus 81.51% and 75.34% from fresh
+weights. Both curriculum runs retain forward recall at 100%. The strongest run
+crosses a stable 90% gate at 14,336 new bits; the matched fresh learner never
+crosses within budget.
+
+The result survives valid cue and sequence reversals, blank evidence, complete
+fast-memory reset, and shuffled-outcome training. Removing all fast memory
+returns performance to 50%; independently disabling the differentiable
+workspace or recurrent carrier causes smaller losses, showing redundant use of
+both. This is deliberately bounded: an unseen distractor reduces performance
+to 84.08%, and disjoint object positions fail. The next frontier is gradual
+position invariance followed by selective distractor-resistant retention—not
+another memory architecture.
+
+See
+`session_records/sequence_working_memory_2026-07-30/README.md`.
+
 The same/different repertoire now robustly spans bars, diamonds, and
 disconnected dot pairs in one unchanged controller architecture.  A fixed
 64-update acquisition plus 32-update consolidation recipe replicated on all

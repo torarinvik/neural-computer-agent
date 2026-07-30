@@ -1,0 +1,71 @@
+{
+  "schema": "sequence-working-memory-experiment-v1",
+  "learner_visible_information": "RGB streams, own opaque actions, scalar attempted-action outcome",
+  "operation": "mixed",
+  "span": 2,
+  "distractors": 0,
+  "optimizer_updates": 128,
+  "unique_logical_episodes": 8192,
+  "unique_verifier_bits": 16384,
+  "replayed_examples": 0,
+  "wall_seconds": 4.324269000033382,
+  "model_configuration": {
+    "width": 64,
+    "workspace_slots": 4,
+    "intention_width": 16
+  },
+  "history": [
+    {
+      "update": 1,
+      "unique_episodes": 64,
+      "unique_verifier_bits": 128,
+      "training_accuracy": 0.5390625,
+      "loss": 0.7720174193382263
+    },
+    {
+      "update": 32,
+      "unique_episodes": 2048,
+      "unique_verifier_bits": 4096,
+      "training_accuracy": 0.6875,
+      "loss": 0.6738994717597961
+    },
+    {
+      "update": 64,
+      "unique_episodes": 4096,
+      "unique_verifier_bits": 8192,
+      "training_accuracy": 0.6953125,
+      "loss": 0.4311290681362152
+    },
+    {
+      "update": 96,
+      "unique_episodes": 6144,
+      "unique_verifier_bits": 12288,
+      "training_accuracy": 0.75,
+      "loss": 0.3967982530593872
+    },
+    {
+      "update": 128,
+      "unique_episodes": 8192,
+      "unique_verifier_bits": 16384,
+      "training_accuracy": 0.734375,
+      "loss": 0.3908408284187317
+    }
+  ],
+  "audit": {
+    "accuracy": 0.75341796875,
+    "accuracy_by_output": [
+      0.758056640625,
+      0.748779296875
+    ],
+    "reverse_operation_accuracy": 0.7484130859375,
+    "reverse_operation_prediction_flip_rate_nonpalindrome": 0.003662109375,
+    "reverse_sequence_accuracy": 0.755126953125,
+    "reverse_sequence_prediction_flip_rate_nonpalindrome": 0.4931640625,
+    "blank_sequence_accuracy": 0.5,
+    "blank_operation_cue_accuracy": 0.7525634765625,
+    "workspace_disabled_accuracy": 0.809326171875,
+    "active_state_reset_accuracy": 0.783203125,
+    "all_memory_reset_accuracy": 0.5,
+    "heldout_position_accuracy": 0.5
+  }
+}

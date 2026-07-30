@@ -1,0 +1,35 @@
+{
+  "schema": "sequence-working-memory-experiment-v1",
+  "learner_visible_information": "RGB streams, own opaque actions, scalar attempted-action outcome",
+  "operation": "mixed",
+  "span": 2,
+  "distractors": 1,
+  "optimizer_updates": 0,
+  "unique_logical_episodes": 0,
+  "unique_verifier_bits": 0,
+  "replayed_examples": 0,
+  "wall_seconds": 2.2287048749858513,
+  "model_configuration": {
+    "width": 64,
+    "workspace_slots": 4,
+    "intention_width": 16
+  },
+  "history": [],
+  "audit": {
+    "accuracy": 0.8408203125,
+    "accuracy_by_output": [
+      0.832763671875,
+      0.848876953125
+    ],
+    "reverse_operation_accuracy": 0.83984375,
+    "reverse_operation_prediction_flip_rate_nonpalindrome": 0.361328125,
+    "reverse_sequence_accuracy": 0.8453369140625,
+    "reverse_sequence_prediction_flip_rate_nonpalindrome": 0.384521484375,
+    "blank_sequence_accuracy": 0.5,
+    "blank_operation_cue_accuracy": 0.748779296875,
+    "workspace_disabled_accuracy": 0.855712890625,
+    "active_state_reset_accuracy": 0.798828125,
+    "all_memory_reset_accuracy": 0.4991455078125,
+    "heldout_position_accuracy": 0.233642578125
+  }
+}

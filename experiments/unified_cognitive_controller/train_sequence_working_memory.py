@@ -1,0 +1,475 @@
+"""Measure the transition from short-term retention to working memory.
+
+The learner sees only RGB events, its own opaque binary actions, and scalar
+success.  A lifetime presents a short sequence, optional irrelevant sensory
+events, and then asks for either the original or reversed sequence.  The
+verifier-private sequence and operation are used only to score attempted
+actions.
+
+Forward reproduction is the short-term-memory control.  Conditional reversal
+requires the same retained content plus an operation over its temporal order.
+All tensors remain on the selected device, so the controller's recurrent state
+and differentiable workspace are literal RAM/VRAM-resident fast memory.
+"""
+from __future__ import annotations
+
+import argparse
+from dataclasses import dataclass
+import json
+from pathlib import Path
+from time import perf_counter
+
+import torch
+
+from .environment import ACTIONS, IMAGE_SIZE, NULL_ACTION
+from .model import ControllerState, UnifiedCognitiveController
+from .train import attempted_success_loss, seed_everything
+
+
+@dataclass(frozen=True)
+class SequenceMemoryBatch:
+    """Public sensory stream and verifier-private deterministic answers."""
+
+    input_frames: torch.Tensor
+    distractor_frames: torch.Tensor
+    query_frames: torch.Tensor
+    correct_actions: torch.Tensor
+    sequence: torch.Tensor
+    operation_bits: torch.Tensor
+    seeds: torch.Tensor
+
+    @property
+    def batch_size(self) -> int:
+        return int(self.input_frames.shape[0])
+
+    @property
+    def span(self) -> int:
+        return int(self.input_frames.shape[1])
+
+
+def _balanced_binary_sequences(
+        count: int, span: int, generator: torch.Generator) -> torch.Tensor:
+    """Cover every binary sequence evenly before deterministic shuffling."""
+    patterns = 2 ** span
+    ids = torch.arange(count) % patterns
+    sequence = torch.stack(
+        [((ids >> shift) & 1) for shift in reversed(range(span))], dim=1)
+    return sequence[torch.randperm(count, generator=generator)]
+
+
+def _identity_masks(
+        positions: torch.Tensor, identities: torch.Tensor) -> torch.Tensor:
+    """Render two abstract identities at nuisance-controlled positions."""
+    count, span = identities.shape
+    masks = torch.zeros(count, span, IMAGE_SIZE, IMAGE_SIZE)
+    for row in range(count):
+        for column in range(span):
+            y, x = positions[row, column].tolist()
+            if int(identities[row, column]) == 0:
+                masks[row, column, y - 5:y + 6, x - 2:x + 3] = 1.0
+            else:
+                masks[row, column, y - 2:y + 3, x - 5:x + 6] = 1.0
+    return masks
+
+
+def generate_sequence_memory_batch(
+        count: int, *, span: int, distractors: int, seed: int,
+        operation: str = "mixed", heldout: bool = False,
+        position_shift: bool = False,
+        reverse_operations: bool = False,
+        reverse_sequence: bool = False,
+        blank_sequence: bool = False,
+        device: torch.device | str = "cpu") -> SequenceMemoryBatch:
+    """Render a deterministic sequence task without learner-visible labels."""
+    if count < 2 or count % 2:
+        raise ValueError("count must be an even integer of at least two")
+    if span < 1:
+        raise ValueError("span must be positive")
+    if distractors < 0:
+        raise ValueError("distractors must not be negative")
+    if operation not in ("forward", "reverse", "mixed"):
+        raise ValueError("operation must be forward, reverse, or mixed")
+
+    generator = torch.Generator().manual_seed(seed)
+    sequence = _balanced_binary_sequences(count, span, generator)
+    if operation == "forward":
+        operation_bits = torch.zeros(count, dtype=torch.long)
+    elif operation == "reverse":
+        operation_bits = torch.ones(count, dtype=torch.long)
+    else:
+        operation_bits = torch.arange(count, dtype=torch.long) % 2
+        operation_bits = operation_bits[
+            torch.randperm(count, generator=generator)]
+    if reverse_operations:
+        operation_bits = 1 - operation_bits
+
+    # Train and held-out positions are disjoint. Colour remains nuisance:
+    # identity is shape, not a stable RGB code.
+    position_bank = (
+        torch.tensor(((7, 7), (25, 25), (7, 25), (25, 7)))
+        if position_shift else
+        torch.tensor(((10, 10), (22, 22), (10, 22), (22, 10))))
+    position_ids = torch.randint(
+        0, len(position_bank), (count, span), generator=generator)
+    positions = position_bank[position_ids]
+    masks = _identity_masks(positions, sequence)
+    colors = 0.35 + 0.60 * torch.rand(
+        count, span, 3, generator=generator)
+    backgrounds = 0.015 + 0.025 * torch.rand(
+        count, 1, 3, 1, 1, generator=generator)
+    input_frames = backgrounds.expand(
+        -1, span, -1, IMAGE_SIZE, IMAGE_SIZE).clone()
+    input_frames += (
+        masks.unsqueeze(2) * colors.unsqueeze(-1).unsqueeze(-1))
+    if blank_sequence:
+        input_frames.copy_(backgrounds.expand_as(input_frames))
+
+    distractor_frames = backgrounds.expand(
+        -1, distractors, -1, IMAGE_SIZE, IMAGE_SIZE).clone()
+    if distractors:
+        # An irrelevant X changes colour and location independently of the
+        # sequence and operation. It is a valid sensory event, not blank time.
+        for row in range(count):
+            for step in range(distractors):
+                center = int(torch.randint(
+                    9, 24, (), generator=generator))
+                for offset in range(-4, 5):
+                    distractor_frames[
+                        row, step, :, center + offset, center + offset] = 0.75
+                    distractor_frames[
+                        row, step, :, center + offset, center - offset] = 0.75
+
+    query_frames = backgrounds.expand(
+        -1, span, -1, IMAGE_SIZE, IMAGE_SIZE).clone()
+    for row in range(count):
+        operation_column = 2 if int(operation_bits[row]) == 0 else 27
+        query_frames[row, :, :, 2:5, operation_column:operation_column + 3] = (
+            0.95)
+        for query_index in range(span):
+            # A unary ordinal cue: no written number or semantic position ID.
+            for mark in range(query_index + 1):
+                start = 3 + mark * 4
+                query_frames[
+                    row, query_index, :, 27:30, start:start + 2] = 0.85
+
+    source_index = torch.arange(span).unsqueeze(0).expand(count, -1)
+    reverse_index = torch.arange(span - 1, -1, -1).unsqueeze(0).expand(
+        count, -1)
+    selected_index = torch.where(
+        operation_bits.unsqueeze(1).bool(), reverse_index, source_index)
+    correct = torch.gather(sequence, 1, selected_index)
+
+    if reverse_sequence:
+        sequence = sequence.flip(1)
+        input_frames = input_frames.flip(1)
+        correct = torch.gather(sequence, 1, selected_index)
+
+    return SequenceMemoryBatch(
+        input_frames.to(device), distractor_frames.to(device),
+        query_frames.to(device), correct.to(device), sequence.to(device),
+        operation_bits.to(device),
+        torch.arange(seed, seed + count, dtype=torch.long, device=device))
+
+
+def _reset_active_state_keep_workspace(
+        state: ControllerState) -> ControllerState:
+    """Ablate the recurrent carrier while preserving physical workspace."""
+    return ControllerState(
+        torch.zeros_like(state.hidden), state.workspace,
+        torch.zeros_like(state.latest_event))
+
+
+def rollout_sequence_memory(
+        model: UnifiedCognitiveController, batch: SequenceMemoryBatch, *,
+        sample_actions: bool, exploration: float = 0.10,
+        disable_workspace: bool = False,
+        reset_active_state_before_query: bool = False,
+        reset_all_memory_before_query: bool = False,
+        operation_cue_blank: bool = False,
+        shuffle_outcomes: bool = False,
+        ) -> dict[str, torch.Tensor]:
+    """Run one real-time episode and return attempted-action evidence."""
+    device = batch.input_frames.device
+    state = model.initial_state(batch.batch_size, device=device)
+    null = torch.full(
+        (batch.batch_size,), NULL_ACTION, dtype=torch.long, device=device)
+    zeros = torch.zeros(batch.batch_size, device=device)
+    for frame_index in range(batch.span):
+        _, state = model.step(
+            batch.input_frames[:, frame_index], state, null, zeros, zeros,
+            disable_workspace=disable_workspace)
+    for frame_index in range(batch.distractor_frames.shape[1]):
+        _, state = model.step(
+            batch.distractor_frames[:, frame_index], state, null, zeros, zeros,
+            disable_workspace=disable_workspace)
+    if reset_all_memory_before_query:
+        state = model.initial_state(batch.batch_size, device=device)
+    elif reset_active_state_before_query:
+        state = _reset_active_state_keep_workspace(state)
+
+    actions: list[torch.Tensor] = []
+    rewards: list[torch.Tensor] = []
+    losses: list[torch.Tensor] = []
+    logits: list[torch.Tensor] = []
+    previous_action = null
+    previous_reward = zeros
+    for query_index in range(batch.span):
+        frame = batch.query_frames[:, query_index]
+        if operation_cue_blank:
+            frame = frame.clone()
+            frame[:, :, 2:5, 2:5] = 0.0
+            frame[:, :, 2:5, 27:30] = 0.0
+        feedback = torch.full_like(
+            previous_reward, float(query_index > 0))
+        output, state = model.step(
+            frame, state, previous_action,
+            previous_reward * feedback, feedback,
+            disable_workspace=disable_workspace)
+        probabilities = torch.softmax(output.logits, dim=-1)
+        if sample_actions:
+            behavior = (
+                probabilities * (1.0 - exploration)
+                + exploration / ACTIONS)
+            action = torch.multinomial(behavior, 1).squeeze(1)
+        else:
+            action = output.logits.argmax(dim=-1)
+        reward = (
+            action == batch.correct_actions[:, query_index]).float()
+        delivered_outcome = (
+            reward.roll(1) if shuffle_outcomes else reward)
+        losses.append(attempted_success_loss(
+            output.logits, action, delivered_outcome))
+        actions.append(action)
+        rewards.append(reward)
+        logits.append(output.logits)
+        previous_action = action
+        previous_reward = delivered_outcome
+    return {
+        "actions": torch.stack(actions, dim=1),
+        "rewards": torch.stack(rewards, dim=1),
+        "logits": torch.stack(logits, dim=1),
+        "loss": torch.stack(losses).mean(),
+        "final_workspace": state.workspace,
+        "final_hidden": state.hidden,
+    }
+
+
+@torch.no_grad()
+def evaluate_sequence_memory(
+        model: UnifiedCognitiveController, *, count: int, span: int,
+        distractors: int, seed: int, operation: str,
+        device: torch.device) -> dict[str, float | list[float]]:
+    """Run normal and causal audits on lifetime-disjoint rendered episodes."""
+    model.eval()
+    normal_batch = generate_sequence_memory_batch(
+        count, span=span, distractors=distractors, seed=seed,
+        operation=operation, heldout=True, device=device)
+    reversed_operation_batch = generate_sequence_memory_batch(
+        count, span=span, distractors=distractors, seed=seed,
+        operation=operation, heldout=True, reverse_operations=True,
+        device=device)
+    reversed_sequence_batch = generate_sequence_memory_batch(
+        count, span=span, distractors=distractors, seed=seed,
+        operation=operation, heldout=True, reverse_sequence=True,
+        device=device)
+    blank_batch = generate_sequence_memory_batch(
+        count, span=span, distractors=distractors, seed=seed,
+        operation=operation, heldout=True, blank_sequence=True,
+        device=device)
+    shifted_batch = generate_sequence_memory_batch(
+        count, span=span, distractors=distractors, seed=seed,
+        operation=operation, heldout=True, position_shift=True,
+        device=device)
+
+    def run(
+            batch: SequenceMemoryBatch, **kwargs: bool,
+            ) -> dict[str, torch.Tensor]:
+        return rollout_sequence_memory(
+            model, batch, sample_actions=False, **kwargs)
+
+    normal = run(normal_batch)
+    reverse_operation = run(reversed_operation_batch)
+    reverse_sequence = run(reversed_sequence_batch)
+    blank = run(blank_batch)
+    cue_blank = run(normal_batch, operation_cue_blank=True)
+    workspace_disabled = run(normal_batch, disable_workspace=True)
+    active_reset = run(
+        normal_batch, reset_active_state_before_query=True)
+    all_reset = run(normal_batch, reset_all_memory_before_query=True)
+    shifted = run(shifted_batch)
+    nonpalindrome = (
+        normal_batch.sequence != normal_batch.sequence.flip(1)).any(dim=1)
+    operation_flip = (
+        (
+            normal["actions"][nonpalindrome]
+            != reverse_operation["actions"][nonpalindrome]).float().mean()
+        if bool(nonpalindrome.any()) else torch.tensor(float("nan")))
+    sequence_flip = (
+        (
+            normal["actions"][nonpalindrome]
+            != reverse_sequence["actions"][nonpalindrome]).float().mean()
+        if bool(nonpalindrome.any()) else torch.tensor(float("nan")))
+
+    def accuracy(result: dict[str, torch.Tensor]) -> float:
+        return float(result["rewards"].mean())
+
+    forward_rows = normal_batch.operation_bits == 0
+    reverse_rows = normal_batch.operation_bits == 1
+    return {
+        "accuracy": accuracy(normal),
+        "forward_accuracy": float(normal["rewards"][forward_rows].mean()),
+        "reverse_accuracy": float(normal["rewards"][reverse_rows].mean()),
+        "accuracy_by_output": [
+            float(value) for value in normal["rewards"].mean(0)],
+        "reverse_operation_accuracy": accuracy(reverse_operation),
+        "reverse_operation_prediction_flip_rate_nonpalindrome": float(
+            operation_flip),
+        "reverse_sequence_accuracy": accuracy(reverse_sequence),
+        "reverse_sequence_prediction_flip_rate_nonpalindrome": float(
+            sequence_flip),
+        "blank_sequence_accuracy": accuracy(blank),
+        "blank_operation_cue_accuracy": accuracy(cue_blank),
+        "workspace_disabled_accuracy": accuracy(workspace_disabled),
+        "active_state_reset_accuracy": accuracy(active_reset),
+        "all_memory_reset_accuracy": accuracy(all_reset),
+        "heldout_position_accuracy": accuracy(shifted),
+    }
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--device", default="cpu")
+    parser.add_argument("--seed", type=int, default=26001)
+    parser.add_argument("--steps", type=int, default=128)
+    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--test-episodes", type=int, default=2048)
+    parser.add_argument("--span", type=int, default=2)
+    parser.add_argument("--distractors", type=int, default=1)
+    parser.add_argument(
+        "--operation", choices=("forward", "reverse", "mixed"),
+        default="mixed")
+    parser.add_argument("--width", type=int, default=64)
+    parser.add_argument("--workspace-slots", type=int, default=4)
+    parser.add_argument("--intention-width", type=int, default=16)
+    parser.add_argument("--learning-rate", type=float, default=1e-3)
+    parser.add_argument("--exploration", type=float, default=0.10)
+    parser.add_argument("--log-every", type=int, default=32)
+    parser.add_argument(
+        "--eval-every", type=int, default=0,
+        help="measure a lifetime-disjoint learning curve every N updates")
+    parser.add_argument("--curve-test-episodes", type=int, default=1024)
+    parser.add_argument("--mastery-threshold", type=float, default=0.90)
+    parser.add_argument(
+        "--shuffle-outcomes", action="store_true",
+        help="negative control: deliver another lifetime's scalar outcome")
+    parser.add_argument("--checkpoint-in", type=Path)
+    parser.add_argument("--checkpoint-out", type=Path)
+    parser.add_argument("--report", type=Path)
+    args = parser.parse_args()
+
+    seed_everything(args.seed)
+    device = torch.device(args.device)
+    configuration: dict[str, object] = {
+        "width": args.width,
+        "workspace_slots": args.workspace_slots,
+        "intention_width": args.intention_width,
+    }
+    payload = None
+    if args.checkpoint_in is not None:
+        payload = torch.load(
+            args.checkpoint_in, map_location=device, weights_only=False)
+        configuration = dict(payload["model_configuration"])
+    model = UnifiedCognitiveController(**configuration).to(device)
+    if payload is not None:
+        model.load_state_dict(payload["state_dict"])
+    optimizer = torch.optim.AdamW(
+        model.parameters(), lr=args.learning_rate, weight_decay=1e-5)
+    history: list[dict[str, float | int]] = []
+    started = perf_counter()
+    for step in range(1, args.steps + 1):
+        model.train()
+        batch = generate_sequence_memory_batch(
+            args.batch_size, span=args.span, distractors=args.distractors,
+            seed=args.seed + step * args.batch_size,
+            operation=args.operation, device=device)
+        result = rollout_sequence_memory(
+            model, batch, sample_actions=True,
+            exploration=args.exploration,
+            shuffle_outcomes=args.shuffle_outcomes)
+        optimizer.zero_grad(set_to_none=True)
+        result["loss"].backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        optimizer.step()
+        if step == 1 or step % args.log_every == 0 or step == args.steps:
+            row = {
+                "update": step,
+                "unique_episodes": step * args.batch_size,
+                "unique_verifier_bits": (
+                    step * args.batch_size * args.span),
+                "training_accuracy": float(result["rewards"].mean()),
+                "loss": float(result["loss"].detach()),
+            }
+            if args.eval_every and (
+                    step % args.eval_every == 0 or step == args.steps):
+                curve_audit = evaluate_sequence_memory(
+                    model, count=args.curve_test_episodes, span=args.span,
+                    distractors=args.distractors,
+                    seed=args.seed + 20_000_000 + step,
+                    operation=args.operation, device=device)
+                row["heldout_accuracy"] = float(curve_audit["accuracy"])
+                row["heldout_reverse_accuracy"] = float(
+                    curve_audit["reverse_accuracy"])
+                row["heldout_operation_flip_rate"] = float(
+                    curve_audit[
+                        "reverse_operation_prediction_flip_rate_nonpalindrome"])
+            history.append(row)
+            print(json.dumps(row), flush=True)
+
+    audit = evaluate_sequence_memory(
+        model, count=args.test_episodes, span=args.span,
+        distractors=args.distractors, seed=args.seed + 10_000_000,
+        operation=args.operation, device=device)
+    measured_prefixes = [
+        row for row in history if "heldout_accuracy" in row]
+    stable_bits_to_threshold = None
+    for index, row in enumerate(measured_prefixes):
+        if all(
+                float(later["heldout_accuracy"]) >= args.mastery_threshold
+                for later in measured_prefixes[index:]):
+            stable_bits_to_threshold = int(row["unique_verifier_bits"])
+            break
+    report = {
+        "schema": "sequence-working-memory-experiment-v1",
+        "learner_visible_information": (
+            "RGB streams, own opaque actions, scalar attempted-action outcome"),
+        "operation": args.operation,
+        "span": args.span,
+        "distractors": args.distractors,
+        "optimizer_updates": args.steps,
+        "unique_logical_episodes": args.steps * args.batch_size,
+        "unique_verifier_bits": args.steps * args.batch_size * args.span,
+        "replayed_examples": 0,
+        "outcomes_shuffled": args.shuffle_outcomes,
+        "mastery_threshold": args.mastery_threshold,
+        "stable_bits_to_threshold": stable_bits_to_threshold,
+        "wall_seconds": perf_counter() - started,
+        "model_configuration": configuration,
+        "history": history,
+        "audit": audit,
+    }
+    print(json.dumps(report, indent=2), flush=True)
+    if args.report is not None:
+        args.report.parent.mkdir(parents=True, exist_ok=True)
+        args.report.write_text(json.dumps(report, indent=2) + "\n")
+    if args.checkpoint_out is not None:
+        args.checkpoint_out.parent.mkdir(parents=True, exist_ok=True)
+        torch.save({
+            "schema": "unified-cognitive-controller-v1",
+            "model_configuration": configuration,
+            "state_dict": model.state_dict(),
+            "sequence_working_memory_report": report,
+        }, args.checkpoint_out)
+
+
+if __name__ == "__main__":
+    main()
