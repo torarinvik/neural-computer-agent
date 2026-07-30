@@ -1,5 +1,20 @@
 # Curated checkpoints
 
+## Procedural-shape relative operations
+
+`unified_procedural_shape_next_bridge_seed41151.pt` is an explicitly
+unpromoted research checkpoint at the second `next item` anchor frontier.
+
+- SHA-256:
+  `91e2b4108eb7c51eb593bbe1414ff6e29727b6e0e3d0bf37c1ccb6ed07516a54`
+- first `next item` anchor retention: 98.89%
+- `previous item` retention: 99.29%
+- second independent-anchor performance: 58.69% (`next`)
+- full memory reset: 50.00%
+
+The two previous-item milestone checksums, omitted from the manifest in their
+original commit, are now also registered there.
+
 ## Color primitive compounder
 
 `color_primitive_compounder_bits16_seed1901.pt` is the first replicated

@@ -411,6 +411,141 @@ def test_operation_flip_is_a_valid_pixel_level_counterfactual() -> None:
     assert 0.45 < float(changed.float().mean()) < 0.55
 
 
+def test_next_query_atom_crosses_operations_on_span_two() -> None:
+    batch = generate_procedural_shape_batch(
+        384, span=2, query_count=1, vocabulary=2, seed=27024,
+        nuisance=nuisance_from_level(0.135), next_query_stage=1)
+    assert batch.query_cue_ordinals.unique().tolist() == [0]
+    assert batch.query_operations.flatten().bincount(
+        minlength=3).tolist() == [192, 0, 192]
+    assert batch.query_ordinals.flatten().bincount(
+        minlength=2).tolist() == [192, 192]
+    for operation in (0, 2):
+        selected = batch.query_operations == operation
+        assert batch.correct_actions[selected].bincount(
+            minlength=2).tolist() == [96, 96]
+
+
+def test_second_next_anchor_crosses_direct_and_next_with_same_cue() -> None:
+    batch = generate_procedural_shape_batch(
+        384, span=3, query_count=1, vocabulary=2, seed=27025,
+        nuisance=nuisance_from_level(0.135), next_query_stage=2,
+        next_query_anchor_focus=1)
+    assert batch.query_ordinals.flatten().bincount(
+        minlength=3).tolist() == [0, 192, 192]
+    assert batch.query_operations.flatten().bincount(
+        minlength=3).tolist() == [192, 0, 192]
+    assert batch.query_cue_ordinals.unique().tolist() == [1]
+    assert bool(
+        (batch.query_operations[batch.query_ordinals[:, :1] == 2] == 2)
+        .all())
+    for operation in (0, 2):
+        selected = batch.query_operations == operation
+        assert batch.correct_actions[selected].bincount(
+            minlength=2).tolist() == [96, 96]
+
+
+def test_second_next_anchor_can_align_direct_and_next_targets() -> None:
+    batch = generate_procedural_shape_batch(
+        384, span=3, query_count=1, vocabulary=2, seed=27030,
+        nuisance=nuisance_from_level(0.135), next_query_stage=2,
+        next_query_anchor_focus=1, next_query_target_aligned=True)
+    assert batch.query_ordinals.unique().tolist() == [2]
+    assert batch.query_operations.flatten().bincount(
+        minlength=3).tolist() == [192, 0, 192]
+    direct = batch.query_operations == 0
+    following = batch.query_operations == 2
+    assert bool((batch.query_cue_ordinals[direct] == 2).all())
+    assert bool((batch.query_cue_ordinals[following] == 1).all())
+    for selected in (direct, following):
+        assert batch.correct_actions[selected].bincount(
+            minlength=2).tolist() == [96, 96]
+
+
+def test_next_anchor_can_be_forced_to_a_later_query_position() -> None:
+    batch = generate_procedural_shape_batch(
+        384, span=3, query_count=2, vocabulary=2, seed=27026,
+        nuisance=nuisance_from_level(0.135), next_query_stage=2,
+        next_query_anchor_focus=1, next_query_position=1)
+    assert bool((batch.query_ordinals[:, 1] == 2).all())
+    assert bool((batch.query_operations[:, 1] == 2).all())
+    assert bool((batch.query_cue_ordinals[:, 1] == 1).all())
+    assert bool((batch.query_operations[:, 0] == 0).all())
+    assert batch.correct_actions.flatten().bincount(
+        minlength=2).tolist() == [384, 384]
+
+
+def test_next_query_stage_two_preserves_shared_direct_anchors() -> None:
+    batch = generate_procedural_shape_batch(
+        384, span=3, query_count=3, vocabulary=2, seed=27027,
+        nuisance=nuisance_from_level(0.135), next_query_stage=2)
+    for cue in (0, 1):
+        selected = batch.query_cue_ordinals == cue
+        assert sorted(
+            batch.query_operations[selected].unique().tolist()) == [0, 2]
+        outcomes = batch.correct_actions[selected].bincount(minlength=2)
+        assert int(outcomes[0]) == int(outcomes[1])
+
+
+def test_combined_relative_stage_balances_all_seven_valid_mappings() -> None:
+    batch = generate_procedural_shape_batch(
+        1152, span=3, query_count=3, vocabulary=2, seed=27028,
+        nuisance=nuisance_from_level(0.135), next_query_stage=3)
+    expected = {
+        (0, 0), (0, 2),
+        (1, 0), (1, 1), (1, 2),
+        (2, 0), (2, 1),
+    }
+    populated = {
+        (cue, operation)
+        for cue in range(3)
+        for operation in range(3)
+        if bool((
+            (batch.query_cue_ordinals == cue)
+            & (batch.query_operations == operation)).any())
+    }
+    assert populated == expected
+    recomputed = torch.where(
+        batch.query_operations == 1,
+        batch.query_cue_ordinals - 1,
+        torch.where(
+            batch.query_operations == 2,
+            batch.query_cue_ordinals + 1,
+            batch.query_cue_ordinals))
+    assert torch.equal(batch.query_ordinals, recomputed)
+    for cue, operation in expected:
+        selected = (
+            (batch.query_cue_ordinals == cue)
+            & (batch.query_operations == operation))
+        outcomes = batch.correct_actions[selected].bincount(minlength=2)
+        assert abs(int(outcomes[0]) - int(outcomes[1])) <= 1
+
+
+def test_three_operation_flip_is_a_valid_pixel_counterfactual() -> None:
+    normal = generate_procedural_shape_batch(
+        1152, span=3, query_count=3, vocabulary=2, seed=27029,
+        nuisance=nuisance_from_level(0.135), next_query_stage=3)
+    flipped = generate_procedural_shape_batch(
+        1152, span=3, query_count=3, vocabulary=2, seed=27029,
+        nuisance=nuisance_from_level(0.135), next_query_stage=3,
+        flip_query_operations=True)
+    assert torch.equal(
+        normal.query_cue_ordinals, flipped.query_cue_ordinals)
+    assert torch.equal(
+        normal.candidate_identities, flipped.candidate_identities)
+    assert bool((normal.query_operations != flipped.query_operations).all())
+    recomputed = torch.where(
+        flipped.query_operations == 1,
+        flipped.query_cue_ordinals - 1,
+        torch.where(
+            flipped.query_operations == 2,
+            flipped.query_cue_ordinals + 1,
+            flipped.query_cue_ordinals))
+    assert torch.equal(flipped.query_ordinals, recomputed)
+    changed = normal.correct_actions != flipped.correct_actions
+    assert 0.45 < float(changed.float().mean()) < 0.55
+
+
 def test_zero_difficulty_third_slot_is_redundant_but_fully_visible() -> None:
     batch = generate_procedural_shape_batch(
         384, span=3, query_count=1, vocabulary=2, seed=27007,

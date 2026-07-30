@@ -1,0 +1,210 @@
+{
+  "schema": "procedural-shape-span-experiment-v1",
+  "learner_visible_information": "RGB streams, own opaque actions, scalar attempted-action outcome",
+  "span": 3,
+  "query_count": 1,
+  "new_slot_difficulty": 0.0,
+  "query_frontier_difficulty": 1.0,
+  "query_history_difficulty": 1.0,
+  "third_query_history_stage": 2,
+  "previous_query_stage": -1,
+  "previous_query_scope_difficulty": 1.0,
+  "previous_query_position": -1,
+  "previous_query_anchor_focus": -1,
+  "next_query_stage": 2,
+  "next_query_position": -1,
+  "next_query_anchor_focus": 1,
+  "new_slot_novelty_weight": 1.0,
+  "query_history_novelty_weight": 1.0,
+  "previous_conflict_novelty_weight": 1.0,
+  "next_conflict_novelty_weight": 1.0,
+  "binary_outcomes_completed": true,
+  "train_relation_adapter_only": false,
+  "train_action_adapter_only": false,
+  "vocabulary": 2,
+  "objective": "recognition",
+  "randomness": 0.135,
+  "nuisance": {
+    "position_px": 1.675,
+    "size_fraction": 0.04915,
+    "rotation_degrees": 25.165000000000003,
+    "color_delta": 0.057800000000000004,
+    "background_delta": 0.028900000000000002,
+    "deformation": 0.027000000000000003
+  },
+  "floor_nuisance": {
+    "position_px": 1.0,
+    "size_fraction": 0.01,
+    "rotation_degrees": 1.0,
+    "color_delta": 0.02,
+    "background_delta": 0.01,
+    "deformation": 0.0
+  },
+  "rehearse_floor": false,
+  "rehearsal_randomness": [],
+  "rehearsal_spans": [],
+  "rehearsal_query_counts": [],
+  "rehearsal_new_slot_difficulties": [],
+  "rehearsal_previous_query_stages": [],
+  "rehearsal_next_query_stages": [],
+  "rehearsal_update_counts": {},
+  "rehearsal_verifier_bits": {},
+  "optimizer_updates": 0,
+  "unique_logical_lifetimes": 0,
+  "unique_verifier_bits": 0,
+  "target_verifier_bits": 0,
+  "floor_rehearsal_bits": 0,
+  "replayed_examples": 0,
+  "outcomes_shuffled": false,
+  "mastery_threshold": 0.95,
+  "stable_bits_to_threshold": null,
+  "wall_seconds": 50.209012208972126,
+  "model_configuration": {
+    "width": 64,
+    "workspace_slots": 4,
+    "intention_width": 16,
+    "relation_adapter_width": 64,
+    "relation_adapter_layer_norm": true,
+    "relation_adapter_gated": true
+  },
+  "history": [],
+  "audit": {
+    "accuracy": 0.9925944209098816,
+    "accuracy_by_ordinal": [
+      0.9925944209098816
+    ],
+    "accuracy_by_presented_ordinal": [
+      null,
+      0.9977213740348816,
+      0.9874674677848816
+    ],
+    "accuracy_by_query_position_and_presented_ordinal": [
+      [
+        null,
+        0.9977213740348816,
+        0.9874674677848816
+      ]
+    ],
+    "independent_new_slot_queries": 0,
+    "independent_new_slot_accuracy": null,
+    "conflicting_new_slot_queries": 0,
+    "conflicting_new_slot_accuracy": null,
+    "crossed_history_frontier_queries": 0,
+    "crossed_history_frontier_accuracy": null,
+    "repeated_history_frontier_queries": 0,
+    "repeated_history_frontier_accuracy": null,
+    "accuracy_by_operation": [
+      0.9977213740348816,
+      null,
+      0.9874674677848816
+    ],
+    "accuracy_by_operation_and_cue_ordinal": [
+      [
+        null,
+        0.9977213740348816,
+        null
+      ],
+      [
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        0.9874674677848816,
+        null
+      ]
+    ],
+    "previous_conflict_queries": 0,
+    "previous_conflict_accuracy": null,
+    "next_conflict_queries": 3070,
+    "next_conflict_accuracy": 0.9830619096755981,
+    "relative_conflict_queries": 3070,
+    "relative_conflict_accuracy": 0.9830619096755981,
+    "blank_presentation_accuracy": 0.50537109375,
+    "blank_ordinal_cue_accuracy": 0.669921875,
+    "blank_operation_cue_accuracy": 0.7508137822151184,
+    "workspace_disabled_accuracy": 0.8675130009651184,
+    "active_state_reset_accuracy": 0.5986328125,
+    "all_memory_reset_accuracy": 0.4999186098575592,
+    "reverse_presentation_accuracy": 0.9925944209098816,
+    "reverse_changed_fraction": 0.0,
+    "reverse_prediction_flip_rate_on_changed": null,
+    "candidate_flip_accuracy": 0.9928385615348816,
+    "candidate_changed_fraction": 1.0,
+    "candidate_prediction_flip_rate_on_changed": 0.985595703125,
+    "operation_flip_accuracy": 0.9923502802848816,
+    "operation_changed_fraction": 0.5,
+    "operation_prediction_flip_rate_on_changed": 0.9817708134651184
+  },
+  "floor_retention_audit": {
+    "accuracy": 0.99755859375,
+    "accuracy_by_ordinal": [
+      0.99755859375
+    ],
+    "accuracy_by_presented_ordinal": [
+      null,
+      1.0,
+      0.9951171875
+    ],
+    "accuracy_by_query_position_and_presented_ordinal": [
+      [
+        null,
+        1.0,
+        0.9951171875
+      ]
+    ],
+    "independent_new_slot_queries": 0,
+    "independent_new_slot_accuracy": null,
+    "conflicting_new_slot_queries": 0,
+    "conflicting_new_slot_accuracy": null,
+    "crossed_history_frontier_queries": 0,
+    "crossed_history_frontier_accuracy": null,
+    "repeated_history_frontier_queries": 0,
+    "repeated_history_frontier_accuracy": null,
+    "accuracy_by_operation": [
+      1.0,
+      null,
+      0.9951171875
+    ],
+    "accuracy_by_operation_and_cue_ordinal": [
+      [
+        null,
+        1.0,
+        null
+      ],
+      [
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        0.9951171875,
+        null
+      ]
+    ],
+    "previous_conflict_queries": 0,
+    "previous_conflict_accuracy": null,
+    "next_conflict_queries": 3091,
+    "next_conflict_accuracy": 0.9902943968772888,
+    "relative_conflict_queries": 3091,
+    "relative_conflict_accuracy": 0.9902943968772888,
+    "blank_presentation_accuracy": 0.5005696415901184,
+    "blank_ordinal_cue_accuracy": 0.6953938603401184,
+    "blank_operation_cue_accuracy": 0.7530924677848816,
+    "workspace_disabled_accuracy": 0.84765625,
+    "active_state_reset_accuracy": 0.5885416865348816,
+    "all_memory_reset_accuracy": 0.5,
+    "reverse_presentation_accuracy": 0.99755859375,
+    "reverse_changed_fraction": 0.0,
+    "reverse_prediction_flip_rate_on_changed": null,
+    "candidate_flip_accuracy": 0.9966633915901184,
+    "candidate_changed_fraction": 1.0,
+    "candidate_prediction_flip_rate_on_changed": 0.9942219853401184,
+    "operation_flip_accuracy": 0.9983723759651184,
+    "operation_changed_fraction": 0.5,
+    "operation_prediction_flip_rate_on_changed": 0.9918619990348816
+  },
+  "rehearsal_retention_audits": {}
+}

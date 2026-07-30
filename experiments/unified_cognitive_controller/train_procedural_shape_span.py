@@ -217,14 +217,20 @@ def _add_query_cues(
                 if left + 1 < IMAGE_SIZE:
                     frames[row, step, :, 28:30, left:left + 2] = 0.96
             if show_operation_cue:
-                # Two arbitrary, modality-native glyphs. Their meaning is not
+                # Three arbitrary, modality-native glyphs. Their meaning is not
                 # exposed: only scalar verifier outcomes can ground them.
-                if int(operations[row, step]) == 0:
+                operation = int(operations[row, step])
+                if operation == 0:
                     frames[row, step, 0, 2:8, 2:8] = 0.92
                     frames[row, step, 1:, 2:8, 2:8] = 0.28
-                else:
+                elif operation == 1:
                     frames[row, step, 2, 2:8, 24:30] = 0.92
                     frames[row, step, :2, 2:8, 24:30] = 0.28
+                elif operation == 2:
+                    frames[row, step, 1, 20:26, 24:30] = 0.92
+                    frames[row, step, (0, 2), 20:26, 24:30] = 0.28
+                else:
+                    raise ValueError(f"unsupported query operation {operation}")
     return frames
 
 
@@ -241,6 +247,10 @@ def generate_procedural_shape_batch(
         previous_query_scope_difficulty: float = 1.0,
         previous_query_position: int = -1,
         previous_query_anchor_focus: int = -1,
+        next_query_stage: int = -1,
+        next_query_position: int = -1,
+        next_query_anchor_focus: int = -1,
+        next_query_target_aligned: bool = False,
         blank_presentation: bool = False,
         reverse_presentation: bool = False,
         flip_candidates: bool = False,
@@ -307,6 +317,51 @@ def generate_procedural_shape_batch(
     if previous_query_stage >= 0 and objective != "recognition":
         raise ValueError(
             "previous query curriculum requires the recognition objective")
+    if next_query_stage not in (-1, 1, 2, 3):
+        raise ValueError("next query stage must be -1, 1, 2, or 3")
+    if next_query_stage >= 1 and span < 2:
+        raise ValueError("next query curriculum requires span at least 2")
+    if next_query_stage >= 2 and span != 3:
+        raise ValueError("next query stages 2 and 3 require span 3")
+    if next_query_stage in (1, 2) and previous_query_stage >= 1:
+        raise ValueError(
+            "next-only stages must rehearse previous-item behavior in a "
+            "separate stream")
+    if next_query_position not in (-1, 0, 1, 2):
+        raise ValueError("next query position must be -1, 0, 1, or 2")
+    if (
+            next_query_position >= 0
+            and (
+                next_query_stage < 1
+                or next_query_position >= query_count)):
+        raise ValueError(
+            "forced next query position requires an active next operation "
+            "and a position within the queried prefix")
+    if next_query_anchor_focus not in (-1, 0, 1):
+        raise ValueError("next query anchor focus must be -1, 0, or 1")
+    if (
+            next_query_anchor_focus >= 0
+            and (
+                span != 3
+                or next_query_stage < next_query_anchor_focus + 1
+                or (
+                    query_count == 1 and next_query_position >= 0)
+                or (
+                    query_count > 1 and next_query_position < 0))):
+        raise ValueError(
+            "next anchor focus requires span three, an enabled anchor, and "
+            "either one natural query or a forced multi-query position")
+    if (
+            next_query_target_aligned
+            and (
+                query_count != 1
+                or next_query_anchor_focus < 0
+                or next_query_position >= 0)):
+        raise ValueError(
+            "target-aligned next bridge requires one natural focused query")
+    if next_query_stage >= 0 and objective != "recognition":
+        raise ValueError(
+            "next query curriculum requires the recognition objective")
     if not 2 <= vocabulary <= 4:
         raise ValueError("vocabulary must be within [2, 4]")
     generator = torch.Generator().manual_seed(seed)
@@ -438,9 +493,66 @@ def generate_procedural_shape_batch(
             moved = int(query_ordinals[row, target])
             query_ordinals[row, target] = forced_ordinal
             query_ordinals[row, source] = moved
+    if next_query_target_aligned:
+        query_ordinals[:, 0] = next_query_anchor_focus + 1
+    elif next_query_anchor_focus >= 0 and query_count == 1:
+        anchor = next_query_anchor_focus
+        direct_target = anchor
+        next_target = anchor + 1
+        outside = (
+            (query_ordinals[:, 0] != direct_target)
+            & (query_ordinals[:, 0] != next_target))
+        for direct_outcome in range(2):
+            for next_outcome in range(2):
+                eligible = torch.where(
+                    outside
+                    & (match[:, direct_target] == direct_outcome)
+                    & (match[:, next_target] == next_outcome))[0]
+                shuffled = eligible[
+                    torch.randperm(len(eligible), generator=generator)]
+                midpoint = len(shuffled) // 2
+                query_ordinals[shuffled[:midpoint], 0] = direct_target
+                query_ordinals[shuffled[midpoint:], 0] = next_target
+    if next_query_position >= 0:
+        forced_ordinal = (
+            next_query_anchor_focus + 1
+            if next_query_anchor_focus >= 0 else 1)
+        for row in range(count):
+            source = int(
+                torch.where(
+                    query_ordinals[row] == forced_ordinal)[0][0])
+            target = next_query_position
+            moved = int(query_ordinals[row, target])
+            query_ordinals[row, target] = forced_ordinal
+            query_ordinals[row, source] = moved
     query_operations = torch.zeros_like(query_ordinals)
     query_cue_ordinals = query_ordinals.clone()
-    if previous_query_stage >= 1:
+    if next_query_stage == 3:
+        # Balance every valid direct/previous/next interpretation within each
+        # target and verifier-outcome class. The operation glyph is therefore
+        # independent of the binary answer.
+        valid_operations = {
+            0: (0, 1),
+            1: (0, 1, 2),
+            2: (0, 2),
+        }
+        for target_ordinal, operations in valid_operations.items():
+            for outcome in range(2):
+                selected = (
+                    (query_ordinals == target_ordinal)
+                    & (match[:, target_ordinal, None] == outcome))
+                flat = torch.where(selected.flatten())[0]
+                flat = flat[
+                    torch.randperm(len(flat), generator=generator)]
+                for index, operation in enumerate(operations):
+                    begin = round(index * len(flat) / len(operations))
+                    end = round((index + 1) * len(flat) / len(operations))
+                    query_operations.flatten()[flat[begin:end]] = operation
+        previous = query_operations == 1
+        following = query_operations == 2
+        query_cue_ordinals[previous] += 1
+        query_cue_ordinals[following] -= 1
+    elif previous_query_stage >= 1:
         if previous_query_anchor_focus >= 0:
             previous = query_ordinals == previous_query_anchor_focus
         else:
@@ -462,22 +574,78 @@ def generate_procedural_shape_batch(
                 & second_anchor_rows[:, None])
         query_operations[previous] = 1
         query_cue_ordinals[previous] += 1
+    elif next_query_stage >= 1:
+        if next_query_target_aligned:
+            following = torch.zeros_like(
+                query_ordinals, dtype=torch.bool)
+            target_ordinal = next_query_anchor_focus + 1
+            for outcome in range(2):
+                eligible = torch.where(
+                    match[:, target_ordinal] == outcome)[0]
+                selected = eligible[
+                    torch.randperm(
+                        len(eligible), generator=generator
+                    )[:len(eligible) // 2]]
+                following[selected, 0] = True
+        elif next_query_anchor_focus >= 0:
+            following = query_ordinals == next_query_anchor_focus + 1
+        else:
+            following = query_ordinals == 1
+        if next_query_stage == 2 and next_query_anchor_focus < 0:
+            # Keep direct and next interpretations of both shared cues. Select
+            # half of every target/outcome class so the glyph cannot leak the
+            # answer distribution.
+            following = torch.zeros_like(query_ordinals, dtype=torch.bool)
+            for target_ordinal in (1, 2):
+                selected_rows = torch.zeros(count, dtype=torch.bool)
+                for outcome in range(2):
+                    eligible = torch.where(
+                        match[:, target_ordinal] == outcome)[0]
+                    selected = eligible[
+                        torch.randperm(
+                            len(eligible), generator=generator
+                        )[:len(eligible) // 2]]
+                    selected_rows[selected] = True
+                following |= (
+                    (query_ordinals == target_ordinal)
+                    & selected_rows[:, None])
+        query_operations[following] = 2
+        query_cue_ordinals[following] -= 1
     source_ordinals = query_ordinals.clone()
     gather_frames = source_ordinals[:, :, None, None, None].expand_as(
         query_frames_by_target)
     queries = torch.gather(query_frames_by_target, 1, gather_frames)
     candidates = torch.gather(candidates, 1, source_ordinals)
     if flip_query_operations:
-        valid_flip = query_cue_ordinals > 0
-        query_operations = torch.where(
-            valid_flip, 1 - query_operations, query_operations)
+        if next_query_stage == 3:
+            cue_zero = query_cue_ordinals == 0
+            cue_one = query_cue_ordinals == 1
+            cue_two = query_cue_ordinals == 2
+            query_operations = torch.where(
+                cue_zero, 2 - query_operations, query_operations)
+            query_operations = torch.where(
+                cue_two, 1 - query_operations, query_operations)
+            query_operations = torch.where(
+                cue_one, (query_operations + 1) % 3, query_operations)
+        elif next_query_stage >= 1:
+            valid_flip = query_cue_ordinals < span - 1
+            query_operations = torch.where(
+                valid_flip, 2 - query_operations, query_operations)
+        else:
+            valid_flip = query_cue_ordinals > 0
+            query_operations = torch.where(
+                valid_flip, 1 - query_operations, query_operations)
         query_ordinals = torch.where(
-            query_operations.bool(),
+            query_operations == 1,
             query_cue_ordinals - 1,
-            query_cue_ordinals)
+            torch.where(
+                query_operations == 2,
+                query_cue_ordinals + 1,
+                query_cue_ordinals))
     queries = _add_query_cues(
         queries, query_cue_ordinals, query_operations,
-        show_operation_cue=previous_query_stage >= 0)
+        show_operation_cue=(
+            previous_query_stage >= 0 or next_query_stage >= 0))
     answers = (
         candidates.clone()
         if objective == "visible_identity"
@@ -531,6 +699,7 @@ def rollout_procedural_shape_span(
         new_slot_novelty_weight: float = 1.0,
         query_history_novelty_weight: float = 1.0,
         previous_conflict_novelty_weight: float = 1.0,
+        next_conflict_novelty_weight: float = 1.0,
         complete_binary_outcomes: bool = False,
         disable_workspace: bool = False,
         reset_active_before_query: bool = False,
@@ -566,6 +735,7 @@ def rollout_procedural_shape_span(
             background = frame[:, :, :1, :1]
             frame[:, :, 2:8, 2:8] = background
             frame[:, :, 2:8, 24:30] = background
+            frame[:, :, 20:26, 24:30] = background
         has_feedback = torch.full_like(previous_reward, float(index > 0))
         output, state = model.step(
             frame, state, previous_action,
@@ -617,7 +787,7 @@ def rollout_procedural_shape_span(
                     per_attempt_loss, query_history_novelty_weight),
                 torch.ones_like(per_attempt_loss))
             previous_conflict = (
-                batch.query_operations[:, index].bool()
+                (batch.query_operations[:, index] == 1)
                 & (
                     torch.gather(
                         batch.sequence_identities, 1,
@@ -631,6 +801,22 @@ def rollout_procedural_shape_span(
                 previous_conflict,
                 torch.full_like(
                     per_attempt_loss, previous_conflict_novelty_weight),
+                torch.ones_like(per_attempt_loss))
+            next_conflict = (
+                (batch.query_operations[:, index] == 2)
+                & (
+                    torch.gather(
+                        batch.sequence_identities, 1,
+                        batch.query_ordinals[
+                            :, index:index + 1]).squeeze(1)
+                    != torch.gather(
+                        batch.sequence_identities, 1,
+                        batch.query_cue_ordinals[
+                            :, index:index + 1]).squeeze(1)))
+            weights = weights * torch.where(
+                next_conflict,
+                torch.full_like(
+                    per_attempt_loss, next_conflict_novelty_weight),
                 torch.ones_like(per_attempt_loss))
             losses.append((per_attempt_loss * weights).sum() / weights.sum())
         actions.append(action)
@@ -661,7 +847,11 @@ def evaluate_procedural_shape_span(
         previous_query_stage: int = -1,
         previous_query_scope_difficulty: float = 1.0,
         previous_query_position: int = -1,
-        previous_query_anchor_focus: int = -1) -> dict[str, object]:
+        previous_query_anchor_focus: int = -1,
+        next_query_stage: int = -1,
+        next_query_position: int = -1,
+        next_query_anchor_focus: int = -1,
+        next_query_target_aligned: bool = False) -> dict[str, object]:
     model.eval()
     kwargs = dict(
         count=count, span=span, vocabulary=vocabulary, seed=seed,
@@ -674,6 +864,10 @@ def evaluate_procedural_shape_span(
         previous_query_scope_difficulty=previous_query_scope_difficulty,
         previous_query_position=previous_query_position,
         previous_query_anchor_focus=previous_query_anchor_focus,
+        next_query_stage=next_query_stage,
+        next_query_position=next_query_position,
+        next_query_anchor_focus=next_query_anchor_focus,
+        next_query_target_aligned=next_query_target_aligned,
         device=device)
     normal_batch = generate_procedural_shape_batch(**kwargs)
     blank_batch = generate_procedural_shape_batch(
@@ -743,13 +937,14 @@ def evaluate_procedural_shape_span(
         else torch.zeros(
             normal_batch.batch_size, dtype=torch.bool, device=device))
     operation_accuracies = []
-    for operation in range(2):
+    operation_count = 3 if next_query_stage >= 1 else 2
+    for operation in range(operation_count):
         selected = normal_batch.query_operations == operation
         operation_accuracies.append(
             float(normal["rewards"][selected].mean())
             if bool(selected.any()) else None)
     operation_cue_accuracies = []
-    for operation in range(2):
+    for operation in range(operation_count):
         row = []
         for cue_ordinal in range(span):
             selected = (
@@ -760,7 +955,7 @@ def evaluate_procedural_shape_span(
                 if bool(selected.any()) else None)
         operation_cue_accuracies.append(row)
     previous_conflict = (
-        normal_batch.query_operations.bool()
+        (normal_batch.query_operations == 1)
         & (
             torch.gather(
                 normal_batch.sequence_identities, 1,
@@ -768,6 +963,16 @@ def evaluate_procedural_shape_span(
             != torch.gather(
                 normal_batch.sequence_identities, 1,
                 normal_batch.query_cue_ordinals)))
+    next_conflict = (
+        (normal_batch.query_operations == 2)
+        & (
+            torch.gather(
+                normal_batch.sequence_identities, 1,
+                normal_batch.query_ordinals)
+            != torch.gather(
+                normal_batch.sequence_identities, 1,
+                normal_batch.query_cue_ordinals)))
+    relative_conflict = previous_conflict | next_conflict
     reverse_changed = (
         normal_batch.correct_actions != reverse_batch.correct_actions)
     candidate_changed = (
@@ -804,6 +1009,14 @@ def evaluate_procedural_shape_span(
         "previous_conflict_accuracy": (
             float(normal["rewards"][previous_conflict].mean())
             if bool(previous_conflict.any()) else None),
+        "next_conflict_queries": int(next_conflict.sum()),
+        "next_conflict_accuracy": (
+            float(normal["rewards"][next_conflict].mean())
+            if bool(next_conflict.any()) else None),
+        "relative_conflict_queries": int(relative_conflict.sum()),
+        "relative_conflict_accuracy": (
+            float(normal["rewards"][relative_conflict].mean())
+            if bool(relative_conflict.any()) else None),
         "blank_presentation_accuracy": accuracy(blank),
         "blank_ordinal_cue_accuracy": accuracy(cue_blank),
         "blank_operation_cue_accuracy": accuracy(operation_blank),
@@ -892,6 +1105,27 @@ def main() -> None:
             "for a one-query span-three bridge, balance one previous target "
             "against the direct target sharing its cue; -1 uses full scope"))
     parser.add_argument(
+        "--next-query-stage", type=int, choices=(-1, 1, 2, 3), default=-1,
+        help=(
+            "next-item curriculum: -1 disables it, 1 enables the first valid "
+            "anchor, 2 enables both span-three anchors, and 3 balances direct, "
+            "previous, and next operations"))
+    parser.add_argument(
+        "--next-query-position", type=int, choices=(-1, 0, 1, 2), default=-1,
+        help=(
+            "force the focused next-item target into one query position; -1 "
+            "preserves natural query order"))
+    parser.add_argument(
+        "--next-query-anchor-focus", type=int, choices=(-1, 0, 1), default=-1,
+        help=(
+            "balance one next target against the direct target sharing its "
+            "visual cue; -1 uses the stage's natural scope"))
+    parser.add_argument(
+        "--next-query-target-aligned", action="store_true",
+        help=(
+            "focused bridge that balances direct and next access to the same "
+            "stored target before introducing same-cue disambiguation"))
+    parser.add_argument(
         "--new-slot-novelty-weight", type=float, default=1.0,
         help=(
             "loss weight for verifier outcomes on independent new-slot "
@@ -905,6 +1139,11 @@ def main() -> None:
         "--previous-conflict-novelty-weight", type=float, default=1.0,
         help=(
             "verifier-side loss weight for previous-item queries whose target "
+            "identity differs from the directly cued identity"))
+    parser.add_argument(
+        "--next-conflict-novelty-weight", type=float, default=1.0,
+        help=(
+            "verifier-side loss weight for next-item queries whose target "
             "identity differs from the directly cued identity"))
     parser.add_argument(
         "--complete-binary-outcomes", action="store_true",
@@ -952,6 +1191,11 @@ def main() -> None:
         help=(
             "comma-separated previous-query stages aligned with rehearsal "
             "streams; defaults to legacy direct lookup"))
+    parser.add_argument(
+        "--rehearsal-next-query-stages", default="",
+        help=(
+            "comma-separated next-query stages aligned with rehearsal streams; "
+            "defaults to disabled"))
     parser.add_argument("--width", type=int, default=64)
     parser.add_argument("--workspace-slots", type=int, default=4)
     parser.add_argument(
@@ -986,6 +1230,16 @@ def main() -> None:
         help="freeze inherited parameters and train only the action adapter")
     parser.add_argument("--intention-width", type=int, default=16)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
+    parser.add_argument(
+        "--usage-protection-strength", type=float, default=0.0,
+        help=(
+            "scale target gradients away from parameters used by recent "
+            "experience; zero disables learned selective plasticity"))
+    parser.add_argument(
+        "--usage-importance-decay", type=float, default=0.95,
+        help=(
+            "EMA decay for per-parameter usage importance; lower importance "
+            "makes an infrequently used parameter more volatile"))
     parser.add_argument("--exploration", type=float, default=0.10)
     parser.add_argument("--log-every", type=int, default=32)
     parser.add_argument("--eval-every", type=int, default=32)
@@ -1039,6 +1293,13 @@ def main() -> None:
     if args.previous_conflict_novelty_weight < 1.0:
         raise ValueError(
             "previous-conflict novelty weight must be at least one")
+    if args.next_conflict_novelty_weight < 1.0:
+        raise ValueError(
+            "next-conflict novelty weight must be at least one")
+    if args.usage_protection_strength < 0.0:
+        raise ValueError("usage-protection strength cannot be negative")
+    if not 0.0 <= args.usage_importance_decay < 1.0:
+        raise ValueError("usage-importance decay must be within [0, 1)")
     rehearsal_query_counts = [
         int(value) for value in args.rehearsal_query_counts.split(",")
         if value]
@@ -1086,6 +1347,34 @@ def main() -> None:
     if any(value not in (-1, 0, 1, 2) for value in rehearsal_previous_stages):
         raise ValueError(
             "rehearsal previous-query stages must be -1, 0, 1, or 2")
+    rehearsal_next_stages = [
+        int(value)
+        for value in args.rehearsal_next_query_stages.split(",")
+        if value]
+    if (
+            rehearsal_next_stages
+            and len(rehearsal_next_stages) != len(rehearsal_levels)):
+        raise ValueError(
+            "rehearsal next-query stages must align with streams")
+    if not rehearsal_next_stages:
+        rehearsal_next_stages = [-1] * len(rehearsal_levels)
+    if any(value not in (-1, 1, 2, 3) for value in rehearsal_next_stages):
+        raise ValueError(
+            "rehearsal next-query stages must be -1, 1, 2, or 3")
+    if args.usage_protection_strength > 0.0 and not rehearsal_levels:
+        raise ValueError("usage protection requires rehearsal experience")
+    for span in {args.span, *rehearsal_spans}:
+        design_patterns = (
+            (args.vocabulary * 2) ** span
+            * len(tuple(itertools.permutations(range(span)))))
+        for name, count in (
+                ("batch size", args.batch_size),
+                ("test episodes", args.test_episodes),
+                ("curve test episodes", args.curve_test_episodes)):
+            if count < design_patterns or count % design_patterns:
+                raise ValueError(
+                    f"{name} must be a positive multiple of "
+                    f"{design_patterns} for span {span}")
     configuration: dict[str, object] = {
         "width": args.width, "workspace_slots": args.workspace_slots,
         "intention_width": args.intention_width,
@@ -1196,23 +1485,37 @@ def main() -> None:
         (parameter for parameter in model.parameters()
          if parameter.requires_grad),
         lr=args.learning_rate, weight_decay=1e-5)
+    usage_importance = {
+        name: torch.zeros_like(parameter)
+        for name, parameter in model.named_parameters()
+        if parameter.requires_grad}
+    if payload is not None:
+        for name, value in payload.get(
+                "parameter_usage_importance", {}).items():
+            if name in usage_importance:
+                usage_importance[name].copy_(value.to(device))
     history: list[dict[str, object]] = []
     target_updates = 0
     rehearsal_update_counts = {
         (
             f"span{span}:queries{query_count}:slot{slot}:"
-            f"previous{previous}:randomness{level}"
+            f"previous{previous}:next{following}:randomness{level}"
         ): 0
-        for span, query_count, slot, previous, level in zip(
+        for span, query_count, slot, previous, following, level in zip(
             rehearsal_spans, rehearsal_query_counts,
             rehearsal_slot_difficulties, rehearsal_previous_stages,
-            rehearsal_levels)}
+            rehearsal_next_stages, rehearsal_levels)}
     rehearsal_verifier_bits = dict.fromkeys(rehearsal_update_counts, 0)
     started = perf_counter()
     for step in range(1, args.steps + 1):
         model.train()
         schedule_index = (step - 1) % (1 + len(rehearsal_levels))
-        train_on_target = schedule_index == 0
+        if args.usage_protection_strength > 0.0:
+            # Observe usage before taking the plastic target step. Every
+            # outcome is still counted; only the within-cycle order changes.
+            train_on_target = schedule_index == len(rehearsal_levels)
+        else:
+            train_on_target = schedule_index == 0
         if train_on_target:
             train_nuisance = nuisance
             train_span = args.span
@@ -1220,7 +1523,10 @@ def main() -> None:
             train_distribution = "target"
             target_updates += 1
         else:
-            rehearsal_index = schedule_index - 1
+            rehearsal_index = (
+                schedule_index
+                if args.usage_protection_strength > 0.0
+                else schedule_index - 1)
             train_nuisance = rehearsal_nuisances[rehearsal_index]
             train_span = rehearsal_spans[rehearsal_index]
             train_query_count = rehearsal_query_counts[rehearsal_index]
@@ -1228,15 +1534,18 @@ def main() -> None:
                 rehearsal_index]
             train_previous_stage = rehearsal_previous_stages[
                 rehearsal_index]
+            train_next_stage = rehearsal_next_stages[rehearsal_index]
             train_distribution = (
                 f"rehearsal:span{train_span}:queries{train_query_count}:"
                 f"slot{train_slot_difficulty}:"
                 f"previous{train_previous_stage}:"
+                f"next{train_next_stage}:"
                 f"randomness{rehearsal_levels[rehearsal_index]}")
             key = (
                 f"span{train_span}:queries{train_query_count}:"
                 f"slot{train_slot_difficulty}:"
                 f"previous{train_previous_stage}:"
+                f"next{train_next_stage}:"
                 f"randomness{rehearsal_levels[rehearsal_index]}")
             rehearsal_update_counts[key] += 1
             rehearsal_verifier_bits[key] += (
@@ -1264,6 +1573,15 @@ def main() -> None:
                 args.previous_query_position if train_on_target else -1),
             previous_query_anchor_focus=(
                 args.previous_query_anchor_focus if train_on_target else -1),
+            next_query_stage=(
+                args.next_query_stage
+                if train_on_target else train_next_stage),
+            next_query_position=(
+                args.next_query_position if train_on_target else -1),
+            next_query_anchor_focus=(
+                args.next_query_anchor_focus if train_on_target else -1),
+            next_query_target_aligned=(
+                args.next_query_target_aligned if train_on_target else False),
             device=device)
         result = rollout_procedural_shape_span(
             model, batch, sample_actions=True,
@@ -1276,11 +1594,33 @@ def main() -> None:
             previous_conflict_novelty_weight=(
                 args.previous_conflict_novelty_weight
                 if train_on_target else 1.0),
+            next_conflict_novelty_weight=(
+                args.next_conflict_novelty_weight
+                if train_on_target else 1.0),
             complete_binary_outcomes=args.complete_binary_outcomes,
             shuffle_outcomes=args.shuffle_outcomes)
         optimizer.zero_grad(set_to_none=True)
         result["loss"].backward()
+        plasticity_values = []
+        if train_on_target and args.usage_protection_strength > 0.0:
+            for name, parameter in model.named_parameters():
+                if parameter.grad is None:
+                    continue
+                importance = usage_importance[name]
+                normalized = importance / importance.mean().clamp_min(1e-12)
+                plasticity = 1.0 / (
+                    1.0 + args.usage_protection_strength * normalized)
+                parameter.grad.mul_(plasticity)
+                plasticity_values.append(float(plasticity.mean()))
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        with torch.no_grad():
+            for name, parameter in model.named_parameters():
+                if parameter.grad is None:
+                    continue
+                usage_importance[name].mul_(
+                    args.usage_importance_decay).addcmul_(
+                        parameter.grad, parameter.grad,
+                        value=1.0 - args.usage_importance_decay)
         optimizer.step()
         if step == 1 or step % args.log_every == 0 or step == args.steps:
             row: dict[str, object] = {
@@ -1302,6 +1642,9 @@ def main() -> None:
                 "train_distribution": train_distribution,
                 "training_accuracy": float(result["rewards"].mean()),
                 "loss": float(result["loss"].detach())}
+            if plasticity_values:
+                row["mean_target_plasticity"] = (
+                    sum(plasticity_values) / len(plasticity_values))
             if (
                     step % args.eval_every == 0
                     or step == args.steps):
@@ -1321,7 +1664,11 @@ def main() -> None:
                         args.previous_query_scope_difficulty),
                     previous_query_position=args.previous_query_position,
                     previous_query_anchor_focus=(
-                        args.previous_query_anchor_focus))
+                        args.previous_query_anchor_focus),
+                    next_query_stage=args.next_query_stage,
+                    next_query_position=args.next_query_position,
+                    next_query_anchor_focus=args.next_query_anchor_focus,
+                    next_query_target_aligned=args.next_query_target_aligned)
                 row["heldout_accuracy"] = curve["accuracy"]
                 row["heldout_accuracy_by_presented_ordinal"] = (
                     curve["accuracy_by_presented_ordinal"])
@@ -1331,6 +1678,8 @@ def main() -> None:
                     "accuracy_by_query_position_and_presented_ordinal"]
                 row["heldout_independent_new_slot_accuracy"] = (
                     curve["independent_new_slot_accuracy"])
+                row["heldout_conflicting_new_slot_accuracy"] = (
+                    curve["conflicting_new_slot_accuracy"])
                 row["heldout_crossed_history_frontier_accuracy"] = (
                     curve["crossed_history_frontier_accuracy"])
                 row["heldout_accuracy_by_operation"] = (
@@ -1339,6 +1688,10 @@ def main() -> None:
                     curve["accuracy_by_operation_and_cue_ordinal"])
                 row["heldout_previous_conflict_accuracy"] = (
                     curve["previous_conflict_accuracy"])
+                row["heldout_next_conflict_accuracy"] = (
+                    curve["next_conflict_accuracy"])
+                row["heldout_relative_conflict_accuracy"] = (
+                    curve["relative_conflict_accuracy"])
                 row["blank_presentation_accuracy"] = (
                     curve["blank_presentation_accuracy"])
             history.append(row)
@@ -1357,7 +1710,11 @@ def main() -> None:
         previous_query_scope_difficulty=(
             args.previous_query_scope_difficulty),
         previous_query_position=args.previous_query_position,
-        previous_query_anchor_focus=args.previous_query_anchor_focus)
+        previous_query_anchor_focus=args.previous_query_anchor_focus,
+        next_query_stage=args.next_query_stage,
+        next_query_position=args.next_query_position,
+        next_query_anchor_focus=args.next_query_anchor_focus,
+        next_query_target_aligned=args.next_query_target_aligned)
     floor_audit = evaluate_procedural_shape_span(
         model, count=args.test_episodes, span=args.span,
         vocabulary=args.vocabulary, seed=args.seed + 11_000_000,
@@ -1371,11 +1728,15 @@ def main() -> None:
         previous_query_scope_difficulty=(
             args.previous_query_scope_difficulty),
         previous_query_position=args.previous_query_position,
-        previous_query_anchor_focus=args.previous_query_anchor_focus)
+        previous_query_anchor_focus=args.previous_query_anchor_focus,
+        next_query_stage=args.next_query_stage,
+        next_query_position=args.next_query_position,
+        next_query_anchor_focus=args.next_query_anchor_focus,
+        next_query_target_aligned=args.next_query_target_aligned)
     rehearsal_audits = {
         (
             f"span{span}:queries{query_count}:slot{slot}:"
-            f"previous{previous}:randomness{level}"
+            f"previous{previous}:next{following}:randomness{level}"
         ):
         evaluate_procedural_shape_span(
             model, count=args.test_episodes, span=span,
@@ -1384,11 +1745,14 @@ def main() -> None:
             nuisance=rehearsal_nuisances[index], device=device,
             objective=args.objective, query_count=query_count,
             new_slot_difficulty=slot,
-            previous_query_stage=previous)
-        for index, (span, query_count, slot, previous, level) in enumerate(zip(
+            previous_query_stage=previous,
+            next_query_stage=following)
+        for index, (
+                span, query_count, slot, previous, following, level
+        ) in enumerate(zip(
             rehearsal_spans, rehearsal_query_counts,
             rehearsal_slot_difficulties, rehearsal_previous_stages,
-            rehearsal_levels))}
+            rehearsal_next_stages, rehearsal_levels))}
     prefixes = [row for row in history if "heldout_accuracy" in row]
     stable_bits = None
     for index, row in enumerate(prefixes):
@@ -1404,6 +1768,10 @@ def main() -> None:
                     or later["heldout_independent_new_slot_accuracy"]
                     >= args.mastery_threshold)
                 and (
+                    later["heldout_conflicting_new_slot_accuracy"] is None
+                    or later["heldout_conflicting_new_slot_accuracy"]
+                    >= args.mastery_threshold)
+                and (
                     later["heldout_crossed_history_frontier_accuracy"] is None
                     or later["heldout_crossed_history_frontier_accuracy"]
                     >= args.mastery_threshold)
@@ -1415,6 +1783,14 @@ def main() -> None:
                 and (
                     later["heldout_previous_conflict_accuracy"] is None
                     or later["heldout_previous_conflict_accuracy"]
+                    >= args.mastery_threshold)
+                and (
+                    later["heldout_next_conflict_accuracy"] is None
+                    or later["heldout_next_conflict_accuracy"]
+                    >= args.mastery_threshold)
+                and (
+                    later["heldout_relative_conflict_accuracy"] is None
+                    or later["heldout_relative_conflict_accuracy"]
                     >= args.mastery_threshold)
                 for later in prefixes[index:]):
             stable_bits = int(row["target_verifier_bits"])
@@ -1434,11 +1810,18 @@ def main() -> None:
             args.previous_query_scope_difficulty),
         "previous_query_position": args.previous_query_position,
         "previous_query_anchor_focus": args.previous_query_anchor_focus,
+        "next_query_stage": args.next_query_stage,
+        "next_query_position": args.next_query_position,
+        "next_query_anchor_focus": args.next_query_anchor_focus,
+        "next_query_target_aligned": args.next_query_target_aligned,
         "new_slot_novelty_weight": args.new_slot_novelty_weight,
         "query_history_novelty_weight": (
             args.query_history_novelty_weight),
         "previous_conflict_novelty_weight": (
             args.previous_conflict_novelty_weight),
+        "next_conflict_novelty_weight": args.next_conflict_novelty_weight,
+        "usage_protection_strength": args.usage_protection_strength,
+        "usage_importance_decay": args.usage_importance_decay,
         "binary_outcomes_completed": args.complete_binary_outcomes,
         "train_relation_adapter_only": args.train_relation_adapter_only,
         "train_action_adapter_only": args.train_action_adapter_only,
@@ -1453,6 +1836,7 @@ def main() -> None:
         "rehearsal_query_counts": rehearsal_query_counts,
         "rehearsal_new_slot_difficulties": rehearsal_slot_difficulties,
         "rehearsal_previous_query_stages": rehearsal_previous_stages,
+        "rehearsal_next_query_stages": rehearsal_next_stages,
         "rehearsal_update_counts": rehearsal_update_counts,
         "rehearsal_verifier_bits": rehearsal_verifier_bits,
         "optimizer_updates": args.steps,
@@ -1489,6 +1873,9 @@ def main() -> None:
             "schema": "unified-cognitive-controller-v1",
             "model_configuration": configuration,
             "state_dict": model.state_dict(),
+            "parameter_usage_importance": {
+                name: value.detach().cpu()
+                for name, value in usage_importance.items()},
             "procedural_shape_span_report": report,
         }, args.checkpoint_out)
 

@@ -1145,3 +1145,21 @@ pairwise binding.
 
 See
 `session_records/outer_product_operation_2026-07-30/README.md`.
+
+## Latest frontier: `next item` and protected plasticity
+
+The controller now masters the first `next item` anchor across all three query
+positions (98.33% overall, 97.46% causal conflicts) while retaining
+`previous item` at 99.22%. The second anchor was localized to a new problem:
+binding the relation to a genuinely independent third memory item.
+
+A target-aligned bridge learned rapidly, rising from 58.12% to 84.33% in
+3,072 target outcomes, but overwrote the previous relation. Consolidation
+restored the old skill and erased the new one. Frozen adapters preserved old
+skills but did not learn. Per-parameter usage/volatility protection produced a
+measured stability-plasticity curve but no setting both learned and retained.
+
+The next high-ROI experiment is direction-aware gradient protection on the
+successful bridge: redirect only new gradients that conflict with verified
+rehearsal gradients. See
+`session_records/procedural_shape_next_operation_2026-07-30/README.md`.
