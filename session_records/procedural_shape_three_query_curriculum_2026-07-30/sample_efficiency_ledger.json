@@ -1,0 +1,54 @@
+{
+  "schema": "procedural-shape-three-query-curriculum-ledger-v1",
+  "learner_visible_information": "RGB, own opaque attempted actions, scalar verifier outcomes",
+  "replayed_examples": 0,
+  "randomness": 0.135,
+  "mastery_gate": {
+    "overall_minimum": 0.95,
+    "every_populated_query_position_by_ordinal_cell_minimum": 0.95,
+    "retained_query1_minimum": 0.95,
+    "retained_query2_minimum": 0.95
+  },
+  "primary": {
+    "parent_checkpoint_seed": 32001,
+    "immediate_checkpoint_seed": 33101,
+    "immediate_stable_target_bits": 5760,
+    "delayed_checkpoint_seed": 33301,
+    "delayed_stable_target_bits": 17280,
+    "novel_checkpoint_seed": 33501,
+    "novel_stable_target_bits": 5760,
+    "cumulative_stable_target_bits": 28800,
+    "final_accuracy": 0.9969618320465088,
+    "hard_third_query_cell_accuracy": 0.98779296875,
+    "query1_retention": 0.9986979365348816,
+    "query2_retention": 0.9983723759651184
+  },
+  "replica": {
+    "parent_checkpoint_seed": 32601,
+    "immediate_checkpoint_seed": 33601,
+    "immediate_stable_target_bits": 17280,
+    "delayed_checkpoint_seed": 33801,
+    "delayed_stable_target_bits": 23040,
+    "novel_checkpoint_seed": 34001,
+    "novel_stable_target_bits": 5760,
+    "cumulative_stable_target_bits": 46080,
+    "final_accuracy": 0.9944661259651184,
+    "hard_third_query_cell_accuracy": 0.97998046875,
+    "query1_retention": 0.9969075322151184,
+    "query2_retention": 0.9981282353401184
+  },
+  "forward_transfer": {
+    "primary_parent_delayed_hard_cell": 0.81884765625,
+    "primary_after_immediate_delayed_hard_cell": 0.90869140625,
+    "primary_parent_novel_hard_cell": 0.8037109375,
+    "primary_after_delayed_novel_hard_cell": 0.92333984375,
+    "replica_after_delayed_novel_hard_cell": 0.9345703125
+  },
+  "reward_shuffled_control": {
+    "seed": 34301,
+    "stable_gate_reached": false,
+    "final_accuracy": 0.5532768964767456,
+    "hard_third_query_cell_accuracy": 0.59130859375
+  },
+  "current_frontier": "minimal history-dependent sequence manipulation at fixed span three"
+}

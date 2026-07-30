@@ -31,6 +31,22 @@ Final accuracy alone is not an adequate score.
 
 ## Current audited frontier
 
+The procedural-shape controller now has a replicated three-query short-term
+memory primitive. It stores three independently rerendered shapes and answers
+three sequential visual equality queries using only pixels, its own opaque
+actions, and scalar outcomes. An adaptive three-rung curriculum introduced
+immediate repeated lookup, delayed repeated lookup, and finally a novel third
+lookup. The final novel rung reached stable mastery after only 5,760 additional
+verifier bits in both lineages.
+
+Final held-out accuracy is 99.70% and 99.45%; the hardest third-query cells are
+98.78% and 98.00%. One- and two-query retention remains 99.69–99.87%.
+Missing presentation and complete memory reset return to chance, valid
+counterfactuals remain causal, and matched reward-shuffled training collapses
+to 55.33%. The next frontier is minimal sequence manipulation at fixed span
+three, not a larger memory load. See
+`session_records/procedural_shape_three_query_curriculum_2026-07-30/README.md`.
+
 The procedural-shape controller now has a replicated ultra-gradual nuisance
 curriculum. Starting from the audited span-2 checkpoint, the scalar was mapped
 in increments of 0.005. Already-mastered rungs received no updates; only the

@@ -228,6 +228,24 @@ def test_query_history_bridge_repeats_third_lookup_without_starving_it() -> None
         (crossed.query_ordinals[crossed_frontier, 0] != 2).all())
 
 
+def test_third_query_history_stages_are_minimal_and_deterministic() -> None:
+    batches = [
+        generate_procedural_shape_batch(
+            384, span=3, query_count=3, vocabulary=2, seed=27014,
+            nuisance=nuisance_from_level(0.135),
+            third_query_history_stage=stage)
+        for stage in range(3)]
+    immediate, delayed, novel = batches
+    assert torch.equal(
+        immediate.query_ordinals[:, 2], immediate.query_ordinals[:, 1])
+    assert torch.equal(
+        delayed.query_ordinals[:, 2], delayed.query_ordinals[:, 0])
+    assert bool(
+        (novel.query_ordinals[:, 2] != novel.query_ordinals[:, 0]).all())
+    assert bool(
+        (novel.query_ordinals[:, 2] != novel.query_ordinals[:, 1]).all())
+
+
 def test_zero_difficulty_third_slot_is_redundant_but_fully_visible() -> None:
     batch = generate_procedural_shape_batch(
         384, span=3, query_count=1, vocabulary=2, seed=27007,
