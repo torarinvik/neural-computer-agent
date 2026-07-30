@@ -208,6 +208,7 @@ def generate_procedural_shape_batch(
         objective: str = "recognition",
         query_count: int | None = None,
         new_slot_difficulty: float = 1.0,
+        query_frontier_difficulty: float = 1.0,
         blank_presentation: bool = False,
         reverse_presentation: bool = False,
         flip_candidates: bool = False,
@@ -229,6 +230,8 @@ def generate_procedural_shape_batch(
         raise ValueError("query count must be within [1, span]")
     if not 0.0 <= new_slot_difficulty <= 1.0:
         raise ValueError("new slot difficulty must be within [0, 1]")
+    if not 0.0 <= query_frontier_difficulty <= 1.0:
+        raise ValueError("query frontier difficulty must be within [0, 1]")
     if not 2 <= vocabulary <= 4:
         raise ValueError("vocabulary must be within [2, 4]")
     generator = torch.Generator().manual_seed(seed)
@@ -277,6 +280,19 @@ def generate_procedural_shape_batch(
         # is consequently independent of identity, ordinal, and correct action.
         query_ordinals[row] = torch.tensor(
             permutations[int(permutation_ids[row])])
+    if span == 3 and query_count >= 2 and query_frontier_difficulty < 1.0:
+        frontier_rows = query_ordinals[:, 1] == span - 1
+        frontier_indices = torch.where(frontier_rows)[0]
+        keep_count = round(
+            len(frontier_indices) * query_frontier_difficulty)
+        keep = frontier_indices[
+            torch.randperm(
+                len(frontier_indices), generator=generator)[:keep_count]]
+        demote = frontier_rows.clone()
+        demote[keep] = False
+        moved = query_ordinals[demote, 1].clone()
+        query_ordinals[demote, 1] = query_ordinals[demote, 2]
+        query_ordinals[demote, 2] = moved
     gather_frames = query_ordinals[:, :, None, None, None].expand_as(queries)
     queries = torch.gather(queries, 1, gather_frames)
     candidates = torch.gather(candidates, 1, query_ordinals)
@@ -407,12 +423,14 @@ def evaluate_procedural_shape_span(
         device: torch.device,
         objective: str = "recognition",
         query_count: int | None = None,
-        new_slot_difficulty: float = 1.0) -> dict[str, object]:
+        new_slot_difficulty: float = 1.0,
+        query_frontier_difficulty: float = 1.0) -> dict[str, object]:
     model.eval()
     kwargs = dict(
         count=count, span=span, vocabulary=vocabulary, seed=seed,
         nuisance=nuisance, heldout=True, objective=objective,
         query_count=query_count, new_slot_difficulty=new_slot_difficulty,
+        query_frontier_difficulty=query_frontier_difficulty,
         device=device)
     normal_batch = generate_procedural_shape_batch(**kwargs)
     blank_batch = generate_procedural_shape_batch(
@@ -444,6 +462,16 @@ def evaluate_procedural_shape_span(
         ordinal_accuracies.append(
             float(normal["rewards"][selected].mean())
             if bool(selected.any()) else None)
+    query_position_and_ordinal_accuracies = []
+    for query_position in range(normal_batch.query_ordinals.shape[1]):
+        row = []
+        for ordinal in range(span):
+            selected = (
+                normal_batch.query_ordinals[:, query_position] == ordinal)
+            row.append(
+                float(normal["rewards"][:, query_position][selected].mean())
+                if bool(selected.any()) else None)
+        query_position_and_ordinal_accuracies.append(row)
     new_slot_selected = (
         normal_batch.new_slot_independent[:, None]
         & (normal_batch.query_ordinals == span - 1)
@@ -464,6 +492,8 @@ def evaluate_procedural_shape_span(
         "accuracy_by_ordinal": [
             float(value) for value in normal["rewards"].mean(0)],
         "accuracy_by_presented_ordinal": ordinal_accuracies,
+        "accuracy_by_query_position_and_presented_ordinal": (
+            query_position_and_ordinal_accuracies),
         "independent_new_slot_queries": int(new_slot_selected.sum()),
         "independent_new_slot_accuracy": (
             float(normal["rewards"][new_slot_selected].mean())
@@ -510,6 +540,11 @@ def main() -> None:
         help=(
             "for span >=3, fraction of independently sampled final identities; "
             "all evidence remains fully visible so capacity is the only axis"))
+    parser.add_argument(
+        "--query-frontier-difficulty", type=float, default=1.0,
+        help=(
+            "fraction of balanced third-ordinal second queries admitted; "
+            "zero restricts query two to mastered earlier ordinals"))
     parser.add_argument(
         "--new-slot-novelty-weight", type=float, default=1.0,
         help=(
@@ -577,6 +612,17 @@ def main() -> None:
     parser.add_argument(
         "--train-relation-adapter-only", action="store_true",
         help="freeze inherited parameters and train only the relation adapter")
+    parser.add_argument(
+        "--action-adapter-width", type=int, default=0,
+        help=(
+            "append a zero-output generic state-query action residual when "
+            "upgrading a checkpoint"))
+    parser.add_argument(
+        "--action-adapter-gated", action="store_true",
+        help="learn when the generic action residual should affect behavior")
+    parser.add_argument(
+        "--train-action-adapter-only", action="store_true",
+        help="freeze inherited parameters and train only the action adapter")
     parser.add_argument("--intention-width", type=int, default=16)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument("--exploration", type=float, default=0.10)
@@ -666,7 +712,9 @@ def main() -> None:
         "workspace_slot_addressing": args.addressed_workspace,
         "relation_adapter_width": args.relation_adapter_width,
         "relation_adapter_layer_norm": args.relation_adapter_layer_norm,
-        "relation_adapter_gated": args.relation_adapter_gated}
+        "relation_adapter_gated": args.relation_adapter_gated,
+        "action_adapter_width": args.action_adapter_width,
+        "action_adapter_gated": args.action_adapter_gated}
     payload = None
     if args.checkpoint_in is not None:
         payload = torch.load(
@@ -686,6 +734,15 @@ def main() -> None:
                 args.relation_adapter_layer_norm)
             configuration["relation_adapter_gated"] = (
                 args.relation_adapter_gated)
+        if args.action_adapter_width:
+            inherited_width = int(
+                configuration.get("action_adapter_width", 0))
+            if inherited_width not in (0, args.action_adapter_width):
+                raise ValueError(
+                    "cannot resize an existing action adapter")
+            configuration["action_adapter_width"] = args.action_adapter_width
+            configuration["action_adapter_gated"] = (
+                args.action_adapter_gated)
     model = UnifiedCognitiveController(**configuration).to(device)
     if payload is not None:
         upgrading_workspace = (
@@ -700,11 +757,20 @@ def main() -> None:
             args.relation_adapter_gated
             and not payload["model_configuration"].get(
                 "relation_adapter_gated", False))
+        upgrading_action = (
+            args.action_adapter_width > 0
+            and not payload["model_configuration"].get(
+                "action_adapter_width", 0))
+        upgrading_action_gate = (
+            args.action_adapter_gated
+            and not payload["model_configuration"].get(
+                "action_adapter_gated", False))
         incompatible = model.load_state_dict(
             payload["state_dict"],
             strict=not (
                 upgrading_workspace or upgrading_relation
-                or upgrading_relation_gate))
+                or upgrading_relation_gate or upgrading_action
+                or upgrading_action_gate))
         allowed_missing = {
             "workspace_read_address_scale",
             "workspace_write_address_scale",
@@ -717,7 +783,13 @@ def main() -> None:
                 and name.startswith("relation_adapter."))
             and not (
                 upgrading_relation_gate
-                and name.startswith("relation_adapter_gate."))}
+                and name.startswith("relation_adapter_gate."))
+            and not (
+                upgrading_action
+                and name.startswith("action_adapter."))
+            and not (
+                upgrading_action_gate
+                and name.startswith("action_adapter_gate."))}
         if (
                 unexpected_missing
                 or incompatible.unexpected_keys):
@@ -731,6 +803,15 @@ def main() -> None:
                 "relation-adapter-only training requires an adapter")
         for name, parameter in model.named_parameters():
             parameter.requires_grad_(name.startswith("relation_adapter"))
+    if args.train_action_adapter_only:
+        if args.train_relation_adapter_only:
+            raise ValueError(
+                "choose only one adapter-only training mode")
+        if model.action_adapter is None:
+            raise ValueError(
+                "action-adapter-only training requires an adapter")
+        for name, parameter in model.named_parameters():
+            parameter.requires_grad_(name.startswith("action_adapter"))
     optimizer = torch.optim.AdamW(
         (parameter for parameter in model.parameters()
          if parameter.requires_grad),
@@ -782,6 +863,8 @@ def main() -> None:
             new_slot_difficulty=(
                 args.new_slot_difficulty
                 if train_on_target else train_slot_difficulty),
+            query_frontier_difficulty=(
+                args.query_frontier_difficulty if train_on_target else 1.0),
             device=device)
         result = rollout_procedural_shape_span(
             model, batch, sample_actions=True,
@@ -824,10 +907,15 @@ def main() -> None:
                     nuisance=nuisance, device=device,
                     objective=args.objective,
                     query_count=target_query_count,
-                    new_slot_difficulty=args.new_slot_difficulty)
+                    new_slot_difficulty=args.new_slot_difficulty,
+                    query_frontier_difficulty=args.query_frontier_difficulty)
                 row["heldout_accuracy"] = curve["accuracy"]
                 row["heldout_accuracy_by_presented_ordinal"] = (
                     curve["accuracy_by_presented_ordinal"])
+                row[
+                    "heldout_accuracy_by_query_position_and_presented_ordinal"
+                ] = curve[
+                    "accuracy_by_query_position_and_presented_ordinal"]
                 row["heldout_independent_new_slot_accuracy"] = (
                     curve["independent_new_slot_accuracy"])
                 row["blank_presentation_accuracy"] = (
@@ -840,13 +928,15 @@ def main() -> None:
         vocabulary=args.vocabulary, seed=args.seed + 10_000_000,
         nuisance=nuisance, device=device, objective=args.objective,
         query_count=target_query_count,
-        new_slot_difficulty=args.new_slot_difficulty)
+        new_slot_difficulty=args.new_slot_difficulty,
+        query_frontier_difficulty=args.query_frontier_difficulty)
     floor_audit = evaluate_procedural_shape_span(
         model, count=args.test_episodes, span=args.span,
         vocabulary=args.vocabulary, seed=args.seed + 11_000_000,
         nuisance=floor_nuisance, device=device, objective=args.objective,
         query_count=target_query_count,
-        new_slot_difficulty=args.new_slot_difficulty)
+        new_slot_difficulty=args.new_slot_difficulty,
+        query_frontier_difficulty=args.query_frontier_difficulty)
     rehearsal_audits = {
         f"span{span}:queries{query_count}:slot{slot}:randomness{level}":
         evaluate_procedural_shape_span(
@@ -865,8 +955,10 @@ def main() -> None:
         if all(
                 all(
                     value is None or value >= args.mastery_threshold
-                    for value in later[
-                        "heldout_accuracy_by_presented_ordinal"])
+                    for query_position in later[
+                        "heldout_accuracy_by_query_position_and_presented_ordinal"
+                    ]
+                    for value in query_position)
                 and (
                     later["heldout_independent_new_slot_accuracy"] is None
                     or later["heldout_independent_new_slot_accuracy"]
@@ -881,9 +973,11 @@ def main() -> None:
         "span": args.span,
         "query_count": target_query_count,
         "new_slot_difficulty": args.new_slot_difficulty,
+        "query_frontier_difficulty": args.query_frontier_difficulty,
         "new_slot_novelty_weight": args.new_slot_novelty_weight,
         "binary_outcomes_completed": args.complete_binary_outcomes,
         "train_relation_adapter_only": args.train_relation_adapter_only,
+        "train_action_adapter_only": args.train_action_adapter_only,
         "vocabulary": args.vocabulary,
         "objective": args.objective,
         "randomness": args.randomness,

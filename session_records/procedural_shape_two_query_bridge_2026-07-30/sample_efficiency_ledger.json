@@ -1,0 +1,49 @@
+{
+  "schema": "procedural-shape-two-query-bridge-ledger-v1",
+  "learner_visible_information": "RGB, own opaque attempted actions, scalar verifier outcomes",
+  "replayed_examples": 0,
+  "randomness": 0.135,
+  "mastery_gate": {
+    "overall_minimum": 0.95,
+    "every_populated_query_position_by_ordinal_cell_minimum": 0.95,
+    "retained_span3_query1_minimum": 0.95,
+    "retained_span2_query2_minimum": 0.95
+  },
+  "primary": {
+    "seed": 29431,
+    "query_frontier_difficulty": 0.0,
+    "stable_target_bits": 5376,
+    "final_accuracy": 0.98193359375,
+    "weakest_populated_cell": 0.970703125,
+    "span3_query1_retention": 0.990234375,
+    "span2_query2_retention": 0.99169921875
+  },
+  "replica": {
+    "seed": 30431,
+    "query_frontier_difficulty": 0.0,
+    "stable_target_bits": 3072,
+    "final_accuracy": 0.9822590947151184,
+    "weakest_populated_cell": 0.9680989384651184,
+    "span3_query1_retention": 0.984375,
+    "span2_query2_retention": 0.9884440302848816
+  },
+  "reward_shuffled_control": {
+    "seed": 30531,
+    "stable_gate_reached": false,
+    "final_accuracy": 0.6959635615348816
+  },
+  "rejected_full_difficulty_adapter": {
+    "seed": 29131,
+    "target_bits_observed": 38400,
+    "stable_gate_reached": false,
+    "second_query_third_ordinal_accuracy": 0.5478515625
+  },
+  "frontier_005_signal": {
+    "seed": 29531,
+    "target_bits_observed": 15360,
+    "stable_gate_reached": false,
+    "second_query_third_ordinal_accuracy": 0.6274510025978088
+  },
+  "current_frontier": "increase third-ordinal second-query exposure without starving its verifier signal"
+}
+

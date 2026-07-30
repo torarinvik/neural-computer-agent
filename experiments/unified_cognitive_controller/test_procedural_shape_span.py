@@ -4,7 +4,8 @@ from .environment import NULL_ACTION
 from .model import UnifiedCognitiveController
 from .train_procedural_shape_span import (
     ShapeNuisance, binary_outcome_complete_targets,
-    generate_procedural_shape_batch, nuisance_from_level,
+    evaluate_procedural_shape_span, generate_procedural_shape_batch,
+    nuisance_from_level,
     nuisance_with_overrides, rollout_procedural_shape_span)
 
 
@@ -132,6 +133,20 @@ def test_rollout_uses_literal_model_device_fast_memory() -> None:
     assert result["actions"].shape == (32, 2)
 
 
+def test_evaluation_exposes_every_query_position_by_ordinal_cell() -> None:
+    model = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8)
+    audit = evaluate_procedural_shape_span(
+        model, count=384, span=3, vocabulary=2, seed=27011,
+        nuisance=nuisance_from_level(0.135), device=torch.device("cpu"),
+        query_count=2)
+    cells = audit[
+        "accuracy_by_query_position_and_presented_ordinal"]
+    assert len(cells) == 2
+    assert all(len(row) == 3 for row in cells)
+    assert all(value is not None for row in cells for value in row)
+
+
 def test_addressed_workspace_breaks_content_addressing_symmetry() -> None:
     batch = generate_procedural_shape_batch(
         384, span=3, vocabulary=2, seed=27010,
@@ -177,6 +192,19 @@ def test_single_query_span_three_still_balances_every_ordinal() -> None:
         minlength=2).tolist() == [192, 192]
     assert batch.query_ordinals.flatten().bincount(
         minlength=3).tolist() == [128, 128, 128]
+
+
+def test_query_frontier_starts_without_third_ordinal_second_queries() -> None:
+    floor = generate_procedural_shape_batch(
+        384, span=3, query_count=2, vocabulary=2, seed=27012,
+        nuisance=nuisance_from_level(0.135),
+        query_frontier_difficulty=0.0)
+    full = generate_procedural_shape_batch(
+        384, span=3, query_count=2, vocabulary=2, seed=27012,
+        nuisance=nuisance_from_level(0.135),
+        query_frontier_difficulty=1.0)
+    assert not bool((floor.query_ordinals[:, 1] == 2).any())
+    assert int((full.query_ordinals[:, 1] == 2).sum()) == 128
 
 
 def test_zero_difficulty_third_slot_is_redundant_but_fully_visible() -> None:
