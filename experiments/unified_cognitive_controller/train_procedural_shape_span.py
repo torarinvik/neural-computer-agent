@@ -60,6 +60,7 @@ class ProceduralShapeBatch:
     sequence_identities: torch.Tensor
     candidate_identities: torch.Tensor
     query_ordinals: torch.Tensor
+    new_slot_independent: torch.Tensor
     logical_lifetime_ids: torch.Tensor
     objective: str
 
@@ -205,6 +206,8 @@ def generate_procedural_shape_batch(
         count: int, *, span: int, vocabulary: int, seed: int,
         nuisance: ShapeNuisance, heldout: bool = False,
         objective: str = "recognition",
+        query_count: int | None = None,
+        new_slot_difficulty: float = 1.0,
         blank_presentation: bool = False,
         reverse_presentation: bool = False,
         flip_candidates: bool = False,
@@ -220,11 +223,28 @@ def generate_procedural_shape_batch(
             f"count must be a positive multiple of {design_patterns}")
     if span < 1:
         raise ValueError("span must be positive")
+    if query_count is None:
+        query_count = span
+    if not 1 <= query_count <= span:
+        raise ValueError("query count must be within [1, span]")
+    if not 0.0 <= new_slot_difficulty <= 1.0:
+        raise ValueError("new slot difficulty must be within [0, 1]")
     if not 2 <= vocabulary <= 4:
         raise ValueError("vocabulary must be within [2, 4]")
     generator = torch.Generator().manual_seed(seed)
     sequence, match, permutation_ids = _balanced_logical_content(
         count, span, vocabulary, generator, len(permutations))
+    independent_mask = torch.ones(count, dtype=torch.bool)
+    if span >= 3 and new_slot_difficulty < 1.0:
+        # A gradual capacity bridge: only a deterministic fraction of rows
+        # receive an independently sampled final item. Other rows make the
+        # final identity redundant with item one.
+        independent_count = round(count * new_slot_difficulty)
+        independent_rows = torch.randperm(
+            count, generator=generator)[:independent_count]
+        independent_mask = torch.zeros(count, dtype=torch.bool)
+        independent_mask[independent_rows] = True
+        sequence[~independent_mask, -1] = sequence[~independent_mask, 0]
     offsets = 1 + torch.randint(
         0, vocabulary - 1, (count, span), generator=generator)
     candidates = torch.where(
@@ -261,6 +281,10 @@ def generate_procedural_shape_batch(
     queries = torch.gather(queries, 1, gather_frames)
     candidates = torch.gather(candidates, 1, query_ordinals)
     answers = torch.gather(answers, 1, query_ordinals)
+    queries = queries[:, :query_count]
+    candidates = candidates[:, :query_count]
+    answers = answers[:, :query_count]
+    query_ordinals = query_ordinals[:, :query_count]
     if blank_presentation:
         backgrounds = presentation[:, :, :, :1, :1]
         presentation = backgrounds.expand_as(presentation).clone()
@@ -269,7 +293,7 @@ def generate_procedural_shape_batch(
     return ProceduralShapeBatch(
         presentation.to(device), queries.to(device), answers.to(device),
         sequence.to(device), candidates.to(device), query_ordinals.to(device),
-        lifetime_ids, objective)
+        independent_mask.to(device), lifetime_ids, objective)
 
 
 def _reset_active_keep_workspace(state: ControllerState) -> ControllerState:
@@ -278,9 +302,21 @@ def _reset_active_keep_workspace(state: ControllerState) -> ControllerState:
         torch.zeros_like(state.latest_event))
 
 
+def binary_outcome_complete_targets(
+        attempted_actions: torch.Tensor,
+        outcomes: torch.Tensor) -> torch.Tensor:
+    """Recover the unique binary answer from own action and scalar outcome."""
+    if ACTIONS != 2:
+        raise ValueError("outcome completion is exact only for two actions")
+    return torch.where(
+        outcomes > 0.5, attempted_actions, 1 - attempted_actions)
+
+
 def rollout_procedural_shape_span(
         model: UnifiedCognitiveController, batch: ProceduralShapeBatch, *,
         sample_actions: bool, exploration: float = 0.10,
+        new_slot_novelty_weight: float = 1.0,
+        complete_binary_outcomes: bool = False,
         disable_workspace: bool = False,
         reset_active_before_query: bool = False,
         reset_all_before_query: bool = False,
@@ -303,7 +339,8 @@ def rollout_procedural_shape_span(
 
     actions, rewards, losses, logits = [], [], [], []
     previous_action, previous_reward = null, zeros
-    for index in range(batch.span):
+    query_count = int(batch.query_frames.shape[1])
+    for index in range(query_count):
         frame = batch.query_frames[:, index]
         if blank_ordinal_cues:
             frame = frame.clone()
@@ -322,8 +359,33 @@ def rollout_procedural_shape_span(
             action = output.logits.argmax(dim=-1)
         reward = (action == batch.correct_actions[:, index]).float()
         delivered = reward.roll(1) if shuffle_outcomes else reward
-        losses.append(attempted_success_loss(
-            output.logits, action, delivered))
+        if complete_binary_outcomes:
+            per_attempt_loss = torch.nn.functional.cross_entropy(
+                output.logits,
+                binary_outcome_complete_targets(action, delivered),
+                reduction="none")
+        elif new_slot_novelty_weight != 1.0:
+            selected_logit = output.logits.gather(
+                1, action.unsqueeze(1)).squeeze(1)
+            per_attempt_loss = torch.nn.functional.binary_cross_entropy_with_logits(
+                selected_logit, delivered, reduction="none")
+        else:
+            losses.append(attempted_success_loss(
+                output.logits, action, delivered))
+            per_attempt_loss = None
+        if per_attempt_loss is not None:
+            frontier = (
+                batch.new_slot_independent
+                & (batch.query_ordinals[:, index] == batch.span - 1)
+                if batch.span >= 3
+                else torch.zeros_like(
+                    batch.new_slot_independent, dtype=torch.bool))
+            weights = torch.where(
+                frontier,
+                torch.full_like(
+                    per_attempt_loss, new_slot_novelty_weight),
+                torch.ones_like(per_attempt_loss))
+            losses.append((per_attempt_loss * weights).sum() / weights.sum())
         actions.append(action)
         rewards.append(reward)
         logits.append(output.logits)
@@ -343,11 +405,15 @@ def evaluate_procedural_shape_span(
         model: UnifiedCognitiveController, *, count: int, span: int,
         vocabulary: int, seed: int, nuisance: ShapeNuisance,
         device: torch.device,
-        objective: str = "recognition") -> dict[str, object]:
+        objective: str = "recognition",
+        query_count: int | None = None,
+        new_slot_difficulty: float = 1.0) -> dict[str, object]:
     model.eval()
     kwargs = dict(
         count=count, span=span, vocabulary=vocabulary, seed=seed,
-        nuisance=nuisance, heldout=True, objective=objective, device=device)
+        nuisance=nuisance, heldout=True, objective=objective,
+        query_count=query_count, new_slot_difficulty=new_slot_difficulty,
+        device=device)
     normal_batch = generate_procedural_shape_batch(**kwargs)
     blank_batch = generate_procedural_shape_batch(
         **kwargs, blank_presentation=True)
@@ -372,6 +438,23 @@ def evaluate_procedural_shape_span(
     def accuracy(result: dict[str, torch.Tensor]) -> float:
         return float(result["rewards"].mean())
 
+    ordinal_accuracies = []
+    for ordinal in range(span):
+        selected = normal_batch.query_ordinals == ordinal
+        ordinal_accuracies.append(
+            float(normal["rewards"][selected].mean())
+            if bool(selected.any()) else None)
+    new_slot_selected = (
+        normal_batch.new_slot_independent[:, None]
+        & (normal_batch.query_ordinals == span - 1)
+        if span >= 3
+        else torch.zeros_like(
+            normal_batch.query_ordinals, dtype=torch.bool))
+    new_slot_conflict = (
+        new_slot_selected
+        & (
+            normal_batch.sequence_identities[:, -1:]
+            != normal_batch.sequence_identities[:, :1]))
     reverse_changed = (
         normal_batch.correct_actions != reverse_batch.correct_actions)
     candidate_changed = (
@@ -380,6 +463,15 @@ def evaluate_procedural_shape_span(
         "accuracy": accuracy(normal),
         "accuracy_by_ordinal": [
             float(value) for value in normal["rewards"].mean(0)],
+        "accuracy_by_presented_ordinal": ordinal_accuracies,
+        "independent_new_slot_queries": int(new_slot_selected.sum()),
+        "independent_new_slot_accuracy": (
+            float(normal["rewards"][new_slot_selected].mean())
+            if bool(new_slot_selected.any()) else None),
+        "conflicting_new_slot_queries": int(new_slot_conflict.sum()),
+        "conflicting_new_slot_accuracy": (
+            float(normal["rewards"][new_slot_conflict].mean())
+            if bool(new_slot_conflict.any()) else None),
         "blank_presentation_accuracy": accuracy(blank),
         "blank_ordinal_cue_accuracy": accuracy(cue_blank),
         "workspace_disabled_accuracy": accuracy(workspace_off),
@@ -410,6 +502,24 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--test-episodes", type=int, default=2048)
     parser.add_argument("--span", type=int, default=2)
+    parser.add_argument(
+        "--query-count", type=int, default=0,
+        help="queries per lifetime; zero means query every stored item")
+    parser.add_argument(
+        "--new-slot-difficulty", type=float, default=1.0,
+        help=(
+            "for span >=3, fraction of independently sampled final identities; "
+            "all evidence remains fully visible so capacity is the only axis"))
+    parser.add_argument(
+        "--new-slot-novelty-weight", type=float, default=1.0,
+        help=(
+            "loss weight for verifier outcomes on independent new-slot "
+            "queries; values above one prioritize rare frontier experience"))
+    parser.add_argument(
+        "--complete-binary-outcomes", action="store_true",
+        help=(
+            "use the exact correct binary action implied by own attempted "
+            "action and scalar success/failure"))
     parser.add_argument("--vocabulary", type=int, default=2)
     parser.add_argument(
         "--objective", choices=("visible_identity", "recognition"),
@@ -431,8 +541,42 @@ def main() -> None:
         help=(
             "comma-separated mastered scalar rungs to interleave with the "
             "target; each is audited and accounted separately"))
+    parser.add_argument(
+        "--rehearsal-spans", default="",
+        help=(
+            "comma-separated spans aligned with rehearsal-randomness; omit "
+            "to rehearse the target span"))
+    parser.add_argument(
+        "--rehearsal-query-counts", default="",
+        help=(
+            "comma-separated query counts aligned with rehearsal streams; "
+            "omit to query every item in each rehearsal span"))
+    parser.add_argument(
+        "--rehearsal-new-slot-difficulties", default="",
+        help=(
+            "comma-separated new-slot difficulties aligned with rehearsal "
+            "streams; defaults to fully active"))
     parser.add_argument("--width", type=int, default=64)
     parser.add_argument("--workspace-slots", type=int, default=4)
+    parser.add_argument(
+        "--addressed-workspace", action="store_true",
+        help=(
+            "give generic RAM slots distinct learnable addresses; when "
+            "upgrading a checkpoint only the two address scales are new"))
+    parser.add_argument(
+        "--relation-adapter-width", type=int, default=0,
+        help=(
+            "append a zero-output generic state-query relation adapter when "
+            "upgrading a checkpoint"))
+    parser.add_argument(
+        "--relation-adapter-layer-norm", action="store_true",
+        help="normalize the generic state-query vector before the adapter")
+    parser.add_argument(
+        "--relation-adapter-gated", action="store_true",
+        help="learn when the generic relation residual should affect intention")
+    parser.add_argument(
+        "--train-relation-adapter-only", action="store_true",
+        help="freeze inherited parameters and train only the relation adapter")
     parser.add_argument("--intention-width", type=int, default=16)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument("--exploration", type=float, default=0.10)
@@ -463,29 +607,145 @@ def main() -> None:
     if args.rehearse_floor and 0.0 not in rehearsal_levels:
         rehearsal_levels.insert(0, 0.0)
     if any(
-            not 0.0 <= level <= 1.0 or level == args.randomness
+            not 0.0 <= level <= 1.0
             for level in rehearsal_levels):
         raise ValueError(
-            "rehearsal randomness must be in [0, 1] and differ from target")
+            "rehearsal randomness must be within [0, 1]")
     rehearsal_nuisances = [
         nuisance_from_level(level) for level in rehearsal_levels]
+    rehearsal_spans = [
+        int(value) for value in args.rehearsal_spans.split(",") if value]
+    if rehearsal_spans and len(rehearsal_spans) != len(rehearsal_levels):
+        raise ValueError(
+            "rehearsal spans must align one-to-one with randomness levels")
+    if not rehearsal_spans:
+        rehearsal_spans = [args.span] * len(rehearsal_levels)
+    if any(span < 1 for span in rehearsal_spans):
+        raise ValueError("rehearsal spans must be positive")
+    target_query_count = args.query_count or args.span
+    if not 1 <= target_query_count <= args.span:
+        raise ValueError("query count must be within target span")
+    if args.new_slot_novelty_weight < 1.0:
+        raise ValueError("new-slot novelty weight must be at least one")
+    rehearsal_query_counts = [
+        int(value) for value in args.rehearsal_query_counts.split(",")
+        if value]
+    if (
+            rehearsal_query_counts
+            and len(rehearsal_query_counts) != len(rehearsal_levels)):
+        raise ValueError(
+            "rehearsal query counts must align with rehearsal streams")
+    if not rehearsal_query_counts:
+        rehearsal_query_counts = [
+            target_query_count if span == args.span else span
+            for span in rehearsal_spans]
+    if any(
+            not 1 <= count <= span for count, span in zip(
+                rehearsal_query_counts, rehearsal_spans)):
+        raise ValueError(
+            "each rehearsal query count must be within its span")
+    rehearsal_slot_difficulties = [
+        float(value)
+        for value in args.rehearsal_new_slot_difficulties.split(",")
+        if value]
+    if (
+            rehearsal_slot_difficulties
+            and len(rehearsal_slot_difficulties) != len(rehearsal_levels)):
+        raise ValueError(
+            "rehearsal slot difficulties must align with streams")
+    if not rehearsal_slot_difficulties:
+        rehearsal_slot_difficulties = [1.0] * len(rehearsal_levels)
+    if any(
+            not 0.0 <= value <= 1.0
+            for value in rehearsal_slot_difficulties):
+        raise ValueError(
+            "rehearsal slot difficulties must be within [0, 1]")
     configuration: dict[str, object] = {
         "width": args.width, "workspace_slots": args.workspace_slots,
-        "intention_width": args.intention_width}
+        "intention_width": args.intention_width,
+        "workspace_slot_addressing": args.addressed_workspace,
+        "relation_adapter_width": args.relation_adapter_width,
+        "relation_adapter_layer_norm": args.relation_adapter_layer_norm,
+        "relation_adapter_gated": args.relation_adapter_gated}
     payload = None
     if args.checkpoint_in is not None:
         payload = torch.load(
             args.checkpoint_in, map_location=device, weights_only=False)
         configuration = dict(payload["model_configuration"])
+        if args.addressed_workspace:
+            configuration["workspace_slot_addressing"] = True
+        if args.relation_adapter_width:
+            inherited_width = int(
+                configuration.get("relation_adapter_width", 0))
+            if inherited_width not in (0, args.relation_adapter_width):
+                raise ValueError(
+                    "cannot resize an existing relation adapter")
+            configuration["relation_adapter_width"] = (
+                args.relation_adapter_width)
+            configuration["relation_adapter_layer_norm"] = (
+                args.relation_adapter_layer_norm)
+            configuration["relation_adapter_gated"] = (
+                args.relation_adapter_gated)
     model = UnifiedCognitiveController(**configuration).to(device)
     if payload is not None:
-        model.load_state_dict(payload["state_dict"])
+        upgrading_workspace = (
+            args.addressed_workspace
+            and not payload["model_configuration"].get(
+                "workspace_slot_addressing", False))
+        upgrading_relation = (
+            args.relation_adapter_width > 0
+            and not payload["model_configuration"].get(
+                "relation_adapter_width", 0))
+        upgrading_relation_gate = (
+            args.relation_adapter_gated
+            and not payload["model_configuration"].get(
+                "relation_adapter_gated", False))
+        incompatible = model.load_state_dict(
+            payload["state_dict"],
+            strict=not (
+                upgrading_workspace or upgrading_relation
+                or upgrading_relation_gate))
+        allowed_missing = {
+            "workspace_read_address_scale",
+            "workspace_write_address_scale",
+        }
+        unexpected_missing = {
+            name for name in incompatible.missing_keys
+            if name not in allowed_missing
+            and not (
+                upgrading_relation
+                and name.startswith("relation_adapter."))
+            and not (
+                upgrading_relation_gate
+                and name.startswith("relation_adapter_gate."))}
+        if (
+                unexpected_missing
+                or incompatible.unexpected_keys):
+            raise RuntimeError(
+                "unexpected checkpoint incompatibility: "
+                f"missing={incompatible.missing_keys}, "
+                f"unexpected={incompatible.unexpected_keys}")
+    if args.train_relation_adapter_only:
+        if model.relation_adapter is None:
+            raise ValueError(
+                "relation-adapter-only training requires an adapter")
+        for name, parameter in model.named_parameters():
+            parameter.requires_grad_(name.startswith("relation_adapter"))
     optimizer = torch.optim.AdamW(
-        model.parameters(), lr=args.learning_rate, weight_decay=1e-5)
+        (parameter for parameter in model.parameters()
+         if parameter.requires_grad),
+        lr=args.learning_rate, weight_decay=1e-5)
     history: list[dict[str, object]] = []
     target_updates = 0
     rehearsal_update_counts = {
-        str(level): 0 for level in rehearsal_levels}
+        (
+            f"span{span}:queries{query_count}:slot{slot}:"
+            f"randomness{level}"
+        ): 0
+        for span, query_count, slot, level in zip(
+            rehearsal_spans, rehearsal_query_counts,
+            rehearsal_slot_difficulties, rehearsal_levels)}
+    rehearsal_verifier_bits = dict.fromkeys(rehearsal_update_counts, 0)
     started = perf_counter()
     for step in range(1, args.steps + 1):
         model.train()
@@ -493,22 +753,42 @@ def main() -> None:
         train_on_target = schedule_index == 0
         if train_on_target:
             train_nuisance = nuisance
+            train_span = args.span
+            train_query_count = target_query_count
             train_distribution = "target"
             target_updates += 1
         else:
             rehearsal_index = schedule_index - 1
             train_nuisance = rehearsal_nuisances[rehearsal_index]
+            train_span = rehearsal_spans[rehearsal_index]
+            train_query_count = rehearsal_query_counts[rehearsal_index]
+            train_slot_difficulty = rehearsal_slot_difficulties[
+                rehearsal_index]
             train_distribution = (
-                f"rehearsal:{rehearsal_levels[rehearsal_index]}")
-            key = str(rehearsal_levels[rehearsal_index])
+                f"rehearsal:span{train_span}:queries{train_query_count}:"
+                f"slot{train_slot_difficulty}:"
+                f"randomness{rehearsal_levels[rehearsal_index]}")
+            key = (
+                f"span{train_span}:queries{train_query_count}:"
+                f"slot{train_slot_difficulty}:"
+                f"randomness{rehearsal_levels[rehearsal_index]}")
             rehearsal_update_counts[key] += 1
+            rehearsal_verifier_bits[key] += (
+                args.batch_size * train_query_count)
         batch = generate_procedural_shape_batch(
-            args.batch_size, span=args.span, vocabulary=args.vocabulary,
+            args.batch_size, span=train_span, vocabulary=args.vocabulary,
             seed=args.seed + step * args.batch_size, nuisance=train_nuisance,
-            objective=args.objective, device=device)
+            objective=args.objective, query_count=train_query_count,
+            new_slot_difficulty=(
+                args.new_slot_difficulty
+                if train_on_target else train_slot_difficulty),
+            device=device)
         result = rollout_procedural_shape_span(
             model, batch, sample_actions=True,
             exploration=args.exploration,
+            new_slot_novelty_weight=(
+                args.new_slot_novelty_weight if train_on_target else 1.0),
+            complete_binary_outcomes=args.complete_binary_outcomes,
             shuffle_outcomes=args.shuffle_outcomes)
         optimizer.zero_grad(set_to_none=True)
         result["loss"].backward()
@@ -519,12 +799,18 @@ def main() -> None:
                 "update": step,
                 "unique_logical_lifetimes": step * args.batch_size,
                 "unique_verifier_bits": (
-                    step * args.batch_size * args.span),
+                    target_updates * args.batch_size * target_query_count
+                    + sum(rehearsal_verifier_bits.values())),
                 "target_verifier_bits": (
-                    target_updates * args.batch_size * args.span),
+                    target_updates * args.batch_size * target_query_count),
                 "floor_rehearsal_bits": (
-                    rehearsal_update_counts.get(
-                        "0.0", 0) * args.batch_size * args.span),
+                    sum(
+                        bits for key, bits
+                        in rehearsal_verifier_bits.items()
+                        if key.startswith(
+                            f"span{args.span}:"
+                            f"queries{target_query_count}:")
+                        and key.endswith("randomness0.0"))),
                 "train_distribution": train_distribution,
                 "training_accuracy": float(result["rewards"].mean()),
                 "loss": float(result["loss"].detach())}
@@ -536,8 +822,14 @@ def main() -> None:
                     vocabulary=args.vocabulary,
                     seed=args.seed + 20_000_000 + step,
                     nuisance=nuisance, device=device,
-                    objective=args.objective)
+                    objective=args.objective,
+                    query_count=target_query_count,
+                    new_slot_difficulty=args.new_slot_difficulty)
                 row["heldout_accuracy"] = curve["accuracy"]
+                row["heldout_accuracy_by_presented_ordinal"] = (
+                    curve["accuracy_by_presented_ordinal"])
+                row["heldout_independent_new_slot_accuracy"] = (
+                    curve["independent_new_slot_accuracy"])
                 row["blank_presentation_accuracy"] = (
                     curve["blank_presentation_accuracy"])
             history.append(row)
@@ -546,24 +838,39 @@ def main() -> None:
     audit = evaluate_procedural_shape_span(
         model, count=args.test_episodes, span=args.span,
         vocabulary=args.vocabulary, seed=args.seed + 10_000_000,
-        nuisance=nuisance, device=device, objective=args.objective)
+        nuisance=nuisance, device=device, objective=args.objective,
+        query_count=target_query_count,
+        new_slot_difficulty=args.new_slot_difficulty)
     floor_audit = evaluate_procedural_shape_span(
         model, count=args.test_episodes, span=args.span,
         vocabulary=args.vocabulary, seed=args.seed + 11_000_000,
-        nuisance=floor_nuisance, device=device, objective=args.objective)
+        nuisance=floor_nuisance, device=device, objective=args.objective,
+        query_count=target_query_count,
+        new_slot_difficulty=args.new_slot_difficulty)
     rehearsal_audits = {
-        str(level): evaluate_procedural_shape_span(
-            model, count=args.test_episodes, span=args.span,
+        f"span{span}:queries{query_count}:slot{slot}:randomness{level}":
+        evaluate_procedural_shape_span(
+            model, count=args.test_episodes, span=span,
             vocabulary=args.vocabulary,
             seed=args.seed + 12_000_000 + index,
             nuisance=rehearsal_nuisances[index], device=device,
-            objective=args.objective)
-        for index, level in enumerate(rehearsal_levels)}
+            objective=args.objective, query_count=query_count,
+            new_slot_difficulty=slot)
+        for index, (span, query_count, slot, level) in enumerate(zip(
+            rehearsal_spans, rehearsal_query_counts,
+            rehearsal_slot_difficulties, rehearsal_levels))}
     prefixes = [row for row in history if "heldout_accuracy" in row]
     stable_bits = None
     for index, row in enumerate(prefixes):
         if all(
-                float(later["heldout_accuracy"]) >= args.mastery_threshold
+                all(
+                    value is None or value >= args.mastery_threshold
+                    for value in later[
+                        "heldout_accuracy_by_presented_ordinal"])
+                and (
+                    later["heldout_independent_new_slot_accuracy"] is None
+                    or later["heldout_independent_new_slot_accuracy"]
+                    >= args.mastery_threshold)
                 for later in prefixes[index:]):
             stable_bits = int(row["target_verifier_bits"])
             break
@@ -572,6 +879,11 @@ def main() -> None:
         "learner_visible_information": (
             "RGB streams, own opaque actions, scalar attempted-action outcome"),
         "span": args.span,
+        "query_count": target_query_count,
+        "new_slot_difficulty": args.new_slot_difficulty,
+        "new_slot_novelty_weight": args.new_slot_novelty_weight,
+        "binary_outcomes_completed": args.complete_binary_outcomes,
+        "train_relation_adapter_only": args.train_relation_adapter_only,
         "vocabulary": args.vocabulary,
         "objective": args.objective,
         "randomness": args.randomness,
@@ -579,15 +891,24 @@ def main() -> None:
         "floor_nuisance": asdict(floor_nuisance),
         "rehearse_floor": args.rehearse_floor,
         "rehearsal_randomness": rehearsal_levels,
+        "rehearsal_spans": rehearsal_spans,
+        "rehearsal_query_counts": rehearsal_query_counts,
+        "rehearsal_new_slot_difficulties": rehearsal_slot_difficulties,
         "rehearsal_update_counts": rehearsal_update_counts,
+        "rehearsal_verifier_bits": rehearsal_verifier_bits,
         "optimizer_updates": args.steps,
         "unique_logical_lifetimes": args.steps * args.batch_size,
-        "unique_verifier_bits": args.steps * args.batch_size * args.span,
+        "unique_verifier_bits": (
+            target_updates * args.batch_size * target_query_count
+            + sum(rehearsal_verifier_bits.values())),
         "target_verifier_bits": (
-            target_updates * args.batch_size * args.span),
+            target_updates * args.batch_size * target_query_count),
         "floor_rehearsal_bits": (
-            rehearsal_update_counts.get(
-                "0.0", 0) * args.batch_size * args.span),
+            sum(
+                bits for key, bits in rehearsal_verifier_bits.items()
+                if key.startswith(
+                    f"span{args.span}:queries{target_query_count}:")
+                and key.endswith("randomness0.0"))),
         "replayed_examples": 0,
         "outcomes_shuffled": args.shuffle_outcomes,
         "mastery_threshold": args.mastery_threshold,

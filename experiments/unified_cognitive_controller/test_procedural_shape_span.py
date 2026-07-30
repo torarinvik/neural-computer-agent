@@ -1,8 +1,10 @@
 import torch
 
+from .environment import NULL_ACTION
 from .model import UnifiedCognitiveController
 from .train_procedural_shape_span import (
-    ShapeNuisance, generate_procedural_shape_batch, nuisance_from_level,
+    ShapeNuisance, binary_outcome_complete_targets,
+    generate_procedural_shape_batch, nuisance_from_level,
     nuisance_with_overrides, rollout_procedural_shape_span)
 
 
@@ -34,6 +36,13 @@ def test_shape_batch_is_deterministic_balanced_and_independently_rendered() -> N
     repeated = first.presentation_frames[
         torch.arange(32).unsqueeze(1), first.query_ordinals]
     assert not torch.equal(repeated[matching], first.query_frames[matching])
+
+
+def test_binary_outcome_completion_uses_only_action_and_success() -> None:
+    attempts = torch.tensor([0, 0, 1, 1])
+    outcomes = torch.tensor([1.0, 0.0, 1.0, 0.0])
+    assert binary_outcome_complete_targets(
+        attempts, outcomes).tolist() == [0, 1, 1, 0]
 
 
 def test_nuisance_level_has_nonzero_floor_and_monotonic_axes() -> None:
@@ -121,3 +130,73 @@ def test_rollout_uses_literal_model_device_fast_memory() -> None:
     assert result["final_hidden"].device == model.actuator.weight.device
     assert result["final_workspace"].shape == (32, 2, 32)
     assert result["actions"].shape == (32, 2)
+
+
+def test_addressed_workspace_breaks_content_addressing_symmetry() -> None:
+    batch = generate_procedural_shape_batch(
+        384, span=3, vocabulary=2, seed=27010,
+        nuisance=nuisance_from_level(0.135), query_count=2,
+        new_slot_difficulty=0.3)
+    null = torch.full((batch.batch_size,), NULL_ACTION, dtype=torch.long)
+    zeros = torch.zeros(batch.batch_size)
+    collapsed = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8)
+    addressed = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        workspace_slot_addressing=True)
+    collapsed_state = collapsed.initial_state(
+        batch.batch_size, device="cpu")
+    addressed_state = addressed.initial_state(
+        batch.batch_size, device="cpu")
+
+    for index in range(batch.span):
+        _, collapsed_state = collapsed.step(
+            batch.presentation_frames[:, index], collapsed_state,
+            null, zeros, zeros)
+        _, addressed_state = addressed.step(
+            batch.presentation_frames[:, index], addressed_state,
+            null, zeros, zeros)
+
+    assert torch.equal(
+        collapsed_state.workspace,
+        collapsed_state.workspace[:, :1].expand_as(
+            collapsed_state.workspace))
+    assert not torch.equal(
+        addressed_state.workspace,
+        addressed_state.workspace[:, :1].expand_as(
+            addressed_state.workspace))
+
+
+def test_single_query_span_three_still_balances_every_ordinal() -> None:
+    batch = generate_procedural_shape_batch(
+        384, span=3, query_count=1, vocabulary=2, seed=27006,
+        nuisance=nuisance_from_level(0.0))
+    assert batch.presentation_frames.shape[:2] == (384, 3)
+    assert batch.query_frames.shape[:2] == (384, 1)
+    assert batch.correct_actions.flatten().bincount(
+        minlength=2).tolist() == [192, 192]
+    assert batch.query_ordinals.flatten().bincount(
+        minlength=3).tolist() == [128, 128, 128]
+
+
+def test_zero_difficulty_third_slot_is_redundant_but_fully_visible() -> None:
+    batch = generate_procedural_shape_batch(
+        384, span=3, query_count=1, vocabulary=2, seed=27007,
+        nuisance=nuisance_from_level(0.0), new_slot_difficulty=0.0)
+    assert torch.equal(
+        batch.sequence_identities[:, 2],
+        batch.sequence_identities[:, 0])
+    third = batch.presentation_frames[:, 2]
+    assert not torch.equal(third, third[:, :, :1, :1].expand_as(third))
+    assert batch.correct_actions.flatten().bincount(
+        minlength=2).tolist() == [192, 192]
+
+
+def test_zero_difficulty_teaches_every_ordinal_with_redundant_content() -> None:
+    floor = generate_procedural_shape_batch(
+        384, span=3, query_count=2, vocabulary=2, seed=27008,
+        nuisance=nuisance_from_level(0.0), new_slot_difficulty=0.0)
+    assert floor.query_ordinals.flatten().bincount(
+        minlength=3).tolist() == [256, 256, 256]
+    assert floor.correct_actions.flatten().bincount(
+        minlength=2).tolist() == [384, 384]

@@ -1,0 +1,29 @@
+{
+  "schema": "procedural-shape-span3-disposable-probe-v1",
+  "checkpoint": "/tmp/shape_span3_redundant_stable_27931.pt",
+  "diagnostic_only": true,
+  "probe_weights_discarded": true,
+  "agent_weights_changed": false,
+  "verifier_private_labels_used_only_by_probe": true,
+  "train_lifetimes": 4608,
+  "heldout_lifetimes": 2304,
+  "after_third_event_heldout_accuracy_percent": {
+    "hidden_identity_1": 99.65,
+    "hidden_identity_2": 99.70,
+    "hidden_identity_3": 99.65,
+    "workspace_mean_identity_1": 99.65,
+    "workspace_mean_identity_2": 99.05,
+    "workspace_mean_identity_3": 99.48,
+    "combined_identity_1": 99.57,
+    "combined_identity_2": 99.61,
+    "combined_identity_3": 99.83
+  },
+  "shuffled_final_combined_identity_3_percent": 43.36,
+  "state_query_action_probe_percent": {
+    "linear": 48.86,
+    "mlp_64": 98.94,
+    "mlp_256": 98.91,
+    "shuffled_mlp_64": 51.30
+  },
+  "conclusion": "All three identities survive in the frozen controller. The missing capability was nonlinear state-query binding, not storage capacity."
+}

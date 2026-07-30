@@ -1,0 +1,59 @@
+{
+  "schema": "procedural-shape-span3-ledger-v1",
+  "learner_visible_information": "RGB, own opaque attempted actions, scalar verifier outcomes",
+  "replayed_examples": 0,
+  "randomness": 0.135,
+  "mastery_gate": {
+    "overall_minimum": 0.95,
+    "every_presented_ordinal_minimum": 0.95,
+    "independent_new_slot_minimum": 0.95,
+    "retained_span2_minimum": 0.95
+  },
+  "shared_redundant_bridge": {
+    "phase1_target_bits": 6144,
+    "phase2_target_bits_to_stable_gate": 7680,
+    "cumulative_target_bits_to_stable_gate": 13824
+  },
+  "primary_independent_span3": {
+    "seed": 28331,
+    "target_bits_to_stable_gate": 11520,
+    "cumulative_lineage_target_bits_to_stable_gate": 25344,
+    "final_accuracy": 0.9801432490348816,
+    "per_ordinal": [
+      0.98583984375,
+      0.96826171875,
+      0.986328125
+    ],
+    "conflicting_new_slot_accuracy": 0.978515625,
+    "span2_retention": 0.9886881709098816
+  },
+  "replica_independent_span3": {
+    "seed": 28431,
+    "target_bits_to_stable_gate": 15360,
+    "cumulative_lineage_target_bits_to_stable_gate": 29184,
+    "final_accuracy": 0.97509765625,
+    "per_ordinal": [
+      0.98779296875,
+      0.95947265625,
+      0.97802734375
+    ],
+    "conflicting_new_slot_accuracy": 0.9677734375,
+    "span2_retention": 0.9866536259651184
+  },
+  "fresh_control": {
+    "seed": 28531,
+    "target_bits_observed": 15360,
+    "stable_gate_reached": false,
+    "final_accuracy": 0.4986979067325592
+  },
+  "shuffled_outcome_control": {
+    "seed": 28631,
+    "target_bits_observed": 15360,
+    "stable_gate_reached": false,
+    "final_accuracy": 0.5743815302848816,
+    "independent_new_slot_accuracy": 0.546875,
+    "conflicting_new_slot_accuracy": 0.4736328125
+  },
+  "conditional_new_relation_transfer_ratio_lower_bound": 1.3333333333333333,
+  "current_frontier": "retain all three memories across two or more sequential queries; zero-shot query-count two is 0.88753"
+}

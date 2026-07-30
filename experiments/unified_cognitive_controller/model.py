@@ -104,6 +104,7 @@ class UnifiedCognitiveController(nn.Module):
     def __init__(
             self, width: int = 96, workspace_slots: int = 8,
             intention_width: int = 24,
+            workspace_slot_addressing: bool = False,
             adaptive_memory_read: bool = False,
             adaptive_memory_read_hidden: int = 0,
             adaptive_memory_replace: bool = False,
@@ -120,6 +121,7 @@ class UnifiedCognitiveController(nn.Module):
             adaptive_representative_read_threshold: float = 0.01,
             relation_adapter_width: int = 0,
             relation_adapter_gated: bool = False,
+            relation_adapter_layer_norm: bool = False,
             action_adapter_width: int = 0,
             action_adapter_gated: bool = False,
             action_adapter_into_intention: bool = False,
@@ -174,6 +176,7 @@ class UnifiedCognitiveController(nn.Module):
         self.width = width
         self.workspace_slots = workspace_slots
         self.intention_width = intention_width
+        self.workspace_slot_addressing = workspace_slot_addressing
         self.adaptive_memory_read = adaptive_memory_read
         self.adaptive_memory_read_hidden = adaptive_memory_read_hidden
         self.adaptive_memory_replace = adaptive_memory_replace
@@ -198,6 +201,7 @@ class UnifiedCognitiveController(nn.Module):
             adaptive_representative_read_threshold)
         self.relation_adapter_width = relation_adapter_width
         self.relation_adapter_gated = relation_adapter_gated
+        self.relation_adapter_layer_norm = relation_adapter_layer_norm
         self.action_adapter_width = action_adapter_width
         self.action_adapter_gated = action_adapter_gated
         self.skill_adapter_widths = tuple(skill_adapter_widths)
@@ -301,6 +305,26 @@ class UnifiedCognitiveController(nn.Module):
         self.write_query = nn.Linear(width * 3, width)
         self.write_value = nn.Sequential(
             nn.Linear(width * 3, width), nn.Tanh())
+        # Content-only addressing cannot break slot symmetry: every slot starts
+        # at zero, receives the same softmax weight, and therefore remains an
+        # exact clone forever. Generic slot addresses give RAM locations an
+        # identity without encoding any task, event, or answer semantics. The
+        # controller still has to learn which address to read or write.
+        if workspace_slot_addressing:
+            addresses = torch.zeros(workspace_slots, width)
+            addresses[
+                torch.arange(workspace_slots),
+                torch.arange(workspace_slots) % width] = 1.0
+            self.register_buffer(
+                "workspace_slot_addresses", addresses, persistent=False)
+            self.workspace_read_address_scale = nn.Parameter(
+                torch.tensor(0.10))
+            self.workspace_write_address_scale = nn.Parameter(
+                torch.tensor(0.10))
+        else:
+            self.workspace_slot_addresses = None
+            self.workspace_read_address_scale = None
+            self.workspace_write_address_scale = None
         self.intention = nn.Sequential(
             nn.LayerNorm(width * 3),
             nn.Linear(width * 3, intention_width),
@@ -315,6 +339,9 @@ class UnifiedCognitiveController(nn.Module):
         # projection makes insertion exactly behavior-preserving.
         self.relation_adapter = (
             nn.Sequential(
+                *(
+                    [nn.LayerNorm(width * 2)]
+                    if relation_adapter_layer_norm else []),
                 nn.Linear(width * 2, relation_adapter_width),
                 nn.GELU(),
                 nn.Linear(relation_adapter_width, intention_width),
@@ -867,6 +894,10 @@ class UnifiedCognitiveController(nn.Module):
         slots = torch.nn.functional.normalize(
             state.workspace, dim=-1)
         scores = torch.einsum("bw,bsw->bs", query, slots)
+        if self.workspace_slot_addresses is not None:
+            scores = scores + self.workspace_read_address_scale * (
+                torch.einsum(
+                    "bw,sw->bs", query, self.workspace_slot_addresses))
         weights = torch.softmax(scores, dim=-1)
         read = torch.einsum("bs,bsw->bw", weights, state.workspace)
         if disable_workspace:
@@ -883,6 +914,11 @@ class UnifiedCognitiveController(nn.Module):
         write_query = torch.nn.functional.normalize(
             self.write_query(write_context), dim=-1)
         write_scores = torch.einsum("bw,bsw->bs", write_query, slots)
+        if self.workspace_slot_addresses is not None:
+            write_scores = write_scores + self.workspace_write_address_scale * (
+                torch.einsum(
+                    "bw,sw->bs",
+                    write_query, self.workspace_slot_addresses))
         write_weights = torch.softmax(write_scores, dim=-1)
         gate = torch.sigmoid(self.write_gate(write_context))
         candidate = self.write_value(write_context)
