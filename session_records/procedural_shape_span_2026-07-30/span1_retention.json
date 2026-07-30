@@ -1,0 +1,47 @@
+{
+  "schema": "procedural-shape-span-experiment-v1",
+  "learner_visible_information": "RGB streams, own opaque actions, scalar attempted-action outcome",
+  "span": 1,
+  "vocabulary": 2,
+  "objective": "recognition",
+  "randomness": 0.0,
+  "nuisance": {
+    "position_px": 1.0,
+    "size_fraction": 0.01,
+    "rotation_degrees": 1.0,
+    "color_delta": 0.02,
+    "background_delta": 0.01,
+    "deformation": 0.0
+  },
+  "optimizer_updates": 0,
+  "unique_logical_lifetimes": 0,
+  "unique_verifier_bits": 0,
+  "replayed_examples": 0,
+  "outcomes_shuffled": false,
+  "mastery_threshold": 0.9,
+  "stable_bits_to_threshold": null,
+  "wall_seconds": 1.2208803330431692,
+  "model_configuration": {
+    "width": 64,
+    "workspace_slots": 4,
+    "intention_width": 16
+  },
+  "history": [],
+  "audit": {
+    "accuracy": 1.0,
+    "accuracy_by_ordinal": [
+      1.0
+    ],
+    "blank_presentation_accuracy": 0.5,
+    "blank_ordinal_cue_accuracy": 1.0,
+    "workspace_disabled_accuracy": 0.99951171875,
+    "active_state_reset_accuracy": 0.7490234375,
+    "all_memory_reset_accuracy": 0.5,
+    "reverse_presentation_accuracy": 1.0,
+    "reverse_changed_fraction": 0.0,
+    "reverse_prediction_flip_rate_on_changed": null,
+    "candidate_flip_accuracy": 1.0,
+    "candidate_changed_fraction": 1.0,
+    "candidate_prediction_flip_rate_on_changed": 1.0
+  }
+}

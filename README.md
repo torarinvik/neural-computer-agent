@@ -31,6 +31,25 @@ Final accuracy alone is not an adequate score.
 
 ## Current audited frontier
 
+The procedural-shape memory track now demonstrates compounding acquisition
+under an exact, shortcut-resistant design. A single controller first learns
+two visible shape identities, then one-item recognition, then two-item
+ordinal recognition. Shapes are independently rerendered with nonzero
+position, scale, rotation, colour, and background variation; query order is
+crossed with every identity/answer pattern so time step cannot reveal the
+requested ordinal.
+
+Two inherited seeds master span 2 at 20,480 and 16,384 new verifier bits,
+finishing at 100% and 93.75%. A matched fresh learner remains at 50.68% after
+32,768 bits, giving a conservative greater-than-1.6x transfer advantage.
+Shuffled outcomes remain at 50%. The best model falls to 50.39% with missing
+presentation and 50.05% after complete fast-memory reset; valid presentation
+and candidate counterfactuals retain 100% accuracy and flip every affected
+prediction. It also retains visible identity and span-1 recognition at 100%.
+This is the first rung only: increasing nuisance randomness and span 3 remain
+unproven. See
+`session_records/procedural_shape_span_2026-07-30/README.md`.
+
 The working-memory branch is now position invariant and distractor resistant.
 Balanced nuisance positions introduced during the forward-retention primitive
 remove the previous stride-phase shortcut: forward span reaches 100% at the

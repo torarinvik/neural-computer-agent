@@ -1,0 +1,91 @@
+{
+  "schema": "procedural-shape-span-experiment-v1",
+  "learner_visible_information": "RGB streams, own opaque actions, scalar attempted-action outcome",
+  "span": 1,
+  "vocabulary": 2,
+  "objective": "visible_identity",
+  "randomness": 0.0,
+  "nuisance": {
+    "position_px": 1.0,
+    "size_fraction": 0.01,
+    "rotation_degrees": 1.0,
+    "color_delta": 0.02,
+    "background_delta": 0.01,
+    "deformation": 0.0
+  },
+  "optimizer_updates": 32,
+  "unique_logical_lifetimes": 2048,
+  "unique_verifier_bits": 2048,
+  "replayed_examples": 0,
+  "outcomes_shuffled": false,
+  "mastery_threshold": 0.9,
+  "stable_bits_to_threshold": 1024,
+  "wall_seconds": 2.267489917052444,
+  "model_configuration": {
+    "width": 64,
+    "workspace_slots": 4,
+    "intention_width": 16
+  },
+  "history": [
+    {
+      "update": 1,
+      "unique_logical_lifetimes": 64,
+      "unique_verifier_bits": 64,
+      "training_accuracy": 0.5625,
+      "loss": 0.6879596710205078
+    },
+    {
+      "update": 8,
+      "unique_logical_lifetimes": 512,
+      "unique_verifier_bits": 512,
+      "training_accuracy": 0.625,
+      "loss": 0.6415146589279175,
+      "heldout_accuracy": 0.55078125,
+      "blank_presentation_accuracy": 0.55078125
+    },
+    {
+      "update": 16,
+      "unique_logical_lifetimes": 1024,
+      "unique_verifier_bits": 1024,
+      "training_accuracy": 0.859375,
+      "loss": 0.2612491846084595,
+      "heldout_accuracy": 1.0,
+      "blank_presentation_accuracy": 1.0
+    },
+    {
+      "update": 24,
+      "unique_logical_lifetimes": 1536,
+      "unique_verifier_bits": 1536,
+      "training_accuracy": 0.875,
+      "loss": 0.21167901158332825,
+      "heldout_accuracy": 1.0,
+      "blank_presentation_accuracy": 1.0
+    },
+    {
+      "update": 32,
+      "unique_logical_lifetimes": 2048,
+      "unique_verifier_bits": 2048,
+      "training_accuracy": 0.859375,
+      "loss": 0.18310464918613434,
+      "heldout_accuracy": 1.0,
+      "blank_presentation_accuracy": 1.0
+    }
+  ],
+  "audit": {
+    "accuracy": 1.0,
+    "accuracy_by_ordinal": [
+      1.0
+    ],
+    "blank_presentation_accuracy": 1.0,
+    "blank_ordinal_cue_accuracy": 1.0,
+    "workspace_disabled_accuracy": 1.0,
+    "active_state_reset_accuracy": 1.0,
+    "all_memory_reset_accuracy": 1.0,
+    "reverse_presentation_accuracy": 1.0,
+    "reverse_changed_fraction": 0.0,
+    "reverse_prediction_flip_rate_on_changed": null,
+    "candidate_flip_accuracy": 1.0,
+    "candidate_changed_fraction": 1.0,
+    "candidate_prediction_flip_rate_on_changed": 1.0
+  }
+}
