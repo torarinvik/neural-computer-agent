@@ -124,3 +124,15 @@ def test_continuation_audit_values_are_strictly_validated() -> None:
         except ValueError:
             continue
         raise AssertionError(f"accepted invalid audit values {invalid!r}")
+
+
+def test_late_intention_read_preserves_older_slot_shapes() -> None:
+    model = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        skill_adapter_widths=(16, 16),
+        skill_adapter_gate_mode="relu",
+        skill_adapter_reads_intention_from=1)
+    assert model.skill_adapters[0][0].in_features == 64
+    assert model.skill_adapters[1][0].in_features == 72
+    assert model.skill_adapter_gates[0].in_features == 64
+    assert model.skill_adapter_gates[1].in_features == 72

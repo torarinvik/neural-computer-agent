@@ -255,6 +255,12 @@ _OPERATION_CUE_SLOTS = {
     # assumed.
     "context_identity_and": ((0, 2), (12, 17)),
     "context_identity_or": ((0, 2), (24, 32), 0.45),
+    # Exact count equality and greater-than can render the same two count
+    # fields while demanding different actions. This public mode mark makes
+    # the requested operation observable without exposing either count or
+    # answer. It does not overlap either held-out count field.
+    "visible_numerosity_equality": ((5, 29), (0, 2)),
+    "visible_pair_numerosity_smaller": ((5, 29), (2, 4), 0.45),
 }
 
 
@@ -280,7 +286,8 @@ def generate_lifetimes(
     if task not in (
         "constant_action", "visible_identity", "pair_relation",
         "pair_magnitude", "visible_pair_magnitude",
-        "visible_pair_numerosity",
+        "visible_pair_numerosity", "visible_pair_numerosity_smaller",
+        "visible_numerosity_equality",
         "binary_mapping",
         "visible_context", "visible_context_xor", "four_rule", "contextual_mapping",
         "contextual_override", "contextual_composition", "context_rule_xor",
@@ -288,7 +295,8 @@ def generate_lifetimes(
         raise ValueError(
             "task must be constant_action, visible_identity, pair_relation, "
             "pair_magnitude, visible_pair_magnitude, "
-            "visible_pair_numerosity, "
+            "visible_pair_numerosity, visible_pair_numerosity_smaller, "
+            "visible_numerosity_equality, "
             "binary_mapping, visible_context, visible_context_xor, four_rule, "
             "contextual_mapping, contextual_override, contextual_composition, "
             "context_rule_xor, context_identity_and, or context_identity_or")
@@ -305,7 +313,10 @@ def generate_lifetimes(
         raise ValueError(
             "numerosity appearance blend must be within [0, 1]")
     if (
-            task != "visible_pair_numerosity"
+            task not in (
+                "visible_pair_numerosity",
+                "visible_pair_numerosity_smaller",
+                "visible_numerosity_equality")
             and (
                 numerosity_mass_control != 0.0
                 or numerosity_appearance_blend != 1.0)):
@@ -380,7 +391,9 @@ def generate_lifetimes(
     pair_context_ids = None
     if task in (
             "pair_relation", "pair_magnitude",
-            "visible_pair_magnitude", "visible_pair_numerosity"):
+            "visible_pair_magnitude", "visible_pair_numerosity",
+            "visible_pair_numerosity_smaller",
+            "visible_numerosity_equality"):
         # A second simultaneously visible object creates a genuinely different
         # perceptual primitive: infer whether two identities match.  The
         # verifier-private relation is balanced independently of nuisance
@@ -411,7 +424,9 @@ def generate_lifetimes(
             if reverse_contexts:
                 pair_relation = 1 - pair_relation
             pair_context_ids = pair_relation
-        else:
+        elif task in (
+                "visible_pair_numerosity",
+                "visible_pair_numerosity_smaller"):
             # The adjacent primitive preserves the already learned abstract
             # greater/less action relation while replacing continuous extent
             # with the number of disconnected visible components.
@@ -420,6 +435,25 @@ def generate_lifetimes(
                 0, 4, (count, trials), generator=generator)
             if reverse_contexts:
                 pair_relation = 1 - pair_relation
+            pair_context_ids = pair_relation
+        else:
+            # A genuinely adjacent operation: exact equality of two counts.
+            # The first count and a non-zero modulo-five offset are sampled
+            # independently of the balanced relation. Thus either field alone
+            # has the same count marginal for "same" and "different".
+            pair_identities = identities.clone()
+            equality_first_count = torch.randint(
+                0, 5, (count, trials), generator=generator)
+            equality_offset = torch.randint(
+                1, 5, (count, trials), generator=generator)
+            if reverse_contexts:
+                pair_relation = 1 - pair_relation
+            equality_different_count = (
+                equality_first_count + equality_offset) % 5
+            equality_second_count = torch.where(
+                pair_relation == 0,
+                equality_first_count,
+                equality_different_count)
             pair_context_ids = pair_relation
         if task == "pair_relation":
             first_pair_position = 1 if use_heldout_positions else 0
@@ -454,8 +488,14 @@ def generate_lifetimes(
             pair_masks = magnitude_levels[
                 second_level, pair_identities, pair_positions]
         else:
-            first_count, second_count = _numerosity_count_indices(
-                numerosity_interval, pair_relation)
+            if task in (
+                    "visible_pair_numerosity",
+                    "visible_pair_numerosity_smaller"):
+                first_count, second_count = _numerosity_count_indices(
+                    numerosity_interval, pair_relation)
+            else:
+                first_count = equality_first_count
+                second_count = equality_second_count
             layout_start = 4 if use_heldout_positions else 0
             first_layout = (
                 layout_start
@@ -530,6 +570,21 @@ def generate_lifetimes(
         batch_indices, trial_indices, :, nuisance_y, nuisance_x
     ] = nuisance_value.unsqueeze(-1)
 
+    if task == "visible_numerosity_equality":
+        cue_slot = _OPERATION_CUE_SLOTS[task]
+        (first_row, last_row), (first_column, last_column) = cue_slot[:2]
+        value = cue_slot[2] if len(cue_slot) > 2 else 0.98
+        frames[
+            :, :, :, first_row:last_row,
+            first_column:last_column] = value
+    elif task == "visible_pair_numerosity_smaller":
+        cue_slot = _OPERATION_CUE_SLOTS[task]
+        (first_row, last_row), (first_column, last_column) = cue_slot[:2]
+        value = cue_slot[2] if len(cue_slot) > 2 else 0.98
+        frames[
+            :, :, :, first_row:last_row,
+            first_column:last_column] = value
+
     # A context-conditioned mapping contains two independent hidden binary
     # associations.  Its first two support events deliberately cover both
     # contexts, so each outcome supplies information the other cannot.  The
@@ -592,6 +647,16 @@ def generate_lifetimes(
         assert pair_context_ids is not None
         # The action semantics are deliberately aligned with magnitude:
         # opaque action zero means the first field has more components.
+        correct = pair_context_ids.clone()
+    elif task == "visible_pair_numerosity_smaller":
+        assert pair_context_ids is not None
+        # The same comparison concept is requested through its inverse action
+        # mapping. The public cue distinguishes this operation from "larger".
+        correct = 1 - pair_context_ids
+    elif task == "visible_numerosity_equality":
+        assert pair_context_ids is not None
+        # Opaque action zero happens to mean equal and one unequal. The learner
+        # receives no semantic action name, count, or unattempted target.
         correct = pair_context_ids.clone()
     elif task == "four_rule":
         expanded_rule = rule_bits.unsqueeze(1).expand(-1, trials)

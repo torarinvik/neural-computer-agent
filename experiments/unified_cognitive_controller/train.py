@@ -131,13 +131,15 @@ def evaluate(
         reverse_rules=(task not in (
             "visible_identity", "pair_relation",
             "pair_magnitude", "visible_pair_magnitude",
-            "visible_pair_numerosity",
+            "visible_pair_numerosity", "visible_pair_numerosity_smaller",
+            "visible_numerosity_equality",
             "visible_context", "visible_context_xor")),
         reverse_stimuli=(task == "visible_identity"),
         reverse_contexts=(task in (
             "pair_relation", "pair_magnitude",
             "visible_pair_magnitude",
-            "visible_pair_numerosity",
+            "visible_pair_numerosity", "visible_pair_numerosity_smaller",
+            "visible_numerosity_equality",
             "visible_context", "visible_context_xor")),
         task=task, appearance=appearance,
         appearance_blend=appearance_blend,
@@ -220,7 +222,8 @@ def evaluate(
     if task in (
             "visible_identity", "pair_relation",
             "visible_pair_magnitude",
-            "visible_pair_numerosity",
+            "visible_pair_numerosity", "visible_pair_numerosity_smaller",
+            "visible_numerosity_equality",
             "visible_context", "visible_context_xor"):
         normal_accuracy = float(normal["rewards"].mean())
         reversed_accuracy = float(reversed_result["rewards"].mean())

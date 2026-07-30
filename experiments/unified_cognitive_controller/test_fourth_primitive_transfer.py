@@ -13,9 +13,56 @@ from experiments.unified_cognitive_controller.environment import (
 from experiments.unified_cognitive_controller.model import (
     UnifiedCognitiveController)
 from experiments.unified_cognitive_controller.train_fourth_primitive_transfer import (
-    NEW_TASK, REPLAY_TASKS, _headline_accuracy, _new_skill_loss,
+    NEW_TASK, REPLAY_TASKS, _attempted_policy_gradient_loss,
+    _headline_accuracy, _new_skill_loss,
+    _shuffle_verifier_outcomes,
     _operation_cue_ablation_accuracy, _plastic_prefixes,
     _replay_appearance)
+
+
+def test_verifier_shuffle_preserves_frames_and_action_marginal() -> None:
+    batch = generate_lifetimes(
+        16, 6, seed=25011, task="visible_pair_numerosity_smaller",
+        numerosity_appearance_blend=0.248)
+    shuffled = _shuffle_verifier_outcomes(batch, seed=25013)
+
+    assert torch.equal(shuffled.frames, batch.frames)
+    assert torch.equal(
+        shuffled.correct_actions.flatten().bincount(minlength=2),
+        batch.correct_actions.flatten().bincount(minlength=2))
+    assert not torch.equal(
+        shuffled.correct_actions, batch.correct_actions)
+
+
+def test_policy_gradient_requires_exact_uniform_logging() -> None:
+    model = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8)
+    batch = generate_lifetimes(
+        8, 6, seed=25017, task="visible_pair_numerosity_smaller",
+        numerosity_appearance_blend=0.248)
+    try:
+        _new_skill_loss(
+            model, batch, exploration=0.5, support_trials=1,
+            learning_rule="policy_gradient")
+    except ValueError as error:
+        assert "uniform logging" in str(error)
+    else:
+        raise AssertionError("accepted off-policy probability without weights")
+
+
+def test_attempted_policy_gradient_uses_success_and_failure() -> None:
+    attempted = torch.zeros(1, dtype=torch.long)
+    successful_logits = torch.zeros(1, 2, requires_grad=True)
+    _attempted_policy_gradient_loss(
+        successful_logits, attempted, torch.ones(1)).backward()
+    assert successful_logits.grad[0, 0] < 0
+    assert successful_logits.grad[0, 1] > 0
+
+    failed_logits = torch.zeros(1, 2, requires_grad=True)
+    _attempted_policy_gradient_loss(
+        failed_logits, attempted, torch.zeros(1)).backward()
+    assert failed_logits.grad[0, 0] > 0
+    assert failed_logits.grad[0, 1] < 0
 
 
 def test_plastic_prefixes_name_only_the_appended_slot() -> None:

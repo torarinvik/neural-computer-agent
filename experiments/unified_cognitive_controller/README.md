@@ -1400,3 +1400,26 @@ lifetimes on progressively harder contours.
 
 Full record:
 `session_records/pair_magnitude_repeated_compounding_2026-07-29/README.md`.
+
+## Cross-operation transfer becomes verifier-grounded
+
+The `visible_pair_numerosity_smaller` primitive reuses exactly the same visible
+count relation as the mastered larger-count operation but requests its inverse
+under a distinct public operation cue. A new zero-output slot may read the
+frozen parent's accumulated intention; it is trained from uniformly logged
+opaque actions and their scalar outcomes.
+
+Replacing independent selected-logit BCE with a centered attempted-action
+policy gradient preserved truthful learning and eliminated misleading random
+drift. At 1,024 new lifetimes, two truthful replicas averaged 57.20%; matched
+outcome-shuffled arms averaged 38.34%, and matched inherited-intention
+ablations averaged 37.41%. Prior relation, magnitude, and numerosity remained
+retained.
+
+The promoted claim is a replicated causal cross-operation learning advantage,
+not mastery. Equality was rejected as a too-large perceptual jump, and scalar
+or feature-wise multiplicative intention operators were rejected after tiny
+races.
+
+Full record:
+`session_records/cross_operation_policy_gradient_2026-07-30/README.md`.

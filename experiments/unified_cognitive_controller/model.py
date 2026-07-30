@@ -127,6 +127,7 @@ class UnifiedCognitiveController(nn.Module):
             skill_adapter_reads_prior: bool = False,
             skill_adapter_legacy_read_from: int | None = None,
             skill_adapter_reads_prior_from: int | None = None,
+            skill_adapter_reads_intention_from: int | None = None,
             skill_adapter_read_bottleneck: int = 0,
             skill_adapter_prior_read_limit: int = 0) -> None:
         super().__init__()
@@ -226,6 +227,11 @@ class UnifiedCognitiveController(nn.Module):
         # index means only the slot a rung adds takes the wider input, exactly
         # as for the legacy reads.
         self.skill_adapter_reads_prior_from = skill_adapter_reads_prior_from
+        # A later slot may transform the parent's already-computed amodal
+        # intention directly. The index keeps every older slot's input shape
+        # unchanged when this interface is introduced on a new rung.
+        self.skill_adapter_reads_intention_from = (
+            skill_adapter_reads_intention_from)
         # Width to compress everything a slot reads down to. Reading one prior
         # slot (64 extra inputs) helped; reading two, or the legacy pair (128),
         # hurt, and hurt absolute learning badly in the legacy case. A slot has
@@ -324,6 +330,9 @@ class UnifiedCognitiveController(nn.Module):
             reads_prior = skill_adapter_reads_prior and (
                 skill_adapter_reads_prior_from is None
                 or slot_index >= skill_adapter_reads_prior_from)
+            reads_intention = (
+                skill_adapter_reads_intention_from is not None
+                and slot_index >= skill_adapter_reads_intention_from)
             selected_prior_width = prior_read_width
             if skill_adapter_prior_read_limit:
                 selected_prior_width = sum(
@@ -332,7 +341,8 @@ class UnifiedCognitiveController(nn.Module):
                         slot_index])
             raw_read = (
                 (selected_prior_width if reads_prior else 0)
-                + (legacy_read_width if reads_legacy else 0))
+                + (legacy_read_width if reads_legacy else 0)
+                + (intention_width if reads_intention else 0))
             if raw_read and skill_adapter_read_bottleneck:
                 slot_input = width * 2 + skill_adapter_read_bottleneck
             else:
@@ -846,6 +856,11 @@ class UnifiedCognitiveController(nn.Module):
                 if (self.skill_adapter_legacy_read_from is not None
                         and slot_index >= self.skill_adapter_legacy_read_from):
                     reads += legacy_reads
+                if (
+                        self.skill_adapter_reads_intention_from is not None
+                        and slot_index
+                        >= self.skill_adapter_reads_intention_from):
+                    reads.append(intention)
                 if reads:
                     if (
                             self.skill_adapter_ablate_prior_read
@@ -871,7 +886,8 @@ class UnifiedCognitiveController(nn.Module):
                     if self.skill_adapter_gate_mode == "relu"
                     else torch.sigmoid(score))
                 hidden_read = adapter[1](adapter[0](own_features))
-                residual = adapter[2](hidden_read) * opening
+                residual = adapter[2](hidden_read)
+                residual = residual * opening
                 if self.skill_adapter_reads_prior:
                     prior_reads.append(hidden_read)
                 openings.append(opening)

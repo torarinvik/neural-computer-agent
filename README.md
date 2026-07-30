@@ -865,3 +865,31 @@ verified reductions in external experience.
 
 See
 `session_records/pair_magnitude_repeated_compounding_2026-07-29/README.md`.
+
+## Latest breakthrough: reward-grounded cross-operation reuse
+
+The numerosity controller now measurably reuses its learned “choose larger”
+intention to acquire a different operation, “choose smaller.” The learner sees
+only rendered pixels, its uniformly sampled opaque action, and that action's
+scalar outcome.
+
+At 1,024 new lifetimes / 6,144 verifier bits, two fresh seeds reached 57.42%
+and 56.98% on 8,192 held-out lifetimes. Matched shuffled-outcome controls
+reached 38.48% and 38.21%; matched controls with inherited intention removed
+reached 38.53% and 36.29%. The mean truthful advantage is therefore +18.86
+points over shuffled outcomes and +19.79 points over no inherited intention.
+All three prior skills remained above their inherited gates.
+
+The key mechanism is an attempted-action policy gradient under exact uniform
+logging. It uses observed success and failure through a task-agnostic chance
+baseline without constructing the unattempted answer. Unlike the earlier BCE
+rule, shuffled outcomes no longer drift performance toward chance and masquerade
+as learning.
+
+This is cross-operation transfer, not mastery: 57.20% mean accuracy has not
+reached a stable competence threshold. The next frontier is to turn the
+verified reuse signal into reliable inverse-operation mastery with fewer
+lifetimes.
+
+See
+`session_records/cross_operation_policy_gradient_2026-07-30/README.md`.

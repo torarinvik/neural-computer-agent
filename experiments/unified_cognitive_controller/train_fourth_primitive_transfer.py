@@ -19,6 +19,7 @@ accounting identical across arms while keeping each arm's gates honest.
 from __future__ import annotations
 
 import argparse
+from dataclasses import replace
 import json
 import math
 import time
@@ -217,11 +218,15 @@ def _replay_loss_and_leakage(
 def _slot_opening(
         model: UnifiedCognitiveController, *, slot: int, task: str,
         count: int, seed: int, support_trials: int,
-        device: torch.device) -> tuple[float, float]:
+        device: torch.device,
+        numerosity_appearance_blend: float = 1.0,
+        ) -> tuple[float, float]:
     """Mean opening of one slot, and how often it is exactly shut."""
     batch = generate_lifetimes(
         count, 6, seed=seed, heldout=True, task=task,
-        support_trials=support_trials, device=device)
+        support_trials=support_trials,
+        numerosity_appearance_blend=numerosity_appearance_blend,
+        device=device)
     state = model.initial_state(count, device=device)
     action = torch.full(
         (count,), NULL_ACTION, dtype=torch.long, device=device)
@@ -248,7 +253,9 @@ def _slot_opening(
 def _slot_residual_norm(
         model: UnifiedCognitiveController, *, slot: int, task: str,
         count: int, seed: int, support_trials: int,
-        device: torch.device) -> float:
+        device: torch.device,
+        numerosity_appearance_blend: float = 1.0,
+        ) -> float:
     """Mean norm of the perturbation one slot actually adds to the intention.
 
     The gate opening alone is not the disturbance: a nearly shut gate on a
@@ -257,7 +264,9 @@ def _slot_residual_norm(
     """
     batch = generate_lifetimes(
         count, 6, seed=seed, heldout=True, task=task,
-        support_trials=support_trials, device=device)
+        support_trials=support_trials,
+        numerosity_appearance_blend=numerosity_appearance_blend,
+        device=device)
     state = model.initial_state(count, device=device)
     action = torch.full(
         (count,), NULL_ACTION, dtype=torch.long, device=device)
@@ -281,11 +290,15 @@ def _slot_residual_norm(
 @torch.no_grad()
 def _curve_accuracy(
         model: UnifiedCognitiveController, *, task: str, count: int,
-        seed: int, support_trials: int, device: torch.device) -> float:
+        seed: int, support_trials: int, device: torch.device,
+        numerosity_appearance_blend: float = 1.0,
+        ) -> float:
     """One rollout's post-support accuracy: the cheapest honest curve sample."""
     batch = generate_lifetimes(
         count, 6, seed=seed, heldout=True, task=task,
-        support_trials=support_trials, device=device)
+        support_trials=support_trials,
+        numerosity_appearance_blend=numerosity_appearance_blend,
+        device=device)
     result = rollout(
         model, batch, sample_actions=False, feedback_trials=support_trials)
     return float(result["rewards"][:, support_trials:].float().mean())
@@ -330,6 +343,7 @@ def _load(
 def _new_skill_loss(
         model: UnifiedCognitiveController, batch, *,
         exploration: float, support_trials: int,
+        learning_rule: str = "bce",
         return_accuracy: bool = False,
         ) -> torch.Tensor | tuple[torch.Tensor, float]:
     result = rollout(
@@ -337,10 +351,21 @@ def _new_skill_loss(
         feedback_trials=support_trials)
     losses = []
     for trial in range(batch.trials):
-        loss = attempted_success_loss(
-            result["logits"][:, trial],
-            result["actions"][:, trial],
-            result["rewards"][:, trial])
+        if learning_rule == "bce":
+            loss = attempted_success_loss(
+                result["logits"][:, trial],
+                result["actions"][:, trial],
+                result["rewards"][:, trial])
+        elif learning_rule == "policy_gradient":
+            if exploration != 1.0:
+                raise ValueError(
+                    "policy-gradient control requires exact uniform logging")
+            loss = _attempted_policy_gradient_loss(
+                result["logits"][:, trial],
+                result["actions"][:, trial],
+                result["rewards"][:, trial])
+        else:
+            raise ValueError(f"unknown new-skill learning rule {learning_rule}")
         # Support trials precede the outcomes that identify the hidden rule,
         # so their gradient is deliberately discounted.
         losses.append(loss * (0.20 if trial < support_trials else 1.0))
@@ -350,6 +375,66 @@ def _new_skill_loss(
             result["rewards"][:, support_trials:].float().mean())
         return loss, accuracy
     return loss
+
+
+def _attempted_policy_gradient_loss(
+        logits: torch.Tensor, attempted: torch.Tensor,
+        outcomes: torch.Tensor,
+        ) -> torch.Tensor:
+    """Uniform-logging bandit loss from attempted scalar outcomes only."""
+    selected_log_probability = logits.log_softmax(-1).gather(
+        1, attempted.unsqueeze(1)).squeeze(1)
+    # The task-agnostic binary-chance baseline turns both observed successes
+    # and failures into useful gradients. No propensity model or unattempted
+    # action target is needed under exact 0.5/0.5 logging.
+    advantage = outcomes - 0.5
+    return -(advantage.detach() * selected_log_probability).mean()
+
+
+def _shuffle_verifier_outcomes(batch, *, seed: int):
+    """Break the sensory/outcome relation while preserving its marginal."""
+    generator = torch.Generator().manual_seed(seed)
+    permutations = [
+        torch.randperm(batch.batch_size, generator=generator)]
+    permutations.extend(
+        torch.arange(batch.batch_size).roll(offset)
+        for offset in range(1, batch.batch_size))
+    row_permutation = next(
+        (
+            candidate
+            for candidate in permutations
+            if not torch.equal(
+                batch.correct_actions[
+                    candidate.to(batch.correct_actions.device)],
+                batch.correct_actions)
+        ),
+        None)
+    if row_permutation is not None:
+        return replace(
+            batch,
+            correct_actions=batch.correct_actions[
+                row_permutation.to(batch.correct_actions.device)])
+    flattened = batch.correct_actions.flatten()
+    cell_permutations = [
+        torch.randperm(flattened.numel(), generator=generator)]
+    cell_permutations.extend(
+        torch.arange(flattened.numel()).roll(offset)
+        for offset in range(1, flattened.numel()))
+    cell_permutation = next(
+        (
+            candidate
+            for candidate in cell_permutations
+            if not torch.equal(
+                flattened[candidate.to(flattened.device)], flattened)
+        ),
+        None)
+    if cell_permutation is None:
+        raise ValueError("verifier shuffle cannot change a constant batch")
+    return replace(
+        batch,
+        correct_actions=flattened[
+            cell_permutation.to(flattened.device)].reshape_as(
+                batch.correct_actions))
 
 
 @torch.no_grad()
@@ -376,7 +461,9 @@ def _operation_cue_ablation_accuracy(
         support_trials=support_trials, device=device)
     if new_task in (
             "pair_relation", "pair_magnitude",
-            "visible_pair_magnitude", "visible_pair_numerosity"):
+            "visible_pair_magnitude", "visible_pair_numerosity",
+            "visible_pair_numerosity_smaller",
+            "visible_numerosity_equality"):
         # Remove only the second held-out-position object. Its mask is confined
         # to rows 13:28, columns 5:20; filling that box from a clean corner
         # preserves the per-frame background while deleting the relational
@@ -385,7 +472,10 @@ def _operation_cue_ablation_accuracy(
         background = marked.frames[:, :, :, -1:, -1:]
         if new_task == "pair_relation":
             ablated_frames[:, :, :, 13:28, 5:20] = background
-        elif new_task == "visible_pair_numerosity":
+        elif new_task in (
+                "visible_pair_numerosity",
+                "visible_pair_numerosity_smaller",
+                "visible_numerosity_equality"):
             # Delete the complete right count field while preserving the left.
             ablated_frames[:, :, :, :, 16:32] = background
         else:
@@ -488,6 +578,16 @@ def main() -> None:
         "--new-task", default=DEFAULT_NEW_TASK,
         help="the primitive this rung acquires")
     parser.add_argument(
+        "--new-numerosity-appearance-blend", type=float, default=1.0,
+        help=(
+            "bar-to-dot appearance blend for a new numerosity task; this is "
+            "sensory difficulty only and never reveals the answer"))
+    parser.add_argument(
+        "--replay-numerosity-appearance-blend", type=float, default=1.0,
+        help=(
+            "bar-to-dot appearance blend for replayed numerosity skills; "
+            "matching the inherited frontier preserves the actual skill"))
+    parser.add_argument(
         "--new-position-augmentation", action="store_true",
         help=(
             "alternate the new task across the train and held-out nuisance "
@@ -524,6 +624,12 @@ def main() -> None:
         help=("read only this many immediately preceding skill slots; zero "
               "reads all earlier slots. One ancestor improved absolute learning "
               "while a second added no transfer gain, so one tests local reuse"))
+    parser.add_argument(
+        "--read-parent-intention", action="store_true",
+        help=(
+            "let the newly appended slot read the parent's accumulated latent "
+            "intention, enabling learned transformations of an existing "
+            "decision without exposing action labels or logits"))
     parser.add_argument(
         "--prior-slot-volatility", type=float, default=0.0,
         help=("learning-rate multiplier in [0,1] for inherited skill slots. "
@@ -621,6 +727,17 @@ def main() -> None:
     parser.add_argument("--test-lifetimes", type=int, default=512)
     parser.add_argument("--exploration", type=float, default=0.1)
     parser.add_argument(
+        "--new-learning-rule", choices=("bce", "policy_gradient"),
+        default="bce",
+        help=(
+            "loss for attempted actions. policy_gradient uses exact uniform "
+            "logging and a task-agnostic chance baseline"))
+    parser.add_argument(
+        "--shuffle-new-verifier-outcomes", action="store_true",
+        help=(
+            "negative control: permute new-task verifier outcomes across "
+            "otherwise unchanged rendered lifetimes"))
+    parser.add_argument(
         "--device",
         default=("cuda" if torch.cuda.is_available() else "cpu"))
     args = parser.parse_args()
@@ -683,6 +800,19 @@ def main() -> None:
         raise ValueError("gate warmup fraction must be within [0, 1)")
     gate_warmup_updates = int(round(args.steps * args.gate_warmup_fraction))
     new_task = args.new_task
+    if not 0.0 <= args.new_numerosity_appearance_blend <= 1.0:
+        raise ValueError("new numerosity appearance blend must be within [0, 1]")
+    if not 0.0 <= args.replay_numerosity_appearance_blend <= 1.0:
+        raise ValueError(
+            "replay numerosity appearance blend must be within [0, 1]")
+    if (
+            new_task not in (
+                "visible_pair_numerosity",
+                "visible_pair_numerosity_smaller",
+                "visible_numerosity_equality")
+            and args.new_numerosity_appearance_blend != 1.0):
+        raise ValueError(
+            "numerosity appearance blend requires a numerosity new task")
     replay_tasks = tuple(
         name for name in args.replay_tasks.split(",") if name)
     if not replay_tasks:
@@ -759,15 +889,47 @@ def main() -> None:
             inherited_slots + (args.skill_adapter_width,))
         configuration["skill_adapter_gate_mode"] = args.slot_gate_mode
         configuration["skill_adapter_gate_hidden"] = args.slot_gate_hidden
-        configuration["skill_adapter_reads_prior"] = args.slot_reads_prior
+        inherited_reads_prior = bool(
+            configuration.get("skill_adapter_reads_prior", False))
+        inherited_reads_prior_from = configuration.get(
+            "skill_adapter_reads_prior_from")
+        if inherited_reads_prior and not args.slot_reads_prior:
+            raise ValueError(
+                "a readable parent must append a readable slot; use "
+                "--ablate-prior-read for the matched no-content control")
+        configuration["skill_adapter_reads_prior"] = (
+            inherited_reads_prior or args.slot_reads_prior)
         configuration["skill_adapter_read_bottleneck"] = args.read_bottleneck
         configuration["skill_adapter_prior_read_limit"] = args.prior_read_limit
         configuration["skill_adapter_reads_prior_from"] = (
-            new_slot if args.slot_reads_prior else None)
+            inherited_reads_prior_from
+            if inherited_reads_prior_from is not None
+            else new_slot if args.slot_reads_prior else None)
+        inherited_legacy_read_from = configuration.get(
+            "skill_adapter_legacy_read_from")
         configuration["skill_adapter_legacy_read_from"] = (
-            new_slot if args.read_legacy_adapters else None)
+            inherited_legacy_read_from
+            if inherited_legacy_read_from is not None
+            else new_slot if args.read_legacy_adapters else None)
+        inherited_intention_read_from = configuration.get(
+            "skill_adapter_reads_intention_from")
+        if (
+                inherited_intention_read_from is not None
+                and not args.read_parent_intention):
+            raise ValueError(
+                "an intention-reading parent must append an intention-reading "
+                "slot; use --ablate-prior-read for the no-content control")
+        configuration["skill_adapter_reads_intention_from"] = (
+            inherited_intention_read_from
+            if inherited_intention_read_from is not None
+            else new_slot if args.read_parent_intention else None)
         student = UnifiedCognitiveController(**configuration).to(device)
-        student.skill_adapter_ablate_prior_read = args.ablate_prior_read
+        # Remove inherited content only from the newly appended slot. A global
+        # ablation would also alter readable parent slots and make the
+        # supposedly matched control start from a different controller.
+        student.skill_adapter_ablate_prior_read = False
+        student.skill_adapter_ablate_prior_read_slot = (
+            new_slot if args.ablate_prior_read else None)
         missing, unexpected = student.load_state_dict(
             teacher.state_dict(), strict=False)
         expected_missing = {
@@ -861,7 +1023,10 @@ def main() -> None:
                         teacher, count=args.test_lifetimes, trials=6,
                         seed=seed + 91_000_000 + index, device=device,
                         task=task,
-                        feedback_trials=replay_support_by_task[task])
+                        feedback_trials=replay_support_by_task[task],
+                        numerosity_appearance_blend=(
+                            args.replay_numerosity_appearance_blend
+                            if task == "visible_pair_numerosity" else 1.0))
                 parent_evaluations[task] = parent_audit_cache[key]
         parent_retention = {
             task: evaluation["gate"]["accepted"]
@@ -926,11 +1091,17 @@ def main() -> None:
                 args.new_batch_size, 6,
                 seed=seed * 10_000_000 + update,
                 task=new_task,
+                numerosity_appearance_blend=(
+                    args.new_numerosity_appearance_blend),
                 position_holdout=(
                     bool(update % 2)
                     if args.new_position_augmentation else None),
                 support_trials=support_trials,
                 device=device)
+            if args.shuffle_new_verifier_outcomes:
+                new_batch = _shuffle_verifier_outcomes(
+                    new_batch,
+                    seed=seed * 70_000_000 + update)
             if (args.replay_selection == "gate"
                     and update > gate_warmup_updates
                     and (update - 1) % args.replay_selection_every == 0):
@@ -955,13 +1126,18 @@ def main() -> None:
                     task=task, support_trials=replay_support_by_task[task],
                     appearance=_replay_appearance(
                         task, args.pair_relation_replay_appearance, update),
+                    numerosity_appearance_blend=(
+                        args.replay_numerosity_appearance_blend
+                        if task == "visible_pair_numerosity" else 1.0),
                     device=device)
                 for index, task in active_replay
             ]
             replay_batches_spent += len(replay_batches)
             skill_loss, new_batch_accuracy = _new_skill_loss(
                 student, new_batch, exploration=args.exploration,
-                support_trials=support_trials, return_accuracy=True)
+                support_trials=support_trials,
+                learning_rule=args.new_learning_rule,
+                return_accuracy=True)
             tracked_new_accuracy = (
                 0.9 * tracked_new_accuracy + 0.1 * new_batch_accuracy
                 if update > 1 else new_batch_accuracy)
@@ -1108,13 +1284,18 @@ def main() -> None:
                 "new_skill": _curve_accuracy(
                     student, task=new_task, count=args.test_lifetimes,
                     seed=seed + 90_000_000,
-                    support_trials=final_support_trials, device=device),
+                    support_trials=final_support_trials, device=device,
+                    numerosity_appearance_blend=(
+                        args.new_numerosity_appearance_blend)),
                 **{
                     f"{task}_retention": _curve_accuracy(
                         student, task=task, count=args.test_lifetimes,
                         seed=seed + 91_000_000 + index,
                         support_trials=replay_support_by_task[task],
-                        device=device)
+                        device=device,
+                        numerosity_appearance_blend=(
+                            args.replay_numerosity_appearance_blend
+                            if task == "visible_pair_numerosity" else 1.0))
                     for index, task in enumerate(replay_tasks)
                 },
             }
@@ -1140,6 +1321,8 @@ def main() -> None:
                 "history": history,
                 "accounting": {
                     "new_unique_lifetimes": args.steps * args.new_batch_size,
+                    "new_verifier_bits":
+                        args.steps * args.new_batch_size * 6,
                     "optimizer_updates": args.steps,
                 },
                 "headline_accuracy": headline,
@@ -1163,12 +1346,17 @@ def main() -> None:
             "new_skill": evaluate(
                 student, count=args.test_lifetimes, trials=6,
                 seed=seed + 90_000_000, device=device,
-                task=new_task, feedback_trials=final_support_trials),
+                task=new_task, feedback_trials=final_support_trials,
+                numerosity_appearance_blend=(
+                    args.new_numerosity_appearance_blend)),
             **{
                 f"{task}_retention": evaluate(
                     student, count=args.test_lifetimes, trials=6,
                     seed=seed + 91_000_000 + index, device=device,
-                    task=task, feedback_trials=replay_support_by_task[task])
+                    task=task, feedback_trials=replay_support_by_task[task],
+                    numerosity_appearance_blend=(
+                        args.replay_numerosity_appearance_blend
+                        if task == "visible_pair_numerosity" else 1.0))
                 for index, task in enumerate(replay_tasks)
             },
         }
@@ -1189,18 +1377,25 @@ def main() -> None:
         cue_ablation_accuracy = _operation_cue_ablation_accuracy(
             student, count=args.test_lifetimes,
             seed=seed + 90_000_000, device=device,
-            support_trials=final_support_trials, new_task=new_task)
+            support_trials=final_support_trials, new_task=new_task,
+            numerosity_appearance_blend=(
+                args.new_numerosity_appearance_blend))
         _openings = {
             new_task: _slot_opening(
                 student, slot=new_slot, task=new_task,
                 count=args.test_lifetimes, seed=seed + 93_000_000,
-                support_trials=final_support_trials, device=device),
+                support_trials=final_support_trials, device=device,
+                numerosity_appearance_blend=(
+                    args.new_numerosity_appearance_blend)),
             **{
                 task: _slot_opening(
                     student, slot=new_slot, task=task,
                     count=args.test_lifetimes,
                     seed=seed + 94_000_000 + index,
-                    support_trials=replay_support_by_task[task], device=device)
+                    support_trials=replay_support_by_task[task], device=device,
+                    numerosity_appearance_blend=(
+                        args.replay_numerosity_appearance_blend
+                        if task == "visible_pair_numerosity" else 1.0))
                 for index, task in enumerate(replay_tasks)
             },
         }
@@ -1211,13 +1406,18 @@ def main() -> None:
             new_task: _slot_residual_norm(
                 student, slot=new_slot, task=new_task,
                 count=args.test_lifetimes, seed=seed + 93_000_000,
-                support_trials=final_support_trials, device=device),
+                support_trials=final_support_trials, device=device,
+                numerosity_appearance_blend=(
+                    args.new_numerosity_appearance_blend)),
             **{
                 task: _slot_residual_norm(
                     student, slot=new_slot, task=task,
                     count=args.test_lifetimes,
                     seed=seed + 94_000_000 + index,
-                    support_trials=replay_support_by_task[task], device=device)
+                    support_trials=replay_support_by_task[task], device=device,
+                    numerosity_appearance_blend=(
+                        args.replay_numerosity_appearance_blend
+                        if task == "visible_pair_numerosity" else 1.0))
                 for index, task in enumerate(replay_tasks)
             },
         }
@@ -1245,6 +1445,7 @@ def main() -> None:
             if name in frozen_initial)
         total_lifetimes = args.steps * (
             args.new_batch_size + len(replay_tasks) * args.replay_batch_size)
+        total_verifier_bits = total_lifetimes * 6
         report = {
             "schema": "fourth-primitive-transfer-v1",
             "claim_boundary": (
@@ -1290,9 +1491,11 @@ def main() -> None:
             },
             "accounting": {
                 "new_unique_lifetimes": args.steps * args.new_batch_size,
+                "new_verifier_bits":
+                    args.steps * args.new_batch_size * 6,
                 "replay_lifetimes_per_task": args.steps * args.replay_batch_size,
                 "total_unique_lifetimes": total_lifetimes,
-                "total_verifier_bits": total_lifetimes * 6,
+                "total_verifier_bits": total_verifier_bits,
                 "optimizer_updates": args.steps,
             },
             "parent_retention_gates": parent_retention,
