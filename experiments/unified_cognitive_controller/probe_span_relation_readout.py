@@ -54,18 +54,21 @@ def _features(
 def _fit_probe(
         train_x: torch.Tensor, train_y: torch.Tensor,
         test_x: torch.Tensor, test_y: torch.Tensor, *,
-        seed: int, shuffled: bool) -> dict[str, float]:
+        seed: int, shuffled: bool, linear: bool) -> dict[str, float]:
     generator = torch.Generator(device=train_x.device).manual_seed(seed)
     labels = train_y
     if shuffled:
         labels = labels[torch.randperm(
             labels.numel(), generator=generator, device=labels.device)]
-    probe = nn.Sequential(
-        nn.LayerNorm(train_x.shape[1]),
-        nn.Linear(train_x.shape[1], 64),
-        nn.GELU(),
-        nn.Linear(64, 2),
-    ).to(train_x.device)
+    probe = (
+        nn.Sequential(
+            nn.LayerNorm(train_x.shape[1]), nn.Linear(train_x.shape[1], 2))
+        if linear else nn.Sequential(
+            nn.LayerNorm(train_x.shape[1]),
+            nn.Linear(train_x.shape[1], 64),
+            nn.GELU(),
+            nn.Linear(64, 2),
+        )).to(train_x.device)
     optimizer = torch.optim.AdamW(
         probe.parameters(), lr=3e-3, weight_decay=1e-4)
     for _ in range(300):
@@ -130,15 +133,21 @@ def main() -> None:
         "checkpoint": str(args.checkpoint),
         "checkpoint_sha256": _sha256(args.checkpoint),
         "normal_labels": {
-            name: _fit_probe(
-                train_x, train_y, test_x, test_y,
-                seed=args.seed + 2 + index, shuffled=False)
-            for index, (name, (train_x, test_x)) in enumerate(features.items())},
+            family: {
+                name: _fit_probe(
+                    train_x, train_y, test_x, test_y,
+                    seed=args.seed + 2 + index, shuffled=False,
+                    linear=(family == "linear"))
+                for index, (name, (train_x, test_x)) in enumerate(features.items())}
+            for family in ("linear", "mlp")},
         "shuffled_labels": {
-            name: _fit_probe(
-                train_x, train_y, test_x, test_y,
-                seed=args.seed + 5 + index, shuffled=True)
-            for index, (name, (train_x, test_x)) in enumerate(features.items())},
+            family: {
+                name: _fit_probe(
+                    train_x, train_y, test_x, test_y,
+                    seed=args.seed + 8 + index, shuffled=True,
+                    linear=(family == "linear"))
+                for index, (name, (train_x, test_x)) in enumerate(features.items())}
+            for family in ("linear", "mlp")},
     }
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
