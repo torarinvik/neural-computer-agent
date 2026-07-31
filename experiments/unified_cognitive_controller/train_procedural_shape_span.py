@@ -1397,6 +1397,11 @@ def main() -> None:
         help=(
             "fresh verifier-generated lifetimes per rehearsal stream used by "
             "a functional retention check; counted as validation experience"))
+    parser.add_argument(
+        "--functional-retention-stream-indices", default="",
+        help=(
+            "comma-separated rehearsal-stream indices to validate; empty "
+            "checks every stream"))
     parser.add_argument("--exploration", type=float, default=0.10)
     parser.add_argument("--log-every", type=int, default=32)
     parser.add_argument("--eval-every", type=int, default=32)
@@ -1569,6 +1574,21 @@ def main() -> None:
     if any(value not in (-1, 1, 2, 3) for value in rehearsal_next_stages):
         raise ValueError(
             "rehearsal next-query stages must be -1, 1, 2, or 3")
+    functional_retention_stream_indices = [
+        int(value)
+        for value in args.functional_retention_stream_indices.split(",")
+        if value]
+    if not functional_retention_stream_indices:
+        functional_retention_stream_indices = list(range(len(rehearsal_levels)))
+    if (
+            len(set(functional_retention_stream_indices))
+            != len(functional_retention_stream_indices)
+            or any(
+                index < 0 or index >= len(rehearsal_levels)
+                for index in functional_retention_stream_indices)):
+        raise ValueError(
+            "functional-retention stream indices must be unique valid "
+            "rehearsal-stream indices")
     if (
             (
                 args.usage_protection_strength > 0.0
@@ -1983,24 +2003,22 @@ def main() -> None:
                 train_on_target
                 and args.functional_retention_tolerance >= 0.0):
             if not functional_anchor_batches:
-                for index, (
-                        validation_nuisance, validation_span,
-                        validation_query_count, validation_slot,
-                        validation_previous, validation_next) in enumerate(zip(
-                            rehearsal_nuisances, rehearsal_spans,
-                            rehearsal_query_counts, rehearsal_slot_difficulties,
-                            rehearsal_previous_stages, rehearsal_next_stages)):
+                for index in functional_retention_stream_indices:
                     functional_anchor_batches.append(
                         generate_procedural_shape_batch(
                             args.functional_retention_validation_batch_size,
-                            span=validation_span, vocabulary=args.vocabulary,
+                            span=rehearsal_spans[index],
+                            vocabulary=args.vocabulary,
                             seed=args.seed + 40_000_000 + index,
-                            nuisance=validation_nuisance,
+                            nuisance=rehearsal_nuisances[index],
                             objective=args.objective,
-                            query_count=validation_query_count,
-                            new_slot_difficulty=validation_slot,
-                            previous_query_stage=validation_previous,
-                            next_query_stage=validation_next, device=device))
+                            query_count=rehearsal_query_counts[index],
+                            new_slot_difficulty=(
+                                rehearsal_slot_difficulties[index]),
+                            previous_query_stage=(
+                                rehearsal_previous_stages[index]),
+                            next_query_stage=rehearsal_next_stages[index],
+                            device=device))
                 functional_validation_unique_bits = sum(
                     validation.batch_size * validation.query_ordinals.shape[1]
                     for validation in functional_anchor_batches)
@@ -2335,6 +2353,8 @@ def main() -> None:
             args.functional_retention_tolerance),
         "functional_retention_validation_batch_size": (
             args.functional_retention_validation_batch_size),
+        "functional_retention_stream_indices": (
+            functional_retention_stream_indices),
         "functional_validation_unique_bits": functional_validation_unique_bits,
         "functional_validation_evaluation_bits": (
             functional_validation_evaluation_bits),

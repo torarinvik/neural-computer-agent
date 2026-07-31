@@ -292,3 +292,21 @@ should preserve the replicated directional learning while adding a
 function-level acceptance or backtracking check for the old skill. That would
 test whether corrective 3×/3× updates can be accepted only when they preserve
 actual old-task behavior, rather than relying on a local gradient proxy.
+
+## Rejected follow-up: conflict-specific functional validation
+
+The broad anchor was narrowed to only the fragile previous-item conflict
+stream, while gradient rehearsal still used all three old-skill streams. This
+reduced a 384-lifetime validator from 2,688 to 1,152 unique verifier outcomes
+per anchor. The zero-tolerance smoke correctly rejected a target update that
+dropped the fixed anchor's conflict score by 0.34 points, confirming that the
+smaller check remains active.
+
+At a deliberately modest 1% per-score tolerance, the 64-update run completed
+16 target updates and spent 1,152 fresh anchor outcomes (36,864 deterministic
+anchor evaluations). It did not improve the held-out conflict/new-slot target:
+74.22%, versus the promoted 3:2 frontier of 73.50% only within the small-run
+noise band. Its final target update was rejected after a 0.36-point anchor
+conflict drop. This is a useful efficiency improvement to a safety instrument,
+but it did not turn 3×/3× weighting into a viable acquisition strategy. The
+report is saved as `functional_conflict_specific_rejected.json`.
