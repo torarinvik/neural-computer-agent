@@ -278,6 +278,15 @@ three validation scores within the initial 1% tolerance. This verifies the
 instrument and accounting only; a same-batch functional check was rejected as
 too weak because it missed a later held-out retention failure.
 
+The next refinement fixed the anchor itself and checked both overall and
+causal-conflict accuracy. With zero tolerated drop, it rejected one of four
+3×/3× target updates and retained previous-item conflicts at 95.01%. But the
+three accepted updates did not improve the new relation, and the 2,688 unique
+anchor outcomes cost more than the 384-outcome target update. Thus broad
+functional validation is a verified safety tool, not a sample-efficient
+breakthrough. The next candidate should use a smaller, conflict-specific
+anchor instead of a broad three-stream validator.
+
 The promoted 3:2 checkpoints define the new frontier. The next experiment
 should preserve the replicated directional learning while adding a
 function-level acceptance or backtracking check for the old skill. That would

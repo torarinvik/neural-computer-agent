@@ -1720,7 +1720,10 @@ def main() -> None:
         for _ in rehearsal_levels]
     history: list[dict[str, object]] = []
     target_updates = 0
-    functional_validation_bits = 0
+    functional_validation_unique_bits = 0
+    functional_validation_evaluation_bits = 0
+    functional_anchor_batches: list[ProceduralShapeBatch] = []
+    functional_anchor_baseline: list[list[float]] = []
     rehearsal_update_counts = {
         (
             f"span{span}:queries{query_count}:slot{slot}:"
@@ -1732,6 +1735,27 @@ def main() -> None:
             rehearsal_next_stages, rehearsal_levels)}
     rehearsal_verifier_bits = dict.fromkeys(rehearsal_update_counts, 0)
     weight_changing_updates = 0
+
+    def functional_scores(
+            validation_batch: ProceduralShapeBatch) -> list[float]:
+        """Return overall and causal-conflict accuracy for a fresh stream."""
+        validation = rollout_procedural_shape_span(
+            model, validation_batch, sample_actions=False)
+        scores = [float(validation["rewards"].mean())]
+        target_identities = torch.gather(
+            validation_batch.sequence_identities, 1,
+            validation_batch.query_ordinals)
+        cue_identities = torch.gather(
+            validation_batch.sequence_identities, 1,
+            validation_batch.query_cue_ordinals)
+        relative_conflict = (
+            (validation_batch.query_operations > 0)
+            & (target_identities != cue_identities))
+        if bool(relative_conflict.any()):
+            scores.append(float(
+                validation["rewards"][relative_conflict].mean()))
+        return scores
+
     started = perf_counter()
     for step in range(1, args.steps + 1):
         model.train()
@@ -1950,43 +1974,47 @@ def main() -> None:
             (name, parameter)
             for name, parameter in model.named_parameters()
             if parameter.requires_grad]
-        functional_before: list[float] = []
-        functional_after: list[float] = []
+        functional_before: list[list[float]] = []
+        functional_after: list[list[float]] = []
         functional_update_rejected = False
         functional_model_before = None
         functional_optimizer_before = None
         if (
                 train_on_target
                 and args.functional_retention_tolerance >= 0.0):
-            validation_batches = []
-            for index, (
-                    validation_nuisance, validation_span,
-                    validation_query_count, validation_slot,
-                    validation_previous, validation_next) in enumerate(zip(
-                        rehearsal_nuisances, rehearsal_spans,
-                        rehearsal_query_counts, rehearsal_slot_difficulties,
-                        rehearsal_previous_stages, rehearsal_next_stages)):
-                validation_batches.append(generate_procedural_shape_batch(
-                    args.functional_retention_validation_batch_size,
-                    span=validation_span, vocabulary=args.vocabulary,
-                    seed=(args.seed + 40_000_000 + step * 16 + index),
-                    nuisance=validation_nuisance, objective=args.objective,
-                    query_count=validation_query_count,
-                    new_slot_difficulty=validation_slot,
-                    previous_query_stage=validation_previous,
-                    next_query_stage=validation_next, device=device))
-            functional_validation_bits += sum(
-                validation.batch_size * validation.query_ordinals.shape[1]
-                for validation in validation_batches)
+            if not functional_anchor_batches:
+                for index, (
+                        validation_nuisance, validation_span,
+                        validation_query_count, validation_slot,
+                        validation_previous, validation_next) in enumerate(zip(
+                            rehearsal_nuisances, rehearsal_spans,
+                            rehearsal_query_counts, rehearsal_slot_difficulties,
+                            rehearsal_previous_stages, rehearsal_next_stages)):
+                    functional_anchor_batches.append(
+                        generate_procedural_shape_batch(
+                            args.functional_retention_validation_batch_size,
+                            span=validation_span, vocabulary=args.vocabulary,
+                            seed=args.seed + 40_000_000 + index,
+                            nuisance=validation_nuisance,
+                            objective=args.objective,
+                            query_count=validation_query_count,
+                            new_slot_difficulty=validation_slot,
+                            previous_query_stage=validation_previous,
+                            next_query_stage=validation_next, device=device))
+                functional_validation_unique_bits = sum(
+                    validation.batch_size * validation.query_ordinals.shape[1]
+                    for validation in functional_anchor_batches)
             was_training = model.training
             model.eval()
             with torch.no_grad():
-                for validation_batch in validation_batches:
-                    validation = rollout_procedural_shape_span(
-                        model, validation_batch, sample_actions=False)
-                    functional_before.append(
-                        float(validation["rewards"].mean()))
+                for validation_batch in functional_anchor_batches:
+                    functional_before.append(functional_scores(validation_batch))
             model.train(was_training)
+            if not functional_anchor_baseline:
+                functional_anchor_baseline = [
+                    scores.copy() for scores in functional_before]
+            functional_validation_evaluation_bits += (
+                functional_validation_unique_bits)
             functional_model_before = copy.deepcopy(model.state_dict())
             functional_optimizer_before = copy.deepcopy(optimizer.state_dict())
         parameters_before = (
@@ -2036,15 +2064,16 @@ def main() -> None:
             was_training = model.training
             model.eval()
             with torch.no_grad():
-                for validation_batch in validation_batches:
-                    validation = rollout_procedural_shape_span(
-                        model, validation_batch, sample_actions=False)
-                    functional_after.append(
-                        float(validation["rewards"].mean()))
+                for validation_batch in functional_anchor_batches:
+                    functional_after.append(functional_scores(validation_batch))
             model.train(was_training)
+            functional_validation_evaluation_bits += (
+                functional_validation_unique_bits)
             functional_update_rejected = any(
                 after < before - args.functional_retention_tolerance
-                for before, after in zip(functional_before, functional_after))
+                for before_stream, after_stream in zip(
+                    functional_anchor_baseline, functional_after)
+                for before, after in zip(before_stream, after_stream))
             if functional_update_rejected:
                 model.load_state_dict(functional_model_before)
                 assert functional_optimizer_before is not None
@@ -2063,10 +2092,13 @@ def main() -> None:
                 "unique_verifier_bits": (
                     target_updates * args.batch_size * target_query_count
                     + sum(rehearsal_verifier_bits.values())
-                    + functional_validation_bits),
+                    + functional_validation_unique_bits),
                 "target_verifier_bits": (
                     target_updates * args.batch_size * target_query_count),
-                "functional_validation_bits": functional_validation_bits,
+                "functional_validation_unique_bits": (
+                    functional_validation_unique_bits),
+                "functional_validation_evaluation_bits": (
+                    functional_validation_evaluation_bits),
                 "floor_rehearsal_bits": (
                     sum(
                         bits for key, bits
@@ -2303,7 +2335,9 @@ def main() -> None:
             args.functional_retention_tolerance),
         "functional_retention_validation_batch_size": (
             args.functional_retention_validation_batch_size),
-        "functional_validation_bits": functional_validation_bits,
+        "functional_validation_unique_bits": functional_validation_unique_bits,
+        "functional_validation_evaluation_bits": (
+            functional_validation_evaluation_bits),
         "binary_outcomes_completed": args.complete_binary_outcomes,
         "train_relation_adapter_only": args.train_relation_adapter_only,
         "train_action_adapter_only": args.train_action_adapter_only,
