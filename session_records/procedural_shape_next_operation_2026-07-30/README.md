@@ -310,3 +310,20 @@ noise band. Its final target update was rejected after a 0.36-point anchor
 conflict drop. This is a useful efficiency improvement to a safety instrument,
 but it did not turn 3×/3× weighting into a viable acquisition strategy. The
 report is saved as `functional_conflict_specific_rejected.json`.
+
+## Sanity control, not transfer evidence
+
+An equal-budget 64-update comparison started the promoted controller and a
+fresh controller on the same already-mastered span-three `next` relation. The
+parent reached 77.86% held-out conflict/new-slot accuracy while the fresh
+controller remained at 50.26% chance, after the same 6,144 target outcomes.
+This verifies that the parent checkpoint, rather than a schedule artifact,
+contains the useful capability. It is **not** evidence of compounding learning:
+the parent had already been trained on this exact target. The saved reports are
+`transfer_same_skill_parent_sanity.json` and
+`transfer_same_skill_fresh_sanity.json`.
+
+The correct next experiment must use a genuinely new but adjacent target—for
+example a fourth presented item under the same `next` relation—while matching
+the target outcome budget against a fresh controller. Only a faster rise on
+that unseen target counts as transfer or compounding sample efficiency.
