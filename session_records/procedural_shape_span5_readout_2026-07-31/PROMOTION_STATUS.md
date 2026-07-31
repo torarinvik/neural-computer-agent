@@ -11,6 +11,8 @@ then repeat the same two-seed audit.  No architecture change is justified:
 the five-item relation is already present and behaviorally learnable.
 
 The replay runner now rejects adjacent nuisance increments larger than 0.0001
-by default. Reaching 0.17 therefore uses a 350-step staircase from 0.135,
-rather than a single jump; an interrupted coarse run is not treated as
-evidence.
+by default. The first stable three-step staircase (0.1350 → 0.1352) passed its
+endpoint gates using learning rate `3e-4` and four rehearsal updates. The new
+candidate is `artifacts/checkpoints/unified_procedural_shape_span5_micro1352_seed45301.pt`.
+Reaching 0.17 still requires a 350-step staircase from 0.135; an interrupted
+coarse run is not treated as evidence.

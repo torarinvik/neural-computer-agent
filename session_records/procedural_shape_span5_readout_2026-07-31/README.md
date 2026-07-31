@@ -59,6 +59,25 @@ strict conflict, and 92.71% old-skill retention.  This is not a failure of the
 baseline result; it identifies the next frontier: train with gradual nuisance
 augmentation and recover the retention/accuracy margin at the harder render.
 
+## Microscopic curriculum result
+
+The first three-level attempt (0.1350, 0.1351, 0.1352) used the old learning
+rate and one rehearsal update; it degraded to 85.74% pure-next accuracy and
+94.44% old retention.  We discarded that branch.  Keeping the exact same
+0.0001 increments but using learning rate `3e-4` and four rehearsal updates
+produced:
+
+- training evaluation: 94.24% overall, 96.48% pure-next, 92.65% strict conflict,
+  98.91% old span-three retention;
+- fresh 0.1352 endpoint: 95.41% overall, 96.68% pure-next, 93.15% strict
+  conflict, 50.68% memory-reset accuracy, 92.58% candidate flip rate, and
+  98.57% old retention.
+
+This is the first robust nuisance-curriculum result.  The candidate is
+`artifacts/checkpoints/unified_procedural_shape_span5_micro1352_seed45301.pt`.
+The staircase can now continue in further 0.0001 increments, retaining the
+lower learning rate and stronger rehearsal recipe.
+
 This is a sample-efficiency signal: the model is learning from repeated use of
 the same observed outcomes, not from additional verifier episodes.  It is not
 yet promotion-grade (the current gate is 90% overall and 85% strict-conflict),
