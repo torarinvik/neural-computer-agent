@@ -119,6 +119,51 @@
       "truthful_conflicting_new_slot_accuracy": 0.7083333134651184
     }
   },
+  "second_compounding_increment": {
+    "learning_rate": 0.000025,
+    "target_verifier_bits_per_run": 1536,
+    "rehearsal_verifier_bits_per_run": 10752,
+    "gradient_evaluations_per_run": 16,
+    "optimizer_updates_per_run": 4,
+    "primary": {
+      "seed": 43001,
+      "parent_next_accuracy": 0.6966145634651184,
+      "child_next_accuracy": 0.7161458134651184,
+      "parent_next_conflict_accuracy": 0.794608473777771,
+      "child_next_conflict_accuracy": 0.8125802278518677,
+      "previous_accuracy": 0.9649522304534912,
+      "previous_conflict_accuracy": 0.9595828056335449,
+      "wall_seconds": 42.17279291700106
+    },
+    "replica": {
+      "seed": 43051,
+      "parent_next_accuracy": 0.6822916865348816,
+      "child_next_accuracy": 0.716796875,
+      "parent_next_conflict_accuracy": 0.7807486653327942,
+      "child_next_conflict_accuracy": 0.8208556175231934,
+      "previous_accuracy": 0.9644097089767456,
+      "previous_conflict_accuracy": 0.9559528827667236,
+      "wall_seconds": 42.00591179099865
+    },
+    "paired_shuffled_control_seed43001": {
+      "parent_next_accuracy": 0.6966145634651184,
+      "shuffled_next_accuracy": 0.6920573115348816,
+      "truthful_next_accuracy": 0.7161458134651184,
+      "parent_conflicting_new_slot_accuracy": 0.7018229365348816,
+      "shuffled_conflicting_new_slot_accuracy": 0.7018229365348816,
+      "truthful_conflicting_new_slot_accuracy": 0.7233073115348816
+    }
+  },
+  "third_increment_saturation": {
+    "learning_rate": 0.0000125,
+    "target_verifier_bits": 1536,
+    "optimizer_updates": 4,
+    "parent_next_accuracy": 0.7096354365348816,
+    "child_next_accuracy": 0.7141926884651184,
+    "parent_next_conflict_accuracy": 0.797650158405304,
+    "child_next_conflict_accuracy": 0.797650158405304,
+    "reason_rejected": "negligible next gain and no causal-conflict gain"
+  },
   "transfer_ratio_against_fresh": null,
   "accounting_notes": {
     "action_latency_seconds": "not instrumented by this trainer; architecture and event count are unchanged across matched arms",

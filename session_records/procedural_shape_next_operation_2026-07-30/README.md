@@ -160,6 +160,38 @@ nevertheless win the fully paired comparison on every new-skill measure while
 all old-skill gates pass. The result is a replicated incremental
 protected-learning milestone, not yet second-anchor mastery.
 
+## Replicated compounding increment and saturation boundary
+
+The same four-update recipe was applied once more to both independently
+promoted trust-region checkpoints:
+
+| run | parent `next` | child `next` | parent conflict | child conflict | previous overall | previous conflict |
+|---|---:|---:|---:|---:|---:|---:|
+| seed 43001 | 69.66% | 71.61% | 79.46% | 81.26% | 96.50% | 95.96% |
+| seed 43051 | 68.23% | 71.68% | 78.07% | 82.09% | 96.44% | 95.60% |
+
+Thus persistent experience produces a second replicated gain rather than
+merely reproducing the first checkpoint. Each lineage has now consumed 3,072
+target bits after its original protected parent, with eight weight-changing
+updates total across the two safe increments.
+
+The exact seed-43001 control confirms experience direction:
+
+| arm | `next` | causal conflict | independent new slot |
+|---|---:|---:|---:|
+| unchanged parent | 69.66% | 79.46% | 70.18% |
+| shuffled target outcomes | 69.21% | 80.36% | 70.18% |
+| truthful target outcomes | 71.61% | 81.26% | 72.33% |
+
+Shuffled outcomes provide no `next` or independent-slot gain. Truthful
+outcomes improve every new-skill measure while retaining all old skills.
+
+Because the weakest retention gates approached 95%, a third increment used
+half the step size. It moved `next` only 70.96% → 71.42%, left causal
+conflicts unchanged at 79.77%, and was rejected. More identical micro-steps
+are therefore low ROI: the method demonstrates genuine compounding twice, but
+then reaches a local saturation boundary.
+
 ## Conclusion and frontier
 
 Successful:
@@ -179,8 +211,8 @@ Rejected:
 5. scalar gradient suppression as the complete solution.
 
 Direction-aware aggregate projection plus constraint-only rehearsal and a
-very small trust region is now the most reliable strategy. The next frontier
-is to compound several of these four-update safe increments toward mastery.
-Each increment must be accepted only if matched new-skill accuracy rises and
-every inherited overall and causal-conflict gate remains above 95%; the step
-size should halve immediately on a near miss.
+very small trust region is now the most reliable strategy. It compounds for
+two replicated increments, but a third half-step saturates. The next frontier
+is a better local learning signal for the remaining second-anchor errors—not
+more identical micro-steps. Any candidate must beat the 71.6–71.7% `next` and
+81.3–82.1% conflict frontier while preserving every inherited gate above 95%.

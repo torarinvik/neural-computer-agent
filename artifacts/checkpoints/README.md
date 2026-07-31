@@ -2,6 +2,27 @@
 
 ## Procedural-shape relative operations
 
+`unified_next_trust_compound2_primary_seed43001.pt` and
+`unified_next_trust_compound2_replica_seed43051.pt` are the first replicated
+second compounding increment.
+
+- SHA-256 primary:
+  `3879d91a4dd0b349b3396b0679c8d4d49c81ab56de6cb56686992cc84640d192`
+- SHA-256 replica:
+  `f4d041d76ff42c3f3d213b079196dc7935135e9de360dd6a1a29089c3cb65ffa`
+- matched `next` gain: 69.66% → 71.61% / 68.23% → 71.68%
+- matched causal-conflict gain: 79.46% → 81.26% /
+  78.07% → 82.09%
+- previous-item overall/conflict retention: 96.50%/95.96% and
+  96.44%/95.60%
+- exact shuffled target control: no `next` or independent-slot gain
+- acquisition per increment: 1,536 target bits, 10,752 rehearsal bits,
+  16 gradient evaluations, and four optimizer updates
+
+A third half-step is not promoted: it gained only 0.46 `next` points and no
+causal-conflict accuracy. These checkpoints define the current compounding
+frontier and its measured local saturation boundary.
+
 `unified_next_reference_only_trust_region_primary_seed42801.pt` and
 `unified_next_reference_only_trust_region_replica_seed42851.pt` are the
 replicated constraint-only rehearsal milestones.

@@ -31,6 +31,22 @@ Final accuracy alone is not an adequate score.
 
 ## Current audited frontier
 
+The protected `next item` learner now demonstrates a second replicated
+compounding increment. Applying the same four-update constraint-only recipe
+to both independent trust-region checkpoints raises matched `next` from
+69.66% to 71.61% and from 68.23% to 71.68%. Causal conflicts rise from 79.46%
+to 81.26% and from 78.07% to 82.09%. Every inherited overall and conflict gate
+remains above 95%.
+
+On the exact primary seed, shuffled target outcomes produce no `next` or
+independent-new-slot gain, while truthful outcomes improve both. A third
+increment at half the learning rate adds only 0.46 points and no causal gain,
+so more identical micro-steps are rejected. The frontier has shifted from
+“can safe increments compound?” to “what better local signal breaks the
+71.6–71.7% saturation boundary without spending the remaining retention
+margin?” See
+`session_records/procedural_shape_next_operation_2026-07-30/README.md`.
+
 The procedural-shape controller now has a replicated constraint-only
 rehearsal milestone. Rehearsal outcomes define protected gradient directions
 without taking old-skill optimizer steps; only four target batches change the
