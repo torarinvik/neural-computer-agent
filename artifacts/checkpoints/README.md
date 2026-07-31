@@ -2,6 +2,29 @@
 
 ## Procedural-shape relative operations
 
+`unified_next_reference_only_trust_region_primary_seed42801.pt` and
+`unified_next_reference_only_trust_region_replica_seed42851.pt` are the
+replicated constraint-only rehearsal milestones.
+
+- SHA-256 primary:
+  `57f463296a3564da4fe7cb432f3650158b245bf8179cc0b4999c1cc4b26bf7be`
+- SHA-256 replica:
+  `ae419d571ea3976d28b257d59da32f4a2dedd51d6611f18abe21932fc81b9565`
+- acquisition per run: 1,536 target verifier bits, 10,752 rehearsal
+  verifier bits, 16 gradient evaluations, and four optimizer updates
+- matched `next` gain: 63.93% → 69.99% / 64.71% → 69.99%
+- matched causal-conflict gain: 70.43% → 78.58% /
+  74.29% → 80.49%
+- every retained old-skill overall and causal-conflict gate: above 95%
+- complete memory reset: chance
+- same-seed truthful target outcomes beat shuffled outcomes on `next`,
+  causal conflicts, and the independent new-slot subgroup
+
+Rehearsal batches define the protected gradient direction but do not take
+old-skill optimizer steps. A 0.000025 target learning rate is the first tested
+trust region that replicated learning without leaving the locally safe loss
+region. This is incremental protected learning, not second-anchor mastery.
+
 `unified_next_gradient_projection_primary_seed41901.pt` and
 `unified_next_gradient_projection_replica_seed42101.pt` are the first
 replicated protected-plasticity checkpoints.

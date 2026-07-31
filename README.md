@@ -31,6 +31,22 @@ Final accuracy alone is not an adequate score.
 
 ## Current audited frontier
 
+The procedural-shape controller now has a replicated constraint-only
+rehearsal milestone. Rehearsal outcomes define protected gradient directions
+without taking old-skill optimizer steps; only four target batches change the
+weights. A 0.000025 trust-region learning rate keeps those updates inside the
+locally valid protection region.
+
+Across two matched seeds, aligned `next item` rises from 63.93% and 64.71% to
+69.99%, while causal conflicts rise from 70.43% and 74.29% to 78.58% and
+80.49%. Every redundant-anchor, first-next, and previous-item overall and
+causal-conflict gate remains above 95%; complete memory reset stays at chance.
+A fully paired third seed scores 69.79% with truthful target outcomes versus
+66.99% with shuffled outcomes and 64.45% unchanged. The next frontier is to
+compound these four-update safe increments toward mastery, halving the trust
+region immediately whenever retention approaches its gate. See
+`session_records/procedural_shape_next_operation_2026-07-30/README.md`.
+
 The controller now has its first replicated protected-plasticity result at
 the independent third-item `next item` frontier. Aggregate rehearsal-gradient
 projection removes only target-gradient components that oppose verified old

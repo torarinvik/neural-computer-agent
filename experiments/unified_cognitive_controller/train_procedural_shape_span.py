@@ -730,6 +730,40 @@ def project_gradient_against_reference(
     return applied, cosine, float(post_dot)
 
 
+def project_parameter_update_against_reference(
+        named_parameters: list[tuple[str, torch.nn.Parameter]],
+        parameters_before: dict[str, torch.Tensor],
+        reference_gradient: dict[str, torch.Tensor],
+        strength: float) -> tuple[bool, float | None, float | None]:
+    """Remove an actual optimizer update that would raise rehearsal loss."""
+    if not 0.0 <= strength <= 1.0:
+        raise ValueError("projection strength must be within [0, 1]")
+    update_norm_sq = torch.zeros(
+        (), device=named_parameters[0][1].device)
+    reference_norm_sq = torch.zeros_like(update_norm_sq)
+    dot = torch.zeros_like(update_norm_sq)
+    for name, parameter in named_parameters:
+        update = parameter.detach() - parameters_before[name]
+        reference = reference_gradient[name]
+        dot += torch.sum(update * reference)
+        update_norm_sq += torch.sum(update.square())
+        reference_norm_sq += torch.sum(reference.square())
+    if float(update_norm_sq) == 0.0 or float(reference_norm_sq) == 0.0:
+        return False, None, None
+    cosine = float(dot / torch.sqrt(update_norm_sq * reference_norm_sq))
+    applied = float(dot) > 0.0 and strength > 0.0
+    if applied:
+        coefficient = strength * dot / reference_norm_sq
+        with torch.no_grad():
+            for name, parameter in named_parameters:
+                parameter.sub_(coefficient * reference_gradient[name])
+    post_dot = torch.zeros_like(dot)
+    for name, parameter in named_parameters:
+        update = parameter.detach() - parameters_before[name]
+        post_dot += torch.sum(update * reference_gradient[name])
+    return applied, cosine, float(post_dot)
+
+
 def rollout_procedural_shape_span(
         model: UnifiedCognitiveController, batch: ProceduralShapeBatch, *,
         sample_actions: bool, exploration: float = 0.10,
@@ -1288,6 +1322,21 @@ def main() -> None:
         help=(
             "protect either the average rehearsal direction or every "
             "rehearsal stream separately"))
+    parser.add_argument(
+        "--worst-stream-residual-projection", type=float, default=0.0,
+        help=(
+            "after aggregate projection, softly remove this fraction of the "
+            "single worst remaining rehearsal-stream conflict"))
+    parser.add_argument(
+        "--project-optimizer-update", action="store_true",
+        help=(
+            "apply the same protection to AdamW's actual parameter update, "
+            "after momentum and adaptive scaling"))
+    parser.add_argument(
+        "--reference-only-rehearsal", action="store_true",
+        help=(
+            "use rehearsal outcomes to define protected directions without "
+            "taking separate old-skill optimizer steps"))
     parser.add_argument("--exploration", type=float, default=0.10)
     parser.add_argument("--log-every", type=int, default=32)
     parser.add_argument("--eval-every", type=int, default=32)
@@ -1356,6 +1405,30 @@ def main() -> None:
     if not 0.0 <= args.rehearsal_gradient_projection <= 1.0:
         raise ValueError(
             "rehearsal-gradient projection must be within [0, 1]")
+    if not 0.0 <= args.worst_stream_residual_projection <= 1.0:
+        raise ValueError(
+            "worst-stream residual projection must be within [0, 1]")
+    if (
+            args.worst_stream_residual_projection > 0.0
+            and (
+                args.rehearsal_gradient_projection == 0.0
+                or args.gradient_projection_mode != "aggregate")):
+        raise ValueError(
+            "worst-stream residual projection requires aggregate rehearsal "
+            "gradient projection")
+    if (
+            args.project_optimizer_update
+            and (
+                args.rehearsal_gradient_projection == 0.0
+                or args.gradient_projection_mode != "aggregate")):
+        raise ValueError(
+            "optimizer-update projection requires aggregate rehearsal "
+            "gradient projection")
+    if (
+            args.reference_only_rehearsal
+            and args.rehearsal_gradient_projection == 0.0):
+        raise ValueError(
+            "reference-only rehearsal requires rehearsal gradient projection")
     if (
             args.usage_protection_strength > 0.0
             and args.rehearsal_gradient_projection > 0.0):
@@ -1584,6 +1657,7 @@ def main() -> None:
             rehearsal_slot_difficulties, rehearsal_previous_stages,
             rehearsal_next_stages, rehearsal_levels)}
     rehearsal_verifier_bits = dict.fromkeys(rehearsal_update_counts, 0)
+    weight_changing_updates = 0
     started = perf_counter()
     for step in range(1, args.steps + 1):
         model.train()
@@ -1689,8 +1763,23 @@ def main() -> None:
         projection_count = 0
         reference_cosine = None
         post_projection_dot = None
+        stream_cosines: list[float | None] = []
+        aggregate_post_stream_cosines: list[float | None] = []
+        post_projection_stream_cosines: list[float | None] = []
+        residual_projection_applied = False
+        residual_projection_stream = None
+        optimizer_projection_applied = False
+        optimizer_update_cosine = None
+        optimizer_update_post_dot = None
+        optimizer_update_stream_cosines: list[float | None] = []
+        optimizer_update_final_stream_cosines: list[float | None] = []
+        optimizer_residual_projection_stream = None
         if train_on_target and args.rehearsal_gradient_projection > 0.0:
             named_parameters = list(model.named_parameters())
+            for reference in rehearsal_stream_gradients:
+                _, cosine, _ = project_gradient_against_reference(
+                    named_parameters, reference, 0.0)
+                stream_cosines.append(cosine)
             if args.gradient_projection_mode == "aggregate":
                 (
                     projection_applied,
@@ -1727,6 +1816,31 @@ def main() -> None:
                     min(initial_cosines) if initial_cosines else None)
                 post_projection_dot = (
                     min(post_dots) if post_dots else None)
+            for reference in rehearsal_stream_gradients:
+                _, cosine, _ = project_gradient_against_reference(
+                    named_parameters, reference, 0.0)
+                aggregate_post_stream_cosines.append(cosine)
+            valid_streams = [
+                (cosine, index)
+                for index, cosine in enumerate(
+                    aggregate_post_stream_cosines)
+                if cosine is not None]
+            if (
+                    args.worst_stream_residual_projection > 0.0
+                    and projection_applied
+                    and valid_streams):
+                worst_cosine, worst_index = min(valid_streams)
+                if worst_cosine < 0.0:
+                    residual_projection_applied, _, _ = (
+                        project_gradient_against_reference(
+                            named_parameters,
+                            rehearsal_stream_gradients[worst_index],
+                            args.worst_stream_residual_projection))
+                    residual_projection_stream = worst_index
+            for reference in rehearsal_stream_gradients:
+                _, cosine, _ = project_gradient_against_reference(
+                    named_parameters, reference, 0.0)
+                post_projection_stream_cosines.append(cosine)
         if train_on_target and args.usage_protection_strength > 0.0:
             for name, parameter in model.named_parameters():
                 if parameter.grad is None:
@@ -1753,7 +1867,53 @@ def main() -> None:
                     args.usage_importance_decay).addcmul_(
                         parameter.grad, parameter.grad,
                         value=1.0 - args.usage_importance_decay)
-        optimizer.step()
+        protected_named_parameters = [
+            (name, parameter)
+            for name, parameter in model.named_parameters()
+            if parameter.requires_grad]
+        parameters_before = (
+            {
+                name: parameter.detach().clone()
+                for name, parameter in protected_named_parameters}
+            if train_on_target and args.project_optimizer_update
+            else {})
+        if train_on_target or not args.reference_only_rehearsal:
+            optimizer.step()
+            weight_changing_updates += 1
+        if train_on_target and args.project_optimizer_update:
+            (
+                optimizer_projection_applied,
+                optimizer_update_cosine,
+                optimizer_update_post_dot,
+            ) = project_parameter_update_against_reference(
+                protected_named_parameters, parameters_before,
+                rehearsal_gradient, args.rehearsal_gradient_projection)
+            for reference in rehearsal_stream_gradients:
+                _, cosine, _ = project_parameter_update_against_reference(
+                    protected_named_parameters, parameters_before,
+                    reference, 0.0)
+                optimizer_update_stream_cosines.append(cosine)
+            valid_updates = [
+                (cosine, index)
+                for index, cosine in enumerate(
+                    optimizer_update_stream_cosines)
+                if cosine is not None]
+            if (
+                    args.worst_stream_residual_projection > 0.0
+                    and optimizer_projection_applied
+                    and valid_updates):
+                worst_cosine, worst_index = max(valid_updates)
+                if worst_cosine > 0.0:
+                    project_parameter_update_against_reference(
+                        protected_named_parameters, parameters_before,
+                        rehearsal_stream_gradients[worst_index],
+                        args.worst_stream_residual_projection)
+                    optimizer_residual_projection_stream = worst_index
+            for reference in rehearsal_stream_gradients:
+                _, cosine, _ = project_parameter_update_against_reference(
+                    protected_named_parameters, parameters_before,
+                    reference, 0.0)
+                optimizer_update_final_stream_cosines.append(cosine)
         if train_on_target and args.rehearsal_gradient_projection > 0.0:
             for value in rehearsal_gradient.values():
                 value.zero_()
@@ -1788,6 +1948,28 @@ def main() -> None:
                 row["gradient_projection_applied"] = projection_applied
                 row["gradient_projection_count"] = projection_count
                 row["post_projection_dot"] = post_projection_dot
+                row["target_rehearsal_stream_cosines"] = stream_cosines
+                row["aggregate_post_stream_cosines"] = (
+                    aggregate_post_stream_cosines)
+                row["post_projection_stream_cosines"] = (
+                    post_projection_stream_cosines)
+                row["residual_projection_applied"] = (
+                    residual_projection_applied)
+                row["residual_projection_stream"] = (
+                    residual_projection_stream)
+                if optimizer_update_cosine is not None:
+                    row["optimizer_update_rehearsal_cosine"] = (
+                        optimizer_update_cosine)
+                    row["optimizer_update_projection_applied"] = (
+                        optimizer_projection_applied)
+                    row["optimizer_update_post_dot"] = (
+                        optimizer_update_post_dot)
+                    row["optimizer_update_stream_cosines"] = (
+                        optimizer_update_stream_cosines)
+                    row["optimizer_update_final_stream_cosines"] = (
+                        optimizer_update_final_stream_cosines)
+                    row["optimizer_residual_projection_stream"] = (
+                        optimizer_residual_projection_stream)
             if (
                     step % args.eval_every == 0
                     or step == args.steps):
@@ -1968,6 +2150,10 @@ def main() -> None:
         "rehearsal_gradient_projection": (
             args.rehearsal_gradient_projection),
         "gradient_projection_mode": args.gradient_projection_mode,
+        "worst_stream_residual_projection": (
+            args.worst_stream_residual_projection),
+        "project_optimizer_update": args.project_optimizer_update,
+        "reference_only_rehearsal": args.reference_only_rehearsal,
         "binary_outcomes_completed": args.complete_binary_outcomes,
         "train_relation_adapter_only": args.train_relation_adapter_only,
         "train_action_adapter_only": args.train_action_adapter_only,
@@ -1985,7 +2171,8 @@ def main() -> None:
         "rehearsal_next_query_stages": rehearsal_next_stages,
         "rehearsal_update_counts": rehearsal_update_counts,
         "rehearsal_verifier_bits": rehearsal_verifier_bits,
-        "optimizer_updates": args.steps,
+        "optimizer_updates": weight_changing_updates,
+        "gradient_evaluations": args.steps,
         "unique_logical_lifetimes": args.steps * args.batch_size,
         "unique_verifier_bits": (
             target_updates * args.batch_size * target_query_count

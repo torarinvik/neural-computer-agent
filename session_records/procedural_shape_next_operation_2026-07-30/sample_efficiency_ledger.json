@@ -73,6 +73,52 @@
     "aligned_next_conflict_accuracy": 0.5086321234703064,
     "conflicting_new_slot_accuracy": 0.4661458432674408
   },
+  "reference_only_trust_region": {
+    "learning_rate": 0.000025,
+    "target_verifier_bits_per_run": 1536,
+    "rehearsal_verifier_bits_per_run": 10752,
+    "unique_verifier_bits_per_run": 12288,
+    "unique_logical_lifetimes_per_run": 6144,
+    "gradient_evaluations_per_run": 16,
+    "optimizer_updates_per_run": 4,
+    "replayed_examples": 0,
+    "stable_bits_to_threshold": null,
+    "primary": {
+      "seed": 42801,
+      "wall_seconds": 41.553634833951946,
+      "parent_next_accuracy": 0.6393229365348816,
+      "child_next_accuracy": 0.6998698115348816,
+      "parent_next_conflict_accuracy": 0.704336404800415,
+      "child_next_conflict_accuracy": 0.7858081459999084,
+      "redundant_anchor_accuracy": 0.9908854365348816,
+      "first_next_anchor_accuracy": 0.9842665195465088,
+      "previous_accuracy": 0.9657118320465088,
+      "previous_conflict_accuracy": 0.9761492013931274
+    },
+    "replica": {
+      "seed": 42851,
+      "wall_seconds": 41.45175825001206,
+      "parent_next_accuracy": 0.6471354365348816,
+      "child_next_accuracy": 0.6998698115348816,
+      "parent_next_conflict_accuracy": 0.7428940534591675,
+      "child_next_conflict_accuracy": 0.8049095869064331,
+      "redundant_anchor_accuracy": 0.9879557490348816,
+      "first_next_anchor_accuracy": 0.9811198115348816,
+      "previous_accuracy": 0.9652777910232544,
+      "previous_conflict_accuracy": 0.9692507386207581
+    },
+    "paired_control_seed42901": {
+      "parent_next_accuracy": 0.64453125,
+      "shuffled_next_accuracy": 0.669921875,
+      "truthful_next_accuracy": 0.6979166865348816,
+      "parent_next_conflict_accuracy": 0.7227214574813843,
+      "shuffled_next_conflict_accuracy": 0.767650842666626,
+      "truthful_next_conflict_accuracy": 0.7843388915061951,
+      "parent_conflicting_new_slot_accuracy": 0.650390625,
+      "shuffled_conflicting_new_slot_accuracy": 0.6731770634651184,
+      "truthful_conflicting_new_slot_accuracy": 0.7083333134651184
+    }
+  },
   "transfer_ratio_against_fresh": null,
   "accounting_notes": {
     "action_latency_seconds": "not instrumented by this trainer; architecture and event count are unchanged across matched arms",

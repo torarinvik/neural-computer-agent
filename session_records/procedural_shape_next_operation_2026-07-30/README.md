@@ -112,6 +112,54 @@ The promoted checkpoints are the 1,536-target-bit primary and independent
 replica. The 92% continuation is retained as a report, not promoted, because
 it misses the complete retention gate.
 
+## Constraint-only rehearsal and trust-region breakthrough
+
+Per-stream telemetry localized why the long continuation failed. At the
+promoted checkpoint, the target gradient was locally compatible with all
+three retained skills. At the 92% checkpoint it opposed `previous item` by
+−0.782 cosine; aggregate projection removed the summed conflict but still
+left a −0.235 residual against that individual skill.
+
+Several sub-minute probes then separated tempting explanations:
+
+- softly protecting the worst residual stream passed once but did not
+  replicate its causal gain;
+- AdamW's actual aggregate parameter displacement was already locally safe,
+  so post-optimizer projection was inactive and could not explain the drift;
+- using rehearsal only as a gradient constraint accelerated the new relation
+  but catastrophically forgot old skills at learning rate 0.001;
+- reducing the learning rate exposed a smooth retention frontier: 0.00025
+  and 0.00005 were near misses, while 0.000025 crossed every gate.
+
+The successful rule performs twelve rehearsal gradient evaluations but no
+old-skill optimizer steps. Four target batches are the only weight-changing
+updates. Each target gradient is projected against the aggregate verified
+rehearsal direction, and the 40× smaller learning rate keeps the update inside
+the region where that first-order constraint remains valid.
+
+| run | parent `next` | child `next` | parent conflict | child conflict | weakest retained overall | previous conflict |
+|---|---:|---:|---:|---:|---:|---:|
+| seed 42801 | 63.93% | 69.99% | 70.43% | 78.58% | 96.57% | 97.61% |
+| seed 42851 | 64.71% | 69.99% | 74.29% | 80.49% | 96.53% | 96.93% |
+
+Both runs consume 1,536 target verifier bits, 10,752 rehearsal verifier bits,
+6,144 unique lifetimes, 16 gradient evaluations, and only four optimizer
+updates. Full memory reset remains at chance.
+
+A same-seed causal comparison gives the honest control:
+
+| seed 42901 | `next` | causal conflict | independent new slot |
+|---|---:|---:|---:|
+| unchanged parent | 64.45% | 72.27% | 65.04% |
+| shuffled target outcomes | 66.99% | 76.77% | 67.32% |
+| truthful target outcomes | 69.79% | 78.43% | 70.83% |
+
+Tiny shuffled updates act as weak regularization, so “shuffled returns to
+chance” would be a false claim at this inherited frontier. Truthful outcomes
+nevertheless win the fully paired comparison on every new-skill measure while
+all old-skill gates pass. The result is a replicated incremental
+protected-learning milestone, not yet second-anchor mastery.
+
 ## Conclusion and frontier
 
 Successful:
@@ -130,9 +178,9 @@ Rejected:
 4. a frozen bolt-on adapter;
 5. scalar gradient suppression as the complete solution.
 
-Direction-aware aggregate projection is now the successful strategy. The new
-frontier is to turn the modest protected gain into mastery without crossing
-the `previous item` conflict gate. The next smallest experiment should vary
-the target/rehearsal cycle only after measuring the protected checkpoint's
-per-stream gradient conflicts; it should not add stronger blanket protection
-or repeat old examples blindly.
+Direction-aware aggregate projection plus constraint-only rehearsal and a
+very small trust region is now the most reliable strategy. The next frontier
+is to compound several of these four-update safe increments toward mastery.
+Each increment must be accepted only if matched new-skill accuracy rises and
+every inherited overall and causal-conflict gate remains above 95%; the step
+size should halve immediately on a near miss.
