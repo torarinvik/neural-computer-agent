@@ -515,6 +515,23 @@ def test_second_next_anchor_can_align_direct_and_next_targets() -> None:
             minlength=2).tolist() == [96, 96]
 
 
+def test_third_next_anchor_can_align_a_fourth_item_target() -> None:
+    batch = generate_procedural_shape_batch(
+        256, span=4, query_count=1, vocabulary=2, seed=27031,
+        nuisance=nuisance_from_level(0.135), next_query_stage=2,
+        next_query_anchor_focus=2, next_query_target_aligned=True)
+    assert batch.query_ordinals.unique().tolist() == [3]
+    assert batch.query_operations.flatten().bincount(
+        minlength=3).tolist() == [128, 0, 128]
+    direct = batch.query_operations == 0
+    following = batch.query_operations == 2
+    assert bool((batch.query_cue_ordinals[direct] == 3).all())
+    assert bool((batch.query_cue_ordinals[following] == 2).all())
+    for selected in (direct, following):
+        assert batch.correct_actions[selected].bincount(
+            minlength=2).tolist() == [64, 64]
+
+
 def test_next_anchor_can_be_forced_to_a_later_query_position() -> None:
     batch = generate_procedural_shape_batch(
         384, span=3, query_count=2, vocabulary=2, seed=27026,

@@ -121,13 +121,22 @@ def _balanced_logical_content(
         count: int, span: int, vocabulary: int,
         generator: torch.Generator,
         permutations: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """Cross every identity sequence with every answer pattern evenly."""
+    """Balance identities and answers exactly; query orders independently."""
     answer_patterns = 2 ** span
     sequence_patterns = vocabulary ** span
     logical_patterns = sequence_patterns * answer_patterns
-    design_ids = torch.arange(count) % (logical_patterns * permutations)
+    design_ids = torch.arange(count) % logical_patterns
     ids = design_ids % logical_patterns
-    permutation_ids = design_ids // logical_patterns
+    if count % (logical_patterns * permutations) == 0:
+        # Preserve exact query-order balance for the existing full designs.
+        permutation_ids = (
+            torch.arange(count) // logical_patterns) % permutations
+    else:
+        # Longer spans make the factorial query-order cross prohibitively
+        # large. Identity and answer balance stay exact; independent random
+        # query orders prevent an order/content correlation in a microbatch.
+        permutation_ids = torch.randint(
+            permutations, (count,), generator=generator)
     sequence_ids = ids // answer_patterns
     answer_ids = ids % answer_patterns
     columns = [
@@ -262,10 +271,10 @@ def generate_procedural_shape_batch(
     if objective not in ("visible_identity", "recognition"):
         raise ValueError("objective must be visible_identity or recognition")
     permutations = tuple(itertools.permutations(range(span)))
-    design_patterns = (vocabulary * 2) ** span * len(permutations)
-    if count < design_patterns or count % design_patterns:
+    logical_patterns = (vocabulary * 2) ** span
+    if count < logical_patterns or count % logical_patterns:
         raise ValueError(
-            f"count must be a positive multiple of {design_patterns}")
+            f"count must be a positive multiple of {logical_patterns}")
     if span < 1:
         raise ValueError("span must be positive")
     if query_count is None:
@@ -322,8 +331,11 @@ def generate_procedural_shape_batch(
         raise ValueError("next query stage must be -1, 1, 2, or 3")
     if next_query_stage >= 1 and span < 2:
         raise ValueError("next query curriculum requires span at least 2")
-    if next_query_stage >= 2 and span != 3:
-        raise ValueError("next query stages 2 and 3 require span 3")
+    if next_query_stage == 2 and span < 3:
+        raise ValueError("next query stage 2 requires span at least 3")
+    if next_query_stage == 3 and span != 3:
+        raise ValueError(
+            "next query stage 3's mixed-operation curriculum requires span 3")
     if next_query_stage in (1, 2) and previous_query_stage >= 1:
         raise ValueError(
             "next-only stages must rehearse previous-item behavior in a "
@@ -338,20 +350,26 @@ def generate_procedural_shape_batch(
         raise ValueError(
             "forced next query position requires an active next operation "
             "and a position within the queried prefix")
-    if next_query_anchor_focus not in (-1, 0, 1):
-        raise ValueError("next query anchor focus must be -1, 0, or 1")
+    if not -1 <= next_query_anchor_focus < span - 1:
+        raise ValueError(
+            "next query anchor focus must be -1 or a valid nonfinal ordinal")
     if (
             next_query_anchor_focus >= 0
             and (
-                span != 3
-                or next_query_stage < next_query_anchor_focus + 1
+                next_query_stage < (1 if next_query_anchor_focus == 0 else 2)
                 or (
                     query_count == 1 and next_query_position >= 0)
                 or (
                     query_count > 1 and next_query_position < 0))):
         raise ValueError(
-            "next anchor focus requires span three, an enabled anchor, and "
-            "either one natural query or a forced multi-query position")
+            "next anchor focus requires an enabled stage and either one "
+            "natural query or a forced multi-query position")
+    if (
+            span != 3
+            and next_query_stage == 2
+            and next_query_anchor_focus < 0):
+        raise ValueError(
+            "span above three requires an explicit next anchor at stage 2")
     if (
             next_query_target_aligned
             and (
@@ -1227,10 +1245,11 @@ def main() -> None:
             "force the focused next-item target into one query position; -1 "
             "preserves natural query order"))
     parser.add_argument(
-        "--next-query-anchor-focus", type=int, choices=(-1, 0, 1), default=-1,
+        "--next-query-anchor-focus", type=int, default=-1,
         help=(
             "balance one next target against the direct target sharing its "
-            "visual cue; -1 uses the stage's natural scope"))
+            "visual cue; -1 uses the stage's natural scope; otherwise use a "
+            "nonfinal ordinal"))
     parser.add_argument(
         "--next-query-target-aligned", action="store_true",
         help=(
@@ -1598,17 +1617,15 @@ def main() -> None:
             "usage protection and gradient projection require rehearsal "
             "experience")
     for span in {args.span, *rehearsal_spans}:
-        design_patterns = (
-            (args.vocabulary * 2) ** span
-            * len(tuple(itertools.permutations(range(span)))))
+        logical_patterns = (args.vocabulary * 2) ** span
         for name, count in (
                 ("batch size", args.batch_size),
                 ("test episodes", args.test_episodes),
                 ("curve test episodes", args.curve_test_episodes)):
-            if count < design_patterns or count % design_patterns:
+            if count < logical_patterns or count % logical_patterns:
                 raise ValueError(
                     f"{name} must be a positive multiple of "
-                    f"{design_patterns} for span {span}")
+                    f"{logical_patterns} for span {span}")
     configuration: dict[str, object] = {
         "width": args.width, "workspace_slots": args.workspace_slots,
         "intention_width": args.intention_width,
