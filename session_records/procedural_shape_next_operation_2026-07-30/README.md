@@ -251,7 +251,24 @@ versus 72.59% for its unchanged parent and 72.98% for shuffled outcomes. Its
 hard non-conflict/action-zero cell reaches 55.85%, versus 52.39% parent and
 51.33% shuffled. This rules out schedule-only regularization as the cause.
 
+## Rejected follow-up: equal 3× group weighting
+
+Increasing non-conflict emphasis from 2× to 3× has a real corrective effect,
+but it spends more retention margin than the present aggregate gradient
+constraint can safely protect. From an exact parent, four target updates raise
+the hard cell 53.37% → 57.51% and non-conflicts 62.40% → 65.01%, but reduce
+previous-item conflict retention 95.69% → 95.00%. The independent full run
+falls further, to 94.76%, and is rejected.
+
+Halving this to two target updates retains the first lineage (95.43% previous
+conflicts) while preserving a 53.37% → 56.48% hard-cell gain. Its independent
+replica again misses the gate at 94.93%. Therefore smaller duration does not
+make the 3×/3× rule robust; the limitation is functional retention protection,
+not insufficient target emphasis. The reports are retained as rejected
+controls.
+
 The promoted 3:2 checkpoints define the new frontier. The next experiment
-should continue decomposing the residual 26.5% error—especially the still
-weak 56.8% action-zero/non-conflict cell—while preserving the replicated
-directional learning and every inherited gate above 95%.
+should preserve the replicated directional learning while adding a
+function-level acceptance or backtracking check for the old skill. That would
+test whether corrective 3×/3× updates can be accepted only when they preserve
+actual old-task behavior, rather than relying on a local gradient proxy.

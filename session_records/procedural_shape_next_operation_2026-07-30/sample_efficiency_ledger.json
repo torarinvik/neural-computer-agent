@@ -200,6 +200,29 @@
       "truthful_memory_reset_accuracy": 0.5026041865348816
     }
   },
+  "equal3_retention_tradeoff_rejected": {
+    "conflict_loss_weight": 3.0,
+    "nonconflict_loss_weight": 3.0,
+    "full_increment_target_verifier_bits": 1536,
+    "half_increment_target_verifier_bits": 768,
+    "primary_half": {
+      "next_accuracy": 0.7434895634651184,
+      "next_conflict_accuracy": 0.8467532396316528,
+      "next_nonconflict_accuracy": 0.6396867036819458,
+      "hard_cell_accuracy": 0.5647668242454529,
+      "previous_accuracy": 0.9646267294883728,
+      "previous_conflict_accuracy": 0.9543103575706482
+    },
+    "replica_half": {
+      "next_accuracy": 0.7682291865348816,
+      "next_conflict_accuracy": 0.8477157354354858,
+      "next_nonconflict_accuracy": 0.6844919919967651,
+      "hard_cell_accuracy": 0.659217894077301,
+      "previous_accuracy": 0.9615885615348816,
+      "previous_conflict_accuracy": 0.9493007063865662
+    },
+    "reason_rejected": "hard-cell learning replicated but previous-item conflict retention missed the 0.95 gate in the independent run"
+  },
   "third_increment_saturation": {
     "learning_rate": 0.0000125,
     "target_verifier_bits": 1536,
