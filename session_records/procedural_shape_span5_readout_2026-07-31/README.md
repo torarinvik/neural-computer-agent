@@ -95,3 +95,18 @@ the same observed outcomes, not from additional verifier episodes.  It is not
 yet promotion-grade (the current gate is 90% overall and 85% strict-conflict),
 but the monotonic curve justifies a 128-update rung before changing the
 architecture or increasing the number of unique outcomes.
+
+## Adaptive gate result
+
+The adaptive curriculum evaluated each level and trained only if a held-out
+gate failed. At 0.1359, 0.1360, and 0.1361, the existing candidate already
+passed all gates, so the run used **zero optimizer updates** at every level.
+The full 0.1361 audit still passed: 95.90% overall, 97.85% pure-next, 95.53%
+strict conflict, 48.83% after memory reset, 94.43% candidate flip rate, 93.16%
+reverse flip rate, and 99.35% old-skill retention. The adaptive runner and
+candidate are saved as
+`experiments/unified_cognitive_controller/train_microscopic_gate.py` and
+`artifacts/checkpoints/unified_procedural_shape_span5_adaptive1361_seed45601.pt`.
+
+This is stronger evidence than a fixed-budget run: the system crossed three
+new difficulty levels without spending additional optimizer updates.

@@ -24,3 +24,10 @@ candidate is `artifacts/checkpoints/unified_procedural_shape_span5_micro1355_see
 The 0.1356 → 0.1358 rung also passed: 96.58% overall, 96.01% strict
 conflict, 49.41% reset accuracy, and 99.35% old retention. The new candidate is
 `artifacts/checkpoints/unified_procedural_shape_span5_micro1358_seed45501.pt`.
+
+An adaptive gate then tested 0.1359, 0.1360, and 0.1361. Every level passed
+before training, so the run spent zero optimizer updates. The full 0.1361 audit
+passed with 95.90% overall, 95.53% strict conflict, 48.83% reset accuracy, and
+99.35% old retention. This is the current sample-efficiency frontier; the
+adaptive candidate is
+`artifacts/checkpoints/unified_procedural_shape_span5_adaptive1361_seed45601.pt`.
