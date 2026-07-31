@@ -35,35 +35,44 @@ OLD_STREAMS = (
 
 @torch.no_grad()
 def gate_eval(model, *, level: float, seed: int, device: torch.device,
-              batch_size: int) -> dict[str, float | bool]:
+              batch_size: int, repeats: int) -> dict[str, object]:
     """Cheap held-out gate; full adversarial audit remains a final gate."""
-    nuisance = nuisance_from_level(level)
-    target_batch = generate_procedural_shape_batch(
-        batch_size, span=5, vocabulary=2, seed=seed, nuisance=nuisance,
-        heldout=True, objective="recognition", query_count=1,
-        next_query_stage=2, next_query_anchor_focus=3,
-        next_query_target_aligned=True, device=device)
-    target = rollout_procedural_shape_span(
-        model, target_batch, sample_actions=False, query_thought_steps=1)
-    conflict = (
-        (target_batch.query_operations == 2)
-        & (torch.gather(target_batch.sequence_identities, 1,
-                        target_batch.query_ordinals)
-           != torch.gather(target_batch.sequence_identities, 1,
-                           target_batch.query_cue_ordinals)))
-    old_batch = generate_procedural_shape_batch(
-        768, span=3, vocabulary=2, seed=seed + 100_000, nuisance=nuisance,
-        heldout=True, objective="recognition", query_count=3,
-        next_query_stage=1, device=device)
-    old = rollout_procedural_shape_span(
-        model, old_batch, sample_actions=False, query_thought_steps=0)
-    overall = float(target["rewards"].mean())
-    strict = float(target["rewards"][conflict].mean())
-    old_accuracy = float(old["rewards"].mean())
+    measurements = []
+    for repeat in range(repeats):
+        repeat_seed = seed + repeat * 1_000_003
+        nuisance = nuisance_from_level(level)
+        target_batch = generate_procedural_shape_batch(
+            batch_size, span=5, vocabulary=2, seed=repeat_seed,
+            nuisance=nuisance, heldout=True, objective="recognition",
+            query_count=1, next_query_stage=2, next_query_anchor_focus=3,
+            next_query_target_aligned=True, device=device)
+        target = rollout_procedural_shape_span(
+            model, target_batch, sample_actions=False, query_thought_steps=1)
+        conflict = (
+            (target_batch.query_operations == 2)
+            & (torch.gather(target_batch.sequence_identities, 1,
+                            target_batch.query_ordinals)
+               != torch.gather(target_batch.sequence_identities, 1,
+                               target_batch.query_cue_ordinals)))
+        old_batch = generate_procedural_shape_batch(
+            768, span=3, vocabulary=2, seed=repeat_seed + 100_000,
+            nuisance=nuisance, heldout=True, objective="recognition",
+            query_count=3, next_query_stage=1, device=device)
+        old = rollout_procedural_shape_span(
+            model, old_batch, sample_actions=False, query_thought_steps=0)
+        measurements.append({
+            "overall": float(target["rewards"].mean()),
+            "strict_conflict": float(target["rewards"][conflict].mean()),
+            "old_span3": float(old["rewards"].mean()),
+        })
+    overall = min(item["overall"] for item in measurements)
+    strict = min(item["strict_conflict"] for item in measurements)
+    old_accuracy = min(item["old_span3"] for item in measurements)
     return {
         "overall": overall,
         "strict_conflict": strict,
         "old_span3": old_accuracy,
+        "repeats": measurements,
         "passed": overall >= 0.90 and strict >= 0.85 and old_accuracy >= 0.95,
     }
 
@@ -80,6 +89,7 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=1024)
     parser.add_argument("--max-updates-per-level", type=int, default=16)
     parser.add_argument("--eval-every", type=int, default=2)
+    parser.add_argument("--gate-repeats", type=int, default=2)
     parser.add_argument("--replay-chunk", type=int, default=2)
     parser.add_argument("--rehearsal-updates", type=int, default=4)
     parser.add_argument("--learning-rate", type=float, default=3e-4)
@@ -95,6 +105,8 @@ def main() -> None:
         raise ValueError("span-five batch size must be a multiple of 1024")
     if args.max_updates_per_level <= 0 or args.eval_every <= 0:
         raise ValueError("update and evaluation intervals must be positive")
+    if args.gate_repeats < 2:
+        raise ValueError("gate repeats must be at least two at the frontier")
     levels = [
         round(args.start_level + index * args.step, 4)
         for index in range(
@@ -144,7 +156,8 @@ def main() -> None:
             for stream_index, stream in enumerate(OLD_STREAMS)]
         before = gate_eval(
             model, level=level, seed=args.seed + 100_000 + level_index,
-            device=device, batch_size=args.batch_size)
+            device=device, batch_size=args.batch_size,
+            repeats=args.gate_repeats)
         updates_at_level = 0
         after = before
         while not bool(after["passed"]):
@@ -161,7 +174,8 @@ def main() -> None:
                 after = gate_eval(
                     model, level=level,
                     seed=args.seed + 100_000 + level_index,
-                    device=device, batch_size=args.batch_size)
+                    device=device, batch_size=args.batch_size,
+                    repeats=args.gate_repeats)
         history.append({
             "level": level, "before": before, "after": after,
             "updates_at_level": updates_at_level,
