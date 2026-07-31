@@ -20,3 +20,7 @@ coarse run is not treated as evidence.
 The following microscopic rung, 0.1353 → 0.1355, also passed: 95.80% overall,
 93.25% strict conflict, 50.88% reset accuracy, and 98.96% old retention. Its
 candidate is `artifacts/checkpoints/unified_procedural_shape_span5_micro1355_seed45401.pt`.
+
+The 0.1356 → 0.1358 rung also passed: 96.58% overall, 96.01% strict
+conflict, 49.41% reset accuracy, and 99.35% old retention. The new candidate is
+`artifacts/checkpoints/unified_procedural_shape_span5_micro1358_seed45501.pt`.

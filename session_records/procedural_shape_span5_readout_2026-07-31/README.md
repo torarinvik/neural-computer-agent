@@ -84,6 +84,12 @@ memory reset, 93.07% candidate flip rate, and 98.96% old-skill retention.
 The resulting candidate is
 `artifacts/checkpoints/unified_procedural_shape_span5_micro1355_seed45401.pt`.
 
+The next rung (0.1356 → 0.1358) passed as well.  Its fresh 0.1358 endpoint
+scored 96.58% overall, 97.85% pure-next, 96.01% strict conflict, 49.41% after
+memory reset, 94.24% candidate flip rate, and 99.35% old-skill retention.  The
+candidate is
+`artifacts/checkpoints/unified_procedural_shape_span5_micro1358_seed45501.pt`.
+
 This is a sample-efficiency signal: the model is learning from repeated use of
 the same observed outcomes, not from additional verifier episodes.  It is not
 yet promotion-grade (the current gate is 90% overall and 85% strict-conflict),
