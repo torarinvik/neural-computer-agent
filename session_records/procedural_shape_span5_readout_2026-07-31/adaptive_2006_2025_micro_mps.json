@@ -1,0 +1,177 @@
+{
+  "candidate_checkpoint": "artifacts/checkpoints/unified_procedural_shape_span5_adaptive2025_micro_mps_seed55001.pt",
+  "compute": {
+    "cpu_threads": 10,
+    "cuda_available": false,
+    "cuda_devices": 0,
+    "cuda_name": null
+  },
+  "levels": [
+    {
+      "after": {
+        "old_span3": 0.9949544072151184,
+        "overall": 0.900146484375,
+        "passed": true,
+        "repeats": [
+          {
+            "old_span3": 0.9949544072151184,
+            "overall": 0.90673828125,
+            "strict_conflict": 0.8878235816955566
+          },
+          {
+            "old_span3": 0.9962565302848816,
+            "overall": 0.900146484375,
+            "strict_conflict": 0.881322979927063
+          }
+        ],
+        "strict_conflict": 0.881322979927063
+      },
+      "before": {
+        "old_span3": 0.9949544072151184,
+        "overall": 0.900146484375,
+        "passed": true,
+        "repeats": [
+          {
+            "old_span3": 0.9949544072151184,
+            "overall": 0.90673828125,
+            "strict_conflict": 0.8878235816955566
+          },
+          {
+            "old_span3": 0.9962565302848816,
+            "overall": 0.900146484375,
+            "strict_conflict": 0.881322979927063
+          }
+        ],
+        "strict_conflict": 0.881322979927063
+      },
+      "level": 0.2006,
+      "passed": true,
+      "updates_at_level": 0
+    },
+    {
+      "after": {
+        "old_span3": 0.9952799677848816,
+        "overall": 0.90380859375,
+        "passed": true,
+        "repeats": [
+          {
+            "old_span3": 0.9952799677848816,
+            "overall": 0.90380859375,
+            "strict_conflict": 0.8837438225746155
+          },
+          {
+            "old_span3": 0.9954426884651184,
+            "overall": 0.904541015625,
+            "strict_conflict": 0.8786729574203491
+          }
+        ],
+        "strict_conflict": 0.8786729574203491
+      },
+      "before": {
+        "old_span3": 0.9952799677848816,
+        "overall": 0.90380859375,
+        "passed": true,
+        "repeats": [
+          {
+            "old_span3": 0.9952799677848816,
+            "overall": 0.90380859375,
+            "strict_conflict": 0.8837438225746155
+          },
+          {
+            "old_span3": 0.9954426884651184,
+            "overall": 0.904541015625,
+            "strict_conflict": 0.8786729574203491
+          }
+        ],
+        "strict_conflict": 0.8786729574203491
+      },
+      "level": 0.2007,
+      "passed": true,
+      "updates_at_level": 0
+    },
+    {
+      "after": {
+        "old_span3": 0.9945475459098816,
+        "overall": 0.90087890625,
+        "passed": true,
+        "repeats": [
+          {
+            "old_span3": 0.9952799677848816,
+            "overall": 0.906494140625,
+            "strict_conflict": 0.8707482814788818
+          },
+          {
+            "old_span3": 0.9945475459098816,
+            "overall": 0.90087890625,
+            "strict_conflict": 0.8840436339378357
+          }
+        ],
+        "strict_conflict": 0.8707482814788818
+      },
+      "before": {
+        "old_span3": 0.9945475459098816,
+        "overall": 0.90087890625,
+        "passed": true,
+        "repeats": [
+          {
+            "old_span3": 0.9952799677848816,
+            "overall": 0.906494140625,
+            "strict_conflict": 0.8707482814788818
+          },
+          {
+            "old_span3": 0.9945475459098816,
+            "overall": 0.90087890625,
+            "strict_conflict": 0.8840436339378357
+          }
+        ],
+        "strict_conflict": 0.8707482814788818
+      },
+      "level": 0.2008,
+      "passed": true,
+      "updates_at_level": 0
+    },
+    {
+      "after": {
+        "old_span3": 0.995849609375,
+        "overall": 0.899169921875,
+        "passed": false,
+        "repeats": [
+          {
+            "old_span3": 0.996337890625,
+            "overall": 0.899169921875,
+            "strict_conflict": 0.8739088177680969
+          },
+          {
+            "old_span3": 0.995849609375,
+            "overall": 0.903076171875,
+            "strict_conflict": 0.8945350050926208
+          }
+        ],
+        "strict_conflict": 0.8739088177680969
+      },
+      "before": {
+        "old_span3": 0.9945475459098816,
+        "overall": 0.894287109375,
+        "passed": false,
+        "repeats": [
+          {
+            "old_span3": 0.9945475459098816,
+            "overall": 0.894287109375,
+            "strict_conflict": 0.869059145450592
+          },
+          {
+            "old_span3": 0.9955241084098816,
+            "overall": 0.90087890625,
+            "strict_conflict": 0.8926174640655518
+          }
+        ],
+        "strict_conflict": 0.869059145450592
+      },
+      "level": 0.2009,
+      "passed": false,
+      "updates_at_level": 32
+    }
+  ],
+  "schema": "span5-adaptive-microscopic-curriculum-v1",
+  "total_optimizer_updates": 44
+}

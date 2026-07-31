@@ -1,0 +1,136 @@
+{
+  "candidate_checkpoint": "artifacts/checkpoints/unified_procedural_shape_span5_adaptive2100_stride0005_mps_seed54601.pt",
+  "compute": {
+    "cpu_threads": 10,
+    "cuda_available": false,
+    "cuda_devices": 0,
+    "cuda_name": null
+  },
+  "levels": [
+    {
+      "after": {
+        "old_span3": 0.9950358271598816,
+        "overall": 0.900390625,
+        "passed": true,
+        "repeats": [
+          {
+            "old_span3": 0.9960123896598816,
+            "overall": 0.900390625,
+            "strict_conflict": 0.895348846912384
+          },
+          {
+            "old_span3": 0.9950358271598816,
+            "overall": 0.906494140625,
+            "strict_conflict": 0.8856589198112488
+          }
+        ],
+        "strict_conflict": 0.8856589198112488
+      },
+      "before": {
+        "old_span3": 0.9950358271598816,
+        "overall": 0.900390625,
+        "passed": true,
+        "repeats": [
+          {
+            "old_span3": 0.9960123896598816,
+            "overall": 0.900390625,
+            "strict_conflict": 0.895348846912384
+          },
+          {
+            "old_span3": 0.9950358271598816,
+            "overall": 0.906494140625,
+            "strict_conflict": 0.8856589198112488
+          }
+        ],
+        "strict_conflict": 0.8856589198112488
+      },
+      "level": 0.2015,
+      "passed": true,
+      "updates_at_level": 0
+    },
+    {
+      "after": {
+        "old_span3": 0.9961751103401184,
+        "overall": 0.901123046875,
+        "passed": true,
+        "repeats": [
+          {
+            "old_span3": 0.99658203125,
+            "overall": 0.901123046875,
+            "strict_conflict": 0.8827519416809082
+          },
+          {
+            "old_span3": 0.9961751103401184,
+            "overall": 0.906005859375,
+            "strict_conflict": 0.8829268217086792
+          }
+        ],
+        "strict_conflict": 0.8827519416809082
+      },
+      "before": {
+        "old_span3": 0.994384765625,
+        "overall": 0.899169921875,
+        "passed": false,
+        "repeats": [
+          {
+            "old_span3": 0.9951171875,
+            "overall": 0.899169921875,
+            "strict_conflict": 0.8808139562606812
+          },
+          {
+            "old_span3": 0.994384765625,
+            "overall": 0.90087890625,
+            "strict_conflict": 0.8702439069747925
+          }
+        ],
+        "strict_conflict": 0.8702439069747925
+      },
+      "level": 0.202,
+      "passed": true,
+      "updates_at_level": 32
+    },
+    {
+      "after": {
+        "old_span3": 0.989990234375,
+        "overall": 0.894287109375,
+        "passed": false,
+        "repeats": [
+          {
+            "old_span3": 0.991455078125,
+            "overall": 0.894287109375,
+            "strict_conflict": 0.8669275641441345
+          },
+          {
+            "old_span3": 0.989990234375,
+            "overall": 0.89697265625,
+            "strict_conflict": 0.8768472671508789
+          }
+        ],
+        "strict_conflict": 0.8669275641441345
+      },
+      "before": {
+        "old_span3": 0.9959309697151184,
+        "overall": 0.897705078125,
+        "passed": false,
+        "repeats": [
+          {
+            "old_span3": 0.996337890625,
+            "overall": 0.89794921875,
+            "strict_conflict": 0.8864970803260803
+          },
+          {
+            "old_span3": 0.9959309697151184,
+            "overall": 0.897705078125,
+            "strict_conflict": 0.8699507117271423
+          }
+        ],
+        "strict_conflict": 0.8699507117271423
+      },
+      "level": 0.2025,
+      "passed": false,
+      "updates_at_level": 128
+    }
+  ],
+  "schema": "span5-adaptive-microscopic-curriculum-v1",
+  "total_optimizer_updates": 190
+}

@@ -130,3 +130,39 @@ flips were 89.4%/89.3%; reverse-presentation flips were 85.1%/84.6%.
 The operation-counterfactual flip rate was lower (33–35%), so operation
 binding remains a secondary frontier even though the primary curriculum gate
 and memory-dependence checks pass.
+
+## Trainable-vision climb to 0.4000
+
+The next climb exposed the practical recipe for moving beyond the 0.20
+nuisance frontier without wasting updates:
+
+- fresh target and rehearsal renderings on each replay chunk, avoiding
+  memorization of one reused batch;
+- the vision encoder unfrozen together with the action adapter, while old
+  skills were checked at the mastered 0.1358 nuisance level; and
+- a stable, repeated held-out gate (4,096 episodes per repeat) so a noisy
+  gate could not force unnecessary training.
+
+Using MPS, a 0.001 curriculum stride, batch size 2,048, one rehearsal update
+per chunk, and at most 128 updates per level, the run passed every level from
+0.351 through 0.400.  It used only 44 optimizer updates across all 50 levels;
+most levels passed without training.  The promoted checkpoint is
+`artifacts/checkpoints/unified_procedural_shape_span5_adaptive4000_trainvision_mps_seed58501.pt`,
+and the gate trace is
+`adaptive_351_400_trainvision_mps.json`.
+
+Two independent 4,096-lifetime audits at 0.400 measured target accuracies of
+89.7% and 91.2%; the strict conflicting-new-slot accuracies were 90.4% and
+91.7%.  The old span-three skill remained at 98.5% and 98.7%.  Clearing all
+memory reduced target accuracy to 49.4% and 50.6%, establishing causal memory
+dependence rather than a fixed-weight shortcut.  Reverse-presentation
+accuracy remained about 90%, while operation-counterfactual flips were only
+72–73%; operation binding is therefore still a separate frontier.  The full
+audit artifact is `adaptive_4000_full_audit_trainvision_mps.json`.
+
+The efficient policy is now evidence-backed: use microscopic gates for
+precision, widen to 0.001 only after the curve is stable, refresh experience
+instead of replaying a fixed batch, and adapt the sensory encoder while
+rehearsing mastered skills.  Further difficulty should preserve these gates
+and address operation binding separately rather than spending more updates on
+the already-passing nuisance ladder.

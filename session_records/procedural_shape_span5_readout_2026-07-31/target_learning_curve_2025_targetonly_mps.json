@@ -1,0 +1,41 @@
+{
+  "checkpoint_parent": "artifacts/checkpoints/unified_procedural_shape_span5_adaptive2005_full_mps_seed54301.pt",
+  "curve": [
+    {
+      "old": 0.9944661259651184,
+      "reset": 0.49365234375,
+      "strict_conflict": 0.881322979927063,
+      "target": 0.9052734375,
+      "updates": 0
+    },
+    {
+      "old": 0.99560546875,
+      "reset": 0.49755859375,
+      "strict_conflict": 0.8832684755325317,
+      "target": 0.90185546875,
+      "updates": 64
+    },
+    {
+      "old": 0.9873860478401184,
+      "reset": 0.497802734375,
+      "strict_conflict": 0.8715953230857849,
+      "target": 0.8955078125,
+      "updates": 128
+    },
+    {
+      "old": 0.95458984375,
+      "reset": 0.498046875,
+      "strict_conflict": 0.8725680708885193,
+      "target": 0.890380859375,
+      "updates": 256
+    },
+    {
+      "old": 0.8926594853401184,
+      "reset": 0.498779296875,
+      "strict_conflict": 0.8706225752830505,
+      "target": 0.886962890625,
+      "updates": 512
+    }
+  ],
+  "level": 0.2025
+}

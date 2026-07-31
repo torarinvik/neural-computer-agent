@@ -1,8 +1,10 @@
 """Adaptive microscopic nuisance curriculum for the span-five reader.
 
 Each nuisance level is trained only until its held-out capability gates pass.
-The curriculum then advances by exactly 0.0001.  This keeps difficulty growth
-and compute growth coupled to measured capability rather than a fixed update
+The default curriculum advances by exactly 0.0001; a wider stride can be used
+for a controlled speed-up once the gate is stable, while the final endpoint is
+still audited at the 0.0001 resolution.  This keeps difficulty growth and
+compute growth coupled to measured capability rather than a fixed update
 budget.
 """
 from __future__ import annotations
@@ -93,15 +95,35 @@ def main() -> None:
     parser.add_argument("--checkpoint-out", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--seed", type=int, default=45601)
+    parser.add_argument(
+        "--gate-seed", type=int, default=900001,
+        help=(
+            "base seed for the fixed held-out gate; the level is folded into "
+            "this seed so repeated runs compare the same episodes"))
     parser.add_argument("--start-level", type=float, default=0.1359)
     parser.add_argument("--end-level", type=float, default=0.1361)
     parser.add_argument("--step", type=float, default=0.0001)
     parser.add_argument("--batch-size", type=int, default=1024)
+    parser.add_argument(
+        "--gate-batch-size", type=int, default=4096,
+        help=(
+            "held-out gate batch size; can be larger than the training batch "
+            "to reduce boundary noise"))
     parser.add_argument("--max-updates-per-level", type=int, default=16)
     parser.add_argument("--eval-every", type=int, default=2)
     parser.add_argument("--gate-repeats", type=int, default=2)
     parser.add_argument("--replay-chunk", type=int, default=2)
     parser.add_argument("--rehearsal-updates", type=int, default=4)
+    parser.add_argument(
+        "--refresh-batches", action="store_true",
+        help=(
+            "draw fresh target and rehearsal renderings for every replay "
+            "chunk; reduces fixed-batch overfitting at harder levels"))
+    parser.add_argument(
+        "--train-vision", action="store_true",
+        help=(
+            "also adapt the generic vision encoder; old-task rehearsal gates "
+            "every update so nuisance adaptation cannot silently replace it"))
     parser.add_argument("--learning-rate", type=float, default=3e-4)
     parser.add_argument(
         "--target-loss-weight", type=float, default=1.0,
@@ -112,8 +134,12 @@ def main() -> None:
         "cuda" if torch.cuda.is_available() else "cpu"))
     parser.add_argument("--cpu-threads", type=int, default=0)
     args = parser.parse_args()
-    if abs(args.step - 0.0001) > 1e-12:
-        raise ValueError("microscopic curriculum step must be exactly 0.0001")
+    if args.step <= 0.0 or args.step > 0.001:
+        raise ValueError("curriculum step must be within (0, 0.001]")
+    # Keep decimal level names stable and prevent a floating-point stride from
+    # silently skipping a requested endpoint.
+    if abs(round(args.step, 4) - args.step) > 1e-12:
+        raise ValueError("curriculum step must resolve to 0.0001")
     if args.end_level < args.start_level:
         raise ValueError("end level must not be below start level")
     if args.batch_size < 1024 or args.batch_size % 1024:
@@ -133,6 +159,10 @@ def main() -> None:
         args.checkpoint, map_location="cpu", weights_only=False)
     configuration = dict(parent_payload["model_configuration"])
     model = _load(args.checkpoint, device)
+    if args.train_vision:
+        for name, parameter in model.named_parameters():
+            if name.startswith("vision."):
+                parameter.requires_grad_(True)
     optimizer = torch.optim.AdamW(
         (parameter for parameter in model.parameters() if parameter.requires_grad),
         lr=args.learning_rate, weight_decay=1e-5)
@@ -171,9 +201,13 @@ def main() -> None:
                 nuisance=old_nuisance, objective="recognition", device=device,
                 **stream)
             for stream_index, stream in enumerate(OLD_STREAMS)]
+        # Keep the held-out gate fixed across retries and continuation runs.
+        # Changing it per run turns binomial evaluation noise into needless
+        # optimizer updates, which is especially damaging near the frontier.
+        stable_gate_seed = args.gate_seed + int(round(level * 10_000)) * 1_000
         before = gate_eval(
-            model, level=level, seed=args.seed + 100_000 + level_index,
-            device=device, batch_size=args.batch_size,
+            model, level=level, seed=stable_gate_seed,
+            device=device, batch_size=args.gate_batch_size,
             repeats=args.gate_repeats)
         updates_at_level = 0
         after = before
@@ -182,6 +216,23 @@ def main() -> None:
                 break
             repeat = min(args.replay_chunk,
                          args.max_updates_per_level - updates_at_level)
+            if args.refresh_batches:
+                refresh_base = (
+                    args.seed + level_index * 10_000_000
+                    + updates_at_level * 101)
+                target_batch = generate_procedural_shape_batch(
+                    args.batch_size, span=5, vocabulary=2,
+                    seed=refresh_base, nuisance=nuisance,
+                    objective="recognition", query_count=1,
+                    next_query_stage=2, next_query_anchor_focus=3,
+                    next_query_target_aligned=True, device=device)
+                rehearsals = [
+                    generate_procedural_shape_batch(
+                        args.batch_size, vocabulary=2,
+                        seed=refresh_base + 10_000 + stream_index,
+                        nuisance=old_nuisance, objective="recognition",
+                        device=device, **stream)
+                    for stream_index, stream in enumerate(OLD_STREAMS)]
             update(target_batch, thought_steps=1, repeat=repeat,
                    loss_weight=args.target_loss_weight)
             updates_at_level += repeat
@@ -190,9 +241,8 @@ def main() -> None:
                        repeat=args.rehearsal_updates)
             if updates_at_level % args.eval_every == 0:
                 after = gate_eval(
-                    model, level=level,
-                    seed=args.seed + 100_000 + level_index,
-                    device=device, batch_size=args.batch_size,
+                    model, level=level, seed=stable_gate_seed,
+                    device=device, batch_size=args.gate_batch_size,
                     repeats=args.gate_repeats)
         history.append({
             "level": level, "before": before, "after": after,

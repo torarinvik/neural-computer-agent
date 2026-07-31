@@ -1,0 +1,54 @@
+{
+  "candidate_checkpoint": "artifacts/checkpoints/unified_procedural_shape_span5_adaptive2025_targetphase_mps_seed54901.pt",
+  "compute": {
+    "cpu_threads": 10,
+    "cuda_available": false,
+    "cuda_devices": 0,
+    "cuda_name": null
+  },
+  "levels": [
+    {
+      "after": {
+        "old_span3": 0.965576171875,
+        "overall": 0.888427734375,
+        "passed": false,
+        "repeats": [
+          {
+            "old_span3": 0.9685872197151184,
+            "overall": 0.89306640625,
+            "strict_conflict": 0.8480154871940613
+          },
+          {
+            "old_span3": 0.965576171875,
+            "overall": 0.888427734375,
+            "strict_conflict": 0.8472086191177368
+          }
+        ],
+        "strict_conflict": 0.8472086191177368
+      },
+      "before": {
+        "old_span3": 0.9947102665901184,
+        "overall": 0.89501953125,
+        "passed": false,
+        "repeats": [
+          {
+            "old_span3": 0.994873046875,
+            "overall": 0.89501953125,
+            "strict_conflict": 0.875120997428894
+          },
+          {
+            "old_span3": 0.9947102665901184,
+            "overall": 0.901123046875,
+            "strict_conflict": 0.8795298933982849
+          }
+        ],
+        "strict_conflict": 0.875120997428894
+      },
+      "level": 0.2025,
+      "passed": false,
+      "updates_at_level": 128
+    }
+  ],
+  "schema": "span5-adaptive-microscopic-curriculum-v1",
+  "total_optimizer_updates": 128
+}
