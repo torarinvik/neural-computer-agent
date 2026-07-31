@@ -78,6 +78,12 @@ This is the first robust nuisance-curriculum result.  The candidate is
 The staircase can now continue in further 0.0001 increments, retaining the
 lower learning rate and stronger rehearsal recipe.
 
+The next staircase (0.1353 → 0.1355) also passed its fresh endpoint audit:
+95.80% overall, 96.48% pure-next, 93.25% strict conflict, 50.88% after
+memory reset, 93.07% candidate flip rate, and 98.96% old-skill retention.
+The resulting candidate is
+`artifacts/checkpoints/unified_procedural_shape_span5_micro1355_seed45401.pt`.
+
 This is a sample-efficiency signal: the model is learning from repeated use of
 the same observed outcomes, not from additional verifier episodes.  It is not
 yet promotion-grade (the current gate is 90% overall and 85% strict-conflict),

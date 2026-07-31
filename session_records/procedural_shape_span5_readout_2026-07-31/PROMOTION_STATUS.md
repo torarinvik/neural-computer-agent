@@ -16,3 +16,7 @@ endpoint gates using learning rate `3e-4` and four rehearsal updates. The new
 candidate is `artifacts/checkpoints/unified_procedural_shape_span5_micro1352_seed45301.pt`.
 Reaching 0.17 still requires a 350-step staircase from 0.135; an interrupted
 coarse run is not treated as evidence.
+
+The following microscopic rung, 0.1353 → 0.1355, also passed: 95.80% overall,
+93.25% strict conflict, 50.88% reset accuracy, and 98.96% old retention. Its
+candidate is `artifacts/checkpoints/unified_procedural_shape_span5_micro1355_seed45401.pt`.
