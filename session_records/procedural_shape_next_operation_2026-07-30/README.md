@@ -327,3 +327,29 @@ The correct next experiment must use a genuinely new but adjacent target—for
 example a fourth presented item under the same `next` relation—while matching
 the target outcome budget against a fresh controller. Only a faster rise on
 that unseen target counts as transfer or compounding sample efficiency.
+
+## Replicated adjacent-distribution transfer milestone
+
+As a deliberately small first unseen target, the generator's visual
+randomness was raised from the mastered 0.135 distribution to 0.150. The
+relation, action space, and verifier remained unchanged; the shifted visual
+distribution was never used in the inherited checkpoint's training. With only
+384 shifted target outcomes, the inherited controller reached 68.23% and
+68.75% held-out conflict/new-slot accuracy in two independent short arms. The
+matched fresh controllers scored 50.00% and 49.48%, respectively.
+
+At the same 6,144 shifted target outcomes, the inherited controller reached
+78.52% conflict/new-slot accuracy, versus 50.00% fresh. Its adversarial audit
+is causal: normal accuracy is 88.87%, complete-memory reset drops to 50.46%,
+and candidate swapping changes the response on 82.10% of trials whose correct
+answer changes. This is the first replicated evidence that retained experience
+is reusable across an unseen adjacent visual distribution, and it establishes
+a lower bound of 16× on the new-target outcomes the fresh controller failed to
+turn into the same capability.
+
+This is not yet a working-memory or broad reasoning claim: 0.150 is a small
+domain shift, and the current `next` renderer intentionally supports only
+three presented items. The next generalization gate is a new semantic or
+sequence-length operation, with fourth-item support added only after the same
+cheap probe-before-build discipline identifies the smallest valid extension.
+The six reports are retained under the `shift_transfer_*` names.
