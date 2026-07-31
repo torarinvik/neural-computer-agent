@@ -110,3 +110,23 @@ candidate are saved as
 
 This is stronger evidence than a fixed-budget run: the system crossed three
 new difficulty levels without spending additional optimizer updates.
+
+## Corrected staircase through 0.2000
+
+The retention gate was corrected so that old span-three skill is always
+evaluated at its mastered nuisance level (0.1358), rather than at the harder
+new target level.  This separates catastrophic forgetting from ordinary
+perceptual difficulty.  The gate then advanced in exact 0.0001 increments to
+0.2000 with MPS, training only when a held-out level failed.  The final
+0.1998, 0.1999, and 0.2000 levels all passed without additional optimizer
+updates.  The promoted checkpoint is
+`artifacts/checkpoints/unified_procedural_shape_span5_adaptive2000_final_corrected_mps_seed53301.pt`.
+
+The final adversarial audits (two independent seeds, 4,096 episodes each)
+gave 90.8%/90.2% span-five accuracy, 88.7%/89.3% strict next-conflict
+accuracy, 99.86%/99.78% old span-three retention, and 49.5%/49.0% accuracy
+after clearing all memory (chance).  Candidate counterfactual prediction
+flips were 89.4%/89.3%; reverse-presentation flips were 85.1%/84.6%.
+The operation-counterfactual flip rate was lower (33–35%), so operation
+binding remains a secondary frontier even though the primary curriculum gate
+and memory-dependence checks pass.

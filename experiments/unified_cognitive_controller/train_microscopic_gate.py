@@ -31,6 +31,7 @@ OLD_STREAMS = (
     dict(span=3, query_count=3, new_slot_difficulty=1.0,
          previous_query_stage=2, next_query_stage=-1),
 )
+OLD_NUISANCE_LEVEL = 0.1358
 
 
 @torch.no_grad()
@@ -40,10 +41,14 @@ def gate_eval(model, *, level: float, seed: int, device: torch.device,
     measurements = []
     for repeat in range(repeats):
         repeat_seed = seed + repeat * 1_000_003
-        nuisance = nuisance_from_level(level)
+        target_nuisance = nuisance_from_level(level)
+        # Retention must measure forgetting at the mastered old-task
+        # difficulty, not the newly introduced nuisance.  Otherwise the gate
+        # confounds perceptual difficulty with catastrophic forgetting.
+        old_nuisance = nuisance_from_level(OLD_NUISANCE_LEVEL)
         target_batch = generate_procedural_shape_batch(
             batch_size, span=5, vocabulary=2, seed=repeat_seed,
-            nuisance=nuisance, heldout=True, objective="recognition",
+            nuisance=target_nuisance, heldout=True, objective="recognition",
             query_count=1, next_query_stage=2, next_query_anchor_focus=3,
             next_query_target_aligned=True, device=device)
         target = rollout_procedural_shape_span(
@@ -54,9 +59,14 @@ def gate_eval(model, *, level: float, seed: int, device: torch.device,
                             target_batch.query_ordinals)
                != torch.gather(target_batch.sequence_identities, 1,
                                target_batch.query_cue_ordinals)))
+        # Use a much larger old-skill sample than the target gate.  Near the
+        # 95% retention boundary, small episode counts have enough binomial
+        # noise to trigger needless destructive retries.  This remains
+        # verifier-only evaluation; it does not add training signal.
         old_batch = generate_procedural_shape_batch(
-            768, span=3, vocabulary=2, seed=repeat_seed + 100_000,
-            nuisance=nuisance, heldout=True, objective="recognition",
+            max(4096, batch_size), span=3, vocabulary=2,
+            seed=repeat_seed + 100_000,
+            nuisance=old_nuisance, heldout=True, objective="recognition",
             query_count=3, next_query_stage=1, device=device)
         old = rollout_procedural_shape_span(
             model, old_batch, sample_actions=False, query_thought_steps=0)
@@ -93,6 +103,11 @@ def main() -> None:
     parser.add_argument("--replay-chunk", type=int, default=2)
     parser.add_argument("--rehearsal-updates", type=int, default=4)
     parser.add_argument("--learning-rate", type=float, default=3e-4)
+    parser.add_argument(
+        "--target-loss-weight", type=float, default=1.0,
+        help=(
+            "weight for the new-level behavioral loss; set to 0 for a "
+            "retention-only repair while keeping the same replay loop"))
     parser.add_argument("--device", default=(
         "cuda" if torch.cuda.is_available() else "cpu"))
     parser.add_argument("--cpu-threads", type=int, default=0)
@@ -124,7 +139,8 @@ def main() -> None:
     history = []
     total_updates = 0
 
-    def update(batch, *, thought_steps: int, repeat: int) -> None:
+    def update(batch, *, thought_steps: int, repeat: int,
+               loss_weight: float = 1.0) -> None:
         nonlocal total_updates
         model.train()
         for _ in range(repeat):
@@ -135,12 +151,13 @@ def main() -> None:
                 next_conflict_novelty_weight=3.0,
                 next_nonconflict_novelty_weight=2.0)
             optimizer.zero_grad(set_to_none=True)
-            result["loss"].backward()
+            (result["loss"] * loss_weight).backward()
             optimizer.step()
             total_updates += 1
 
     for level_index, level in enumerate(levels):
         nuisance = nuisance_from_level(level)
+        old_nuisance = nuisance_from_level(OLD_NUISANCE_LEVEL)
         target_batch = generate_procedural_shape_batch(
             args.batch_size, span=5, vocabulary=2,
             seed=args.seed + level_index, nuisance=nuisance,
@@ -151,7 +168,7 @@ def main() -> None:
             generate_procedural_shape_batch(
                 args.batch_size, vocabulary=2,
                 seed=args.seed + 10_000 + level_index * 10 + stream_index,
-                nuisance=nuisance, objective="recognition", device=device,
+                nuisance=old_nuisance, objective="recognition", device=device,
                 **stream)
             for stream_index, stream in enumerate(OLD_STREAMS)]
         before = gate_eval(
@@ -165,7 +182,8 @@ def main() -> None:
                 break
             repeat = min(args.replay_chunk,
                          args.max_updates_per_level - updates_at_level)
-            update(target_batch, thought_steps=1, repeat=repeat)
+            update(target_batch, thought_steps=1, repeat=repeat,
+                   loss_weight=args.target_loss_weight)
             updates_at_level += repeat
             for rehearsal in rehearsals:
                 update(rehearsal, thought_steps=0,
