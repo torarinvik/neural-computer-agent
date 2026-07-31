@@ -5,7 +5,7 @@ from .model import UnifiedCognitiveController
 from .train_procedural_shape_span import (
     ShapeNuisance, binary_outcome_complete_targets,
     evaluate_procedural_shape_span, generate_procedural_shape_batch,
-    nuisance_from_level,
+    nuisance_from_level, project_gradient_against_reference,
     nuisance_with_overrides, rollout_procedural_shape_span)
 
 
@@ -44,6 +44,25 @@ def test_binary_outcome_completion_uses_only_action_and_success() -> None:
     outcomes = torch.tensor([1.0, 0.0, 1.0, 0.0])
     assert binary_outcome_complete_targets(
         attempts, outcomes).tolist() == [0, 1, 1, 0]
+
+
+def test_gradient_projection_removes_only_conflicting_component() -> None:
+    parameter = torch.nn.Parameter(torch.zeros(2))
+    parameter.grad = torch.tensor([-1.0, 1.0])
+    reference = {"value": torch.tensor([1.0, 0.0])}
+    applied, cosine, post_dot = project_gradient_against_reference(
+        [("value", parameter)], reference, 1.0)
+    assert applied
+    assert abs(cosine + 2 ** -0.5) < 1e-6
+    assert torch.allclose(parameter.grad, torch.tensor([0.0, 1.0]))
+    assert abs(post_dot) < 1e-6
+
+    parameter.grad = torch.tensor([1.0, 1.0])
+    applied, _, post_dot = project_gradient_against_reference(
+        [("value", parameter)], reference, 1.0)
+    assert not applied
+    assert torch.equal(parameter.grad, torch.tensor([1.0, 1.0]))
+    assert post_dot == 1.0
 
 
 def test_nuisance_level_has_nonzero_floor_and_monotonic_axes() -> None:

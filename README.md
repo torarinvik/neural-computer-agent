@@ -31,6 +31,23 @@ Final accuracy alone is not an adequate score.
 
 ## Current audited frontier
 
+The controller now has its first replicated protected-plasticity result at
+the independent third-item `next item` frontier. Aggregate rehearsal-gradient
+projection removes only target-gradient components that oppose verified old
+skills; compatible learning directions remain untouched. From the same clean
+parent, two independent 1,536-target-bit runs improved aligned `next` from
+58.12% zero-shot to 64.00% and 64.45%, while redundant-anchor, first-next, and
+previous-item overall and causal-conflict gates all remained above 95%.
+
+A matched target-only shuffled-outcome control leaves the new relation at
+52.99% and causal conflicts at 50.86%. Complete memory reset remains at
+chance. A longer continuation reached 92.36% new `next` and 91.52% causal
+conflicts, but previous-item conflicts slipped to 94.43%, so it was not
+promoted. The frontier is therefore precise: preserve the replicated
+direction-aware gain while crossing from partial acquisition to mastery, not
+add stronger blanket freezing. See
+`session_records/procedural_shape_next_operation_2026-07-30/README.md`.
+
 The procedural-shape controller now has a replicated sequence-manipulation
 primitive at fixed span three. An arbitrary visual operation glyph selects
 either direct lookup or the relative operation `previous item`; the controller

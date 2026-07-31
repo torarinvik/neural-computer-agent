@@ -71,6 +71,47 @@ unused. The importance state is checkpointed. This directly tests the proposed
 volatility idea, but the scalar-only rule exposes rather than solves the
 stability-plasticity tradeoff.
 
+## Direction-aware protected plasticity: breakthrough
+
+Aggregate gradient projection produced the first checkpoint that learns the
+independent third-item relation while retaining every major old-skill gate.
+For each target update, the trainer sums the current cycle's verified
+rehearsal gradients. It leaves a compatible target gradient untouched and
+removes only the component pointing against that aggregate old-skill
+direction.
+
+| run | target bits | new `next` | new conflict | redundant anchor | first `next` | `previous` | previous conflict |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| primary seed 41901 | 1,536 | 64.00% | 73.23% | 99.12% | 98.29% | 96.79% | 97.74% |
+| replica seed 42101 | 1,536 | 64.45% | 71.37% | 97.75% | 96.40% | 95.26% | 96.06% |
+| shuffled target outcomes | 1,536 | 52.99% | 50.86% | 96.71% | 91.42% | 91.91% | 94.87% |
+
+Both truthful runs exceed the 58.12% zero-shot `next` baseline and preserve
+all three old-skill overall and causal-conflict gates above 95%. Complete
+memory reset remains at chance. The matched shuffled-target control keeps
+rehearsal truthful but destroys the new relation, ruling out learning from the
+schedule, projection rule, or renderer alone.
+
+A continuation from the primary checkpoint reached 92.36% `next` and 91.52%
+new causal-conflict accuracy after 4,608 additional target bits. Redundant and
+first-anchor skills remained above 99%; `previous item` remained 98.01%
+overall but its conflict subgroup fell to 94.43%, just below the strict gate.
+Early target gradients conflicted with rehearsal and were projected. Later
+gradients became strongly compatible and were left untouched, direct
+mechanistic evidence that protection can guide learning into a shared
+direction rather than permanently freezing the controller.
+
+Two tempting variants were rejected:
+
+- projecting against each rehearsal stream separately overconstrained the
+  update and left `previous item` at 94.05% overall / 90.77% conflict;
+- duplicating `previous item` rehearsal restored it after the long run but
+  regressed the new relation from 92.36% to 84.85%.
+
+The promoted checkpoints are the 1,536-target-bit primary and independent
+replica. The 92% continuation is retained as a report, not promoted, because
+it misses the complete retention gate.
+
 ## Conclusion and frontier
 
 Successful:
@@ -89,8 +130,9 @@ Rejected:
 4. a frozen bolt-on adapter;
 5. scalar gradient suppression as the complete solution.
 
-The next experiment should be direction-aware protected plasticity: compare
-the new-skill gradient with rehearsal gradients and redirect only components
-that would increase old verified losses. It should reuse the successful
-target-aligned bridge, retain the subgroup gates, and remain sub-minute.
-
+Direction-aware aggregate projection is now the successful strategy. The new
+frontier is to turn the modest protected gain into mastery without crossing
+the `previous item` conflict gate. The next smallest experiment should vary
+the target/rehearsal cycle only after measuring the protected checkpoint's
+per-stream gradient conflicts; it should not add stronger blanket protection
+or repeat old examples blindly.

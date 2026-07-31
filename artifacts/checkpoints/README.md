@@ -2,6 +2,29 @@
 
 ## Procedural-shape relative operations
 
+`unified_next_gradient_projection_primary_seed41901.pt` and
+`unified_next_gradient_projection_replica_seed42101.pt` are the first
+replicated protected-plasticity checkpoints.
+
+- SHA-256 primary:
+  `4d3536228ffff37cc9f71a24c11f3937fdb0168a2e18797cc4ae38fae083adc8`
+- SHA-256 replica:
+  `9e0d21e7f857c04fc5de6b9cdcf2fcc18fd754bdce7aab503d86b5d8fd86dd24`
+- acquisition: 1,536 target verifier bits plus 10,752 truthful rehearsal
+  bits in each run
+- new aligned `next`: 64.00% / 64.45%, from a 58.12% zero-shot baseline
+- new causal conflicts: 73.23% / 71.37%
+- all redundant-anchor, first-next, and previous-item overall and
+  causal-conflict gates: above 95%
+- complete memory reset: chance
+- matched target-only shuffled control: 52.99% `next`, 50.86% conflicts
+
+The generic training rule projects only a target-gradient component that
+opposes the current cycle's aggregate rehearsal gradient. It uses no semantic
+task ID or correct unattempted action. A longer continuation reached 92.36%
+new `next` but is deliberately not promoted because previous-item causal
+conflicts fell to 94.43%.
+
 `unified_procedural_shape_next_bridge_seed41151.pt` is an explicitly
 unpromoted research checkpoint at the second `next item` anchor frontier.
 

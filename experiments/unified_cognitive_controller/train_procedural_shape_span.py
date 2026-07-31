@@ -693,6 +693,43 @@ def binary_outcome_complete_targets(
         outcomes > 0.5, attempted_actions, 1 - attempted_actions)
 
 
+def project_gradient_against_reference(
+        named_parameters: list[tuple[str, torch.nn.Parameter]],
+        reference_gradient: dict[str, torch.Tensor],
+        strength: float) -> tuple[bool, float | None, float | None]:
+    """Remove a target-gradient component that opposes verified rehearsal."""
+    if not 0.0 <= strength <= 1.0:
+        raise ValueError("projection strength must be within [0, 1]")
+    target_norm_sq = torch.zeros(
+        (), device=named_parameters[0][1].device)
+    reference_norm_sq = torch.zeros_like(target_norm_sq)
+    dot = torch.zeros_like(target_norm_sq)
+    for name, parameter in named_parameters:
+        if parameter.grad is None:
+            continue
+        reference = reference_gradient[name]
+        dot += torch.sum(parameter.grad * reference)
+        target_norm_sq += torch.sum(parameter.grad.square())
+        reference_norm_sq += torch.sum(reference.square())
+    if float(target_norm_sq) == 0.0 or float(reference_norm_sq) == 0.0:
+        return False, None, None
+    cosine = float(dot / torch.sqrt(target_norm_sq * reference_norm_sq))
+    applied = float(dot) < 0.0 and strength > 0.0
+    if applied:
+        coefficient = strength * dot / reference_norm_sq
+        with torch.no_grad():
+            for name, parameter in named_parameters:
+                if parameter.grad is not None:
+                    parameter.grad.sub_(
+                        coefficient * reference_gradient[name])
+    post_dot = torch.zeros_like(dot)
+    for name, parameter in named_parameters:
+        if parameter.grad is not None:
+            post_dot += torch.sum(
+                parameter.grad * reference_gradient[name])
+    return applied, cosine, float(post_dot)
+
+
 def rollout_procedural_shape_span(
         model: UnifiedCognitiveController, batch: ProceduralShapeBatch, *,
         sample_actions: bool, exploration: float = 0.10,
@@ -1240,12 +1277,28 @@ def main() -> None:
         help=(
             "EMA decay for per-parameter usage importance; lower importance "
             "makes an infrequently used parameter more volatile"))
+    parser.add_argument(
+        "--rehearsal-gradient-projection", type=float, default=0.0,
+        help=(
+            "project this fraction of a target gradient component that "
+            "conflicts with the current cycle's aggregate rehearsal gradient"))
+    parser.add_argument(
+        "--gradient-projection-mode",
+        choices=("aggregate", "per_stream"), default="aggregate",
+        help=(
+            "protect either the average rehearsal direction or every "
+            "rehearsal stream separately"))
     parser.add_argument("--exploration", type=float, default=0.10)
     parser.add_argument("--log-every", type=int, default=32)
     parser.add_argument("--eval-every", type=int, default=32)
     parser.add_argument("--curve-test-episodes", type=int, default=512)
     parser.add_argument("--mastery-threshold", type=float, default=0.90)
     parser.add_argument("--shuffle-outcomes", action="store_true")
+    parser.add_argument(
+        "--shuffle-target-outcomes", action="store_true",
+        help=(
+            "shuffle only target-task scalar outcomes while keeping "
+            "retention rehearsal truthful"))
     parser.add_argument("--checkpoint-in", type=Path)
     parser.add_argument("--checkpoint-out", type=Path)
     parser.add_argument("--report", type=Path)
@@ -1300,6 +1353,15 @@ def main() -> None:
         raise ValueError("usage-protection strength cannot be negative")
     if not 0.0 <= args.usage_importance_decay < 1.0:
         raise ValueError("usage-importance decay must be within [0, 1)")
+    if not 0.0 <= args.rehearsal_gradient_projection <= 1.0:
+        raise ValueError(
+            "rehearsal-gradient projection must be within [0, 1]")
+    if (
+            args.usage_protection_strength > 0.0
+            and args.rehearsal_gradient_projection > 0.0):
+        raise ValueError(
+            "test scalar usage protection and direction-aware projection "
+            "separately")
     rehearsal_query_counts = [
         int(value) for value in args.rehearsal_query_counts.split(",")
         if value]
@@ -1361,8 +1423,14 @@ def main() -> None:
     if any(value not in (-1, 1, 2, 3) for value in rehearsal_next_stages):
         raise ValueError(
             "rehearsal next-query stages must be -1, 1, 2, or 3")
-    if args.usage_protection_strength > 0.0 and not rehearsal_levels:
-        raise ValueError("usage protection requires rehearsal experience")
+    if (
+            (
+                args.usage_protection_strength > 0.0
+                or args.rehearsal_gradient_projection > 0.0)
+            and not rehearsal_levels):
+        raise ValueError(
+            "usage protection and gradient projection require rehearsal "
+            "experience")
     for span in {args.span, *rehearsal_spans}:
         design_patterns = (
             (args.vocabulary * 2) ** span
@@ -1494,6 +1562,16 @@ def main() -> None:
                 "parameter_usage_importance", {}).items():
             if name in usage_importance:
                 usage_importance[name].copy_(value.to(device))
+    rehearsal_gradient = {
+        name: torch.zeros_like(parameter)
+        for name, parameter in model.named_parameters()
+        if parameter.requires_grad}
+    rehearsal_stream_gradients = [
+        {
+            name: torch.zeros_like(parameter)
+            for name, parameter in model.named_parameters()
+            if parameter.requires_grad}
+        for _ in rehearsal_levels]
     history: list[dict[str, object]] = []
     target_updates = 0
     rehearsal_update_counts = {
@@ -1510,7 +1588,10 @@ def main() -> None:
     for step in range(1, args.steps + 1):
         model.train()
         schedule_index = (step - 1) % (1 + len(rehearsal_levels))
-        if args.usage_protection_strength > 0.0:
+        rehearsal_first = (
+            args.usage_protection_strength > 0.0
+            or args.rehearsal_gradient_projection > 0.0)
+        if rehearsal_first:
             # Observe usage before taking the plastic target step. Every
             # outcome is still counted; only the within-cycle order changes.
             train_on_target = schedule_index == len(rehearsal_levels)
@@ -1525,7 +1606,7 @@ def main() -> None:
         else:
             rehearsal_index = (
                 schedule_index
-                if args.usage_protection_strength > 0.0
+                if rehearsal_first
                 else schedule_index - 1)
             train_nuisance = rehearsal_nuisances[rehearsal_index]
             train_span = rehearsal_spans[rehearsal_index]
@@ -1598,10 +1679,54 @@ def main() -> None:
                 args.next_conflict_novelty_weight
                 if train_on_target else 1.0),
             complete_binary_outcomes=args.complete_binary_outcomes,
-            shuffle_outcomes=args.shuffle_outcomes)
+            shuffle_outcomes=(
+                args.shuffle_outcomes
+                or (train_on_target and args.shuffle_target_outcomes)))
         optimizer.zero_grad(set_to_none=True)
         result["loss"].backward()
         plasticity_values = []
+        projection_applied = False
+        projection_count = 0
+        reference_cosine = None
+        post_projection_dot = None
+        if train_on_target and args.rehearsal_gradient_projection > 0.0:
+            named_parameters = list(model.named_parameters())
+            if args.gradient_projection_mode == "aggregate":
+                (
+                    projection_applied,
+                    reference_cosine,
+                    post_projection_dot,
+                ) = project_gradient_against_reference(
+                    named_parameters, rehearsal_gradient,
+                    args.rehearsal_gradient_projection)
+                projection_count = int(projection_applied)
+            else:
+                initial_cosines = []
+                projection_count = 0
+                post_dots = []
+                # Cyclic projection prevents a later stream from silently
+                # reintroducing a conflict with an earlier protected stream.
+                for projection_pass in range(4):
+                    pass_applied = False
+                    post_dots = []
+                    for reference in rehearsal_stream_gradients:
+                        applied, cosine, post_dot = (
+                            project_gradient_against_reference(
+                                named_parameters, reference,
+                                args.rehearsal_gradient_projection))
+                        if projection_pass == 0 and cosine is not None:
+                            initial_cosines.append(cosine)
+                        projection_count += int(applied)
+                        pass_applied |= applied
+                        if post_dot is not None:
+                            post_dots.append(post_dot)
+                    if not pass_applied:
+                        break
+                projection_applied = projection_count > 0
+                reference_cosine = (
+                    min(initial_cosines) if initial_cosines else None)
+                post_projection_dot = (
+                    min(post_dots) if post_dots else None)
         if train_on_target and args.usage_protection_strength > 0.0:
             for name, parameter in model.named_parameters():
                 if parameter.grad is None:
@@ -1613,6 +1738,13 @@ def main() -> None:
                 parameter.grad.mul_(plasticity)
                 plasticity_values.append(float(plasticity.mean()))
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        if not train_on_target and args.rehearsal_gradient_projection > 0.0:
+            with torch.no_grad():
+                for name, parameter in model.named_parameters():
+                    if parameter.grad is not None:
+                        rehearsal_gradient[name].add_(parameter.grad)
+                        rehearsal_stream_gradients[
+                            rehearsal_index][name].add_(parameter.grad)
         with torch.no_grad():
             for name, parameter in model.named_parameters():
                 if parameter.grad is None:
@@ -1622,6 +1754,12 @@ def main() -> None:
                         parameter.grad, parameter.grad,
                         value=1.0 - args.usage_importance_decay)
         optimizer.step()
+        if train_on_target and args.rehearsal_gradient_projection > 0.0:
+            for value in rehearsal_gradient.values():
+                value.zero_()
+            for reference in rehearsal_stream_gradients:
+                for value in reference.values():
+                    value.zero_()
         if step == 1 or step % args.log_every == 0 or step == args.steps:
             row: dict[str, object] = {
                 "update": step,
@@ -1645,6 +1783,11 @@ def main() -> None:
             if plasticity_values:
                 row["mean_target_plasticity"] = (
                     sum(plasticity_values) / len(plasticity_values))
+            if reference_cosine is not None:
+                row["target_rehearsal_gradient_cosine"] = reference_cosine
+                row["gradient_projection_applied"] = projection_applied
+                row["gradient_projection_count"] = projection_count
+                row["post_projection_dot"] = post_projection_dot
             if (
                     step % args.eval_every == 0
                     or step == args.steps):
@@ -1822,6 +1965,9 @@ def main() -> None:
         "next_conflict_novelty_weight": args.next_conflict_novelty_weight,
         "usage_protection_strength": args.usage_protection_strength,
         "usage_importance_decay": args.usage_importance_decay,
+        "rehearsal_gradient_projection": (
+            args.rehearsal_gradient_projection),
+        "gradient_projection_mode": args.gradient_projection_mode,
         "binary_outcomes_completed": args.complete_binary_outcomes,
         "train_relation_adapter_only": args.train_relation_adapter_only,
         "train_action_adapter_only": args.train_action_adapter_only,
@@ -1854,6 +2000,7 @@ def main() -> None:
                 and key.endswith("randomness0.0"))),
         "replayed_examples": 0,
         "outcomes_shuffled": args.shuffle_outcomes,
+        "target_outcomes_shuffled": args.shuffle_target_outcomes,
         "mastery_threshold": args.mastery_threshold,
         "stable_bits_to_threshold": stable_bits,
         "wall_seconds": perf_counter() - started,
