@@ -1,9 +1,9 @@
-"""Diagnostic: can replayed scalar outcomes train a four-item reader?
+"""Outcome-replay training arm for the four-item reader.
 
 Each update is computed only from the controller's chosen binary action and
 its scalar success outcome.  Repeating an already observed batch spends more
-compute, not more verifier outcomes.  This is a disposable credit-assignment
-experiment: its weights are not promoted into the controller checkpoint.
+compute, not more verifier outcomes.  The default report is diagnostic; an
+optional candidate checkpoint can be written for the promotion ladder.
 """
 from __future__ import annotations
 
@@ -39,6 +39,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument("--checkpoint-out", type=Path, default=None)
     parser.add_argument("--seed", type=int, default=44901)
     parser.add_argument("--unique-batches", type=int, default=4)
     parser.add_argument("--batch-size", type=int, default=256)
@@ -58,6 +59,9 @@ def main() -> None:
         raise ValueError("replay chunk cannot be negative")
     seed_everything(args.seed)
     device = torch.device(args.device)
+    parent_payload = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
+    model_configuration = dict(parent_payload["model_configuration"])
+    model_configuration.update({"action_adapter_width": 64, "action_adapter_gated": False})
     model = _load(args.checkpoint, device)
     optimizer = torch.optim.AdamW(
         (parameter for parameter in model.parameters() if parameter.requires_grad),
@@ -121,10 +125,23 @@ def main() -> None:
         model, **old_kwargs, query_thought_steps=0)
     old_thought = evaluate_procedural_shape_span(
         model, **old_kwargs, query_thought_steps=1)
+    candidate_checkpoint = None
+    if args.checkpoint_out is not None:
+        args.checkpoint_out.parent.mkdir(parents=True, exist_ok=True)
+        torch.save({
+            "schema": "unified-cognitive-controller-span4-replay-candidate-v1",
+            "model_configuration": model_configuration,
+            "state_dict": model.state_dict(),
+            "parent_checkpoint": str(args.checkpoint),
+            "training": vars(args),
+            "audit_snapshot": {"span4": span4, "old_span3": old},
+        }, args.checkpoint_out)
+        candidate_checkpoint = str(args.checkpoint_out)
     report = {
-        "schema": "span-four-outcome-replay-diagnostic-v1",
-        "diagnostic_only": True,
+        "schema": "span-four-outcome-replay-training-v1",
+        "diagnostic_only": args.checkpoint_out is None,
         "agent_weights_promoted": False,
+        "candidate_checkpoint": candidate_checkpoint,
         "learner_visible_information": "RGB, own binary action, scalar outcome",
         "unique_target_outcomes": args.unique_batches * args.batch_size,
         "unique_rehearsal_outcomes": (
