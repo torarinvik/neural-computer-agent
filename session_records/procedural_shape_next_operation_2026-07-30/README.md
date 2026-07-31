@@ -267,6 +267,17 @@ make the 3×/3× rule robust; the limitation is functional retention protection,
 not insufficient target emphasis. The reports are retained as rejected
 controls.
 
+## Fresh functional-retention instrument
+
+The trainer now supports rollback of a target update when fresh, independently
+generated rehearsal lifetimes lose more deterministic accuracy than a declared
+tolerance. Validation outcomes are counted separately from target and
+rehearsal outcomes. A one-target-update smoke test with 384 fresh lifetimes
+per retained stream consumed 2,688 validation outcomes and preserved all
+three validation scores within the initial 1% tolerance. This verifies the
+instrument and accounting only; a same-batch functional check was rejected as
+too weak because it missed a later held-out retention failure.
+
 The promoted 3:2 checkpoints define the new frontier. The next experiment
 should preserve the replicated directional learning while adding a
 function-level acceptance or backtracking check for the old skill. That would

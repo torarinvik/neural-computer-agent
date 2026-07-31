@@ -12,6 +12,7 @@ This permits a gradual curriculum and honest sample-efficiency comparisons.
 from __future__ import annotations
 
 import argparse
+import copy
 from dataclasses import asdict, dataclass
 import itertools
 import json
@@ -1386,6 +1387,16 @@ def main() -> None:
         help=(
             "use rehearsal outcomes to define protected directions without "
             "taking separate old-skill optimizer steps"))
+    parser.add_argument(
+        "--functional-retention-tolerance", type=float, default=-1.0,
+        help=(
+            "maximum deterministic rehearsal-accuracy drop allowed after a "
+            "target update; a nonnegative value rolls back harmful updates"))
+    parser.add_argument(
+        "--functional-retention-validation-batch-size", type=int, default=0,
+        help=(
+            "fresh verifier-generated lifetimes per rehearsal stream used by "
+            "a functional retention check; counted as validation experience"))
     parser.add_argument("--exploration", type=float, default=0.10)
     parser.add_argument("--log-every", type=int, default=32)
     parser.add_argument("--eval-every", type=int, default=32)
@@ -1454,6 +1465,14 @@ def main() -> None:
         raise ValueError("hard-example focal gamma cannot be negative")
     if args.usage_protection_strength < 0.0:
         raise ValueError("usage-protection strength cannot be negative")
+    if args.functional_retention_tolerance < -1.0:
+        raise ValueError(
+            "functional retention tolerance must be -1 (disabled) or nonnegative")
+    if (
+            args.functional_retention_tolerance >= 0.0
+            and args.functional_retention_validation_batch_size < 1):
+        raise ValueError(
+            "functional retention requires a positive fresh validation batch size")
     if not 0.0 <= args.usage_importance_decay < 1.0:
         raise ValueError("usage-importance decay must be within [0, 1)")
     if not 0.0 <= args.rehearsal_gradient_projection <= 1.0:
@@ -1701,6 +1720,7 @@ def main() -> None:
         for _ in rehearsal_levels]
     history: list[dict[str, object]] = []
     target_updates = 0
+    functional_validation_bits = 0
     rehearsal_update_counts = {
         (
             f"span{span}:queries{query_count}:slot{slot}:"
@@ -1930,6 +1950,45 @@ def main() -> None:
             (name, parameter)
             for name, parameter in model.named_parameters()
             if parameter.requires_grad]
+        functional_before: list[float] = []
+        functional_after: list[float] = []
+        functional_update_rejected = False
+        functional_model_before = None
+        functional_optimizer_before = None
+        if (
+                train_on_target
+                and args.functional_retention_tolerance >= 0.0):
+            validation_batches = []
+            for index, (
+                    validation_nuisance, validation_span,
+                    validation_query_count, validation_slot,
+                    validation_previous, validation_next) in enumerate(zip(
+                        rehearsal_nuisances, rehearsal_spans,
+                        rehearsal_query_counts, rehearsal_slot_difficulties,
+                        rehearsal_previous_stages, rehearsal_next_stages)):
+                validation_batches.append(generate_procedural_shape_batch(
+                    args.functional_retention_validation_batch_size,
+                    span=validation_span, vocabulary=args.vocabulary,
+                    seed=(args.seed + 40_000_000 + step * 16 + index),
+                    nuisance=validation_nuisance, objective=args.objective,
+                    query_count=validation_query_count,
+                    new_slot_difficulty=validation_slot,
+                    previous_query_stage=validation_previous,
+                    next_query_stage=validation_next, device=device))
+            functional_validation_bits += sum(
+                validation.batch_size * validation.query_ordinals.shape[1]
+                for validation in validation_batches)
+            was_training = model.training
+            model.eval()
+            with torch.no_grad():
+                for validation_batch in validation_batches:
+                    validation = rollout_procedural_shape_span(
+                        model, validation_batch, sample_actions=False)
+                    functional_before.append(
+                        float(validation["rewards"].mean()))
+            model.train(was_training)
+            functional_model_before = copy.deepcopy(model.state_dict())
+            functional_optimizer_before = copy.deepcopy(optimizer.state_dict())
         parameters_before = (
             {
                 name: parameter.detach().clone()
@@ -1973,6 +2032,24 @@ def main() -> None:
                     protected_named_parameters, parameters_before,
                     reference, 0.0)
                 optimizer_update_final_stream_cosines.append(cosine)
+        if functional_model_before is not None:
+            was_training = model.training
+            model.eval()
+            with torch.no_grad():
+                for validation_batch in validation_batches:
+                    validation = rollout_procedural_shape_span(
+                        model, validation_batch, sample_actions=False)
+                    functional_after.append(
+                        float(validation["rewards"].mean()))
+            model.train(was_training)
+            functional_update_rejected = any(
+                after < before - args.functional_retention_tolerance
+                for before, after in zip(functional_before, functional_after))
+            if functional_update_rejected:
+                model.load_state_dict(functional_model_before)
+                assert functional_optimizer_before is not None
+                optimizer.load_state_dict(functional_optimizer_before)
+                weight_changing_updates -= 1
         if train_on_target and args.rehearsal_gradient_projection > 0.0:
             for value in rehearsal_gradient.values():
                 value.zero_()
@@ -1985,9 +2062,11 @@ def main() -> None:
                 "unique_logical_lifetimes": step * args.batch_size,
                 "unique_verifier_bits": (
                     target_updates * args.batch_size * target_query_count
-                    + sum(rehearsal_verifier_bits.values())),
+                    + sum(rehearsal_verifier_bits.values())
+                    + functional_validation_bits),
                 "target_verifier_bits": (
                     target_updates * args.batch_size * target_query_count),
+                "functional_validation_bits": functional_validation_bits,
                 "floor_rehearsal_bits": (
                     sum(
                         bits for key, bits
@@ -2002,6 +2081,10 @@ def main() -> None:
             if plasticity_values:
                 row["mean_target_plasticity"] = (
                     sum(plasticity_values) / len(plasticity_values))
+            if functional_before:
+                row["functional_retention_before"] = functional_before
+                row["functional_retention_after"] = functional_after
+                row["functional_update_rejected"] = functional_update_rejected
             if reference_cosine is not None:
                 row["target_rehearsal_gradient_cosine"] = reference_cosine
                 row["gradient_projection_applied"] = projection_applied
@@ -2216,6 +2299,11 @@ def main() -> None:
             args.worst_stream_residual_projection),
         "project_optimizer_update": args.project_optimizer_update,
         "reference_only_rehearsal": args.reference_only_rehearsal,
+        "functional_retention_tolerance": (
+            args.functional_retention_tolerance),
+        "functional_retention_validation_batch_size": (
+            args.functional_retention_validation_batch_size),
+        "functional_validation_bits": functional_validation_bits,
         "binary_outcomes_completed": args.complete_binary_outcomes,
         "train_relation_adapter_only": args.train_relation_adapter_only,
         "train_action_adapter_only": args.train_action_adapter_only,
