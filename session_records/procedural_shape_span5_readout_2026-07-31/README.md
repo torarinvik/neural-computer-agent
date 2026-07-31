@@ -29,3 +29,38 @@ Span five is not blocked by sensory or memory representation.  As in span four,
 the useful signal is strongly nonlinear and the workspace alone is weaker than
 the recurrent hidden state.  The next experiment must therefore test credit
 assignment, not invent a new encoder or memory architecture.
+
+## Behavioral replay curve
+
+Using one batch of 1,024 unique target outcomes and interleaved replay of three
+old span-three streams:
+
+| target replay updates | overall span-5 | pure next | strict next conflict | old span-3 |
+| ---: | ---: | ---: | ---: | ---: |
+| 1 | 55.66% | 55.66% | 50.00% | 98.39% |
+| 4 | 56.05% | 56.05% | 50.00% | 98.52% |
+| 16 | 63.67% | 64.45% | 53.91% | 98.09% |
+| 64 | 84.57% | **87.89%** | **78.13%** | 96.92% |
+| 128 | 87.11% | **89.26%** | 79.30% | 96.22% |
+| 2 batches × 64 | **94.82%** | **96.68%** | **94.53%** | **98.09%** |
+
+The diversity-controlled arm passed the primary gates: all-memory-reset
+accuracy was 51.27%, candidate counterfactual flip rate was 92.29%, and old
+span-three retention was 98.09%.  An independent seed is still required before
+promotion.
+
+The independent replica also passed: 97.27% overall, 96.79% strict conflict,
+50.10% after all-memory reset, 94.63% candidate flip rate, and 97.96% old
+span-three retention.  The canonical-schema candidate is stored as
+`artifacts/checkpoints/unified_procedural_shape_span5_replay_seed44906.pt`.
+
+An extra robustness audit at nuisance level 0.17 scored 90.53% overall, 84.74%
+strict conflict, and 92.71% old-skill retention.  This is not a failure of the
+baseline result; it identifies the next frontier: train with gradual nuisance
+augmentation and recover the retention/accuracy margin at the harder render.
+
+This is a sample-efficiency signal: the model is learning from repeated use of
+the same observed outcomes, not from additional verifier episodes.  It is not
+yet promotion-grade (the current gate is 90% overall and 85% strict-conflict),
+but the monotonic curve justifies a 128-update rung before changing the
+architecture or increasing the number of unique outcomes.

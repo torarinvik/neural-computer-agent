@@ -15,7 +15,7 @@ from pathlib import Path
 import torch
 
 from .model import UnifiedCognitiveController
-from .train import seed_everything
+from .train import configure_compute, seed_everything
 from .train_procedural_shape_span import (
     evaluate_procedural_shape_span,
     generate_procedural_shape_batch,
@@ -53,7 +53,15 @@ def main() -> None:
         "--rehearsal-updates", type=int, default=0,
         help="outcome-replay updates per old-skill stream and target batch")
     parser.add_argument("--learning-rate", type=float, default=3e-3)
-    parser.add_argument("--device", default="cpu")
+    parser.add_argument(
+        "--nuisance-levels", default="0.135",
+        help="comma-separated render nuisance levels, cycled per target batch")
+    parser.add_argument(
+        "--max-nuisance-step", type=float, default=0.0001,
+        help="maximum adjacent curriculum increment; microscopic by default")
+    parser.add_argument("--device", default=(
+        "cuda" if torch.cuda.is_available() else "cpu"))
+    parser.add_argument("--cpu-threads", type=int, default=0)
     args = parser.parse_args()
     if args.batch_size < 256 or args.batch_size % 256:
         raise ValueError("batch size must be a multiple of 256")
@@ -66,6 +74,20 @@ def main() -> None:
         else args.target_span - 2)
     if not 0 <= target_anchor_focus < args.target_span - 1:
         raise ValueError("target anchor focus must identify a non-final item")
+    nuisance_levels = tuple(
+        float(value.strip()) for value in args.nuisance_levels.split(",")
+        if value.strip())
+    if not nuisance_levels or any(value < 0.0 for value in nuisance_levels):
+        raise ValueError("nuisance levels must contain nonnegative floats")
+    if args.max_nuisance_step <= 0.0:
+        raise ValueError("max nuisance step must be positive")
+    if any(
+            right < left or right - left > args.max_nuisance_step + 1e-12
+            for left, right in zip(nuisance_levels, nuisance_levels[1:])):
+        raise ValueError(
+            "nuisance curriculum must be nondecreasing with microscopic "
+            f"steps <= {args.max_nuisance_step:g}")
+    compute = configure_compute(args.cpu_threads)
     seed_everything(args.seed)
     device = torch.device(args.device)
     parent_payload = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
@@ -75,7 +97,7 @@ def main() -> None:
     optimizer = torch.optim.AdamW(
         (parameter for parameter in model.parameters() if parameter.requires_grad),
         lr=args.learning_rate, weight_decay=1e-5)
-    nuisance = nuisance_from_level(0.135)
+    nuisance = nuisance_from_level(nuisance_levels[0])
     losses = []
 
     def update(
@@ -100,9 +122,11 @@ def main() -> None:
              previous_query_stage=2, next_query_stage=-1),
     )
     for batch_index in range(args.unique_batches):
+        batch_nuisance = nuisance_from_level(
+            nuisance_levels[batch_index % len(nuisance_levels)])
         batch = generate_procedural_shape_batch(
             args.batch_size, span=args.target_span, vocabulary=2,
-            seed=args.seed + batch_index, nuisance=nuisance,
+            seed=args.seed + batch_index, nuisance=batch_nuisance,
             objective="recognition", query_count=1, next_query_stage=2,
             next_query_anchor_focus=target_anchor_focus,
             next_query_target_aligned=True,
@@ -111,7 +135,7 @@ def main() -> None:
             generate_procedural_shape_batch(
                 args.batch_size, vocabulary=2,
                 seed=args.seed + 10_000 + batch_index * 10 + stream_index,
-                nuisance=nuisance, objective="recognition", device=device,
+                nuisance=batch_nuisance, objective="recognition", device=device,
                 **stream)
             for stream_index, stream in enumerate(old_streams)]
         chunk = args.replay_chunk or args.replay_updates
@@ -141,7 +165,10 @@ def main() -> None:
     if args.checkpoint_out is not None:
         args.checkpoint_out.parent.mkdir(parents=True, exist_ok=True)
         torch.save({
-            "schema": "unified-cognitive-controller-span4-replay-candidate-v1",
+            # Keep the canonical loader schema; provenance below distinguishes
+            # this candidate from an ordinary fully trained checkpoint.
+            "schema": "unified-cognitive-controller-v1",
+            "provenance": "span-replay-candidate",
             "model_configuration": model_configuration,
             "state_dict": model.state_dict(),
             "parent_checkpoint": str(args.checkpoint),
@@ -154,6 +181,7 @@ def main() -> None:
         "diagnostic_only": args.checkpoint_out is None,
         "agent_weights_promoted": False,
         "candidate_checkpoint": candidate_checkpoint,
+        "compute": compute,
         "learner_visible_information": "RGB, own binary action, scalar outcome",
         "unique_target_outcomes": args.unique_batches * args.batch_size,
         "unique_rehearsal_outcomes": (
@@ -165,6 +193,8 @@ def main() -> None:
         "loss_first": losses[0], "loss_last": losses[-1],
         "target_span": args.target_span,
         "target_anchor_focus": target_anchor_focus,
+        "training_nuisance_levels": nuisance_levels,
+        "evaluation_nuisance_level": nuisance_levels[0],
         "target": target, "old_span3": old,
         "old_span3_thought1": old_thought,
     }

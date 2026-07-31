@@ -16,7 +16,7 @@ import torch
 from torch import nn
 
 from .model import UnifiedCognitiveController
-from .train import seed_everything
+from .train import configure_compute, seed_everything
 from .train_procedural_shape_span import (
     generate_procedural_shape_batch,
     nuisance_from_level,
@@ -102,6 +102,7 @@ def main() -> None:
     parser.add_argument("--query-thought-steps", type=int, default=0)
     parser.add_argument("--device", default=(
         "cuda" if torch.cuda.is_available() else "cpu"))
+    parser.add_argument("--cpu-threads", type=int, default=0)
     args = parser.parse_args()
     logical_patterns = (2 * 2) ** args.span
     if (args.train_lifetimes % logical_patterns
@@ -113,6 +114,7 @@ def main() -> None:
         anchor_focus = args.span - 2
     if not 0 <= anchor_focus < args.span - 1:
         raise ValueError("anchor focus must identify a non-final item")
+    compute = configure_compute(args.cpu_threads)
     seed_everything(args.seed)
     device = torch.device(args.device)
     payload = torch.load(args.checkpoint, map_location=device, weights_only=False)
@@ -150,6 +152,7 @@ def main() -> None:
         "verifier_private_labels_used_by_probe": True,
         "checkpoint": str(args.checkpoint),
         "checkpoint_sha256": _sha256(args.checkpoint),
+        "compute": compute,
         "normal_labels": {
             family: {
                 name: _fit_probe(

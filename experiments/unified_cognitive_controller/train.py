@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import time
 from pathlib import Path
 
@@ -17,6 +18,33 @@ def seed_everything(seed: int) -> None:
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
+
+
+def configure_compute(cpu_threads: int = 0) -> dict[str, object]:
+    """Use available host parallelism and fast CUDA math when supported.
+
+    ``cpu_threads=0`` means all visible host cores.  The setting is explicit in
+    experiment reports so a faster cloud run remains reproducible.
+    """
+    threads = cpu_threads or (os.cpu_count() or 1)
+    torch.set_num_threads(max(1, threads))
+    try:
+        torch.set_num_interop_threads(max(1, min(8, threads)))
+    except RuntimeError:
+        # PyTorch only permits this before its inter-op pool is initialized.
+        pass
+    cuda = torch.cuda.is_available()
+    if cuda:
+        torch.set_float32_matmul_precision("high")
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32 = True
+        torch.backends.cudnn.benchmark = True
+    return {
+        "cpu_threads": threads,
+        "cuda_available": cuda,
+        "cuda_devices": torch.cuda.device_count() if cuda else 0,
+        "cuda_name": torch.cuda.get_device_name(0) if cuda else None,
+    }
 
 
 def attempted_success_loss(
