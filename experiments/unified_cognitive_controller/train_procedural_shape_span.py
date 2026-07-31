@@ -786,6 +786,7 @@ def project_parameter_update_against_reference(
 def rollout_procedural_shape_span(
         model: UnifiedCognitiveController, batch: ProceduralShapeBatch, *,
         sample_actions: bool, exploration: float = 0.10,
+        query_thought_steps: int = 0,
         new_slot_novelty_weight: float = 1.0,
         query_history_novelty_weight: float = 1.0,
         previous_conflict_novelty_weight: float = 1.0,
@@ -800,6 +801,8 @@ def rollout_procedural_shape_span(
         blank_operation_cues: bool = False,
         shuffle_outcomes: bool = False) -> dict[str, torch.Tensor]:
     device = batch.presentation_frames.device
+    if query_thought_steps < 0:
+        raise ValueError("query thought steps cannot be negative")
     state = model.initial_state(batch.batch_size, device=device)
     null = torch.full(
         (batch.batch_size,), NULL_ACTION, dtype=torch.long, device=device)
@@ -829,6 +832,15 @@ def rollout_procedural_shape_span(
             frame[:, :, 2:8, 24:30] = background
             frame[:, :, 20:26, 24:30] = background
         has_feedback = torch.full_like(previous_reward, float(index > 0))
+        # A generic extra read/write cycle lets an answer that was bound into
+        # workspace by the query be read on the following internal step. It
+        # sees only the same pixel frame and past scalar feedback; no verifier
+        # state, answer, or semantic feature is exposed.
+        for _ in range(query_thought_steps):
+            _, state = model.step(
+                frame, state, previous_action,
+                previous_reward * has_feedback, has_feedback,
+                disable_workspace=disable_workspace)
         output, state = model.step(
             frame, state, previous_action,
             previous_reward * has_feedback, has_feedback,
@@ -960,7 +972,8 @@ def evaluate_procedural_shape_span(
         next_query_stage: int = -1,
         next_query_position: int = -1,
         next_query_anchor_focus: int = -1,
-        next_query_target_aligned: bool = False) -> dict[str, object]:
+        next_query_target_aligned: bool = False,
+        query_thought_steps: int = 0) -> dict[str, object]:
     model.eval()
     kwargs = dict(
         count=count, span=span, vocabulary=vocabulary, seed=seed,
@@ -990,7 +1003,8 @@ def evaluate_procedural_shape_span(
 
     def run(batch: ProceduralShapeBatch, **controls: bool):
         return rollout_procedural_shape_span(
-            model, batch, sample_actions=False, **controls)
+            model, batch, sample_actions=False,
+            query_thought_steps=query_thought_steps, **controls)
 
     normal = run(normal_batch)
     blank = run(blank_batch)
@@ -1188,6 +1202,11 @@ def main() -> None:
     parser.add_argument(
         "--query-count", type=int, default=0,
         help="queries per lifetime; zero means query every stored item")
+    parser.add_argument(
+        "--query-thought-steps", type=int, default=0,
+        help=(
+            "extra generic internal read/write cycles on each query before "
+            "acting; each cycle adds latency but no new information"))
     parser.add_argument(
         "--new-slot-difficulty", type=float, default=1.0,
         help=(
@@ -1472,6 +1491,8 @@ def main() -> None:
     target_query_count = args.query_count or args.span
     if not 1 <= target_query_count <= args.span:
         raise ValueError("query count must be within target span")
+    if args.query_thought_steps < 0:
+        raise ValueError("query thought steps cannot be negative")
     if args.new_slot_novelty_weight < 1.0:
         raise ValueError("new-slot novelty weight must be at least one")
     if args.query_history_novelty_weight < 1.0:
@@ -1777,7 +1798,8 @@ def main() -> None:
             validation_batch: ProceduralShapeBatch) -> list[float]:
         """Return overall and causal-conflict accuracy for a fresh stream."""
         validation = rollout_procedural_shape_span(
-            model, validation_batch, sample_actions=False)
+            model, validation_batch, sample_actions=False,
+            query_thought_steps=args.query_thought_steps)
         scores = [float(validation["rewards"].mean())]
         target_identities = torch.gather(
             validation_batch.sequence_identities, 1,
@@ -1876,6 +1898,7 @@ def main() -> None:
         result = rollout_procedural_shape_span(
             model, batch, sample_actions=True,
             exploration=args.exploration,
+            query_thought_steps=args.query_thought_steps,
             new_slot_novelty_weight=(
                 args.new_slot_novelty_weight if train_on_target else 1.0),
             query_history_novelty_weight=(
@@ -2202,7 +2225,8 @@ def main() -> None:
                     next_query_stage=args.next_query_stage,
                     next_query_position=args.next_query_position,
                     next_query_anchor_focus=args.next_query_anchor_focus,
-                    next_query_target_aligned=args.next_query_target_aligned)
+                    next_query_target_aligned=args.next_query_target_aligned,
+                    query_thought_steps=args.query_thought_steps)
                 row["heldout_accuracy"] = curve["accuracy"]
                 row["heldout_accuracy_by_presented_ordinal"] = (
                     curve["accuracy_by_presented_ordinal"])
@@ -2248,7 +2272,8 @@ def main() -> None:
         next_query_stage=args.next_query_stage,
         next_query_position=args.next_query_position,
         next_query_anchor_focus=args.next_query_anchor_focus,
-        next_query_target_aligned=args.next_query_target_aligned)
+        next_query_target_aligned=args.next_query_target_aligned,
+        query_thought_steps=args.query_thought_steps)
     floor_audit = evaluate_procedural_shape_span(
         model, count=args.test_episodes, span=args.span,
         vocabulary=args.vocabulary, seed=args.seed + 11_000_000,
@@ -2266,7 +2291,8 @@ def main() -> None:
         next_query_stage=args.next_query_stage,
         next_query_position=args.next_query_position,
         next_query_anchor_focus=args.next_query_anchor_focus,
-        next_query_target_aligned=args.next_query_target_aligned)
+        next_query_target_aligned=args.next_query_target_aligned,
+        query_thought_steps=args.query_thought_steps)
     rehearsal_audits = {
         (
             f"span{span}:queries{query_count}:slot{slot}:"
@@ -2280,7 +2306,8 @@ def main() -> None:
             objective=args.objective, query_count=query_count,
             new_slot_difficulty=slot,
             previous_query_stage=previous,
-            next_query_stage=following)
+            next_query_stage=following,
+            query_thought_steps=args.query_thought_steps)
         for index, (
                 span, query_count, slot, previous, following, level
         ) in enumerate(zip(
@@ -2335,6 +2362,7 @@ def main() -> None:
             "RGB streams, own opaque actions, scalar attempted-action outcome"),
         "span": args.span,
         "query_count": target_query_count,
+        "query_thought_steps": args.query_thought_steps,
         "new_slot_difficulty": args.new_slot_difficulty,
         "query_frontier_difficulty": args.query_frontier_difficulty,
         "query_history_difficulty": args.query_history_difficulty,
