@@ -154,6 +154,52 @@
       "truthful_conflicting_new_slot_accuracy": 0.7233073115348816
     }
   },
+  "error_balanced_increment": {
+    "learning_rate": 0.000025,
+    "conflict_loss_weight": 3.0,
+    "nonconflict_loss_weight": 2.0,
+    "target_verifier_bits_per_run": 1536,
+    "rehearsal_verifier_bits_per_run": 10752,
+    "unique_verifier_bits_per_run": 12288,
+    "unique_logical_lifetimes_per_run": 6144,
+    "gradient_evaluations_per_run": 16,
+    "optimizer_updates_per_run": 4,
+    "primary": {
+      "seed": 43601,
+      "parent_next_accuracy": 0.701171875,
+      "child_next_accuracy": 0.7102864384651184,
+      "parent_next_conflict_accuracy": 0.800514817237854,
+      "child_next_conflict_accuracy": 0.8095238208770752,
+      "parent_next_nonconflict_accuracy": 0.5994729995727539,
+      "child_next_nonconflict_accuracy": 0.6086956262588501,
+      "previous_accuracy": 0.9611545205116272,
+      "previous_conflict_accuracy": 0.953336238861084,
+      "wall_seconds": 38.04236908297753
+    },
+    "replica": {
+      "seed": 43651,
+      "high_precision_parent_next_accuracy": 0.7215169072151184,
+      "high_precision_child_next_accuracy": 0.7350260615348816,
+      "high_precision_parent_next_conflict_accuracy": 0.8159509301185608,
+      "high_precision_child_next_conflict_accuracy": 0.8201485276222229,
+      "high_precision_parent_next_nonconflict_accuracy": 0.6255332827568054,
+      "high_precision_child_next_nonconflict_accuracy": 0.6485067009925842,
+      "high_precision_parent_hard_cell_accuracy": 0.5299145579338074,
+      "high_precision_child_hard_cell_accuracy": 0.5680473446846008,
+      "previous_accuracy": 0.9629991054534912,
+      "previous_conflict_accuracy": 0.9564840197563171,
+      "wall_seconds": 37.76613725000061
+    },
+    "paired_control_seed43651": {
+      "parent_next_accuracy": 0.7259114384651184,
+      "shuffled_next_accuracy": 0.7298176884651184,
+      "truthful_next_accuracy": 0.744140625,
+      "parent_hard_cell_accuracy": 0.5239361524581909,
+      "shuffled_hard_cell_accuracy": 0.5132978558540344,
+      "truthful_hard_cell_accuracy": 0.5585106611251831,
+      "truthful_memory_reset_accuracy": 0.5026041865348816
+    }
+  },
   "third_increment_saturation": {
     "learning_rate": 0.0000125,
     "target_verifier_bits": 1536,

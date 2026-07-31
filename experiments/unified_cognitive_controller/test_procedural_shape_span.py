@@ -188,6 +188,19 @@ def test_evaluation_exposes_every_query_position_by_ordinal_cell() -> None:
     assert audit["crossed_history_frontier_queries"] == 128
     assert audit["repeated_history_frontier_queries"] == 0
 
+    next_audit = evaluate_procedural_shape_span(
+        model, count=384, span=3, vocabulary=2, seed=27012,
+        nuisance=nuisance_from_level(0.135), device=torch.device("cpu"),
+        query_count=1, next_query_stage=2, next_query_anchor_focus=1)
+    assert (
+        next_audit["next_conflict_queries"]
+        + next_audit["next_nonconflict_queries"]
+        == 192)
+    next_cells = next_audit["next_accuracy_by_conflict_and_action"]
+    assert len(next_cells) == 2
+    assert all(len(row) == 2 for row in next_cells)
+    assert all(value is not None for row in next_cells for value in row)
+
 
 def test_addressed_workspace_breaks_content_addressing_symmetry() -> None:
     batch = generate_procedural_shape_batch(

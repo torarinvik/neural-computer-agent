@@ -211,8 +211,47 @@ Rejected:
 5. scalar gradient suppression as the complete solution.
 
 Direction-aware aggregate projection plus constraint-only rehearsal and a
-very small trust region is now the most reliable strategy. It compounds for
-two replicated increments, but a third half-step saturates. The next frontier
-is a better local learning signal for the remaining second-anchor errors—not
-more identical micro-steps. Any candidate must beat the 71.6–71.7% `next` and
-81.3–82.1% conflict frontier while preserving every inherited gate above 95%.
+very small trust region remains the reliable stability mechanism. The
+remaining error was then decomposed rather than attacked with more identical
+updates.
+
+## Error-balanced curriculum breaks the saturation boundary
+
+A 6,144-example audit exposed a shared shortcut in both compound-2 lineages.
+Conflict cases were already 82.47–82.51%, while non-conflict cases were only
+59.36–60.68%. The hardest cell was a non-conflict query whose correct answer
+was action zero: 52.31–52.90%, essentially chance. The controller had partly
+learned “`next` means the identity changes” instead of the complete relation.
+
+Several sub-minute repairs were rejected:
+
+- focal loss improved the hard cell but did not improve causal conflicts;
+- weighting only non-conflicts improved the hard cell while regressing
+  conflicts;
+- equal 2× weighting of both groups passed once but did not replicate its
+  causal gain.
+
+The smallest replicated repair was verifier-side error balancing: 3× loss
+weight for conflict examples and 2× for non-conflicts. These weights are
+generator metadata used only to allocate learning signal; they are never
+learner-visible.
+
+| matched high-precision arm | `next` | conflict | non-conflict | non-conflict/action-0 | new slot |
+|---|---:|---:|---:|---:|---:|
+| parent | 72.15% | 81.60% | 62.55% | 52.99% | 72.64% |
+| child | 73.50% | 82.02% | 64.85% | 56.81% | 73.96% |
+
+An independent lineage also improved every corresponding measure by roughly
+0.8–0.9 points. The replicated checkpoint's 12,288-example retention audit
+scores 99.41% redundant-anchor, 98.33% first-anchor, and 96.30% previous-item
+overall / 95.65% previous-item conflicts. Complete memory reset is 50.08%.
+
+On the exact paired control seed, the truthful child scores 74.41% `next`
+versus 72.59% for its unchanged parent and 72.98% for shuffled outcomes. Its
+hard non-conflict/action-zero cell reaches 55.85%, versus 52.39% parent and
+51.33% shuffled. This rules out schedule-only regularization as the cause.
+
+The promoted 3:2 checkpoints define the new frontier. The next experiment
+should continue decomposing the residual 26.5% error—especially the still
+weak 56.8% action-zero/non-conflict cell—while preserving the replicated
+directional learning and every inherited gate above 95%.

@@ -2,6 +2,29 @@
 
 ## Procedural-shape relative operations
 
+`unified_next_error_balanced_primary_seed43601.pt` and
+`unified_next_error_balanced_replica_seed43651.pt` break the compound-2 local
+saturation boundary with a replicated verifier-side 3:2 conflict/non-conflict
+curriculum.
+
+- SHA-256 primary:
+  `2c219ca8e7370e735e1dcfd06d3b326bd08b32ebeb2493a17c0f255807072545`
+- SHA-256 replica:
+  `f83999c98f589cc68a4f615753598d459c265595db98f76b7d6bce6b7c5424c9`
+- high-precision matched `next`: 72.15% → 73.50%
+- causal conflicts: 81.60% → 82.02%
+- non-conflicts: 62.55% → 64.85%
+- hardest non-conflict/action-zero cell: 52.99% → 56.81%
+- previous-item overall/conflict retention: 96.30% / 95.65%
+- exact paired truthful run beats both unchanged-parent and shuffled-outcome
+  controls; complete memory reset remains at chance
+- acquisition per run: 1,536 target bits, 10,752 rehearsal bits, 6,144
+  unique lifetimes, 16 gradient evaluations, and four optimizer updates
+
+The weights use verifier-known logical subgroups only for loss allocation and
+are not exposed to the controller. Focal loss, non-conflict-only weighting,
+and equal subgroup weighting were rejected before this asymmetric setting.
+
 `unified_next_trust_compound2_primary_seed43001.pt` and
 `unified_next_trust_compound2_replica_seed43051.pt` are the first replicated
 second compounding increment.

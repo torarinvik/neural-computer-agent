@@ -771,6 +771,8 @@ def rollout_procedural_shape_span(
         query_history_novelty_weight: float = 1.0,
         previous_conflict_novelty_weight: float = 1.0,
         next_conflict_novelty_weight: float = 1.0,
+        next_nonconflict_novelty_weight: float = 1.0,
+        hard_example_focal_gamma: float = 0.0,
         complete_binary_outcomes: bool = False,
         disable_workspace: bool = False,
         reset_active_before_query: bool = False,
@@ -889,6 +891,23 @@ def rollout_procedural_shape_span(
                 torch.full_like(
                     per_attempt_loss, next_conflict_novelty_weight),
                 torch.ones_like(per_attempt_loss))
+            next_nonconflict = (
+                (batch.query_operations[:, index] == 2)
+                & ~next_conflict)
+            weights = weights * torch.where(
+                next_nonconflict,
+                torch.full_like(
+                    per_attempt_loss, next_nonconflict_novelty_weight),
+                torch.ones_like(per_attempt_loss))
+            if hard_example_focal_gamma > 0.0:
+                # Generic verifier-driven curriculum: examples the current
+                # controller already solves contribute less, without exposing
+                # semantic subgroup metadata to the learner.
+                focal = (
+                    1.0 - torch.exp(-per_attempt_loss.detach())
+                ).pow(hard_example_focal_gamma)
+                weights = weights * (
+                    focal / focal.mean().clamp_min(1e-12))
             losses.append((per_attempt_loss * weights).sum() / weights.sum())
         actions.append(action)
         rewards.append(reward)
@@ -1043,6 +1062,20 @@ def evaluate_procedural_shape_span(
             != torch.gather(
                 normal_batch.sequence_identities, 1,
                 normal_batch.query_cue_ordinals)))
+    next_selected = normal_batch.query_operations == 2
+    next_nonconflict = next_selected & ~next_conflict
+    next_accuracy_by_conflict_and_action = []
+    for conflict in (False, True):
+        row = []
+        for action in range(ACTIONS):
+            selected = (
+                next_selected
+                & (next_conflict == conflict)
+                & (normal_batch.correct_actions == action))
+            row.append(
+                float(normal["rewards"][selected].mean())
+                if bool(selected.any()) else None)
+        next_accuracy_by_conflict_and_action.append(row)
     relative_conflict = previous_conflict | next_conflict
     reverse_changed = (
         normal_batch.correct_actions != reverse_batch.correct_actions)
@@ -1084,6 +1117,12 @@ def evaluate_procedural_shape_span(
         "next_conflict_accuracy": (
             float(normal["rewards"][next_conflict].mean())
             if bool(next_conflict.any()) else None),
+        "next_nonconflict_queries": int(next_nonconflict.sum()),
+        "next_nonconflict_accuracy": (
+            float(normal["rewards"][next_nonconflict].mean())
+            if bool(next_nonconflict.any()) else None),
+        "next_accuracy_by_conflict_and_action": (
+            next_accuracy_by_conflict_and_action),
         "relative_conflict_queries": int(relative_conflict.sum()),
         "relative_conflict_accuracy": (
             float(normal["rewards"][relative_conflict].mean())
@@ -1216,6 +1255,16 @@ def main() -> None:
         help=(
             "verifier-side loss weight for next-item queries whose target "
             "identity differs from the directly cued identity"))
+    parser.add_argument(
+        "--next-nonconflict-novelty-weight", type=float, default=1.0,
+        help=(
+            "verifier-side curriculum weight for next-item examples whose "
+            "target identity equals the directly cued identity"))
+    parser.add_argument(
+        "--hard-example-focal-gamma", type=float, default=0.0,
+        help=(
+            "task-agnostic verifier-driven emphasis on currently difficult "
+            "examples; zero preserves ordinary outcome loss"))
     parser.add_argument(
         "--complete-binary-outcomes", action="store_true",
         help=(
@@ -1398,6 +1447,11 @@ def main() -> None:
     if args.next_conflict_novelty_weight < 1.0:
         raise ValueError(
             "next-conflict novelty weight must be at least one")
+    if args.next_nonconflict_novelty_weight < 1.0:
+        raise ValueError(
+            "next-nonconflict novelty weight must be at least one")
+    if args.hard_example_focal_gamma < 0.0:
+        raise ValueError("hard-example focal gamma cannot be negative")
     if args.usage_protection_strength < 0.0:
         raise ValueError("usage-protection strength cannot be negative")
     if not 0.0 <= args.usage_importance_decay < 1.0:
@@ -1752,6 +1806,11 @@ def main() -> None:
             next_conflict_novelty_weight=(
                 args.next_conflict_novelty_weight
                 if train_on_target else 1.0),
+            next_nonconflict_novelty_weight=(
+                args.next_nonconflict_novelty_weight
+                if train_on_target else 1.0),
+            hard_example_focal_gamma=(
+                args.hard_example_focal_gamma if train_on_target else 0.0),
             complete_binary_outcomes=args.complete_binary_outcomes,
             shuffle_outcomes=(
                 args.shuffle_outcomes
@@ -2145,6 +2204,9 @@ def main() -> None:
         "previous_conflict_novelty_weight": (
             args.previous_conflict_novelty_weight),
         "next_conflict_novelty_weight": args.next_conflict_novelty_weight,
+        "next_nonconflict_novelty_weight": (
+            args.next_nonconflict_novelty_weight),
+        "hard_example_focal_gamma": args.hard_example_focal_gamma,
         "usage_protection_strength": args.usage_protection_strength,
         "usage_importance_decay": args.usage_importance_decay,
         "rehearsal_gradient_projection": (

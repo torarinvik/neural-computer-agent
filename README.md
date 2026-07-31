@@ -31,20 +31,23 @@ Final accuracy alone is not an adequate score.
 
 ## Current audited frontier
 
-The protected `next item` learner now demonstrates a second replicated
-compounding increment. Applying the same four-update constraint-only recipe
-to both independent trust-region checkpoints raises matched `next` from
-69.66% to 71.61% and from 68.23% to 71.68%. Causal conflicts rise from 79.46%
-to 81.26% and from 78.07% to 82.09%. Every inherited overall and conflict gate
-remains above 95%.
+The protected `next item` learner has broken its 71.6–71.7% local saturation
+boundary. Error decomposition showed that the remaining failure was sharply
+asymmetric: causal conflicts were already about 82.5%, while non-conflicts
+were only 59–61% and the non-conflict/action-zero cell was at chance.
 
-On the exact primary seed, shuffled target outcomes produce no `next` or
-independent-new-slot gain, while truthful outcomes improve both. A third
-increment at half the learning rate adds only 0.46 points and no causal gain,
-so more identical micro-steps are rejected. The frontier has shifted from
-“can safe increments compound?” to “what better local signal breaks the
-71.6–71.7% saturation boundary without spending the remaining retention
-margin?” See
+A verifier-side 3:2 conflict/non-conflict loss allocation is the first targeted
+repair to replicate. On the high-precision matched audit it raises `next`
+72.15% → 73.50%, causal conflicts 81.60% → 82.02%, non-conflicts 62.55% →
+64.85%, and the hardest cell 52.99% → 56.81%. Previous-item retention remains
+96.30% overall / 95.65% on conflicts, and complete memory reset is chance.
+An independent lineage improves every new-skill measure. The exact paired
+truthful model also beats both its unchanged parent and shuffled-outcome
+control.
+
+Focal loss, non-conflict-only weighting, and equal subgroup weighting were
+rejected. The frontier is now the residual asymmetric action-zero boundary,
+not more blind training duration. See
 `session_records/procedural_shape_next_operation_2026-07-30/README.md`.
 
 The procedural-shape controller now has a replicated constraint-only
