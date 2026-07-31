@@ -1,4 +1,4 @@
-"""Disposable probe for a frozen controller's four-item relation state.
+"""Disposable probe for a frozen controller's multi-item relation state.
 
 The probe is strictly diagnostic.  It receives a state only after the normal
 pixel-only rollout has processed the fourth-item query.  The verifier's
@@ -35,16 +35,18 @@ def _sha256(path: Path) -> str:
 @torch.no_grad()
 def _features(
         model: UnifiedCognitiveController, *, count: int, seed: int,
-        heldout: bool, device: torch.device) -> tuple[
+        heldout: bool, span: int, anchor_focus: int,
+        query_thought_steps: int, device: torch.device) -> tuple[
             torch.Tensor, torch.Tensor, torch.Tensor]:
     batch = generate_procedural_shape_batch(
-        count, span=4, vocabulary=2, seed=seed,
+        count, span=span, vocabulary=2, seed=seed,
         nuisance=nuisance_from_level(0.135), heldout=heldout,
         objective="recognition", query_count=1, next_query_stage=2,
-        next_query_anchor_focus=2, next_query_target_aligned=True,
+        next_query_anchor_focus=anchor_focus, next_query_target_aligned=True,
         device=device)
     rollout = rollout_procedural_shape_span(
-        model, batch, sample_actions=False)
+        model, batch, sample_actions=False,
+        query_thought_steps=query_thought_steps)
     return (
         rollout["final_hidden"],
         rollout["final_workspace"].flatten(1),
@@ -95,11 +97,22 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=44850)
     parser.add_argument("--train-lifetimes", type=int, default=1024)
     parser.add_argument("--test-lifetimes", type=int, default=1024)
+    parser.add_argument("--span", type=int, default=4)
+    parser.add_argument("--next-query-anchor-focus", type=int, default=-1)
+    parser.add_argument("--query-thought-steps", type=int, default=0)
     parser.add_argument("--device", default=(
         "cuda" if torch.cuda.is_available() else "cpu"))
     args = parser.parse_args()
-    if args.train_lifetimes % 256 or args.test_lifetimes % 256:
-        raise ValueError("probe lifetime counts must be multiples of 256")
+    logical_patterns = (2 * 2) ** args.span
+    if (args.train_lifetimes % logical_patterns
+            or args.test_lifetimes % logical_patterns):
+        raise ValueError(
+            f"probe lifetime counts must be multiples of {logical_patterns}")
+    anchor_focus = args.next_query_anchor_focus
+    if anchor_focus < 0:
+        anchor_focus = args.span - 2
+    if not 0 <= anchor_focus < args.span - 1:
+        raise ValueError("anchor focus must identify a non-final item")
     seed_everything(args.seed)
     device = torch.device(args.device)
     payload = torch.load(args.checkpoint, map_location=device, weights_only=False)
@@ -112,11 +125,13 @@ def main() -> None:
     for parameter in model.parameters():
         parameter.requires_grad_(False)
     train_hidden, train_workspace, train_y = _features(
-        model, count=args.train_lifetimes, seed=args.seed,
-        heldout=False, device=device)
+        model, count=args.train_lifetimes, seed=args.seed, heldout=False,
+        span=args.span, anchor_focus=anchor_focus,
+        query_thought_steps=args.query_thought_steps, device=device)
     test_hidden, test_workspace, test_y = _features(
-        model, count=args.test_lifetimes, seed=args.seed + 1,
-        heldout=True, device=device)
+        model, count=args.test_lifetimes, seed=args.seed + 1, heldout=True,
+        span=args.span, anchor_focus=anchor_focus,
+        query_thought_steps=args.query_thought_steps, device=device)
     features = {
         "hidden": (train_hidden, test_hidden),
         "workspace": (train_workspace, test_workspace),
@@ -125,7 +140,10 @@ def main() -> None:
             torch.cat((test_hidden, test_workspace), dim=1)),
     }
     report = {
-        "schema": "procedural-shape-four-item-relation-readout-probe-v1",
+        "schema": "procedural-shape-relation-readout-probe-v2",
+        "span": args.span,
+        "next_query_anchor_focus": anchor_focus,
+        "query_thought_steps": args.query_thought_steps,
         "diagnostic_only": True,
         "probe_weights_discarded": True,
         "agent_weights_changed": False,

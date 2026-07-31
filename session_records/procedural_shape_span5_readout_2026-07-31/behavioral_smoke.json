@@ -1,0 +1,14 @@
+{
+  "schema": "span-five-outcome-replay-smoke-v1",
+  "target_span": 5,
+  "target_anchor_focus": 3,
+  "unique_target_outcomes": 1024,
+  "unique_rehearsal_outcomes": 3072,
+  "replay_updates": 4,
+  "replay_chunk": 2,
+  "rehearsal_updates": 1,
+  "target_accuracy": 0.560546875,
+  "target_next_conflict_accuracy": 0.5,
+  "old_span3_accuracy": 0.9852430820465088,
+  "interpretation": "bounded early credit-assignment result; representation passed, four updates are insufficient to claim behavioral learning"
+}

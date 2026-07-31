@@ -1,0 +1,11 @@
+{
+  "seed": 44851,
+  "normal_mlp_hidden_heldout": 0.8974609375,
+  "normal_mlp_workspace_heldout": 0.8203125,
+  "normal_mlp_combined_heldout": 0.9345703125,
+  "shuffled_mlp_hidden_heldout": 0.50390625,
+  "shuffled_mlp_workspace_heldout": 0.4873046875,
+  "shuffled_mlp_combined_heldout": 0.4716796875,
+  "agent_weights_changed": false,
+  "probe_weights_discarded": true
+}

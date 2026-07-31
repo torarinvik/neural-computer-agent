@@ -43,6 +43,8 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=44901)
     parser.add_argument("--unique-batches", type=int, default=4)
     parser.add_argument("--batch-size", type=int, default=256)
+    parser.add_argument("--target-span", type=int, default=4)
+    parser.add_argument("--target-anchor-focus", type=int, default=-1)
     parser.add_argument("--replay-updates", type=int, default=16)
     parser.add_argument(
         "--replay-chunk", type=int, default=0,
@@ -57,6 +59,13 @@ def main() -> None:
         raise ValueError("batch size must be a multiple of 256")
     if args.replay_chunk < 0:
         raise ValueError("replay chunk cannot be negative")
+    if args.target_span < 3:
+        raise ValueError("target span must be at least 3")
+    target_anchor_focus = (
+        args.target_anchor_focus if args.target_anchor_focus >= 0
+        else args.target_span - 2)
+    if not 0 <= target_anchor_focus < args.target_span - 1:
+        raise ValueError("target anchor focus must identify a non-final item")
     seed_everything(args.seed)
     device = torch.device(args.device)
     parent_payload = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
@@ -92,10 +101,11 @@ def main() -> None:
     )
     for batch_index in range(args.unique_batches):
         batch = generate_procedural_shape_batch(
-            args.batch_size, span=4, vocabulary=2,
+            args.batch_size, span=args.target_span, vocabulary=2,
             seed=args.seed + batch_index, nuisance=nuisance,
             objective="recognition", query_count=1, next_query_stage=2,
-            next_query_anchor_focus=2, next_query_target_aligned=True,
+            next_query_anchor_focus=target_anchor_focus,
+            next_query_target_aligned=True,
             device=device)
         rehearsals = [
             generate_procedural_shape_batch(
@@ -112,10 +122,12 @@ def main() -> None:
             for rehearsal in rehearsals:
                 update(
                     rehearsal, thought_steps=0, repeat=args.rehearsal_updates)
-    span4 = evaluate_procedural_shape_span(
-        model, count=1024, span=4, vocabulary=2, seed=args.seed + 100_000,
+    target = evaluate_procedural_shape_span(
+        model, count=max(1024, args.batch_size), span=args.target_span,
+        vocabulary=2, seed=args.seed + 100_000,
         nuisance=nuisance, device=device, objective="recognition",
-        query_count=1, next_query_stage=2, next_query_anchor_focus=2,
+        query_count=1, next_query_stage=2,
+        next_query_anchor_focus=target_anchor_focus,
         next_query_target_aligned=True, query_thought_steps=1)
     old_kwargs = dict(
         count=768, span=3, vocabulary=2, seed=args.seed + 200_000,
@@ -134,7 +146,7 @@ def main() -> None:
             "state_dict": model.state_dict(),
             "parent_checkpoint": str(args.checkpoint),
             "training": vars(args),
-            "audit_snapshot": {"span4": span4, "old_span3": old},
+            "audit_snapshot": {"target": target, "old_span3": old},
         }, args.checkpoint_out)
         candidate_checkpoint = str(args.checkpoint_out)
     report = {
@@ -151,7 +163,10 @@ def main() -> None:
             args.unique_batches * len(old_streams) * args.rehearsal_updates
             * math.ceil(args.replay_updates / (args.replay_chunk or args.replay_updates))),
         "loss_first": losses[0], "loss_last": losses[-1],
-        "span4": span4, "old_span3": old, "old_span3_thought1": old_thought,
+        "target_span": args.target_span,
+        "target_anchor_focus": target_anchor_focus,
+        "target": target, "old_span3": old,
+        "old_span3_thought1": old_thought,
     }
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
@@ -160,8 +175,8 @@ def main() -> None:
         "unique_rehearsal_outcomes": report["unique_rehearsal_outcomes"],
         "replay_optimizer_updates": report["replay_optimizer_updates"],
         "loss_first": report["loss_first"], "loss_last": report["loss_last"],
-        "span4_next_conflict": span4["next_conflict_accuracy"],
-        "span4_next": span4["accuracy_by_operation"][2],
+        "target_next_conflict": target["next_conflict_accuracy"],
+        "target_next": target["accuracy_by_operation"][2],
         "old_span3": old["accuracy"],
     }), flush=True)
 
