@@ -20,8 +20,9 @@ from .amodal_interface import AmodalEvent, AmodalEventCollection
 
 POSITION_MATCH: Final[int] = 1
 AUDIO_MATCH: Final[int] = 2
+TEXT_MATCH: Final[int] = 4
 NO_MATCH: Final[int] = 0
-ALL_MATCHES: Final[int] = POSITION_MATCH | AUDIO_MATCH
+ALL_MATCHES: Final[int] = POSITION_MATCH | AUDIO_MATCH | TEXT_MATCH
 
 _GRID_POSITIONS: Final[tuple[tuple[int, int], ...]] = (
     (0, 0), (0, 1), (0, 2), (1, 0), (1, 2), (2, 0), (2, 1), (2, 2)
@@ -46,6 +47,7 @@ class BrainWorkshopConfig:
     trial_ms: int = 1_000
     audio_samples: int = 800
     sample_rate: int = 8_000
+    text_vocab: int = 8
     vision_size: int = 72
     modalities: tuple[str, ...] = ("vision", "audio")
 
@@ -62,9 +64,11 @@ class BrainWorkshopConfig:
             raise ValueError("timing and audio dimensions are invalid")
         if self.vision_size < 24 or self.vision_size % 3:
             raise ValueError("vision_size must be divisible by three and >= 24")
+        if self.text_vocab not in (2, 4, 8):
+            raise ValueError("text vocabulary must be 2, 4, or 8")
         if not self.modalities or not set(self.modalities).issubset(
-                {"vision", "audio"}):
-            raise ValueError("modalities must contain vision and/or audio")
+                {"vision", "audio", "text"}):
+            raise ValueError("modalities must contain vision, audio, and/or text")
         if len(set(self.modalities)) != len(self.modalities):
             raise ValueError("modalities must be unique")
         return self
@@ -76,6 +80,7 @@ class BrainWorkshopStimulus:
 
     position: int
     audio: int
+    text: int
     timestamp_ms: int
 
 
@@ -85,6 +90,7 @@ class BrainWorkshopObservation:
 
     vision: torch.Tensor | None
     audio: torch.Tensor | None
+    text: torch.Tensor | None
     timestamp_ms: int
 
 
@@ -152,6 +158,21 @@ def render_audio(
     return waveform.unsqueeze(0)
 
 
+def render_text_token(
+        symbol: int, *, vocab: int = 8,
+        device: torch.device | str = "cpu") -> torch.Tensor:
+    """Render one opaque token for the replaceable text frontend.
+
+    This is a token-level stream, not a semantic answer: the encoder sees
+    only a one-hot symbol and the verifier keeps the n-back target private.
+    """
+    if symbol < 0 or symbol >= vocab:
+        raise ValueError("text symbol is outside the configured vocabulary")
+    return torch.nn.functional.one_hot(
+        torch.tensor(symbol, device=device), num_classes=vocab
+    ).to(torch.float32)
+
+
 @dataclass(frozen=True)
 class BrainWorkshopEpisode:
     """A complete episode with private targets and public observations."""
@@ -177,18 +198,23 @@ class BrainWorkshopEpisode:
         if trial < 0 or trial >= self.trials:
             raise IndexError("trial is outside the episode")
         if action < 0 or action > ALL_MATCHES:
-            raise ValueError("action must be a two-bit keypress mask")
+            raise ValueError("action must be a modality bitmask")
         if latency_ms < 0:
             raise ValueError("latency_ms cannot be negative")
         if target_mask is not None:
             if target_mask < 0 or target_mask > ALL_MATCHES:
-                raise ValueError("target_mask must be a two-bit keypress mask")
+                raise ValueError("target_mask must be a modality bitmask")
             action &= target_mask
             expected = self._targets[trial] & target_mask
         else:
             expected = self._targets[trial]
         if factorized_reward:
-            bits = [1, 2]
+            bit_by_modality = {
+                "vision": POSITION_MATCH,
+                "audio": AUDIO_MATCH,
+                "text": TEXT_MATCH,
+            }
+            bits = [bit_by_modality[name] for name in self.config.modalities]
             active_bits = [bit for bit in bits if target_mask is None
                            or target_mask & bit]
             if not active_bits:
@@ -213,7 +239,7 @@ class BrainWorkshopEpisode:
 def generate_brainworkshop_episode(
         config: BrainWorkshopConfig | None = None, *, seed: int = 0,
         device: torch.device | str = "cpu") -> BrainWorkshopEpisode:
-    """Generate a reproducible dual-stream N-back episode."""
+    """Generate a reproducible multi-stream N-back episode."""
     if config is None:
         config = BrainWorkshopConfig()
     config.validate()
@@ -225,8 +251,11 @@ def generate_brainworkshop_episode(
         config.trials - config.n_back, config.match_probability, rng)
     audio_flags = flag_builder(
         config.trials - config.n_back, config.match_probability, rng)
+    text_flags = flag_builder(
+        config.trials - config.n_back, config.match_probability, rng)
     positions: list[int] = []
     audio: list[int] = []
+    text: list[int] = []
     stimuli: list[BrainWorkshopStimulus] = []
     targets: list[int] = []
     observations: list[BrainWorkshopObservation] = []
@@ -235,18 +264,23 @@ def generate_brainworkshop_episode(
         position_match = (
             bool(position_flags[offset]) if offset >= 0 else False)
         audio_match = bool(audio_flags[offset]) if offset >= 0 else False
+        text_match = bool(text_flags[offset]) if offset >= 0 else False
         position = _next_symbol(
             positions, config.n_back, config.position_vocab, position_match, rng)
         audio_symbol = _next_symbol(
             audio, config.n_back, config.audio_vocab, audio_match, rng)
+        text_symbol = _next_symbol(
+            text, config.n_back, config.text_vocab, text_match, rng)
         positions.append(position)
         audio.append(audio_symbol)
+        text.append(text_symbol)
         timestamp_ms = trial * config.trial_ms
         stimuli.append(BrainWorkshopStimulus(
-            position, audio_symbol, timestamp_ms))
+            position, audio_symbol, text_symbol, timestamp_ms))
         target = (
             (POSITION_MATCH if position_match else 0)
-            | (AUDIO_MATCH if audio_match else 0))
+            | (AUDIO_MATCH if audio_match else 0)
+            | (TEXT_MATCH if text_match else 0))
         # A single-stream episode must not score the absent stream.  Keeping
         # verifier targets aligned with the declared modalities makes the
         # staged curriculum honest: vision-only n-back trains a binary
@@ -255,6 +289,8 @@ def generate_brainworkshop_episode(
             target &= ~POSITION_MATCH
         if "audio" not in config.modalities:
             target &= ~AUDIO_MATCH
+        if "text" not in config.modalities:
+            target &= ~TEXT_MATCH
         targets.append(target)
         observations.append(BrainWorkshopObservation(
             vision=(
@@ -265,6 +301,10 @@ def generate_brainworkshop_episode(
                     audio_symbol, samples=config.audio_samples,
                     sample_rate=config.sample_rate, device=device)
                 if "audio" in config.modalities else None),
+            text=(
+                render_text_token(
+                    text_symbol, vocab=config.text_vocab, device=device)
+                if "text" in config.modalities else None),
             timestamp_ms=timestamp_ms,
         ))
     return BrainWorkshopEpisode(
@@ -351,13 +391,33 @@ class BrainWorkshopAudioEncoder(nn.Module):
         return self.network(waveform)
 
 
+class BrainWorkshopTextEncoder(nn.Module):
+    """Replaceable token frontend for the amodal text stream."""
+
+    def __init__(self, event_width: int = 96, vocab: int = 8) -> None:
+        super().__init__()
+        self.network = nn.Linear(vocab, event_width)
+        # Identity-preserving initialization gives a new token frontend a
+        # stable opaque basis without encoding the n-back rule or any answer.
+        # Later training may freely rotate or compress this representation.
+        nn.init.zeros_(self.network.weight)
+        nn.init.zeros_(self.network.bias)
+        with torch.no_grad():
+            width = min(vocab, event_width)
+            self.network.weight[:width, :width] = torch.eye(width)
+
+    def forward(self, token: torch.Tensor) -> torch.Tensor:
+        return self.network(token)
+
+
 class BrainWorkshopEventEncoders(nn.Module):
     """Encode both streams into independent amodal events for one bus update."""
 
-    def __init__(self, event_width: int = 96) -> None:
+    def __init__(self, event_width: int = 96, text_vocab: int = 8) -> None:
         super().__init__()
         self.vision = BrainWorkshopVisionEncoder(event_width)
         self.audio = BrainWorkshopAudioEncoder(event_width)
+        self.text = BrainWorkshopTextEncoder(event_width, vocab=text_vocab)
 
     def encode(
             self, observation: BrainWorkshopObservation
@@ -372,6 +432,11 @@ class BrainWorkshopEventEncoders(nn.Module):
         if observation.audio is not None:
             events.append(AmodalEvent(
                 payload=self.audio(observation.audio.unsqueeze(0)),
+                timestamp=timestamp,
+            ))
+        if observation.text is not None:
+            events.append(AmodalEvent(
+                payload=self.text(observation.text.unsqueeze(0)),
                 timestamp=timestamp,
             ))
         return AmodalEventCollection.from_events(events)

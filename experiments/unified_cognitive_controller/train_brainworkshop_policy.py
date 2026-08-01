@@ -28,7 +28,8 @@ from .amodal_runtime import (
     AmodalInputBus, FactorizedOpaqueProtocolDecoder, OpaqueProtocolDecoder)
 from .brainworkshop_gym import (
     BrainWorkshopAudioEncoder, BrainWorkshopConfig,
-    BrainWorkshopVisionEncoder, generate_brainworkshop_episode)
+    BrainWorkshopTextEncoder, BrainWorkshopVisionEncoder,
+    generate_brainworkshop_episode)
 from .model import UnifiedCognitiveController
 
 
@@ -42,6 +43,7 @@ class Rollout:
     bit_log_probs: torch.Tensor | None = None
     bit_rewards: torch.Tensor | None = None
     exact_correct: torch.Tensor | None = None
+    bit_correct: torch.Tensor | None = None
 
 
 class BrainWorkshopPolicy(nn.Module):
@@ -64,6 +66,7 @@ class BrainWorkshopPolicy(nn.Module):
                  learned_source_keys: bool = False,
                  source_key_init_scale: float = 0.0,
                  stream_adapter_width: int = 0,
+                 text_vocab: int = 8,
                  modality: str = "vision",
                  modalities: tuple[str, ...] | None = None,
                  target_modalities: tuple[str, ...] | None = None,
@@ -72,9 +75,9 @@ class BrainWorkshopPolicy(nn.Module):
         if modalities is None:
             modalities = (modality,)
         modalities = tuple(modalities)
-        if not modalities or any(value not in ("vision", "audio")
+        if not modalities or any(value not in ("vision", "audio", "text")
                                  for value in modalities):
-            raise ValueError("modalities must contain vision and/or audio")
+            raise ValueError("modalities must contain vision, audio, and/or text")
         if len(set(modalities)) != len(modalities):
             raise ValueError("modalities must be unique")
         if target_modalities is None:
@@ -89,9 +92,11 @@ class BrainWorkshopPolicy(nn.Module):
         # Keep the old attribute for single-stream callers and reports.
         self.modality = modalities[0] if len(modalities) == 1 else "multi"
         self.action_bits = tuple(
-            1 if name == "vision" else 2 for name in modalities)
+            {"vision": 1, "audio": 2, "text": 4}[name]
+            for name in modalities)
         self.target_mask = sum(
-            1 if name == "vision" else 2 for name in target_modalities)
+            {"vision": 1, "audio": 2, "text": 4}[name]
+            for name in target_modalities)
         self.factorized_output = bool(factorized_output)
         self.factorized_reward = bool(factorized_reward)
 
@@ -108,7 +113,10 @@ class BrainWorkshopPolicy(nn.Module):
         self.encoders = nn.ModuleDict({
             name: (
                 BrainWorkshopVisionEncoder(width)
-                if name == "vision" else BrainWorkshopAudioEncoder(width)
+                if name == "vision" else
+                BrainWorkshopAudioEncoder(width)
+                if name == "audio" else
+                BrainWorkshopTextEncoder(width, vocab=text_vocab)
             )
             for name in modalities
         })
@@ -134,6 +142,12 @@ class BrainWorkshopPolicy(nn.Module):
             with torch.no_grad():
                 for key in self.source_keys.values():
                     key.normal_(0.0, source_key_init_scale / width**0.5)
+        # Each stream starts as an exact identity multiplier.  A newly added
+        # stream can be initialized to a zero contribution by the continual-
+        # learning gate, then earn influence through verified reward without
+        # perturbing inherited behavior during its cold start.
+        self.input_gate_residuals = nn.ParameterDict({
+            name: nn.Parameter(torch.zeros(1)) for name in modalities})
         self.input_bus = AmodalInputBus(
             width, residual_hidden=input_bus_residual_width,
             second_moment=input_bus_second_moment,
@@ -240,7 +254,8 @@ def _make_batch(config: BrainWorkshopConfig, *, batch_size: int,
         modality: torch.stack([
             torch.stack([
                 observation.vision if modality == "vision"
-                else observation.audio
+                else observation.audio if modality == "audio"
+                else observation.text
                 for observation in episode.observations])
             for episode in episodes])
         for modality in modalities
@@ -264,7 +279,9 @@ def _event_payloads(
             # promoted as a learned representation.
             values = torch.tensor(
                 [(episode.stimuli[index].position
-                  if modality == "vision" else episode.stimuli[index].audio)
+                  if modality == "vision" else
+                  episode.stimuli[index].audio if modality == "audio" else
+                  episode.stimuli[index].text)
                  for episode, index in zip(episodes, indices)],
                 dtype=torch.long, device=device)
             payload = F.one_hot(values, num_classes=8).to(torch.float32)
@@ -278,7 +295,12 @@ def _event_payloads(
                 payload = payload + policy.stream_adapters[modality](payload)
             if policy.source_keys is not None:
                 payload = payload + policy.source_keys[modality].unsqueeze(0)
-        events.append(AmodalEvent(payload=payload))
+        gate = 1.0 + policy.input_gate_residuals[modality]
+        # Keep a tiny positive confidence floor so the new gate has a
+        # differentiable path into generic bus attention at cold start.  The
+        # inherited streams remain exactly at confidence one.
+        confidence = (gate + 1e-4).clamp_min(1e-6).expand(payload.shape[0])
+        events.append(AmodalEvent(payload=payload, confidence=confidence))
     return events
 
 
@@ -348,6 +370,7 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
              *, batch_size: int, seed: int, device: torch.device,
              sample: bool, reset_history: bool = False,
              shuffle_time: bool = False,
+             shuffle_modalities: tuple[str, ...] = (),
              oracle_events: bool = False,
              external_history: bool = False,
              serial_modalities: bool = False,
@@ -370,6 +393,13 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
             for modality, values in observations.items()
         }
         stimulus_indices = permutations
+    if shuffle_modalities:
+        for modality in shuffle_modalities:
+            if modality not in observations:
+                raise ValueError(
+                    f"cannot shuffle undeclared modality: {modality}")
+            permutation = torch.randperm(batch_size, device=device)
+            observations[modality] = observations[modality][permutation]
     state = policy.initial_state(batch_size, device)
     previous_action = torch.zeros(batch_size, dtype=torch.long, device=device)
     previous_reward = torch.zeros(batch_size, device=device)
@@ -378,7 +408,7 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
     previous_events = {name: None for name in policy.modalities}
     previous_stream_events = {name: None for name in policy.modalities}
     log_probs, entropies, rewards, actions, values = [], [], [], [], []
-    bit_log_probs, bit_rewards, exact_correct = [], [], []
+    bit_log_probs, bit_rewards, exact_correct, bit_correct = [], [], [], []
     for trial in range(config.trials):
         if reset_history and trial:
             state = policy.initial_state(batch_size, device)
@@ -517,6 +547,14 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
             == (episode.verifier_targets()[trial] & policy.target_mask)
             for index, episode in enumerate(episodes)
         ], dtype=torch.float32, device=device))
+        bit_correct.append(torch.tensor([
+            [
+                bool(policy.action_mask(int(action[index])) & bit)
+                == bool(episode.verifier_targets()[trial] & bit)
+                for bit in policy.action_bits
+            ]
+            for index, episode in enumerate(episodes)
+        ], dtype=torch.float32, device=device))
         previous_action = action
         previous_reward = reward
         has_feedback.fill_(1.0)
@@ -529,7 +567,8 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
         torch.stack(rewards), torch.stack(actions), torch.stack(values),
         torch.stack(bit_log_probs) if bit_log_probs else None,
         torch.stack(bit_rewards) if bit_rewards else None,
-        torch.stack(exact_correct))
+        torch.stack(exact_correct),
+        torch.stack(bit_correct))
 
 
 def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
@@ -625,16 +664,34 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
         intention_event = _stream_intention_event(
             policy, core, events, previous_stream_events,
             external_history=external_history)
-        logits = policy.decoder(intention_event)
         targets = torch.tensor(
-            [sum(
-                (1 << index) for index, bit in enumerate(policy.action_bits)
-                if ((episode.verifier_targets()[trial] & policy.target_mask)
-                        & bit))
-             for episode in episodes],
+            [episode.verifier_targets()[trial] for episode in episodes],
             dtype=torch.long, device=device)
-        losses.append(F.cross_entropy(logits, targets))
-        action = logits.argmax(dim=-1)
+        if policy.factorized_output:
+            binary_log_probs = policy.decoder.binary_log_probs(intention_event)
+            target_bits = torch.stack([
+                ((targets & bit) != 0).long() for bit in policy.action_bits
+            ], dim=1)
+            active = torch.tensor(
+                [bool(policy.target_mask & bit) for bit in policy.action_bits],
+                dtype=torch.bool, device=device)
+            losses.append(F.nll_loss(
+                binary_log_probs[:, active, :].reshape(-1, 2),
+                target_bits[:, active].reshape(-1)))
+            bit_choice = binary_log_probs.argmax(dim=-1)
+            action = sum(
+                (bit_choice[:, index].long() << index)
+                for index in range(bit_choice.shape[1]))
+        else:
+            logits = policy.decoder(intention_event)
+            joint_targets = torch.tensor(
+                [sum(
+                    (1 << index) for index, bit in enumerate(policy.action_bits)
+                    if ((target & policy.target_mask) & bit))
+                 for target in targets.tolist()],
+                dtype=torch.long, device=device)
+            losses.append(F.cross_entropy(logits, joint_targets))
+            action = logits.argmax(dim=-1)
         reward = torch.tensor([
             episode.score_action(
                 trial, policy.action_mask(int(action[index])), latency_ms=0.0,
@@ -657,6 +714,7 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
 def _evaluate(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig, *,
               count: int, seed: int, device: torch.device,
               reset_history: bool = False, shuffle_time: bool = False,
+              shuffle_modalities: tuple[str, ...] = (),
               oracle_events: bool = False,
               external_history: bool = False,
               serial_modalities: bool = False,
@@ -664,12 +722,17 @@ def _evaluate(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig, *,
     rollout = _rollout(
         policy, config, batch_size=count, seed=seed, device=device,
         sample=False, reset_history=reset_history, shuffle_time=shuffle_time,
+        shuffle_modalities=shuffle_modalities,
         oracle_events=oracle_events, external_history=external_history,
         serial_modalities=serial_modalities,
         per_stream_external_history=per_stream_external_history)
     rewards = rollout.rewards
     return {
         "accuracy": float(rollout.exact_correct.mean()),
+        "per_modality_accuracy": {
+            modality: float(rollout.bit_correct[:, :, index].mean())
+            for index, modality in enumerate(policy.modalities)
+        },
         "partial_reward_accuracy": float((rewards > 0).float().mean()),
         "mean_reward": float(rewards.mean()),
         "trial_count": int(rewards.numel()),
@@ -740,6 +803,9 @@ def main() -> None:
     parser.add_argument("--stream-adapter-width", type=int, default=0,
                         choices=(0, 32, 64),
                         help="optional zero-init adapter per input stream")
+    parser.add_argument(
+        "--neutral-new-output", action="store_true",
+        help="zero newly added opaque output rows before reward training")
     parser.add_argument("--seed", type=int, default=44011)
     parser.add_argument("--updates", type=int, default=8)
     parser.add_argument("--batch-size", type=int, default=32)
@@ -747,7 +813,9 @@ def main() -> None:
     parser.add_argument("--trials", type=int, default=8)
     parser.add_argument("--position-vocab", type=int, default=2,
                         choices=(2, 4, 8))
-    parser.add_argument("--modality", choices=("vision", "audio"),
+    parser.add_argument("--text-vocab", type=int, default=8,
+                        choices=(2, 4, 8))
+    parser.add_argument("--modality", choices=("vision", "audio", "text"),
                         default="vision")
     parser.add_argument(
         "--modalities", type=str, default="",
@@ -774,9 +842,9 @@ def main() -> None:
         item.strip() for item in args.modalities.split(",") if item.strip())
     if not modalities:
         modalities = (args.modality,)
-    if not modalities or any(item not in ("vision", "audio")
+    if not modalities or any(item not in ("vision", "audio", "text")
                              for item in modalities):
-        raise ValueError("--modalities must contain vision and/or audio")
+        raise ValueError("--modalities must contain vision, audio, and/or text")
     if len(set(modalities)) != len(modalities):
         raise ValueError("--modalities must not contain duplicates")
     target_modalities = tuple(
@@ -796,6 +864,7 @@ def main() -> None:
         raise ValueError("--train-only-modalities must be a subset")
     config = BrainWorkshopConfig(
         n_back=1, trials=args.trials, position_vocab=args.position_vocab,
+        text_vocab=args.text_vocab,
         modalities=modalities, trial_ms=1_000,
         # Independent seeded match flags prevent a fixed-count clock policy
         # from looking like working memory.  The balanced mode remains the
@@ -854,6 +923,7 @@ def main() -> None:
         learned_source_keys=args.learned_source_keys,
         source_key_init_scale=args.source_key_init_scale,
         stream_adapter_width=args.stream_adapter_width,
+        text_vocab=args.text_vocab,
         modalities=modalities,
         target_modalities=target_modalities,
         controller=frozen_controller).to(device)
@@ -881,28 +951,28 @@ def main() -> None:
                 source_modalities = tuple(
                     checkpoint_payload.get("config", {}).get(
                         "modalities", ()))
-                if args.factorized_output and len(source_modalities) == 1:
-                    # A legacy two-class head contains [no, yes] for one
-                    # source. A factorized head stores [bit0-no, bit0-yes,
-                    # bit1-no, bit1-yes], so copy into the rows for that
-                    # source bit rather than treating rows as joint masks.
-                    source_name = source_modalities[0]
-                    source_bit = next(
-                        index for index, name in enumerate(modalities)
-                        if name == source_name)
-                    row_offset = 2 * source_bit
-                    expanded[row_offset:row_offset + old_value.shape[0]] = (
-                        old_value)
+                if (args.factorized_output and source_modalities
+                        and old_value.shape[0] == 2 * len(source_modalities)):
+                    # A factorized head stores [bit0-no, bit0-yes, ...].
+                    # Preserve each inherited bit at its new modality index;
+                    # never interpret those rows as joint-mask classes when a
+                    # third stream is appended.
+                    for source_index, source_name in enumerate(source_modalities):
+                        target_index = next(
+                            index for index, name in enumerate(modalities)
+                            if name == source_name)
+                        expanded[2 * target_index:2 * target_index + 2] = (
+                            old_value[2 * source_index:2 * source_index + 2])
                 elif source_modalities:
                     target_indices = []
                     for source_class in range(1 << len(source_modalities)):
                         source_mask = sum(
-                            (1 if name == "vision" else 2)
+                            {"vision": 1, "audio": 2, "text": 4}[name]
                             for index, name in enumerate(source_modalities)
                             if source_class & (1 << index))
                         target_class = sum(
                             1 << index for index, name in enumerate(modalities)
-                            if source_mask & (1 if name == "vision" else 2))
+                            if source_mask & {"vision": 1, "audio": 2, "text": 4}[name])
                         target_indices.append(target_class)
                     for source_class, target_class in enumerate(target_indices):
                         expanded[target_class] = old_value[source_class]
@@ -959,15 +1029,46 @@ def main() -> None:
         # opaque protocol rows may change.  No answer labels enter inference.
         for parameter in policy.parameters():
             parameter.requires_grad_(False)
+        inherited_modalities = set()
+        if checkpoint_payload is not None:
+            inherited_modalities = set(
+                checkpoint_payload.get("config", {}).get("modalities", ()))
         for name in train_only_modalities:
             modules = []
+            if (checkpoint_payload is not None
+                    and name not in inherited_modalities):
+                # New streams enter as exact no-ops.  Their scalar gate is
+                # opened only by the selected stream's reward path.
+                with torch.no_grad():
+                    policy.input_gate_residuals[name].fill_(-1.0)
+                    if args.neutral_new_output:
+                        # Optional control: start a fresh opaque bit at
+                        # maximum uncertainty instead of a random protocol
+                        # row. Comparing this against random initialization
+                        # measures exploration/sample efficiency directly.
+                        target_index = policy.modalities.index(name)
+                        policy.decoder.network.weight[
+                            2 * target_index:2 * target_index + 2].zero_()
+                        policy.decoder.network.bias[
+                            2 * target_index:2 * target_index + 2].zero_()
+            modules.append(policy.input_gate_residuals[name])
+            # A newly introduced modality may need to learn its frontend.
+            # Inherited encoders remain frozen because the gate first freezes
+            # every parameter and only reopens the selected source here.
+            if name in policy.encoders:
+                modules.append(policy.encoders[name])
+            if name in policy.stream_adapters:
+                modules.append(policy.stream_adapters[name])
             if name in policy.external_memory_adapters:
                 modules.append(policy.external_memory_adapters[name])
             if name in policy.per_stream_intention_adapters:
                 modules.append(policy.per_stream_intention_adapters[name])
             for module in modules:
-                for parameter in module.parameters():
-                    parameter.requires_grad_(True)
+                if isinstance(module, nn.Parameter):
+                    module.requires_grad_(True)
+                else:
+                    for parameter in module.parameters():
+                        parameter.requires_grad_(True)
         policy.decoder.network.weight.requires_grad_(True)
         policy.decoder.network.bias.requires_grad_(True)
         protected_rows = {
@@ -1092,6 +1193,15 @@ def main() -> None:
         external_history=args.external_history,
         serial_modalities=args.serial_modalities,
         per_stream_external_history=args.per_stream_external_history)
+    cross_stream_shuffled = (
+        _evaluate(
+            policy, config, count=args.eval_count, seed=args.seed + 40_000,
+            device=device, shuffle_modalities=("text",),
+            oracle_events=args.oracle_events,
+            external_history=args.external_history,
+            serial_modalities=args.serial_modalities,
+            per_stream_external_history=args.per_stream_external_history)
+        if "text" in modalities else None)
     report = {
         "experiment": "brainworkshop_multimodal_nback1_reward_only",
         "objective": (
@@ -1120,6 +1230,7 @@ def main() -> None:
         "learned_source_keys": bool(args.learned_source_keys),
         "source_key_init_scale": args.source_key_init_scale,
         "stream_adapter_width": args.stream_adapter_width,
+        "neutral_new_output": bool(args.neutral_new_output),
         "device": str(device),
         "config": config.__dict__,
         "modality": policy.modality,
@@ -1134,6 +1245,7 @@ def main() -> None:
         "after": after,
         "history_reset_control": reset,
         "time_shuffle_control": shuffled,
+        "cross_stream_shuffle_control": cross_stream_shuffled,
         "history": history,
         "elapsed_seconds": time.perf_counter() - started,
         "gate": {
@@ -1145,7 +1257,10 @@ def main() -> None:
                 after["accuracy"] > before["accuracy"] + 0.05
                 and after["accuracy"] > 0.60
                 and reset["accuracy"] < after["accuracy"] - 0.05
-                and shuffled["accuracy"] < after["accuracy"] - 0.05),
+                and shuffled["accuracy"] < after["accuracy"] - 0.05
+                and (cross_stream_shuffled is None
+                     or cross_stream_shuffled["accuracy"]
+                     < after["accuracy"] - 0.05)),
         },
     }
     args.report.parent.mkdir(parents=True, exist_ok=True)

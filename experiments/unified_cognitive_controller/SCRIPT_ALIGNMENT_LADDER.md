@@ -179,6 +179,19 @@ on two fresh normal seeds, retained 100% vision, and fell to 34.6–34.7% under
 reset/shuffle. This is the current protected-core checkpoint; the earlier
 figures remain as the pre-fix replication record.
 
+**Gate 4c-next qualified as a selected population winner (2026-08-01):** a
+third opaque token stream was appended to the two-stream parent. A generic
+zero-impact confidence gate kept the new stream from perturbing inherited
+behavior, and only its encoder, RAM/intention bridges, gate, and output rows
+were trainable. After 256 reward-only updates, the selected seed reached
+94.1% on the new text-target bit while retaining 100.0% vision and 62.4%
+audio. History reset, time shuffle, and cross-episode text swaps reduced the
+new bit to 56–59%; inherited controller, vision, and audio tensors were
+bit-identical. This is the first protected three-stream acquisition record,
+not yet a stable population claim: an independent seed remained near chance,
+and the token frontend is not a natural-language encoder. See
+`../../session_records/brainworkshop_three_stream_2026-08-01/`.
+
 ## Gate 5: new frontend/backend qualification
 
 A previously unseen encoder and decoder are trained as neural-IR adapters while

@@ -20,6 +20,18 @@ def test_dual_policy_uses_one_decoder_and_maps_opaque_masks() -> None:
     assert [policy.action_mask(value) for value in range(4)] == [0, 1, 2, 3]
 
 
+def test_policy_accepts_a_third_token_stream_without_resizing_controller() -> None:
+    policy = BrainWorkshopPolicy(
+        width=32,
+        intention_width=16,
+        modalities=("vision", "audio", "text"),
+        factorized_output=True,
+    )
+    assert tuple(policy.encoders) == ("vision", "audio", "text")
+    assert policy.controller.width == 32
+    assert [policy.action_mask(value) for value in range(8)] == list(range(8))
+
+
 def test_external_memory_adapter_is_an_exact_initial_noop() -> None:
     policy = BrainWorkshopPolicy(
         width=32,

@@ -86,6 +86,19 @@ still a protected two-stream curriculum, not unrestricted N-stream learning;
 the detailed record is in
 `session_records/brainworkshop_dual_stream_followup_2026-08-01/`.
 
+The next protected-stream rung is now qualified on a three-stream token
+variant. Starting from a two-stream parent (vision 100.0%, audio 62.6%), a
+generic zero-impact input-confidence gate let a new opaque text/token stream
+learn from scalar reward without perturbing inherited paths. The selected
+population winner reached **vision 100.0%, audio 62.4%, text 94.1%** after
+256 reward updates. History reset, temporal shuffle, and cross-episode text
+swap reduced the new text bit to roughly **56–59%**, while controller,
+vision-encoder, and audio-encoder tensors remained bit-identical. This is a
+protected three-stream proof of concept, not unrestricted N-stream or natural
+language transfer: one independent seed stayed near chance, so population
+selection and exploration variance remain open. Full accounting and artifacts
+are in `session_records/brainworkshop_three_stream_2026-08-01/README.md`.
+
 **Current-status boundary:** the proven legacy class still supports its bundled
 `step(frame)` API, but a behavior-preserving extracted runtime now owns the
 vision encoder, controller core, and action decoder as three disjoint,

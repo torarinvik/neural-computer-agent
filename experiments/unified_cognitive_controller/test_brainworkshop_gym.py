@@ -3,6 +3,7 @@ import torch
 from .brainworkshop_gym import (
     ALL_MATCHES,
     AUDIO_MATCH,
+    TEXT_MATCH,
     POSITION_MATCH,
     BrainWorkshopConfig,
     BrainWorkshopEventEncoders,
@@ -66,14 +67,26 @@ def test_both_streams_encode_as_independent_events() -> None:
 
 
 def test_each_modality_can_be_connected_without_resizing_the_bus() -> None:
-    for modalities in (("vision",), ("audio",)):
+    for modalities in (("vision",), ("audio",), ("text",),
+                       ("vision", "audio", "text")):
         episode = generate_brainworkshop_episode(
             BrainWorkshopConfig(n_back=1, trials=4, modalities=modalities),
             seed=44005,
         )
         collection = BrainWorkshopEventEncoders(event_width=16).encode(
             episode.observations[0])
-        assert collection.payload.shape == (1, 1, 16)
+        assert collection.payload.shape == (1, len(modalities), 16)
+
+
+def test_text_frontend_respects_a_smaller_token_vocabulary() -> None:
+    episode = generate_brainworkshop_episode(
+        BrainWorkshopConfig(
+            n_back=1, trials=4, modalities=("text",), text_vocab=4),
+        seed=440051,
+    )
+    collection = BrainWorkshopEventEncoders(
+        event_width=16, text_vocab=4).encode(episode.observations[0])
+    assert collection.payload.shape == (1, 1, 16)
 
 
 def test_single_stream_targets_mask_absent_modality() -> None:
@@ -89,6 +102,12 @@ def test_single_stream_targets_mask_absent_modality() -> None:
                for target in vision.verifier_targets())
     assert all(target in (0, AUDIO_MATCH)
                for target in audio.verifier_targets())
+    text = generate_brainworkshop_episode(
+        BrainWorkshopConfig(n_back=1, trials=12, modalities=("text",)),
+        seed=44006,
+    )
+    assert all(target in (0, TEXT_MATCH)
+               for target in text.verifier_targets())
 
 
 def test_keypress_decoder_uses_two_bit_protocol() -> None:

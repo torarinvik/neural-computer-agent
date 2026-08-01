@@ -381,6 +381,16 @@ preserved clean accuracy but worsened held-out corruption accuracy, so the
 frozen bus remains promoted. Robust noisy-stream handling now requires a
 corruption-aware frontend or uncertainty mechanism with its own causal audit.
 
+A protected three-stream token experiment now qualifies a stronger gradual
+learning rung. Starting from a two-stream parent, a generic confidence gate
+kept the new token stream out of the inherited bus until reward training, and
+the frozen controller acquired the third temporal skill at 94.1% while vision
+remained 100.0% and audio 62.4%. Reset, time-shuffle, and cross-episode token
+swaps collapsed the new skill toward chance; all inherited controller,
+vision, and audio tensors were unchanged. This is a synthetic token frontend,
+not a natural-language qualification, and one independent seed failed, so
+population/exploration stability remains open.
+
 This is still **not yet the target architecture** because:
 
 - synchronous event sets have been behaviorally qualified at N=1, N=2, and a
@@ -392,7 +402,8 @@ This is still **not yet the target architecture** because:
   closed-loop use;
 - migration-v1 retains two reserved compatibility coordinates for loading old
   checkpoints, although they are structurally zero in the promoted successor;
-- no audio or trained language frontend/backend has passed causal audits.
+- the token-stream result is not yet an unseen natural-language or speech
+  frontend/backend qualification; those adapters still require causal audits.
 
 Therefore current results establish extracted vision-grounded neural IR,
 cognition, memory, audited M-output fan-out, and synchronous complementary N=2
