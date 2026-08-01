@@ -83,6 +83,28 @@ prevented forgetting but diluted acquisition by roughly an order of magnitude.
 The next target is therefore reducing bits-to-threshold on this same span-two
 bridge—not increasing span length.
 
+## Frozen-weight relation-memory milestone
+
+The next gate was then tested without changing the five-capability checkpoint.
+The visual same/different controller and its decoder stayed frozen.  A generic
+external memory received only controller-produced event keys, attempted opaque
+actions, and scalar verifier outcomes.  It stored successful action intentions
+and retrieved them through a real disk save/reload.  Three independent
+1,024-context runs passed the private context-to-action remapping audit:
+
+| seed | disk | reversal | prediction flips | no memory | shuffled | corrupted |
+|---:|---:|---:|---:|---:|---:|---:|
+| 19001 | 98.14% | 98.14% | 100% | 49.61% | 48.14% | 51.95% |
+| 19002 | 98.14% | 98.14% | 100% | 49.80% | 49.51% | 48.24% |
+| 19003 | 98.34% | 98.34% | 100% | 49.22% | 52.83% | 48.63% |
+
+The controller state digest was identical before and after every run.  This
+closes Gate 1 for frozen-weight acquisition through a non-parametric episodic
+action-memory baseline.  It is deliberately narrower than the final amodal
+memory claim: the next experiment must move the same behavior into the native
+latent `retrieved_memory` path and compare its verifier-bit cost against a
+reset learner.
+
 ## Gradual-prerequisite and efficiency fork
 
 The expensive span-two result was traced through progressively cheaper tests.

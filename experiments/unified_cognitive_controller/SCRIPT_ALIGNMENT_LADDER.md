@@ -34,6 +34,24 @@ The first target is private relation remapping: reuse the mastered visual
 same/different primitive while each visual context privately maps that
 relation to opaque actions normally or in reverse.
 
+**Gate 1 passed (2026-08-01, non-parametric memory path):** the frozen
+same/different controller acquired the private context-to-action convention
+from scalar outcomes alone.  A generic content-addressed disk store held
+controller-produced event keys and successful opaque-action intentions; the
+existing frozen decoder rendered the returned intention.  Three independent
+1,024-context audits passed after real save/reload: 98.14%, 98.14%, and 98.34%
+normal accuracy; the pixel-identical private-rule reversal reached the same
+accuracies with 100% paired prediction flips; no-memory, shuffled-value, and
+corrupted-value controls collapsed to approximately chance; and every model
+parameter hash was identical before and after.  The complete record is in
+`../../session_records/frozen_relation_memory_2026-08-01/`.
+
+This closes frozen-weight acquisition for a generic non-parametric episodic
+action-memory baseline.  It does not yet claim that the native recurrent
+`retrieved_memory` vector path can compose the new rule, nor that the memory
+can replace protocol action intentions with a learned amodal concept.  Those
+are the next interface and representation tests.
+
 ## Gate 2: compounding ledger
 
 Compare the experienced agent with a fresh matched learner on the next

@@ -1,0 +1,13 @@
+{
+  "schema": "frozen-relation-memory-audit-v1",
+  "seed": 19001,
+  "contexts": 1024,
+  "disk_accuracy": 0.9814453125,
+  "reversed_accuracy": 0.9814453125,
+  "prediction_flip_rate": 1.0,
+  "no_memory_accuracy": 0.49609375,
+  "shuffled_memory_accuracy": 0.4814453125,
+  "corrupted_memory_accuracy": 0.51953125,
+  "weights_unchanged": true,
+  "accepted": true
+}
