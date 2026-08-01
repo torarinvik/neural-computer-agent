@@ -47,25 +47,54 @@ bias. Matching inherited tensors were compared against the parent: **zero**
 controller, vision-encoder, or audio-encoder tensors changed; only the
 expanded decoder shape and new-stream parameters differ.
 
+## Exploration-robust continuation
+
+The first population exposed a real reliability problem: independent seed
+`47405` stayed at 55.4% after 256 updates, while the selected seed succeeded.
+An entropy coefficient alone did not fix that seed (55.4%). The successful
+low-cost intervention was generic and label-free: initialize the new opaque
+output bit at a neutral 50/50 distribution (`--neutral-new-output`) and keep
+the factorized policy exploratory with `--entropy-coef 0.1`. No verifier label,
+task name, or answer mapping is introduced.
+
+Three independent seeds then reproduced the same staged learning curve. After
+256 updates they were still in the expected exploration valley (text
+58.3–72.9%); after only 128 continuation updates all crossed 90%:
+
+| seed | text after 256 | text after 384 | history reset | cross-episode text swap |
+|---|---:|---:|---:|---:|
+| 47405 | 60.4% | **94.1%** | 56.3% | 56.2% |
+| 47408 | 58.3% | **94.3%** | 56.3% | 56.2% |
+| 47409 | 72.9% | **93.9%** | 56.2% | 56.5% |
+
+Vision stayed at 100% and audio at 62.4% in every continuation. Each run used
+384 updates × 32 fresh lifetimes = 12,288 training lifetimes (98,304 verifier
+decisions), and the inherited controller, vision encoder, and audio encoder
+were unchanged. The reset and cross-episode controls returning to chance are
+the causal checks that the improvement is a learned temporal text skill rather
+than a decoder prior. The 384-update recipe is now the reproducible protected
+three-stream baseline; a learned stopping rule remains open.
+
 ## What this proves
 
 This is a protected three-stream proof of concept: a frozen central controller
 can acquire a new temporal primitive through an external modality adapter
 while retaining inherited visual and audio behavior. The input bus now has a
-generic cold-start gate, so a new stream can enter without perturbing old
-skills and earn influence from verified reward.
+generic cold-start gate, and neutral output plus entropy-preserving exploration
+makes that acquisition reproducible across independent seeds. A new stream can
+enter without perturbing old skills and earn influence from verified reward.
 
 ## What it does not prove
 
-The selected population winner is not yet a universal claim. A separate seed
-(`47405`) stayed near chance after 256 updates, and the neutral-output control
-also stalled. This exposes initialization/exploration variance. The next
-experiment should compare a small population or learned exploration policy
-against a fresh learner, then require independent successful seeds and a
-stable bits-to-threshold advantage before promoting the result as compounding
-sample efficiency. The token frontend is also not a natural-language encoder;
-an unseen speech/text frontend and decoder still require their own causal
-qualification.
+The robust result is still a protected benchmark claim, not unrestricted
+N-stream or natural-language transfer. It does not yet prove that the agent
+discovers its own stopping point or that the text frontend understands language;
+the token frontend is an opaque protocol encoder. The original winner used a
+different seed and 256-update continuation, so the neutral/entropy recipe is
+reported separately rather than silently replacing that history. The next
+experiment should measure a learned stop/continue decision and compare its
+verifier bits-to-threshold against this fixed 384-update baseline. An unseen
+speech/text frontend and decoder still require their own causal qualification.
 
 Artifacts:
 
@@ -73,5 +102,9 @@ Artifacts:
 - `protected_text_identity_seed47403.json` — exploratory successful run;
 - `protected_text_identity_seed47405.json` — independent failed run;
 - `protected_text_zerohead_seed47406.json` — neutral-output control;
+- `neutral_entropy_seed47405.json` and `neutral_entropy_seed47405_plus128.json`;
+- `neutral_entropy_seed47408.json` and `neutral_entropy_seed47408_plus128.json`;
+- `neutral_entropy_seed47409.json` and `neutral_entropy_seed47409_plus128.json` —
+  the three independent exploration-robust continuations;
 - `audio_encoder_ssl_seed47401.json` and `audio_stage_ssl_seed47402.json` —
   label-free audio-parent preparation.
