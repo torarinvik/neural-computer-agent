@@ -159,6 +159,31 @@ unrouted 85.84–86.50% range. It is therefore not promoted. The remaining
 frontier is a more expressive skill-selection mechanism or curriculum, not
 another scalar gate.
 
+## Latest compounding rung: 1-back to 4-back
+
+The generic RAM bridge was extended by one more opaque snapshot and audited at
+4-back. At an equal 256-update budget, three mastered 1-back parents reached
+**84.67%, 75.27%, and 55.35%** (mean **71.76%**), while the same genuinely
+unadapted controller stayed at **49.98%, 50.02%, and 49.98%** (mean **49.99%**).
+History-reset and cross-stream-shuffle controls remained near chance in every
+run. Thus prior experience still makes a substantially harder temporal
+primitive learnable; the mean gain over the common unadapted controller is
+**21.77 percentage points**. The lower third-seed result is why this is
+promoted as a replicated compounding effect, not as a stable 4-back mastery
+threshold.
+
+The first protected 4-back pilot mixed 4-back updates with verifier-only
+rehearsal of 1-, 2-, and 3-back. It reached **81.37% 4-back**, retained
+**89.61% 1-back**, **71.61% 2-back**, and **73.93% 3-back**, with reset controls
+near 50%. The 1-back parent baseline was **92.44%**, so the remaining frontier
+is a retention-aware 4-back curriculum that keeps the complete earlier ladder
+within the existing two-point gate. In other words, the new capability is
+real, but zero-loss protected 4-back is not yet demonstrated.
+
+The matched no-rehearsal 4-back runs retained only **65.79–73.06% 1-back** in
+the three audits, making the causal value of rehearsal visible rather than
+assumed.
+
 **Current-status boundary:** the proven legacy class still supports its bundled
 `step(frame)` API, but a behavior-preserving extracted runtime now owns the
 vision encoder, controller core, and action decoder as three disjoint,

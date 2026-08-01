@@ -180,6 +180,32 @@ plumbing is valid; the gain is not. This bounded negative rejects a scalar gate
 as the missing mechanism and leaves expressive skill selection/curriculum as
 the next frontier.
 
+## Four-back compounding rung
+
+The generic RAM bridge was extended to four opaque snapshots. Three mastered
+1-back parents were compared with the same genuinely unadapted controller at
+an equal 256-update budget:
+
+| starting experience | seed 47405 | seed 47408 | seed 47409 | mean |
+|---|---:|---:|---:|---:|
+| mastered 1-back parent | 84.67% | 75.27% | 55.35% | **71.76%** |
+| common unadapted controller | 49.98% | 50.02% | 49.98% | **49.99%** |
+
+History-reset and cross-stream-shuffle controls stayed near chance. This is a
+replicated **21.77-point common-initialization compounding gain** at a harder
+rung, but the seed spread means it is not yet a stable 4-back mastery claim.
+
+A first protected 4-back pilot mixed the new objective with verifier-only
+rehearsal of 1-, 2-, and 3-back. It reached 81.37% 4-back and retained 1-back at
+89.61%, 2-back at 71.61%, and 3-back at 73.93%; reset controls stayed near 50%.
+The source 1-back parent measured 92.44%, so this pilot still misses the strict
+two-point retention gate. The next frontier is a retention-aware 4-back
+curriculum that preserves the full earlier ladder, followed by a
+bits-to-threshold race rather than another fixed-budget endpoint comparison.
+Without rehearsal, the matched 4-back parents retained only 65.79–73.06%
+1-back, so rehearsal is causally useful even though its current weighting is
+not yet sufficient for the full ladder.
+
 ## What this proves
 
 This is a protected three-stream proof of concept: a frozen central controller
@@ -252,5 +278,21 @@ Artifacts:
   relation-only ablation;
 - `nback3_routed_stacked_seed47405_256.json` — scalar computation-router pilot,
   retained as a bounded negative;
+- `nback4_parent_depth4_seed47405_256.json`,
+  `nback4_parent_depth4_seed47408_256.json`, and
+  `nback4_parent_depth4_seed47409_256.json` — common-initialization 4-back
+  compounding runs from mastered 1-back parents;
+- `nback4_raw_depth4_seed47405_256.json`,
+  `nback4_raw_depth4_seed47408_256.json`, and
+  `nback4_raw_depth4_seed47409_256.json` — matched unadapted controls;
+- `nback1_retention_after_nback4_seed47405.json`,
+  `nback1_retention_after_nback4_seed47408.json`, and
+  `nback1_retention_after_nback4_seed47409.json` — no-rehearsal retention
+  controls;
+- `nback4_rehearsal1_2_3_depth4_seed47405_256.json` and
+  `nback1_retention_after_nback4_rehearsal123_seed47405.json`,
+  `nback2_retention_after_nback4_rehearsal123_seed47405.json`, and
+  `nback3_retention_after_nback4_rehearsal123_seed47405.json` — first
+  protected 4-back pilot and full lower-rung retention audit;
 - `audio_encoder_ssl_seed47401.json` and `audio_stage_ssl_seed47402.json` —
   label-free audio-parent preparation.
