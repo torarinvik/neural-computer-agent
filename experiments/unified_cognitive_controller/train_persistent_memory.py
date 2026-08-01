@@ -197,10 +197,12 @@ def evaluate_persistent(
 def _rehearsal_loss(
         model: UnifiedCognitiveController, *, task: str,
         feedback_trials: int, count: int, seed: int,
-        device: torch.device, exploration: float) -> torch.Tensor:
+        device: torch.device, exploration: float,
+        appearance: str = "bars") -> torch.Tensor:
     batch = generate_lifetimes(
         count, 6, seed=seed, task=task,
-        support_trials=feedback_trials, device=device)
+        support_trials=feedback_trials, appearance=appearance,
+        device=device)
     result = rollout(
         model, batch, sample_actions=True, exploration=exploration,
         feedback_trials=feedback_trials)
@@ -236,6 +238,11 @@ def main() -> None:
         help=(
             "new-memory updates followed by one binary and one four-rule "
             "rehearsal update"))
+    parser.add_argument(
+        "--relation-rehearsal", action="store_true",
+        help=(
+            "add one pair-relation rehearsal update per cycle and require "
+            "bars/diamonds/dot-pairs retention before saving"))
     args = parser.parse_args()
     if args.batch_size % args.memory_capacity:
         raise ValueError("batch size must divide into complete memory banks")
@@ -263,7 +270,8 @@ def main() -> None:
     for step in range(1, args.steps + 1):
         model.train()
         data_seed = args.seed * 1_000_000 + step
-        cycle = args.persistent_updates_per_cycle + 2
+        cycle = args.persistent_updates_per_cycle + 2 + int(
+            args.relation_rehearsal)
         slot = (step - 1) % cycle
         if slot < args.persistent_updates_per_cycle:
             task = "persistent_recall"
@@ -286,12 +294,23 @@ def main() -> None:
                 exploration=args.exploration)
             accuracy = None
             retrieval = None
-        else:
+        elif slot == args.persistent_updates_per_cycle + 1:
             task = "four_rule_rehearsal"
             loss = _rehearsal_loss(
                 model, task="four_rule", feedback_trials=2,
                 count=args.batch_size, seed=data_seed, device=device,
                 exploration=args.exploration)
+            accuracy = None
+            retrieval = None
+        else:
+            task = "pair_relation_rehearsal"
+            # Alternate appearances without a learner-visible task or renderer
+            # ID.  This preserves the abstract relation rather than one contour.
+            appearance = ("bars", "diamonds", "dot_pairs")[step % 3]
+            loss = _rehearsal_loss(
+                model, task="pair_relation", feedback_trials=1,
+                count=args.batch_size, seed=data_seed, device=device,
+                exploration=args.exploration, appearance=appearance)
             accuracy = None
             retrieval = None
         optimizer.zero_grad(set_to_none=True)
@@ -319,10 +338,24 @@ def main() -> None:
     four_rule_retention = evaluate(
         model, count=1024, trials=6, seed=args.seed + 92_000_000,
         device=device, task="four_rule", feedback_trials=2)
+    relation_retention = {}
+    if args.relation_rehearsal:
+        for index, appearance in enumerate(("bars", "diamonds", "dot_pairs")):
+            relation_retention[appearance] = evaluate(
+                model, count=1024, trials=6,
+                seed=args.seed + 93_000_000 + index * 10_000,
+                device=device, task="pair_relation", feedback_trials=1,
+                appearance=appearance)
+    relation_retained = (
+        not args.relation_rehearsal
+        or all(
+            result["gate"]["accepted"]
+            for result in relation_retention.values()))
     admitted = (
         persistent_evaluation["gate"]["accepted"]
         and binary_retention["gate"]["accepted"]
         and four_rule_retention["gate"]["accepted"]
+        and relation_retained
         and persistent_evaluation["disk_roundtrip"][
             "read_matches_hard_memory"])
     report = {
@@ -349,6 +382,7 @@ def main() -> None:
         "persistent_evaluation": persistent_evaluation,
         "binary_retention": binary_retention,
         "four_rule_retention": four_rule_retention,
+        "relation_retention": relation_retention,
         "all_admission_gates_passed": admitted,
         "weights_changed": any(
             not torch.equal(initial[name], value.detach().cpu())
@@ -374,6 +408,7 @@ def main() -> None:
         "persistent_evaluation": persistent_evaluation,
         "binary_retained": binary_retention["gate"]["accepted"],
         "four_rule_retained": four_rule_retention["gate"]["accepted"],
+        "relation_retained": relation_retained,
         "total_seconds": report["total_seconds"],
     }, sort_keys=True), flush=True)
 
