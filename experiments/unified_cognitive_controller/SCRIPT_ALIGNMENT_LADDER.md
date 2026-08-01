@@ -48,6 +48,16 @@ The vision encoder and actuator are externally owned and independently
 checkpointed. The refactored one-event/one-action path must be bit-identical to
 the current integrated model before any new modality is trained.
 
+**Gate 3a passed (2026-08-01):** the encoder, controller core, and decoder now
+have disjoint ownership and separate state dicts. The real five-capability
+checkpoint is bit-identical through the extracted path over 64 held-out
+lifetimes, including zero maximum logit difference and exact reconstruction of
+all 66 source tensors. A two-coordinate legacy action-residual suffix remains
+explicitly marked as migration debt.
+
+**Gate 3b next:** remove that suffix through intention-only learning while
+preserving the complete repertoire. Then qualify multiple decoders below.
+
 One latent intention is connected to independently trained output adapters
 (opaque action, integer/bit code, and audio event).  Replacing or permuting an
 adapter may require adapting that thin decoder, but must not require relearning

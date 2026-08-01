@@ -11,7 +11,8 @@ from dataclasses import dataclass
 import torch
 from torch import nn
 
-from .environment import ACTIONS, NULL_ACTION
+from .amodal_interface import AmodalEvent, IntentEvent
+from .environment import ACTIONS
 
 
 def full_memory_usage_features(
@@ -71,7 +72,7 @@ class ControllerState:
     workspace: torch.Tensor
     latest_event: torch.Tensor
 
-    def detach(self) -> "ControllerState":
+    def detach(self) -> ControllerState:
         return ControllerState(
             self.hidden.detach(), self.workspace.detach(),
             self.latest_event.detach())
@@ -93,6 +94,20 @@ class ControllerOutput:
     # intention, shape [batch, slots]. The opening alone understates this: a
     # nearly shut gate on a large residual still moves the answer, so this is
     # the quantity a locality price has to act on.
+    skill_adapter_residual_norms: torch.Tensor | None = None
+
+
+@dataclass
+class ControllerCoreOutput:
+    """Decoder-independent result of one encoded event update."""
+
+    intent_event: IntentEvent
+    legacy_intention: torch.Tensor
+    memory_key: torch.Tensor
+    memory_value: torch.Tensor
+    memory_write_strength: torch.Tensor
+    workspace_read: torch.Tensor
+    skill_adapter_openings: torch.Tensor | None = None
     skill_adapter_residual_norms: torch.Tensor | None = None
 
 
@@ -889,14 +904,26 @@ class UnifiedCognitiveController(nn.Module):
             torch.zeros(batch_size, self.width, device=device, dtype=dtype),
         )
 
-    def step(
-            self, frame: torch.Tensor, state: ControllerState,
+    def step_event(
+            self, event: AmodalEvent | torch.Tensor, state: ControllerState,
             previous_action: torch.Tensor, previous_reward: torch.Tensor,
             has_feedback: torch.Tensor,
             retrieved_memory: torch.Tensor | None = None,
-            *, disable_workspace: bool = False) -> tuple[
-                ControllerOutput, ControllerState]:
-        event = self.vision(frame)
+            *, disable_workspace: bool = False,
+            intention_basis: torch.Tensor | None = None) -> tuple[
+                ControllerCoreOutput, ControllerState]:
+        """Update cognition from one already encoded event.
+
+        ``intention_basis`` is used only to preserve checkpoints whose legacy
+        action adapter was projected into intention space. The extracted
+        runtime supplies the external decoder's weight; the controller does not
+        own that decoder.
+        """
+        if isinstance(event, AmodalEvent):
+            event = event.validate(width=self.width).payload
+        elif event.ndim != 2 or event.shape[1] != self.width:
+            raise ValueError(
+                f"event must have shape [batch, {self.width}]")
         if retrieved_memory is None:
             retrieved_memory = torch.zeros_like(event)
         query = torch.nn.functional.normalize(
@@ -957,7 +984,13 @@ class UnifiedCognitiveController(nn.Module):
                 action_residual = action_residual * torch.sigmoid(
                     self.action_adapter_gate(adapter_features))
             if self.action_adapter_into_intention:
-                actuator_weight = self.actuator.weight
+                if intention_basis is None:
+                    if self.actuator is None:
+                        raise ValueError(
+                            "legacy action-to-intention conversion requires "
+                            "an external decoder basis")
+                    intention_basis = self.actuator.weight
+                actuator_weight = intention_basis
                 coefficients = torch.linalg.solve(
                     actuator_weight @ actuator_weight.T,
                     action_residual.T).T
@@ -1111,12 +1144,19 @@ class UnifiedCognitiveController(nn.Module):
             skill_adapter_openings = torch.cat(openings, dim=-1)
             skill_adapter_residual_norms = torch.cat(residual_norms, dim=-1)
         memory_context = torch.cat([hidden, read], dim=-1)
-        logits = self.actuator(intention)
-        if deferred_action_residual is not None:
-            logits = logits + deferred_action_residual
-        output = ControllerOutput(
-            logits=logits,
-            intention=intention,
+        # Preserve the old direct action residual exactly while moving it across
+        # the extracted intention boundary. The external migration decoder
+        # consumes these final ACTIONS coordinates. New capabilities must learn
+        # to communicate through the base intention rather than extend this
+        # compatibility suffix.
+        if deferred_action_residual is None:
+            deferred_action_residual = intention.new_zeros(
+                intention.shape[0], ACTIONS)
+        intent_event = IntentEvent(payload=torch.cat(
+            [intention, deferred_action_residual], dim=-1))
+        output = ControllerCoreOutput(
+            intent_event=intent_event,
+            legacy_intention=intention,
             memory_key=self.memory_key(memory_context),
             memory_value=self.memory_value(memory_context),
             memory_write_strength=torch.sigmoid(
@@ -1126,3 +1166,38 @@ class UnifiedCognitiveController(nn.Module):
             skill_adapter_residual_norms=skill_adapter_residual_norms,
         )
         return output, ControllerState(hidden, workspace, event)
+
+    def step(
+            self, frame: torch.Tensor, state: ControllerState,
+            previous_action: torch.Tensor, previous_reward: torch.Tensor,
+            has_feedback: torch.Tensor,
+            retrieved_memory: torch.Tensor | None = None,
+            *, disable_workspace: bool = False) -> tuple[
+                ControllerOutput, ControllerState]:
+        """Legacy raw-frame compatibility path.
+
+        New runtime code should own the encoder and decoder externally and call
+        :meth:`step_event`. Keeping this wrapper lets every existing checkpoint,
+        trainer, and audit remain unchanged during extraction.
+        """
+        if self.vision is None or self.actuator is None:
+            raise RuntimeError(
+                "raw-frame step is unavailable on an extracted controller")
+        event = AmodalEvent(payload=self.vision(frame))
+        core_output, next_state = self.step_event(
+            event, state, previous_action, previous_reward, has_feedback,
+            retrieved_memory, disable_workspace=disable_workspace,
+            intention_basis=self.actuator.weight)
+        payload = core_output.intent_event.payload
+        logits = self.actuator(payload[:, :self.intention_width])
+        logits = logits + payload[:, self.intention_width:]
+        return ControllerOutput(
+            logits=logits,
+            intention=core_output.legacy_intention,
+            memory_key=core_output.memory_key,
+            memory_value=core_output.memory_value,
+            memory_write_strength=core_output.memory_write_strength,
+            workspace_read=core_output.workspace_read,
+            skill_adapter_openings=core_output.skill_adapter_openings,
+            skill_adapter_residual_norms=(
+                core_output.skill_adapter_residual_norms)), next_state

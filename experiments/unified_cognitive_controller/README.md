@@ -1,14 +1,51 @@
 # Unified cognitive controller
 
-> **Architecture status:** this experiment is the current vision-only
-> implementation, not the final modality boundary. The normative target is
+> **Architecture status:** this experiment remains vision-only, not the final
+> modality boundary. The normative target is
 > `N encoders -> amodal event bus -> one controller/memory -> intention bus ->
 > M decoders`, specified in
 > [`../../docs/AMODAL_N_TO_M_ARCHITECTURE.md`](../../docs/AMODAL_N_TO_M_ARCHITECTURE.md).
-> Today `VisionEventEncoder` and the actuator are modular submodules but remain
-> owned, called, and checkpointed by `UnifiedCognitiveController`; one RGB frame
-> enters each step. Historical results below must not be described as audited
-> multimodal or amodal transfer.
+> The legacy class retains its bundled API, while `ExtractedAmodalRuntime` now
+> owns the vision encoder, controller, and decoder separately and reproduces the
+> current checkpoint exactly. One visual event still enters each step and only
+> one decoder is exercised. Historical results below must not be described as
+> audited multimodal or amodal transfer.
+
+## Extracted neural-IR migration rung (2026-08-01)
+
+The first four migration gates are implemented without retraining:
+
+- `AmodalEvent` and `IntentEvent` have versioned opaque transport schemas;
+- `ExtractedAmodalRuntime` owns three disjoint modules: external vision
+  frontend, controller core, and external action decoder;
+- `UnifiedCognitiveController.step_event()` accepts an already encoded event;
+- legacy checkpoints convert into three independently loadable state dicts and
+  reconstruct the original key layout tensor-for-tensor;
+- the original `step(frame)` remains as a compatibility wrapper.
+
+The latest five-capability checkpoint was replayed through both paths over 64
+held-out five-trial lifetimes. Actions, rewards, logits, hidden state, workspace,
+and all memory outputs were exactly equal; maximum absolute logit difference was
+`0.0`. All 66 checkpoint tensors reconstructed exactly. The wider controller
+suite also passed 301 tests, and the new extraction suite passed eight tests
+covering plain, deferred-action, action-to-intention, relation, and successor-
+slot paths.
+
+The extraction exposed one honest piece of migration debt. Older checkpoints
+can add a learned two-action residual after the 24-dimensional intention. To
+preserve behavior exactly, migration-v1 appends those two opaque coordinates to
+`IntentEvent`, and only the external decoder interprets them. This is a
+compatibility suffix, not an amodal capability claim. The next smallest rung is
+to distill that residual into the base intention under full repertoire audits,
+then remove the suffix before introducing variable-N input aggregation.
+
+Convert a legacy checkpoint with:
+
+```sh
+python -m experiments.unified_cognitive_controller.convert_amodal_checkpoint \
+  artifacts/checkpoints/unified_repertoire_span2_strict_seed122005.pt \
+  /tmp/unified_repertoire_span2_extracted.pt
+```
 
 This isolated experiment begins the transition from separately trained
 primitive modules to one controller that learns within its recurrent state and

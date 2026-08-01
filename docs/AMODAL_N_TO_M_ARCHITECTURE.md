@@ -294,7 +294,7 @@ controller.
 
 ## Current implementation boundary (August 2026)
 
-The current prototype is **not yet the target architecture**:
+The original prototype path is:
 
 ```text
 RGB frame -> VisionEventEncoder inside UnifiedCognitiveController
@@ -302,32 +302,45 @@ RGB frame -> VisionEventEncoder inside UnifiedCognitiveController
           -> actuator inside the same model -> two action logits
 ```
 
-The vision encoder and actuator are distinct neural submodules, and the core
-already has learned event and intention tensors. However:
+The first behavior-preserving extraction rung now also provides:
 
-- `UnifiedCognitiveController.step()` still accepts raw image tensors;
-- the controller owns and directly calls `self.vision`;
-- encoder, controller, and actuator share one checkpoint and width contract;
-- only one event is accepted per step;
-- arbitrary N-stream event sets and M-output intention fan-out do not exist;
+```text
+external VisionEventEncoder -> AmodalEvent -> controller.step_event()
+    -> IntentEvent -> external ActionIntentDecoder
+```
+
+The three components own disjoint parameter sets and serialize independently.
+The extracted path reproduces the real five-capability checkpoint exactly on a
+64-lifetime audit: all 66 source tensors reconstruct exactly and maximum logit
+difference is zero. The legacy API remains as a compatibility wrapper.
+
+This is still **not yet the target architecture** because:
+
+- only one encoded visual event is accepted per controller update;
+- only one action decoder is exercised;
+- variable-size event sets and intention fan-out do not exist;
+- the migration intention carries a documented two-coordinate compatibility
+  suffix for an inherited direct action residual;
 - no audio or trained language frontend/backend has passed causal audits.
 
-Therefore current results establish vision-grounded cognition and memory, not
-amodal N-to-M operation.
+Therefore current results establish extracted vision-grounded neural IR,
+cognition, and memory—not amodal N-to-M operation.
 
 ## Behavior-preserving migration order
 
-1. Extract the existing vision encoder and actuator from controller ownership.
-2. Add `encode_*`, `step_events`, and `decode_intentions` boundaries.
-3. Prove bit-identical behavior and checkpoint conversion for the current path.
-4. Version the event and intention schemas and save adapters separately.
-5. Accept variable-size visual event sets, then asynchronous events.
-6. Add a second synthetic encoder with redundant evidence and measure learning
+1. ~~Extract the existing vision encoder and actuator from controller ownership.~~
+2. ~~Add `encode`, `step_event`, and `decode` boundaries.~~
+3. ~~Prove bit-identical behavior and checkpoint conversion for the current path.~~
+4. ~~Version the event and intention schemas and save adapters separately.~~
+5. Remove the legacy action-residual suffix through verified intention-only
+   distillation without losing any admitted capability.
+6. Accept variable-size visual event sets, then asynchronous events.
+7. Add a second synthetic encoder with redundant evidence and measure learning
    acceleration, dropout robustness, and shuffle sensitivity.
-7. Require complementary evidence split across two encoders.
-8. Add a second output adapter and prove simultaneous M-output fan-out.
-9. Train audio and language frontends/backends only after the generic buses pass.
-10. Freeze the controller and qualify genuinely new sensors and outputs.
+8. Require complementary evidence split across two encoders.
+9. Add a second output adapter and prove simultaneous M-output fan-out.
+10. Train audio and language frontends/backends only after the generic buses pass.
+11. Freeze the controller and qualify genuinely new sensors and outputs.
 
 No capability claim may skip from the current internal vision module directly
 to “amodal.” Each boundary must pass its own causal and sample-efficiency gate.

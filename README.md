@@ -35,11 +35,14 @@ The complete normative specification, current implementation gap, terminology,
 and required causal audits are in
 [`docs/AMODAL_N_TO_M_ARCHITECTURE.md`](docs/AMODAL_N_TO_M_ARCHITECTURE.md).
 
-**Current-status boundary:** today, the vision encoder and actuator are distinct
-submodules but still live inside `UnifiedCognitiveController`; `step()` accepts
-one RGB frame and the checkpoint bundles all three components. Current results
-are therefore vision-grounded controller results, not a demonstrated amodal
-N-input/M-output system.
+**Current-status boundary:** the proven legacy class still supports its bundled
+`step(frame)` API, but a behavior-preserving extracted runtime now owns the
+vision encoder, controller core, and action decoder as three disjoint,
+independently serialized components. The real five-capability checkpoint is
+bit-identical through that path. It still accepts only one visual event and one
+action decoder per step, and it carries a documented two-coordinate legacy
+action-residual compatibility suffix. Current results are therefore the first
+modular neural-IR rung, not a demonstrated amodal N-input/M-output system.
 
 ## North star
 
