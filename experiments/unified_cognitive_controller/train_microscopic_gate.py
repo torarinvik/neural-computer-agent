@@ -134,12 +134,12 @@ def main() -> None:
         "cuda" if torch.cuda.is_available() else "cpu"))
     parser.add_argument("--cpu-threads", type=int, default=0)
     args = parser.parse_args()
-    if args.step <= 0.0 or args.step > 0.001:
-        raise ValueError("curriculum step must be within (0, 0.001]")
+    if args.step <= 0.0 or args.step > 0.01:
+        raise ValueError("curriculum step must be within (0, 0.01]")
     # Keep decimal level names stable and prevent a floating-point stride from
     # silently skipping a requested endpoint.
     if abs(round(args.step, 4) - args.step) > 1e-12:
-        raise ValueError("curriculum step must resolve to 0.0001")
+        raise ValueError("curriculum step must resolve to a 0.0001 increment")
     if args.end_level < args.start_level:
         raise ValueError("end level must not be below start level")
     if args.batch_size < 1024 or args.batch_size % 1024:

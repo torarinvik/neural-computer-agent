@@ -166,3 +166,39 @@ instead of replaying a fixed batch, and adapt the sensory encoder while
 rehearsing mastered skills.  Further difficulty should preserve these gates
 and address operation binding separately rather than spending more updates on
 the already-passing nuisance ladder.
+
+## Coarse-to-fine climb from 0.4000 to 0.8000
+
+The 0.001/4,096-episode gate was too expensive at the harder frontier: it
+spent most of its time evaluating nearly identical levels. The scheduler was
+therefore extended to allow coarse strides that still resolve to 0.0001
+increments. We used 0.005 exploration rungs in three isolated blocks, with a
+2,048-episode repeated gate, fresh target/rehearsal batches, trainable vision,
+and a 128-update cap per rung. Full 4,096-episode audits were reserved for
+the final checkpoint.
+
+All four blocks passed every gate:
+
+- 0.4000 → 0.5000: 220 optimizer updates;
+- 0.5000 → 0.6000: 220 optimizer updates;
+- 0.6000 → 0.7000: 297 optimizer updates;
+- 0.7000 → 0.8000: 517 optimizer updates.
+
+The final 0.8000 checkpoint is
+`artifacts/checkpoints/unified_procedural_shape_span5_adaptive800_coarse_trainvision_mps_seed58901.pt`.
+At its final gate it scored 91.6% overall, 90.9% strict conflict, and 99.4%
+old span-three retention.
+
+Two independent 4,096-lifetime audits at level 0.8000 scored 91.3% and 91.8%
+target accuracy, 91.6% and 91.8% conflicting-new-slot accuracy, and 99.4% and
+99.5% old-skill retention. Clearing all memory returned target accuracy to
+49.9% and 50.7%, confirming that the result depends on the learned workspace
+rather than a fixed-weight shortcut. Reverse-presentation accuracy was 91.1%
+and 92.3%. Operation-counterfactual flip rates remained 72.3–73.3%, so
+operation binding is still the next architectural frontier. The audit is
+saved as `adaptive_8000_full_audit_trainvision_mps.json`.
+
+This establishes a validated nuisance climb from 0.1358 through 0.8000 while
+preserving the older skill. The efficient schedule is coarse exploration
+followed by fine endpoint auditing, rather than paying a large verifier cost
+at every microscopic level.
