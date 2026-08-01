@@ -349,12 +349,16 @@ Timestamp-preserving transport alignment is now also qualified. At 4,096
 lifetimes, out-of-order delivery and 0.25-unit timestamp jitter reproduced
 synchronous actions exactly at 96.36%; genuinely mismatched timestamps stayed
 in separate windows. This is transport plumbing, not learned delay handling.
+Two outcome-only attempts to fine-tune the input bus against erased pixels
+preserved clean accuracy but worsened held-out corruption accuracy, so the
+frozen bus remains promoted. Robust noisy-stream handling now requires a
+corruption-aware frontend or uncertainty mechanism with its own causal audit.
 
 This is still **not yet the target architecture** because:
 
 - synchronous event sets have only been behaviorally qualified at N=1 and N=2;
-- learned delay compensation, noisy streams, and missing-stream policies are
-  not yet qualified;
+- learned delay compensation, corruption-aware noisy streams, and
+  missing-stream policies are not yet qualified;
 - the recurrent compatibility API still feeds canonical action IDs back into
   the controller, so a new physical protocol requires a thin lowering for
   closed-loop use;

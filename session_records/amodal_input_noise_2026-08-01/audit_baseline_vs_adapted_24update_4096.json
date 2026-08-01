@@ -1,0 +1,50 @@
+{
+  "adapted_bus": "/tmp/inputbus_noiseadapt_s162001.pt",
+  "adapted_bus_sha256": "f605e4c06a8df70fb6c7924bcc609615d93a1898e27aee3f554cdc48210ffaf8",
+  "baseline_bus": "artifacts/checkpoints/amodal_input_bus_complementary_seed145001.pt",
+  "baseline_bus_sha256": "4ae96f60b99107834c27840b8841e8b2ba20c10e6565c220b5607fb9c80d3c71",
+  "claim": "Outcome-only adaptation improves a frozen amodal input bus under known pixel corruption while retaining clean behavior.",
+  "configuration": {
+    "count": 4096,
+    "device": "mps",
+    "seed": 163001
+  },
+  "controller": "artifacts/checkpoints/unified_repertoire_span2_amodal_intention_seed122005.pt",
+  "controller_sha256": "9eea7ab479cb8450737f040b76495cc5ec737e970cdc165af2446873e530cd6c",
+  "curve": [
+    {
+      "adapted_accuracy": 0.969287097454071,
+      "baseline_accuracy": 0.9669433832168579,
+      "erase_fraction": 0.0
+    },
+    {
+      "adapted_accuracy": 0.9410156011581421,
+      "baseline_accuracy": 0.9402831792831421,
+      "erase_fraction": 0.2
+    },
+    {
+      "adapted_accuracy": 0.8777831792831421,
+      "baseline_accuracy": 0.8990234136581421,
+      "erase_fraction": 0.4
+    },
+    {
+      "adapted_accuracy": 0.7808593511581421,
+      "baseline_accuracy": 0.824755847454071,
+      "erase_fraction": 0.6
+    },
+    {
+      "adapted_accuracy": 0.6646484136581421,
+      "baseline_accuracy": 0.7074218988418579,
+      "erase_fraction": 0.8
+    }
+  ],
+  "gains": [
+    0.0023437142372131348,
+    0.000732421875,
+    -0.021240234375,
+    -0.043896496295928955,
+    -0.04277348518371582
+  ],
+  "passed": false,
+  "schema": "amodal-input-noise-adaptation-audit-v1"
+}

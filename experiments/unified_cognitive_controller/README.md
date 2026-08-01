@@ -114,9 +114,12 @@ Promoted artifact:
 Timestamp-preserving transport alignment is now qualified: at 4,096 lifetimes,
 out-of-order and bounded-jitter delivery reproduced synchronous actions exactly
 at 96.36%, while mismatched timestamps remained separate windows. This is
-transport plumbing, not a learned wait policy. The next boundary is replicated
-cross-renderer transfer, noisy/missing streams, and learned latency-versus-wait
-control.
+transport plumbing, not a learned wait policy. Two outcome-only bus adaptation
+pilots retained clean behavior but worsened a held-out pixel-erasure curve, so
+the frozen bus remains the promoted artifact. The next boundary is replicated
+cross-renderer transfer, corruption-aware noisy/missing streams, and learned
+latency-versus-wait control; see
+`session_records/amodal_input_noise_2026-08-01/README.md`.
 
 Convert a legacy checkpoint with:
 

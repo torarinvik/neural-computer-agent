@@ -56,9 +56,15 @@ renderers, although that transfer is not yet replicated. The legacy feedback
 API still consumes canonical action IDs, and delayed/asynchronous streams remain
 unqualified. Timestamp-preserving out-of-order delivery is now qualified:
 96.36% behavior is action-identical to synchronous delivery, and mismatched
-timestamps remain separate. Learned delay compensation and noisy streams remain
-open. Current results therefore establish synchronous N=2, timestamp-aware
-transport, and M-output operation—not yet unrestricted amodal N-to-M behavior.
+timestamps remain separate. Two outcome-only attempts to adapt the input bus
+to erased pixels retained clean behavior but worsened the held-out corruption
+curve, so no adapted bus was promoted; the frozen bus remains the baseline.
+Learned delay compensation, corruption-aware frontends, and noisy streams
+remain open. Current results therefore establish synchronous N=2,
+timestamp-aware transport, and M-output operation—not yet unrestricted amodal
+N-to-M behavior. See
+`session_records/amodal_input_noise_2026-08-01/README.md` for the rejected
+noise-adaptation evidence.
 
 ## North star
 

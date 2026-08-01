@@ -142,8 +142,25 @@ def training_loss(
     *,
     exploration: float,
     shuffle_outcomes: bool,
+    second_erase: float = 0.0,
 ) -> tuple[torch.Tensor, float]:
     first, second = split_complementary_views(batch.frames)
+    if not 0.0 <= second_erase <= 1.0:
+        raise ValueError("second stream erasure must be within [0, 1]")
+    if second_erase:
+        background = second[..., :1, :1]
+        erase = (
+            torch.rand(
+                second.shape[0],
+                second.shape[1],
+                1,
+                second.shape[-2],
+                second.shape[-1],
+                device=second.device,
+            )
+            < second_erase
+        )
+        second = torch.where(erase, background, second)
     state = runtime.initial_state(batch.batch_size, device=batch.frames.device)
     action = torch.full(
         (batch.batch_size,),
@@ -195,6 +212,7 @@ def main() -> None:
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--bus-out", type=Path)
+    parser.add_argument("--bus-in", type=Path)
     parser.add_argument("--seed", type=int, default=144_001)
     parser.add_argument("--updates", type=int, default=8)
     parser.add_argument("--batch-size", type=int, default=32)
@@ -204,6 +222,7 @@ def main() -> None:
     parser.add_argument("--exploration", type=float, default=0.25)
     parser.add_argument("--threshold", type=float, default=0.85)
     parser.add_argument("--shuffle-outcomes", action="store_true")
+    parser.add_argument("--training-erase", type=float, default=0.0)
     parser.add_argument(
         "--training-appearances",
         nargs="+",
@@ -236,6 +255,14 @@ def main() -> None:
     }
     torch.manual_seed(args.seed)
     bus = AmodalInputBus(runtime.controller.width, args.hidden).to(device)
+    if args.bus_in is not None:
+        bus_payload = torch.load(args.bus_in, map_location=device, weights_only=False)
+        if (
+            int(bus_payload["event_width"]) != runtime.controller.width
+            or int(bus_payload["residual_hidden"]) != args.hidden
+        ):
+            raise ValueError("input bus checkpoint dimensions do not match")
+        bus.load_state_dict(bus_payload["state_dict"])
     optimizer = torch.optim.Adam(bus.parameters(), lr=args.learning_rate)
     start = time.perf_counter()
     initial = evaluate_bus(
@@ -270,6 +297,7 @@ def main() -> None:
             batch,
             exploration=args.exploration,
             shuffle_outcomes=args.shuffle_outcomes,
+            second_erase=args.training_erase,
         )
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
@@ -305,10 +333,9 @@ def main() -> None:
         torch.equal(value, runtime_after[name].detach().cpu())
         for name, value in frozen_before.items()
     )
-    passed = bool(
-        stable is not None
-        and curve[-1]["fused_accuracy"] - curve[0]["fused_accuracy"] >= 0.10
-        and final["fused_accuracy"] >= args.threshold
+    learning_gain = curve[-1]["fused_accuracy"] - curve[0]["fused_accuracy"]
+    invariants_pass = bool(
+        final["fused_accuracy"] >= args.threshold
         and final["stream_a_accuracy"] <= 0.65
         and final["stream_b_accuracy"] <= 0.65
         and final["shuffled_partner_accuracy"] <= 0.65
@@ -319,6 +346,12 @@ def main() -> None:
         and final["duplicate_actions_exact"]
         and final["duplicate_max_logit_difference"] == 0.0
         and unchanged
+    )
+    passed = bool(
+        invariants_pass
+        and (
+            (args.bus_in is not None) or (stable is not None and learning_gain >= 0.10)
+        )
     )
     report = {
         "schema": "complementary-amodal-input-bus-bandit-v1",
@@ -337,11 +370,13 @@ def main() -> None:
             **vars(args),
             "checkpoint": str(args.checkpoint),
             "report": str(args.report),
+            "bus_in": str(args.bus_in) if args.bus_in is not None else None,
             "bus_out": str(args.bus_out) if args.bus_out is not None else None,
             "device": str(device),
         },
         "curve": curve,
         "stable_bits_to_threshold": stable,
+        "learning_gain": learning_gain,
         "initial": initial,
         "final": final,
         "controller_and_adapters_unchanged": unchanged,
