@@ -1,0 +1,40 @@
+{
+  "agreement": "artifacts/checkpoints/amodal_pair_agreement_seed175101.pt",
+  "agreement_sha256": "1c8b4d68eeb06c942510dd2709d80f8be4264ae9de2c5af1c546f998b7969239",
+  "bus": "artifacts/checkpoints/amodal_input_bus_complementary_seed145001.pt",
+  "bus_sha256": "4ae96f60b99107834c27840b8841e8b2ba20c10e6565c220b5607fb9c80d3c71",
+  "claim": "Pair agreement scales relevance routing from N=2 to N=4.",
+  "configuration": {
+    "count": 4096,
+    "device": "mps",
+    "seed": 177001,
+    "threshold": 0.4
+  },
+  "controller": "artifacts/checkpoints/unified_repertoire_span2_amodal_intention_seed122005.pt",
+  "controller_sha256": "9eea7ab479cb8450737f040b76495cc5ec737e970cdc165af2446873e530cd6c",
+  "passed": true,
+  "rows": {
+    "2": {
+      "distractor_confidence": 0.0,
+      "gain": 0.0,
+      "useful_confidence": 0.9131606221199036,
+      "with_agreement": 0.9642578363418579,
+      "without_agreement": 0.9642578363418579
+    },
+    "3": {
+      "distractor_confidence": 0.014619226567447186,
+      "gain": 0.3790038824081421,
+      "useful_confidence": 0.9131783843040466,
+      "with_agreement": 0.958544909954071,
+      "without_agreement": 0.579541027545929
+    },
+    "4": {
+      "distractor_confidence": 0.03206655755639076,
+      "gain": 0.3853515386581421,
+      "useful_confidence": 0.913201093673706,
+      "with_agreement": 0.9380859136581421,
+      "without_agreement": 0.552734375
+    }
+  },
+  "schema": "amodal-pair-agreement-cardinality-audit-v1"
+}

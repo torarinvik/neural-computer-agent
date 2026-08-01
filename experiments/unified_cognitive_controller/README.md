@@ -144,6 +144,11 @@ controller or bus. Across two seeds, N=3 rises from 57.45% to 89.25–89.59%
 while N=2 remains 98.51–98.55%. Cross-modality relevance and N>3 remain open;
 see `session_records/amodal_pair_agreement_2026-08-01/`.
 
+Using strongest-pair confidence with a generic 0.4 threshold extends the same
+router to N=4. Across both agreement seeds, N=3 reaches 95.85–95.92% and N=4
+93.59–93.81%, while no-agreement controls are 57.95% and 55.27%; N=2 remains
+96.43%. See `session_records/amodal_pair_agreement_cardinality_2026-08-01/`.
+
 Convert a legacy checkpoint with:
 
 ```sh
