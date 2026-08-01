@@ -129,6 +129,14 @@ and a learned confidence estimator is still required before claiming fully
 learned noisy/missing-stream handling. Evidence is in
 `session_records/amodal_n3_confidence_2026-08-01/`.
 
+That learned-confidence boundary is now partially closed for corruption. A
+small head trained from clean/corrupted latent consistency, with full and
+partial views in its training distribution, improves an 80%-erased third
+stream by 5.24–6.61 points across two seeds while retaining N=2 at
+98.77–99.04%. It is not yet a relevance estimator for a valid but irrelevant
+stream; evidence is in
+`session_records/amodal_learned_confidence_2026-08-01/`.
+
 Convert a legacy checkpoint with:
 
 ```sh

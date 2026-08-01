@@ -66,10 +66,16 @@ N-to-M behavior. A new confidence-routing audit qualifies N=3 distractor
 rejection: 96.58% with two streams, 58.42% with an opaque full-confidence
 third stream, and 96.40% when that stream carries generic confidence 0.01.
 The confidence value was supplied by the frontend in this audit; learning that
-quality estimate remains open. See
+quality estimate remains open. A tiny self-supervised confidence head now
+learns that quality from clean/corrupted latent consistency: across two seeds,
+80%-corrupted N=3 streams improve 5.24–6.61 points while N=2 remains
+98.77–99.04%. Arbitrary valid distractor relevance remains open. See
 `session_records/amodal_input_noise_2026-08-01/README.md` for the rejected
-noise-adaptation evidence and
-`session_records/amodal_n3_confidence_2026-08-01/README.md` for the N=3 gate.
+noise-adaptation evidence,
+`session_records/amodal_n3_confidence_2026-08-01/README.md` for the interface
+gate, and
+`session_records/amodal_learned_confidence_2026-08-01/README.md` for the
+learned-confidence audit.
 
 ## North star
 

@@ -349,8 +349,11 @@ The confidence-routing N=3 gate also passes without changing controller or bus
 weights. On 4,096 held-out lifetimes, two streams score 96.58%; an opaque
 third stream at confidence 1.0 scores 58.42%; the same stream at generic
 confidence 0.01 scores 96.40%. This qualifies confidence-aware variable
-cardinality routing, but the confidence value was supplied by the frontend;
-learning that quality estimate remains an open boundary.
+cardinality routing, but the confidence value was supplied by the frontend.
+A tiny head trained only on clean/corrupted latent consistency, replicated
+across two seeds, improves 80%-corrupted N=3 behavior by 5.24–6.61 points
+while preserving N=2 at 98.77–99.04%. This handles corruption/missing evidence,
+not arbitrary valid distractor relevance.
 
 Timestamp-preserving transport alignment is now also qualified. At 4,096
 lifetimes, out-of-order delivery and 0.25-unit timestamp jitter reproduced
@@ -365,8 +368,8 @@ This is still **not yet the target architecture** because:
 
 - synchronous event sets have been behaviorally qualified at N=1, N=2, and a
   confidence-gated N=3 distractor control;
-- learned delay compensation, corruption-aware noisy streams, and
-  missing-stream policies are not yet qualified;
+- learned delay compensation, arbitrary valid-distractor relevance, and
+  fully learned missing-stream policies are not yet qualified;
 - the recurrent compatibility API still feeds canonical action IDs back into
   the controller, so a new physical protocol requires a thin lowering for
   closed-loop use;
