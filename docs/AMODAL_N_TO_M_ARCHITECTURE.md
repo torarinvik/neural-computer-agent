@@ -363,10 +363,11 @@ same-frame complementary-view agreement, so cross-modality relevance and
 larger N remain open.
 
 The cardinality extension passes with the same two agreement seeds. With two
-useful streams and two valid distractors, N=3 reaches 95.85–95.92% and N=4
-reaches 93.59–93.81%, versus 57.95% and 55.27% without agreement; N=2 remains
-96.43%. The router therefore has an audited N=2→N=4 path, while cross-modal
-agreement and more than two useful streams remain open.
+useful streams and up to three valid distractors, N=3 reaches 95.90–95.98%,
+N=4 reaches 94.03–94.32%, and N=5 reaches 90.65–91.41%, versus 58.29%,
+56.01%, and 53.43% without agreement; N=2 remains 96.61%. The router
+therefore has an audited N=2→N=5 path, while cross-modal agreement and more
+than two useful streams remain open.
 
 Timestamp-preserving transport alignment is now also qualified. At 4,096
 lifetimes, out-of-order delivery and 0.25-unit timestamp jitter reproduced

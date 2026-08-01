@@ -145,9 +145,10 @@ while N=2 remains 98.51–98.55%. Cross-modality relevance and N>3 remain open;
 see `session_records/amodal_pair_agreement_2026-08-01/`.
 
 Using strongest-pair confidence with a generic 0.4 threshold extends the same
-router to N=4. Across both agreement seeds, N=3 reaches 95.85–95.92% and N=4
-93.59–93.81%, while no-agreement controls are 57.95% and 55.27%; N=2 remains
-96.43%. See `session_records/amodal_pair_agreement_cardinality_2026-08-01/`.
+router to N=5. Across both agreement seeds, N=3 reaches 95.90–95.98%, N=4
+94.03–94.32%, and N=5 90.65–91.41%, while no-agreement controls are 58.29%,
+56.01%, and 53.43%; N=2 remains 96.61%. See
+`session_records/amodal_pair_agreement_cardinality_2026-08-01/`.
 
 Convert a legacy checkpoint with:
 

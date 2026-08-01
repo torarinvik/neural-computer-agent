@@ -7,7 +7,7 @@
   "configuration": {
     "count": 4096,
     "device": "mps",
-    "seed": 177001,
+    "seed": 178001,
     "threshold": 0.4
   },
   "controller": "artifacts/checkpoints/unified_repertoire_span2_amodal_intention_seed122005.pt",
@@ -17,23 +17,30 @@
     "2": {
       "distractor_confidence": 0.0,
       "gain": 0.0,
-      "useful_confidence": 0.9131606221199036,
-      "with_agreement": 0.9642578363418579,
-      "without_agreement": 0.9642578363418579
+      "useful_confidence": 0.9147415161132812,
+      "with_agreement": 0.966113269329071,
+      "without_agreement": 0.966113269329071
     },
     "3": {
-      "distractor_confidence": 0.014619226567447186,
-      "gain": 0.3790038824081421,
-      "useful_confidence": 0.9131783843040466,
-      "with_agreement": 0.958544909954071,
-      "without_agreement": 0.579541027545929
+      "distractor_confidence": 0.015420940704643726,
+      "gain": 0.37685543298721313,
+      "useful_confidence": 0.9147738814353943,
+      "with_agreement": 0.959765613079071,
+      "without_agreement": 0.5829101800918579
     },
     "4": {
-      "distractor_confidence": 0.03206655755639076,
-      "gain": 0.3853515386581421,
-      "useful_confidence": 0.913201093673706,
-      "with_agreement": 0.9380859136581421,
-      "without_agreement": 0.552734375
+      "distractor_confidence": 0.030031850561499596,
+      "gain": 0.3831542730331421,
+      "useful_confidence": 0.9148064255714417,
+      "with_agreement": 0.9432128667831421,
+      "without_agreement": 0.56005859375
+    },
+    "5": {
+      "distractor_confidence": 0.045305922627449036,
+      "gain": 0.3797363042831421,
+      "useful_confidence": 0.9148349165916443,
+      "with_agreement": 0.9140625,
+      "without_agreement": 0.5343261957168579
     }
   },
   "schema": "amodal-pair-agreement-cardinality-audit-v1"

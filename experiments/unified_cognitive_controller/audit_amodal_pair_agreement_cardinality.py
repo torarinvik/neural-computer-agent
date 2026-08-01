@@ -147,13 +147,14 @@ def main() -> None:
             support_trials=1,
             device=device,
         ).frames
-        for offset in (2, 3)
+        for offset in (2, 3, 4)
     ]
     rows = {}
     for cardinality, streams in (
         (2, (first, second)),
         (3, (first, second, distractors[0])),
         (4, (first, second, distractors[0], distractors[1])),
+        (5, (first, second, distractors[0], distractors[1], distractors[2])),
     ):
         no_agreement = _accuracy(
             runtime, bus, agreement, streams, batch.correct_actions, None
@@ -172,8 +173,10 @@ def main() -> None:
         rows["2"]["with_agreement"] >= 0.90
         and rows["3"]["with_agreement"] >= 0.85
         and rows["4"]["with_agreement"] >= 0.85
+        and rows["5"]["with_agreement"] >= 0.85
         and rows["3"]["gain"] >= 0.25
         and rows["4"]["gain"] >= 0.25
+        and rows["5"]["gain"] >= 0.25
     )
     report = {
         "schema": "amodal-pair-agreement-cardinality-audit-v1",
@@ -200,4 +203,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
