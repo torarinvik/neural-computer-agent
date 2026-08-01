@@ -235,3 +235,20 @@ the current scalar-outcome learner has not found the binding efficiently.  The
 next high-ROI experiment is therefore a better self-generated credit signal or
 operation-specific curriculum—not a redesign of the vision encoder—and every
 candidate must still pass the old-skill retention and memory-reset audits.
+
+## Span-six extension check
+
+The canonical span-five checkpoint was evaluated on a sixth-item target at
+nuisance 0.8 before any adaptation.  Across 4,096 balanced episodes it scored
+73.0% overall and 70.8% on strict conflicting-new-slot queries; clearing all
+memory returned 48.8%, confirming that the sixth-item signal is still using the
+workspace rather than a fixed shortcut.  The read-only baseline is recorded in
+`span6_baseline_seed821001.json`.
+
+A 16-update adaptation using exact 4,096-example batches was stopped after one
+slow update.  The partial-balance microbatch mode then reached 57.4% held-out
+span-six accuracy after four mixed target/rehearsal updates, below the baseline,
+while each update still took roughly 15–20 seconds on local MPS.  No span-six
+candidate was promoted.  The next span extension should therefore use a
+capacity curriculum (e.g. a carefully gated sixth-slot adapter or a smaller
+controller) rather than fine-tuning the entire span-five controller at once.

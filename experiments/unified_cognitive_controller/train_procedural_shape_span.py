@@ -120,12 +120,21 @@ def nuisance_with_overrides(
 def _balanced_logical_content(
         count: int, span: int, vocabulary: int,
         generator: torch.Generator,
-        permutations: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        permutations: int,
+        allow_partial_balance: bool = False,
+        ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Balance identities and answers exactly; query orders independently."""
     answer_patterns = 2 ** span
     sequence_patterns = vocabulary ** span
     logical_patterns = sequence_patterns * answer_patterns
-    design_ids = torch.arange(count) % logical_patterns
+    if allow_partial_balance and count % logical_patterns:
+        full_repeats, remainder = divmod(count, logical_patterns)
+        design_ids = torch.cat((
+            torch.arange(logical_patterns).repeat(full_repeats),
+            torch.randperm(logical_patterns, generator=generator)[:remainder],
+        ))
+    else:
+        design_ids = torch.arange(count) % logical_patterns
     ids = design_ids % logical_patterns
     if count % (logical_patterns * permutations) == 0:
         # Preserve exact query-order balance for the existing full designs.
@@ -265,6 +274,7 @@ def generate_procedural_shape_batch(
         reverse_presentation: bool = False,
         flip_candidates: bool = False,
         flip_query_operations: bool = False,
+        allow_partial_balance: bool = False,
         device: torch.device | str = "cpu") -> ProceduralShapeBatch:
     """Generate deterministic balanced episodes and private verifier answers."""
     nuisance.validate()
@@ -272,9 +282,12 @@ def generate_procedural_shape_batch(
         raise ValueError("objective must be visible_identity or recognition")
     permutations = tuple(itertools.permutations(range(span)))
     logical_patterns = (vocabulary * 2) ** span
-    if count < logical_patterns or count % logical_patterns:
+    if count < 1 or (
+            not allow_partial_balance
+            and (count < logical_patterns or count % logical_patterns)):
         raise ValueError(
-            f"count must be a positive multiple of {logical_patterns}")
+            f"count must be a positive multiple of {logical_patterns}"
+            " unless partial balance is enabled")
     if span < 1:
         raise ValueError("span must be positive")
     if query_count is None:
@@ -385,7 +398,8 @@ def generate_procedural_shape_batch(
         raise ValueError("vocabulary must be within [2, 4]")
     generator = torch.Generator().manual_seed(seed)
     sequence, match, permutation_ids = _balanced_logical_content(
-        count, span, vocabulary, generator, len(permutations))
+        count, span, vocabulary, generator, len(permutations),
+        allow_partial_balance=allow_partial_balance)
     independent_mask = torch.ones(count, dtype=torch.bool)
     if span >= 3 and new_slot_difficulty < 1.0:
         # A gradual capacity bridge: only a deterministic fraction of rows
@@ -1314,6 +1328,11 @@ def main() -> None:
         "--objective", choices=("visible_identity", "recognition"),
         default="recognition")
     parser.add_argument("--randomness", type=float, default=0.0)
+    parser.add_argument(
+        "--allow-partial-balance", action="store_true",
+        help=(
+            "sample a balanced subset when a span's full logical design is "
+            "too large for one microbatch; exact balance remains the default"))
     parser.add_argument("--position-px", type=float)
     parser.add_argument("--size-fraction", type=float)
     parser.add_argument("--rotation-degrees", type=float)
@@ -1643,10 +1662,13 @@ def main() -> None:
                 ("batch size", args.batch_size),
                 ("test episodes", args.test_episodes),
                 ("curve test episodes", args.curve_test_episodes)):
-            if count < logical_patterns or count % logical_patterns:
+            if count < 1 or (
+                    not args.allow_partial_balance
+                    and (count < logical_patterns or count % logical_patterns)):
                 raise ValueError(
                     f"{name} must be a positive multiple of "
-                    f"{logical_patterns} for span {span}")
+                    f"{logical_patterns} for span {span} unless partial "
+                    "balance is enabled")
     configuration: dict[str, object] = {
         "width": args.width, "workspace_slots": args.workspace_slots,
         "intention_width": args.intention_width,
@@ -1894,6 +1916,7 @@ def main() -> None:
                 args.next_query_anchor_focus if train_on_target else -1),
             next_query_target_aligned=(
                 args.next_query_target_aligned if train_on_target else False),
+            allow_partial_balance=args.allow_partial_balance,
             device=device)
         result = rollout_procedural_shape_span(
             model, batch, sample_actions=True,
@@ -2058,6 +2081,8 @@ def main() -> None:
                             previous_query_stage=(
                                 rehearsal_previous_stages[index]),
                             next_query_stage=rehearsal_next_stages[index],
+                            allow_partial_balance=(
+                                args.allow_partial_balance),
                             device=device))
                 functional_validation_unique_bits = sum(
                     validation.batch_size * validation.query_ordinals.shape[1]
