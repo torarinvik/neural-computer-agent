@@ -26,6 +26,7 @@ new tasks is evidence of compounding learning.
 
 | Date | Transition or test | Experienced result | Control | Conclusion |
 |---|---|---:|---:|---|
+| 2026-08-01 | Frozen controller + learned memory-code/intention bridge, 3 seeds | 99.95–100.00% on 2,048 held-out contexts after 256 scalar support bits; reversal flips 100%; controller unchanged | Empty, shuffled, and corrupted memory approximately 50%; exact disk retrieval 100% | Learned external memory-code boundary passes causal gates without weight updates; compounding transfer ratio is not yet claimed because a matched fresh learner has not been run |
 | 2026-07-24 | Temporal atom colors 0–1 → same atom colors 2–3 | 45.31% held-out first-write rule decode | 80.47% on colors 0–1; 53.91% majority | No palette transfer; current temporal primitive is identity-specific |
 | 2026-07-24 | Temporal atom → four-color temporal composition | 51.56% first-write rule decode | 80.47% atom; 50.78% compositional majority | No compositional rule transfer at the write boundary |
 | 2026-07-24 | Experienced versus fresh vision features on direct-outcome temporal relation, 3 seeds | At 120 unique lifetimes: 94.44% mean held-out accuracy | Fresh identical encoder: 83.61%; shuffled-label controls: 45.42–50.83% | Prior visual experience improves the eventual representation by 10.83 points, but does not yet reliably reduce unique lifetimes to threshold |

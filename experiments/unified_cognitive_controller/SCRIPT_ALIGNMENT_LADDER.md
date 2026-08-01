@@ -52,6 +52,25 @@ action-memory baseline.  It does not yet claim that the native recurrent
 can replace protocol action intentions with a learned amodal concept.  Those
 are the next interface and representation tests.
 
+**Gate 1b passed (2026-08-01, learned memory-intention bridge):** a small
+reusable memory-code bridge and intention composer were trained from 256 scalar
+support outcomes and the frozen controller's own attempted query action, with
+no hand labels or private query answers.  They were then frozen; adaptation
+changed only generic content-addressed RAM/disk rows.  Three independent seeds
+scored 100.00%, 100.00%, and 99.95% on 2,048 held-out contexts, with 100%
+pixel-valid reversal prediction flips.  Empty, shuffled, and corrupted memory
+controls were at chance, exact disk retrieval was 100%, and the controller
+state digest was unchanged in every run.  Each context used a unique random
+visual key independent of the hidden remapping, preventing a key-to-answer
+shortcut.  See
+`../../session_records/memory_intention_bridge_2026-08-01/`.
+
+This qualifies a learned amodal memory-code/intention boundary, but not the
+controller's native `retrieved_memory` path: the diagnostic still uses a fixed
+visual key encoder plus an external bridge and composer.  The next interface
+test is to migrate this boundary onto the standardized event/intention buses
+without introducing a task-specific reasoning branch.
+
 ## Gate 2: compounding ledger
 
 Compare the experienced agent with a fresh matched learner on the next

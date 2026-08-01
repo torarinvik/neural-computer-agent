@@ -1,0 +1,87 @@
+{
+  "accepted": true,
+  "bridge_checkpoint": "artifacts/checkpoints/unified_memory_intention_bridge_seed29003.pt",
+  "bridge_checkpoint_sha256": "f0f9b306f1fd4d5d3129713e3d4e71ade6e3fd4af291820ef16db9411c5cc3b2",
+  "bridge_frozen_during_adaptation": true,
+  "bridge_parameters": 6530,
+  "composer_frozen_during_adaptation": true,
+  "composer_parameters": 1910,
+  "controller": "artifacts/checkpoints/unified_pair_relation_repertoire_seed9112.pt",
+  "controller_digest_after": "73bb5b7b04469e5355773b263f3562fdcc59b4dfaa0fca67822229e73a6d7744",
+  "controller_digest_before": "73bb5b7b04469e5355773b263f3562fdcc59b4dfaa0fca67822229e73a6d7744",
+  "controller_weights_unchanged": true,
+  "corrupted_memory_accuracy": 0.501953125,
+  "curve": [
+    {
+      "code_loss": 0.6693639755249023,
+      "loss": 1.3623220920562744,
+      "pseudo_action_accuracy": 0.5390625,
+      "step": 1
+    },
+    {
+      "code_loss": 0.0014406322734430432,
+      "loss": 0.029550490900874138,
+      "pseudo_action_accuracy": 1.0,
+      "step": 40
+    },
+    {
+      "code_loss": 0.00010806067439261824,
+      "loss": 0.0016120248474180698,
+      "pseudo_action_accuracy": 1.0,
+      "step": 80
+    },
+    {
+      "code_loss": 8.166294719558209e-05,
+      "loss": 0.0008399572689086199,
+      "pseudo_action_accuracy": 1.0,
+      "step": 120
+    },
+    {
+      "code_loss": 4.25539183197543e-05,
+      "loss": 0.0006758172530680895,
+      "pseudo_action_accuracy": 1.0,
+      "step": 160
+    },
+    {
+      "code_loss": 3.7778052501380444e-05,
+      "loss": 0.0005697243032045662,
+      "pseudo_action_accuracy": 1.0,
+      "step": 200
+    }
+  ],
+  "device": "mps",
+  "disk_accuracy": 0.99951171875,
+  "gates": {
+    "bridge_frozen": true,
+    "composer_frozen": true,
+    "controller_frozen": true,
+    "corrupted_memory_hurts": true,
+    "disk_at_least_85": true,
+    "exact_disk_retrieval": true,
+    "no_memory_hurts": true,
+    "prediction_flips_at_least_80": true,
+    "reversal_at_least_85": true,
+    "shuffled_memory_hurts": true
+  },
+  "labels_used_for_training": [],
+  "learner_visible_training_signal": [
+    "attempted opaque support action",
+    "scalar support success/failure",
+    "frozen controller query action"
+  ],
+  "learning_rate": 0.003,
+  "no_memory_accuracy": 0.5,
+  "optimizer_steps": 200,
+  "prediction_flip_rate": 1.0,
+  "private_query_targets_used_only_for_audit": true,
+  "retrieval_confidence_mean": 1.0,
+  "retrieval_exact_rate": 1.0,
+  "reversed_accuracy": 0.99951171875,
+  "schema": "memory-intention-bridge-audit-v1",
+  "seed": 29003,
+  "shuffled_memory_accuracy": 0.50146484375,
+  "support_verifier_bits": 256,
+  "test_contexts": 2048,
+  "train_contexts": 256,
+  "wall_seconds": 3.718550333986059
+}
