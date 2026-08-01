@@ -298,3 +298,32 @@ is a promising but modest gain, not yet a promotion; it supports prioritizing
 rare frontier examples rather than raising the independence scalar.  The
 candidate and aggregate gate are recorded in
 `span6_capacity_slot_frontier_replay_gate.json`.
+
+## Sixth-item breakthrough: joint action-reader adaptation
+
+The decisive improvement came from unfreezing the existing generic
+`action_adapter` together with the new zero-output width-64 skill slot, while
+keeping the controller, encoder, memory, and old skills under rehearsal.  The
+adapter’s direct hidden/event-to-action path removes the unnecessary
+16-dimensional intention bottleneck; it does not receive identities, labels,
+or verifier state.  After four short reward-only blocks at independence 0.01,
+the candidate scored 141/164 (86.0%) on four seed-disjoint independent gates,
+versus 135/164 (82.3%) for the prior slot-only candidate.  Aggregate target
+accuracy was 85.9–86.6%, all-memory-reset controls stayed at chance, and
+span-five/span-three retention was 91.9%/99.4%.  Candidate and reverse
+counterfactual flips remained about 86%.
+
+This is the first robust sample-efficiency breakthrough in the span-six line:
+the new skill is learned more reliably when the generic reader that consumes
+the latent is allowed to adapt alongside the slot.  The checkpoint remains a
+candidate rather than replacing the canonical span-five model until it passes
+the larger gate and the original thin-line graduation audit.  Evidence is in
+`span6_capacity_slot_action_adapter_gate.json`; the training report is
+`span6_capacity_slot_action_adapter4.json`.
+
+Two additional audits expanded the gate to six seeds and 246 independent
+episodes: 214/246 correct (87.0%), with per-seed independent scores from
+78.0% to 92.7%, aggregate accuracy 85.9–86.6%, and memory-reset accuracy
+49.1–50.7%.  This larger result is recorded in
+`span6_capacity_slot_action_adapter_full_gate.json` and is the current
+leading checkpoint for the next graduation test.
