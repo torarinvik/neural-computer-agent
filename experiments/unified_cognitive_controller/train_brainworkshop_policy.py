@@ -35,20 +35,28 @@ class Rollout:
     entropies: torch.Tensor
     rewards: torch.Tensor
     actions: torch.Tensor
+    values: torch.Tensor
 
 
 class BrainWorkshopPolicy(nn.Module):
     """N encoders -> amodal bus -> one controller -> one decoder."""
 
     def __init__(self, *, width: int = 32, intention_width: int = 16,
-                 workspace_slots: int = 2,
+                 workspace_slots: int = 2, relation_adapter_width: int = 0,
+                 event_memory_adapter_width: int = 0,
+                 retrieved_memory_adapter_width: int = 0,
                  controller: UnifiedCognitiveController | None = None) -> None:
         super().__init__()
         from .brainworkshop_gym import BrainWorkshopVisionEncoder
 
         self.controller = controller or UnifiedCognitiveController(
             width=width, workspace_slots=workspace_slots,
-            intention_width=intention_width)
+            intention_width=intention_width,
+            relation_adapter_width=relation_adapter_width,
+            relation_adapter_layer_norm=True,
+            relation_adapter_gated=True,
+            event_memory_adapter_width=event_memory_adapter_width,
+            retrieved_memory_adapter_width=retrieved_memory_adapter_width)
         width = self.controller.width
         intention_width = self.controller.intention_width
         self.encoder = BrainWorkshopVisionEncoder(width)
@@ -58,6 +66,9 @@ class BrainWorkshopPolicy(nn.Module):
         self.controller.vision = None
         self.controller.actuator = None
         self.decoder = OpaqueProtocolDecoder(intention_width, commands=2)
+        # Optional reward-only critic.  It predicts return from the recurrent
+        # state; it never sees verifier targets or modality/task metadata.
+        self.value_head = nn.Linear(self.controller.width, 1)
 
     def initial_state(self, batch: int, device: torch.device):
         return self.controller.initial_state(batch, device=device)
@@ -81,12 +92,36 @@ def _make_batch(config: BrainWorkshopConfig, *, batch_size: int,
     return episodes, frames
 
 
+def _event_payload(policy: BrainWorkshopPolicy, frame: torch.Tensor,
+                   episodes, trial: int, device: torch.device,
+                   *, oracle_events: bool,
+                   stimulus_indices: torch.Tensor | None = None) -> torch.Tensor:
+    if not oracle_events:
+        return policy.encoder(frame)
+    # Diagnostic-only localization control.  It bypasses pixels with a
+    # verifier-side one-hot event; its weights and result are never promoted.
+    indices = (
+        [trial] * len(episodes) if stimulus_indices is None
+        else [int(value) for value in stimulus_indices])
+    positions = torch.tensor(
+        [episode.stimuli[index].position
+         for episode, index in zip(episodes, indices)],
+        dtype=torch.long, device=device)
+    encoded = F.one_hot(positions, num_classes=8).to(torch.float32)
+    if encoded.shape[1] < policy.controller.width:
+        encoded = F.pad(encoded, (0, policy.controller.width - 8))
+    return encoded[:, :policy.controller.width]
+
+
 def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
              *, batch_size: int, seed: int, device: torch.device,
              sample: bool, reset_history: bool = False,
-             shuffle_time: bool = False) -> Rollout:
+             shuffle_time: bool = False,
+             oracle_events: bool = False,
+             external_history: bool = False) -> Rollout:
     episodes, frames = _make_batch(
         config, batch_size=batch_size, seed=seed, device=device)
+    stimulus_indices = None
     if shuffle_time:
         # This is an adversarial control: preserve the frame multiset but break
         # the temporal relation that n-back requires.
@@ -97,11 +132,13 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
         frames = torch.stack([
             frames[index, permutations[index]] for index in range(batch_size)
         ])
+        stimulus_indices = permutations
     state = policy.initial_state(batch_size, device)
     previous_action = torch.zeros(batch_size, dtype=torch.long, device=device)
     previous_reward = torch.zeros(batch_size, device=device)
     has_feedback = torch.zeros(batch_size, device=device)
-    log_probs, entropies, rewards, actions = [], [], [], []
+    previous_event = None
+    log_probs, entropies, rewards, actions, values = [], [], [], [], []
     for trial in range(config.trials):
         if reset_history and trial:
             state = policy.initial_state(batch_size, device)
@@ -113,10 +150,21 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
                 batch_size, dtype=torch.long, device=device)
             previous_reward = torch.zeros(batch_size, device=device)
             has_feedback = torch.zeros(batch_size, device=device)
-        encoded = policy.encoder(frames[:, trial])
+            previous_event = None
+        encoded = _event_payload(
+            policy, frames[:, trial], episodes, trial, device,
+            oracle_events=oracle_events,
+            stimulus_indices=(
+                stimulus_indices[:, trial] if stimulus_indices is not None
+                else None))
         event = policy.input_bus([AmodalEvent(payload=encoded)])
+        retrieved_memory = (
+            previous_event if external_history and previous_event is not None
+            else torch.zeros_like(encoded))
         core, state = policy.controller.step_event(
-            event, state, previous_action, previous_reward, has_feedback)
+            event, state, previous_action, previous_reward, has_feedback,
+            retrieved_memory=retrieved_memory)
+        values.append(policy.value_head(state.hidden).squeeze(-1))
         logits = policy.decoder(core.intent_event)
         distribution = torch.distributions.Categorical(logits=logits)
         action = distribution.sample() if sample else logits.argmax(dim=-1)
@@ -131,14 +179,18 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
         previous_action = action
         previous_reward = reward
         has_feedback.fill_(1.0)
+        previous_event = encoded
     return Rollout(
         torch.stack(log_probs), torch.stack(entropies),
-        torch.stack(rewards), torch.stack(actions))
+        torch.stack(rewards), torch.stack(actions), torch.stack(values))
 
 
 def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
                      *, batch_size: int, seed: int,
-                     device: torch.device) -> tuple[torch.Tensor, torch.Tensor]:
+                     device: torch.device,
+                     oracle_events: bool = False,
+                     external_history: bool = False
+                     ) -> tuple[torch.Tensor, torch.Tensor]:
     """Disposable verifier-label ceiling probe.
 
     Labels are used only to answer the architecture question and are never
@@ -152,12 +204,19 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
     previous_action = torch.zeros(batch_size, dtype=torch.long, device=device)
     previous_reward = torch.zeros(batch_size, device=device)
     has_feedback = torch.zeros(batch_size, device=device)
+    previous_event = None
     losses, rewards = [], []
     for trial in range(config.trials):
-        encoded = policy.encoder(frames[:, trial])
+        encoded = _event_payload(
+            policy, frames[:, trial], episodes, trial, device,
+            oracle_events=oracle_events)
         event = policy.input_bus([AmodalEvent(payload=encoded)])
+        retrieved_memory = (
+            previous_event if external_history and previous_event is not None
+            else torch.zeros_like(encoded))
         core, state = policy.controller.step_event(
-            event, state, previous_action, previous_reward, has_feedback)
+            event, state, previous_action, previous_reward, has_feedback,
+            retrieved_memory=retrieved_memory)
         logits = policy.decoder(core.intent_event)
         targets = torch.tensor(
             [episode.verifier_targets()[trial] for episode in episodes],
@@ -172,16 +231,20 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
         previous_action = action
         previous_reward = reward
         has_feedback = torch.ones(batch_size, device=device)
+        previous_event = encoded
     return torch.stack(losses).mean(), torch.stack(rewards)
 
 
 @torch.no_grad()
 def _evaluate(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig, *,
               count: int, seed: int, device: torch.device,
-              reset_history: bool = False, shuffle_time: bool = False) -> dict:
+              reset_history: bool = False, shuffle_time: bool = False,
+              oracle_events: bool = False,
+              external_history: bool = False) -> dict:
     rollout = _rollout(
         policy, config, batch_size=count, seed=seed, device=device,
-        sample=False, reset_history=reset_history, shuffle_time=shuffle_time)
+        sample=False, reset_history=reset_history, shuffle_time=shuffle_time,
+        oracle_events=oracle_events, external_history=external_history)
     rewards = rollout.rewards
     return {
         "accuracy": float((rewards > 0).float().mean()),
@@ -198,6 +261,22 @@ def main() -> None:
                         help="optional promoted controller to keep frozen")
     parser.add_argument("--supervised-diagnostic", action="store_true",
                         help="use disposable verifier labels for a ceiling probe")
+    parser.add_argument("--encoder-in", type=Path,
+                        help="optional self-supervised encoder checkpoint")
+    parser.add_argument("--freeze-encoder", action="store_true",
+                        help="keep a loaded encoder fixed during the probe")
+    parser.add_argument("--value-baseline", action="store_true",
+                        help="train a reward-only recurrent value baseline")
+    parser.add_argument("--oracle-events", action="store_true",
+                        help="diagnostic-only verifier-side one-hot events")
+    parser.add_argument("--external-history", action="store_true",
+                        help="diagnostic generic one-step RAM snapshot")
+    parser.add_argument("--relation-adapter-width", type=int, default=0,
+                        choices=(0, 32, 64))
+    parser.add_argument("--event-memory-adapter-width", type=int, default=0,
+                        choices=(0, 32, 64))
+    parser.add_argument("--retrieved-memory-adapter-width", type=int, default=0,
+                        choices=(0, 32, 64))
     parser.add_argument("--seed", type=int, default=44011)
     parser.add_argument("--updates", type=int, default=8)
     parser.add_argument("--batch-size", type=int, default=32)
@@ -237,7 +316,22 @@ def main() -> None:
         frozen_controller.actuator = None
     if args.checkpoint_in and args.supervised_diagnostic:
         raise ValueError("the supervised diagnostic is for a fresh policy only")
-    policy = BrainWorkshopPolicy(controller=frozen_controller).to(device)
+    policy = BrainWorkshopPolicy(
+        relation_adapter_width=args.relation_adapter_width,
+        event_memory_adapter_width=args.event_memory_adapter_width,
+        retrieved_memory_adapter_width=args.retrieved_memory_adapter_width,
+        controller=frozen_controller).to(device)
+    if args.encoder_in:
+        encoder_payload = torch.load(
+            args.encoder_in, map_location=device, weights_only=False)
+        if encoder_payload.get("event_width") != policy.controller.width:
+            raise ValueError("encoder width does not match controller width")
+        policy.encoder.load_state_dict(encoder_payload["encoder_state_dict"])
+    if args.freeze_encoder and not args.encoder_in:
+        raise ValueError("--freeze-encoder requires --encoder-in")
+    if args.freeze_encoder:
+        for parameter in policy.encoder.parameters():
+            parameter.requires_grad_(False)
     if frozen_controller is not None:
         for parameter in policy.controller.parameters():
             parameter.requires_grad_(False)
@@ -248,20 +342,26 @@ def main() -> None:
     history = []
     before = _evaluate(
         policy, config, count=args.eval_count, seed=args.seed + 10_000,
-        device=device)
+        device=device, oracle_events=args.oracle_events,
+        external_history=args.external_history)
     for update in range(1, args.updates + 1):
         policy.train()
         if args.supervised_diagnostic:
             loss, diagnostic_rewards = _supervised_step(
                 policy, config, batch_size=args.batch_size,
-                seed=args.seed + update * 1_000, device=device)
+                seed=args.seed + update * 1_000, device=device,
+                oracle_events=args.oracle_events,
+                external_history=args.external_history)
             batch_accuracy = float((diagnostic_rewards > 0).float().mean())
             batch_mean_reward = float(diagnostic_rewards.mean())
             policy_entropy = 0.0
+            value_loss = torch.zeros((), device=device)
         else:
             rollout = _rollout(
                 policy, config, batch_size=args.batch_size,
-                seed=args.seed + update * 1_000, device=device, sample=True)
+                seed=args.seed + update * 1_000, device=device, sample=True,
+                oracle_events=args.oracle_events,
+                external_history=args.external_history)
             returns = torch.zeros_like(rollout.rewards)
             running = torch.zeros(args.batch_size, device=device)
             for trial in range(args.trials - 1, -1, -1):
@@ -269,9 +369,18 @@ def main() -> None:
                 returns[trial] = running
             # A per-time baseline uses only verifier rewards from this batch;
             # it is a variance reducer, not an additional task label.
-            advantages = returns - returns.mean(dim=1, keepdim=True)
-            loss = -(
-                advantages.detach() * rollout.log_probs).mean()
+            if args.value_baseline:
+                advantages = returns - rollout.values
+                value_loss = F.smooth_l1_loss(
+                    rollout.values, returns.detach())
+                loss = -(
+                    advantages.detach() * rollout.log_probs).mean()
+                loss = loss + 0.5 * value_loss
+            else:
+                advantages = returns - returns.mean(dim=1, keepdim=True)
+                value_loss = torch.zeros((), device=device)
+                loss = -(
+                    advantages.detach() * rollout.log_probs).mean()
             loss = loss - args.entropy_coef * rollout.entropies.mean()
             batch_accuracy = float((rollout.rewards > 0).float().mean())
             batch_mean_reward = float(rollout.rewards.mean())
@@ -287,6 +396,7 @@ def main() -> None:
             "batch_accuracy": batch_accuracy,
             "batch_mean_reward": batch_mean_reward,
             "policy_entropy": policy_entropy,
+            "value_loss": float(value_loss.detach()),
             "gradient_norm": gradient_norm,
             "elapsed_seconds": time.perf_counter() - started,
         }
@@ -295,19 +405,30 @@ def main() -> None:
     policy.eval()
     after = _evaluate(
         policy, config, count=args.eval_count, seed=args.seed + 10_000,
-        device=device)
+        device=device, oracle_events=args.oracle_events,
+        external_history=args.external_history)
     reset = _evaluate(
         policy, config, count=args.eval_count, seed=args.seed + 20_000,
-        device=device, reset_history=True)
+        device=device, reset_history=True, oracle_events=args.oracle_events,
+        external_history=args.external_history)
     shuffled = _evaluate(
         policy, config, count=args.eval_count, seed=args.seed + 30_000,
-        device=device, shuffle_time=True)
+        device=device, shuffle_time=True, oracle_events=args.oracle_events,
+        external_history=args.external_history)
     report = {
         "experiment": "brainworkshop_vision_nback1_reward_only",
         "objective": (
             "supervised_diagnostic" if args.supervised_diagnostic
+            else "reward_only_value_baseline" if args.value_baseline
             else "reward_only"),
+        "encoder_checkpoint": str(args.encoder_in) if args.encoder_in else None,
+        "encoder_frozen": bool(args.freeze_encoder),
         "controller_frozen": frozen_controller is not None,
+        "oracle_events": bool(args.oracle_events),
+        "external_history": bool(args.external_history),
+        "relation_adapter_width": args.relation_adapter_width,
+        "event_memory_adapter_width": args.event_memory_adapter_width,
+        "retrieved_memory_adapter_width": args.retrieved_memory_adapter_width,
         "device": str(device),
         "config": config.__dict__,
         "seed": args.seed,
@@ -328,7 +449,8 @@ def main() -> None:
             "accepted_for_longer_run": (
                 after["accuracy"] > before["accuracy"] + 0.05
                 and after["accuracy"] > 0.60
-                and reset["accuracy"] < after["accuracy"] - 0.05),
+                and reset["accuracy"] < after["accuracy"] - 0.05
+                and shuffled["accuracy"] < after["accuracy"] - 0.05),
         },
     }
     args.report.parent.mkdir(parents=True, exist_ok=True)

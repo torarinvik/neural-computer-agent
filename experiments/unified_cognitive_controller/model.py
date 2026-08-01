@@ -148,6 +148,8 @@ class UnifiedCognitiveController(nn.Module):
             relation_adapter_width: int = 0,
             relation_adapter_gated: bool = False,
             relation_adapter_layer_norm: bool = False,
+            event_memory_adapter_width: int = 0,
+            retrieved_memory_adapter_width: int = 0,
             action_adapter_width: int = 0,
             action_adapter_gated: bool = False,
             action_adapter_into_intention: bool = False,
@@ -362,6 +364,33 @@ class UnifiedCognitiveController(nn.Module):
             nn.Linear(width * 3, intention_width),
             nn.Tanh(),
         )
+        # Optional generic comparison path. It exposes current event, RAM
+        # read, and their coordinate-wise interaction to a small adapter. No
+        # coordinate has semantic meaning; the module is a task-agnostic
+        # relation operator and its zero final projection preserves the base
+        # controller exactly until learning earns a residual.
+        self.event_memory_adapter = (
+            nn.Sequential(
+                nn.Linear(width * 3, event_memory_adapter_width),
+                nn.GELU(),
+                nn.Linear(event_memory_adapter_width, intention_width),
+            )
+            if event_memory_adapter_width else None
+        )
+        if self.event_memory_adapter is not None:
+            nn.init.zeros_(self.event_memory_adapter[-1].weight)
+            nn.init.zeros_(self.event_memory_adapter[-1].bias)
+        self.retrieved_memory_adapter = (
+            nn.Sequential(
+                nn.Linear(width * 3, retrieved_memory_adapter_width),
+                nn.GELU(),
+                nn.Linear(retrieved_memory_adapter_width, intention_width),
+            )
+            if retrieved_memory_adapter_width else None
+        )
+        if self.retrieved_memory_adapter is not None:
+            nn.init.zeros_(self.retrieved_memory_adapter[-1].weight)
+            nn.init.zeros_(self.retrieved_memory_adapter[-1].bias)
         # This is the replaceable device/protocol adapter. The controller emits
         # an abstract intention before this final mapping.
         self.actuator = nn.Linear(intention_width, ACTIONS)
@@ -979,6 +1008,14 @@ class UnifiedCognitiveController(nn.Module):
 
         combined = torch.cat([hidden, read, event], dim=-1)
         intention = self.intention(combined)
+        if self.event_memory_adapter is not None:
+            relation_features = torch.cat([event, read, event * read], dim=-1)
+            intention = intention + self.event_memory_adapter(relation_features)
+        if self.retrieved_memory_adapter is not None:
+            retrieved_features = torch.cat([
+                event, retrieved_memory, event * retrieved_memory], dim=-1)
+            intention = intention + self.retrieved_memory_adapter(
+                retrieved_features)
         if self.relation_adapter is not None:
             relation_features = torch.cat([state.hidden, event], dim=-1)
             relation_residual = self.relation_adapter(relation_features)

@@ -62,3 +62,30 @@ semantic labels), then repeat the short supervised ceiling and a value-baseline
 reward probe. A promotion still requires a held-out gain over the majority/fresh
 controls and a clear drop under history reset or counterfactual temporal
 scrambling.
+
+## Breakthrough: learned visual representation + generic one-step RAM
+
+The next localization rung succeeded twice independently. A visual encoder was
+first trained without semantic labels, actions, or verifier targets using only
+RGB frame reconstruction. Its throwaway pixel decoder was discarded. The
+frozen encoder then fed a generic one-step RAM snapshot (`retrieved_memory`)
+and a zero-initialized event×retrieved-memory adapter. The controller learned
+only from scalar reward.
+
+| seed | held-out accuracy | history reset | temporal shuffle | decision |
+|---|---:|---:|---:|---|
+| 44011 | 100.00% | 56.53% | 57.17% | pass |
+| 44012 | 100.00% | 56.57% | 57.98% | pass |
+
+Each run used 128 updates × 64 unique lifetimes, a two-position visual n-back-1
+curriculum, and 8,192 held-out trials. The 100% result is therefore dependent
+on the previous event and its order, not a fixed timing policy. The oracle-event
+control reached the same conclusion earlier, while the corrected oracle shuffle
+audit prevented a false positive caused by accidentally ignoring shuffled
+inputs.
+
+This is a real architecture milestone, but not yet a generalization claim:
+the encoder was pretrained on the two-position stream, and the RAM snapshot is
+currently a one-step diagnostic interface. The next promotion ladder is
+four-position visual n-back, then eight-position visual n-back, then audio and
+dual-stream n-back, preserving the same reset/shuffle/reversal gates.
