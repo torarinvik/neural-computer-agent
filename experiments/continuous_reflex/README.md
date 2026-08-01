@@ -1,5 +1,9 @@
 # Continuous noisy reflex arena
 
+> **Historical experiment:** The streamer/listener arrangement below tests one
+> component hypothesis; it is not the target system architecture. See the
+> [canonical amodal N-to-M specification](../../docs/AMODAL_N_TO_M_ARCHITECTURE.md).
+
 This isolated experiment extends the one-step reflex proof into longer, noisy
 sensor windows. Relevant audiovisual target/hazard cues are mixed with irrelevant
 screen flashes and sounds. Held-out trials shift cue appearance, audio frequencies,

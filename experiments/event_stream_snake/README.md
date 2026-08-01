@@ -1,5 +1,9 @@
 # Event-stream Snake proof of concept
 
+> **Historical experiment:** The streamer/listener arrangement below tests one
+> component hypothesis; it is not the target system architecture. See the
+> [canonical amodal N-to-M specification](../../docs/AMODAL_N_TO_M_ARCHITECTURE.md).
+
 This experiment intentionally overfits one audiovisual Snake environment to test a
 narrow question: can a trainable event adapter improve a completely frozen SmolVLM2
 listener while emitting fewer sensory tokens at lower latency?

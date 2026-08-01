@@ -6,9 +6,34 @@ Optimize verified reusable capability per unique experience. Prefer mechanisms
 that make later tasks faster to learn, not merely mechanisms that increase
 accuracy on an already trained task.
 
+## Normative architecture
+
+Follow `docs/AMODAL_N_TO_M_ARCHITECTURE.md`. The target boundary is:
+
+`N encoders -> amodal event bus -> one controller/memory -> intention bus -> M decoders`.
+
+Architecture changes must preserve these invariants:
+
+- encoder and decoder counts are variable at runtime and do not resize the
+  controller;
+- the controller consumes learned event tensors, never raw modality formats;
+- the controller emits learned intentions, never device/protocol formats;
+- encoders, controller, memory, and decoders have independently versioned and
+  replaceable interfaces;
+- simultaneous streams remain separately bindable rather than blindly averaged;
+- latent meanings emerge from verified experience and are not assigned to
+  coordinates or semantic fields by hand;
+- adding an adapter must not add a modality-specific reasoning branch.
+
+The current `self.vision -> step(frame)` path is explicitly legacy/current-state
+plumbing, not the target interface. Refactor it behavior-preservingly before
+claiming amodal support.
+
 ## Learner-visible information
 
-The deployed learner may use only:
+The deployed system's frontends may receive the following raw streams. The
+controller itself may receive only the resulting standardized learned events,
+never the raw modality formats or privileged metadata:
 
 - rendered vision, audio, or text streams;
 - its own opaque actions and exact logging propensities;
@@ -66,4 +91,3 @@ weights.
 - Add checksums to `artifacts/manifests/curated_checkpoints.sha256`.
 - Update the sample-efficiency ledger after every promoted or decisively
   rejected experiment.
-

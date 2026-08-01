@@ -1,5 +1,11 @@
 # Continual-learning decisions
 
+This policy is subordinate to the canonical
+[`../../docs/AMODAL_N_TO_M_ARCHITECTURE.md`](../../docs/AMODAL_N_TO_M_ARCHITECTURE.md)
+boundary. “One controller” means one sovereign modality-independent learner;
+replaceable encoders and decoders may be neural models but may not become
+task-solving branches or bypass the controller.
+
 This project optimizes verified reusable capability per interaction, not
 benchmark accuracy alone. Methods must remain compatible with one controller,
 unknown task boundaries, sensory-only inputs, opaque attempted actions, scalar

@@ -1,5 +1,10 @@
 # Emergent amodal concept space
 
+The canonical system-level interface is defined in
+[`../../docs/AMODAL_N_TO_M_ARCHITECTURE.md`](../../docs/AMODAL_N_TO_M_ARCHITECTURE.md).
+This file supplies representational motivation; the canonical document controls
+module boundaries and current-versus-target claims.
+
 ## Objective
 
 The agent's native internal output should be a learned, modality-independent
@@ -16,11 +21,11 @@ mapping, relation, and rule.
 ## Architectural constraint
 
 ```text
-vision encoder ─┐
-audio encoder ──┼─> shared latent workspace/memory ─┬─> action decoder
-text encoder ───┘                                  ├─> text decoder
-                                                   ├─> audio decoder
-                                                   └─> visual decoder
+encoder 1 ─┐
+encoder 2 ─┼─> variable-size amodal event bus ─> one controller/memory
+...       ─┤                                      └─> intention bus ─┬─> decoder 1
+encoder N ─┘                                                          ├─> ...
+                                                                      └─> decoder M
 ```
 
 The shared state is the agent's native representational currency. Environment
@@ -154,6 +159,12 @@ An amodal claim requires more than a decoder producing the right label.
   examples-to-threshold on later tasks.
 
 ## Near-term implementation
+
+The current `UnifiedCognitiveController` still owns its vision encoder and
+actuator and accepts one RGB frame per step. Separate Python submodules are not
+yet proof of amodal modularity. The first required change is a behavior-
+preserving extraction into independently checkpointed event and intention
+interfaces; only then should cross-modal experiments begin.
 
 Do not add image, speech, or text generation heads yet. The current action
 decoder is enough to test the central scientific claim cheaply.

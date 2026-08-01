@@ -1,5 +1,9 @@
 # Syllogimous Bitter Lesson experiment
 
+> **Historical experiment:** This folder records the architecture actually
+> tested at the time; it does not redefine the project target. See the
+> [canonical amodal N-to-M specification](../../docs/AMODAL_N_TO_M_ARCHITECTURE.md).
+
 This folder is deliberately separate from `syllogimous_latent_agent`. The
 hand-coded neural closure agent remains a diagnostic oracle; this experiment
 tests whether a generic neural policy can learn its own internal procedure.

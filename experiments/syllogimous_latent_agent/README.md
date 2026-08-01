@@ -1,5 +1,9 @@
 # Syllogimous latent agent
 
+> **Historical experiment:** This folder records the architecture actually
+> tested at the time; it does not redefine the project target. See the
+> [canonical amodal N-to-M specification](../../docs/AMODAL_N_TO_M_ARCHITECTURE.md).
+
 This experiment replaces autoregressive VLM control with a small recurrent latent
 agent. At inference, the model accepts only RGB frames, PCM samples, and a padding
 mask. Private premises, relations, answers, seeds, and game state are never model

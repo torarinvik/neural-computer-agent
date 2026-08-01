@@ -1,5 +1,15 @@
 # Unified cognitive controller
 
+> **Architecture status:** this experiment is the current vision-only
+> implementation, not the final modality boundary. The normative target is
+> `N encoders -> amodal event bus -> one controller/memory -> intention bus ->
+> M decoders`, specified in
+> [`../../docs/AMODAL_N_TO_M_ARCHITECTURE.md`](../../docs/AMODAL_N_TO_M_ARCHITECTURE.md).
+> Today `VisionEventEncoder` and the actuator are modular submodules but remain
+> owned, called, and checkpointed by `UnifiedCognitiveController`; one RGB frame
+> enters each step. Historical results below must not be described as audited
+> multimodal or amodal transfer.
+
 This isolated experiment begins the transition from separately trained
 primitive modules to one controller that learns within its recurrent state and
 external memory.
@@ -67,8 +77,9 @@ feedback-bearing support events cover both visible identities, making the
 private function uniquely inferable. Later queries carry no feedback. This is
 human-solvable without a task label and directly tests memory × perception.
 
-The same vision encoder, recurrent controller, generic workspace operations,
-latent intention, and replaceable actuator adapter process every trial. The
+The same **currently internal** vision encoder, recurrent controller, generic
+workspace operations, latent intention, and actuator submodule process every
+trial. The
 long-term memory interface is serializable but deliberately inactive until
 RAM-based few-shot behavior passes.
 

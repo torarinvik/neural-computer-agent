@@ -1,5 +1,11 @@
 # Few-shot forward transfer through latent memory
 
+> **Architecture scope:** This is historical evidence from a vision/audio
+> predecessor, not a competing system specification. The target architecture is
+> the variable N-input/M-output design in
+> [`../../docs/AMODAL_N_TO_M_ARCHITECTURE.md`](../../docs/AMODAL_N_TO_M_ARCHITECTURE.md).
+> Component names below describe the experiment that was actually run.
+
 This isolated experiment tests whether a small neural computer can reuse old latent knowledge to
 learn a new primitive attention rule faster. The controller receives only RGB frames, PCM, its own
 workspace, and its own latent external memory. Mappings, feature IDs, rules, and task metadata are

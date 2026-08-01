@@ -1,5 +1,9 @@
 # Immediate audiovisual reflex arena
 
+> **Historical experiment:** The streamer/listener arrangement below tests one
+> component hypothesis; it is not the target system architecture. See the
+> [canonical amodal N-to-M specification](../../docs/AMODAL_N_TO_M_ARCHITECTURE.md).
+
 This isolated experiment tests event-driven sensory learning with one-step credit
 assignment. Every balanced trial presents a target or hazard above, right, below, or
 left of a central agent. Targets require moving toward the cue; hazards require the

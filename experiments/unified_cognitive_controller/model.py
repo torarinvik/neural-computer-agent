@@ -1,4 +1,9 @@
-"""One recurrent controller coordinating sensory encoding and latent memory."""
+"""Current integrated vision prototype for the future amodal controller.
+
+This module intentionally preserves the proven legacy path while the encoder
+and actuator are extracted behind the neural-IR interfaces specified in
+``docs/AMODAL_N_TO_M_ARCHITECTURE.md``. It is not yet an N-input/M-output API.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -40,7 +45,7 @@ def full_memory_usage_features(
 
 
 class VisionEventEncoder(nn.Module):
-    """Small modality encoder; it receives pixels and emits one event latent."""
+    """Legacy-owned vision frontend; pixels in, one learned event latent out."""
 
     def __init__(self, width: int) -> None:
         super().__init__()
@@ -92,13 +97,19 @@ class ControllerOutput:
 
 
 class UnifiedCognitiveController(nn.Module):
-    """A single task-agnostic controller with a differentiable RAM workspace.
+    """Current integrated controller with a differentiable RAM workspace.
 
     There are no primitive-specific heads.  The same encoder, recurrent cell,
     workspace operations, latent intention, and actuator adapter process every
     trial. Persistent-memory keys and values are exposed for the later disk
     rung, but disk writes are deliberately disabled in the first fast-learning
     experiment.
+
+    This class still owns ``VisionEventEncoder`` and its actuator and accepts a
+    single RGB frame per step. The target controller will instead consume
+    variable-size collections of external amodal events and expose intentions
+    to independently checkpointed output adapters. Do not cite this class alone
+    as proof of amodal N-to-M support.
     """
 
     def __init__(

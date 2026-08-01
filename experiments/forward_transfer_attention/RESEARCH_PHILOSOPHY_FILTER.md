@@ -1,5 +1,11 @@
 # Research filter: emergent learning without semantic labels
 
+This philosophy is implemented through the module boundaries and audits in the
+canonical
+[`../../docs/AMODAL_N_TO_M_ARCHITECTURE.md`](../../docs/AMODAL_N_TO_M_ARCHITECTURE.md)
+specification. If terminology differs, the canonical document controls the
+target architecture and this file controls the zero-semantic-label filter.
+
 ## Non-negotiable principle
 
 The system must discover its own useful representations from experience. We do

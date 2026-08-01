@@ -1,5 +1,9 @@
 # Real-time audiovisual Syllogimous
 
+> **Historical experiment:** This folder records the architecture actually
+> tested at the time; it does not redefine the project target. See the
+> [canonical amodal N-to-M specification](../../docs/AMODAL_N_TO_M_ARCHITECTURE.md).
+
 An isolated pixels/PCM-only relational-reasoning environment inspired by
 Syllogimous v3. See [CONTRACT.md](CONTRACT.md) for the human-equivalent timing and
 agent-boundary rules.

@@ -1,5 +1,11 @@
 # Script-alignment experimental ladder
 
+All architecture terms in this ladder use the normative
+[`../../docs/AMODAL_N_TO_M_ARCHITECTURE.md`](../../docs/AMODAL_N_TO_M_ARCHITECTURE.md)
+definition. In particular, the final target permits variable N simultaneous or
+asynchronous input encoders and variable M output decoders; the present
+vision-only integrated model is a migration source, not an amodal completion.
+
 The project now distinguishes a collection of successful descendants from one
 continually growing agent.  A capability counts toward the video-script claim
 only when the same immutable checkpoint passes it alongside every previously
@@ -36,12 +42,31 @@ that remains passed at every later prefix.  Architecture reuse alone does not
 count: inherited memory must reduce stable bits-to-threshold without violating
 retention.
 
-## Gate 3: amodal decoder swap
+## Gate 3: extracted neural IR and decoder fan-out
+
+The vision encoder and actuator are externally owned and independently
+checkpointed. The refactored one-event/one-action path must be bit-identical to
+the current integrated model before any new modality is trained.
 
 One latent intention is connected to independently trained output adapters
 (opaque action, integer/bit code, and audio event).  Replacing or permuting an
 adapter may require adapting that thin decoder, but must not require relearning
-the controller-side concept.
+the controller-side concept. Multiple decoders must be able to consume the same
+intention simultaneously.
+
+## Gate 4: variable N-input composition
+
+The frozen controller accepts a variable-size event collection with no fixed
+modality slots. Aligned redundant streams should improve sample efficiency;
+shuffled, delayed, missing, duplicated, and noisy streams must behave
+predictably. A complementary-evidence task must require two encoders so that
+neither frontend can solve it alone.
+
+## Gate 5: new frontend/backend qualification
+
+A previously unseen encoder and decoder are trained as neural-IR adapters while
+the controller remains frozen. Existing cognitive skills must become available
+through the new input and output without relearning those skills in the core.
 
 ## Standing rules
 

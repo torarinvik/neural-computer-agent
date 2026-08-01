@@ -1,5 +1,9 @@
 # Growing Neural Computer
 
+> **Historical experiment:** This folder records an earlier controller/memory
+> architecture. Its results remain evidence, but the current target is defined
+> by the [canonical amodal N-to-M specification](../../docs/AMODAL_N_TO_M_ARCHITECTURE.md).
+
 This experiment tests a different scaling hypothesis from the existing fixed-weight reasoners:
 keep a relatively small controller, but let its learned external memory grow with experience.
 It is isolated in this folder and does not modify or overwrite older models or checkpoints.

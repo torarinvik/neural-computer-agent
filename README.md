@@ -7,11 +7,39 @@ outcomes.
 Audited model checkpoints are stored in the private Hugging Face repository:
 <https://huggingface.co/torarin87/neural-computer-agent>.
 
-The learner receives rendered vision/audio/text streams, its own opaque
-actions, its own latent state and memory, and scalar verifier outcomes. It
-does not receive game state, coordinates, semantic task labels, rule IDs,
-correct-action labels, English chain-of-thought, or counterfactual labels for
-actions it did not attempt.
+The whole system's frontends receive rendered vision/audio/text streams. The
+controller receives only their learned event representations, its own opaque
+actions, its own latent state and memory, and scalar verifier outcomes. Neither
+the controller nor its adapters receive game state, coordinates, semantic task
+labels, rule IDs, correct-action labels, English chain-of-thought, or
+counterfactual labels for actions it did not attempt.
+
+## Canonical architecture
+
+The target is an **amodal N-to-M neural computer**:
+
+```text
+N modality-specific encoders -> shared neural event bus
+                              -> one modality-independent controller
+                              -> shared intention bus -> M decoders/actuators
+```
+
+Both input and output counts vary at runtime. Encoders are learned frontends;
+decoders and actuators are learned or calibrated backends. Adding a sensor or
+output protocol must not resize the controller or add a modality-specific
+reasoning branch. This is analogous to many language frontends and machine
+backends sharing LLVM IR, except that the semantic content of our neural IR is
+learned rather than hand-specified.
+
+The complete normative specification, current implementation gap, terminology,
+and required causal audits are in
+[`docs/AMODAL_N_TO_M_ARCHITECTURE.md`](docs/AMODAL_N_TO_M_ARCHITECTURE.md).
+
+**Current-status boundary:** today, the vision encoder and actuator are distinct
+submodules but still live inside `UnifiedCognitiveController`; `step()` accepts
+one RGB frame and the checkpoint bundles all three components. Current results
+are therefore vision-grounded controller results, not a demonstrated amodal
+N-input/M-output system.
 
 ## North star
 

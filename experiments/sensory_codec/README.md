@@ -1,5 +1,9 @@
 # Sensory codec v0: primitive-game suite
 
+> **Historical experiment:** The streamer/listener arrangement below tests one
+> component hypothesis; it is not the target system architecture. See the
+> [canonical amodal N-to-M specification](../../docs/AMODAL_N_TO_M_ARCHITECTURE.md).
+
 This isolated experiment tests whether recurrent sensory streamers learn a compact,
 temporally useful world representation, rather than merely a private action code.
 It does **not** feed learned claims into Screenwatch's trusted ledger.
