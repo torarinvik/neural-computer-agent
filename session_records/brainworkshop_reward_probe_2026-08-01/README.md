@@ -107,3 +107,21 @@ increased only after the four-position supervised ceiling passed at 75.73% with
 the same causal controls. This is the expected gradual-learning pattern: the
 primitive is learnable, but its reward-only ignition threshold grows with
 difficulty.
+
+## Eight-position visual promotion
+
+The full eight-position visual stream also passed with the same architecture
+and scalar reward. A fresh no-label reconstruction encoder was trained for the
+eight-position stream and discarded its pixel decoder before controller
+training.
+
+| seed | updates | held-out accuracy | history reset | temporal shuffle | decision |
+|---|---:|---:|---:|---:|---|
+| 44031 | 256 | 66.09% | 56.58% | 57.10% | pass |
+| 44032 | 256 | 70.85% | 56.54% | 57.51% | pass |
+
+The result is lower and more variable than four positions, but the causal gap
+survives replication. The visual ladder is therefore complete: the same
+controller/RAM mechanism learns 1-back comparisons over 2, 4, and 8 visual
+locations. Audio and dual-stream composition are now the next untested
+frontier.
