@@ -331,10 +331,24 @@ lifetimes, and the promoted decoder passed at 4,096. Simultaneous primary and
 protocol outputs passed intention-shuffle, zero-intention, reward-shuffle, and
 parameter-immutability controls.
 
+On the input side, `AmodalEventCollection` now carries a padded event axis plus
+a per-example presence mask and generic confidence. `AmodalInputBus` performs
+permutation-invariant confidence attention and an optional learned set
+residual. A structural diversity gate keeps that residual exactly zero for N=1
+and identical duplicates, even after learning.
+
+The first synchronous complementary N=2 task passes. Two separately encoded
+partial views are individually at chance, but a 4,817-parameter generic bus
+trained only from attempted actions and scalar outcomes reaches 96.46% when
+their evidence is combined. Three seeds replicate bars acquisition after
+768–1,344 verifier bits. One promoted seed also transfers above 90% to unseen
+diamond and dot-pair renderings; that cross-renderer transfer is not yet
+replicated at the strict gate.
+
 This is still **not yet the target architecture** because:
 
-- only one encoded visual event is accepted per controller update;
-- variable-size event sets and asynchronous input composition do not exist;
+- synchronous event sets have only been behaviorally qualified at N=1 and N=2;
+- delayed and asynchronous input composition are not yet qualified;
 - the recurrent compatibility API still feeds canonical action IDs back into
   the controller, so a new physical protocol requires a thin lowering for
   closed-loop use;
@@ -343,7 +357,8 @@ This is still **not yet the target architecture** because:
 - no audio or trained language frontend/backend has passed causal audits.
 
 Therefore current results establish extracted vision-grounded neural IR,
-cognition, memory, and audited M-output fan-out—not amodal N-input composition.
+cognition, memory, audited M-output fan-out, and synchronous complementary N=2
+composition—not yet unrestricted asynchronous amodal operation.
 
 ## Behavior-preserving migration order
 
@@ -355,7 +370,8 @@ cognition, memory, and audited M-output fan-out—not amodal N-input composition
    intention without losing any admitted capability.~~
 6. ~~Add a second output adapter and prove simultaneous M-output fan-out from
    the clean base intention.~~
-7. Accept variable-size visual event sets, then asynchronous events.
+7. ~~Accept variable-size synchronous visual event sets.~~ Then qualify delayed
+   and asynchronous events.
 8. Add a second synthetic encoder with redundant evidence and measure learning
    acceleration, dropout robustness, and shuffle sensitivity.
 9. Require complementary evidence split across two encoders.

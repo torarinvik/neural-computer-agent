@@ -1,0 +1,149 @@
+{
+  "bus_saved": true,
+  "configuration": {
+    "batch_size": 32,
+    "bus_out": "/tmp/inputbus_h16_lr0.01_s144001.pt",
+    "checkpoint": "artifacts/checkpoints/unified_repertoire_span2_amodal_intention_seed122005.pt",
+    "device": "mps",
+    "eval_count": 128,
+    "exploration": 0.25,
+    "hidden": 16,
+    "learning_rate": 0.01,
+    "report": "/tmp/inputbus_h16_lr0.01_s144001.json",
+    "seed": 144001,
+    "shuffle_outcomes": false,
+    "threshold": 0.85,
+    "updates": 12
+  },
+  "controller_and_adapters_unchanged": true,
+  "curve": [
+    {
+      "attempted_accuracy": null,
+      "fused_accuracy": 0.5874999761581421,
+      "loss": null,
+      "update": 0,
+      "verifier_bits": 0
+    },
+    {
+      "attempted_accuracy": 0.6197916666666666,
+      "fused_accuracy": 0.7109375,
+      "loss": 1.4929348230361938,
+      "update": 1,
+      "verifier_bits": 192
+    },
+    {
+      "attempted_accuracy": 0.6510416666666666,
+      "fused_accuracy": 0.692187488079071,
+      "loss": 0.8047259449958801,
+      "update": 2,
+      "verifier_bits": 384
+    },
+    {
+      "attempted_accuracy": 0.734375,
+      "fused_accuracy": 0.7890625,
+      "loss": 1.011600375175476,
+      "update": 3,
+      "verifier_bits": 576
+    },
+    {
+      "attempted_accuracy": 0.796875,
+      "fused_accuracy": 0.8531249761581421,
+      "loss": 0.3999141454696655,
+      "update": 4,
+      "verifier_bits": 768
+    },
+    {
+      "attempted_accuracy": 0.8541666666666666,
+      "fused_accuracy": 0.887499988079071,
+      "loss": 0.16803014278411865,
+      "update": 5,
+      "verifier_bits": 960
+    },
+    {
+      "attempted_accuracy": 0.9114583333333334,
+      "fused_accuracy": 0.901562511920929,
+      "loss": 0.09177681803703308,
+      "update": 6,
+      "verifier_bits": 1152
+    },
+    {
+      "attempted_accuracy": 0.8645833333333334,
+      "fused_accuracy": 0.9281250238418579,
+      "loss": 0.09038832783699036,
+      "update": 7,
+      "verifier_bits": 1344
+    },
+    {
+      "attempted_accuracy": 0.875,
+      "fused_accuracy": 0.9453125,
+      "loss": 0.018680769950151443,
+      "update": 8,
+      "verifier_bits": 1536
+    },
+    {
+      "attempted_accuracy": 0.8645833333333334,
+      "fused_accuracy": 0.9296875,
+      "loss": 0.0025870411191135645,
+      "update": 9,
+      "verifier_bits": 1728
+    },
+    {
+      "attempted_accuracy": 0.8854166666666666,
+      "fused_accuracy": 0.9281250238418579,
+      "loss": 0.001659154542721808,
+      "update": 10,
+      "verifier_bits": 1920
+    },
+    {
+      "attempted_accuracy": 0.8489583333333334,
+      "fused_accuracy": 0.9156249761581421,
+      "loss": 0.00029600938432849944,
+      "update": 11,
+      "verifier_bits": 2112
+    },
+    {
+      "attempted_accuracy": 0.875,
+      "fused_accuracy": 0.910937488079071,
+      "loss": 0.00018836575327441096,
+      "update": 12,
+      "verifier_bits": 2304
+    }
+  ],
+  "final": {
+    "contradictory_partner_accuracy": 0.13515624403953552,
+    "duplicate_actions_exact": true,
+    "duplicate_max_logit_difference": 0.0,
+    "duplicate_n2_accuracy": 0.9703124761581421,
+    "full_n1_accuracy": 0.9703124761581421,
+    "fused_accuracy": 0.895312488079071,
+    "shuffled_partner_accuracy": 0.524218738079071,
+    "stream_a_accuracy": 0.5406249761581421,
+    "stream_b_accuracy": 0.47265625
+  },
+  "forbidden": [
+    "correct action",
+    "unattempted outcomes",
+    "task identity",
+    "object identity or relation labels"
+  ],
+  "initial": {
+    "contradictory_partner_accuracy": 0.21250000596046448,
+    "duplicate_actions_exact": true,
+    "duplicate_max_logit_difference": 0.0,
+    "duplicate_n2_accuracy": 0.9750000238418579,
+    "full_n1_accuracy": 0.9750000238418579,
+    "fused_accuracy": 0.5874999761581421,
+    "shuffled_partner_accuracy": 0.4828124940395355,
+    "stream_a_accuracy": 0.542187511920929,
+    "stream_b_accuracy": 0.4703125059604645
+  },
+  "learner_visible": [
+    "two encoded event payloads",
+    "own attempted opaque action",
+    "scalar success of that attempted action"
+  ],
+  "passed": true,
+  "schema": "complementary-amodal-input-bus-bandit-v1",
+  "stable_bits_to_threshold": 768,
+  "wall_seconds": 11.26477187499404
+}

@@ -7,10 +7,10 @@
 > [`../../docs/AMODAL_N_TO_M_ARCHITECTURE.md`](../../docs/AMODAL_N_TO_M_ARCHITECTURE.md).
 > The legacy class retains its bundled API, while `ExtractedAmodalRuntime` now
 > owns the vision encoder, controller, and decoder separately and reproduces the
-> current checkpoint exactly. One visual event still enters each step. Multiple
-> output backends now consume one intention simultaneously, but variable-N
-> input composition is not yet implemented. Historical results below must not
-> be described as audited multimodal transfer.
+> current checkpoint exactly. Multiple output backends consume one intention
+> simultaneously, and a generic set bus now composes synchronous N=1/N=2 visual
+> events. Delayed/asynchronous and cross-modality composition remain unproven.
+> Historical results below must not be described as audited multimodal transfer.
 
 ## Extracted neural-IR migration rung (2026-08-01)
 
@@ -84,7 +84,35 @@ Promoted artifact:
 
 Honest boundary: the historical recurrent API still consumes canonical action
 IDs. Alternate physical protocols require a thin command-to-canonical-action
-lowering when they drive that legacy loop. Variable-N input is the next gate.
+lowering when they drive that legacy loop. Asynchronous input is the next gate.
+
+## Complementary N=2 input composition (2026-08-01)
+
+`AmodalEventCollection` and `AmodalInputBus` now support runtime-variable event
+cardinality without resizing the controller. N=1 and identical duplicates are
+structurally bit-exact, including after the learned residual changes.
+
+A 4,817-parameter permutation-invariant set residual learned to combine two
+separately encoded partial views of a relation scene. It received only its own
+attempted action and scalar outcome; the frozen controller and adapters received
+no task, modality, identity, relation, or answer labels. Three seeds crossed
+the stable 85% gate after 768–1,344 verifier bits.
+
+At 4,096 held-out lifetimes the promoted bus scored 96.46% on bars versus
+55.84% and 45.02% for either stream alone. Shuffling the partner returned to
+51.77%; contradictory evidence caused 86.67% prediction flips. Without further
+training it scored 90.96% on diamonds and 95.63% on dot pairs. Strict
+cross-renderer transfer did not replicate across every seed, so only bars
+composition is a replicated claim.
+
+Promoted artifact:
+
+- `artifacts/checkpoints/amodal_input_bus_complementary_seed145001.pt`
+- SHA-256 `4ae96f60b99107834c27840b8841e8b2ba20c10e6565c220b5607fb9c80d3c71`
+- evidence in `session_records/amodal_input_composition_2026-08-01/`
+
+The next boundary is Gate 4b: gradual cross-renderer consolidation followed by
+delayed, noisy, missing, and asynchronous streams.
 
 Convert a legacy checkpoint with:
 

@@ -3,10 +3,11 @@ from pathlib import Path
 import pytest
 import torch
 
-from .amodal_interface import AmodalEvent, IntentEvent
+from .amodal_interface import AmodalEvent, AmodalEventCollection, IntentEvent
 from .amodal_runtime import (
     EXTRACTED_CHECKPOINT_FORMAT,
     ActionIntentDecoder,
+    AmodalInputBus,
     AmodalOutputBus,
     ExtractedAmodalRuntime,
     OpaqueProtocolDecoder,
@@ -311,3 +312,56 @@ def test_output_bus_cardinality_is_runtime_variable() -> None:
     outputs = bus(intention)
     assert outputs["one"].shape == (3, 2)
     assert outputs["two"].shape == (3, 3)
+
+
+def test_input_bus_preserves_one_event_and_identical_duplicates_exactly() -> None:
+    torch.manual_seed(1706)
+    payload = torch.randn(7, 12)
+    event = AmodalEvent(payload)
+    bus = AmodalInputBus(12)
+    single = bus([event])
+    duplicate = bus([event, event])
+    assert torch.equal(single.payload, payload)
+    assert torch.equal(duplicate.payload, payload)
+    assert torch.equal(single.confidence, torch.ones(7))
+    assert torch.equal(duplicate.confidence, torch.ones(7))
+
+
+def test_input_bus_supports_per_example_cardinality_masks() -> None:
+    payload = torch.tensor(
+        [
+            [[2.0, 4.0], [8.0, 12.0]],
+            [[3.0, 5.0], [99.0, 99.0]],
+        ]
+    )
+    collection = AmodalEventCollection(
+        payload=payload,
+        present=torch.tensor([[True, True], [True, False]]),
+        confidence=torch.ones(2, 2),
+    )
+    combined = AmodalInputBus(2)(collection)
+    assert torch.equal(combined.payload[0], torch.tensor([5.0, 8.0]))
+    assert torch.equal(combined.payload[1], torch.tensor([3.0, 5.0]))
+
+
+def test_input_bus_confidence_is_generic_attention_prior() -> None:
+    collection = AmodalEventCollection(
+        payload=torch.tensor([[[0.0], [10.0]]]),
+        present=torch.ones(1, 2, dtype=torch.bool),
+        confidence=torch.tensor([[3.0, 1.0]]),
+    )
+    combined = AmodalInputBus(1)(collection)
+    assert torch.allclose(combined.payload, torch.tensor([[2.5]]))
+    assert torch.allclose(combined.confidence, torch.tensor([2.5]))
+
+
+def test_learned_input_residual_cannot_change_single_or_duplicate_events() -> None:
+    torch.manual_seed(1707)
+    event = AmodalEvent(torch.randn(4, 6))
+    bus = AmodalInputBus(6, residual_hidden=5)
+    assert bus.residual is not None
+    with torch.no_grad():
+        for parameter in bus.parameters():
+            parameter.normal_()
+    assert torch.equal(bus([event]).payload, event.payload)
+    assert torch.equal(bus([event, event]).payload, event.payload)

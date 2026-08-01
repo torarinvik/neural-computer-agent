@@ -71,8 +71,18 @@ controls failed. A runtime-variable output bus exercised zero, one, and both
 decoders, with the inherited output bit-exact. See
 `../../session_records/amodal_output_fanout_2026-08-01/`.
 
-**Gate 4 next:** preserve N=1 exactly, then qualify redundant and complementary
-N=2 event composition.
+**Gate 4a passed (2026-08-01):** a runtime-variable event collection and a
+generic permutation-invariant set bus preserve N=1 and identical duplicates
+bit-for-bit. A 4,817-parameter set residual learned complementary N=2 relation
+composition from attempted actions and scalar outcomes while the controller
+and all adapters remained frozen. Three seeds crossed after 768–1,344 verifier
+bits. The promoted bus scored 96.46% on bars while either stream alone remained
+near chance, and transferred above 90% to unseen diamonds and dot pairs.
+Shuffled partners stayed at chance and contradictory partners causally reversed
+predictions. See `../../session_records/amodal_input_composition_2026-08-01/`.
+
+**Gate 4b next:** replicate cross-renderer transfer, then qualify delayed,
+missing, noisy, and asynchronous event streams without breaking exact N=1.
 
 One latent intention is connected to independently trained output adapters
 (opaque action, integer/bit code, and audio event).  Replacing or permuting an

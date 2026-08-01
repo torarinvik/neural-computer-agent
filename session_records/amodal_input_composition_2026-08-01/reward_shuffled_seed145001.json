@@ -1,0 +1,149 @@
+{
+  "bus_saved": false,
+  "configuration": {
+    "batch_size": 32,
+    "bus_out": "/tmp/inputbus_h16_shuffled_s145001.pt",
+    "checkpoint": "artifacts/checkpoints/unified_repertoire_span2_amodal_intention_seed122005.pt",
+    "device": "mps",
+    "eval_count": 128,
+    "exploration": 0.25,
+    "hidden": 16,
+    "learning_rate": 0.01,
+    "report": "/tmp/inputbus_h16_shuffled_s145001.json",
+    "seed": 145001,
+    "shuffle_outcomes": true,
+    "threshold": 0.85,
+    "updates": 12
+  },
+  "controller_and_adapters_unchanged": true,
+  "curve": [
+    {
+      "attempted_accuracy": null,
+      "fused_accuracy": 0.567187488079071,
+      "loss": null,
+      "update": 0,
+      "verifier_bits": 0
+    },
+    {
+      "attempted_accuracy": 0.671875,
+      "fused_accuracy": 0.6265624761581421,
+      "loss": 4.665831089019775,
+      "update": 1,
+      "verifier_bits": 192
+    },
+    {
+      "attempted_accuracy": 0.7083333333333334,
+      "fused_accuracy": 0.48124998807907104,
+      "loss": 3.815375566482544,
+      "update": 2,
+      "verifier_bits": 384
+    },
+    {
+      "attempted_accuracy": 0.5885416666666666,
+      "fused_accuracy": 0.515625,
+      "loss": 2.75852108001709,
+      "update": 3,
+      "verifier_bits": 576
+    },
+    {
+      "attempted_accuracy": 0.4739583333333333,
+      "fused_accuracy": 0.520312488079071,
+      "loss": 1.8457375764846802,
+      "update": 4,
+      "verifier_bits": 768
+    },
+    {
+      "attempted_accuracy": 0.5989583333333334,
+      "fused_accuracy": 0.5249999761581421,
+      "loss": 1.9225562810897827,
+      "update": 5,
+      "verifier_bits": 960
+    },
+    {
+      "attempted_accuracy": 0.5260416666666666,
+      "fused_accuracy": 0.5609375238418579,
+      "loss": 2.0038928985595703,
+      "update": 6,
+      "verifier_bits": 1152
+    },
+    {
+      "attempted_accuracy": 0.5208333333333334,
+      "fused_accuracy": 0.574999988079071,
+      "loss": 1.5093454122543335,
+      "update": 7,
+      "verifier_bits": 1344
+    },
+    {
+      "attempted_accuracy": 0.4166666666666667,
+      "fused_accuracy": 0.573437511920929,
+      "loss": 1.735064148902893,
+      "update": 8,
+      "verifier_bits": 1536
+    },
+    {
+      "attempted_accuracy": 0.421875,
+      "fused_accuracy": 0.5765625238418579,
+      "loss": 1.9810336828231812,
+      "update": 9,
+      "verifier_bits": 1728
+    },
+    {
+      "attempted_accuracy": 0.3854166666666667,
+      "fused_accuracy": 0.581250011920929,
+      "loss": 2.278081178665161,
+      "update": 10,
+      "verifier_bits": 1920
+    },
+    {
+      "attempted_accuracy": 0.4166666666666667,
+      "fused_accuracy": 0.581250011920929,
+      "loss": 1.7762771844863892,
+      "update": 11,
+      "verifier_bits": 2112
+    },
+    {
+      "attempted_accuracy": 0.4114583333333333,
+      "fused_accuracy": 0.578125,
+      "loss": 1.7108429670333862,
+      "update": 12,
+      "verifier_bits": 2304
+    }
+  ],
+  "final": {
+    "contradictory_partner_accuracy": 0.5640624761581421,
+    "duplicate_actions_exact": true,
+    "duplicate_max_logit_difference": 0.0,
+    "duplicate_n2_accuracy": 0.9781249761581421,
+    "full_n1_accuracy": 0.9781249761581421,
+    "fused_accuracy": 0.574999988079071,
+    "shuffled_partner_accuracy": 0.47343748807907104,
+    "stream_a_accuracy": 0.547656238079071,
+    "stream_b_accuracy": 0.43437498807907104
+  },
+  "forbidden": [
+    "correct action",
+    "unattempted outcomes",
+    "task identity",
+    "object identity or relation labels"
+  ],
+  "initial": {
+    "contradictory_partner_accuracy": 0.1796875,
+    "duplicate_actions_exact": true,
+    "duplicate_max_logit_difference": 0.0,
+    "duplicate_n2_accuracy": 0.96875,
+    "full_n1_accuracy": 0.96875,
+    "fused_accuracy": 0.567187488079071,
+    "shuffled_partner_accuracy": 0.5,
+    "stream_a_accuracy": 0.5140625238418579,
+    "stream_b_accuracy": 0.41093748807907104
+  },
+  "learner_visible": [
+    "two encoded event payloads",
+    "own attempted opaque action",
+    "scalar success of that attempted action"
+  ],
+  "passed": false,
+  "schema": "complementary-amodal-input-bus-bandit-v1",
+  "stable_bits_to_threshold": null,
+  "wall_seconds": 3.025203416997101
+}

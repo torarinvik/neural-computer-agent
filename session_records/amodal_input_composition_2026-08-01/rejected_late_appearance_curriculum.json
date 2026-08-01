@@ -1,0 +1,183 @@
+{
+  "bus_saved": false,
+  "configuration": {
+    "batch_size": 32,
+    "bus_out": "/tmp/inputbus_curr_s153201.pt",
+    "checkpoint": "artifacts/checkpoints/unified_repertoire_span2_amodal_intention_seed122005.pt",
+    "device": "mps",
+    "eval_count": 128,
+    "exploration": 0.25,
+    "hidden": 16,
+    "learning_rate": 0.01,
+    "report": "/tmp/inputbus_curr_s153201.json",
+    "seed": 153201,
+    "shuffle_outcomes": false,
+    "threshold": 0.85,
+    "training_appearances": [
+      "bars",
+      "bars",
+      "bars",
+      "bars",
+      "bars",
+      "bars",
+      "bars",
+      "bars",
+      "diamonds",
+      "dot_pairs",
+      "diamonds",
+      "dot_pairs"
+    ],
+    "updates": 12
+  },
+  "controller_and_adapters_unchanged": true,
+  "curve": [
+    {
+      "attempted_accuracy": null,
+      "fused_accuracy": 0.589062511920929,
+      "loss": null,
+      "update": 0,
+      "verifier_bits": 0
+    },
+    {
+      "attempted_accuracy": 0.6770833333333334,
+      "fused_accuracy": 0.7015625238418579,
+      "loss": 1.5974864959716797,
+      "training_appearance": "bars",
+      "update": 1,
+      "verifier_bits": 192
+    },
+    {
+      "attempted_accuracy": 0.65625,
+      "fused_accuracy": 0.7124999761581421,
+      "loss": 1.0724738836288452,
+      "training_appearance": "bars",
+      "update": 2,
+      "verifier_bits": 384
+    },
+    {
+      "attempted_accuracy": 0.6302083333333334,
+      "fused_accuracy": 0.7718750238418579,
+      "loss": 1.2535406351089478,
+      "training_appearance": "bars",
+      "update": 3,
+      "verifier_bits": 576
+    },
+    {
+      "attempted_accuracy": 0.7239583333333334,
+      "fused_accuracy": 0.840624988079071,
+      "loss": 0.7091073393821716,
+      "training_appearance": "bars",
+      "update": 4,
+      "verifier_bits": 768
+    },
+    {
+      "attempted_accuracy": 0.796875,
+      "fused_accuracy": 0.8843749761581421,
+      "loss": 0.2419259399175644,
+      "training_appearance": "bars",
+      "update": 5,
+      "verifier_bits": 960
+    },
+    {
+      "attempted_accuracy": 0.8333333333333334,
+      "fused_accuracy": 0.909375011920929,
+      "loss": 0.1255122721195221,
+      "training_appearance": "bars",
+      "update": 6,
+      "verifier_bits": 1152
+    },
+    {
+      "attempted_accuracy": 0.84375,
+      "fused_accuracy": 0.921875,
+      "loss": 0.14542904496192932,
+      "training_appearance": "bars",
+      "update": 7,
+      "verifier_bits": 1344
+    },
+    {
+      "attempted_accuracy": 0.8958333333333334,
+      "fused_accuracy": 0.9624999761581421,
+      "loss": 0.05466432496905327,
+      "training_appearance": "bars",
+      "update": 8,
+      "verifier_bits": 1536
+    },
+    {
+      "attempted_accuracy": 0.8854166666666666,
+      "fused_accuracy": 0.987500011920929,
+      "loss": 0.1743578314781189,
+      "training_appearance": "diamonds",
+      "update": 9,
+      "verifier_bits": 1728
+    },
+    {
+      "attempted_accuracy": 0.8229166666666666,
+      "fused_accuracy": 0.971875011920929,
+      "loss": 5.7056033256230876e-05,
+      "training_appearance": "dot_pairs",
+      "update": 10,
+      "verifier_bits": 1920
+    },
+    {
+      "attempted_accuracy": 0.890625,
+      "fused_accuracy": 0.9234374761581421,
+      "loss": 0.007826118730008602,
+      "training_appearance": "diamonds",
+      "update": 11,
+      "verifier_bits": 2112
+    },
+    {
+      "attempted_accuracy": 0.875,
+      "fused_accuracy": 0.8656250238418579,
+      "loss": 1.821096520870924e-05,
+      "training_appearance": "dot_pairs",
+      "update": 12,
+      "verifier_bits": 2304
+    }
+  ],
+  "final": {
+    "contradictory_partner_accuracy": 0.21718749403953552,
+    "contradictory_prediction_flip_rate": 0.6546875238418579,
+    "duplicate_actions_exact": true,
+    "duplicate_max_logit_difference": 0.0,
+    "duplicate_n2_accuracy": 0.9742187261581421,
+    "full_n1_accuracy": 0.9742187261581421,
+    "fused_accuracy": 0.871874988079071,
+    "permuted_stream_order_accuracy": 0.871874988079071,
+    "permuted_stream_order_actions_exact": true,
+    "permuted_stream_order_max_logit_difference": 0.0,
+    "shuffled_partner_accuracy": 0.53125,
+    "stream_a_accuracy": 0.543749988079071,
+    "stream_b_accuracy": 0.46015626192092896
+  },
+  "forbidden": [
+    "correct action",
+    "unattempted outcomes",
+    "task identity",
+    "object identity or relation labels"
+  ],
+  "initial": {
+    "contradictory_partner_accuracy": 0.1953125,
+    "contradictory_prediction_flip_rate": 0.4312500059604645,
+    "duplicate_actions_exact": true,
+    "duplicate_max_logit_difference": 0.0,
+    "duplicate_n2_accuracy": 0.9703124761581421,
+    "full_n1_accuracy": 0.9703124761581421,
+    "fused_accuracy": 0.589062511920929,
+    "permuted_stream_order_accuracy": 0.589062511920929,
+    "permuted_stream_order_actions_exact": true,
+    "permuted_stream_order_max_logit_difference": 0.0,
+    "shuffled_partner_accuracy": 0.504687488079071,
+    "stream_a_accuracy": 0.565625011920929,
+    "stream_b_accuracy": 0.44999998807907104
+  },
+  "learner_visible": [
+    "two encoded event payloads",
+    "own attempted opaque action",
+    "scalar success of that attempted action"
+  ],
+  "passed": false,
+  "schema": "complementary-amodal-input-bus-bandit-v1",
+  "stable_bits_to_threshold": 960,
+  "wall_seconds": 4.008442749967799
+}

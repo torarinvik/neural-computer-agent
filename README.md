@@ -47,9 +47,15 @@ output bus now fans that clean intention into the inherited action decoder and
 an independently reward-calibrated reversed protocol decoder simultaneously.
 Three decoder seeds crossed after 64 verifier bits and passed the five-skill
 closed loop; reward-shuffled and intention-ablation controls failed. The system
-still accepts only one visual event per controller update, and its legacy
-feedback API consumes canonical action IDs. Current results therefore establish
-audited M-output fan-out, not yet full amodal N-input composition.
+now also accepts runtime-variable synchronous event collections through a
+generic set bus. A 4,817-parameter residual learned complementary N=2 relation
+composition from scalar outcomes: 96.46% fused accuracy versus 55.84%/45.02%
+for either stream alone, with three acquisition seeds crossing after
+768–1,344 verifier bits. The selected bus transfers above 90% to two unseen
+renderers, although that transfer is not yet replicated. The legacy feedback
+API still consumes canonical action IDs, and delayed/asynchronous streams remain
+unqualified. Current results therefore establish synchronous N=2 and M-output
+operation, not yet unrestricted amodal N-to-M behavior.
 
 ## North star
 

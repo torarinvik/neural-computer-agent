@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import copy
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +14,7 @@ from .amodal_interface import (
     INTENTION_SCHEMA,
     NEURAL_IR_SCHEMA,
     AmodalEvent,
+    AmodalEventCollection,
     IntentEvent,
 )
 from .environment import ACTIONS
@@ -104,6 +105,67 @@ class AmodalOutputBus(nn.Module):
 
     def forward(self, intention: IntentEvent) -> dict[str, torch.Tensor]:
         return {name: decoder(intention) for name, decoder in self.decoders.items()}
+
+
+class AmodalInputBus(nn.Module):
+    """Combine a runtime-variable event set with generic learned attention."""
+
+    def __init__(self, event_width: int, residual_hidden: int = 0) -> None:
+        super().__init__()
+        if event_width < 1 or residual_hidden < 0:
+            raise ValueError("input-bus dimensions are invalid")
+        self.event_width = event_width
+        self.relevance = nn.Linear(event_width, 1)
+        # Uniform attention is a behavior-preserving starting point. Learning
+        # may later prefer useful events using only verified behavioral reward.
+        nn.init.zeros_(self.relevance.weight)
+        nn.init.zeros_(self.relevance.bias)
+        self.residual = (
+            nn.Sequential(
+                nn.Linear(event_width * 2, residual_hidden),
+                nn.GELU(),
+                nn.Linear(residual_hidden, event_width),
+            )
+            if residual_hidden
+            else None
+        )
+        if self.residual is not None:
+            nn.init.zeros_(self.residual[-1].weight)
+            nn.init.zeros_(self.residual[-1].bias)
+
+    def forward(
+        self, collection: AmodalEventCollection | Sequence[AmodalEvent]
+    ) -> AmodalEvent:
+        if not isinstance(collection, AmodalEventCollection):
+            collection = AmodalEventCollection.from_events(collection)
+        collection.validate(width=self.event_width)
+        confidence = collection.confidence.to(collection.payload.dtype)
+        scores = self.relevance(collection.payload).squeeze(-1)
+        scores = scores + torch.log(confidence.clamp_min(1e-8))
+        scores = scores.masked_fill(~collection.present, -torch.inf)
+        weights = torch.softmax(scores, dim=1)
+        payload = torch.einsum("be,bew->bw", weights, collection.payload)
+        if self.residual is not None:
+            centered = collection.payload - payload.unsqueeze(1)
+            variance = torch.einsum("be,bew->bw", weights, centered.square())
+            diversity = variance.mean(dim=-1, keepdim=True)
+            # This exact-zero gate makes N=1 and identical duplicates permanent
+            # compatibility invariants even after the generic set residual learns.
+            diversity_gate = diversity / (diversity + 1e-4)
+            payload = payload + diversity_gate * self.residual(
+                torch.cat([payload, variance], dim=-1)
+            )
+        timestamp = (
+            torch.einsum("be,be->b", weights, collection.timestamp)
+            if collection.timestamp is not None
+            else None
+        )
+        combined_confidence = torch.einsum("be,be->b", weights, confidence)
+        return AmodalEvent(
+            payload=payload,
+            timestamp=timestamp,
+            confidence=combined_confidence,
+        ).validate(width=self.event_width)
 
 
 class ExtractedAmodalRuntime(nn.Module):

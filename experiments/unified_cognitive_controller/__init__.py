@@ -1,8 +1,9 @@
 """Unified sensory controller with learned working and long-term memory."""
 
-from .amodal_interface import AmodalEvent, IntentEvent
+from .amodal_interface import AmodalEvent, AmodalEventCollection, IntentEvent
 from .amodal_runtime import (
     ActionIntentDecoder,
+    AmodalInputBus,
     AmodalOutputBus,
     ExtractedAmodalRuntime,
     OpaqueProtocolDecoder,
@@ -13,6 +14,8 @@ from .model import ControllerState, UnifiedCognitiveController
 __all__ = [
     "ActionIntentDecoder",
     "AmodalEvent",
+    "AmodalEventCollection",
+    "AmodalInputBus",
     "AmodalOutputBus",
     "CognitiveLifetimeBatch",
     "ControllerState",

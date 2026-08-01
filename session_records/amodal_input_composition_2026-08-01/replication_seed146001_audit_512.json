@@ -1,0 +1,67 @@
+{
+  "all_parameters_unchanged": true,
+  "appearance_gates": {
+    "bars": true,
+    "diamonds": false,
+    "dot_pairs": false
+  },
+  "claim": "A frozen cognitive controller composes two encoded sensory events whose individual views are insufficient, using a generic set bus trained only from attempted actions and scalar outcomes.",
+  "configuration": {
+    "count": 512,
+    "device": "mps",
+    "seed": 152001
+  },
+  "controller": "artifacts/checkpoints/unified_repertoire_span2_amodal_intention_seed122005.pt",
+  "controller_sha256": "9eea7ab479cb8450737f040b76495cc5ec737e970cdc165af2446873e530cd6c",
+  "input_bus": "/tmp/inputbus_h16_lr0.01_s146001.pt",
+  "input_bus_sha256": "057801f1f2c2011275b6bc670c56982d1229bbfcda0dc3c6bb8d73713456264d",
+  "passed": false,
+  "results": {
+    "bars": {
+      "contradictory_partner_accuracy": 0.07578124850988388,
+      "contradictory_prediction_flip_rate": 0.859375,
+      "duplicate_actions_exact": true,
+      "duplicate_max_logit_difference": 0.0,
+      "duplicate_n2_accuracy": 0.9800781011581421,
+      "full_n1_accuracy": 0.9800781011581421,
+      "fused_accuracy": 0.9351562261581421,
+      "permuted_stream_order_accuracy": 0.9351562261581421,
+      "permuted_stream_order_actions_exact": true,
+      "permuted_stream_order_max_logit_difference": 0.0,
+      "shuffled_partner_accuracy": 0.5140625238418579,
+      "stream_a_accuracy": 0.552734375,
+      "stream_b_accuracy": 0.47265625
+    },
+    "diamonds": {
+      "contradictory_partner_accuracy": 0.22343750298023224,
+      "contradictory_prediction_flip_rate": 0.6488281488418579,
+      "duplicate_actions_exact": true,
+      "duplicate_max_logit_difference": 0.0,
+      "duplicate_n2_accuracy": 0.9996093511581421,
+      "full_n1_accuracy": 0.9996093511581421,
+      "fused_accuracy": 0.8667968511581421,
+      "permuted_stream_order_accuracy": 0.8667968511581421,
+      "permuted_stream_order_actions_exact": true,
+      "permuted_stream_order_max_logit_difference": 0.0,
+      "shuffled_partner_accuracy": 0.530468761920929,
+      "stream_a_accuracy": 0.4984374940395355,
+      "stream_b_accuracy": 0.5074218511581421
+    },
+    "dot_pairs": {
+      "contradictory_partner_accuracy": 0.095703125,
+      "contradictory_prediction_flip_rate": 0.798046886920929,
+      "duplicate_actions_exact": true,
+      "duplicate_max_logit_difference": 0.0,
+      "duplicate_n2_accuracy": 0.983203113079071,
+      "full_n1_accuracy": 0.983203113079071,
+      "fused_accuracy": 0.8929687738418579,
+      "permuted_stream_order_accuracy": 0.8929687738418579,
+      "permuted_stream_order_actions_exact": true,
+      "permuted_stream_order_max_logit_difference": 0.0,
+      "shuffled_partner_accuracy": 0.4984374940395355,
+      "stream_a_accuracy": 0.514843761920929,
+      "stream_b_accuracy": 0.49921876192092896
+    }
+  },
+  "schema": "amodal-complementary-input-audit-v1"
+}
