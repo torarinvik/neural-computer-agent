@@ -355,6 +355,13 @@ across two seeds, improves 80%-corrupted N=3 behavior by 5.24–6.61 points
 while preserving N=2 at 98.77–99.04%. This handles corruption/missing evidence,
 not arbitrary valid distractor relevance.
 
+A self-supervised same-frame pair-agreement head closes that relevance gap for
+the audited N=3 setting. Across two seeds, a valid irrelevant third stream
+improves from 57.45% to 89.25–89.59%, while N=2 remains 98.51–98.55%; useful
+and distractor confidence separates by about 0.44. The positive relation is
+same-frame complementary-view agreement, so cross-modality relevance and
+larger N remain open.
+
 Timestamp-preserving transport alignment is now also qualified. At 4,096
 lifetimes, out-of-order delivery and 0.25-unit timestamp jitter reproduced
 synchronous actions exactly at 96.36%; genuinely mismatched timestamps stayed
@@ -368,8 +375,8 @@ This is still **not yet the target architecture** because:
 
 - synchronous event sets have been behaviorally qualified at N=1, N=2, and a
   confidence-gated N=3 distractor control;
-- learned delay compensation, arbitrary valid-distractor relevance, and
-  fully learned missing-stream policies are not yet qualified;
+- learned delay compensation, cross-modality relevance, and fully learned
+  missing-stream policies are not yet qualified;
 - the recurrent compatibility API still feeds canonical action IDs back into
   the controller, so a new physical protocol requires a thin lowering for
   closed-loop use;

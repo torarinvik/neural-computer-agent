@@ -69,13 +69,18 @@ The confidence value was supplied by the frontend in this audit; learning that
 quality estimate remains open. A tiny self-supervised confidence head now
 learns that quality from clean/corrupted latent consistency: across two seeds,
 80%-corrupted N=3 streams improve 5.24–6.61 points while N=2 remains
-98.77–99.04%. Arbitrary valid distractor relevance remains open. See
+98.77–99.04%. A self-supervised same-frame pair-agreement head now handles a
+valid irrelevant third stream: N=3 rises from 57.45% to 89.25–89.59% while
+N=2 remains 98.51–98.55%. Cross-modality relevance and more than three streams
+remain open. See
 `session_records/amodal_input_noise_2026-08-01/README.md` for the rejected
 noise-adaptation evidence,
 `session_records/amodal_n3_confidence_2026-08-01/README.md` for the interface
 gate, and
 `session_records/amodal_learned_confidence_2026-08-01/README.md` for the
-learned-confidence audit.
+learned-confidence audit, and
+`session_records/amodal_pair_agreement_2026-08-01/README.md` for the learned
+relevance breakthrough.
 
 ## North star
 

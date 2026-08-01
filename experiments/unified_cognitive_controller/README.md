@@ -137,6 +137,13 @@ stream by 5.24–6.61 points across two seeds while retaining N=2 at
 stream; evidence is in
 `session_records/amodal_learned_confidence_2026-08-01/`.
 
+The next relevance boundary is now also qualified. A pair-agreement head,
+trained only on same-frame complementary-view positives and independent-frame
+negatives, routes a valid irrelevant third stream without changing the
+controller or bus. Across two seeds, N=3 rises from 57.45% to 89.25–89.59%
+while N=2 remains 98.51–98.55%. Cross-modality relevance and N>3 remain open;
+see `session_records/amodal_pair_agreement_2026-08-01/`.
+
 Convert a legacy checkpoint with:
 
 ```sh

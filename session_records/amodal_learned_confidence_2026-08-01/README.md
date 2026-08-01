@@ -27,12 +27,10 @@ unchanged; only the confidence head is trained.
 
 ## What remains open
 
-This is a corruption/missing-evidence result, not arbitrary distractor
-relevance. A valid but semantically irrelevant third stream is not necessarily
-low quality, and the earlier confidence-routing audit still requires the
-frontend to provide a low confidence for that case. The next frontier is a
-task-agnostic relevance or agreement estimator for valid competing streams,
-with the same N=2 retention and shuffled-stream controls.
+This is a corruption/missing-evidence result, not by itself arbitrary
+distractor relevance. The subsequent pair-agreement experiment now handles a
+same-frame complementary pair versus a valid irrelevant third stream; cross-
+modality relevance and larger N remain separate open boundaries.
 
 ## Training and audit method
 
@@ -49,4 +47,3 @@ Artifacts:
 - `audit_seed173201_4096.json`
 - `experiments/unified_cognitive_controller/train_amodal_confidence_estimator.py`
 - `experiments/unified_cognitive_controller/audit_amodal_learned_confidence.py`
-

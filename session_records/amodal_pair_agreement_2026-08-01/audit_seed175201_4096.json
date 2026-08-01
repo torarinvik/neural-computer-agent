@@ -1,0 +1,24 @@
+{
+  "agreement": "/tmp/pairagreement_s175201.pt",
+  "agreement_sha256": "77afc673fabf0f101b5bcd43b068faf0297d30ef62e34118fb684a71989ff450",
+  "bus": "artifacts/checkpoints/amodal_input_bus_complementary_seed145001.pt",
+  "bus_sha256": "4ae96f60b99107834c27840b8841e8b2ba20c10e6565c220b5607fb9c80d3c71",
+  "claim": "Self-supervised pair agreement rejects a valid N=3 distractor.",
+  "configuration": {
+    "count": 4096,
+    "device": "mps",
+    "seed": 176001
+  },
+  "controller": "artifacts/checkpoints/unified_repertoire_span2_amodal_intention_seed122005.pt",
+  "controller_sha256": "9eea7ab479cb8450737f040b76495cc5ec737e970cdc165af2446873e530cd6c",
+  "passed": true,
+  "rows": {
+    "confidence_separation": 0.44072021916508675,
+    "mean_distractor_confidence": 0.060954492539167404,
+    "mean_useful_confidence": 0.5016747117042542,
+    "n2_with_agreement": 0.985546886920929,
+    "n3_with_agreement": 0.8924804925918579,
+    "n3_without_agreement": 0.574511706829071
+  },
+  "schema": "amodal-pair-agreement-audit-v1"
+}
