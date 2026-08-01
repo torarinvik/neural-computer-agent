@@ -58,6 +58,7 @@ class BrainWorkshopPolicy(nn.Module):
                  input_bus_normalize_events: bool = False,
                  input_bus_event_rms_target: float = 1.0,
                  external_memory_adapter_width: int = 0,
+                 external_history_depth: int = 1,
                  per_stream_external_history: bool = False,
                  slot_memory_composer: bool = False,
                  per_stream_intention_adapter_width: int = 0,
@@ -156,11 +157,16 @@ class BrainWorkshopPolicy(nn.Module):
         self.external_memory_adapter = None
         self.external_memory_adapters = nn.ModuleDict()
         self.external_memory_composer = None
+        if external_history_depth < 1:
+            raise ValueError("external_history_depth must be positive")
+        self.external_history_depth = int(external_history_depth)
         self.per_stream_intention_adapters = nn.ModuleDict()
         if external_memory_adapter_width:
             def make_adapter() -> nn.Sequential:
                 adapter = nn.Sequential(
-                    nn.Linear(width * 3, external_memory_adapter_width),
+                    nn.Linear(
+                        width * (1 + 2 * self.external_history_depth),
+                        external_memory_adapter_width),
                     nn.GELU(),
                     nn.Linear(external_memory_adapter_width, width),
                 )
@@ -194,7 +200,9 @@ class BrainWorkshopPolicy(nn.Module):
         if per_stream_intention_adapter_width:
             def make_intention_adapter() -> nn.Sequential:
                 adapter = nn.Sequential(
-                    nn.Linear(width * 3, per_stream_intention_adapter_width),
+                    nn.Linear(
+                        width * (1 + 2 * self.external_history_depth),
+                        per_stream_intention_adapter_width),
                     nn.GELU(),
                     nn.Linear(per_stream_intention_adapter_width, intention_width),
                 )
@@ -304,9 +312,31 @@ def _event_payloads(
     return events
 
 
+def _history_features(
+        current: torch.Tensor, history: list[torch.Tensor], *, depth: int,
+        ) -> torch.Tensor:
+    """Build a generic current-plus-RAM relation vector.
+
+    The first three blocks are intentionally identical to the original
+    one-snapshot bridge: current, previous, and current*previous. Additional
+    snapshots append the same task-agnostic relation for each older slot. This
+    lets a deeper working-memory experiment reuse a trained one-step bridge
+    by copying its first three blocks, while keeping the controller unaware of
+    n-back semantics.
+    """
+    if depth < 1:
+        raise ValueError("history depth must be positive")
+    features = [current]
+    zero = torch.zeros_like(current)
+    for index in range(depth):
+        previous = history[index] if index < len(history) else zero
+        features.extend((previous, current * previous))
+    return torch.cat(features, dim=-1)
+
+
 def _stream_intention_event(
         policy: BrainWorkshopPolicy, core, events: list[AmodalEvent],
-        previous_stream_events: dict[str, torch.Tensor | None], *,
+        previous_stream_events: dict[str, list[torch.Tensor]], *,
         external_history: bool):
     """Add source-preserving RAM relation residuals outside the controller.
 
@@ -318,12 +348,13 @@ def _stream_intention_event(
         return core.intent_event
     residuals = []
     for modality, raw_event in zip(policy.modalities, events):
-        previous = previous_stream_events[modality]
+        history = previous_stream_events[modality]
+        previous = history[0] if history else None
         if previous is None:
             continue
-        features = torch.cat([
-            raw_event.payload, previous,
-            raw_event.payload * previous], dim=-1)
+        features = _history_features(
+            raw_event.payload, history,
+            depth=policy.external_history_depth)
         residuals.append(policy.per_stream_intention_adapters[modality](features))
     if not residuals:
         return core.intent_event
@@ -374,7 +405,8 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
              oracle_events: bool = False,
              external_history: bool = False,
              serial_modalities: bool = False,
-             per_stream_external_history: bool = False) -> Rollout:
+             per_stream_external_history: bool = False,
+             external_history_depth: int = 1) -> Rollout:
     episodes, observations = _make_batch(
         config, batch_size=batch_size, seed=seed, device=device,
         modalities=policy.modalities)
@@ -406,7 +438,7 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
     has_feedback = torch.zeros(batch_size, device=device)
     previous_event = None
     previous_events = {name: None for name in policy.modalities}
-    previous_stream_events = {name: None for name in policy.modalities}
+    previous_stream_events = {name: [] for name in policy.modalities}
     log_probs, entropies, rewards, actions, values = [], [], [], [], []
     bit_log_probs, bit_rewards, exact_correct, bit_correct = [], [], [], []
     for trial in range(config.trials):
@@ -422,7 +454,7 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
             has_feedback = torch.zeros(batch_size, device=device)
             previous_event = None
             previous_events = {name: None for name in policy.modalities}
-            previous_stream_events = {name: None for name in policy.modalities}
+            previous_stream_events = {name: [] for name in policy.modalities}
         events = _event_payloads(
             policy, observations, episodes, trial, device,
             oracle_events=oracle_events,
@@ -457,16 +489,13 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
                     and policy.external_memory_adapters):
                 memories = []
                 for modality, raw_event in zip(policy.modalities, events):
-                    prior = (
-                        previous_stream_events[modality]
-                        if external_history
-                        and previous_stream_events[modality] is not None
-                        else torch.zeros_like(raw_event.payload))
-                    if (external_history
-                            and previous_stream_events[modality] is not None):
-                        memory_features = torch.cat([
-                            raw_event.payload, prior,
-                            raw_event.payload * prior], dim=-1)
+                    history = previous_stream_events[modality]
+                    prior = history[0] if external_history and history else (
+                        torch.zeros_like(raw_event.payload))
+                    if external_history and history:
+                        memory_features = _history_features(
+                            raw_event.payload, history,
+                            depth=external_history_depth)
                         prior = prior + policy.external_memory_adapters[modality](
                             memory_features)
                     memories.append(prior)
@@ -561,7 +590,9 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
         if not serial_modalities:
             previous_event = event.payload
             for modality, raw_event in zip(policy.modalities, events):
-                previous_stream_events[modality] = raw_event.payload
+                history = previous_stream_events[modality]
+                history.insert(0, raw_event.payload)
+                del history[external_history_depth:]
     return Rollout(
         torch.stack(log_probs), torch.stack(entropies),
         torch.stack(rewards), torch.stack(actions), torch.stack(values),
@@ -577,7 +608,8 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
                      oracle_events: bool = False,
                      external_history: bool = False,
                      serial_modalities: bool = False,
-                     per_stream_external_history: bool = False
+                     per_stream_external_history: bool = False,
+                     external_history_depth: int = 1
                      ) -> tuple[torch.Tensor, torch.Tensor]:
     """Disposable verifier-label ceiling probe.
 
@@ -595,7 +627,7 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
     has_feedback = torch.zeros(batch_size, device=device)
     previous_event = None
     previous_events = {name: None for name in policy.modalities}
-    previous_stream_events = {name: None for name in policy.modalities}
+    previous_stream_events = {name: [] for name in policy.modalities}
     losses, rewards = [], []
     for trial in range(config.trials):
         events = _event_payloads(
@@ -626,16 +658,13 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
                     and policy.external_memory_adapters):
                 memories = []
                 for modality, raw_event in zip(policy.modalities, events):
-                    prior = (
-                        previous_stream_events[modality]
-                        if external_history
-                        and previous_stream_events[modality] is not None
-                        else torch.zeros_like(raw_event.payload))
-                    if (external_history
-                            and previous_stream_events[modality] is not None):
-                        memory_features = torch.cat([
-                            raw_event.payload, prior,
-                            raw_event.payload * prior], dim=-1)
+                    history = previous_stream_events[modality]
+                    prior = history[0] if external_history and history else (
+                        torch.zeros_like(raw_event.payload))
+                    if external_history and history:
+                        memory_features = _history_features(
+                            raw_event.payload, history,
+                            depth=external_history_depth)
                         prior = prior + policy.external_memory_adapters[modality](
                             memory_features)
                     memories.append(prior)
@@ -706,7 +735,9 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
         if not serial_modalities:
             previous_event = event.payload
             for modality, raw_event in zip(policy.modalities, events):
-                previous_stream_events[modality] = raw_event.payload
+                history = previous_stream_events[modality]
+                history.insert(0, raw_event.payload)
+                del history[external_history_depth:]
     return torch.stack(losses).mean(), torch.stack(rewards)
 
 
@@ -718,19 +749,28 @@ def _evaluate(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig, *,
               oracle_events: bool = False,
               external_history: bool = False,
               serial_modalities: bool = False,
-              per_stream_external_history: bool = False) -> dict:
+              per_stream_external_history: bool = False,
+              external_history_depth: int = 1) -> dict:
     rollout = _rollout(
         policy, config, batch_size=count, seed=seed, device=device,
         sample=False, reset_history=reset_history, shuffle_time=shuffle_time,
         shuffle_modalities=shuffle_modalities,
         oracle_events=oracle_events, external_history=external_history,
         serial_modalities=serial_modalities,
-        per_stream_external_history=per_stream_external_history)
+        per_stream_external_history=per_stream_external_history,
+        external_history_depth=external_history_depth)
     rewards = rollout.rewards
+    eligible = slice(config.n_back, None)
     return {
         "accuracy": float(rollout.exact_correct.mean()),
+        "eligible_accuracy": float(
+            rollout.exact_correct[eligible].mean()),
         "per_modality_accuracy": {
             modality: float(rollout.bit_correct[:, :, index].mean())
+            for index, modality in enumerate(policy.modalities)
+        },
+        "per_modality_eligible_accuracy": {
+            modality: float(rollout.bit_correct[eligible, :, index].mean())
             for index, modality in enumerate(policy.modalities)
         },
         "partial_reward_accuracy": float((rewards > 0).float().mean()),
@@ -769,6 +809,9 @@ def main() -> None:
     parser.add_argument(
         "--per-stream-external-history", action="store_true",
         help="compute RAM relation residuals separately per input stream")
+    parser.add_argument(
+        "--external-history-depth", type=int, default=1, choices=(1, 2, 3),
+        help="number of opaque RAM snapshots exposed to the generic bridge")
     parser.add_argument(
         "--slot-memory-composer", action="store_true",
         help="preserve per-stream RAM slots until a generic final reader")
@@ -811,6 +854,9 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--eval-count", type=int, default=128)
     parser.add_argument("--trials", type=int, default=8)
+    parser.add_argument(
+        "--n-back", type=int, default=1, choices=(1, 2, 3),
+        help="temporal distance of the verifier relation; increase gradually")
     parser.add_argument("--position-vocab", type=int, default=2,
                         choices=(2, 4, 8))
     parser.add_argument("--text-vocab", type=int, default=8,
@@ -863,7 +909,7 @@ def main() -> None:
             or len(set(train_only_modalities)) != len(train_only_modalities)):
         raise ValueError("--train-only-modalities must be a subset")
     config = BrainWorkshopConfig(
-        n_back=1, trials=args.trials, position_vocab=args.position_vocab,
+        n_back=args.n_back, trials=args.trials, position_vocab=args.position_vocab,
         text_vocab=args.text_vocab,
         modalities=modalities, trial_ms=1_000,
         # Independent seeded match flags prevent a fixed-count clock policy
@@ -879,6 +925,9 @@ def main() -> None:
             args.checkpoint_in, map_location=device, weights_only=False)
         controller_configuration = dict(
             checkpoint_payload["model_configuration"])
+        # The policy checkpoint also records RAM-bridge settings; those are
+        # not constructor arguments of the central controller.
+        controller_configuration.pop("external_history_depth", None)
         # Policy checkpoints contain the controller under the ``controller.``
         # prefix. Keep loading compatible with older controller-only artifacts
         # while making the frozen-controller ablation actually executable.
@@ -913,7 +962,8 @@ def main() -> None:
         input_bus_normalize_events=args.input_bus_normalize_events,
         input_bus_event_rms_target=args.input_bus_event_rms_target,
         # This is an external RAM-side adapter, not a controller weight.
-                 external_memory_adapter_width=args.external_memory_adapter_width,
+        external_memory_adapter_width=args.external_memory_adapter_width,
+        external_history_depth=args.external_history_depth,
         per_stream_external_history=args.per_stream_external_history,
         slot_memory_composer=args.slot_memory_composer,
         per_stream_intention_adapter_width=(
@@ -979,6 +1029,25 @@ def main() -> None:
                 else:
                     expanded[:old_value.shape[0]] = old_value
                 compatible[key] = expanded
+        # A deeper generic RAM bridge keeps the original one-snapshot blocks
+        # in the same leading columns and appends older-slot relations. This
+        # makes a 1-back checkpoint a behavior-preserving initialization for a
+        # 2/3-back experiment instead of discarding the learned bridge.
+        for key, current_value in current_state.items():
+            if not (
+                    (key.startswith("external_memory_adapter")
+                     or key.startswith("per_stream_intention_adapters"))
+                    and key.endswith("0.weight")):
+                continue
+            old_value = checkpoint_payload["state_dict"].get(key)
+            if (old_value is None or old_value.ndim != 2
+                    or current_value.ndim != 2
+                    or old_value.shape[0] != current_value.shape[0]
+                    or old_value.shape[1] >= current_value.shape[1]):
+                continue
+            expanded = current_value.detach().clone()
+            expanded[:, :old_value.shape[1]] = old_value
+            compatible[key] = expanded
         policy.load_state_dict(compatible, strict=False)
     encoder_paths = {}
     if args.encoder_in:
@@ -1095,7 +1164,8 @@ def main() -> None:
         device=device, oracle_events=args.oracle_events,
         external_history=args.external_history,
         serial_modalities=args.serial_modalities,
-        per_stream_external_history=args.per_stream_external_history)
+        per_stream_external_history=args.per_stream_external_history,
+        external_history_depth=args.external_history_depth)
     for update in range(1, args.updates + 1):
         policy.train()
         if args.supervised_diagnostic:
@@ -1105,7 +1175,8 @@ def main() -> None:
                 oracle_events=args.oracle_events,
                 external_history=args.external_history,
                 serial_modalities=args.serial_modalities,
-                per_stream_external_history=args.per_stream_external_history)
+                per_stream_external_history=args.per_stream_external_history,
+                external_history_depth=args.external_history_depth)
             batch_accuracy = float((diagnostic_rewards > 0).float().mean())
             batch_mean_reward = float(diagnostic_rewards.mean())
             policy_entropy = 0.0
@@ -1117,7 +1188,8 @@ def main() -> None:
                 oracle_events=args.oracle_events,
                 external_history=args.external_history,
                 serial_modalities=args.serial_modalities,
-                per_stream_external_history=args.per_stream_external_history)
+                per_stream_external_history=args.per_stream_external_history,
+                external_history_depth=args.external_history_depth)
             returns = torch.zeros_like(rollout.rewards)
             running = torch.zeros(args.batch_size, device=device)
             for trial in range(args.trials - 1, -1, -1):
@@ -1180,19 +1252,22 @@ def main() -> None:
                 device=device, oracle_events=args.oracle_events,
                 external_history=args.external_history,
                 serial_modalities=args.serial_modalities,
-                per_stream_external_history=args.per_stream_external_history)
+                per_stream_external_history=args.per_stream_external_history,
+                external_history_depth=args.external_history_depth)
     reset = _evaluate(
         policy, config, count=args.eval_count, seed=args.seed + 20_000,
                 device=device, reset_history=True, oracle_events=args.oracle_events,
         external_history=args.external_history,
         serial_modalities=args.serial_modalities,
-        per_stream_external_history=args.per_stream_external_history)
+        per_stream_external_history=args.per_stream_external_history,
+        external_history_depth=args.external_history_depth)
     shuffled = _evaluate(
         policy, config, count=args.eval_count, seed=args.seed + 30_000,
         device=device, shuffle_time=True, oracle_events=args.oracle_events,
         external_history=args.external_history,
         serial_modalities=args.serial_modalities,
-        per_stream_external_history=args.per_stream_external_history)
+        per_stream_external_history=args.per_stream_external_history,
+        external_history_depth=args.external_history_depth)
     cross_stream_shuffled = (
         _evaluate(
             policy, config, count=args.eval_count, seed=args.seed + 40_000,
@@ -1200,10 +1275,20 @@ def main() -> None:
             oracle_events=args.oracle_events,
             external_history=args.external_history,
             serial_modalities=args.serial_modalities,
-            per_stream_external_history=args.per_stream_external_history)
+            per_stream_external_history=args.per_stream_external_history,
+            external_history_depth=args.external_history_depth)
         if "text" in modalities else None)
+    accuracy_metric = (
+        "eligible_accuracy" if config.n_back > 1 else "accuracy")
+    metric_after = after[accuracy_metric]
+    metric_before = before[accuracy_metric]
+    metric_reset = reset[accuracy_metric]
+    metric_shuffled = shuffled[accuracy_metric]
+    metric_cross = (
+        cross_stream_shuffled[accuracy_metric]
+        if cross_stream_shuffled is not None else None)
     report = {
-        "experiment": "brainworkshop_multimodal_nback1_reward_only",
+        "experiment": "brainworkshop_multimodal_nback_reward_only",
         "objective": (
             "supervised_diagnostic" if args.supervised_diagnostic
             else "reward_only_value_baseline" if args.value_baseline
@@ -1219,6 +1304,7 @@ def main() -> None:
         "event_memory_adapter_width": args.event_memory_adapter_width,
         "retrieved_memory_adapter_width": args.retrieved_memory_adapter_width,
         "external_memory_adapter_width": args.external_memory_adapter_width,
+        "external_history_depth": args.external_history_depth,
         "per_stream_external_history": bool(args.per_stream_external_history),
         "slot_memory_composer": bool(args.slot_memory_composer),
         "per_stream_intention_adapter_width": (
@@ -1231,6 +1317,7 @@ def main() -> None:
         "source_key_init_scale": args.source_key_init_scale,
         "stream_adapter_width": args.stream_adapter_width,
         "neutral_new_output": bool(args.neutral_new_output),
+        "accuracy_metric": accuracy_metric,
         "device": str(device),
         "config": config.__dict__,
         "modality": policy.modality,
@@ -1254,13 +1341,12 @@ def main() -> None:
             "policy_changed": after["mean_reward"] != before["mean_reward"],
             "reset_control_recorded": True,
             "accepted_for_longer_run": (
-                after["accuracy"] > before["accuracy"] + 0.05
-                and after["accuracy"] > 0.60
-                and reset["accuracy"] < after["accuracy"] - 0.05
-                and shuffled["accuracy"] < after["accuracy"] - 0.05
+                metric_after > metric_before + 0.05
+                and metric_after > 0.60
+                and metric_reset < metric_after - 0.05
+                and metric_shuffled < metric_after - 0.05
                 and (cross_stream_shuffled is None
-                     or cross_stream_shuffled["accuracy"]
-                     < after["accuracy"] - 0.05)),
+                     or metric_cross < metric_after - 0.05)),
         },
     }
     args.report.parent.mkdir(parents=True, exist_ok=True)
@@ -1277,6 +1363,7 @@ def main() -> None:
                 "event_memory_adapter_width": args.event_memory_adapter_width,
                 "retrieved_memory_adapter_width": (
                     args.retrieved_memory_adapter_width),
+                "external_history_depth": args.external_history_depth,
             },
             "state_dict": policy.state_dict(),
             "config": config.__dict__,

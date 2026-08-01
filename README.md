@@ -100,6 +100,17 @@ language transfer: the token frontend is an opaque protocol encoder and a
 learned stopping rule is still open. Full accounting and artifacts are in
 `session_records/brainworkshop_three_stream_2026-08-01/README.md`.
 
+The same record now contains the first direct compounding result. A generic
+depth-2 RAM bridge let the frozen controller adapt the inherited text primitive
+from 1-back to 2-back. At a matched 256-update budget, three inherited seeds
+reached **83.8%, 84.3%, and 87.6% eligible accuracy** (mean **85.2%**), while
+matched fresh 2-back learners reached **50.6%, 50.4%, and 50.0%** (mean
+**50.3%**). Reset-memory and cross-stream controls stayed near 50%. The
+evaluator excludes the forced warm-up prefix for n-back metrics, and the
+controller remains frozen. This is verified reuse of an old temporal skill to
+learn a harder one faster, not only eventual task mastery. The next gradual
+rung is 3-back with another generic RAM snapshot.
+
 **Current-status boundary:** the proven legacy class still supports its bundled
 `step(frame)` API, but a behavior-preserving extracted runtime now owns the
 vision encoder, controller core, and action decoder as three disjoint,

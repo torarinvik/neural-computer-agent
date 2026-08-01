@@ -73,7 +73,38 @@ decisions), and the inherited controller, vision encoder, and audio encoder
 were unchanged. The reset and cross-episode controls returning to chance are
 the causal checks that the improvement is a learned temporal text skill rather
 than a decoder prior. The 384-update recipe is now the reproducible protected
-three-stream baseline; a learned stopping rule remains open.
+The three-stream baseline is now reproducible; a learned stopping rule remains
+open.
+
+## Compounding temporal-memory frontier
+
+The next difficulty was a genuine 2-back relation. The original one-snapshot
+bridge could not learn it, so the runtime gained a generic depth-2 RAM bridge:
+current, prior-1, current×prior-1, prior-2, and current×prior-2. The first
+three blocks are unchanged, and checkpoint migration copies the trained
+1-back bridge into those leading blocks. The controller itself remained
+frozen; no n-back label or position was passed to it.
+
+The evaluator now gates n-back runs on **eligible trials only** (trials after
+the forced warm-up prefix), preventing a fixed no-match prefix from inflating
+accuracy. At the matched 256-update budget, the inherited 1-back skill produced
+a large sample-efficiency gain:
+
+| seed | inherited 1-back → 2-back | fresh 2-back | inherited reset | inherited cross-stream swap |
+|---|---:|---:|---:|---:|
+| 47405 | **83.8%** | 50.6% | 49.9% | 50.2% |
+| 47408 | **84.3%** | 50.4% | 49.8% | 50.0% |
+| 47409 | **87.6%** | 50.0% | 49.9% | 50.0% |
+
+The inherited mean is **85.2%** versus **50.3%** fresh: a +34.9-point gain
+from reusing the learned 1-back temporal primitive, with all three inherited
+runs passing causal reset and cross-stream controls. A longer inherited run
+reached **92.0% eligible** at 384 updates; its reset, temporal-shuffle, and
+cross-stream controls were 49.9%, 54.6%, and 50.8%. A disposable supervised
+diagnostic reached 93.5% at the same depth, confirming that the RAM interface
+is sufficient and that the remaining gap is reward-only credit assignment.
+This is the first direct evidence that stored temporal skill makes a harder
+primitive learn faster, rather than merely making the final task solvable.
 
 ## What this proves
 
@@ -92,9 +123,11 @@ discovers its own stopping point or that the text frontend understands language;
 the token frontend is an opaque protocol encoder. The original winner used a
 different seed and 256-update continuation, so the neutral/entropy recipe is
 reported separately rather than silently replacing that history. The next
-experiment should measure a learned stop/continue decision and compare its
-verifier bits-to-threshold against this fixed 384-update baseline. An unseen
-speech/text frontend and decoder still require their own causal qualification.
+The next experiment should measure a learned stop/continue decision and compare
+its verifier bits-to-threshold against the fixed 256-update compounding
+baseline. The next capability rung is 3-back with the same gradual RAM
+expansion. An unseen speech/text frontend and decoder still require their own
+causal qualification.
 
 Artifacts:
 
@@ -106,5 +139,15 @@ Artifacts:
 - `neutral_entropy_seed47408.json` and `neutral_entropy_seed47408_plus128.json`;
 - `neutral_entropy_seed47409.json` and `neutral_entropy_seed47409_plus128.json` —
   the three independent exploration-robust continuations;
+- `nback2_inherited_depth2_direct256_seed47405.json`,
+  `nback2_inherited_depth2_direct256_seed47408.json`, and
+  `nback2_inherited_depth2_direct256_seed47409.json` — inherited 2-back
+  acquisition;
+- `nback2_fresh_depth2_direct256_seed47405.json`,
+  `nback2_fresh_depth2_direct256_seed47408.json`, and
+  `nback2_fresh_depth2_direct256_seed47409.json` — matched fresh controls;
+- `nback2_inherited_depth2b_seed47405_384_audit.json` and
+  `nback2_supervised_depth2_seed47405_256.json` — mastery and architecture
+  diagnostics;
 - `audio_encoder_ssl_seed47401.json` and `audio_stage_ssl_seed47402.json` —
   label-free audio-parent preparation.

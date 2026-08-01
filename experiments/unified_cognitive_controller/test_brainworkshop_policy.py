@@ -3,7 +3,8 @@
 import torch
 
 from .train_brainworkshop_policy import (
-    BrainWorkshopPolicy, _controller_action_index, _factorized_advantages)
+    BrainWorkshopPolicy, _controller_action_index, _factorized_advantages,
+    _history_features)
 
 
 def test_dual_policy_uses_one_decoder_and_maps_opaque_masks() -> None:
@@ -42,6 +43,38 @@ def test_external_memory_adapter_is_an_exact_initial_noop() -> None:
     features = torch.randn(5, 96)
     assert torch.equal(
         policy.external_memory_adapter(features), torch.zeros(5, 32))
+
+
+def test_deeper_history_appends_opaque_snapshot_relations() -> None:
+    current = torch.randn(3, 4)
+    previous = torch.randn(3, 4)
+    older = torch.randn(3, 4)
+    one = _history_features(current, [previous], depth=1)
+    two = _history_features(current, [previous, older], depth=2)
+    assert one.shape == (3, 12)
+    assert two.shape == (3, 20)
+    assert torch.equal(two[:, :12], one)
+    assert torch.equal(two[:, 12:16], older)
+    assert torch.equal(two[:, 16:], current * older)
+
+
+def test_deeper_ram_and_intention_bridges_remain_zero_initialized() -> None:
+    policy = BrainWorkshopPolicy(
+        width=32,
+        intention_width=16,
+        modalities=("text",),
+        external_memory_adapter_width=32,
+        external_history_depth=2,
+        per_stream_external_history=True,
+        per_stream_intention_adapter_width=32,
+    )
+    features = torch.randn(5, 160)
+    assert torch.equal(
+        policy.external_memory_adapters["text"](features),
+        torch.zeros(5, 32))
+    assert torch.equal(
+        policy.per_stream_intention_adapters["text"](features),
+        torch.zeros(5, 16))
 
 
 def test_per_stream_external_memory_adapters_are_independent_noops() -> None:
