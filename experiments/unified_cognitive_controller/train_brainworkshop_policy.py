@@ -47,13 +47,25 @@ class BrainWorkshopPolicy(nn.Module):
                  workspace_slots: int = 2, relation_adapter_width: int = 0,
                  event_memory_adapter_width: int = 0,
                  retrieved_memory_adapter_width: int = 0,
+                 input_bus_residual_width: int = 0,
+                 external_memory_adapter_width: int = 0,
                  modality: str = "vision",
+                 modalities: tuple[str, ...] | None = None,
                  controller: UnifiedCognitiveController | None = None) -> None:
         super().__init__()
-        if modality not in ("vision", "audio"):
-            raise ValueError("modality must be vision or audio")
-        self.modality = modality
-        self.action_bit = 1 if modality == "vision" else 2
+        if modalities is None:
+            modalities = (modality,)
+        modalities = tuple(modalities)
+        if not modalities or any(value not in ("vision", "audio")
+                                 for value in modalities):
+            raise ValueError("modalities must contain vision and/or audio")
+        if len(set(modalities)) != len(modalities):
+            raise ValueError("modalities must be unique")
+        self.modalities = modalities
+        # Keep the old attribute for single-stream callers and reports.
+        self.modality = modalities[0] if len(modalities) == 1 else "multi"
+        self.action_bits = tuple(
+            1 if name == "vision" else 2 for name in modalities)
 
         self.controller = controller or UnifiedCognitiveController(
             width=width, workspace_slots=workspace_slots,
@@ -65,19 +77,50 @@ class BrainWorkshopPolicy(nn.Module):
             retrieved_memory_adapter_width=retrieved_memory_adapter_width)
         width = self.controller.width
         intention_width = self.controller.intention_width
-        self.encoder = (
-            BrainWorkshopVisionEncoder(width)
-            if modality == "vision" else BrainWorkshopAudioEncoder(width)
-        )
-        self.input_bus = AmodalInputBus(width)
+        self.encoders = nn.ModuleDict({
+            name: (
+                BrainWorkshopVisionEncoder(width)
+                if name == "vision" else BrainWorkshopAudioEncoder(width)
+            )
+            for name in modalities
+        })
+        self.input_bus = AmodalInputBus(
+            width, residual_hidden=input_bus_residual_width)
+        self.external_memory_adapter = None
+        if external_memory_adapter_width:
+            self.external_memory_adapter = nn.Sequential(
+                nn.Linear(width * 3, external_memory_adapter_width),
+                nn.GELU(),
+                nn.Linear(external_memory_adapter_width, width),
+            )
+            # The adapter starts as an exact no-op. It can only earn a change
+            # to the RAM snapshot through the verifier's scalar outcome.
+            nn.init.zeros_(self.external_memory_adapter[-1].weight)
+            nn.init.zeros_(self.external_memory_adapter[-1].bias)
         # The legacy model owns adapters for compatibility.  The probe removes
         # them so only this independent output adapter formats the intention.
         self.controller.vision = None
         self.controller.actuator = None
-        self.decoder = OpaqueProtocolDecoder(intention_width, commands=2)
+        self.decoder = OpaqueProtocolDecoder(
+            intention_width, commands=1 << len(modalities))
         # Optional reward-only critic.  It predicts return from the recurrent
         # state; it never sees verifier targets or modality/task metadata.
         self.value_head = nn.Linear(self.controller.width, 1)
+
+    @property
+    def encoder(self) -> nn.Module:
+        """Legacy single-stream encoder accessor."""
+        if len(self.modalities) != 1:
+            raise AttributeError("multi-stream policies have .encoders")
+        return self.encoders[self.modalities[0]]
+
+    def action_mask(self, action: int) -> int:
+        """Translate decoder class 0..2**N-1 to verifier bitmask."""
+        if action < 0 or action >= (1 << len(self.modalities)):
+            raise ValueError("decoder action is outside the modality mask")
+        return sum(
+            bit for index, bit in enumerate(self.action_bits)
+            if action & (1 << index))
 
     def initial_state(self, batch: int, device: torch.device):
         return self.controller.initial_state(batch, device=device)
@@ -92,37 +135,50 @@ def _device(value: str) -> torch.device:
 
 
 def _make_batch(config: BrainWorkshopConfig, *, batch_size: int,
-                seed: int, device: torch.device, modality: str):
+                seed: int, device: torch.device,
+                modalities: tuple[str, ...]):
     episodes = [generate_brainworkshop_episode(
         config, seed=seed + index, device=device) for index in range(batch_size)]
-    frames = torch.stack([
-        torch.stack([
-            observation.vision if modality == "vision" else observation.audio
-            for observation in episode.observations])
-        for episode in episodes])
-    return episodes, frames
+    observations = {
+        modality: torch.stack([
+            torch.stack([
+                observation.vision if modality == "vision"
+                else observation.audio
+                for observation in episode.observations])
+            for episode in episodes])
+        for modality in modalities
+    }
+    return episodes, observations
 
 
-def _event_payload(policy: BrainWorkshopPolicy, frame: torch.Tensor,
-                   episodes, trial: int, device: torch.device,
-                   *, oracle_events: bool,
-                   stimulus_indices: torch.Tensor | None = None) -> torch.Tensor:
-    if not oracle_events:
-        return policy.encoder(frame)
-    # Diagnostic-only localization control.  It bypasses pixels with a
-    # verifier-side one-hot event; its weights and result are never promoted.
+def _event_payloads(
+        policy: BrainWorkshopPolicy, observations: dict[str, torch.Tensor],
+        episodes, trial: int, device: torch.device, *, oracle_events: bool,
+        stimulus_indices: torch.Tensor | None = None) -> list[AmodalEvent]:
+    """Encode every declared modality into one opaque event for this trial."""
+    events = []
     indices = (
         [trial] * len(episodes) if stimulus_indices is None
         else [int(value) for value in stimulus_indices])
-    values = torch.tensor(
-        [(episode.stimuli[index].position
-          if policy.modality == "vision" else episode.stimuli[index].audio)
-         for episode, index in zip(episodes, indices)],
-        dtype=torch.long, device=device)
-    encoded = F.one_hot(values, num_classes=8).to(torch.float32)
-    if encoded.shape[1] < policy.controller.width:
-        encoded = F.pad(encoded, (0, policy.controller.width - 8))
-    return encoded[:, :policy.controller.width]
+    for modality in policy.modalities:
+        if oracle_events:
+            # Diagnostic-only localization control. It bypasses pixels or
+            # waveforms with a verifier-side one-hot event; its result is never
+            # promoted as a learned representation.
+            values = torch.tensor(
+                [(episode.stimuli[index].position
+                  if modality == "vision" else episode.stimuli[index].audio)
+                 for episode, index in zip(episodes, indices)],
+                dtype=torch.long, device=device)
+            payload = F.one_hot(values, num_classes=8).to(torch.float32)
+            if payload.shape[1] < policy.controller.width:
+                payload = F.pad(
+                    payload, (0, policy.controller.width - payload.shape[1]))
+            payload = payload[:, :policy.controller.width]
+        else:
+            payload = policy.encoders[modality](observations[modality][:, trial])
+        events.append(AmodalEvent(payload=payload))
+    return events
 
 
 def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
@@ -131,9 +187,9 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
              shuffle_time: bool = False,
              oracle_events: bool = False,
              external_history: bool = False) -> Rollout:
-    episodes, frames = _make_batch(
+    episodes, observations = _make_batch(
         config, batch_size=batch_size, seed=seed, device=device,
-        modality=policy.modality)
+        modalities=policy.modalities)
     stimulus_indices = None
     if shuffle_time:
         # This is an adversarial control: preserve the frame multiset but break
@@ -142,9 +198,12 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
             torch.randperm(config.trials, device=device)
             for _ in range(batch_size)
         ])
-        frames = torch.stack([
-            frames[index, permutations[index]] for index in range(batch_size)
-        ])
+        observations = {
+            modality: torch.stack([
+                values[index, permutations[index]]
+                for index in range(batch_size)])
+            for modality, values in observations.items()
+        }
         stimulus_indices = permutations
     state = policy.initial_state(batch_size, device)
     previous_action = torch.zeros(batch_size, dtype=torch.long, device=device)
@@ -164,16 +223,23 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
             previous_reward = torch.zeros(batch_size, device=device)
             has_feedback = torch.zeros(batch_size, device=device)
             previous_event = None
-        encoded = _event_payload(
-            policy, frames[:, trial], episodes, trial, device,
+        events = _event_payloads(
+            policy, observations, episodes, trial, device,
             oracle_events=oracle_events,
             stimulus_indices=(
                 stimulus_indices[:, trial] if stimulus_indices is not None
                 else None))
-        event = policy.input_bus([AmodalEvent(payload=encoded)])
+        event = policy.input_bus(events)
         retrieved_memory = (
             previous_event if external_history and previous_event is not None
-            else torch.zeros_like(encoded))
+            else torch.zeros_like(event.payload))
+        if (external_history and previous_event is not None
+                and policy.external_memory_adapter is not None):
+            memory_features = torch.cat([
+                event.payload, retrieved_memory,
+                event.payload * retrieved_memory], dim=-1)
+            retrieved_memory = retrieved_memory + (
+                policy.external_memory_adapter(memory_features))
         core, state = policy.controller.step_event(
             event, state, previous_action, previous_reward, has_feedback,
             retrieved_memory=retrieved_memory)
@@ -183,8 +249,7 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
         action = distribution.sample() if sample else logits.argmax(dim=-1)
         reward = torch.tensor([
             episode.score_action(
-                trial, int(action[index]) * policy.action_bit,
-                latency_ms=0.0)
+                trial, policy.action_mask(int(action[index])), latency_ms=0.0)
             for index, episode in enumerate(episodes)
         ], device=device)
         log_probs.append(distribution.log_prob(action))
@@ -194,7 +259,7 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
         previous_action = action
         previous_reward = reward
         has_feedback.fill_(1.0)
-        previous_event = encoded
+        previous_event = event.payload
     return Rollout(
         torch.stack(log_probs), torch.stack(entropies),
         torch.stack(rewards), torch.stack(actions), torch.stack(values))
@@ -213,9 +278,9 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
     policy action's scalar verifier reward, so this checks the same recurrent
     interface rather than feeding the answer back as an input.
     """
-    episodes, frames = _make_batch(
+    episodes, observations = _make_batch(
         config, batch_size=batch_size, seed=seed, device=device,
-        modality=policy.modality)
+        modalities=policy.modalities)
     state = policy.initial_state(batch_size, device)
     previous_action = torch.zeros(batch_size, dtype=torch.long, device=device)
     previous_reward = torch.zeros(batch_size, device=device)
@@ -223,34 +288,42 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
     previous_event = None
     losses, rewards = [], []
     for trial in range(config.trials):
-        encoded = _event_payload(
-            policy, frames[:, trial], episodes, trial, device,
+        events = _event_payloads(
+            policy, observations, episodes, trial, device,
             oracle_events=oracle_events)
-        event = policy.input_bus([AmodalEvent(payload=encoded)])
+        event = policy.input_bus(events)
         retrieved_memory = (
             previous_event if external_history and previous_event is not None
-            else torch.zeros_like(encoded))
+            else torch.zeros_like(event.payload))
+        if (external_history and previous_event is not None
+                and policy.external_memory_adapter is not None):
+            memory_features = torch.cat([
+                event.payload, retrieved_memory,
+                event.payload * retrieved_memory], dim=-1)
+            retrieved_memory = retrieved_memory + (
+                policy.external_memory_adapter(memory_features))
         core, state = policy.controller.step_event(
             event, state, previous_action, previous_reward, has_feedback,
             retrieved_memory=retrieved_memory)
         logits = policy.decoder(core.intent_event)
         targets = torch.tensor(
-            [int(bool(episode.verifier_targets()[trial] & policy.action_bit))
+            [sum(
+                (1 << index) for index, bit in enumerate(policy.action_bits)
+                if episode.verifier_targets()[trial] & bit)
              for episode in episodes],
             dtype=torch.long, device=device)
         losses.append(F.cross_entropy(logits, targets))
         action = logits.argmax(dim=-1)
         reward = torch.tensor([
             episode.score_action(
-                trial, int(action[index]) * policy.action_bit,
-                latency_ms=0.0)
+                trial, policy.action_mask(int(action[index])), latency_ms=0.0)
             for index, episode in enumerate(episodes)
         ], device=device)
         rewards.append(reward)
         previous_action = action
         previous_reward = reward
         has_feedback = torch.ones(batch_size, device=device)
-        previous_event = encoded
+        previous_event = event.payload
     return torch.stack(losses).mean(), torch.stack(rewards)
 
 
@@ -282,6 +355,10 @@ def main() -> None:
                         help="use disposable verifier labels for a ceiling probe")
     parser.add_argument("--encoder-in", type=Path,
                         help="optional self-supervised encoder checkpoint")
+    parser.add_argument("--vision-encoder-in", type=Path,
+                        help="vision encoder checkpoint for a multi-stream run")
+    parser.add_argument("--audio-encoder-in", type=Path,
+                        help="audio encoder checkpoint for a multi-stream run")
     parser.add_argument("--freeze-encoder", action="store_true",
                         help="keep a loaded encoder fixed during the probe")
     parser.add_argument("--value-baseline", action="store_true",
@@ -296,6 +373,10 @@ def main() -> None:
                         choices=(0, 32, 64))
     parser.add_argument("--retrieved-memory-adapter-width", type=int, default=0,
                         choices=(0, 32, 64))
+    parser.add_argument("--input-bus-residual-width", type=int, default=0,
+                        choices=(0, 32, 64))
+    parser.add_argument("--external-memory-adapter-width", type=int, default=0,
+                        choices=(0, 32, 64))
     parser.add_argument("--seed", type=int, default=44011)
     parser.add_argument("--updates", type=int, default=8)
     parser.add_argument("--batch-size", type=int, default=32)
@@ -305,6 +386,9 @@ def main() -> None:
                         choices=(2, 4, 8))
     parser.add_argument("--modality", choices=("vision", "audio"),
                         default="vision")
+    parser.add_argument(
+        "--modalities", type=str, default="",
+        help="comma-separated modality list, e.g. vision,audio")
     parser.add_argument("--learning-rate", type=float, default=3e-4)
     parser.add_argument("--entropy-coef", type=float, default=0.01)
     parser.add_argument("--discount", type=float, default=0.95)
@@ -317,9 +401,18 @@ def main() -> None:
 
     torch.manual_seed(args.seed)
     device = _device(args.device)
+    modalities = tuple(
+        item.strip() for item in args.modalities.split(",") if item.strip())
+    if not modalities:
+        modalities = (args.modality,)
+    if not modalities or any(item not in ("vision", "audio")
+                             for item in modalities):
+        raise ValueError("--modalities must contain vision and/or audio")
+    if len(set(modalities)) != len(modalities):
+        raise ValueError("--modalities must not contain duplicates")
     config = BrainWorkshopConfig(
         n_back=1, trials=args.trials, position_vocab=args.position_vocab,
-        modalities=(args.modality,), trial_ms=1_000,
+        modalities=modalities, trial_ms=1_000,
         # Independent seeded match flags prevent a fixed-count clock policy
         # from looking like working memory.  The balanced mode remains the
         # default gym control; this training rung explicitly removes that
@@ -327,37 +420,87 @@ def main() -> None:
         balanced_matches=False,
     )
     frozen_controller = None
+    checkpoint_payload = None
     if args.checkpoint_in:
-        payload = torch.load(args.checkpoint_in, map_location=device,
-                             weights_only=False)
+        checkpoint_payload = torch.load(
+            args.checkpoint_in, map_location=device, weights_only=False)
+        controller_configuration = dict(
+            checkpoint_payload["model_configuration"])
+        # Policy checkpoints contain the controller under the ``controller.``
+        # prefix. Keep loading compatible with older controller-only artifacts
+        # while making the frozen-controller ablation actually executable.
+        controller_configuration.setdefault(
+            "relation_adapter_width", args.relation_adapter_width)
+        controller_configuration.setdefault(
+            "event_memory_adapter_width", args.event_memory_adapter_width)
+        controller_configuration.setdefault(
+            "retrieved_memory_adapter_width",
+            args.retrieved_memory_adapter_width)
         frozen_controller = UnifiedCognitiveController(
-            **payload["model_configuration"]).to(device)
-        frozen_controller.load_state_dict(payload["state_dict"])
+            **controller_configuration).to(device)
+        # The policy checkpoint intentionally strips legacy modality/action
+        # branches before serialization. Mirror that shape before loading the
+        # controller-only subset.
         frozen_controller.vision = None
         frozen_controller.actuator = None
-    if args.checkpoint_in and args.supervised_diagnostic:
-        raise ValueError("the supervised diagnostic is for a fresh policy only")
+        state_dict = checkpoint_payload["state_dict"]
+        controller_state = {
+            key.removeprefix("controller."): value
+            for key, value in state_dict.items()
+            if key.startswith("controller.")
+        }
+        frozen_controller.load_state_dict(
+            controller_state if controller_state else state_dict)
     policy = BrainWorkshopPolicy(
         relation_adapter_width=args.relation_adapter_width,
         event_memory_adapter_width=args.event_memory_adapter_width,
         retrieved_memory_adapter_width=args.retrieved_memory_adapter_width,
-        modality=args.modality,
+        input_bus_residual_width=args.input_bus_residual_width,
+        # This is an external RAM-side adapter, not a controller weight.
+        external_memory_adapter_width=args.external_memory_adapter_width,
+        modalities=modalities,
         controller=frozen_controller).to(device)
+    if checkpoint_payload is not None:
+        # Reuse compatible non-controller pieces when continuing a policy
+        # checkpoint. This makes the frozen-controller test a continuation
+        # experiment rather than a random decoder reinitialization, while
+        # shape-mismatched dual-stream pieces are intentionally skipped.
+        current_state = policy.state_dict()
+        compatible = {
+            key: value for key, value in checkpoint_payload["state_dict"].items()
+            if key in current_state and current_state[key].shape == value.shape
+        }
+        policy.load_state_dict(compatible, strict=False)
+    encoder_paths = {}
     if args.encoder_in:
+        if len(modalities) != 1:
+            raise ValueError("--encoder-in is for a single-stream run")
+        encoder_paths[modalities[0]] = args.encoder_in
+    if args.vision_encoder_in:
+        encoder_paths["vision"] = args.vision_encoder_in
+    if args.audio_encoder_in:
+        encoder_paths["audio"] = args.audio_encoder_in
+    for encoder_modality, encoder_path in encoder_paths.items():
+        if encoder_modality not in modalities:
+            raise ValueError(
+                f"{encoder_modality} encoder is not in --modalities")
         encoder_payload = torch.load(
-            args.encoder_in, map_location=device, weights_only=False)
+            encoder_path, map_location=device, weights_only=False)
         if encoder_payload.get("event_width") != policy.controller.width:
             raise ValueError("encoder width does not match controller width")
         encoder_modalities = tuple(
             encoder_payload.get("config", {}).get("modalities", ()))
-        if encoder_modalities and encoder_modalities != (args.modality,):
+        if encoder_modalities and encoder_modalities != (encoder_modality,):
             raise ValueError("encoder modality does not match the policy")
-        policy.encoder.load_state_dict(encoder_payload["encoder_state_dict"])
-    if args.freeze_encoder and not args.encoder_in:
-        raise ValueError("--freeze-encoder requires --encoder-in")
+        policy.encoders[encoder_modality].load_state_dict(
+            encoder_payload["encoder_state_dict"])
+    if args.freeze_encoder and set(encoder_paths) != set(modalities):
+        raise ValueError(
+            "--freeze-encoder requires one checkpoint per declared modality")
     if args.freeze_encoder:
-        for parameter in policy.encoder.parameters():
-            parameter.requires_grad_(False)
+        for encoder in policy.encoders.values():
+            for parameter in encoder.parameters():
+                parameter.requires_grad_(False)
     if frozen_controller is not None:
         for parameter in policy.controller.parameters():
             parameter.requires_grad_(False)
@@ -442,12 +585,13 @@ def main() -> None:
         device=device, shuffle_time=True, oracle_events=args.oracle_events,
         external_history=args.external_history)
     report = {
-        "experiment": "brainworkshop_vision_nback1_reward_only",
+        "experiment": "brainworkshop_multimodal_nback1_reward_only",
         "objective": (
             "supervised_diagnostic" if args.supervised_diagnostic
             else "reward_only_value_baseline" if args.value_baseline
             else "reward_only"),
-        "encoder_checkpoint": str(args.encoder_in) if args.encoder_in else None,
+        "encoder_checkpoints": {
+            name: str(path) for name, path in encoder_paths.items()},
         "encoder_frozen": bool(args.freeze_encoder),
         "controller_frozen": frozen_controller is not None,
         "oracle_events": bool(args.oracle_events),
@@ -455,9 +599,11 @@ def main() -> None:
         "relation_adapter_width": args.relation_adapter_width,
         "event_memory_adapter_width": args.event_memory_adapter_width,
         "retrieved_memory_adapter_width": args.retrieved_memory_adapter_width,
+        "external_memory_adapter_width": args.external_memory_adapter_width,
         "device": str(device),
         "config": config.__dict__,
-        "modality": args.modality,
+        "modality": policy.modality,
+        "modalities": modalities,
         "seed": args.seed,
         "updates": args.updates,
         "batch_size": args.batch_size,
@@ -487,7 +633,13 @@ def main() -> None:
         torch.save({
             "format": "brainworkshop-policy.v1",
             "model_configuration": {
-                "width": 32, "intention_width": 16, "workspace_slots": 2,
+                "width": policy.controller.width,
+                "intention_width": policy.controller.intention_width,
+                "workspace_slots": policy.controller.workspace_slots,
+                "relation_adapter_width": args.relation_adapter_width,
+                "event_memory_adapter_width": args.event_memory_adapter_width,
+                "retrieved_memory_adapter_width": (
+                    args.retrieved_memory_adapter_width),
             },
             "state_dict": policy.state_dict(),
             "config": config.__dict__,

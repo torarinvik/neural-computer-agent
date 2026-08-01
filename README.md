@@ -46,6 +46,14 @@ results, not semantic-label ceilings. The next frontier is simultaneous
 vision+audio fusion through the unchanged amodal bus; the full record is in
 `session_records/brainworkshop_reward_probe_2026-08-01/README.md`.
 
+The controller-freeze audit also passed: starting from a visual controller,
+the recurrent weights and audio encoder stayed frozen while a zero-initialized
+generic RAM-side relation adapter, bus, and decoder learned audio n-back from
+scalar reward. Two 256-update replicas reached 67.08% and 67.07%; history
+reset returned to 57.19%/57.18% and temporal shuffling to 57.50%/57.10%.
+This demonstrates new skill acquisition in the external memory/computation
+path without updating the central controller.
+
 **Current-status boundary:** the proven legacy class still supports its bundled
 `step(frame)` API, but a behavior-preserving extracted runtime now owns the
 vision encoder, controller core, and action decoder as three disjoint,

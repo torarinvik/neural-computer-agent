@@ -154,3 +154,33 @@ The next test is dual-stream composition: simultaneous vision and audio events
 must be fused by the same controller, with per-modality causal ablations and
 the existing history-reset gate. The architecture should remain unchanged;
 only the number of encoder streams and the amodal event bus should grow.
+
+## Frozen-controller external-memory breakthrough
+
+The requested freeze test is now positive. We started from a promoted visual
+controller checkpoint, attached the no-label audio encoder, and froze every
+recurrent controller weight. The audio encoder was also frozen. Learning was
+allowed only in the generic input bus, output decoder, value baseline, and a
+new zero-initialized RAM-side relation adapter. On every step that adapter sees
+only the current and previous opaque events and writes a residual into the
+retrieved-memory snapshot; it receives no stimulus identity, match flag, or
+answer label.
+
+| seed | updates | held-out after | before | history reset | temporal shuffle | decision |
+|---|---:|---:|---:|---:|---:|---|
+| 44137 | 256 | 67.08% | 50.82% | 57.19% | 57.50% | pass |
+| 44138 | 256 | 67.07% | 50.81% | 57.18% | 57.10% | pass |
+
+This is the first demonstrated case where the central AI controller remains
+frozen while the external memory/computation path acquires a new temporal
+skill from scalar reward alone. The gain is causal: removing the previous
+snapshot or shuffling event order removes roughly ten percentage points. A
+frozen controller with only the new audio encoder, but without the RAM-side
+adapter, stayed at 51.20%; allowing the audio encoder to adapt reached 61.46%
+but did not meet the causal promotion gate. Those controls localize the gain to
+learnable external memory computation rather than a fixed-controller shortcut.
+
+The multimodal ceiling remains the next frontier. A fresh controller reached
+56.29% on simultaneous vision+audio after 128 supervised updates, while the
+frozen visual controller reached 34.99% with the same dual-stream diagnostic;
+the dual-stream relation still needs a more sample-efficient composition path.
