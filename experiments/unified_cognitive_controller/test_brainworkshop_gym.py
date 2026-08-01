@@ -98,3 +98,17 @@ def test_keypress_decoder_uses_two_bit_protocol() -> None:
     assert BrainWorkshopKeypressDecoder.to_keypress_codes(ALL_MATCHES) == (1, 2)
     decoder = BrainWorkshopKeypressDecoder(intention_width=6)
     assert decoder(torch.zeros(5, 6)).shape == (5, 4)
+
+
+def test_factorized_reward_gives_partial_credit() -> None:
+    config = BrainWorkshopConfig(
+        n_back=1, trials=4, modalities=("vision", "audio"),
+        balanced_matches=False)
+    episode = generate_brainworkshop_episode(config, seed=1712)
+    target = episode.verifier_targets()[1]
+    wrong_audio = target ^ AUDIO_MATCH
+    exact = episode.score_action(1, target, latency_ms=0.0)
+    partial = episode.score_action(
+        1, wrong_audio, latency_ms=0.0, factorized_reward=True)
+    assert exact == 1.05
+    assert partial == 0.0

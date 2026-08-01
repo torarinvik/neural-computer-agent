@@ -11,6 +11,7 @@ from .amodal_runtime import (
     AmodalInputBus,
     AmodalOutputBus,
     ExtractedAmodalRuntime,
+    FactorizedOpaqueProtocolDecoder,
     OpaqueProtocolDecoder,
     canonicalize_action_adapter_payload,
     convert_legacy_checkpoint,
@@ -315,6 +316,14 @@ def test_output_bus_cardinality_is_runtime_variable() -> None:
     assert outputs["two"].shape == (3, 3)
 
 
+def test_factorized_decoder_emits_joint_opaque_bitmask_logits() -> None:
+    torch.manual_seed(1711)
+    decoder = FactorizedOpaqueProtocolDecoder(8, bits=2)
+    logits = decoder(torch.randn(5, 8))
+    assert logits.shape == (5, 4)
+    assert torch.isfinite(logits).all()
+
+
 def test_input_bus_preserves_one_event_and_identical_duplicates_exactly() -> None:
     torch.manual_seed(1706)
     payload = torch.randn(7, 12)
@@ -326,6 +335,15 @@ def test_input_bus_preserves_one_event_and_identical_duplicates_exactly() -> Non
     assert torch.equal(duplicate.payload, payload)
     assert torch.equal(single.confidence, torch.ones(7))
     assert torch.equal(duplicate.confidence, torch.ones(7))
+
+
+def test_input_bus_optional_event_normalization_balances_scales() -> None:
+    large = torch.tensor([[10.0, 0.0, 0.0, 0.0]])
+    small = torch.tensor([[0.0, 1.0, 0.0, 0.0]])
+    bus = AmodalInputBus(4, normalize_events=True)
+    result = bus([AmodalEvent(large), AmodalEvent(small)])
+    torch.testing.assert_close(
+        result.payload, torch.tensor([[1.0, 1.0, 0.0, 0.0]]))
 
 
 def test_input_bus_supports_per_example_cardinality_masks() -> None:
@@ -360,6 +378,18 @@ def test_learned_input_residual_cannot_change_single_or_duplicate_events() -> No
     torch.manual_seed(1707)
     event = AmodalEvent(torch.randn(4, 6))
     bus = AmodalInputBus(6, residual_hidden=5)
+    assert bus.residual is not None
+    with torch.no_grad():
+        for parameter in bus.parameters():
+            parameter.normal_()
+    assert torch.equal(bus([event]).payload, event.payload)
+    assert torch.equal(bus([event, event]).payload, event.payload)
+
+
+def test_second_moment_input_residual_preserves_single_event_invariant() -> None:
+    torch.manual_seed(1710)
+    event = AmodalEvent(torch.randn(4, 6))
+    bus = AmodalInputBus(6, residual_hidden=8, second_moment=True)
     assert bus.residual is not None
     with torch.no_grad():
         for parameter in bus.parameters():

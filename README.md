@@ -46,6 +46,16 @@ results, not semantic-label ceilings. The next frontier is simultaneous
 vision+audio fusion through the unchanged amodal bus; the full record is in
 `session_records/brainworkshop_reward_probe_2026-08-01/README.md`.
 
+The first dual-stream follow-up localized the barrier rather than passing it:
+the visual bit reached 100.0%, while audio and joint exact action stayed at
+55.3%. A frontend-scale audit found the visual event RMS about ten times the
+audio RMS. Optional generic normalization, serial-event transport, and
+per-bit credit were tested in tiny runs without a causal promotion. The
+evaluator now distinguishes exact joint accuracy from partial factorized
+reward, and the decoder warm-start mapping was corrected before interpreting
+the result. See
+`session_records/brainworkshop_dual_stream_followup_2026-08-01/README.md`.
+
 The controller-freeze audit also passed: starting from a visual controller,
 the recurrent weights and audio encoder stayed frozen while a zero-initialized
 generic RAM-side relation adapter, bus, and decoder learned audio n-back from

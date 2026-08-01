@@ -170,7 +170,9 @@ class BrainWorkshopEpisode:
         """Return private targets only to an evaluation harness."""
         return self._targets
 
-    def score_action(self, trial: int, action: int, latency_ms: float) -> float:
+    def score_action(self, trial: int, action: int, latency_ms: float,
+                     target_mask: int | None = None,
+                     factorized_reward: bool = False) -> float:
         """Score one opaque keypress bitmask with a small correct-speed bonus."""
         if trial < 0 or trial >= self.trials:
             raise IndexError("trial is outside the episode")
@@ -178,13 +180,34 @@ class BrainWorkshopEpisode:
             raise ValueError("action must be a two-bit keypress mask")
         if latency_ms < 0:
             raise ValueError("latency_ms cannot be negative")
-        correct = action == self._targets[trial]
+        if target_mask is not None:
+            if target_mask < 0 or target_mask > ALL_MATCHES:
+                raise ValueError("target_mask must be a two-bit keypress mask")
+            action &= target_mask
+            expected = self._targets[trial] & target_mask
+        else:
+            expected = self._targets[trial]
+        if factorized_reward:
+            bits = [1, 2]
+            active_bits = [bit for bit in bits if target_mask is None
+                           or target_mask & bit]
+            if not active_bits:
+                raise ValueError("factorized reward requires an active bit")
+            correct_bits = sum(
+                bool(action & bit) == bool(expected & bit)
+                for bit in active_bits)
+            correct = correct_bits == len(active_bits)
+            reward = (2.0 * correct_bits / len(active_bits)) - 1.0
+            if not correct:
+                return reward
+        else:
+            correct = action == expected
         if not correct:
             return -1.0
         speed_bonus = 0.05 * max(
             0.0, 1.0 - min(float(latency_ms), self.config.trial_ms)
             / self.config.trial_ms)
-        return 1.0 + speed_bonus
+        return (1.0 + speed_bonus) if not factorized_reward else reward + speed_bonus
 
 
 def generate_brainworkshop_episode(

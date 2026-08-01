@@ -91,6 +91,49 @@ class OpaqueProtocolDecoder(nn.Module):
         return self.network(payload[:, : self.intention_width])
 
 
+class FactorizedOpaqueProtocolDecoder(nn.Module):
+    """Decode an opaque bitmask as independent protocol decisions.
+
+    The bits have no semantic names here. This is useful when a verifier's
+    action protocol is a product of independent binary choices: the decoder
+    still emits one categorical distribution over masks, but its logit is the
+    sum of the learned per-bit log-probabilities. This improves credit
+    assignment without exposing verifier targets to the controller.
+    """
+
+    def __init__(self, intention_width: int, bits: int) -> None:
+        super().__init__()
+        if intention_width < 1 or bits < 1:
+            raise ValueError("factorized decoder dimensions are invalid")
+        self.intention_width = intention_width
+        self.bits = bits
+        self.commands = 1 << bits
+        self.network = nn.Linear(intention_width, bits * 2)
+
+    def forward(self, intention: IntentEvent | torch.Tensor) -> torch.Tensor:
+        log_probs = self.binary_log_probs(intention)
+        masks = torch.arange(
+            self.commands, device=log_probs.device, dtype=torch.long)
+        choices = torch.stack([
+            (masks >> bit) & 1 for bit in range(self.bits)
+        ], dim=-1)
+        batch_indices = choices.unsqueeze(0).expand(log_probs.shape[0], -1, -1)
+        bit_indices = batch_indices.unsqueeze(-1)
+        selected = log_probs.unsqueeze(1).expand(
+            -1, self.commands, -1, -1).gather(-1, bit_indices).squeeze(-1)
+        return selected.sum(dim=-1)
+
+    def binary_log_probs(
+            self, intention: IntentEvent | torch.Tensor) -> torch.Tensor:
+        """Return independent bit log-probabilities as [batch, bits, 2]."""
+        payload = intention.payload if isinstance(intention, IntentEvent) else intention
+        if payload.ndim != 2 or payload.shape[1] < self.intention_width:
+            raise ValueError("intention payload is too narrow for protocol decoder")
+        binary_logits = self.network(payload[:, :self.intention_width]).view(
+            payload.shape[0], self.bits, 2)
+        return torch.log_softmax(binary_logits, dim=-1)
+
+
 class AmodalOutputBus(nn.Module):
     """Fan one intention out to a runtime-variable set of output backends."""
 
@@ -110,19 +153,30 @@ class AmodalOutputBus(nn.Module):
 class AmodalInputBus(nn.Module):
     """Combine a runtime-variable event set with generic learned attention."""
 
-    def __init__(self, event_width: int, residual_hidden: int = 0) -> None:
+    def __init__(self, event_width: int, residual_hidden: int = 0,
+                 second_moment: bool = False,
+                 normalize_events: bool = False,
+                 event_rms_target: float = 1.0) -> None:
         super().__init__()
         if event_width < 1 or residual_hidden < 0:
             raise ValueError("input-bus dimensions are invalid")
+        if event_rms_target <= 0:
+            raise ValueError("event RMS target must be positive")
         self.event_width = event_width
+        self.second_moment = bool(second_moment)
+        self.normalize_events = bool(normalize_events)
+        self.event_rms_target = float(event_rms_target)
         self.relevance = nn.Linear(event_width, 1)
         # Uniform attention is a behavior-preserving starting point. Learning
         # may later prefer useful events using only verified behavioral reward.
         nn.init.zeros_(self.relevance.weight)
         nn.init.zeros_(self.relevance.bias)
+        residual_input_width = event_width * 2
+        if self.second_moment:
+            residual_input_width += event_width * event_width
         self.residual = (
             nn.Sequential(
-                nn.Linear(event_width * 2, residual_hidden),
+                nn.Linear(residual_input_width, residual_hidden),
                 nn.GELU(),
                 nn.Linear(residual_hidden, event_width),
             )
@@ -140,20 +194,33 @@ class AmodalInputBus(nn.Module):
             collection = AmodalEventCollection.from_events(collection)
         collection.validate(width=self.event_width)
         confidence = collection.confidence.to(collection.payload.dtype)
-        scores = self.relevance(collection.payload).squeeze(-1)
+        payloads = collection.payload
+        if self.normalize_events:
+            # Independent frontends may have arbitrary coordinate scales. A
+            # generic RMS normalization prevents one stream from drowning out
+            # another at the amodal boundary, without assigning semantics to
+            # either payload or changing the default behavior.
+            rms = payloads.square().mean(dim=-1, keepdim=True).sqrt()
+            payloads = payloads / rms.clamp_min(1e-6) * self.event_rms_target
+        scores = self.relevance(payloads).squeeze(-1)
         scores = scores + torch.log(confidence.clamp_min(1e-8))
         scores = scores.masked_fill(~collection.present, -torch.inf)
         weights = torch.softmax(scores, dim=1)
-        payload = torch.einsum("be,bew->bw", weights, collection.payload)
+        payload = torch.einsum("be,bew->bw", weights, payloads)
         if self.residual is not None:
-            centered = collection.payload - payload.unsqueeze(1)
+            centered = payloads - payload.unsqueeze(1)
             variance = torch.einsum("be,bew->bw", weights, centered.square())
             diversity = variance.mean(dim=-1, keepdim=True)
             # This exact-zero gate makes N=1 and identical duplicates permanent
             # compatibility invariants even after the generic set residual learns.
             diversity_gate = diversity / (diversity + 1e-4)
+            residual_features = [payload, variance]
+            if self.second_moment:
+                second_moment = torch.einsum(
+                    "be,bew,bex->bwx", weights, payloads, payloads)
+                residual_features.append(second_moment.flatten(1))
             payload = payload + diversity_gate * self.residual(
-                torch.cat([payload, variance], dim=-1)
+                torch.cat(residual_features, dim=-1)
             )
         timestamp = (
             torch.einsum("be,be->b", weights, collection.timestamp)

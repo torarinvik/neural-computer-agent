@@ -29,3 +29,15 @@ def test_external_memory_adapter_is_an_exact_initial_noop() -> None:
     features = torch.randn(5, 96)
     assert torch.equal(
         policy.external_memory_adapter(features), torch.zeros(5, 32))
+
+
+def test_source_keys_are_zero_initialized_and_runtime_variable() -> None:
+    policy = BrainWorkshopPolicy(
+        width=32,
+        intention_width=16,
+        modalities=("vision", "audio"),
+        learned_source_keys=True,
+    )
+    assert set(policy.source_keys) == {"vision", "audio"}
+    assert torch.equal(policy.source_keys["vision"], torch.zeros(32))
+    assert torch.equal(policy.source_keys["audio"], torch.zeros(32))
