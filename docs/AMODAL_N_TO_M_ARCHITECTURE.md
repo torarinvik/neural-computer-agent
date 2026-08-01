@@ -345,6 +345,13 @@ their evidence is combined. Three seeds replicate bars acquisition after
 diamond and dot-pair renderings; that cross-renderer transfer is not yet
 replicated at the strict gate.
 
+The confidence-routing N=3 gate also passes without changing controller or bus
+weights. On 4,096 held-out lifetimes, two streams score 96.58%; an opaque
+third stream at confidence 1.0 scores 58.42%; the same stream at generic
+confidence 0.01 scores 96.40%. This qualifies confidence-aware variable
+cardinality routing, but the confidence value was supplied by the frontend;
+learning that quality estimate remains an open boundary.
+
 Timestamp-preserving transport alignment is now also qualified. At 4,096
 lifetimes, out-of-order delivery and 0.25-unit timestamp jitter reproduced
 synchronous actions exactly at 96.36%; genuinely mismatched timestamps stayed
@@ -356,7 +363,8 @@ corruption-aware frontend or uncertainty mechanism with its own causal audit.
 
 This is still **not yet the target architecture** because:
 
-- synchronous event sets have only been behaviorally qualified at N=1 and N=2;
+- synchronous event sets have been behaviorally qualified at N=1, N=2, and a
+  confidence-gated N=3 distractor control;
 - learned delay compensation, corruption-aware noisy streams, and
   missing-stream policies are not yet qualified;
 - the recurrent compatibility API still feeds canonical action IDs back into

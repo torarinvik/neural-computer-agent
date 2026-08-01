@@ -9,8 +9,10 @@ from pathlib import Path
 
 import torch
 
+from .amodal_interface import AmodalEvent
 from .amodal_runtime import AmodalInputBus, runtime_from_legacy_payload
 from .environment import NULL_ACTION, generate_lifetimes
+from .train_amodal_event_denoiser import AmodalEventDenoiser
 from .train_complementary_input_bus import split_complementary_views
 
 
@@ -23,7 +25,7 @@ def _sha256(path: Path) -> str:
 
 
 @torch.no_grad()
-def _accuracy(runtime, bus, first, second, labels) -> float:
+def _accuracy(runtime, bus, first, second, labels, denoiser=None) -> float:
     count = first.shape[0]
     state = runtime.initial_state(count, device=first.device)
     action = torch.full((count,), NULL_ACTION, dtype=torch.long, device=first.device)
@@ -31,7 +33,15 @@ def _accuracy(runtime, bus, first, second, labels) -> float:
     actions = []
     for trial in range(first.shape[1]):
         has_feedback = torch.full_like(reward, float(trial == 1))
-        event = bus([runtime.encode(first[:, trial]), runtime.encode(second[:, trial])])
+        events = [runtime.encode(first[:, trial]), runtime.encode(second[:, trial])]
+        if denoiser is not None:
+            events = [
+                AmodalEvent(payload=denoiser(event.payload)).validate(
+                    width=runtime.controller.width
+                )
+                for event in events
+            ]
+        event = bus(events)
         core, state = runtime.step_intention_event(
             event, state, action, reward * has_feedback, has_feedback
         )
@@ -51,11 +61,21 @@ def _load_bus(path: Path, device: torch.device) -> AmodalInputBus:
     return bus.eval()
 
 
+def _load_denoiser(path: Path, device: torch.device) -> AmodalEventDenoiser:
+    payload = torch.load(path, map_location=device, weights_only=False)
+    denoiser = AmodalEventDenoiser(
+        int(payload["event_width"]), int(payload["hidden"])
+    ).to(device)
+    denoiser.load_state_dict(payload["state_dict"])
+    return denoiser.eval()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--controller", type=Path, required=True)
     parser.add_argument("--baseline-bus", type=Path, required=True)
     parser.add_argument("--adapted-bus", type=Path, required=True)
+    parser.add_argument("--denoiser", type=Path)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--seed", type=int, default=161_001)
     parser.add_argument("--count", type=int, default=4096)
@@ -77,6 +97,7 @@ def main() -> None:
     runtime = runtime_from_legacy_payload(controller_payload, device=device).eval()
     baseline = _load_bus(args.baseline_bus, device)
     adapted = _load_bus(args.adapted_bus, device)
+    denoiser = _load_denoiser(args.denoiser, device) if args.denoiser else None
     batch = generate_lifetimes(
         args.count,
         6,
@@ -113,7 +134,12 @@ def main() -> None:
                     runtime, baseline, first, corrupted, batch.correct_actions
                 ),
                 "adapted_accuracy": _accuracy(
-                    runtime, adapted, first, corrupted, batch.correct_actions
+                    runtime,
+                    adapted,
+                    first,
+                    corrupted,
+                    batch.correct_actions,
+                    denoiser,
                 ),
             }
         )
@@ -134,6 +160,7 @@ def main() -> None:
         "baseline_bus_sha256": _sha256(args.baseline_bus),
         "adapted_bus": str(args.adapted_bus),
         "adapted_bus_sha256": _sha256(args.adapted_bus),
+        "denoiser": str(args.denoiser) if args.denoiser else None,
         "configuration": {
             "seed": args.seed,
             "count": args.count,

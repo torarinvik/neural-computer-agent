@@ -121,6 +121,14 @@ cross-renderer transfer, corruption-aware noisy/missing streams, and learned
 latency-versus-wait control; see
 `session_records/amodal_input_noise_2026-08-01/README.md`.
 
+Confidence routing closes one additional cardinality gate. With the promoted
+frozen bus, two streams score 96.58% on 4,096 held-out lifetimes; an opaque
+third stream scores 58.42% at confidence 1.0 but 96.40% at confidence 0.01.
+This is an interface-level result: the frontend supplied generic confidence,
+and a learned confidence estimator is still required before claiming fully
+learned noisy/missing-stream handling. Evidence is in
+`session_records/amodal_n3_confidence_2026-08-01/`.
+
 Convert a legacy checkpoint with:
 
 ```sh

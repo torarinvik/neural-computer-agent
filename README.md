@@ -62,9 +62,14 @@ curve, so no adapted bus was promoted; the frozen bus remains the baseline.
 Learned delay compensation, corruption-aware frontends, and noisy streams
 remain open. Current results therefore establish synchronous N=2,
 timestamp-aware transport, and M-output operation—not yet unrestricted amodal
-N-to-M behavior. See
+N-to-M behavior. A new confidence-routing audit qualifies N=3 distractor
+rejection: 96.58% with two streams, 58.42% with an opaque full-confidence
+third stream, and 96.40% when that stream carries generic confidence 0.01.
+The confidence value was supplied by the frontend in this audit; learning that
+quality estimate remains open. See
 `session_records/amodal_input_noise_2026-08-01/README.md` for the rejected
-noise-adaptation evidence.
+noise-adaptation evidence and
+`session_records/amodal_n3_confidence_2026-08-01/README.md` for the N=3 gate.
 
 ## North star
 

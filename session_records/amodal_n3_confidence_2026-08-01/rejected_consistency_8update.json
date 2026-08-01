@@ -1,0 +1,32 @@
+{
+  "adapted_bus": "/tmp/inputbus_n3cons_s167001.pt",
+  "adapted_bus_sha256": "2013e55ffb769668f75d32561b9b87db2d10e5612d9ff2ec7ce4db9ac021ed96",
+  "baseline_bus": "artifacts/checkpoints/amodal_input_bus_complementary_seed145001.pt",
+  "baseline_bus_sha256": "4ae96f60b99107834c27840b8841e8b2ba20c10e6565c220b5607fb9c80d3c71",
+  "claim": "A learned generic input bus rejects an opaque third-stream distractor.",
+  "configuration": {
+    "count": 4096,
+    "device": "mps",
+    "seed": 166001
+  },
+  "controller": "artifacts/checkpoints/unified_repertoire_span2_amodal_intention_seed122005.pt",
+  "controller_sha256": "9eea7ab479cb8450737f040b76495cc5ec737e970cdc165af2446873e530cd6c",
+  "n2_delta": -0.01523435115814209,
+  "n3_gain": 0.04306638240814209,
+  "passed": false,
+  "rows": [
+    {
+      "bus": "baseline",
+      "n2_accuracy": 0.9629882574081421,
+      "n3_distractor_accuracy": 0.5807129144668579,
+      "n3_shuffled_distractor_accuracy": 0.680371105670929
+    },
+    {
+      "bus": "adapted",
+      "n2_accuracy": 0.94775390625,
+      "n3_distractor_accuracy": 0.623779296875,
+      "n3_shuffled_distractor_accuracy": 0.7059570550918579
+    }
+  ],
+  "schema": "amodal-input-n3-distractor-audit-v1"
+}
