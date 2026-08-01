@@ -270,6 +270,7 @@ def generate_procedural_shape_batch(
         next_query_position: int = -1,
         next_query_anchor_focus: int = -1,
         next_query_target_aligned: bool = False,
+        direct_query_ordinal: int = -1,
         blank_presentation: bool = False,
         reverse_presentation: bool = False,
         flip_candidates: bool = False,
@@ -294,6 +295,10 @@ def generate_procedural_shape_batch(
         query_count = span
     if not 1 <= query_count <= span:
         raise ValueError("query count must be within [1, span]")
+    if not -1 <= direct_query_ordinal < span:
+        raise ValueError("direct query ordinal must be -1 or within the span")
+    if direct_query_ordinal >= 0 and query_count != 1:
+        raise ValueError("direct query focus requires one query")
     if not 0.0 <= new_slot_difficulty <= 1.0:
         raise ValueError("new slot difficulty must be within [0, 1]")
     if not 0.0 <= query_frontier_difficulty <= 1.0:
@@ -546,6 +551,8 @@ def generate_procedural_shape_batch(
                 midpoint = len(shuffled) // 2
                 query_ordinals[shuffled[:midpoint], 0] = direct_target
                 query_ordinals[shuffled[midpoint:], 0] = next_target
+    if direct_query_ordinal >= 0:
+        query_ordinals[:, 0] = direct_query_ordinal
     if next_query_position >= 0:
         forced_ordinal = (
             next_query_anchor_focus + 1
@@ -987,6 +994,7 @@ def evaluate_procedural_shape_span(
         next_query_position: int = -1,
         next_query_anchor_focus: int = -1,
         next_query_target_aligned: bool = False,
+        direct_query_ordinal: int = -1,
         query_thought_steps: int = 0) -> dict[str, object]:
     model.eval()
     kwargs = dict(
@@ -1004,6 +1012,7 @@ def evaluate_procedural_shape_span(
         next_query_position=next_query_position,
         next_query_anchor_focus=next_query_anchor_focus,
         next_query_target_aligned=next_query_target_aligned,
+        direct_query_ordinal=direct_query_ordinal,
         device=device)
     normal_batch = generate_procedural_shape_batch(**kwargs)
     blank_batch = generate_procedural_shape_batch(
@@ -1288,6 +1297,11 @@ def main() -> None:
         help=(
             "focused bridge that balances direct and next access to the same "
             "stored target before introducing same-cue disambiguation"))
+    parser.add_argument(
+        "--direct-query-ordinal", type=int, default=-1,
+        help=(
+            "focus a one-query stream on this stored ordinal without adding "
+            "an operation cue; useful for isolating memory capacity"))
     parser.add_argument(
         "--new-slot-novelty-weight", type=float, default=1.0,
         help=(
@@ -1916,6 +1930,8 @@ def main() -> None:
                 args.next_query_anchor_focus if train_on_target else -1),
             next_query_target_aligned=(
                 args.next_query_target_aligned if train_on_target else False),
+            direct_query_ordinal=(
+                args.direct_query_ordinal if train_on_target else -1),
             allow_partial_balance=args.allow_partial_balance,
             device=device)
         result = rollout_procedural_shape_span(
@@ -2251,6 +2267,7 @@ def main() -> None:
                     next_query_position=args.next_query_position,
                     next_query_anchor_focus=args.next_query_anchor_focus,
                     next_query_target_aligned=args.next_query_target_aligned,
+                    direct_query_ordinal=args.direct_query_ordinal,
                     query_thought_steps=args.query_thought_steps)
                 row["heldout_accuracy"] = curve["accuracy"]
                 row["heldout_accuracy_by_presented_ordinal"] = (
@@ -2298,6 +2315,7 @@ def main() -> None:
         next_query_position=args.next_query_position,
         next_query_anchor_focus=args.next_query_anchor_focus,
         next_query_target_aligned=args.next_query_target_aligned,
+        direct_query_ordinal=args.direct_query_ordinal,
         query_thought_steps=args.query_thought_steps)
     floor_audit = evaluate_procedural_shape_span(
         model, count=args.test_episodes, span=args.span,
@@ -2317,6 +2335,7 @@ def main() -> None:
         next_query_position=args.next_query_position,
         next_query_anchor_focus=args.next_query_anchor_focus,
         next_query_target_aligned=args.next_query_target_aligned,
+        direct_query_ordinal=args.direct_query_ordinal,
         query_thought_steps=args.query_thought_steps)
     rehearsal_audits = {
         (

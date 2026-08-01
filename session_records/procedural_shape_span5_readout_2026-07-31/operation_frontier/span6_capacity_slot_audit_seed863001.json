@@ -1,0 +1,16 @@
+{
+  "schema": "span6_capacity_slot_audit_v1",
+  "checkpoint": "session_records/procedural_shape_span5_readout_2026-07-31/operation_frontier/span6_capacity_slot_seed85101_ind010_cont8.pt",
+  "seed": 863001,
+  "count": 4096,
+  "span6": {
+    "accuracy": 0.841796875,
+    "independent_new_slot_queries": 41,
+    "independent_new_slot_accuracy": 0.7804877758026123,
+    "all_memory_reset_accuracy": 0.50341796875,
+    "blank_presentation_accuracy": 0.49951171875,
+    "reverse_presentation_accuracy": 0.843994140625,
+    "candidate_flip_accuracy": 0.853759765625
+  },
+  "interpretation": "The candidate remains memory-dependent and counterfactually sensitive, but independent sixth-item performance is still variable across seeds and is not yet a robust promotion."
+}

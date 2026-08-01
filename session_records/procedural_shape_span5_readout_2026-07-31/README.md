@@ -252,3 +252,19 @@ while each update still took roughly 15–20 seconds on local MPS.  No span-six
 candidate was promoted.  The next span extension should therefore use a
 capacity curriculum (e.g. a carefully gated sixth-slot adapter or a smaller
 controller) rather than fine-tuning the entire span-five controller at once.
+
+The subsequent direct-query capacity bridge used one generic zero-output skill
+slot, trained only from greedy action plus scalar verifier outcome, with the
+canonical span-five controller frozen and rehearsed.  At zero sixth-item
+independence, direct span-six accuracy rose from 65.3% to 83.7% after two short
+blocks; span-five and span-three retention stayed about 91.7% and 99.5%, and
+memory reset stayed at chance.  At independence 0.01, verifier-side weighting
+of rare independent examples produced 90.2% on 41 independent cases in one
+  seed, but three seed-disjoint audits gave 80.5%, 75.6%, and 78.0% on 41 cases
+each (mean 78.0%).  At independence 0.02 the independent score was 85.4% on 82
+cases, but this did not improve the seed-disjoint estimate.  These are useful
+learning signals, not a promotion: aggregate direct-sixth accuracy remains
+about 84–85% and the independent gate is still too noisy.  Stop climbing the
+independence scalar; the next high-ROI experiment is a larger, seed-disjoint
+0.01 gate with more diverse sixth-item experience, while preserving the
+canonical span-five model.
