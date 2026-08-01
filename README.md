@@ -55,6 +55,12 @@ evaluator now distinguishes exact joint accuracy from partial factorized
 reward, and the decoder warm-start mapping was corrected before interpreting
 the result. See
 `session_records/brainworkshop_dual_stream_followup_2026-08-01/README.md`.
+The follow-up then tried independent RAM relation adapters per stream: vision
+still reached 100.0%, audio remained 53.6–56.4%, and joint exact accuracy
+remained 53.6–56.4%. A controller-frozen continuation had healthy adapter
+gradients but no improvement, localizing the remaining barrier to the
+controller-facing source-preserving interface rather than disproving frozen
+external learning.
 
 The controller-freeze audit also passed: starting from a visual controller,
 the recurrent weights and audio encoder stayed frozen while a zero-initialized

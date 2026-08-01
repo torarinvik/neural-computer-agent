@@ -31,6 +31,20 @@ def test_external_memory_adapter_is_an_exact_initial_noop() -> None:
         policy.external_memory_adapter(features), torch.zeros(5, 32))
 
 
+def test_per_stream_external_memory_adapters_are_independent_noops() -> None:
+    policy = BrainWorkshopPolicy(
+        width=32,
+        intention_width=16,
+        modalities=("vision", "audio"),
+        external_memory_adapter_width=32,
+        per_stream_external_history=True,
+    )
+    assert set(policy.external_memory_adapters) == {"vision", "audio"}
+    features = torch.randn(5, 96)
+    for adapter in policy.external_memory_adapters.values():
+        assert torch.equal(adapter(features), torch.zeros(5, 32))
+
+
 def test_source_keys_are_zero_initialized_and_runtime_variable() -> None:
     policy = BrainWorkshopPolicy(
         width=32,

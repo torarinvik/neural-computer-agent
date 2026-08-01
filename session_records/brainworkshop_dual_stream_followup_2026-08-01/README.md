@@ -53,3 +53,37 @@ should preserve source identity and per-stream memory at the amodal boundary
 repeat the same exact/reset/shuffle/bit-ablation audits. Do not spend a long
 reward-only run on the current mean-pooling bus until a small supervised
 representation probe shows that both bits are decodable.
+
+## Per-stream RAM adapter follow-up
+
+The first source-preserving attempt computes a separate one-step RAM relation
+adapter for each stream, then averages those generic memory vectors at the
+controller boundary.  This removes the visual stream's numerical dominance
+without adding task labels or a semantic branch.  A 64-update warm run (the
+controller was trainable) reached the following exact held-out decomposition:
+
+| condition | vision bit | audio bit | joint exact |
+|---|---:|---:|---:|
+| warm run, normal history | 100.0% | 53.6% | 53.6% |
+| warm run, history reset | 55.0% | 53.6% | 32.2% |
+| warm run, time shuffled | 56.9% | 53.6% | 33.8% |
+
+The factorized reward's positive rate was 100% because the visual bit was
+mastered; it is not joint accuracy.  The exact metric above is therefore the
+only promoted metric.
+
+A second 64-update continuation froze the controller and encoders.  Only the
+per-stream RAM adapters and opaque output head were optimizer-visible.  Its
+normal result stayed at 56.35% joint exact (vision 100.0%, audio 56.35%),
+with reset 33.8% and shuffle 35.3% joint exact on a 256-lifetime audit.  The
+run had healthy nonzero gradients, but no improvement over its starting
+checkpoint, so it is a clean negative for this particular interface rather
+than evidence against frozen-weight learning in general.
+
+The conclusion is now narrower: frozen external memory/computation can learn
+a new audio skill in isolation, but simultaneous two-stream composition still
+needs a source-preserving controller-facing interface. Averaging the separate
+RAM residuals at the last step still erases the lagging stream. The next probe
+should expose source-keyed or slot-preserving RAM vectors to a generic reader,
+and should be tested with a tiny supervised decodability check before another
+reward-only run.

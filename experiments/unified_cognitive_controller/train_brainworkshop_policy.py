@@ -56,6 +56,7 @@ class BrainWorkshopPolicy(nn.Module):
                  input_bus_normalize_events: bool = False,
                  input_bus_event_rms_target: float = 1.0,
                  external_memory_adapter_width: int = 0,
+                 per_stream_external_history: bool = False,
                  factorized_output: bool = False,
                  factorized_reward: bool = False,
                  learned_source_keys: bool = False,
@@ -137,16 +138,25 @@ class BrainWorkshopPolicy(nn.Module):
             normalize_events=input_bus_normalize_events,
             event_rms_target=input_bus_event_rms_target)
         self.external_memory_adapter = None
+        self.external_memory_adapters = nn.ModuleDict()
         if external_memory_adapter_width:
-            self.external_memory_adapter = nn.Sequential(
-                nn.Linear(width * 3, external_memory_adapter_width),
-                nn.GELU(),
-                nn.Linear(external_memory_adapter_width, width),
-            )
-            # The adapter starts as an exact no-op. It can only earn a change
-            # to the RAM snapshot through the verifier's scalar outcome.
-            nn.init.zeros_(self.external_memory_adapter[-1].weight)
-            nn.init.zeros_(self.external_memory_adapter[-1].bias)
+            def make_adapter() -> nn.Sequential:
+                adapter = nn.Sequential(
+                    nn.Linear(width * 3, external_memory_adapter_width),
+                    nn.GELU(),
+                    nn.Linear(external_memory_adapter_width, width),
+                )
+                # The adapter starts as an exact no-op. It can only earn a
+                # change to the RAM snapshot through the verifier's reward.
+                nn.init.zeros_(adapter[-1].weight)
+                nn.init.zeros_(adapter[-1].bias)
+                return adapter
+            if per_stream_external_history:
+                self.external_memory_adapters = nn.ModuleDict({
+                    name: make_adapter() for name in modalities})
+            else:
+                self.external_memory_adapter = make_adapter()
+        self.per_stream_external_history = bool(per_stream_external_history)
         # The legacy model owns adapters for compatibility.  The probe removes
         # them so only this independent output adapter formats the intention.
         self.controller.vision = None
@@ -243,7 +253,8 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
              shuffle_time: bool = False,
              oracle_events: bool = False,
              external_history: bool = False,
-             serial_modalities: bool = False) -> Rollout:
+             serial_modalities: bool = False,
+             per_stream_external_history: bool = False) -> Rollout:
     episodes, observations = _make_batch(
         config, batch_size=batch_size, seed=seed, device=device,
         modalities=policy.modalities)
@@ -268,6 +279,7 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
     has_feedback = torch.zeros(batch_size, device=device)
     previous_event = None
     previous_events = {name: None for name in policy.modalities}
+    previous_stream_events = {name: None for name in policy.modalities}
     log_probs, entropies, rewards, actions, values = [], [], [], [], []
     bit_log_probs, bit_rewards, exact_correct = [], [], []
     for trial in range(config.trials):
@@ -283,6 +295,7 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
             has_feedback = torch.zeros(batch_size, device=device)
             previous_event = None
             previous_events = {name: None for name in policy.modalities}
+            previous_stream_events = {name: None for name in policy.modalities}
         events = _event_payloads(
             policy, observations, episodes, trial, device,
             oracle_events=oracle_events,
@@ -312,16 +325,36 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
             assert core is not None
         else:
             event = policy.input_bus(events)
-            retrieved_memory = (
-                previous_event if external_history and previous_event is not None
-                else torch.zeros_like(event.payload))
-            if (external_history and previous_event is not None
-                    and policy.external_memory_adapter is not None):
-                memory_features = torch.cat([
-                    event.payload, retrieved_memory,
-                    event.payload * retrieved_memory], dim=-1)
-                retrieved_memory = retrieved_memory + (
-                    policy.external_memory_adapter(memory_features))
+            if (per_stream_external_history
+                    and policy.external_memory_adapters):
+                memories = []
+                for modality, raw_event in zip(policy.modalities, events):
+                    prior = (
+                        previous_stream_events[modality]
+                        if external_history
+                        and previous_stream_events[modality] is not None
+                        else torch.zeros_like(raw_event.payload))
+                    if (external_history
+                            and previous_stream_events[modality] is not None):
+                        memory_features = torch.cat([
+                            raw_event.payload, prior,
+                            raw_event.payload * prior], dim=-1)
+                        prior = prior + policy.external_memory_adapters[modality](
+                            memory_features)
+                    memories.append(prior)
+                retrieved_memory = torch.stack(memories, dim=1).mean(dim=1)
+            else:
+                retrieved_memory = (
+                    previous_event
+                    if external_history and previous_event is not None
+                    else torch.zeros_like(event.payload))
+                if (external_history and previous_event is not None
+                        and policy.external_memory_adapter is not None):
+                    memory_features = torch.cat([
+                        event.payload, retrieved_memory,
+                        event.payload * retrieved_memory], dim=-1)
+                    retrieved_memory = retrieved_memory + (
+                        policy.external_memory_adapter(memory_features))
             core, state = policy.controller.step_event(
                 event, state, previous_action, previous_reward, has_feedback,
                 retrieved_memory=retrieved_memory)
@@ -382,6 +415,8 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
         has_feedback.fill_(1.0)
         if not serial_modalities:
             previous_event = event.payload
+            for modality, raw_event in zip(policy.modalities, events):
+                previous_stream_events[modality] = raw_event.payload
     return Rollout(
         torch.stack(log_probs), torch.stack(entropies),
         torch.stack(rewards), torch.stack(actions), torch.stack(values),
@@ -395,7 +430,8 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
                      device: torch.device,
                      oracle_events: bool = False,
                      external_history: bool = False,
-                     serial_modalities: bool = False
+                     serial_modalities: bool = False,
+                     per_stream_external_history: bool = False
                      ) -> tuple[torch.Tensor, torch.Tensor]:
     """Disposable verifier-label ceiling probe.
 
@@ -413,6 +449,7 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
     has_feedback = torch.zeros(batch_size, device=device)
     previous_event = None
     previous_events = {name: None for name in policy.modalities}
+    previous_stream_events = {name: None for name in policy.modalities}
     losses, rewards = [], []
     for trial in range(config.trials):
         events = _event_payloads(
@@ -438,16 +475,36 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
             assert core is not None
         else:
             event = policy.input_bus(events)
-            retrieved_memory = (
-                previous_event if external_history and previous_event is not None
-                else torch.zeros_like(event.payload))
-            if (external_history and previous_event is not None
-                    and policy.external_memory_adapter is not None):
-                memory_features = torch.cat([
-                    event.payload, retrieved_memory,
-                    event.payload * retrieved_memory], dim=-1)
-                retrieved_memory = retrieved_memory + (
-                    policy.external_memory_adapter(memory_features))
+            if (per_stream_external_history
+                    and policy.external_memory_adapters):
+                memories = []
+                for modality, raw_event in zip(policy.modalities, events):
+                    prior = (
+                        previous_stream_events[modality]
+                        if external_history
+                        and previous_stream_events[modality] is not None
+                        else torch.zeros_like(raw_event.payload))
+                    if (external_history
+                            and previous_stream_events[modality] is not None):
+                        memory_features = torch.cat([
+                            raw_event.payload, prior,
+                            raw_event.payload * prior], dim=-1)
+                        prior = prior + policy.external_memory_adapters[modality](
+                            memory_features)
+                    memories.append(prior)
+                retrieved_memory = torch.stack(memories, dim=1).mean(dim=1)
+            else:
+                retrieved_memory = (
+                    previous_event
+                    if external_history and previous_event is not None
+                    else torch.zeros_like(event.payload))
+                if (external_history and previous_event is not None
+                        and policy.external_memory_adapter is not None):
+                    memory_features = torch.cat([
+                        event.payload, retrieved_memory,
+                        event.payload * retrieved_memory], dim=-1)
+                    retrieved_memory = retrieved_memory + (
+                        policy.external_memory_adapter(memory_features))
             core, state = policy.controller.step_event(
                 event, state, previous_action, previous_reward, has_feedback,
                 retrieved_memory=retrieved_memory)
@@ -474,6 +531,8 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
         has_feedback = torch.ones(batch_size, device=device)
         if not serial_modalities:
             previous_event = event.payload
+            for modality, raw_event in zip(policy.modalities, events):
+                previous_stream_events[modality] = raw_event.payload
     return torch.stack(losses).mean(), torch.stack(rewards)
 
 
@@ -483,12 +542,14 @@ def _evaluate(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig, *,
               reset_history: bool = False, shuffle_time: bool = False,
               oracle_events: bool = False,
               external_history: bool = False,
-              serial_modalities: bool = False) -> dict:
+              serial_modalities: bool = False,
+              per_stream_external_history: bool = False) -> dict:
     rollout = _rollout(
         policy, config, batch_size=count, seed=seed, device=device,
         sample=False, reset_history=reset_history, shuffle_time=shuffle_time,
         oracle_events=oracle_events, external_history=external_history,
-        serial_modalities=serial_modalities)
+        serial_modalities=serial_modalities,
+        per_stream_external_history=per_stream_external_history)
     rewards = rollout.rewards
     return {
         "accuracy": float(rollout.exact_correct.mean()),
@@ -525,6 +586,9 @@ def main() -> None:
                         help="diagnostic generic one-step RAM snapshot")
     parser.add_argument("--serial-modalities", action="store_true",
                         help="present streams as sequential events per trial")
+    parser.add_argument(
+        "--per-stream-external-history", action="store_true",
+        help="compute RAM relation residuals separately per input stream")
     parser.add_argument("--relation-adapter-width", type=int, default=0,
                         choices=(0, 32, 64))
     parser.add_argument("--event-memory-adapter-width", type=int, default=0,
@@ -647,7 +711,8 @@ def main() -> None:
         input_bus_normalize_events=args.input_bus_normalize_events,
         input_bus_event_rms_target=args.input_bus_event_rms_target,
         # This is an external RAM-side adapter, not a controller weight.
-        external_memory_adapter_width=args.external_memory_adapter_width,
+                 external_memory_adapter_width=args.external_memory_adapter_width,
+        per_stream_external_history=args.per_stream_external_history,
         factorized_output=args.factorized_output,
         factorized_reward=args.factorized_reward,
         learned_source_keys=args.learned_source_keys,
@@ -752,7 +817,8 @@ def main() -> None:
         policy, config, count=args.eval_count, seed=args.seed + 10_000,
         device=device, oracle_events=args.oracle_events,
         external_history=args.external_history,
-        serial_modalities=args.serial_modalities)
+        serial_modalities=args.serial_modalities,
+        per_stream_external_history=args.per_stream_external_history)
     for update in range(1, args.updates + 1):
         policy.train()
         if args.supervised_diagnostic:
@@ -761,7 +827,8 @@ def main() -> None:
                 seed=args.seed + update * 1_000, device=device,
                 oracle_events=args.oracle_events,
                 external_history=args.external_history,
-                serial_modalities=args.serial_modalities)
+                serial_modalities=args.serial_modalities,
+                per_stream_external_history=args.per_stream_external_history)
             batch_accuracy = float((diagnostic_rewards > 0).float().mean())
             batch_mean_reward = float(diagnostic_rewards.mean())
             policy_entropy = 0.0
@@ -772,7 +839,8 @@ def main() -> None:
                 seed=args.seed + update * 1_000, device=device, sample=True,
                 oracle_events=args.oracle_events,
                 external_history=args.external_history,
-                serial_modalities=args.serial_modalities)
+                serial_modalities=args.serial_modalities,
+                per_stream_external_history=args.per_stream_external_history)
             returns = torch.zeros_like(rollout.rewards)
             running = torch.zeros(args.batch_size, device=device)
             for trial in range(args.trials - 1, -1, -1):
@@ -835,17 +903,20 @@ def main() -> None:
         policy, config, count=args.eval_count, seed=args.seed + 10_000,
                 device=device, oracle_events=args.oracle_events,
                 external_history=args.external_history,
-                serial_modalities=args.serial_modalities)
+                serial_modalities=args.serial_modalities,
+                per_stream_external_history=args.per_stream_external_history)
     reset = _evaluate(
         policy, config, count=args.eval_count, seed=args.seed + 20_000,
                 device=device, reset_history=True, oracle_events=args.oracle_events,
         external_history=args.external_history,
-        serial_modalities=args.serial_modalities)
+        serial_modalities=args.serial_modalities,
+        per_stream_external_history=args.per_stream_external_history)
     shuffled = _evaluate(
         policy, config, count=args.eval_count, seed=args.seed + 30_000,
         device=device, shuffle_time=True, oracle_events=args.oracle_events,
         external_history=args.external_history,
-        serial_modalities=args.serial_modalities)
+        serial_modalities=args.serial_modalities,
+        per_stream_external_history=args.per_stream_external_history)
     report = {
         "experiment": "brainworkshop_multimodal_nback1_reward_only",
         "objective": (
@@ -863,6 +934,7 @@ def main() -> None:
         "event_memory_adapter_width": args.event_memory_adapter_width,
         "retrieved_memory_adapter_width": args.retrieved_memory_adapter_width,
         "external_memory_adapter_width": args.external_memory_adapter_width,
+        "per_stream_external_history": bool(args.per_stream_external_history),
         "input_bus_normalize_events": bool(args.input_bus_normalize_events),
         "input_bus_event_rms_target": args.input_bus_event_rms_target,
         "factorized_output": bool(args.factorized_output),
