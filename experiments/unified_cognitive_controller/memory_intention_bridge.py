@@ -39,3 +39,25 @@ class MemoryActionComposer(nn.Module):
             self, intention: torch.Tensor, code: torch.Tensor
             ) -> torch.Tensor:
         return self.network(torch.cat((intention, code), dim=-1))
+
+
+class MemoryIntentionReader(nn.Module):
+    """Translate a generic memory row into an amodal intention residual."""
+
+    def __init__(self, memory_width: int, intention_width: int,
+                 hidden_width: int = 64) -> None:
+        super().__init__()
+        self.network = nn.Sequential(
+            nn.LayerNorm(memory_width + intention_width),
+            nn.Linear(memory_width + intention_width, hidden_width),
+            nn.GELU(),
+            nn.Linear(hidden_width, intention_width),
+        )
+        # Before training, the optional reader is an exact no-op.
+        nn.init.zeros_(self.network[-1].weight)
+        nn.init.zeros_(self.network[-1].bias)
+
+    def forward(
+            self, intention: torch.Tensor, memory_value: torch.Tensor
+            ) -> torch.Tensor:
+        return self.network(torch.cat((intention, memory_value), dim=-1))

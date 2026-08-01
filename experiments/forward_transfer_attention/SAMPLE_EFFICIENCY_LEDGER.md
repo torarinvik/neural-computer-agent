@@ -26,6 +26,7 @@ new tasks is evidence of compounding learning.
 
 | Date | Transition or test | Experienced result | Control | Conclusion |
 |---|---|---:|---:|---|
+| 2026-08-01 | Frozen controller + native intention-bus memory reader, 3 seeds | 99.41–99.95% on 2,048 held-out contexts after 256 scalar support bits; reversal 99.56–100%; flips 99.07–99.95% | Empty 50%; shuffled 49.12–51.90%; corrupted 54.69–58.01%; controller unchanged | Replicated learned memory-to-amodal-intention interface; no fresh-learner transfer ratio yet, so this is not claimed as compounding sample efficiency |
 | 2026-08-01 | Frozen controller + learned memory-code/intention bridge, 3 seeds | 99.95–100.00% on 2,048 held-out contexts after 256 scalar support bits; reversal flips 100%; controller unchanged | Empty, shuffled, and corrupted memory approximately 50%; exact disk retrieval 100% | Learned external memory-code boundary passes causal gates without weight updates; compounding transfer ratio is not yet claimed because a matched fresh learner has not been run |
 | 2026-07-24 | Temporal atom colors 0–1 → same atom colors 2–3 | 45.31% held-out first-write rule decode | 80.47% on colors 0–1; 53.91% majority | No palette transfer; current temporal primitive is identity-specific |
 | 2026-07-24 | Temporal atom → four-color temporal composition | 51.56% first-write rule decode | 80.47% atom; 50.78% compositional majority | No compositional rule transfer at the write boundary |

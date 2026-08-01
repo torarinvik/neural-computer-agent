@@ -1,0 +1,80 @@
+{
+  "accepted": false,
+  "adapter_checkpoint": "/tmp/native_memory_read_adapter_supervised_29101.pt",
+  "adapter_frozen_during_adaptation": true,
+  "adapter_parameters": 12640,
+  "controller": "artifacts/checkpoints/unified_pair_relation_repertoire_seed9112.pt",
+  "controller_digest_after": "73bb5b7b04469e5355773b263f3562fdcc59b4dfaa0fca67822229e73a6d7744",
+  "controller_digest_before": "73bb5b7b04469e5355773b263f3562fdcc59b4dfaa0fca67822229e73a6d7744",
+  "controller_weights_unchanged": true,
+  "corrupted_memory_accuracy": 0.498046875,
+  "curve": [
+    {
+      "loss": 12.159158706665039,
+      "step": 1,
+      "training_target_accuracy": 0.5078125
+    },
+    {
+      "loss": 7.0259599685668945,
+      "step": 40,
+      "training_target_accuracy": 0.53125
+    },
+    {
+      "loss": 6.586552143096924,
+      "step": 80,
+      "training_target_accuracy": 0.55859375
+    },
+    {
+      "loss": 8.97011661529541,
+      "step": 120,
+      "training_target_accuracy": 0.5625
+    },
+    {
+      "loss": 8.261615753173828,
+      "step": 160,
+      "training_target_accuracy": 0.55078125
+    },
+    {
+      "loss": 7.945147514343262,
+      "step": 200,
+      "training_target_accuracy": 0.5625
+    }
+  ],
+  "device": "mps",
+  "diagnostic_private_labels": true,
+  "disk_accuracy": 0.56591796875,
+  "gates": {
+    "adapter_frozen": true,
+    "controller_frozen": true,
+    "corrupted_memory_hurts": false,
+    "disk_at_least_85": false,
+    "no_memory_hurts": false,
+    "prediction_flips_at_least_80": false,
+    "reversal_at_least_85": false,
+    "shuffled_memory_hurts": false
+  },
+  "labels_used_for_training": [
+    "private query targets (diagnostic only)"
+  ],
+  "learner_visible_training_signal": [
+    "attempted opaque support action",
+    "scalar support success/failure",
+    "frozen controller query action"
+  ],
+  "learning_rate": 0.003,
+  "native_retrieved_memory_path": true,
+  "no_memory_accuracy": 0.5,
+  "optimizer_steps": 200,
+  "prediction_flip_rate": 0.15283203125,
+  "private_query_targets_used_only_for_audit": false,
+  "retrieval_confidence_mean": 1.0,
+  "retrieval_exact_rate": 1.0,
+  "reversed_accuracy": 0.58203125,
+  "schema": "native-memory-read-adapter-audit-v1",
+  "seed": 29101,
+  "shuffled_memory_accuracy": 0.49072265625,
+  "support_verifier_bits": 256,
+  "test_contexts": 2048,
+  "train_contexts": 256,
+  "wall_seconds": 4.170708750025369
+}

@@ -1,0 +1,78 @@
+{
+  "accepted": true,
+  "controller": "artifacts/checkpoints/unified_pair_relation_repertoire_seed9112.pt",
+  "controller_digest_after": "73bb5b7b04469e5355773b263f3562fdcc59b4dfaa0fca67822229e73a6d7744",
+  "controller_digest_before": "73bb5b7b04469e5355773b263f3562fdcc59b4dfaa0fca67822229e73a6d7744",
+  "controller_weights_unchanged": true,
+  "corrupted_memory_accuracy": 0.556640625,
+  "curve": [
+    {
+      "loss": 12.623886108398438,
+      "pseudo_action_accuracy": 0.44921875,
+      "step": 1
+    },
+    {
+      "loss": 0.03406856209039688,
+      "pseudo_action_accuracy": 0.99609375,
+      "step": 40
+    },
+    {
+      "loss": 0.0002739689080044627,
+      "pseudo_action_accuracy": 1.0,
+      "step": 80
+    },
+    {
+      "loss": 0.00017361677601002157,
+      "pseudo_action_accuracy": 1.0,
+      "step": 120
+    },
+    {
+      "loss": 0.00012775862705893815,
+      "pseudo_action_accuracy": 1.0,
+      "step": 160
+    },
+    {
+      "loss": 0.0001273720699828118,
+      "pseudo_action_accuracy": 1.0,
+      "step": 200
+    }
+  ],
+  "device": "mps",
+  "disk_accuracy": 0.99462890625,
+  "gates": {
+    "controller_frozen": true,
+    "corrupted_memory_hurts": true,
+    "disk_at_least_85": true,
+    "no_memory_hurts": true,
+    "prediction_flips_at_least_80": true,
+    "reader_frozen": true,
+    "reversal_at_least_85": true,
+    "shuffled_memory_hurts": true
+  },
+  "intention_bus_residual": true,
+  "labels_used_for_training": [],
+  "learner_visible_training_signal": [
+    "attempted opaque support action",
+    "scalar support success/failure",
+    "frozen controller query action"
+  ],
+  "learning_rate": 0.003,
+  "no_memory_accuracy": 0.5,
+  "optimizer_steps": 200,
+  "prediction_flip_rate": 0.99267578125,
+  "private_query_targets_used_only_for_audit": true,
+  "reader_checkpoint": "artifacts/checkpoints/unified_native_intention_reader_seed29202.pt",
+  "reader_checkpoint_sha256": "a97cf29ae8de7d81e883aa02d196f112d494e635432d6895636882bc47c236ec",
+  "reader_frozen_during_adaptation": true,
+  "reader_parameters": 9544,
+  "retrieval_confidence_mean": 1.0,
+  "retrieval_exact_rate": 1.0,
+  "reversed_accuracy": 0.9970703125,
+  "schema": "native-intention-memory-reader-audit-v1",
+  "seed": 29202,
+  "shuffled_memory_accuracy": 0.490234375,
+  "support_verifier_bits": 256,
+  "test_contexts": 2048,
+  "train_contexts": 256,
+  "wall_seconds": 3.2016670830198564
+}

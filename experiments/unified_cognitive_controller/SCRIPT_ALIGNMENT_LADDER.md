@@ -71,6 +71,24 @@ visual key encoder plus an external bridge and composer.  The next interface
 test is to migrate this boundary onto the standardized event/intention buses
 without introducing a task-specific reasoning branch.
 
+**Gate 1c passed (2026-08-01, native intention-bus reader):** the direct
+`retrieved_memory` injection was first tested and rejected at 56.6% held-out
+with only 15.0% reversal flips; a private-label capacity probe failed at the
+same point.  The smallest aligned repair was a no-op-initialized generic
+memory-to-intention reader.  It consumes a frozen query intention and a
+retrieved generic row, emits a 24-dimensional intention residual, and leaves
+the protocol decoder unchanged.  After 256 scalar support bits, three seeds
+	scored 99.56%, 99.46%, and 99.95% on 2,048 held-out contexts; reversal scores
+	were 99.90%, 99.71%, and 100.00%, with 99.27–99.95% paired prediction flips.
+Empty, shuffled, and corrupted-memory controls separated causally, exact disk
+retrieval was 100%, and the controller digest was unchanged in every run.  See
+`../../session_records/native_intention_memory_reader_2026-08-01/`.
+
+This qualifies a learned memory-to-amodal-intention adapter.  It does not claim
+that the recurrent controller's existing hidden `retrieved_memory` pathway can
+compose the rule without an interface adapter; that negative result is
+preserved as a boundary-localization finding.
+
 ## Gate 2: compounding ledger
 
 Compare the experienced agent with a fresh matched learner on the next
