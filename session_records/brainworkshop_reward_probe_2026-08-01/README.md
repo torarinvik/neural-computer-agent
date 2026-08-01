@@ -125,3 +125,32 @@ survives replication. The visual ladder is therefore complete: the same
 controller/RAM mechanism learns 1-back comparisons over 2, 4, and 8 visual
 locations. Audio and dual-stream composition are now the next untested
 frontier.
+
+## Audio-only promotion
+
+The same amodal controller and one-step external-history interface also learn
+the comparison from an audio stream. The audio encoder was trained first with
+waveform reconstruction only; its throwaway decoder was discarded, and the
+frozen encoder then supplied events to reward-only controller training. No
+audio identity, match flag, or answer target was exposed to the policy.
+
+| seed | updates | held-out accuracy | history reset | temporal shuffle | decision |
+|---|---:|---:|---:|---:|---|
+| 44041 | 256 | 67.32% | 57.17% | 56.34% | pass |
+| 44042 | 256 | 67.31% | 57.19% | 56.92% | pass |
+
+Both replicas exceed the stochastic majority baseline by about ten points,
+while resetting the one-step history or shuffling event order returns accuracy
+to roughly 57%. This is the first replicated cross-modality result: the
+reward-only learning mechanism is not tied to visual pixels, although the
+eight-symbol audio stream is currently harder than the two- and four-position
+visual rungs.
+
+The audio reconstruction pretraining also passed its no-label gate: waveform
+loss fell from 0.4476 to 0.3443 with live gradients in 32 updates. The
+encoder checkpoint and both reward reports are stored beside this README.
+
+The next test is dual-stream composition: simultaneous vision and audio events
+must be fused by the same controller, with per-modality causal ablations and
+the existing history-reset gate. The architecture should remain unchanged;
+only the number of encoder streams and the amodal event bus should grow.

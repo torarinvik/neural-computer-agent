@@ -25,7 +25,9 @@ import torch.nn.functional as F
 
 from .amodal_interface import AmodalEvent
 from .amodal_runtime import AmodalInputBus, OpaqueProtocolDecoder
-from .brainworkshop_gym import BrainWorkshopConfig, generate_brainworkshop_episode
+from .brainworkshop_gym import (
+    BrainWorkshopAudioEncoder, BrainWorkshopConfig,
+    BrainWorkshopVisionEncoder, generate_brainworkshop_episode)
 from .model import UnifiedCognitiveController
 
 
@@ -45,9 +47,13 @@ class BrainWorkshopPolicy(nn.Module):
                  workspace_slots: int = 2, relation_adapter_width: int = 0,
                  event_memory_adapter_width: int = 0,
                  retrieved_memory_adapter_width: int = 0,
+                 modality: str = "vision",
                  controller: UnifiedCognitiveController | None = None) -> None:
         super().__init__()
-        from .brainworkshop_gym import BrainWorkshopVisionEncoder
+        if modality not in ("vision", "audio"):
+            raise ValueError("modality must be vision or audio")
+        self.modality = modality
+        self.action_bit = 1 if modality == "vision" else 2
 
         self.controller = controller or UnifiedCognitiveController(
             width=width, workspace_slots=workspace_slots,
@@ -59,7 +65,10 @@ class BrainWorkshopPolicy(nn.Module):
             retrieved_memory_adapter_width=retrieved_memory_adapter_width)
         width = self.controller.width
         intention_width = self.controller.intention_width
-        self.encoder = BrainWorkshopVisionEncoder(width)
+        self.encoder = (
+            BrainWorkshopVisionEncoder(width)
+            if modality == "vision" else BrainWorkshopAudioEncoder(width)
+        )
         self.input_bus = AmodalInputBus(width)
         # The legacy model owns adapters for compatibility.  The probe removes
         # them so only this independent output adapter formats the intention.
@@ -83,11 +92,13 @@ def _device(value: str) -> torch.device:
 
 
 def _make_batch(config: BrainWorkshopConfig, *, batch_size: int,
-                seed: int, device: torch.device):
+                seed: int, device: torch.device, modality: str):
     episodes = [generate_brainworkshop_episode(
         config, seed=seed + index, device=device) for index in range(batch_size)]
     frames = torch.stack([
-        torch.stack([observation.vision for observation in episode.observations])
+        torch.stack([
+            observation.vision if modality == "vision" else observation.audio
+            for observation in episode.observations])
         for episode in episodes])
     return episodes, frames
 
@@ -103,11 +114,12 @@ def _event_payload(policy: BrainWorkshopPolicy, frame: torch.Tensor,
     indices = (
         [trial] * len(episodes) if stimulus_indices is None
         else [int(value) for value in stimulus_indices])
-    positions = torch.tensor(
-        [episode.stimuli[index].position
+    values = torch.tensor(
+        [(episode.stimuli[index].position
+          if policy.modality == "vision" else episode.stimuli[index].audio)
          for episode, index in zip(episodes, indices)],
         dtype=torch.long, device=device)
-    encoded = F.one_hot(positions, num_classes=8).to(torch.float32)
+    encoded = F.one_hot(values, num_classes=8).to(torch.float32)
     if encoded.shape[1] < policy.controller.width:
         encoded = F.pad(encoded, (0, policy.controller.width - 8))
     return encoded[:, :policy.controller.width]
@@ -120,7 +132,8 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
              oracle_events: bool = False,
              external_history: bool = False) -> Rollout:
     episodes, frames = _make_batch(
-        config, batch_size=batch_size, seed=seed, device=device)
+        config, batch_size=batch_size, seed=seed, device=device,
+        modality=policy.modality)
     stimulus_indices = None
     if shuffle_time:
         # This is an adversarial control: preserve the frame multiset but break
@@ -169,7 +182,9 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
         distribution = torch.distributions.Categorical(logits=logits)
         action = distribution.sample() if sample else logits.argmax(dim=-1)
         reward = torch.tensor([
-            episode.score_action(trial, int(action[index]), latency_ms=0.0)
+            episode.score_action(
+                trial, int(action[index]) * policy.action_bit,
+                latency_ms=0.0)
             for index, episode in enumerate(episodes)
         ], device=device)
         log_probs.append(distribution.log_prob(action))
@@ -199,7 +214,8 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
     interface rather than feeding the answer back as an input.
     """
     episodes, frames = _make_batch(
-        config, batch_size=batch_size, seed=seed, device=device)
+        config, batch_size=batch_size, seed=seed, device=device,
+        modality=policy.modality)
     state = policy.initial_state(batch_size, device)
     previous_action = torch.zeros(batch_size, dtype=torch.long, device=device)
     previous_reward = torch.zeros(batch_size, device=device)
@@ -219,12 +235,15 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
             retrieved_memory=retrieved_memory)
         logits = policy.decoder(core.intent_event)
         targets = torch.tensor(
-            [episode.verifier_targets()[trial] for episode in episodes],
+            [int(bool(episode.verifier_targets()[trial] & policy.action_bit))
+             for episode in episodes],
             dtype=torch.long, device=device)
         losses.append(F.cross_entropy(logits, targets))
         action = logits.argmax(dim=-1)
         reward = torch.tensor([
-            episode.score_action(trial, int(action[index]), latency_ms=0.0)
+            episode.score_action(
+                trial, int(action[index]) * policy.action_bit,
+                latency_ms=0.0)
             for index, episode in enumerate(episodes)
         ], device=device)
         rewards.append(reward)
@@ -284,6 +303,8 @@ def main() -> None:
     parser.add_argument("--trials", type=int, default=8)
     parser.add_argument("--position-vocab", type=int, default=2,
                         choices=(2, 4, 8))
+    parser.add_argument("--modality", choices=("vision", "audio"),
+                        default="vision")
     parser.add_argument("--learning-rate", type=float, default=3e-4)
     parser.add_argument("--entropy-coef", type=float, default=0.01)
     parser.add_argument("--discount", type=float, default=0.95)
@@ -298,7 +319,7 @@ def main() -> None:
     device = _device(args.device)
     config = BrainWorkshopConfig(
         n_back=1, trials=args.trials, position_vocab=args.position_vocab,
-        modalities=("vision",), trial_ms=1_000,
+        modalities=(args.modality,), trial_ms=1_000,
         # Independent seeded match flags prevent a fixed-count clock policy
         # from looking like working memory.  The balanced mode remains the
         # default gym control; this training rung explicitly removes that
@@ -320,12 +341,17 @@ def main() -> None:
         relation_adapter_width=args.relation_adapter_width,
         event_memory_adapter_width=args.event_memory_adapter_width,
         retrieved_memory_adapter_width=args.retrieved_memory_adapter_width,
+        modality=args.modality,
         controller=frozen_controller).to(device)
     if args.encoder_in:
         encoder_payload = torch.load(
             args.encoder_in, map_location=device, weights_only=False)
         if encoder_payload.get("event_width") != policy.controller.width:
             raise ValueError("encoder width does not match controller width")
+        encoder_modalities = tuple(
+            encoder_payload.get("config", {}).get("modalities", ()))
+        if encoder_modalities and encoder_modalities != (args.modality,):
+            raise ValueError("encoder modality does not match the policy")
         policy.encoder.load_state_dict(encoder_payload["encoder_state_dict"])
     if args.freeze_encoder and not args.encoder_in:
         raise ValueError("--freeze-encoder requires --encoder-in")
@@ -431,6 +457,7 @@ def main() -> None:
         "retrieved_memory_adapter_width": args.retrieved_memory_adapter_width,
         "device": str(device),
         "config": config.__dict__,
+        "modality": args.modality,
         "seed": args.seed,
         "updates": args.updates,
         "batch_size": args.batch_size,

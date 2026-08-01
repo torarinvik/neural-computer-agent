@@ -35,6 +35,17 @@ The complete normative specification, current implementation gap, terminology,
 and required causal audits are in
 [`docs/AMODAL_N_TO_M_ARCHITECTURE.md`](docs/AMODAL_N_TO_M_ARCHITECTURE.md).
 
+The clean-room Brain Workshop benchmark is the current learning frontier. With
+a no-label reconstruction frontend, a generic one-step RAM snapshot, and
+reward-only controller updates, the same controller learns visual 1-back
+comparisons over 2, 4, and 8 positions. The mechanism also transfers to an
+audio-only stream: two independent eight-symbol audio runs reached 67.32% and
+67.31% held-out accuracy, while history reset returned to 57.17% and 57.19%
+and temporal shuffling to 56.34% and 56.92%. These are causal cross-modality
+results, not semantic-label ceilings. The next frontier is simultaneous
+vision+audio fusion through the unchanged amodal bus; the full record is in
+`session_records/brainworkshop_reward_probe_2026-08-01/README.md`.
+
 **Current-status boundary:** the proven legacy class still supports its bundled
 `step(frame)` API, but a behavior-preserving extracted runtime now owns the
 vision encoder, controller core, and action decoder as three disjoint,
