@@ -202,3 +202,36 @@ This establishes a validated nuisance climb from 0.1358 through 0.8000 while
 preserving the older skill. The efficient schedule is coarse exploration
 followed by fine endpoint auditing, rather than paying a large verifier cost
 at every microscopic level.
+
+## Operation-binding frontier diagnostics
+
+The 0.8000 checkpoint remains the canonical promoted model; all experiments in
+`operation_frontier/` are disposable copies and none replaces it.  The first
+diagnostic used the existing operation-counterfactual audit: on a 2,048-episode
+quick check, changing the operation cue changed the correct action on about
+24.7% of queries, but the controller changed its action on only about 23–26% of
+those changed cases.  Normal target accuracy stayed around 91–93%, while
+clearing all memory stayed at chance.
+
+A representation probe then separated the failure location.  A linear probe
+decoded the operation from the current event embedding at 99.9% held-out
+accuracy and from the post-query recurrent state at 96.8%; the pre-query hidden
+state was at chance (49.4%).  The glyph is therefore present in perception and
+is not being bound to the already-computed intention.
+
+Three tiny adaptation pilots were run on copies with old-skill rehearsal:
+
+- an action-adapter pilot with a relatively large step damaged span-three
+  retention (about 99% to 73%) and was rejected;
+- paired normal/counterfactual reward training with a generic intention-reading
+  skill slot preserved retention (~99.4%) but left operation flipping at ~25%;
+- a greedy outcome version and a longer paired run likewise preserved retention
+  but produced no operation-binding gain.
+
+A disposable dense diagnostic on the same generic slot did eventually raise
+held-out operation flipping to about 60% after 128 repeated updates on a fixed
+paired batch.  This proves the interface is expressive, but also shows that
+the current scalar-outcome learner has not found the binding efficiently.  The
+next high-ROI experiment is therefore a better self-generated credit signal or
+operation-specific curriculum—not a redesign of the vision encoder—and every
+candidate must still pass the old-skill retention and memory-reset audits.

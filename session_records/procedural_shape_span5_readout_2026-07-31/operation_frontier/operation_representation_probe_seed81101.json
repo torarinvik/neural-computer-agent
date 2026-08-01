@@ -1,0 +1,35 @@
+{
+  "schema": "operation-representation-probe-v1",
+  "count": 4096,
+  "nuisance": 0.8,
+  "operation_counts": [
+    2048,
+    2048
+  ],
+  "results": [
+    {
+      "representation": "event",
+      "train": 1.0,
+      "heldout": 0.9990234375,
+      "loss": 0.00017210324585903436
+    },
+    {
+      "representation": "pre_hidden",
+      "train": 0.56494140625,
+      "heldout": 0.494140625,
+      "loss": 0.6768775582313538
+    },
+    {
+      "representation": "post_hidden",
+      "train": 0.97998046875,
+      "heldout": 0.96826171875,
+      "loss": 0.05291684344410896
+    },
+    {
+      "representation": "event_plus_pre",
+      "train": 1.0,
+      "heldout": 0.9990234375,
+      "loss": 0.0001394440623698756
+    }
+  ]
+}
