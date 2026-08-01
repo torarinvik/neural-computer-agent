@@ -275,3 +275,13 @@ and span-three retention remained 91.5% and 99.6%, respectively, with memory
 reset at chance.  The result is therefore a healthy candidate but not robust
 generalization: stop extending this rung until the independent evaluation is
 made larger and less noisy.
+
+The larger four-seed gate then contained 164 independent cases and scored
+135/164 (82.3%).  The three new seeds scored 82.9–85.4%, while one earlier
+seed scored 75.6%.  Aggregate target accuracy was 84.2–85.5%, memory reset
+stayed at chance, and retention remained about 91.5% on span five and 99.6%
+on span three.  This is the first reproducible seed-disjoint sixth-item
+signal, but it remains a candidate rather than a promoted capability; the
+next gain should come from better sample efficiency at the same rung, not
+from increasing independence or overwriting the canonical span-five
+checkpoint.  The aggregate report is `span6_capacity_slot_large_gate_diverse8.json`.

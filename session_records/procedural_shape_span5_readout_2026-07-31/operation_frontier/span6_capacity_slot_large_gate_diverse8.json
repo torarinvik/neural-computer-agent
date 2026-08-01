@@ -1,0 +1,15 @@
+{
+  "schema": "span6_capacity_slot_large_gate_v1",
+  "checkpoint": "session_records/procedural_shape_span5_readout_2026-07-31/operation_frontier/span6_capacity_slot_seed85101_ind010_diverse8.pt",
+  "independent_cases": 164,
+  "independent_correct": 135,
+  "independent_accuracy_weighted": 0.823170731707317,
+  "audits": [
+    {"seed": 867001, "independent_cases": 41, "independent_accuracy": 0.7560975551605225, "accuracy": 0.841552734375, "reset": 0.495361328125},
+    {"seed": 870001, "independent_cases": 41, "independent_accuracy": 0.8292682766914368, "accuracy": 0.851806640625, "reset": 0.4970703125},
+    {"seed": 871001, "independent_cases": 41, "independent_accuracy": 0.8536585569381714, "accuracy": 0.84716796875, "reset": 0.50634765625},
+    {"seed": 872001, "independent_cases": 41, "independent_accuracy": 0.8536585569381714, "accuracy": 0.85546875, "reset": 0.501220703125}
+  ],
+  "retention": {"span5_accuracy": 0.915283203125, "span3_accuracy": 0.9955241084098816},
+  "interpretation": "The larger seed-disjoint gate confirms a robust above-chance sixth-item signal with intact retention and memory dependence, but 82.3% independent accuracy remains below the conservative promotion bar."
+}
