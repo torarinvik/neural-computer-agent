@@ -9,7 +9,8 @@ targets are never passed to the policy.
 ## What was tested
 
 - A fresh width-32 recurrent controller, 32 updates × 64 unique lifetimes,
-  n-back 1, two-choice visual curriculum, MPS.
+  n-back 1, first with the full eight-position visual stream and then with a
+  two-position curriculum, MPS.
 - A promoted width-64 controller held fixed while only the new encoder, input
   bus, and output adapter learned, 16 updates × 32 lifetimes, MPS.
 - Disposable verifier-label ceilings on the same architecture (8 trials and a
@@ -24,7 +25,8 @@ did not pass the promotion gate on held-out episodes:
 
 | run | held-out accuracy before | after | history reset | time shuffle | decision |
 |---|---:|---:|---:|---:|---|
-| fresh, 32 updates | 57.50% | 57.50% | 56.45% | 56.03% | reject |
+| fresh, 32 updates, 8 positions | 57.50% | 57.50% | 56.45% | 56.03% | reject |
+| fresh, 32 updates, 2 positions | 57.50% | 57.50% | 56.45% | 56.03% | reject |
 | frozen controller, 16 updates | 43.80% | 40.92% | 42.92% | 42.43% | reject |
 
 The first row is intentionally not interpreted as learning. The balanced
