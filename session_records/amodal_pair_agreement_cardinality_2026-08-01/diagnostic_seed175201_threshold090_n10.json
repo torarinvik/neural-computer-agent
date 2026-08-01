@@ -1,0 +1,83 @@
+{
+  "agreement": "artifacts/checkpoints/amodal_pair_agreement_seed175201.pt",
+  "agreement_sha256": "77afc673fabf0f101b5bcd43b068faf0297d30ef62e34118fb684a71989ff450",
+  "bus": "artifacts/checkpoints/amodal_input_bus_complementary_seed145001.pt",
+  "bus_sha256": "4ae96f60b99107834c27840b8841e8b2ba20c10e6565c220b5607fb9c80d3c71",
+  "claim": "Pair agreement scales relevance routing from N=2 to N=10.",
+  "configuration": {
+    "count": 4096,
+    "device": "mps",
+    "max_cardinality": 10,
+    "seed": 181101,
+    "threshold": 0.9
+  },
+  "controller": "artifacts/checkpoints/unified_repertoire_span2_amodal_intention_seed122005.pt",
+  "controller_sha256": "9eea7ab479cb8450737f040b76495cc5ec737e970cdc165af2446873e530cd6c",
+  "passed": false,
+  "rows": {
+    "10": {
+      "distractor_confidence": 0.019224608317017555,
+      "gain": 0.340576171875,
+      "useful_confidence": 0.570911169052124,
+      "with_agreement": 0.840136706829071,
+      "without_agreement": 0.49956053495407104
+    },
+    "2": {
+      "distractor_confidence": 0.0,
+      "gain": 0.0,
+      "useful_confidence": 0.5704524517059326,
+      "with_agreement": 0.961865246295929,
+      "without_agreement": 0.961865246295929
+    },
+    "3": {
+      "distractor_confidence": 0.0003675298939924687,
+      "gain": 0.32192379236221313,
+      "useful_confidence": 0.5705394148826599,
+      "with_agreement": 0.9048827886581421,
+      "without_agreement": 0.582958996295929
+    },
+    "4": {
+      "distractor_confidence": 0.0034393107052892447,
+      "gain": 0.3389648199081421,
+      "useful_confidence": 0.5706077218055725,
+      "with_agreement": 0.8987792730331421,
+      "without_agreement": 0.559814453125
+    },
+    "5": {
+      "distractor_confidence": 0.006548554170876741,
+      "gain": 0.36049801111221313,
+      "useful_confidence": 0.570647656917572,
+      "with_agreement": 0.891406238079071,
+      "without_agreement": 0.5309082269668579
+    },
+    "6": {
+      "distractor_confidence": 0.008646761067211628,
+      "gain": 0.36752933263778687,
+      "useful_confidence": 0.5707157254219055,
+      "with_agreement": 0.8841797113418579,
+      "without_agreement": 0.516650378704071
+    },
+    "7": {
+      "distractor_confidence": 0.011153841391205788,
+      "gain": 0.3650391101837158,
+      "useful_confidence": 0.5707919001579285,
+      "with_agreement": 0.8753906488418579,
+      "without_agreement": 0.5103515386581421
+    },
+    "8": {
+      "distractor_confidence": 0.013607395812869072,
+      "gain": 0.35957032442092896,
+      "useful_confidence": 0.5708522796630859,
+      "with_agreement": 0.86669921875,
+      "without_agreement": 0.507128894329071
+    },
+    "9": {
+      "distractor_confidence": 0.016609659418463707,
+      "gain": 0.35273438692092896,
+      "useful_confidence": 0.5708726048469543,
+      "with_agreement": 0.852734386920929,
+      "without_agreement": 0.5
+    }
+  },
+  "schema": "amodal-pair-agreement-cardinality-audit-v1"
+}

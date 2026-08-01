@@ -71,9 +71,12 @@ learns that quality from clean/corrupted latent consistency: across two seeds,
 80%-corrupted N=3 streams improve 5.24–6.61 points while N=2 remains
 98.77–99.04%. A self-supervised same-frame pair-agreement head now handles a
 valid irrelevant third stream: N=3 rises from 57.45% to 89.25–89.59% while
-N=2 remains 98.51–98.55%. Cross-modality relevance and more than three streams
-remain open. The same heads now scale to N=8 with six distractors: 87.96–90.35%
-versus 50.62% without agreement, while N=2 remains 96.38%. See
+N=2 remains 98.51–98.55%. A promoted hidden-64 head trained for 256
+self-supervised updates scales the same router through N=11: 85.34–86.14%
+at N=11, with 49.6% no-agreement controls and gains above 35 points. The fixed
+85% gate is not met at N=12 (83.19–83.88%), so N=11 is the current verified
+cardinality frontier. Cross-modality relevance and more than eleven streams
+remain open. See
 `session_records/amodal_input_noise_2026-08-01/README.md` for the rejected
 noise-adaptation evidence,
 `session_records/amodal_n3_confidence_2026-08-01/README.md` for the interface
@@ -83,7 +86,7 @@ learned-confidence audit, and
 `session_records/amodal_pair_agreement_2026-08-01/README.md` for the learned
 relevance breakthrough and
 `session_records/amodal_pair_agreement_cardinality_2026-08-01/README.md` for
-the N=2→N=8 audit.
+the gradual N=2→N=11 audit and N=12 boundary.
 
 ## North star
 

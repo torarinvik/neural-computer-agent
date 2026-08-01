@@ -106,6 +106,7 @@ def main() -> None:
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--seed", type=int, default=177_001)
     parser.add_argument("--count", type=int, default=4096)
+    parser.add_argument("--max-cardinality", type=int, default=8)
     parser.add_argument("--threshold", type=float, default=0.8)
     parser.add_argument(
         "--device",
@@ -120,6 +121,8 @@ def main() -> None:
     args = parser.parse_args()
     if not 0.0 <= args.threshold < 1.0:
         raise ValueError("threshold must be within [0, 1)")
+    if not 2 <= args.max_cardinality <= 16:
+        raise ValueError("max cardinality must be between 2 and 16")
     device = torch.device(args.device)
     runtime_payload = torch.load(args.controller, map_location=device, weights_only=False)
     runtime = runtime_from_legacy_payload(runtime_payload, device=device).eval()
@@ -147,10 +150,10 @@ def main() -> None:
             support_trials=1,
             device=device,
         ).frames
-        for offset in range(2, 8)
+        for offset in range(2, args.max_cardinality)
     ]
     rows = {}
-    for cardinality in range(2, 9):
+    for cardinality in range(2, args.max_cardinality + 1):
         streams = (first, second, *distractors[: cardinality - 2])
         no_agreement = _accuracy(
             runtime, bus, agreement, streams, batch.correct_actions, None
@@ -169,16 +172,16 @@ def main() -> None:
         rows["2"]["with_agreement"] >= 0.90
         and all(
             rows[str(cardinality)]["with_agreement"] >= 0.85
-            for cardinality in range(3, 9)
+            for cardinality in range(3, args.max_cardinality + 1)
         )
         and all(
             rows[str(cardinality)]["gain"] >= 0.25
-            for cardinality in range(3, 9)
+            for cardinality in range(3, args.max_cardinality + 1)
         )
     )
     report = {
         "schema": "amodal-pair-agreement-cardinality-audit-v1",
-        "claim": "Pair agreement scales relevance routing from N=2 to N=8.",
+        "claim": f"Pair agreement scales relevance routing from N=2 to N={args.max_cardinality}.",
         "controller": str(args.controller),
         "controller_sha256": _sha256(args.controller),
         "bus": str(args.bus),
@@ -189,6 +192,7 @@ def main() -> None:
             "seed": args.seed,
             "count": args.count,
             "threshold": args.threshold,
+            "max_cardinality": args.max_cardinality,
             "device": str(device),
         },
         "rows": rows,

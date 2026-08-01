@@ -362,12 +362,15 @@ and distractor confidence separates by about 0.44. The positive relation is
 same-frame complementary-view agreement, so cross-modality relevance and
 larger N remain open.
 
-The cardinality extension passes with the same two agreement seeds. With two
-useful streams and up to six valid distractors, N=3 reaches 94.75–95.03%,
-N=4 94.37–94.57%, N=5 93.44–93.64%, N=6 92.07–92.75%, N=7 90.05–91.74%,
-and N=8 87.96–90.35%, versus 50.62–58.29% without agreement; N=2 remains
-96.38%. The router therefore has an audited N=2→N=8 path, while cross-modal
-agreement and more than two useful streams remain open.
+The cardinality extension now uses a promoted hidden-64 agreement head trained
+for 256 self-supervised updates. With two useful streams and up to nine valid
+distractors, N=3 reaches 96.15–96.40%, N=4 95.76–96.13%, N=5 94.96–95.52%,
+N=6 94.04–94.42%, N=7 92.77–93.17%, N=8 91.23–91.73%, N=9 89.43–89.96%,
+N=10 87.45–88.10%, and N=11 85.34–86.14%, versus 49.6–58.3% without
+agreement; N=2 remains 96.19–96.47%. N=12 falls to 83.19–83.88%, below
+the pre-registered 85% gate, so N=11 is the current audited frontier. The
+positive relation is still same-frame visual-view agreement; cross-modal
+agreement and more than eleven streams remain open.
 
 Timestamp-preserving transport alignment is now also qualified. At 4,096
 lifetimes, out-of-order delivery and 0.25-unit timestamp jitter reproduced
