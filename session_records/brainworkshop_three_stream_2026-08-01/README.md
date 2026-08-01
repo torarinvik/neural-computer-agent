@@ -172,6 +172,14 @@ as a clean negative/ablation result, not promoted as the solution to 2→3
 transfer. The frontier remains computation routing or a curriculum that makes
 the deepest skill build on, rather than overwrite, the mastered hierarchy.
 
+A learned scalar router over the frozen lower-order bridge was the next pilot.
+It started with the old bridge active and could suppress it from generic event
+history, but seed 47405 reached only 86.07% 3-back—inside the existing
+85.84–86.50% range. Reset and cross-stream controls stayed at chance, so the
+plumbing is valid; the gain is not. This bounded negative rejects a scalar gate
+as the missing mechanism and leaves expressive skill selection/curriculum as
+the next frontier.
+
 ## What this proves
 
 This is a protected three-stream proof of concept: a frozen central controller
@@ -242,5 +250,7 @@ Artifacts:
   `nback3_relation_only_stacked_seed47409_256.json`, plus the matching
   `retention_nback*_after_relation_only_seed*.json` files — the replicated
   relation-only ablation;
+- `nback3_routed_stacked_seed47405_256.json` — scalar computation-router pilot,
+  retained as a bounded negative;
 - `audio_encoder_ssl_seed47401.json` and `audio_stage_ssl_seed47402.json` —
   label-free audio-parent preparation.

@@ -62,6 +62,7 @@ class BrainWorkshopPolicy(nn.Module):
                  per_stream_external_history: bool = False,
                  stacked_history_adapter: bool = False,
                  stacked_history_relation_only: bool = False,
+                 stacked_history_router: bool = False,
                  slot_memory_composer: bool = False,
                  per_stream_intention_adapter_width: int = 0,
                  factorized_output: bool = False,
@@ -201,8 +202,10 @@ class BrainWorkshopPolicy(nn.Module):
         self.stacked_history_adapter = bool(stacked_history_adapter)
         self.stacked_history_relation_only = bool(
             stacked_history_relation_only)
+        self.stacked_history_router = bool(stacked_history_router)
         self.slot_memory_composer = bool(slot_memory_composer)
         self.per_stream_intention_delta_adapters = nn.ModuleDict()
+        self.per_stream_intention_routers = nn.ModuleDict()
         if per_stream_intention_adapter_width:
             def make_intention_adapter() -> nn.Sequential:
                 adapter = nn.Sequential(
@@ -241,6 +244,24 @@ class BrainWorkshopPolicy(nn.Module):
                 else:
                     self.per_stream_intention_delta_adapters = nn.ModuleDict({
                         name: make_intention_adapter() for name in modalities})
+                if stacked_history_router:
+                    router_width = max(8, per_stream_intention_adapter_width // 2)
+                    self.per_stream_intention_routers = nn.ModuleDict({
+                        name: nn.Sequential(
+                            nn.Linear(
+                                width * (1 + 2 * self.external_history_depth),
+                                router_width),
+                            nn.GELU(),
+                            nn.Linear(router_width, 1),
+                        ) for name in modalities})
+                    # Start at the identity path: the old bridge is active and
+                    # the new correction is still zero.  The large positive
+                    # bias is task-agnostic and only establishes continuity.
+                    for router in self.per_stream_intention_routers.values():
+                        nn.init.zeros_(router[0].weight)
+                        nn.init.zeros_(router[0].bias)
+                        nn.init.zeros_(router[2].weight)
+                        nn.init.constant_(router[2].bias, 6.0)
         # The legacy model owns adapters for compatibility.  The probe removes
         # them so only this independent output adapter formats the intention.
         self.controller.vision = None
@@ -390,8 +411,15 @@ def _stream_intention_event(
                 width = policy.controller.width
                 delta_features = torch.cat(
                     (features[..., :width], features[..., -2 * width:]), dim=-1)
-            residual = residual + policy.per_stream_intention_delta_adapters[
-                modality](delta_features)
+            delta = policy.per_stream_intention_delta_adapters[modality](
+                delta_features)
+            if (policy.stacked_history_router
+                    and modality in policy.per_stream_intention_routers):
+                gate = torch.sigmoid(
+                    policy.per_stream_intention_routers[modality](features))
+                residual = gate * residual + delta
+            else:
+                residual = residual + delta
         residuals.append(residual)
     if not residuals:
         return core.intent_event
@@ -949,6 +977,9 @@ def main() -> None:
     parser.add_argument(
         "--stacked-history-relation-only", action="store_true",
         help="restrict the stacked correction to current plus newest relation")
+    parser.add_argument(
+        "--stacked-history-router", action="store_true",
+        help="learn a generic gate over the inherited bridge")
     parser.add_argument("--position-vocab", type=int, default=2,
                         choices=(2, 4, 8))
     parser.add_argument("--text-vocab", type=int, default=8,
@@ -1079,6 +1110,7 @@ def main() -> None:
         per_stream_external_history=args.per_stream_external_history,
         stacked_history_adapter=args.stacked_history_adapter,
         stacked_history_relation_only=args.stacked_history_relation_only,
+        stacked_history_router=args.stacked_history_router,
         slot_memory_composer=args.slot_memory_composer,
         per_stream_intention_adapter_width=(
             args.per_stream_intention_adapter_width),
@@ -1207,6 +1239,9 @@ def main() -> None:
     if args.stacked_history_relation_only and not args.stacked_history_adapter:
         raise ValueError(
             "--stacked-history-relation-only requires --stacked-history-adapter")
+    if args.stacked_history_router and not args.stacked_history_adapter:
+        raise ValueError(
+            "--stacked-history-router requires --stacked-history-adapter")
     if train_only_modalities:
         if not controller_frozen:
             raise ValueError(
@@ -1443,6 +1478,7 @@ def main() -> None:
         "stacked_history_adapter": bool(args.stacked_history_adapter),
         "stacked_history_relation_only": bool(
             args.stacked_history_relation_only),
+        "stacked_history_router": bool(args.stacked_history_router),
         "slot_memory_composer": bool(args.slot_memory_composer),
         "per_stream_intention_adapter_width": (
             args.per_stream_intention_adapter_width),

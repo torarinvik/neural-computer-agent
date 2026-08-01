@@ -151,6 +151,14 @@ points**, so this branch is not promoted. The result narrows the frontier:
 representation isolation alone is insufficient; the missing ingredient is a
 better way to route or reuse mastered computations during a harder task.
 
+A learned generic router over that stacked bridge was also piloted. It began
+with the inherited branch active and was trained only through the 3-back plus
+1/2-back verifier mixture. Seed 47405 reached **86.07%**, with reset and
+cross-stream controls at chance—valid plumbing, but no improvement over the
+unrouted 85.84–86.50% range. It is therefore not promoted. The remaining
+frontier is a more expressive skill-selection mechanism or curriculum, not
+another scalar gate.
+
 **Current-status boundary:** the proven legacy class still supports its bundled
 `step(frame)` API, but a behavior-preserving extracted runtime now owns the
 vision encoder, controller core, and action decoder as three disjoint,
