@@ -83,6 +83,45 @@ prevented forgetting but diluted acquisition by roughly an order of magnitude.
 The next target is therefore reducing bits-to-threshold on this same span-two
 bridge—not increasing span length.
 
+## Gradual-prerequisite and efficiency fork
+
+The expensive span-two result was traced through progressively cheaper tests.
+The Gate-0 controller first received the procedural renderer's smallest atom:
+identify the currently visible shape.  It reached 100% held-out accuracy after
+20 updates / 5,120 verifier bits while retaining the four-capability repertoire.
+
+At the same 5,120-bit budget, direct span-one training from Gate 0 remained at
+50.1%, while the procedural-identity parent reached 63.2%.  Extending the same
+arm to 15,360 bits produced 99.1% span-one accuracy.  A separate 4,096-lifetime
+whole-controller audit passed binary, four-rule, relation, persistent recall,
+and span one in the same checkpoint: span-one accuracy 98.88%, candidate flips
+97.78%, blank presentation 50.0%, and complete memory reset 50.05%.
+
+This is positive transfer from an adjacent perceptual primitive, but the next
+composition remains incomplete.  At 20,480 bits, span two reached 71.7–73.9%
+from the span-one parent, versus only 58.0% for the direct consolidated lineage
+after 30,720 bits.  The inherited curve reached 78.8% at 61,440 bits but
+plateaued below mastery.  Rehearsing span one preserved the prerequisite but
+gave only a small additional gain.  Batch 64 supplied four times as many
+optimizer steps per bit and reached 78.1% at 16,384 bits, still below the
+original compact specialist's curve.
+
+Two tempting fixes were rejected:
+
+- assigning 80% of aggregate loss weight to span two improved the target only
+  slightly and broke binary retention;
+- target-only gradient projection against aggregate repertoire gradients also
+  broke binary retention and did not improve the target curve.
+
+The architectural comparison localized the remaining cost: the consolidated
+agent is width 96 with eight workspace slots and several generic adapters,
+whereas the efficient specialist is width 64 with four slots.  The compact
+span-two checkpoint passes span two but none of the four older repertoire
+gates.  The next high-ROI fork is therefore compact-controller consolidation:
+teach the old repertoire to the efficient 64-wide span parent under strict
+span retention, then compare later acquisition curves against the 96-wide
+lineage.  More updates on the current plateau are not justified.
+
 ## Artifacts
 
 - `relation_to_persistent_smell_seed120101.json`: rejected near-pass.
@@ -96,3 +135,7 @@ bridge—not increasing span length.
 - `artifacts/checkpoints/unified_repertoire_span2_strict_seed122005.pt`:
   promoted five-capability checkpoint, SHA-256
   `663fe4f7e7c137adf038b140a44db7a82076761d73fc68b61b651bff67c1109a`.
+- `repertoire_span1_blind_seed126005.json`: blind gradual-prerequisite audit.
+- `artifacts/checkpoints/unified_repertoire_span1_seed125005.pt`: promoted
+  five-capability span-one parent, SHA-256
+  `81f453c7c2a9d35ba2193062fc38b6ec97c6e0c8bf476aa385d941378a197dc1`.
