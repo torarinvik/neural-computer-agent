@@ -1,0 +1,168 @@
+{
+  "accuracy_metric": "accuracy",
+  "after": {
+    "accuracy": 0.8658447265625,
+    "eligible_accuracy": 0.8466796875,
+    "mean_reward": 0.7749817371368408,
+    "partial_reward_accuracy": 0.8658447265625,
+    "per_modality_accuracy": {
+      "audio": 0.619140625,
+      "text": 0.8658447265625,
+      "vision": 1.0
+    },
+    "per_modality_eligible_accuracy": {
+      "audio": 0.5647321343421936,
+      "text": 0.8466796875,
+      "vision": 1.0
+    },
+    "trial_count": 8192
+  },
+  "batch_size": 32,
+  "before": {
+    "accuracy": 0.8658447265625,
+    "eligible_accuracy": 0.8466796875,
+    "mean_reward": 0.7749817371368408,
+    "partial_reward_accuracy": 0.8658447265625,
+    "per_modality_accuracy": {
+      "audio": 0.619140625,
+      "text": 0.8658447265625,
+      "vision": 1.0
+    },
+    "per_modality_eligible_accuracy": {
+      "audio": 0.5647321343421936,
+      "text": 0.8466796875,
+      "vision": 1.0
+    },
+    "trial_count": 8192
+  },
+  "config": {
+    "audio_samples": 800,
+    "audio_vocab": 8,
+    "balanced_matches": false,
+    "match_probability": 0.5,
+    "modalities": [
+      "vision",
+      "audio",
+      "text"
+    ],
+    "n_back": 1,
+    "position_vocab": 2,
+    "sample_rate": 8000,
+    "text_vocab": 8,
+    "trial_ms": 1000,
+    "trials": 8,
+    "vision_size": 72
+  },
+  "controller_frozen": true,
+  "cross_stream_shuffle_control": {
+    "accuracy": 0.5645751953125,
+    "eligible_accuracy": 0.5023716688156128,
+    "mean_reward": 0.157379150390625,
+    "partial_reward_accuracy": 0.5645751953125,
+    "per_modality_accuracy": {
+      "audio": 0.62060546875,
+      "text": 0.5645751953125,
+      "vision": 1.0
+    },
+    "per_modality_eligible_accuracy": {
+      "audio": 0.56640625,
+      "text": 0.5023716688156128,
+      "vision": 1.0
+    },
+    "trial_count": 8192
+  },
+  "device": "cpu",
+  "elapsed_seconds": 23.111960000009276,
+  "encoder_checkpoints": {},
+  "encoder_frozen": false,
+  "event_memory_adapter_width": 0,
+  "experiment": "brainworkshop_multimodal_nback_reward_only",
+  "external_history": true,
+  "external_history_depth": 3,
+  "external_memory_adapter_width": 64,
+  "factorized_output": true,
+  "factorized_reward": true,
+  "gate": {
+    "accepted_for_longer_run": false,
+    "gradient_alive": true,
+    "policy_changed": false,
+    "reset_control_recorded": true
+  },
+  "history": [
+    {
+      "batch_accuracy": 0.84375,
+      "batch_mean_reward": 0.7296875715255737,
+      "elapsed_seconds": 4.880805834021885,
+      "gradient_norm": 1.4658547639846802,
+      "loss": -0.040874749422073364,
+      "policy_entropy": 0.15836280584335327,
+      "update": 1,
+      "value_loss": 0.0
+    }
+  ],
+  "history_reset_control": {
+    "accuracy": 0.5634765625,
+    "eligible_accuracy": 0.5011160969734192,
+    "mean_reward": 0.15512694418430328,
+    "partial_reward_accuracy": 0.5634765625,
+    "per_modality_accuracy": {
+      "audio": 0.5626220703125,
+      "text": 0.5634765625,
+      "vision": 0.5604248046875
+    },
+    "per_modality_eligible_accuracy": {
+      "audio": 0.5001395344734192,
+      "text": 0.5011160969734192,
+      "vision": 0.4976283609867096
+    },
+    "trial_count": 8192
+  },
+  "input_bus_event_rms_target": 1.0,
+  "input_bus_normalize_events": false,
+  "learned_source_keys": false,
+  "modalities": [
+    "vision",
+    "audio",
+    "text"
+  ],
+  "modality": "multi",
+  "neutral_new_output": true,
+  "objective": "reward_only",
+  "oracle_events": false,
+  "per_stream_external_history": true,
+  "per_stream_intention_adapter_width": 64,
+  "rehearsal_n_back": null,
+  "rehearsal_weight": 0.5,
+  "relation_adapter_width": 0,
+  "retrieved_memory_adapter_width": 0,
+  "seed": 47409,
+  "serial_modalities": false,
+  "slot_memory_composer": false,
+  "source_key_init_scale": 0.0,
+  "stream_adapter_width": 0,
+  "target_modalities": [
+    "text"
+  ],
+  "time_shuffle_control": {
+    "accuracy": 0.604248046875,
+    "eligible_accuracy": 0.5477120280265808,
+    "mean_reward": 0.2387085109949112,
+    "partial_reward_accuracy": 0.604248046875,
+    "per_modality_accuracy": {
+      "audio": 0.5670166015625,
+      "text": 0.604248046875,
+      "vision": 0.5775146484375
+    },
+    "per_modality_eligible_accuracy": {
+      "audio": 0.5051618218421936,
+      "text": 0.5477120280265808,
+      "vision": 0.5171595811843872
+    },
+    "trial_count": 8192
+  },
+  "train_only_modalities": [
+    "text"
+  ],
+  "unique_training_lifetimes": 32,
+  "updates": 1
+}

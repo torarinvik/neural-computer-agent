@@ -16,7 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import torch
@@ -395,6 +395,46 @@ def _factorized_advantages(bit_returns: torch.Tensor) -> torch.Tensor:
     if bit_returns.ndim != 3:
         raise ValueError("factorized returns must have shape [time, batch, bits]")
     return bit_returns - bit_returns.mean(dim=(0, 1), keepdim=True)
+
+
+def _reward_rollout_loss(
+        rollout: Rollout, *, discount: float, value_baseline: bool,
+        entropy_coef: float) -> tuple[torch.Tensor, torch.Tensor]:
+    """Compute a verifier-only policy loss for one task difficulty.
+
+    Keeping this separate lets a training update mix a new difficulty with
+    old-skill rehearsal without exposing task labels to the controller.
+    """
+    trials, batch_size = rollout.rewards.shape
+    returns = torch.zeros_like(rollout.rewards)
+    running = torch.zeros(batch_size, device=rollout.rewards.device)
+    for trial in range(trials - 1, -1, -1):
+        running = rollout.rewards[trial] + discount * running
+        returns[trial] = running
+    if rollout.bit_log_probs is not None and rollout.bit_rewards is not None:
+        bit_returns = torch.zeros_like(rollout.bit_rewards)
+        bit_running = torch.zeros(
+            batch_size, rollout.bit_rewards.shape[-1],
+            device=rollout.rewards.device)
+        for trial in range(trials - 1, -1, -1):
+            bit_running = (
+                rollout.bit_rewards[trial] + discount * bit_running)
+            bit_returns[trial] = bit_running
+        bit_advantages = _factorized_advantages(bit_returns)
+        loss = -(
+            bit_advantages.detach() * rollout.bit_log_probs).mean()
+        value_loss = torch.zeros((), device=rollout.rewards.device)
+    elif value_baseline:
+        advantages = returns - rollout.values
+        value_loss = F.smooth_l1_loss(rollout.values, returns.detach())
+        loss = -(advantages.detach() * rollout.log_probs).mean()
+        loss = loss + 0.5 * value_loss
+    else:
+        advantages = returns - returns.mean(dim=1, keepdim=True)
+        value_loss = torch.zeros((), device=rollout.rewards.device)
+        loss = -(advantages.detach() * rollout.log_probs).mean()
+    loss = loss - entropy_coef * rollout.entropies.mean()
+    return loss, value_loss
 
 
 def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
@@ -857,6 +897,15 @@ def main() -> None:
     parser.add_argument(
         "--n-back", type=int, default=1, choices=(1, 2, 3),
         help="temporal distance of the verifier relation; increase gradually")
+    parser.add_argument(
+        "--rehearsal-n-back", type=int, choices=(1, 2, 3),
+        help="old difficulty to rehearse during a harder-task update")
+    parser.add_argument(
+        "--rehearsal-n-backs", type=str, default="",
+        help="comma-separated old difficulties to rehearse, e.g. 1,2")
+    parser.add_argument(
+        "--rehearsal-weight", type=float, default=0.5,
+        help="relative verifier-loss weight for old-skill rehearsal")
     parser.add_argument("--position-vocab", type=int, default=2,
                         choices=(2, 4, 8))
     parser.add_argument("--text-vocab", type=int, default=8,
@@ -881,6 +930,26 @@ def main() -> None:
         raise ValueError("updates, batch size, and eval count must be positive")
     if not 0.0 < args.discount <= 1.0:
         raise ValueError("discount must be in (0, 1]")
+    if args.rehearsal_weight < 0.0:
+        raise ValueError("rehearsal_weight must be nonnegative")
+    if args.rehearsal_n_back is not None and args.rehearsal_n_backs:
+        raise ValueError("use only one rehearsal difficulty option")
+    if args.rehearsal_n_backs:
+        rehearsal_n_backs = tuple(
+            int(item.strip()) for item in args.rehearsal_n_backs.split(",")
+            if item.strip())
+        if not rehearsal_n_backs:
+            raise ValueError("rehearsal_n_backs must not be empty")
+        if any(item not in (1, 2, 3) for item in rehearsal_n_backs):
+            raise ValueError("rehearsal_n_backs must contain only 1, 2, or 3")
+        if len(set(rehearsal_n_backs)) != len(rehearsal_n_backs):
+            raise ValueError("rehearsal_n_backs must not contain duplicates")
+    elif args.rehearsal_n_back is not None:
+        rehearsal_n_backs = (args.rehearsal_n_back,)
+    else:
+        rehearsal_n_backs = ()
+    if args.n_back in rehearsal_n_backs:
+        raise ValueError("rehearsal difficulty must differ from n_back")
 
     torch.manual_seed(args.seed)
     device = _device(args.device)
@@ -1190,42 +1259,45 @@ def main() -> None:
                 serial_modalities=args.serial_modalities,
                 per_stream_external_history=args.per_stream_external_history,
                 external_history_depth=args.external_history_depth)
-            returns = torch.zeros_like(rollout.rewards)
-            running = torch.zeros(args.batch_size, device=device)
-            for trial in range(args.trials - 1, -1, -1):
-                running = rollout.rewards[trial] + args.discount * running
-                returns[trial] = running
-            if rollout.bit_log_probs is not None and rollout.bit_rewards is not None:
-                # Each independent protocol bit receives its own verifier
-                # credit. This prevents a mastered stream from washing out the
-                # gradient for a lagging stream in a shared joint action.
-                bit_returns = torch.zeros_like(rollout.bit_rewards)
-                bit_running = torch.zeros(
-                    args.batch_size, rollout.bit_rewards.shape[-1],
-                    device=device)
-                for trial in range(args.trials - 1, -1, -1):
-                    bit_running = (
-                        rollout.bit_rewards[trial] + args.discount * bit_running)
-                    bit_returns[trial] = bit_running
-                bit_advantages = _factorized_advantages(bit_returns)
-                loss = -(
-                    bit_advantages.detach() * rollout.bit_log_probs).mean()
-                value_loss = torch.zeros((), device=device)
-            # A per-time baseline uses only verifier rewards from this batch;
-            # it is a variance reducer, not an additional task label.
-            elif args.value_baseline:
-                advantages = returns - rollout.values
-                value_loss = F.smooth_l1_loss(
-                    rollout.values, returns.detach())
-                loss = -(
-                    advantages.detach() * rollout.log_probs).mean()
-                loss = loss + 0.5 * value_loss
-            else:
-                advantages = returns - returns.mean(dim=1, keepdim=True)
-                value_loss = torch.zeros((), device=device)
-                loss = -(
-                    advantages.detach() * rollout.log_probs).mean()
-            loss = loss - args.entropy_coef * rollout.entropies.mean()
+            loss, value_loss = _reward_rollout_loss(
+                rollout, discount=args.discount,
+                value_baseline=args.value_baseline,
+                entropy_coef=args.entropy_coef)
+            rehearsal_batch_accuracies = {}
+            if rehearsal_n_backs:
+                rehearsal_losses = []
+                rehearsal_value_losses = []
+                for rehearsal_index, rehearsal_n_back in enumerate(
+                        rehearsal_n_backs):
+                    rehearsal_config = replace(
+                        config, n_back=rehearsal_n_back)
+                    rehearsal_rollout = _rollout(
+                        policy, rehearsal_config, batch_size=args.batch_size,
+                        seed=(args.seed + update * 1_000 + 500_000
+                              + rehearsal_index * 100_000),
+                        device=device, sample=True,
+                        oracle_events=args.oracle_events,
+                        external_history=args.external_history,
+                        serial_modalities=args.serial_modalities,
+                        per_stream_external_history=(
+                            args.per_stream_external_history),
+                        external_history_depth=args.external_history_depth)
+                    rehearsal_loss, rehearsal_value_loss = _reward_rollout_loss(
+                        rehearsal_rollout, discount=args.discount,
+                        value_baseline=args.value_baseline,
+                        entropy_coef=args.entropy_coef)
+                    rehearsal_losses.append(rehearsal_loss)
+                    rehearsal_value_losses.append(rehearsal_value_loss)
+                    rehearsal_batch_accuracies[str(rehearsal_n_back)] = float(
+                        (rehearsal_rollout.rewards > 0).float().mean())
+                weight = args.rehearsal_weight
+                total_rehearsal_loss = sum(rehearsal_losses)
+                total_rehearsal_value_loss = sum(rehearsal_value_losses)
+                loss = (loss + weight * total_rehearsal_loss) / (
+                    1.0 + weight * len(rehearsal_losses))
+                value_loss = (
+                    value_loss + weight * total_rehearsal_value_loss) / (
+                        1.0 + weight * len(rehearsal_value_losses))
             batch_accuracy = float((rollout.rewards > 0).float().mean())
             batch_mean_reward = float(rollout.rewards.mean())
             policy_entropy = float(rollout.entropies.mean().detach())
@@ -1244,6 +1316,13 @@ def main() -> None:
             "gradient_norm": gradient_norm,
             "elapsed_seconds": time.perf_counter() - started,
         }
+        if not args.supervised_diagnostic and rehearsal_n_backs:
+            record["rehearsal_n_backs"] = list(rehearsal_n_backs)
+            record["rehearsal_batch_accuracies"] = rehearsal_batch_accuracies
+            if len(rehearsal_n_backs) == 1:
+                record["rehearsal_n_back"] = rehearsal_n_backs[0]
+                record["rehearsal_batch_accuracy"] = (
+                    rehearsal_batch_accuracies[str(rehearsal_n_backs[0])])
         history.append(record)
         print(json.dumps(record, sort_keys=True), flush=True)
     policy.eval()
@@ -1318,6 +1397,10 @@ def main() -> None:
         "stream_adapter_width": args.stream_adapter_width,
         "neutral_new_output": bool(args.neutral_new_output),
         "accuracy_metric": accuracy_metric,
+        "rehearsal_n_back": args.rehearsal_n_back,
+        "rehearsal_n_backs": list(rehearsal_n_backs),
+        "rehearsal_n_backs_arg": args.rehearsal_n_backs,
+        "rehearsal_weight": args.rehearsal_weight,
         "device": str(device),
         "config": config.__dict__,
         "modality": policy.modality,

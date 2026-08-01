@@ -106,6 +106,32 @@ is sufficient and that the remaining gap is reward-only credit assignment.
 This is the first direct evidence that stored temporal skill makes a harder
 primitive learn faster, rather than merely making the final task solvable.
 
+## Protected 3-back ladder
+
+The next rung added a depth-3 generic RAM bridge and trained 3-back from the
+promoted 2-back checkpoints. A single 2-back rehearsal stream preserved 2-back
+but allowed 1-back to fall to 84.56% mean, so the runtime was extended with a
+comma-separated verifier-only rehearsal list. Each update now mixes the new
+3-back loss with independent 1-back and 2-back replay losses; no task label,
+n-back value, or correct action is passed to the controller.
+
+Across three independent seeds at 256 updates:
+
+| seed | 3-back after | 1-back retained | 2-back retained | reset/cross controls |
+|---|---:|---:|---:|---:|
+| 47405 | 85.55% | 91.04% | 89.40% | ~50% |
+| 47408 | 85.74% | 90.90% | 89.10% | ~50% |
+| 47409 | 86.23% | 91.20% | 89.58% | ~50% |
+| **mean** | **85.84%** | **91.05%** | **89.36%** | **~50%** |
+
+The inherited 3-back runs began at 48.4–48.6% eligible accuracy, so the
+improvement is causal rather than a decoder prior. A matched 1-back parent
+without 2-back inheritance also reached 85.94% at 256 updates. That control is
+important: the protected ladder is proven, but a 3-back sample-efficiency gain
+over a 1-back parent is not yet proven. The next measurement is a
+bits-to-threshold race from equal 1-back starting checkpoints, not a longer
+fixed-budget run.
+
 ## What this proves
 
 This is a protected three-stream proof of concept: a frozen central controller
@@ -149,5 +175,15 @@ Artifacts:
 - `nback2_inherited_depth2b_seed47405_384_audit.json` and
   `nback2_supervised_depth2_seed47405_256.json` — mastery and architecture
   diagnostics;
+- `nback3_rehearsal1_2_depth3_seed47405_256.json`,
+  `nback3_rehearsal1_2_depth3_seed47408_256.json`, and
+  `nback3_rehearsal1_2_depth3_seed47409_256.json` — protected 3-back runs with
+  simultaneous 1-back and 2-back rehearsal;
+- `retention_nback1_after_multirehearsal_seed47405.json`,
+  `retention_nback1_after_multirehearsal_seed47408.json`, and
+  `retention_nback1_after_multirehearsal_seed47409.json`, plus matching
+  `retention_nback2_after_multirehearsal_*.json` files — full-ladder audits;
+- `nback3_fresh_depth3_seed47405_256.json` — matched 1-back-parent 3-back
+  control;
 - `audio_encoder_ssl_seed47401.json` and `audio_stage_ssl_seed47402.json` —
   label-free audio-parent preparation.

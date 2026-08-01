@@ -111,6 +111,25 @@ controller remains frozen. This is verified reuse of an old temporal skill to
 learn a harder one faster, not only eventual task mastery. The next gradual
 rung is 3-back with another generic RAM snapshot.
 
+That 3-back rung is now implemented and audited with a protected skill ladder.
+A depth-3 RAM bridge receives verifier-only rehearsal for both earlier
+difficulties, while the controller remains frozen. Across three seeds and 256
+new-task updates, 3-back reached **85.55%, 85.74%, and 86.23% eligible
+accuracy** (mean **85.84%**). Independent retention audits on the same final
+checkpoints retained 1-back at **90.90–91.20%** (mean **91.05%**) and 2-back at
+**89.10–89.58%** (mean **89.36%**). History-reset and cross-stream controls
+remained at chance for every rung. A single rehearsal level preserved 2-back
+but let 1-back fall to 84.56%, so multi-level rehearsal is now the promoted
+mechanism rather than an unexamined assumption.
+
+This closes the current protected-plasticity milestone: the external RAM path
+can acquire a harder temporal relation while retaining the complete earlier
+ladder. It does **not** yet prove that 3-back itself is learned faster than a
+1-back-only parent: a matched 1-back parent also reached 85.94% after 256
+3-back updates. The next frontier is therefore a bits-to-threshold race at
+equal starting state, followed by a learned stop/continue policy; final
+accuracy alone would hide the sample-efficiency question.
+
 **Current-status boundary:** the proven legacy class still supports its bundled
 `step(frame)` API, but a behavior-preserving extracted runtime now owns the
 vision encoder, controller core, and action decoder as three disjoint,
