@@ -168,6 +168,56 @@ class AmodalInputBus(nn.Module):
         ).validate(width=self.event_width)
 
 
+class AmodalEventTimeline:
+    """Align out-of-order encoded events using their generic timestamps.
+
+    This is transport plumbing, not a task-specific rule. A future learned
+    temporal policy may choose the tolerance, but the baseline must never merge
+    events whose timestamps are outside the declared window.
+    """
+
+    def __init__(self, events: Sequence[AmodalEvent], tolerance: float = 0.0):
+        if not events or tolerance < 0:
+            raise ValueError("timeline requires events and nonnegative tolerance")
+        validated = [event.validate() for event in events]
+        if any(event.timestamp is None for event in validated):
+            raise ValueError("timeline events require timestamps")
+        batch = validated[0].payload.shape[0]
+        width = validated[0].payload.shape[1]
+        timestamps = []
+        for event in validated:
+            event.validate(width=width)
+            value = event.timestamp.reshape(batch, -1)
+            if value.shape[1] != 1:
+                raise ValueError("timeline timestamps must have one value per batch")
+            if not torch.equal(value, value[:1].expand_as(value)):
+                raise ValueError("batched timeline timestamps must be uniform")
+            timestamps.append(float(value[0, 0]))
+        self.events = validated
+        self.timestamps = timestamps
+        self.tolerance = float(tolerance)
+
+    def windows(self) -> list[AmodalEventCollection]:
+        """Return stable timestamp windows, independent of arrival order."""
+        pending = sorted(range(len(self.events)), key=self.timestamps.__getitem__)
+        windows: list[AmodalEventCollection] = []
+        while pending:
+            anchor = self.timestamps[pending[0]]
+            selected = [
+                index
+                for index in pending
+                if abs(self.timestamps[index] - anchor) <= self.tolerance
+            ]
+            selected_set = set(selected)
+            pending = [index for index in pending if index not in selected_set]
+            windows.append(
+                AmodalEventCollection.from_events(
+                    [self.events[index] for index in selected]
+                )
+            )
+        return windows
+
+
 class ExtractedAmodalRuntime(nn.Module):
     """External encoder, one controller core, and external decoder.
 

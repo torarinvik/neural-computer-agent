@@ -7,6 +7,7 @@ from .amodal_interface import AmodalEvent, AmodalEventCollection, IntentEvent
 from .amodal_runtime import (
     EXTRACTED_CHECKPOINT_FORMAT,
     ActionIntentDecoder,
+    AmodalEventTimeline,
     AmodalInputBus,
     AmodalOutputBus,
     ExtractedAmodalRuntime,
@@ -365,3 +366,19 @@ def test_learned_input_residual_cannot_change_single_or_duplicate_events() -> No
             parameter.normal_()
     assert torch.equal(bus([event]).payload, event.payload)
     assert torch.equal(bus([event, event]).payload, event.payload)
+
+
+def test_event_timeline_reorders_delivery_but_respects_timestamp_boundaries() -> None:
+    torch.manual_seed(1708)
+    first = torch.randn(3, 5)
+    second = torch.randn(3, 5)
+    event_a = AmodalEvent(first, timestamp=torch.zeros(3))
+    event_b = AmodalEvent(second, timestamp=torch.zeros(3))
+    windows = AmodalEventTimeline([event_b, event_a]).windows()
+    assert len(windows) == 1
+    assert torch.equal(windows[0].payload[:, 0], second)
+    assert torch.equal(windows[0].payload[:, 1], first)
+
+    delayed = AmodalEvent(second, timestamp=torch.ones(3))
+    assert len(AmodalEventTimeline([event_a, delayed]).windows()) == 2
+    assert len(AmodalEventTimeline([event_a, delayed], tolerance=1.0).windows()) == 1

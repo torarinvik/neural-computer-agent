@@ -111,8 +111,12 @@ Promoted artifact:
 - SHA-256 `4ae96f60b99107834c27840b8841e8b2ba20c10e6565c220b5607fb9c80d3c71`
 - evidence in `session_records/amodal_input_composition_2026-08-01/`
 
-The next boundary is Gate 4b: gradual cross-renderer consolidation followed by
-delayed, noisy, missing, and asynchronous streams.
+Timestamp-preserving transport alignment is now qualified: at 4,096 lifetimes,
+out-of-order and bounded-jitter delivery reproduced synchronous actions exactly
+at 96.36%, while mismatched timestamps remained separate windows. This is
+transport plumbing, not a learned wait policy. The next boundary is replicated
+cross-renderer transfer, noisy/missing streams, and learned latency-versus-wait
+control.
 
 Convert a legacy checkpoint with:
 

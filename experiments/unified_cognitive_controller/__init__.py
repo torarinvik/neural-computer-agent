@@ -3,6 +3,7 @@
 from .amodal_interface import AmodalEvent, AmodalEventCollection, IntentEvent
 from .amodal_runtime import (
     ActionIntentDecoder,
+    AmodalEventTimeline,
     AmodalInputBus,
     AmodalOutputBus,
     ExtractedAmodalRuntime,
@@ -15,6 +16,7 @@ __all__ = [
     "ActionIntentDecoder",
     "AmodalEvent",
     "AmodalEventCollection",
+    "AmodalEventTimeline",
     "AmodalInputBus",
     "AmodalOutputBus",
     "CognitiveLifetimeBatch",

@@ -345,10 +345,16 @@ their evidence is combined. Three seeds replicate bars acquisition after
 diamond and dot-pair renderings; that cross-renderer transfer is not yet
 replicated at the strict gate.
 
+Timestamp-preserving transport alignment is now also qualified. At 4,096
+lifetimes, out-of-order delivery and 0.25-unit timestamp jitter reproduced
+synchronous actions exactly at 96.36%; genuinely mismatched timestamps stayed
+in separate windows. This is transport plumbing, not learned delay handling.
+
 This is still **not yet the target architecture** because:
 
 - synchronous event sets have only been behaviorally qualified at N=1 and N=2;
-- delayed and asynchronous input composition are not yet qualified;
+- learned delay compensation, noisy streams, and missing-stream policies are
+  not yet qualified;
 - the recurrent compatibility API still feeds canonical action IDs back into
   the controller, so a new physical protocol requires a thin lowering for
   closed-loop use;
@@ -370,13 +376,14 @@ composition—not yet unrestricted asynchronous amodal operation.
    intention without losing any admitted capability.~~
 6. ~~Add a second output adapter and prove simultaneous M-output fan-out from
    the clean base intention.~~
-7. ~~Accept variable-size synchronous visual event sets.~~ Then qualify delayed
-   and asynchronous events.
-8. Add a second synthetic encoder with redundant evidence and measure learning
+7. ~~Accept variable-size synchronous visual event sets.~~
+8. ~~Qualify timestamp-preserving out-of-order and bounded-jitter delivery.~~
+   Then qualify learned delay, noisy, and missing-stream policies.
+9. Add a second synthetic encoder with redundant evidence and measure learning
    acceleration, dropout robustness, and shuffle sensitivity.
-9. Require complementary evidence split across two encoders.
-10. Train audio and language frontends/backends only after the generic buses pass.
-11. Freeze the controller and qualify genuinely new sensors and outputs.
+10. Require complementary evidence split across two encoders.
+11. Train audio and language frontends/backends only after the generic buses pass.
+12. Freeze the controller and qualify genuinely new sensors and outputs.
 
 No capability claim may skip from the current internal vision module directly
 to “amodal.” Each boundary must pass its own causal and sample-efficiency gate.

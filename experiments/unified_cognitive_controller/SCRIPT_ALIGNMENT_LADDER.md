@@ -81,8 +81,15 @@ near chance, and transferred above 90% to unseen diamonds and dot pairs.
 Shuffled partners stayed at chance and contradictory partners causally reversed
 predictions. See `../../session_records/amodal_input_composition_2026-08-01/`.
 
-**Gate 4b next:** replicate cross-renderer transfer, then qualify delayed,
-missing, noisy, and asynchronous event streams without breaking exact N=1.
+**Gate 4b-synchronous passed (2026-08-01):** `AmodalEventTimeline` sorts
+timestamped events independently of arrival order and groups bounded jitter.
+At 4,096 lifetimes, out-of-order and 0.25-unit-jitter delivery were both
+96.36% and action-identical to synchronous N=2. Mismatched timestamps remained
+two separate windows. This is transport alignment, not learned delay policy.
+
+**Gate 4b-next:** replicate cross-renderer transfer, then qualify noisy and
+missing streams plus a learned latency-versus-wait policy without breaking exact
+N=1.
 
 One latent intention is connected to independently trained output adapters
 (opaque action, integer/bit code, and audio event).  Replacing or permuting an

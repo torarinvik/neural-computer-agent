@@ -54,8 +54,11 @@ for either stream alone, with three acquisition seeds crossing after
 768–1,344 verifier bits. The selected bus transfers above 90% to two unseen
 renderers, although that transfer is not yet replicated. The legacy feedback
 API still consumes canonical action IDs, and delayed/asynchronous streams remain
-unqualified. Current results therefore establish synchronous N=2 and M-output
-operation, not yet unrestricted amodal N-to-M behavior.
+unqualified. Timestamp-preserving out-of-order delivery is now qualified:
+96.36% behavior is action-identical to synchronous delivery, and mismatched
+timestamps remain separate. Learned delay compensation and noisy streams remain
+open. Current results therefore establish synchronous N=2, timestamp-aware
+transport, and M-output operation—not yet unrestricted amodal N-to-M behavior.
 
 ## North star
 
