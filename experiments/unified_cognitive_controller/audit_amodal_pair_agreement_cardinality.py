@@ -106,7 +106,7 @@ def main() -> None:
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--seed", type=int, default=177_001)
     parser.add_argument("--count", type=int, default=4096)
-    parser.add_argument("--threshold", type=float, default=0.4)
+    parser.add_argument("--threshold", type=float, default=0.8)
     parser.add_argument(
         "--device",
         default=(
@@ -147,15 +147,11 @@ def main() -> None:
             support_trials=1,
             device=device,
         ).frames
-        for offset in (2, 3, 4)
+        for offset in range(2, 8)
     ]
     rows = {}
-    for cardinality, streams in (
-        (2, (first, second)),
-        (3, (first, second, distractors[0])),
-        (4, (first, second, distractors[0], distractors[1])),
-        (5, (first, second, distractors[0], distractors[1], distractors[2])),
-    ):
+    for cardinality in range(2, 9):
+        streams = (first, second, *distractors[: cardinality - 2])
         no_agreement = _accuracy(
             runtime, bus, agreement, streams, batch.correct_actions, None
         )
@@ -171,16 +167,18 @@ def main() -> None:
         }
     passed = bool(
         rows["2"]["with_agreement"] >= 0.90
-        and rows["3"]["with_agreement"] >= 0.85
-        and rows["4"]["with_agreement"] >= 0.85
-        and rows["5"]["with_agreement"] >= 0.85
-        and rows["3"]["gain"] >= 0.25
-        and rows["4"]["gain"] >= 0.25
-        and rows["5"]["gain"] >= 0.25
+        and all(
+            rows[str(cardinality)]["with_agreement"] >= 0.85
+            for cardinality in range(3, 9)
+        )
+        and all(
+            rows[str(cardinality)]["gain"] >= 0.25
+            for cardinality in range(3, 9)
+        )
     )
     report = {
         "schema": "amodal-pair-agreement-cardinality-audit-v1",
-        "claim": "Pair agreement scales relevance routing from N=2 to N=4.",
+        "claim": "Pair agreement scales relevance routing from N=2 to N=8.",
         "controller": str(args.controller),
         "controller_sha256": _sha256(args.controller),
         "bus": str(args.bus),

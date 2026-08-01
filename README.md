@@ -72,8 +72,8 @@ learns that quality from clean/corrupted latent consistency: across two seeds,
 98.77–99.04%. A self-supervised same-frame pair-agreement head now handles a
 valid irrelevant third stream: N=3 rises from 57.45% to 89.25–89.59% while
 N=2 remains 98.51–98.55%. Cross-modality relevance and more than three streams
-remain open. The same heads now scale to N=5 with three distractors: 90.65–91.41%
-versus 53.43% without agreement, while N=2 remains 96.61%. See
+remain open. The same heads now scale to N=8 with six distractors: 87.96–90.35%
+versus 50.62% without agreement, while N=2 remains 96.38%. See
 `session_records/amodal_input_noise_2026-08-01/README.md` for the rejected
 noise-adaptation evidence,
 `session_records/amodal_n3_confidence_2026-08-01/README.md` for the interface
@@ -83,7 +83,7 @@ learned-confidence audit, and
 `session_records/amodal_pair_agreement_2026-08-01/README.md` for the learned
 relevance breakthrough and
 `session_records/amodal_pair_agreement_cardinality_2026-08-01/README.md` for
-the N=2→N=5 audit.
+the N=2→N=8 audit.
 
 ## North star
 
