@@ -89,3 +89,21 @@ the encoder was pretrained on the two-position stream, and the RAM snapshot is
 currently a one-step diagnostic interface. The next promotion ladder is
 four-position visual n-back, then eight-position visual n-back, then audio and
 dual-stream n-back, preserving the same reset/shuffle/reversal gates.
+
+## Four-position promotion
+
+The same method was promoted one rung without changing the controller or
+reward definition. A fresh self-supervised encoder was trained on the
+four-position stream, then frozen; the controller learned from scalar reward
+through the same generic RAM snapshot and retrieved-memory interaction.
+
+| seed | updates | held-out accuracy | history reset | temporal shuffle | decision |
+|---|---:|---:|---:|---:|---|
+| 44021 | 256 | 92.74% | 56.54% | 58.06% | pass |
+| 44022 | 256 | 80.87% | 56.52% | 56.63% | pass |
+
+The matched 128-update run was rejected (56.79% held-out), then the budget was
+increased only after the four-position supervised ceiling passed at 75.73% with
+the same causal controls. This is the expected gradual-learning pattern: the
+primitive is learnable, but its reward-only ignition threshold grows with
+difficulty.
