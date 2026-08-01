@@ -160,6 +160,25 @@ shuffled, delayed, missing, duplicated, and noisy streams must behave
 predictably. A complementary-evidence task must require two encoders so that
 neither frontend can solve it alone.
 
+**Gate 4c qualified (2026-08-01):** a protected source-preserving bridge now
+lets a frozen controller acquire a second simultaneous temporal stream. Two
+independent reward-only runs froze the controller, both encoders, and the
+mastered visual output rows; only generic audio RAM bridges and audio output
+rows were trainable. Fresh audits retained 100% vision and reached 60.2–62.3%
+exact joint accuracy, while history-reset and temporal-shuffle controls fell
+to 33.8–36.3%. All 29 controller tensors were bit-identical, and zeroing the
+audio bridges returned audio to 56.2%. This closes the gradual protected-core
+case, not unrestricted N-stream learning: the protection policy is still
+selected by the training harness, and a third stream plus learned protection
+remain open. See
+`../../session_records/brainworkshop_dual_stream_followup_2026-08-01/`.
+
+The corrected reward path now trains the source-preserving RAM-to-intention
+bridge itself. Its strongest 64-update audit reached 64.1–65.5% exact joint
+on two fresh normal seeds, retained 100% vision, and fell to 34.6–34.7% under
+reset/shuffle. This is the current protected-core checkpoint; the earlier
+figures remain as the pre-fix replication record.
+
 ## Gate 5: new frontend/backend qualification
 
 A previously unseen encoder and decoder are trained as neural-IR adapters while

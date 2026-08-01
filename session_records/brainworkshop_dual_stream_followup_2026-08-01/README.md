@@ -87,3 +87,53 @@ RAM residuals at the last step still erases the lagging stream. The next probe
 should expose source-keyed or slot-preserving RAM vectors to a generic reader,
 and should be tested with a tiny supervised decodability check before another
 reward-only run.
+
+## Protected source-preserving bridge breakthrough
+
+The next interface kept each stream's one-step RAM relation separate all the
+way to a generic per-stream RAM-to-intention bridge.  A slot composer was
+initialized to the old mean, and a factorized policy-gradient baseline was
+changed to center each opaque reward bit independently across the batch.  The
+old visual stream was then protected during acquisition: the controller,
+encoders, visual RAM adapter, visual intention rows, and visual decoder rows
+were frozen.  Only the audio RAM adapters and audio decoder rows were allowed
+to change.  This is a training-time continual-learning gate, not a semantic
+answer head; the learner still received only its opaque actions and scalar
+verifier outcomes.
+
+Two independent reward-only training runs from the same frozen dual-stream
+base replicated the result:
+
+| run | updates | vision | audio | joint exact | reset joint | shuffle joint |
+|---|---:|---:|---:|---:|---:|---:|
+| protected seed 46201 | 64 | 100.0% | 60.2–62.3% | 60.2–62.3% | 34.3% | 36.3% |
+| protected seed 46301 | 128 | 100.0% | 60.7–61.6% | 60.7–61.6% | 33.8% | 35.8% |
+
+The ranges are two fresh 512-lifetime normal audits per checkpoint. The
+controller SHA-256 digest was exactly
+`0160c9709733fc3099ace1aa4b71f5c502e431eb8d0dc3a68316038d8ecfd8cf` before
+and after both runs, with all 29 controller tensors bit-identical. Zeroing
+both learned audio bridges on the 128-update checkpoint reduced audio from
+61.45% to 56.23% while leaving vision at 100%, establishing causal dependence
+on the external memory/computation path.
+
+This is the first replicated demonstration that a frozen central controller
+can acquire a second simultaneous sensory skill while retaining the first.
+It does not yet prove unrestricted N-stream composition: the protected stream
+set and factorized protocol are still a deliberate gradual-learning surface.
+The next frontier is to learn the protection/rehearsal policy itself and then
+qualify a third stream without hand-selecting which output rows are protected.
+
+### Corrected gradient-path audit
+
+Before finalizing the record, a code audit found that factorized reward was
+still reading the controller's raw intention instead of the new RAM-to-
+intention event. The prior result therefore measured the per-stream RAM path
+correctly, but not the newly added bridge. After fixing that input and
+rerunning the same protected recipe, a fresh 64-update run (seed 46401)
+reached **100.0% vision** and **64.1–65.5% audio/joint exact** on two fresh
+512-lifetime normal audits. History reset and time shuffle both returned to
+about **34.7% joint**. Zeroing both audio bridges reduced audio from 63.4% to
+56.1%, while the controller digest remained unchanged. This corrected run is
+the strongest current checkpoint; the earlier numbers remain in the table
+above as the pre-fix replication record.

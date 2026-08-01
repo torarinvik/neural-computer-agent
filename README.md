@@ -70,6 +70,22 @@ reset returned to 57.19%/57.18% and temporal shuffling to 57.50%/57.10%.
 This demonstrates new skill acquisition in the external memory/computation
 path without updating the central controller.
 
+The next source-preserving bridge closes a stronger gradual-learning gate. Two
+independent reward-only runs froze the controller, both encoders, and the
+mastered visual output subspace while training only generic audio RAM bridges
+and audio output rows. Fresh 512-lifetime audits retained **100% vision** and
+reached **60.2–62.3% exact joint** (audio equal to joint), with history-reset
+and temporal-shuffle controls at **33.8–36.3%**. The controller hash was
+bit-identical across all 29 tensors; zeroing both learned audio bridges
+returned audio to 56.2%. After correcting the reward path to train the new
+RAM-to-intention bridge, the strongest 64-update run reached **64.1–65.5%
+exact joint** on two fresh audits while retaining **100% vision**; reset and
+shuffle returned to **34.6–34.7%**. This is the first replicated frozen-core acquisition
+of a second simultaneous stream without forgetting the first. The result is
+still a protected two-stream curriculum, not unrestricted N-stream learning;
+the detailed record is in
+`session_records/brainworkshop_dual_stream_followup_2026-08-01/`.
+
 **Current-status boundary:** the proven legacy class still supports its bundled
 `step(frame)` API, but a behavior-preserving extracted runtime now owns the
 vision encoder, controller core, and action decoder as three disjoint,

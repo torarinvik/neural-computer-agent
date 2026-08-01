@@ -23,7 +23,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
-from .amodal_interface import AmodalEvent
+from .amodal_interface import AmodalEvent, IntentEvent
 from .amodal_runtime import (
     AmodalInputBus, FactorizedOpaqueProtocolDecoder, OpaqueProtocolDecoder)
 from .brainworkshop_gym import (
@@ -57,6 +57,8 @@ class BrainWorkshopPolicy(nn.Module):
                  input_bus_event_rms_target: float = 1.0,
                  external_memory_adapter_width: int = 0,
                  per_stream_external_history: bool = False,
+                 slot_memory_composer: bool = False,
+                 per_stream_intention_adapter_width: int = 0,
                  factorized_output: bool = False,
                  factorized_reward: bool = False,
                  learned_source_keys: bool = False,
@@ -139,6 +141,8 @@ class BrainWorkshopPolicy(nn.Module):
             event_rms_target=input_bus_event_rms_target)
         self.external_memory_adapter = None
         self.external_memory_adapters = nn.ModuleDict()
+        self.external_memory_composer = None
+        self.per_stream_intention_adapters = nn.ModuleDict()
         if external_memory_adapter_width:
             def make_adapter() -> nn.Sequential:
                 adapter = nn.Sequential(
@@ -154,9 +158,40 @@ class BrainWorkshopPolicy(nn.Module):
             if per_stream_external_history:
                 self.external_memory_adapters = nn.ModuleDict({
                     name: make_adapter() for name in modalities})
+                if slot_memory_composer:
+                    # Preserve a separate slot for every runtime stream until
+                    # the final generic reader.  The initial reader is the
+                    # exact legacy mean, so this interface is behavior
+                    # preserving while still allowing reward to learn a
+                    # source-sensitive combination.
+                    self.external_memory_composer = nn.Linear(
+                        width * len(modalities), width)
+                    nn.init.zeros_(self.external_memory_composer.weight)
+                    nn.init.zeros_(self.external_memory_composer.bias)
+                    with torch.no_grad():
+                        for index in range(len(modalities)):
+                            start = index * width
+                            self.external_memory_composer.weight[:, start:start + width] = (
+                                torch.eye(width) / len(modalities))
             else:
                 self.external_memory_adapter = make_adapter()
         self.per_stream_external_history = bool(per_stream_external_history)
+        self.slot_memory_composer = bool(slot_memory_composer)
+        if per_stream_intention_adapter_width:
+            def make_intention_adapter() -> nn.Sequential:
+                adapter = nn.Sequential(
+                    nn.Linear(width * 3, per_stream_intention_adapter_width),
+                    nn.GELU(),
+                    nn.Linear(per_stream_intention_adapter_width, intention_width),
+                )
+                # This is an external RAM-to-intention bridge.  It starts as
+                # an exact no-op so adding it cannot change an inherited
+                # controller before verified experience trains it.
+                nn.init.zeros_(adapter[-1].weight)
+                nn.init.zeros_(adapter[-1].bias)
+                return adapter
+            self.per_stream_intention_adapters = nn.ModuleDict({
+                name: make_intention_adapter() for name in modalities})
         # The legacy model owns adapters for compatibility.  The probe removes
         # them so only this independent output adapter formats the intention.
         self.controller.vision = None
@@ -247,6 +282,68 @@ def _event_payloads(
     return events
 
 
+def _stream_intention_event(
+        policy: BrainWorkshopPolicy, core, events: list[AmodalEvent],
+        previous_stream_events: dict[str, torch.Tensor | None], *,
+        external_history: bool):
+    """Add source-preserving RAM relation residuals outside the controller.
+
+    The bridge is deliberately generic: it sees only current and previous
+    opaque event vectors, and its output is an amodal intention residual.  It
+    is an adapter diagnostic, not a modality-specific answer head.
+    """
+    if not (external_history and policy.per_stream_intention_adapters):
+        return core.intent_event
+    residuals = []
+    for modality, raw_event in zip(policy.modalities, events):
+        previous = previous_stream_events[modality]
+        if previous is None:
+            continue
+        features = torch.cat([
+            raw_event.payload, previous,
+            raw_event.payload * previous], dim=-1)
+        residuals.append(policy.per_stream_intention_adapters[modality](features))
+    if not residuals:
+        return core.intent_event
+    event = core.intent_event
+    residual = torch.stack(residuals, dim=0).sum(dim=0)
+    payload = event.payload.clone()
+    payload[:, :policy.controller.intention_width] = (
+        payload[:, :policy.controller.intention_width] + residual)
+    return IntentEvent(
+        payload=payload,
+        timestamp=event.timestamp,
+        confidence=event.confidence,
+        target_key=event.target_key,
+    ).validate(width=event.payload.shape[1])
+
+
+def _controller_action_index(policy: BrainWorkshopPolicy,
+                             action: torch.Tensor) -> torch.Tensor:
+    """Keep opaque multi-bit actions inside a legacy core's history range.
+
+    The extracted controller checkpoints predate the four-command factorized
+    protocol and expose three history embeddings (two commands plus null).
+    A new protocol command must not crash that frozen core; it is represented
+    as the generic null history token while its scalar reward remains intact.
+    """
+    capacity = policy.controller.action_embedding.num_embeddings
+    return action.clamp_max(capacity - 1)
+
+
+def _factorized_advantages(bit_returns: torch.Tensor) -> torch.Tensor:
+    """Center each opaque reward bit independently across the batch.
+
+    Comparing bits against one another makes a mastered bit look like a
+    negative example whenever another bit is harder, which can erase old
+    skills during staged learning.  A per-bit baseline keeps credit separate
+    without exposing bit semantics to the controller.
+    """
+    if bit_returns.ndim != 3:
+        raise ValueError("factorized returns must have shape [time, batch, bits]")
+    return bit_returns - bit_returns.mean(dim=(0, 1), keepdim=True)
+
+
 def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
              *, batch_size: int, seed: int, device: torch.device,
              sample: bool, reset_history: bool = False,
@@ -319,7 +416,8 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
                         event.payload, prior, event.payload * prior], dim=-1)
                     prior = prior + policy.external_memory_adapter(memory_features)
                 core, state = policy.controller.step_event(
-                    event, state, previous_action, previous_reward, has_feedback,
+                    event, state, _controller_action_index(policy, previous_action),
+                    previous_reward, has_feedback,
                     retrieved_memory=prior)
                 previous_events[modality] = event.payload
             assert core is not None
@@ -342,7 +440,12 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
                         prior = prior + policy.external_memory_adapters[modality](
                             memory_features)
                     memories.append(prior)
-                retrieved_memory = torch.stack(memories, dim=1).mean(dim=1)
+                memory_slots = torch.cat(memories, dim=-1)
+                retrieved_memory = (
+                    policy.external_memory_composer(memory_slots)
+                    if policy.external_memory_composer is not None
+                    else memory_slots.view(
+                        memory_slots.shape[0], len(memories), -1).mean(dim=1))
             else:
                 retrieved_memory = (
                     previous_event
@@ -356,12 +459,16 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
                     retrieved_memory = retrieved_memory + (
                         policy.external_memory_adapter(memory_features))
             core, state = policy.controller.step_event(
-                event, state, previous_action, previous_reward, has_feedback,
+                event, state, _controller_action_index(policy, previous_action),
+                previous_reward, has_feedback,
                 retrieved_memory=retrieved_memory)
         values.append(policy.value_head(state.hidden).squeeze(-1))
-        logits = policy.decoder(core.intent_event)
+        intention_event = _stream_intention_event(
+            policy, core, events, previous_stream_events,
+            external_history=external_history)
+        logits = policy.decoder(intention_event)
         if policy.factorized_output and policy.factorized_reward:
-            binary_log_probs = policy.decoder.binary_log_probs(core.intent_event)
+            binary_log_probs = policy.decoder.binary_log_probs(intention_event)
             bit_distribution = torch.distributions.Categorical(
                 logits=binary_log_probs)
             bit_choice = (
@@ -469,7 +576,8 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
                         event.payload, prior, event.payload * prior], dim=-1)
                     prior = prior + policy.external_memory_adapter(memory_features)
                 core, state = policy.controller.step_event(
-                    event, state, previous_action, previous_reward, has_feedback,
+                    event, state, _controller_action_index(policy, previous_action),
+                    previous_reward, has_feedback,
                     retrieved_memory=prior)
                 previous_events[modality] = event.payload
             assert core is not None
@@ -492,7 +600,12 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
                         prior = prior + policy.external_memory_adapters[modality](
                             memory_features)
                     memories.append(prior)
-                retrieved_memory = torch.stack(memories, dim=1).mean(dim=1)
+                memory_slots = torch.cat(memories, dim=-1)
+                retrieved_memory = (
+                    policy.external_memory_composer(memory_slots)
+                    if policy.external_memory_composer is not None
+                    else memory_slots.view(
+                        memory_slots.shape[0], len(memories), -1).mean(dim=1))
             else:
                 retrieved_memory = (
                     previous_event
@@ -506,9 +619,13 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
                     retrieved_memory = retrieved_memory + (
                         policy.external_memory_adapter(memory_features))
             core, state = policy.controller.step_event(
-                event, state, previous_action, previous_reward, has_feedback,
+                event, state, _controller_action_index(policy, previous_action),
+                previous_reward, has_feedback,
                 retrieved_memory=retrieved_memory)
-        logits = policy.decoder(core.intent_event)
+        intention_event = _stream_intention_event(
+            policy, core, events, previous_stream_events,
+            external_history=external_history)
+        logits = policy.decoder(intention_event)
         targets = torch.tensor(
             [sum(
                 (1 << index) for index, bit in enumerate(policy.action_bits)
@@ -589,6 +706,13 @@ def main() -> None:
     parser.add_argument(
         "--per-stream-external-history", action="store_true",
         help="compute RAM relation residuals separately per input stream")
+    parser.add_argument(
+        "--slot-memory-composer", action="store_true",
+        help="preserve per-stream RAM slots until a generic final reader")
+    parser.add_argument(
+        "--per-stream-intention-adapter-width", type=int, default=0,
+        choices=(0, 32, 64),
+        help="optional source-preserving RAM-to-intention bridges")
     parser.add_argument("--relation-adapter-width", type=int, default=0,
                         choices=(0, 32, 64))
     parser.add_argument("--event-memory-adapter-width", type=int, default=0,
@@ -631,6 +755,9 @@ def main() -> None:
     parser.add_argument(
         "--target-modalities", type=str, default="",
         help="optional staged reward mask, a subset of --modalities")
+    parser.add_argument(
+        "--train-only-modalities", type=str, default="",
+        help="protect all other learned streams while adapting these ones")
     parser.add_argument("--learning-rate", type=float, default=3e-4)
     parser.add_argument("--entropy-coef", type=float, default=0.01)
     parser.add_argument("--discount", type=float, default=0.95)
@@ -661,6 +788,12 @@ def main() -> None:
             or any(item not in modalities for item in target_modalities)
             or len(set(target_modalities)) != len(target_modalities)):
         raise ValueError("--target-modalities must be a nonempty subset")
+    train_only_modalities = tuple(
+        item.strip() for item in args.train_only_modalities.split(",")
+        if item.strip())
+    if (any(item not in modalities for item in train_only_modalities)
+            or len(set(train_only_modalities)) != len(train_only_modalities)):
+        raise ValueError("--train-only-modalities must be a subset")
     config = BrainWorkshopConfig(
         n_back=1, trials=args.trials, position_vocab=args.position_vocab,
         modalities=modalities, trial_ms=1_000,
@@ -713,6 +846,9 @@ def main() -> None:
         # This is an external RAM-side adapter, not a controller weight.
                  external_memory_adapter_width=args.external_memory_adapter_width,
         per_stream_external_history=args.per_stream_external_history,
+        slot_memory_composer=args.slot_memory_composer,
+        per_stream_intention_adapter_width=(
+            args.per_stream_intention_adapter_width),
         factorized_output=args.factorized_output,
         factorized_reward=args.factorized_reward,
         learned_source_keys=args.learned_source_keys,
@@ -808,6 +944,46 @@ def main() -> None:
     if controller_frozen:
         for parameter in policy.controller.parameters():
             parameter.requires_grad_(False)
+    if train_only_modalities:
+        if not controller_frozen:
+            raise ValueError(
+                "--train-only-modalities requires a frozen controller")
+        if not policy.factorized_output:
+            raise ValueError(
+                "protected stream training requires factorized output")
+        if not policy.per_stream_intention_adapters:
+            raise ValueError(
+                "protected stream training requires per-stream intention adapters")
+        # This is a generic continual-learning gate: all inherited paths are
+        # frozen, and only the adapters for the newly acquired stream plus its
+        # opaque protocol rows may change.  No answer labels enter inference.
+        for parameter in policy.parameters():
+            parameter.requires_grad_(False)
+        for name in train_only_modalities:
+            modules = []
+            if name in policy.external_memory_adapters:
+                modules.append(policy.external_memory_adapters[name])
+            if name in policy.per_stream_intention_adapters:
+                modules.append(policy.per_stream_intention_adapters[name])
+            for module in modules:
+                for parameter in module.parameters():
+                    parameter.requires_grad_(True)
+        policy.decoder.network.weight.requires_grad_(True)
+        policy.decoder.network.bias.requires_grad_(True)
+        protected_rows = {
+            2 * index + offset
+            for index, name in enumerate(policy.modalities)
+            if name not in train_only_modalities
+            for offset in (0, 1)
+        }
+        def protect_rows(gradient: torch.Tensor) -> torch.Tensor:
+            mask = torch.ones(
+                gradient.shape[0], dtype=torch.bool, device=gradient.device)
+            for row in protected_rows:
+                mask[row] = False
+            return gradient * mask.view(-1, *([1] * (gradient.ndim - 1)))
+        policy.decoder.network.weight.register_hook(protect_rows)
+        policy.decoder.network.bias.register_hook(protect_rows)
     trainable = [parameter for parameter in policy.parameters()
                  if parameter.requires_grad]
     optimizer = torch.optim.Adam(trainable, lr=args.learning_rate)
@@ -858,8 +1034,7 @@ def main() -> None:
                     bit_running = (
                         rollout.bit_rewards[trial] + args.discount * bit_running)
                     bit_returns[trial] = bit_running
-                bit_advantages = (
-                    bit_returns - bit_returns.mean(dim=1, keepdim=True))
+                bit_advantages = _factorized_advantages(bit_returns)
                 loss = -(
                     bit_advantages.detach() * rollout.bit_log_probs).mean()
                 value_loss = torch.zeros((), device=device)
@@ -935,6 +1110,9 @@ def main() -> None:
         "retrieved_memory_adapter_width": args.retrieved_memory_adapter_width,
         "external_memory_adapter_width": args.external_memory_adapter_width,
         "per_stream_external_history": bool(args.per_stream_external_history),
+        "slot_memory_composer": bool(args.slot_memory_composer),
+        "per_stream_intention_adapter_width": (
+            args.per_stream_intention_adapter_width),
         "input_bus_normalize_events": bool(args.input_bus_normalize_events),
         "input_bus_event_rms_target": args.input_bus_event_rms_target,
         "factorized_output": bool(args.factorized_output),
@@ -947,6 +1125,7 @@ def main() -> None:
         "modality": policy.modality,
         "modalities": modalities,
         "target_modalities": target_modalities,
+        "train_only_modalities": train_only_modalities,
         "seed": args.seed,
         "updates": args.updates,
         "batch_size": args.batch_size,
