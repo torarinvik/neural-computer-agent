@@ -132,6 +132,29 @@ over a 1-back parent is not yet proven. The next measurement is a
 bits-to-threshold race from equal 1-back starting checkpoints, not a longer
 fixed-budget run.
 
+## Common-initialization compounding audit
+
+The fair speed race found that simply expanding the 2-back bridge does not yet
+make 3-back faster: at 192 updates the inherited path was 64.18% versus
+74.57% for a matched 1-back parent, and at 256 it was 82.75% versus 85.94%.
+This is a real negative result, not a reason to claim monotonic transfer.
+
+The broader compounding test then held the unadapted controller fixed across
+seeds and compared it with mastered 1-back parents at the same 256-update
+budget:
+
+| starting experience | seed 47405 | seed 47408 | seed 47409 | mean |
+|---|---:|---:|---:|---:|
+| mastered 1-back parent | 85.94% | 77.48% | 84.04% | **82.49%** |
+| common unadapted controller | 49.51% | 49.39% | 49.53% | **49.48%** |
+
+Reset and cross-stream swaps stayed near 50% in every run. The conclusion is
+strong but precise: retained experience makes a novel 3-back primitive
+learnable with the same experience budget, a **33.01-point mean gain**. The
+remaining frontier is to make that transfer monotonic through 2-back as well;
+the stacked-history adapter is retained as an experimental branch but is not
+promoted on one seed alone.
+
 ## What this proves
 
 This is a protected three-stream proof of concept: a frozen central controller
@@ -185,5 +208,17 @@ Artifacts:
   `retention_nback2_after_multirehearsal_*.json` files — full-ladder audits;
 - `nback3_fresh_depth3_seed47405_256.json` — matched 1-back-parent 3-back
   control;
+- `nback3_fresh1parent_depth3_seed47408_256.json` and
+  `nback3_fresh1parent_depth3_seed47409_256.json`, plus
+  `nback3_raw_unadapted_depth3_seed47405_256.json` and
+  `nback3_raw_unadapted_common_seed47405_model_run47408_256.json` /
+  `nback3_raw_unadapted_common_seed47405_model_run47409_256.json` — the
+  common-initialization compounding audit;
+- `nback3_speed_inherited1parent_seed47405_*.json` and
+  `nback3_speed_fresh1parent_seed47405_*.json` — the matched threshold-speed
+  curve that rejected direct 2-back-to-3-back transfer;
+- `nback3_stacked_rehearsal1_2_depth3_seed47405_256.json` and its matching
+  `retention_nback*_after_stacked_seed47405.json` audits — the non-destructive
+  stacked-bridge pilot, retained as an unpromoted branch;
 - `audio_encoder_ssl_seed47401.json` and `audio_stage_ssl_seed47402.json` —
   label-free audio-parent preparation.

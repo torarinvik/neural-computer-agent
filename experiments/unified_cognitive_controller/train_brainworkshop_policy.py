@@ -60,6 +60,7 @@ class BrainWorkshopPolicy(nn.Module):
                  external_memory_adapter_width: int = 0,
                  external_history_depth: int = 1,
                  per_stream_external_history: bool = False,
+                 stacked_history_adapter: bool = False,
                  slot_memory_composer: bool = False,
                  per_stream_intention_adapter_width: int = 0,
                  factorized_output: bool = False,
@@ -196,7 +197,9 @@ class BrainWorkshopPolicy(nn.Module):
             else:
                 self.external_memory_adapter = make_adapter()
         self.per_stream_external_history = bool(per_stream_external_history)
+        self.stacked_history_adapter = bool(stacked_history_adapter)
         self.slot_memory_composer = bool(slot_memory_composer)
+        self.per_stream_intention_delta_adapters = nn.ModuleDict()
         if per_stream_intention_adapter_width:
             def make_intention_adapter() -> nn.Sequential:
                 adapter = nn.Sequential(
@@ -214,6 +217,12 @@ class BrainWorkshopPolicy(nn.Module):
                 return adapter
             self.per_stream_intention_adapters = nn.ModuleDict({
                 name: make_intention_adapter() for name in modalities})
+            if stacked_history_adapter:
+                # Keep the mastered lower-order bridge intact and give the
+                # new relation a separate zero-initialized correction path.
+                # This is a generic residual decomposition, not a task label.
+                self.per_stream_intention_delta_adapters = nn.ModuleDict({
+                    name: make_intention_adapter() for name in modalities})
         # The legacy model owns adapters for compatibility.  The probe removes
         # them so only this independent output adapter formats the intention.
         self.controller.vision = None
@@ -355,7 +364,12 @@ def _stream_intention_event(
         features = _history_features(
             raw_event.payload, history,
             depth=policy.external_history_depth)
-        residuals.append(policy.per_stream_intention_adapters[modality](features))
+        residual = policy.per_stream_intention_adapters[modality](features)
+        if (policy.stacked_history_adapter
+                and modality in policy.per_stream_intention_delta_adapters):
+            residual = residual + policy.per_stream_intention_delta_adapters[
+                modality](features)
+        residuals.append(residual)
     if not residuals:
         return core.intent_event
     event = core.intent_event
@@ -906,6 +920,9 @@ def main() -> None:
     parser.add_argument(
         "--rehearsal-weight", type=float, default=0.5,
         help="relative verifier-loss weight for old-skill rehearsal")
+    parser.add_argument(
+        "--stacked-history-adapter", action="store_true",
+        help="freeze the inherited RAM bridge and train a zero-init correction")
     parser.add_argument("--position-vocab", type=int, default=2,
                         choices=(2, 4, 8))
     parser.add_argument("--text-vocab", type=int, default=8,
@@ -1034,6 +1051,7 @@ def main() -> None:
         external_memory_adapter_width=args.external_memory_adapter_width,
         external_history_depth=args.external_history_depth,
         per_stream_external_history=args.per_stream_external_history,
+        stacked_history_adapter=args.stacked_history_adapter,
         slot_memory_composer=args.slot_memory_composer,
         per_stream_intention_adapter_width=(
             args.per_stream_intention_adapter_width),
@@ -1152,6 +1170,13 @@ def main() -> None:
     if controller_frozen:
         for parameter in policy.controller.parameters():
             parameter.requires_grad_(False)
+    if args.stacked_history_adapter:
+        if not policy.per_stream_intention_delta_adapters:
+            raise ValueError(
+                "--stacked-history-adapter requires per-stream intention adapters")
+        for adapter in policy.per_stream_intention_adapters.values():
+            for parameter in adapter.parameters():
+                parameter.requires_grad_(False)
     if train_only_modalities:
         if not controller_frozen:
             raise ValueError(
@@ -1385,6 +1410,7 @@ def main() -> None:
         "external_memory_adapter_width": args.external_memory_adapter_width,
         "external_history_depth": args.external_history_depth,
         "per_stream_external_history": bool(args.per_stream_external_history),
+        "stacked_history_adapter": bool(args.stacked_history_adapter),
         "slot_memory_composer": bool(args.slot_memory_composer),
         "per_stream_intention_adapter_width": (
             args.per_stream_intention_adapter_width),

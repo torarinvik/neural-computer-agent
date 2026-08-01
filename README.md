@@ -130,6 +130,17 @@ ladder. It does **not** yet prove that 3-back itself is learned faster than a
 equal starting state, followed by a learned stop/continue policy; final
 accuracy alone would hide the sample-efficiency question.
 
+The corrected common-initialization compounding audit now answers the broader
+question. At the same 256-update 3-back budget, three mastered 1-back parents
+reached **85.94%, 77.48%, and 84.04%** (mean **82.49%**), while three runs from
+the same genuinely unadapted controller stayed at **49.39–49.53%** (mean
+**49.48%**). Reset and cross-stream controls remained at chance. Thus prior
+experience makes a novel, harder temporal primitive learnable with the same
+amount of experience. Direct 2-back inheritance did not yet accelerate 3-back
+when its bridge was simply expanded, so the next frontier is a monotonic
+skill-stack/threshold race that preserves this 1→3 transfer while making
+2→3 transfer beneficial rather than merely safe.
+
 **Current-status boundary:** the proven legacy class still supports its bundled
 `step(frame)` API, but a behavior-preserving extracted runtime now owns the
 vision encoder, controller core, and action decoder as three disjoint,
