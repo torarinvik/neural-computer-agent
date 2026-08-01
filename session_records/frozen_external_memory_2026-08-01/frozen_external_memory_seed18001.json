@@ -1,0 +1,30 @@
+{
+  "accepted": true,
+  "checkpoint": "artifacts/checkpoints/unified_persistent_capacity40_temp50_seed4801.pt",
+  "claim_scope": "frozen-weight episodic adaptation through serialized external memory; not adjacent-primitive discovery",
+  "contexts": 256,
+  "controller_frozen": true,
+  "corrupted_memory_accuracy": 0.546875,
+  "device": "mps",
+  "disk_memory_accuracy": 0.9765625,
+  "gates": {
+    "controller_frozen": true,
+    "corrupted_memory_hurts": true,
+    "disk_memory_at_least_85": true,
+    "no_memory_hurts": true,
+    "prediction_flips_at_least_80": true,
+    "reversed_at_least_85": true,
+    "shuffled_memory_hurts": true,
+    "weights_unchanged": true
+  },
+  "memory_capacity": 8,
+  "no_memory_accuracy": 0.5,
+  "oracle_same_context_accuracy": 1.0,
+  "paired_prediction_flip_rate": 1.0,
+  "reversed_disk_memory_accuracy": 0.9765625,
+  "schema": "frozen-external-memory-audit-v1",
+  "shuffled_memory_accuracy": 0.5078125,
+  "state_digest_after": "4512966cdfd6f519468c8d51393904278e55eed32584dc92725aee171079e23b",
+  "state_digest_before": "4512966cdfd6f519468c8d51393904278e55eed32584dc92725aee171079e23b",
+  "weights_unchanged": true
+}
