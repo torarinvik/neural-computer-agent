@@ -267,4 +267,11 @@ learning signals, not a promotion: aggregate direct-sixth accuracy remains
 about 84–85% and the independent gate is still too noisy.  Stop climbing the
 independence scalar; the next high-ROI experiment is a larger, seed-disjoint
 0.01 gate with more diverse sixth-item experience, while preserving the
-canonical span-five model.
+canonical span-five model.  A four-pass continuation at the same 0.01 rung
+raised one evaluation seed to 85.4% independent accuracy, and an additional
+four-pass continuation reached 87.8% on its own seed; however, a fresh audit
+of that latter checkpoint returned 75.6% independent accuracy.  Its span-five
+and span-three retention remained 91.5% and 99.6%, respectively, with memory
+reset at chance.  The result is therefore a healthy candidate but not robust
+generalization: stop extending this rung until the independent evaluation is
+made larger and less noisy.

@@ -1,0 +1,26 @@
+{
+  "schema": "span6_capacity_slot_audit_v1",
+  "checkpoint": "session_records/procedural_shape_span5_readout_2026-07-31/operation_frontier/span6_capacity_slot_seed85101_ind010_diverse8.pt",
+  "seed": 867001,
+  "count": 4096,
+  "span6": {
+    "accuracy": 0.841552734375,
+    "independent_new_slot_queries": 41,
+    "independent_new_slot_accuracy": 0.7560975551605225,
+    "all_memory_reset_accuracy": 0.495361328125,
+    "blank_presentation_accuracy": 0.48583984375,
+    "reverse_presentation_accuracy": 0.8388671875,
+    "candidate_flip_accuracy": 0.8466796875
+  },
+  "retention_span5": {
+    "accuracy": 0.915283203125,
+    "all_memory_reset_accuracy": 0.492919921875,
+    "reverse_presentation_accuracy": 0.917724609375,
+    "candidate_flip_accuracy": 0.915771484375
+  },
+  "retention_span3": {
+    "accuracy": 0.9955241084098816,
+    "all_memory_reset_accuracy": 0.50048828125
+  },
+  "interpretation": "The diverse continuation preserves old-skill retention and memory dependence, but independent sixth-item accuracy remains seed-variable; do not promote yet."
+}
