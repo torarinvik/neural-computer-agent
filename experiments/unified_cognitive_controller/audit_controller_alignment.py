@@ -58,8 +58,12 @@ def main() -> None:
         else "cuda" if torch.cuda.is_available() else "cpu"))
     parser.add_argument(
         "--capabilities", nargs="+",
-        choices=("binary", "four_rule", "relation", "persistent", "span3", "span5"),
-        default=("binary", "four_rule", "relation", "persistent", "span3", "span5"))
+        choices=(
+            "binary", "four_rule", "relation", "persistent",
+            "span2", "span3", "span5"),
+        default=(
+            "binary", "four_rule", "relation", "persistent",
+            "span2", "span3", "span5"))
     args = parser.parse_args()
     if args.count < 64 or args.count % args.memory_capacity:
         raise ValueError("count must be at least 64 and divisible by memory capacity")
@@ -103,29 +107,42 @@ def main() -> None:
         results["persistent"] = {
             "passed": report["gate"]["accepted"], "report": report}
 
-    for span in (3, 5):
+    for span in (2, 3, 5):
         name = f"span{span}"
         if name not in args.capabilities:
             continue
         report = evaluate_procedural_shape_span(
             model, count=args.count, span=span, vocabulary=2,
             seed=args.seed + 6_000 + span, nuisance=nuisance_from_level(
-                0.1358 if span == 3 else args.span_nuisance),
+                0.0 if span == 2 else 0.1358 if span == 3
+                else args.span_nuisance),
             device=device, objective="recognition",
-            query_count=3 if span == 3 else 1,
+            query_count=2 if span == 2 else 3 if span == 3 else 1,
             new_slot_difficulty=1.0,
             query_frontier_difficulty=1.0,
             query_history_difficulty=1.0,
-            next_query_stage=2 if span == 5 else 1,
+            next_query_stage=2 if span == 5 else 1 if span == 3 else -1,
             next_query_anchor_focus=3 if span == 5 else -1,
             next_query_target_aligned=(span == 5),
             query_thought_steps=1 if span == 5 else 0)
-        threshold = 0.95 if span == 3 else 0.85
+        threshold = 0.95 if span == 3 else 0.90 if span == 2 else 0.85
         reset_accuracy = float(report["all_memory_reset_accuracy"])
         accuracy = float(report["accuracy"])
+        causal_span2 = (
+            span != 2
+            or (
+                float(report["blank_presentation_accuracy"]) <= 0.60
+                and float(report[
+                    "candidate_prediction_flip_rate_on_changed"]) >= 0.80
+                and float(report[
+                    "reverse_prediction_flip_rate_on_changed"]) >= 0.80))
         results[name] = {
-            "passed": accuracy >= threshold and reset_accuracy <= 0.60,
+            "passed": (
+                accuracy >= threshold
+                and reset_accuracy <= 0.60
+                and causal_span2),
             "threshold": threshold,
+            "causal_span2_controls_passed": causal_span2,
             "report": report,
         }
 

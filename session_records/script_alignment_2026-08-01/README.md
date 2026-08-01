@@ -47,6 +47,42 @@ not the final architecture: procedural span skills are not yet consolidated
 into this lineage, and frozen-weight acquisition of a genuinely adjacent rule
 through disk rows alone remains the next scientific gate.
 
+## Five-capability span-two consolidation
+
+Span two was then introduced at the deliberately nonzero nuisance floor.  Each
+optimizer update aggregated fresh span experience with binary, four-rule,
+relation, and persistent-memory rehearsal.  The 20-update smell test remained
+at chance but showed a falling target loss.  A 60-update arm reached 58.0%.
+The final sub-minute arm reached 77.8%, justifying a bounded 300-update run.
+
+That run initially appeared to pass at 90.4%, but its blind presentation-
+reversal flip rate was only 67.2%.  We tightened both the trainer and the
+whole-controller audit before promotion.  A 120-update continuation then
+passed every causal gate.  On a fresh 4,096-lifetime blind audit, the same
+immutable checkpoint reached:
+
+| Capability/control | Blind result |
+|---|---:|
+| span-two accuracy | 98.06% |
+| span-two reverse-presentation accuracy | 97.96% |
+| span-two presentation-reversal flips | 92.33% |
+| span-two candidate-counterfactual flips | 96.07% |
+| blank presentation | 50.26% |
+| all active memory reset | 49.89% |
+| binary few-shot binding | 98.74% |
+| four-rule composition | 99.82% |
+| relation, three appearances | 98.10–99.99% |
+| persistent recall | 98.73% |
+| persistent memory removed | 49.66% |
+
+This is a genuine five-capability repertoire and a successful retention result.
+It is **not** yet a compounding sample-efficiency result.  The admitted lineage
+used 420 span updates, or 215,040 unique span verifier bits, versus 16,384–
+20,480 stable bits in the earlier specialist lineage.  Complete rehearsal
+prevented forgetting but diluted acquisition by roughly an order of magnitude.
+The next target is therefore reducing bits-to-threshold on this same span-two
+bridge—not increasing span length.
+
 ## Artifacts
 
 - `relation_to_persistent_smell_seed120101.json`: rejected near-pass.
@@ -55,3 +91,8 @@ through disk rows alone remains the next scientific gate.
 - `artifacts/checkpoints/unified_repertoire_gate0_candidate_seed120102.pt`:
   promoted Gate-0 checkpoint, SHA-256
   `10eec234bd22656e9b78c7c39d5af6af03c40364a70c331f8ec994b250eb27bf`.
+- `repertoire_span2_strict_blind_seed124005.json`: independent five-capability
+  audit.
+- `artifacts/checkpoints/unified_repertoire_span2_strict_seed122005.pt`:
+  promoted five-capability checkpoint, SHA-256
+  `663fe4f7e7c137adf038b140a44db7a82076761d73fc68b61b651bff67c1109a`.
