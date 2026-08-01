@@ -1,0 +1,67 @@
+{
+  "all_parameters_unchanged": true,
+  "claim": "One frozen base intention was consumed simultaneously by the inherited action decoder and an independently calibrated opaque protocol decoder.",
+  "configuration": {
+    "count": 512,
+    "device": "mps",
+    "seed": 141001
+  },
+  "controller": "artifacts/checkpoints/unified_repertoire_span2_amodal_intention_seed122005.pt",
+  "controller_sha256": "9eea7ab479cb8450737f040b76495cc5ec737e970cdc165af2446873e530cd6c",
+  "passed": true,
+  "protocol_decoder": "artifacts/checkpoints/opaque_protocol_decoder_span2_seed133001.pt",
+  "protocol_decoder_sha256": "0258822d056a0bc5cf430a3035d81f84ede477eb0dbdd7fc9365d6be66bb03a7",
+  "results": {
+    "binary": {
+      "examples": 2560,
+      "primary_accuracy": 0.989062488079071,
+      "primary_exact": true,
+      "protocol_accuracy": 0.979687511920929,
+      "shuffled_intention_accuracy": 0.4984374940395355,
+      "zero_intention_accuracy": 0.5042968988418579
+    },
+    "four_rule": {
+      "examples": 2048,
+      "primary_accuracy": 0.99853515625,
+      "primary_exact": true,
+      "protocol_accuracy": 0.99560546875,
+      "shuffled_intention_accuracy": 0.51123046875,
+      "zero_intention_accuracy": 0.5087890625
+    },
+    "relation_bars": {
+      "examples": 2560,
+      "primary_accuracy": 0.9828125238418579,
+      "primary_exact": true,
+      "protocol_accuracy": 0.973437488079071,
+      "shuffled_intention_accuracy": 0.5015624761581421,
+      "zero_intention_accuracy": 0.505859375
+    },
+    "relation_diamonds": {
+      "examples": 2560,
+      "primary_accuracy": 1.0,
+      "primary_exact": true,
+      "protocol_accuracy": 1.0,
+      "shuffled_intention_accuracy": 0.49531251192092896,
+      "zero_intention_accuracy": 0.4984374940395355
+    },
+    "span2": {
+      "examples": 1024,
+      "primary_accuracy": 0.978515625,
+      "primary_exact": true,
+      "protocol_accuracy": 0.96875,
+      "shuffled_intention_accuracy": 0.4921875,
+      "zero_intention_accuracy": 0.5
+    }
+  },
+  "schema": "amodal-output-fanout-audit-v1",
+  "variable_cardinality": {
+    "one": [
+      "protocol"
+    ],
+    "two": [
+      "primary",
+      "protocol"
+    ],
+    "zero": []
+  }
+}

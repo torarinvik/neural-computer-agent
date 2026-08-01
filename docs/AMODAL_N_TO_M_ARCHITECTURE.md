@@ -323,17 +323,27 @@ five repertoire gates passed on 4,096 held-out lifetimes. The external decoder
 therefore receives a structurally zero compatibility suffix on the promoted
 checkpoint.
 
+The clean base intention now also fans out through a runtime-variable output
+bus. A second opaque protocol backend was calibrated independently from only
+its own attempted commands and scalar outcomes. Three seeds crossed the static
+gate after 64 verifier bits, all passed the five-capability closed loop at 512
+lifetimes, and the promoted decoder passed at 4,096. Simultaneous primary and
+protocol outputs passed intention-shuffle, zero-intention, reward-shuffle, and
+parameter-immutability controls.
+
 This is still **not yet the target architecture** because:
 
 - only one encoded visual event is accepted per controller update;
-- only one action decoder is exercised;
-- variable-size event sets and intention fan-out do not exist;
+- variable-size event sets and asynchronous input composition do not exist;
+- the recurrent compatibility API still feeds canonical action IDs back into
+  the controller, so a new physical protocol requires a thin lowering for
+  closed-loop use;
 - migration-v1 retains two reserved compatibility coordinates for loading old
   checkpoints, although they are structurally zero in the promoted successor;
 - no audio or trained language frontend/backend has passed causal audits.
 
 Therefore current results establish extracted vision-grounded neural IR,
-cognition, and memory—not amodal N-to-M operation.
+cognition, memory, and audited M-output fan-out—not amodal N-input composition.
 
 ## Behavior-preserving migration order
 
@@ -343,8 +353,8 @@ cognition, and memory—not amodal N-to-M operation.
 4. ~~Version the event and intention schemas and save adapters separately.~~
 5. ~~Remove the active legacy action residual by folding it into the base
    intention without losing any admitted capability.~~
-6. Add a second output adapter and prove simultaneous M-output fan-out from the
-   clean base intention.
+6. ~~Add a second output adapter and prove simultaneous M-output fan-out from
+   the clean base intention.~~
 7. Accept variable-size visual event sets, then asynchronous events.
 8. Add a second synthetic encoder with redundant evidence and measure learning
    acceleration, dropout robustness, and shuffle sensitivity.

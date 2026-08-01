@@ -6,7 +6,10 @@ import torch
 from .amodal_interface import AmodalEvent, IntentEvent
 from .amodal_runtime import (
     EXTRACTED_CHECKPOINT_FORMAT,
+    ActionIntentDecoder,
+    AmodalOutputBus,
     ExtractedAmodalRuntime,
+    OpaqueProtocolDecoder,
     canonicalize_action_adapter_payload,
     convert_legacy_checkpoint,
     runtime_from_extracted_payload,
@@ -268,3 +271,43 @@ def test_canonicalization_rejects_missing_or_already_migrated_adapter() -> None:
                 "state_dict": migrated.state_dict(),
             }
         )
+
+
+def test_output_bus_fans_one_frozen_intention_to_multiple_decoders() -> None:
+    torch.manual_seed(1705)
+    runtime = ExtractedAmodalRuntime.from_legacy(
+        UnifiedCognitiveController(**_configuration())
+    ).eval()
+    state = runtime.initial_state(5, device="cpu")
+    frame = torch.randn(5, 3, 32, 32)
+    previous_action = torch.full((5,), NULL_ACTION, dtype=torch.long)
+    core_output, _ = runtime.step_intention(
+        frame,
+        state,
+        previous_action,
+        torch.zeros(5),
+        torch.zeros(5),
+    )
+    primary = ActionIntentDecoder(
+        runtime.decoder.projection,
+        intention_width=runtime.controller.intention_width,
+    )
+    protocol = OpaqueProtocolDecoder(runtime.controller.intention_width)
+    bus = AmodalOutputBus({"primary": primary})
+    bus.register_decoder("protocol", protocol)
+    outputs = bus(core_output.intent_event)
+    assert set(outputs) == {"primary", "protocol"}
+    assert torch.equal(outputs["primary"], runtime.decode(core_output.intent_event))
+    assert outputs["protocol"].shape == (5, 2)
+
+
+def test_output_bus_cardinality_is_runtime_variable() -> None:
+    intention = IntentEvent(torch.randn(3, 10))
+    empty = AmodalOutputBus()
+    assert empty(intention) == {}
+    bus = AmodalOutputBus({"one": OpaqueProtocolDecoder(8)})
+    assert set(bus(intention)) == {"one"}
+    bus.register_decoder("two", OpaqueProtocolDecoder(8, commands=3, hidden=4))
+    outputs = bus(intention)
+    assert outputs["one"].shape == (3, 2)
+    assert outputs["two"].shape == (3, 3)

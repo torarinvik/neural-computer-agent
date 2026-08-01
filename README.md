@@ -42,10 +42,14 @@ independently serialized components. The real five-capability checkpoint is
 bit-identical through that path. A promoted algebraic migration now folds the
 old two-action residual into the 24-dimensional base intention with no examples
 or optimizer updates; its compatibility suffix is structurally zero and all
-five repertoire gates pass at 4,096 held-out lifetimes. The system still accepts
-only one visual event and one action decoder per step. Current results are
-therefore an intention-only modular neural-IR rung, not a demonstrated amodal
-N-input/M-output system.
+five repertoire gates pass at 4,096 held-out lifetimes. A runtime-variable
+output bus now fans that clean intention into the inherited action decoder and
+an independently reward-calibrated reversed protocol decoder simultaneously.
+Three decoder seeds crossed after 64 verifier bits and passed the five-skill
+closed loop; reward-shuffled and intention-ablation controls failed. The system
+still accepts only one visual event per controller update, and its legacy
+feedback API consumes canonical action IDs. Current results therefore establish
+audited M-output fan-out, not yet full amodal N-input composition.
 
 ## North star
 

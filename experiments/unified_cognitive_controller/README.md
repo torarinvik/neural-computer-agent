@@ -7,9 +7,10 @@
 > [`../../docs/AMODAL_N_TO_M_ARCHITECTURE.md`](../../docs/AMODAL_N_TO_M_ARCHITECTURE.md).
 > The legacy class retains its bundled API, while `ExtractedAmodalRuntime` now
 > owns the vision encoder, controller, and decoder separately and reproduces the
-> current checkpoint exactly. One visual event still enters each step and only
-> one decoder is exercised. Historical results below must not be described as
-> audited multimodal or amodal transfer.
+> current checkpoint exactly. One visual event still enters each step. Multiple
+> output backends now consume one intention simultaneously, but variable-N
+> input composition is not yet implemented. Historical results below must not
+> be described as audited multimodal transfer.
 
 ## Extracted neural-IR migration rung (2026-08-01)
 
@@ -58,10 +59,32 @@ Promoted artifact:
 - SHA-256 `9eea7ab479cb8450737f040b76495cc5ec737e970cdc165af2446873e530cd6c`
 - evidence in `session_records/amodal_runtime_migration_2026-08-01/`
 
-The next smallest architecture rung is a second independently qualified output
-decoder consuming the same frozen intention, followed by simultaneous fan-out.
-After that, variable-cardinality visual input begins with N=1 as an exact
-control and advances to redundant and complementary N=2 evidence.
+The next architecture rung is variable-cardinality visual input. It begins with
+N=1 as an exact control and advances to redundant and complementary N=2
+evidence.
+
+## Independently learned output fan-out (2026-08-01)
+
+`AmodalOutputBus` now accepts a runtime-variable mapping of backends. A new
+two-command decoder learned a deliberately reversed opaque protocol while the
+controller and inherited decoder stayed frozen. Its only learning signal was
+whether its own attempted command succeeded.
+
+Three span-two calibration seeds crossed the static threshold after 64
+verifier bits and passed the complete five-capability closed loop at 512
+lifetimes. The promoted decoder passed at 4,096 lifetimes. A matched
+reward-shuffled learner failed; shuffled and zero intentions stayed at chance.
+The simultaneous two-decoder audit preserved inherited logits bit-for-bit.
+
+Promoted artifact:
+
+- `artifacts/checkpoints/opaque_protocol_decoder_span2_seed133001.pt`
+- SHA-256 `0258822d056a0bc5cf430a3035d81f84ede477eb0dbdd7fc9365d6be66bb03a7`
+- evidence in `session_records/amodal_output_fanout_2026-08-01/`
+
+Honest boundary: the historical recurrent API still consumes canonical action
+IDs. Alternate physical protocols require a thin command-to-canonical-action
+lowering when they drive that legacy loop. Variable-N input is the next gate.
 
 Convert a legacy checkpoint with:
 

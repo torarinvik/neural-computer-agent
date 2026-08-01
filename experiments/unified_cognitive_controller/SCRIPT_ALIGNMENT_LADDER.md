@@ -62,9 +62,17 @@ were no action flips and maximum logit drift was `5.72e-6`; all five repertoire
 gates passed at 4,096 held-out lifetimes. The compatibility suffix is now
 structurally zero in the promoted checkpoint.
 
-**Gate 3c next:** qualify multiple simultaneous decoders from the clean base
-intention. Variable-N input work may proceed in parallel only after the
-single-event path remains the exact N=1 control.
+**Gate 3c passed (2026-08-01):** a second, independently calibrated opaque
+protocol decoder consumes the same frozen 24-dimensional intention as the
+inherited decoder. Three independent seeds crossed after 64 verifier bits and
+passed the five-capability closed-loop audit at 512 lifetimes; the promoted
+seed passed at 4,096. Reward-shuffled, intention-shuffled, and zero-intention
+controls failed. A runtime-variable output bus exercised zero, one, and both
+decoders, with the inherited output bit-exact. See
+`../../session_records/amodal_output_fanout_2026-08-01/`.
+
+**Gate 4 next:** preserve N=1 exactly, then qualify redundant and complementary
+N=2 event composition.
 
 One latent intention is connected to independently trained output adapters
 (opaque action, integer/bit code, and audio event).  Replacing or permuting an

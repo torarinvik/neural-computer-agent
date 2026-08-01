@@ -1,0 +1,112 @@
+{
+  "arms": [
+    {
+      "controls": {
+        "binary": {
+          "aligned_accuracy": 0.510937511920929,
+          "examples": 2560,
+          "primary_accuracy": 0.9906250238418579,
+          "shuffled_accuracy": 0.510937511920929,
+          "zero_intention_accuracy": 0.510937511920929
+        },
+        "four_rule": {
+          "aligned_accuracy": 0.5048828125,
+          "examples": 2048,
+          "primary_accuracy": 0.9970703125,
+          "shuffled_accuracy": 0.505859375,
+          "zero_intention_accuracy": 0.50634765625
+        },
+        "relation_bars": {
+          "aligned_accuracy": 0.502734363079071,
+          "examples": 2560,
+          "primary_accuracy": 0.979687511920929,
+          "shuffled_accuracy": 0.4996093809604645,
+          "zero_intention_accuracy": 0.49882811307907104
+        },
+        "relation_diamonds": {
+          "aligned_accuracy": 0.5249999761581421,
+          "examples": 2560,
+          "primary_accuracy": 0.9996093511581421,
+          "shuffled_accuracy": 0.49609375,
+          "zero_intention_accuracy": 0.4976562559604645
+        }
+      },
+      "curve": [
+        {
+          "accuracy": 0.508593738079071,
+          "attempted_accuracy": null,
+          "loss": null,
+          "update": 0,
+          "verifier_bits": 0
+        },
+        {
+          "accuracy": 0.3765625059604645,
+          "attempted_accuracy": 0.48124998807907104,
+          "loss": 0.6931471824645996,
+          "update": 1,
+          "verifier_bits": 160
+        },
+        {
+          "accuracy": 0.3765625059604645,
+          "attempted_accuracy": 0.543749988079071,
+          "loss": 0.7379792928695679,
+          "update": 2,
+          "verifier_bits": 320
+        },
+        {
+          "accuracy": 0.38203126192092896,
+          "attempted_accuracy": 0.512499988079071,
+          "loss": 0.7056839466094971,
+          "update": 3,
+          "verifier_bits": 480
+        },
+        {
+          "accuracy": 0.508593738079071,
+          "attempted_accuracy": 0.5,
+          "loss": 0.7078387141227722,
+          "update": 4,
+          "verifier_bits": 640
+        }
+      ],
+      "learning_gain": 0.0,
+      "learning_rate": 0.03,
+      "passed": false,
+      "stable_bits_to_threshold": null,
+      "zero_shot_accuracy": 0.508593738079071
+    }
+  ],
+  "checkpoint": "artifacts/checkpoints/unified_repertoire_span2_amodal_intention_seed122005.pt",
+  "configuration": {
+    "batch_size": 32,
+    "checkpoint": "artifacts/checkpoints/unified_repertoire_span2_amodal_intention_seed122005.pt",
+    "decoder_out": null,
+    "device": "mps",
+    "eval_count": 256,
+    "exploration": 0.25,
+    "learning_rates": [
+      0.03
+    ],
+    "report": "session_records/amodal_output_fanout_2026-08-01/reward_shuffled_seed131001.json",
+    "seed": 131001,
+    "shuffle_outcomes": true,
+    "threshold": 0.85,
+    "updates": 4
+  },
+  "controller_and_primary_decoder_unchanged": true,
+  "decoder_saved": false,
+  "forbidden": [
+    "correct protocol command",
+    "unattempted command outcomes",
+    "primary decoder logits",
+    "task identity as decoder input"
+  ],
+  "learner_visible": [
+    "base intention payload",
+    "attempted opaque protocol command",
+    "scalar success of that attempted command"
+  ],
+  "passed": false,
+  "schema": "amodal-output-fanout-bandit-v1",
+  "selected_learning_rate": null,
+  "wall_seconds": 0.9193073330097832
+}

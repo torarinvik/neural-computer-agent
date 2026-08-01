@@ -62,12 +62,56 @@ class ActionIntentDecoder(nn.Module):
         )
 
 
+class OpaqueProtocolDecoder(nn.Module):
+    """Independent backend from base intention to opaque protocol commands."""
+
+    def __init__(
+        self, intention_width: int, commands: int = ACTIONS, hidden: int = 0
+    ) -> None:
+        super().__init__()
+        if intention_width < 1 or commands < 2 or hidden < 0:
+            raise ValueError("protocol decoder dimensions are invalid")
+        self.intention_width = intention_width
+        self.commands = commands
+        self.network = (
+            nn.Sequential(
+                nn.Linear(intention_width, hidden),
+                nn.GELU(),
+                nn.Linear(hidden, commands),
+            )
+            if hidden
+            else nn.Linear(intention_width, commands)
+        )
+
+    def forward(self, intention: IntentEvent | torch.Tensor) -> torch.Tensor:
+        payload = intention.payload if isinstance(intention, IntentEvent) else intention
+        if payload.ndim != 2 or payload.shape[1] < self.intention_width:
+            raise ValueError("intention payload is too narrow for protocol decoder")
+        return self.network(payload[:, : self.intention_width])
+
+
+class AmodalOutputBus(nn.Module):
+    """Fan one intention out to a runtime-variable set of output backends."""
+
+    def __init__(self, decoders: Mapping[str, nn.Module] | None = None) -> None:
+        super().__init__()
+        self.decoders = nn.ModuleDict(dict(decoders or {}))
+
+    def register_decoder(self, name: str, decoder: nn.Module) -> None:
+        if not name or name in self.decoders:
+            raise ValueError("decoder name must be nonempty and unique")
+        self.decoders[name] = decoder
+
+    def forward(self, intention: IntentEvent) -> dict[str, torch.Tensor]:
+        return {name: decoder(intention) for name, decoder in self.decoders.items()}
+
+
 class ExtractedAmodalRuntime(nn.Module):
     """External encoder, one controller core, and external decoder.
 
     The three children own disjoint parameters and serialize independently.
-    This first migration runtime accepts one event per step; variable N/M buses
-    are later rungs and are deliberately not claimed here.
+    This migration runtime accepts one event per step. Variable-N input is a
+    later rung; variable-M output is provided by the external output bus.
     """
 
     def __init__(
@@ -121,6 +165,50 @@ class ExtractedAmodalRuntime(nn.Module):
     def decode(self, intention: IntentEvent) -> torch.Tensor:
         return self.decoder(intention)
 
+    def step_intention_event(
+        self,
+        event: AmodalEvent,
+        state: ControllerState,
+        previous_action: torch.Tensor,
+        previous_reward: torch.Tensor,
+        has_feedback: torch.Tensor,
+        retrieved_memory: torch.Tensor | None = None,
+        *,
+        disable_workspace: bool = False,
+    ) -> tuple[ControllerCoreOutput, ControllerState]:
+        """Run the controller without selecting or formatting an output."""
+        return self.controller.step_event(
+            event,
+            state,
+            previous_action,
+            previous_reward,
+            has_feedback,
+            retrieved_memory,
+            disable_workspace=disable_workspace,
+            intention_basis=self.decoder.projection.weight,
+        )
+
+    def step_intention(
+        self,
+        frame: torch.Tensor,
+        state: ControllerState,
+        previous_action: torch.Tensor,
+        previous_reward: torch.Tensor,
+        has_feedback: torch.Tensor,
+        retrieved_memory: torch.Tensor | None = None,
+        *,
+        disable_workspace: bool = False,
+    ) -> tuple[ControllerCoreOutput, ControllerState]:
+        return self.step_intention_event(
+            self.encode(frame),
+            state,
+            previous_action,
+            previous_reward,
+            has_feedback,
+            retrieved_memory,
+            disable_workspace=disable_workspace,
+        )
+
     def step_event(
         self,
         event: AmodalEvent,
@@ -132,7 +220,7 @@ class ExtractedAmodalRuntime(nn.Module):
         *,
         disable_workspace: bool = False,
     ) -> tuple[ControllerOutput, ControllerState]:
-        core_output, next_state = self.controller.step_event(
+        core_output, next_state = self.step_intention_event(
             event,
             state,
             previous_action,
@@ -140,7 +228,6 @@ class ExtractedAmodalRuntime(nn.Module):
             has_feedback,
             retrieved_memory,
             disable_workspace=disable_workspace,
-            intention_basis=self.decoder.projection.weight,
         )
         return self._decode_core_output(core_output), next_state
 
