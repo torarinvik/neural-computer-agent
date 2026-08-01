@@ -50,6 +50,11 @@ def main() -> None:
     parser.add_argument("--target-nuisance", type=float, default=0.8)
     parser.add_argument("--independence", type=float, default=0.0)
     parser.add_argument("--independence-weight", type=float, default=20.0)
+    parser.add_argument(
+        "--frontier-batch-size", type=int, default=0,
+        help=("optional extra batch containing only independent sixth-item "
+              "examples; used to test stratified sample efficiency"))
+    parser.add_argument("--frontier-weight", type=float, default=1.0)
     parser.add_argument("--eval-count", type=int, default=4096)
     parser.add_argument("--device", default=(
         "cuda" if torch.cuda.is_available() else "cpu"))
@@ -59,6 +64,11 @@ def main() -> None:
         raise ValueError("batch size must be a multiple of 1024")
     if not 0.0 <= args.independence <= 1.0:
         raise ValueError("independence must be within [0, 1]")
+    if args.frontier_batch_size < 0 or (
+            args.frontier_batch_size and args.frontier_batch_size % 1024):
+        raise ValueError("frontier batch size must be zero or a multiple of 1024")
+    if args.frontier_weight < 1.0:
+        raise ValueError("frontier weight must be at least one")
 
     compute = configure_compute(args.cpu_threads)
     seed_everything(args.seed)
@@ -94,6 +104,16 @@ def main() -> None:
             device=device)
         update(target, thought_steps=0,
                new_slot_weight=args.independence_weight)
+        if args.frontier_batch_size:
+            frontier = generate_procedural_shape_batch(
+                args.frontier_batch_size, span=6, vocabulary=2,
+                seed=args.seed + 500_000 + step, nuisance=target_nuisance,
+                objective="recognition", query_count=1,
+                new_slot_difficulty=1.0,
+                direct_query_ordinal=5, allow_partial_balance=True,
+                device=device)
+            update(frontier, thought_steps=0,
+                   new_slot_weight=args.frontier_weight)
         # The learned slot must remain inert on the already-mastered streams.
         span5 = generate_procedural_shape_batch(
             args.batch_size, span=5, vocabulary=2,
@@ -149,6 +169,8 @@ def main() -> None:
         "passes": args.passes,
         "independence": args.independence,
         "independence_weight": args.independence_weight,
+        "frontier_batch_size": args.frontier_batch_size,
+        "frontier_weight": args.frontier_weight,
         "loss_first": losses[0],
         "loss_last": losses[-1],
         "target_span6": target,

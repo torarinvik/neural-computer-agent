@@ -285,3 +285,16 @@ signal, but it remains a candidate rather than a promoted capability; the
 next gain should come from better sample efficiency at the same rung, not
 from increasing independence or overwriting the canonical span-five
 checkpoint.  The aggregate report is `span6_capacity_slot_large_gate_diverse8.json`.
+
+## Stratified frontier replay
+
+To test sample efficiency directly, the capacity-slot trainer gained an
+optional 1,024-example frontier-only batch per pass while retaining the normal
+0.01-independence stream.  A four-pass block preserved span-five/span-three
+retention at 91.4%/99.5% and memory reset at chance.  Across four
+seed-disjoint 4,096-episode audits, the independent sixth-item score was
+139/164 (84.8%), compared with 135/164 (82.3%) for the ordinary stream.  This
+is a promising but modest gain, not yet a promotion; it supports prioritizing
+rare frontier examples rather than raising the independence scalar.  The
+candidate and aggregate gate are recorded in
+`span6_capacity_slot_frontier_replay_gate.json`.
