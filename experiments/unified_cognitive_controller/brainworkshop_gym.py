@@ -42,6 +42,7 @@ class BrainWorkshopConfig:
     position_vocab: int = 8
     audio_vocab: int = 8
     match_probability: float = 0.5
+    balanced_matches: bool = True
     trial_ms: int = 1_000
     audio_samples: int = 800
     sample_rate: int = 8_000
@@ -53,8 +54,8 @@ class BrainWorkshopConfig:
             raise ValueError("n_back must be positive")
         if self.trials <= self.n_back:
             raise ValueError("trials must exceed n_back")
-        if self.position_vocab != 8 or self.audio_vocab != 8:
-            raise ValueError("the initial gym uses eight-way stimuli")
+        if self.position_vocab not in (2, 4, 8) or self.audio_vocab not in (2, 4, 8):
+            raise ValueError("stimulus vocabularies must be 2, 4, or 8")
         if not 0.0 < self.match_probability < 1.0:
             raise ValueError("match_probability must lie strictly between 0 and 1")
         if self.trial_ms < 1 or self.audio_samples < 8 or self.sample_rate < 100:
@@ -93,6 +94,17 @@ def _balanced_match_flags(
     matches = max(1, min(count - 1, matches))
     flags = [index < matches for index in range(count)]
     rng.shuffle(flags)
+    return flags
+
+
+def _stochastic_match_flags(
+        count: int, probability: float, rng: random.Random) -> list[bool]:
+    """Draw independent match flags while avoiding an all-one-class episode."""
+    flags = [rng.random() < probability for _ in range(count)]
+    if all(flags):
+        flags[rng.randrange(count)] = False
+    elif not any(flags):
+        flags[rng.randrange(count)] = True
     return flags
 
 
@@ -183,9 +195,12 @@ def generate_brainworkshop_episode(
         config = BrainWorkshopConfig()
     config.validate()
     rng = random.Random(seed)
-    position_flags = _balanced_match_flags(
+    flag_builder = (
+        _balanced_match_flags if config.balanced_matches
+        else _stochastic_match_flags)
+    position_flags = flag_builder(
         config.trials - config.n_back, config.match_probability, rng)
-    audio_flags = _balanced_match_flags(
+    audio_flags = flag_builder(
         config.trials - config.n_back, config.match_probability, rng)
     positions: list[int] = []
     audio: list[int] = []
@@ -209,6 +224,14 @@ def generate_brainworkshop_episode(
         target = (
             (POSITION_MATCH if position_match else 0)
             | (AUDIO_MATCH if audio_match else 0))
+        # A single-stream episode must not score the absent stream.  Keeping
+        # verifier targets aligned with the declared modalities makes the
+        # staged curriculum honest: vision-only n-back trains a binary
+        # keypress, while dual-stream promotion later exposes all four masks.
+        if "vision" not in config.modalities:
+            target &= ~POSITION_MATCH
+        if "audio" not in config.modalities:
+            target &= ~AUDIO_MATCH
         targets.append(target)
         observations.append(BrainWorkshopObservation(
             vision=(
@@ -276,6 +299,13 @@ class BrainWorkshopVisionEncoder(nn.Module):
         )
 
     def forward(self, frame: torch.Tensor) -> torch.Tensor:
+        # Normalize the spatial size before the strided stack.  Besides making
+        # encoders interchangeable across gym render sizes, this avoids the
+        # current MPS limitation where adaptive pooling rejects non-divisible
+        # intermediate dimensions (72px -> 15px before a 4x4 pool).
+        if frame.shape[-2:] != (60, 60):
+            frame = torch.nn.functional.interpolate(
+                frame, size=(60, 60), mode="bilinear", align_corners=False)
         return self.network(frame)
 
 

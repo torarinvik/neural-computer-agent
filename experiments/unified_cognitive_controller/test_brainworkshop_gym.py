@@ -76,6 +76,21 @@ def test_each_modality_can_be_connected_without_resizing_the_bus() -> None:
         assert collection.payload.shape == (1, 1, 16)
 
 
+def test_single_stream_targets_mask_absent_modality() -> None:
+    vision = generate_brainworkshop_episode(
+        BrainWorkshopConfig(n_back=1, trials=12, modalities=("vision",)),
+        seed=44006,
+    )
+    audio = generate_brainworkshop_episode(
+        BrainWorkshopConfig(n_back=1, trials=12, modalities=("audio",)),
+        seed=44006,
+    )
+    assert all(target in (0, POSITION_MATCH)
+               for target in vision.verifier_targets())
+    assert all(target in (0, AUDIO_MATCH)
+               for target in audio.verifier_targets())
+
+
 def test_keypress_decoder_uses_two_bit_protocol() -> None:
     assert BrainWorkshopKeypressDecoder.to_keypress_codes(0) == ()
     assert BrainWorkshopKeypressDecoder.to_keypress_codes(POSITION_MATCH) == (1,)
