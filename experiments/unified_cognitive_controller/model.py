@@ -151,6 +151,7 @@ class UnifiedCognitiveController(nn.Module):
             action_adapter_width: int = 0,
             action_adapter_gated: bool = False,
             action_adapter_into_intention: bool = False,
+            action_adapter_emits_intention: bool = False,
             skill_adapter_widths: tuple[int, ...] = (),
             skill_adapter_gate_mode: str = "sigmoid",
             skill_adapter_gate_hidden: int = 0,
@@ -185,6 +186,9 @@ class UnifiedCognitiveController(nn.Module):
                 or not 0.0 < adaptive_representative_read_threshold < 1.0
                 or relation_adapter_width < 0
                 or action_adapter_width < 0
+                or (
+                    action_adapter_into_intention
+                    and action_adapter_emits_intention)
                 or skill_adapter_outer_interaction_width < 0
                 or skill_adapter_prior_read_limit < 0
                 or any(value < 1 for value in skill_adapter_widths)
@@ -230,6 +234,8 @@ class UnifiedCognitiveController(nn.Module):
         self.relation_adapter_layer_norm = relation_adapter_layer_norm
         self.action_adapter_width = action_adapter_width
         self.action_adapter_gated = action_adapter_gated
+        self.action_adapter_emits_intention = (
+            action_adapter_emits_intention)
         self.skill_adapter_widths = tuple(skill_adapter_widths)
         self.skill_adapter_gate_mode = skill_adapter_gate_mode
         self.skill_adapter_gate_hidden = skill_adapter_gate_hidden
@@ -386,7 +392,11 @@ class UnifiedCognitiveController(nn.Module):
             nn.Sequential(
                 nn.Linear(width * 2, action_adapter_width),
                 nn.GELU(),
-                nn.Linear(action_adapter_width, ACTIONS),
+                nn.Linear(
+                    action_adapter_width,
+                    intention_width
+                    if action_adapter_emits_intention
+                    else ACTIONS),
             )
             if action_adapter_width else None)
         if self.action_adapter is not None:
@@ -983,7 +993,9 @@ class UnifiedCognitiveController(nn.Module):
             if self.action_adapter_gate is not None:
                 action_residual = action_residual * torch.sigmoid(
                     self.action_adapter_gate(adapter_features))
-            if self.action_adapter_into_intention:
+            if self.action_adapter_emits_intention:
+                intention = intention + action_residual
+            elif self.action_adapter_into_intention:
                 if intention_basis is None:
                     if self.actuator is None:
                         raise ValueError(

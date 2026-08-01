@@ -26,6 +26,7 @@ from .model import (
 )
 
 EXTRACTED_CHECKPOINT_FORMAT = "neural-computer.extracted-amodal-runtime.v1"
+CANONICAL_INTENTION_MIGRATION = "neural-computer.action-residual-to-intention.v1"
 
 
 class ActionIntentDecoder(nn.Module):
@@ -106,6 +107,15 @@ class ExtractedAmodalRuntime(nn.Module):
     def encode(self, frame: torch.Tensor) -> AmodalEvent:
         return AmodalEvent(payload=self.encoder(frame)).validate(
             width=self.controller.width
+        )
+
+    @property
+    def compatibility_suffix_active(self) -> bool:
+        """Whether the controller can emit a nonzero migration suffix."""
+        return bool(
+            self.controller.action_adapter is not None
+            and not self.controller.action_adapter_emits_intention
+            and not self.controller.action_adapter_into_intention
         )
 
     def decode(self, intention: IntentEvent) -> torch.Tensor:
@@ -249,6 +259,90 @@ def runtime_from_extracted_payload(
     runtime.controller.load_state_dict(payload["controller_state_dict"])
     runtime.decoder.load_state_dict(payload["decoder_state_dict"])
     return runtime
+
+
+def canonicalize_action_adapter_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Fold a legacy two-logit residual into the base intention coordinates.
+
+    The conversion is algebraic and uses no examples, labels, rewards, or
+    optimizer updates. For actuator matrix ``W`` it computes the minimum-norm
+    right inverse ``P = (W W^T)^-1 W`` and folds ``residual @ P`` into the last
+    action-adapter layer. The external decoder then recovers the same residual
+    through ``(residual @ P) @ W^T``.
+    """
+    configuration = payload.get("model_configuration")
+    source_state = payload.get("state_dict")
+    if not isinstance(configuration, Mapping) or not isinstance(source_state, Mapping):
+        raise TypeError("checkpoint lacks model configuration or state dict")
+    source_configuration = dict(configuration)
+    if not int(source_configuration.get("action_adapter_width", 0)):
+        raise ValueError("checkpoint has no action adapter to canonicalize")
+    if source_configuration.get("action_adapter_emits_intention", False):
+        raise ValueError("action adapter already emits an intention residual")
+    if source_configuration.get("action_adapter_into_intention", False):
+        raise ValueError(
+            "runtime-projected action adapter must be normalized separately"
+        )
+
+    actuator_weight = source_state["actuator.weight"]
+    old_weight = source_state["action_adapter.2.weight"]
+    old_bias = source_state["action_adapter.2.bias"]
+    if (
+        actuator_weight.ndim != 2
+        or old_weight.shape[0] != ACTIONS
+        or old_bias.shape != (ACTIONS,)
+    ):
+        raise ValueError("checkpoint has an unsupported legacy adapter shape")
+    calculation_dtype = (
+        torch.float64
+        if actuator_weight.dtype in (torch.float16, torch.float32)
+        else actuator_weight.dtype
+    )
+    decoder = actuator_weight.to(calculation_dtype)
+    gram = decoder @ decoder.T
+    if int(torch.linalg.matrix_rank(gram)) != ACTIONS:
+        raise ValueError("actuator has no full-row-rank intention right inverse")
+    right_inverse = torch.linalg.solve(gram, decoder)
+
+    state = {name: value.detach().clone() for name, value in source_state.items()}
+    state["action_adapter.2.weight"] = (
+        right_inverse.T @ old_weight.to(calculation_dtype)
+    ).to(old_weight.dtype)
+    state["action_adapter.2.bias"] = (
+        old_bias.to(calculation_dtype) @ right_inverse
+    ).to(old_bias.dtype)
+    migrated_configuration = dict(source_configuration)
+    migrated_configuration["action_adapter_emits_intention"] = True
+    migrated_configuration["action_adapter_into_intention"] = False
+
+    # Strict construction is part of conversion: a malformed state never
+    # becomes a candidate checkpoint.
+    candidate = UnifiedCognitiveController(**migrated_configuration)
+    candidate.load_state_dict(state)
+    return {
+        "schema": payload.get("schema", "unified-cognitive-controller-v1"),
+        "model_configuration": migrated_configuration,
+        "state_dict": candidate.state_dict(),
+        "migration": {
+            "format": CANONICAL_INTENTION_MIGRATION,
+            "source_action_adapter_output_width": ACTIONS,
+            "target_action_adapter_output_width": candidate.intention_width,
+            "uses_examples": False,
+            "uses_optimizer_updates": False,
+        },
+    }
+
+
+def canonicalize_action_adapter_checkpoint(
+    source: Path, destination: Path, *, device: torch.device | str = "cpu"
+) -> None:
+    payload = torch.load(source, map_location=device, weights_only=False)
+    if not isinstance(payload, Mapping):
+        raise TypeError("legacy checkpoint must contain a mapping")
+    canonical = canonicalize_action_adapter_payload(payload)
+    canonical["migration"]["source_checkpoint"] = str(source)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(canonical, destination)
 
 
 def convert_legacy_checkpoint(

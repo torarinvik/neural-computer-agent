@@ -55,8 +55,16 @@ lifetimes, including zero maximum logit difference and exact reconstruction of
 all 66 source tensors. A two-coordinate legacy action-residual suffix remains
 explicitly marked as migration debt.
 
-**Gate 3b next:** remove that suffix through intention-only learning while
-preserving the complete repertoire. Then qualify multiple decoders below.
+**Gate 3b passed (2026-08-01):** the legacy two-action residual was folded
+algebraically into a 24-dimensional intention residual. It used no examples,
+outcomes, labels, or optimizer updates. Across 12,288 paired decisions there
+were no action flips and maximum logit drift was `5.72e-6`; all five repertoire
+gates passed at 4,096 held-out lifetimes. The compatibility suffix is now
+structurally zero in the promoted checkpoint.
+
+**Gate 3c next:** qualify multiple simultaneous decoders from the clean base
+intention. Variable-N input work may proceed in parallel only after the
+single-event path remains the exact N=1 control.
 
 One latent intention is connected to independently trained output adapters
 (opaque action, integer/bit code, and audio event).  Replacing or permuting an

@@ -35,9 +35,33 @@ The extraction exposed one honest piece of migration debt. Older checkpoints
 can add a learned two-action residual after the 24-dimensional intention. To
 preserve behavior exactly, migration-v1 appends those two opaque coordinates to
 `IntentEvent`, and only the external decoder interprets them. This is a
-compatibility suffix, not an amodal capability claim. The next smallest rung is
-to distill that residual into the base intention under full repertoire audits,
-then remove the suffix before introducing variable-N input aggregation.
+compatibility suffix, not an amodal capability claim.
+
+That active debt has now been removed from the promoted successor. The learned
+two-action residual was mapped through the frozen decoder's minimum-norm right
+inverse and folded into a new 24-dimensional intention residual. This was a
+closed-form checkpoint transformation: zero examples, zero verifier bits, zero
+optimizer updates, and no semantic supervision.
+
+At the 64-lifetime smell test the parent and candidate reports were exactly
+identical, including the same small-sample four-rule miss. At 512 lifetimes both
+passed all five gates with identical reports. Across four paired 512-lifetime
+rollouts, all 12,288 actions were unchanged and maximum logit drift was
+`5.72e-6`. The full 4,096-lifetime audit passed binary mapping, four-rule,
+relation, persistent memory, and span-two working memory, including their
+reversal, corruption, reset, and missing-evidence controls. The candidate's
+compatibility suffix is structurally zero.
+
+Promoted artifact:
+
+- `artifacts/checkpoints/unified_repertoire_span2_amodal_intention_seed122005.pt`
+- SHA-256 `9eea7ab479cb8450737f040b76495cc5ec737e970cdc165af2446873e530cd6c`
+- evidence in `session_records/amodal_runtime_migration_2026-08-01/`
+
+The next smallest architecture rung is a second independently qualified output
+decoder consuming the same frozen intention, followed by simultaneous fan-out.
+After that, variable-cardinality visual input begins with N=1 as an exact
+control and advances to redundant and complementary N=2 evidence.
 
 Convert a legacy checkpoint with:
 
@@ -45,6 +69,15 @@ Convert a legacy checkpoint with:
 python -m experiments.unified_cognitive_controller.convert_amodal_checkpoint \
   artifacts/checkpoints/unified_repertoire_span2_strict_seed122005.pt \
   /tmp/unified_repertoire_span2_extracted.pt
+```
+
+Canonicalize the inherited action residual into intention space with:
+
+```sh
+python -m \
+  experiments.unified_cognitive_controller.canonicalize_intention_checkpoint \
+  artifacts/checkpoints/unified_repertoire_span2_strict_seed122005.pt \
+  /tmp/unified_repertoire_span2_amodal_intention.pt
 ```
 
 This isolated experiment begins the transition from separately trained

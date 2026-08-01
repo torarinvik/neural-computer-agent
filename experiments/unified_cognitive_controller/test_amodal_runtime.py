@@ -7,6 +7,7 @@ from .amodal_interface import AmodalEvent, IntentEvent
 from .amodal_runtime import (
     EXTRACTED_CHECKPOINT_FORMAT,
     ExtractedAmodalRuntime,
+    canonicalize_action_adapter_payload,
     convert_legacy_checkpoint,
     runtime_from_extracted_payload,
     runtime_from_legacy_payload,
@@ -185,3 +186,85 @@ def test_interface_rejects_wrong_width_and_schema() -> None:
         AmodalEvent(torch.zeros(2, 3), schema="wrong").validate()
     with pytest.raises(ValueError, match="intention width"):
         IntentEvent(torch.zeros(2, 3)).validate(width=4)
+
+
+def test_action_residual_can_be_folded_into_base_intention() -> None:
+    torch.manual_seed(1704)
+    configuration = _configuration(action_adapter_width=8, action_adapter_gated=True)
+    source = UnifiedCognitiveController(**configuration).eval()
+    with torch.no_grad():
+        source.action_adapter[-1].weight.normal_(mean=0.0, std=0.1)
+        source.action_adapter[-1].bias.normal_(mean=0.0, std=0.1)
+        source.action_adapter_gate.bias.fill_(0.5)
+    migrated_payload = canonicalize_action_adapter_payload(
+        {
+            "model_configuration": configuration,
+            "state_dict": source.state_dict(),
+        }
+    )
+    migrated = UnifiedCognitiveController(
+        **migrated_payload["model_configuration"]
+    ).eval()
+    migrated.load_state_dict(migrated_payload["state_dict"])
+    assert migrated.action_adapter_emits_intention
+
+    source_state = source.initial_state(32, device="cpu")
+    migrated_state = migrated.initial_state(32, device="cpu")
+    previous_action = torch.full((32,), NULL_ACTION, dtype=torch.long)
+    previous_reward = torch.zeros(32)
+    maximum_difference = 0.0
+    for step in range(5):
+        frame = torch.randn(32, 3, 32, 32)
+        feedback = torch.full((32,), float(step > 0))
+        source_output, source_state = source.step(
+            frame, source_state, previous_action, previous_reward, feedback
+        )
+        migrated_output, migrated_state = migrated.step(
+            frame, migrated_state, previous_action, previous_reward, feedback
+        )
+        maximum_difference = max(
+            maximum_difference,
+            float((source_output.logits - migrated_output.logits).abs().max().detach()),
+        )
+        assert torch.equal(
+            source_output.logits.argmax(dim=-1), migrated_output.logits.argmax(dim=-1)
+        )
+        assert torch.equal(source_state.hidden, migrated_state.hidden)
+        assert torch.equal(source_state.workspace, migrated_state.workspace)
+        previous_action = source_output.logits.argmax(dim=-1)
+        previous_reward = (previous_action == (step % 2)).float()
+    assert maximum_difference < 1e-6
+
+    runtime = ExtractedAmodalRuntime.from_legacy(migrated).eval()
+    assert not runtime.compatibility_suffix_active
+    event = runtime.encode(torch.randn(4, 3, 32, 32))
+    core_output, _ = runtime.controller.step_event(
+        event,
+        runtime.initial_state(4, device="cpu"),
+        torch.full((4,), NULL_ACTION, dtype=torch.long),
+        torch.zeros(4),
+        torch.zeros(4),
+    )
+    assert torch.count_nonzero(core_output.intent_event.payload[:, -2:]) == 0
+
+
+def test_canonicalization_rejects_missing_or_already_migrated_adapter() -> None:
+    plain = UnifiedCognitiveController(**_configuration())
+    with pytest.raises(ValueError, match="no action adapter"):
+        canonicalize_action_adapter_payload(
+            {
+                "model_configuration": _configuration(),
+                "state_dict": plain.state_dict(),
+            }
+        )
+    configuration = _configuration(
+        action_adapter_width=8, action_adapter_emits_intention=True
+    )
+    migrated = UnifiedCognitiveController(**configuration)
+    with pytest.raises(ValueError, match="already emits"):
+        canonicalize_action_adapter_payload(
+            {
+                "model_configuration": configuration,
+                "state_dict": migrated.state_dict(),
+            }
+        )

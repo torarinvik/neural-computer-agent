@@ -39,10 +39,13 @@ and required causal audits are in
 `step(frame)` API, but a behavior-preserving extracted runtime now owns the
 vision encoder, controller core, and action decoder as three disjoint,
 independently serialized components. The real five-capability checkpoint is
-bit-identical through that path. It still accepts only one visual event and one
-action decoder per step, and it carries a documented two-coordinate legacy
-action-residual compatibility suffix. Current results are therefore the first
-modular neural-IR rung, not a demonstrated amodal N-input/M-output system.
+bit-identical through that path. A promoted algebraic migration now folds the
+old two-action residual into the 24-dimensional base intention with no examples
+or optimizer updates; its compatibility suffix is structurally zero and all
+five repertoire gates pass at 4,096 held-out lifetimes. The system still accepts
+only one visual event and one action decoder per step. Current results are
+therefore an intention-only modular neural-IR rung, not a demonstrated amodal
+N-input/M-output system.
 
 ## North star
 

@@ -790,3 +790,22 @@ Hugging Face model repository under `checkpoints/`.
 
 This is the second consecutive magnitude rung where accumulated skill reduces
 the experience needed for a harder frontier.
+
+## Intention-only amodal migration checkpoint
+
+`unified_repertoire_span2_amodal_intention_seed122005.pt` is the promoted
+behavior-preserving successor to the five-capability repertoire checkpoint.
+
+- SHA-256:
+  `9eea7ab479cb8450737f040b76495cc5ec737e970cdc165af2446873e530cd6c`
+- Parent: `unified_repertoire_span2_strict_seed122005.pt`
+- Migration cost: zero examples, verifier bits, and optimizer updates
+- Mechanism: fold the learned two-action residual through the frozen decoder's
+  minimum-norm right inverse into a 24-dimensional intention residual
+- Paired parity: zero action flips across 12,288 decisions; maximum logit drift
+  `5.72e-6`
+- Independent audit: all five repertoire gates passed on 4,096 lifetimes
+- Compatibility suffix: structurally zero
+
+This checkpoint removes active device-protocol content from the migration
+suffix. It does not yet establish variable-N inputs or multiple output decoders.

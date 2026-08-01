@@ -314,13 +314,22 @@ The extracted path reproduces the real five-capability checkpoint exactly on a
 64-lifetime audit: all 66 source tensors reconstruct exactly and maximum logit
 difference is zero. The legacy API remains as a compatibility wrapper.
 
+A promoted successor also removes the active compatibility suffix. It folds
+the learned two-action residual through the frozen decoder's minimum-norm right
+inverse into a 24-dimensional intention residual. This requires zero examples,
+semantic labels, verifier outcomes, or optimizer updates. Across 12,288 paired
+decisions it caused no action flips (maximum logit drift `5.72e-6`), and all
+five repertoire gates passed on 4,096 held-out lifetimes. The external decoder
+therefore receives a structurally zero compatibility suffix on the promoted
+checkpoint.
+
 This is still **not yet the target architecture** because:
 
 - only one encoded visual event is accepted per controller update;
 - only one action decoder is exercised;
 - variable-size event sets and intention fan-out do not exist;
-- the migration intention carries a documented two-coordinate compatibility
-  suffix for an inherited direct action residual;
+- migration-v1 retains two reserved compatibility coordinates for loading old
+  checkpoints, although they are structurally zero in the promoted successor;
 - no audio or trained language frontend/backend has passed causal audits.
 
 Therefore current results establish extracted vision-grounded neural IR,
@@ -332,13 +341,14 @@ cognition, and memory—not amodal N-to-M operation.
 2. ~~Add `encode`, `step_event`, and `decode` boundaries.~~
 3. ~~Prove bit-identical behavior and checkpoint conversion for the current path.~~
 4. ~~Version the event and intention schemas and save adapters separately.~~
-5. Remove the legacy action-residual suffix through verified intention-only
-   distillation without losing any admitted capability.
-6. Accept variable-size visual event sets, then asynchronous events.
-7. Add a second synthetic encoder with redundant evidence and measure learning
+5. ~~Remove the active legacy action residual by folding it into the base
+   intention without losing any admitted capability.~~
+6. Add a second output adapter and prove simultaneous M-output fan-out from the
+   clean base intention.
+7. Accept variable-size visual event sets, then asynchronous events.
+8. Add a second synthetic encoder with redundant evidence and measure learning
    acceleration, dropout robustness, and shuffle sensitivity.
-8. Require complementary evidence split across two encoders.
-9. Add a second output adapter and prove simultaneous M-output fan-out.
+9. Require complementary evidence split across two encoders.
 10. Train audio and language frontends/backends only after the generic buses pass.
 11. Freeze the controller and qualify genuinely new sensors and outputs.
 
