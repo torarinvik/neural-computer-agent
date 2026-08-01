@@ -141,6 +141,16 @@ when its bridge was simply expanded, so the next frontier is a monotonic
 skill-stack/threshold race that preserves this 1→3 transfer while making
 2→3 transfer beneficial rather than merely safe.
 
+A non-destructive relation-only stacked bridge was tested as the first targeted
+repair. It froze the mastered 2-back bridge and gave 3-back a zero-initialized
+branch seeing only the current event plus the newest relation. Three seeds
+reached **86.50%, 85.92%, and 85.66%** (mean **86.03%**) while retaining
+1-back at **90.84%** and 2-back at **88.98%**. Reset/cross controls stayed at
+chance, but the paired gain over the existing 85.84% baseline was only **0.19
+points**, so this branch is not promoted. The result narrows the frontier:
+representation isolation alone is insufficient; the missing ingredient is a
+better way to route or reuse mastered computations during a harder task.
+
 **Current-status boundary:** the proven legacy class still supports its bundled
 `step(frame)` API, but a behavior-preserving extracted runtime now owns the
 vision encoder, controller core, and action decoder as three disjoint,

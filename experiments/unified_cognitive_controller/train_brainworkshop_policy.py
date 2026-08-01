@@ -61,6 +61,7 @@ class BrainWorkshopPolicy(nn.Module):
                  external_history_depth: int = 1,
                  per_stream_external_history: bool = False,
                  stacked_history_adapter: bool = False,
+                 stacked_history_relation_only: bool = False,
                  slot_memory_composer: bool = False,
                  per_stream_intention_adapter_width: int = 0,
                  factorized_output: bool = False,
@@ -198,6 +199,8 @@ class BrainWorkshopPolicy(nn.Module):
                 self.external_memory_adapter = make_adapter()
         self.per_stream_external_history = bool(per_stream_external_history)
         self.stacked_history_adapter = bool(stacked_history_adapter)
+        self.stacked_history_relation_only = bool(
+            stacked_history_relation_only)
         self.slot_memory_composer = bool(slot_memory_composer)
         self.per_stream_intention_delta_adapters = nn.ModuleDict()
         if per_stream_intention_adapter_width:
@@ -221,8 +224,23 @@ class BrainWorkshopPolicy(nn.Module):
                 # Keep the mastered lower-order bridge intact and give the
                 # new relation a separate zero-initialized correction path.
                 # This is a generic residual decomposition, not a task label.
-                self.per_stream_intention_delta_adapters = nn.ModuleDict({
-                    name: make_intention_adapter() for name in modalities})
+                if stacked_history_relation_only:
+                    def make_relation_delta_adapter() -> nn.Sequential:
+                        adapter = nn.Sequential(
+                            nn.Linear(width * 3, per_stream_intention_adapter_width),
+                            nn.GELU(),
+                            nn.Linear(per_stream_intention_adapter_width,
+                                      intention_width),
+                        )
+                        nn.init.zeros_(adapter[-1].weight)
+                        nn.init.zeros_(adapter[-1].bias)
+                        return adapter
+                    self.per_stream_intention_delta_adapters = nn.ModuleDict({
+                        name: make_relation_delta_adapter()
+                        for name in modalities})
+                else:
+                    self.per_stream_intention_delta_adapters = nn.ModuleDict({
+                        name: make_intention_adapter() for name in modalities})
         # The legacy model owns adapters for compatibility.  The probe removes
         # them so only this independent output adapter formats the intention.
         self.controller.vision = None
@@ -367,8 +385,13 @@ def _stream_intention_event(
         residual = policy.per_stream_intention_adapters[modality](features)
         if (policy.stacked_history_adapter
                 and modality in policy.per_stream_intention_delta_adapters):
+            delta_features = features
+            if policy.stacked_history_relation_only:
+                width = policy.controller.width
+                delta_features = torch.cat(
+                    (features[..., :width], features[..., -2 * width:]), dim=-1)
             residual = residual + policy.per_stream_intention_delta_adapters[
-                modality](features)
+                modality](delta_features)
         residuals.append(residual)
     if not residuals:
         return core.intent_event
@@ -923,6 +946,9 @@ def main() -> None:
     parser.add_argument(
         "--stacked-history-adapter", action="store_true",
         help="freeze the inherited RAM bridge and train a zero-init correction")
+    parser.add_argument(
+        "--stacked-history-relation-only", action="store_true",
+        help="restrict the stacked correction to current plus newest relation")
     parser.add_argument("--position-vocab", type=int, default=2,
                         choices=(2, 4, 8))
     parser.add_argument("--text-vocab", type=int, default=8,
@@ -1052,6 +1078,7 @@ def main() -> None:
         external_history_depth=args.external_history_depth,
         per_stream_external_history=args.per_stream_external_history,
         stacked_history_adapter=args.stacked_history_adapter,
+        stacked_history_relation_only=args.stacked_history_relation_only,
         slot_memory_composer=args.slot_memory_composer,
         per_stream_intention_adapter_width=(
             args.per_stream_intention_adapter_width),
@@ -1177,6 +1204,9 @@ def main() -> None:
         for adapter in policy.per_stream_intention_adapters.values():
             for parameter in adapter.parameters():
                 parameter.requires_grad_(False)
+    if args.stacked_history_relation_only and not args.stacked_history_adapter:
+        raise ValueError(
+            "--stacked-history-relation-only requires --stacked-history-adapter")
     if train_only_modalities:
         if not controller_frozen:
             raise ValueError(
@@ -1411,6 +1441,8 @@ def main() -> None:
         "external_history_depth": args.external_history_depth,
         "per_stream_external_history": bool(args.per_stream_external_history),
         "stacked_history_adapter": bool(args.stacked_history_adapter),
+        "stacked_history_relation_only": bool(
+            args.stacked_history_relation_only),
         "slot_memory_composer": bool(args.slot_memory_composer),
         "per_stream_intention_adapter_width": (
             args.per_stream_intention_adapter_width),

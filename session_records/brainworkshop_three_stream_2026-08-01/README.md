@@ -155,6 +155,23 @@ remaining frontier is to make that transfer monotonic through 2-back as well;
 the stacked-history adapter is retained as an experimental branch but is not
 promoted on one seed alone.
 
+The relation-only version of that branch was then replicated across all three
+seeds. It froze the inherited bridge and restricted the new correction to the
+current event plus the newest relation pair:
+
+| seed | 3-back | 1-back retained | 2-back retained | reset/cross |
+|---|---:|---:|---:|---:|
+| 47405 | 86.50% | 90.90% | 89.60% | ~50% |
+| 47408 | 85.92% | 90.47% | 88.72% | ~50% |
+| 47409 | 85.66% | 91.14% | 88.61% | ~50% |
+| **mean** | **86.03%** | **90.84%** | **88.98%** | **~50%** |
+
+The paired mean improvement over the unconstrained multi-rehearsal baseline
+was only **0.19 points**, with mixed per-seed deltas. It is therefore retained
+as a clean negative/ablation result, not promoted as the solution to 2→3
+transfer. The frontier remains computation routing or a curriculum that makes
+the deepest skill build on, rather than overwrite, the mastered hierarchy.
+
 ## What this proves
 
 This is a protected three-stream proof of concept: a frozen central controller
@@ -220,5 +237,10 @@ Artifacts:
 - `nback3_stacked_rehearsal1_2_depth3_seed47405_256.json` and its matching
   `retention_nback*_after_stacked_seed47405.json` audits — the non-destructive
   stacked-bridge pilot, retained as an unpromoted branch;
+- `nback3_relation_only_stacked_seed47405_256.json`,
+  `nback3_relation_only_stacked_seed47408_256.json`, and
+  `nback3_relation_only_stacked_seed47409_256.json`, plus the matching
+  `retention_nback*_after_relation_only_seed*.json` files — the replicated
+  relation-only ablation;
 - `audio_encoder_ssl_seed47401.json` and `audio_stage_ssl_seed47402.json` —
   label-free audio-parent preparation.
