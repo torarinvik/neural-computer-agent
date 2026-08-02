@@ -38,6 +38,25 @@ class DiskLatentMemory:
             record_access=record_access,
             usage_prior_scale=usage_prior_scale)
 
+    def retrieve_with_receipt(
+            self, queries: torch.Tensor, top_k: int = 4,
+            confidence_mode: str = "ranked",
+            record_access: bool = False,
+            usage_prior_scale: torch.Tensor | float = 1.0,
+            ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Retrieve values with the physical row that supplied each read."""
+        return self.store.read_with_receipt(
+            queries, top_k=top_k, confidence_mode=confidence_mode,
+            record_access=record_access,
+            usage_prior_scale=usage_prior_scale)
+
+    def record_outcomes_from_receipts(
+            self, receipts: torch.Tensor, outcomes: torch.Tensor, **kwargs,
+            ) -> None:
+        """Forward verifier outcomes to physical read receipts."""
+        self.store.record_outcomes_from_receipts(
+            receipts, outcomes, **kwargs)
+
     def retrieve_with_features(
             self, queries: torch.Tensor,
             usage_prior_scale: torch.Tensor | float = 1.0,

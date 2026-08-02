@@ -1078,6 +1078,40 @@ def test_usage_prior_scale_can_restore_exact_content_retrieval() -> None:
     assert memory.store.success_count.tolist() == [1, 0]
 
 
+def test_read_receipt_preserves_causal_row_under_unequal_strengths() -> None:
+    memory = DiskLatentMemory(width=2, capacity=2)
+    keys = torch.tensor([[1.0, 0.0], [0.8, 0.6]])
+    values = torch.eye(2)
+    memory.commit(
+        keys, values, torch.tensor([0.1, 1.0]), threshold=0.0)
+    query = keys[:1]
+    # The ordinary strength-prior read is intentionally redirected to row 1.
+    ordinary, _ = memory.retrieve(
+        query, top_k=1, confidence_mode="cosine", usage_prior_scale=1.0)
+    assert torch.equal(ordinary, values[1:2])
+    recalled, _, receipt = memory.retrieve_with_receipt(
+        query, top_k=1, confidence_mode="cosine", usage_prior_scale=0.0)
+    assert torch.equal(recalled, values[:1])
+    assert receipt.tolist() == [0]
+    memory.record_outcomes_from_receipts(
+        receipt, torch.ones(1), update_volatility=True,
+        stale_thaw_rate=0.0)
+    assert memory.store.success_count.tolist() == [1, 0]
+
+
+def test_receipt_outcomes_keep_repeated_rows_aligned() -> None:
+    memory = DiskLatentMemory(width=4, capacity=2)
+    keys = torch.eye(4)[:2]
+    memory.commit(keys, keys, torch.ones(2), threshold=0.0)
+    _, _, receipts = memory.retrieve_with_receipt(
+        keys[:1].repeat(3, 1), top_k=1, confidence_mode="cosine",
+        usage_prior_scale=0.0)
+    memory.record_outcomes_from_receipts(
+        receipts, torch.tensor([1.0, 0.0, 1.0]))
+    assert memory.store.success_count.tolist() == [2, 0]
+    assert memory.store.failure_count.tolist() == [1, 0]
+
+
 def test_usage_prior_scale_can_vary_per_query() -> None:
     memory = DiskLatentMemory(width=2, capacity=2)
     keys = torch.tensor([[1.0, 0.0], [0.8, 0.6]])
