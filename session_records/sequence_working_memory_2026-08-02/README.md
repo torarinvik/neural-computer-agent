@@ -389,17 +389,50 @@ transfer is therefore real but not retention-safe. The next write mechanism
 must use a per-row plasticity gate or usage-conditioned write strength—not a
 global scalar or an always-on offset.
 
+## Provenance-gate correction and the habit hypothesis
+
+The first staged-gate run exposed a training-control bug rather than a new
+capability result. Its provenance term was evaluated only on persisted replay
+rows, so every source target was ``old``; the gate could only learn to close.
+The corrected control trains the source term on the mixed fresh-plus-replay
+set, with an explicit regression test for that split.
+
+The correction improves the result but does not change the frontier. At a
+matched 128-epoch fresh budget, a source-weight-1 gate reached 83.55% on span
+nine while preserving spans two--eight within 0.8 points of the addressed
+parent. A lighter source weight (0.2) reached 85.59% but lost 4.9 points on
+span eight. Joint adapter training with replay reached 84.51% and lost 5.4
+points on span eight. The original degenerate staged gate reached only 75.41%.
+These controls rule out the easy interpretation that a provenance classifier
+alone solves the stability--plasticity tradeoff: provenance is not available
+at deployment, and the latent features of old and new spans overlap.
+
+The proposed ``habit`` mechanism is nevertheless the right memory-side idea.
+The psychological claim is usually called **Jost's law of forgetting** (with
+Ribot's law describing the related recency gradient): an older trace is more
+resistant to interference than an equally strong new trace. Our persistent
+memory already implements the computational analogue: each row has a generic
+volatility scalar; verified success lowers it (freezes a useful habit), verified
+failure raises it (thaws a bad habit), and stale rows slowly thaw. A reward-only
+selector has already achieved 100% stable retention and 100% new acquisition in
+the bounded external-memory audit, including row-shuffle and save/reload
+controls. What remains unproven is end-to-end use of that scalar by the visual
+sequence controller's online write path. The next experiment must therefore
+attach row-local volatility to real writes and score both acquisition speed and
+retention; it must not add a fixed age label or freeze all old content.
+
 ## Next frontier
 
-The next highest-ROI experiment is a tiny addressable-RAM adapter: add generic
-slot identity vectors with zero initial influence, train only the address
-scales and a small successor reader on the easiest retained span, and measure
-whether RAM content/usage becomes non-symmetric without regressing the parent.
-Only after slot identity is learned should the action-conditioned critic and
-per-cell volatility scalar be re-enabled. Acceptance remains span nine at or
-above 90%, spans two--eight within the two-point retention gate, shuffled
+The next highest-ROI experiment is an **online row-local habit gate**: expose
+the existing volatility scalar at the controller's write decision, initialize
+its influence at zero, and update it only from physical read receipts and
+verified attempted-action outcomes. The gate should be trained/validated in
+three tiny stages: (1) old stable versus failed-decoy rows, (2) a task shift
+where a new row competes for bounded capacity, and (3) sequence span-nine
+acquisition with the promoted span-eight parent. Acceptance remains span nine
+at or above 90%, spans two--eight within the two-point retention gate, shuffled
 outcomes at chance, and blank/reset/reversal controls intact. Do not increase
-controller width or add modalities until this addressability gate passes.
+controller width or add modalities until this causal write-path test passes.
 
 ## Artifacts
 
@@ -507,6 +540,16 @@ controller width or add modalities until this addressability gate passes.
   fixed address-conditioned write-content controls.
 - `span9_workspace_routing_diagnostic_seed31631.json`: disposable probe
   results separating old/new routing information from correct-action decoding.
+- `span9_address_scale1_staged_gate_4096_seed32151.json`: rejected staged
+  gate; its provenance target was degenerate because refinement saw replay rows
+  only.
+- `span9_address_scale1_provenance_gate_4096_seed32161.json` and
+  `span9_address_scale1_provenance_gate_4096_seed32162.json`: corrected
+  mixed-source provenance-gate controls at 64 and 128 fresh epochs.
+- `span9_address_scale1_provenance_gate032_4096_seed32172.json`: lighter
+  provenance weight control; higher transfer but retention gate failure.
+- `span9_address_scale1_joint_replay_4096_seed32171.json`: matched joint
+  adapter/replay control; retention-safe promotion bar not met.
 
 The ignored local checkpoint hashes are:
 

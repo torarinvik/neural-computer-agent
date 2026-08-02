@@ -177,6 +177,35 @@ def _skill_slot_logits(
         critic_logits, critic_residual)
 
 
+def _replay_refinement_indices(
+        all_indices: torch.Tensor, replay_indices: torch.Tensor,
+        gate_source_weight: float) -> torch.Tensor:
+    """Choose the rows that can identify fresh versus persisted provenance.
+
+    With source supervision enabled, both classes must be present.  Keeping
+    this as a small pure helper makes the provenance split auditable instead
+    of burying a degenerate all-old minibatch inside the training loop.
+    """
+    return all_indices if gate_source_weight else replay_indices
+
+
+def _balanced_provenance_loss(
+        score: torch.Tensor, source_target: torch.Tensor) -> torch.Tensor:
+    """Use equal total weight for fresh and persisted provenance classes."""
+    target = source_target.to(score.dtype)
+    positive = target.sum()
+    negative = target.numel() - positive
+    if not bool(positive) or not bool(negative):
+        return F.binary_cross_entropy_with_logits(score, target)
+    weights = torch.where(
+        target > 0.5,
+        negative / positive,
+        torch.ones_like(target))
+    return (
+        F.binary_cross_entropy_with_logits(
+            score, target, reduction="none") * weights).mean()
+
+
 def _weighted_attempted_success_loss(
         logits: torch.Tensor, attempted: torch.Tensor,
         outcomes: torch.Tensor, replay_mask: torch.Tensor,
@@ -684,7 +713,7 @@ def main() -> None:
                         batch_replay_mask].square().mean()
                 if (args.replay_gate_source_weight and gate_score is not None):
                     source_target = (~batch_replay_mask).to(gate_score.dtype)
-                    loss = loss + args.replay_gate_source_weight * F.binary_cross_entropy_with_logits(
+                    loss = loss + args.replay_gate_source_weight * _balanced_provenance_loss(
                         gate_score.squeeze(1), source_target)
                 if args.residual_penalty:
                     loss = loss + args.residual_penalty * residual.square().mean()
@@ -707,8 +736,16 @@ def main() -> None:
                 parameter.requires_grad_(False)
             for parameter in student.skill_adapter_gates[0].parameters():
                 parameter.requires_grad_(True)
+        # A provenance classifier needs both sides of the split.  Training
+        # it only on ``replay_indices`` makes every target zero (old), so its
+        # supposedly fresh-vs-persisted supervision is silently degenerate.
+        # Keep the old-only refinement when no provenance weight is requested;
+        # otherwise use the complete mixed set so ``~replay_mask`` contains
+        # genuine fresh positives.
+        refinement_indices = _replay_refinement_indices(
+            all_indices, replay_indices, args.replay_gate_source_weight)
         train_epochs(
-            args.replay_refinement_epochs, replay_indices,
+            args.replay_refinement_epochs, refinement_indices,
             outcome_weight=0.0,
             residual_penalty=args.replay_residual_penalty,
             gate_penalty=args.replay_gate_penalty,

@@ -3,6 +3,8 @@ import torch
 from .model import UnifiedCognitiveController
 from .train_sequence_working_memory import (
     generate_sequence_memory_batch, rollout_sequence_memory)
+from .train_sequence_reward_buffer import (
+    _balanced_provenance_loss, _replay_refinement_indices)
 
 
 def test_sequence_memory_generation_is_deterministic_and_balanced() -> None:
@@ -140,3 +142,25 @@ def test_address_conditioned_write_content_breaks_slot_symmetry() -> None:
     state = model.initial_state(4, device=torch.device("cpu"))
     _, addressed = model.step_event(event, state, action, reward, reward)
     assert not torch.equal(addressed.workspace[:, 0], addressed.workspace[:, 1])
+
+
+def test_provenance_refinement_contains_both_sources_when_weighted() -> None:
+    all_indices = torch.arange(10)
+    replay_indices = all_indices[6:]
+    assert torch.equal(
+        _replay_refinement_indices(all_indices, replay_indices, 0.0),
+        replay_indices)
+    assert torch.equal(
+        _replay_refinement_indices(all_indices, replay_indices, 1.0),
+        all_indices)
+
+
+def test_provenance_loss_balances_unequal_source_counts() -> None:
+    score = torch.tensor([0.0, 0.0, 0.0, 0.0])
+    balanced = _balanced_provenance_loss(
+        score, torch.tensor([1.0, 1.0, 0.0, 0.0]))
+    imbalanced = _balanced_provenance_loss(
+        score, torch.tensor([1.0, 0.0, 0.0, 0.0]))
+    assert torch.isfinite(balanced)
+    assert torch.isfinite(imbalanced)
+    assert balanced < imbalanced
