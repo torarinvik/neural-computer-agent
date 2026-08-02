@@ -334,6 +334,14 @@ scale. These are bounded controls, not mastery claims, but they rule out “just
 add workspace,” “just classify old versus new,” and “just rehearse the old
 span” as immediate fixes.
 
+The strongest fresh candidate also failed the promotion audit. Its span-nine
+score was 87.22%, but paired retention margins versus the parent were -7.23,
+-10.21, -10.74, -3.97, -3.66, and -14.11 points on spans 3--8 (span two was
+-0.78 points). The outcome-shuffled control reached 46.27% with blank and
+reset controls at chance. This is useful negative evidence: the candidate was
+using real reward structure, but its learned plasticity was far too volatile
+to promote.
+
 The durable lesson for plasticity is that the successor gate is already a
 per-transition scalar, but its target should not be a hand-written volatility
 label. It should be learned from the same observed outcome stream and judged by
@@ -432,6 +440,10 @@ action-conditioned routing boundary is solved.
   `span9_workspace_skill_curriculum_4096_seed31661.json`, and
   `span9_workspace_joint_reader_4096_seed31671.json`: workspace routing,
   plasticity, reward-balance, gradual-rehearsal, and joint-reader controls.
+- `span9_workspace_skill_pos3_retention_seed31651.json` and
+  `span9_workspace_skill_pos3_shuffled_4096_seed31681.json`: promotion-grade
+  retention and outcome-shuffled adversarial audits for the best workspace
+  candidate.
 - `span9_workspace_routing_diagnostic_seed31631.json`: disposable probe
   results separating old/new routing information from correct-action decoding.
 

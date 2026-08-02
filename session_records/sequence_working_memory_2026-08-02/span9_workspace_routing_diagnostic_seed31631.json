@@ -33,7 +33,8 @@
     "workspace_only_bottleneck64": 0.8247,
     "workspace_positive_outcome_weight3": 0.8722,
     "workspace_positive_weight3_span8_rehearsal": 0.8537,
-    "workspace_joint_reader_span8_rehearsal": 0.8392
+    "workspace_joint_reader_span8_rehearsal": 0.8392,
+    "workspace_positive_outcome_weight3_shuffled": 0.4627
   },
   "conclusion": "The missing boundary is not simply absence of workspace information. Workspace makes old/new provenance highly separable, and action information is present when the inherited adapter latent is included, but sparse attempted-action reward does not yet learn a clean plasticity/routing policy. Positive-outcome reweighting helps modestly; span-eight rehearsal during the span-nine run hurts at this budget. The next high-ROI change is a verifier-free action-conditioned critic or other denser use of the same observed reward, with retention gates kept as acceptance tests."
 }
