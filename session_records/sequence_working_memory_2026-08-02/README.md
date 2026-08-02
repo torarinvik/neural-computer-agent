@@ -92,6 +92,23 @@ not reproduce the normal gain or causal operation sensitivity, but it is not a
 clean chance control for this partially transferable task; we do not claim it
 is one.
 
+## Span-five escalation
+
+After the span-four continuation reached 80.9%, a 16-update span-five smoke
+test used the schedule `[5, 2, 3, 4]` (equal exposure to the new span and each
+mastered span), two distractors, and 3,584 fresh verifier bits. Two inherited
+seeds reached 73.48% and 74.50% on their 2,048-episode audits. The matched
+fresh arm stayed at 50.00% with zero valid operation flips. On a common audit
+seed, the parent was 69.76%, the normal child 73.48%, and the shuffled arm
+64.74% with all-memory-reset accuracy 49.51%.
+
+Retention remained intact. The first inherited child measured span-2/3/4/5
+at 99.67% / 95.56% / 82.03% / 73.79% on 4,096-episode audits; the second
+measured 99.88% / 95.59% / 82.32% / 73.60% on 2,048-episode audits. Blank and
+complete-reset controls stayed approximately 50%, and span-five reversal
+flip rates were 48.3% and 49.5%. This is a replicated five-item transfer
+signal, not a claim of five-item mastery.
+
 ## What this establishes
 
 This is a verified compounding working-memory result: a learned retention
@@ -102,15 +119,13 @@ variable-capacity memory or a fully consolidated repertoire capability.
 
 ## Next frontier
 
-The span-four gate is now passed. The next highest-ROI experiment is a short
-32--48-update span-four continuation from the best balanced checkpoint, with
-the same `[4, 2, 2, 3, 3]` schedule and checkpoint probes every 8--16 updates.
-Stop if span-two or span-three falls by more than two points, or if blank/reset
-controls move away from chance. If span-four rises while retention holds, the
-next escalation is **five items with two distractors**, again starting from
-the promoted span-four checkpoint and using a matched fresh control. Do not
+The span-five gate is now passed for transfer. The next highest-ROI experiment
+is a 32--48-update span-five continuation from the best inherited child, using
+`[5, 2, 3, 4]` rehearsal and probes every 8--16 updates. Stop if any mastered
+span falls by more than two points or if blank/reset controls leave chance.
+Only if span-five rises and retention holds should we test six items. Do not
 add learned variable-capacity memory, registers, or new modalities yet: the
-current evidence says rehearsal and gradual one-axis span escalation have the
+current evidence says gradual span escalation and explicit rehearsal have the
 highest return per verifier bit.
 
 ## Artifacts
@@ -126,3 +141,8 @@ highest return per verifier bit.
 - `span4_shuffled_seed30515.json`, `span4_shuffled_seed30516.json`:
   outcome-shuffled controls, interpreted against the non-chance transfer
   baseline as described above.
+- `span4_continuation_seed30518.json`: 32-update span-four continuation.
+- `span5_smoke_inherited_seed30519.json`, `span5_smoke_inherited_seed30522.json`:
+  replicated inherited span-five transfers.
+- `span5_smoke_fresh_seed30520.json`: matched fresh span-five control.
+- `span5_smoke_shuffled_seed30521.json`: outcome-shuffled span-five control.

@@ -1,0 +1,95 @@
+{
+  "schema": "sequence-working-memory-experiment-v1",
+  "learner_visible_information": "RGB streams, own opaque actions, scalar attempted-action outcome",
+  "operation": "mixed",
+  "span": 5,
+  "distractors": 2,
+  "fixed_position_blend": 0.0,
+  "position_curriculum": [],
+  "position_augmentation": true,
+  "position_update_counts": {
+    "0.0": 16
+  },
+  "rehearse_zero_distractor": false,
+  "rehearse_span2": false,
+  "rehearse_spans": [
+    2,
+    3,
+    4
+  ],
+  "span_update_counts": {
+    "5": 4,
+    "2": 4,
+    "3": 4,
+    "4": 4
+  },
+  "distractor_update_counts": {
+    "2": 16
+  },
+  "optimizer_updates": 16,
+  "unique_logical_episodes": 1024,
+  "unique_verifier_bits": 3584,
+  "replayed_examples": 0,
+  "outcomes_shuffled": false,
+  "loss_output": "all",
+  "mastery_threshold": 0.9,
+  "stable_bits_to_threshold": null,
+  "wall_seconds": 9.143815250019543,
+  "model_configuration": {
+    "width": 64,
+    "workspace_slots": 4,
+    "intention_width": 16
+  },
+  "history": [
+    {
+      "update": 1,
+      "unique_episodes": 64,
+      "unique_verifier_bits": 320,
+      "training_accuracy": 0.5562499761581421,
+      "loss": 0.691250205039978,
+      "train_position_blend": 0.0,
+      "train_distractors": 2
+    },
+    {
+      "update": 16,
+      "unique_episodes": 1024,
+      "unique_verifier_bits": 3584,
+      "training_accuracy": 0.5390625,
+      "loss": 0.6952819228172302,
+      "train_position_blend": 0.0,
+      "train_distractors": 2,
+      "heldout_accuracy": 0.5,
+      "heldout_reverse_accuracy": 0.48515623807907104,
+      "heldout_operation_flip_rate": 0.0
+    }
+  ],
+  "audit": {
+    "accuracy": 0.5,
+    "forward_accuracy": 0.4925781190395355,
+    "reverse_accuracy": 0.5074218511581421,
+    "accuracy_by_output": [
+      0.49462890625,
+      0.50732421875,
+      0.5,
+      0.49267578125,
+      0.50537109375
+    ],
+    "reverse_operation_accuracy": 0.5,
+    "reverse_operation_prediction_flip_rate_nonpalindrome": 0.0,
+    "reverse_sequence_accuracy": 0.5,
+    "reverse_sequence_prediction_flip_rate_nonpalindrome": 0.0,
+    "blank_sequence_accuracy": 0.5,
+    "blank_operation_cue_accuracy": 0.5,
+    "workspace_disabled_accuracy": 0.5,
+    "active_state_reset_accuracy": 0.5,
+    "all_memory_reset_accuracy": 0.5,
+    "zero_distractor_accuracy": 0.5,
+    "heldout_position_accuracy": 0.5,
+    "position_accuracy_by_blend": {
+      "0.25": 0.5,
+      "0.5": 0.5,
+      "0.75": 0.5,
+      "1.0": 0.5
+    }
+  }
+}
