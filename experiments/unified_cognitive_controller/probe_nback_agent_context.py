@@ -24,10 +24,11 @@ RINGS = (1, 5, 6, 7, 8)
 
 
 def _features(checkpoint: Path, *, count_per_ring: int, trials: int,
-              seed: int, device: torch.device):
+              seed: int, device: torch.device,
+              ring_values: tuple[int, ...] = RINGS):
     policy = _load_policy(checkpoint, device)
     sensory, actions, rewards, labels = [], [], [], []
-    for ring_index, n_back in enumerate(RINGS):
+    for ring_index, n_back in enumerate(ring_values):
         config = BrainWorkshopConfig(
             n_back=n_back, trials=trials, balanced_matches=False,
             modalities=("vision", "audio", "text"), text_vocab=8,
@@ -57,11 +58,11 @@ def _features(checkpoint: Path, *, count_per_ring: int, trials: int,
 
 
 def _fit(features: torch.Tensor, labels: torch.Tensor, *, updates: int,
-         seed: int) -> dict[str, float]:
+         seed: int, num_classes: int = len(RINGS)) -> dict[str, float]:
     torch.manual_seed(seed)
     model = nn.Sequential(
         nn.Linear(features.shape[1], 128), nn.GELU(),
-        nn.Linear(128, 64), nn.GELU(), nn.Linear(64, len(RINGS)),
+        nn.Linear(128, 64), nn.GELU(), nn.Linear(64, num_classes),
     ).to(features.device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=3e-3,
                                   weight_decay=1e-4)

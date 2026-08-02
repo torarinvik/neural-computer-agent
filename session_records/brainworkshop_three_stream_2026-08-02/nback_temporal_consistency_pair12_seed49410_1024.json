@@ -1,0 +1,21 @@
+{
+  "format": "nback_temporal_consistency_context_probe.v1",
+  "rings": [
+    1,
+    2
+  ],
+  "checkpoint": "artifacts/checkpoints/brainworkshop_three_stream_nback8_protected_supervised_seed47820_256.pt",
+  "count_per_ring": 1024,
+  "trials": 10,
+  "updates": 256,
+  "seed": 49410,
+  "device": "mps",
+  "results": {
+    "raw_action_reward": {
+      "train_accuracy": 0.9853479862213135,
+      "held_out_accuracy": 0.8439024686813354
+    },
+    "temporal_consistency": 0.6341463327407837,
+    "shuffled_consistency_control": 0.6536585092544556
+  }
+}

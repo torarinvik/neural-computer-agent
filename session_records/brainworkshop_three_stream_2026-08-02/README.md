@@ -388,3 +388,12 @@ an explicit **relation-aware episodic memory gate** whose writes and reads are
 trained/evaluated causally, rather than another generic predictive head. It
 must still pass the existing reset, time-shuffle, and full 1/5/6/7/8-back
 retention ladder before any longer run.
+
+The gradual-difficulty control reached the same conclusion. On the easier
+two-way 1-back-vs-2-back task, raw trajectories decoded **77.67%** at 256
+examples per class, but temporal-consistency training decoded **52.43%** and
+its shuffled-target control **64.08%**. Scaling to 1,024 examples per class
+raised raw decoding to **84.39%**, while the consistency representation was
+only **63.41%** and the control **65.37%**. The failure is therefore not just
+the five-way difficulty leap or a missing data budget; the generic corruption
+objective is the wrong pressure for preserving task identity.

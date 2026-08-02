@@ -21,7 +21,8 @@ def _records(sensory: torch.Tensor, actions: torch.Tensor,
 
 
 def _probe(records: torch.Tensor, labels: torch.Tensor, *, updates: int,
-           seed: int, shuffled_labels: bool = False) -> float:
+           seed: int, num_classes: int,
+           shuffled_labels: bool = False) -> float:
     torch.manual_seed(seed)
     split = int(records.shape[0] * 0.8)
     train, test = records[:split], records[split:]
@@ -57,7 +58,7 @@ def _probe(records: torch.Tensor, labels: torch.Tensor, *, updates: int,
     with torch.no_grad():
         train_latent = encoder(train)[0][:, -1]
         test_latent = encoder(test)[0][:, -1]
-    probe = nn.Linear(hidden, len(RINGS)).to(records.device)
+    probe = nn.Linear(hidden, num_classes).to(records.device)
     probe_optimizer = torch.optim.AdamW(probe.parameters(), lr=3e-3)
     for _ in range(updates):
         loss = F.cross_entropy(probe(train_latent), train_labels)
@@ -76,12 +77,20 @@ def main() -> None:
     parser.add_argument("--trials", type=int, default=10)
     parser.add_argument("--updates", type=int, default=256)
     parser.add_argument("--seed", type=int, default=49300)
+    parser.add_argument("--rings", default="1,5,6,7,8",
+                        help="comma-separated n-back difficulties")
     parser.add_argument("--device", default="mps")
     args = parser.parse_args()
     device = torch.device(args.device)
+    ring_values = tuple(int(value.strip()) for value in args.rings.split(",")
+                        if value.strip())
+    if len(ring_values) < 2 or any(value < 1 or value > 8
+                                   for value in ring_values):
+        raise ValueError("--rings must contain at least two values in 1..8")
     sensory, actions, rewards, labels = _features(
         args.checkpoint, count_per_ring=args.count_per_ring,
-        trials=args.trials, seed=args.seed, device=device)
+        trials=args.trials, seed=args.seed, device=device,
+        ring_values=ring_values)
     records = _records(sensory, actions, rewards, args.trials)
     permutation = torch.randperm(
         labels.shape[0], generator=torch.Generator(device=device).manual_seed(
@@ -90,18 +99,20 @@ def main() -> None:
         value[permutation]
         for value in (records, actions, rewards, labels))
     raw = _fit(torch.cat((actions, rewards), dim=-1), labels,
-               updates=args.updates, seed=args.seed + 1)
+               updates=args.updates, seed=args.seed + 1,
+               num_classes=len(ring_values))
     results = {
         "raw_action_reward": raw,
         "temporal_consistency": _probe(
-            records, labels, updates=args.updates, seed=args.seed + 2),
+            records, labels, updates=args.updates, seed=args.seed + 2,
+            num_classes=len(ring_values)),
         "shuffled_consistency_control": _probe(
             records, labels, updates=args.updates, seed=args.seed + 3,
-            shuffled_labels=True),
+            num_classes=len(ring_values), shuffled_labels=True),
     }
     report = {
         "format": "nback_temporal_consistency_context_probe.v1",
-        "rings": list(RINGS), "checkpoint": str(args.checkpoint),
+        "rings": list(ring_values), "checkpoint": str(args.checkpoint),
         "count_per_ring": args.count_per_ring, "trials": args.trials,
         "updates": args.updates, "seed": args.seed, "device": str(device),
         "results": results,
