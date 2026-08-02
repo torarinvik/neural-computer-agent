@@ -211,7 +211,8 @@ class BrainWorkshopPolicy(nn.Module):
         self.feedback_skill_adapter = None
         if feedback_skill_adapter_width:
             self.feedback_skill_adapter = nn.Sequential(
-                nn.Linear(intention_width + 2, feedback_skill_adapter_width),
+                nn.Linear(intention_width + (1 << len(self.action_bits)) + 2,
+                          feedback_skill_adapter_width),
                 nn.GELU(),
                 nn.Linear(feedback_skill_adapter_width, intention_width),
             )
@@ -405,7 +406,8 @@ def _stream_intention_event(
         previous_stream_events: dict[str, list[torch.Tensor]], *,
         external_history: bool,
         previous_reward: torch.Tensor | None = None,
-        has_feedback: torch.Tensor | None = None):
+        has_feedback: torch.Tensor | None = None,
+        previous_action: torch.Tensor | None = None):
     """Add source-preserving RAM relation residuals outside the controller.
 
     The bridge is deliberately generic: it sees only current and previous
@@ -414,11 +416,17 @@ def _stream_intention_event(
     """
     event = core.intent_event
     if policy.feedback_skill_adapter is not None:
-        if previous_reward is None or has_feedback is None:
+        if (previous_reward is None or has_feedback is None
+                or previous_action is None):
             raise ValueError("feedback-conditioned branch requires feedback")
         width = policy.controller.intention_width
+        action_count = 1 << len(policy.action_bits)
+        action_index = previous_action.clamp_min(0).clamp_max(action_count - 1)
+        action_features = torch.nn.functional.one_hot(
+            action_index, num_classes=action_count).float()
         feedback_features = torch.cat((
             event.payload[..., :width],
+            action_features,
             previous_reward.unsqueeze(-1),
             has_feedback.unsqueeze(-1)), dim=-1)
         residual = policy.feedback_skill_adapter(feedback_features)
@@ -756,7 +764,8 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
             policy, core, events, previous_stream_events,
             external_history=external_history,
             previous_reward=previous_reward,
-            has_feedback=has_feedback)
+            has_feedback=has_feedback,
+            previous_action=previous_action)
         logits = policy.decoder(intention_event)
         if policy.factorized_output and policy.factorized_reward:
             binary_log_probs = policy.decoder.binary_log_probs(intention_event)
@@ -926,7 +935,8 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
             policy, core, events, previous_stream_events,
             external_history=external_history,
             previous_reward=previous_reward,
-            has_feedback=has_feedback)
+            has_feedback=has_feedback,
+            previous_action=previous_action)
         targets = torch.tensor(
             [episode.verifier_targets()[trial] for episode in episodes],
             dtype=torch.long, device=device)

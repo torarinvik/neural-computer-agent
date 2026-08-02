@@ -288,6 +288,27 @@ reward is enough task context.” A future skill-selection design must provide a
 stable task/context representation learned from demonstrations or long-term
 memory, then prove that selection causally before spending a longer run.
 
+## Task-context localization (2026-08-02)
+
+Before adding another skill-selection mechanism, a disposable probe measured
+whether task identity is present in experience at all. A five-way classifier
+over raw text stimulus sequences reached **55.66%** held-out accuracy (chance
+**20%**); adding the verifier's feedback target history raised it to
+**74.61%**. The shuffled-label control was **19.73%**, confirming real signal
+and not a split artifact. This is verifier-side diagnostic evidence only:
+targets are not exposed to the agent.
+
+The actual action/reward-conditioned branch, which receives the agent's opaque
+previous action and scalar reward rather than the privileged target, improved
+8-back only **60.55% → 60.94%** at 64 updates (reset **50.00%**, shuffle
+**53.32%**). The gap between privileged feedback decoding and the near-flat
+causal branch localizes the next problem: one noisy outcome is not a stable
+task representation. The next experiment should store a short, task-agnostic
+trajectory of `(opaque event, opaque action, scalar outcome)` in working memory
+and test whether that context becomes decodable before training another answer
+path. This is the first evidence-backed justification for a demonstration-
+conditioned skill selector.
+
 The high-precision audit is saved as
 `nback8_multirung_retention_audit_seed48300.json`, and the reusable evaluator is
 `experiments/unified_cognitive_controller/audit_nback_checkpoint_retention.py`.
