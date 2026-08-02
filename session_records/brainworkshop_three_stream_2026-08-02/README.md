@@ -330,6 +330,14 @@ needed for skill selection. The next high-ROI representation test should use
 episodic trajectory retrieval or a contrastive objective that preserves
 episode-level relation structure, rather than another scalar-prediction head.
 
+The episodic retrieval check was negative as well: standardized nearest-neighbor
+matching over complete opaque action/reward trajectories reached only **44.14%**
+with k=9 (k=1 **37.11%**, k=5 **41.80%**), while the shuffled-label control was
+**17.97%**. Exact trajectory storage therefore does not solve skill selection
+by surface similarity. The remaining high-ROI representation candidate is a
+relational/contrastive context encoder that preserves episode-level structure,
+not a larger nearest-neighbor bank.
+
 This localizes the next bottleneck to credit assignment/representation
 learning, not missing information or RAM capacity. The next probe should use
 episodic retrieval or a contrastive episode objective that preserves relation
