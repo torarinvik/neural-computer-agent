@@ -5,5 +5,9 @@
   "paths": [
     "span9.pt",
     "span10.pt"
+  ],
+  "artifact_sha256": [
+    "02f44fc3a51713ead40e9f41823651ddd2b328b221dc2415f9a257d32ce75996",
+    "2aa2dc21d7294f5cdc3b879792641207da43f268c6f54198f2afd7e683d81646"
   ]
 }

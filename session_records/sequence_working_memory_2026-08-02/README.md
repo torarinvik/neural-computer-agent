@@ -911,3 +911,8 @@ two-row cold skill bank is stored under
 `artifacts/memory/span_multi_skill_bank_seed49011/`. Their source paths and
 SHA-256 hashes are recorded in `remote_artifact_manifest.json`; no temporary
 `/tmp` files on Vast are required to resume the latest audit.
+
+The bank manifest now records a SHA-256 for every opaque skill artifact.
+Promotion verifies that hash before loading from disk, and a tampered-file
+regression test rejects modified cold artifacts while legacy manifests remain
+loadable and are upgraded on their next save.

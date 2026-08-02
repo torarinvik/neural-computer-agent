@@ -7,6 +7,7 @@ bank never interprets a task name, operation, or answer label.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -30,6 +31,10 @@ class SkillArtifactBank:
         self.directory.mkdir(parents=True, exist_ok=True)
         self.memory = DiskLatentMemory(width, capacity, device=device)
         self.paths: list[str | None] = [None] * capacity
+        # Hashes are optional for backwards compatibility with banks created
+        # before artifact integrity was recorded.  New writes always receive
+        # a hash, and promotion verifies it before loading the artifact.
+        self.artifact_sha256: list[str | None] = [None] * capacity
         self.hot: dict[int, dict[str, Any]] = {}
 
     @property
@@ -43,6 +48,14 @@ class SkillArtifactBank:
     @property
     def hot_indices(self) -> tuple[int, ...]:
         return tuple(sorted(self.hot))
+
+    @staticmethod
+    def _file_sha256(path: Path) -> str:
+        digest = hashlib.sha256()
+        with path.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
 
     def _free_or_coldest(self) -> int:
         valid = self.memory.store.valid
@@ -68,6 +81,7 @@ class SkillArtifactBank:
         filename = name or f"skill-{index:04d}.pt"
         path = self.directory / filename
         torch.save(artifact, path)
+        self.artifact_sha256[index] = self._file_sha256(path)
         self.memory.store.clock += 1
         self.memory.store.keys[index].copy_(key.detach())
         self.memory.store.values[index].copy_(key.detach())
@@ -99,6 +113,12 @@ class SkillArtifactBank:
         if index < 0 or index >= len(self.paths) or self.paths[index] is None:
             raise KeyError("query resolved to an empty skill row")
         path = self.directory / self.paths[index]
+        expected_hash = self.artifact_sha256[index]
+        if expected_hash is not None:
+            actual_hash = self._file_sha256(path)
+            if actual_hash != expected_hash:
+                raise ValueError(
+                    "skill artifact hash mismatch; refusing corrupted file")
         artifact = torch.load(path, map_location="cpu", weights_only=False)
         self.hot[index] = artifact
         return index, confidence, artifact
@@ -120,6 +140,7 @@ class SkillArtifactBank:
             "width": self.width,
             "capacity": self.capacity,
             "paths": self.paths,
+            "artifact_sha256": self.artifact_sha256,
         }, indent=2) + "\n")
         temporary.replace(self.directory / "manifest.json")
 
@@ -143,5 +164,19 @@ class SkillArtifactBank:
         instance.paths = list(payload["paths"])
         if len(instance.paths) != instance.capacity:
             raise ValueError("skill-bank path metadata mismatch")
+        hashes = payload.get("artifact_sha256")
+        if hashes is None:
+            # Legacy manifests did not include hashes.  Keep them loadable and
+            # establish hashes for files that are present so the next save
+            # upgrades the manifest without a separate migration step.
+            hashes = [None] * instance.capacity
+            for index, filename in enumerate(instance.paths):
+                if filename is not None:
+                    path = directory / filename
+                    if path.is_file():
+                        hashes[index] = cls._file_sha256(path)
+        if len(hashes) != instance.capacity:
+            raise ValueError("skill-bank artifact hash metadata mismatch")
+        instance.artifact_sha256 = list(hashes)
         instance.hot = {}
         return instance
