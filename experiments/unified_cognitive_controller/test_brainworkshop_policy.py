@@ -18,6 +18,10 @@ def test_brainworkshop_config_accepts_the_next_sixth_back_rung() -> None:
     BrainWorkshopConfig(n_back=6, trials=8).validate()
 
 
+def test_brainworkshop_config_accepts_the_next_seventh_back_rung() -> None:
+    BrainWorkshopConfig(n_back=7, trials=8).validate()
+
+
 def test_eligible_accuracy_excludes_temporal_warmup() -> None:
     rollout = Rollout(
         log_probs=torch.zeros(5, 2), entropies=torch.zeros(5, 2),
@@ -94,6 +98,19 @@ def test_new_history_router_is_optional_and_protected() -> None:
         for parameter in policy.per_stream_intention_routers["text"].parameters())
     assert not any(
         parameter.requires_grad for parameter in policy.controller.parameters())
+
+
+def test_history_router_can_use_only_the_newest_relation() -> None:
+    policy = BrainWorkshopPolicy(
+        width=32, intention_width=16, modalities=("text",),
+        external_history_depth=6, external_memory_adapter_width=32,
+        per_stream_external_history=True,
+        per_stream_intention_adapter_width=32,
+        stacked_history_adapter=True,
+        stacked_history_relation_only=True,
+        stacked_history_router=True,
+        stacked_history_router_relation_only=True)
+    assert policy.per_stream_intention_routers["text"][0].in_features == 96
 
 
 def test_dual_policy_uses_one_decoder_and_maps_opaque_masks() -> None:

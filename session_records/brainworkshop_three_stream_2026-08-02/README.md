@@ -188,14 +188,36 @@ precision. The current frontier is therefore not another blind continuation;
 it is a task-conditional memory gate that can preserve the sixth-history
 signal on 6-back trials without making the same feature perturb 5-back trials.
 
+## Seventh-back protected compounding breakthrough
+
+The next gradual rung extends the same generic RAM bridge to seven opaque
+snapshots. An eight-update compatibility probe correctly stayed at chance, and
+a full 256-update protected diagnostic reached **54.30%** eligible 7-back from
+a **47.66%** parent. That was enough evidence to use the established
+supervised-bootstrap then reward-continuation recipe, but not enough to claim
+mastery by itself.
+
+The first reward continuation with 6-back rehearsal weight 0.25 rose from
+**55.47%** to **58.59%**, but the 6-back retention audit fell to **71.44%**;
+that branch was rejected. Increasing only the verifier-side 6-back rehearsal
+weight to **1.0** fixed the interference: 7-back rose from **57.81%** to
+**68.75%** in eight reward updates. A larger no-update evaluation measured
+**68.36%** over **8,192 target-bearing trials**, with history reset **50.00%**
+and time-shuffle **55.18%**.
+
+The retention ladder passed on independent 8,192-trial audits: 6-back
+**76.32%**, 5-back **80.14%**, and 1-back **91.99%**. Their reset and
+time-shuffle controls remained near chance. This is the first protected
+1→5→6→7 compounding result. It is still a supervised-bootstrapped
+reward-continuation claim, not cold-start reward-only discovery. The next
+frontier is 8-back or transfer to a different cognitive primitive, with the
+same retention and causal gates.
+
 ## Next frontier
 
 The system now has a replicated, causal **learn → check → continue** loop for a
 harder cognitive primitive while retaining the mastered one. The new protected
 extension adds a second loop: **freeze inherited path → train appended RAM
-columns → reward-fine-tune → audit retention**. The next frontier is to make
-the sixth-back adapter as sample-efficient as its unprotected ceiling while
-keeping the 5-back interference margin closed. The next frontier is a generic
-task-conditional memory gate or other verifier-free routing mechanism, followed
-by a 7-back or genuinely different primitive. Any future cold-start reward
-claim must still pass the same reset, time-shuffle, and retention audits.
+columns → reward-fine-tune → audit retention**. The next frontier is 8-back or
+transfer to a genuinely different primitive. Any future cold-start reward claim
+must still pass the same reset, time-shuffle, and full-ladder retention audits.

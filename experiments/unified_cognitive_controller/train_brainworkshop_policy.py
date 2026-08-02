@@ -63,6 +63,7 @@ class BrainWorkshopPolicy(nn.Module):
                  stacked_history_adapter: bool = False,
                  stacked_history_relation_only: bool = False,
                  stacked_history_router: bool = False,
+                 stacked_history_router_relation_only: bool = False,
                  slot_memory_composer: bool = False,
                  per_stream_intention_adapter_width: int = 0,
                  factorized_output: bool = False,
@@ -203,6 +204,8 @@ class BrainWorkshopPolicy(nn.Module):
         self.stacked_history_relation_only = bool(
             stacked_history_relation_only)
         self.stacked_history_router = bool(stacked_history_router)
+        self.stacked_history_router_relation_only = bool(
+            stacked_history_router_relation_only)
         self.slot_memory_composer = bool(slot_memory_composer)
         self.per_stream_intention_delta_adapters = nn.ModuleDict()
         self.per_stream_intention_routers = nn.ModuleDict()
@@ -246,10 +249,13 @@ class BrainWorkshopPolicy(nn.Module):
                         name: make_intention_adapter() for name in modalities})
                 if stacked_history_router:
                     router_width = max(8, per_stream_intention_adapter_width // 2)
+                    router_input_width = (
+                        width * 3 if stacked_history_router_relation_only else
+                        width * (1 + 2 * self.external_history_depth))
                     self.per_stream_intention_routers = nn.ModuleDict({
                         name: nn.Sequential(
                             nn.Linear(
-                                width * (1 + 2 * self.external_history_depth),
+                                router_input_width,
                                 router_width),
                             nn.GELU(),
                             nn.Linear(router_width, 1),
@@ -415,8 +421,12 @@ def _stream_intention_event(
                 delta_features)
             if (policy.stacked_history_router
                     and modality in policy.per_stream_intention_routers):
+                router_input = (
+                    delta_features
+                    if policy.stacked_history_router_relation_only else
+                    features)
                 gate = torch.sigmoid(
-                    policy.per_stream_intention_routers[modality](features))
+                    policy.per_stream_intention_routers[modality](router_input))
                 residual = gate * residual + delta
             else:
                 residual = residual + delta
@@ -1029,7 +1039,7 @@ def main() -> None:
         help="compute RAM relation residuals separately per input stream")
     parser.add_argument(
         "--external-history-depth", type=int, default=1,
-        choices=(1, 2, 3, 4, 5, 6),
+        choices=(1, 2, 3, 4, 5, 6, 7),
         help="number of opaque RAM snapshots exposed to the generic bridge")
     parser.add_argument(
         "--freeze-inherited-history", action="store_true",
@@ -1094,10 +1104,10 @@ def main() -> None:
     parser.add_argument("--eval-count", type=int, default=128)
     parser.add_argument("--trials", type=int, default=8)
     parser.add_argument(
-        "--n-back", type=int, default=1, choices=(1, 2, 3, 4, 5, 6),
+        "--n-back", type=int, default=1, choices=(1, 2, 3, 4, 5, 6, 7),
         help="temporal distance of the verifier relation; increase gradually")
     parser.add_argument(
-        "--rehearsal-n-back", type=int, choices=(1, 2, 3, 4, 5),
+        "--rehearsal-n-back", type=int, choices=(1, 2, 3, 4, 5, 6),
         help="old difficulty to rehearse during a harder-task update")
     parser.add_argument(
         "--rehearsal-n-backs", type=str, default="",
@@ -1118,6 +1128,9 @@ def main() -> None:
     parser.add_argument(
         "--stacked-history-router", action="store_true",
         help="learn a generic gate over the inherited bridge")
+    parser.add_argument(
+        "--stacked-history-router-relation-only", action="store_true",
+        help="restrict the history router to current plus newest relation")
     parser.add_argument("--position-vocab", type=int, default=2,
                         choices=(2, 4, 8))
     parser.add_argument("--text-vocab", type=int, default=8,
@@ -1150,9 +1163,9 @@ def main() -> None:
             if item.strip())
         if not rehearsal_n_backs:
             raise ValueError("rehearsal_n_backs must not be empty")
-        if any(item not in (1, 2, 3, 4, 5) for item in rehearsal_n_backs):
+        if any(item not in (1, 2, 3, 4, 5, 6) for item in rehearsal_n_backs):
             raise ValueError(
-                "rehearsal_n_backs must contain only 1, 2, 3, 4, or 5")
+                "rehearsal_n_backs must contain only 1, 2, 3, 4, 5, or 6")
         if len(set(rehearsal_n_backs)) != len(rehearsal_n_backs):
             raise ValueError("rehearsal_n_backs must not contain duplicates")
     elif args.rehearsal_n_back is not None:
@@ -1251,6 +1264,8 @@ def main() -> None:
         stacked_history_adapter=args.stacked_history_adapter,
         stacked_history_relation_only=args.stacked_history_relation_only,
         stacked_history_router=args.stacked_history_router,
+        stacked_history_router_relation_only=(
+            args.stacked_history_router_relation_only),
         slot_memory_composer=args.slot_memory_composer,
         per_stream_intention_adapter_width=(
             args.per_stream_intention_adapter_width),
@@ -1417,6 +1432,11 @@ def main() -> None:
     if args.stacked_history_router and not args.stacked_history_adapter:
         raise ValueError(
             "--stacked-history-router requires --stacked-history-adapter")
+    if (args.stacked_history_router_relation_only
+            and not args.stacked_history_router):
+        raise ValueError(
+            "--stacked-history-router-relation-only requires "
+            "--stacked-history-router")
     if train_only_modalities:
         if not controller_frozen:
             raise ValueError(
@@ -1698,6 +1718,8 @@ def main() -> None:
         "stacked_history_relation_only": bool(
             args.stacked_history_relation_only),
         "stacked_history_router": bool(args.stacked_history_router),
+        "stacked_history_router_relation_only": bool(
+            args.stacked_history_router_relation_only),
         "slot_memory_composer": bool(args.slot_memory_composer),
         "per_stream_intention_adapter_width": (
             args.per_stream_intention_adapter_width),

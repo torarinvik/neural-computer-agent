@@ -1553,3 +1553,21 @@ time-shuffle **49.21%**. The next experiment must make the RAM write
 conditional on requested history depth (or otherwise isolate sixth-history
 features from 5-back), while preserving the existing retention and causal
 gates.
+
+## Latest breakthrough: protected seventh-back compounding
+
+The generic RAM bridge now extends to seven opaque snapshots. A protected
+256-update diagnostic reached **54.30%** eligible 7-back from a 47.66% parent.
+An eight-update reward continuation with 6-back rehearsal weight 0.25 rose to
+58.59%, but reduced 6-back retention to 71.44% and was rejected. Raising only
+the verifier-side rehearsal weight to **1.0** fixed the interference: 7-back
+rose from **57.81%** to **68.75%** in eight reward updates.
+
+A larger no-update audit measured **68.36%** over **8,192 target-bearing
+trials**, with reset **50.00%** and time-shuffle **55.18%**. Independent
+retention audits passed: 6-back **76.32%**, 5-back **80.14%**, and 1-back
+**91.99%**, each over 8,192 trials with reset/time-shuffle controls near
+chance. This is a protected 1→5→6→7 compounding result, still honestly
+labeled supervised-bootstrapped reward continuation rather than cold-start
+reward-only discovery. The next frontier is 8-back or transfer to a different
+cognitive primitive.
