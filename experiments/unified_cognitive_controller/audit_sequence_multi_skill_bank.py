@@ -110,6 +110,19 @@ def main() -> None:
             })
     if any(row["selected_index"] != row["expected_index"] for row in selections):
         raise AssertionError("reloaded bank selected the wrong skill row")
+    # A query halfway between two learned addresses must not silently activate
+    # whichever row happens to win an infinitesimal cosine tie.
+    ambiguous_query = F.normalize(key9 + key10, dim=0)
+    _, _, ambiguous_margin = restored.resolve(
+        ambiguous_query, record_access=False)
+    try:
+        restored.promote(ambiguous_query, min_margin=0.01)
+    except LookupError:
+        ambiguous_query_abstains = True
+    else:
+        ambiguous_query_abstains = False
+    if not ambiguous_query_abstains:
+        raise AssertionError("ambiguous skill address did not abstain")
 
     routed9 = _rehydrate(
         base_payload, span9_memory, device=device)
@@ -149,6 +162,8 @@ def main() -> None:
         "selections": selections,
         "cold_reload_exact": cold_reload_exact,
         "cold_reload_routing_pass": True,
+        "ambiguous_query_margin": ambiguous_margin,
+        "ambiguous_query_abstains": ambiguous_query_abstains,
         "span9_routed_audit": parent9,
         "span10_routed_audit": routed10_audit,
         "span10_direct_child_audit": direct10_audit,

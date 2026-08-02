@@ -1640,6 +1640,18 @@ state to the relation-gate input. It reached **57.81%** eligible accuracy
 information in principle, but simply exposing it does not close the reader
 gap, so this branch is also rejected for longer training.
 
+## Latest memory-bank hardening (2026-08-03)
+
+The bounded hot/cold skill bank now records a SHA-256 for every opaque disk
+artifact and verifies it before promotion. Legacy manifests remain loadable
+and are upgraded on their next save. Promotion also exposes optional generic
+confidence and top-row-margin thresholds: when an address is ambiguous or
+weak, the bank can abstain instead of silently activating an unrelated skill.
+Tampered-artifact and ambiguous-address controls are covered by regression
+tests. This hardens the long-term-memory boundary; it does not yet claim that
+the controller has learned a multi-skill selector or solved the protected
+eighth-back reader.
+
 ## Latest breakthrough: span-three working-memory compounding (2026-08-02)
 
 The sequence branch now demonstrates the desired learn-to-learn effect on a

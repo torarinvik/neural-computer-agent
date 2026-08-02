@@ -96,20 +96,68 @@ class SkillArtifactBank:
         return index
 
     @torch.no_grad()
+    def resolve(
+            self, query: torch.Tensor, *, record_access: bool = True,
+            ) -> tuple[int, float, float]:
+        """Resolve a query to a row, cosine confidence, and score margin."""
+        if query.shape != (self.width,):
+            raise ValueError("query must have shape [width]")
+        query = query.to(
+            device=self.memory.store.keys.device,
+            dtype=self.memory.store.keys.dtype)
+        valid = self.memory.store.valid.nonzero(as_tuple=False).squeeze(1)
+        if not valid.numel():
+            raise KeyError("query resolved against an empty skill bank")
+        keys = torch.nn.functional.normalize(
+            self.memory.store.keys[valid], dim=-1)
+        normalized_query = torch.nn.functional.normalize(query, dim=-1)
+        cosine = normalized_query @ keys.T
+        # Keep the same generic usage prior as DiskLatentMemory's normal read.
+        scores = cosine + self.memory.store.usage[valid].clamp_min(
+            1e-6).log()
+        order = scores.argsort(descending=True)
+        selected = valid[order[0]]
+        margin = (
+            scores[order[0]] - scores[order[1]]
+            if order.numel() > 1 else scores.new_tensor(1.0))
+        if record_access:
+            self.memory.store.access_count[selected] += 1
+        return int(selected), float(cosine[order[0]]), float(margin)
+
+    @torch.no_grad()
     def retrieve_index(
             self, query: torch.Tensor, *, record_access: bool = True,
             ) -> tuple[int, float]:
         """Resolve a query to a physical row and cosine confidence."""
-        if query.shape != (self.width,):
-            raise ValueError("query must have shape [width]")
-        _, confidence, receipts = self.memory.retrieve_with_receipt(
-            query.unsqueeze(0), top_k=1, confidence_mode="cosine",
-            record_access=record_access)
-        return int(receipts[0]), float(confidence[0])
+        index, confidence, _ = self.resolve(
+            query, record_access=record_access)
+        return index, confidence
 
-    def promote(self, query: torch.Tensor) -> tuple[int, float, dict[str, Any]]:
-        """Load the cold artifact addressed by ``query`` into hot memory."""
-        index, confidence = self.retrieve_index(query)
+    def promote(
+            self, query: torch.Tensor, *, min_confidence: float | None = None,
+            min_margin: float | None = None,
+            ) -> tuple[int, float, dict[str, Any]]:
+        """Load a cold artifact, optionally abstaining on weak addresses.
+
+        The default preserves nearest-row behavior for existing experiments.
+        A caller that cannot safely use an arbitrary fallback can set either
+        threshold; the bank then raises ``LookupError`` instead of silently
+        activating an unrelated skill.
+        """
+        if min_confidence is not None and not -1.0 <= min_confidence <= 1.0:
+            raise ValueError("min_confidence must be between -1 and 1")
+        if min_margin is not None and min_margin < 0.0:
+            raise ValueError("min_margin must be nonnegative")
+        # Do not count a rejected or corrupted promotion as a successful
+        # access; otherwise ambiguous requests could distort cold eviction.
+        index, confidence, margin = self.resolve(query, record_access=False)
+        if (
+                min_confidence is not None and confidence < min_confidence
+        ) or (
+                min_margin is not None and margin < min_margin
+        ):
+            raise LookupError(
+                "skill address below confidence/margin threshold; abstaining")
         if index < 0 or index >= len(self.paths) or self.paths[index] is None:
             raise KeyError("query resolved to an empty skill row")
         path = self.directory / self.paths[index]
@@ -120,6 +168,7 @@ class SkillArtifactBank:
                 raise ValueError(
                     "skill artifact hash mismatch; refusing corrupted file")
         artifact = torch.load(path, map_location="cpu", weights_only=False)
+        self.memory.store.access_count[index] += 1
         self.hot[index] = artifact
         return index, confidence, artifact
 

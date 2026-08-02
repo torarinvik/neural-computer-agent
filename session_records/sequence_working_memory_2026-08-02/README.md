@@ -700,10 +700,16 @@ The saved bank is
 
 ## Next frontier
 
-The next rung should learn or verify multi-skill addressing and acquire a new
-span after a cold reload. Keep the two-point old-skill retention gate and the
-outcome-shuffle, blank, reset, and reversal controls. Only after that should
-the curriculum advance to span ten or broaden the task family.
+Multi-skill addressing now passes after cold reload: controller-produced
+context keys route span nine and span ten artifacts to the correct row, and
+the routed span-ten result matches direct rehydration. The bank also records
+artifact hashes and can abstain when confidence or top-row margin is too low,
+so an ambiguous query no longer has to activate an arbitrary skill. The next
+scientific rung is to learn a task-conditional selector across more than two
+skills, then connect that selection to behavior on the eighth-back reader
+without sacrificing the protected ladder. Keep the two-point old-skill
+retention gate and the outcome-shuffle, blank, reset, reversal, and
+wrong-skill controls.
 
 ## Artifacts
 
