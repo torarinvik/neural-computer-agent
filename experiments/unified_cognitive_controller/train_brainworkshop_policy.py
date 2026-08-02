@@ -514,7 +514,9 @@ def _protect_inherited_history_extension(
     return trainable
 
 
-def _protect_new_history_residual(policy: BrainWorkshopPolicy) -> int:
+def _protect_new_history_residual(
+        policy: BrainWorkshopPolicy, *, allow_router_adaptation: bool = False
+        ) -> int:
     """Open only a zero-initialized relation residual for new learning.
 
     The inherited RAM bridge remains frozen.  A stacked relation-only branch
@@ -532,6 +534,14 @@ def _protect_new_history_residual(policy: BrainWorkshopPolicy) -> int:
         for parameter in adapter.parameters():
             parameter.requires_grad_(True)
             trainable += int(parameter.numel())
+    if allow_router_adaptation:
+        if not policy.per_stream_intention_routers:
+            raise ValueError(
+                "router adaptation requires --stacked-history-router")
+        for router in policy.per_stream_intention_routers.values():
+            for parameter in router.parameters():
+                parameter.requires_grad_(True)
+                trainable += int(parameter.numel())
     return trainable
 
 
@@ -1038,6 +1048,10 @@ def main() -> None:
         help=("freeze inherited paths and train only a stacked, zero-init "
               "relation residual"))
     parser.add_argument(
+        "--train-new-history-router", action="store_true",
+        help=("also adapt the generic stacked-history router while the "
+              "inherited paths remain frozen"))
+    parser.add_argument(
         "--slot-memory-composer", action="store_true",
         help="preserve per-stream RAM slots until a generic final reader")
     parser.add_argument(
@@ -1381,9 +1395,12 @@ def main() -> None:
         if args.freeze_inherited_history:
             raise ValueError(
                 "choose one protected history training mode")
-        protected_parameter_count = _protect_new_history_residual(policy)
+        protected_parameter_count = _protect_new_history_residual(
+            policy, allow_router_adaptation=args.train_new_history_router)
         if protected_parameter_count < 1:
             raise ValueError("new history residual has no trainable parameters")
+    elif args.train_new_history_router:
+        raise ValueError("--train-new-history-router requires residual training")
     if controller_frozen:
         for parameter in policy.controller.parameters():
             parameter.requires_grad_(False)

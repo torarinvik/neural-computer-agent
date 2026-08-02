@@ -79,6 +79,23 @@ def test_new_history_residual_opens_only_the_stacked_zero_init_branch() -> None:
         for parameter in policy.per_stream_intention_adapters["text"].parameters())
 
 
+def test_new_history_router_is_optional_and_protected() -> None:
+    policy = BrainWorkshopPolicy(
+        width=32, intention_width=16, modalities=("text",),
+        external_history_depth=5, external_memory_adapter_width=32,
+        per_stream_external_history=True,
+        per_stream_intention_adapter_width=32,
+        stacked_history_adapter=True,
+        stacked_history_relation_only=True,
+        stacked_history_router=True)
+    _protect_new_history_residual(policy, allow_router_adaptation=True)
+    assert all(
+        parameter.requires_grad
+        for parameter in policy.per_stream_intention_routers["text"].parameters())
+    assert not any(
+        parameter.requires_grad for parameter in policy.controller.parameters())
+
+
 def test_dual_policy_uses_one_decoder_and_maps_opaque_masks() -> None:
     policy = BrainWorkshopPolicy(
         width=32,

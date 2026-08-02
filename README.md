@@ -1540,3 +1540,16 @@ and time-shuffle were **50.00%** and **49.66%**. 5-back and 1-back stayed at
 without opening the inherited parameters. The next frontier is to close the
 remaining sixth-history interference and approach the 93% ceiling, then test a
 new primitive or cold-start reward learning.
+
+Two short follow-up forks were rejected rather than promoted. Repeating the
+same 0.25-weight continuation from the 77.34% checkpoint and a reward-trained
+router both settled near **77.15%**. A zero-initialized stacked
+relation/router branch degraded 6-back from **76.37%** to **65.04%** at 128
+updates; the same branch trained from the 5-back parent stayed at **49.61%**.
+This rules out "add another router" as the next move, despite healthy
+gradients. The promoted checkpoint survived a larger no-update audit at
+**77.16%** over **32,768 target-bearing trials**, with reset **50.00%** and
+time-shuffle **49.21%**. The next experiment must make the RAM write
+conditional on requested history depth (or otherwise isolate sixth-history
+features from 5-back), while preserving the existing retention and causal
+gates.

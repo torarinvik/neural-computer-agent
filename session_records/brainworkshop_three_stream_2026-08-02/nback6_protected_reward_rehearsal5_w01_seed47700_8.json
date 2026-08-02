@@ -1,0 +1,343 @@
+{
+  "accuracy_metric": "eligible_accuracy",
+  "after": {
+    "accuracy": 0.75927734375,
+    "eligible_accuracy": 0.767578125,
+    "mean_reward": 0.5565185546875,
+    "partial_reward_accuracy": 0.75927734375,
+    "per_modality_accuracy": {
+      "audio": 0.4775390625,
+      "text": 0.75927734375,
+      "vision": 0.3701171875
+    },
+    "per_modality_eligible_accuracy": {
+      "audio": 0.505859375,
+      "text": 0.767578125,
+      "vision": 0.484375
+    },
+    "trial_count": 2048
+  },
+  "batch_size": 32,
+  "before": {
+    "accuracy": 0.76171875,
+    "eligible_accuracy": 0.77734375,
+    "mean_reward": 0.5615234375,
+    "partial_reward_accuracy": 0.76171875,
+    "per_modality_accuracy": {
+      "audio": 0.47705078125,
+      "text": 0.76171875,
+      "vision": 0.37109375
+    },
+    "per_modality_eligible_accuracy": {
+      "audio": 0.50390625,
+      "text": 0.77734375,
+      "vision": 0.48828125
+    },
+    "trial_count": 2048
+  },
+  "config": {
+    "audio_samples": 800,
+    "audio_vocab": 8,
+    "balanced_matches": false,
+    "match_probability": 0.5,
+    "modalities": [
+      "vision",
+      "audio",
+      "text"
+    ],
+    "n_back": 6,
+    "position_vocab": 2,
+    "sample_rate": 8000,
+    "text_vocab": 8,
+    "trial_ms": 1000,
+    "trials": 8,
+    "vision_size": 72
+  },
+  "controller_frozen": true,
+  "cross_stream_shuffle_control": {
+    "accuracy": 0.6806640625,
+    "eligible_accuracy": 0.484375,
+    "mean_reward": 0.3953613340854645,
+    "partial_reward_accuracy": 0.6806640625,
+    "per_modality_accuracy": {
+      "audio": 0.46875,
+      "text": 0.6806640625,
+      "vision": 0.3642578125
+    },
+    "per_modality_eligible_accuracy": {
+      "audio": 0.494140625,
+      "text": 0.484375,
+      "vision": 0.5
+    },
+    "trial_count": 2048
+  },
+  "device": "mps",
+  "elapsed_seconds": 22.32441166602075,
+  "encoder_checkpoints": {},
+  "encoder_frozen": false,
+  "event_memory_adapter_width": 0,
+  "experiment": "brainworkshop_multimodal_nback_reward_only",
+  "external_history": true,
+  "external_history_depth": 6,
+  "external_memory_adapter_width": 64,
+  "factorized_output": true,
+  "factorized_reward": true,
+  "gate": {
+    "accepted_for_longer_run": false,
+    "gradient_alive": true,
+    "policy_changed": true,
+    "reset_control_recorded": true
+  },
+  "history": [
+    {
+      "batch_accuracy": 0.75,
+      "batch_eligible_accuracy": 0.75,
+      "batch_mean_reward": 0.5375000238418579,
+      "elapsed_seconds": 4.035681708017364,
+      "gradient_norm": 0.2987883985042572,
+      "loss": -0.15213479101657867,
+      "policy_entropy": 0.12381976842880249,
+      "rehearsal_batch_accuracies": {
+        "5": 0.7734375
+      },
+      "rehearsal_batch_accuracy": 0.7734375,
+      "rehearsal_batch_eligible_accuracies": {
+        "5": 0.75
+      },
+      "rehearsal_n_back": 5,
+      "rehearsal_n_backs": [
+        5
+      ],
+      "update": 1,
+      "value_loss": 0.0
+    },
+    {
+      "batch_accuracy": 0.71875,
+      "batch_eligible_accuracy": 0.75,
+      "batch_mean_reward": 0.47343751788139343,
+      "elapsed_seconds": 4.885047749965452,
+      "gradient_norm": 0.09912868589162827,
+      "loss": -0.04319196566939354,
+      "policy_entropy": 0.09916652739048004,
+      "rehearsal_batch_accuracies": {
+        "5": 0.78515625
+      },
+      "rehearsal_batch_accuracy": 0.78515625,
+      "rehearsal_batch_eligible_accuracies": {
+        "5": 0.8020833134651184
+      },
+      "rehearsal_n_back": 5,
+      "rehearsal_n_backs": [
+        5
+      ],
+      "update": 2,
+      "value_loss": 0.0
+    },
+    {
+      "batch_accuracy": 0.7265625,
+      "batch_eligible_accuracy": 0.765625,
+      "batch_mean_reward": 0.48945313692092896,
+      "elapsed_seconds": 5.7332159579964355,
+      "gradient_norm": 0.13954386115074158,
+      "loss": -0.07566030323505402,
+      "policy_entropy": 0.10181497037410736,
+      "rehearsal_batch_accuracies": {
+        "5": 0.7109375
+      },
+      "rehearsal_batch_accuracy": 0.7109375,
+      "rehearsal_batch_eligible_accuracies": {
+        "5": 0.6458333134651184
+      },
+      "rehearsal_n_back": 5,
+      "rehearsal_n_backs": [
+        5
+      ],
+      "update": 3,
+      "value_loss": 0.0
+    },
+    {
+      "batch_accuracy": 0.7109375,
+      "batch_eligible_accuracy": 0.71875,
+      "batch_mean_reward": 0.4574218988418579,
+      "elapsed_seconds": 6.574896625010297,
+      "gradient_norm": 0.14613200724124908,
+      "loss": -0.10391873866319656,
+      "policy_entropy": 0.09861856698989868,
+      "rehearsal_batch_accuracies": {
+        "5": 0.76953125
+      },
+      "rehearsal_batch_accuracy": 0.76953125,
+      "rehearsal_batch_eligible_accuracies": {
+        "5": 0.78125
+      },
+      "rehearsal_n_back": 5,
+      "rehearsal_n_backs": [
+        5
+      ],
+      "update": 4,
+      "value_loss": 0.0
+    },
+    {
+      "batch_accuracy": 0.6953125,
+      "batch_eligible_accuracy": 0.71875,
+      "batch_mean_reward": 0.4253906309604645,
+      "elapsed_seconds": 7.417817457928322,
+      "gradient_norm": 0.11451565474271774,
+      "loss": -0.15208794176578522,
+      "policy_entropy": 0.10340254008769989,
+      "rehearsal_batch_accuracies": {
+        "5": 0.7734375
+      },
+      "rehearsal_batch_accuracy": 0.7734375,
+      "rehearsal_batch_eligible_accuracies": {
+        "5": 0.7916666865348816
+      },
+      "rehearsal_n_back": 5,
+      "rehearsal_n_backs": [
+        5
+      ],
+      "update": 5,
+      "value_loss": 0.0
+    },
+    {
+      "batch_accuracy": 0.7265625,
+      "batch_eligible_accuracy": 0.703125,
+      "batch_mean_reward": 0.48945313692092896,
+      "elapsed_seconds": 8.26510399999097,
+      "gradient_norm": 0.17698416113853455,
+      "loss": -0.13283048570156097,
+      "policy_entropy": 0.11729341000318527,
+      "rehearsal_batch_accuracies": {
+        "5": 0.79296875
+      },
+      "rehearsal_batch_accuracy": 0.79296875,
+      "rehearsal_batch_eligible_accuracies": {
+        "5": 0.7604166865348816
+      },
+      "rehearsal_n_back": 5,
+      "rehearsal_n_backs": [
+        5
+      ],
+      "update": 6,
+      "value_loss": 0.0
+    },
+    {
+      "batch_accuracy": 0.7734375,
+      "batch_eligible_accuracy": 0.75,
+      "batch_mean_reward": 0.5855469107627869,
+      "elapsed_seconds": 9.106986749917269,
+      "gradient_norm": 0.18923123180866241,
+      "loss": -0.12116812914609909,
+      "policy_entropy": 0.10679265856742859,
+      "rehearsal_batch_accuracies": {
+        "5": 0.7734375
+      },
+      "rehearsal_batch_accuracy": 0.7734375,
+      "rehearsal_batch_eligible_accuracies": {
+        "5": 0.8125
+      },
+      "rehearsal_n_back": 5,
+      "rehearsal_n_backs": [
+        5
+      ],
+      "update": 7,
+      "value_loss": 0.0
+    },
+    {
+      "batch_accuracy": 0.76953125,
+      "batch_eligible_accuracy": 0.796875,
+      "batch_mean_reward": 0.5775390863418579,
+      "elapsed_seconds": 9.94893841596786,
+      "gradient_norm": 0.2245151847600937,
+      "loss": -0.06962119787931442,
+      "policy_entropy": 0.11330346018075943,
+      "rehearsal_batch_accuracies": {
+        "5": 0.7578125
+      },
+      "rehearsal_batch_accuracy": 0.7578125,
+      "rehearsal_batch_eligible_accuracies": {
+        "5": 0.8020833134651184
+      },
+      "rehearsal_n_back": 5,
+      "rehearsal_n_backs": [
+        5
+      ],
+      "update": 8,
+      "value_loss": 0.0
+    }
+  ],
+  "history_reset_control": {
+    "accuracy": 0.875,
+    "eligible_accuracy": 0.5,
+    "mean_reward": 0.7937500476837158,
+    "partial_reward_accuracy": 0.875,
+    "per_modality_accuracy": {
+      "audio": 0.875,
+      "text": 0.875,
+      "vision": 0.125
+    },
+    "per_modality_eligible_accuracy": {
+      "audio": 0.5,
+      "text": 0.5,
+      "vision": 0.5
+    },
+    "trial_count": 2048
+  },
+  "input_bus_event_rms_target": 1.0,
+  "input_bus_normalize_events": false,
+  "learned_source_keys": false,
+  "modalities": [
+    "vision",
+    "audio",
+    "text"
+  ],
+  "modality": "multi",
+  "neutral_new_output": false,
+  "objective": "reward_only",
+  "oracle_events": false,
+  "per_stream_external_history": true,
+  "per_stream_intention_adapter_width": 64,
+  "rehearsal_n_back": null,
+  "rehearsal_n_backs": [
+    5
+  ],
+  "rehearsal_n_backs_arg": "5",
+  "rehearsal_weight": 0.5,
+  "rehearsal_weights": [
+    0.1
+  ],
+  "rehearsal_weights_arg": ".1",
+  "relation_adapter_width": 0,
+  "retrieved_memory_adapter_width": 0,
+  "seed": 47700,
+  "serial_modalities": false,
+  "slot_memory_composer": false,
+  "source_key_init_scale": 0.0,
+  "stacked_history_adapter": false,
+  "stacked_history_relation_only": false,
+  "stacked_history_router": false,
+  "stream_adapter_width": 0,
+  "target_modalities": [
+    "text"
+  ],
+  "time_shuffle_control": {
+    "accuracy": 0.64892578125,
+    "eligible_accuracy": 0.470703125,
+    "mean_reward": 0.3302978575229645,
+    "partial_reward_accuracy": 0.64892578125,
+    "per_modality_accuracy": {
+      "audio": 0.447265625,
+      "text": 0.64892578125,
+      "vision": 0.37255859375
+    },
+    "per_modality_eligible_accuracy": {
+      "audio": 0.48828125,
+      "text": 0.470703125,
+      "vision": 0.509765625
+    },
+    "trial_count": 2048
+  },
+  "train_only_modalities": [],
+  "unique_training_lifetimes": 256,
+  "updates": 8
+}

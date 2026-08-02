@@ -169,6 +169,25 @@ with 2,048 target-bearing trials. Reset and time-shuffle were **50.00%** and
 continuation gate accepted this rung, then stopped rather than extending
 unconditionally.
 
+Two short follow-up forks were rejected rather than promoted. Repeating the
+same 0.25-weight continuation from the 77.34% checkpoint fell slightly to
+**77.15%**; a router-only reward continuation also fell to **77.15%**. A
+zero-initialized stacked relation/router branch was then tested from the best
+checkpoint with dense verifier labels. It degraded 6-back from **76.37%** to
+**65.04%** at 128 updates, while its reset and time-shuffle controls remained
+at **50.00%** and **50.98%**. The same branch trained from the 5-back parent
+never rose above chance (49.61%). These are clean negative results: healthy
+gradients and falling loss do not justify a new routing module when target
+accuracy or retention is not improving.
+
+The promoted checkpoint also passed a larger no-update audit: **77.16%**
+eligible 6-back accuracy over **32,768 target-bearing trials**, with history
+reset **50.00%** and time-shuffle **49.21%**. This is slightly below the
+2,048-trial 77.34% estimate but confirms the same causal signal at much higher
+precision. The current frontier is therefore not another blind continuation;
+it is a task-conditional memory gate that can preserve the sixth-history
+signal on 6-back trials without making the same feature perturb 5-back trials.
+
 ## Next frontier
 
 The system now has a replicated, causal **learn → check → continue** loop for a
