@@ -679,14 +679,30 @@ by reward-independent drift in the frozen controller. Artifact SHA-256:
 Evidence:
 `span9_skill_memory_audit_seed48002.json`.
 
+## Span-nine hot/cold skill-bank routing
+
+The external artifact now lives behind a bounded hot/cold bank. Cold rows store
+only controller-produced context keys and opaque artifact paths; a
+content-addressed query promotes one artifact into the fast process-local
+cache. The real row was selected before and after reloading the bank with
+confidence 0.99994, and the cold row tensors reloaded exactly.
+
+The promoted skill reached **90.76%** on a 4,096-lifetime audit (reverse
+operation 90.66%, blank 50.05%, complete reset 50.02%, operation flips
+48.19%). Evicting the hot artifact while leaving the cold disk bank intact
+reduced accuracy to **75.68%**. Promoting a physically valid zeroed decoy also
+gave 75.68%. The bank therefore controls fast-memory availability causally,
+not merely as a bookkeeping layer.
+
+The saved bank is
+`artifacts/memory/span9_skill_bank_seed48002/`; evidence is
+`span9_skill_bank_audit_seed48002.json`.
+
 ## Next frontier
 
-Test whether the replicated span-nine skill survives write, private
-consolidation, disk serialization, reload into a fresh process, and recall.
-Keep the two-point old-skill retention gate and the outcome-shuffle, blank,
-reset, and reversal controls. The current rung serializes a learned slot; the
-next one should connect that artifact to generic `DiskLatentMemory` hot/cold
-storage and test a new span acquisition after reload. Only after that should
+The next rung should learn or verify multi-skill addressing and acquire a new
+span after a cold reload. Keep the two-point old-skill retention gate and the
+outcome-shuffle, blank, reset, and reversal controls. Only after that should
 the curriculum advance to span ten or broaden the task family.
 
 ## Artifacts
@@ -826,6 +842,10 @@ the curriculum advance to span ten or broaden the task family.
 - `span9_skill_memory_audit_seed48002.json`: external successor-slot
   serialization, fresh-instance rehydration, and zeroed-artifact corruption
   audit.
+- `span9_skill_bank_audit_seed48002.json`: bounded hot/cold row routing,
+  cold-bank reload, hot eviction, and decoy-artifact controls.
+- `artifacts/memory/span9_skill_bank_seed48002/`: committed cold rows,
+  manifest, real skill artifact, and zeroed decoy artifact used by the audit.
 - `controller_habit_gpu_seed32231.json` through
   `controller_habit_gpu_seed32234.json`: four CUDA replication reports for
   the reward-only row-volatility selector; all passed the full gate suite.

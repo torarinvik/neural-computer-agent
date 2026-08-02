@@ -1817,3 +1817,24 @@ The next frontier is to connect this serialized skill artifact to the generic
 `DiskLatentMemory`/hot-working-set path and test a new span acquisition after a
 fresh-process reload, with the same retention and corruption gates. This is a
 memory-boundary result, not yet proof of learned multi-skill consolidation.
+
+## Span-nine hot/cold skill-bank routing
+
+The serialized artifact is now behind a bounded hot/cold bank. Its cold rows
+store only controller-produced context keys and opaque artifact paths; a
+content-addressed query promotes one artifact into the fast process-local
+cache. On a 4,096-lifetime audit, the real row was selected both before and
+after reloading the bank (`confidence = 0.99994`), and the cold row tensors
+reloaded exactly. Promoted performance was **90.76%** (reverse-operation
+90.66%, blank 50.05%, complete reset 50.02%, operation flips 48.19%).
+
+Evicting the hot artifact while keeping the cold disk bank reduced accuracy to
+**75.68%**. Promoting the physically valid decoy artifact produced the same
+75.68% result. Thus the bank controls fast-memory availability causally while
+the disk copy remains intact. The bank snapshot is
+`artifacts/memory/span9_skill_bank_seed48002/`, with evidence in
+`session_records/sequence_working_memory_2026-08-02/span9_skill_bank_audit_seed48002.json`.
+
+This is a hot/cold persistence breakthrough, but the key is currently a
+diagnostic controller-state address. The next experiment must learn or verify
+multi-skill addressing and then acquire a new skill after a cold reload.
