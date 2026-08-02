@@ -4,7 +4,7 @@ import torch
 
 from .train_brainworkshop_policy import (
     BrainWorkshopPolicy, _controller_action_index, _factorized_advantages,
-    _history_features)
+    _history_features, _resolve_rehearsal_weights)
 
 
 def test_dual_policy_uses_one_decoder_and_maps_opaque_masks() -> None:
@@ -148,3 +148,19 @@ def test_source_keys_are_zero_initialized_and_runtime_variable() -> None:
     assert set(policy.source_keys) == {"vision", "audio"}
     assert torch.equal(policy.source_keys["vision"], torch.zeros(32))
     assert torch.equal(policy.source_keys["audio"], torch.zeros(32))
+
+
+def test_rehearsal_weights_match_rungs_and_preserve_scalar_compatibility() -> None:
+    assert _resolve_rehearsal_weights("", (1, 2, 3), 0.5) == (
+        0.5, 0.5, 0.5)
+    assert _resolve_rehearsal_weights("2,0.5,0.5", (1, 2, 3), 0.5) == (
+        2.0, 0.5, 0.5)
+
+
+def test_rehearsal_weights_reject_mismatched_or_negative_values() -> None:
+    import pytest
+
+    with pytest.raises(ValueError, match="match rehearsal_n_backs"):
+        _resolve_rehearsal_weights("1,2", (1, 2, 3), 0.5)
+    with pytest.raises(ValueError, match="nonnegative"):
+        _resolve_rehearsal_weights("1,-1,1", (1, 2, 3), 0.5)

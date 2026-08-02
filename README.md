@@ -1439,3 +1439,21 @@ The next high-ROI experiment is direction-aware gradient protection on the
 successful bridge: redirect only new gradients that conflict with verified
 rehearsal gradients. See
 `session_records/procedural_shape_next_operation_2026-07-30/README.md`.
+
+## Current frontier: gated continuation for protected 4-back learning
+
+The Brain Workshop ladder now has a verified ``learn → check → continue``
+loop. Starting from the inherited 3-back parent, a 4-back run with private
+1/2/3-back rehearsal reached **80.42%** eligible accuracy on seed47408 and
+**66.99%** on seed47409 at 256 updates. Reset and time-shuffle controls stayed
+near chance. The weaker seed was continued for only 64 additional updates
+after it crossed the acquisition gate; it reached **77.00%** at 320 updates.
+
+Frozen-checkpoint audits retained 1-back at **94.29%** (seed47408) and
+**94.61%** (seed47409), both within the two-point retention gate. The new
+``--rehearsal-weights`` option permits verifier-side per-rung weighting, but
+the evidence does not support fixed weights as universally superior to the
+uniform baseline. The promoted idea is the gated continuation decision,
+driven by held-out progress and retention—not unconditional extra training.
+The complete reports and negative-control provenance are in
+`session_records/brainworkshop_three_stream_2026-08-02/README.md`.

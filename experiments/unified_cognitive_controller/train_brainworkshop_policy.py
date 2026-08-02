@@ -884,6 +884,36 @@ def _evaluate(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig, *,
     }
 
 
+def _resolve_rehearsal_weights(
+        raw_weights: str, rehearsal_n_backs: tuple[int, ...],
+        default_weight: float) -> tuple[float, ...]:
+    """Resolve one verifier-loss weight per rehearsal rung.
+
+    The scalar option remains the backwards-compatible default.  Explicit
+    per-rung weights are useful when an already-mastered rung needs stronger
+    protection, but the caller still owns the retention and acquisition gates.
+    """
+    if default_weight < 0.0:
+        raise ValueError("rehearsal_weight must be nonnegative")
+    if not raw_weights:
+        return (default_weight,) * len(rehearsal_n_backs)
+    if not rehearsal_n_backs:
+        raise ValueError("rehearsal_weights requires rehearsal_n_back(s)")
+    try:
+        weights = tuple(
+            float(item.strip()) for item in raw_weights.split(",")
+            if item.strip())
+    except ValueError as exc:
+        raise ValueError(
+            "rehearsal_weights must be comma-separated numbers") from exc
+    if len(weights) != len(rehearsal_n_backs):
+        raise ValueError(
+            "rehearsal_weights must match rehearsal_n_backs length")
+    if any(weight < 0.0 for weight in weights):
+        raise ValueError("rehearsal_weights must be nonnegative")
+    return weights
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--report", type=Path, required=True)
@@ -972,6 +1002,10 @@ def main() -> None:
         "--rehearsal-weight", type=float, default=0.5,
         help="relative verifier-loss weight for old-skill rehearsal")
     parser.add_argument(
+        "--rehearsal-weights", type=str, default="",
+        help=("comma-separated relative verifier-loss weights matching "
+              "--rehearsal-n-backs; overrides --rehearsal-weight"))
+    parser.add_argument(
         "--stacked-history-adapter", action="store_true",
         help="freeze the inherited RAM bridge and train a zero-init correction")
     parser.add_argument(
@@ -1004,8 +1038,6 @@ def main() -> None:
         raise ValueError("updates, batch size, and eval count must be positive")
     if not 0.0 < args.discount <= 1.0:
         raise ValueError("discount must be in (0, 1]")
-    if args.rehearsal_weight < 0.0:
-        raise ValueError("rehearsal_weight must be nonnegative")
     if args.rehearsal_n_back is not None and args.rehearsal_n_backs:
         raise ValueError("use only one rehearsal difficulty option")
     if args.rehearsal_n_backs:
@@ -1023,6 +1055,8 @@ def main() -> None:
         rehearsal_n_backs = (args.rehearsal_n_back,)
     else:
         rehearsal_n_backs = ()
+    rehearsal_weights = _resolve_rehearsal_weights(
+        args.rehearsal_weights, rehearsal_n_backs, args.rehearsal_weight)
     if args.n_back in rehearsal_n_backs:
         raise ValueError("rehearsal difficulty must differ from n_back")
 
@@ -1381,14 +1415,20 @@ def main() -> None:
                     rehearsal_value_losses.append(rehearsal_value_loss)
                     rehearsal_batch_accuracies[str(rehearsal_n_back)] = float(
                         (rehearsal_rollout.rewards > 0).float().mean())
-                weight = args.rehearsal_weight
-                total_rehearsal_loss = sum(rehearsal_losses)
-                total_rehearsal_value_loss = sum(rehearsal_value_losses)
-                loss = (loss + weight * total_rehearsal_loss) / (
-                    1.0 + weight * len(rehearsal_losses))
+                rehearsal_weight_sum = sum(rehearsal_weights)
+                weighted_rehearsal_loss = sum(
+                    weight * rehearsal_loss
+                    for weight, rehearsal_loss in zip(
+                        rehearsal_weights, rehearsal_losses))
+                weighted_rehearsal_value_loss = sum(
+                    weight * rehearsal_value_loss
+                    for weight, rehearsal_value_loss in zip(
+                        rehearsal_weights, rehearsal_value_losses))
+                loss = (loss + weighted_rehearsal_loss) / (
+                    1.0 + rehearsal_weight_sum)
                 value_loss = (
-                    value_loss + weight * total_rehearsal_value_loss) / (
-                        1.0 + weight * len(rehearsal_value_losses))
+                    value_loss + weighted_rehearsal_value_loss) / (
+                        1.0 + rehearsal_weight_sum)
             batch_accuracy = float((rollout.rewards > 0).float().mean())
             batch_mean_reward = float(rollout.rewards.mean())
             policy_entropy = float(rollout.entropies.mean().detach())
@@ -1496,6 +1536,8 @@ def main() -> None:
         "rehearsal_n_backs": list(rehearsal_n_backs),
         "rehearsal_n_backs_arg": args.rehearsal_n_backs,
         "rehearsal_weight": args.rehearsal_weight,
+        "rehearsal_weights": list(rehearsal_weights),
+        "rehearsal_weights_arg": args.rehearsal_weights,
         "device": str(device),
         "config": config.__dict__,
         "modality": policy.modality,
