@@ -164,6 +164,7 @@ class UnifiedCognitiveController(nn.Module):
             skill_adapter_legacy_read_from: int | None = None,
             skill_adapter_reads_prior_from: int | None = None,
             skill_adapter_reads_intention_from: int | None = None,
+            skill_adapter_reads_workspace_from: int | None = None,
             skill_adapter_reads_event_snapshot_from: int | None = None,
             skill_adapter_multiplies_intention_from: int | None = None,
             skill_adapter_outer_multiplies_intention_from: int | None = None,
@@ -289,6 +290,8 @@ class UnifiedCognitiveController(nn.Module):
         # unchanged when this interface is introduced on a new rung.
         self.skill_adapter_reads_intention_from = (
             skill_adapter_reads_intention_from)
+        self.skill_adapter_reads_workspace_from = (
+            skill_adapter_reads_workspace_from)
         # A generic one-event sensory RAM trace. It carries no frame-type or
         # task metadata: every step overwrites it with the latest learned event
         # latent. An index keeps older slot input shapes checkpoint-compatible.
@@ -466,6 +469,9 @@ class UnifiedCognitiveController(nn.Module):
             reads_intention = (
                 skill_adapter_reads_intention_from is not None
                 and slot_index >= skill_adapter_reads_intention_from)
+            reads_workspace = (
+                skill_adapter_reads_workspace_from is not None
+                and slot_index >= skill_adapter_reads_workspace_from)
             reads_event_snapshot = (
                 skill_adapter_reads_event_snapshot_from is not None
                 and slot_index
@@ -498,6 +504,7 @@ class UnifiedCognitiveController(nn.Module):
                 (selected_prior_width if reads_prior else 0)
                 + (legacy_read_width if reads_legacy else 0)
                 + (intention_width if reads_intention else 0)
+                + (workspace_slots * width if reads_workspace else 0)
                 + (width if reads_event_snapshot else 0)
                 + (intention_width if multiplies_intention else 0)
                 + (
@@ -1150,6 +1157,11 @@ class UnifiedCognitiveController(nn.Module):
                             outer_interaction = torch.zeros_like(
                                 outer_interaction)
                         reads.append(outer_interaction)
+                if (
+                        self.skill_adapter_reads_workspace_from is not None
+                        and slot_index
+                        >= self.skill_adapter_reads_workspace_from):
+                    reads.append(state.workspace.flatten(1))
                 if (
                         self.skill_adapter_reads_event_snapshot_from
                         is not None

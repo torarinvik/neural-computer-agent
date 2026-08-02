@@ -312,21 +312,48 @@ replay, residual penalties, staged gate refinement, nonlinear gates, and
 source-provenance gate supervision were all retained as bounded controls; none
 improved the Pareto frontier.
 
-This localizes the next architectural bottleneck: the controller can represent
-old/new information, but its current latent does not provide a sufficiently
-clean task-conditioned routing boundary. The next experiment should enrich the
-learned memory key or train a novelty-aware gate over persistent memory—not
-increase the controller width blindly.
+This localizes the next bottleneck more precisely: the controller can represent
+old/new information, but routing provenance is not the same as decoding the
+correct new action. A nearest-memory prototype was too weak (old/new means
+1.485 versus 1.663), while a verifier-side classifier using hidden state plus
+workspace reached 97.96% old/new held-out accuracy. A disposable correct-action
+probe reached 84.49% from hidden/event, 86.75% after adding workspace, and
+90.20% after also exposing the parent's adapter latent. Thus the useful action
+information is present, but the sparse attempted-action objective is not
+learning to exploit it reliably.
+
+The workspace-aware successor controls make that distinction causal. A fresh
+workspace slot reached 86.09%; a protected replay version fell to 75.95%; a
+source-provenance gate reached 85.05%; a 64-wide read bottleneck reached
+86.70%; removing the inherited adapter read fell to 82.47%; and weighting the
+rare successful attempts threefold reached 87.22%. Rehearsing span eight while
+training span nine reached 85.37% at the same budget. A guarded joint
+adaptation of the parent action reader with span-eight rehearsal reached
+83.92%, showing that unfreezing the reader is not a free fix at this sample
+scale. These are bounded controls, not mastery claims, but they rule out “just
+add workspace,” “just classify old versus new,” and “just rehearse the old
+span” as immediate fixes.
+
+The durable lesson for plasticity is that the successor gate is already a
+per-transition scalar, but its target should not be a hand-written volatility
+label. It should be learned from the same observed outcome stream and judged by
+verifier-owned retention and transfer deltas. The next high-ROI experiment is
+therefore a small action-conditioned critic (or equivalent dense use of the
+observed reward) feeding the gate, with no correct-action labels in the learner.
 
 ## Next frontier
 
-The next highest-ROI experiment is a novelty-aware successor gate over the
-persisted memory key. It must retain the protected span-nine result while
-raising the new skill to the 90% mastery bar, with shuffled outcomes at chance
-and blank/reset/reversal controls intact. Only then should the slot be routed
-through write--consolidate--recall and tested on span ten. Do not add learned
-variable-capacity memory, registers, or new modalities until this routing
-boundary is solved.
+The next highest-ROI experiment is a tiny action-conditioned critic trained
+only on attempted-action outcomes. It should predict success for each opaque
+action from the frozen hidden/event/workspace state, then provide a bounded
+plasticity signal to the successor gate. Acceptance requires: span nine at or
+above the 90% mastery bar, spans two--eight within the two-point retention gate,
+shuffled outcomes at chance, and blank/reset/reversal controls intact. Compare
+against the existing binary attempted-action loss at matched verifier bits.
+Only after that passes should the slot be routed through
+write--consolidate--recall and tested on span ten. Do not add learned
+variable-capacity memory, registers, or new modalities until this
+action-conditioned routing boundary is solved.
 
 ## Artifacts
 
@@ -395,6 +422,18 @@ boundary is solved.
   protected-persistence frontier.
 - `span9_*gate*`, `span9_*sourcegate*`, `span9_*logitprotected*`, and
   `span9_*intention*` reports: bounded routing and plasticity controls.
+- `span8_workspace_buffer_collection_seed31571.json`,
+  `span9_workspace_skill_fresh_4096_seed31581.json`,
+  `span9_workspace_skill_protected_4096_seed31591.json`,
+  `span9_workspace_skill_sourcegate_4096_seed31601.json`,
+  `span9_workspace_skill_bottleneck64_fresh_4096_seed31611.json`,
+  `span9_workspace_only_bottleneck64_fresh_4096_seed31621.json`,
+  `span9_workspace_skill_pos3_fresh_4096_seed31651.json`, and
+  `span9_workspace_skill_curriculum_4096_seed31661.json`, and
+  `span9_workspace_joint_reader_4096_seed31671.json`: workspace routing,
+  plasticity, reward-balance, gradual-rehearsal, and joint-reader controls.
+- `span9_workspace_routing_diagnostic_seed31631.json`: disposable probe
+  results separating old/new routing information from correct-action decoding.
 
 The ignored local checkpoint hashes are:
 
