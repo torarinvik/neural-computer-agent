@@ -1,0 +1,17 @@
+{
+  "schema": "workspace-symmetry-diagnostic-v1",
+  "parent": "artifacts/checkpoints/unified_sequence_working_memory_span8_reward_buffer_8192_width256_rehearsal_seed30981.pt",
+  "workspace_slots": 4,
+  "parent_configuration": {"workspace_slot_addressing": false},
+  "parent_measurements": {
+    "workspace_content_within_slot_std": 0.0,
+    "workspace_content_max_slot_difference": 0.0,
+    "workspace_usage_within_slot_std": 0.0,
+    "workspace_usage_max_slot_difference": 0.0
+  },
+  "addressed_control_measurements": {
+    "workspace_usage_within_slot_std": 0.00037517116288654506,
+    "workspace_usage_slot_range": 0.0008347618277184665
+  },
+  "conclusion": "The promoted controller has four physically allocated RAM slots but no learned slot identity: content and usage are exact clones. A per-cell volatility scalar cannot protect or adapt individual cells until generic address tokens are introduced and trained."
+}

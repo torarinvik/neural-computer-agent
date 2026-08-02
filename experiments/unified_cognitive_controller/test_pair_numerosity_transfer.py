@@ -68,7 +68,9 @@ def test_continuation_reuses_the_existing_final_slot_bit_identically() -> None:
         "skill_adapters.1.", "skill_adapter_gates.1.",
         "skill_adapter_gate_refiners.1.",
         "skill_adapter_gate_extensions.1.",
-        "skill_adapter_read_projections.1.")
+        "skill_adapter_read_projections.1.",
+        "skill_adapter_critics.1.",
+        "skill_adapter_critic_scales.1")
     for name, value in parent.state_dict().items():
         assert torch.equal(value, student.state_dict()[name])
 

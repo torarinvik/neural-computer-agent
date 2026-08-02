@@ -1,0 +1,20 @@
+{
+  "schema": "span9-addressed-workspace-trained-control-v1",
+  "parent": "temporary addressed variant of unified_sequence_working_memory_span8_reward_buffer_8192_width256_rehearsal_seed30981.pt",
+  "configuration": {
+    "workspace_slot_addressing": true,
+    "address_scales": "trained",
+    "workspace_usage": true,
+    "critic_width": 128
+  },
+  "span9_accuracy": 0.8799912929534912,
+  "blank_accuracy": 0.505859375,
+  "reset_accuracy": 0.4950086772441864,
+  "reverse_flip": 0.48240742087364197,
+  "retention_margins_spans_2_to_8": [-0.00293, -0.05469, -0.06787, -0.05039, -0.02702, -0.01172, -0.13843],
+  "usage_stats_after_training": {
+    "within_slot_std": 0.0003035831032320857,
+    "slot_range": 0.0006738576921634376
+  },
+  "conclusion": "Training generic address scales raises fresh span-nine accuracy to 88.0% but does not make usage meaningfully per-cell or satisfy retention. Address scales alone are insufficient; the workspace write/read representation must learn distinct slot content."
+}

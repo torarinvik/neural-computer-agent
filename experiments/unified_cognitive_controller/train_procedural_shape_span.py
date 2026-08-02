@@ -720,7 +720,7 @@ def generate_procedural_shape_batch(
 def _reset_active_keep_workspace(state: ControllerState) -> ControllerState:
     return ControllerState(
         torch.zeros_like(state.hidden), state.workspace,
-        torch.zeros_like(state.latest_event))
+        torch.zeros_like(state.latest_event), state.workspace_usage)
 
 
 def binary_outcome_complete_targets(

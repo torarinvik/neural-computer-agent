@@ -104,11 +104,14 @@ def _load_buffer(
 
 def _skill_slot_logits(
         model: UnifiedCognitiveController, features: torch.Tensor,
-        ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        ) -> tuple[
+            torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor,
+            torch.Tensor | None, torch.Tensor | None]:
     """Compute one successor-slot residual from cached controller latents.
 
     Feature order mirrors ``UnifiedCognitiveController.step_event``: hidden
-    state, current event, optional pre-step workspace, then optional intention.
+    state, current event, optional pre-step workspace and usage, then optional
+    intention.
     Keeping the split explicit prevents a workspace-aware experiment from
     silently training on the wrong slice of an older buffer.
     """
@@ -118,10 +121,13 @@ def _skill_slot_logits(
     workspace_width = (
         model.workspace_slots * model.width
         if model.skill_adapter_reads_workspace_from is not None else 0)
+    usage_width = (
+        model.workspace_slots
+        if model.skill_adapter_reads_workspace_usage_from is not None else 0)
     intention_width = (
         model.intention_width
         if model.skill_adapter_reads_intention_from is not None else 0)
-    expected_width = base_width + workspace_width + intention_width
+    expected_width = base_width + workspace_width + usage_width + intention_width
     if features.shape[1] != expected_width:
         raise ValueError("cached feature width does not match skill slot")
     slot_features = features[:, :base_width]
@@ -137,6 +143,9 @@ def _skill_slot_logits(
     if workspace_width:
         reads.append(features[:, cursor:cursor + workspace_width])
         cursor += workspace_width
+    if usage_width:
+        reads.append(features[:, cursor:cursor + usage_width])
+        cursor += usage_width
     if intention_width:
         reads.append(features[:, cursor:cursor + intention_width])
     if reads:
@@ -153,7 +162,19 @@ def _skill_slot_logits(
     hidden_read = model.skill_adapters[0][1](
         model.skill_adapters[0][0](own_features))
     residual = model.skill_adapters[0][2](hidden_read) * opening
-    return model.actuator(residual), residual, opening, score
+    critic_logits = None
+    critic_residual = None
+    critic = model.skill_adapter_critics[0]
+    if not isinstance(critic, torch.nn.Identity):
+        critic_logits = critic(own_features)
+        critic_residual = (
+            critic_logits - critic_logits.mean(dim=-1, keepdim=True))
+        critic_residual = (
+            critic_residual * model.skill_adapter_critic_scales[0]
+            * opening)
+    return (
+        model.actuator(residual), residual, opening, score,
+        critic_logits, critic_residual)
 
 
 def _weighted_attempted_success_loss(
@@ -184,6 +205,7 @@ def _collect_buffer(
         distractors: int, seed: int, device: torch.device,
         position_augmentation: bool, include_intention: bool = False,
         include_workspace: bool = False,
+        include_workspace_usage: bool = False,
         ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """Collect latent transitions using uniformly random opaque actions."""
     batch = generate_sequence_memory_batch(
@@ -214,6 +236,9 @@ def _collect_buffer(
             event = model.vision(frame)
             hidden_before = state.hidden.clone()
             workspace_before = state.workspace.flatten(1).clone()
+            usage_before = (
+                None if state.workspace_usage is None
+                else state.workspace_usage.clone())
             output, state = model.step(
                 frame, state, previous_action,
                 previous_reward * has_feedback, has_feedback)
@@ -223,6 +248,11 @@ def _collect_buffer(
             feature_parts = [hidden_before, event]
             if include_workspace:
                 feature_parts.append(workspace_before)
+            if include_workspace_usage:
+                if usage_before is None:
+                    usage_before = torch.zeros(
+                        count, model.workspace_slots, device=device)
+                feature_parts.append(usage_before)
             if include_intention:
                 feature_parts.append(output.intention.detach())
             features.append(torch.cat(feature_parts, dim=-1))
@@ -301,6 +331,14 @@ def main() -> None:
             "train one new successor skill slot while preserving the "
             "parent action adapter"))
     parser.add_argument(
+        "--action-conditioned-critic-width", type=int, default=0,
+        help=(
+            "add a zero-impact per-action success predictor trained from "
+            "attempted-action rewards"))
+    parser.add_argument(
+        "--action-conditioned-critic-weight", type=float, default=1.0,
+        help="weight the critic's attempted-outcome loss")
+    parser.add_argument(
         "--skill-adapter-gate-mode", choices=("sigmoid", "relu"),
         default="sigmoid")
     parser.add_argument("--skill-adapter-gate-hidden", type=int, default=0)
@@ -312,6 +350,11 @@ def main() -> None:
         help=(
             "give the successor slot the pre-query short-term workspace; "
             "this is the learned RAM-routing experiment"))
+    parser.add_argument(
+        "--skill-adapter-reads-workspace-usage", action="store_true",
+        help=(
+            "give the successor slot the controller's EMA access frequency "
+            "for each RAM slot"))
     parser.add_argument(
         "--skill-adapter-read-bottleneck", type=int, default=0,
         help=(
@@ -327,6 +370,11 @@ def main() -> None:
         help=(
             "jointly adapt the inherited action reader with the new slot; "
             "old logits are protected by replay/rehearsal when supplied"))
+    parser.add_argument(
+        "--train-workspace-address-scales", action="store_true",
+        help=(
+            "train generic RAM read/write address scales alongside the new "
+            "slot; requires a parent with workspace_slot_addressing"))
     parser.add_argument(
         "--residual-action-adapter", action="store_true",
         help=(
@@ -352,6 +400,7 @@ def main() -> None:
             or args.batch_size < 1
             or args.action_adapter_width < 1
             or args.skill_adapter_width < 0
+            or args.action_conditioned_critic_width < 0
             or args.skill_adapter_read_bottleneck < 0
             or args.skill_adapter_gate_hidden < 0
             or args.test_episodes < 2):
@@ -364,6 +413,8 @@ def main() -> None:
         raise ValueError("residual-penalty must not be negative")
     if args.positive_outcome_weight < 0:
         raise ValueError("positive-outcome-weight must not be negative")
+    if args.action_conditioned_critic_weight < 0:
+        raise ValueError("action-conditioned-critic-weight must not be negative")
     if (args.replay_outcome_weight < 0
             or args.replay_residual_penalty < 0
             or args.replay_gate_penalty < 0
@@ -377,8 +428,16 @@ def main() -> None:
         raise ValueError("intention reads require a skill slot")
     if args.skill_adapter_reads_workspace and not args.skill_adapter_width:
         raise ValueError("workspace reads require a skill slot")
+    if (args.skill_adapter_reads_workspace_usage
+            and not args.skill_adapter_width):
+        raise ValueError("workspace-usage reads require a skill slot")
+    if (args.action_conditioned_critic_width
+            and not args.skill_adapter_width):
+        raise ValueError("the critic requires a skill slot")
     if args.train_parent_action_adapter and not args.skill_adapter_width:
         raise ValueError("parent action adaptation requires a skill slot")
+    if args.train_workspace_address_scales and not args.skill_adapter_width:
+        raise ValueError("workspace address training requires a skill slot")
     if args.replay_refine_gate_only and not args.skill_adapter_width:
         raise ValueError("gate-only replay refinement requires a skill slot")
     if args.replay_refinement_epochs and args.replay_buffer_in is None:
@@ -410,7 +469,8 @@ def main() -> None:
             distractors=args.distractors, seed=args.seed, device=device,
             position_augmentation=args.position_augmentation,
             include_intention=args.skill_adapter_reads_intention,
-            include_workspace=args.skill_adapter_reads_workspace)
+            include_workspace=args.skill_adapter_reads_workspace,
+            include_workspace_usage=args.skill_adapter_reads_workspace_usage)
         buffer_parts = [target_buffer]
         stream_specs.append({
             "kind": "target", "span": args.span,
@@ -423,7 +483,8 @@ def main() -> None:
                 device=device,
                 position_augmentation=args.position_augmentation,
                 include_intention=args.skill_adapter_reads_intention,
-                include_workspace=args.skill_adapter_reads_workspace))
+                include_workspace=args.skill_adapter_reads_workspace,
+                include_workspace_usage=args.skill_adapter_reads_workspace_usage))
             stream_specs.append({
                 "kind": "rehearsal", "span": rehearsal_span,
                 "lifetimes": args.rehearsal_lifetimes})
@@ -480,7 +541,12 @@ def main() -> None:
                 0 if args.skill_adapter_reads_intention else None),
             skill_adapter_reads_workspace_from=(
                 0 if args.skill_adapter_reads_workspace else None),
-            skill_adapter_read_bottleneck=args.skill_adapter_read_bottleneck)
+            skill_adapter_reads_workspace_usage_from=(
+                0 if args.skill_adapter_reads_workspace_usage else None),
+            skill_adapter_read_bottleneck=args.skill_adapter_read_bottleneck,
+            skill_adapter_critic_width=(
+                args.action_conditioned_critic_width
+                if args.action_conditioned_critic_width else 0))
     else:
         configuration = dict(
             base_configuration,
@@ -504,9 +570,12 @@ def main() -> None:
     if args.skill_adapter_width:
         for module in (
                 student.skill_adapters[0], student.skill_adapter_gates[0],
-                student.skill_adapter_read_projections[0]):
+                student.skill_adapter_read_projections[0],
+                student.skill_adapter_critics[0]):
             for parameter in module.parameters():
                 parameter.requires_grad_(True)
+        if args.action_conditioned_critic_width:
+            student.skill_adapter_critic_scales[0].requires_grad_(True)
         if args.train_parent_action_adapter:
             if student.action_adapter is None:
                 raise ValueError(
@@ -517,6 +586,12 @@ def main() -> None:
                     "logit adapter")
             for parameter in student.action_adapter.parameters():
                 parameter.requires_grad_(True)
+        if args.train_workspace_address_scales:
+            if not student.workspace_slot_addressing:
+                raise ValueError(
+                    "workspace address scales require addressable workspace")
+            student.workspace_read_address_scale.requires_grad_(True)
+            student.workspace_write_address_scale.requires_grad_(True)
     else:
         for parameter in student.action_adapter.parameters():
             parameter.requires_grad_(True)
@@ -536,14 +611,20 @@ def main() -> None:
             for start in range(0, sample_indices.shape[0], args.batch_size):
                 indices = permutation[start:start + args.batch_size]
                 if args.skill_adapter_width:
-                    logits_residual, residual, opening, gate_score = _skill_slot_logits(
-                        student, features[indices])
+                    (
+                        logits_residual, residual, opening, gate_score,
+                        critic_logits, critic_residual,
+                    ) = _skill_slot_logits(student, features[indices])
                 else:
                     residual = student.action_adapter(features[indices])
                     logits_residual = residual
                     opening = None
                     gate_score = None
+                    critic_logits = None
+                    critic_residual = None
                 logits = base_logits[indices] + logits_residual
+                if critic_residual is not None:
+                    logits = logits + critic_residual
                 if args.train_parent_action_adapter:
                     base_features = features[indices, :student.width * 2]
                     inherited = base.action_adapter(base_features)
@@ -554,6 +635,13 @@ def main() -> None:
                     logits, actions[indices], outcomes[indices],
                     batch_replay_mask, outcome_weight,
                     args.positive_outcome_weight)
+                if critic_logits is not None and args.action_conditioned_critic_weight:
+                    critic_loss = _weighted_attempted_success_loss(
+                        critic_logits, actions[indices], outcomes[indices],
+                        batch_replay_mask, outcome_weight,
+                        args.positive_outcome_weight)
+                    loss = loss + (
+                        args.action_conditioned_critic_weight * critic_loss)
                 if residual_penalty and bool(batch_replay_mask.any()):
                     loss = loss + residual_penalty * residual[
                         batch_replay_mask].square().mean()
@@ -639,13 +727,20 @@ def main() -> None:
         "residual_action_adapter": args.residual_action_adapter,
         "residual_penalty": args.residual_penalty,
         "positive_outcome_weight": args.positive_outcome_weight,
+        "action_conditioned_critic_width": (
+            args.action_conditioned_critic_width),
+        "action_conditioned_critic_weight": (
+            args.action_conditioned_critic_weight),
         "skill_adapter_width": args.skill_adapter_width,
         "skill_adapter_gate_mode": args.skill_adapter_gate_mode,
         "skill_adapter_reads_intention": args.skill_adapter_reads_intention,
         "skill_adapter_reads_workspace": args.skill_adapter_reads_workspace,
+        "skill_adapter_reads_workspace_usage": (
+            args.skill_adapter_reads_workspace_usage),
         "skill_adapter_read_bottleneck": args.skill_adapter_read_bottleneck,
         "skill_adapter_no_legacy_read": args.skill_adapter_no_legacy_read,
         "train_parent_action_adapter": args.train_parent_action_adapter,
+        "train_workspace_address_scales": args.train_workspace_address_scales,
         "loaded_buffer_metadata": loaded_buffer_metadata,
         "collected_stream_specs": stream_specs,
         "buffer_outcomes_shuffled": args.shuffle_outcomes,

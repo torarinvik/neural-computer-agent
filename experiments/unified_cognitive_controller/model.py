@@ -71,11 +71,18 @@ class ControllerState:
     hidden: torch.Tensor
     workspace: torch.Tensor
     latest_event: torch.Tensor
+    # Exponentially-smoothed, task-agnostic access/write frequency per RAM
+    # slot.  It is state, not a semantic label: a later plasticity gate may
+    # use it to protect frequently useful cells and leave rarely used cells
+    # more adaptable.
+    workspace_usage: torch.Tensor | None = None
 
     def detach(self) -> ControllerState:
         return ControllerState(
             self.hidden.detach(), self.workspace.detach(),
-            self.latest_event.detach())
+            self.latest_event.detach(),
+            None if self.workspace_usage is None
+            else self.workspace_usage.detach())
 
 
 @dataclass
@@ -165,12 +172,15 @@ class UnifiedCognitiveController(nn.Module):
             skill_adapter_reads_prior_from: int | None = None,
             skill_adapter_reads_intention_from: int | None = None,
             skill_adapter_reads_workspace_from: int | None = None,
+            skill_adapter_reads_workspace_usage_from: int | None = None,
             skill_adapter_reads_event_snapshot_from: int | None = None,
             skill_adapter_multiplies_intention_from: int | None = None,
             skill_adapter_outer_multiplies_intention_from: int | None = None,
             skill_adapter_outer_interaction_width: int = 0,
             skill_adapter_read_bottleneck: int = 0,
-            skill_adapter_prior_read_limit: int = 0) -> None:
+            skill_adapter_prior_read_limit: int = 0,
+            skill_adapter_critic_width: int = 0,
+            workspace_usage_decay: float = 0.98) -> None:
         super().__init__()
         if skill_adapter_gate_mode not in ("sigmoid", "relu"):
             raise ValueError(
@@ -194,6 +204,8 @@ class UnifiedCognitiveController(nn.Module):
                     and action_adapter_emits_intention)
                 or skill_adapter_outer_interaction_width < 0
                 or skill_adapter_prior_read_limit < 0
+                or skill_adapter_critic_width < 0
+                or not 0.0 <= workspace_usage_decay < 1.0
                 or any(value < 1 for value in skill_adapter_widths)
                 or any(
                     value < 0
@@ -247,6 +259,7 @@ class UnifiedCognitiveController(nn.Module):
             skill_adapter_gate_refiner_widths)
         self.skill_adapter_gate_extension_widths = tuple(
             skill_adapter_gate_extension_widths)
+        self.skill_adapter_critic_width = skill_adapter_critic_width
         # Whether a slot may read what earlier slots computed, separately from
         # whether those slots write to the answer. An exactly shut gate makes an
         # earlier slot silent on this event -- which is what removes
@@ -292,6 +305,9 @@ class UnifiedCognitiveController(nn.Module):
             skill_adapter_reads_intention_from)
         self.skill_adapter_reads_workspace_from = (
             skill_adapter_reads_workspace_from)
+        self.skill_adapter_reads_workspace_usage_from = (
+            skill_adapter_reads_workspace_usage_from)
+        self.workspace_usage_decay = workspace_usage_decay
         # A generic one-event sensory RAM trace. It carries no frame-type or
         # task metadata: every step overwrites it with the latest learned event
         # latent. An index keeps older slot input shapes checkpoint-compatible.
@@ -455,6 +471,8 @@ class UnifiedCognitiveController(nn.Module):
         self.skill_adapter_intention_interactions = nn.ModuleList()
         self.skill_adapter_outer_event_projections = nn.ModuleList()
         self.skill_adapter_outer_intention_projections = nn.ModuleList()
+        self.skill_adapter_critics = nn.ModuleList()
+        self.skill_adapter_critic_scales = nn.ParameterList()
         legacy_read_width = (
             (relation_adapter_width if relation_adapter_width else 0)
             + (action_adapter_width if action_adapter_width else 0))
@@ -472,6 +490,9 @@ class UnifiedCognitiveController(nn.Module):
             reads_workspace = (
                 skill_adapter_reads_workspace_from is not None
                 and slot_index >= skill_adapter_reads_workspace_from)
+            reads_workspace_usage = (
+                skill_adapter_reads_workspace_usage_from is not None
+                and slot_index >= skill_adapter_reads_workspace_usage_from)
             reads_event_snapshot = (
                 skill_adapter_reads_event_snapshot_from is not None
                 and slot_index
@@ -505,6 +526,7 @@ class UnifiedCognitiveController(nn.Module):
                 + (legacy_read_width if reads_legacy else 0)
                 + (intention_width if reads_intention else 0)
                 + (workspace_slots * width if reads_workspace else 0)
+                + (workspace_slots if reads_workspace_usage else 0)
                 + (width if reads_event_snapshot else 0)
                 + (intention_width if multiplies_intention else 0)
                 + (
@@ -537,6 +559,22 @@ class UnifiedCognitiveController(nn.Module):
                 nn.Linear(
                     intention_width, skill_adapter_outer_interaction_width)
                 if outer_multiplies_intention else nn.Identity())
+            if skill_adapter_critic_width:
+                critic = nn.Sequential(
+                    nn.Linear(slot_input, skill_adapter_critic_width),
+                    nn.GELU(),
+                    nn.Linear(skill_adapter_critic_width, ACTIONS),
+                )
+                # The critic starts as an observation-only head. Its scalar
+                # influence on actions is zero, so insertion is bit-identical,
+                # while its own reward loss can still train immediately.
+                self.skill_adapter_critics.append(critic)
+                self.skill_adapter_critic_scales.append(nn.Parameter(
+                    torch.zeros(())))
+            else:
+                self.skill_adapter_critics.append(nn.Identity())
+                self.skill_adapter_critic_scales.append(nn.Parameter(
+                    torch.zeros(()), requires_grad=False))
             prior_read_width += slot_width
             # A linear gate has to separate this slot's own events from every
             # other skill's with one hyperplane. A hidden layer lets the
@@ -948,6 +986,8 @@ class UnifiedCognitiveController(nn.Module):
                 batch_size, self.workspace_slots, self.width,
                 device=device, dtype=dtype),
             torch.zeros(batch_size, self.width, device=device, dtype=dtype),
+            torch.zeros(
+                batch_size, self.workspace_slots, device=device, dtype=dtype),
         )
 
     def step_event(
@@ -1012,6 +1052,15 @@ class UnifiedCognitiveController(nn.Module):
             + candidate.unsqueeze(1) * update)
         if disable_workspace:
             workspace = torch.zeros_like(workspace)
+        prior_usage = state.workspace_usage
+        if prior_usage is None:
+            prior_usage = torch.zeros_like(weights)
+        access = 0.5 * (weights + write_weights)
+        workspace_usage = (
+            self.workspace_usage_decay * prior_usage
+            + (1.0 - self.workspace_usage_decay) * access)
+        if disable_workspace:
+            workspace_usage = torch.zeros_like(workspace_usage)
 
         combined = torch.cat([hidden, read, event], dim=-1)
         intention = self.intention(combined)
@@ -1163,6 +1212,18 @@ class UnifiedCognitiveController(nn.Module):
                         >= self.skill_adapter_reads_workspace_from):
                     reads.append(state.workspace.flatten(1))
                 if (
+                        self.skill_adapter_reads_workspace_usage_from
+                        is not None
+                        and slot_index
+                        >= self.skill_adapter_reads_workspace_usage_from):
+                    reads.append(
+                        (state.workspace_usage
+                         if state.workspace_usage is not None
+                         else torch.zeros(
+                             state.workspace.shape[:2],
+                             device=state.workspace.device,
+                             dtype=state.workspace.dtype)))
+                if (
                         self.skill_adapter_reads_event_snapshot_from
                         is not None
                         and slot_index
@@ -1196,6 +1257,21 @@ class UnifiedCognitiveController(nn.Module):
                 hidden_read = adapter[1](adapter[0](own_features))
                 residual = adapter[2](hidden_read)
                 residual = residual * opening
+                critic = self.skill_adapter_critics[slot_index]
+                if not isinstance(critic, nn.Identity):
+                    critic_logits = critic(own_features)
+                    critic_delta = (
+                        critic_logits - critic_logits.mean(
+                            dim=-1, keepdim=True))
+                    critic_delta = (
+                        critic_delta
+                        * self.skill_adapter_critic_scales[slot_index]
+                        * opening)
+                    if deferred_action_residual is None:
+                        deferred_action_residual = intention.new_zeros(
+                            intention.shape[0], ACTIONS)
+                    deferred_action_residual = (
+                        deferred_action_residual + critic_delta)
                 if self.skill_adapter_reads_prior:
                     prior_reads.append(hidden_read)
                 openings.append(opening)
@@ -1226,7 +1302,8 @@ class UnifiedCognitiveController(nn.Module):
             skill_adapter_openings=skill_adapter_openings,
             skill_adapter_residual_norms=skill_adapter_residual_norms,
         )
-        return output, ControllerState(hidden, workspace, event)
+        return output, ControllerState(
+            hidden, workspace, event, workspace_usage)
 
     def step(
             self, frame: torch.Tensor, state: ControllerState,

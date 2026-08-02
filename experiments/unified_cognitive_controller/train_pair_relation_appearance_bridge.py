@@ -66,7 +66,9 @@ def _slot_prefixes(slot: int) -> tuple[str, ...]:
         f"skill_adapter_gates.{slot}.",
         f"skill_adapter_gate_refiners.{slot}.",
         f"skill_adapter_gate_extensions.{slot}.",
-        f"skill_adapter_read_projections.{slot}.")
+        f"skill_adapter_read_projections.{slot}.",
+        f"skill_adapter_critics.{slot}.",
+        f"skill_adapter_critic_scales.{slot}")
 
 
 def _reset_slot(

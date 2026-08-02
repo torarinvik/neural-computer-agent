@@ -349,19 +349,42 @@ verifier-owned retention and transfer deltas. The next high-ROI experiment is
 therefore a small action-conditioned critic (or equivalent dense use of the
 observed reward) feeding the gate, with no correct-action labels in the learner.
 
+## Critic and per-cell plasticity follow-up
+
+The action-conditioned critic was implemented as a zero-impact auxiliary head:
+it predicts success for each opaque action from the same latent, while a learned
+scalar controls whether its centered preference reaches the actuator. The
+critic reached 87.70% on the fresh span-nine arm; a fourfold critic-loss weight
+reached 87.61%; critic plus protected replay reached 75.56%; and a critic that
+also read the new RAM-usage EMA reached 87.43%. The best critic retention audit
+still lost 2.5--13.3 points on spans 3--8. Thus the critic is a promising
+credit-assignment component, but neither it nor replay makes plasticity safe.
+
+The usage experiment exposed a more fundamental architectural issue. In the
+promoted parent, all four RAM slots are exact clones: content and usage have
+zero within-slot variance. The controller allocates four tensors, but it has no
+generic slot identity, so a per-cell volatility scalar has nothing individual
+to protect. Enabling fixed address tokens in a diagnostic control produced a
+small nonzero usage difference, but it was not trained and did not establish a
+capability gain. The fixed-address successor reached 87.33%; allowing the
+generic read/write address scales to train reached 88.00%, but its usage slot
+range remained only 0.00067 and it still lost 1--14 points on spans 2--8. This
+is a bounded addressability result, not a promotion: address scores alone do
+not make the workspace store distinct cell content. The next architecture must
+first learn addressable RAM locations; only then can usage-conditioned
+plasticity be meaningfully tested.
+
 ## Next frontier
 
-The next highest-ROI experiment is a tiny action-conditioned critic trained
-only on attempted-action outcomes. It should predict success for each opaque
-action from the frozen hidden/event/workspace state, then provide a bounded
-plasticity signal to the successor gate. Acceptance requires: span nine at or
-above the 90% mastery bar, spans two--eight within the two-point retention gate,
-shuffled outcomes at chance, and blank/reset/reversal controls intact. Compare
-against the existing binary attempted-action loss at matched verifier bits.
-Only after that passes should the slot be routed through
-write--consolidate--recall and tested on span ten. Do not add learned
-variable-capacity memory, registers, or new modalities until this
-action-conditioned routing boundary is solved.
+The next highest-ROI experiment is a tiny addressable-RAM adapter: add generic
+slot identity vectors with zero initial influence, train only the address
+scales and a small successor reader on the easiest retained span, and measure
+whether RAM content/usage becomes non-symmetric without regressing the parent.
+Only after slot identity is learned should the action-conditioned critic and
+per-cell volatility scalar be re-enabled. Acceptance remains span nine at or
+above 90%, spans two--eight within the two-point retention gate, shuffled
+outcomes at chance, and blank/reset/reversal controls intact. Do not increase
+controller width or add modalities until this addressability gate passes.
 
 ## Artifacts
 
@@ -444,6 +467,18 @@ action-conditioned routing boundary is solved.
   `span9_workspace_skill_pos3_shuffled_4096_seed31681.json`: promotion-grade
   retention and outcome-shuffled adversarial audits for the best workspace
   candidate.
+- `span9_workspace_critic_fresh_4096_seed31811.json`,
+  `span9_workspace_critic_weight4_fresh_4096_seed31821.json`,
+  `span9_workspace_critic_protected_4096_seed31831.json`,
+  `span9_workspace_usage_critic_fresh_4096_seed31911.json`,
+  `span9_workspace_critic_retention_seed31811.json`, and
+  `span9_workspace_usage_critic_retention_seed31911.json`: action-conditioned
+  critic and usage-conditioned plasticity controls.
+- `workspace_symmetry_diagnostic_seed31941.json`: evidence that the promoted
+  RAM slots are exact content/usage clones until generic addresses are added.
+- `span9_fixed_address_usage_critic_fresh_4096_seed31951.json` and
+  `span9_trained_address_usage_critic_fresh_4096_seed31961.json`: fixed versus
+  trained generic-address controls and their retention/usage measurements.
 - `span9_workspace_routing_diagnostic_seed31631.json`: disposable probe
   results separating old/new routing information from correct-action decoding.
 
