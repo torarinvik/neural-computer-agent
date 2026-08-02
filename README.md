@@ -1532,3 +1532,11 @@ This is the first protected 1→5→6 compounding result. It is a
 claim. The remaining frontier is a task-conditional, task-agnostic memory gate
 that closes the sixth-history interference margin, then 7-back or transfer to a
 new cognitive primitive.
+
+A fresh eight-update continuation with 5-back rehearsal weight **0.25** then
+raised 6-back to **77.34%** on a larger 2,048-target-trial evaluation; reset
+and time-shuffle were **50.00%** and **49.66%**. 5-back and 1-back stayed at
+**80.86%** and **92.22%**. This improves the protected sample-efficiency curve
+without opening the inherited parameters. The next frontier is to close the
+remaining sixth-history interference and approach the 93% ceiling, then test a
+new primitive or cold-start reward learning.

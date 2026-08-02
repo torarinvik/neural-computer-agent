@@ -161,6 +161,14 @@ the first protected 1→5→6 compounding result, honestly labeled as a
 supervised-bootstrapped reward continuation rather than cold-start reward
 discovery.
 
+A fresh eight-update continuation reduced the 5-back rehearsal weight to 0.25,
+keeping the inherited path frozen. It raised 6-back from **72.07%** to
+**78.13%** on the check evaluation and to **77.34%** on a larger evaluation
+with 2,048 target-bearing trials. Reset and time-shuffle were **50.00%** and
+**49.66%**. Retention remained 5-back **80.86%** and 1-back **92.22%**. The
+continuation gate accepted this rung, then stopped rather than extending
+unconditionally.
+
 ## Next frontier
 
 The system now has a replicated, causal **learn → check → continue** loop for a
