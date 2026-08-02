@@ -1571,3 +1571,20 @@ chance. This is a protected 1→5→6→7 compounding result, still honestly
 labeled supervised-bootstrapped reward continuation rather than cold-start
 reward-only discovery. The next frontier is 8-back or transfer to a different
 cognitive primitive.
+
+## Protected eighth-back representational rung
+
+The generic RAM bridge now accepts eight opaque snapshots. An eight-update
+reward compatibility probe stayed at chance, so the matched 256-update dense
+diagnostic was the justified escalation. It reached **60.55%** eligible
+8-back from a **46.88%** parent, with reset **50.00%** and time-shuffle
+**44.92%**. An eight-update reward continuation did not improve the diagnostic
+point and was stopped by the progress gate.
+
+The eighth-history path nevertheless preserved the full ladder on independent
+8,192-trial audits: 7-back **68.55%**, 6-back **76.07%**, 5-back **80.11%**,
+and 1-back **91.95%**, with reset/time-shuffle controls near chance. This is a
+protected eighth-back representational breakthrough, not a reward-only
+mastery claim. The next high-ROI question is how to turn the decodable
+eighth-back relation into reward-fine-tuned behavior without sacrificing the
+ladder.

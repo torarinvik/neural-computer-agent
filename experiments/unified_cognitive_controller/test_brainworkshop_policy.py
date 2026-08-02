@@ -22,6 +22,10 @@ def test_brainworkshop_config_accepts_the_next_seventh_back_rung() -> None:
     BrainWorkshopConfig(n_back=7, trials=8).validate()
 
 
+def test_brainworkshop_config_accepts_the_next_eighth_back_rung() -> None:
+    BrainWorkshopConfig(n_back=8, trials=10).validate()
+
+
 def test_eligible_accuracy_excludes_temporal_warmup() -> None:
     rollout = Rollout(
         log_probs=torch.zeros(5, 2), entropies=torch.zeros(5, 2),

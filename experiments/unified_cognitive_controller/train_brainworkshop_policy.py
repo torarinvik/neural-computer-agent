@@ -1039,7 +1039,7 @@ def main() -> None:
         help="compute RAM relation residuals separately per input stream")
     parser.add_argument(
         "--external-history-depth", type=int, default=1,
-        choices=(1, 2, 3, 4, 5, 6, 7),
+        choices=(1, 2, 3, 4, 5, 6, 7, 8),
         help="number of opaque RAM snapshots exposed to the generic bridge")
     parser.add_argument(
         "--freeze-inherited-history", action="store_true",
@@ -1104,10 +1104,10 @@ def main() -> None:
     parser.add_argument("--eval-count", type=int, default=128)
     parser.add_argument("--trials", type=int, default=8)
     parser.add_argument(
-        "--n-back", type=int, default=1, choices=(1, 2, 3, 4, 5, 6, 7),
+        "--n-back", type=int, default=1, choices=(1, 2, 3, 4, 5, 6, 7, 8),
         help="temporal distance of the verifier relation; increase gradually")
     parser.add_argument(
-        "--rehearsal-n-back", type=int, choices=(1, 2, 3, 4, 5, 6),
+        "--rehearsal-n-back", type=int, choices=(1, 2, 3, 4, 5, 6, 7),
         help="old difficulty to rehearse during a harder-task update")
     parser.add_argument(
         "--rehearsal-n-backs", type=str, default="",
@@ -1163,9 +1163,9 @@ def main() -> None:
             if item.strip())
         if not rehearsal_n_backs:
             raise ValueError("rehearsal_n_backs must not be empty")
-        if any(item not in (1, 2, 3, 4, 5, 6) for item in rehearsal_n_backs):
+        if any(item not in (1, 2, 3, 4, 5, 6, 7) for item in rehearsal_n_backs):
             raise ValueError(
-                "rehearsal_n_backs must contain only 1, 2, 3, 4, 5, or 6")
+                "rehearsal_n_backs must contain only 1, 2, 3, 4, 5, 6, or 7")
         if len(set(rehearsal_n_backs)) != len(rehearsal_n_backs):
             raise ValueError("rehearsal_n_backs must not contain duplicates")
     elif args.rehearsal_n_back is not None:

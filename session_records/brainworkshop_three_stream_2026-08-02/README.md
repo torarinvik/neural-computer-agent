@@ -213,6 +213,24 @@ reward-continuation claim, not cold-start reward-only discovery. The next
 frontier is 8-back or transfer to a different cognitive primitive, with the
 same retention and causal gates.
 
+## Eighth-back protected representational rung
+
+The generic RAM bridge now accepts eight opaque snapshots (the task uses ten
+trials so the warm-up remains separate from the target-bearing region). An
+eight-update reward compatibility probe stayed at chance, so the established
+256-update dense diagnostic was the only justified escalation. It reached
+**60.55%** eligible 8-back from a **46.88%** parent, with reset **50.00%** and
+time-shuffle **44.92%**. A subsequent eight-update reward continuation did not
+improve that point and was stopped by the progress gate.
+
+The new eighth-history path nevertheless passed the complete retention ladder
+on independent 8,192-trial audits: 7-back **68.55%**, 6-back **76.07%**,
+5-back **80.11%**, and 1-back **91.95%**. Reset and time-shuffle controls
+remained near chance at every rung. This is a protected eighth-back
+representational breakthrough, not a claim of reward-only mastery; the next
+high-ROI question is how to make reward fine-tuning discover the already
+decodable eighth-back relation without sacrificing the ladder.
+
 ## Next frontier
 
 The system now has a replicated, causal **learn → check → continue** loop for a
