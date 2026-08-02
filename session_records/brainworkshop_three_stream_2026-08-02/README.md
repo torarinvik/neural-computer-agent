@@ -397,3 +397,11 @@ raised raw decoding to **84.39%**, while the consistency representation was
 only **63.41%** and the control **65.37%**. The failure is therefore not just
 the five-way difficulty leap or a missing data budget; the generic corruption
 objective is the wrong pressure for preserving task identity.
+
+As a capacity check, a disposable ordered-pair encoder (explicitly forming
+`event_i`, `event_j`, their product, and the pair distance) reached **46.48%**
+at 256 supervised updates and **57.42%** at 1,024 updates, against raw
+trajectory baselines of **56.25%** and **59.38%**. Even with verifier labels,
+the simple pairwise pooling architecture does not improve the representation;
+the next relation-aware gate will need a recurrent/episodic read mechanism,
+not merely a wider bag of pair products.

@@ -1,0 +1,23 @@
+{
+  "format": "nback_relational_context_ceiling.v1",
+  "rings": [
+    1,
+    5,
+    6,
+    7,
+    8
+  ],
+  "checkpoint": "artifacts/checkpoints/brainworkshop_three_stream_nback8_protected_supervised_seed47820_256.pt",
+  "count_per_ring": 256,
+  "trials": 10,
+  "updates": 1024,
+  "seed": 49510,
+  "device": "mps",
+  "results": {
+    "raw_action_reward": {
+      "train_accuracy": 0.9970703125,
+      "held_out_accuracy": 0.59375
+    },
+    "ordered_pair_encoder": 0.57421875
+  }
+}
