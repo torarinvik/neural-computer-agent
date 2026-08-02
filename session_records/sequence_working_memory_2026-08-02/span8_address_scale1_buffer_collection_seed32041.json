@@ -1,0 +1,177 @@
+{
+  "schema": "latent-replay-adapter-v2",
+  "claim_boundary": "The learner sees only RGB streams, opaque attempted actions, and scalar attempted-action outcomes. No correct unattempted action or semantic task label is stored in the buffer.",
+  "parent": "/tmp/addressed_span8_parent_scale1.pt",
+  "configuration": {
+    "parent": "/tmp/addressed_span8_parent_scale1.pt",
+    "report": "session_records/sequence_working_memory_2026-08-02/span8_address_scale1_buffer_collection_seed32041.json",
+    "checkpoint_out": "artifacts/checkpoints/span8_address_scale1_buffer_collection_seed32041.pt",
+    "buffer_in": null,
+    "replay_buffer_in": null,
+    "buffer_out": "artifacts/replay_buffers/span8_address_scale1_usage_old_seed32041.pt",
+    "replay_max_transitions": 0,
+    "replay_outcome_weight": 1.0,
+    "replay_residual_penalty": 0.0,
+    "replay_gate_penalty": 0.0,
+    "replay_logit_penalty": 0.0,
+    "replay_gate_source_weight": 0.0,
+    "replay_refinement_epochs": 0,
+    "replay_refine_gate_only": false,
+    "seed": 32041,
+    "train_lifetimes": 8192,
+    "rehearse_spans": "2,2,3,3,3,4,5,6,7",
+    "rehearsal_lifetimes": 512,
+    "span": 8,
+    "distractors": 2,
+    "epochs": 1,
+    "batch_size": 512,
+    "learning_rate": 0.003,
+    "positive_outcome_weight": 1.0,
+    "action_adapter_width": 64,
+    "skill_adapter_width": 256,
+    "action_conditioned_critic_width": 0,
+    "action_conditioned_critic_weight": 1.0,
+    "skill_adapter_gate_mode": "sigmoid",
+    "skill_adapter_gate_hidden": 0,
+    "skill_adapter_reads_intention": false,
+    "skill_adapter_reads_workspace": true,
+    "skill_adapter_reads_workspace_usage": true,
+    "skill_adapter_read_bottleneck": 0,
+    "skill_adapter_no_legacy_read": false,
+    "train_parent_action_adapter": false,
+    "train_workspace_address_scales": false,
+    "residual_action_adapter": false,
+    "residual_penalty": 0.0,
+    "test_episodes": 512,
+    "shuffle_outcomes": false,
+    "position_augmentation": true,
+    "device": "mps"
+  },
+  "unique_train_lifetimes": 8192,
+  "unique_rehearsal_lifetimes": 4608,
+  "total_unique_lifetimes": 12800,
+  "query_transition_count": 83456,
+  "rehearse_spans": [
+    2,
+    2,
+    3,
+    3,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "rehearsal_lifetimes_per_stream": 512,
+  "buffer_in": null,
+  "replay_buffer_in": null,
+  "buffer_out": "artifacts/replay_buffers/span8_address_scale1_usage_old_seed32041.pt",
+  "replay_max_transitions": 0,
+  "replay_outcome_weight": 1.0,
+  "replay_residual_penalty": 0.0,
+  "replay_gate_penalty": 0.0,
+  "replay_logit_penalty": 0.0,
+  "replay_gate_source_weight": 0.0,
+  "replay_refinement_epochs": 0,
+  "replay_refine_gate_only": false,
+  "residual_action_adapter": false,
+  "residual_penalty": 0.0,
+  "positive_outcome_weight": 1.0,
+  "action_conditioned_critic_width": 0,
+  "action_conditioned_critic_weight": 1.0,
+  "skill_adapter_width": 256,
+  "skill_adapter_gate_mode": "sigmoid",
+  "skill_adapter_reads_intention": false,
+  "skill_adapter_reads_workspace": true,
+  "skill_adapter_reads_workspace_usage": true,
+  "skill_adapter_read_bottleneck": 0,
+  "skill_adapter_no_legacy_read": false,
+  "train_parent_action_adapter": false,
+  "train_workspace_address_scales": false,
+  "loaded_buffer_metadata": [],
+  "collected_stream_specs": [
+    {
+      "kind": "target",
+      "span": 8,
+      "lifetimes": 8192
+    },
+    {
+      "kind": "rehearsal",
+      "span": 2,
+      "lifetimes": 512
+    },
+    {
+      "kind": "rehearsal",
+      "span": 2,
+      "lifetimes": 512
+    },
+    {
+      "kind": "rehearsal",
+      "span": 3,
+      "lifetimes": 512
+    },
+    {
+      "kind": "rehearsal",
+      "span": 3,
+      "lifetimes": 512
+    },
+    {
+      "kind": "rehearsal",
+      "span": 3,
+      "lifetimes": 512
+    },
+    {
+      "kind": "rehearsal",
+      "span": 4,
+      "lifetimes": 512
+    },
+    {
+      "kind": "rehearsal",
+      "span": 5,
+      "lifetimes": 512
+    },
+    {
+      "kind": "rehearsal",
+      "span": 6,
+      "lifetimes": 512
+    },
+    {
+      "kind": "rehearsal",
+      "span": 7,
+      "lifetimes": 512
+    }
+  ],
+  "buffer_outcomes_shuffled": false,
+  "audit": {
+    "accuracy": 0.89990234375,
+    "forward_accuracy": 0.87841796875,
+    "reverse_accuracy": 0.92138671875,
+    "accuracy_by_output": [
+      1.0,
+      0.96484375,
+      0.904296875,
+      0.8359375,
+      0.77734375,
+      0.818359375,
+      0.916015625,
+      0.982421875
+    ],
+    "reverse_operation_accuracy": 0.904541015625,
+    "reverse_operation_prediction_flip_rate_nonpalindrome": 0.4763020873069763,
+    "reverse_sequence_accuracy": 0.903564453125,
+    "reverse_sequence_prediction_flip_rate_nonpalindrome": 0.48750001192092896,
+    "blank_sequence_accuracy": 0.5048828125,
+    "blank_operation_cue_accuracy": 0.626220703125,
+    "workspace_disabled_accuracy": 0.6171875,
+    "active_state_reset_accuracy": 0.526123046875,
+    "all_memory_reset_accuracy": 0.498046875,
+    "zero_distractor_accuracy": 0.78955078125,
+    "heldout_position_accuracy": 0.919677734375,
+    "position_accuracy_by_blend": {
+      "0.25": 0.92919921875,
+      "0.5": 0.9345703125,
+      "0.75": 0.9345703125,
+      "1.0": 0.919677734375
+    }
+  }
+}

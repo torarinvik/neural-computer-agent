@@ -374,6 +374,14 @@ not make the workspace store distinct cell content. The next architecture must
 first learn addressable RAM locations; only then can usage-conditioned
 plasticity be meaningfully tested.
 
+A scale sweep found a useful operating point: address strength 1.0 created a
+0.102 mean content range and 0.0067 usage range across slots while preserving
+the parent at 89.8% on span eight. A fresh usage-aware critic from that parent
+reached 88.3%, but still lost 1.7--13.9 points on old spans. Protected replay
+preserved every old score exactly, but also preserved the parent’s 75.9% span
+nine score: the gate shut down completely. Addressability exposes the
+stability--plasticity tradeoff cleanly; it does not solve it.
+
 ## Next frontier
 
 The next highest-ROI experiment is a tiny addressable-RAM adapter: add generic
@@ -479,6 +487,13 @@ controller width or add modalities until this addressability gate passes.
 - `span9_fixed_address_usage_critic_fresh_4096_seed31951.json` and
   `span9_trained_address_usage_critic_fresh_4096_seed31961.json`: fixed versus
   trained generic-address controls and their retention/usage measurements.
+- `workspace_address_strength_sweep_seed32011.json`,
+  `span8_address_scale1_buffer_collection_seed32041.json`,
+  `span9_address_scale1_usage_critic_fresh_4096_seed32031.json`,
+  `span9_address_scale1_usage_critic_protected_4096_seed32051.json`,
+  `span9_address_scale1_usage_critic_retention_seed32031.json`, and
+  `span9_address_scale1_usage_critic_protected_retention_seed32051.json`:
+  address-strength and addressed-RAM protected-plasticity audits.
 - `span9_workspace_routing_diagnostic_seed31631.json`: disposable probe
   results separating old/new routing information from correct-action decoding.
 

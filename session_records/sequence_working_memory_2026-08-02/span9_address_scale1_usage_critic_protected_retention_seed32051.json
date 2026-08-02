@@ -1,0 +1,18 @@
+{
+  "schema": "span9-address-scale1-protected-retention-audit-v1",
+  "parent": "temporary addressed scale-1 variant of unified_sequence_working_memory_span8_reward_buffer_8192_width256_rehearsal_seed30981.pt",
+  "child": "artifacts/checkpoints/span9_address_scale1_usage_critic_protected_4096_seed32051.pt",
+  "count": 512,
+  "paired_accuracy": {
+    "2": {"parent": 0.994140625, "child": 0.994140625, "margin": 0.0},
+    "3": {"parent": 0.9973958134651184, "child": 0.9973958134651184, "margin": 0.0},
+    "4": {"parent": 0.96533203125, "child": 0.96533203125, "margin": 0.0},
+    "5": {"parent": 0.9203125238418579, "child": 0.9203125238418579, "margin": 0.0},
+    "6": {"parent": 0.8369140625, "child": 0.8369140625, "margin": 0.0},
+    "7": {"parent": 0.8052455186843872, "child": 0.8052455186843872, "margin": 0.0},
+    "8": {"parent": 0.90625, "child": 0.90625, "margin": 0.0},
+    "9": {"parent": 0.7588975429534912, "child": 0.7588975429534912, "margin": 0.0}
+  },
+  "pass": false,
+  "conclusion": "Protected replay shuts the successor slot down completely in this configuration: retention is perfect but no new skill is acquired. The plasticity gate is still an unresolved stability/learning tradeoff."
+}
