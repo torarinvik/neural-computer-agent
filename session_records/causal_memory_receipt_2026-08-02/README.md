@@ -41,6 +41,35 @@ receipt accuracy ≥95%, stable eviction ≤10%, receipt better than ordinary
 re-resolution, shuffled-receipt loss ≥6 points, retention, and the five-minute
 cap.
 
+## Fresh receipt-trained head
+
+A fresh controller copy was initialized from the seven-feature parent
+`unified_memory_persistent_physical_seed7032.pt`. The controller body and all
+inherited replacement features were frozen; only the new volatility column was
+trained from receipt-attributed verifier outcomes. The run used 32 updates,
+64 banks per update, learning rate `1.0`, and no semantic labels.
+
+| measure | result |
+|---|---:|
+| receipt update accuracy | **95.61%** |
+| stable eviction | **5.66%** |
+| ordinary re-resolution accuracy | 95.07% |
+| shuffled-receipt accuracy | 87.06% |
+| fixed-plasticity controls | 87.94% |
+| binary/four-rule retention | 100% / 100% |
+| verifier bits | 122,880 |
+| training time | 67.24 seconds |
+
+The independent post-training audit on 128 new banks reproduced the result:
+95.70% receipt accuracy, 9.38% stable eviction, 88.67% shuffled accuracy, and
+100% binary/four-rule retention. The promoted checkpoint is
+`artifacts/checkpoints/receipt_plasticity_head_lr1_32.pt` with SHA-256
+`4f9cd5ea7b7674cedeace821ae63903c532c19eafea1a9dc41250b8cef6afc25`.
+
+The sub-32-update runs are retained under `raw/`: they show the expected
+phase-transition valley and prevent us from claiming that an undersized run
+failed to learn.
+
 ## Implementation
 
 - `PersistentMemory.read_with_receipt()` returns values, confidence, and the
@@ -55,6 +84,8 @@ cap.
   `experiments/unified_cognitive_controller/probe_causal_memory_receipt.py`.
 - The learned-controller integration audit is
   `experiments/unified_cognitive_controller/audit_receipt_volatility_controller.py`.
+- The fresh receipt-trained head is produced by
+  `experiments/unified_cognitive_controller/train_receipt_plasticity_head.py`.
 
 No semantic task IDs, correct actions, or row labels enter the learner-facing
 interface. The receipt is generic provenance metadata, analogous to a CPU
@@ -73,8 +104,7 @@ the phase-transition budget matters.
 
 ## Next experiment
 
-Train a fresh small volatility/plasticity head directly on
-receipt-attributed outcomes with unequal admission strengths. Keep the
-controller frozen, compare against the promoted head and an oracle, and use
-the same retention and shuffled-receipt gates. Only then consider letting the
-main controller predict the scalar online.
+Run the promoted head through the full long-term-memory transaction path:
+candidate update → old/new verifier evaluation → commit or rollback. The next
+claim is not merely that the scalar can be predicted, but that it can control
+safe memory updates without allowing a failed update to persist.
