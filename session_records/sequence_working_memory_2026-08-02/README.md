@@ -283,19 +283,50 @@ that the consolidated long-term memory stores it. The rehearsal streams here
 are newly collected diagnostic data; persistent disk-memory reuse remains an
 open experiment.
 
+## Span-nine persistence and the stability--plasticity frontier
+
+The replay bank is now serializable and reloadable. It stores only the
+controller-visible latent features, base logits, opaque attempted actions, and
+binary attempted-action outcomes, with a schema and parent provenance. A
+save/load smoke test reproduced the same adapter behavior on a second process.
+
+The first span-nine transfer used the controller's existing successor-slot
+stack, preserving the promoted span-eight adapter as a frozen parent and
+adding one zero-output slot. Fresh learning reached 86.98% at 4,096 new
+lifetimes, but span-eight fell by roughly 14 points. Adding the persisted old
+bank as a zero-outcome plasticity constraint reached 81.99% on span nine while
+keeping every span-2--7 score within the two-point retention gate and span eight
+within 1.88 points of the parent:
+
+| Arm | Span nine | Span eight | Blank | Complete reset |
+| --- | ---: | ---: | ---: | ---: |
+| fresh successor slot, 4,096 | **86.98%** | 75.78% | 50.54% | 49.63% |
+| persisted replay + protected plasticity, 4,096 | 81.99% | **88.11%** | 49.09% | 49.22% |
+
+The matched parent on that audit was 75.52% on span nine and 89.99% on span
+eight. Thus persistent replay gives a real, causal stability--plasticity
+tradeoff: it learns a novel skill substantially above the parent while
+preventing the catastrophic forgetting seen in fresh-only training. It is not
+yet a mastery promotion because the new skill is below the 90% bar. Naive full
+replay, residual penalties, staged gate refinement, nonlinear gates, and
+source-provenance gate supervision were all retained as bounded controls; none
+improved the Pareto frontier.
+
+This localizes the next architectural bottleneck: the controller can represent
+old/new information, but its current latent does not provide a sufficiently
+clean task-conditioned routing boundary. The next experiment should enrich the
+learned memory key or train a novelty-aware gate over persistent memory—not
+increase the controller width blindly.
+
 ## Next frontier
 
-The next highest-ROI experiment is to persist the random-action buffers to
-disk and replay the *same* old transitions across several new-task adapters.
-That cleanly separates genuine long-term experience reuse from the current
-fresh-data rehearsal control. Require: (1) span-eight held-out accuracy at or
-above 90%, (2) every span-2--7 retention score no lower than the inherited
-parent beyond the pre-registered two-point gate, (3) shuffled outcomes at
-chance, and (4) blank/reset and reverse-operation controls. If it passes,
-integrate the adapter output through the write--consolidate--recall path and
-test whether the same persistent buffer reduces the verifier bits needed for
-span nine. Do not add learned variable-capacity memory, registers, or new
-modalities until that causal persistent-reuse test is complete.
+The next highest-ROI experiment is a novelty-aware successor gate over the
+persisted memory key. It must retain the protected span-nine result while
+raising the new skill to the 90% mastery bar, with shuffled outcomes at chance
+and blank/reset/reversal controls intact. Only then should the slot be routed
+through write--consolidate--recall and tested on span ten. Do not add learned
+variable-capacity memory, registers, or new modalities until this routing
+boundary is solved.
 
 ## Artifacts
 
@@ -354,6 +385,16 @@ modalities until that causal persistent-reuse test is complete.
 - `span8_reward_buffer_parent_comparison_seed30981.json` and
   `span8_reward_buffer_parent_comparison_seed30983.json`: paired retention
   comparisons against the inherited parent.
+- `span8_adapter_buffer_collection_seed31331.json` and the ignored
+  `artifacts/replay_buffers/span8_adapter_old_experience_seed31331.pt`:
+  persisted old-experience bank.
+- `span9_skill_slot_fresh_4096_seed31371.json`,
+  `span9_fresh_retention_seed31371.json`,
+  `span9_skill_slot_persistent_plasticity_4096_seed31371.json`, and
+  `span9_persistent_retention_seed31371.json`: matched fresh versus
+  protected-persistence frontier.
+- `span9_*gate*`, `span9_*sourcegate*`, `span9_*logitprotected*`, and
+  `span9_*intention*` reports: bounded routing and plasticity controls.
 
 The ignored local checkpoint hashes are:
 

@@ -15,18 +15,151 @@ import json
 from pathlib import Path
 
 import torch
+import torch.nn.functional as F
 
 from .environment import ACTIONS, NULL_ACTION
 from .model import UnifiedCognitiveController
-from .train import attempted_success_loss, seed_everything
+from .train import seed_everything
 from .train_sequence_working_memory import (
     evaluate_sequence_memory, generate_sequence_memory_batch)
+
+
+BUFFER_SCHEMA = "latent-action-outcome-buffer-v1"
+
+
+def _validate_buffer_tensors(
+        tensors: tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor],
+        *, device: torch.device,
+        ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Validate and move a disk buffer without accepting hidden labels."""
+    features, base_logits, actions, outcomes = tensors
+    if features.ndim != 2 or base_logits.ndim != 2:
+        raise ValueError("buffer features and logits must be rank-two")
+    if actions.ndim != 1 or outcomes.ndim != 1:
+        raise ValueError("buffer actions and outcomes must be rank-one")
+    count = features.shape[0]
+    if any(value.shape[0] != count for value in (
+            base_logits, actions, outcomes)):
+        raise ValueError("buffer tensors have inconsistent lengths")
+    if base_logits.shape[1] != ACTIONS:
+        raise ValueError("buffer logits have an unexpected action width")
+    if actions.dtype != torch.long:
+        raise ValueError("buffer actions must be int64")
+    if outcomes.dtype not in (torch.float16, torch.float32, torch.float64):
+        raise ValueError("buffer outcomes must be floating point")
+    if not bool(torch.isfinite(features).all()) or not bool(
+            torch.isfinite(base_logits).all()):
+        raise ValueError("buffer contains non-finite latent values")
+    if not bool(((actions >= 0) & (actions < ACTIONS)).all()):
+        raise ValueError("buffer actions are out of range")
+    if not bool(((outcomes == 0) | (outcomes == 1)).all()):
+        raise ValueError("buffer outcomes must be binary scalar rewards")
+    return tuple(value.to(device) for value in tensors)  # type: ignore[return-value]
+
+
+def _save_buffer(
+        path: Path, tensors: tuple[torch.Tensor, torch.Tensor,
+                                  torch.Tensor, torch.Tensor], *,
+        parent: Path, stream_specs: list[dict[str, int | str]],
+        ) -> None:
+    """Persist only controller-visible replay evidence on CPU."""
+    features, base_logits, actions, outcomes = tensors
+    path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save({
+        "schema": BUFFER_SCHEMA,
+        "claim_boundary": (
+            "Only latent features, opaque attempted actions, and scalar "
+            "attempt outcomes are stored; no correct unattempted action or "
+            "semantic task label is present."),
+        "parent": str(parent),
+        "stream_specs": stream_specs,
+        "features": features.detach().cpu(),
+        "base_logits": base_logits.detach().cpu(),
+        "actions": actions.detach().cpu(),
+        "outcomes": outcomes.detach().cpu(),
+    }, path)
+
+
+def _load_buffer(
+        path: Path, *, device: torch.device,
+        ) -> tuple[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor],
+                   dict[str, object]]:
+    """Load a validated buffer and reject schema/label contamination."""
+    payload = torch.load(path, map_location="cpu", weights_only=False)
+    if payload.get("schema") != BUFFER_SCHEMA:
+        raise ValueError(f"unsupported replay buffer schema in {path}")
+    required = ("features", "base_logits", "actions", "outcomes")
+    if any(key not in payload for key in required):
+        raise ValueError(f"replay buffer is missing required tensors: {path}")
+    tensors = _validate_buffer_tensors(
+        tuple(payload[key] for key in required), device=device)
+    metadata = {
+        "path": str(path),
+        "parent": payload.get("parent"),
+        "stream_specs": payload.get("stream_specs", []),
+        "transition_count": int(tensors[0].shape[0]),
+    }
+    return tensors, metadata
+
+
+def _skill_slot_logits(
+        model: UnifiedCognitiveController, features: torch.Tensor,
+        ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Compute one successor-slot residual from cached hidden/event pairs."""
+    if len(model.skill_adapters) != 1:
+        raise ValueError("this diagnostic expects exactly one new skill slot")
+    base_width = model.width * 2
+    if features.shape[1] not in (
+            base_width, base_width + model.intention_width):
+        raise ValueError("cached feature width does not match skill slot")
+    slot_features = features[:, :base_width]
+    reads = []
+    if model.skill_adapter_legacy_read_from is not None:
+        if model.relation_adapter is not None:
+            reads.append(model.relation_adapter[1](
+                model.relation_adapter[0](slot_features)))
+        if model.action_adapter is not None:
+            reads.append(model.action_adapter[1](
+                model.action_adapter[0](slot_features)))
+    if (model.skill_adapter_reads_intention_from is not None
+            and features.shape[1] == base_width + model.intention_width):
+        reads.append(features[:, base_width:])
+    if reads:
+        projected = model.skill_adapter_read_projections[0](
+            torch.cat(reads, dim=-1))
+        own_features = torch.cat([slot_features, projected], dim=-1)
+    else:
+        own_features = slot_features
+    score = model.skill_adapter_gates[0](own_features)
+    opening = (
+        F.leaky_relu(score, model.skill_adapter_gate_leak)
+        if model.skill_adapter_gate_mode == "relu"
+        else torch.sigmoid(score))
+    hidden_read = model.skill_adapters[0][1](
+        model.skill_adapters[0][0](own_features))
+    residual = model.skill_adapters[0][2](hidden_read) * opening
+    return model.actuator(residual), residual, opening, score
+
+
+def _weighted_attempted_success_loss(
+        logits: torch.Tensor, attempted: torch.Tensor,
+        outcomes: torch.Tensor, replay_mask: torch.Tensor,
+        replay_outcome_weight: float) -> torch.Tensor:
+    """Weight old replay outcomes separately from fresh-task outcomes."""
+    selected = logits.gather(1, attempted.unsqueeze(1)).squeeze(1)
+    per_example = F.binary_cross_entropy_with_logits(
+        selected, outcomes, reduction="none")
+    weights = torch.where(
+        replay_mask,
+        torch.full_like(per_example, replay_outcome_weight),
+        torch.ones_like(per_example))
+    return (per_example * weights).sum() / weights.sum().clamp_min(1.0)
 
 
 def _collect_buffer(
         model: UnifiedCognitiveController, *, count: int, span: int,
         distractors: int, seed: int, device: torch.device,
-        position_augmentation: bool,
+        position_augmentation: bool, include_intention: bool = False,
         ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """Collect latent transitions using uniformly random opaque actions."""
     batch = generate_sequence_memory_batch(
@@ -62,7 +195,10 @@ def _collect_buffer(
             action = torch.randint(ACTIONS, (count,), device=device)
             outcome = (
                 action == batch.correct_actions[:, query]).to(torch.float32)
-            features.append(torch.cat([hidden_before, event], dim=-1))
+            feature_parts = [hidden_before, event]
+            if include_intention:
+                feature_parts.append(output.intention.detach())
+            features.append(torch.cat(feature_parts, dim=-1))
             base_logits.append(output.logits.detach())
             actions.append(action)
             outcomes.append(outcome)
@@ -78,6 +214,45 @@ def main() -> None:
     parser.add_argument("--parent", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--checkpoint-out", type=Path, required=True)
+    parser.add_argument(
+        "--buffer-in", type=Path,
+        help="load this exact buffer as the complete training set")
+    parser.add_argument(
+        "--replay-buffer-in", type=Path,
+        help="append this persisted buffer to freshly collected streams")
+    parser.add_argument(
+        "--buffer-out", type=Path,
+        help="save the collected training streams before outcome shuffling")
+    parser.add_argument(
+        "--replay-max-transitions", type=int, default=0,
+        help=(
+            "deterministically subsample a persisted replay buffer before "
+            "mixing it with the fresh target stream; zero keeps all"))
+    parser.add_argument(
+        "--replay-outcome-weight", type=float, default=1.0,
+        help="weight old replay outcomes relative to fresh outcomes")
+    parser.add_argument(
+        "--replay-residual-penalty", type=float, default=0.0,
+        help="penalize new residuals on persisted replay transitions")
+    parser.add_argument(
+        "--replay-gate-penalty", type=float, default=0.0,
+        help="penalize successor-slot opening on persisted transitions")
+    parser.add_argument(
+        "--replay-logit-penalty", type=float, default=0.0,
+        help="penalize action-logit changes on persisted transitions")
+    parser.add_argument(
+        "--replay-gate-source-weight", type=float, default=0.0,
+        help=(
+            "train the successor gate to distinguish fresh versus persisted "
+            "provenance; this is diagnostic metadata, not a task label"))
+    parser.add_argument(
+        "--replay-refinement-epochs", type=int, default=0,
+        help="after fresh learning, refine only on persisted replay data")
+    parser.add_argument(
+        "--replay-refine-gate-only", action="store_true",
+        help=(
+            "during replay refinement, freeze the new residual and train "
+            "its gate"))
     parser.add_argument("--seed", type=int, default=30941)
     parser.add_argument("--train-lifetimes", type=int, default=2048)
     parser.add_argument("--rehearse-spans", default="")
@@ -88,6 +263,26 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=512)
     parser.add_argument("--learning-rate", type=float, default=3e-3)
     parser.add_argument("--action-adapter-width", type=int, default=64)
+    parser.add_argument(
+        "--skill-adapter-width", type=int, default=0,
+        help=(
+            "train one new successor skill slot while preserving the "
+            "parent action adapter"))
+    parser.add_argument(
+        "--skill-adapter-gate-mode", choices=("sigmoid", "relu"),
+        default="sigmoid")
+    parser.add_argument("--skill-adapter-gate-hidden", type=int, default=0)
+    parser.add_argument(
+        "--skill-adapter-reads-intention", action="store_true",
+        help="give the successor slot the parent's latent intention summary")
+    parser.add_argument(
+        "--residual-action-adapter", action="store_true",
+        help=(
+            "inherit the parent's action adapter in the frozen base and "
+            "train a new zero-output adapter as an additive residual"))
+    parser.add_argument(
+        "--residual-penalty", type=float, default=0.0,
+        help="L2 penalty on a learned action residual")
     parser.add_argument("--test-episodes", type=int, default=512)
     parser.add_argument("--shuffle-outcomes", action="store_true")
     parser.add_argument("--position-augmentation", action="store_true")
@@ -104,8 +299,31 @@ def main() -> None:
             or args.epochs < 1
             or args.batch_size < 1
             or args.action_adapter_width < 1
+            or args.skill_adapter_width < 0
+            or args.skill_adapter_gate_hidden < 0
             or args.test_episodes < 2):
         raise ValueError("invalid replay-buffer dimensions")
+    if args.replay_max_transitions < 0:
+        raise ValueError("replay-max-transitions must not be negative")
+    if args.replay_refinement_epochs < 0:
+        raise ValueError("replay-refinement-epochs must not be negative")
+    if args.residual_penalty < 0:
+        raise ValueError("residual-penalty must not be negative")
+    if (args.replay_outcome_weight < 0
+            or args.replay_residual_penalty < 0
+            or args.replay_gate_penalty < 0
+            or args.replay_logit_penalty < 0
+            or args.replay_gate_source_weight < 0):
+        raise ValueError("replay weights and penalties must not be negative")
+    if args.skill_adapter_width and args.residual_action_adapter:
+        raise ValueError(
+            "skill-adapter-width and residual-action-adapter are exclusive")
+    if args.skill_adapter_reads_intention and not args.skill_adapter_width:
+        raise ValueError("intention reads require a skill slot")
+    if args.replay_refine_gate_only and not args.skill_adapter_width:
+        raise ValueError("gate-only replay refinement requires a skill slot")
+    if args.replay_refinement_epochs and args.replay_buffer_in is None:
+        raise ValueError("replay refinement requires --replay-buffer-in")
     seed_everything(args.seed)
     device = torch.device(args.device)
     payload = torch.load(args.parent, map_location=device, weights_only=False)
@@ -115,67 +333,201 @@ def main() -> None:
     base.eval()
     for parameter in base.parameters():
         parameter.requires_grad_(False)
-    features, base_logits, actions, outcomes = _collect_buffer(
-        base, count=args.train_lifetimes, span=args.span,
-        distractors=args.distractors, seed=args.seed, device=device,
-        position_augmentation=args.position_augmentation)
     rehearsal_spans = tuple(
         int(value) for value in args.rehearse_spans.split(",") if value)
     if any(value < 1 for value in rehearsal_spans):
         raise ValueError("rehearsal spans must be positive")
-    replay_buffers = []
-    for index, rehearsal_span in enumerate(rehearsal_spans):
-        replay_buffers.append(_collect_buffer(
-            base, count=args.rehearsal_lifetimes, span=rehearsal_span,
-            distractors=args.distractors,
-            seed=args.seed + (index + 1) * 1_000_003,
-            device=device, position_augmentation=args.position_augmentation))
-    if replay_buffers:
-        features = torch.cat([features] + [value[0] for value in replay_buffers])
-        base_logits = torch.cat(
-            [base_logits] + [value[1] for value in replay_buffers])
-        actions = torch.cat([actions] + [value[2] for value in replay_buffers])
-        outcomes = torch.cat(
-            [outcomes] + [value[3] for value in replay_buffers])
+    stream_specs: list[dict[str, int | str]] = []
+    loaded_buffer_metadata: list[dict[str, object]] = []
+    if args.buffer_in is not None:
+        (features, base_logits, actions, outcomes), metadata = _load_buffer(
+            args.buffer_in, device=device)
+        loaded_buffer_metadata.append(metadata)
+        replay_mask = torch.ones(
+            features.shape[0], dtype=torch.bool, device=device)
+    else:
+        target_buffer = _collect_buffer(
+            base, count=args.train_lifetimes, span=args.span,
+            distractors=args.distractors, seed=args.seed, device=device,
+            position_augmentation=args.position_augmentation,
+            include_intention=args.skill_adapter_reads_intention)
+        buffer_parts = [target_buffer]
+        stream_specs.append({
+            "kind": "target", "span": args.span,
+            "lifetimes": args.train_lifetimes})
+        for index, rehearsal_span in enumerate(rehearsal_spans):
+            buffer_parts.append(_collect_buffer(
+                base, count=args.rehearsal_lifetimes, span=rehearsal_span,
+                distractors=args.distractors,
+                seed=args.seed + (index + 1) * 1_000_003,
+                device=device,
+                position_augmentation=args.position_augmentation,
+                include_intention=args.skill_adapter_reads_intention))
+            stream_specs.append({
+                "kind": "rehearsal", "span": rehearsal_span,
+                "lifetimes": args.rehearsal_lifetimes})
+        features = torch.cat([value[0] for value in buffer_parts])
+        base_logits = torch.cat([value[1] for value in buffer_parts])
+        actions = torch.cat([value[2] for value in buffer_parts])
+        outcomes = torch.cat([value[3] for value in buffer_parts])
+        replay_mask = torch.zeros(
+            features.shape[0], dtype=torch.bool, device=device)
+        if args.buffer_out is not None:
+            _save_buffer(
+                args.buffer_out,
+                (features, base_logits, actions, outcomes),
+                parent=args.parent, stream_specs=stream_specs)
+    if args.replay_buffer_in is not None:
+        persisted, metadata = _load_buffer(
+            args.replay_buffer_in, device=device)
+        loaded_buffer_metadata.append(metadata)
+        if args.replay_max_transitions and (
+                args.replay_max_transitions < persisted[0].shape[0]):
+            generator = torch.Generator(device="cpu").manual_seed(
+                args.seed + 3_130_001)
+            indices = torch.randperm(
+                persisted[0].shape[0], generator=generator)[
+                    :args.replay_max_transitions].to(device)
+            persisted = tuple(value[indices] for value in persisted)
+        features = torch.cat([features, persisted[0]])
+        base_logits = torch.cat([base_logits, persisted[1]])
+        actions = torch.cat([actions, persisted[2]])
+        outcomes = torch.cat([outcomes, persisted[3]])
+        replay_mask = torch.cat([
+            replay_mask,
+            torch.ones(persisted[0].shape[0], dtype=torch.bool, device=device)])
     rehearsal_lifetime_count = (
-        args.rehearsal_lifetimes * len(rehearsal_spans))
+        args.rehearsal_lifetimes * len(rehearsal_spans)
+        if args.buffer_in is None else 0)
     if args.shuffle_outcomes:
         generator = torch.Generator(device="cpu").manual_seed(args.seed + 1)
         permutation = torch.randperm(
             outcomes.shape[0], generator=generator).to(device)
         outcomes = outcomes[permutation]
-    configuration = dict(
-        base_configuration,
-        action_adapter_width=args.action_adapter_width,
-        action_adapter_gated=False)
+    if args.skill_adapter_width:
+        if base_configuration.get("skill_adapter_widths", ()):
+            raise ValueError(
+                "this diagnostic expects a parent without skill slots")
+        configuration = dict(
+            base_configuration,
+            skill_adapter_widths=(args.skill_adapter_width,),
+            skill_adapter_gate_mode=args.skill_adapter_gate_mode,
+            skill_adapter_gate_hidden=args.skill_adapter_gate_hidden,
+            skill_adapter_legacy_read_from=0,
+            skill_adapter_reads_intention_from=(
+                0 if args.skill_adapter_reads_intention else None))
+    else:
+        configuration = dict(
+            base_configuration,
+            action_adapter_width=args.action_adapter_width,
+            action_adapter_gated=False)
     student = UnifiedCognitiveController(**configuration).to(device)
     student.load_state_dict(payload["state_dict"], strict=False)
-    assert student.action_adapter is not None
+    if args.skill_adapter_width:
+        assert len(student.skill_adapters) == 1
+    else:
+        assert student.action_adapter is not None
+    if args.residual_action_adapter:
+        if not base_configuration.get("action_adapter_width", 0):
+            raise ValueError(
+                "residual-action-adapter requires a parent action adapter")
+        with torch.no_grad():
+            torch.nn.init.zeros_(student.action_adapter[-1].weight)
+            torch.nn.init.zeros_(student.action_adapter[-1].bias)
     for parameter in student.parameters():
         parameter.requires_grad_(False)
-    for parameter in student.action_adapter.parameters():
-        parameter.requires_grad_(True)
-    optimizer = torch.optim.AdamW(
-        student.action_adapter.parameters(), lr=args.learning_rate,
-        weight_decay=1e-5)
-    for _ in range(args.epochs):
-        permutation = torch.randperm(features.shape[0], device=device)
-        for start in range(0, features.shape[0], args.batch_size):
-            indices = permutation[start:start + args.batch_size]
-            logits = base_logits[indices] + student.action_adapter(
-                features[indices])
-            loss = attempted_success_loss(
-                logits, actions[indices], outcomes[indices])
-            optimizer.zero_grad(set_to_none=True)
-            loss.backward()
-            optimizer.step()
+    if args.skill_adapter_width:
+        for module in (
+                student.skill_adapters[0], student.skill_adapter_gates[0],
+                student.skill_adapter_read_projections[0]):
+            for parameter in module.parameters():
+                parameter.requires_grad_(True)
+    else:
+        for parameter in student.action_adapter.parameters():
+            parameter.requires_grad_(True)
+    def train_epochs(
+            epochs: int, sample_indices: torch.Tensor, *,
+            outcome_weight: float, residual_penalty: float,
+            gate_penalty: float, logit_penalty: float) -> None:
+        trainable_parameters = [
+            parameter for parameter in student.parameters()
+            if parameter.requires_grad]
+        optimizer = torch.optim.AdamW(
+            trainable_parameters, lr=args.learning_rate,
+            weight_decay=1e-5)
+        for _ in range(epochs):
+            permutation = sample_indices[torch.randperm(
+                sample_indices.shape[0], device=device)]
+            for start in range(0, sample_indices.shape[0], args.batch_size):
+                indices = permutation[start:start + args.batch_size]
+                if args.skill_adapter_width:
+                    logits_residual, residual, opening, gate_score = _skill_slot_logits(
+                        student, features[indices])
+                else:
+                    residual = student.action_adapter(features[indices])
+                    logits_residual = residual
+                    opening = None
+                    gate_score = None
+                logits = base_logits[indices] + logits_residual
+                batch_replay_mask = replay_mask[indices]
+                loss = _weighted_attempted_success_loss(
+                    logits, actions[indices], outcomes[indices],
+                    batch_replay_mask, outcome_weight)
+                if residual_penalty and bool(batch_replay_mask.any()):
+                    loss = loss + residual_penalty * residual[
+                        batch_replay_mask].square().mean()
+                if (gate_penalty and opening is not None
+                        and bool(batch_replay_mask.any())):
+                    loss = loss + gate_penalty * opening[
+                        batch_replay_mask].square().mean()
+                if logit_penalty and bool(batch_replay_mask.any()):
+                    loss = loss + logit_penalty * logits_residual[
+                        batch_replay_mask].square().mean()
+                if (args.replay_gate_source_weight and gate_score is not None):
+                    source_target = (~batch_replay_mask).to(gate_score.dtype)
+                    loss = loss + args.replay_gate_source_weight * F.binary_cross_entropy_with_logits(
+                        gate_score.squeeze(1), source_target)
+                if args.residual_penalty:
+                    loss = loss + args.residual_penalty * residual.square().mean()
+                optimizer.zero_grad(set_to_none=True)
+                loss.backward()
+                optimizer.step()
+
+    all_indices = torch.arange(features.shape[0], device=device)
+    fresh_indices = all_indices[~replay_mask]
+    replay_indices = all_indices[replay_mask]
+    if args.replay_refinement_epochs:
+        if not bool(fresh_indices.numel()) or not bool(replay_indices.numel()):
+            raise ValueError("staged replay needs fresh and persisted samples")
+        train_epochs(
+            args.epochs, fresh_indices,
+            outcome_weight=1.0, residual_penalty=0.0, gate_penalty=0.0,
+            logit_penalty=0.0)
+        if args.replay_refine_gate_only:
+            for parameter in student.parameters():
+                parameter.requires_grad_(False)
+            for parameter in student.skill_adapter_gates[0].parameters():
+                parameter.requires_grad_(True)
+        train_epochs(
+            args.replay_refinement_epochs, replay_indices,
+            outcome_weight=0.0,
+            residual_penalty=args.replay_residual_penalty,
+            gate_penalty=args.replay_gate_penalty,
+            logit_penalty=args.replay_logit_penalty)
+    else:
+        train_epochs(
+            args.epochs, all_indices,
+            outcome_weight=args.replay_outcome_weight,
+            residual_penalty=args.replay_residual_penalty,
+            gate_penalty=args.replay_gate_penalty,
+            logit_penalty=args.replay_logit_penalty)
     student.eval()
     audit = evaluate_sequence_memory(
         student, count=args.test_episodes, span=args.span,
         distractors=args.distractors, seed=args.seed + 90_000,
         operation="mixed", device=device)
     report = {
-        "schema": "span8-reward-buffer-readout-v1",
+        "schema": "latent-replay-adapter-v2",
         "claim_boundary": (
             "The learner sees only RGB streams, opaque attempted actions, "
             "and scalar attempted-action outcomes. No correct unattempted "
@@ -191,6 +543,25 @@ def main() -> None:
         "query_transition_count": int(features.shape[0]),
         "rehearse_spans": rehearsal_spans,
         "rehearsal_lifetimes_per_stream": args.rehearsal_lifetimes,
+        "buffer_in": str(args.buffer_in) if args.buffer_in else None,
+        "replay_buffer_in": (
+            str(args.replay_buffer_in) if args.replay_buffer_in else None),
+        "buffer_out": str(args.buffer_out) if args.buffer_out else None,
+        "replay_max_transitions": args.replay_max_transitions,
+        "replay_outcome_weight": args.replay_outcome_weight,
+        "replay_residual_penalty": args.replay_residual_penalty,
+        "replay_gate_penalty": args.replay_gate_penalty,
+        "replay_logit_penalty": args.replay_logit_penalty,
+        "replay_gate_source_weight": args.replay_gate_source_weight,
+        "replay_refinement_epochs": args.replay_refinement_epochs,
+        "replay_refine_gate_only": args.replay_refine_gate_only,
+        "residual_action_adapter": args.residual_action_adapter,
+        "residual_penalty": args.residual_penalty,
+        "skill_adapter_width": args.skill_adapter_width,
+        "skill_adapter_gate_mode": args.skill_adapter_gate_mode,
+        "skill_adapter_reads_intention": args.skill_adapter_reads_intention,
+        "loaded_buffer_metadata": loaded_buffer_metadata,
+        "collected_stream_specs": stream_specs,
         "buffer_outcomes_shuffled": args.shuffle_outcomes,
         "audit": audit,
     }

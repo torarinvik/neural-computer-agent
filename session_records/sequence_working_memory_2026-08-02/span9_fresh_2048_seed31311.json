@@ -1,0 +1,78 @@
+{
+  "schema": "span8-reward-buffer-readout-v1",
+  "claim_boundary": "The learner sees only RGB streams, opaque attempted actions, and scalar attempted-action outcomes. No correct unattempted action or semantic task label is stored in the buffer.",
+  "parent": "artifacts/checkpoints/unified_sequence_working_memory_span8_replica_inherited_seed30567.pt",
+  "configuration": {
+    "parent": "artifacts/checkpoints/unified_sequence_working_memory_span8_replica_inherited_seed30567.pt",
+    "report": "session_records/sequence_working_memory_2026-08-02/span9_fresh_2048_seed31311.json",
+    "checkpoint_out": "artifacts/checkpoints/span9_fresh_2048_seed31311.pt",
+    "buffer_in": null,
+    "replay_buffer_in": null,
+    "buffer_out": null,
+    "seed": 31311,
+    "train_lifetimes": 2048,
+    "rehearse_spans": "",
+    "rehearsal_lifetimes": 512,
+    "span": 9,
+    "distractors": 2,
+    "epochs": 128,
+    "batch_size": 512,
+    "learning_rate": 0.003,
+    "action_adapter_width": 256,
+    "test_episodes": 512,
+    "shuffle_outcomes": false,
+    "position_augmentation": true,
+    "device": "mps"
+  },
+  "unique_train_lifetimes": 2048,
+  "unique_rehearsal_lifetimes": 0,
+  "total_unique_lifetimes": 2048,
+  "query_transition_count": 18432,
+  "rehearse_spans": [],
+  "rehearsal_lifetimes_per_stream": 512,
+  "buffer_in": null,
+  "replay_buffer_in": null,
+  "buffer_out": null,
+  "loaded_buffer_metadata": [],
+  "collected_stream_specs": [
+    {
+      "kind": "target",
+      "span": 9,
+      "lifetimes": 2048
+    }
+  ],
+  "buffer_outcomes_shuffled": false,
+  "audit": {
+    "accuracy": 0.8127170205116272,
+    "forward_accuracy": 0.8020833134651184,
+    "reverse_accuracy": 0.8233506679534912,
+    "accuracy_by_output": [
+      0.9921875,
+      0.943359375,
+      0.83203125,
+      0.69140625,
+      0.6484375,
+      0.724609375,
+      0.701171875,
+      0.818359375,
+      0.962890625
+    ],
+    "reverse_operation_accuracy": 0.8025173544883728,
+    "reverse_operation_prediction_flip_rate_nonpalindrome": 0.4418981373310089,
+    "reverse_sequence_accuracy": 0.8098958134651184,
+    "reverse_sequence_prediction_flip_rate_nonpalindrome": 0.4532407522201538,
+    "blank_sequence_accuracy": 0.5071614384651184,
+    "blank_operation_cue_accuracy": 0.619140625,
+    "workspace_disabled_accuracy": 0.5703125,
+    "active_state_reset_accuracy": 0.5657551884651184,
+    "all_memory_reset_accuracy": 0.4928385317325592,
+    "zero_distractor_accuracy": 0.7456597089767456,
+    "heldout_position_accuracy": 0.8174912929534912,
+    "position_accuracy_by_blend": {
+      "0.25": 0.8253037929534912,
+      "0.5": 0.8237847089767456,
+      "0.75": 0.8237847089767456,
+      "1.0": 0.8174912929534912
+    }
+  }
+}
