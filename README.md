@@ -1440,20 +1440,31 @@ successful bridge: redirect only new gradients that conflict with verified
 rehearsal gradients. See
 `session_records/procedural_shape_next_operation_2026-07-30/README.md`.
 
-## Current frontier: gated continuation for protected 4-back learning
+## Current frontier: replicated gated continuation for protected 4-back learning
 
-The Brain Workshop ladder now has a verified ``learn → check → continue``
-loop. Starting from the inherited 3-back parent, a 4-back run with private
-1/2/3-back rehearsal reached **80.42%** eligible accuracy on seed47408 and
-**66.99%** on seed47409 at 256 updates. Reset and time-shuffle controls stayed
-near chance. The weaker seed was continued for only 64 additional updates
-after it crossed the acquisition gate; it reached **77.00%** at 320 updates.
+The Brain Workshop ladder now has a replicated, verifier-audited
+``learn → check → continue`` loop. Starting from the inherited 3-back parent,
+three 4-back runs with private 1/2/3-back rehearsal reached **80.42%**,
+**66.99%**, and **81.52%** eligible accuracy on seeds 47408, 47409, and 47405
+at 256 updates (76.31% mean). Reset and time-shuffle controls stayed near
+chance. The weaker seed was continued for only 64 additional updates after it
+crossed the acquisition gate; it reached **77.00%** at 320 updates, for a
+79.65% mean across the three gated final checkpoints.
 
-Frozen-checkpoint audits retained 1-back at **94.29%** (seed47408) and
-**94.61%** (seed47409), both within the two-point retention gate. The new
-``--rehearsal-weights`` option permits verifier-side per-rung weighting, but
-the evidence does not support fixed weights as universally superior to the
-uniform baseline. The promoted idea is the gated continuation decision,
-driven by held-out progress and retention—not unconditional extra training.
+Frozen-checkpoint audits retained 1-back at **94.29%**, **94.61%**, and
+**94.56%** (parent baselines 93.96%, 94.32%, and 94.24%), all within the
+two-point retention gate. Each 256-update stage consumed 65,536 target-stream
+verifier bits; the continued seed consumed 81,920 bits total before reaching
+77.00%. The new ``--rehearsal-weights`` option permits verifier-side per-rung
+weighting, but the evidence does not support fixed weights as universally
+superior to the uniform baseline. The promoted idea is the gated continuation
+decision, driven by held-out progress and retention—not unconditional extra
+training. The reusable audit is
+`experiments/unified_cognitive_controller/audit_nback_continuation.py`.
 The complete reports and negative-control provenance are in
 `session_records/brainworkshop_three_stream_2026-08-02/README.md`.
+
+This is a protected-plasticity/sample-efficiency breakthrough, not yet a
+general learned stopping policy: the continuation rule is still a small
+verifier-side controller, and the next frontier is calibrating that decision
+from learning progress while preserving the same retention and causal gates.
