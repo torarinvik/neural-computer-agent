@@ -84,6 +84,10 @@ from .probe_online_disk_habit import run_probe as run_online_disk_habit_probe
 from .probe_online_disk_task_shift import (
     run_probe as run_online_disk_task_shift_probe,
 )
+from .train_online_task_shift_gate import (
+    _gate_actions as task_shift_gate_actions,
+    _task_shift_batch,
+)
 from .compare_persistent_fresh_efficiency import _arm_metrics
 from .strategy_memory import (
     LatentStrategyMemory,
@@ -980,6 +984,35 @@ def test_online_disk_task_shift_prefers_failed_volatile_decoy() -> None:
         device=torch.device("cpu"), habit_rounds=2)
     assert report["gates"]["accepted"] is True
     assert report["policies"]["high_volatility"]["new_accuracy"] >= 0.85
+
+
+def test_reward_gate_starts_zero_and_uses_physical_volatility_feature() -> None:
+    from .train_controller_memory_volatility import expand_with_volatility
+
+    payload = torch.load(
+        Path("artifacts/checkpoints/unified_memory_persistent_physical_seed7032.pt"),
+        map_location="cpu", weights_only=False)
+    model, _ = expand_with_volatility(payload, device=torch.device("cpu"))
+    model.eval()
+    inherited_columns = model.memory_replacement_extra_gate.weight[
+        :, :2].detach().clone()
+    assert torch.count_nonzero(
+        model.memory_replacement_extra_gate.weight[:, 2]) == 0
+    data = _task_shift_batch(
+        model, banks=2, capacity=2, seed=7351,
+        device=torch.device("cpu"), habit_rounds=2)
+    assert data["options"].shape == (2, 3, 8)
+    assert torch.all(data["options"][:, 1:, 7] >= 0.0)
+    with torch.no_grad():
+        reset = task_shift_gate_actions(model, data["options"], 0.0)
+        learned_direction = task_shift_gate_actions(
+            model, data["options"], 8.0)
+    assert reset.shape == learned_direction.shape == (2,)
+    with torch.no_grad():
+        assert model.memory_replacement_extra_gate.weight[0, 2] == 8.0
+        assert torch.equal(
+            model.memory_replacement_extra_gate.weight[:, :2],
+            inherited_columns)
 
 
 def test_disk_latent_memory_compacts_selected_history_exactly(

@@ -488,24 +488,57 @@ volatility-to-replacement mapping from reward, and the candidate query is an
 adjacent same-event acquisition to avoid conflating this memory test with the
 harder cross-context key-generalization problem.
 
+### Reward-trained row-local gate
+
+The frozen control was followed by the smallest trainable version: the parent
+controller was expanded with one zero-initialized generic residual coefficient
+for row volatility. The controller body, memory writes, receipt attribution,
+and disk stores stayed frozen. Each update compared ``alpha + 8`` against
+``alpha - 8`` on the physical old-plus-new verifier score, then moved the one
+coefficient by two in the winning direction. No task, row, or semantic labels
+were supplied to training. The larger finite-difference probe was necessary:
+the earlier ±1 probe did not cross an action boundary, so both arms selected
+the same rows and correctly produced no learning signal.
+
+Four independent RTX 5090 runs (seeds 18401--18404, eight updates, 8 training
+banks and 32 held-out banks) all passed the gates in under five minutes. The
+learned coefficient reached +16 in every normal run. Adjacent task-shift
+results were:
+
+| Metric | Range across four normal runs |
+| --- | ---: |
+| new-row accuracy | 90.6--100.0% |
+| old-row accuracy | 86.7--90.6% |
+| learned composite | 87.5--90.6% |
+| reset composite | 73.1--78.8% |
+| shuffled-receipt composite | 67.5--73.1% |
+
+The learned gate therefore beats its zero-volatility reset by 11.9--17.5
+points while remaining bounded, disk-round-trip exact, and preserving the
+binary and four-rule retention audits. Two adversarial control families were
+also run with four seeds each. Shuffling the plus/minus rewards produced
+alphas in ``{-4, 0, +4}`` and every run failed the promotion gates; shuffling
+the receipt-to-row attribution produced alphas in ``{-4, 0, +12}`` and every
+run also failed. These controls rule out a fixed positive coefficient or an
+unattributed reward shortcut as the explanation.
+
+This is the first evidence that the controller can learn a memory-management
+habit from physical verifier reward, rather than merely executing a frozen
+volatility policy. It is still an adjacent same-event acquisition: held-out
+cross-context candidate generalization is the next rung, followed by span-nine
+acquisition with the promoted span-eight parent.
+
 ## Next frontier
 
-The next highest-ROI experiment is a **zero-initialized trainable row-local
-gate**. Keep the physical receipt/outcome path fixed, expose only generic
-volatility and controller write features, and train one tiny residual through
-the verifier reward. Start with the same adjacent task shift, then require a
-held-out cross-context candidate before promoting it. The eventual ladder is:
-(1) this bounded task-shift control, (2) learned row-local gating with reward
-alignment and shuffled-receipt controls, and (3) sequence span-nine
-acquisition with the promoted span-eight parent. Acceptance remains span nine
-at or above 90%, spans two--eight within the two-point retention gate, shuffled
-outcomes at chance, and blank/reset/reversal controls intact. Do not increase
-controller width or add modalities until the learned gate earns a causal
-advantage over the frozen scalar policy.
-Acceptance remains span nine at or above 90%, spans two--eight within the
-two-point retention gate, shuffled outcomes at chance, and blank/reset/reversal
-controls intact. Do not increase controller width or add modalities until the
-causal write and replacement tests pass.
+The next highest-ROI experiment is a **held-out cross-context candidate** for
+the now reward-trained row-local gate. Keep the same four-row bounded stores,
+but generate the candidate query from a different context so the gate must
+manage memory without relying on the adjacent same-event key match. Require
+the same old-retention, new-acquisition, shuffled-receipt, disk-round-trip,
+and controller-retention gates. Only after that passes should we attempt the
+span-nine acquisition with the promoted span-eight parent. Do not increase
+controller width or add modalities until cross-context memory management has
+earned a causal advantage.
 
 ## Artifacts
 
@@ -637,6 +670,13 @@ causal write and replacement tests pass.
   `controller_online_task_shift_gpu_seed32334.json`: four CUDA reports for
   bounded task-shift acquisition; all passed the decoy-selection, new-row,
   old-retention, shuffle, capacity, and save/reload gates.
+- `task_shift_gate/task_gate_seed18401.json` through
+  `task_gate_seed18404.json`: four CUDA reports for the reward-trained
+  zero-initialized row-local volatility gate; all passed.
+- `task_shift_gate/task_gate_reward_shuffle_seed18501.json` through
+  `...18504.json`: shuffled-reward controls; all rejected.
+- `task_shift_gate/task_gate_receipt_shuffle_seed18601.json` through
+  `...18604.json`: shuffled-receipt controls; all rejected.
 
 The ignored local checkpoint hashes are:
 
