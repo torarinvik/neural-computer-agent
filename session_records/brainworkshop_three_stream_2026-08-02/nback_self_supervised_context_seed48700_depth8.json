@@ -1,0 +1,31 @@
+{
+  "format": "nback_self_supervised_context_probe.v1",
+  "rings": [
+    1,
+    5,
+    6,
+    7,
+    8
+  ],
+  "checkpoint": "artifacts/checkpoints/brainworkshop_three_stream_nback8_protected_supervised_seed47820_256.pt",
+  "count_per_ring": 256,
+  "trials": 10,
+  "depth": 8,
+  "updates": 256,
+  "seed": 48700,
+  "device": "mps",
+  "results": {
+    "raw_action_reward": {
+      "train_accuracy": 0.994140625,
+      "held_out_accuracy": 0.62109375
+    },
+    "self_supervised_future_return": {
+      "train_accuracy": 0.5634765625,
+      "held_out_accuracy": 0.44140625
+    },
+    "shuffled_return_control": {
+      "train_accuracy": 0.5068359375,
+      "held_out_accuracy": 0.41015625
+    }
+  }
+}

@@ -319,13 +319,24 @@ not exploit it: depth 4 fell **61.33% → 59.38%**, and depth 8 fell
 **62.50% → 59.18%**. Both reset controls stayed at **50.00%** and shuffle
 controls near chance.
 
+The first zero-label representation probe was also negative. Predicting the
+mean future return from an eight-record context produced only **44.14%** task
+decoding versus **62.11%** for the raw action/reward trajectory; a shuffled-
+return control was **41.02%**. Predicting the complete future opaque
+action/reward trajectory improved the self-supervised latent only to **48.05%**
+versus **55.86%** raw (shuffled-target control **41.02%**). Naive return or
+future-trajectory prediction therefore does not preserve the task context
+needed for skill selection. The next high-ROI representation test should use
+episodic trajectory retrieval or a contrastive objective that preserves
+episode-level relation structure, rather than another scalar-prediction head.
+
 This localizes the next bottleneck to credit assignment/representation
-learning, not missing information or RAM capacity. The next probe should train
-a context encoder with a verifier-free auxiliary target derived from the
-trajectory itself (for example, predicting future scalar return), then test
-whether its frozen representation linearly decodes task context. Only after
-that representation gate passes should it drive the answer branch. This keeps
-the eventual path zero-label while avoiding another answer-loss-only fork.
+learning, not missing information or RAM capacity. The next probe should use
+episodic retrieval or a contrastive episode objective that preserves relation
+structure, then test whether its frozen representation linearly decodes task
+context. Only after that representation gate passes should it drive the answer
+branch. This keeps the eventual path zero-label while avoiding another
+answer-loss-only fork.
 
 The high-precision audit is saved as
 `nback8_multirung_retention_audit_seed48300.json`, and the reusable evaluator is
