@@ -410,6 +410,12 @@ def main() -> None:
             "alternate span-2 episodes with the target span to protect the "
             "previously mastered two-item primitive"))
     parser.add_argument(
+        "--rehearse-spans", default="",
+        help=(
+            "comma-separated mastered spans to cycle with the target span; "
+            "the target span is sampled first, and repeated values weight "
+            "rehearsal frequency"))
+    parser.add_argument(
         "--operation", choices=("forward", "reverse", "mixed"),
         default="mixed")
     parser.add_argument("--width", type=int, default=64)
@@ -441,6 +447,14 @@ def main() -> None:
     curriculum = (
         tuple(float(value) for value in args.position_curriculum.split(","))
         if args.position_curriculum else ())
+    rehearsal_spans = (
+        tuple(int(value) for value in args.rehearse_spans.split(","))
+        if args.rehearse_spans else ())
+    if any(value < 1 for value in rehearsal_spans):
+        raise ValueError("rehearsal spans must be positive")
+    if args.rehearse_span2 and rehearsal_spans:
+        raise ValueError(
+            "use --rehearse-span2 or --rehearse-spans, not both")
     if any(
             not 0.0 < value <= 1.0 for value in curriculum
             ) or any(
@@ -471,8 +485,12 @@ def main() -> None:
     started = perf_counter()
     for step in range(1, args.steps + 1):
         model.train()
-        train_span = (
-            2 if args.rehearse_span2 and step % 2 == 1 else args.span)
+        if rehearsal_spans:
+            span_cycle = (args.span,) + rehearsal_spans
+            train_span = span_cycle[(step - 1) % len(span_cycle)]
+        else:
+            train_span = (
+                2 if args.rehearse_span2 and step % 2 == 1 else args.span)
         span_key = str(train_span)
         span_counts[span_key] = span_counts.get(span_key, 0) + 1
         if curriculum:
@@ -564,6 +582,7 @@ def main() -> None:
         "position_update_counts": position_counts,
         "rehearse_zero_distractor": args.rehearse_zero_distractor,
         "rehearse_span2": args.rehearse_span2,
+        "rehearse_spans": rehearsal_spans,
         "span_update_counts": span_counts,
         "distractor_update_counts": distractor_counts,
         "optimizer_updates": args.steps,
