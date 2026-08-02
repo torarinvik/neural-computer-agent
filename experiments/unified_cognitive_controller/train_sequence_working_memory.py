@@ -234,7 +234,8 @@ def _reset_active_state_keep_workspace(
     """Ablate the recurrent carrier while preserving physical workspace."""
     return ControllerState(
         torch.zeros_like(state.hidden), state.workspace,
-        torch.zeros_like(state.latest_event), state.workspace_usage)
+        torch.zeros_like(state.latest_event), state.workspace_usage,
+        state.workspace_volatility, state.event_age)
 
 
 def rollout_sequence_memory(

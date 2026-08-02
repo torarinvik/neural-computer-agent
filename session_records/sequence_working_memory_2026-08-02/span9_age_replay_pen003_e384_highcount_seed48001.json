@@ -1,0 +1,39 @@
+{
+  "schema": "sequence-span9-highcount-audit-v1",
+  "checkpoint": "artifacts/checkpoints/span9_age_replay_pen003_e384_seed48001.pt",
+  "count": 4096,
+  "seed": 98048001,
+  "audit": {
+    "accuracy": 0.904649555683136,
+    "forward_accuracy": 0.892198383808136,
+    "reverse_accuracy": 0.917100727558136,
+    "accuracy_by_output": [
+      0.997802734375,
+      0.984619140625,
+      0.933837890625,
+      0.856689453125,
+      0.8154296875,
+      0.818359375,
+      0.854248046875,
+      0.88720703125,
+      0.99365234375
+    ],
+    "reverse_operation_accuracy": 0.9033745527267456,
+    "reverse_operation_prediction_flip_rate_nonpalindrome": 0.47962963581085205,
+    "reverse_sequence_accuracy": 0.9039442539215088,
+    "reverse_sequence_prediction_flip_rate_nonpalindrome": 0.48336225748062134,
+    "blank_sequence_accuracy": 0.4964464008808136,
+    "blank_operation_cue_accuracy": 0.601806640625,
+    "workspace_disabled_accuracy": 0.5885145664215088,
+    "active_state_reset_accuracy": 0.5629611611366272,
+    "all_memory_reset_accuracy": 0.494194895029068,
+    "zero_distractor_accuracy": 0.784776508808136,
+    "heldout_position_accuracy": 0.8694390058517456,
+    "position_accuracy_by_blend": {
+      "0.25": 0.8971354365348816,
+      "0.5": 0.8850911259651184,
+      "0.75": 0.8850911259651184,
+      "1.0": 0.8694390058517456
+    }
+  }
+}\n

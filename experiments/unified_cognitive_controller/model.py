@@ -76,13 +76,24 @@ class ControllerState:
     # use it to protect frequently useful cells and leave rarely used cells
     # more adaptable.
     workspace_usage: torch.Tensor | None = None
+    # Generic per-row volatility for the fast workspace.  A value near one
+    # means a row is safe to overwrite; successful feedback lowers it, while
+    # failed feedback slowly thaws it.  It is optional so legacy checkpoints
+    # and callers remain bit-identical when the feature is disabled.
+    workspace_volatility: torch.Tensor | None = None
+    # Optional normalized stream clock.  It carries only generic event age,
+    # never a task or operation identity, and is opt-in for new adapters.
+    event_age: torch.Tensor | None = None
 
     def detach(self) -> ControllerState:
         return ControllerState(
             self.hidden.detach(), self.workspace.detach(),
             self.latest_event.detach(),
             None if self.workspace_usage is None
-            else self.workspace_usage.detach())
+            else self.workspace_usage.detach(),
+            None if self.workspace_volatility is None
+            else self.workspace_volatility.detach(),
+            None if self.event_age is None else self.event_age.detach())
 
 
 @dataclass
@@ -174,13 +185,19 @@ class UnifiedCognitiveController(nn.Module):
             skill_adapter_reads_workspace_from: int | None = None,
             skill_adapter_reads_workspace_usage_from: int | None = None,
             skill_adapter_reads_event_snapshot_from: int | None = None,
+            skill_adapter_reads_event_age_from: int | None = None,
             skill_adapter_multiplies_intention_from: int | None = None,
             skill_adapter_outer_multiplies_intention_from: int | None = None,
             skill_adapter_outer_interaction_width: int = 0,
             skill_adapter_read_bottleneck: int = 0,
             skill_adapter_prior_read_limit: int = 0,
             skill_adapter_critic_width: int = 0,
-            workspace_usage_decay: float = 0.98) -> None:
+            workspace_usage_decay: float = 0.98,
+            workspace_volatility: bool = False,
+            workspace_volatility_protection: float = 0.20,
+            workspace_volatility_failure: float = 0.02,
+            event_age: bool = False,
+            event_age_scale: float = 8.0) -> None:
         super().__init__()
         if skill_adapter_gate_mode not in ("sigmoid", "relu"):
             raise ValueError(
@@ -206,6 +223,9 @@ class UnifiedCognitiveController(nn.Module):
                 or skill_adapter_prior_read_limit < 0
                 or skill_adapter_critic_width < 0
                 or not 0.0 <= workspace_usage_decay < 1.0
+                or not 0.0 <= workspace_volatility_protection <= 1.0
+                or not 0.0 <= workspace_volatility_failure <= 1.0
+                or event_age_scale <= 0.0
                 or any(value < 1 for value in skill_adapter_widths)
                 or any(
                     value < 0
@@ -260,6 +280,12 @@ class UnifiedCognitiveController(nn.Module):
         self.skill_adapter_gate_extension_widths = tuple(
             skill_adapter_gate_extension_widths)
         self.skill_adapter_critic_width = skill_adapter_critic_width
+        self.workspace_volatility = bool(workspace_volatility)
+        self.workspace_volatility_protection = float(
+            workspace_volatility_protection)
+        self.workspace_volatility_failure = float(workspace_volatility_failure)
+        self.event_age = bool(event_age)
+        self.event_age_scale = float(event_age_scale)
         # Whether a slot may read what earlier slots computed, separately from
         # whether those slots write to the answer. An exactly shut gate makes an
         # earlier slot silent on this event -- which is what removes
@@ -313,6 +339,8 @@ class UnifiedCognitiveController(nn.Module):
         # latent. An index keeps older slot input shapes checkpoint-compatible.
         self.skill_adapter_reads_event_snapshot_from = (
             skill_adapter_reads_event_snapshot_from)
+        self.skill_adapter_reads_event_age_from = (
+            skill_adapter_reads_event_age_from)
         # A generic bilinear binding feature lets a later skill condition an
         # inherited amodal intention on state carried from an earlier sensory
         # event. The index preserves every older slot's shape. No operation or
@@ -384,6 +412,11 @@ class UnifiedCognitiveController(nn.Module):
             self.workspace_read_address_scale = None
             self.workspace_write_address_scale = None
             self.workspace_write_content_address_scale = None
+        # This scalar is deliberately zero at insertion.  It only lets
+        # verified experience earn a preference for volatile rows; with a
+        # zero value, enabling the state tracker is an exact no-op.
+        self.workspace_volatility_write_scale = (
+            nn.Parameter(torch.zeros(())) if self.workspace_volatility else None)
         self.intention = nn.Sequential(
             nn.LayerNorm(width * 3),
             nn.Linear(width * 3, intention_width),
@@ -503,6 +536,9 @@ class UnifiedCognitiveController(nn.Module):
                 skill_adapter_reads_event_snapshot_from is not None
                 and slot_index
                 >= skill_adapter_reads_event_snapshot_from)
+            reads_event_age = (
+                skill_adapter_reads_event_age_from is not None
+                and slot_index >= skill_adapter_reads_event_age_from)
             multiplies_intention = (
                 skill_adapter_multiplies_intention_from is not None
                 and slot_index
@@ -534,6 +570,7 @@ class UnifiedCognitiveController(nn.Module):
                 + (workspace_slots * width if reads_workspace else 0)
                 + (workspace_slots if reads_workspace_usage else 0)
                 + (width if reads_event_snapshot else 0)
+                + (1 if reads_event_age else 0)
                 + (intention_width if multiplies_intention else 0)
                 + (
                     skill_adapter_outer_interaction_width ** 2
@@ -994,6 +1031,11 @@ class UnifiedCognitiveController(nn.Module):
             torch.zeros(batch_size, self.width, device=device, dtype=dtype),
             torch.zeros(
                 batch_size, self.workspace_slots, device=device, dtype=dtype),
+            torch.ones(
+                batch_size, self.workspace_slots, device=device, dtype=dtype)
+            if self.workspace_volatility else None,
+            torch.zeros(batch_size, 1, device=device, dtype=dtype)
+            if self.event_age else None,
         )
 
     def step_event(
@@ -1018,6 +1060,10 @@ class UnifiedCognitiveController(nn.Module):
                 f"event must have shape [batch, {self.width}]")
         if retrieved_memory is None:
             retrieved_memory = torch.zeros_like(event)
+        current_event_age = state.event_age
+        if self.event_age and current_event_age is None:
+            current_event_age = torch.zeros(
+                event.shape[0], 1, device=event.device, dtype=event.dtype)
         query = torch.nn.functional.normalize(
             self.read_query(torch.cat([event, state.hidden], dim=-1)),
             dim=-1)
@@ -1049,6 +1095,16 @@ class UnifiedCognitiveController(nn.Module):
                 torch.einsum(
                     "bw,sw->bs",
                     write_query, self.workspace_slot_addresses))
+        if self.workspace_volatility_write_scale is not None:
+            # Higher-volatility rows are more disposable and therefore more
+            # writable.  The learned coefficient starts at zero, so adding
+            # the state tracker alone cannot perturb inherited behavior.
+            row_volatility = state.workspace_volatility
+            if row_volatility is None:
+                row_volatility = torch.ones_like(write_scores)
+            write_scores = write_scores + (
+                self.workspace_volatility_write_scale
+                * row_volatility.clamp(0.0, 1.0))
         write_weights = torch.softmax(write_scores, dim=-1)
         gate = torch.sigmoid(self.write_gate(write_context))
         candidate = self.write_value(write_context)
@@ -1074,6 +1130,27 @@ class UnifiedCognitiveController(nn.Module):
             + (1.0 - self.workspace_usage_decay) * access)
         if disable_workspace:
             workspace_usage = torch.zeros_like(workspace_usage)
+
+        # Update row-local volatility only from the scalar feedback already
+        # visible to the controller.  Successful use protects accessed rows;
+        # failed use slowly thaws them.  No task identity or correct answer is
+        # introduced, and the whole path is absent from legacy models.
+        workspace_volatility = state.workspace_volatility
+        if self.workspace_volatility:
+            if workspace_volatility is None:
+                workspace_volatility = torch.ones_like(workspace_usage)
+            success = (previous_reward.clamp(0.0, 1.0)
+                       * has_feedback.clamp(0.0, 1.0)).unsqueeze(-1)
+            accessed = workspace_usage.clamp(0.0, 1.0)
+            protected = workspace_volatility * (
+                1.0 - self.workspace_volatility_protection
+                * success * accessed)
+            thawed = 1.0 - (1.0 - protected) * (
+                1.0 - self.workspace_volatility_failure
+                * (1.0 - success) * accessed)
+            workspace_volatility = thawed.clamp(0.0, 1.0)
+            if disable_workspace:
+                workspace_volatility = torch.ones_like(workspace_volatility)
 
         combined = torch.cat([hidden, read, event], dim=-1)
         intention = self.intention(combined)
@@ -1242,6 +1319,16 @@ class UnifiedCognitiveController(nn.Module):
                         and slot_index
                         >= self.skill_adapter_reads_event_snapshot_from):
                     reads.append(event_snapshot)
+                if (
+                        self.skill_adapter_reads_event_age_from is not None
+                        and slot_index
+                        >= self.skill_adapter_reads_event_age_from):
+                    reads.append(
+                        current_event_age
+                        if current_event_age is not None
+                        else torch.zeros(
+                            event.shape[0], 1, device=event.device,
+                            dtype=event.dtype))
                 if reads:
                     if (
                             self.skill_adapter_ablate_prior_read
@@ -1316,7 +1403,10 @@ class UnifiedCognitiveController(nn.Module):
             skill_adapter_residual_norms=skill_adapter_residual_norms,
         )
         return output, ControllerState(
-            hidden, workspace, event, workspace_usage)
+            hidden, workspace, event, workspace_usage,
+            workspace_volatility,
+            (current_event_age + 1.0 / self.event_age_scale
+             if self.event_age and current_event_age is not None else None))
 
     def step(
             self, frame: torch.Tensor, state: ControllerState,

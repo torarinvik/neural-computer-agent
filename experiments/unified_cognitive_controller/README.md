@@ -1726,3 +1726,46 @@ gate after only 5,760 bits.
 
 Full record:
 `session_records/procedural_shape_previous_operation_2026-07-30/README.md`.
+
+## Span-nine acquisition with event-age routing and protected rehearsal
+
+The next working-memory rung exposed two separate issues. A zero-initialized
+workspace-volatility write scale was a clean diagnostic but did not learn a
+causal direction: four truthful and four outcome-shuffled runs converged to
+the same negative scale and the same accuracy. The transient fast-memory
+state was therefore rejected as a habit mechanism; volatility must be tied to
+persistent, receipt-backed experience rather than inferred from one episode.
+
+The useful representation change was smaller and task-agnostic: an optional
+normalized event-age trace (a generic stream clock) is available to a new
+successor slot. It is not a span, operation, task, or answer label. At 1,024
+new span-nine lifetimes, the age-aware slot reached 82.66–83.40% across four
+seeds, versus 76.50–78.29% for the matched replay/rehearsal smoke. Blank and
+complete-reset controls stayed at chance. At 4,096 lifetimes the age-aware
+race reached 88.54–89.12%, improving the earlier 86–88% range, but still
+opened on old span-eight tasks.
+
+The promotion recipe then combined the clock with a capped old-span replay
+buffer, a small `0.003` residual/logit penalty on replay rows, and private
+consolidation rather than more verifier data. With 8,192 new span-nine
+lifetimes, 16,384 replay transitions, and 384 optimizer passes, the selected
+checkpoint is:
+
+`artifacts/checkpoints/span9_age_replay_pen003_e384_seed48001.pt`
+
+Checkpoint SHA-256: `0c40c7f478d14234ae29108ef6236c50b6b5c73448b596d47910646827c9db1d`.
+
+It reaches 90.46% on a fresh 4,096-lifetime span-nine audit (reverse-operation
+accuracy 90.34%; blank sequence 49.64%; complete memory reset 49.42%). A
+paired 2,048-lifetime audit against the span-eight parent retains every old
+span with the worst margin −1.01 points and reaches 90.19% on span nine. Two
+exact outcome-shuffle controls score 52.44% and 44.79%, so the gain is not
+reward-independent drift. The checkpoint, high-count audit, retention audit,
+and controls are stored under
+`session_records/sequence_working_memory_2026-08-02/`.
+
+This is the first span-nine result to pass mastery, memory-dependence,
+causal-reward, and old-skill-retention gates together. The important lesson is
+also architectural: a generic stream clock improved sample efficiency, while
+habit protection still belongs at the persistent-memory boundary; a transient
+workspace scalar alone is not enough.

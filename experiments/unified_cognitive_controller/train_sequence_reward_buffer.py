@@ -127,7 +127,11 @@ def _skill_slot_logits(
     intention_width = (
         model.intention_width
         if model.skill_adapter_reads_intention_from is not None else 0)
-    expected_width = base_width + workspace_width + usage_width + intention_width
+    age_width = (
+        1 if getattr(model, "skill_adapter_reads_event_age_from", None)
+        is not None else 0)
+    expected_width = (
+        base_width + workspace_width + usage_width + intention_width + age_width)
     if features.shape[1] != expected_width:
         raise ValueError("cached feature width does not match skill slot")
     slot_features = features[:, :base_width]
@@ -148,6 +152,9 @@ def _skill_slot_logits(
         cursor += usage_width
     if intention_width:
         reads.append(features[:, cursor:cursor + intention_width])
+        cursor += intention_width
+    if age_width:
+        reads.append(features[:, cursor:cursor + age_width])
     if reads:
         projected = model.skill_adapter_read_projections[0](
             torch.cat(reads, dim=-1))
@@ -239,6 +246,7 @@ def _collect_buffer(
         position_augmentation: bool, include_intention: bool = False,
         include_workspace: bool = False,
         include_workspace_usage: bool = False,
+        include_event_age: bool = False,
         ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """Collect latent transitions using uniformly random opaque actions."""
     batch = generate_sequence_memory_batch(
@@ -272,6 +280,8 @@ def _collect_buffer(
             usage_before = (
                 None if state.workspace_usage is None
                 else state.workspace_usage.clone())
+            age_before = (
+                None if state.event_age is None else state.event_age.clone())
             output, state = model.step(
                 frame, state, previous_action,
                 previous_reward * has_feedback, has_feedback)
@@ -288,6 +298,10 @@ def _collect_buffer(
                 feature_parts.append(usage_before)
             if include_intention:
                 feature_parts.append(output.intention.detach())
+            if include_event_age:
+                if age_before is None:
+                    age_before = torch.zeros(count, 1, device=device)
+                feature_parts.append(age_before)
             features.append(torch.cat(feature_parts, dim=-1))
             base_logits.append(output.logits.detach())
             actions.append(action)
@@ -394,6 +408,11 @@ def main() -> None:
             "give the successor slot the controller's EMA access frequency "
             "for each RAM slot"))
     parser.add_argument(
+        "--skill-adapter-reads-event-age", action="store_true",
+        help=(
+            "give the successor slot a normalized generic stream clock; "
+            "this is not a task or operation label"))
+    parser.add_argument(
         "--skill-adapter-read-bottleneck", type=int, default=0,
         help=(
             "compress a wide workspace/legacy read before the successor "
@@ -475,6 +494,8 @@ def main() -> None:
     if (args.skill_adapter_reads_workspace_usage
             and not args.skill_adapter_width):
         raise ValueError("workspace-usage reads require a skill slot")
+    if args.skill_adapter_reads_event_age and not args.skill_adapter_width:
+        raise ValueError("event-age reads require a skill slot")
     if (args.action_conditioned_critic_width
             and not args.skill_adapter_width):
         raise ValueError("the critic requires a skill slot")
@@ -534,7 +555,8 @@ def main() -> None:
             position_augmentation=args.position_augmentation,
             include_intention=args.skill_adapter_reads_intention,
             include_workspace=args.skill_adapter_reads_workspace,
-            include_workspace_usage=args.skill_adapter_reads_workspace_usage)
+            include_workspace_usage=args.skill_adapter_reads_workspace_usage,
+            include_event_age=args.skill_adapter_reads_event_age)
         buffer_parts = [target_buffer]
         stream_specs.append({
             "kind": "target", "span": args.span,
@@ -548,7 +570,8 @@ def main() -> None:
                 position_augmentation=args.position_augmentation,
                 include_intention=args.skill_adapter_reads_intention,
                 include_workspace=args.skill_adapter_reads_workspace,
-                include_workspace_usage=args.skill_adapter_reads_workspace_usage))
+                include_workspace_usage=args.skill_adapter_reads_workspace_usage,
+                include_event_age=args.skill_adapter_reads_event_age))
             stream_specs.append({
                 "kind": "rehearsal", "span": rehearsal_span,
                 "lifetimes": args.rehearsal_lifetimes})
@@ -607,6 +630,9 @@ def main() -> None:
                 0 if args.skill_adapter_reads_workspace else None),
             skill_adapter_reads_workspace_usage_from=(
                 0 if args.skill_adapter_reads_workspace_usage else None),
+            skill_adapter_reads_event_age_from=(
+                0 if args.skill_adapter_reads_event_age else None),
+            event_age=args.skill_adapter_reads_event_age,
             skill_adapter_read_bottleneck=args.skill_adapter_read_bottleneck,
             skill_adapter_critic_width=(
                 args.action_conditioned_critic_width
@@ -833,6 +859,7 @@ def main() -> None:
         "skill_adapter_reads_workspace": args.skill_adapter_reads_workspace,
         "skill_adapter_reads_workspace_usage": (
             args.skill_adapter_reads_workspace_usage),
+        "skill_adapter_reads_event_age": args.skill_adapter_reads_event_age,
         "skill_adapter_read_bottleneck": args.skill_adapter_read_bottleneck,
         "skill_adapter_no_legacy_read": args.skill_adapter_no_legacy_read,
         "train_parent_action_adapter": args.train_parent_action_adapter,

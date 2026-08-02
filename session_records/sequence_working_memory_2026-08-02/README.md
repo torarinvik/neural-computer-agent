@@ -582,16 +582,57 @@ failed. This is the clean promotion evidence for reward-trained habit
 selection; the earlier tie-biased pilot is retained only as a diagnostic
 lesson, not as evidence.
 
+## Span-nine acquisition with event-age routing and protected rehearsal
+
+The zero-initialized workspace-volatility diagnostic did not learn a causal
+habit mechanism: four truthful and four outcome-shuffled runs converged to the
+same negative scale and the same accuracy. The useful representation change
+was instead a generic normalized event-age trace, exposed only to the new
+successor slot. It carries stream position, not a task, span, operation, or
+answer label. At 1,024 new span-nine lifetimes it reached 82.66--83.40% across
+four seeds, versus 76.50--78.29% for the matched replay/rehearsal smoke. At
+4,096 lifetimes it reached 88.54--89.12%.
+
+The promotion run started from the span-eight addressed parent and combined
+the age trace with a capped old-span replay bank and small replay residual/logit
+penalties. It used 8,192 unique span-nine lifetimes, 16,384 replay transitions,
+and 384 optimizer passes. The selected checkpoint is:
+
+`artifacts/checkpoints/span9_age_replay_pen003_e384_seed48001.pt`
+
+Its SHA-256 is
+`0c40c7f478d14234ae29108ef6236c50b6b5c73448b596d47910646827c9db1d`.
+
+On a fresh 4,096-lifetime audit it reached **90.46%** overall and 90.34% on
+the reversed operation. Blank sequence and complete memory reset were 49.64%
+and 49.42%; reverse-operation prediction flips were 47.96% on non-palindromes.
+A paired 2,048-lifetime audit against the span-eight parent retained every old
+span, with worst margin **-1.01 points**, while span nine improved from 75.46%
+to **90.19%**. Both exact outcome-shuffled controls removed the gain, scoring
+52.44% and 44.79%, with all-memory-reset controls at chance. These are the
+promotion-grade files:
+
+- `span9_age_replay_pen003_e384_seed48001.json`
+- `span9_age_replay_pen003_e384_highcount_seed48001.json`
+- `span9_age_replay_pen003_e384_retention_seed48001.json`
+- `span9_age_replay_pen003_e384_shuffle_seed48101.json`
+- `span9_age_replay_pen003_e384_shuffle_seed48102.json`
+
+This is the first span-nine result to pass mastery, memory-dependence,
+causal-reward, and old-skill-retention gates together. It is evidence for
+sample-efficient compounding: a task-agnostic stream clock helps the new
+primitive, while persistent replay and small write/logit penalties protect the
+older skills. The next frontier is an independent-seed replication followed by
+private consolidation and recall; no claim is made here that the current
+checkpoint has yet completed that long-term-memory integration.
+
 ## Next frontier
 
-The next highest-ROI experiment is **span-nine acquisition with the validated
-habit gate attached to the sequence write path**. Start from the promoted
-span-eight parent, expose only the generic row-local volatility feature, and
-use early-span-heavy rehearsal. Require span nine to improve without
-violating the two-point retention gate on spans two--eight, with fresh,
-reward-shuffled, receipt-shuffled, blank, reset, and reversal controls. Do not
-increase controller width or add modalities until this compounding test earns
-a causal advantage.
+Replicate the promoted recipe on a second seed, then test whether the same
+span-nine skill survives write, consolidation, disk reload, and recall. Keep
+the two-point old-skill retention gate and the outcome-shuffle, blank, reset,
+and reversal controls. Only after that should the curriculum advance to span
+ten or broaden the task family.
 
 ## Artifacts
 
@@ -712,6 +753,14 @@ a causal advantage.
 - `span9_address_scale1_preserve_gate_4096_seed32190.json`: rejected
   gate-score-preservation control; numerical fresh-gate magnitude was not a
   stable teacher.
+- `span9_age_replay_pen003_e384_seed48001.json` and
+  `span9_age_replay_pen003_e384_highcount_seed48001.json`: selected span-nine
+  training report and independent 4,096-lifetime mastery audit.
+- `span9_age_replay_pen003_e384_retention_seed48001.json`: paired 2,048-lifetime
+  spans-2--9 retention audit against the span-eight parent.
+- `span9_age_replay_pen003_e384_shuffle_seed48101.json` and
+  `span9_age_replay_pen003_e384_shuffle_seed48102.json`: exact matched
+  outcome-shuffled controls.
 - `controller_habit_gpu_seed32231.json` through
   `controller_habit_gpu_seed32234.json`: four CUDA replication reports for
   the reward-only row-volatility selector; all passed the full gate suite.

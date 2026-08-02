@@ -144,6 +144,53 @@ def test_address_conditioned_write_content_breaks_slot_symmetry() -> None:
     assert not torch.equal(addressed.workspace[:, 0], addressed.workspace[:, 1])
 
 
+def test_zero_initialized_workspace_volatility_is_an_exact_noop() -> None:
+    torch.manual_seed(26010)
+    base = UnifiedCognitiveController(
+        width=32, workspace_slots=2, intention_width=8,
+        workspace_slot_addressing=True)
+    volatile = UnifiedCognitiveController(
+        width=32, workspace_slots=2, intention_width=8,
+        workspace_slot_addressing=True, workspace_volatility=True)
+    volatile.load_state_dict(base.state_dict(), strict=False)
+    assert volatile.workspace_volatility_write_scale is not None
+    with torch.no_grad():
+        volatile.workspace_volatility_write_scale.zero_()
+    action = torch.zeros(4, dtype=torch.long)
+    state_base = base.initial_state(4, device=torch.device("cpu"))
+    state_volatile = volatile.initial_state(4, device=torch.device("cpu"))
+    for step in range(3):
+        event = torch.randn(4, 32)
+        reward = torch.full((4,), float(step > 0))
+        has_feedback = torch.full((4,), float(step > 0))
+        out_base, state_base = base.step_event(
+            event, state_base, action, reward, has_feedback)
+        out_volatile, state_volatile = volatile.step_event(
+            event, state_volatile, action, reward, has_feedback)
+        assert torch.equal(out_base.intent_event.payload,
+                           out_volatile.intent_event.payload)
+        assert torch.equal(state_base.workspace, state_volatile.workspace)
+    assert state_volatile.workspace_volatility is not None
+
+
+def test_event_age_is_generic_state_and_advances_once_per_event() -> None:
+    model = UnifiedCognitiveController(
+        width=32, workspace_slots=2, intention_width=8,
+        skill_adapter_widths=(8,),
+        skill_adapter_reads_event_age_from=0,
+        event_age=True, event_age_scale=8.0)
+    state = model.initial_state(4, device=torch.device("cpu"))
+    assert state.event_age is not None
+    assert torch.equal(state.event_age, torch.zeros(4, 1))
+    event = torch.randn(4, 32)
+    action = torch.zeros(4, dtype=torch.long)
+    reward = torch.zeros(4)
+    _, next_state = model.step_event(
+        event, state, action, reward, reward)
+    assert next_state.event_age is not None
+    assert torch.equal(next_state.event_age, torch.full((4, 1), 0.125))
+
+
 def test_provenance_refinement_contains_both_sources_when_weighted() -> None:
     all_indices = torch.arange(10)
     replay_indices = all_indices[6:]
