@@ -472,6 +472,41 @@ def _eligible_rollout_accuracy(
     return float(rollout.exact_correct[n_back:].float().mean())
 
 
+def _protect_inherited_history_extension(
+        policy: BrainWorkshopPolicy, *, inherited_depth: int) -> int:
+    """Train only newly appended RAM-history input columns.
+
+    The old projection and output map remain frozen.  This makes a deeper
+    history a true additive adapter: the inherited controller, frontends, and
+    decoder cannot be overwritten while the new snapshot relation earns an
+    influence through verifier feedback or a disposable diagnostic.
+    """
+    if policy.external_history_depth <= inherited_depth:
+        raise ValueError("new history depth must exceed inherited depth")
+    for parameter in policy.parameters():
+        parameter.requires_grad_(False)
+    old_input_width = policy.controller.width * (1 + 2 * inherited_depth)
+    trainable = 0
+    adapters = list(policy.external_memory_adapters.values())
+    adapters.extend(policy.per_stream_intention_adapters.values())
+    if policy.external_memory_adapter is not None:
+        adapters.append(policy.external_memory_adapter)
+    if not adapters:
+        raise ValueError("history-extension protection requires RAM adapters")
+    for adapter in adapters:
+        first = adapter[0]
+        if not isinstance(first, nn.Linear):
+            raise ValueError("history adapter must start with a linear layer")
+        if first.in_features <= old_input_width:
+            raise ValueError("history adapter has no appended input columns")
+        first.weight.requires_grad_(True)
+        mask = torch.zeros_like(first.weight)
+        mask[:, old_input_width:] = 1.0
+        first.weight.register_hook(lambda gradient, mask=mask: gradient * mask)
+        trainable += int(first.weight[:, old_input_width:].numel())
+    return trainable
+
+
 def _reward_rollout_loss(
         rollout: Rollout, *, discount: float, value_baseline: bool,
         entropy_coef: float) -> tuple[torch.Tensor, torch.Tensor]:
@@ -959,6 +994,10 @@ def main() -> None:
         choices=(1, 2, 3, 4, 5),
         help="number of opaque RAM snapshots exposed to the generic bridge")
     parser.add_argument(
+        "--freeze-inherited-history", action="store_true",
+        help=("freeze the inherited path and train only newly appended "
+              "RAM-history input columns"))
+    parser.add_argument(
         "--slot-memory-composer", action="store_true",
         help="preserve per-stream RAM slots until a generic final reader")
     parser.add_argument(
@@ -1109,6 +1148,7 @@ def main() -> None:
     )
     frozen_controller = None
     checkpoint_payload = None
+    protected_inherited_history_depth = None
     if args.checkpoint_in:
         checkpoint_payload = torch.load(
             args.checkpoint_in, map_location=device, weights_only=False)
@@ -1272,6 +1312,21 @@ def main() -> None:
             for parameter in encoder.parameters():
                 parameter.requires_grad_(False)
     controller_frozen = frozen_controller is not None and not args.unfreeze_controller
+    if args.freeze_inherited_history:
+        if checkpoint_payload is None:
+            raise ValueError("--freeze-inherited-history requires --checkpoint-in")
+        if args.unfreeze_controller:
+            raise ValueError(
+                "--freeze-inherited-history cannot unfreeze the controller")
+        inherited_depth = int(checkpoint_payload.get(
+            "protected_inherited_history_depth",
+            checkpoint_payload.get(
+                "model_configuration", {}).get("external_history_depth", 1)))
+        protected_inherited_history_depth = inherited_depth
+        protected_parameter_count = _protect_inherited_history_extension(
+            policy, inherited_depth=inherited_depth)
+        if protected_parameter_count < 1:
+            raise ValueError("history extension has no trainable parameters")
     if controller_frozen:
         for parameter in policy.controller.parameters():
             parameter.requires_grad_(False)
@@ -1373,6 +1428,8 @@ def main() -> None:
         external_history_depth=args.external_history_depth)
     for update in range(1, args.updates + 1):
         policy.train()
+        rehearsal_batch_accuracies = {}
+        rehearsal_batch_eligible_accuracies = {}
         if args.supervised_diagnostic:
             loss, diagnostic_rewards = _supervised_step(
                 policy, config, batch_size=args.batch_size,
@@ -1382,8 +1439,36 @@ def main() -> None:
                 serial_modalities=args.serial_modalities,
                 per_stream_external_history=args.per_stream_external_history,
                 external_history_depth=args.external_history_depth)
+            if rehearsal_n_backs:
+                rehearsal_losses = []
+                for rehearsal_index, rehearsal_n_back in enumerate(
+                        rehearsal_n_backs):
+                    rehearsal_config = replace(
+                        config, n_back=rehearsal_n_back)
+                    rehearsal_loss, rehearsal_rewards = _supervised_step(
+                        policy, rehearsal_config, batch_size=args.batch_size,
+                        seed=(args.seed + update * 1_000 + 500_000
+                              + rehearsal_index * 100_000),
+                        device=device, oracle_events=args.oracle_events,
+                        external_history=args.external_history,
+                        serial_modalities=args.serial_modalities,
+                        per_stream_external_history=(
+                            args.per_stream_external_history),
+                        external_history_depth=args.external_history_depth)
+                    rehearsal_losses.append(rehearsal_loss)
+                    rehearsal_batch_accuracies[str(rehearsal_n_back)] = float(
+                        (rehearsal_rewards > 0).float().mean())
+                    rehearsal_batch_eligible_accuracies[str(rehearsal_n_back)] = (
+                        (rehearsal_rewards[rehearsal_n_back:] > 0).float().mean()
+                        .item())
+                loss = (loss + sum(
+                    weight * rehearsal_loss
+                    for weight, rehearsal_loss in zip(
+                        rehearsal_weights, rehearsal_losses))) / (
+                            1.0 + sum(rehearsal_weights))
             batch_accuracy = float((diagnostic_rewards > 0).float().mean())
-            batch_eligible_accuracy = None
+            batch_eligible_accuracy = float(
+                (diagnostic_rewards[config.n_back:] > 0).float().mean())
             batch_mean_reward = float(diagnostic_rewards.mean())
             policy_entropy = 0.0
             value_loss = torch.zeros((), device=device)
@@ -1400,8 +1485,6 @@ def main() -> None:
                 rollout, discount=args.discount,
                 value_baseline=args.value_baseline,
                 entropy_coef=args.entropy_coef)
-            rehearsal_batch_accuracies = {}
-            rehearsal_batch_eligible_accuracies = {}
             if rehearsal_n_backs:
                 rehearsal_losses = []
                 rehearsal_value_losses = []
@@ -1466,7 +1549,7 @@ def main() -> None:
             "gradient_norm": gradient_norm,
             "elapsed_seconds": time.perf_counter() - started,
         }
-        if not args.supervised_diagnostic and rehearsal_n_backs:
+        if rehearsal_n_backs:
             record["rehearsal_n_backs"] = list(rehearsal_n_backs)
             record["rehearsal_batch_accuracies"] = rehearsal_batch_accuracies
             record["rehearsal_batch_eligible_accuracies"] = (
@@ -1606,6 +1689,11 @@ def main() -> None:
                     args.retrieved_memory_adapter_width),
                 "external_history_depth": args.external_history_depth,
             },
+            # Preserve the depth whose path was intentionally frozen.  A
+            # continuation must reopen only the same appended columns rather
+            # than mistaking the already-expanded policy for its own parent.
+            "protected_inherited_history_depth": (
+                protected_inherited_history_depth),
             "state_dict": policy.state_dict(),
             "config": config.__dict__,
             "report": str(args.report),

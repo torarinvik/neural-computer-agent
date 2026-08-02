@@ -1,4 +1,4 @@
-# Brain Workshop 4-back retention-aware continuation
+# Brain Workshop 4-back and protected 5-back continuation
 
 This session tested the next protected-plasticity frontier after the verified
 1-back → 4-back compounding rung. The controller was initialized from the same
@@ -96,14 +96,44 @@ warm-up-inclusive batch score (and does the same for rehearsal rungs). This
 prevents the high no-target warm-up trials from masquerading as early learning
 when calibrating a stopping policy.
 
+## Fifth-back learning with a protected extension
+
+The first eight-update depth-five probe was intentionally too short to test
+learning. Two matched longer diagnostics separated capacity from learning
+signal. A target-only supervised diagnostic, starting from the inherited
+4-back checkpoint and using 8,192 unique lifetimes over 256 updates, reached
+**93.03%** eligible held-out 5-back accuracy. Reset and time-shuffle controls
+were **50.00%** and **49.74%**. This is a verifier-label ceiling probe, not a
+claim that the controller discovered the skill from reward.
+
+We then tested a genuinely protected extension. `--freeze-inherited-history`
+freezes the controller, encoders, decoder, and all inherited RAM-adapter
+columns; only the appended fifth-history input columns can receive gradients.
+After the same 256-update supervised diagnostic budget, the protected adapter
+reached **60.55%** eligible held-out 5-back accuracy, with reset **49.35%** and
+time-shuffle **51.43%**. The inherited 1-back skill was unchanged at
+**94.08%** in a 512-lifetime, zero-learning-rate retention audit; reset history
+was **50.08%**. This demonstrates that a new temporal skill can be acquired
+through an additive RAM-side path without changing the inherited weight path,
+though the protected adapter is less sample-efficient than the task-only
+supervised ceiling.
+
+Finally, eight updates of verifier-reward fine-tuning on that protected adapter
+(with 1/2/3/4-back rehearsal) raised 5-back held-out accuracy from **60.55%** to
+**78.91%**. Reset and time-shuffle controls remained **49.35%** and **52.34%**;
+the post-fine-tune 1-back retention audit remained **93.53%**. This is the
+current strongest result: supervised initialization discovers the new
+representation, then a small reward-only continuation improves it while the
+old skill stays intact. It is a supervised-bootstrapped reward result, not yet
+reward-only discovery from a cold start.
+
 ## Next frontier
 
 The system now has a replicated, causal **learn → check → continue** loop for a
-harder cognitive primitive while retaining the mastered one. The continuation
-decision is now generic and verifier-driven: estimate bits-to-threshold from
-the held-out score, continue only when progress is positive, and reject runs
-whose retention margin falls below the gate. This is evidence for the gated
-protocol across three seeds, not evidence that the fixed 2/0.5/0.5 weighting is
-universally optimal. The next frontier is to learn or calibrate the stopping
-decision itself, then return to 5-back only when an early progress signal
-justifies it, followed by a genuinely novel modality/task family.
+harder cognitive primitive while retaining the mastered one. The new protected
+extension adds a second loop: **freeze inherited path → train appended RAM
+columns → reward-fine-tune → audit retention**. The next frontier is to make
+the fifth-back adapter as sample-efficient as the 93% supervised ceiling,
+preferably by learning a task-agnostic progress/stop signal and by testing a
+new cognitive primitive after the 5-back rung. Any future cold-start reward
+claim must still pass the same reset, time-shuffle, and retention audits.

@@ -5,7 +5,7 @@ import torch
 from .train_brainworkshop_policy import (
     BrainWorkshopPolicy, _controller_action_index, _factorized_advantages,
     Rollout, _eligible_rollout_accuracy, _history_features,
-    _resolve_rehearsal_weights)
+    _protect_inherited_history_extension, _resolve_rehearsal_weights)
 from .brainworkshop_gym import BrainWorkshopConfig
 
 
@@ -22,6 +22,21 @@ def test_eligible_accuracy_excludes_temporal_warmup() -> None:
             [True, True], [False, False], [True, False],
             [True, True], [False, True]]))
     assert _eligible_rollout_accuracy(rollout, 3) == 0.75
+
+
+def test_history_extension_protection_only_opens_new_input_columns() -> None:
+    policy = BrainWorkshopPolicy(
+        width=32, intention_width=16, modalities=("text",),
+        external_history_depth=5, external_memory_adapter_width=32,
+        per_stream_external_history=True,
+        per_stream_intention_adapter_width=32)
+    trainable = _protect_inherited_history_extension(
+        policy, inherited_depth=4)
+    assert trainable == 2 * 32 * 64
+    assert policy.external_memory_adapters["text"][0].weight.requires_grad
+    assert not policy.external_memory_adapters["text"][2].weight.requires_grad
+    assert not any(
+        parameter.requires_grad for parameter in policy.controller.parameters())
 
 
 def test_dual_policy_uses_one_decoder_and_maps_opaque_masks() -> None:

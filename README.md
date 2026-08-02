@@ -1474,3 +1474,32 @@ only when that signal justifies the longer budget while preserving the same
 retention and causal gates. The training telemetry now exposes
 warm-up-excluded `batch_eligible_accuracy`, so that calibration is based on
 the actual target-bearing trials rather than an optimistic mixed score.
+
+## Latest breakthrough: protected fifth-back learning and reward fine-tuning
+
+The depth-five interface is now more than executable. A verifier-label
+diagnostic reached **93.03%** eligible 5-back held-out accuracy after 8,192
+unique lifetimes (256 updates), with reset **50.00%** and time-shuffle **49.74%**.
+This establishes the representational ceiling while keeping the diagnostic
+labels out of inference.
+
+The new `--freeze-inherited-history` ablation freezes the inherited controller,
+decoder, and old RAM columns, exposing only the appended fifth-history input
+columns to training. That protected adapter reached **60.55%** eligible
+5-back accuracy at the same 256-update budget; reset and time-shuffle controls
+were **49.35%** and **51.43%**. A zero-learning-rate retention audit kept
+1-back at **94.08%** (reset **50.08%**). Thus the extra skill can be added through
+an additive RAM-side path without overwriting the old path, although the
+protected representation needs more efficient discovery than the ceiling
+probe.
+
+The strongest sample-efficiency result is the next eight verifier-reward
+updates: protected 5-back rose from **60.55%** to **78.91%** while 1-back stayed
+at **93.53%**. Reset and time-shuffle remained **49.35%** and **52.34%**. This is
+honestly a **supervised-bootstrapped reward continuation**—not cold-start
+reward-only discovery—but it demonstrates the desired compounding pattern:
+discover a reusable new memory path, improve it from sparse verifier reward,
+and preserve the earlier skill. Reports are in
+`session_records/brainworkshop_three_stream_2026-08-02/`; the next frontier is
+closing the sample-efficiency gap to the 93% ceiling and then testing transfer
+to a genuinely different cognitive primitive.

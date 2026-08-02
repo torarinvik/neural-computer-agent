@@ -1,0 +1,339 @@
+{
+  "accuracy_metric": "eligible_accuracy",
+  "after": {
+    "accuracy": 0.7392578125,
+    "eligible_accuracy": 0.4772135317325592,
+    "mean_reward": 0.5154785513877869,
+    "partial_reward_accuracy": 0.7392578125,
+    "per_modality_accuracy": {
+      "audio": 0.50341796875,
+      "text": 0.7392578125,
+      "vision": 0.20361328125
+    },
+    "per_modality_eligible_accuracy": {
+      "audio": 0.5149739384651184,
+      "text": 0.4772135317325592,
+      "vision": 0.48828125
+    },
+    "trial_count": 4096
+  },
+  "batch_size": 32,
+  "before": {
+    "accuracy": 0.6669921875,
+    "eligible_accuracy": 0.4720052182674408,
+    "mean_reward": 0.3673339784145355,
+    "partial_reward_accuracy": 0.6669921875,
+    "per_modality_accuracy": {
+      "audio": 0.5107421875,
+      "text": 0.6669921875,
+      "vision": 0.380615234375
+    },
+    "per_modality_eligible_accuracy": {
+      "audio": 0.5234375,
+      "text": 0.4720052182674408,
+      "vision": 0.494140625
+    },
+    "trial_count": 4096
+  },
+  "config": {
+    "audio_samples": 800,
+    "audio_vocab": 8,
+    "balanced_matches": false,
+    "match_probability": 0.5,
+    "modalities": [
+      "vision",
+      "audio",
+      "text"
+    ],
+    "n_back": 5,
+    "position_vocab": 2,
+    "sample_rate": 8000,
+    "text_vocab": 8,
+    "trial_ms": 1000,
+    "trials": 8,
+    "vision_size": 72
+  },
+  "controller_frozen": false,
+  "cross_stream_shuffle_control": {
+    "accuracy": 0.751953125,
+    "eligible_accuracy": 0.5078125,
+    "mean_reward": 0.54150390625,
+    "partial_reward_accuracy": 0.751953125,
+    "per_modality_accuracy": {
+      "audio": 0.502197265625,
+      "text": 0.751953125,
+      "vision": 0.20458984375
+    },
+    "per_modality_eligible_accuracy": {
+      "audio": 0.50390625,
+      "text": 0.5078125,
+      "vision": 0.490234375
+    },
+    "trial_count": 4096
+  },
+  "device": "mps",
+  "elapsed_seconds": 34.57708670897409,
+  "encoder_checkpoints": {},
+  "encoder_frozen": false,
+  "event_memory_adapter_width": 0,
+  "experiment": "brainworkshop_multimodal_nback_reward_only",
+  "external_history": true,
+  "external_history_depth": 5,
+  "external_memory_adapter_width": 64,
+  "factorized_output": true,
+  "factorized_reward": true,
+  "gate": {
+    "accepted_for_longer_run": false,
+    "gradient_alive": true,
+    "policy_changed": true,
+    "reset_control_recorded": true
+  },
+  "history": [
+    {
+      "batch_accuracy": 0.67578125,
+      "batch_eligible_accuracy": null,
+      "batch_mean_reward": 0.3853515386581421,
+      "elapsed_seconds": 6.567836834001355,
+      "gradient_norm": 7.300869464874268,
+      "loss": 2.596247673034668,
+      "policy_entropy": 0.0,
+      "update": 1,
+      "value_loss": 0.0
+    },
+    {
+      "batch_accuracy": 0.671875,
+      "batch_eligible_accuracy": null,
+      "batch_mean_reward": 0.3773437440395355,
+      "elapsed_seconds": 6.802060749963857,
+      "gradient_norm": 5.925032615661621,
+      "loss": 2.4130656719207764,
+      "policy_entropy": 0.0,
+      "update": 2,
+      "value_loss": 0.0
+    },
+    {
+      "batch_accuracy": 0.64453125,
+      "batch_eligible_accuracy": null,
+      "batch_mean_reward": 0.3212890923023224,
+      "elapsed_seconds": 7.046078749932349,
+      "gradient_norm": 5.9847822189331055,
+      "loss": 2.879016876220703,
+      "policy_entropy": 0.0,
+      "update": 3,
+      "value_loss": 0.0
+    },
+    {
+      "batch_accuracy": 0.6796875,
+      "batch_eligible_accuracy": null,
+      "batch_mean_reward": 0.39335936307907104,
+      "elapsed_seconds": 7.26480745896697,
+      "gradient_norm": 4.905612945556641,
+      "loss": 2.1475470066070557,
+      "policy_entropy": 0.0,
+      "update": 4,
+      "value_loss": 0.0
+    },
+    {
+      "batch_accuracy": 0.6484375,
+      "batch_eligible_accuracy": null,
+      "batch_mean_reward": 0.32929688692092896,
+      "elapsed_seconds": 7.483277374994941,
+      "gradient_norm": 5.970081329345703,
+      "loss": 2.8861498832702637,
+      "policy_entropy": 0.0,
+      "update": 5,
+      "value_loss": 0.0
+    },
+    {
+      "batch_accuracy": 0.6640625,
+      "batch_eligible_accuracy": null,
+      "batch_mean_reward": 0.361328125,
+      "elapsed_seconds": 7.702119041932747,
+      "gradient_norm": 4.639707565307617,
+      "loss": 2.181182861328125,
+      "policy_entropy": 0.0,
+      "update": 6,
+      "value_loss": 0.0
+    },
+    {
+      "batch_accuracy": 0.70703125,
+      "batch_eligible_accuracy": null,
+      "batch_mean_reward": 0.44941407442092896,
+      "elapsed_seconds": 7.920740291941911,
+      "gradient_norm": 3.691164970397949,
+      "loss": 1.7665634155273438,
+      "policy_entropy": 0.0,
+      "update": 7,
+      "value_loss": 0.0
+    },
+    {
+      "batch_accuracy": 0.7109375,
+      "batch_eligible_accuracy": null,
+      "batch_mean_reward": 0.4574218988418579,
+      "elapsed_seconds": 8.169803541968577,
+      "gradient_norm": 3.8904292583465576,
+      "loss": 1.8101441860198975,
+      "policy_entropy": 0.0,
+      "update": 8,
+      "value_loss": 0.0
+    },
+    {
+      "batch_accuracy": 0.7265625,
+      "batch_eligible_accuracy": null,
+      "batch_mean_reward": 0.48945310711860657,
+      "elapsed_seconds": 8.387427374953404,
+      "gradient_norm": 3.7485859394073486,
+      "loss": 1.722160816192627,
+      "policy_entropy": 0.0,
+      "update": 9,
+      "value_loss": 0.0
+    },
+    {
+      "batch_accuracy": 0.68359375,
+      "batch_eligible_accuracy": null,
+      "batch_mean_reward": 0.4013671875,
+      "elapsed_seconds": 8.606011874973774,
+      "gradient_norm": 3.9457480907440186,
+      "loss": 1.885563850402832,
+      "policy_entropy": 0.0,
+      "update": 10,
+      "value_loss": 0.0
+    },
+    {
+      "batch_accuracy": 0.69921875,
+      "batch_eligible_accuracy": null,
+      "batch_mean_reward": 0.4333984851837158,
+      "elapsed_seconds": 8.837019874947146,
+      "gradient_norm": 4.134583473205566,
+      "loss": 2.0697579383850098,
+      "policy_entropy": 0.0,
+      "update": 11,
+      "value_loss": 0.0
+    },
+    {
+      "batch_accuracy": 0.71875,
+      "batch_eligible_accuracy": null,
+      "batch_mean_reward": 0.47343751788139343,
+      "elapsed_seconds": 9.05298691696953,
+      "gradient_norm": 4.11729621887207,
+      "loss": 1.9731377363204956,
+      "policy_entropy": 0.0,
+      "update": 12,
+      "value_loss": 0.0
+    },
+    {
+      "batch_accuracy": 0.76171875,
+      "batch_eligible_accuracy": null,
+      "batch_mean_reward": 0.5615234375,
+      "elapsed_seconds": 9.26940695894882,
+      "gradient_norm": 3.0861756801605225,
+      "loss": 1.4201428890228271,
+      "policy_entropy": 0.0,
+      "update": 13,
+      "value_loss": 0.0
+    },
+    {
+      "batch_accuracy": 0.74609375,
+      "batch_eligible_accuracy": null,
+      "batch_mean_reward": 0.529492199420929,
+      "elapsed_seconds": 9.487769500003196,
+      "gradient_norm": 3.2321863174438477,
+      "loss": 1.4928898811340332,
+      "policy_entropy": 0.0,
+      "update": 14,
+      "value_loss": 0.0
+    },
+    {
+      "batch_accuracy": 0.71484375,
+      "batch_eligible_accuracy": null,
+      "batch_mean_reward": 0.46542972326278687,
+      "elapsed_seconds": 9.709818416973576,
+      "gradient_norm": 3.7212302684783936,
+      "loss": 1.7420696020126343,
+      "policy_entropy": 0.0,
+      "update": 15,
+      "value_loss": 0.0
+    },
+    {
+      "batch_accuracy": 0.7265625,
+      "batch_eligible_accuracy": null,
+      "batch_mean_reward": 0.48945316672325134,
+      "elapsed_seconds": 9.929914916981943,
+      "gradient_norm": 3.74273419380188,
+      "loss": 1.6752541065216064,
+      "policy_entropy": 0.0,
+      "update": 16,
+      "value_loss": 0.0
+    }
+  ],
+  "history_reset_control": {
+    "accuracy": 0.8125,
+    "eligible_accuracy": 0.5,
+    "mean_reward": 0.6656250357627869,
+    "partial_reward_accuracy": 0.8125,
+    "per_modality_accuracy": {
+      "audio": 0.814453125,
+      "text": 0.8125,
+      "vision": 0.190673828125
+    },
+    "per_modality_eligible_accuracy": {
+      "audio": 0.5052083134651184,
+      "text": 0.5,
+      "vision": 0.5084635615348816
+    },
+    "trial_count": 4096
+  },
+  "input_bus_event_rms_target": 1.0,
+  "input_bus_normalize_events": false,
+  "learned_source_keys": false,
+  "modalities": [
+    "vision",
+    "audio",
+    "text"
+  ],
+  "modality": "multi",
+  "neutral_new_output": false,
+  "objective": "supervised_diagnostic",
+  "oracle_events": false,
+  "per_stream_external_history": true,
+  "per_stream_intention_adapter_width": 64,
+  "rehearsal_n_back": null,
+  "rehearsal_n_backs": [],
+  "rehearsal_n_backs_arg": "",
+  "rehearsal_weight": 0.5,
+  "rehearsal_weights": [],
+  "rehearsal_weights_arg": "",
+  "relation_adapter_width": 0,
+  "retrieved_memory_adapter_width": 0,
+  "seed": 47507,
+  "serial_modalities": false,
+  "slot_memory_composer": false,
+  "source_key_init_scale": 0.0,
+  "stacked_history_adapter": false,
+  "stacked_history_relation_only": false,
+  "stacked_history_router": false,
+  "stream_adapter_width": 0,
+  "target_modalities": [
+    "text"
+  ],
+  "time_shuffle_control": {
+    "accuracy": 0.722412109375,
+    "eligible_accuracy": 0.501953125,
+    "mean_reward": 0.48094481229782104,
+    "partial_reward_accuracy": 0.722412109375,
+    "per_modality_accuracy": {
+      "audio": 0.4755859375,
+      "text": 0.722412109375,
+      "vision": 0.216552734375
+    },
+    "per_modality_eligible_accuracy": {
+      "audio": 0.51171875,
+      "text": 0.501953125,
+      "vision": 0.4928385317325592
+    },
+    "trial_count": 4096
+  },
+  "train_only_modalities": [],
+  "unique_training_lifetimes": 512,
+  "updates": 16
+}
