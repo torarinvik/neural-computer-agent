@@ -239,3 +239,41 @@ extension adds a second loop: **freeze inherited path → train appended RAM
 columns → reward-fine-tune → audit retention**. The next frontier is 8-back or
 transfer to a genuinely different primitive. Any future cold-start reward claim
 must still pass the same reset, time-shuffle, and full-ladder retention audits.
+
+## Eighth-back acquisition and retention audit (2026-08-02)
+
+The initial 8-back representational rung was real: the dense diagnostic improved
+eligible accuracy from **46.88% to 60.55%**, while history reset was **50.00%**
+and time-shuffle was **44.92%**. Three correctly matched supervised continuation
+blocks then crossed the local acquisition threshold, reaching **77.15%** on the
+third block (reset **50.00%**, shuffle **52.34%**). This is evidence that the
+generic RAM bridge can learn the eighth relation; it is not yet a protected
+continual-learning result.
+
+The retention audit exposed the actual blocker. Relative to the original
+retention-safe 8-back checkpoint, the matched continuation branch raised 8-back
+from **60.69% to 78.96%** on the saved 10,240-trial checkpoint audit but reduced
+1-back from **90.40% to 81.26%**, 5-back from **71.89% to 53.87%**, and 6-back
+from **68.48% to 55.27%**. The branch is therefore rejected despite its
+impressive new-task score. This is a causal retention failure, not a
+measurement artifact.
+
+Two repairs were tested in short, pre-registered forks. Multi-rung supervised
+rehearsal (1/5/6/7-back at equal weight) improved 8-back from **73.05% to
+77.93%**, but the original-safe baseline audit still showed 1-back **90.40% →
+81.26%**, 5-back **71.89% → 53.87%**, and 6-back **68.48% → 55.27%**. An
+append-only relation residual that froze the inherited controller/bridge path
+reached only **59.96% from 58.40%** (+1.56 points), below the +5-point
+escalation gate; reset was **50.00%** and time-shuffle **47.66%**. Both branches
+are rejected. The reusable lesson is that replaying old labels is not enough
+when the trainable RAM-to-intention path remains shared; the next repair must
+make the new relation conditional or physically isolated before more updates
+are purchased.
+
+The high-precision audit is saved as
+`nback8_multirung_retention_audit_seed48300.json`, and the reusable evaluator is
+`experiments/unified_cognitive_controller/audit_nback_checkpoint_retention.py`.
+The current frontier is therefore **retention-safe 8-back acquisition**, not
+another unbounded continuation. Any new branch must first pass a tiny gain gate
+and then the original-safe full ladder (1/5/6/7/8), with reset and time-shuffle
+controls, before it can be promoted.

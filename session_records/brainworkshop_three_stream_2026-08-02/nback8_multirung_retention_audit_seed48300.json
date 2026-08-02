@@ -1,0 +1,554 @@
+{
+  "format": "nback_retention_audit.v1",
+  "rungs": [
+    1,
+    5,
+    6,
+    7,
+    8
+  ],
+  "parent": {
+    "checkpoint": "artifacts/checkpoints/brainworkshop_three_stream_nback8_protected_supervised_seed47820_256.pt",
+    "count": 1024,
+    "trials": 10,
+    "results": {
+      "1": {
+        "normal": {
+          "accuracy": 0.91357421875,
+          "eligible_accuracy": 0.9039713740348816,
+          "per_modality_accuracy": {
+            "vision": 0.748046875,
+            "audio": 0.5567382574081421,
+            "text": 0.91357421875
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.8311631679534912,
+            "audio": 0.5074869990348816,
+            "text": 0.9039713740348816
+          },
+          "partial_reward_accuracy": 0.91357421875,
+          "mean_reward": 0.8728271722793579,
+          "trial_count": 10240
+        },
+        "history_reset": {
+          "accuracy": 0.5487304925918579,
+          "eligible_accuracy": 0.4985893964767456,
+          "per_modality_accuracy": {
+            "vision": 0.44843751192092896,
+            "audio": 0.550585925579071,
+            "text": 0.5487304925918579
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.4982638955116272,
+            "audio": 0.5006510615348816,
+            "text": 0.4985893964767456
+          },
+          "partial_reward_accuracy": 0.5487304925918579,
+          "mean_reward": 0.12489745765924454,
+          "trial_count": 10240
+        },
+        "time_shuffle": {
+          "accuracy": 0.579394519329071,
+          "eligible_accuracy": 0.5326606035232544,
+          "per_modality_accuracy": {
+            "vision": 0.4517578184604645,
+            "audio": 0.55029296875,
+            "text": 0.579394519329071
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.501953125,
+            "audio": 0.5003255009651184,
+            "text": 0.5326606035232544
+          },
+          "partial_reward_accuracy": 0.579394519329071,
+          "mean_reward": 0.18775877356529236,
+          "trial_count": 10240
+        }
+      },
+      "5": {
+        "normal": {
+          "accuracy": 0.75048828125,
+          "eligible_accuracy": 0.718945324420929,
+          "per_modality_accuracy": {
+            "vision": 0.39628905057907104,
+            "audio": 0.506054699420929,
+            "text": 0.75048828125
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.4716796875,
+            "audio": 0.508007824420929,
+            "text": 0.718945324420929
+          },
+          "partial_reward_accuracy": 0.75048828125,
+          "mean_reward": 0.5385010242462158,
+          "trial_count": 10240
+        },
+        "history_reset": {
+          "accuracy": 0.7529296875,
+          "eligible_accuracy": 0.505859375,
+          "per_modality_accuracy": {
+            "vision": 0.24814453721046448,
+            "audio": 0.749316394329071,
+            "text": 0.7529296875
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.49628907442092896,
+            "audio": 0.4986328184604645,
+            "text": 0.505859375
+          },
+          "partial_reward_accuracy": 0.7529296875,
+          "mean_reward": 0.5435059070587158,
+          "trial_count": 10240
+        },
+        "time_shuffle": {
+          "accuracy": 0.6273437738418579,
+          "eligible_accuracy": 0.526562511920929,
+          "per_modality_accuracy": {
+            "vision": 0.41279298067092896,
+            "audio": 0.4833007752895355,
+            "text": 0.6273437738418579
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.5042968988418579,
+            "audio": 0.49589842557907104,
+            "text": 0.526562511920929
+          },
+          "partial_reward_accuracy": 0.6273437738418579,
+          "mean_reward": 0.28605470061302185,
+          "trial_count": 10240
+        }
+      },
+      "6": {
+        "normal": {
+          "accuracy": 0.7197265625,
+          "eligible_accuracy": 0.684814453125,
+          "per_modality_accuracy": {
+            "vision": 0.40068358182907104,
+            "audio": 0.48017579317092896,
+            "text": 0.7197265625
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.51171875,
+            "audio": 0.50439453125,
+            "text": 0.684814453125
+          },
+          "partial_reward_accuracy": 0.7197265625,
+          "mean_reward": 0.4754394590854645,
+          "trial_count": 10240
+        },
+        "history_reset": {
+          "accuracy": 0.8018554449081421,
+          "eligible_accuracy": 0.504638671875,
+          "per_modality_accuracy": {
+            "vision": 0.19814452528953552,
+            "audio": 0.797070324420929,
+            "text": 0.8018554449081421
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.495361328125,
+            "audio": 0.49267578125,
+            "text": 0.504638671875
+          },
+          "partial_reward_accuracy": 0.8018554449081421,
+          "mean_reward": 0.6438037157058716,
+          "trial_count": 10240
+        },
+        "time_shuffle": {
+          "accuracy": 0.6314452886581421,
+          "eligible_accuracy": 0.519287109375,
+          "per_modality_accuracy": {
+            "vision": 0.40380859375,
+            "audio": 0.4703125059604645,
+            "text": 0.6314452886581421
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.5126953125,
+            "audio": 0.50732421875,
+            "text": 0.519287109375
+          },
+          "partial_reward_accuracy": 0.6314452886581421,
+          "mean_reward": 0.2944629192352295,
+          "trial_count": 10240
+        }
+      },
+      "7": {
+        "normal": {
+          "accuracy": 0.690136730670929,
+          "eligible_accuracy": 0.6474609375,
+          "per_modality_accuracy": {
+            "vision": 0.40019530057907104,
+            "audio": 0.4515624940395355,
+            "text": 0.690136730670929
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.5055338740348816,
+            "audio": 0.51171875,
+            "text": 0.6474609375
+          },
+          "partial_reward_accuracy": 0.690136730670929,
+          "mean_reward": 0.41478028893470764,
+          "trial_count": 10240
+        },
+        "history_reset": {
+          "accuracy": 0.8514648675918579,
+          "eligible_accuracy": 0.5048828125,
+          "per_modality_accuracy": {
+            "vision": 0.15048828721046448,
+            "audio": 0.8485351800918579,
+            "text": 0.8514648675918579
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.5016276240348816,
+            "audio": 0.4951171875,
+            "text": 0.5048828125
+          },
+          "partial_reward_accuracy": 0.8514648675918579,
+          "mean_reward": 0.7455029487609863,
+          "trial_count": 10240
+        },
+        "time_shuffle": {
+          "accuracy": 0.62060546875,
+          "eligible_accuracy": 0.5091145634651184,
+          "per_modality_accuracy": {
+            "vision": 0.39716798067092896,
+            "audio": 0.4312500059604645,
+            "text": 0.62060546875
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.5087890625,
+            "audio": 0.5055338740348816,
+            "text": 0.5091145634651184
+          },
+          "partial_reward_accuracy": 0.62060546875,
+          "mean_reward": 0.2722412049770355,
+          "trial_count": 10240
+        }
+      },
+      "8": {
+        "normal": {
+          "accuracy": 0.667285144329071,
+          "eligible_accuracy": 0.60693359375,
+          "per_modality_accuracy": {
+            "vision": 0.39130860567092896,
+            "audio": 0.40996092557907104,
+            "text": 0.667285144329071
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.525390625,
+            "audio": 0.51171875,
+            "text": 0.60693359375
+          },
+          "partial_reward_accuracy": 0.667285144329071,
+          "mean_reward": 0.36793458461761475,
+          "trial_count": 10240
+        },
+        "history_reset": {
+          "accuracy": 0.8999999761581421,
+          "eligible_accuracy": 0.5,
+          "per_modality_accuracy": {
+            "vision": 0.10000000149011612,
+            "audio": 0.8999999761581421,
+            "text": 0.8999999761581421
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.5,
+            "audio": 0.5,
+            "text": 0.5
+          },
+          "partial_reward_accuracy": 0.8999999761581421,
+          "mean_reward": 0.8450000882148743,
+          "trial_count": 10240
+        },
+        "time_shuffle": {
+          "accuracy": 0.6253906488418579,
+          "eligible_accuracy": 0.50537109375,
+          "per_modality_accuracy": {
+            "vision": 0.40107423067092896,
+            "audio": 0.4041992127895355,
+            "text": 0.6253906488418579
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.51416015625,
+            "audio": 0.49658203125,
+            "text": 0.50537109375
+          },
+          "partial_reward_accuracy": 0.6253906488418579,
+          "mean_reward": 0.2820507884025574,
+          "trial_count": 10240
+        }
+      }
+    }
+  },
+  "child": {
+    "checkpoint": "artifacts/checkpoints/brainworkshop_three_stream_nback8_multirung_rehearsal_seed47940_32.pt",
+    "count": 1024,
+    "trials": 10,
+    "results": {
+      "1": {
+        "normal": {
+          "accuracy": 0.831347644329071,
+          "eligible_accuracy": 0.8126084804534912,
+          "per_modality_accuracy": {
+            "vision": 0.4671874940395355,
+            "audio": 0.5615234375,
+            "text": 0.831347644329071
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.5190972089767456,
+            "audio": 0.5128037929534912,
+            "text": 0.8126084804534912
+          },
+          "partial_reward_accuracy": 0.831347644329071,
+          "mean_reward": 0.7042627334594727,
+          "trial_count": 10240
+        },
+        "history_reset": {
+          "accuracy": 0.54736328125,
+          "eligible_accuracy": 0.4970703125,
+          "per_modality_accuracy": {
+            "vision": 0.44746094942092896,
+            "audio": 0.548632800579071,
+            "text": 0.54736328125
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.4971788227558136,
+            "audio": 0.4984809160232544,
+            "text": 0.4970703125
+          },
+          "partial_reward_accuracy": 0.54736328125,
+          "mean_reward": 0.12209471315145493,
+          "trial_count": 10240
+        },
+        "time_shuffle": {
+          "accuracy": 0.579785168170929,
+          "eligible_accuracy": 0.5330946445465088,
+          "per_modality_accuracy": {
+            "vision": 0.4461914002895355,
+            "audio": 0.5494140386581421,
+            "text": 0.579785168170929
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.4957682192325592,
+            "audio": 0.4993489682674408,
+            "text": 0.5330946445465088
+          },
+          "partial_reward_accuracy": 0.579785168170929,
+          "mean_reward": 0.18855956196784973,
+          "trial_count": 10240
+        }
+      },
+      "5": {
+        "normal": {
+          "accuracy": 0.7607421875,
+          "eligible_accuracy": 0.5386718511581421,
+          "per_modality_accuracy": {
+            "vision": 0.24833984673023224,
+            "audio": 0.53271484375,
+            "text": 0.7607421875
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.49628907442092896,
+            "audio": 0.501171886920929,
+            "text": 0.5386718511581421
+          },
+          "partial_reward_accuracy": 0.7607421875,
+          "mean_reward": 0.5595215559005737,
+          "trial_count": 10240
+        },
+        "history_reset": {
+          "accuracy": 0.75146484375,
+          "eligible_accuracy": 0.5029296875,
+          "per_modality_accuracy": {
+            "vision": 0.24726562201976776,
+            "audio": 0.749316394329071,
+            "text": 0.75146484375
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.4945312440395355,
+            "audio": 0.4986328184604645,
+            "text": 0.5029296875
+          },
+          "partial_reward_accuracy": 0.75146484375,
+          "mean_reward": 0.5405029654502869,
+          "trial_count": 10240
+        },
+        "time_shuffle": {
+          "accuracy": 0.7442382574081421,
+          "eligible_accuracy": 0.5220702886581421,
+          "per_modality_accuracy": {
+            "vision": 0.24726562201976776,
+            "audio": 0.5125976800918579,
+            "text": 0.7442382574081421
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.4937500059604645,
+            "audio": 0.501757800579071,
+            "text": 0.5220702886581421
+          },
+          "partial_reward_accuracy": 0.7442382574081421,
+          "mean_reward": 0.5256885290145874,
+          "trial_count": 10240
+        }
+      },
+      "6": {
+        "normal": {
+          "accuracy": 0.8086913824081421,
+          "eligible_accuracy": 0.552734375,
+          "per_modality_accuracy": {
+            "vision": 0.19951172173023224,
+            "audio": 0.482421875,
+            "text": 0.8086913824081421
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.498779296875,
+            "audio": 0.504638671875,
+            "text": 0.552734375
+          },
+          "partial_reward_accuracy": 0.8086913824081421,
+          "mean_reward": 0.6578174829483032,
+          "trial_count": 10240
+        },
+        "history_reset": {
+          "accuracy": 0.800488293170929,
+          "eligible_accuracy": 0.501220703125,
+          "per_modality_accuracy": {
+            "vision": 0.197265625,
+            "audio": 0.7982422113418579,
+            "text": 0.800488293170929
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.4931640625,
+            "audio": 0.49560546875,
+            "text": 0.501220703125
+          },
+          "partial_reward_accuracy": 0.800488293170929,
+          "mean_reward": 0.6410010457038879,
+          "trial_count": 10240
+        },
+        "time_shuffle": {
+          "accuracy": 0.7867187261581421,
+          "eligible_accuracy": 0.51708984375,
+          "per_modality_accuracy": {
+            "vision": 0.19765624403953552,
+            "audio": 0.47050780057907104,
+            "text": 0.7867187261581421
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.494140625,
+            "audio": 0.504150390625,
+            "text": 0.51708984375
+          },
+          "partial_reward_accuracy": 0.7867187261581421,
+          "mean_reward": 0.6127734184265137,
+          "trial_count": 10240
+        }
+      },
+      "7": {
+        "normal": {
+          "accuracy": 0.8775390386581421,
+          "eligible_accuracy": 0.6793619990348816,
+          "per_modality_accuracy": {
+            "vision": 0.15009765326976776,
+            "audio": 0.4325195252895355,
+            "text": 0.8775390386581421
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.4996744692325592,
+            "audio": 0.5029296875,
+            "text": 0.6793619990348816
+          },
+          "partial_reward_accuracy": 0.8775390386581421,
+          "mean_reward": 0.7989551424980164,
+          "trial_count": 10240
+        },
+        "history_reset": {
+          "accuracy": 0.850878894329071,
+          "eligible_accuracy": 0.5029296875,
+          "per_modality_accuracy": {
+            "vision": 0.15000000596046448,
+            "audio": 0.8490234613418579,
+            "text": 0.850878894329071
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.5,
+            "audio": 0.4967447817325592,
+            "text": 0.5029296875
+          },
+          "partial_reward_accuracy": 0.850878894329071,
+          "mean_reward": 0.7443017959594727,
+          "trial_count": 10240
+        },
+        "time_shuffle": {
+          "accuracy": 0.813183605670929,
+          "eligible_accuracy": 0.4990234375,
+          "per_modality_accuracy": {
+            "vision": 0.15019531548023224,
+            "audio": 0.4146484434604645,
+            "text": 0.813183605670929
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.4996744692325592,
+            "audio": 0.5032551884651184,
+            "text": 0.4990234375
+          },
+          "partial_reward_accuracy": 0.813183605670929,
+          "mean_reward": 0.6670264005661011,
+          "trial_count": 10240
+        }
+      },
+      "8": {
+        "normal": {
+          "accuracy": 0.916796863079071,
+          "eligible_accuracy": 0.78955078125,
+          "per_modality_accuracy": {
+            "vision": 0.099609375,
+            "audio": 0.3802734315395355,
+            "text": 0.916796863079071
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.4970703125,
+            "audio": 0.5,
+            "text": 0.78955078125
+          },
+          "partial_reward_accuracy": 0.916796863079071,
+          "mean_reward": 0.8794336318969727,
+          "trial_count": 10240
+        },
+        "history_reset": {
+          "accuracy": 0.8999999761581421,
+          "eligible_accuracy": 0.5,
+          "per_modality_accuracy": {
+            "vision": 0.10000000149011612,
+            "audio": 0.8999999761581421,
+            "text": 0.8999999761581421
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.5,
+            "audio": 0.5,
+            "text": 0.5
+          },
+          "partial_reward_accuracy": 0.8999999761581421,
+          "mean_reward": 0.8450000882148743,
+          "trial_count": 10240
+        },
+        "time_shuffle": {
+          "accuracy": 0.847949206829071,
+          "eligible_accuracy": 0.5,
+          "per_modality_accuracy": {
+            "vision": 0.10000000149011612,
+            "audio": 0.36962890625,
+            "text": 0.847949206829071
+          },
+          "per_modality_eligible_accuracy": {
+            "vision": 0.49951171875,
+            "audio": 0.5,
+            "text": 0.5
+          },
+          "partial_reward_accuracy": 0.847949206829071,
+          "mean_reward": 0.7382959723472595,
+          "trial_count": 10240
+        }
+      }
+    }
+  }
+}
