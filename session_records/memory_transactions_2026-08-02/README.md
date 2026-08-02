@@ -37,10 +37,31 @@ The reusable transaction API is
 `DiskLatentMemory.transactional_replace()` in
 `experiments/unified_cognitive_controller/memory.py`.
 
-## Boundary and next rung
+## Learned-head integration and adversarial audit
 
-This proves the safety mechanism, not yet a full learned controller loop. The
-next integration must feed the promoted receipt-trained plasticity head's
-replacement proposal into this transaction, score old and candidate behaviors
-with the real controller/verifier, and measure commit rate, rollback rate,
-learning gain per verifier bit, and retention under memory corruption.
+The promoted receipt-trained plasticity head is now connected to the
+transaction path by
+`experiments/unified_cognitive_controller/audit_transactional_plasticity.py`.
+The audit uses the same latent receipt histories for two arms:
+
+* **learned:** the eight-feature head chooses the replacement row;
+* **adversarial control:** a verifier-side control deliberately targets a
+  stable row, without exposing semantic labels to the learner.
+
+With 32 banks of capacity 6, the learned arm committed 32/32 proposals, with
+32 positive candidate gains and zero observed unguarded or guarded forgetting.
+The adversarial arm caused 8 unguarded regressions; all 8 were rolled back by
+the transaction gate, with zero guarded regressions. Twenty-four adversarial
+updates were safe enough to commit. The complete JSON report is
+`learned_plasticity_transaction_audit.json`; all runs completed in 0.83 seconds
+on CPU and committed-memory disk round trips were exact.
+
+| arm | proposals | commits | rollbacks | unguarded forgetting | guarded forgetting |
+|---|---:|---:|---:|---:|---:|
+| learned head | 32 | 32 | 0 | 0 | 0 |
+| adversarial control | 32 | 24 | 8 | 8 | 0 |
+
+This is an integrated safety result, not yet proof of open-ended continual
+learning. The next rung is to evaluate the same transaction mechanism over a
+longer stream of genuinely novel primitives, with explicit old-skill
+retention, memory-corruption dependence, and sample-efficiency measurements.
