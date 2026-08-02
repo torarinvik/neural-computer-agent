@@ -1838,3 +1838,35 @@ the disk copy remains intact. The bank snapshot is
 This is a hot/cold persistence breakthrough, but the key is currently a
 diagnostic controller-state address. The next experiment must learn or verify
 multi-skill addressing and then acquire a new skill after a cold reload.
+
+## Multi-skill cold-bank routing after a fresh span-ten acquisition
+
+The first append-slot pilot exposed and fixed an indexing bug in the offline
+trainer: an appended slot was being optimized through slot zero's read
+projection, while inference used its own projection. The corrected short pilot
+improved span ten from a matched cold-parent baseline of 75.72% to 77.66%;
+blank and complete-reset controls stayed at chance. At the established
+8,192-lifetime/384-pass regime, two independent cold-reload acquisitions
+reached **82.86%** and **82.68%** on span ten, versus 75.69% for the parent.
+The gain is real but the always-on residual caused a 4.28-point span-nine drop,
+so that checkpoint is not a retention-safe promotion. A staged gate preserved
+span nine but erased most of the new gain, confirming that a single residual
+should not be forced to solve both routing and plasticity.
+
+The higher-value architectural test therefore routed separate learned skills
+through the external bank. The span-nine and span-ten successor artifacts were
+stored under separate controller-produced context keys, the bank was saved and
+reloaded, and eight held-out queries selected the correct row every time. In a
+4,096-lifetime audit:
+
+- routed span nine: **90.997%**;
+- routed span ten: **83.225%**, exactly matching direct rehydration;
+- leaving the span-nine artifact active on span ten: **75.942%**;
+- leaving the span-ten artifact active on span nine: **85.927%**.
+
+Thus external hot/cold routing restores the older skill instead of making the
+new residual permanently perturb it. The span-ten skill is not yet at the
+90%-mastery bar, but the multi-skill memory boundary now has causal evidence:
+selection survives reload, the selected artifact reproduces its direct child,
+and wrong-skill activation loses the corresponding capability. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/span_multi_skill_bank_audit_seed49011.json`.

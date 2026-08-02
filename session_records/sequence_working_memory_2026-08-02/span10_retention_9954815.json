@@ -1,0 +1,78 @@
+{
+  "schema": "sequence-span-retention-audit-v1",
+  "parent": "artifacts/checkpoints/span9_cold_rehydrated_seed48002.pt",
+  "child": "/tmp/span10_cold_rehydrated_8192_e384_seed9954815.pt",
+  "count_per_span": 512,
+  "max_old_span_drop": 0.02,
+  "paired": {
+    "2": {
+      "parent_accuracy": 0.9970703125,
+      "child_accuracy": 0.9970703125,
+      "margin": 0.0,
+      "child_blank_accuracy": 0.5,
+      "child_reset_accuracy": 0.498046875
+    },
+    "3": {
+      "parent_accuracy": 0.9967448115348816,
+      "child_accuracy": 0.9967448115348816,
+      "margin": 0.0,
+      "child_blank_accuracy": 0.5071614980697632,
+      "child_reset_accuracy": 0.4921875
+    },
+    "4": {
+      "parent_accuracy": 0.9609375,
+      "child_accuracy": 0.9609375,
+      "margin": 0.0,
+      "child_blank_accuracy": 0.501953125,
+      "child_reset_accuracy": 0.5
+    },
+    "5": {
+      "parent_accuracy": 0.8988281488418579,
+      "child_accuracy": 0.8988281488418579,
+      "margin": 0.0,
+      "child_blank_accuracy": 0.4957031309604645,
+      "child_reset_accuracy": 0.49609375
+    },
+    "6": {
+      "parent_accuracy": 0.8323568105697632,
+      "child_accuracy": 0.8323568105697632,
+      "margin": 0.0,
+      "child_blank_accuracy": 0.5084635615348816,
+      "child_reset_accuracy": 0.501953125
+    },
+    "7": {
+      "parent_accuracy": 0.7963169813156128,
+      "child_accuracy": 0.793526828289032,
+      "margin": -0.0027901530265808105,
+      "child_blank_accuracy": 0.5027902126312256,
+      "child_reset_accuracy": 0.504464328289032
+    },
+    "8": {
+      "parent_accuracy": 0.886474609375,
+      "child_accuracy": 0.892333984375,
+      "margin": 0.005859375,
+      "child_blank_accuracy": 0.50341796875,
+      "child_reset_accuracy": 0.501953125
+    },
+    "9": {
+      "parent_accuracy": 0.9066840410232544,
+      "child_accuracy": 0.8639323115348816,
+      "margin": -0.0427517294883728,
+      "child_blank_accuracy": 0.4967447817325592,
+      "child_reset_accuracy": 0.487847238779068
+    },
+    "10": {
+      "parent_accuracy": 0.762499988079071,
+      "child_accuracy": 0.8359375,
+      "margin": 0.07343751192092896,
+      "child_blank_accuracy": 0.4427734315395355,
+      "child_reset_accuracy": 0.4921875
+    }
+  },
+  "old_spans_retained": false,
+  "target_mastered": false,
+  "target_span": 10,
+  "span9_mastered": null,
+  "span9_accuracy": 0.8639323115348816,
+  "accepted": false
+}

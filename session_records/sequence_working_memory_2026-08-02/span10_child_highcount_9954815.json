@@ -1,0 +1,42 @@
+{
+  "schema": "sequence-checkpoint-audit-v1",
+  "checkpoint": "/tmp/span10_cold_rehydrated_8192_e384_seed9954815.pt",
+  "count": 4096,
+  "span": 10,
+  "distractors": 2,
+  "seed": 9954815,
+  "audit": {
+    "accuracy": 0.8324951529502869,
+    "forward_accuracy": 0.8165527582168579,
+    "reverse_accuracy": 0.848437488079071,
+    "accuracy_by_output": [
+      0.98974609375,
+      0.961181640625,
+      0.86572265625,
+      0.795654296875,
+      0.7353515625,
+      0.712158203125,
+      0.706298828125,
+      0.756103515625,
+      0.840087890625,
+      0.962646484375
+    ],
+    "reverse_operation_accuracy": 0.832714855670929,
+    "reverse_operation_prediction_flip_rate_nonpalindrome": 0.481577605009079,
+    "reverse_sequence_accuracy": 0.830029308795929,
+    "reverse_sequence_prediction_flip_rate_nonpalindrome": 0.4741179347038269,
+    "blank_sequence_accuracy": 0.503247082233429,
+    "blank_operation_cue_accuracy": 0.567578136920929,
+    "workspace_disabled_accuracy": 0.5747314691543579,
+    "active_state_reset_accuracy": 0.5513916015625,
+    "all_memory_reset_accuracy": 0.5030761957168579,
+    "zero_distractor_accuracy": 0.7317871451377869,
+    "heldout_position_accuracy": 0.7949463129043579,
+    "position_accuracy_by_blend": {
+      "0.25": 0.815136730670929,
+      "0.5": 0.8091064691543579,
+      "0.75": 0.8091064691543579,
+      "1.0": 0.7949463129043579
+    }
+  }
+}

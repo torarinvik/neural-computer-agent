@@ -115,8 +115,12 @@ def _skill_slot_logits(
     Keeping the split explicit prevents a workspace-aware experiment from
     silently training on the wrong slice of an older buffer.
     """
-    if len(model.skill_adapters) != 1:
-        raise ValueError("this diagnostic expects exactly one new skill slot")
+    if not len(model.skill_adapters):
+        raise ValueError("skill-slot training requires at least one slot")
+    # New rungs append one zero-output slot to an already promoted parent.
+    # Always train the final slot; older slots remain frozen and continue to
+    # provide the inherited base logits.
+    slot_index = len(model.skill_adapters) - 1
     base_width = model.width * 2
     workspace_width = (
         model.workspace_slots * model.width
@@ -156,28 +160,28 @@ def _skill_slot_logits(
     if age_width:
         reads.append(features[:, cursor:cursor + age_width])
     if reads:
-        projected = model.skill_adapter_read_projections[0](
+        projected = model.skill_adapter_read_projections[slot_index](
             torch.cat(reads, dim=-1))
         own_features = torch.cat([slot_features, projected], dim=-1)
     else:
         own_features = slot_features
-    score = model.skill_adapter_gates[0](own_features)
+    score = model.skill_adapter_gates[slot_index](own_features)
     opening = (
         F.leaky_relu(score, model.skill_adapter_gate_leak)
         if model.skill_adapter_gate_mode == "relu"
         else torch.sigmoid(score))
-    hidden_read = model.skill_adapters[0][1](
-        model.skill_adapters[0][0](own_features))
-    residual = model.skill_adapters[0][2](hidden_read) * opening
+    hidden_read = model.skill_adapters[slot_index][1](
+        model.skill_adapters[slot_index][0](own_features))
+    residual = model.skill_adapters[slot_index][2](hidden_read) * opening
     critic_logits = None
     critic_residual = None
-    critic = model.skill_adapter_critics[0]
+    critic = model.skill_adapter_critics[slot_index]
     if not isinstance(critic, torch.nn.Identity):
         critic_logits = critic(own_features)
         critic_residual = (
             critic_logits - critic_logits.mean(dim=-1, keepdim=True))
         critic_residual = (
-            critic_residual * model.skill_adapter_critic_scales[0]
+            critic_residual * model.skill_adapter_critic_scales[slot_index]
             * opening)
     return (
         model.actuator(residual), residual, opening, score,
@@ -383,6 +387,11 @@ def main() -> None:
             "train one new successor skill slot while preserving the "
             "parent action adapter"))
     parser.add_argument(
+        "--append-skill-slot", action="store_true",
+        help=(
+            "append the trained slot to a parent that already has promoted "
+            "skill slots; existing slots remain frozen"))
+    parser.add_argument(
         "--action-conditioned-critic-width", type=int, default=0,
         help=(
             "add a zero-impact per-action success predictor trained from "
@@ -496,6 +505,8 @@ def main() -> None:
         raise ValueError("workspace-usage reads require a skill slot")
     if args.skill_adapter_reads_event_age and not args.skill_adapter_width:
         raise ValueError("event-age reads require a skill slot")
+    if args.append_skill_slot and not args.skill_adapter_width:
+        raise ValueError("appending a skill slot requires --skill-adapter-width")
     if (args.action_conditioned_critic_width
             and not args.skill_adapter_width):
         raise ValueError("the critic requires a skill slot")
@@ -614,38 +625,59 @@ def main() -> None:
             outcomes.shape[0], generator=generator).to(device)
         outcomes = outcomes[permutation]
     if args.skill_adapter_width:
-        if base_configuration.get("skill_adapter_widths", ()):
+        existing_slots = tuple(base_configuration.get(
+            "skill_adapter_widths", ()))
+        if existing_slots and not args.append_skill_slot:
             raise ValueError(
-                "this diagnostic expects a parent without skill slots")
-        configuration = dict(
-            base_configuration,
-            skill_adapter_widths=(args.skill_adapter_width,),
-            skill_adapter_gate_mode=args.skill_adapter_gate_mode,
-            skill_adapter_gate_hidden=args.skill_adapter_gate_hidden,
-            skill_adapter_legacy_read_from=(
-                None if args.skill_adapter_no_legacy_read else 0),
-            skill_adapter_reads_intention_from=(
-                0 if args.skill_adapter_reads_intention else None),
-            skill_adapter_reads_workspace_from=(
-                0 if args.skill_adapter_reads_workspace else None),
-            skill_adapter_reads_workspace_usage_from=(
-                0 if args.skill_adapter_reads_workspace_usage else None),
-            skill_adapter_reads_event_age_from=(
-                0 if args.skill_adapter_reads_event_age else None),
-            event_age=args.skill_adapter_reads_event_age,
-            skill_adapter_read_bottleneck=args.skill_adapter_read_bottleneck,
-            skill_adapter_critic_width=(
-                args.action_conditioned_critic_width
-                if args.action_conditioned_critic_width else 0))
+                "parent already has skill slots; use --append-skill-slot "
+                "for a new successor rung")
+        if args.append_skill_slot:
+            configuration = dict(
+                base_configuration,
+                skill_adapter_widths=existing_slots + (
+                    args.skill_adapter_width,))
+        else:
+            configuration = dict(
+                base_configuration,
+                skill_adapter_widths=(args.skill_adapter_width,),
+                skill_adapter_gate_mode=args.skill_adapter_gate_mode,
+                skill_adapter_gate_hidden=args.skill_adapter_gate_hidden,
+                skill_adapter_legacy_read_from=(
+                    None if args.skill_adapter_no_legacy_read else 0),
+                skill_adapter_reads_intention_from=(
+                    0 if args.skill_adapter_reads_intention else None),
+                skill_adapter_reads_workspace_from=(
+                    0 if args.skill_adapter_reads_workspace else None),
+                skill_adapter_reads_workspace_usage_from=(
+                    0 if args.skill_adapter_reads_workspace_usage else None),
+                skill_adapter_reads_event_age_from=(
+                    0 if args.skill_adapter_reads_event_age else None),
+                event_age=args.skill_adapter_reads_event_age,
+                skill_adapter_read_bottleneck=args.skill_adapter_read_bottleneck,
+                skill_adapter_critic_width=(
+                    args.action_conditioned_critic_width
+                    if args.action_conditioned_critic_width else 0))
     else:
         configuration = dict(
             base_configuration,
             action_adapter_width=args.action_adapter_width,
             action_adapter_gated=False)
     student = UnifiedCognitiveController(**configuration).to(device)
-    student.load_state_dict(payload["state_dict"], strict=False)
+    load_result = student.load_state_dict(
+        payload["state_dict"], strict=False)
+    allowed_missing = set(student.state_dict()) - set(payload["state_dict"])
+    if set(load_result.missing_keys) != allowed_missing:
+        raise RuntimeError(
+            "parent/append checkpoint mismatch: "
+            f"missing={load_result.missing_keys}, unexpected="
+            f"{load_result.unexpected_keys}")
+    if load_result.unexpected_keys:
+        raise RuntimeError(
+            f"unexpected parent keys: {load_result.unexpected_keys}")
     if args.skill_adapter_width:
-        assert len(student.skill_adapters) == 1
+        assert len(student.skill_adapters) == (
+            len(base_configuration.get("skill_adapter_widths", ()))
+            + 1 if args.append_skill_slot else 1)
     else:
         assert student.action_adapter is not None
     if args.residual_action_adapter:
@@ -658,14 +690,16 @@ def main() -> None:
     for parameter in student.parameters():
         parameter.requires_grad_(False)
     if args.skill_adapter_width:
+        slot_index = len(student.skill_adapters) - 1
         for module in (
-                student.skill_adapters[0], student.skill_adapter_gates[0],
-                student.skill_adapter_read_projections[0],
-                student.skill_adapter_critics[0]):
+                student.skill_adapters[slot_index],
+                student.skill_adapter_gates[slot_index],
+                student.skill_adapter_read_projections[slot_index],
+                student.skill_adapter_critics[slot_index]):
             for parameter in module.parameters():
                 parameter.requires_grad_(True)
         if args.action_conditioned_critic_width:
-            student.skill_adapter_critic_scales[0].requires_grad_(True)
+            student.skill_adapter_critic_scales[slot_index].requires_grad_(True)
         if args.train_parent_action_adapter:
             if student.action_adapter is None:
                 raise ValueError(
@@ -787,7 +821,7 @@ def main() -> None:
         if args.replay_refine_gate_only:
             for parameter in student.parameters():
                 parameter.requires_grad_(False)
-            for parameter in student.skill_adapter_gates[0].parameters():
+            for parameter in student.skill_adapter_gates[-1].parameters():
                 parameter.requires_grad_(True)
         # A provenance classifier needs both sides of the split.  Training
         # it only on ``replay_indices`` makes every target zero (old), so its

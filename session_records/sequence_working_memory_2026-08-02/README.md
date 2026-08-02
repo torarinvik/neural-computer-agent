@@ -846,6 +846,17 @@ the curriculum advance to span ten or broaden the task family.
   cold-bank reload, hot eviction, and decoy-artifact controls.
 - `artifacts/memory/span9_skill_bank_seed48002/`: committed cold rows,
   manifest, real skill artifact, and zeroed decoy artifact used by the audit.
+- `span10_cold_rehydrated_8192_e384_seed9954815.json` and
+  `span10_child_highcount_9954815.json`: corrected appended-slot acquisition
+  after cold reload; the new span-ten skill reaches about 83% but the
+  always-on residual is not retention-safe by itself.
+- `span10_retention_9954815.json`: paired audit showing why the always-on
+  residual is rejected (span-nine margin −4.28 points).
+- `span_multi_skill_bank_audit_seed49011.json`: promotion-grade two-row
+  external-bank routing. After save/reload, all eight controller-produced
+  context queries select the correct span-nine or span-ten artifact; routed
+  span nine is 90.997%, routed span ten is 83.225%, and direct rehydration
+  matches exactly. Wrong-skill activation is the causal control.
 - `controller_habit_gpu_seed32231.json` through
   `controller_habit_gpu_seed32234.json`: four CUDA replication reports for
   the reward-only row-volatility selector; all passed the full gate suite.

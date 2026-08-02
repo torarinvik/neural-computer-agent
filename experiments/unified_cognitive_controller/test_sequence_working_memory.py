@@ -4,7 +4,7 @@ from .model import UnifiedCognitiveController
 from .train_sequence_working_memory import (
     generate_sequence_memory_batch, rollout_sequence_memory)
 from .train_sequence_reward_buffer import (
-    _balanced_provenance_loss, _replay_refinement_indices)
+    _balanced_provenance_loss, _replay_refinement_indices, _skill_slot_logits)
 
 
 def test_sequence_memory_generation_is_deterministic_and_balanced() -> None:
@@ -121,6 +121,24 @@ def test_rollout_keeps_all_fast_memory_on_the_model_device() -> None:
     assert result["final_workspace"].device == model.actuator.weight.device
     assert result["final_workspace"].shape == (8, 2, 32)
     assert result["actions"].shape == (8, 2)
+
+
+def test_appended_slot_replay_helper_uses_the_final_slot_projection() -> None:
+    model = UnifiedCognitiveController(
+        width=16, workspace_slots=2, intention_width=8,
+        skill_adapter_widths=(16, 16), skill_adapter_gate_mode="relu",
+        skill_adapter_legacy_read_from=None,
+        skill_adapter_reads_workspace_from=0,
+        skill_adapter_reads_workspace_usage_from=0,
+        skill_adapter_reads_event_age_from=0, event_age=True,
+        skill_adapter_read_bottleneck=4)
+    features = torch.randn(5, 16 * 2 + 2 * 16 + 2 + 1)
+    logits, *_ = _skill_slot_logits(model, features)
+    logits.sum().backward()
+    assert model.skill_adapters[1][2].weight.grad is not None
+    assert model.skill_adapter_read_projections[1].weight.grad is not None
+    assert model.skill_adapters[0][2].weight.grad is None
+    assert model.skill_adapter_read_projections[0].weight.grad is None
 
 
 def test_address_conditioned_write_content_breaks_slot_symmetry() -> None:

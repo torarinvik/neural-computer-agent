@@ -32,17 +32,20 @@ def main() -> None:
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--seed", type=int, default=37001)
     parser.add_argument("--count", type=int, default=1024)
+    parser.add_argument("--target-span", type=int, default=9)
     parser.add_argument("--max-drop", type=float, default=0.02)
     parser.add_argument(
         "--device", default=("cuda" if torch.cuda.is_available() else "cpu"))
     args = parser.parse_args()
     if args.count < 2 or args.count % 2:
         raise ValueError("count must be positive and even")
+    if args.target_span < 2:
+        raise ValueError("target-span must be at least two")
     device = torch.device(args.device)
     parent = _load(args.parent, device)
     child = _load(args.child, device)
     paired: dict[str, dict[str, float]] = {}
-    for span in range(2, 10):
+    for span in range(2, args.target_span + 1):
         seed = args.seed + span * 10_003
         before = evaluate_sequence_memory(
             parent, count=args.count, span=span, distractors=2, seed=seed,
@@ -59,8 +62,8 @@ def main() -> None:
         }
     old_retained = all(
         paired[str(span)]["margin"] >= -args.max_drop
-        for span in range(2, 9))
-    target_mastered = paired["9"]["child_accuracy"] >= 0.90
+        for span in range(2, args.target_span))
+    target_mastered = paired[str(args.target_span)]["child_accuracy"] >= 0.90
     report = {
         "schema": "sequence-span-retention-audit-v1",
         "parent": str(args.parent),
@@ -69,7 +72,15 @@ def main() -> None:
         "max_old_span_drop": args.max_drop,
         "paired": paired,
         "old_spans_retained": old_retained,
-        "span9_mastered": target_mastered,
+        "target_mastered": target_mastered,
+        "target_span": args.target_span,
+        # Keep the historical key for readers of the original span-nine
+        # report while making the generalized target explicit.
+        "span9_mastered": (
+            target_mastered if args.target_span == 9 else None),
+        "span9_accuracy": (
+            paired["9"]["child_accuracy"]
+            if "9" in paired else None),
         "accepted": old_retained and target_mastered,
     }
     args.report.parent.mkdir(parents=True, exist_ok=True)
@@ -77,9 +88,9 @@ def main() -> None:
     print(json.dumps({
         "accepted": report["accepted"],
         "old_spans_retained": old_retained,
-        "span9_accuracy": paired["9"]["child_accuracy"],
+        "target_accuracy": paired[str(args.target_span)]["child_accuracy"],
         "worst_old_margin": min(
-            paired[str(span)]["margin"] for span in range(2, 9)),
+            paired[str(span)]["margin"] for span in range(2, args.target_span)),
     }, sort_keys=True), flush=True)
 
 
