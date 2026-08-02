@@ -1769,3 +1769,22 @@ causal-reward, and old-skill-retention gates together. The important lesson is
 also architectural: a generic stream clock improved sample efficiency, while
 habit protection still belongs at the persistent-memory boundary; a transient
 workspace scalar alone is not enough.
+
+The recipe independently replicated with seed `48002` without changing the
+parent, replay cap, penalties, or training budget. Its 2,048-lifetime report
+reached 90.69%; the independent 4,096-lifetime audit reached **90.58%**
+(90.85% reversed-operation accuracy, 48.01% non-palindrome operation flips,
+49.82% blank, and 50.00% complete reset). The paired 2,048-lifetime retention
+audit reached **90.49%** on span nine, with every old span retained and a worst
+old margin of **−1.21 points**. This turns the original result into a
+replicated promotion, not a single-seed outlier. The new checkpoint and reports
+are in `session_records/sequence_working_memory_2026-08-02/`. Two matched
+outcome-shuffled controls reached only **53.78%** and **55.04%**, with
+blank/reset controls at chance and no corresponding causal gain. This closes
+the adversarial replication gate as well.
+
+The next frontier is persistence across the memory boundary: serialize the
+acquired skill, run private consolidation, reload it into a fresh process, and
+re-run the same span-nine/retention/reversal gates. Until that is measured, the
+claim is limited to replay-protected controller acquisition, not long-term
+disk-memory consolidation.

@@ -626,13 +626,44 @@ older skills. The next frontier is an independent-seed replication followed by
 private consolidation and recall; no claim is made here that the current
 checkpoint has yet completed that long-term-memory integration.
 
+## Independent span-nine replication
+
+The same recipe was rerun from the same span-eight parent with seed `48002`:
+8,192 new lifetimes, the same 16,384-transition replay cap, the same `0.003`
+replay gate/logit penalties, and 384 optimizer passes. The 2,048-lifetime
+training report reached 90.69%. A separate 4,096-lifetime audit reached
+**90.58%**, with 90.85% reversed-operation accuracy, 48.01% non-palindrome
+operation flips, 49.82% blank-sequence accuracy, and 50.00% complete-reset
+accuracy.
+
+Checkpoint SHA-256:
+`0468508244e3574cec8bb937aad37bb6b34d140a5401e5084fc5d732efe05695`.
+
+The paired 2,048-lifetime retention audit reached **90.49%** on span nine and
+retained every old span, with a worst old margin of **-1.21 points**. This
+independent seed therefore passes the same mastery, causal, memory-dependence,
+and retention gates. Two exact matched outcome-shuffled controls reached only
+53.78% and 55.04%; their blank/reset controls stayed at chance and neither
+reproduced the normal causal gain. It promotes event-age routing plus protected
+replay from a single-seed result to a replicated compounding result. The
+remaining frontier is persistence across private consolidation and disk reload.
+
+Replication artifacts:
+
+- `span9_age_replay_pen003_e384_seed48002.json`
+- `span9_age_replay_pen003_e384_highcount_seed48002.json`
+- `span9_age_replay_pen003_e384_retention_seed48002.json`
+- `span9_age_replay_pen003_e384_shuffle_seed48103.json`
+- `span9_age_replay_pen003_e384_shuffle_seed48104.json`
+- `artifacts/checkpoints/span9_age_replay_pen003_e384_seed48002.pt`
+
 ## Next frontier
 
-Replicate the promoted recipe on a second seed, then test whether the same
-span-nine skill survives write, consolidation, disk reload, and recall. Keep
-the two-point old-skill retention gate and the outcome-shuffle, blank, reset,
-and reversal controls. Only after that should the curriculum advance to span
-ten or broaden the task family.
+Test whether the replicated span-nine skill survives write, private
+consolidation, disk serialization, reload into a fresh process, and recall.
+Keep the two-point old-skill retention gate and the outcome-shuffle, blank,
+reset, and reversal controls. Only after that should the curriculum advance to
+span ten or broaden the task family.
 
 ## Artifacts
 
@@ -761,6 +792,13 @@ ten or broaden the task family.
 - `span9_age_replay_pen003_e384_shuffle_seed48101.json` and
   `span9_age_replay_pen003_e384_shuffle_seed48102.json`: exact matched
   outcome-shuffled controls.
+- `span9_age_replay_pen003_e384_seed48002.json`,
+  `span9_age_replay_pen003_e384_highcount_seed48002.json`, and
+  `span9_age_replay_pen003_e384_retention_seed48002.json`: independent-seed
+  replication and paired retention evidence.
+- `span9_age_replay_pen003_e384_shuffle_seed48103.json` and
+  `span9_age_replay_pen003_e384_shuffle_seed48104.json`: independent-seed
+  matched outcome-shuffled controls.
 - `controller_habit_gpu_seed32231.json` through
   `controller_habit_gpu_seed32234.json`: four CUDA replication reports for
   the reward-only row-volatility selector; all passed the full gate suite.
