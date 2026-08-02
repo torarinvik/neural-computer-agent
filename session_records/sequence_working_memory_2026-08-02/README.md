@@ -901,3 +901,13 @@ span8_replica_inherited_seed30567.pt sha256 db155aa0ead94f1e5be43f88434a03e18f7a
 span8_replica_fresh_seed30568.pt     sha256 29e8e00296897f44a96c47ae3e6902f053c814031b0e5cbfb90d7679c16e3827
 span8_replica_shuffled_seed30569.pt  sha256 efb70095a5ade9c72d8b702dff0dfc0cb6ac1b3d2f35608109a7375387552e36
 ```
+
+## Cloud archive
+
+The current Vast instance was quiescent when archived. The load-bearing
+parent, span-nine, corrected span-ten, and independent span-ten checkpoints
+are now stored locally under `artifacts/checkpoints/`. The promotion-grade
+two-row cold skill bank is stored under
+`artifacts/memory/span_multi_skill_bank_seed49011/`. Their source paths and
+SHA-256 hashes are recorded in `remote_artifact_manifest.json`; no temporary
+`/tmp` files on Vast are required to resume the latest audit.
