@@ -459,17 +459,49 @@ physical memory boundary. It is a plumbing and causal-memory breakthrough,
 not yet evidence that the controller has learned a new write policy or that
 span nine has crossed its 90% acquisition bar.
 
+### Bounded task-shift acquisition
+
+The first bounded-capacity task-shift rung now passes. Each bank began with
+four controller-created rows. The verifier selected an actual failed decoy
+transform without exposing its label to the memory mechanism, replayed eight
+receipt-attributed outcome rounds, and then introduced one new
+controller-produced row. The high-volatility policy replaced the failed row;
+least-volatility and shuffled-volatility policies were registered controls.
+
+Four independent CUDA runs (seeds 32331--32334, 128 banks each) passed every
+gate in 2.70--3.31 seconds:
+
+- the habit policy selected the failed decoy in 96.9--100.0% of banks;
+- the new row was acquired at 94.5--98.4% accuracy;
+- old-row accuracy after replacement was 86.7--88.7%;
+- the composite old-plus-new score was 88.8--90.6%, versus 69.1--70.0% for
+  least-volatility replacement;
+- shuffled volatility stayed near the failed control at 70.0--72.3%; and
+- every policy remained exactly bounded at four rows with exact disk
+  save/reload.
+
+This is the first causal evidence that the volatility scalar is not merely a
+passive statistic: in a real physical task shift it protects stable knowledge
+by admitting a new row into the slot made disposable by verified failure. The
+rung is still a frozen-policy control. The controller has not yet learned the
+volatility-to-replacement mapping from reward, and the candidate query is an
+adjacent same-event acquisition to avoid conflating this memory test with the
+harder cross-context key-generalization problem.
+
 ## Next frontier
 
-The next highest-ROI experiment is a **bounded-capacity acquisition
-micro-run**. Keep the controller frozen, use its physical receipts and
-verified outcomes to update volatility, and let a new controller-produced row
-compete against the least-volatile and most-volatile existing rows. The first
-stage should be a one-minute task-shift control with exact old-skill verifiers;
-only if it preserves old skills while admitting the new row should the same
-gate be made trainable. The eventual promotion ladder remains: (1) bounded
-task-shift acquisition, (2) a learned zero-initialized row-local write gate,
-and (3) sequence span-nine acquisition with the promoted span-eight parent.
+The next highest-ROI experiment is a **zero-initialized trainable row-local
+gate**. Keep the physical receipt/outcome path fixed, expose only generic
+volatility and controller write features, and train one tiny residual through
+the verifier reward. Start with the same adjacent task shift, then require a
+held-out cross-context candidate before promoting it. The eventual ladder is:
+(1) this bounded task-shift control, (2) learned row-local gating with reward
+alignment and shuffled-receipt controls, and (3) sequence span-nine
+acquisition with the promoted span-eight parent. Acceptance remains span nine
+at or above 90%, spans two--eight within the two-point retention gate, shuffled
+outcomes at chance, and blank/reset/reversal controls intact. Do not increase
+controller width or add modalities until the learned gate earns a causal
+advantage over the frozen scalar policy.
 Acceptance remains span nine at or above 90%, spans two--eight within the
 two-point retention gate, shuffled outcomes at chance, and blank/reset/reversal
 controls intact. Do not increase controller width or add modalities until the
@@ -601,6 +633,10 @@ causal write and replacement tests pass.
   `controller_online_disk_habit_gpu_seed32234.json`: four CUDA reports for
   the controller-output-to-physical-disk receipt probe; all passed the online
   memory, volatility, replacement, shuffle, and save/reload gates.
+- `controller_online_task_shift_gpu_seed32331.json` through
+  `controller_online_task_shift_gpu_seed32334.json`: four CUDA reports for
+  bounded task-shift acquisition; all passed the decoy-selection, new-row,
+  old-retention, shuffle, capacity, and save/reload gates.
 
 The ignored local checkpoint hashes are:
 

@@ -81,6 +81,9 @@ from .probe_persistent_physical_stream import (
     _ranked_age,
 )
 from .probe_online_disk_habit import run_probe as run_online_disk_habit_probe
+from .probe_online_disk_task_shift import (
+    run_probe as run_online_disk_task_shift_probe,
+)
 from .compare_persistent_fresh_efficiency import _arm_metrics
 from .strategy_memory import (
     LatentStrategyMemory,
@@ -962,6 +965,21 @@ def test_online_disk_habit_probe_uses_controller_writes_and_receipts() -> None:
     assert report["semantic_or_task_labels_used_for_controller_or_memory"] is False
     assert report["accounting"]["controller_writes"] == 2
     assert report["habit"]["disk_roundtrip_exact"] is True
+
+
+def test_online_disk_task_shift_prefers_failed_volatile_decoy() -> None:
+    payload = torch.load(
+        Path("artifacts/checkpoints/unified_memory_persistent_physical_seed7032.pt"),
+        map_location="cpu", weights_only=False)
+    model = UnifiedCognitiveController(
+        **payload["model_configuration"])
+    model.load_state_dict(payload["state_dict"])
+    model.eval()
+    report = run_online_disk_task_shift_probe(
+        model, banks=2, capacity=2, seed=7351,
+        device=torch.device("cpu"), habit_rounds=2)
+    assert report["gates"]["accepted"] is True
+    assert report["policies"]["high_volatility"]["new_accuracy"] >= 0.85
 
 
 def test_disk_latent_memory_compacts_selected_history_exactly(

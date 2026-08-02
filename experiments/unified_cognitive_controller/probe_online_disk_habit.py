@@ -29,7 +29,9 @@ from .probe_persistent_interface import _add_context_signatures
 
 def _controller_stream(
         model: UnifiedCognitiveController, count: int, *, seed: int,
-        device: torch.device) -> tuple[object, dict[str, torch.Tensor]]:
+        device: torch.device,
+        query_from_support: bool = False,
+        ) -> tuple[object, dict[str, torch.Tensor]]:
     """Generate a support/query stream using only raw controller outputs."""
     batch = _add_context_signatures(
         generate_lifetimes(
@@ -48,15 +50,24 @@ def _controller_stream(
         batch.frames[:, 1], state, support_action, support_outcome,
         torch.ones_like(support_outcome))
     fresh = model.initial_state(count, device=device)
+    query_frames = batch.frames[:, 2]
+    query_correct_actions = batch.correct_actions[:, 2]
+    if query_from_support:
+        # Adjacent curriculum rung: isolate bounded memory replacement from
+        # cross-context key generalization.  The fresh query is exactly the
+        # sensory event whose support row was written, so its controller key
+        # is a deterministic same-event match.
+        query_frames = batch.frames[:, 0]
+        query_correct_actions = batch.correct_actions[:, 0]
     query0, _ = model.step(
-        batch.frames[:, 2], fresh, null, zeros, zeros)
+        query_frames, fresh, null, zeros, zeros)
     return batch, {
         "store_keys": support0.memory_key.detach(),
         "store_values": support1.memory_value.detach(),
         "write_strengths": support1.memory_write_strength.detach(),
         "query_keys": query0.memory_key.detach(),
-        "query_frames": batch.frames[:, 2],
-        "correct_actions": batch.correct_actions[:, 2],
+        "query_frames": query_frames,
+        "correct_actions": query_correct_actions,
     }
 
 
