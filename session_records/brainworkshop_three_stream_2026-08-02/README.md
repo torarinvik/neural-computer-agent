@@ -450,3 +450,25 @@ trainable reader found a warm-up/partial-score shortcut rather than the
 temporal relation. This is an adversarial failure, not a promising learning
 curve; future gates must report eligible causal accuracy as the primary metric
 and treat total score as a reward-hacking warning.
+
+## Eligible-only reader and optimization boundary
+
+The eligible-only loss mask removed the warm-up shortcut from the training
+gradient. Direct reader runs then reached **57.42%** eligible accuracy at 16
+updates, **59.18%** at 64, and **59.96%** at 128 from the same **56.45%**
+parent; reset stayed **50.00%** and the strongest time-shuffle control was
+**48.05%**. The +5-point gate was not met.
+
+A temporary verifier-side auxiliary head on the relation residual reached
+**59.57%** at 64 updates. A zero-init additive opaque output adapter reached
+**57.81%** at 16, and freezing the inherited decoder while training only the
+gate plus adapter reached **57.23%**. These controls leave the temporal
+relation causal but not behaviorally usable.
+
+The optimization sweep was also bounded. Learning rate **1e-3** reached
+**61.13%** at 16 updates but fell to **57.42%** at 64; **3e-3** fell to
+**54.49%** at 64 despite higher mixed training reward. AdamW weight decay
+**1e-4** returned **57.42%** at 16. These are retained as shortcut/overfit
+controls. The next experiment must redesign the task-agnostic
+representation-to-action reader or its diverse training signal; no longer
+budget is justified by this branch alone.

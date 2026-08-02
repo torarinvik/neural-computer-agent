@@ -1588,3 +1588,48 @@ protected eighth-back representational breakthrough, not a reward-only
 mastery claim. The next high-ROI question is how to turn the decodable
 eighth-back relation into reward-fine-tuned behavior without sacrificing the
 ladder.
+
+## Relational-reader integration boundary (2026-08-02)
+
+The next experiments tested that boundary with a fixed, retention-safe parent
+(`brainworkshop_three_stream_nback8_protected_supervised_seed47820_256.pt`).
+All runs used `--target-modalities text`, factorized opaque output, eligible-only
+loss (the first eight warm-up trials contribute no gradient), and independent
+time-shuffle/reset controls. This matters because the earlier mixed-modality
+score could improve while the target-bearing n-back relation stayed at chance.
+
+The direct recurrent relational gate produced a real but sub-threshold held-out
+signal: 16 updates reached **57.42%** eligible accuracy (+0.98 points), 64
+updates **59.18%** (+2.73), and 128 updates **59.96%** (+3.52). The 128-update
+time-shuffle and reset controls were **48.05%** and **50.00%**. The gate's
+gradients were alive, but the pre-registered continuation bar is +5 points;
+none of these runs qualified for a longer capability claim.
+
+Three targeted attempts to close the gap were rejected. A disposable
+verifier-side auxiliary head on the relation residual reached **59.57%** at 64
+updates (+3.13), so forcing the residual to predict the target did not solve
+the reader problem. A zero-initialized additive opaque output adapter reached
+**57.81%** at 16 updates (+1.37); freezing the inherited decoder and training
+only that adapter plus the gate reached **57.23%** (+0.78). Both had
+time-shuffle near chance. These are useful negative controls: the relation is
+present, but a simple residual-to-output path does not make it behaviorally
+usable.
+
+Optimization sweeps exposed a shortcut rather than a solution. At 16 updates,
+learning rate **1e-3** reached **61.13%** (+4.69) with a clean 48.83%
+time-shuffle control, but the matched 64-update run fell to **57.42%**. At
+**3e-3**, the 64-update run fell to **54.49%** while its mixed training score
+rose, a clear overfit/shortcut warning. AdamW weight decay **1e-4** did not
+improve the 16-update result (57.42%). The eligible-only mask, LR changes,
+auxiliary head, and output adapter are retained as reproducible diagnostics,
+not promoted capability.
+
+This closes the current relation-reader fork. The project has demonstrated a
+protected, causal, decodable eighth-back representation and a robust
+1→5→6→7 compounding ladder, but not yet a retention-safe 8-back behavioral
+breakthrough. The next design must address the representation-to-action
+credit-assignment boundary (for example, a task-agnostic reader trained on a
+larger diverse lifetime cache or a recurrent snapshot binder with an explicit
+state-preservation objective) before spending another long run. Any candidate
+must beat the +5 eligible gate and pass reset, time-shuffle, cross-stream, and
+full-ladder retention audits.

@@ -143,6 +143,18 @@ def test_policy_accepts_a_third_token_stream_without_resizing_controller() -> No
     assert [policy.action_mask(value) for value in range(8)] == list(range(8))
 
 
+def test_relational_output_adapter_is_zero_initialized() -> None:
+    policy = BrainWorkshopPolicy(
+        width=32, intention_width=16,
+        modalities=("vision", "audio", "text"), factorized_output=True,
+        relational_context_adapter_width=32,
+        relational_context_output_adapter=True)
+    residual = torch.randn(4, 16)
+    assert torch.equal(
+        policy.relational_context_output_adapter(residual),
+        torch.zeros(4, 6))
+
+
 def test_external_memory_adapter_is_an_exact_initial_noop() -> None:
     policy = BrainWorkshopPolicy(
         width=32,

@@ -70,6 +70,8 @@ class BrainWorkshopPolicy(nn.Module):
                  feedback_skill_history_depth: int = 1,
                  relational_context_adapter_width: int = 0,
                  relational_context_max_history: int = 10,
+                 relational_context_auxiliary_weight: float = 0.0,
+                 relational_context_output_adapter: bool = False,
                  per_stream_intention_adapter_width: int = 0,
                  factorized_output: bool = False,
                  factorized_reward: bool = False,
@@ -230,6 +232,8 @@ class BrainWorkshopPolicy(nn.Module):
             nn.init.zeros_(self.feedback_skill_adapter[-1].weight)
             nn.init.zeros_(self.feedback_skill_adapter[-1].bias)
         self.relational_context_gate = None
+        self.relational_context_auxiliary_head = None
+        self.relational_context_output_adapter = None
         if relational_context_adapter_width:
             self.relational_context_gate = RecurrentRelationalGate(
                 event_width=width,
@@ -237,6 +241,20 @@ class BrainWorkshopPolicy(nn.Module):
                 hidden_width=relational_context_adapter_width,
                 intention_width=intention_width,
                 max_history=relational_context_max_history)
+            if relational_context_auxiliary_weight > 0.0:
+                # Disposable verifier-side bootstrap head. It forces the
+                # relation residual itself to carry the target relation; the
+                # head is never used during inference.
+                self.relational_context_auxiliary_head = nn.Linear(
+                    intention_width, 2 * len(modalities))
+            if relational_context_output_adapter:
+                if not factorized_output:
+                    raise ValueError(
+                        "relational output adapter requires factorized output")
+                self.relational_context_output_adapter = nn.Linear(
+                    intention_width, 2 * len(modalities))
+                nn.init.zeros_(self.relational_context_output_adapter.weight)
+                nn.init.zeros_(self.relational_context_output_adapter.bias)
         self.per_stream_intention_delta_adapters = nn.ModuleDict()
         self.per_stream_intention_routers = nn.ModuleDict()
         if per_stream_intention_adapter_width:
@@ -520,6 +538,21 @@ def _stream_intention_event(
     ).validate(width=event.payload.shape[1])
 
 
+def _factorized_decoder_log_probs(
+        policy: BrainWorkshopPolicy, intention_event: IntentEvent,
+        relational_residual: torch.Tensor | None) -> torch.Tensor:
+    """Decode opaque bits, optionally adding a residual-only reader path."""
+    payload = intention_event.payload[:, :policy.controller.intention_width]
+    logits = policy.decoder.network(payload).view(
+        payload.shape[0], len(policy.action_bits), 2)
+    if policy.relational_context_output_adapter is not None:
+        if relational_residual is None:
+            raise ValueError("relational output adapter requires gate output")
+        logits = logits + policy.relational_context_output_adapter(
+            relational_residual).view(-1, len(policy.action_bits), 2)
+    return torch.log_softmax(logits, dim=-1)
+
+
 def _controller_action_index(policy: BrainWorkshopPolicy,
                              action: torch.Tensor) -> torch.Tensor:
     """Keep opaque multi-bit actions inside a legacy core's history range.
@@ -631,41 +664,58 @@ def _protect_new_history_residual(
 
 def _reward_rollout_loss(
         rollout: Rollout, *, discount: float, value_baseline: bool,
-        entropy_coef: float) -> tuple[torch.Tensor, torch.Tensor]:
+        entropy_coef: float, eligible_only: bool = False,
+        warmup: int = 0) -> tuple[torch.Tensor, torch.Tensor]:
     """Compute a verifier-only policy loss for one task difficulty.
 
     Keeping this separate lets a training update mix a new difficulty with
     old-skill rehearsal without exposing task labels to the controller.
     """
     trials, batch_size = rollout.rewards.shape
-    returns = torch.zeros_like(rollout.rewards)
+    active = torch.ones_like(rollout.rewards)
+    if eligible_only:
+        if warmup < 0 or warmup >= trials:
+            raise ValueError("eligible-loss warmup must leave a target trial")
+        active[:warmup] = 0.0
+    effective_rewards = rollout.rewards * active
+    returns = torch.zeros_like(effective_rewards)
     running = torch.zeros(batch_size, device=rollout.rewards.device)
     for trial in range(trials - 1, -1, -1):
-        running = rollout.rewards[trial] + discount * running
+        running = effective_rewards[trial] + discount * running
         returns[trial] = running
     if rollout.bit_log_probs is not None and rollout.bit_rewards is not None:
-        bit_returns = torch.zeros_like(rollout.bit_rewards)
+        bit_rewards = rollout.bit_rewards * active.unsqueeze(-1)
+        bit_returns = torch.zeros_like(bit_rewards)
         bit_running = torch.zeros(
             batch_size, rollout.bit_rewards.shape[-1],
             device=rollout.rewards.device)
         for trial in range(trials - 1, -1, -1):
             bit_running = (
-                rollout.bit_rewards[trial] + discount * bit_running)
+                bit_rewards[trial] + discount * bit_running)
             bit_returns[trial] = bit_running
         bit_advantages = _factorized_advantages(bit_returns)
+        active_bits = active.unsqueeze(-1)
+        denominator = active_bits.sum().clamp_min(1.0)
         loss = -(
-            bit_advantages.detach() * rollout.bit_log_probs).mean()
+            bit_advantages.detach() * rollout.bit_log_probs
+            * active_bits).sum() / denominator
         value_loss = torch.zeros((), device=rollout.rewards.device)
     elif value_baseline:
         advantages = returns - rollout.values
-        value_loss = F.smooth_l1_loss(rollout.values, returns.detach())
-        loss = -(advantages.detach() * rollout.log_probs).mean()
+        value_loss = F.smooth_l1_loss(
+            rollout.values * active, returns.detach() * active)
+        denominator = active.sum().clamp_min(1.0)
+        loss = -(advantages.detach() * rollout.log_probs * active).sum()
+        loss = loss / denominator
         loss = loss + 0.5 * value_loss
     else:
         advantages = returns - returns.mean(dim=1, keepdim=True)
         value_loss = torch.zeros((), device=rollout.rewards.device)
-        loss = -(advantages.detach() * rollout.log_probs).mean()
-    loss = loss - entropy_coef * rollout.entropies.mean()
+        denominator = active.sum().clamp_min(1.0)
+        loss = -(advantages.detach() * rollout.log_probs * active).sum()
+        loss = loss / denominator
+    loss = loss - entropy_coef * (
+        rollout.entropies * active).sum() / active.sum().clamp_min(1.0)
     return loss, value_loss
 
 
@@ -828,7 +878,8 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
             relational_residual=relational_residual)
         logits = policy.decoder(intention_event)
         if policy.factorized_output and policy.factorized_reward:
-            binary_log_probs = policy.decoder.binary_log_probs(intention_event)
+            binary_log_probs = _factorized_decoder_log_probs(
+                policy, intention_event, relational_residual)
             bit_distribution = torch.distributions.Categorical(
                 logits=binary_log_probs)
             bit_choice = (
@@ -920,7 +971,9 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
                      external_history: bool = False,
                      serial_modalities: bool = False,
                      per_stream_external_history: bool = False,
-                     external_history_depth: int = 1
+                     external_history_depth: int = 1,
+                     eligible_only: bool = False,
+                     relational_context_auxiliary_weight: float = 0.0
                      ) -> tuple[torch.Tensor, torch.Tensor]:
     """Disposable verifier-label ceiling probe.
 
@@ -929,6 +982,13 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
     policy action's scalar verifier reward, so this checks the same recurrent
     interface rather than feeding the answer back as an input.
     """
+    if relational_context_auxiliary_weight > 0.0:
+        if policy.relational_context_gate is None:
+            raise ValueError(
+                "relational auxiliary loss requires relational context gate")
+        if policy.relational_context_auxiliary_head is None:
+            raise ValueError(
+                "relational auxiliary head was not constructed")
     episodes, observations = _make_batch(
         config, batch_size=batch_size, seed=seed, device=device,
         modalities=policy.modalities)
@@ -1029,17 +1089,26 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
         targets = torch.tensor(
             [episode.verifier_targets()[trial] for episode in episodes],
             dtype=torch.long, device=device)
+        target_bits = torch.stack([
+            ((targets & bit) != 0).long() for bit in policy.action_bits
+        ], dim=1)
+        active = torch.tensor(
+            [bool(policy.target_mask & bit) for bit in policy.action_bits],
+            dtype=torch.bool, device=device)
+        if relational_context_auxiliary_weight > 0.0:
+            auxiliary_logits = policy.relational_context_auxiliary_head(
+                relational_residual).view(-1, len(policy.action_bits), 2)
+            auxiliary_loss = F.cross_entropy(
+                auxiliary_logits[:, active, :].reshape(-1, 2),
+                target_bits[:, active].reshape(-1))
+        else:
+            auxiliary_loss = torch.zeros((), device=device)
         if policy.factorized_output:
-            binary_log_probs = policy.decoder.binary_log_probs(intention_event)
-            target_bits = torch.stack([
-                ((targets & bit) != 0).long() for bit in policy.action_bits
-            ], dim=1)
-            active = torch.tensor(
-                [bool(policy.target_mask & bit) for bit in policy.action_bits],
-                dtype=torch.bool, device=device)
-            losses.append(F.nll_loss(
+            binary_log_probs = _factorized_decoder_log_probs(
+                policy, intention_event, relational_residual)
+            trial_loss = F.nll_loss(
                 binary_log_probs[:, active, :].reshape(-1, 2),
-                target_bits[:, active].reshape(-1)))
+                target_bits[:, active].reshape(-1))
             bit_choice = binary_log_probs.argmax(dim=-1)
             action = sum(
                 (bit_choice[:, index].long() << index)
@@ -1052,8 +1121,13 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
                     if ((target & policy.target_mask) & bit))
                  for target in targets.tolist()],
                 dtype=torch.long, device=device)
-            losses.append(F.cross_entropy(logits, joint_targets))
+            trial_loss = F.cross_entropy(logits, joint_targets)
             action = logits.argmax(dim=-1)
+        trial_loss = trial_loss + (
+            relational_context_auxiliary_weight * auxiliary_loss)
+        if eligible_only and trial < config.n_back:
+            trial_loss = trial_loss * 0.0
+        losses.append(trial_loss)
         reward = torch.tensor([
             episode.score_action(
                 trial, policy.action_mask(int(action[index])), latency_ms=0.0,
@@ -1173,6 +1247,9 @@ def main() -> None:
                         help="keep a loaded encoder fixed during the probe")
     parser.add_argument("--value-baseline", action="store_true",
                         help="train a reward-only recurrent value baseline")
+    parser.add_argument(
+        "--eligible-only-loss", action="store_true",
+        help="exclude verifier warm-up trials from the training gradient")
     parser.add_argument("--oracle-events", action="store_true",
                         help="diagnostic-only verifier-side one-hot events")
     parser.add_argument("--external-history", action="store_true",
@@ -1235,6 +1312,14 @@ def main() -> None:
         "--train-relational-context-reader", action="store_true",
         help=("train the relation gate plus the opaque decoder while keeping "
               "the inherited controller and encoders frozen"))
+    parser.add_argument(
+        "--relational-context-auxiliary-weight", type=float, default=0.0,
+        help=("temporary verifier-side loss on the relation residual; the "
+              "auxiliary head is discarded after the diagnostic"))
+    parser.add_argument(
+        "--relational-context-output-adapter", action="store_true",
+        help=("add a zero-init opaque output residual fed only by the "
+              "relational context gate"))
     parser.add_argument(
         "--per-stream-intention-adapter-width", type=int, default=0,
         choices=(0, 32, 64),
@@ -1318,6 +1403,7 @@ def main() -> None:
         "--train-only-modalities", type=str, default="",
         help="protect all other learned streams while adapting these ones")
     parser.add_argument("--learning-rate", type=float, default=3e-4)
+    parser.add_argument("--weight-decay", type=float, default=0.0)
     parser.add_argument("--entropy-coef", type=float, default=0.01)
     parser.add_argument("--discount", type=float, default=0.95)
     parser.add_argument("--device", default="auto")
@@ -1326,6 +1412,22 @@ def main() -> None:
         raise ValueError("updates, batch size, and eval count must be positive")
     if not 0.0 < args.discount <= 1.0:
         raise ValueError("discount must be in (0, 1]")
+    if args.relational_context_auxiliary_weight < 0.0:
+        raise ValueError("relational auxiliary weight must be nonnegative")
+    if (args.relational_context_auxiliary_weight > 0.0
+            and not args.supervised_diagnostic):
+        raise ValueError(
+            "relational auxiliary loss requires --supervised-diagnostic")
+    if (args.relational_context_output_adapter
+            and not args.factorized_output):
+        raise ValueError(
+            "relational output adapter requires --factorized-output")
+    if (args.relational_context_output_adapter
+            and args.relational_context_adapter_width < 1):
+        raise ValueError(
+            "relational output adapter requires a relational context gate")
+    if args.weight_decay < 0.0:
+        raise ValueError("weight decay must be nonnegative")
     if args.rehearsal_n_back is not None and args.rehearsal_n_backs:
         raise ValueError("use only one rehearsal difficulty option")
     if args.rehearsal_n_backs:
@@ -1397,6 +1499,10 @@ def main() -> None:
         controller_configuration.pop("external_history_depth", None)
         controller_configuration.pop("feedback_skill_adapter_width", None)
         controller_configuration.pop("feedback_skill_history_depth", None)
+        controller_configuration.pop("relational_context_adapter_width", None)
+        controller_configuration.pop("relational_context_max_history", None)
+        controller_configuration.pop("relational_context_auxiliary_weight", None)
+        controller_configuration.pop("relational_context_output_adapter", None)
         # Policy checkpoints contain the controller under the ``controller.``
         # prefix. Keep loading compatible with older controller-only artifacts
         # while making the frozen-controller ablation actually executable.
@@ -1445,6 +1551,10 @@ def main() -> None:
         relational_context_adapter_width=(
             args.relational_context_adapter_width),
         relational_context_max_history=args.relational_context_max_history,
+        relational_context_auxiliary_weight=(
+            args.relational_context_auxiliary_weight),
+        relational_context_output_adapter=(
+            args.relational_context_output_adapter),
         per_stream_intention_adapter_width=(
             args.per_stream_intention_adapter_width),
         factorized_output=args.factorized_output,
@@ -1628,6 +1738,12 @@ def main() -> None:
         if args.train_relational_context_reader:
             for parameter in policy.decoder.parameters():
                 parameter.requires_grad_(True)
+        if policy.relational_context_auxiliary_head is not None:
+            for parameter in policy.relational_context_auxiliary_head.parameters():
+                parameter.requires_grad_(True)
+        if policy.relational_context_output_adapter is not None:
+            for parameter in policy.relational_context_output_adapter.parameters():
+                parameter.requires_grad_(True)
     if controller_frozen:
         for parameter in policy.controller.parameters():
             parameter.requires_grad_(False)
@@ -1722,7 +1838,8 @@ def main() -> None:
         policy.decoder.network.bias.register_hook(protect_rows)
     trainable = [parameter for parameter in policy.parameters()
                  if parameter.requires_grad]
-    optimizer = torch.optim.Adam(trainable, lr=args.learning_rate)
+    optimizer = torch.optim.AdamW(
+        trainable, lr=args.learning_rate, weight_decay=args.weight_decay)
     started = time.perf_counter()
     history = []
     before = _evaluate(
@@ -1744,7 +1861,10 @@ def main() -> None:
                 external_history=args.external_history,
                 serial_modalities=args.serial_modalities,
                 per_stream_external_history=args.per_stream_external_history,
-                external_history_depth=args.external_history_depth)
+                external_history_depth=args.external_history_depth,
+                eligible_only=args.eligible_only_loss,
+                relational_context_auxiliary_weight=(
+                    args.relational_context_auxiliary_weight))
             if rehearsal_n_backs:
                 rehearsal_losses = []
                 for rehearsal_index, rehearsal_n_back in enumerate(
@@ -1760,7 +1880,10 @@ def main() -> None:
                         serial_modalities=args.serial_modalities,
                         per_stream_external_history=(
                             args.per_stream_external_history),
-                        external_history_depth=args.external_history_depth)
+                        external_history_depth=args.external_history_depth,
+                        eligible_only=args.eligible_only_loss,
+                        relational_context_auxiliary_weight=(
+                            args.relational_context_auxiliary_weight))
                     rehearsal_losses.append(rehearsal_loss)
                     rehearsal_batch_accuracies[str(rehearsal_n_back)] = float(
                         (rehearsal_rewards > 0).float().mean())
@@ -1790,7 +1913,9 @@ def main() -> None:
             loss, value_loss = _reward_rollout_loss(
                 rollout, discount=args.discount,
                 value_baseline=args.value_baseline,
-                entropy_coef=args.entropy_coef)
+                entropy_coef=args.entropy_coef,
+                eligible_only=args.eligible_only_loss,
+                warmup=config.n_back)
             if rehearsal_n_backs:
                 rehearsal_losses = []
                 rehearsal_value_losses = []
@@ -1812,7 +1937,9 @@ def main() -> None:
                     rehearsal_loss, rehearsal_value_loss = _reward_rollout_loss(
                         rehearsal_rollout, discount=args.discount,
                         value_baseline=args.value_baseline,
-                        entropy_coef=args.entropy_coef)
+                        entropy_coef=args.entropy_coef,
+                        eligible_only=args.eligible_only_loss,
+                        warmup=rehearsal_config.n_back)
                     rehearsal_losses.append(rehearsal_loss)
                     rehearsal_value_losses.append(rehearsal_value_loss)
                     rehearsal_batch_accuracies[str(rehearsal_n_back)] = float(
@@ -1913,6 +2040,7 @@ def main() -> None:
             "supervised_diagnostic" if args.supervised_diagnostic
             else "reward_only_value_baseline" if args.value_baseline
             else "reward_only"),
+        "eligible_only_loss": bool(args.eligible_only_loss),
         "encoder_checkpoints": {
             name: str(path) for name, path in encoder_paths.items()},
         "encoder_frozen": bool(args.freeze_encoder),
@@ -1940,6 +2068,10 @@ def main() -> None:
         "relational_context_adapter_width": (
             args.relational_context_adapter_width),
         "relational_context_max_history": args.relational_context_max_history,
+        "relational_context_auxiliary_weight": (
+            args.relational_context_auxiliary_weight),
+        "relational_context_output_adapter": bool(
+            args.relational_context_output_adapter),
         "train_relational_context_gate": bool(
             args.train_relational_context_gate),
         "train_relational_context_reader": bool(
@@ -1962,6 +2094,8 @@ def main() -> None:
         "rehearsal_weights": list(rehearsal_weights),
         "rehearsal_weights_arg": args.rehearsal_weights,
         "device": str(device),
+        "learning_rate": args.learning_rate,
+        "weight_decay": args.weight_decay,
         "config": config.__dict__,
         "modality": policy.modality,
         "modalities": modalities,
@@ -2015,6 +2149,10 @@ def main() -> None:
                     args.relational_context_adapter_width),
                 "relational_context_max_history": (
                     args.relational_context_max_history),
+                "relational_context_auxiliary_weight": (
+                    args.relational_context_auxiliary_weight),
+                "relational_context_output_adapter": bool(
+                    args.relational_context_output_adapter),
             },
             # Preserve the depth whose path was intentionally frozen.  A
             # continuation must reopen only the same appended columns rather
