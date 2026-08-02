@@ -376,6 +376,11 @@ def main() -> None:
             "train generic RAM read/write address scales alongside the new "
             "slot; requires a parent with workspace_slot_addressing"))
     parser.add_argument(
+        "--train-workspace-write-address-content", action="store_true",
+        help=(
+            "train the generic address-conditioned write residual so RAM "
+            "rows can store distinct content"))
+    parser.add_argument(
         "--residual-action-adapter", action="store_true",
         help=(
             "inherit the parent's action adapter in the frozen base and "
@@ -438,6 +443,9 @@ def main() -> None:
         raise ValueError("parent action adaptation requires a skill slot")
     if args.train_workspace_address_scales and not args.skill_adapter_width:
         raise ValueError("workspace address training requires a skill slot")
+    if (args.train_workspace_write_address_content
+            and not args.skill_adapter_width):
+        raise ValueError("address-conditioned writes require a skill slot")
     if args.replay_refine_gate_only and not args.skill_adapter_width:
         raise ValueError("gate-only replay refinement requires a skill slot")
     if args.replay_refinement_epochs and args.replay_buffer_in is None:
@@ -447,7 +455,24 @@ def main() -> None:
     payload = torch.load(args.parent, map_location=device, weights_only=False)
     base_configuration = dict(payload["model_configuration"])
     base = UnifiedCognitiveController(**base_configuration).to(device)
-    base.load_state_dict(payload["state_dict"])
+    compatibility = base.load_state_dict(
+        payload["state_dict"], strict=False)
+    allowed_missing = set()
+    if base_configuration.get("workspace_slot_addressing", False):
+        allowed_missing.update({
+            "workspace_read_address_scale",
+            "workspace_write_address_scale",
+            "workspace_write_content_address_scale",
+        })
+    if not set(compatibility.missing_keys).issubset(allowed_missing):
+        raise RuntimeError(
+            "parent checkpoint/configuration mismatch: "
+            f"missing={compatibility.missing_keys}, "
+            f"unexpected={compatibility.unexpected_keys}")
+    if compatibility.unexpected_keys:
+        raise RuntimeError(
+            "parent checkpoint/configuration mismatch: "
+            f"unexpected={compatibility.unexpected_keys}")
     base.eval()
     for parameter in base.parameters():
         parameter.requires_grad_(False)
@@ -592,6 +617,11 @@ def main() -> None:
                     "workspace address scales require addressable workspace")
             student.workspace_read_address_scale.requires_grad_(True)
             student.workspace_write_address_scale.requires_grad_(True)
+        if args.train_workspace_write_address_content:
+            if not student.workspace_slot_addressing:
+                raise ValueError(
+                    "address-conditioned writes require addressable workspace")
+            student.workspace_write_content_address_scale.requires_grad_(True)
     else:
         for parameter in student.action_adapter.parameters():
             parameter.requires_grad_(True)
@@ -741,6 +771,8 @@ def main() -> None:
         "skill_adapter_no_legacy_read": args.skill_adapter_no_legacy_read,
         "train_parent_action_adapter": args.train_parent_action_adapter,
         "train_workspace_address_scales": args.train_workspace_address_scales,
+        "train_workspace_write_address_content": (
+            args.train_workspace_write_address_content),
         "loaded_buffer_metadata": loaded_buffer_metadata,
         "collected_stream_specs": stream_specs,
         "buffer_outcomes_shuffled": args.shuffle_outcomes,

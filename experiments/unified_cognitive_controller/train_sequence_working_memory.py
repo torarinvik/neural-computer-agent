@@ -554,6 +554,7 @@ def main() -> None:
             allowed_missing.update({
                 "workspace_read_address_scale",
                 "workspace_write_address_scale",
+                "workspace_write_content_address_scale",
             })
         if configuration.get("action_adapter_width", 0):
             allowed_missing.update(

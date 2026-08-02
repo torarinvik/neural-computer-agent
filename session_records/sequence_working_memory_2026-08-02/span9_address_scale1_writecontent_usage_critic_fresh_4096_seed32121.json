@@ -1,0 +1,10 @@
+{
+  "schema": "span9-address-write-content-control-v1",
+  "parent": "temporary addressed scale-1 parent with zero write-content scalar",
+  "train_workspace_write_address_content": true,
+  "span9_accuracy": 0.8767361044883728,
+  "blank_accuracy": 0.4969618022441864,
+  "reset_accuracy": 0.4991319477558136,
+  "reverse_flip": 0.4833333194255829,
+  "conclusion": "Learning one global address-conditioned write scalar does not improve transfer."
+}

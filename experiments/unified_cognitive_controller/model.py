@@ -374,10 +374,16 @@ class UnifiedCognitiveController(nn.Module):
                 torch.tensor(0.10))
             self.workspace_write_address_scale = nn.Parameter(
                 torch.tensor(0.10))
+            # A generic address-conditioned write residual.  Zero keeps old
+            # checkpoints bit-identical; training this scalar lets the system
+            # earn distinct row content rather than merely distinct scores.
+            self.workspace_write_content_address_scale = nn.Parameter(
+                torch.zeros(()))
         else:
             self.workspace_slot_addresses = None
             self.workspace_read_address_scale = None
             self.workspace_write_address_scale = None
+            self.workspace_write_content_address_scale = None
         self.intention = nn.Sequential(
             nn.LayerNorm(width * 3),
             nn.Linear(width * 3, intention_width),
@@ -1046,10 +1052,17 @@ class UnifiedCognitiveController(nn.Module):
         write_weights = torch.softmax(write_scores, dim=-1)
         gate = torch.sigmoid(self.write_gate(write_context))
         candidate = self.write_value(write_context)
+        if self.workspace_slot_addresses is not None:
+            candidate = (
+                candidate.unsqueeze(1)
+                + self.workspace_write_content_address_scale
+                * self.workspace_slot_addresses.unsqueeze(0))
+        else:
+            candidate = candidate.unsqueeze(1)
         update = gate.unsqueeze(-1) * write_weights.unsqueeze(-1)
         workspace = (
             state.workspace * (1.0 - update)
-            + candidate.unsqueeze(1) * update)
+            + candidate * update)
         if disable_workspace:
             workspace = torch.zeros_like(workspace)
         prior_usage = state.workspace_usage

@@ -119,3 +119,24 @@ def test_rollout_keeps_all_fast_memory_on_the_model_device() -> None:
     assert result["final_workspace"].device == model.actuator.weight.device
     assert result["final_workspace"].shape == (8, 2, 32)
     assert result["actions"].shape == (8, 2)
+
+
+def test_address_conditioned_write_content_breaks_slot_symmetry() -> None:
+    model = UnifiedCognitiveController(
+        width=32, workspace_slots=2, intention_width=8,
+        workspace_slot_addressing=True)
+    with torch.no_grad():
+        model.workspace_read_address_scale.zero_()
+        model.workspace_write_address_scale.zero_()
+        model.workspace_write_content_address_scale.zero_()
+    event = torch.randn(4, 32)
+    action = torch.zeros(4, dtype=torch.long)
+    reward = torch.zeros(4)
+    state = model.initial_state(4, device=torch.device("cpu"))
+    _, symmetric = model.step_event(event, state, action, reward, reward)
+    assert torch.equal(symmetric.workspace[:, 0], symmetric.workspace[:, 1])
+    with torch.no_grad():
+        model.workspace_write_content_address_scale.fill_(0.25)
+    state = model.initial_state(4, device=torch.device("cpu"))
+    _, addressed = model.step_event(event, state, action, reward, reward)
+    assert not torch.equal(addressed.workspace[:, 0], addressed.workspace[:, 1])

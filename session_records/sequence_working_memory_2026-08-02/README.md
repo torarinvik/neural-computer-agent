@@ -382,6 +382,13 @@ preserved every old score exactly, but also preserved the parent’s 75.9% span
 nine score: the gate shut down completely. Addressability exposes the
 stability--plasticity tradeoff cleanly; it does not solve it.
 
+The write-content follow-up sharpens the target. Learning a single global
+address-conditioned write scalar reached 87.7%. A fixed generic per-slot write
+offset reached 88.8%, but lost 7--14 points on spans 2--5 and 8. The extra
+transfer is therefore real but not retention-safe. The next write mechanism
+must use a per-row plasticity gate or usage-conditioned write strength—not a
+global scalar or an always-on offset.
+
 ## Next frontier
 
 The next highest-ROI experiment is a tiny addressable-RAM adapter: add generic
@@ -494,6 +501,10 @@ controller width or add modalities until this addressability gate passes.
   `span9_address_scale1_usage_critic_retention_seed32031.json`, and
   `span9_address_scale1_usage_critic_protected_retention_seed32051.json`:
   address-strength and addressed-RAM protected-plasticity audits.
+- `span9_address_scale1_writecontent_usage_critic_fresh_4096_seed32121.json`,
+  `span9_address_scale1_content05_usage_critic_fresh_4096_seed32131.json`, and
+  `span9_address_scale1_content05_retention_seed32131.json`: learned versus
+  fixed address-conditioned write-content controls.
 - `span9_workspace_routing_diagnostic_seed31631.json`: disposable probe
   results separating old/new routing information from correct-action decoding.
 

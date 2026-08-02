@@ -1751,6 +1751,7 @@ def main() -> None:
         allowed_missing = {
             "workspace_read_address_scale",
             "workspace_write_address_scale",
+            "workspace_write_content_address_scale",
         }
         unexpected_missing = {
             name for name in incompatible.missing_keys
