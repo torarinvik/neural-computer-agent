@@ -153,6 +153,9 @@ def test_provenance_refinement_contains_both_sources_when_weighted() -> None:
     assert torch.equal(
         _replay_refinement_indices(all_indices, replay_indices, 1.0),
         all_indices)
+    assert torch.equal(
+        _replay_refinement_indices(all_indices, replay_indices, 0.0, 1.0),
+        all_indices)
 
 
 def test_provenance_loss_balances_unequal_source_counts() -> None:

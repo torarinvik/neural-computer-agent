@@ -407,6 +407,13 @@ These controls rule out the easy interpretation that a provenance classifier
 alone solves the stability--plasticity tradeoff: provenance is not available
 at deployment, and the latent features of old and new spans overlap.
 
+Scaling the fresh stream to 8,192 lifetimes did not rescue the tradeoff:
+balanced provenance training reached 84.01% (span eight 86.21%), below the
+promotion bar. A follow-up that regressed fresh gate scores to their
+post-acquisition values while driving old scores to zero reached only 78.65%.
+Gate magnitude is therefore not a stable teacher signal; this branch is closed
+rather than tuned further.
+
 The proposed ``habit`` mechanism is nevertheless the right memory-side idea.
 The psychological claim is usually called **Jost's law of forgetting** (with
 Ribot's law describing the related recency gradient): an older trace is more
@@ -550,6 +557,9 @@ controller width or add modalities until this causal write-path test passes.
   provenance weight control; higher transfer but retention gate failure.
 - `span9_address_scale1_joint_replay_4096_seed32171.json`: matched joint
   adapter/replay control; retention-safe promotion bar not met.
+- `span9_address_scale1_preserve_gate_4096_seed32190.json`: rejected
+  gate-score-preservation control; numerical fresh-gate magnitude was not a
+  stable teacher.
 
 The ignored local checkpoint hashes are:
 

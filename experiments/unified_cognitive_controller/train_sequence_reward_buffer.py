@@ -179,14 +179,18 @@ def _skill_slot_logits(
 
 def _replay_refinement_indices(
         all_indices: torch.Tensor, replay_indices: torch.Tensor,
-        gate_source_weight: float) -> torch.Tensor:
+        gate_source_weight: float,
+        gate_preserve_fresh_weight: float = 0.0) -> torch.Tensor:
     """Choose the rows that can identify fresh versus persisted provenance.
 
     With source supervision enabled, both classes must be present.  Keeping
     this as a small pure helper makes the provenance split auditable instead
     of burying a degenerate all-old minibatch inside the training loop.
     """
-    return all_indices if gate_source_weight else replay_indices
+    return (
+        all_indices
+        if gate_source_weight or gate_preserve_fresh_weight
+        else replay_indices)
 
 
 def _balanced_provenance_loss(
@@ -332,6 +336,11 @@ def main() -> None:
             "train the successor gate to distinguish fresh versus persisted "
             "provenance; this is diagnostic metadata, not a task label"))
     parser.add_argument(
+        "--replay-gate-preserve-fresh-weight", type=float, default=0.0,
+        help=(
+            "during gate-only refinement, regress fresh gate scores to their "
+            "post-acquisition values and old scores toward zero"))
+    parser.add_argument(
         "--replay-refinement-epochs", type=int, default=0,
         help="after fresh learning, refine only on persisted replay data")
     parser.add_argument(
@@ -453,7 +462,8 @@ def main() -> None:
             or args.replay_residual_penalty < 0
             or args.replay_gate_penalty < 0
             or args.replay_logit_penalty < 0
-            or args.replay_gate_source_weight < 0):
+            or args.replay_gate_source_weight < 0
+            or args.replay_gate_preserve_fresh_weight < 0):
         raise ValueError("replay weights and penalties must not be negative")
     if args.skill_adapter_width and args.residual_action_adapter:
         raise ValueError(
@@ -657,7 +667,8 @@ def main() -> None:
     def train_epochs(
             epochs: int, sample_indices: torch.Tensor, *,
             outcome_weight: float, residual_penalty: float,
-            gate_penalty: float, logit_penalty: float) -> None:
+            gate_penalty: float, logit_penalty: float,
+            gate_targets: torch.Tensor | None = None) -> None:
         trainable_parameters = [
             parameter for parameter in student.parameters()
             if parameter.requires_grad]
@@ -715,6 +726,12 @@ def main() -> None:
                     source_target = (~batch_replay_mask).to(gate_score.dtype)
                     loss = loss + args.replay_gate_source_weight * _balanced_provenance_loss(
                         gate_score.squeeze(1), source_target)
+                if (
+                        args.replay_gate_preserve_fresh_weight
+                        and gate_score is not None
+                        and gate_targets is not None):
+                    loss = loss + args.replay_gate_preserve_fresh_weight * F.mse_loss(
+                        gate_score.squeeze(1), gate_targets[indices])
                 if args.residual_penalty:
                     loss = loss + args.residual_penalty * residual.square().mean()
                 optimizer.zero_grad(set_to_none=True)
@@ -724,6 +741,16 @@ def main() -> None:
     all_indices = torch.arange(features.shape[0], device=device)
     fresh_indices = all_indices[~replay_mask]
     replay_indices = all_indices[replay_mask]
+    gate_targets = None
+    if (
+            args.replay_refinement_epochs
+            and args.replay_gate_preserve_fresh_weight
+            and args.replay_refine_gate_only):
+        if not args.skill_adapter_width:
+            raise ValueError("gate preservation requires a skill adapter")
+        with torch.no_grad():
+            gate_targets = _skill_slot_logits(student, features)[3].squeeze(1)
+            gate_targets = gate_targets.masked_fill(replay_mask, 0.0)
     if args.replay_refinement_epochs:
         if not bool(fresh_indices.numel()) or not bool(replay_indices.numel()):
             raise ValueError("staged replay needs fresh and persisted samples")
@@ -739,17 +766,19 @@ def main() -> None:
         # A provenance classifier needs both sides of the split.  Training
         # it only on ``replay_indices`` makes every target zero (old), so its
         # supposedly fresh-vs-persisted supervision is silently degenerate.
-        # Keep the old-only refinement when no provenance weight is requested;
-        # otherwise use the complete mixed set so ``~replay_mask`` contains
-        # genuine fresh positives.
+        # Keep the old-only refinement when no source-aware objective is
+        # requested; otherwise use the complete mixed set so ``~replay_mask``
+        # contains genuine fresh positives.
         refinement_indices = _replay_refinement_indices(
-            all_indices, replay_indices, args.replay_gate_source_weight)
+            all_indices, replay_indices, args.replay_gate_source_weight,
+            args.replay_gate_preserve_fresh_weight)
         train_epochs(
             args.replay_refinement_epochs, refinement_indices,
             outcome_weight=0.0,
             residual_penalty=args.replay_residual_penalty,
             gate_penalty=args.replay_gate_penalty,
-            logit_penalty=args.replay_logit_penalty)
+            logit_penalty=args.replay_logit_penalty,
+            gate_targets=gate_targets)
     else:
         train_epochs(
             args.epochs, all_indices,
