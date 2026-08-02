@@ -405,3 +405,17 @@ trajectory baselines of **56.25%** and **59.38%**. Even with verifier labels,
 the simple pairwise pooling architecture does not improve the representation;
 the next relation-aware gate will need a recurrent/episodic read mechanism,
 not merely a wider bag of pair products.
+
+That recurrent/episodic ceiling probe is the first positive architecture
+signal in this branch. It reads each event causally, attends over prior events
+using ordered relation features, and updates a compact state. Across three
+independent 256-update seeds it decoded **60.94%, 63.67%, and 66.41%** versus
+raw baselines of **57.03%, 62.11%, and 57.81%** (mean gain **+4.7 points**).
+A fourth seed with a shuffled-label control reached **61.72%** versus raw
+**56.25%**, while the control was **16.02%** (five-way chance is 20%). A
+matched 1,024-update run was **57.42%** versus raw **53.52%**, showing that the
+gain is not guaranteed by simply spending more updates, but the repeated
+short-budget advantage is enough to justify a tiny reward-only integration
+pilot. The next experiment should train only this zero-initialized relation
+gate through verifier reward, keep the inherited controller frozen, and audit
+the full retention ladder immediately.
