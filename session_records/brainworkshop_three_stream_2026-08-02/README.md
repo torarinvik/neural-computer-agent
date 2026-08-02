@@ -419,3 +419,26 @@ short-budget advantage is enough to justify a tiny reward-only integration
 pilot. The next experiment should train only this zero-initialized relation
 gate through verifier reward, keep the inherited controller frozen, and audit
 the full retention ladder immediately.
+
+## Relational-gate integration pilot (2026-08-02)
+
+The recurrent gate was added to the real policy as a causal, zero-initialized
+RAM-side residual. A one-update smoke test was exactly behavior-preserving
+before training, with live gate gradients. The correctly masked reward-only
+pilot (target modality **text**, matching the parent checkpoint) ran 16
+updates with 1/5/6/7 rehearsal: 8-back eligible accuracy was **56.45% →
+56.05%**, reset **50.00%**, and time-shuffle **48.83%**. It did not clear the
+pre-registered +5-point gate. A 16-update supervised-bootstrap diagnostic
+that also unfroze only the opaque decoder was similarly flat (**56.45% →
+56.05%**, reset **50.00%**, time-shuffle **48.24%**). The relation state is
+therefore promising as a representation, but this particular residual/read
+interface does not yet convert it into the target action.
+
+One bookkeeping correction is permanent: the parent checkpoint was trained
+with `target_modalities=["text"]`. Two early pilot reports omitted that mask
+and scored all three bits; their apparent 15% baseline was invalid and those
+reports were discarded. All retained integration numbers use the checkpoint's
+exact target mask. The next frontier is a task-conditioned reader that can
+consume the relational state without allowing modality shortcuts, followed by
+the same reward and full retention audits; no longer run is justified until a
+tiny masked pilot beats the parent by a clear margin.

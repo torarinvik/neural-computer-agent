@@ -31,6 +31,7 @@ from .brainworkshop_gym import (
     BrainWorkshopTextEncoder, BrainWorkshopVisionEncoder,
     generate_brainworkshop_episode)
 from .model import UnifiedCognitiveController
+from .recurrent_relational_gate import RecurrentRelationalGate
 
 
 @dataclass
@@ -67,6 +68,8 @@ class BrainWorkshopPolicy(nn.Module):
                  slot_memory_composer: bool = False,
                  feedback_skill_adapter_width: int = 0,
                  feedback_skill_history_depth: int = 1,
+                 relational_context_adapter_width: int = 0,
+                 relational_context_max_history: int = 10,
                  per_stream_intention_adapter_width: int = 0,
                  factorized_output: bool = False,
                  factorized_reward: bool = False,
@@ -226,6 +229,14 @@ class BrainWorkshopPolicy(nn.Module):
             # behavior after the verifier has supplied experience.
             nn.init.zeros_(self.feedback_skill_adapter[-1].weight)
             nn.init.zeros_(self.feedback_skill_adapter[-1].bias)
+        self.relational_context_gate = None
+        if relational_context_adapter_width:
+            self.relational_context_gate = RecurrentRelationalGate(
+                event_width=width,
+                action_count=1 << len(self.action_bits),
+                hidden_width=relational_context_adapter_width,
+                intention_width=intention_width,
+                max_history=relational_context_max_history)
         self.per_stream_intention_delta_adapters = nn.ModuleDict()
         self.per_stream_intention_routers = nn.ModuleDict()
         if per_stream_intention_adapter_width:
@@ -414,7 +425,8 @@ def _stream_intention_event(
         previous_reward: torch.Tensor | None = None,
         has_feedback: torch.Tensor | None = None,
         previous_action: torch.Tensor | None = None,
-        feedback_history: torch.Tensor | None = None):
+        feedback_history: torch.Tensor | None = None,
+        relational_residual: torch.Tensor | None = None):
     """Add source-preserving RAM relation residuals outside the controller.
 
     The bridge is deliberately generic: it sees only current and previous
@@ -445,6 +457,16 @@ def _stream_intention_event(
         payload = event.payload.clone()
         payload[:, :policy.controller.intention_width] = (
             payload[:, :policy.controller.intention_width] + residual)
+        event = IntentEvent(
+            payload=payload,
+            timestamp=event.timestamp,
+            confidence=event.confidence,
+            target_key=event.target_key,
+        ).validate(width=event.payload.shape[1])
+    if relational_residual is not None:
+        payload = event.payload.clone()
+        payload[:, :policy.controller.intention_width] = (
+            payload[:, :policy.controller.intention_width] + relational_residual)
         event = IntentEvent(
             payload=payload,
             timestamp=event.timestamp,
@@ -694,6 +716,10 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
     previous_event = None
     previous_events = {name: None for name in policy.modalities}
     previous_stream_events = {name: [] for name in policy.modalities}
+    relational_state = (
+        policy.relational_context_gate.initial_state(batch_size, device=device)
+        if policy.relational_context_gate is not None else None)
+    relational_history: list[torch.Tensor] = []
     log_probs, entropies, rewards, actions, values = [], [], [], [], []
     bit_log_probs, bit_rewards, exact_correct, bit_correct = [], [], [], []
     for trial in range(config.trials):
@@ -712,6 +738,11 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
             previous_event = None
             previous_events = {name: None for name in policy.modalities}
             previous_stream_events = {name: [] for name in policy.modalities}
+            relational_state = (
+                policy.relational_context_gate.initial_state(
+                    batch_size, device=device)
+                if policy.relational_context_gate is not None else None)
+            relational_history = []
         events = _event_payloads(
             policy, observations, episodes, trial, device,
             oracle_events=oracle_events,
@@ -778,6 +809,14 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
                 event, state, _controller_action_index(policy, previous_action),
                 previous_reward, has_feedback,
                 retrieved_memory=retrieved_memory)
+        relational_residual = None
+        if policy.relational_context_gate is not None:
+            relational_residual, relational_state, snapshot = (
+                policy.relational_context_gate(
+                    event.payload, relational_state, relational_history,
+                    previous_action, previous_reward, has_feedback))
+            relational_history.append(snapshot)
+            del relational_history[:-policy.relational_context_gate.max_history]
         values.append(policy.value_head(state.hidden).squeeze(-1))
         intention_event = _stream_intention_event(
             policy, core, events, previous_stream_events,
@@ -785,7 +824,8 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
             previous_reward=previous_reward,
             has_feedback=has_feedback,
             previous_action=previous_action,
-            feedback_history=feedback_history)
+            feedback_history=feedback_history,
+            relational_residual=relational_residual)
         logits = policy.decoder(intention_event)
         if policy.factorized_output and policy.factorized_reward:
             binary_log_probs = policy.decoder.binary_log_probs(intention_event)
@@ -904,6 +944,10 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
     previous_event = None
     previous_events = {name: None for name in policy.modalities}
     previous_stream_events = {name: [] for name in policy.modalities}
+    relational_state = (
+        policy.relational_context_gate.initial_state(batch_size, device=device)
+        if policy.relational_context_gate is not None else None)
+    relational_history: list[torch.Tensor] = []
     losses, rewards = [], []
     for trial in range(config.trials):
         events = _event_payloads(
@@ -966,13 +1010,22 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
                 event, state, _controller_action_index(policy, previous_action),
                 previous_reward, has_feedback,
                 retrieved_memory=retrieved_memory)
+        relational_residual = None
+        if policy.relational_context_gate is not None:
+            relational_residual, relational_state, snapshot = (
+                policy.relational_context_gate(
+                    event.payload, relational_state, relational_history,
+                    previous_action, previous_reward, has_feedback))
+            relational_history.append(snapshot)
+            del relational_history[:-policy.relational_context_gate.max_history]
         intention_event = _stream_intention_event(
             policy, core, events, previous_stream_events,
             external_history=external_history,
             previous_reward=previous_reward,
             has_feedback=has_feedback,
             previous_action=previous_action,
-            feedback_history=feedback_history)
+            feedback_history=feedback_history,
+            relational_residual=relational_residual)
         targets = torch.tensor(
             [episode.verifier_targets()[trial] for episode in episodes],
             dtype=torch.long, device=device)
@@ -1167,6 +1220,21 @@ def main() -> None:
     parser.add_argument(
         "--train-feedback-skill-residual", action="store_true",
         help="train only the zero-init reward-history skill branch")
+    parser.add_argument(
+        "--relational-context-adapter-width", type=int, default=0,
+        choices=(0, 32, 64),
+        help="optional zero-init recurrent episodic relation gate")
+    parser.add_argument(
+        "--relational-context-max-history", type=int, default=10,
+        choices=(2, 4, 6, 8, 10),
+        help="maximum opaque event snapshots read by the relation gate")
+    parser.add_argument(
+        "--train-relational-context-gate", action="store_true",
+        help="train only the zero-init recurrent relation gate")
+    parser.add_argument(
+        "--train-relational-context-reader", action="store_true",
+        help=("train the relation gate plus the opaque decoder while keeping "
+              "the inherited controller and encoders frozen"))
     parser.add_argument(
         "--per-stream-intention-adapter-width", type=int, default=0,
         choices=(0, 32, 64),
@@ -1374,6 +1442,9 @@ def main() -> None:
         slot_memory_composer=args.slot_memory_composer,
         feedback_skill_adapter_width=args.feedback_skill_adapter_width,
         feedback_skill_history_depth=args.feedback_skill_history_depth,
+        relational_context_adapter_width=(
+            args.relational_context_adapter_width),
+        relational_context_max_history=args.relational_context_max_history,
         per_stream_intention_adapter_width=(
             args.per_stream_intention_adapter_width),
         factorized_output=args.factorized_output,
@@ -1538,6 +1609,25 @@ def main() -> None:
             parameter.requires_grad_(False)
         for parameter in policy.feedback_skill_adapter.parameters():
             parameter.requires_grad_(True)
+    if (args.train_relational_context_gate
+            or args.train_relational_context_reader):
+        if checkpoint_payload is None:
+            raise ValueError(
+                "--train-relational-context-gate requires --checkpoint-in")
+        if policy.relational_context_gate is None:
+            raise ValueError(
+                "--train-relational-context-gate requires "
+                "--relational-context-adapter-width")
+        if args.unfreeze_controller:
+            raise ValueError(
+                "relational context training cannot unfreeze controller")
+        for parameter in policy.parameters():
+            parameter.requires_grad_(False)
+        for parameter in policy.relational_context_gate.parameters():
+            parameter.requires_grad_(True)
+        if args.train_relational_context_reader:
+            for parameter in policy.decoder.parameters():
+                parameter.requires_grad_(True)
     if controller_frozen:
         for parameter in policy.controller.parameters():
             parameter.requires_grad_(False)
@@ -1847,6 +1937,13 @@ def main() -> None:
         "feedback_skill_history_depth": args.feedback_skill_history_depth,
         "train_feedback_skill_residual": bool(
             args.train_feedback_skill_residual),
+        "relational_context_adapter_width": (
+            args.relational_context_adapter_width),
+        "relational_context_max_history": args.relational_context_max_history,
+        "train_relational_context_gate": bool(
+            args.train_relational_context_gate),
+        "train_relational_context_reader": bool(
+            args.train_relational_context_reader),
         "per_stream_intention_adapter_width": (
             args.per_stream_intention_adapter_width),
         "input_bus_normalize_events": bool(args.input_bus_normalize_events),
@@ -1914,6 +2011,10 @@ def main() -> None:
                     args.feedback_skill_adapter_width),
                 "feedback_skill_history_depth": (
                     args.feedback_skill_history_depth),
+                "relational_context_adapter_width": (
+                    args.relational_context_adapter_width),
+                "relational_context_max_history": (
+                    args.relational_context_max_history),
             },
             # Preserve the depth whose path was intentionally frozen.  A
             # continuation must reopen only the same appended columns rather
