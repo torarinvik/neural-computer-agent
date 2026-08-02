@@ -136,6 +136,22 @@ rehearsal must be weighted toward the earliest fragile primitives. The
 span-six transfer is real, but the default equal rehearsal schedule is
 rejected.
 
+## Span-seven escalation
+
+The repaired span-six checkpoint was then tested on seven items with two
+distractors. The weighted schedule `[7, 2, 2, 3, 3, 3, 4, 5, 6]` exposed the
+new span while continuing to protect the earliest primitives. After 3,776
+fresh verifier bits, the inherited arm reached 68.29%; a matched fresh arm
+stayed at 50.00% with zero operation flips. The independent inherited audit
+measured spans 2--7 at 100.00%, 94.61%, 84.07%, 75.96%, 72.37%, and 68.36%.
+Blank and complete-reset controls remained approximately 50%, and span-seven
+reversal flips were 48.66%.
+
+The outcome-shuffled span-seven control reached only 58.23%, with a 26.67%
+sequence-reversal flip rate and a 50.41% complete-reset control. This is the
+next replicated compounding result, while still only a smoke-level transfer
+measurement rather than seven-item mastery.
+
 ## What this establishes
 
 This is a verified compounding working-memory result: a learned retention
@@ -146,14 +162,12 @@ variable-capacity memory or a fully consolidated repertoire capability.
 
 ## Next frontier
 
-The next highest-ROI experiment is not span-seven yet. First run 16--32 more
-updates from the repaired span-six checkpoint using the span-heavy schedule
-`[6, 2, 2, 3, 3, 3, 4, 5]`, with a second inherited seed and the same retention
-gates. If span-2/3 remain within two points and span-6 rises, then test
-span-seven with the same weighted-rehearsal principle and a matched fresh
+The next highest-ROI experiment is a second inherited span-seven seed using
+the same weighted schedule, followed by a 16--32 update continuation only if
+spans 2/3 remain within the two-point gate. If that replicates, test span-eight
+with the same early-span-heavy rehearsal principle and a matched fresh
 control. Do not add learned variable-capacity memory, registers, or new
-modalities yet: the current evidence says schedule design is now the highest
-return per verifier bit.
+modalities yet: schedule design remains the highest return per verifier bit.
 
 ## Artifacts
 
@@ -179,3 +193,7 @@ return per verifier bit.
 - `span6_rehearsal_repair_seed30527.json`,
   `span6_rehearsal_repair2_seed30528.json`: weighted retention repairs.
 - `span6_smoke_shuffled_seed30529.json`: outcome-shuffled span-six control.
+- `span6_rehearsal_replica_seed30530.json`: second-seed weighted repair.
+- `span7_smoke_inherited_seed30531.json`, `span7_smoke_fresh_seed30532.json`:
+  inherited/fresh span-seven transfer pair.
+- `span7_smoke_shuffled_seed30533.json`: outcome-shuffled span-seven control.
