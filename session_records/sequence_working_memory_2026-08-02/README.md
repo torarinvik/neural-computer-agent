@@ -198,19 +198,40 @@ child's 9.14-point gain and its sequence-reversal flip rate fell to 23.13%.
 (*The operation-cue flip statistic alone is not a pass criterion for this
 control.)
 
-This is a new **compounding transfer signal to span eight**, not a
-claim of eight-item mastery. A 32-episode retention smoke audit found no
-catastrophic collapse in spans 2--7 (98.44%, 91.67%, 82.81%, 73.12%, 70.83%,
-and 70.54%, respectively), but its sample is too small to replace the
-high-precision retention audits used for promotion. The span-eight checkpoint
-therefore remains an unpromoted experimental artifact until a larger,
-lifetime-disjoint audit and a second inherited seed are run.
+This was initially recorded as a new transfer signal rather than mastery. The
+promotion audit then evaluated 512 lifetime-disjoint episodes on MPS. Relative
+to the preceding span-seven audit, spans 2--7 changed by -0.20, -1.51, -1.89,
+-0.57, -1.34, and +0.00 percentage points, respectively: every older skill
+stayed within the two-point retention gate. Blank and complete-reset controls
+remained at chance. The earlier 32-episode smoke audit is retained as a
+low-count diagnostic, not as the promotion evidence.
 
 The independent span-seven replication immediately before this escalation
 reached 66.02% from 1,888 verifier bits, with 45.92% operation flips and
 50.33% complete-reset accuracy. This lower-but-positive result is retained as
 the appropriate seed-variance bound rather than hidden behind the stronger
 span-eight child.
+
+## Span-eight promotion audit
+
+The second inherited span-eight seed used the identical schedule and 2,048
+new verifier bits. The matched fresh and shuffled controls used the same
+controller configuration and budget:
+
+| Arm | Accuracy | Operation reversal flips | Blank | Complete reset |
+| --- | ---: | ---: | ---: | ---: |
+| inherited, seed 30564 | 66.53% | 43.15% | 50.24% | 50.10% |
+| inherited, seed 30567 | 66.36% | 40.81% | 49.27% | 49.02% |
+| fresh, seed 30568 | 50.00% | 0.00% | 50.00% | 50.00% |
+| shuffled inherited, seed 30569 | 50.73% | 37.94% | 50.83% | 50.49% |
+
+The inherited arms therefore reproduce a 16--17 percentage-point gain over
+fresh weights, while outcome shuffling removes that gain. The operation and
+reset controls show that the child is using retained sequence information and
+the query operation, not a fixed action or an accidental pixel watermark.
+This is now a **promoted span-eight compounding transfer result**. It remains
+an acquisition result rather than eight-item mastery: the next run must use
+private consolidation and then a larger span-eight mastery audit.
 
 ## What this establishes
 
@@ -222,15 +243,14 @@ variable-capacity memory or a fully consolidated repertoire capability.
 
 ## Next frontier
 
-The next highest-ROI experiment is now a second inherited span-eight seed with
-the same schedule, preceded by a 512--2,048-lifetime retention audit of spans
-2--7. Promote only if the child clears the existing two-point retention gate,
-keeps blank/reset controls near chance, and shows the same inherited-versus-
-fresh gap. Then spend additional private compute on consolidation before
-consuming more verifier bits. Do not add learned variable-capacity memory,
-registers, or new modalities yet: the evidence still says that gradual
-difficulty plus weighted rehearsal delivers the highest return per verifier
-bit.
+The next highest-ROI experiment is a span-eight consolidation ladder: keep
+the same acquired checkpoint, increase optimizer reuse before requesting new
+verifier bits, and measure the first stable prefix that reaches the 90% gate
+without dropping spans 2--7. Only after that should we test span nine with the
+same early-span-heavy rehearsal and a fresh control. Do not add learned
+variable-capacity memory, registers, or new modalities yet: gradual
+difficulty plus weighted rehearsal is still delivering the highest return per
+verifier bit.
 
 ## Artifacts
 
@@ -267,6 +287,12 @@ bit.
 - `span8_shuffled_seed30566.json`: inherited outcome-shuffled control.
 - `span8_retention_smoke_seed30564.json`: low-count spans-2--8 regression
   smoke audit; not a promotion-grade retention audit.
+- `span8_retention_audit_mps512_seed30564.json`: promotion-grade 512-lifetime
+  retention audit across spans 2--8.
+- `span8_replica_inherited_seed30567.json`,
+  `span8_replica_fresh_seed30568.json`, and
+  `span8_replica_shuffled_seed30569.json`: matched second-seed promotion
+  controls.
 
 The ignored local checkpoint hashes are:
 
@@ -274,4 +300,7 @@ The ignored local checkpoint hashes are:
 span8_smoke_inherited_seed30564.pt  sha256 9a429e1eea0b1c1f2e30c02ce9d91c4e32ceac257d8d55e3d37ae0e5384c4b7e
 span8_smoke_fresh_seed30565.pt      sha256 12d4dc2b11fc126f9cc1b613622d5edcb228fdda9c87d1eb545895db5005e099
 span8_shuffled_seed30566.pt         sha256 518b443d6e765d70bcc71c5873e63ab65cf41de68550c96b442726d3b83cc895
+span8_replica_inherited_seed30567.pt sha256 db155aa0ead94f1e5be43f88434a03e18f7a61d744f5f723e05dcb46543b681a
+span8_replica_fresh_seed30568.pt     sha256 29e8e00296897f44a96c47ae3e6902f053c814031b0e5cbfb90d7679c16e3827
+span8_replica_shuffled_seed30569.pt  sha256 efb70095a5ade9c72d8b702dff0dfc0cb6ac1b3d2f35608109a7375387552e36
 ```
