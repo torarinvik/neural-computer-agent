@@ -442,3 +442,11 @@ exact target mask. The next frontier is a task-conditioned reader that can
 consume the relational state without allowing modality shortcuts, followed by
 the same reward and full retention audits; no longer run is justified until a
 tiny masked pilot beats the parent by a clear margin.
+
+The matched 64-update reader diagnostic confirms why the gate is not being
+promoted: overall text score rose to **78.83%**, but eligible 8-back accuracy
+fell from **56.45% to 52.34%** and time-shuffle remained **48.83%**. The
+trainable reader found a warm-up/partial-score shortcut rather than the
+temporal relation. This is an adversarial failure, not a promising learning
+curve; future gates must report eligible causal accuracy as the primary metric
+and treat total score as a reward-hacking warning.
