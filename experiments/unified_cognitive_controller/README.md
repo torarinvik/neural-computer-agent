@@ -1788,3 +1788,32 @@ acquired skill, run private consolidation, reload it into a fresh process, and
 re-run the same span-nine/retention/reversal gates. Until that is measured, the
 claim is limited to replay-protected controller acquisition, not long-term
 disk-memory consolidation.
+
+## Span-nine skill memory survives external serialization
+
+The first memory-boundary rung is now causal. The learned successor-slot state
+was extracted into the separate artifact
+`artifacts/memory/span9_skill_memory_seed48002.pt` (253,081 parameters), while
+the parent controller remained the frozen computation core. A fresh process
+rehydrated that artifact on top of the parent and reproduced the direct child
+at **90.96%** on a 4,096-lifetime audit, with identical reverse-operation
+accuracy (90.63%), blank accuracy (49.89%), reset accuracy (49.76%), and
+operation-flip rate (48.11%).
+
+The causal corruption control zeroed only the serialized successor-slot state;
+the parent core and all verifier inputs were unchanged. Accuracy fell to
+**75.64%** (reverse-operation 75.39%), while blank/reset remained at chance.
+This is direct evidence that the new capability is carried by the external
+skill artifact rather than being a reward-independent change in the core. The
+artifact contains only learned slot parameters and parent provenance; no
+correct actions, task labels, or semantic rule fields are stored.
+
+Full evidence:
+`session_records/sequence_working_memory_2026-08-02/span9_skill_memory_audit_seed48002.json`.
+Artifact SHA-256:
+`228341bd120757bb4ad287530f11f36773788ab44098ec837e89a8c6d25d8a04`.
+
+The next frontier is to connect this serialized skill artifact to the generic
+`DiskLatentMemory`/hot-working-set path and test a new span acquisition after a
+fresh-process reload, with the same retention and corruption gates. This is a
+memory-boundary result, not yet proof of learned multi-skill consolidation.

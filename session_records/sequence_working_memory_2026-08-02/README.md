@@ -657,13 +657,37 @@ Replication artifacts:
 - `span9_age_replay_pen003_e384_shuffle_seed48104.json`
 - `artifacts/checkpoints/span9_age_replay_pen003_e384_seed48002.pt`
 
+## Span-nine skill memory survives external serialization
+
+The learned successor-slot parameters were extracted into the separate
+artifact `artifacts/memory/span9_skill_memory_seed48002.pt`, leaving the
+span-eight parent as the frozen computation core. The artifact contains
+253,081 learned parameters and no verifier labels or correct-action fields.
+After saving and reloading that artifact in a fresh model instance, the
+rehydrated controller exactly matched the direct child at **90.96%** on a
+4,096-lifetime audit: reverse-operation accuracy was 90.63%, blank accuracy
+49.89%, complete-reset accuracy 49.76%, and non-palindrome operation flips
+48.11%.
+
+The causal corruption control zeroed only the reloaded successor-slot state.
+The parent core and verifier inputs were unchanged, but accuracy fell to
+**75.64%** (reverse-operation 75.39%); blank and reset stayed at chance. This
+shows that the new capability is carried by the external skill artifact, not
+by reward-independent drift in the frozen controller. Artifact SHA-256:
+`228341bd120757bb4ad287530f11f36773788ab44098ec837e89a8c6d25d8a04`.
+
+Evidence:
+`span9_skill_memory_audit_seed48002.json`.
+
 ## Next frontier
 
 Test whether the replicated span-nine skill survives write, private
 consolidation, disk serialization, reload into a fresh process, and recall.
 Keep the two-point old-skill retention gate and the outcome-shuffle, blank,
-reset, and reversal controls. Only after that should the curriculum advance to
-span ten or broaden the task family.
+reset, and reversal controls. The current rung serializes a learned slot; the
+next one should connect that artifact to generic `DiskLatentMemory` hot/cold
+storage and test a new span acquisition after reload. Only after that should
+the curriculum advance to span ten or broaden the task family.
 
 ## Artifacts
 
@@ -799,6 +823,9 @@ span ten or broaden the task family.
 - `span9_age_replay_pen003_e384_shuffle_seed48103.json` and
   `span9_age_replay_pen003_e384_shuffle_seed48104.json`: independent-seed
   matched outcome-shuffled controls.
+- `span9_skill_memory_audit_seed48002.json`: external successor-slot
+  serialization, fresh-instance rehydration, and zeroed-artifact corruption
+  audit.
 - `controller_habit_gpu_seed32231.json` through
   `controller_habit_gpu_seed32234.json`: four CUDA replication reports for
   the reward-only row-volatility selector; all passed the full gate suite.
