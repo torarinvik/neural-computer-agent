@@ -1,0 +1,102 @@
+{
+  "schema": "sequence-working-memory-experiment-v1",
+  "learner_visible_information": "RGB streams, own opaque actions, scalar attempted-action outcome",
+  "operation": "mixed",
+  "span": 8,
+  "distractors": 2,
+  "fixed_position_blend": 0.0,
+  "position_curriculum": [],
+  "position_augmentation": true,
+  "position_update_counts": {
+    "0.0": 8
+  },
+  "rehearse_zero_distractor": false,
+  "rehearse_span2": false,
+  "rehearse_spans": [
+    2,
+    2,
+    3,
+    3,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "span_update_counts": {
+    "8": 1,
+    "2": 2,
+    "3": 3,
+    "4": 1,
+    "5": 1
+  },
+  "distractor_update_counts": {
+    "2": 8
+  },
+  "optimizer_updates": 8,
+  "unique_logical_episodes": 256,
+  "unique_verifier_bits": 960,
+  "replayed_examples": 0,
+  "outcomes_shuffled": true,
+  "loss_output": "all",
+  "mastery_threshold": 0.9,
+  "stable_bits_to_threshold": null,
+  "wall_seconds": 19.786231166,
+  "model_configuration": {
+    "width": 64,
+    "workspace_slots": 4,
+    "intention_width": 16
+  },
+  "history": [
+    {
+      "update": 1,
+      "unique_episodes": 32,
+      "unique_verifier_bits": 256,
+      "training_accuracy": 0.6796875,
+      "loss": 0.836039662361145,
+      "train_position_blend": 0.0,
+      "train_distractors": 2
+    },
+    {
+      "update": 8,
+      "unique_episodes": 256,
+      "unique_verifier_bits": 960,
+      "training_accuracy": 0.6187499761581421,
+      "loss": 0.7599384784698486,
+      "train_position_blend": 0.0,
+      "train_distractors": 2
+    }
+  ],
+  "audit": {
+    "accuracy": 0.5771484375,
+    "forward_accuracy": 0.537109375,
+    "reverse_accuracy": 0.6171875,
+    "accuracy_by_output": [
+      0.7734375,
+      0.6640625,
+      0.52734375,
+      0.53125,
+      0.56640625,
+      0.484375,
+      0.55078125,
+      0.51953125
+    ],
+    "reverse_operation_accuracy": 0.54443359375,
+    "reverse_operation_prediction_flip_rate_nonpalindrome": 0.567187488079071,
+    "reverse_sequence_accuracy": 0.578125,
+    "reverse_sequence_prediction_flip_rate_nonpalindrome": 0.23125000298023224,
+    "blank_sequence_accuracy": 0.51611328125,
+    "blank_operation_cue_accuracy": 0.53125,
+    "workspace_disabled_accuracy": 0.5009765625,
+    "active_state_reset_accuracy": 0.5615234375,
+    "all_memory_reset_accuracy": 0.50390625,
+    "zero_distractor_accuracy": 0.58544921875,
+    "heldout_position_accuracy": 0.57763671875,
+    "position_accuracy_by_blend": {
+      "0.25": 0.578125,
+      "0.5": 0.5947265625,
+      "0.75": 0.5947265625,
+      "1.0": 0.57763671875
+    }
+  }
+}

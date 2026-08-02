@@ -175,6 +175,43 @@ manually fixed gate sparsity target. The current weighted rehearsal remains
 the promotion path; the adapter is a diagnostic candidate until it passes a
 matched multi-seed retention and transfer audit.
 
+## Span-eight escalation: transfer signal, not yet mastery
+
+The next one-axis escalation used the same early-span-heavy schedule,
+`[8, 2, 2, 3, 3, 3, 4, 5, 6, 7]`, two distractors, and position
+augmentation. The inherited arm started from the span-seven checkpoint and
+the fresh arm had the identical controller size, optimizer, budget, and
+verifier stream shape. After only 512 episodes / 2,048 new verifier bits:
+
+| Arm | Accuracy | Operation reversal flips | Complete reset |
+| --- | ---: | ---: | ---: |
+| inherited, seed 30564 | **66.85%** | **44.27%** | 49.17% |
+| fresh, seed 30565 | 50.00% | 0.00% | 50.00% |
+| outcome-shuffled inherited, seed 30566 | 57.71% | 56.72%* | 50.39% |
+
+The inherited child also scored 65.45% under sequence reversal and 66.46% at
+the fully shifted position blend. Blank-sequence accuracy was 49.80%, so the
+gain depends on retained sequence content rather than a constant action.
+The shuffled arm is intentionally **not** treated as a chance control: it
+inherits useful span-seven behavior, but it failed to reproduce the normal
+child's 9.14-point gain and its sequence-reversal flip rate fell to 23.13%.
+(*The operation-cue flip statistic alone is not a pass criterion for this
+control.)
+
+This is a new **compounding transfer signal to span eight**, not a
+claim of eight-item mastery. A 32-episode retention smoke audit found no
+catastrophic collapse in spans 2--7 (98.44%, 91.67%, 82.81%, 73.12%, 70.83%,
+and 70.54%, respectively), but its sample is too small to replace the
+high-precision retention audits used for promotion. The span-eight checkpoint
+therefore remains an unpromoted experimental artifact until a larger,
+lifetime-disjoint audit and a second inherited seed are run.
+
+The independent span-seven replication immediately before this escalation
+reached 66.02% from 1,888 verifier bits, with 45.92% operation flips and
+50.33% complete-reset accuracy. This lower-but-positive result is retained as
+the appropriate seed-variance bound rather than hidden behind the stronger
+span-eight child.
+
 ## What this establishes
 
 This is a verified compounding working-memory result: a learned retention
@@ -185,12 +222,15 @@ variable-capacity memory or a fully consolidated repertoire capability.
 
 ## Next frontier
 
-The next highest-ROI experiment is a second inherited span-seven seed using
-the same weighted schedule, followed by a 16--32 update continuation only if
-spans 2/3 remain within the two-point gate. If that replicates, test span-eight
-with the same early-span-heavy rehearsal principle and a matched fresh
-control. Do not add learned variable-capacity memory, registers, or new
-modalities yet: schedule design remains the highest return per verifier bit.
+The next highest-ROI experiment is now a second inherited span-eight seed with
+the same schedule, preceded by a 512--2,048-lifetime retention audit of spans
+2--7. Promote only if the child clears the existing two-point retention gate,
+keeps blank/reset controls near chance, and shows the same inherited-versus-
+fresh gap. Then spend additional private compute on consolidation before
+consuming more verifier bits. Do not add learned variable-capacity memory,
+registers, or new modalities yet: the evidence still says that gradual
+difficulty plus weighted rehearsal delivers the highest return per verifier
+bit.
 
 ## Artifacts
 
@@ -220,3 +260,18 @@ modalities yet: schedule design remains the highest return per verifier bit.
 - `span7_smoke_inherited_seed30531.json`, `span7_smoke_fresh_seed30532.json`:
   inherited/fresh span-seven transfer pair.
 - `span7_smoke_shuffled_seed30533.json`: outcome-shuffled span-seven control.
+- `span7_replica_seed30563.json`: independent inherited span-seven replication.
+- `span7_replica_prefix_seed30563.json`: bounded eight-update prefix.
+- `span8_smoke_inherited_seed30564.json`: inherited span-eight transfer smoke.
+- `span8_smoke_fresh_seed30565.json`: matched fresh span-eight control.
+- `span8_shuffled_seed30566.json`: inherited outcome-shuffled control.
+- `span8_retention_smoke_seed30564.json`: low-count spans-2--8 regression
+  smoke audit; not a promotion-grade retention audit.
+
+The ignored local checkpoint hashes are:
+
+```text
+span8_smoke_inherited_seed30564.pt  sha256 9a429e1eea0b1c1f2e30c02ce9d91c4e32ceac257d8d55e3d37ae0e5384c4b7e
+span8_smoke_fresh_seed30565.pt      sha256 12d4dc2b11fc126f9cc1b613622d5edcb228fdda9c87d1eb545895db5005e099
+span8_shuffled_seed30566.pt         sha256 518b443d6e765d70bcc71c5873e63ab65cf41de68550c96b442726d3b83cc895
+```
