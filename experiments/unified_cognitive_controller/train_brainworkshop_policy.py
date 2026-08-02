@@ -473,7 +473,8 @@ def _eligible_rollout_accuracy(
 
 
 def _protect_inherited_history_extension(
-        policy: BrainWorkshopPolicy, *, inherited_depth: int) -> int:
+        policy: BrainWorkshopPolicy, *, inherited_depth: int,
+        allow_output_adaptation: bool = False) -> int:
     """Train only newly appended RAM-history input columns.
 
     The old projection and output map remain frozen.  This makes a deeper
@@ -504,6 +505,33 @@ def _protect_inherited_history_extension(
         mask[:, old_input_width:] = 1.0
         first.weight.register_hook(lambda gradient, mask=mask: gradient * mask)
         trainable += int(first.weight[:, old_input_width:].numel())
+        if allow_output_adaptation:
+            if len(adapter) < 3 or not isinstance(adapter[2], nn.Linear):
+                raise ValueError("history adapter must have a linear output")
+            adapter[2].weight.requires_grad_(True)
+            adapter[2].bias.requires_grad_(True)
+            trainable += int(adapter[2].weight.numel() + adapter[2].bias.numel())
+    return trainable
+
+
+def _protect_new_history_residual(policy: BrainWorkshopPolicy) -> int:
+    """Open only a zero-initialized relation residual for new learning.
+
+    The inherited RAM bridge remains frozen.  A stacked relation-only branch
+    receives the generic current/oldest/current-times-oldest tuple and starts
+    as an exact zero contribution; its complete small MLP can therefore learn
+    a new temporal relation without overwriting the mastered bridge.
+    """
+    if not policy.per_stream_intention_delta_adapters:
+        raise ValueError(
+            "new-history residual requires --stacked-history-adapter")
+    for parameter in policy.parameters():
+        parameter.requires_grad_(False)
+    trainable = 0
+    for adapter in policy.per_stream_intention_delta_adapters.values():
+        for parameter in adapter.parameters():
+            parameter.requires_grad_(True)
+            trainable += int(parameter.numel())
     return trainable
 
 
@@ -991,12 +1019,24 @@ def main() -> None:
         help="compute RAM relation residuals separately per input stream")
     parser.add_argument(
         "--external-history-depth", type=int, default=1,
-        choices=(1, 2, 3, 4, 5),
+        choices=(1, 2, 3, 4, 5, 6),
         help="number of opaque RAM snapshots exposed to the generic bridge")
     parser.add_argument(
         "--freeze-inherited-history", action="store_true",
         help=("freeze the inherited path and train only newly appended "
               "RAM-history input columns"))
+    parser.add_argument(
+        "--protected-inherited-history-depth", type=int,
+        help=("override the parent depth recorded for a protected extension; "
+              "useful when extending an already protected checkpoint"))
+    parser.add_argument(
+        "--allow-history-output-adaptation", action="store_true",
+        help=("when protecting history, also adapt RAM bridge output "
+              "projections; retention audits remain mandatory"))
+    parser.add_argument(
+        "--train-new-history-residual", action="store_true",
+        help=("freeze inherited paths and train only a stacked, zero-init "
+              "relation residual"))
     parser.add_argument(
         "--slot-memory-composer", action="store_true",
         help="preserve per-stream RAM slots until a generic final reader")
@@ -1040,10 +1080,10 @@ def main() -> None:
     parser.add_argument("--eval-count", type=int, default=128)
     parser.add_argument("--trials", type=int, default=8)
     parser.add_argument(
-        "--n-back", type=int, default=1, choices=(1, 2, 3, 4, 5),
+        "--n-back", type=int, default=1, choices=(1, 2, 3, 4, 5, 6),
         help="temporal distance of the verifier relation; increase gradually")
     parser.add_argument(
-        "--rehearsal-n-back", type=int, choices=(1, 2, 3, 4),
+        "--rehearsal-n-back", type=int, choices=(1, 2, 3, 4, 5),
         help="old difficulty to rehearse during a harder-task update")
     parser.add_argument(
         "--rehearsal-n-backs", type=str, default="",
@@ -1096,9 +1136,9 @@ def main() -> None:
             if item.strip())
         if not rehearsal_n_backs:
             raise ValueError("rehearsal_n_backs must not be empty")
-        if any(item not in (1, 2, 3, 4) for item in rehearsal_n_backs):
+        if any(item not in (1, 2, 3, 4, 5) for item in rehearsal_n_backs):
             raise ValueError(
-                "rehearsal_n_backs must contain only 1, 2, 3, or 4")
+                "rehearsal_n_backs must contain only 1, 2, 3, 4, or 5")
         if len(set(rehearsal_n_backs)) != len(rehearsal_n_backs):
             raise ValueError("rehearsal_n_backs must not contain duplicates")
     elif args.rehearsal_n_back is not None:
@@ -1318,15 +1358,32 @@ def main() -> None:
         if args.unfreeze_controller:
             raise ValueError(
                 "--freeze-inherited-history cannot unfreeze the controller")
-        inherited_depth = int(checkpoint_payload.get(
-            "protected_inherited_history_depth",
+        inherited_depth = int(
+            args.protected_inherited_history_depth
+            if args.protected_inherited_history_depth is not None else
             checkpoint_payload.get(
-                "model_configuration", {}).get("external_history_depth", 1)))
+                "protected_inherited_history_depth",
+                checkpoint_payload.get(
+                    "model_configuration", {}).get(
+                        "external_history_depth", 1)))
         protected_inherited_history_depth = inherited_depth
         protected_parameter_count = _protect_inherited_history_extension(
-            policy, inherited_depth=inherited_depth)
+            policy, inherited_depth=inherited_depth,
+            allow_output_adaptation=args.allow_history_output_adaptation)
         if protected_parameter_count < 1:
             raise ValueError("history extension has no trainable parameters")
+    if args.train_new_history_residual:
+        if checkpoint_payload is None:
+            raise ValueError("--train-new-history-residual requires --checkpoint-in")
+        if args.unfreeze_controller:
+            raise ValueError(
+                "--train-new-history-residual cannot unfreeze the controller")
+        if args.freeze_inherited_history:
+            raise ValueError(
+                "choose one protected history training mode")
+        protected_parameter_count = _protect_new_history_residual(policy)
+        if protected_parameter_count < 1:
+            raise ValueError("new history residual has no trainable parameters")
     if controller_frozen:
         for parameter in policy.controller.parameters():
             parameter.requires_grad_(False)

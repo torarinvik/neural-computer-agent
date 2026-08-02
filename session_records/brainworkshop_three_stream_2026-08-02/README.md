@@ -1,4 +1,4 @@
-# Brain Workshop 4-back and protected 5-back continuation
+# Brain Workshop 4-back, protected 5-back, and protected 6-back continuation
 
 This session tested the next protected-plasticity frontier after the verified
 1-back → 4-back compounding rung. The controller was initialized from the same
@@ -137,13 +137,38 @@ not meet the pre-registered +5-point continuation gate, so training stopped
 there; this is a verified efficiency curve point, not an excuse to scale
 compute indefinitely.
 
+## Sixth-back compounding rung
+
+The trainer now supports a sixth opaque RAM snapshot and an explicit parent
+depth override for extending an already protected checkpoint. A target-only
+6-back ceiling diagnostic reached **80.86%** after 256 updates, but its
+1-back retention fell to **61.16%**, so it is rejected as a capability result.
+
+The protected sixth-back diagnostic opened only the appended depth-six input
+columns. It reached **57.42%** eligible held-out 6-back accuracy from a
+48.63% parent, with reset **50.00%** and time-shuffle **49.41%**. 1-back stayed
+at **93.28%**, but 5-back fell to **72.66%** because sixth-history features are
+also present on later 5-back trials. This localized the remaining problem to
+task-conditional interference rather than weight overwriting.
+
+The decisive continuation used eight verifier-reward updates on that protected
+branch with 5-back rehearsal. 6-back rose to **72.27%** on the 256-lifetime
+check and **71.24%** on a larger evaluation with 2,048 target-bearing trials.
+Reset and
+time-shuffle were **50.00%** and **49.95%**. The earlier rungs were retained:
+5-back **80.86%** and 1-back **92.75%** in zero-learning-rate audits. This is
+the first protected 1→5→6 compounding result, honestly labeled as a
+supervised-bootstrapped reward continuation rather than cold-start reward
+discovery.
+
 ## Next frontier
 
 The system now has a replicated, causal **learn → check → continue** loop for a
 harder cognitive primitive while retaining the mastered one. The new protected
 extension adds a second loop: **freeze inherited path → train appended RAM
 columns → reward-fine-tune → audit retention**. The next frontier is to make
-the fifth-back adapter as sample-efficient as the 93% supervised ceiling,
-preferably by learning a task-agnostic progress/stop signal and by testing a
-new cognitive primitive after the 5-back rung. Any future cold-start reward
+the sixth-back adapter as sample-efficient as its unprotected ceiling while
+keeping the 5-back interference margin closed. The next frontier is a generic
+task-conditional memory gate or other verifier-free routing mechanism, followed
+by a 7-back or genuinely different primitive. Any future cold-start reward
 claim must still pass the same reset, time-shuffle, and retention audits.

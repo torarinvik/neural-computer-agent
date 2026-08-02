@@ -1511,3 +1511,24 @@ gain over 78.91% was below the +5-point continuation gate, so the run stopped
 instead of spending more compute on a weak slope. This confirms a stable
 protected reward-learning curve, while the cold-start reward-only question and
 the gap to the 93% supervised ceiling remain open.
+
+## Latest breakthrough: protected sixth-back compounding
+
+The sixth temporal rung is now supported by the generic RAM bridge. An
+unprotected supervised ceiling run reached **80.86%** 6-back, but destroyed
+1-back retention (61.16%), so it was rejected. The protected extension trains
+only the appended sixth-history columns from the inherited 5-back checkpoint.
+It first reached **57.42%** 6-back with 1-back at **93.28%**; the 5-back audit
+exposed a task-conditional interference cost, falling to 72.66% when the new
+history features were active.
+
+Eight verifier-reward updates with 5-back rehearsal then raised 6-back to
+**72.27%** on the check evaluation and **71.24%** on a larger evaluation with
+2,048 target-bearing trials. Reset and time-shuffle controls were **50.00%**
+and **49.95%**.
+The earlier skills remained intact: 5-back **80.86%**, 1-back **92.75%**.
+This is the first protected 1→5→6 compounding result. It is a
+**supervised-bootstrapped reward continuation**, not a cold-start reward-only
+claim. The remaining frontier is a task-conditional, task-agnostic memory gate
+that closes the sixth-history interference margin, then 7-back or transfer to a
+new cognitive primitive.

@@ -5,12 +5,17 @@ import torch
 from .train_brainworkshop_policy import (
     BrainWorkshopPolicy, _controller_action_index, _factorized_advantages,
     Rollout, _eligible_rollout_accuracy, _history_features,
-    _protect_inherited_history_extension, _resolve_rehearsal_weights)
+    _protect_inherited_history_extension, _protect_new_history_residual,
+    _resolve_rehearsal_weights)
 from .brainworkshop_gym import BrainWorkshopConfig
 
 
 def test_brainworkshop_config_accepts_the_next_fifth_back_rung() -> None:
     BrainWorkshopConfig(n_back=5, trials=8).validate()
+
+
+def test_brainworkshop_config_accepts_the_next_sixth_back_rung() -> None:
+    BrainWorkshopConfig(n_back=6, trials=8).validate()
 
 
 def test_eligible_accuracy_excludes_temporal_warmup() -> None:
@@ -37,6 +42,41 @@ def test_history_extension_protection_only_opens_new_input_columns() -> None:
     assert not policy.external_memory_adapters["text"][2].weight.requires_grad
     assert not any(
         parameter.requires_grad for parameter in policy.controller.parameters())
+
+
+def test_history_output_adaptation_is_the_only_optional_relaxation() -> None:
+    policy = BrainWorkshopPolicy(
+        width=32, intention_width=16, modalities=("text",),
+        external_history_depth=5, external_memory_adapter_width=32,
+        per_stream_external_history=True,
+        per_stream_intention_adapter_width=32)
+    trainable = _protect_inherited_history_extension(
+        policy, inherited_depth=4, allow_output_adaptation=True)
+    assert trainable == (
+        32 * 64 + 32 * 32 + 32
+        + 32 * 64 + 16 * 32 + 16)
+    assert policy.external_memory_adapters["text"][2].weight.requires_grad
+    assert policy.external_memory_adapters["text"][2].bias.requires_grad
+    assert not any(
+        parameter.requires_grad for parameter in policy.controller.parameters())
+
+
+def test_new_history_residual_opens_only_the_stacked_zero_init_branch() -> None:
+    policy = BrainWorkshopPolicy(
+        width=32, intention_width=16, modalities=("text",),
+        external_history_depth=5, external_memory_adapter_width=32,
+        per_stream_external_history=True,
+        per_stream_intention_adapter_width=32,
+        stacked_history_adapter=True,
+        stacked_history_relation_only=True)
+    trainable = _protect_new_history_residual(policy)
+    assert trainable == 3 * 32 * 32 + 32 + 16 * 32 + 16
+    assert all(
+        parameter.requires_grad
+        for parameter in policy.per_stream_intention_delta_adapters["text"].parameters())
+    assert not any(
+        parameter.requires_grad
+        for parameter in policy.per_stream_intention_adapters["text"].parameters())
 
 
 def test_dual_policy_uses_one_decoder_and_maps_opaque_masks() -> None:
