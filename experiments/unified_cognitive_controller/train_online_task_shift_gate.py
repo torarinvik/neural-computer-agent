@@ -230,6 +230,18 @@ def main() -> None:
     learned, reset = evaluate_arm(args.seed + 90_000_000)
     cross_context, cross_reset = evaluate_arm(
         args.seed + 91_000_000, cross_context=True)
+    cross_shuffled_data = _task_shift_batch(
+        model, banks=args.test_banks, capacity=args.capacity,
+        seed=args.seed + 95_000_000, device=device,
+        habit_rounds=args.habit_rounds, shuffle_receipts=True)
+    _, cross_candidate = _controller_stream(
+        model, args.test_banks, seed=args.seed + 95_000_000 + 77_777,
+        device=device, query_from_support=False)
+    cross_shuffled_data["candidate_stream"] = cross_candidate
+    with tempfile.TemporaryDirectory() as directory:
+        cross_shuffled = _score(
+            model, cross_shuffled_data, alpha, device=device,
+            directory=Path(directory) / "cross-shuffled")
     shuffled_data = _task_shift_batch(
         model, banks=args.test_banks, capacity=args.capacity,
         seed=args.seed + 92_000_000, device=device,
@@ -264,6 +276,7 @@ def main() -> None:
         "learned_alpha": alpha,
         "adjacent": {"learned": learned, "reset": reset},
         "cross_context": {"learned": cross_context, "reset": cross_reset},
+        "cross_context_shuffled_receipt": cross_shuffled,
         "shuffled_receipt": shuffled,
         "retention": {"binary_mapping": binary, "four_rule": four_rule},
         "accounting": {
@@ -286,6 +299,17 @@ def main() -> None:
                 learned["composite_accuracy"]
                 >= shuffled["composite_accuracy"] + 0.05,
             "cross_context_reported": True,
+            "cross_context_new_row_at_least_85": (
+                cross_context["new_accuracy"] >= 0.85),
+            "cross_context_beats_reset_by_five_points": (
+                cross_context["composite_accuracy"]
+                >= cross_reset["composite_accuracy"] + 0.05),
+            "cross_context_receipt_shuffle_costs_five_points": (
+                cross_context["composite_accuracy"]
+                >= cross_shuffled["composite_accuracy"] + 0.05),
+            "cross_context_bounded_and_exact": (
+                cross_context["bounded"]
+                and cross_context["disk_roundtrip_exact"]),
             "binary_retained": binary["gate"]["accepted"],
             "four_rule_retained": four_rule["gate"]["accepted"],
             "only_volatility_column_changed": (
@@ -310,6 +334,8 @@ def main() -> None:
         "learned_alpha": alpha,
         "adjacent": report["adjacent"],
         "cross_context": report["cross_context"],
+        "cross_context_shuffled_receipt": report[
+            "cross_context_shuffled_receipt"],
         "shuffled_receipt": shuffled,
         "gates": report["gates"],
     }, indent=2, default=str))

@@ -528,17 +528,39 @@ volatility policy. It is still an adjacent same-event acquisition: held-out
 cross-context candidate generalization is the next rung, followed by span-nine
 acquisition with the promoted span-eight parent.
 
+### Held-out candidate-context query
+
+The held-out rung now uses the candidate's own new context but a different
+query event, so it tests content-addressed reuse rather than exact-frame
+matching. Four fresh CUDA seeds (18701--18704) passed the expanded gates:
+
+- cross-context new-row accuracy: **90.6--96.9%**;
+- learned cross-context composite: **86.9--89.4%**;
+- zero-volatility reset composite: **71.9--81.9%**; and
+- receipt-shuffled cross-context composite: **66.9--72.5%**.
+
+Every normal run preserved the adjacent-task gates, bounded four-row disk
+capacity, exact serialization, and the binary/four-rule retention audits.
+The reward-shuffled controls (18801--18804) all failed the expanded gates and
+never reached 85% cross-context acquisition. Receipt-shuffled controls were
+intentionally retained as a mixed result: two of four happened to pass the
+small behavioral gate, so receipt shuffling is not claimed as a definitive
+negative control for this training setup. The clean reward-shuffle result and
+the normal four-seed replication are the promotion evidence.
+
+This is the next memory breakthrough: a one-coefficient gate learned from
+physical reward continues to protect old rows while acquiring a new row for a
+non-adjacent query in the new task context. It is still a memory-management
+result, not span-nine mastery.
+
 ## Next frontier
 
-The next highest-ROI experiment is a **held-out cross-context candidate** for
-the now reward-trained row-local gate. Keep the same four-row bounded stores,
-but generate the candidate query from a different context so the gate must
-manage memory without relying on the adjacent same-event key match. Require
-the same old-retention, new-acquisition, shuffled-receipt, disk-round-trip,
-and controller-retention gates. Only after that passes should we attempt the
-span-nine acquisition with the promoted span-eight parent. Do not increase
-controller width or add modalities until cross-context memory management has
-earned a causal advantage.
+The next highest-ROI experiment is **span-nine acquisition** from the
+promoted span-eight parent. Use a tiny one-axis escalation, early-span-heavy
+rehearsal, and the same fresh-versus-inherited and outcome-shuffled controls.
+Require span nine to improve without violating the two-point retention gate on
+spans two--eight. Do not increase controller width or add modalities until
+that compounding test earns a causal advantage.
 
 ## Artifacts
 
@@ -677,6 +699,14 @@ earned a causal advantage.
   `...18504.json`: shuffled-reward controls; all rejected.
 - `task_shift_gate/task_gate_receipt_shuffle_seed18601.json` through
   `...18604.json`: shuffled-receipt controls; all rejected.
+- `task_shift_gate_cross/task_gate_cross_seed18701.json` through
+  `...18704.json`: four held-out candidate-context query runs; all passed.
+- `task_shift_gate_cross/task_gate_cross_reward_shuffle_seed18801.json`
+  through `...18804.json`: reward-shuffled cross-context controls; all
+  rejected.
+- `task_shift_gate_cross/task_gate_cross_receipt_shuffle_seed18901.json`
+  through `...18904.json`: receipt-shuffled cross-context controls; mixed and
+  explicitly not treated as a definitive negative control.
 
 The ignored local checkpoint hashes are:
 
