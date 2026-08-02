@@ -560,12 +560,14 @@ def main() -> None:
             allowed_missing.update(
                 name for name in model.state_dict()
                 if name.startswith((
-                    "action_adapter.", "action_adapter_gate.")))
+                    "action_adapter.", "action_adapter_gate."))
+                and name not in payload["state_dict"])
         if configuration.get("relation_adapter_width", 0):
             allowed_missing.update(
                 name for name in model.state_dict()
                 if name.startswith((
-                    "relation_adapter.", "relation_adapter_gate.")))
+                    "relation_adapter.", "relation_adapter_gate."))
+                and name not in payload["state_dict"])
         if set(load_result.missing_keys) != allowed_missing:
             raise RuntimeError(
                 "checkpoint/configuration mismatch: "

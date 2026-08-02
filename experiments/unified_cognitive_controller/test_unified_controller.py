@@ -86,6 +86,7 @@ from .probe_online_disk_task_shift import (
 )
 from .train_online_task_shift_gate import (
     _gate_actions as task_shift_gate_actions,
+    _reward_direction,
     _task_shift_batch,
 )
 from .compare_persistent_fresh_efficiency import _arm_metrics
@@ -1013,6 +1014,13 @@ def test_reward_gate_starts_zero_and_uses_physical_volatility_feature() -> None:
         assert torch.equal(
             model.memory_replacement_extra_gate.weight[:, :2],
             inherited_columns)
+
+
+def test_reward_gate_ties_are_not_positive_votes() -> None:
+    assert _reward_direction(0.5, 0.5) == 0.0
+    assert _reward_direction(0.5, 0.500000001) == 0.0
+    assert _reward_direction(0.75, 0.5) == 1.0
+    assert _reward_direction(0.5, 0.75) == -1.0
 
 
 def test_disk_latent_memory_compacts_selected_history_exactly(

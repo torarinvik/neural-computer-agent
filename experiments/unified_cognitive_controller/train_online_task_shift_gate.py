@@ -28,6 +28,18 @@ from .train import evaluate, seed_everything
 from .train_controller_memory_volatility import expand_with_volatility
 
 
+def _reward_direction(
+        plus_reward: float, minus_reward: float,
+        tie_margin: float = 1e-8) -> float:
+    """Return a direction only when the verifier gives a real comparison."""
+    if tie_margin < 0.0:
+        raise ValueError("tie margin must be non-negative")
+    difference = plus_reward - minus_reward
+    if abs(difference) <= tie_margin:
+        return 0.0
+    return 1.0 if difference > 0.0 else -1.0
+
+
 def _task_shift_batch(
         model: UnifiedCognitiveController, *, banks: int, capacity: int,
         seed: int, device: torch.device, habit_rounds: int,
@@ -119,7 +131,7 @@ def _train(
         model: UnifiedCognitiveController, *, steps: int, banks: int,
         capacity: int, seed: int, device: torch.device,
         habit_rounds: int, learning_delta: float, step_size: float,
-        shuffle_rewards: bool, shuffle_receipts: bool,
+        shuffle_rewards: bool, shuffle_receipts: bool, tie_margin: float,
         ) -> tuple[float, list[dict[str, object]], int, float]:
     extra = model.memory_replacement_extra_gate.weight
     alpha = 0.0
@@ -146,7 +158,11 @@ def _train(
             if bool(torch.randint(
                     0, 2, (), generator=generator, device=device)):
                 plus_reward, minus_reward = minus_reward, plus_reward
-        direction = 1.0 if plus_reward >= minus_reward else -1.0
+        # A tied verifier score contains no directional information.  The
+        # helper keeps ties neutral for shuffled-reward controls and prevents
+        # a deterministic argmax plateau from masquerading as learning.
+        direction = _reward_direction(
+            plus_reward, minus_reward, tie_margin)
         alpha += step_size * direction
         with torch.no_grad():
             extra[:, 2].fill_(alpha)
@@ -178,6 +194,9 @@ def main() -> None:
     parser.add_argument("--habit-rounds", type=int, default=8)
     parser.add_argument("--learning-delta", type=float, default=1.0)
     parser.add_argument("--step-size", type=float, default=1.0)
+    parser.add_argument(
+        "--tie-margin", type=float, default=1e-8,
+        help="leave the coefficient unchanged when the two verifier scores tie")
     parser.add_argument("--shuffle-rewards", action="store_true")
     parser.add_argument("--shuffle-receipts", action="store_true")
     args = parser.parse_args()
@@ -206,7 +225,7 @@ def main() -> None:
         capacity=args.capacity, seed=args.seed, device=device,
         habit_rounds=args.habit_rounds, learning_delta=args.learning_delta,
         step_size=args.step_size, shuffle_rewards=args.shuffle_rewards,
-        shuffle_receipts=args.shuffle_receipts)
+        shuffle_receipts=args.shuffle_receipts, tie_margin=args.tie_margin)
     with torch.no_grad():
         extra[:, 2].fill_(alpha)
     def evaluate_arm(seed: int, *, cross_context: bool = False):

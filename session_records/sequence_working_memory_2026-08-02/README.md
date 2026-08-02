@@ -553,14 +553,45 @@ physical reward continues to protect old rows while acquiring a new row for a
 non-adjacent query in the new task context. It is still a memory-management
 result, not span-nine mastery.
 
+### Tie-safe GPU replication
+
+The first finite-difference updater treated tied verifier scores as a positive
+vote. That was an invalid shortcut: a discrete argmax plateau could drive the
+volatility coefficient upward even when rewards were shuffled. The updater now
+leaves the coefficient unchanged on a tie, and uses a larger
+`learning_delta=16` so the two arms cross an actual replacement boundary. A
+regression test asserts that ties are neutral.
+
+With this corrected updater, four independent RTX 5090 runs (seeds
+19701--19704; 16 updates, 16 training banks, 64 held-out banks) all passed:
+
+| Metric | Range across normal runs |
+| --- | ---: |
+| learned volatility coefficient | +16 in all runs |
+| adjacent new-row accuracy | 95.3--100.0% |
+| adjacent old-row accuracy | 84.4--85.5% |
+| adjacent learned composite | 86.9--88.1% |
+| cross-context new-row accuracy | 95.3--98.4% |
+| cross-context learned composite | 89.1--90.0% |
+
+All four retained the binary/four-rule audits, bounded disk capacity, and
+exact save/reload. Four reward-shuffled controls (19801--19804) ended at
+coefficients 0, -10, +6, and 0 and all failed the gates; four
+receipt-shuffled controls (19901--19904) ended at -1, 0, -3, and -2 and all
+failed. This is the clean promotion evidence for reward-trained habit
+selection; the earlier tie-biased pilot is retained only as a diagnostic
+lesson, not as evidence.
+
 ## Next frontier
 
-The next highest-ROI experiment is **span-nine acquisition** from the
-promoted span-eight parent. Use a tiny one-axis escalation, early-span-heavy
-rehearsal, and the same fresh-versus-inherited and outcome-shuffled controls.
-Require span nine to improve without violating the two-point retention gate on
-spans two--eight. Do not increase controller width or add modalities until
-that compounding test earns a causal advantage.
+The next highest-ROI experiment is **span-nine acquisition with the validated
+habit gate attached to the sequence write path**. Start from the promoted
+span-eight parent, expose only the generic row-local volatility feature, and
+use early-span-heavy rehearsal. Require span nine to improve without
+violating the two-point retention gate on spans two--eight, with fresh,
+reward-shuffled, receipt-shuffled, blank, reset, and reversal controls. Do not
+increase controller width or add modalities until this compounding test earns
+a causal advantage.
 
 ## Artifacts
 
@@ -707,6 +738,13 @@ that compounding test earns a causal advantage.
 - `task_shift_gate_cross/task_gate_cross_receipt_shuffle_seed18901.json`
   through `...18904.json`: receipt-shuffled cross-context controls; mixed and
   explicitly not treated as a definitive negative control.
+- `controller_online_task_shift_gate_delta16_seed19701.json` through
+  `...19704.json`: tie-safe four-seed GPU replication of reward-trained
+  row-local habit selection.
+- `controller_online_task_shift_gate_reward_shuffle_delta16_seed19801.json`
+  through `...19804.json`: reward-shuffled adversarial controls; all rejected.
+- `controller_online_task_shift_gate_receipt_shuffle_delta16_seed19901.json`
+  through `...19904.json`: receipt-shuffled adversarial controls; all rejected.
 
 The ignored local checkpoint hashes are:
 
