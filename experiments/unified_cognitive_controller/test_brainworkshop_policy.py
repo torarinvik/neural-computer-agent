@@ -155,6 +155,14 @@ def test_relational_output_adapter_is_zero_initialized() -> None:
         torch.zeros(4, 6))
 
 
+def test_relational_gate_can_append_controller_intention_state() -> None:
+    policy = BrainWorkshopPolicy(
+        width=32, intention_width=16, modalities=("text",),
+        relational_context_adapter_width=32,
+        relational_context_use_controller_state=True)
+    assert policy.relational_context_gate.event_width == 48
+
+
 def test_external_memory_adapter_is_an_exact_initial_noop() -> None:
     policy = BrainWorkshopPolicy(
         width=32,

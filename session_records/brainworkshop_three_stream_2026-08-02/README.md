@@ -472,3 +472,8 @@ The optimization sweep was also bounded. Learning rate **1e-3** reached
 controls. The next experiment must redesign the task-agnostic
 representation-to-action reader or its diverse training signal; no longer
 budget is justified by this branch alone.
+
+One final 16-update control appended the frozen controller's opaque intention
+state to the relation-gate input. It reached **57.81%** eligible accuracy
+(+1.37) with a **47.85%** time-shuffle control. This confirms that exposing
+the recurrent state alone does not solve the representation-to-action gap.

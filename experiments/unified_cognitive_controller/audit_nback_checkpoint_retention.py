@@ -30,6 +30,7 @@ def _load_policy(path: Path, device: torch.device) -> BrainWorkshopPolicy:
     model_config.pop("relational_context_max_history", None)
     model_config.pop("relational_context_auxiliary_weight", None)
     model_config.pop("relational_context_output_adapter", None)
+    model_config.pop("relational_context_use_controller_state", None)
     controller = UnifiedCognitiveController(**model_config).to(device)
     controller.vision = None
     controller.actuator = None

@@ -1633,3 +1633,9 @@ larger diverse lifetime cache or a recurrent snapshot binder with an explicit
 state-preservation objective) before spending another long run. Any candidate
 must beat the +5 eligible gate and pass reset, time-shuffle, cross-stream, and
 full-ladder retention audits.
+
+One final 16-update control appended the frozen controller's opaque intention
+state to the relation-gate input. It reached **57.81%** eligible accuracy
+(+1.37) with a **47.85%** time-shuffle control. The controller state is useful
+information in principle, but simply exposing it does not close the reader
+gap, so this branch is also rejected for longer training.

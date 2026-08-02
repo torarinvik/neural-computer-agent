@@ -72,6 +72,7 @@ class BrainWorkshopPolicy(nn.Module):
                  relational_context_max_history: int = 10,
                  relational_context_auxiliary_weight: float = 0.0,
                  relational_context_output_adapter: bool = False,
+                 relational_context_use_controller_state: bool = False,
                  per_stream_intention_adapter_width: int = 0,
                  factorized_output: bool = False,
                  factorized_reward: bool = False,
@@ -235,8 +236,10 @@ class BrainWorkshopPolicy(nn.Module):
         self.relational_context_auxiliary_head = None
         self.relational_context_output_adapter = None
         if relational_context_adapter_width:
+            relational_event_width = width + (
+                intention_width if relational_context_use_controller_state else 0)
             self.relational_context_gate = RecurrentRelationalGate(
-                event_width=width,
+                event_width=relational_event_width,
                 action_count=1 << len(self.action_bits),
                 hidden_width=relational_context_adapter_width,
                 intention_width=intention_width,
@@ -255,6 +258,8 @@ class BrainWorkshopPolicy(nn.Module):
                     intention_width, 2 * len(modalities))
                 nn.init.zeros_(self.relational_context_output_adapter.weight)
                 nn.init.zeros_(self.relational_context_output_adapter.bias)
+        self.relational_context_use_controller_state = bool(
+            relational_context_use_controller_state)
         self.per_stream_intention_delta_adapters = nn.ModuleDict()
         self.per_stream_intention_routers = nn.ModuleDict()
         if per_stream_intention_adapter_width:
@@ -536,6 +541,15 @@ def _stream_intention_event(
         confidence=event.confidence,
         target_key=event.target_key,
     ).validate(width=event.payload.shape[1])
+
+
+def _relational_context_input(
+        policy: BrainWorkshopPolicy, event: AmodalEvent, core) -> torch.Tensor:
+    """Build the gate input from sensory event plus optional opaque intention."""
+    if not policy.relational_context_use_controller_state:
+        return event.payload
+    intention = core.intent_event.payload[:, :policy.controller.intention_width]
+    return torch.cat((event.payload, intention), dim=-1)
 
 
 def _factorized_decoder_log_probs(
@@ -863,7 +877,8 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
         if policy.relational_context_gate is not None:
             relational_residual, relational_state, snapshot = (
                 policy.relational_context_gate(
-                    event.payload, relational_state, relational_history,
+                    _relational_context_input(policy, event, core),
+                    relational_state, relational_history,
                     previous_action, previous_reward, has_feedback))
             relational_history.append(snapshot)
             del relational_history[:-policy.relational_context_gate.max_history]
@@ -1074,7 +1089,8 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
         if policy.relational_context_gate is not None:
             relational_residual, relational_state, snapshot = (
                 policy.relational_context_gate(
-                    event.payload, relational_state, relational_history,
+                    _relational_context_input(policy, event, core),
+                    relational_state, relational_history,
                     previous_action, previous_reward, has_feedback))
             relational_history.append(snapshot)
             del relational_history[:-policy.relational_context_gate.max_history]
@@ -1321,6 +1337,10 @@ def main() -> None:
         help=("add a zero-init opaque output residual fed only by the "
               "relational context gate"))
     parser.add_argument(
+        "--relational-context-use-controller-state", action="store_true",
+        help=("append the frozen controller's opaque intention to the "
+              "relation-gate input"))
+    parser.add_argument(
         "--per-stream-intention-adapter-width", type=int, default=0,
         choices=(0, 32, 64),
         help="optional source-preserving RAM-to-intention bridges")
@@ -1503,6 +1523,8 @@ def main() -> None:
         controller_configuration.pop("relational_context_max_history", None)
         controller_configuration.pop("relational_context_auxiliary_weight", None)
         controller_configuration.pop("relational_context_output_adapter", None)
+        controller_configuration.pop(
+            "relational_context_use_controller_state", None)
         # Policy checkpoints contain the controller under the ``controller.``
         # prefix. Keep loading compatible with older controller-only artifacts
         # while making the frozen-controller ablation actually executable.
@@ -1555,6 +1577,8 @@ def main() -> None:
             args.relational_context_auxiliary_weight),
         relational_context_output_adapter=(
             args.relational_context_output_adapter),
+        relational_context_use_controller_state=(
+            args.relational_context_use_controller_state),
         per_stream_intention_adapter_width=(
             args.per_stream_intention_adapter_width),
         factorized_output=args.factorized_output,
@@ -2072,6 +2096,8 @@ def main() -> None:
             args.relational_context_auxiliary_weight),
         "relational_context_output_adapter": bool(
             args.relational_context_output_adapter),
+        "relational_context_use_controller_state": bool(
+            args.relational_context_use_controller_state),
         "train_relational_context_gate": bool(
             args.train_relational_context_gate),
         "train_relational_context_reader": bool(
@@ -2153,6 +2179,8 @@ def main() -> None:
                     args.relational_context_auxiliary_weight),
                 "relational_context_output_adapter": bool(
                     args.relational_context_output_adapter),
+                "relational_context_use_controller_state": bool(
+                    args.relational_context_use_controller_state),
             },
             # Preserve the depth whose path was intentionally frozen.  A
             # continuation must reopen only the same appended columns rather
