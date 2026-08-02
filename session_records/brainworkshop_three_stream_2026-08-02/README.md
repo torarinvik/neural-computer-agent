@@ -353,3 +353,38 @@ The current frontier is therefore **retention-safe 8-back acquisition**, not
 another unbounded continuation. Any new branch must first pass a tiny gain gate
 and then the original-safe full ladder (1/5/6/7/8), with reset and time-shuffle
 controls, before it can be promoted.
+
+## Zero-label context-representation probes (2026-08-02)
+
+The raw action/reward trajectory contains task context, but the first family of
+generic self-supervised encoders did not preserve it. A contrastive predictor
+trained to match a prefix with its future suffix reached **35.94%** held-out
+five-way task decoding at depth five, versus **63.67%** for the raw trajectory;
+the shuffled-suffix control was **26.56%** (chance is 20%). The same pattern
+held across prefix depths 2/4/6: predictive latents were **27.34/35.16/42.19%**
+while raw trajectories were **53.13/57.81/59.38%** and controls were
+**27.34/35.16/36.72%**. Future behavior is therefore not a useful generic
+training target for this context.
+
+Three causally closer objectives were tested as well. Recurrent next-outcome
+predictors decoded only **40.63–44.14%** (shuffled-outcome controls
+**31.64–39.06%**) at 256–1,024 updates; two
+masked-view alignment reached **31.25%** versus raw **59.77%** (shuffled-pair
+**34.77%**); and temporal-intact-versus-time-shuffled training reached
+**29.69%** versus raw **53.52%** (shuffled-consistency **36.33%**). A masked
+event predictor (current sensory plus prior opaque action/outcome, predicting
+the current action and outcome) reached **39.06%** versus raw **62.11%**, with
+its shuffled-target control at **28.13%**. Extending that same objective to
+1,024 updates did not reveal an ignition transition: **33.20%** versus raw
+**59.77%**, control **27.73%**.
+
+These are diagnostic-only, verifier-side labels; no ring/task label entered
+any representation loss. The controls and the phase-transition-sized run rule
+out a simple optimization-budget explanation. The conclusion is not that
+task context is absent—raw trajectories decode it—but that predicting generic
+future events, aligning noisy views, or detecting temporal corruption discards
+the relation needed for skill selection. The next high-ROI branch is therefore
+an explicit **relation-aware episodic memory gate** whose writes and reads are
+trained/evaluated causally, rather than another generic predictive head. It
+must still pass the existing reset, time-shuffle, and full 1/5/6/7/8-back
+retention ladder before any longer run.

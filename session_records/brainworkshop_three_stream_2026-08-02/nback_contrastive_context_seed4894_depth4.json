@@ -1,0 +1,25 @@
+{
+  "format": "nback_contrastive_context_probe.v1",
+  "rings": [
+    1,
+    5,
+    6,
+    7,
+    8
+  ],
+  "checkpoint": "artifacts/checkpoints/brainworkshop_three_stream_nback8_protected_supervised_seed47820_256.pt",
+  "count_per_ring": 128,
+  "trials": 10,
+  "prefix_depth": 4,
+  "updates": 192,
+  "seed": 48904,
+  "device": "mps",
+  "results": {
+    "raw_action_reward": {
+      "train_accuracy": 1.0,
+      "held_out_accuracy": 0.578125
+    },
+    "contrastive_predictive": 0.3515625,
+    "shuffled_suffix_control": 0.3515625
+  }
+}
