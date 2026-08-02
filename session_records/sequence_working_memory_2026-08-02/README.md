@@ -152,6 +152,29 @@ sequence-reversal flip rate and a 50.41% complete-reset control. This is the
 next replicated compounding result, while still only a smoke-level transfer
 measurement rather than seven-item mastery.
 
+## Plasticity-regulation probes
+
+The span-seven result also motivated a small architecture probe. Three
+task-agnostic safeguards were tested offline before changing the trainer:
+
+1. A uniform parameter trust-region and a diagonal gradient/Fisher anchor did
+   not replace rehearsal. With a lighter rehearsal schedule they left span-3
+   around 89--91% while span-7 was about 70%.
+2. A zero-output frozen-core skill adapter preserved the inherited controller
+   (about 100% span-2 and 95.6% span-3) and reached 67.9% span-7 after 32
+   updates, essentially matching the 68.0% full-plasticity baseline. This is
+   the most promising plasticity direction because it creates a genuinely
+   protected growth compartment.
+3. Training that adapter without rehearsal preserved the core less well
+   (span-3 about 88.7%), because its gate opened on old inputs. Adding a
+   strong gate-usage penalty mostly closed the gate and reduced learning.
+
+Conclusion: plasticity should be regulated by a learned, usage-conditioned
+locality gate with a protected core, not by a uniform weight penalty or a
+manually fixed gate sparsity target. The current weighted rehearsal remains
+the promotion path; the adapter is a diagnostic candidate until it passes a
+matched multi-seed retention and transfer audit.
+
 ## What this establishes
 
 This is a verified compounding working-memory result: a learned retention
