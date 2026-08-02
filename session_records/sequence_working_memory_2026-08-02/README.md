@@ -109,6 +109,33 @@ complete-reset controls stayed approximately 50%, and span-five reversal
 flip rates were 48.3% and 49.5%. This is a replicated five-item transfer
 signal, not a claim of five-item mastery.
 
+## Span-six escalation and rehearsal failure
+
+A 16-update span-six smoke test used `[6, 2, 3, 4, 5]`, two distractors, and
+4,224 fresh verifier bits. The inherited arm reached 71.20%, while the
+matched fresh arm reached 50.50% with zero operation flips. This confirms that
+the compounding signal extends to six items, but the first schedule exposed a
+retention failure: span-2 and span-3 fell to 94.29% and 91.41%.
+
+The failure was repaired without changing the model. A second 16-update run
+used the span-heavy schedule `[6, 2, 2, 3, 3, 3, 4, 5]`. Its independent audit
+measured:
+
+| Span | Accuracy | Reversal flips | Blank/reset |
+| --- | ---: | ---: | ---: |
+| 2 | 100.00% | 100.00% | ~50% / ~50% |
+| 3 | 94.84% | 67.38% | ~50% / ~50% |
+| 4 | 84.51% | 48.11% | ~50% / ~50% |
+| 5 | 75.59% | 51.51% | ~50% / ~50% |
+| 6 | 71.07% | 48.36% | ~50% / ~50% |
+
+The outcome-shuffled span-six control reached only 54.17%, with a 31.75%
+operation-flip rate and a 50.10% complete-reset control. The lesson is
+important: increasing span is itself a continual-learning stress test, and
+rehearsal must be weighted toward the earliest fragile primitives. The
+span-six transfer is real, but the default equal rehearsal schedule is
+rejected.
+
 ## What this establishes
 
 This is a verified compounding working-memory result: a learned retention
@@ -119,14 +146,14 @@ variable-capacity memory or a fully consolidated repertoire capability.
 
 ## Next frontier
 
-The span-five gate is now passed for transfer. The next highest-ROI experiment
-is a 32--48-update span-five continuation from the best inherited child, using
-`[5, 2, 3, 4]` rehearsal and probes every 8--16 updates. Stop if any mastered
-span falls by more than two points or if blank/reset controls leave chance.
-Only if span-five rises and retention holds should we test six items. Do not
-add learned variable-capacity memory, registers, or new modalities yet: the
-current evidence says gradual span escalation and explicit rehearsal have the
-highest return per verifier bit.
+The next highest-ROI experiment is not span-seven yet. First run 16--32 more
+updates from the repaired span-six checkpoint using the span-heavy schedule
+`[6, 2, 2, 3, 3, 3, 4, 5]`, with a second inherited seed and the same retention
+gates. If span-2/3 remain within two points and span-6 rises, then test
+span-seven with the same weighted-rehearsal principle and a matched fresh
+control. Do not add learned variable-capacity memory, registers, or new
+modalities yet: the current evidence says schedule design is now the highest
+return per verifier bit.
 
 ## Artifacts
 
@@ -146,3 +173,9 @@ highest return per verifier bit.
   replicated inherited span-five transfers.
 - `span5_smoke_fresh_seed30520.json`: matched fresh span-five control.
 - `span5_smoke_shuffled_seed30521.json`: outcome-shuffled span-five control.
+- `span5_continuation_seed30523.json`: 32-update span-five continuation.
+- `span6_smoke_inherited_seed30525.json`, `span6_smoke_fresh_seed30526.json`:
+  inherited/fresh span-six transfer pair.
+- `span6_rehearsal_repair_seed30527.json`,
+  `span6_rehearsal_repair2_seed30528.json`: weighted retention repairs.
+- `span6_smoke_shuffled_seed30529.json`: outcome-shuffled span-six control.
