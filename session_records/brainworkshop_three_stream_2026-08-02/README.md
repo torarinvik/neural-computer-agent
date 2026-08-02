@@ -65,12 +65,31 @@ capability claim if causal controls or retention fail.
   `nback4_continuation_audit_seed47408.json`, and
   `nback4_continuation_audit_seed47409.json` are generated verifier-side
   summaries; they train no parameters.
+- `nback5_probe_inherited_seed47405_8.json` records the bounded fifth-back
+  compatibility gate; its checkpoint is kept under `artifacts/checkpoints/`.
 - Checkpoints with matching names under `artifacts/checkpoints/`.
 
 Several earlier files in this directory are deliberately retained as negative
 controls. Some were fresh rather than inherited, and others omitted the
 factorized output or 64-wide RAM adapters; they must not be compared with the
 compounding runs. This provenance distinction was caught before promotion.
+
+## Fifth-back compatibility probe
+
+The trainer and generic RAM bridge now accept a fifth-back rung with five
+opaque external snapshots. Starting from the inherited seed47405 4-back
+checkpoint, an 8-update probe completed in 34 seconds with live gradients and
+4-back rehearsal between 76% and 95%. The 5-back eligible target score was
+**46.88%** after training versus **47.66%** before; reset and time-shuffle
+controls were 49.61% and 52.47%. The acquisition gate correctly rejected a
+longer run.
+
+This is deliberately a bounded result: the project's successful learners have
+long ignition valleys, so eight updates cannot establish that 5-back is
+unlearnable. It establishes that the depth-five interface is executable and
+that there is no evidence yet to justify spending the longer budget. The next
+5-back run should be triggered by a calibrated progress signal or a separate
+sample-efficiency intervention, not by blindly scaling duration.
 
 ## Next frontier
 
@@ -81,5 +100,5 @@ the held-out score, continue only when progress is positive, and reject runs
 whose retention margin falls below the gate. This is evidence for the gated
 protocol across three seeds, not evidence that the fixed 2/0.5/0.5 weighting is
 universally optimal. The next frontier is to learn or calibrate the stopping
-decision itself, then test the same protected-plasticity protocol on a fifth
-primitive and on a genuinely novel modality/task family.
+decision itself, then return to 5-back only when an early progress signal
+justifies it, followed by a genuinely novel modality/task family.

@@ -945,7 +945,8 @@ def main() -> None:
         "--per-stream-external-history", action="store_true",
         help="compute RAM relation residuals separately per input stream")
     parser.add_argument(
-        "--external-history-depth", type=int, default=1, choices=(1, 2, 3, 4),
+        "--external-history-depth", type=int, default=1,
+        choices=(1, 2, 3, 4, 5),
         help="number of opaque RAM snapshots exposed to the generic bridge")
     parser.add_argument(
         "--slot-memory-composer", action="store_true",
@@ -990,7 +991,7 @@ def main() -> None:
     parser.add_argument("--eval-count", type=int, default=128)
     parser.add_argument("--trials", type=int, default=8)
     parser.add_argument(
-        "--n-back", type=int, default=1, choices=(1, 2, 3, 4),
+        "--n-back", type=int, default=1, choices=(1, 2, 3, 4, 5),
         help="temporal distance of the verifier relation; increase gradually")
     parser.add_argument(
         "--rehearsal-n-back", type=int, choices=(1, 2, 3, 4),

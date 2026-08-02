@@ -5,6 +5,11 @@ import torch
 from .train_brainworkshop_policy import (
     BrainWorkshopPolicy, _controller_action_index, _factorized_advantages,
     _history_features, _resolve_rehearsal_weights)
+from .brainworkshop_gym import BrainWorkshopConfig
+
+
+def test_brainworkshop_config_accepts_the_next_fifth_back_rung() -> None:
+    BrainWorkshopConfig(n_back=5, trials=8).validate()
 
 
 def test_dual_policy_uses_one_decoder_and_maps_opaque_masks() -> None:

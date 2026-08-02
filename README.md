@@ -1466,5 +1466,9 @@ The complete reports and negative-control provenance are in
 
 This is a protected-plasticity/sample-efficiency breakthrough, not yet a
 general learned stopping policy: the continuation rule is still a small
-verifier-side controller, and the next frontier is calibrating that decision
-from learning progress while preserving the same retention and causal gates.
+verifier-side controller. A first 8-update 5-back compatibility probe now
+executes with depth-five RAM but remains at 46.88% eligible accuracy, so the
+gate correctly stopped before a costly run. The next frontier is calibrating
+the stopping decision from early learning progress, then revisiting 5-back
+only when that signal justifies the longer budget while preserving the same
+retention and causal gates.
