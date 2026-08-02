@@ -22,6 +22,25 @@ The receipt-corrected memory survived save/reload byte-for-byte. Shuffling the
 receipts destroyed the protection behavior, so the result is causal rather
 than a fixed-row shortcut.
 
+## Learned-controller integration
+
+The promoted eight-feature controller was then evaluated against physical
+`DiskLatentMemory` histories with unequal admission strengths. No controller
+weights were changed during this audit. The learned plasticity policy remained
+causal and preserved the old behavioral skills:
+
+| policy | update accuracy | stable eviction | stable volatility | decoy volatility |
+|---|---:|---:|---:|---:|
+| receipt-attributed | **97.07%** | **4.69%** | 0.344 | 0.836 |
+| ordinary re-resolution | 96.29% | 28.91% | 0.452 | 0.851 |
+| shuffled receipts | 88.09% | 59.38% | 0.633 | 0.547 |
+
+Binary mapping and four-rule retention both remained 100%. The audit consumed
+7,680 physical verifier bits and completed in 6.12 seconds. All gates passed:
+receipt accuracy ≥95%, stable eviction ≤10%, receipt better than ordinary
+re-resolution, shuffled-receipt loss ≥6 points, retention, and the five-minute
+cap.
+
 ## Implementation
 
 - `PersistentMemory.read_with_receipt()` returns values, confidence, and the
@@ -34,6 +53,8 @@ than a fixed-row shortcut.
   outcome accounting.
 - The executable probe is
   `experiments/unified_cognitive_controller/probe_causal_memory_receipt.py`.
+- The learned-controller integration audit is
+  `experiments/unified_cognitive_controller/audit_receipt_volatility_controller.py`.
 
 No semantic task IDs, correct actions, or row labels enter the learner-facing
 interface. The receipt is generic provenance metadata, analogous to a CPU
@@ -52,8 +73,8 @@ the phase-transition budget matters.
 
 ## Next experiment
 
-Integrate receipts into the physical learned-plasticity audit, then train the
-volatility/plasticity head on receipt-attributed outcomes with unequal
-admission strengths. Promotion requires at least 95% valid replacement, a
-large shuffled-receipt loss, exact disk persistence, old-skill retention, and a
-sub-five-minute run.
+Train a fresh small volatility/plasticity head directly on
+receipt-attributed outcomes with unequal admission strengths. Keep the
+controller frozen, compare against the promoted head and an oracle, and use
+the same retention and shuffled-receipt gates. Only then consider letting the
+main controller predict the scalar online.
