@@ -428,6 +428,15 @@ sequence controller's online write path. The next experiment must therefore
 attach row-local volatility to real writes and score both acquisition speed and
 retention; it must not add a fixed age label or freeze all old content.
 
+As a logistics/replication check, the existing reward-only volatility selector
+was run on the four-GPU Vast instance with four fresh seeds (32231--32234),
+using the exact previously successful 32-update, learning-rate-1.0 recipe.
+All four passed every pre-registered gate: held-out accuracy 96.1--96.9%,
+valid replacement 98.8--99.6%, outcome-shuffle and reversed-history causality,
+old-utility retention, and the under-five-minute cap. This confirms that the
+external-memory habit mechanism is reproducible on CUDA hardware. It is still
+not the missing end-to-end sequence-controller integration.
+
 ## Next frontier
 
 The next highest-ROI experiment is an **online row-local habit gate**: expose
@@ -560,6 +569,9 @@ controller width or add modalities until this causal write-path test passes.
 - `span9_address_scale1_preserve_gate_4096_seed32190.json`: rejected
   gate-score-preservation control; numerical fresh-gate magnitude was not a
   stable teacher.
+- `controller_habit_gpu_seed32231.json` through
+  `controller_habit_gpu_seed32234.json`: four CUDA replication reports for
+  the reward-only row-volatility selector; all passed the full gate suite.
 
 The ignored local checkpoint hashes are:
 
