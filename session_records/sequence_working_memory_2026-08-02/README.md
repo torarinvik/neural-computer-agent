@@ -349,6 +349,20 @@ verifier-owned retention and transfer deltas. The next high-ROI experiment is
 therefore a small action-conditioned critic (or equivalent dense use of the
 observed reward) feeding the gate, with no correct-action labels in the learner.
 
+## Multi-skill routing diagnostic (2026-08-03)
+
+The cold skill bank now has a diagnostic-only `SkillAddressSelector` and a
+reward-only audit harness. On three controller-produced address families, the
+normal selector, the reward-shuffled selector, and the fixed cosine baseline
+all reached **100.00%**. Candidate-key permutation also reached **100.00%**,
+and the frozen controller stayed bit-identical. The audit therefore rejected
+the result: the static query/key geometry solves routing without using the
+scalar outcomes, so it cannot support a reward-only learning claim. This is a
+clean negative result. The next routing experiment must scramble candidate
+addresses per episode (or otherwise break the static shortcut), then retest
+normal, shuffled-reward, permutation, and frozen-controller controls before
+any selector is allowed into promotion.
+
 ## Critic and per-cell plasticity follow-up
 
 The action-conditioned critic was implemented as a zero-impact auxiliary head:

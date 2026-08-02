@@ -1652,6 +1652,20 @@ tests. This hardens the long-term-memory boundary; it does not yet claim that
 the controller has learned a multi-skill selector or solved the protected
 eighth-back reader.
 
+## Reward-only address-routing diagnostic (2026-08-03)
+
+A small selector and audit harness now tests whether a frozen controller can
+learn to route among opaque skill-bank rows from only attempted-row identities
+and scalar verifier outcomes. The first three-row run was deliberately not
+accepted: normal routing was **100.00%**, but the reward-shuffled control was
+also **100.00%**, matching the fixed cosine baseline (**100.00%**). Candidate
+permutation was **100.00%** and the controller remained bit-identical. This is
+useful negative evidence, not a capability result: the controller-produced
+query/key geometry already exposes the correct row, so the reward-only claim is
+not identifiable in this setup. The next diagnostic must remove that static
+shortcut (for example with episode-level address scrambling) before a learned
+selector can be promoted.
+
 ## Latest breakthrough: span-three working-memory compounding (2026-08-02)
 
 The sequence branch now demonstrates the desired learn-to-learn effect on a
