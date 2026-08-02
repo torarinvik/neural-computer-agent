@@ -43,6 +43,9 @@ def _load_policy(path: Path, device: torch.device) -> BrainWorkshopPolicy:
         feedback_skill_adapter_width=int(
             payload.get("model_configuration", {}).get(
                 "feedback_skill_adapter_width", 0)),
+        feedback_skill_history_depth=int(
+            payload.get("model_configuration", {}).get(
+                "feedback_skill_history_depth", 1)),
         factorized_output=True,
         factorized_reward=True,
         modalities=("vision", "audio", "text"),

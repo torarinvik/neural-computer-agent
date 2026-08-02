@@ -66,6 +66,7 @@ class BrainWorkshopPolicy(nn.Module):
                  stacked_history_router_relation_only: bool = False,
                  slot_memory_composer: bool = False,
                  feedback_skill_adapter_width: int = 0,
+                 feedback_skill_history_depth: int = 1,
                  per_stream_intention_adapter_width: int = 0,
                  factorized_output: bool = False,
                  factorized_reward: bool = False,
@@ -208,10 +209,15 @@ class BrainWorkshopPolicy(nn.Module):
         self.stacked_history_router_relation_only = bool(
             stacked_history_router_relation_only)
         self.slot_memory_composer = bool(slot_memory_composer)
+        if feedback_skill_history_depth < 1:
+            raise ValueError("feedback_skill_history_depth must be positive")
+        self.feedback_skill_history_depth = int(feedback_skill_history_depth)
         self.feedback_skill_adapter = None
         if feedback_skill_adapter_width:
+            feedback_width = (1 << len(self.action_bits)) + 2
             self.feedback_skill_adapter = nn.Sequential(
-                nn.Linear(intention_width + (1 << len(self.action_bits)) + 2,
+                nn.Linear(intention_width
+                          + feedback_width * self.feedback_skill_history_depth,
                           feedback_skill_adapter_width),
                 nn.GELU(),
                 nn.Linear(feedback_skill_adapter_width, intention_width),
@@ -407,7 +413,8 @@ def _stream_intention_event(
         external_history: bool,
         previous_reward: torch.Tensor | None = None,
         has_feedback: torch.Tensor | None = None,
-        previous_action: torch.Tensor | None = None):
+        previous_action: torch.Tensor | None = None,
+        feedback_history: torch.Tensor | None = None):
     """Add source-preserving RAM relation residuals outside the controller.
 
     The bridge is deliberately generic: it sees only current and previous
@@ -416,19 +423,24 @@ def _stream_intention_event(
     """
     event = core.intent_event
     if policy.feedback_skill_adapter is not None:
-        if (previous_reward is None or has_feedback is None
-                or previous_action is None):
+        if (feedback_history is None and
+                (previous_reward is None or has_feedback is None
+                 or previous_action is None)):
             raise ValueError("feedback-conditioned branch requires feedback")
         width = policy.controller.intention_width
-        action_count = 1 << len(policy.action_bits)
-        action_index = previous_action.clamp_min(0).clamp_max(action_count - 1)
-        action_features = torch.nn.functional.one_hot(
-            action_index, num_classes=action_count).float()
+        if feedback_history is None:
+            action_count = 1 << len(policy.action_bits)
+            action_index = previous_action.clamp_min(0).clamp_max(
+                action_count - 1)
+            action_features = torch.nn.functional.one_hot(
+                action_index, num_classes=action_count).float()
+            feedback_history = torch.cat((
+                action_features,
+                previous_reward.unsqueeze(-1),
+                has_feedback.unsqueeze(-1)), dim=-1).unsqueeze(1)
         feedback_features = torch.cat((
-            event.payload[..., :width],
-            action_features,
-            previous_reward.unsqueeze(-1),
-            has_feedback.unsqueeze(-1)), dim=-1)
+            event.payload[..., :width], feedback_history.flatten(start_dim=1)),
+            dim=-1)
         residual = policy.feedback_skill_adapter(feedback_features)
         payload = event.payload.clone()
         payload[:, :policy.controller.intention_width] = (
@@ -674,6 +686,11 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
     previous_action = torch.zeros(batch_size, dtype=torch.long, device=device)
     previous_reward = torch.zeros(batch_size, device=device)
     has_feedback = torch.zeros(batch_size, device=device)
+    feedback_history = (
+        torch.zeros(
+            batch_size, policy.feedback_skill_history_depth,
+            (1 << len(policy.action_bits)) + 2, device=device)
+        if policy.feedback_skill_adapter is not None else None)
     previous_event = None
     previous_events = {name: None for name in policy.modalities}
     previous_stream_events = {name: [] for name in policy.modalities}
@@ -690,6 +707,8 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
                 batch_size, dtype=torch.long, device=device)
             previous_reward = torch.zeros(batch_size, device=device)
             has_feedback = torch.zeros(batch_size, device=device)
+            if feedback_history is not None:
+                feedback_history = torch.zeros_like(feedback_history)
             previous_event = None
             previous_events = {name: None for name in policy.modalities}
             previous_stream_events = {name: [] for name in policy.modalities}
@@ -765,7 +784,8 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
             external_history=external_history,
             previous_reward=previous_reward,
             has_feedback=has_feedback,
-            previous_action=previous_action)
+            previous_action=previous_action,
+            feedback_history=feedback_history)
         logits = policy.decoder(intention_event)
         if policy.factorized_output and policy.factorized_reward:
             binary_log_probs = policy.decoder.binary_log_probs(intention_event)
@@ -825,6 +845,16 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
             ]
             for index, episode in enumerate(episodes)
         ], dtype=torch.float32, device=device))
+        if feedback_history is not None:
+            action_count = 1 << len(policy.action_bits)
+            action_features = torch.nn.functional.one_hot(
+                action.clamp_min(0).clamp_max(action_count - 1),
+                num_classes=action_count).float()
+            feedback = torch.cat((
+                action_features, reward.unsqueeze(-1),
+                torch.ones_like(reward).unsqueeze(-1)), dim=-1)
+            feedback_history = torch.cat(
+                (feedback_history[:, 1:], feedback.unsqueeze(1)), dim=1)
         previous_action = action
         previous_reward = reward
         has_feedback.fill_(1.0)
@@ -866,6 +896,11 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
     previous_action = torch.zeros(batch_size, dtype=torch.long, device=device)
     previous_reward = torch.zeros(batch_size, device=device)
     has_feedback = torch.zeros(batch_size, device=device)
+    feedback_history = (
+        torch.zeros(
+            batch_size, policy.feedback_skill_history_depth,
+            (1 << len(policy.action_bits)) + 2, device=device)
+        if policy.feedback_skill_adapter is not None else None)
     previous_event = None
     previous_events = {name: None for name in policy.modalities}
     previous_stream_events = {name: [] for name in policy.modalities}
@@ -936,7 +971,8 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
             external_history=external_history,
             previous_reward=previous_reward,
             has_feedback=has_feedback,
-            previous_action=previous_action)
+            previous_action=previous_action,
+            feedback_history=feedback_history)
         targets = torch.tensor(
             [episode.verifier_targets()[trial] for episode in episodes],
             dtype=torch.long, device=device)
@@ -973,6 +1009,16 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
             for index, episode in enumerate(episodes)
         ], device=device)
         rewards.append(reward)
+        if feedback_history is not None:
+            action_count = 1 << len(policy.action_bits)
+            action_features = torch.nn.functional.one_hot(
+                action.clamp_min(0).clamp_max(action_count - 1),
+                num_classes=action_count).float()
+            feedback = torch.cat((
+                action_features, reward.unsqueeze(-1),
+                torch.ones_like(reward).unsqueeze(-1)), dim=-1)
+            feedback_history = torch.cat(
+                (feedback_history[:, 1:], feedback.unsqueeze(1)), dim=1)
         previous_action = action
         previous_reward = reward
         has_feedback = torch.ones(batch_size, device=device)
@@ -1114,6 +1160,10 @@ def main() -> None:
         "--feedback-skill-adapter-width", type=int, default=0,
         choices=(0, 32, 64),
         help="optional reward-history-conditioned isolated skill branch")
+    parser.add_argument(
+        "--feedback-skill-history-depth", type=int, default=1,
+        choices=(1, 2, 4, 6, 8),
+        help="number of opaque action/reward records retained by the branch")
     parser.add_argument(
         "--train-feedback-skill-residual", action="store_true",
         help="train only the zero-init reward-history skill branch")
@@ -1278,6 +1328,7 @@ def main() -> None:
         # not constructor arguments of the central controller.
         controller_configuration.pop("external_history_depth", None)
         controller_configuration.pop("feedback_skill_adapter_width", None)
+        controller_configuration.pop("feedback_skill_history_depth", None)
         # Policy checkpoints contain the controller under the ``controller.``
         # prefix. Keep loading compatible with older controller-only artifacts
         # while making the frozen-controller ablation actually executable.
@@ -1322,6 +1373,7 @@ def main() -> None:
             args.stacked_history_router_relation_only),
         slot_memory_composer=args.slot_memory_composer,
         feedback_skill_adapter_width=args.feedback_skill_adapter_width,
+        feedback_skill_history_depth=args.feedback_skill_history_depth,
         per_stream_intention_adapter_width=(
             args.per_stream_intention_adapter_width),
         factorized_output=args.factorized_output,
@@ -1792,6 +1844,7 @@ def main() -> None:
             args.stacked_history_router_relation_only),
         "slot_memory_composer": bool(args.slot_memory_composer),
         "feedback_skill_adapter_width": args.feedback_skill_adapter_width,
+        "feedback_skill_history_depth": args.feedback_skill_history_depth,
         "train_feedback_skill_residual": bool(
             args.train_feedback_skill_residual),
         "per_stream_intention_adapter_width": (
@@ -1859,6 +1912,8 @@ def main() -> None:
                 "external_history_depth": args.external_history_depth,
                 "feedback_skill_adapter_width": (
                     args.feedback_skill_adapter_width),
+                "feedback_skill_history_depth": (
+                    args.feedback_skill_history_depth),
             },
             # Preserve the depth whose path was intentionally frozen.  A
             # continuation must reopen only the same appended columns rather

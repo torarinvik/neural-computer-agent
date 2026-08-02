@@ -309,6 +309,24 @@ and test whether that context becomes decodable before training another answer
 path. This is the first evidence-backed justification for a demonstration-
 conditioned skill selector.
 
+The frozen-agent trajectory probe made the distinction sharper. With 256
+lifetimes per ring, action/reward-only context decoded task identity at
+**60.16%** held-out (sensory-only **41.80%**, combined **61.72%**). Scaling to
+1,024 lifetimes raised action/reward-only to **66.11%** (sensory-only **57.03%**,
+combined **64.84%**), so the signal is genuine but data-hungry. Feeding the
+same opaque action/reward history directly into an isolated answer residual did
+not exploit it: depth 4 fell **61.33% → 59.38%**, and depth 8 fell
+**62.50% → 59.18%**. Both reset controls stayed at **50.00%** and shuffle
+controls near chance.
+
+This localizes the next bottleneck to credit assignment/representation
+learning, not missing information or RAM capacity. The next probe should train
+a context encoder with a verifier-free auxiliary target derived from the
+trajectory itself (for example, predicting future scalar return), then test
+whether its frozen representation linearly decodes task context. Only after
+that representation gate passes should it drive the answer branch. This keeps
+the eventual path zero-label while avoiding another answer-loss-only fork.
+
 The high-precision audit is saved as
 `nback8_multirung_retention_audit_seed48300.json`, and the reusable evaluator is
 `experiments/unified_cognitive_controller/audit_nback_checkpoint_retention.py`.
