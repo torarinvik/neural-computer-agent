@@ -6,11 +6,28 @@ semantic fields or task-specific storage.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable, Sequence
 
 import torch
 
 from experiments.syllogimous_neural_computer.memory import PersistentMemory
+
+
+@dataclass(frozen=True)
+class MemoryTransactionResult:
+    """Verifier evidence for one candidate long-term-memory rewrite."""
+
+    committed: bool
+    memory: "DiskLatentMemory"
+    before_retention: tuple[float, ...]
+    after_retention: tuple[float, ...]
+    before_candidate: float | None
+    after_candidate: float | None
+    maximum_retention_drop: float
+    candidate_gain: float
+    reward: float
 
 
 class DiskLatentMemory:
@@ -107,6 +124,12 @@ class DiskLatentMemory:
         return self.store.write(
             keys, values, strengths, threshold=threshold)
 
+    def clone(self) -> "DiskLatentMemory":
+        """Copy the complete external-memory state for a transaction."""
+        instance = self.__class__.__new__(self.__class__)
+        instance.store = self.store.clone()
+        return instance
+
     @torch.no_grad()
     def replace(
             self, index: int, key: torch.Tensor, value: torch.Tensor,
@@ -163,6 +186,71 @@ class DiskLatentMemory:
             1.0, prior_volatility
             + rewrite * (1.0 - prior_volatility))
         return rewrite
+
+    def transactional_replace(
+            self, index: int, key: torch.Tensor, value: torch.Tensor,
+            strength: torch.Tensor | float,
+            retention_verifiers: Sequence[Callable[["DiskLatentMemory"], float]],
+            candidate_verifier: Callable[["DiskLatentMemory"], float] | None = None,
+            *, retention_tolerance: float = 0.0,
+            required_candidate_gain: float = 0.0,
+            minimum_rewrite: float = 0.0,
+            forgetting_penalty: float = 1.0,
+            rejection_penalty: float = 0.0,
+            ) -> MemoryTransactionResult:
+        """Propose a rewrite, verify old/new skills, then commit or roll back.
+
+        The original store is never modified while verifiers run.  A candidate
+        is committed only if every retention verifier stays within tolerance
+        and the optional candidate verifier improves by the requested margin.
+        On rejection, the returned memory is an exact clone of the original.
+        Verifiers receive only a memory object; semantic labels remain outside
+        this mechanism.
+        """
+        if not retention_verifiers:
+            raise ValueError("at least one retention verifier is required")
+        if retention_tolerance < 0.0:
+            raise ValueError("retention_tolerance must be nonnegative")
+        if required_candidate_gain < 0.0:
+            raise ValueError("required_candidate_gain must be nonnegative")
+        before_retention = tuple(
+            float(verifier(self)) for verifier in retention_verifiers)
+        before_candidate = (
+            float(candidate_verifier(self))
+            if candidate_verifier is not None else None)
+        candidate = self.clone()
+        candidate.elastic_replace(
+            index, key, value, strength, minimum_rewrite=minimum_rewrite)
+        after_retention = tuple(
+            float(verifier(candidate)) for verifier in retention_verifiers)
+        after_candidate = (
+            float(candidate_verifier(candidate))
+            if candidate_verifier is not None else None)
+        drops = tuple(
+            max(0.0, before - after)
+            for before, after in zip(before_retention, after_retention))
+        maximum_drop = max(drops, default=0.0)
+        candidate_gain = (
+            after_candidate - before_candidate
+            if before_candidate is not None and after_candidate is not None
+            else 0.0)
+        retention_ok = all(
+            after + retention_tolerance >= before
+            for before, after in zip(before_retention, after_retention))
+        candidate_ok = (
+            candidate_verifier is None
+            or candidate_gain >= required_candidate_gain)
+        accepted = retention_ok and candidate_ok
+        reward = (
+            candidate_gain
+            - forgetting_penalty * maximum_drop
+            - (0.0 if accepted else rejection_penalty))
+        return MemoryTransactionResult(
+            accepted,
+            candidate if accepted else self.clone(),
+            before_retention, after_retention,
+            before_candidate, after_candidate,
+            maximum_drop, candidate_gain, reward)
 
     def save(self, path: Path) -> None:
         self.store.save(path)

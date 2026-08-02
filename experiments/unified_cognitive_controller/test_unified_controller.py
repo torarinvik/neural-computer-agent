@@ -1112,6 +1112,71 @@ def test_receipt_outcomes_keep_repeated_rows_aligned() -> None:
     assert memory.store.failure_count.tolist() == [1, 0]
 
 
+def test_transaction_rejects_candidate_that_forgets_old_skill() -> None:
+    memory = DiskLatentMemory(width=4, capacity=2)
+    old_keys = torch.eye(4)[:2]
+    old_values = old_keys.clone()
+    memory.commit(old_keys, old_values, torch.ones(2), threshold=0.0)
+    new_key = torch.tensor([0.0, 0.0, 1.0, 0.0])
+    new_value = new_key.clone()
+
+    def old_skill(store: DiskLatentMemory) -> float:
+        read, _ = store.retrieve(
+            old_keys[:1], top_k=1, confidence_mode="cosine",
+            usage_prior_scale=0.0)
+        return float(torch.nn.functional.cosine_similarity(
+            read, old_values[:1]).item())
+
+    def new_skill(store: DiskLatentMemory) -> float:
+        read, _ = store.retrieve(
+            new_key.unsqueeze(0), top_k=1, confidence_mode="cosine",
+            usage_prior_scale=0.0)
+        return float(torch.nn.functional.cosine_similarity(
+            read, new_value.unsqueeze(0)).item())
+
+    result = memory.transactional_replace(
+        0, new_key, new_value, 1.0, [old_skill], new_skill,
+        required_candidate_gain=0.5, rejection_penalty=0.25)
+    assert not result.committed
+    assert result.maximum_retention_drop > 0.5
+    assert torch.equal(result.memory.store.keys, memory.store.keys)
+    assert torch.equal(result.memory.store.values, memory.store.values)
+
+
+def test_transaction_commits_safe_candidate_and_preserves_disk_state(
+        tmp_path: Path) -> None:
+    memory = DiskLatentMemory(width=4, capacity=2)
+    old_keys = torch.eye(4)[:2]
+    memory.commit(old_keys, old_keys, torch.ones(2), threshold=0.0)
+    new_key = torch.tensor([0.0, 0.0, 1.0, 0.0])
+
+    def old_skill(store: DiskLatentMemory) -> float:
+        read, _ = store.retrieve(
+            old_keys[:1], top_k=1, confidence_mode="cosine",
+            usage_prior_scale=0.0)
+        return float(torch.nn.functional.cosine_similarity(
+            read, old_keys[:1]).item())
+
+    def new_skill(store: DiskLatentMemory) -> float:
+        read, _ = store.retrieve(
+            new_key.unsqueeze(0), top_k=1, confidence_mode="cosine",
+            usage_prior_scale=0.0)
+        return float(torch.nn.functional.cosine_similarity(
+            read, new_key.unsqueeze(0)).item())
+
+    result = memory.transactional_replace(
+        1, new_key, new_key, 1.0, [old_skill], new_skill,
+        required_candidate_gain=0.5)
+    assert result.committed
+    assert result.maximum_retention_drop == 0.0
+    assert result.candidate_gain >= 0.5
+    path = tmp_path / "transaction-committed.pt"
+    result.memory.save(path)
+    restored = DiskLatentMemory.load(path)
+    assert torch.equal(restored.store.keys, result.memory.store.keys)
+    assert torch.equal(restored.store.values, result.memory.store.values)
+
+
 def test_usage_prior_scale_can_vary_per_query() -> None:
     memory = DiskLatentMemory(width=2, capacity=2)
     keys = torch.tensor([[1.0, 0.0], [0.8, 0.6]])

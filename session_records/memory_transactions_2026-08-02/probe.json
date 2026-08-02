@@ -1,0 +1,42 @@
+{
+  "schema": "memory-transaction-probe-v1",
+  "learner_visible": [
+    "latent keys",
+    "latent values",
+    "verifier scores"
+  ],
+  "semantic_task_labels_visible_to_memory": false,
+  "rejected_harmful_update": {
+    "committed": false,
+    "before_retention": [
+      1.0
+    ],
+    "after_retention": [
+      0.5
+    ],
+    "candidate_gain": 1.0,
+    "maximum_retention_drop": 0.5,
+    "rollback_exact": true
+  },
+  "accepted_safe_update": {
+    "committed": true,
+    "before_retention": [
+      1.0
+    ],
+    "after_retention": [
+      1.0
+    ],
+    "candidate_gain": 1.0,
+    "maximum_retention_drop": 0.0,
+    "disk_round_trip_exact": true
+  },
+  "gates": {
+    "harmful_update_rejected": true,
+    "harmful_update_rolled_back_exactly": true,
+    "safe_update_committed": true,
+    "safe_update_has_positive_candidate_gain": true,
+    "safe_update_preserves_old_skills": true,
+    "committed_state_persists_exactly": true,
+    "accepted": true
+  }
+}
