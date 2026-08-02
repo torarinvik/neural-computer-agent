@@ -423,10 +423,8 @@ volatility scalar; verified success lowers it (freezes a useful habit), verified
 failure raises it (thaws a bad habit), and stale rows slowly thaw. A reward-only
 selector has already achieved 100% stable retention and 100% new acquisition in
 the bounded external-memory audit, including row-shuffle and save/reload
-controls. What remains unproven is end-to-end use of that scalar by the visual
-sequence controller's online write path. The next experiment must therefore
-attach row-local volatility to real writes and score both acquisition speed and
-retention; it must not add a fixed age label or freeze all old content.
+controls. A fixed-age label is not needed: the row-local scalar is updated only
+by verified outcomes.
 
 As a logistics/replication check, the existing reward-only volatility selector
 was run on the four-GPU Vast instance with four fresh seeds (32231--32234),
@@ -434,21 +432,48 @@ using the exact previously successful 32-update, learning-rate-1.0 recipe.
 All four passed every pre-registered gate: held-out accuracy 96.1--96.9%,
 valid replacement 98.8--99.6%, outcome-shuffle and reversed-history causality,
 old-utility retention, and the under-five-minute cap. This confirms that the
-external-memory habit mechanism is reproducible on CUDA hardware. It is still
-not the missing end-to-end sequence-controller integration.
+external-memory habit mechanism is reproducible on CUDA hardware.
+
+The missing online path has now been closed by a separate controller-to-disk
+probe. A frozen persistent-memory controller emitted its own latent
+``memory_key``, ``memory_value``, and ``memory_write_strength`` tensors; those
+rows were committed to real ``DiskLatentMemory`` stores, queried through
+physical receipts, and updated only from the verifier's attempted-action
+outcome. The probe included no task labels or semantic row IDs in the learner
+path. On four RTX 5090 seeds (32231--32234), each run used 512 controller
+writes, 1,536 physical reads, and 4,096 receipt-attributed outcome updates in
+1.54--1.71 seconds. Every run passed the pre-registered controls:
+
+- physical normal accuracy: 98.0--99.2%;
+- no-memory control: 49.8--50.0%;
+- shuffled-value control: 46.3--57.8%;
+- successful-row volatility: about 0.1665 versus 1.0 for failed rows;
+- shuffled receipts remove the protection gap (the gap becomes negative);
+- high-volatility rows accept a larger elastic rewrite than low-volatility
+  rows; and
+- serialized disk round-trips are exact.
+
+This is the first end-to-end evidence that controller-created writes, causal
+outcome receipts, and the volatility/habit scalar compose at the actual
+physical memory boundary. It is a plumbing and causal-memory breakthrough,
+not yet evidence that the controller has learned a new write policy or that
+span nine has crossed its 90% acquisition bar.
 
 ## Next frontier
 
-The next highest-ROI experiment is an **online row-local habit gate**: expose
-the existing volatility scalar at the controller's write decision, initialize
-its influence at zero, and update it only from physical read receipts and
-verified attempted-action outcomes. The gate should be trained/validated in
-three tiny stages: (1) old stable versus failed-decoy rows, (2) a task shift
-where a new row competes for bounded capacity, and (3) sequence span-nine
-acquisition with the promoted span-eight parent. Acceptance remains span nine
-at or above 90%, spans two--eight within the two-point retention gate, shuffled
-outcomes at chance, and blank/reset/reversal controls intact. Do not increase
-controller width or add modalities until this causal write-path test passes.
+The next highest-ROI experiment is a **bounded-capacity acquisition
+micro-run**. Keep the controller frozen, use its physical receipts and
+verified outcomes to update volatility, and let a new controller-produced row
+compete against the least-volatile and most-volatile existing rows. The first
+stage should be a one-minute task-shift control with exact old-skill verifiers;
+only if it preserves old skills while admitting the new row should the same
+gate be made trainable. The eventual promotion ladder remains: (1) bounded
+task-shift acquisition, (2) a learned zero-initialized row-local write gate,
+and (3) sequence span-nine acquisition with the promoted span-eight parent.
+Acceptance remains span nine at or above 90%, spans two--eight within the
+two-point retention gate, shuffled outcomes at chance, and blank/reset/reversal
+controls intact. Do not increase controller width or add modalities until the
+causal write and replacement tests pass.
 
 ## Artifacts
 
@@ -572,6 +597,10 @@ controller width or add modalities until this causal write-path test passes.
 - `controller_habit_gpu_seed32231.json` through
   `controller_habit_gpu_seed32234.json`: four CUDA replication reports for
   the reward-only row-volatility selector; all passed the full gate suite.
+- `controller_online_disk_habit_gpu_seed32231.json` through
+  `controller_online_disk_habit_gpu_seed32234.json`: four CUDA reports for
+  the controller-output-to-physical-disk receipt probe; all passed the online
+  memory, volatility, replacement, shuffle, and save/reload gates.
 
 The ignored local checkpoint hashes are:
 

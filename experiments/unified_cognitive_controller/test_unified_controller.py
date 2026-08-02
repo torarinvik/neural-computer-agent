@@ -80,6 +80,7 @@ from .probe_persistent_physical_stream import (
     _future_for_actions,
     _ranked_age,
 )
+from .probe_online_disk_habit import run_probe as run_online_disk_habit_probe
 from .compare_persistent_fresh_efficiency import _arm_metrics
 from .strategy_memory import (
     LatentStrategyMemory,
@@ -949,6 +950,18 @@ def test_disk_latent_memory_round_trip(tmp_path: Path) -> None:
     read, confidence = restored.retrieve(keys[:1], top_k=1)
     assert torch.allclose(read, values[:1])
     assert confidence.shape == (1,)
+
+
+def test_online_disk_habit_probe_uses_controller_writes_and_receipts() -> None:
+    model = UnifiedCognitiveController()
+    model.eval()
+    report = run_online_disk_habit_probe(
+        model, banks=1, capacity=2, seed=7351,
+        device=torch.device("cpu"), habit_rounds=2)
+    assert report["checkpoint_controller_outputs_used"] is True
+    assert report["semantic_or_task_labels_used_for_controller_or_memory"] is False
+    assert report["accounting"]["controller_writes"] == 2
+    assert report["habit"]["disk_roundtrip_exact"] is True
 
 
 def test_disk_latent_memory_compacts_selected_history_exactly(
