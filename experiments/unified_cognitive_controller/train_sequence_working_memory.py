@@ -405,6 +405,11 @@ def main() -> None:
             "alternate target-distractor episodes with the already mastered "
             "zero-distractor stream to prevent retention loss"))
     parser.add_argument(
+        "--rehearse-span2", action="store_true",
+        help=(
+            "alternate span-2 episodes with the target span to protect the "
+            "previously mastered two-item primitive"))
+    parser.add_argument(
         "--operation", choices=("forward", "reverse", "mixed"),
         default="mixed")
     parser.add_argument("--width", type=int, default=64)
@@ -461,9 +466,15 @@ def main() -> None:
     history: list[dict[str, float | int]] = []
     position_counts: dict[str, int] = {}
     distractor_counts: dict[str, int] = {}
+    span_counts: dict[str, int] = {}
+    seen_verifier_bits = 0
     started = perf_counter()
     for step in range(1, args.steps + 1):
         model.train()
+        train_span = (
+            2 if args.rehearse_span2 and step % 2 == 1 else args.span)
+        span_key = str(train_span)
+        span_counts[span_key] = span_counts.get(span_key, 0) + 1
         if curriculum:
             stage_length = max(1, (args.steps + len(curriculum) - 1)
                                // len(curriculum))
@@ -485,7 +496,7 @@ def main() -> None:
         distractor_counts[distractor_key] = (
             distractor_counts.get(distractor_key, 0) + 1)
         batch = generate_sequence_memory_batch(
-            args.batch_size, span=args.span, distractors=train_distractors,
+            args.batch_size, span=train_span, distractors=train_distractors,
             seed=args.seed + step * args.batch_size,
             operation=args.operation,
             position_blend=train_position_blend,
@@ -500,12 +511,12 @@ def main() -> None:
         result["loss"].backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
+        seen_verifier_bits += args.batch_size * train_span
         if step == 1 or step % args.log_every == 0 or step == args.steps:
             row = {
                 "update": step,
                 "unique_episodes": step * args.batch_size,
-                "unique_verifier_bits": (
-                    step * args.batch_size * args.span),
+                "unique_verifier_bits": seen_verifier_bits,
                 "training_accuracy": float(result["rewards"].mean()),
                 "loss": float(result["loss"].detach()),
                 "train_position_blend": train_position_blend,
@@ -552,10 +563,12 @@ def main() -> None:
         "position_augmentation": args.position_augmentation,
         "position_update_counts": position_counts,
         "rehearse_zero_distractor": args.rehearse_zero_distractor,
+        "rehearse_span2": args.rehearse_span2,
+        "span_update_counts": span_counts,
         "distractor_update_counts": distractor_counts,
         "optimizer_updates": args.steps,
         "unique_logical_episodes": args.steps * args.batch_size,
-        "unique_verifier_bits": args.steps * args.batch_size * args.span,
+        "unique_verifier_bits": seen_verifier_bits,
         "replayed_examples": 0,
         "outcomes_shuffled": args.shuffle_outcomes,
         "loss_output": args.loss_output,

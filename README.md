@@ -1639,3 +1639,33 @@ state to the relation-gate input. It reached **57.81%** eligible accuracy
 (+1.37) with a **47.85%** time-shuffle control. The controller state is useful
 information in principle, but simply exposing it does not close the reader
 gap, so this branch is also rejected for longer training.
+
+## Latest breakthrough: span-three working-memory compounding (2026-08-02)
+
+The sequence branch now demonstrates the desired learn-to-learn effect on a
+harder primitive. Starting from the promoted robust two-item checkpoint,
+two matched 128-update span-three runs reached **93.55%** and **93.42%**
+held-out accuracy after 24,576 fresh verifier bits. A fresh controller at the
+same budget reached only **74.98%** and showed an operation-blind shortcut
+(0.20% valid operation-reversal flips). The inherited runs crossed the stable
+90% gate at 21,504 and 18,432 bits; the fresh arm did not cross it, giving a
+conservative lower-bound sample-efficiency gain of **1.23x**.
+
+The first replicas revealed that span-three training could damage the older
+span-two skill (80.23% and 90.87% retention). The smallest targeted repair was
+to alternate span-two and span-three episodes, rather than rehearsing only a
+less-distracting span-three stream. After 64 updates (32 per span), the
+promoted checkpoint scored **100.00%** on span two and **95.75%** on span
+three on independent 8,192-episode audits. Blank-sequence and complete-memory
+reset controls remained at chance, valid reversal produced 66.67% flips, and
+position blends remained at 95.74%. A shuffled-outcome span-three control was
+50.00% with zero flips.
+
+This is a verified protected 2→3 working-memory compounding result, not a
+claim of generic variable-capacity memory or cold-start reward-only discovery.
+The new `--rehearse-span2` option makes the retention repair reproducible.
+Full reports and the promoted checkpoint are in
+`session_records/sequence_working_memory_2026-08-02/README.md`. The next
+high-ROI experiment is a one-axis span-four escalation with explicit
+span-two/span-three rehearsal and the same adversarial gates; more duration on
+span three is not justified.
