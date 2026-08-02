@@ -92,6 +92,22 @@ def test_position_augmentation_changes_only_nuisance_pixels() -> None:
     assert not torch.equal(fixed.input_frames, augmented.input_frames)
 
 
+def test_rerender_override_preserves_logical_task_but_changes_pixels() -> None:
+    base = generate_sequence_memory_batch(
+        16, span=3, distractors=2, seed=26008, operation="mixed",
+        position_augmentation=True)
+    rerendered = generate_sequence_memory_batch(
+        16, span=3, distractors=2, seed=26009, operation="mixed",
+        position_augmentation=True, sequence_override=base.sequence,
+        operation_bits_override=base.operation_bits)
+    assert torch.equal(base.sequence, rerendered.sequence)
+    assert torch.equal(base.operation_bits, rerendered.operation_bits)
+    assert torch.equal(base.correct_actions, rerendered.correct_actions)
+    assert not torch.equal(base.input_frames, rerendered.input_frames)
+    assert not torch.equal(
+        base.distractor_frames, rerendered.distractor_frames)
+
+
 def test_rollout_keeps_all_fast_memory_on_the_model_device() -> None:
     model = UnifiedCognitiveController(
         width=32, workspace_slots=2, intention_width=8)

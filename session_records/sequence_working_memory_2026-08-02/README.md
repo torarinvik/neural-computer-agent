@@ -241,16 +241,61 @@ verifier bits, and explicit rehearsal prevents the older primitive from being
 overwritten. It is still a specialist sequence branch, not yet a generic
 variable-capacity memory or a fully consolidated repertoire capability.
 
+## Reward-buffer readout breakthrough and retention repair
+
+The frozen inherited controller's latent state contains substantially more
+usable information than its online action path extracts. A diagnostic probe on
+the frozen state reached 92.26% on the span-eight relation, while the online
+bandit adapter experiments stayed near 67%. This localized the next bottleneck
+to action readout and credit assignment rather than missing representation.
+
+We therefore trained only a zero-initialized, generic action adapter from a
+replay buffer containing the controller-visible latent, the opaque action that
+was attempted, and that attempt's one-bit outcome. The correct unattempted
+action and task labels never entered the buffer. With 8,192 target lifetimes,
+width 256, position augmentation, and 128 private optimizer epochs, the
+adapter reached 90.14% on a lifetime-disjoint span-eight audit. An independent
+seed reached 90.80%:
+
+| Arm | Span-eight | Blank | Complete reset |
+| --- | ---: | ---: | ---: |
+| real outcomes, seed 30981 | **90.14%** | 49.24% | 48.93% |
+| real outcomes, seed 30983 | **90.80%** | 49.83% | 50.10% |
+| matched shuffled outcomes, seed 30982 | 47.61% | 49.83% | 49.66% |
+
+The first width-256 run without rehearsal also reached 90.97%, but its spans
+2--7 retention audit fell to 76--82%; it was rejected. The repair replayed
+balanced earlier-span streams (2,2,3,3,3,4,5,6,7) while fitting span eight.
+On 512 fresh audit episodes per span, the inherited parent versus the repaired
+candidate was:
+
+| Span | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| parent, seed 30983 audit | 98.83% | 90.69% | 79.83% | 73.55% | 70.93% | 68.89% | 66.06% |
+| replay-trained candidate | **99.61%** | **99.93%** | **96.73%** | **91.02%** | **82.55%** | **80.02%** | **90.43%** |
+
+Thus the repair did not merely preserve earlier skills: it improved every
+audited span while adding span-eight mastery. The shuffled-outcome arm stayed
+at chance, and blank/complete-reset controls stayed at chance. This is a
+promoted **action-readout and anti-forgetting diagnostic breakthrough**, not
+yet proof that the full controller discovers the adapter from online reward or
+that the consolidated long-term memory stores it. The rehearsal streams here
+are newly collected diagnostic data; persistent disk-memory reuse remains an
+open experiment.
+
 ## Next frontier
 
-The next highest-ROI experiment is a span-eight consolidation ladder: keep
-the same acquired checkpoint, increase optimizer reuse before requesting new
-verifier bits, and measure the first stable prefix that reaches the 90% gate
-without dropping spans 2--7. Only after that should we test span nine with the
-same early-span-heavy rehearsal and a fresh control. Do not add learned
-variable-capacity memory, registers, or new modalities yet: gradual
-difficulty plus weighted rehearsal is still delivering the highest return per
-verifier bit.
+The next highest-ROI experiment is to persist the random-action buffers to
+disk and replay the *same* old transitions across several new-task adapters.
+That cleanly separates genuine long-term experience reuse from the current
+fresh-data rehearsal control. Require: (1) span-eight held-out accuracy at or
+above 90%, (2) every span-2--7 retention score no lower than the inherited
+parent beyond the pre-registered two-point gate, (3) shuffled outcomes at
+chance, and (4) blank/reset and reverse-operation controls. If it passes,
+integrate the adapter output through the write--consolidate--recall path and
+test whether the same persistent buffer reduces the verifier bits needed for
+span nine. Do not add learned variable-capacity memory, registers, or new
+modalities until that causal persistent-reuse test is complete.
 
 ## Artifacts
 
@@ -293,6 +338,22 @@ verifier bit.
   `span8_replica_fresh_seed30568.json`, and
   `span8_replica_shuffled_seed30569.json`: matched second-seed promotion
   controls.
+- `span8_representation_probe_seed30901.json`,
+  `span8_richer_representation_probe_seed30921.json`: frozen-state readout
+  localization probes.
+- `span8_reward_buffer_normal_seed30941.json`,
+  `span8_reward_buffer_4096_seed30951.json`,
+  `span8_reward_buffer_8192_seed30961.json`: reward-buffer data curve.
+- `span8_reward_buffer_8192_width256_seed30971.json` and its retention/
+  shuffled controls: rejected high-capacity candidate without rehearsal.
+- `span8_reward_buffer_8192_width256_rehearsal_seed30981.json`,
+  `span8_reward_buffer_8192_width256_rehearsal_retention_seed30981.json`,
+  `span8_reward_buffer_8192_width256_rehearsal_shuffled_seed30982.json`,
+  and the corresponding `seed30983` normal/retention reports: promoted
+  replay-repair replication.
+- `span8_reward_buffer_parent_comparison_seed30981.json` and
+  `span8_reward_buffer_parent_comparison_seed30983.json`: paired retention
+  comparisons against the inherited parent.
 
 The ignored local checkpoint hashes are:
 

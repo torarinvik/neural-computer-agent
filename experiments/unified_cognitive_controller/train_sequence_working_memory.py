@@ -26,6 +26,27 @@ from .model import ControllerState, UnifiedCognitiveController
 from .train import attempted_success_loss, seed_everything
 
 
+def _attempted_reinforce_loss(
+        logits: torch.Tensor, attempted: torch.Tensor,
+        outcomes: torch.Tensor, *, baseline: float = 0.5) -> torch.Tensor:
+    """Policy-gradient loss using only the sampled action and scalar reward."""
+    log_probability = torch.log_softmax(logits, dim=-1).gather(
+        1, attempted.unsqueeze(1)).squeeze(1)
+    advantage = outcomes.detach() - baseline
+    return -(advantage * log_probability).mean()
+
+
+def _successful_action_loss(
+        logits: torch.Tensor, attempted: torch.Tensor,
+        outcomes: torch.Tensor) -> torch.Tensor:
+    """Imitate only actions the verifier explicitly rewarded."""
+    successful = outcomes > 0.5
+    if not bool(successful.any()):
+        return logits.sum() * 0.0
+    return torch.nn.functional.cross_entropy(
+        logits[successful], attempted[successful])
+
+
 @dataclass(frozen=True)
 class SequenceMemoryBatch:
     """Public sensory stream and verifier-private deterministic answers."""
@@ -81,6 +102,8 @@ def generate_sequence_memory_batch(
         reverse_operations: bool = False,
         reverse_sequence: bool = False,
         blank_sequence: bool = False,
+        sequence_override: torch.Tensor | None = None,
+        operation_bits_override: torch.Tensor | None = None,
         device: torch.device | str = "cpu") -> SequenceMemoryBatch:
     """Render a deterministic sequence task without learner-visible labels."""
     if count < 2 or count % 2:
@@ -108,6 +131,21 @@ def generate_sequence_memory_batch(
             torch.randperm(count, generator=generator)]
     if reverse_operations:
         operation_bits = 1 - operation_bits
+    if sequence_override is not None:
+        if tuple(sequence_override.shape) != (count, span):
+            raise ValueError("sequence override shape does not match batch")
+        sequence = sequence_override.detach().to("cpu").long().clone()
+        if bool(((sequence != 0) & (sequence != 1)).any()):
+            raise ValueError("sequence override must contain binary values")
+    if operation_bits_override is not None:
+        if tuple(operation_bits_override.shape) != (count,):
+            raise ValueError(
+                "operation-bits override shape does not match batch")
+        operation_bits = (
+            operation_bits_override.detach().to("cpu").long().clone())
+        if bool(((operation_bits != 0) & (operation_bits != 1)).any()):
+            raise ValueError(
+                "operation-bits override must contain binary values")
 
     # Train and held-out positions are disjoint. Colour remains nuisance:
     # identity is shape, not a stable RGB code.
@@ -208,11 +246,14 @@ def rollout_sequence_memory(
         operation_cue_blank: bool = False,
         shuffle_outcomes: bool = False,
         loss_output: str = "all",
+        loss_mode: str = "bce",
         ) -> dict[str, torch.Tensor]:
     """Run one real-time episode and return attempted-action evidence."""
     device = batch.input_frames.device
     if loss_output not in ("all", "first", "last"):
         raise ValueError("loss output must be all, first, or last")
+    if loss_mode not in ("bce", "reinforce", "success_only"):
+        raise ValueError("loss mode must be bce, reinforce, or success_only")
     state = model.initial_state(batch.batch_size, device=device)
     null = torch.full(
         (batch.batch_size,), NULL_ACTION, dtype=torch.long, device=device)
@@ -260,8 +301,13 @@ def rollout_sequence_memory(
             action == batch.correct_actions[:, query_index]).float()
         delivered_outcome = (
             reward.roll(1) if shuffle_outcomes else reward)
-        losses.append(attempted_success_loss(
-            output.logits, action, delivered_outcome))
+        losses.append(
+            attempted_success_loss(output.logits, action, delivered_outcome)
+            if loss_mode == "bce" else (
+                _attempted_reinforce_loss(
+                    output.logits, action, delivered_outcome)
+                if loss_mode == "reinforce" else _successful_action_loss(
+                    output.logits, action, delivered_outcome)))
         actions.append(action)
         rewards.append(reward)
         logits.append(output.logits)
@@ -382,6 +428,23 @@ def main() -> None:
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--seed", type=int, default=26001)
     parser.add_argument("--steps", type=int, default=128)
+    parser.add_argument(
+        "--epochs-per-batch", type=int, default=1,
+        help=(
+            "optimizer passes over each uniquely generated episode packet; "
+            "increasing this spends private compute without consuming "
+            "additional verifier bits"))
+    parser.add_argument(
+        "--rerender-each-epoch", action="store_true",
+        help=(
+            "when reusing a packet, preserve its logical sequences and "
+            "operation bits but re-render colors, positions, and distractors "
+            "for each extra pass"))
+    parser.add_argument(
+        "--train-only-action-adapter", action="store_true",
+        help=(
+            "freeze the inherited controller and train only the optional "
+            "generic action adapter; requires action_adapter_width > 0"))
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--test-episodes", type=int, default=2048)
     parser.add_argument("--span", type=int, default=2)
@@ -437,10 +500,20 @@ def main() -> None:
         help=(
             "temporal curriculum: optimize all outputs or one endpoint while "
             "still learning only from that attempted action's scalar outcome"))
+    parser.add_argument(
+        "--loss-mode", choices=("bce", "reinforce", "success_only"),
+        default="bce",
+        help="bandit objective; reinforce uses only sampled outcomes")
     parser.add_argument("--checkpoint-in", type=Path)
     parser.add_argument("--checkpoint-out", type=Path)
     parser.add_argument("--report", type=Path)
     args = parser.parse_args()
+
+    if args.steps < 1 or args.epochs_per_batch < 1 or args.batch_size < 2:
+        raise ValueError(
+            "steps, epochs-per-batch, and batch-size must be positive")
+    if args.batch_size % 2:
+        raise ValueError("batch-size must be divisible by two")
 
     seed_everything(args.seed)
     device = torch.device(args.device)
@@ -474,9 +547,48 @@ def main() -> None:
         configuration = dict(payload["model_configuration"])
     model = UnifiedCognitiveController(**configuration).to(device)
     if payload is not None:
-        model.load_state_dict(payload["state_dict"])
+        load_result = model.load_state_dict(
+            payload["state_dict"], strict=False)
+        allowed_missing = set()
+        if configuration.get("workspace_slot_addressing", False):
+            allowed_missing.update({
+                "workspace_read_address_scale",
+                "workspace_write_address_scale",
+            })
+        if configuration.get("action_adapter_width", 0):
+            allowed_missing.update(
+                name for name in model.state_dict()
+                if name.startswith((
+                    "action_adapter.", "action_adapter_gate.")))
+        if configuration.get("relation_adapter_width", 0):
+            allowed_missing.update(
+                name for name in model.state_dict()
+                if name.startswith((
+                    "relation_adapter.", "relation_adapter_gate.")))
+        if set(load_result.missing_keys) != allowed_missing:
+            raise RuntimeError(
+                "checkpoint/configuration mismatch: "
+                f"missing={load_result.missing_keys}, "
+                f"unexpected={load_result.unexpected_keys}")
+        if load_result.unexpected_keys:
+            raise RuntimeError(
+                "checkpoint/configuration mismatch: "
+                f"unexpected={load_result.unexpected_keys}")
+    if args.train_only_action_adapter:
+        if model.action_adapter is None:
+            raise ValueError(
+                "train-only-action-adapter requires action_adapter_width")
+        for name, parameter in model.named_parameters():
+            parameter.requires_grad_(
+                name.startswith("action_adapter.")
+                or name.startswith("action_adapter_gate."))
+    trainable_parameters = [
+        parameter for parameter in model.parameters()
+        if parameter.requires_grad]
+    if not trainable_parameters:
+        raise ValueError("no trainable parameters remain")
     optimizer = torch.optim.AdamW(
-        model.parameters(), lr=args.learning_rate, weight_decay=1e-5)
+        trainable_parameters, lr=args.learning_rate, weight_decay=1e-5)
     history: list[dict[str, float | int]] = []
     position_counts: dict[str, int] = {}
     distractor_counts: dict[str, int] = {}
@@ -520,15 +632,33 @@ def main() -> None:
             position_blend=train_position_blend,
             position_augmentation=args.position_augmentation,
             device=device)
-        result = rollout_sequence_memory(
-            model, batch, sample_actions=True,
-            exploration=args.exploration,
-            shuffle_outcomes=args.shuffle_outcomes,
-            loss_output=args.loss_output)
-        optimizer.zero_grad(set_to_none=True)
-        result["loss"].backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-        optimizer.step()
+        result = None
+        for epoch in range(args.epochs_per_batch):
+            epoch_batch = batch
+            if epoch and args.rerender_each_epoch:
+                epoch_batch = generate_sequence_memory_batch(
+                    args.batch_size, span=train_span,
+                    distractors=train_distractors,
+                    seed=(
+                        args.seed + step * args.batch_size
+                        + epoch * 1_000_003),
+                    operation=args.operation,
+                    position_blend=train_position_blend,
+                    position_augmentation=args.position_augmentation,
+                    sequence_override=batch.sequence,
+                    operation_bits_override=batch.operation_bits,
+                    device=device)
+            result = rollout_sequence_memory(
+                model, epoch_batch, sample_actions=True,
+                exploration=args.exploration,
+                shuffle_outcomes=args.shuffle_outcomes,
+                loss_output=args.loss_output,
+                loss_mode=args.loss_mode)
+            optimizer.zero_grad(set_to_none=True)
+            result["loss"].backward()
+            torch.nn.utils.clip_grad_norm_(trainable_parameters, 1.0)
+            optimizer.step()
+        assert result is not None
         seen_verifier_bits += args.batch_size * train_span
         if step == 1 or step % args.log_every == 0 or step == args.steps:
             row = {
@@ -585,12 +715,17 @@ def main() -> None:
         "rehearse_spans": rehearsal_spans,
         "span_update_counts": span_counts,
         "distractor_update_counts": distractor_counts,
-        "optimizer_updates": args.steps,
+        "epochs_per_batch": args.epochs_per_batch,
+        "rerender_each_epoch": args.rerender_each_epoch,
+        "optimizer_updates": args.steps * args.epochs_per_batch,
         "unique_logical_episodes": args.steps * args.batch_size,
         "unique_verifier_bits": seen_verifier_bits,
+        "optimizer_lifetime_exposures": (
+            args.steps * args.batch_size * args.epochs_per_batch),
         "replayed_examples": 0,
         "outcomes_shuffled": args.shuffle_outcomes,
         "loss_output": args.loss_output,
+        "loss_mode": args.loss_mode,
         "mastery_threshold": args.mastery_threshold,
         "stable_bits_to_threshold": stable_bits_to_threshold,
         "wall_seconds": perf_counter() - started,
