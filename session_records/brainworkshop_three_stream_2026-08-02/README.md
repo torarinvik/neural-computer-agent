@@ -270,6 +270,24 @@ when the trainable RAM-to-intention path remains shared; the next repair must
 make the new relation conditional or physically isolated before more updates
 are purchased.
 
+A matched full-history residual was also tested from the same safe parent. It
+fit its tiny diagnostic batches (late batches exceeded 90% eligible accuracy)
+but stayed at **59.18% → 59.38%** on the held-out check, with reset **50.00%**
+and shuffle **52.15%**. This rules out simply widening the isolated residual:
+the next bottleneck is conditional skill selection or an actually separate
+skill/memory path, not residual capacity.
+
+Two final conditional variants were held to the same 64-update gate. A full
+history residual with a learned history router stayed at **59.96% → 59.77%**;
+conditioning the residual on the raw history did not make it selective. A
+zero-initialized branch conditioned on the controller's previous scalar reward
+and feedback flag reached **60.35% → 60.74%**, with reset **50.00%** and
+time-shuffle **47.46%**. Neither cleared the gate. Together these tests rule
+out the cheap explanations “the residual needs more width” and “the last
+reward is enough task context.” A future skill-selection design must provide a
+stable task/context representation learned from demonstrations or long-term
+memory, then prove that selection causally before spending a longer run.
+
 The high-precision audit is saved as
 `nback8_multirung_retention_audit_seed48300.json`, and the reusable evaluator is
 `experiments/unified_cognitive_controller/audit_nback_checkpoint_retention.py`.

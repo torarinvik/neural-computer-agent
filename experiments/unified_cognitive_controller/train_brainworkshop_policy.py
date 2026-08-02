@@ -65,6 +65,7 @@ class BrainWorkshopPolicy(nn.Module):
                  stacked_history_router: bool = False,
                  stacked_history_router_relation_only: bool = False,
                  slot_memory_composer: bool = False,
+                 feedback_skill_adapter_width: int = 0,
                  per_stream_intention_adapter_width: int = 0,
                  factorized_output: bool = False,
                  factorized_reward: bool = False,
@@ -207,6 +208,17 @@ class BrainWorkshopPolicy(nn.Module):
         self.stacked_history_router_relation_only = bool(
             stacked_history_router_relation_only)
         self.slot_memory_composer = bool(slot_memory_composer)
+        self.feedback_skill_adapter = None
+        if feedback_skill_adapter_width:
+            self.feedback_skill_adapter = nn.Sequential(
+                nn.Linear(intention_width + 2, feedback_skill_adapter_width),
+                nn.GELU(),
+                nn.Linear(feedback_skill_adapter_width, intention_width),
+            )
+            # A new skill branch starts as an exact no-op.  It can only change
+            # behavior after the verifier has supplied experience.
+            nn.init.zeros_(self.feedback_skill_adapter[-1].weight)
+            nn.init.zeros_(self.feedback_skill_adapter[-1].bias)
         self.per_stream_intention_delta_adapters = nn.ModuleDict()
         self.per_stream_intention_routers = nn.ModuleDict()
         if per_stream_intention_adapter_width:
@@ -391,15 +403,36 @@ def _history_features(
 def _stream_intention_event(
         policy: BrainWorkshopPolicy, core, events: list[AmodalEvent],
         previous_stream_events: dict[str, list[torch.Tensor]], *,
-        external_history: bool):
+        external_history: bool,
+        previous_reward: torch.Tensor | None = None,
+        has_feedback: torch.Tensor | None = None):
     """Add source-preserving RAM relation residuals outside the controller.
 
     The bridge is deliberately generic: it sees only current and previous
     opaque event vectors, and its output is an amodal intention residual.  It
     is an adapter diagnostic, not a modality-specific answer head.
     """
+    event = core.intent_event
+    if policy.feedback_skill_adapter is not None:
+        if previous_reward is None or has_feedback is None:
+            raise ValueError("feedback-conditioned branch requires feedback")
+        width = policy.controller.intention_width
+        feedback_features = torch.cat((
+            event.payload[..., :width],
+            previous_reward.unsqueeze(-1),
+            has_feedback.unsqueeze(-1)), dim=-1)
+        residual = policy.feedback_skill_adapter(feedback_features)
+        payload = event.payload.clone()
+        payload[:, :policy.controller.intention_width] = (
+            payload[:, :policy.controller.intention_width] + residual)
+        event = IntentEvent(
+            payload=payload,
+            timestamp=event.timestamp,
+            confidence=event.confidence,
+            target_key=event.target_key,
+        ).validate(width=event.payload.shape[1])
     if not (external_history and policy.per_stream_intention_adapters):
-        return core.intent_event
+        return event
     residuals = []
     for modality, raw_event in zip(policy.modalities, events):
         history = previous_stream_events[modality]
@@ -433,7 +466,6 @@ def _stream_intention_event(
         residuals.append(residual)
     if not residuals:
         return core.intent_event
-    event = core.intent_event
     residual = torch.stack(residuals, dim=0).sum(dim=0)
     payload = event.payload.clone()
     payload[:, :policy.controller.intention_width] = (
@@ -722,7 +754,9 @@ def _rollout(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
         values.append(policy.value_head(state.hidden).squeeze(-1))
         intention_event = _stream_intention_event(
             policy, core, events, previous_stream_events,
-            external_history=external_history)
+            external_history=external_history,
+            previous_reward=previous_reward,
+            has_feedback=has_feedback)
         logits = policy.decoder(intention_event)
         if policy.factorized_output and policy.factorized_reward:
             binary_log_probs = policy.decoder.binary_log_probs(intention_event)
@@ -890,7 +924,9 @@ def _supervised_step(policy: BrainWorkshopPolicy, config: BrainWorkshopConfig,
                 retrieved_memory=retrieved_memory)
         intention_event = _stream_intention_event(
             policy, core, events, previous_stream_events,
-            external_history=external_history)
+            external_history=external_history,
+            previous_reward=previous_reward,
+            has_feedback=has_feedback)
         targets = torch.tensor(
             [episode.verifier_targets()[trial] for episode in episodes],
             dtype=torch.long, device=device)
@@ -1065,6 +1101,13 @@ def main() -> None:
         "--slot-memory-composer", action="store_true",
         help="preserve per-stream RAM slots until a generic final reader")
     parser.add_argument(
+        "--feedback-skill-adapter-width", type=int, default=0,
+        choices=(0, 32, 64),
+        help="optional reward-history-conditioned isolated skill branch")
+    parser.add_argument(
+        "--train-feedback-skill-residual", action="store_true",
+        help="train only the zero-init reward-history skill branch")
+    parser.add_argument(
         "--per-stream-intention-adapter-width", type=int, default=0,
         choices=(0, 32, 64),
         help="optional source-preserving RAM-to-intention bridges")
@@ -1224,6 +1267,7 @@ def main() -> None:
         # The policy checkpoint also records RAM-bridge settings; those are
         # not constructor arguments of the central controller.
         controller_configuration.pop("external_history_depth", None)
+        controller_configuration.pop("feedback_skill_adapter_width", None)
         # Policy checkpoints contain the controller under the ``controller.``
         # prefix. Keep loading compatible with older controller-only artifacts
         # while making the frozen-controller ablation actually executable.
@@ -1267,6 +1311,7 @@ def main() -> None:
         stacked_history_router_relation_only=(
             args.stacked_history_router_relation_only),
         slot_memory_composer=args.slot_memory_composer,
+        feedback_skill_adapter_width=args.feedback_skill_adapter_width,
         per_stream_intention_adapter_width=(
             args.per_stream_intention_adapter_width),
         factorized_output=args.factorized_output,
@@ -1416,6 +1461,21 @@ def main() -> None:
             raise ValueError("new history residual has no trainable parameters")
     elif args.train_new_history_router:
         raise ValueError("--train-new-history-router requires residual training")
+    if args.train_feedback_skill_residual:
+        if checkpoint_payload is None:
+            raise ValueError(
+                "--train-feedback-skill-residual requires --checkpoint-in")
+        if policy.feedback_skill_adapter is None:
+            raise ValueError(
+                "--train-feedback-skill-residual requires "
+                "--feedback-skill-adapter-width")
+        if args.unfreeze_controller:
+            raise ValueError(
+                "--train-feedback-skill-residual cannot unfreeze controller")
+        for parameter in policy.parameters():
+            parameter.requires_grad_(False)
+        for parameter in policy.feedback_skill_adapter.parameters():
+            parameter.requires_grad_(True)
     if controller_frozen:
         for parameter in policy.controller.parameters():
             parameter.requires_grad_(False)
@@ -1721,6 +1781,9 @@ def main() -> None:
         "stacked_history_router_relation_only": bool(
             args.stacked_history_router_relation_only),
         "slot_memory_composer": bool(args.slot_memory_composer),
+        "feedback_skill_adapter_width": args.feedback_skill_adapter_width,
+        "train_feedback_skill_residual": bool(
+            args.train_feedback_skill_residual),
         "per_stream_intention_adapter_width": (
             args.per_stream_intention_adapter_width),
         "input_bus_normalize_events": bool(args.input_bus_normalize_events),
@@ -1784,6 +1847,8 @@ def main() -> None:
                 "retrieved_memory_adapter_width": (
                     args.retrieved_memory_adapter_width),
                 "external_history_depth": args.external_history_depth,
+                "feedback_skill_adapter_width": (
+                    args.feedback_skill_adapter_width),
             },
             # Preserve the depth whose path was intentionally frozen.  A
             # continuation must reopen only the same appended columns rather

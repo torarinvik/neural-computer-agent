@@ -24,6 +24,7 @@ def _load_policy(path: Path, device: torch.device) -> BrainWorkshopPolicy:
     payload = torch.load(path, map_location=device, weights_only=False)
     model_config = dict(payload["model_configuration"])
     model_config.pop("external_history_depth", None)
+    model_config.pop("feedback_skill_adapter_width", None)
     controller = UnifiedCognitiveController(**model_config).to(device)
     controller.vision = None
     controller.actuator = None
@@ -39,6 +40,9 @@ def _load_policy(path: Path, device: torch.device) -> BrainWorkshopPolicy:
         external_history_depth=8,
         per_stream_external_history=True,
         per_stream_intention_adapter_width=64,
+        feedback_skill_adapter_width=int(
+            payload.get("model_configuration", {}).get(
+                "feedback_skill_adapter_width", 0)),
         factorized_output=True,
         factorized_reward=True,
         modalities=("vision", "audio", "text"),
