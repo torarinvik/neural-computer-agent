@@ -72,6 +72,7 @@ class BrainWorkshopPolicy(nn.Module):
                  relational_context_max_history: int = 10,
                  relational_context_auxiliary_weight: float = 0.0,
                  relational_context_output_adapter: bool = False,
+                 relational_context_bilinear_reader: bool = False,
                  relational_context_use_controller_state: bool = False,
                  per_stream_intention_adapter_width: int = 0,
                  factorized_output: bool = False,
@@ -235,6 +236,7 @@ class BrainWorkshopPolicy(nn.Module):
         self.relational_context_gate = None
         self.relational_context_auxiliary_head = None
         self.relational_context_output_adapter = None
+        self.relational_context_bilinear_reader = None
         if relational_context_adapter_width:
             relational_event_width = width + (
                 intention_width if relational_context_use_controller_state else 0)
@@ -258,6 +260,19 @@ class BrainWorkshopPolicy(nn.Module):
                     intention_width, 2 * len(modalities))
                 nn.init.zeros_(self.relational_context_output_adapter.weight)
                 nn.init.zeros_(self.relational_context_output_adapter.bias)
+            if relational_context_bilinear_reader:
+                # A generic reader that can bind the current intention to the
+                # episodic relation.  The final projection is zero-init so
+                # adding this branch is exactly behavior-preserving before
+                # verified training.  It receives no task/ring metadata.
+                reader_width = max(16, intention_width * 2)
+                self.relational_context_bilinear_reader = nn.Sequential(
+                    nn.Linear(intention_width * 3, reader_width),
+                    nn.GELU(),
+                    nn.Linear(reader_width, 2 * len(modalities)),
+                )
+                nn.init.zeros_(self.relational_context_bilinear_reader[-1].weight)
+                nn.init.zeros_(self.relational_context_bilinear_reader[-1].bias)
         self.relational_context_use_controller_state = bool(
             relational_context_use_controller_state)
         self.per_stream_intention_delta_adapters = nn.ModuleDict()
@@ -564,6 +579,13 @@ def _factorized_decoder_log_probs(
             raise ValueError("relational output adapter requires gate output")
         logits = logits + policy.relational_context_output_adapter(
             relational_residual).view(-1, len(policy.action_bits), 2)
+    if policy.relational_context_bilinear_reader is not None:
+        if relational_residual is None:
+            raise ValueError("bilinear reader requires gate output")
+        interaction = torch.cat((payload, relational_residual,
+                                 payload * relational_residual), dim=-1)
+        logits = logits + policy.relational_context_bilinear_reader(
+            interaction).view(-1, len(policy.action_bits), 2)
     return torch.log_softmax(logits, dim=-1)
 
 
@@ -1329,6 +1351,10 @@ def main() -> None:
         help=("train the relation gate plus the opaque decoder while keeping "
               "the inherited controller and encoders frozen"))
     parser.add_argument(
+        "--train-relational-context-bilinear-reader", action="store_true",
+        help=("freeze the existing relation gate and decoder and train only "
+              "the new interaction reader"))
+    parser.add_argument(
         "--relational-context-auxiliary-weight", type=float, default=0.0,
         help=("temporary verifier-side loss on the relation residual; the "
               "auxiliary head is discarded after the diagnostic"))
@@ -1336,6 +1362,10 @@ def main() -> None:
         "--relational-context-output-adapter", action="store_true",
         help=("add a zero-init opaque output residual fed only by the "
               "relational context gate"))
+    parser.add_argument(
+        "--relational-context-bilinear-reader", action="store_true",
+        help=("add a zero-init reader over current intention, relational "
+              "context, and their product"))
     parser.add_argument(
         "--relational-context-use-controller-state", action="store_true",
         help=("append the frozen controller's opaque intention to the "
@@ -1446,6 +1476,15 @@ def main() -> None:
             and args.relational_context_adapter_width < 1):
         raise ValueError(
             "relational output adapter requires a relational context gate")
+    if args.train_relational_context_bilinear_reader and not (
+            args.relational_context_bilinear_reader):
+        raise ValueError(
+            "bilinear reader training requires the bilinear reader module")
+    if args.train_relational_context_bilinear_reader and (
+            args.train_relational_context_gate
+            or args.train_relational_context_reader):
+        raise ValueError(
+            "bilinear reader training is exclusive of other relation training")
     if args.weight_decay < 0.0:
         raise ValueError("weight decay must be nonnegative")
     if args.rehearsal_n_back is not None and args.rehearsal_n_backs:
@@ -1523,6 +1562,7 @@ def main() -> None:
         controller_configuration.pop("relational_context_max_history", None)
         controller_configuration.pop("relational_context_auxiliary_weight", None)
         controller_configuration.pop("relational_context_output_adapter", None)
+        controller_configuration.pop("relational_context_bilinear_reader", None)
         controller_configuration.pop(
             "relational_context_use_controller_state", None)
         # Policy checkpoints contain the controller under the ``controller.``
@@ -1577,6 +1617,8 @@ def main() -> None:
             args.relational_context_auxiliary_weight),
         relational_context_output_adapter=(
             args.relational_context_output_adapter),
+        relational_context_bilinear_reader=(
+            args.relational_context_bilinear_reader),
         relational_context_use_controller_state=(
             args.relational_context_use_controller_state),
         per_stream_intention_adapter_width=(
@@ -1768,6 +1810,24 @@ def main() -> None:
         if policy.relational_context_output_adapter is not None:
             for parameter in policy.relational_context_output_adapter.parameters():
                 parameter.requires_grad_(True)
+        if policy.relational_context_bilinear_reader is not None:
+            for parameter in policy.relational_context_bilinear_reader.parameters():
+                parameter.requires_grad_(True)
+    if args.train_relational_context_bilinear_reader:
+        if checkpoint_payload is None:
+            raise ValueError(
+                "--train-relational-context-bilinear-reader requires "
+                "--checkpoint-in")
+        if policy.relational_context_gate is None:
+            raise ValueError(
+                "bilinear reader training requires a relation context gate")
+        if policy.relational_context_bilinear_reader is None:
+            raise ValueError(
+                "bilinear reader training requires the bilinear reader")
+        for parameter in policy.parameters():
+            parameter.requires_grad_(False)
+        for parameter in policy.relational_context_bilinear_reader.parameters():
+            parameter.requires_grad_(True)
     if controller_frozen:
         for parameter in policy.controller.parameters():
             parameter.requires_grad_(False)
@@ -2096,12 +2156,16 @@ def main() -> None:
             args.relational_context_auxiliary_weight),
         "relational_context_output_adapter": bool(
             args.relational_context_output_adapter),
+        "relational_context_bilinear_reader": bool(
+            args.relational_context_bilinear_reader),
         "relational_context_use_controller_state": bool(
             args.relational_context_use_controller_state),
         "train_relational_context_gate": bool(
             args.train_relational_context_gate),
         "train_relational_context_reader": bool(
             args.train_relational_context_reader),
+        "train_relational_context_bilinear_reader": bool(
+            args.train_relational_context_bilinear_reader),
         "per_stream_intention_adapter_width": (
             args.per_stream_intention_adapter_width),
         "input_bus_normalize_events": bool(args.input_bus_normalize_events),

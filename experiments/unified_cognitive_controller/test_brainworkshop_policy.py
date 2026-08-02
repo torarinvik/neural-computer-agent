@@ -155,6 +155,18 @@ def test_relational_output_adapter_is_zero_initialized() -> None:
         torch.zeros(4, 6))
 
 
+def test_relational_bilinear_reader_is_zero_initialized() -> None:
+    policy = BrainWorkshopPolicy(
+        width=32, intention_width=16,
+        modalities=("vision", "audio", "text"), factorized_output=True,
+        relational_context_adapter_width=32,
+        relational_context_bilinear_reader=True)
+    interaction = torch.randn(4, 48)
+    assert torch.equal(
+        policy.relational_context_bilinear_reader(interaction),
+        torch.zeros(4, 6))
+
+
 def test_relational_gate_can_append_controller_intention_state() -> None:
     policy = BrainWorkshopPolicy(
         width=32, intention_width=16, modalities=("text",),

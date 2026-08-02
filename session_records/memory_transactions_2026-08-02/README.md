@@ -65,3 +65,41 @@ This is an integrated safety result, not yet proof of open-ended continual
 learning. The next rung is to evaluate the same transaction mechanism over a
 longer stream of genuinely novel primitives, with explicit old-skill
 retention, memory-corruption dependence, and sample-efficiency measurements.
+
+## Persistent multi-round stream audit
+
+The longer-stream rung now keeps each physical bank alive while six
+independent candidate streams arrive. Across 32 banks this produced 384
+proposals in 5.52 seconds:
+
+| arm | proposals | commits | strict positive commits | rollbacks | unguarded forgetting | guarded forgetting |
+|---|---:|---:|---:|---:|---:|---:|
+| learned head | 192 | 122 | 49 | 70 | 69 | 0 |
+| adversarial control | 192 | 101 | 33 | 91 | 89 | 0 |
+
+The learned arm accumulated up to six old-task verifiers on the same bounded
+physical banks. Seventy learned proposals were rejected because their
+candidate would have damaged an earlier verifier; none of those regressions
+reached committed memory. Shuffling stored values after the stream degraded at
+least one retained verifier in 5/32 learned banks (mean minimum-score drop
+0.125), proving causal dependence on the stored contents. Every committed
+bank survived exact save/reload of keys, values, and volatility. The complete
+report is `transactional_stream_audit.json`, and the executable is
+`experiments/unified_cognitive_controller/audit_transactional_stream.py`.
+
+This is a persistent-memory and safety breakthrough, not yet a claim that the
+controller has learned an unrelated cognitive primitive. The next frontier is
+to replace the synthetic candidate stream with a genuinely different primitive
+and measure verified forward transfer per retained-memory bit.
+
+## Rejected relational-reader fork
+
+The next cognitive-reader hypothesis was tested before any longer run. A
+zero-initialized task-agnostic reader received the current intention, the
+relational context, and their elementwise product. On the matched 16-update
+supervised probe it moved eligible text accuracy from **47.66% to 53.91%**, but
+the time-shuffle control also reached **53.32%**. A reward-only 4-back variant
+ended at **47.66%** versus **48.05%** before training, with time-shuffle at
+**48.24%**. These are shortcut/no-gain results, not capability claims; the
+reader code remains available behind explicit diagnostic flags, but no longer
+gets a larger budget until a causal representation gate improves.
