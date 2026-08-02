@@ -127,6 +127,16 @@ representation, then a small reward-only continuation improves it while the
 old skill stays intact. It is a supervised-bootstrapped reward result, not yet
 reward-only discovery from a cold start.
 
+An additional eight-update reward-only continuation, using a fresh verifier
+seed rather than repeating the first batches, raised the protected adapter to
+**80.86%** eligible 5-back accuracy. A larger no-update evaluation covered
+3,072 target-bearing episodes and gave reset **50.10%** and time-shuffle
+**50.78%**. The 1-back retention audit remained **93.14%** over 512
+lifetimes, with reset **49.94%**. The improvement from 78.91% to 80.86% did
+not meet the pre-registered +5-point continuation gate, so training stopped
+there; this is a verified efficiency curve point, not an excuse to scale
+compute indefinitely.
+
 ## Next frontier
 
 The system now has a replicated, causal **learn → check → continue** loop for a

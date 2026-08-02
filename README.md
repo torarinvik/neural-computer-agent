@@ -1503,3 +1503,11 @@ and preserve the earlier skill. Reports are in
 `session_records/brainworkshop_three_stream_2026-08-02/`; the next frontier is
 closing the sample-efficiency gap to the 93% ceiling and then testing transfer
 to a genuinely different cognitive primitive.
+
+The next fresh-seed eight-update continuation reached **80.86%** on a larger
+3,072-episode target-bearing evaluation; reset and time-shuffle controls were
+**50.10%** and **50.78%**. A zero-update 1-back audit remained **93.14%**. The
+gain over 78.91% was below the +5-point continuation gate, so the run stopped
+instead of spending more compute on a weak slope. This confirms a stable
+protected reward-learning curve, while the cold-start reward-only question and
+the gap to the 93% supervised ceiling remain open.
