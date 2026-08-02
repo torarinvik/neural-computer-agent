@@ -462,6 +462,16 @@ def _factorized_advantages(bit_returns: torch.Tensor) -> torch.Tensor:
     return bit_returns - bit_returns.mean(dim=(0, 1), keepdim=True)
 
 
+def _eligible_rollout_accuracy(
+        rollout: Rollout, n_back: int) -> float:
+    """Measure exact accuracy after the verifier's temporal warm-up."""
+    if rollout.exact_correct is None:
+        raise ValueError("rollout must include exact correctness")
+    if n_back < 1 or n_back >= rollout.exact_correct.shape[0]:
+        raise ValueError("n_back must leave at least one eligible trial")
+    return float(rollout.exact_correct[n_back:].float().mean())
+
+
 def _reward_rollout_loss(
         rollout: Rollout, *, discount: float, value_baseline: bool,
         entropy_coef: float) -> tuple[torch.Tensor, torch.Tensor]:
@@ -1373,6 +1383,7 @@ def main() -> None:
                 per_stream_external_history=args.per_stream_external_history,
                 external_history_depth=args.external_history_depth)
             batch_accuracy = float((diagnostic_rewards > 0).float().mean())
+            batch_eligible_accuracy = None
             batch_mean_reward = float(diagnostic_rewards.mean())
             policy_entropy = 0.0
             value_loss = torch.zeros((), device=device)
@@ -1390,6 +1401,7 @@ def main() -> None:
                 value_baseline=args.value_baseline,
                 entropy_coef=args.entropy_coef)
             rehearsal_batch_accuracies = {}
+            rehearsal_batch_eligible_accuracies = {}
             if rehearsal_n_backs:
                 rehearsal_losses = []
                 rehearsal_value_losses = []
@@ -1416,6 +1428,9 @@ def main() -> None:
                     rehearsal_value_losses.append(rehearsal_value_loss)
                     rehearsal_batch_accuracies[str(rehearsal_n_back)] = float(
                         (rehearsal_rollout.rewards > 0).float().mean())
+                    rehearsal_batch_eligible_accuracies[str(rehearsal_n_back)] = (
+                        _eligible_rollout_accuracy(
+                            rehearsal_rollout, rehearsal_n_back))
                 rehearsal_weight_sum = sum(rehearsal_weights)
                 weighted_rehearsal_loss = sum(
                     weight * rehearsal_loss
@@ -1431,6 +1446,8 @@ def main() -> None:
                     value_loss + weighted_rehearsal_value_loss) / (
                         1.0 + rehearsal_weight_sum)
             batch_accuracy = float((rollout.rewards > 0).float().mean())
+            batch_eligible_accuracy = _eligible_rollout_accuracy(
+                rollout, config.n_back)
             batch_mean_reward = float(rollout.rewards.mean())
             policy_entropy = float(rollout.entropies.mean().detach())
         optimizer.zero_grad(set_to_none=True)
@@ -1442,6 +1459,7 @@ def main() -> None:
             "update": update,
             "loss": float(loss.detach()),
             "batch_accuracy": batch_accuracy,
+            "batch_eligible_accuracy": batch_eligible_accuracy,
             "batch_mean_reward": batch_mean_reward,
             "policy_entropy": policy_entropy,
             "value_loss": float(value_loss.detach()),
@@ -1451,6 +1469,8 @@ def main() -> None:
         if not args.supervised_diagnostic and rehearsal_n_backs:
             record["rehearsal_n_backs"] = list(rehearsal_n_backs)
             record["rehearsal_batch_accuracies"] = rehearsal_batch_accuracies
+            record["rehearsal_batch_eligible_accuracies"] = (
+                rehearsal_batch_eligible_accuracies)
             if len(rehearsal_n_backs) == 1:
                 record["rehearsal_n_back"] = rehearsal_n_backs[0]
                 record["rehearsal_batch_accuracy"] = (

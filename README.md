@@ -1471,4 +1471,6 @@ executes with depth-five RAM but remains at 46.88% eligible accuracy, so the
 gate correctly stopped before a costly run. The next frontier is calibrating
 the stopping decision from early learning progress, then revisiting 5-back
 only when that signal justifies the longer budget while preserving the same
-retention and causal gates.
+retention and causal gates. The training telemetry now exposes
+warm-up-excluded `batch_eligible_accuracy`, so that calibration is based on
+the actual target-bearing trials rather than an optimistic mixed score.

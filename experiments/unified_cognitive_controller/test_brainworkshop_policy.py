@@ -4,12 +4,24 @@ import torch
 
 from .train_brainworkshop_policy import (
     BrainWorkshopPolicy, _controller_action_index, _factorized_advantages,
-    _history_features, _resolve_rehearsal_weights)
+    Rollout, _eligible_rollout_accuracy, _history_features,
+    _resolve_rehearsal_weights)
 from .brainworkshop_gym import BrainWorkshopConfig
 
 
 def test_brainworkshop_config_accepts_the_next_fifth_back_rung() -> None:
     BrainWorkshopConfig(n_back=5, trials=8).validate()
+
+
+def test_eligible_accuracy_excludes_temporal_warmup() -> None:
+    rollout = Rollout(
+        log_probs=torch.zeros(5, 2), entropies=torch.zeros(5, 2),
+        rewards=torch.zeros(5, 2), actions=torch.zeros(5, 2, dtype=torch.long),
+        values=torch.zeros(5, 2),
+        exact_correct=torch.tensor([
+            [True, True], [False, False], [True, False],
+            [True, True], [False, True]]))
+    assert _eligible_rollout_accuracy(rollout, 3) == 0.75
 
 
 def test_dual_policy_uses_one_decoder_and_maps_opaque_masks() -> None:

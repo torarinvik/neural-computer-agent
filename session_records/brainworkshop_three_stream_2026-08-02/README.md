@@ -91,6 +91,11 @@ that there is no evidence yet to justify spending the longer budget. The next
 5-back run should be triggered by a calibrated progress signal or a separate
 sample-efficiency intervention, not by blindly scaling duration.
 
+The trainer now records `batch_eligible_accuracy` separately from its legacy
+warm-up-inclusive batch score (and does the same for rehearsal rungs). This
+prevents the high no-target warm-up trials from masquerading as early learning
+when calibrating a stopping policy.
+
 ## Next frontier
 
 The system now has a replicated, causal **learn → check → continue** loop for a
