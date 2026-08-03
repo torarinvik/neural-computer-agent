@@ -7,7 +7,8 @@ from .train_sequence_reward_buffer import (
     _action_conditioned_policy_loss, _balanced_provenance_loss,
     _base_mistake_weights,
     _collect_buffer, _outcome_only_query_weights,
-    _query_curriculum_indices, _replay_refinement_indices,
+    _query_curriculum_indices, _remove_final_slot_from_logits,
+    _replay_refinement_indices,
     _skill_slot_logits,
     _weighted_binary_complement_loss, _weighted_binary_margin_loss)
 
@@ -170,6 +171,22 @@ def test_appended_slot_replay_helper_uses_the_final_slot_projection() -> None:
     assert model.skill_adapter_read_projections[1].weight.grad is not None
     assert model.skill_adapters[0][2].weight.grad is None
     assert model.skill_adapter_read_projections[0].weight.grad is None
+
+
+def test_existing_slot_continuation_removes_its_inherited_logits_once() -> None:
+    model = UnifiedCognitiveController(
+        width=16, workspace_slots=2, intention_width=8,
+        skill_adapter_widths=(16,), skill_adapter_gate_mode="relu")
+    with torch.no_grad():
+        model.skill_adapters[0][2].bias.fill_(0.25)
+        model.skill_adapter_gates[0].bias.fill_(1.0)
+    features, base_logits, _, _ = _collect_buffer(
+        model, count=8, span=2, distractors=1, seed=260111,
+        device=torch.device("cpu"), position_augmentation=True)
+    removed = _remove_final_slot_from_logits(
+        model, features, base_logits)
+    residual, *_ = _skill_slot_logits(model, features)
+    assert torch.allclose(removed + residual, base_logits, atol=1e-6)
 
 
 def test_replay_buffer_can_supply_a_generic_event_snapshot_read() -> None:

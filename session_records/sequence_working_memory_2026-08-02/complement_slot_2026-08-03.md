@@ -44,16 +44,33 @@ outcome-shuffled child remains at chance (47.56%) and does not reproduce the
 truthful gain. The complete machine-readable audit is
 `complement_slot_audit_seed294800.json`.
 
+## Truthful replication
+
+A second truthful seed (`93750`) used the same 256-lifetime/128-epoch recipe.
+On a separate 1,024-lifetime audit it reached **58.12%**, while its zeroed-slot
+control returned to **50.61%**, for a **7.51-point causal gain**. The matched
+outcome-shuffled replica (`93751`) scored **47.47%**. Old-skill retention for
+the truthful replica changed by −1.23 points on span nine and −0.86 points on
+span ten; both remain inside the two-point gate. Its cue-blank and reset
+controls were 47.36% and 49.93%.
+
+The independent replication audit is
+`complement_slot_audit_seed294950_with_shuffled.json`.
+
 ## Interpretation and next gate
 
-This is the first adjacent primitive to pass the five-point causal promotion
-bar and the two-point old-skill retention gate. It is a **partial acquisition
-result** (59.77%, not mastery): persistent experience and the inherited
-controller support useful transfer to a new, visibly separable operation, but
-the primitive is not yet reliable enough for deployment. The span-eleven
-successor branch remains paused; its input probe already showed that its
-information is present, while outcome-to-slot credit is still the bottleneck.
+This is now a replicated adjacent primitive that passes the five-point causal
+promotion bar and the two-point old-skill retention gate in two truthful seeds.
+It is still a **partial acquisition result** (58–60%, not mastery): persistent
+experience and the inherited controller support useful transfer to a new,
+visibly separable operation, but the primitive is not yet reliable enough for
+deployment. The span-eleven successor branch remains paused; its input probe
+already showed that its information is present, while outcome-to-slot credit
+is still the bottleneck.
 
-The next tiny step is replication on a second truthful seed with the same audit
-and a slightly harder complement rendering. Do not scale span eleven or add
-another critic until this result reproduces under the same controls.
+That protected continuation path was then implemented and smoke-tested; it
+preserved the slot but did not improve it. The next data-scaling curve reached
+61.5% at 512 fresh lifetimes and 66–69% at 1,024, but only some 1,024 seeds
+passed old-skill retention. The complete curve and rejected arms are recorded
+in `complement_data_scaling_2026-08-03.md`; do not scale span eleven until the
+context-selective plasticity variance is reduced.

@@ -1874,16 +1874,40 @@ changed by only −0.01 and −0.04 points, within the two-point gate. A matched
 outcome-shuffled child scored 47.56%, so the gain does not survive destroying
 the scalar reward correspondence.
 
-This is a real but partial acquisition result, not mastery: the complement
-primitive is at 59.77%, so it is archived as a validated adjacent-primitive
-candidate rather than a deployment checkpoint. The checkpoint and independent
-audit are `artifacts/checkpoints/complement_slot_candidate_seed93748.pt` and
-`session_records/sequence_working_memory_2026-08-02/complement_slot_audit_seed294800.json`;
-the full interpretation is in
+The result replicated with the same recipe: seed `93750` reached **58.12%**
+with a **7.51-point** causal gain over its zeroed-slot control, while its
+outcome-shuffled replica scored 47.47%. Span-nine/span-ten retention changed by
+−1.23/−0.86 points. This is now a replicated but still partial acquisition
+result, not mastery: 58–60% is not a deployment threshold. The candidate and
+replica checkpoints are archived under
+`artifacts/checkpoints/complement_slot_*.pt`; the independent audits are
+`session_records/sequence_working_memory_2026-08-02/complement_slot_audit_seed294800.json`
+and `complement_slot_audit_seed294950_with_shuffled.json`, with the full
+interpretation in
 `session_records/sequence_working_memory_2026-08-02/complement_slot_2026-08-03.md`.
-The next efficient gate is a second truthful replication with the same causal,
-cue-blank, reset, shuffled-outcome, and old-skill retention controls. Span
-eleven remains paused until this adjacent primitive reproduces.
+The next efficient gate is protected continuation with fresh logical
+lifetimes: measure accuracy gained per verifier bit without exceeding the
+retention gate. Span eleven remains paused until that curve is measured.
+
+### Complement data/retention frontier
+
+The follow-up curve shows why the retention gate remains essential. Increasing
+fresh complement lifetimes raised independent accuracy from 59–60% at 256 to
+61.51% at 512 and 66–69% at 1,024. At 1,024, however, the new slot's
+context-selective plasticity was seed-sensitive: ordinary penalties, replay
+weighting, and provenance supervision each produced both passing and failing
+retention arms. A 512+512 old-task rehearsal arm preserved span nine/span ten
+exactly but reduced new-task accuracy to 62%, which is a poor sample-efficiency
+tradeoff.
+
+The best single diagnostic arm (seed `93763`, strong generic provenance gate)
+reached **69.19%** with an **18.67-point** causal gain and old-skill changes of
+−1.88/−1.81 points. Two matched seeds (`93764`, `93765`) failed retention by
+large margins, so no 1,024 checkpoint is promoted. The complete curve,
+including rejected arms, is recorded in
+`session_records/sequence_working_memory_2026-08-02/complement_data_scaling_2026-08-03.md`.
+The next frontier is a robust, context-selective plasticity constraint—not
+2,048 more target lifetimes.
 
 ## Latest breakthrough: span-three working-memory compounding (2026-08-02)
 

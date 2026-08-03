@@ -32,10 +32,33 @@ memory-reset, and retention audit is
 - SHA-256 shuffled control:
   `6c081a068a934e215a68481e803651db9a3ab135af19d47f9ab237e44f9f5243`
 
-`complement_slot_shuffled_control_seed93749.pt` is retained as the adversarial
-outcome-shuffled control. Neither checkpoint is a deployment default: 59.77%
-is a partial acquisition result, so a second truthful replication is required
-before promoting the primitive.
+`complement_slot_replica_seed93750.pt` is the second truthful seed. It reached
+58.12% with a 7.51-point causal gain; span-nine/span-ten retention remained
+within the two-point gate. `complement_slot_shuffled_replica_seed93751.pt` is
+its matched adversarial control and scored 47.47% on the independent audit.
+
+- SHA-256 replica:
+  `69973283351f41b91a29827e9af634bdd000be1c0a0b68a397746362461180a5`
+- SHA-256 shuffled replica:
+  `162afc28462dc499122c20d49d05582dd7af1371075f2818d1361ff5701cb04e`
+
+The primitive is now replicated but not mastered: 58–60% is a partial
+acquisition result, not a deployment default. Continue it only through a
+protected fresh-lifetime sample-efficiency curve before increasing task
+difficulty.
+
+`complement_slot_1024_best_single_seed93763.pt` is the best single 1,024-
+lifetime diagnostic arm: 69.19% complement accuracy, an 18.67-point causal
+gain, and old-span retention of −1.88/−1.81 points. Two matched seeds failed
+the retention gate, so this checkpoint is explicitly **unpromoted** and must
+not replace the replicated 256-lifetime candidate.
+
+- SHA-256:
+  `faa68ef37e6f435daad26d18067a4060f2da1c7d0c1ea564d6e949ad2475593c`
+- Complement outcome replay buffer:
+  `artifacts/memory/complement_slot_replay_seed93753.pt`
+- Buffer SHA-256:
+  `338168fed5bede7fb0fad070c37fe78f3fa6ef37a97496dbb92e7a341f52d64a`
 
 ## Procedural-shape relative operations
 

@@ -221,6 +221,18 @@ def _skill_slot_logits(
         critic_logits, critic_residual)
 
 
+def _remove_final_slot_from_logits(
+        model: UnifiedCognitiveController, features: torch.Tensor,
+        logits: torch.Tensor) -> torch.Tensor:
+    """Remove an inherited final slot before continuing its training."""
+    action_residual, _, _, _, _, critic_residual = _skill_slot_logits(
+        model, features)
+    result = logits - action_residual
+    if critic_residual is not None:
+        result = result - critic_residual
+    return result
+
+
 def _replay_refinement_indices(
         all_indices: torch.Tensor, replay_indices: torch.Tensor,
         gate_source_weight: float,
@@ -646,6 +658,11 @@ def main() -> None:
             "append the trained slot to a parent that already has promoted "
             "skill slots; existing slots remain frozen"))
     parser.add_argument(
+        "--train-existing-skill-slot", action="store_true",
+        help=(
+            "continue the parent's final skill slot with protected replay "
+            "instead of appending another slot"))
+    parser.add_argument(
         "--action-conditioned-critic-width", type=int, default=0,
         help=(
             "add a zero-impact per-action success predictor trained from "
@@ -765,6 +782,12 @@ def main() -> None:
         raise ValueError("query-curriculum-cutoff cannot exceed span")
     if args.skill_adapter_residual_scale <= 0.0:
         raise ValueError("skill-adapter-residual-scale must be positive")
+    if args.train_existing_skill_slot and not args.skill_adapter_width:
+        raise ValueError(
+            "continuing a skill slot requires --skill-adapter-width")
+    if args.train_existing_skill_slot and args.append_skill_slot:
+        raise ValueError(
+            "continuation cannot append a second slot at the same time")
     if args.base_mistake_weight < 1.0:
         raise ValueError("base-mistake-weight must be at least one")
     if args.base_mistake_weight > 1.0 and not args.binary_complement_loss:
@@ -882,6 +905,8 @@ def main() -> None:
         raise ValueError("rehearsal spans must be positive")
     stream_specs: list[dict[str, int | str]] = []
     loaded_buffer_metadata: list[dict[str, object]] = []
+    persisted_count = 0
+    persisted_parent_matches_target = False
     if args.buffer_in is not None:
         (features, base_logits, actions, outcomes), metadata = _load_buffer(
             args.buffer_in, device=device)
@@ -936,6 +961,12 @@ def main() -> None:
         persisted, metadata = _load_buffer(
             args.replay_buffer_in, device=device)
         loaded_buffer_metadata.append(metadata)
+        persisted_count = persisted[0].shape[0]
+        persisted_parent = metadata.get("parent")
+        if persisted_parent is not None:
+            persisted_parent_matches_target = (
+                Path(str(persisted_parent)).resolve()
+                == Path(args.parent).resolve())
         if args.replay_max_transitions and (
                 args.replay_max_transitions < persisted[0].shape[0]):
             generator = torch.Generator(device="cpu").manual_seed(
@@ -944,6 +975,7 @@ def main() -> None:
                 persisted[0].shape[0], generator=generator)[
                     :args.replay_max_transitions].to(device)
             persisted = tuple(value[indices] for value in persisted)
+        persisted_count = persisted[0].shape[0]
         features = torch.cat([features, persisted[0]])
         base_logits = torch.cat([base_logits, persisted[1]])
         actions = torch.cat([actions, persisted[2]])
@@ -951,6 +983,21 @@ def main() -> None:
         replay_mask = torch.cat([
             replay_mask,
             torch.ones(persisted[0].shape[0], dtype=torch.bool, device=device)])
+    if args.train_existing_skill_slot:
+        fresh_mask = ~replay_mask
+        if not bool(fresh_mask.any()):
+            raise ValueError(
+                "continuation requires fresh target transitions in addition "
+                "to replay")
+        with torch.no_grad():
+            base_logits[fresh_mask] = _remove_final_slot_from_logits(
+                base, features[fresh_mask], base_logits[fresh_mask])
+            if persisted_parent_matches_target and persisted_count:
+                persisted_start = features.shape[0] - persisted_count
+                base_logits[persisted_start:] = (
+                    _remove_final_slot_from_logits(
+                        base, features[persisted_start:],
+                        base_logits[persisted_start:]))
     rehearsal_lifetime_count = (
         args.rehearsal_lifetimes * len(rehearsal_spans)
         if args.buffer_in is None else 0)
@@ -976,11 +1023,19 @@ def main() -> None:
     if args.skill_adapter_width:
         existing_slots = tuple(base_configuration.get(
             "skill_adapter_widths", ()))
-        if existing_slots and not args.append_skill_slot:
+        if args.train_existing_skill_slot:
+            if not existing_slots:
+                raise ValueError(
+                    "continuation requires a parent with a skill slot")
+            if args.skill_adapter_width != existing_slots[-1]:
+                raise ValueError(
+                    "continuation width must match the parent's final slot")
+            configuration = dict(base_configuration)
+        elif existing_slots and not args.append_skill_slot:
             raise ValueError(
                 "parent already has skill slots; use --append-skill-slot "
                 "for a new successor rung")
-        if args.append_skill_slot:
+        elif args.append_skill_slot:
             configuration = dict(
                 base_configuration,
                 skill_adapter_widths=existing_slots + (
@@ -1038,9 +1093,12 @@ def main() -> None:
         raise RuntimeError(
             f"unexpected parent keys: {load_result.unexpected_keys}")
     if args.skill_adapter_width:
-        assert len(student.skill_adapters) == (
-            len(base_configuration.get("skill_adapter_widths", ()))
-            + 1 if args.append_skill_slot else 1)
+        expected_slots = (
+            len(base_configuration.get("skill_adapter_widths", ())) + 1
+            if args.append_skill_slot
+            else len(base_configuration.get("skill_adapter_widths", ()))
+            if args.train_existing_skill_slot else 1)
+        assert len(student.skill_adapters) == expected_slots
     else:
         assert student.action_adapter is not None
     if args.residual_action_adapter:
@@ -1087,6 +1145,23 @@ def main() -> None:
     else:
         for parameter in student.action_adapter.parameters():
             parameter.requires_grad_(True)
+    protected_replay_logits: torch.Tensor | None = None
+    protected_replay_residual: torch.Tensor | None = None
+    protected_replay_opening: torch.Tensor | None = None
+    if args.train_existing_skill_slot:
+        # Absolute penalties are correct for a zero-output appended slot but
+        # would erase an already learned slot.  Continuation instead protects
+        # the parent's replay behavior with a fixed local baseline.
+        with torch.no_grad():
+            (
+                protected_replay_logits,
+                protected_replay_residual,
+                protected_replay_opening,
+                _, _, _,
+            ) = _skill_slot_logits(student, features)
+            protected_replay_logits = protected_replay_logits.detach()
+            protected_replay_residual = protected_replay_residual.detach()
+            protected_replay_opening = protected_replay_opening.detach()
     def train_epochs(
             epochs: int, sample_indices: torch.Tensor, *,
             outcome_weight: float, residual_penalty: float,
@@ -1174,15 +1249,30 @@ def main() -> None:
                             temperature=(
                                 args.action_conditioned_critic_policy_temperature)))
                 if residual_penalty and bool(batch_replay_mask.any()):
-                    loss = loss + residual_penalty * residual[
-                        batch_replay_mask].square().mean()
+                    residual_target = (
+                        protected_replay_residual[indices]
+                        if protected_replay_residual is not None
+                        else torch.zeros_like(residual))
+                    loss = loss + residual_penalty * (
+                        residual[batch_replay_mask]
+                        - residual_target[batch_replay_mask]).square().mean()
                 if (gate_penalty and opening is not None
                         and bool(batch_replay_mask.any())):
-                    loss = loss + gate_penalty * opening[
-                        batch_replay_mask].square().mean()
+                    opening_target = (
+                        protected_replay_opening[indices]
+                        if protected_replay_opening is not None
+                        else torch.zeros_like(opening))
+                    loss = loss + gate_penalty * (
+                        opening[batch_replay_mask]
+                        - opening_target[batch_replay_mask]).square().mean()
                 if logit_penalty and bool(batch_replay_mask.any()):
-                    loss = loss + logit_penalty * logits_residual[
-                        batch_replay_mask].square().mean()
+                    logit_target = (
+                        protected_replay_logits[indices]
+                        if protected_replay_logits is not None
+                        else torch.zeros_like(logits_residual))
+                    loss = loss + logit_penalty * (
+                        logits_residual[batch_replay_mask]
+                        - logit_target[batch_replay_mask]).square().mean()
                 if (args.replay_gate_source_weight and gate_score is not None):
                     source_target = (~batch_replay_mask).to(gate_score.dtype)
                     loss = loss + args.replay_gate_source_weight * _balanced_provenance_loss(
@@ -1287,6 +1377,8 @@ def main() -> None:
         "buffer_in": str(args.buffer_in) if args.buffer_in else None,
         "replay_buffer_in": (
             str(args.replay_buffer_in) if args.replay_buffer_in else None),
+        "persisted_parent_matches_target": (
+            persisted_parent_matches_target),
         "buffer_out": str(args.buffer_out) if args.buffer_out else None,
         "replay_max_transitions": args.replay_max_transitions,
         "replay_outcome_weight": args.replay_outcome_weight,
@@ -1326,6 +1418,7 @@ def main() -> None:
         "action_conditioned_critic_policy_temperature": (
             args.action_conditioned_critic_policy_temperature),
         "skill_adapter_width": args.skill_adapter_width,
+        "train_existing_skill_slot": args.train_existing_skill_slot,
         "skill_adapter_residual_scale": (
             args.skill_adapter_residual_scale),
         "skill_adapter_gate_mode": args.skill_adapter_gate_mode,
