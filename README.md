@@ -1799,6 +1799,33 @@ points** at 10,240 fresh verifier bits. The next-span branch is now paused;
 the evidence points to a deeper credit-assignment or representation bottleneck,
 not justification for simply extending the same run.
 
+## Decisive successor-input probe (2026-08-03)
+
+Before changing the controller again, a frozen diagnostic extracted the raw
+input to the appended slot's first linear layer on lifetime-disjoint span-11
+episodes. Throwaway probes decoded the correct action at **84.66% linear** and
+**87.71% with a small MLP**; an independent random-label null stayed at
+**50.57%**, with a second prior-slot variant at **87.43% / 48.15%**. The
+controller and slot weights were unchanged and the diagnostic heads were
+discarded.
+
+This localizes the current failure: the relevant next-action information is
+already present at the new slot's input. The short reward-only runs are failing
+to discover/use it, rather than proving a missing visual representation. The
+next high-ROI branch is therefore credit assignment—dense use of the same
+verified outcome, action-conditioned critics, or a carefully isolated
+auxiliary diagnostic—while preserving the two-point retention and shuffled,
+blank, reset, and reversal gates. The full reports are
+`span11_slot_input_probe_*.json` in the sequence session record.
+
+A temporary action-conditioned success critic (trained only from the attempted
+action's scalar outcome, then discarded) was tested at weights 0.5 and 5.0.
+Both preserved old skills, but produced only **+0.99/+0.71 points** with no
+zeroed-slot causal separation. This is a bounded negative for the simplest
+critic auxiliary; the representation probe says the next useful change must
+improve how that information drives the slot/action update, not add another
+encoder.
+
 ## Latest breakthrough: span-three working-memory compounding (2026-08-02)
 
 The sequence branch now demonstrates the desired learn-to-learn effect on a

@@ -1032,6 +1032,30 @@ points** at 10,240 fresh verifier bits. The span-eleven branch is paused here:
 the short-run evidence points to a deeper credit-assignment or representation
 bottleneck rather than a reason to keep extending the same recipe.
 
+## Decisive successor-input probe (2026-08-03)
+
+Before changing the controller again, a frozen diagnostic extracted the raw
+input to the appended slot's first linear layer on lifetime-disjoint span-11
+episodes. Throwaway probes decoded the correct action at **84.66% linear** and
+**87.71% with a small MLP**; an independent random-label null stayed at
+**50.57%**, with a second prior-slot variant at **87.43% / 48.15%**. The
+controller and slot weights were unchanged and the diagnostic heads were
+discarded.
+
+The current failure is therefore localized to credit assignment: the relevant
+next-action information is already present at the new slot's input, but short
+reward-only updates do not discover/use it. The next branch should use denser
+action-conditioned processing of the same verified outcome, while retaining
+the two-point old-skill gate and all causal controls. Reports are
+`span11_slot_input_probe_*.json`.
+
+A temporary action-conditioned success critic (trained only from the attempted
+action's scalar outcome, then discarded) was tested at weights 0.5 and 5.0.
+Both preserved old skills, but produced only **+0.99/+0.71 points** with no
+zeroed-slot causal separation. This is a bounded negative for the simplest
+critic auxiliary; the representation probe says the next useful change must
+improve how existing information drives the slot/action update.
+
 ## Cloud archive
 
 The current Vast instance was quiescent when archived. The load-bearing

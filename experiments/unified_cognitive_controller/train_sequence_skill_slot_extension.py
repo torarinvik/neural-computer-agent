@@ -17,6 +17,7 @@ from pathlib import Path
 
 import torch
 import torch.nn.functional as F
+from torch import nn
 
 from .audit_sequence_multi_skill_bank import _model
 from .train_pair_numerosity_transfer import _build_student
@@ -70,6 +71,11 @@ def main() -> None:
             "penalize the appended slot's residual magnitude on inherited "
             "rehearsal streams; no task label is used"))
     parser.add_argument(
+        "--critic-aux-weight", type=float, default=0.0,
+        help=(
+            "temporary action-conditioned success-prediction loss on the "
+            "new slot hidden state; the critic is discarded after training"))
+    parser.add_argument(
         "--read-prior-slot", action="store_true",
         help=(
             "give only the appended slot a generic read of the immediately "
@@ -105,6 +111,8 @@ def main() -> None:
         raise ValueError("distill-old-weight must be nonnegative")
     if args.old_residual_penalty < 0.0:
         raise ValueError("old-residual-penalty must be nonnegative")
+    if args.critic_aux_weight < 0.0:
+        raise ValueError("critic-aux-weight must be nonnegative")
     device = torch.device(args.device)
     torch.manual_seed(args.seed)
     parent_payload = torch.load(
@@ -129,8 +137,15 @@ def main() -> None:
         parameter for parameter in student.parameters() if parameter.requires_grad]
     if not trainable:
         raise RuntimeError("appended slot produced no trainable parameters")
+    critic = None
+    if args.critic_aux_weight:
+        critic = nn.Linear(
+            student.skill_adapters[slot][2].in_features, 2).to(device)
+    optimizer_parameters = list(trainable)
+    if critic is not None:
+        optimizer_parameters += list(critic.parameters())
     optimizer = torch.optim.AdamW(
-        trainable, lr=args.learning_rate, weight_decay=1e-5)
+        optimizer_parameters, lr=args.learning_rate, weight_decay=1e-5)
 
     # The constructor initializes the new slot's final projection at zero.
     # Check the central invariant before spending any training experience.
@@ -163,6 +178,14 @@ def main() -> None:
     history: list[dict[str, float | int]] = []
     seen_bits = 0
     target_updates = 0
+    slot_hidden: list[torch.Tensor] = []
+
+    def capture_hidden(_module, _inputs, output) -> None:
+        slot_hidden.append(output)
+
+    hidden_handle = (
+        student.skill_adapters[slot][1].register_forward_hook(capture_hidden)
+        if critic is not None else None)
     for step in range(1, args.steps + 1):
         train_span = schedule[(step - 1) % len(schedule)]
         is_target = train_span == args.span
@@ -201,10 +224,25 @@ def main() -> None:
                 position_augmentation=train_position_augmentation,
                 sequence_override=batch.sequence,
                 operation_bits_override=batch.operation_bits, device=device)
+            if critic is not None:
+                slot_hidden.clear()
             result = rollout_sequence_memory(
                 student, epoch_batch, sample_actions=True,
                 exploration=args.exploration)
             loss = result["loss"]
+            if critic is not None:
+                if len(slot_hidden) < train_span:
+                    raise RuntimeError(
+                        "critic hook captured too few successor events")
+                query_hidden = torch.stack(slot_hidden[-train_span:], dim=1)
+                critic_logits = critic(query_hidden)
+                attempted = result["actions"]
+                outcomes = result["rewards"]
+                selected = critic_logits.gather(
+                    2, attempted.unsqueeze(-1)).squeeze(-1)
+                loss = loss + args.critic_aux_weight * (
+                    F.binary_cross_entropy_with_logits(selected, outcomes))
+                slot_hidden.clear()
             if (args.distill_old_weight or args.old_residual_penalty) \
                     and rehearsal_spans:
                 # Distillation is deliberately computed from fresh RGB
@@ -308,6 +346,8 @@ def main() -> None:
         "target_distractor_curriculum": target_distractor_curriculum,
         "distill_old_weight": args.distill_old_weight,
         "old_residual_penalty": args.old_residual_penalty,
+        "critic_aux_weight": args.critic_aux_weight,
+        "critic_discarded": critic is not None,
         "read_prior_slot": args.read_prior_slot,
         "initial_logits_exact": initial_logits_exact,
         "initial_workspace_exact": initial_workspace_exact,
@@ -328,6 +368,8 @@ def main() -> None:
         },
     }
     report["accepted_smoke"] = all(report["gates"].values())
+    if hidden_handle is not None:
+        hidden_handle.remove()
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, indent=2) + "\n")
     args.checkpoint_out.parent.mkdir(parents=True, exist_ok=True)

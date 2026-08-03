@@ -1,0 +1,25 @@
+{
+  "schema": "successor-slot-input-probe-v1",
+  "claim_boundary": "The controller and appended slot are frozen. Throwaway probes receive only raw successor-slot input; correct actions are verifier-side diagnostic labels and are discarded.",
+  "parent": "artifacts/checkpoints/span10_cold_rehydrated_8192_e384_seed9954815.pt",
+  "seed": 93603,
+  "span": 11,
+  "slot": 2,
+  "slot_width": 256,
+  "read_prior_slot": true,
+  "train_lifetimes": 128,
+  "test_lifetimes": 128,
+  "feature_dim": 901,
+  "distractors": 2,
+  "position_augmentation": true,
+  "linear_accuracy": 0.8416193127632141,
+  "mlp_accuracy": 0.8742897510528564,
+  "random_train_normal_test_accuracy": 0.5184659361839294,
+  "independent_random_accuracy": 0.48153409361839294,
+  "controller_frozen": true,
+  "gates": {
+    "mlp_above_chance": true,
+    "shuffled_near_chance": true
+  },
+  "accepted_probe": true
+}
