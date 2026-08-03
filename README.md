@@ -2016,6 +2016,24 @@ assignment or a smaller intermediate primitive, with old-skill retention
 remaining a hard gate. The complete reports are in
 `session_records/sequence_working_memory_2026-08-02/span11_from_fourth_frontier_2026-08-03/`.
 
+### Successor-slot routing smoke (2026-08-03)
+
+A matched sub-minute test checked whether an easier-prefix query curriculum
+could make the span-eleven successor slot selective. With 64 fresh target
+lifetimes and 64-lifetime span-nine/span-ten rehearsal, the no-curriculum arm
+had only **+1.21 points** of causal gain over its zeroed-slot control. The
+staged prefix arm had **0.00 points**. Neither approached the +5-point
+promotion bar, so it was not scaled.
+
+A separate feature audit found the new slot's gate opening broadly on old
+mixed spans (roughly 0.76–0.79) instead of remaining closed; the target stream
+opened it more strongly, but the overlap explains the retention damage. Parent
+action entropy was near zero and event-age ranges overlapped, so those simple
+context signals did not provide a selector. The immediate frontier is generic
+slot selectivity / credit routing, not more target data or a longer blind
+span-eleven run. The full smoke reports and hashes are in
+`session_records/sequence_working_memory_2026-08-02/suffix_routing_smoke_2026-08-03/`.
+
 ## Latest breakthrough: span-three working-memory compounding (2026-08-02)
 
 The sequence branch now demonstrates the desired learn-to-learn effect on a
