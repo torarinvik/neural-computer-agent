@@ -99,6 +99,13 @@ retention drop; its local candidate is retained as
 logic are in
 `session_records/sequence_working_memory_2026-08-02/population_races_2026-08-03/`.
 
+The follow-up continuation/gate candidates are intentionally unpromoted and
+kept only for analysis: `complement_population_continuation_*`,
+`complement_population_append4_seed93830.pt`, and
+`complement_population_entropy_append_seed93840.pt`. Their independent
+audits are recorded in
+`session_records/sequence_working_memory_2026-08-02/continuation_and_gate_frontier_2026-08-03/`.
+
 ## Procedural-shape relative operations
 
 `unified_next_error_balanced_primary_seed43601.pt` and

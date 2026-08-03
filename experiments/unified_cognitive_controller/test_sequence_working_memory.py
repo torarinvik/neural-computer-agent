@@ -215,6 +215,16 @@ def test_replay_buffer_can_supply_parent_action_context() -> None:
     assert logits.shape == (16, 2)
 
 
+def test_replay_buffer_can_supply_parent_entropy_context() -> None:
+    model = UnifiedCognitiveController(
+        width=16, workspace_slots=2, intention_width=8,
+        skill_adapter_widths=(16,),
+        skill_adapter_reads_parent_entropy_from=0)
+    features = torch.randn(16, 16 * 2 + 1)
+    logits, *_ = _skill_slot_logits(model, features)
+    assert logits.shape == (16, 2)
+
+
 def test_critic_policy_bridge_trains_the_slot_but_not_the_critic_target() -> None:
     logits = torch.zeros(4, 2, requires_grad=True)
     critic = torch.tensor(

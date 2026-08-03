@@ -1963,6 +1963,25 @@ noisy; full promotion still requires the reset band. Reports and the exact
 selection logic are in
 `session_records/sequence_working_memory_2026-08-02/population_races_2026-08-03/`.
 
+### Continuation-selection and entropy-gate audit (2026-08-03)
+
+The next compounding test was deliberately small: continue the promoted
+complement slot with 256 fresh lifetimes and rehearse spans nine and ten.
+Three clones all appeared about 2.0–2.34 points better on private 256-lifetime
+audits, but the selected child fell from **67.68% to 62.04%** on the larger
+independent audit; checkpoint averaging was worse at **61.00%**. A gentler
+512-lifetime continuation preserved old skills but changed complement by only
+−0.19 points. This exposes private-screen selection noise and is not a
+compounding claim.
+
+Appending a fourth slot with 256 lifetimes also fell (67.24% → 64.84%). A new
+task-agnostic normalized parent-action entropy scalar was implemented as a
+checkpoint-compatible gate input, but its first append arm fell from 67.35%
+to 55.96%. These are archived negative controls, not promoted models. The
+replay trainer now rejects latent-buffer feature-width mismatches explicitly.
+Full reports are in
+`session_records/sequence_working_memory_2026-08-02/continuation_and_gate_frontier_2026-08-03/`.
+
 ## Latest breakthrough: span-three working-memory compounding (2026-08-02)
 
 The sequence branch now demonstrates the desired learn-to-learn effect on a

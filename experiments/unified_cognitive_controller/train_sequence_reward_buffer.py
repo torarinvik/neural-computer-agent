@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 
 import torch
@@ -165,9 +166,14 @@ def _skill_slot_logits(
         ACTIONS
         if getattr(model, "skill_adapter_reads_parent_action_from", None)
         is not None else 0)
+    parent_entropy_width = (
+        1
+        if getattr(model, "skill_adapter_reads_parent_entropy_from", None)
+        is not None else 0)
     expected_width = (
         base_width + workspace_width + usage_width + intention_width
-        + event_snapshot_width + age_width + parent_action_width)
+        + event_snapshot_width + age_width + parent_action_width
+        + parent_entropy_width)
     if features.shape[1] != expected_width:
         raise ValueError("cached feature width does not match skill slot")
     slot_features = features[:, :base_width]
@@ -197,6 +203,9 @@ def _skill_slot_logits(
         cursor += age_width
     if parent_action_width:
         reads.append(features[:, cursor:cursor + parent_action_width])
+        cursor += parent_action_width
+    if parent_entropy_width:
+        reads.append(features[:, cursor:cursor + parent_entropy_width])
     if reads:
         projected = model.skill_adapter_read_projections[slot_index](
             torch.cat(reads, dim=-1))
@@ -448,6 +457,7 @@ def _collect_buffer(
         include_event_age: bool = False, exploration: float = 1.0,
         include_parent_action: bool = False,
         parent_action_probabilities: bool = False,
+        include_parent_entropy: bool = False,
         operation: str = "mixed",
         ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """Collect latent transitions using uniformly random opaque actions."""
@@ -521,6 +531,14 @@ def _collect_buffer(
                 if parent_action_probabilities:
                     parent_action = torch.softmax(parent_action, dim=-1)
                 feature_parts.append(parent_action)
+            if include_parent_entropy:
+                parent_action = output.logits.detach()
+                probabilities = torch.softmax(parent_action, dim=-1)
+                entropy = -(
+                    probabilities
+                    * probabilities.clamp_min(1e-8).log()).sum(
+                        dim=-1, keepdim=True)
+                feature_parts.append(entropy / math.log(ACTIONS))
             features.append(torch.cat(feature_parts, dim=-1))
             base_logits.append(output.logits.detach())
             actions.append(action)
@@ -732,6 +750,11 @@ def main() -> None:
             "give the successor slot the inherited controller action logits "
             "as a generic context/novelty signal"))
     parser.add_argument(
+        "--skill-adapter-reads-parent-entropy", action="store_true",
+        help=(
+            "give the successor slot one normalized parent-action entropy "
+            "scalar as a generic uncertainty/context signal"))
+    parser.add_argument(
         "--skill-adapter-parent-action-probabilities", action="store_true",
         help=(
             "normalize the inherited action context to probabilities before "
@@ -869,6 +892,8 @@ def main() -> None:
         raise ValueError("event-age reads require a skill slot")
     if args.skill_adapter_reads_parent_action and not args.skill_adapter_width:
         raise ValueError("parent-action reads require a skill slot")
+    if args.skill_adapter_reads_parent_entropy and not args.skill_adapter_width:
+        raise ValueError("parent entropy reads require a skill slot")
     if (args.skill_adapter_parent_action_probabilities
             and not args.skill_adapter_reads_parent_action):
         raise ValueError(
@@ -919,6 +944,10 @@ def main() -> None:
     include_parent_action = (
         args.skill_adapter_reads_parent_action
         or base_configuration.get("skill_adapter_reads_parent_action_from")
+        is not None)
+    include_parent_entropy = (
+        args.skill_adapter_reads_parent_entropy
+        or base_configuration.get("skill_adapter_reads_parent_entropy_from")
         is not None)
     parent_action_probabilities = (
         args.skill_adapter_parent_action_probabilities
@@ -971,6 +1000,7 @@ def main() -> None:
             include_event_age=include_event_age,
             include_parent_action=include_parent_action,
             parent_action_probabilities=parent_action_probabilities,
+            include_parent_entropy=include_parent_entropy,
             exploration=args.buffer_exploration,
             operation=args.target_operation)
         buffer_parts = [target_buffer]
@@ -991,6 +1021,7 @@ def main() -> None:
                 include_event_age=include_event_age,
                 include_parent_action=include_parent_action,
                 parent_action_probabilities=parent_action_probabilities,
+                include_parent_entropy=include_parent_entropy,
                 exploration=args.buffer_exploration,
                 operation="mixed"))
             stream_specs.append({
@@ -1010,6 +1041,13 @@ def main() -> None:
     if args.replay_buffer_in is not None:
         persisted, metadata = _load_buffer(
             args.replay_buffer_in, device=device)
+        if persisted[0].shape[1] != features.shape[1]:
+            raise ValueError(
+                "replay buffer feature width does not match the current "
+                "slot interface: "
+                f"current={features.shape[1]}, "
+                f"replay={persisted[0].shape[1]}; recollect the replay "
+                "buffer with the same successor reads")
         loaded_buffer_metadata.append(metadata)
         persisted_count = persisted[0].shape[0]
         persisted_parent = metadata.get("parent")
@@ -1105,6 +1143,10 @@ def main() -> None:
                 configuration[
                     "skill_adapter_reads_parent_action_from"] = len(
                         existing_slots)
+            if args.skill_adapter_reads_parent_entropy:
+                configuration[
+                    "skill_adapter_reads_parent_entropy_from"] = len(
+                        existing_slots)
             if args.skill_adapter_gate_hidden:
                 # Give only the new slot a nonlinear gate.  The index keeps
                 # every inherited gate shape and checkpoint key unchanged.
@@ -1131,6 +1173,8 @@ def main() -> None:
                     0 if args.skill_adapter_reads_event_age else None),
                 skill_adapter_reads_parent_action_from=(
                     0 if args.skill_adapter_reads_parent_action else None),
+                skill_adapter_reads_parent_entropy_from=(
+                    0 if args.skill_adapter_reads_parent_entropy else None),
                 event_age=args.skill_adapter_reads_event_age,
                 skill_adapter_read_bottleneck=args.skill_adapter_read_bottleneck,
                 skill_adapter_critic_width=(
@@ -1490,6 +1534,8 @@ def main() -> None:
         "skill_adapter_reads_event_age": args.skill_adapter_reads_event_age,
         "skill_adapter_reads_parent_action": (
             args.skill_adapter_reads_parent_action),
+        "skill_adapter_reads_parent_entropy": (
+            args.skill_adapter_reads_parent_entropy),
         "skill_adapter_read_bottleneck": args.skill_adapter_read_bottleneck,
         "skill_adapter_no_legacy_read": args.skill_adapter_no_legacy_read,
         "train_parent_action_adapter": args.train_parent_action_adapter,

@@ -6,6 +6,7 @@ and actuator are extracted behind the neural-IR interfaces specified in
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 import torch
@@ -189,6 +190,7 @@ class UnifiedCognitiveController(nn.Module):
             skill_adapter_reads_event_age_from: int | None = None,
             skill_adapter_reads_parent_action_from: int | None = None,
             skill_adapter_parent_action_probabilities: bool = False,
+            skill_adapter_reads_parent_entropy_from: int | None = None,
             skill_adapter_multiplies_intention_from: int | None = None,
             skill_adapter_outer_multiplies_intention_from: int | None = None,
             skill_adapter_outer_interaction_width: int = 0,
@@ -359,6 +361,11 @@ class UnifiedCognitiveController(nn.Module):
             skill_adapter_reads_parent_action_from)
         self.skill_adapter_parent_action_probabilities = bool(
             skill_adapter_parent_action_probabilities)
+        # A normalized entropy scalar exposes generic parent uncertainty
+        # without handing a successor slot the action-coordinate identity.
+        # The index keeps existing slot input shapes checkpoint-compatible.
+        self.skill_adapter_reads_parent_entropy_from = (
+            skill_adapter_reads_parent_entropy_from)
         # A generic bilinear binding feature lets a later skill condition an
         # inherited amodal intention on state carried from an earlier sensory
         # event. The index preserves every older slot's shape. No operation or
@@ -560,6 +567,9 @@ class UnifiedCognitiveController(nn.Module):
             reads_parent_action = (
                 skill_adapter_reads_parent_action_from is not None
                 and slot_index >= skill_adapter_reads_parent_action_from)
+            reads_parent_entropy = (
+                skill_adapter_reads_parent_entropy_from is not None
+                and slot_index >= skill_adapter_reads_parent_entropy_from)
             multiplies_intention = (
                 skill_adapter_multiplies_intention_from is not None
                 and slot_index
@@ -593,6 +603,7 @@ class UnifiedCognitiveController(nn.Module):
                 + (width if reads_event_snapshot else 0)
                 + (1 if reads_event_age else 0)
                 + (ACTIONS if reads_parent_action else 0)
+                + (1 if reads_parent_entropy else 0)
                 + (intention_width if multiplies_intention else 0)
                 + (
                     skill_adapter_outer_interaction_width ** 2
@@ -1367,6 +1378,26 @@ class UnifiedCognitiveController(nn.Module):
                     if self.skill_adapter_parent_action_probabilities:
                         parent_action = torch.softmax(parent_action, dim=-1)
                     reads.append(parent_action)
+                if (
+                        self.skill_adapter_reads_parent_entropy_from
+                        is not None
+                        and slot_index
+                        >= self.skill_adapter_reads_parent_entropy_from):
+                    # Normalized action entropy is a generic uncertainty
+                    # signal.  It carries no action identity or verifier
+                    # label, and is therefore a safer context feature for a
+                    # plastic successor gate than the full action vector.
+                    parent_action = (
+                        self.actuator(intention)
+                        if self.actuator is not None else torch.zeros(
+                            event.shape[0], ACTIONS, device=event.device,
+                            dtype=event.dtype))
+                    probabilities = torch.softmax(parent_action, dim=-1)
+                    entropy = -(
+                        probabilities
+                        * probabilities.clamp_min(1e-8).log()).sum(
+                            dim=-1, keepdim=True)
+                    reads.append(entropy / math.log(ACTIONS))
                 if reads:
                     if (
                             self.skill_adapter_ablate_prior_read
