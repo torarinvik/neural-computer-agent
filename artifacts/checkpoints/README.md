@@ -122,6 +122,11 @@ unpromoted as `complement_population_fourth_slot_replica_seed93873_unpromoted.pt
 because its causal gain was +2.97 points. Full reports are in
 `session_records/sequence_working_memory_2026-08-02/fourth_slot_compounding_2026-08-03/`.
 
+`complement_population_fifth_slot_seed93880_unpromoted.pt` is a retained
+negative control: a fifth same-task slot added only +0.46 points and did not
+improve zero-shot span-eleven transfer. The corresponding record is in
+`session_records/sequence_working_memory_2026-08-02/fifth_slot_saturation_2026-08-03/`.
+
 ## Procedural-shape relative operations
 
 `unified_next_error_balanced_primary_seed43601.pt` and

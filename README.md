@@ -2000,6 +2000,12 @@ verified single-checkpoint compounding milestone—not a claim that every seed
 will succeed—and the complete reports are in
 `session_records/sequence_working_memory_2026-08-02/fourth_slot_compounding_2026-08-03/`.
 
+The next 1,536-lifetime fifth-slot trial saturated at only **+0.46 points**
+(72.74% vs 72.29% parent), and the fourth-slot child showed no measurable
+zero-shot improvement on span 11 (both 73.44%). This closes the same-task
+slot-expansion branch for now: the next high-ROI move is a new primitive or a
+better span-eleven credit path, not more complement slots.
+
 ## Latest breakthrough: span-three working-memory compounding (2026-08-02)
 
 The sequence branch now demonstrates the desired learn-to-learn effect on a
