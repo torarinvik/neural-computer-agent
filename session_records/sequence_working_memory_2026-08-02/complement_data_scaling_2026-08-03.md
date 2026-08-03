@@ -57,3 +57,8 @@ or penalized the inherited slot; they are not scientific results.
 The next high-ROI branch is a genuinely context-selective, retention-aware
 plasticity constraint, evaluated with the same zeroed-slot, cue-blank, reset,
 and old-skill gates. More data alone is not yet justified.
+
+The follow-up retention controls are recorded separately in
+`complement_retention_controls_2026-08-03.md`; they confirm that extra
+rehearsal, gate-only calibration, and a smaller slot do not yet solve the
+leakage.

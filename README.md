@@ -1907,7 +1907,10 @@ large margins, so no 1,024 checkpoint is promoted. The complete curve,
 including rejected arms, is recorded in
 `session_records/sequence_working_memory_2026-08-02/complement_data_scaling_2026-08-03.md`.
 The next frontier is a robust, context-selective plasticity constraint—not
-2,048 more target lifetimes.
+2,048 more target lifetimes. Follow-up controls (extra rehearsal, gate-only
+calibration, and a smaller slot) are archived in
+`session_records/sequence_working_memory_2026-08-02/complement_retention_controls_2026-08-03.md`;
+none produced a robust promotion.
 
 ## Latest breakthrough: span-three working-memory compounding (2026-08-02)
 
