@@ -127,6 +127,14 @@ negative control: a fifth same-task slot added only +0.46 points and did not
 improve zero-shot span-eleven transfer. The corresponding record is in
 `session_records/sequence_working_memory_2026-08-02/fifth_slot_saturation_2026-08-03/`.
 
+`span11_from_fourth_target256_unpromoted.pt` and
+`span11_from_fourth_target1024_unpromoted.pt` are retained negative controls
+for the next append attempt. The 256-target arm damaged spans nine/ten and
+slightly reduced span 11; the 1,024-target arm improved span 11 by 2.15 points
+but violated the old-span retention gates. Blank and full-reset controls stayed
+near chance. Their reports are in
+`session_records/sequence_working_memory_2026-08-02/span11_from_fourth_frontier_2026-08-03/`.
+
 ## Procedural-shape relative operations
 
 `unified_next_error_balanced_primary_seed43601.pt` and

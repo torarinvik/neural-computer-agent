@@ -2006,6 +2006,16 @@ zero-shot improvement on span 11 (both 73.44%). This closes the same-task
 slot-expansion branch for now: the next high-ROI move is a new primitive or a
 better span-eleven credit path, not more complement slots.
 
+The immediate span-eleven append was also rejected under the retention gates.
+With 256 target lifetimes, span nine/ten fell −6.63/−4.78 points and span 11
+fell 1.59 points. With 1,024 targets, span 11 rose 2.15 points, but span
+nine/ten fell −3.53/−4.96 points. Blank and full-reset controls remained near
+chance. This closes the current append recipe rather than proving that span 11
+is impossible: the next high-ROI move is explicit task-agnostic credit
+assignment or a smaller intermediate primitive, with old-skill retention
+remaining a hard gate. The complete reports are in
+`session_records/sequence_working_memory_2026-08-02/span11_from_fourth_frontier_2026-08-03/`.
+
 ## Latest breakthrough: span-three working-memory compounding (2026-08-02)
 
 The sequence branch now demonstrates the desired learn-to-learn effect on a
