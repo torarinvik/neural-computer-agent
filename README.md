@@ -2080,3 +2080,16 @@ Full reports and the promoted checkpoint are in
 high-ROI experiment is a one-axis span-four escalation with explicit
 span-two/span-three rehearsal and the same adversarial gates; more duration on
 span three is not justified.
+
+### Replicated three-skill cold-bank routing (2026-08-03)
+
+The reward-trained external-bank selector now routes among three real skill
+artifacts (span nine, ten, and diagnostic-only eleven) with 100% held-out
+routing in two independent 1,024-update runs. Reward-shuffled and cosine-only
+controls remained at the 1/3 baseline, candidate permutation was 100%, bank
+reload was exact, and routed behavior exactly matched direct artifact
+rehydration. The 256/512-update failures are bounded budget negatives, not an
+architecture rejection. This advances the cold-bank architecture, but does not
+yet prove cold-start skill acquisition, long-horizon retention, or span-eleven
+mastery. See
+`session_records/sequence_working_memory_2026-08-02/three_skill_real_bank_routing_2026-08-03/`.

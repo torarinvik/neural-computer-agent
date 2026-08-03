@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -283,6 +284,188 @@ class AmodalEventTimeline:
                 )
             )
         return windows
+
+
+@dataclass(frozen=True)
+class AmodalRuntimeOutput:
+    """One controller update plus every registered decoder result.
+
+    ``core`` and ``intention`` remain available for memory and audit code,
+    while ``decoded`` is a runtime-sized mapping.  Decoder names are transport
+    handles only; they are never appended to the controller event payload.
+    """
+
+    core: ControllerCoreOutput
+    intention: IntentEvent
+    decoded: dict[str, torch.Tensor]
+
+
+class AmodalControllerRuntime(nn.Module):
+    """The first complete ``N encoders -> one controller -> M decoders`` rung.
+
+    Encoder names select frontends at the process boundary only.  Each
+    frontend must emit either an :class:`AmodalEvent` or a ``[batch, width]``
+    tensor; the controller sees only the resulting opaque event collection.
+    The input bus is permutation-invariant for simultaneous events by default,
+    and the output bus can be expanded without changing controller shapes.
+
+    This wrapper is deliberately additive: the legacy and one-event
+    ``ExtractedAmodalRuntime`` paths remain unchanged and bit-identical.
+    """
+
+    def __init__(
+        self,
+        controller: UnifiedCognitiveController,
+        *,
+        encoders: Mapping[str, nn.Module] | None = None,
+        input_bus: AmodalInputBus | None = None,
+        output_bus: AmodalOutputBus | None = None,
+        intention_basis: torch.Tensor | None = None,
+    ) -> None:
+        super().__init__()
+        if controller.vision is not None or controller.actuator is not None:
+            raise ValueError(
+                "amodal controller runtime requires extracted controller adapters"
+            )
+        if controller.action_adapter_into_intention and intention_basis is None:
+            raise ValueError(
+                "an external intention basis is required for action-to-intention adapters"
+            )
+        self.controller = controller
+        self.encoders = nn.ModuleDict(dict(encoders or {}))
+        self.input_bus = input_bus or AmodalInputBus(controller.width)
+        self.output_bus = output_bus or AmodalOutputBus()
+        self.register_buffer(
+            "intention_basis",
+            intention_basis.detach().clone()
+            if intention_basis is not None
+            else torch.empty(0),
+            persistent=False,
+        )
+
+    @property
+    def event_width(self) -> int:
+        return self.controller.width
+
+    @property
+    def intention_width(self) -> int:
+        return self.controller.intention_width
+
+    def register_encoder(self, name: str, encoder: nn.Module) -> None:
+        """Attach another frontend without changing the controller."""
+        if not name or name in self.encoders:
+            raise ValueError("encoder name must be nonempty and unique")
+        self.encoders[name] = encoder
+
+    def register_decoder(self, name: str, decoder: nn.Module) -> None:
+        """Attach another backend without changing the controller."""
+        self.output_bus.register_decoder(name, decoder)
+
+    def encode_streams(
+        self,
+        streams: Mapping[str, torch.Tensor | AmodalEvent],
+    ) -> list[AmodalEvent]:
+        """Lower any nonempty set of named raw streams into opaque events.
+
+        The mapping key is used only to choose an encoder.  It is not embedded
+        in the event and therefore cannot become a hidden semantic task label.
+        Pre-encoded events are accepted for sensors whose frontend lives
+        outside this process.
+        """
+        if not streams:
+            raise ValueError("at least one input stream is required")
+        events: list[AmodalEvent] = []
+        batch: int | None = None
+        for name, source in streams.items():
+            if isinstance(source, AmodalEvent):
+                event = source
+            else:
+                if name not in self.encoders:
+                    raise KeyError(f"no encoder registered for stream {name!r}")
+                encoded = self.encoders[name](source)
+                event = (
+                    encoded
+                    if isinstance(encoded, AmodalEvent)
+                    else AmodalEvent(payload=encoded)
+                )
+            event.validate(width=self.event_width)
+            if batch is None:
+                batch = event.payload.shape[0]
+            elif batch != event.payload.shape[0]:
+                raise ValueError("all input streams must share the batch size")
+            events.append(event)
+        return events
+
+    def combine_events(
+        self,
+        events: AmodalEventCollection | Sequence[AmodalEvent],
+    ) -> AmodalEvent:
+        """Combine simultaneous events at the opaque neural-IR boundary."""
+        return self.input_bus(events)
+
+    def step_events(
+        self,
+        events: AmodalEventCollection | Sequence[AmodalEvent],
+        state: ControllerState,
+        previous_action: torch.Tensor,
+        previous_reward: torch.Tensor,
+        has_feedback: torch.Tensor,
+        retrieved_memory: torch.Tensor | None = None,
+        *,
+        disable_workspace: bool = False,
+    ) -> tuple[AmodalRuntimeOutput, ControllerState]:
+        event = self.combine_events(events)
+        basis = self.intention_basis if self.intention_basis.numel() else None
+        core, next_state = self.controller.step_event(
+            event,
+            state,
+            previous_action,
+            previous_reward,
+            has_feedback,
+            retrieved_memory,
+            disable_workspace=disable_workspace,
+            intention_basis=basis,
+        )
+        intention = core.intent_event
+        return (
+            AmodalRuntimeOutput(
+                core=core,
+                intention=intention,
+                decoded=self.output_bus(intention),
+            ),
+            next_state,
+        )
+
+    def step_streams(
+        self,
+        streams: Mapping[str, torch.Tensor | AmodalEvent],
+        state: ControllerState,
+        previous_action: torch.Tensor,
+        previous_reward: torch.Tensor,
+        has_feedback: torch.Tensor,
+        retrieved_memory: torch.Tensor | None = None,
+        *,
+        disable_workspace: bool = False,
+    ) -> tuple[AmodalRuntimeOutput, ControllerState]:
+        """Encode and process any number of simultaneous streams."""
+        return self.step_events(
+            self.encode_streams(streams),
+            state,
+            previous_action,
+            previous_reward,
+            has_feedback,
+            retrieved_memory,
+            disable_workspace=disable_workspace,
+        )
+
+    def initial_state(
+        self,
+        batch_size: int,
+        *,
+        device: torch.device | str,
+        dtype: torch.dtype = torch.float32,
+    ) -> ControllerState:
+        return self.controller.initial_state(batch_size, device=device, dtype=dtype)
 
 
 class ExtractedAmodalRuntime(nn.Module):

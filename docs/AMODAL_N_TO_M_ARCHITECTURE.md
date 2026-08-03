@@ -405,9 +405,20 @@ This is still **not yet the target architecture** because:
 - the token-stream result is not yet an unseen natural-language or speech
   frontend/backend qualification; those adapters still require causal audits.
 
+The first complete runtime composition API is now implemented as
+`AmodalControllerRuntime`. It keeps a single extracted controller core, accepts
+any nonempty mapping of registered raw frontends or already encoded events,
+combines them through the opaque event bus, and fans the resulting intention
+through a runtime-variable decoder mapping. Encoder and decoder registration
+does not change controller parameter shapes. Simultaneous stream permutation,
+pre-encoded sensor injection, missing-frontend rejection, and two-backend
+fan-out are covered by tests. This is an interface/plumbing milestone, not a
+claim that arbitrary natural modalities already learn or transfer.
+
 Therefore current results establish extracted vision-grounded neural IR,
 cognition, memory, audited M-output fan-out, and synchronous complementary N=2
-composition—not yet unrestricted asynchronous amodal operation.
+composition plus an explicit N-to-M runtime wrapper—not yet unrestricted
+asynchronous or naturally multimodal operation.
 
 ## Behavior-preserving migration order
 
@@ -422,8 +433,9 @@ composition—not yet unrestricted asynchronous amodal operation.
 7. ~~Accept variable-size synchronous visual event sets.~~
 8. ~~Qualify timestamp-preserving out-of-order and bounded-jitter delivery.~~
    Then qualify learned delay, noisy, and missing-stream policies.
-9. Add a second synthetic encoder with redundant evidence and measure learning
-   acceleration, dropout robustness, and shuffle sensitivity.
+9. ~~Add a runtime-variable encoder registry and controller/decoder wrapper.~~
+   Add a second synthetic encoder with redundant evidence and measure learning
+   acceleration, dropout robustness, and shuffle sensitivity through the wrapper.
 10. Require complementary evidence split across two encoders.
 11. Train audio and language frontends/backends only after the generic buses pass.
 12. Freeze the controller and qualify genuinely new sensors and outputs.

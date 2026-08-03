@@ -7,6 +7,7 @@ from .amodal_interface import AmodalEvent, AmodalEventCollection, IntentEvent
 from .amodal_runtime import (
     EXTRACTED_CHECKPOINT_FORMAT,
     ActionIntentDecoder,
+    AmodalControllerRuntime,
     AmodalEventTimeline,
     AmodalInputBus,
     AmodalOutputBus,
@@ -314,6 +315,90 @@ def test_output_bus_cardinality_is_runtime_variable() -> None:
     outputs = bus(intention)
     assert outputs["one"].shape == (3, 2)
     assert outputs["two"].shape == (3, 3)
+
+
+def _amodal_controller_runtime() -> AmodalControllerRuntime:
+    extracted = ExtractedAmodalRuntime.from_legacy(
+        UnifiedCognitiveController(**_configuration())
+    )
+    runtime = AmodalControllerRuntime(
+        extracted.controller,
+        encoders={"vision": torch.nn.Identity(), "audio": torch.nn.Identity()},
+    )
+    runtime.register_decoder("text", OpaqueProtocolDecoder(8, commands=3))
+    runtime.register_decoder("device", OpaqueProtocolDecoder(8, commands=5))
+    return runtime.eval()
+
+
+def test_amodal_runtime_accepts_runtime_variable_encoder_and_decoder_counts() -> None:
+    torch.manual_seed(1712)
+    runtime = _amodal_controller_runtime()
+    batch = 4
+    state = runtime.initial_state(batch, device="cpu")
+    previous_action = torch.full((batch,), NULL_ACTION, dtype=torch.long)
+    streams = {
+        "vision": torch.randn(batch, 32),
+        "audio": torch.randn(batch, 32),
+    }
+    output, next_state = runtime.step_streams(
+        streams,
+        state,
+        previous_action,
+        torch.zeros(batch),
+        torch.zeros(batch),
+    )
+    assert set(output.decoded) == {"text", "device"}
+    assert output.decoded["text"].shape == (batch, 3)
+    assert output.decoded["device"].shape == (batch, 5)
+    assert next_state.hidden.shape == (batch, 32)
+    # Adding another frontend event does not alter controller parameter shapes.
+    assert runtime.controller.width == 32
+    assert runtime.controller.intention_width == 8
+
+
+def test_amodal_runtime_is_permutation_invariant_for_simultaneous_streams() -> None:
+    torch.manual_seed(1713)
+    runtime = _amodal_controller_runtime()
+    batch = 3
+    state = runtime.initial_state(batch, device="cpu")
+    previous_action = torch.full((batch,), NULL_ACTION, dtype=torch.long)
+    vision = torch.randn(batch, 32)
+    audio = torch.randn(batch, 32)
+    first, first_state = runtime.step_streams(
+        {"vision": vision, "audio": audio},
+        state,
+        previous_action,
+        torch.zeros(batch),
+        torch.zeros(batch),
+    )
+    second, second_state = runtime.step_streams(
+        {"audio": audio, "vision": vision},
+        state,
+        previous_action,
+        torch.zeros(batch),
+        torch.zeros(batch),
+    )
+    torch.testing.assert_close(first.intention.payload, second.intention.payload)
+    torch.testing.assert_close(first_state.hidden, second_state.hidden)
+    for name in first.decoded:
+        torch.testing.assert_close(first.decoded[name], second.decoded[name])
+
+
+def test_amodal_runtime_accepts_preencoded_events_without_source_semantics() -> None:
+    runtime = _amodal_controller_runtime()
+    event = AmodalEvent(torch.randn(2, 32))
+    encoded = runtime.encode_streams({"arbitrary_sensor": event})
+    assert len(encoded) == 1
+    assert encoded[0].source_key is None
+    assert torch.equal(encoded[0].payload, event.payload)
+
+
+def test_amodal_runtime_rejects_missing_stream_encoder_and_empty_input() -> None:
+    runtime = _amodal_controller_runtime()
+    with pytest.raises(ValueError, match="at least one input stream"):
+        runtime.encode_streams({})
+    with pytest.raises(KeyError, match="no encoder registered"):
+        runtime.encode_streams({"touch": torch.randn(2, 32)})
 
 
 def test_factorized_decoder_emits_joint_opaque_bitmask_logits() -> None:

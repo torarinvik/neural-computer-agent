@@ -3,9 +3,11 @@
 from .amodal_interface import AmodalEvent, AmodalEventCollection, IntentEvent
 from .amodal_runtime import (
     ActionIntentDecoder,
+    AmodalControllerRuntime,
     AmodalEventTimeline,
     AmodalInputBus,
     AmodalOutputBus,
+    AmodalRuntimeOutput,
     ExtractedAmodalRuntime,
     OpaqueProtocolDecoder,
 )
@@ -14,11 +16,13 @@ from .model import ControllerState, UnifiedCognitiveController
 
 __all__ = [
     "ActionIntentDecoder",
+    "AmodalControllerRuntime",
     "AmodalEvent",
     "AmodalEventCollection",
     "AmodalEventTimeline",
     "AmodalInputBus",
     "AmodalOutputBus",
+    "AmodalRuntimeOutput",
     "CognitiveLifetimeBatch",
     "ControllerState",
     "ExtractedAmodalRuntime",

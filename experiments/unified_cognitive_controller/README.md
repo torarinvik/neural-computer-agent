@@ -8,9 +8,30 @@
 > The legacy class retains its bundled API, while `ExtractedAmodalRuntime` now
 > owns the vision encoder, controller, and decoder separately and reproduces the
 > current checkpoint exactly. Multiple output backends consume one intention
-> simultaneously, and a generic set bus now composes synchronous N=1/N=2 visual
-> events. Delayed/asynchronous and cross-modality composition remain unproven.
+> simultaneously, and `AmodalControllerRuntime` now exposes the complete
+> runtime-variable `N encoders -> one controller -> M decoders` plumbing. The
+> current qualifying evidence is still visual/synthetic; delayed/asynchronous,
+> natural cross-modality, and cold-start adapter learning remain unproven.
 > Historical results below must not be described as audited multimodal transfer.
+
+## First complete N-to-M runtime wrapper (2026-08-03)
+
+`AmodalControllerRuntime` is the first implementation of the target boundary,
+without changing the legacy or one-event paths. It owns one extracted
+controller, a registry of any number of frontend modules, the generic
+permutation-invariant input bus, and a runtime-variable decoder registry.
+Frontends emit only an opaque `AmodalEvent` (or a width-matched tensor); the
+registry key selects an adapter but is never embedded in the event. Pre-encoded
+events can therefore enter from an external sensor process.
+
+The wrapper accepts any nonempty simultaneous stream set, preserves one
+controller state, and returns one opaque `IntentEvent` plus all registered
+decoder outputs. Tests cover two raw streams, two independent decoder outputs,
+stream-order invariance, pre-encoded input without source semantics, and clear
+errors for empty or unregistered input. This proves the interface and tensor
+ownership boundary only. The next experiment must put a second synthetic
+encoder through it and measure reward-dependent learning, dropout robustness,
+and sample-efficiency transfer while keeping the controller frozen first.
 
 ## Extracted neural-IR migration rung (2026-08-01)
 
@@ -1870,3 +1891,22 @@ new residual permanently perturb it. The span-ten skill is not yet at the
 selection survives reload, the selected artifact reproduces its direct child,
 and wrong-skill activation loses the corresponding capability. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/span_multi_skill_bank_audit_seed49011.json`.
+
+## Replicated three-skill real-artifact bank routing (2026-08-03)
+
+The external skill-bank selector now routes among three real child artifacts
+(span nine, span ten, and diagnostic-only span eleven) relative to the common
+span-eight parent. With 1,024 reward-only selector updates, two independent
+seeds achieved 100% held-out routing. Reward-shuffled and cosine-only controls
+were both at the 1/3 baseline, candidate permutation was 100%, bank
+save/reload was exact, and routed behavior exactly matched direct rehydration.
+The 256- and 512-update arms failed the routing assertion; these are bounded
+budget negatives, not an architecture rejection.
+
+Across the two replicas, direct/routed behavior reached 92.06%/92.97% on span
+nine, 86.33%/87.70% on span ten, and 81.68%/80.61% on span eleven. The latter
+is a routing-row result only: its acquisition was previously rejected below the
+90% mastery bar. This establishes a stronger multi-skill memory boundary, but
+not cold-start skill acquisition, long-horizon continual learning, or span-
+eleven mastery. Full reports are in
+`session_records/sequence_working_memory_2026-08-02/three_skill_real_bank_routing_2026-08-03/`.
