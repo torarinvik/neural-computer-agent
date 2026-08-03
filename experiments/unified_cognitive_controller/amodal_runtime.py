@@ -295,6 +295,16 @@ class AmodalEventWindow:
     complete: bool = True
 
 
+@dataclass(frozen=True)
+class AmodalEventWindowStatus:
+    """Opaque transport metadata exposed to a learned wait policy."""
+
+    timestamp: float
+    age: float
+    present: tuple[bool, ...]
+    complete: bool
+
+
 class AmodalEventWindowBuffer:
     """Buffer streams until a complete or bounded-expired timestamp window.
 
@@ -434,6 +444,38 @@ class AmodalEventWindowBuffer:
             timestamp=torch.stack(timestamps, dim=1),
         ).validate(width=width)
         return AmodalEventWindow(timestamp, collection, complete=False)
+
+    def pending_status(
+        self, current_timestamp: float | None = None
+    ) -> tuple[AmodalEventWindowStatus, ...]:
+        """Expose generic presence/age metadata without exposing event content."""
+        if not self._pending:
+            return ()
+        now = (
+            max(self._pending)
+            if current_timestamp is None
+            else float(current_timestamp)
+        )
+        return tuple(
+            AmodalEventWindowStatus(
+                timestamp=timestamp,
+                age=max(0.0, now - timestamp),
+                present=tuple(name in self._pending[timestamp] for name in self.stream_names),
+                complete=all(
+                    name in self._pending[timestamp] for name in self.stream_names
+                ),
+            )
+            for timestamp in sorted(self._pending)
+        )
+
+    def release_pending(self, timestamp: float) -> AmodalEventWindow:
+        """Release one pending window at a caller-selected transport deadline."""
+        timestamp = float(timestamp)
+        if timestamp not in self._pending:
+            raise KeyError(f"no pending timestamp {timestamp}")
+        bucket = self._pending.pop(timestamp)
+        complete = all(name in bucket for name in self.stream_names)
+        return self._release(timestamp, bucket, complete=complete)
 
     @property
     def pending_timestamps(self) -> tuple[float, ...]:

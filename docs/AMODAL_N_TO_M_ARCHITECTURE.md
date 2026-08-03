@@ -449,7 +449,11 @@ asynchronous or naturally multimodal operation.
    buffer now has a bounded timeout that releases an explicit partial window
    with presence masking when a stream is absent; redundant-view audits retain
    89.26--99.49% accuracy with exactly one partial window and no stuck pending
-   state. This is transport-level progress, not a learned missing-event policy.
+   state. A payload-blind arrival predictor now learns wait/proceed timing from
+   presence, age, and arrival history: two 128-lifetime audits match a fixed
+   two-step timeout within two points of accuracy and 0.01 verified utility
+   while reducing query latency by 0.04--0.08 event units. This is learned
+   timing, not recovery of genuinely absent complementary evidence.
 9. ~~Add a runtime-variable encoder registry and controller/decoder wrapper.~~
    A reverse-basis synthetic encoder can now be aligned with a frozen controller
    by paired unlabeled sensory consistency; the three-appearance composition and
@@ -458,10 +462,9 @@ asynchronous or naturally multimodal operation.
    neural-IR alignment diagnostic, not arbitrary natural-modality transfer.
    The saved adapter replay is independently qualified, and a synthetic raw
    audio frontend now passes the same frozen-core composition and causal gates.
-   Waveform noise and burst-dropout robustness are also qualified; full missing
-   events and delayed evidence remain open. Add a learned generic timing/
-   missing-event policy, then repeat with a genuinely different token/audio
-   sensor before unfreezing the controller.
+   Waveform noise and burst-dropout robustness are also qualified; the next
+   boundary is genuinely missing complementary evidence and a different
+   token/audio sensor before unfreezing the controller.
 10. Require complementary evidence split across two encoders.
 11. Train audio and language frontends/backends only after the generic buses pass.
 12. Freeze the controller and qualify genuinely new sensors and outputs.

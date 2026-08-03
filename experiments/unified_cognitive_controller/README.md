@@ -78,8 +78,8 @@ Two fresh 512-lifetime robustness audits then preserved the audio result under
 Gaussian noise up to one signal RMS and 25% burst dropout (minimum accuracies
 88.05% and 88.67% for half-RMS noise; 88.63% and 88.75% for burst dropout).
 Full stream omission, low-confidence events, and a one-trial delay correctly
-remain unsolved and expose the next frontier: learned missing-event and timing
-handling.
+remain unsolved and expose the next frontier: learned wait/proceed timing and
+genuine missing-event handling.
 
 That timing rung is now partially closed without changing the controller. The
 generic `AmodalEventWindowBuffer` restores a one-trial delayed audio stream and
@@ -97,6 +97,19 @@ as required because the remaining stream lacks the answer evidence. This
 qualifies bounded transport progress, not learned missing-event recovery; the
 reports are `audio_timing_timeout_seed991001.json` and
 `audio_timing_timeout_seed991002.json`.
+
+A payload-blind learned timing rung now sits above that transport primitive. A
+tiny arrival predictor trained only from observed arrival traces (no payloads,
+stream names, semantic labels, or answer labels) decides whether to wait for a
+pending event or release a partial window. Two independent 128-lifetime audits
+matched a fixed two-step timeout within two percentage points of accuracy and
+0.01 verified utility on every appearance, while reducing query latency by
+0.04--0.08 event units. The no-history and inverted-history controls are
+included; redundant full-view accuracy stayed above 85%. This qualifies a
+learned timing decision, not recovery of genuinely absent complementary
+evidence. Reports and the predictor artifact are in
+`session_records/amodal_latent_alignment_2026-08-03/` and
+`artifacts/checkpoints/amodal_arrival_predictor_seed992001.pt`.
 
 ## Extracted neural-IR migration rung (2026-08-01)
 

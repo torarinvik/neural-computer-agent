@@ -176,3 +176,22 @@ required evidence—but the timeout still makes progress deterministically.
 This is generic bounded missing-event handling, not a task-specific fallback.
 Reports: `audio_timing_timeout_seed991001.json` and
 `audio_timing_timeout_seed991002.json`.
+
+## Learned wait/proceed timing breakthrough
+
+The next rung kept the controller, encoders, and input bus frozen. A tiny
+arrival predictor learned from observed transport traces whether a pending
+event would arrive before the declared deadline; it saw only presence, age,
+and recent arrival history, never payloads, stream names, task labels, or
+answers. Its held-out trace accuracy was 75.68% with Brier score 0.174.
+
+On two independent 128-lifetime audits, an adaptive policy using that predictor
+matched the fixed two-step timeout within two percentage points of accuracy and
+within 0.01 verified utility for every bars/diamonds/dot-pairs appearance,
+while reducing mean query latency by 0.04--0.08 event units. Removing arrival
+history lowered verified utility by 0.005--0.018, and an inverted-history
+control was also recorded. Redundant full-view behavior stayed above the 85%
+gate. This is a learned timing decision, not recovery of information that was
+never emitted; genuinely complementary missing evidence remains impossible and
+is still an explicit negative control. Reports: `arrival_predictor_training_seed992001.json`,
+`adaptive_wait_seed992101.json`, and `adaptive_wait_seed992201.json`.

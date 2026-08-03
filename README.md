@@ -274,7 +274,7 @@ The saved audio frontend also survives two fresh 512-lifetime corruption
 audits: minimum accuracy remained 88.05--88.67% under half-RMS Gaussian noise
 and 88.63--88.75% under 25% burst dropout. Whole-stream omission, low
 confidence, and one-trial delay correctly expose the remaining frontier:
-learned missing-event and timing handling.
+learned wait/proceed timing and genuine missing-event handling.
 
 The timestamp frontier has now advanced: a generic event-window buffer restores
 one-trial delayed and out-of-order audio without changing the controller.
@@ -289,6 +289,19 @@ window, and left no pending windows on either fresh 512-lifetime seed. The
 complementary missing-view control remains near chance, as it should because
 the remaining stream does not contain the missing evidence. This is transport
 progress, not learned missing-event recovery; the new reports are in
+`session_records/amodal_latent_alignment_2026-08-03/`.
+
+The first learned timing decision is now qualified without changing the
+controller. A tiny arrival predictor trained from observed transport traces
+only—presence, age, and recent arrival history—chooses whether to wait for a
+pending event or release a partial window. Across two independent 128-lifetime
+audits, adaptive waiting stayed within two percentage points of the fixed
+two-step accuracy and within 0.01 verified utility for every appearance, while
+reducing query latency by **0.04--0.08 event units**. No-history and inverted-
+history controls were run, and redundant full-view accuracy stayed above 85%.
+This qualifies learned timing, not recovery of genuinely absent complementary
+evidence. The predictor, training report, and audits are in
+`artifacts/checkpoints/amodal_arrival_predictor_seed992001.pt` and
 `session_records/amodal_latent_alignment_2026-08-03/`.
 
 ## North star

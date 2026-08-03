@@ -9,6 +9,7 @@ from .amodal_runtime import (
     ActionIntentDecoder,
     AmodalControllerRuntime,
     AmodalEventWindowBuffer,
+    AmodalEventWindowStatus,
     AmodalEventTimeline,
     AmodalInputBus,
     AmodalOutputBus,
@@ -576,3 +577,20 @@ def test_streaming_window_buffer_timeout_marks_missing_payload_absent() -> None:
     assert torch.equal(ready[0].collection.present[0], torch.tensor([True, False]))
     assert torch.equal(ready[0].collection.payload[:, 1], torch.zeros(2, 4))
     assert torch.equal(ready[0].collection.confidence[:, 1], torch.zeros(2))
+
+
+def test_streaming_window_buffer_exposes_opaque_policy_status_and_manual_release() -> None:
+    buffer = AmodalEventWindowBuffer(("vision", "audio"))
+    event = AmodalEvent(torch.ones(2, 4), timestamp=torch.zeros(2))
+    assert buffer.push({"vision": event}) == []
+    assert buffer.pending_status(current_timestamp=2.0) == (
+        AmodalEventWindowStatus(
+            timestamp=0.0,
+            age=2.0,
+            present=(True, False),
+            complete=False,
+        ),
+    )
+    released = buffer.release_pending(0.0)
+    assert not released.complete
+    assert buffer.pending_status() == ()
