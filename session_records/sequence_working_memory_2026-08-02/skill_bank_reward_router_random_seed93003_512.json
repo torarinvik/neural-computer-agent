@@ -1,0 +1,18 @@
+{
+  "schema": "skill-bank-reward-router-audit-v1",
+  "parent": "artifacts/checkpoints/span8_addressed_parent_scale1_seed32001.pt",
+  "seed": 93003,
+  "address_mode": "random",
+  "spans_private_to_verifier": [8, 9, 10],
+  "updates": 512,
+  "batch_size": 64,
+  "verifier_bits": 32768,
+  "train_queries_per_skill": 8,
+  "normal_accuracy": 0.6666666865,
+  "reward_shuffled_accuracy": 0.3333333433,
+  "candidate_permutation_accuracy": 0.6666666865,
+  "cosine_baseline_accuracy": 0.3333333433,
+  "controller_weights_unchanged": true,
+  "accepted_diagnostic": false,
+  "reason": "The reward path is informative but this budget/seed did not reach the 90% routing gate."
+}

@@ -363,6 +363,16 @@ addresses per episode (or otherwise break the static shortcut), then retest
 normal, shuffled-reward, permutation, and frozen-controller controls before
 any selector is allowed into promotion.
 
+The follow-up removed the shortcut with fixed random opaque candidate
+addresses. A three-row seed reached **100.00%** after 32,768 verifier bits,
+while reward-shuffled and cosine controls were **33.33%**; candidate
+permutation remained **100.00%** and the controller stayed frozen. A second
+seed reached the same 100/33/100/33 pattern at 65,536 bits, and a four-row run
+reached **100.00%** with both controls at **25.00%**. This is a genuine
+reward-dependent routing diagnostic, but not yet a promoted memory-bank
+capability: the next work is a multi-seed learning curve, more candidate
+skills, and integration with real promotion plus behavior/retention audits.
+
 ## Critic and per-cell plasticity follow-up
 
 The action-conditioned critic was implemented as a zero-impact auxiliary head:

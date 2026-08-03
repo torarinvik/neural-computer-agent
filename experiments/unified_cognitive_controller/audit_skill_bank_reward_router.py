@@ -16,6 +16,7 @@ from pathlib import Path
 
 import torch
 from torch import nn
+from torch.nn import functional as F
 
 from .audit_sequence_multi_skill_bank import _model
 from .audit_sequence_skill_bank import _context_key
@@ -82,6 +83,17 @@ def _train(
     return selector
 
 
+def _random_opaque_keys(
+        rows: int, width: int, *, seed: int, device: torch.device,
+        ) -> torch.Tensor:
+    """Create fixed opaque row addresses with no query-aligned geometry."""
+    if rows < 1 or width < 1:
+        raise ValueError("rows and width must be positive")
+    generator = torch.Generator(device="cpu").manual_seed(seed)
+    keys = torch.randn((rows, width), generator=generator)
+    return F.normalize(keys, dim=-1).to(device)
+
+
 @torch.no_grad()
 def _accuracy(
         selector: SkillAddressSelector, queries: torch.Tensor,
@@ -111,6 +123,12 @@ def main() -> None:
     parser.add_argument("--router-out", type=Path)
     parser.add_argument("--seed", type=int, default=93001)
     parser.add_argument("--spans", default="8,9,10")
+    parser.add_argument(
+        "--address-mode", choices=("controller", "random"),
+        default="controller",
+        help=(
+            "controller uses the original query-aligned keys; random uses "
+            "fixed opaque row addresses so reward is necessary."))
     parser.add_argument("--train-queries-per-skill", type=int, default=8)
     parser.add_argument("--test-queries-per-skill", type=int, default=16)
     parser.add_argument("--updates", type=int, default=512)
@@ -132,18 +150,26 @@ def main() -> None:
     for parameter in controller.parameters():
         parameter.requires_grad_(False)
 
-    keys, _ = _queries(
-        controller, spans, per_span=1, seed=args.seed + 1_000,
-        device=device)
-    # One controller-produced address per row is retained.  The row-family
-    # index is verifier-private and never enters selector training.
-    keys = keys.detach()
     train_queries, train_targets = _queries(
         controller, spans, per_span=args.train_queries_per_skill,
         seed=args.seed + 10_000, device=device)
     test_queries, test_targets = _queries(
         controller, spans, per_span=args.test_queries_per_skill,
         seed=args.seed + 20_000, device=device)
+    if args.address_mode == "controller":
+        keys, _ = _queries(
+            controller, spans, per_span=1, seed=args.seed + 1_000,
+            device=device)
+        # One controller-produced address per row is retained.  The row-family
+        # index is verifier-private and never enters selector training.
+        keys = keys.detach()
+    else:
+        # Random row addresses are fixed across train/test, but independent of
+        # the controller queries.  The only route from a family to its row is
+        # the attempted-row scalar outcome observed during training.
+        keys = _random_opaque_keys(
+            len(spans), int(train_queries.shape[-1]),
+            seed=args.seed + 1_000, device=device)
     selector = _train(
         keys, train_queries, train_targets,
         updates=args.updates, batch_size=args.batch_size,
@@ -166,12 +192,14 @@ def main() -> None:
     report = {
         "schema": "skill-bank-reward-router-audit-v1",
         "claim_boundary": (
-            "The selector sees controller-produced queries and keys, an opaque "
-            "attempted row, and its scalar outcome. Family indices are private "
-            "verifier data used only to generate outcomes and evaluate routing."),
+            "The selector sees controller-produced queries, opaque candidate "
+            "keys, an attempted row, and its scalar outcome. Family indices are "
+            "private verifier data used only to generate outcomes and evaluate "
+            "routing."),
         "parent": str(args.parent),
         "seed": args.seed,
         "spans_private_to_verifier": list(spans),
+        "address_mode": args.address_mode,
         "updates": args.updates,
         "batch_size": args.batch_size,
         "verifier_bits": args.updates * args.batch_size,
@@ -187,7 +215,8 @@ def main() -> None:
             controller_digest_before == controller_digest_after),
         "training_inputs": [
             "controller-produced query",
-            "controller-produced candidate keys",
+            ("controller-produced candidate keys" if args.address_mode ==
+             "controller" else "fixed random opaque candidate keys"),
             "attempted opaque row index",
             "scalar attempted-row outcome",
         ],

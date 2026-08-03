@@ -1,6 +1,7 @@
 import pytest
 import torch
 
+from .audit_skill_bank_reward_router import _random_opaque_keys
 from .skill_bank_router import SkillAddressSelector, attempted_outcome_loss
 
 
@@ -42,3 +43,12 @@ def test_attempted_outcome_loss_rejects_invalid_transitions():
     with pytest.raises(ValueError, match="binary"):
         attempted_outcome_loss(logits, torch.tensor([0, 1]),
                                torch.tensor([1.0, 0.5]))
+
+
+def test_random_opaque_keys_are_deterministic_normalized_and_unaligned():
+    first = _random_opaque_keys(3, 7, seed=93002, device=torch.device("cpu"))
+    second = _random_opaque_keys(3, 7, seed=93002, device=torch.device("cpu"))
+    other = _random_opaque_keys(3, 7, seed=93003, device=torch.device("cpu"))
+    assert torch.equal(first, second)
+    assert not torch.equal(first, other)
+    assert torch.allclose(first.norm(dim=-1), torch.ones(3))

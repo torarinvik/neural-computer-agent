@@ -1666,6 +1666,21 @@ not identifiable in this setup. The next diagnostic must remove that static
 shortcut (for example with episode-level address scrambling) before a learned
 selector can be promoted.
 
+## Reward-only routing with opaque addresses (2026-08-03)
+
+The shortcut was then removed by replacing controller-aligned candidate keys
+with fixed random opaque addresses. The controller remained frozen, and the
+selector saw only controller queries, candidate keys, the attempted row, and
+the scalar outcome. A three-row run reached **100.00%** after 32,768 verifier
+bits, while reward shuffling and cosine similarity both stayed at **33.33%**;
+candidate permutation stayed at **100.00%**. A second seed required a larger
+budget—**65,536 bits** and 16 training queries per skill—to reach the same
+100/33/100/33 pattern. At that budget, a four-row run reached **100.00%** with
+the shuffled and cosine controls at **25.00%**. This is the first clean
+reward-dependent routing diagnostic, not yet a production bank change: the
+seed-variance and sample-efficiency curve must be measured across more skills
+and then integrated with behavioral and retention audits.
+
 ## Latest breakthrough: span-three working-memory compounding (2026-08-02)
 
 The sequence branch now demonstrates the desired learn-to-learn effect on a
