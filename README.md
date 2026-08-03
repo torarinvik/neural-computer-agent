@@ -248,6 +248,17 @@ wrapper action logit matches the prior explicit bus path exactly (maximum drift
 audio/language transfer or cold-start cross-modal learning. Evidence is in
 `session_records/amodal_runtime_composition_2026-08-03/`.
 
+The next alignment diagnostic qualified a narrower neural-IR learning step. A
+second encoder with a deliberately reversed latent basis learned an adapter
+from paired unlabeled sensory consistency while the controller, original
+encoder, input bus, and decoder were frozen. Two identity seeds and one
+random-init seed transferred composition across bars, diamonds, and dot-pairs;
+shuffled-partner and contradictory controls passed, and N=1 retention stayed
+intact. Matched reward-only arms failed the causal gates and remain negative
+controls. This is not yet natural audio/text or cold-start transfer; the
+complete record is in
+`session_records/amodal_latent_alignment_2026-08-03/`.
+
 ## North star
 
 Maximize verified reusable capability gained per unique interaction.

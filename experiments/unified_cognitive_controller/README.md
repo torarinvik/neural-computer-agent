@@ -44,6 +44,25 @@ explicit bus path exactly (maximum difference 0.0). The reports are in
 architecture boundary for an existing skill, not natural audio/language
 transfer or cold-start cross-modal learning.
 
+## Self-supervised latent-basis alignment (2026-08-03)
+
+The next wrapper diagnostic used a copied vision frontend whose latent
+coordinates were reversely permuted. With the controller, original frontend,
+input bus, and decoder frozen, a trainable adapter learned to align the new
+stream using only paired encoded-event consistency on unlabeled frames. Two
+identity-initialized seeds and one random-initialized seed passed bars,
+diamonds, and dot-pairs composition, shuffled-partner, contradictory-reversal,
+and N=1 retention gates. The random adapter crossed the useful composition
+range by update 8 in a 32-update run. No verifier bits or semantic labels were
+used, and the controller hash remained unchanged. Full evidence is in
+`session_records/amodal_latent_alignment_2026-08-03/`.
+
+Matched reward-only adapter/bus pilots are retained in that record as negative
+controls: they improved fused accuracy transiently but failed causal
+contradiction controls. Thus paired sensory consistency is currently the
+qualified alignment signal; sparse reward alignment remains unproven and is
+not promoted as a shortcut.
+
 ## Extracted neural-IR migration rung (2026-08-01)
 
 The first four migration gates are implemented without retraining:

@@ -445,8 +445,13 @@ asynchronous or naturally multimodal operation.
 8. ~~Qualify timestamp-preserving out-of-order and bounded-jitter delivery.~~
    Then qualify learned delay, noisy, and missing-stream policies.
 9. ~~Add a runtime-variable encoder registry and controller/decoder wrapper.~~
-   Add a second synthetic encoder with redundant evidence and measure learning
-   acceleration, dropout robustness, and shuffle sensitivity through the wrapper.
+   A reverse-basis synthetic encoder can now be aligned with a frozen controller
+   by paired unlabeled sensory consistency; the three-appearance composition and
+   causal controls are recorded in
+   `session_records/amodal_latent_alignment_2026-08-03/`. This is a qualified
+   neural-IR alignment diagnostic, not arbitrary natural-modality transfer.
+   Measure learning acceleration, dropout robustness, and shuffle sensitivity
+   for the saved adapter, then repeat with a genuinely different raw modality.
 10. Require complementary evidence split across two encoders.
 11. Train audio and language frontends/backends only after the generic buses pass.
 12. Freeze the controller and qualify genuinely new sensors and outputs.

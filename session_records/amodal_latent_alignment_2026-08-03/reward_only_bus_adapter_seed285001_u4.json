@@ -1,0 +1,110 @@
+{
+  "schema": "amodal-latent-basis-alignment-v1",
+  "claim": "A frozen controller can use an externally aligned second encoder whose latent basis was permuted, using only attempted actions and scalar outcomes.",
+  "training_signal": "attempted_action_scalar_outcome",
+  "configuration": {
+    "adapter_only": false,
+    "batch_size": 32,
+    "device": "mps",
+    "eval_count": 256,
+    "exploration": 0.25,
+    "learning_rate": 0.003,
+    "random_init": false,
+    "seed": 285001,
+    "trainable_components": [
+      "second_encoder_adapter",
+      "input_bus"
+    ],
+    "updates": 4
+  },
+  "controller": "artifacts/checkpoints/unified_repertoire_span2_amodal_intention_seed122005.pt",
+  "controller_parameters_unchanged": true,
+  "controller_sha256": "9eea7ab479cb8450737f040b76495cc5ec737e970cdc165af2446873e530cd6c",
+  "curve": [
+    {
+      "contradictory_partner_accuracy": 0.42265623807907104,
+      "contradictory_prediction_flip_rate": 0.26640623807907104,
+      "full_n1_accuracy": 0.975781261920929,
+      "fused_accuracy": 0.5625,
+      "shuffled_partner_accuracy": 0.48359376192092896,
+      "stream_a_accuracy": 0.5445312261581421,
+      "stream_b_accuracy": 0.44453126192092896,
+      "update": 0,
+      "verifier_bits": 0
+    },
+    {
+      "contradictory_partner_accuracy": 0.2109375,
+      "contradictory_prediction_flip_rate": 0.5609375238418579,
+      "full_n1_accuracy": 0.975781261920929,
+      "fused_accuracy": 0.7718750238418579,
+      "loss": 1.4558320045471191,
+      "shuffled_partner_accuracy": 0.4664062559604645,
+      "stream_a_accuracy": 0.5445312261581421,
+      "stream_b_accuracy": 0.44453126192092896,
+      "train_accuracy": 0.6041666666666666,
+      "update": 1,
+      "verifier_bits": 192
+    },
+    {
+      "contradictory_partner_accuracy": 0.18984374403953552,
+      "contradictory_prediction_flip_rate": 0.6382812261581421,
+      "full_n1_accuracy": 0.975781261920929,
+      "fused_accuracy": 0.8218749761581421,
+      "loss": 0.13867397606372833,
+      "shuffled_partner_accuracy": 0.510937511920929,
+      "stream_a_accuracy": 0.5445312261581421,
+      "stream_b_accuracy": 0.44453126192092896,
+      "train_accuracy": 0.8020833333333334,
+      "update": 2,
+      "verifier_bits": 384
+    },
+    {
+      "contradictory_partner_accuracy": 0.22265625,
+      "contradictory_prediction_flip_rate": 0.600781261920929,
+      "full_n1_accuracy": 0.975781261920929,
+      "fused_accuracy": 0.8125,
+      "loss": 0.010688748210668564,
+      "shuffled_partner_accuracy": 0.5406249761581421,
+      "stream_a_accuracy": 0.5445312261581421,
+      "stream_b_accuracy": 0.44453126192092896,
+      "train_accuracy": 0.875,
+      "update": 3,
+      "verifier_bits": 576
+    },
+    {
+      "contradictory_partner_accuracy": 0.2734375,
+      "contradictory_prediction_flip_rate": 0.53515625,
+      "full_n1_accuracy": 0.975781261920929,
+      "fused_accuracy": 0.789843738079071,
+      "loss": 2.6747991796582937e-05,
+      "shuffled_partner_accuracy": 0.5523437261581421,
+      "stream_a_accuracy": 0.5445312261581421,
+      "stream_b_accuracy": 0.44453126192092896,
+      "train_accuracy": 0.8958333333333334,
+      "update": 4,
+      "verifier_bits": 768
+    }
+  ],
+  "final": {
+    "contradictory_partner_accuracy": 0.2582031190395355,
+    "contradictory_prediction_flip_rate": 0.5582031011581421,
+    "full_n1_accuracy": 0.978515625,
+    "fused_accuracy": 0.793749988079071,
+    "shuffled_partner_accuracy": 0.530078113079071,
+    "stream_a_accuracy": 0.5640624761581421,
+    "stream_b_accuracy": 0.44999998807907104
+  },
+  "initial": {
+    "contradictory_partner_accuracy": 0.42265623807907104,
+    "contradictory_prediction_flip_rate": 0.26640623807907104,
+    "full_n1_accuracy": 0.975781261920929,
+    "fused_accuracy": 0.5625,
+    "shuffled_partner_accuracy": 0.48359376192092896,
+    "stream_a_accuracy": 0.5445312261581421,
+    "stream_b_accuracy": 0.44453126192092896
+  },
+  "input_bus": "artifacts/checkpoints/amodal_input_bus_complementary_seed145001.pt",
+  "input_bus_sha256": "4ae96f60b99107834c27840b8841e8b2ba20c10e6565c220b5607fb9c80d3c71",
+  "passed": false,
+  "schema": "amodal-latent-basis-alignment-v1"
+}

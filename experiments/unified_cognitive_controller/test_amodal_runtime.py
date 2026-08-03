@@ -21,6 +21,7 @@ from .amodal_runtime import (
 )
 from .environment import NULL_ACTION
 from .model import ControllerOutput, ControllerState, UnifiedCognitiveController
+from .train_amodal_latent_alignment import LatentBasisFrontend
 
 
 def _configuration(**updates: object) -> dict[str, object]:
@@ -61,6 +62,19 @@ def _assert_state_equal(left: ControllerState, right: ControllerState) -> None:
     assert torch.equal(left.hidden, right.hidden)
     assert torch.equal(left.workspace, right.workspace)
     assert torch.equal(left.latest_event, right.latest_event)
+
+
+def test_latent_basis_frontend_exposes_only_a_trainable_alignment_adapter() -> None:
+    frontend = torch.nn.Identity()
+    adapter = LatentBasisFrontend(frontend, width=4)
+    source = torch.tensor([[1.0, 2.0, 3.0, 4.0]])
+    assert torch.equal(adapter(source), source.flip(-1))
+    assert not any(parameter.requires_grad for parameter in frontend.parameters())
+    assert all(parameter.requires_grad for parameter in adapter.adapter.parameters())
+    assert torch.equal(
+        adapter.basis_permutation,
+        torch.tensor([3, 2, 1, 0]),
+    )
 
 
 @pytest.mark.parametrize(
