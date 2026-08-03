@@ -110,6 +110,10 @@ learned timing decision, not recovery of genuinely absent complementary
 evidence. Reports and the predictor artifact are in
 `session_records/amodal_latent_alignment_2026-08-03/` and
 `artifacts/checkpoints/amodal_arrival_predictor_seed992001.pt`.
+The wait threshold was then selected by a verifier-only six-way utility grid on
+a non-held-out split (selected value **0.15**) and passed two fresh held-out
+audits with the same controls; see `wait_threshold_calibration_seed993001.json`
+and the two `adaptive_wait_calibrated_*.json` reports.
 
 ## Extracted neural-IR migration rung (2026-08-01)
 

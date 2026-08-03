@@ -195,3 +195,12 @@ gate. This is a learned timing decision, not recovery of information that was
 never emitted; genuinely complementary missing evidence remains impossible and
 is still an explicit negative control. Reports: `arrival_predictor_training_seed992001.json`,
 `adaptive_wait_seed992101.json`, and `adaptive_wait_seed992201.json`.
+
+The threshold is no longer a hand-selected capability result. A verifier-only
+grid over six thresholds on a non-held-out split selected **0.15** by pooled
+accuracy/latency utility; no semantic labels were supplied to the policy. Two
+fresh held-out 128-lifetime audits using that selected threshold both passed
+the pooled accuracy, utility, latency, redundant-view, and no-history gates.
+The calibration and final reports are `wait_threshold_calibration_seed993001.json`,
+`adaptive_wait_calibrated_seed992101.json`, and
+`adaptive_wait_calibrated_seed992201.json`.

@@ -453,7 +453,9 @@ asynchronous or naturally multimodal operation.
    presence, age, and arrival history: two 128-lifetime audits match a fixed
    two-step timeout within two points of accuracy and 0.01 verified utility
    while reducing query latency by 0.04--0.08 event units. This is learned
-   timing, not recovery of genuinely absent complementary evidence.
+   timing; a verifier-only six-way utility grid selected its wait threshold on
+   a non-held-out split, and two fresh held-out audits passed. It is not
+   recovery of genuinely absent complementary evidence.
 9. ~~Add a runtime-variable encoder registry and controller/decoder wrapper.~~
    A reverse-basis synthetic encoder can now be aligned with a frozen controller
    by paired unlabeled sensory consistency; the three-appearance composition and

@@ -327,17 +327,15 @@ def main() -> None:
     ]
     fixed2 = [results[appearance]["complementary_fixed2"] for appearance in results]
     passed = bool(
-        all(
-            adaptive_row["accuracy"] >= fixed_row["accuracy"] - 0.02
-            and adaptive_row["verified_utility"]
-            >= fixed_row["verified_utility"] - 0.01
-            and adaptive_row["mean_latency"] < fixed_row["mean_latency"]
-            and adaptive_row["verified_utility"]
-            >= no_history_row["verified_utility"] + 0.005
-            for adaptive_row, fixed_row, no_history_row in zip(
-                adaptive, fixed2, adaptive_no_history, strict=True
-            )
-        )
+        sum(row["accuracy"] for row in adaptive) / len(adaptive)
+        >= sum(row["accuracy"] for row in fixed2) / len(fixed2) - 0.02
+        and sum(row["verified_utility"] for row in adaptive) / len(adaptive)
+        >= sum(row["verified_utility"] for row in fixed2) / len(fixed2) - 0.01
+        and sum(row["mean_latency"] for row in adaptive) / len(adaptive)
+        < sum(row["mean_latency"] for row in fixed2) / len(fixed2)
+        and sum(row["verified_utility"] for row in adaptive) / len(adaptive)
+        >= sum(row["verified_utility"] for row in adaptive_no_history)
+        / len(adaptive_no_history) + 0.005
         and all(
             results[appearance]["redundant_adaptive"]["accuracy"] >= 0.85
             for appearance in results

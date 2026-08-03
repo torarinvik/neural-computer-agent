@@ -303,6 +303,11 @@ This qualifies learned timing, not recovery of genuinely absent complementary
 evidence. The predictor, training report, and audits are in
 `artifacts/checkpoints/amodal_arrival_predictor_seed992001.pt` and
 `session_records/amodal_latent_alignment_2026-08-03/`.
+The decision threshold was selected rather than guessed: a verifier-only
+six-way utility grid on a non-held-out split chose **0.15**, and two fresh
+held-out audits using that value passed the pooled accuracy, utility, latency,
+redundant-view, and no-history gates. The calibration and final reports are in
+`session_records/amodal_latent_alignment_2026-08-03/`.
 
 ## North star
 
