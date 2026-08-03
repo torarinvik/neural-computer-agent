@@ -13,6 +13,14 @@ gates; `session_records/amodal_latent_alignment_2026-08-03/` contains the
 training and 512-lifetime saved-frontend replay reports. These are synthetic
 raw-token adapters, not natural-language or reward-only alignment claims.
 
+`amodal_text_aligned_frontend_seed997001.pt` and
+`amodal_text_aligned_frontend_seed997101.pt` are the corresponding discrete
+text-transport adapters. They serialize each sensor view into 768 meaningless
+symbols and align them to the frozen neural IR by paired consistency. The
+512-lifetime saved-frontend replay passed the causal and retention gates;
+reports are in `session_records/amodal_latent_alignment_2026-08-03/`. They do
+not claim natural-language grounding.
+
 ## Successor-slot frontier diagnostics
 
 `span11_slot_extension_critic_seed93604.pt` and

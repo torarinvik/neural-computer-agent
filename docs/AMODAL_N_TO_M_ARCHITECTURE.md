@@ -417,6 +417,15 @@ does not qualify natural language, arbitrary tokenization, cold-start
 alignment, or reward-only encoder learning. Reports and artifacts are in
 `session_records/amodal_latent_alignment_2026-08-03/`.
 
+The discrete text boundary is now qualified as a separate adapter. A fixed
+sensor serialized each pooled RGB view into 768 meaningless symbols, and an
+embedding frontend aligned those symbols into the same frozen neural IR using
+paired consistency. A saved-frontend 512-lifetime replay reached
+96.33%/94.41%/96.91% fused on bars/diamonds/dot-pairs, with shuffled partners
+near chance and contradictory flips of 87.42%/78.48%/95.08%. This is text
+transport plumbing, not natural-language semantics; the next language claim
+requires a real text stream and a separate grounding audit.
+
 The first complete runtime composition API is now implemented as
 `AmodalControllerRuntime`. It keeps a single extracted controller core, accepts
 any nonempty mapping of registered raw frontends or already encoded events,
@@ -479,8 +488,10 @@ asynchronous or naturally multimodal operation.
    Waveform noise and burst-dropout robustness are also qualified. A separate
    continuous RGB patch-token frontend now passes the same frozen-core
    composition and causal gates from paired unlabeled consistency; independent
-   replay is recorded alongside the audio reports. Natural language, arbitrary
-   raw token streams, and cold-start alignment remain open.
+   replay is recorded alongside the audio reports. A discrete text-like sensor
+   now passes the same gates as well, using an embedding frontend and 768
+   meaningless symbols per frame. Natural-language semantics, arbitrary raw
+   token streams, and cold-start alignment remain open.
 10. Require complementary evidence split across two encoders.
 11. Train audio and language frontends/backends only after the generic buses pass.
 12. Freeze the controller and qualify genuinely new sensors and outputs.

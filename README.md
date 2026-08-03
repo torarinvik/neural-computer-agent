@@ -326,6 +326,17 @@ second non-audio raw-stream bridge into the same controller, but it is still a
 synthetic RGB-token sensor—not natural language tokens, arbitrary cold-start
 modalities, or reward-only encoder alignment.
 
+The next boundary also passed: a separate embedding frontend lowers a discrete
+text-like serialization of the raw RGB measurements (768 symbols per frame)
+into the same neural IR. Two independent 32-update runs and a fresh
+512-lifetime saved-frontend replay passed the causal gates. Replay fused
+accuracy was **96.33%/94.41%/96.91%** on bars/diamonds/dot-pairs, shuffled
+partners stayed at **50.39%/54.49%/50.59%**, contradictory flips were
+**87.42%/78.48%/95.08%**, and N=1 retention was **98.05--100%**. The controller
+remained frozen. This qualifies discrete text transport, not natural-language
+semantics; the symbols are deliberately meaningless sensor bytes. Artifacts
+and reports are in `session_records/amodal_latent_alignment_2026-08-03/`.
+
 ## North star
 
 Maximize verified reusable capability gained per unique interaction.

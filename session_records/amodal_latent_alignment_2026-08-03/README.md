@@ -248,6 +248,38 @@ family was also necessary for shape generalization. This records a useful
 sample-efficiency lesson: improve recoverability and variation at the raw
 sensor boundary before spending controller updates.
 
+## Discrete text-transport alignment
+
+The next boundary replaced continuous patch tokens with a discrete text-like
+serialization: each pooled RGB view becomes 768 symbols in fixed raster order.
+The symbols carry no word meanings or task metadata. A separate embedding
+frontend learned the frozen vision encoder's opaque neural-IR basis using only
+paired encoded-event consistency; the controller, original vision encoder,
+input bus, and decoder stayed frozen.
+
+Two independent 32-update runs passed. A fresh 512-lifetime replay of the
+saved frontend reported:
+
+| appearance | fused | shuffled partner | contradictory flip | N=1 |
+|---|---:|---:|---:|---:|
+| bars | 96.33% | 50.39% | 87.42% | 98.28% |
+| diamonds | 94.41% | 54.49% | 78.48% | 100.00% |
+| dot-pairs | 96.91% | 50.59% | 95.08% | 98.05% |
+
+This qualifies a genuine discrete text transport adapter into the shared IR,
+but not natural-language semantics, an LLM encoder, arbitrary cold-start text,
+or reward-only alignment. It is the clean next bridge for later language
+adapters: first lower symbols into the IR, then separately learn grounded
+word/concept correspondences.
+
+Artifacts:
+
+- `artifacts/checkpoints/amodal_text_aligned_frontend_seed997001.pt`
+- `artifacts/checkpoints/amodal_text_aligned_frontend_seed997101.pt`
+- `text_alignment_seed997001.json`
+- `text_alignment_seed997101.json`
+- `text_adapter_replay_seed997901.json`
+
 ## Sparse timing-reward controls (negative evidence)
 
 The timing branch also tested whether scalar verifier utility could replace

@@ -139,6 +139,27 @@ alignment. Artifacts and reports are in
 - `token_alignment_seed996101.json`
 - `token_adapter_replay_seed996901.json`
 
+## Discrete text-transport alignment (2026-08-03)
+
+The adjacent text boundary now passes independently. A fixed sensor serialized
+each pooled RGB view into 768 discrete symbols in raster order. A separate
+embedding frontend learned the frozen vision encoder's neural-IR basis from
+paired encoded-event consistency only. No word meanings, task labels,
+verifier bits, correct actions, or controller updates were used.
+
+Two independent 32-update runs passed, and a fresh 512-lifetime replay of the
+saved frontend reached **96.33%/94.41%/96.91%** fused on
+bars/diamonds/dot-pairs. Shuffled partners remained
+**50.39%/54.49%/50.59%**; contradictory partners flipped
+**87.42%/78.48%/95.08%**; N=1 retention remained **98.05--100%**. This
+qualifies discrete text transport into the shared neural IR, not natural
+language semantics or cold-start language-model alignment: the symbols are
+intentionally meaningless sensor bytes. Evidence is in
+`text_alignment_seed997001.json`, `text_alignment_seed997101.json`, and
+`text_adapter_replay_seed997901.json`; artifacts are
+`amodal_text_aligned_frontend_seed997001.pt` and
+`amodal_text_aligned_frontend_seed997101.pt`.
+
 ## Extracted neural-IR migration rung (2026-08-01)
 
 The first four migration gates are implemented without retraining:
