@@ -988,6 +988,50 @@ the three-row result across seeds using real disk-backed artifacts, then test
 longer replacement sequences and behavioral/retention gates before learned
 routing can replace the safe cosine default.
 
+## Successor-slot extension probe: span eleven (2026-08-03)
+
+The next bridge toward a real three-artifact bank appends one zero-output
+successor slot to the cumulative span-ten checkpoint and trains only that new
+slot. The insertion check was exact: logits and workspace state matched the
+parent before any update. Older spans were interleaved as verifier-generated
+rehearsal, and a zeroed-new-slot replay was used as the causal control.
+
+| Arm | Fresh verifier bits | Span-11 parent → child | Zeroed-slot span 11 | Retention Δ span 9 / 10 |
+| --- | ---: | ---: | ---: | ---: |
+| 16 updates, no distillation | 2,576 | 81.68% → 83.52% | 81.68% | −1.56 / +0.31 pp |
+| 32 updates, no distillation | 10,240 | 80.54% → 81.39% | 80.54% | −1.09 / +0.12 pp |
+| 8× batch reuse | 2,560 | 81.11% → 81.61% | 81.11% | −2.56 / −1.48 pp |
+| parent-logit distillation | 1,280–2,576 | unchanged | unchanged | 0.00 / 0.00 pp |
+
+The apparent gains were small and the zeroed controls returned to baseline;
+none crossed the 5-point causal gain bar. Reusing tiny batches also violated
+the two-point retention gate, while parent-logit distillation protected old
+behavior but did not learn the new span at this budget. These are bounded
+negative results, not evidence that the slot architecture is impossible. The
+reports are `span11_slot_extension_*.json`; the next fork is a
+retention-constrained frontier curriculum using fresh target batches.
+
+An activity probe found that the unregularized appended slot opened broadly
+on spans 9, 10, and 11. Adding a task-agnostic penalty on its residual norm
+for old-stream rehearsal reduced that leakage and kept retention within the
+gate, but two short penalty runs reached only **+0.36 points** on span 11 and
+the zeroed-slot controls stayed at baseline. The branch is paused with a
+well-defined negative: the interface is safe, but locality regularization
+alone is not enough to learn the next skill at this budget.
+
+Giving the new slot a generic read of only the immediately preceding slot was
+the next architectural fork. It preserved insertion and the two-point
+retention gate, but 16 and 32 fresh updates reached only **+0.85/+1.92
+points**, with zeroed-slot controls still at baseline. The prior-slot
+interface is now tested and safe, but it has not yet produced causal
+sample-efficient span-eleven learning.
+
+A gradual target curriculum (zero distractors/fixed positions, then a small
+position-and-distractor ramp) preserved retention but produced only **+0.07
+points** at 10,240 fresh verifier bits. The span-eleven branch is paused here:
+the short-run evidence points to a deeper credit-assignment or representation
+bottleneck rather than a reason to keep extending the same recipe.
+
 ## Cloud archive
 
 The current Vast instance was quiescent when archived. The load-bearing

@@ -99,6 +99,70 @@ def test_first_numerosity_rung_appends_exactly_one_zero_output_slot() -> None:
         student.skill_adapters[1][-1].bias) == 0
 
 
+def test_third_successor_slot_appends_without_changing_two_slot_parent() -> None:
+    torch.manual_seed(23402)
+    parent = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        skill_adapter_widths=(8, 8), skill_adapter_gate_mode="relu")
+    payload = {
+        "model_configuration": {
+            "width": 32,
+            "workspace_slots": 4,
+            "intention_width": 8,
+            "skill_adapter_widths": (8, 8),
+            "skill_adapter_gate_mode": "relu",
+        },
+        "state_dict": parent.state_dict(),
+    }
+    student, configuration, slot, prefixes = _build_student(
+        payload, device=torch.device("cpu"), slot_width=8,
+        continue_last_slot=False)
+    assert configuration["skill_adapter_widths"] == (8, 8, 8)
+    assert slot == 2
+    assert prefixes[-1] == "skill_adapter_critic_scales.2"
+    assert torch.count_nonzero(student.skill_adapters[2][-1].weight) == 0
+    assert torch.count_nonzero(student.skill_adapters[2][-1].bias) == 0
+    frames = torch.randn(16, 3, 32, 32)
+    actions = torch.full((16,), 2, dtype=torch.long)
+    zeros = torch.zeros(16)
+    parent_output = parent.step(
+        frames, parent.initial_state(16, device="cpu"), actions,
+        zeros, zeros)[0]
+    student_output = student.step(
+        frames, student.initial_state(16, device="cpu"), actions,
+        zeros, zeros)[0]
+    assert torch.equal(parent_output.logits, student_output.logits)
+
+
+def test_appended_slot_can_read_only_the_immediate_prior_slot() -> None:
+    parent = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        skill_adapter_widths=(8, 8))
+    payload = {
+        "model_configuration": {
+            "width": 32,
+            "workspace_slots": 4,
+            "intention_width": 8,
+            "skill_adapter_widths": (8, 8),
+        },
+        "state_dict": parent.state_dict(),
+    }
+    student, configuration, slot, _ = _build_student(
+        payload, device=torch.device("cpu"), slot_width=8,
+        continue_last_slot=False,
+        configuration_overrides={
+            "skill_adapter_reads_prior": True,
+            "skill_adapter_reads_prior_from": 2,
+            "skill_adapter_prior_read_limit": 1,
+        })
+    assert configuration["skill_adapter_widths"] == (8, 8, 8)
+    assert configuration["skill_adapter_reads_prior_from"] == 2
+    assert slot == 2
+    assert student.skill_adapters[0][0].in_features == 64
+    assert student.skill_adapters[1][0].in_features == 64
+    assert student.skill_adapters[2][0].in_features == 72
+
+
 def test_retention_floor_is_matched_per_stream() -> None:
     parent = {
         "a": {"overall_accuracy": 0.91},

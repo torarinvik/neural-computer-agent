@@ -1755,6 +1755,50 @@ disk-backed bank, followed by a longer sequence of replacements and retention
 audits; this diagnostic alone does not promote learned routing to the default
 cosine resolver.
 
+## Successor-slot extension probe: span eleven (2026-08-03)
+
+To close the gap between the abstract three-row routing diagnostic and a real
+three-artifact bank, a new utility now appends one zero-output successor slot
+to the cumulative span-ten controller and trains only that slot. Insertion is
+bit-identical before training, so the experiment cannot hide a regression in
+the inherited controller.
+
+The first short rungs did not yet justify promotion. A 16-update MPS run
+showed a **+1.85-point** span-eleven movement, but the zeroed-slot control
+returned exactly to baseline and the older span-nine/span-ten streams stayed
+within **−1.56/+0.31 points**. A 32-update replica showed only **+0.85
+points**. Reusing each tiny batch eight times produced a smaller **+0.50-point**
+movement while violating the two-point retention gate (−2.56 and −1.48
+points). Output distillation from the frozen parent preserved old behavior,
+but at the tested 8–16-update budgets it produced no measurable new-slot gain.
+
+These are useful bounded negatives: the slot interface and causal zeroing
+control work, but span eleven has not yet learned strongly enough to create a
+real third cumulative artifact. The extension remains an unpromoted tool and
+all reports are preserved as `span11_slot_extension_*.json` in the sequence
+session record. The next efficient fork is a retention-constrained frontier
+curriculum (fresh target batches, no repeated-batch shortcut) before spending
+enough verifier experience to build a production three-artifact bank.
+
+The follow-up activity probe explains the failure: the unregularized new slot
+opened broadly on inherited and target streams. A task-agnostic old-stream
+residual penalty reduced that leakage and kept retention within the gate, but
+two short penalty runs still produced only **+0.36 points** with no causal
+zeroed-slot separation. This branch is therefore paused at a correctly
+instrumented negative rather than being scaled into an expensive blind run.
+
+The immediate-prior read variant was also tested: it preserved insertion and
+retention, but 16 and 32 fresh updates produced only **+0.85/+1.92 points**
+with the zeroed-slot controls still at baseline. A prior-slot interface is
+therefore mechanically available, but it has not yet converted into measured
+sample-efficient span-eleven learning.
+
+A gradual target curriculum (zero distractors/fixed positions, then a small
+position-and-distractor ramp) preserved retention but produced only **+0.07
+points** at 10,240 fresh verifier bits. The next-span branch is now paused;
+the evidence points to a deeper credit-assignment or representation bottleneck,
+not justification for simply extending the same run.
+
 ## Latest breakthrough: span-three working-memory compounding (2026-08-02)
 
 The sequence branch now demonstrates the desired learn-to-learn effect on a

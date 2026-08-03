@@ -123,6 +123,20 @@ def test_rollout_keeps_all_fast_memory_on_the_model_device() -> None:
     assert result["actions"].shape == (8, 2)
 
 
+def test_rollout_slot_activity_is_opt_in_and_tracks_every_event() -> None:
+    model = UnifiedCognitiveController(
+        width=16, workspace_slots=2, intention_width=8,
+        skill_adapter_widths=(8,), skill_adapter_gate_mode="relu")
+    batch = generate_sequence_memory_batch(
+        8, span=3, distractors=2, seed=26011, operation="mixed")
+    ordinary = rollout_sequence_memory(model, batch, sample_actions=False)
+    assert "skill_adapter_openings" not in ordinary
+    result = rollout_sequence_memory(
+        model, batch, sample_actions=False, return_slot_activity=True)
+    assert result["skill_adapter_openings"].shape == (8, 8, 1)
+    assert result["skill_adapter_residual_norms"].shape == (8, 8, 1)
+
+
 def test_appended_slot_replay_helper_uses_the_final_slot_projection() -> None:
     model = UnifiedCognitiveController(
         width=16, workspace_slots=2, intention_width=8,

@@ -248,6 +248,7 @@ def rollout_sequence_memory(
         shuffle_outcomes: bool = False,
         loss_output: str = "all",
         loss_mode: str = "bce",
+        return_slot_activity: bool = False,
         ) -> dict[str, torch.Tensor]:
     """Run one real-time episode and return attempted-action evidence."""
     device = batch.input_frames.device
@@ -259,14 +260,24 @@ def rollout_sequence_memory(
     null = torch.full(
         (batch.batch_size,), NULL_ACTION, dtype=torch.long, device=device)
     zeros = torch.zeros(batch.batch_size, device=device)
+    slot_openings: list[torch.Tensor] = []
+    slot_residual_norms: list[torch.Tensor] = []
+
+    def record_activity(output) -> None:
+        if return_slot_activity and output.skill_adapter_openings is not None:
+            slot_openings.append(output.skill_adapter_openings)
+            slot_residual_norms.append(output.skill_adapter_residual_norms)
+
     for frame_index in range(batch.span):
-        _, state = model.step(
+        output, state = model.step(
             batch.input_frames[:, frame_index], state, null, zeros, zeros,
             disable_workspace=disable_workspace)
+        record_activity(output)
     for frame_index in range(batch.distractor_frames.shape[1]):
-        _, state = model.step(
+        output, state = model.step(
             batch.distractor_frames[:, frame_index], state, null, zeros, zeros,
             disable_workspace=disable_workspace)
+        record_activity(output)
     if reset_all_memory_before_query:
         state = model.initial_state(batch.batch_size, device=device)
     elif reset_active_state_before_query:
@@ -276,6 +287,7 @@ def rollout_sequence_memory(
     rewards: list[torch.Tensor] = []
     losses: list[torch.Tensor] = []
     logits: list[torch.Tensor] = []
+
     previous_action = null
     previous_reward = zeros
     for query_index in range(batch.span):
@@ -290,6 +302,7 @@ def rollout_sequence_memory(
             frame, state, previous_action,
             previous_reward * feedback, feedback,
             disable_workspace=disable_workspace)
+        record_activity(output)
         probabilities = torch.softmax(output.logits, dim=-1)
         if sample_actions:
             behavior = (
@@ -317,7 +330,7 @@ def rollout_sequence_memory(
     selected_losses = (
         losses if loss_output == "all"
         else [losses[0] if loss_output == "first" else losses[-1]])
-    return {
+    result = {
         "actions": torch.stack(actions, dim=1),
         "rewards": torch.stack(rewards, dim=1),
         "logits": torch.stack(logits, dim=1),
@@ -325,6 +338,11 @@ def rollout_sequence_memory(
         "final_workspace": state.workspace,
         "final_hidden": state.hidden,
     }
+    if return_slot_activity and slot_openings:
+        result["skill_adapter_openings"] = torch.stack(slot_openings, dim=1)
+        result["skill_adapter_residual_norms"] = torch.stack(
+            slot_residual_norms, dim=1)
+    return result
 
 
 @torch.no_grad()

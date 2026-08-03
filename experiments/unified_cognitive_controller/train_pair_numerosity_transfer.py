@@ -57,6 +57,7 @@ def _retained_within_parent_floor(
 def _build_student(
         payload: dict[str, object], *, device: torch.device,
         slot_width: int, continue_last_slot: bool,
+        configuration_overrides: dict[str, object] | None = None,
         ) -> tuple[
             UnifiedCognitiveController, dict[str, object], int,
             tuple[str, ...]]:
@@ -74,6 +75,8 @@ def _build_student(
         slot = len(inherited_slots)
         configuration["skill_adapter_widths"] = (
             *inherited_slots, slot_width)
+    if configuration_overrides:
+        configuration.update(configuration_overrides)
     prefixes = _slot_prefixes(slot)
     student = UnifiedCognitiveController(**configuration).to(device)
     missing, unexpected = student.load_state_dict(
