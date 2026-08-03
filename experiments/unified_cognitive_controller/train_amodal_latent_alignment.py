@@ -230,6 +230,11 @@ def main() -> None:
     parser.add_argument("--controller", type=Path, required=True)
     parser.add_argument("--input-bus", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument(
+        "--adapter-out",
+        type=Path,
+        help="optional independently loadable adapter artifact",
+    )
     parser.add_argument("--seed", type=int, default=285_001)
     parser.add_argument("--updates", type=int, default=16)
     parser.add_argument("--batch-size", type=int, default=32)
@@ -446,6 +451,26 @@ def main() -> None:
             )
         )
     }
+    if args.adapter_out is not None:
+        args.adapter_out.parent.mkdir(parents=True, exist_ok=True)
+        torch.save(
+            {
+                "schema": "amodal-latent-basis-adapter-v1",
+                "controller_sha256": _sha256(args.controller),
+                "input_bus_sha256": _sha256(args.input_bus),
+                "latent_width": runtime.controller.width,
+                "frontend_kind": "vision_reverse_basis",
+                "basis_permutation": adapter.basis_permutation.detach().cpu(),
+                "adapter_state_dict": {
+                    name: value.detach().cpu().clone()
+                    for name, value in adapter.adapter.state_dict().items()
+                },
+                "training_signal": report["training_signal"],
+                "source_report": str(args.report),
+                "passed": report["passed"],
+            },
+            args.adapter_out,
+        )
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
     print(json.dumps({"passed": report["passed"], "final": final}, sort_keys=True))

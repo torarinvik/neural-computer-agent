@@ -259,6 +259,17 @@ controls. This is not yet natural audio/text or cold-start transfer; the
 complete record is in
 `session_records/amodal_latent_alignment_2026-08-03/`.
 
+The latent adapter was independently saved and replayed at 2,048 lifetimes.
+The next raw-modality test also passed: a synthetic audio waveform frontend
+aligned to the frozen vision neural-IR basis using paired unlabeled consistency
+only. The controller, vision encoder, input bus, and decoder were unchanged;
+an independent replay reached **95.21%/88.96%/94.60%** fused on
+bars/diamonds/dot-pairs, with shuffled partners near chance and contradictory
+flips at **84.85%/69.50%/89.93%**. This is a qualified synthetic
+cross-modality alignment result, not yet natural audio, asynchronous input, or
+cold-start transfer. See
+`session_records/amodal_latent_alignment_2026-08-03/`.
+
 ## North star
 
 Maximize verified reusable capability gained per unique interaction.

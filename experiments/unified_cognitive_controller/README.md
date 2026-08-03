@@ -63,6 +63,17 @@ contradiction controls. Thus paired sensory consistency is currently the
 qualified alignment signal; sparse reward alignment remains unproven and is
 not promoted as a shortcut.
 
+The saved visual adapter replay passed a fresh 2,048-lifetime audit. More
+importantly, the same frozen-core procedure now works for a separate raw audio
+stream: a waveform sensor plus fixed spectral demodulation and a learned
+projection aligned to the vision neural-IR basis in 16 updates and 73,728
+paired frames. An independent replay reached 95.21%/88.96%/94.60% fused on
+bars/diamonds/dot-pairs, with shuffled partners near chance and contradictory
+flips at 84.85%/69.50%/89.93%. This is the first qualified cross-raw-modality
+alignment result, but it uses a synthetic paired sensor; natural audio,
+asynchrony, and cold-start alignment remain open. The saved frontend and full
+controls are in `session_records/amodal_latent_alignment_2026-08-03/`.
+
 ## Extracted neural-IR migration rung (2026-08-01)
 
 The first four migration gates are implemented without retraining:

@@ -450,8 +450,11 @@ asynchronous or naturally multimodal operation.
    causal controls are recorded in
    `session_records/amodal_latent_alignment_2026-08-03/`. This is a qualified
    neural-IR alignment diagnostic, not arbitrary natural-modality transfer.
-   Measure learning acceleration, dropout robustness, and shuffle sensitivity
-   for the saved adapter, then repeat with a genuinely different raw modality.
+   The saved adapter replay is independently qualified, and a synthetic raw
+   audio frontend now passes the same frozen-core composition and causal gates.
+   Measure dropout/asynchrony robustness for the saved audio frontend, then
+   repeat with a genuinely different token/audio sensor before unfreezing the
+   controller.
 10. Require complementary evidence split across two encoders.
 11. Train audio and language frontends/backends only after the generic buses pass.
 12. Freeze the controller and qualify genuinely new sensors and outputs.

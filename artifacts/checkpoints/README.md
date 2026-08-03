@@ -944,3 +944,29 @@ behavior-preserving successor to the five-capability repertoire checkpoint.
 
 This checkpoint removes active device-protocol content from the migration
 suffix. It does not yet establish variable-N inputs or multiple output decoders.
+
+## Frozen-core latent-basis adapter
+
+`amodal_latent_basis_adapter_seed2874.pt` is an independently loadable
+second-encoder adapter trained with paired unlabeled sensory consistency while
+the controller and input bus stayed frozen.
+
+- SHA-256:
+  `ba28b4b7d312df7e162e51d045cc154e364e1e555d6f65d231d6ee30a6eb37da`
+- Evidence: 2,048-lifetime independent replay passed all composition, shuffle,
+  contradiction, and N=1 retention gates
+- It is an adapter artifact, not a replacement controller checkpoint
+
+## Frozen-core audio neural-IR frontend
+
+`amodal_audio_aligned_frontend_seed289001.pt` is the first independently saved
+raw-audio frontend aligned to the promoted visual neural-IR basis.
+
+- SHA-256:
+  `5c94468a01b49b604b9420cb515c8d21a6b119b3206db5ab48c0773cedfaea2d`
+- Training: 16 updates, 73,728 paired frames, zero verifier bits, controller
+  and input bus frozen
+- Independent 2,048-lifetime replay: 95.21%/88.96%/94.60% fused on
+  bars/diamonds/dot-pairs, with causal controls passing
+- Synthetic paired-sensor result only; natural audio, delay robustness, and
+  cold-start modality alignment remain unproven

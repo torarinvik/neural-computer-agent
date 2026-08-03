@@ -80,3 +80,44 @@ step is to save the adapter as an independently loadable artifact, replay the
 frozen-controller composition audit from that artifact, and then repeat the
 paired-consistency alignment with a non-vision encoder (audio or token stream)
 before allowing any controller or memory updates.
+
+## Artifact replay and audio frontier
+
+The visual adapter was then saved independently as
+`artifacts/checkpoints/amodal_latent_basis_adapter_seed2874.pt`. A separate
+process loaded that artifact—without the training optimizer—and passed a fresh
+2,048-lifetime replay audit. Bars/diamonds/dot-pairs fused accuracy was
+96.39%/96.81%/96.12%; shuffled partners stayed at 51.19%/53.45%/49.32%, and
+contradictory prediction flips were 87.63%/81.64%/93.44%. This proves the
+result is reusable checkpoint state rather than a training-process effect.
+
+The first genuinely different raw modality was audio. A deterministic sensor
+rendered each ordinary visual view as a waveform whose carrier amplitudes were
+the low-resolution RGB measurements. A fixed spectral demodulator recovered
+raw sensor features, while only a small trainable projection learned the
+vision encoder's opaque neural-IR basis. The controller, vision encoder, input
+bus, and decoder remained frozen. Training used 16 updates, batch size 128,
+three appearances, two paired views per trial, and **73,728 paired frames**;
+there were zero verifier bits and no semantic labels.
+
+An independent 2,048-lifetime replay of the saved audio frontend passed:
+
+| appearance | fused | shuffled partner | contradictory flip |
+|---|---:|---:|---:|
+| bars | 95.21% | 52.10% | 84.85% |
+| diamonds | 88.96% | 53.29% | 69.50% |
+| dot-pairs | 94.60% | 49.37% | 89.93% |
+
+N=1 retention stayed 97.83--99.98%, and both individual streams remained near
+chance. The promoted adapter is
+`artifacts/checkpoints/amodal_audio_aligned_frontend_seed289001.pt`; the
+training and replay reports are `audio_alignment_seed289001.json` and
+`audio_adapter_replay_seed989001.json` in this directory.
+
+The first convolutional waveform frontend is retained as
+`audio_alignment_conv_failed_seed289001.json`: its loss decreased, but it
+failed the causal gates. The successful spectral demodulator therefore records
+a useful lesson for sample efficiency: improve the raw representation's
+recoverability before spending controller compute. Natural audio, arbitrary
+token streams, asynchronous audio, and cold-start cross-modal alignment remain
+open.

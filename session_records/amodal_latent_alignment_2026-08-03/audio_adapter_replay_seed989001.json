@@ -1,0 +1,46 @@
+{
+  "adapter": "/tmp/amodal_audio_alignment_demod_u16.pt",
+  "adapter_sha256": "5c94468a01b49b604b9420cb515c8d21a6b119b3206db5ab48c0773cedfaea2d",
+  "configuration": {
+    "audio_samples": 2048,
+    "device": "mps",
+    "eval_count": 2048,
+    "seed": 989001
+  },
+  "controller": "artifacts/checkpoints/unified_repertoire_span2_amodal_intention_seed122005.pt",
+  "controller_parameters_unchanged": true,
+  "controller_sha256": "9eea7ab479cb8450737f040b76495cc5ec737e970cdc165af2446873e530cd6c",
+  "input_bus": "artifacts/checkpoints/amodal_input_bus_complementary_seed145001.pt",
+  "input_bus_sha256": "4ae96f60b99107834c27840b8841e8b2ba20c10e6565c220b5607fb9c80d3c71",
+  "passed": true,
+  "results": {
+    "bars": {
+      "contradictory_partner_accuracy": 0.10361327975988388,
+      "contradictory_prediction_flip_rate": 0.8485351800918579,
+      "full_n1_accuracy": 0.978320300579071,
+      "fused_accuracy": 0.9521484375,
+      "shuffled_partner_accuracy": 0.52099609375,
+      "stream_a_accuracy": 0.5595703125,
+      "stream_b_accuracy": 0.44921875
+    },
+    "diamonds": {
+      "contradictory_partner_accuracy": 0.19462890923023224,
+      "contradictory_prediction_flip_rate": 0.695019543170929,
+      "full_n1_accuracy": 0.999804675579071,
+      "fused_accuracy": 0.8896484375,
+      "shuffled_partner_accuracy": 0.532910168170929,
+      "stream_a_accuracy": 0.5008789300918579,
+      "stream_b_accuracy": 0.4876953065395355
+    },
+    "dot_pairs": {
+      "contradictory_partner_accuracy": 0.04667968675494194,
+      "contradictory_prediction_flip_rate": 0.8993164300918579,
+      "full_n1_accuracy": 0.983691394329071,
+      "fused_accuracy": 0.945996105670929,
+      "shuffled_partner_accuracy": 0.49365234375,
+      "stream_a_accuracy": 0.515917956829071,
+      "stream_b_accuracy": 0.49101561307907104
+    }
+  },
+  "schema": "amodal-audio-adapter-replay-v1"
+}

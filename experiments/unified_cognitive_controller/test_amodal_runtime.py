@@ -22,6 +22,10 @@ from .amodal_runtime import (
 from .environment import NULL_ACTION
 from .model import ControllerOutput, ControllerState, UnifiedCognitiveController
 from .train_amodal_latent_alignment import LatentBasisFrontend
+from .train_amodal_audio_alignment import (
+    PairRelationAudioEncoder,
+    render_pair_relation_audio,
+)
 
 
 def _configuration(**updates: object) -> dict[str, object]:
@@ -75,6 +79,16 @@ def test_latent_basis_frontend_exposes_only_a_trainable_alignment_adapter() -> N
         adapter.basis_permutation,
         torch.tensor([3, 2, 1, 0]),
     )
+
+
+def test_audio_frontend_has_device_independent_raw_waveform_contract() -> None:
+    frames = torch.rand(3, 3, 32, 32)
+    waveform = render_pair_relation_audio(frames, samples=2048)
+    assert waveform.shape == (3, 1, 2048)
+    frontend = PairRelationAudioEncoder(32, samples=2048)
+    encoded = frontend(waveform)
+    assert encoded.shape == (3, 32)
+    assert torch.isfinite(encoded).all()
 
 
 @pytest.mark.parametrize(
