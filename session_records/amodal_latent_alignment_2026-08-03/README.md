@@ -121,3 +121,22 @@ a useful lesson for sample efficiency: improve the raw representation's
 recoverability before spending controller compute. Natural audio, arbitrary
 token streams, asynchronous audio, and cold-start cross-modal alignment remain
 open.
+
+## Audio corruption and timing audit
+
+The saved audio frontend was stress-tested on two fresh 512-lifetime seeds. It
+retained the clean composition gate and remained causal under Gaussian waveform
+noise up to one signal RMS and 25% contiguous burst dropout:
+
+| seed | clean minimum | Gaussian 0.50 minimum | burst dropout minimum |
+|---:|---:|---:|---:|
+| 990002 | 88.55% | 88.05% | 88.63% |
+| 990003 | 89.22% | 88.67% | 88.75% |
+
+The audit also includes sample dropout from 10--50%, full audio omission,
+low-confidence audio, and a one-trial audio delay. The first two corruption
+families preserve the useful stream; omission, delayed evidence, and low
+confidence correctly collapse toward the single-view/chance baseline. This
+localizes the remaining frontier to a learned missing-event and timing policy,
+not denoising. Evidence is in
+`audio_robustness_seed990002.json` and `audio_robustness_seed990003.json`.

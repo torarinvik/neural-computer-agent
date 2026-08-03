@@ -1,0 +1,152 @@
+{
+  "appearances": {
+    "bars": {
+      "burst_dropout_0.25": {
+        "accuracy": 0.95703125
+      },
+      "clean": {
+        "accuracy": 0.9574218988418579
+      },
+      "gaussian_0.10": {
+        "accuracy": 0.9574218988418579
+      },
+      "gaussian_0.25": {
+        "accuracy": 0.957812488079071
+      },
+      "gaussian_0.50": {
+        "accuracy": 0.9566406011581421
+      },
+      "gaussian_1.00": {
+        "accuracy": 0.94921875
+      },
+      "low_confidence": {
+        "accuracy": 0.5511718988418579
+      },
+      "missing_audio": {
+        "accuracy": 0.54296875
+      },
+      "one_trial_delay": {
+        "accuracy": 0.518750011920929
+      },
+      "sample_dropout_0.10": {
+        "accuracy": 0.966796875
+      },
+      "sample_dropout_0.25": {
+        "accuracy": 0.9789062738418579
+      },
+      "sample_dropout_0.50": {
+        "accuracy": 0.9632812738418579
+      }
+    },
+    "diamonds": {
+      "burst_dropout_0.25": {
+        "accuracy": 0.887499988079071
+      },
+      "clean": {
+        "accuracy": 0.8921874761581421
+      },
+      "gaussian_0.10": {
+        "accuracy": 0.8921874761581421
+      },
+      "gaussian_0.25": {
+        "accuracy": 0.8910156488418579
+      },
+      "gaussian_0.50": {
+        "accuracy": 0.88671875
+      },
+      "gaussian_1.00": {
+        "accuracy": 0.87109375
+      },
+      "low_confidence": {
+        "accuracy": 0.575390636920929
+      },
+      "missing_audio": {
+        "accuracy": 0.525390625
+      },
+      "one_trial_delay": {
+        "accuracy": 0.53125
+      },
+      "sample_dropout_0.10": {
+        "accuracy": 0.9105468988418579
+      },
+      "sample_dropout_0.25": {
+        "accuracy": 0.916015625
+      },
+      "sample_dropout_0.50": {
+        "accuracy": 0.8515625
+      }
+    },
+    "dot_pairs": {
+      "burst_dropout_0.25": {
+        "accuracy": 0.9671875238418579
+      },
+      "clean": {
+        "accuracy": 0.9515625238418579
+      },
+      "gaussian_0.10": {
+        "accuracy": 0.952343761920929
+      },
+      "gaussian_0.25": {
+        "accuracy": 0.9535156488418579
+      },
+      "gaussian_0.50": {
+        "accuracy": 0.954296886920929
+      },
+      "gaussian_1.00": {
+        "accuracy": 0.953906238079071
+      },
+      "low_confidence": {
+        "accuracy": 0.4964843690395355
+      },
+      "missing_audio": {
+        "accuracy": 0.508593738079071
+      },
+      "one_trial_delay": {
+        "accuracy": 0.4937500059604645
+      },
+      "sample_dropout_0.10": {
+        "accuracy": 0.973437488079071
+      },
+      "sample_dropout_0.25": {
+        "accuracy": 0.979296863079071
+      },
+      "sample_dropout_0.50": {
+        "accuracy": 0.935546875
+      }
+    }
+  },
+  "audio": "artifacts/checkpoints/amodal_audio_aligned_frontend_seed289001.pt",
+  "audio_sha256": "5c94468a01b49b604b9420cb515c8d21a6b119b3206db5ab48c0773cedfaea2d",
+  "claim": "A saved audio neural-IR frontend retains causal cross-stream use under waveform corruption.",
+  "configuration": {
+    "audio_samples": 2048,
+    "conditions": [
+      "clean",
+      "gaussian_0.10",
+      "gaussian_0.25",
+      "gaussian_0.50",
+      "gaussian_1.00",
+      "sample_dropout_0.10",
+      "sample_dropout_0.25",
+      "sample_dropout_0.50",
+      "burst_dropout_0.25",
+      "one_trial_delay",
+      "missing_audio",
+      "low_confidence"
+    ],
+    "count": 512,
+    "device": "mps",
+    "seed": 990003
+  },
+  "controller": "artifacts/checkpoints/unified_repertoire_span2_amodal_intention_seed122005.pt",
+  "controller_sha256": "9eea7ab479cb8450737f040b76495cc5ec737e970cdc165af2446873e530cd6c",
+  "gate_summary": {
+    "burst_dropout_0.25_min": 0.887499988079071,
+    "clean_min": 0.8921874761581421,
+    "gaussian_0.50_min": 0.88671875
+  },
+  "input_bus": "artifacts/checkpoints/amodal_input_bus_complementary_seed145001.pt",
+  "input_bus_sha256": "4ae96f60b99107834c27840b8841e8b2ba20c10e6565c220b5607fb9c80d3c71",
+  "passed": true,
+  "schema": "amodal-audio-robustness-audit-v1"
+}

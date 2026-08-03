@@ -74,6 +74,13 @@ alignment result, but it uses a synthetic paired sensor; natural audio,
 asynchrony, and cold-start alignment remain open. The saved frontend and full
 controls are in `session_records/amodal_latent_alignment_2026-08-03/`.
 
+Two fresh 512-lifetime robustness audits then preserved the audio result under
+Gaussian noise up to one signal RMS and 25% burst dropout (minimum accuracies
+88.05% and 88.67% for half-RMS noise; 88.63% and 88.75% for burst dropout).
+Full stream omission, low-confidence events, and a one-trial delay correctly
+remain unsolved and expose the next frontier: learned missing-event and timing
+handling.
+
 ## Extracted neural-IR migration rung (2026-08-01)
 
 The first four migration gates are implemented without retraining:

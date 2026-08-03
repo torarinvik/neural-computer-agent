@@ -270,6 +270,12 @@ cross-modality alignment result, not yet natural audio, asynchronous input, or
 cold-start transfer. See
 `session_records/amodal_latent_alignment_2026-08-03/`.
 
+The saved audio frontend also survives two fresh 512-lifetime corruption
+audits: minimum accuracy remained 88.05--88.67% under half-RMS Gaussian noise
+and 88.63--88.75% under 25% burst dropout. Whole-stream omission, low
+confidence, and one-trial delay correctly expose the remaining frontier:
+learned missing-event and timing handling.
+
 ## North star
 
 Maximize verified reusable capability gained per unique interaction.
