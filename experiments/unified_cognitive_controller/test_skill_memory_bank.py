@@ -1,6 +1,19 @@
 import torch
+from torch import nn
 
 from .skill_memory_bank import SkillArtifactBank
+
+
+class _FirstKeyCoordinate(nn.Module):
+    def forward(self, query: torch.Tensor, keys: torch.Tensor) -> torch.Tensor:
+        return keys[..., 0]
+
+
+class _ZeroSelector(nn.Module):
+    def forward(self, query: torch.Tensor, keys: torch.Tensor) -> torch.Tensor:
+        return torch.zeros(
+            keys.shape[0], keys.shape[1], device=keys.device,
+            dtype=keys.dtype)
 
 
 def test_skill_bank_roundtrip_promotion_and_eviction(tmp_path):
@@ -83,3 +96,38 @@ def test_skill_bank_can_abstain_on_low_confidence_address(tmp_path):
         assert int(restored.memory.store.access_count.sum()) == 0
     else:
         raise AssertionError("low-confidence address selected a skill")
+
+
+def test_skill_bank_opt_in_selector_promotes_and_counts_once(tmp_path):
+    bank = SkillArtifactBank(tmp_path / "bank", width=2, capacity=2)
+    bank.put(torch.tensor([1.0, 0.0]), {"value": torch.tensor(1)},
+            name="first.pt")
+    bank.put(torch.tensor([0.0, 1.0]), {"value": torch.tensor(2)},
+            name="second.pt")
+    bank.save()
+    restored = SkillArtifactBank.load(tmp_path / "bank")
+    selector = _FirstKeyCoordinate()
+    index, confidence, artifact = restored.promote_with_selector(
+        torch.tensor([0.0, 0.0]), selector, min_confidence=0.5)
+    assert index == 0
+    assert confidence > 0.5
+    assert int(artifact["value"]) == 1
+    assert int(restored.memory.store.access_count.sum()) == 1
+
+
+def test_skill_bank_opt_in_selector_abstention_does_not_count_access(tmp_path):
+    bank = SkillArtifactBank(tmp_path / "bank", width=2, capacity=2)
+    bank.put(torch.tensor([1.0, 0.0]), {"value": torch.tensor(1)},
+            name="first.pt")
+    bank.put(torch.tensor([0.0, 1.0]), {"value": torch.tensor(2)},
+            name="second.pt")
+    bank.save()
+    restored = SkillArtifactBank.load(tmp_path / "bank")
+    try:
+        restored.promote_with_selector(
+            torch.tensor([0.0, 0.0]), _ZeroSelector(), min_margin=0.1)
+    except LookupError as error:
+        assert "abstaining" in str(error)
+        assert int(restored.memory.store.access_count.sum()) == 0
+    else:
+        raise AssertionError("selector ambiguity did not abstain")

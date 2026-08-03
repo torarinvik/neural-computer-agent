@@ -373,6 +373,15 @@ reward-dependent routing diagnostic, but not yet a promoted memory-bank
 capability: the next work is a multi-seed learning curve, more candidate
 skills, and integration with real promotion plus behavior/retention audits.
 
+The selector has now been exercised through the real bank with the archived
+span-nine and span-ten artifacts. After save/reload, all 64 held-out queries
+selected the correct row; direct and rehydrated behavior matched at 91.45%
+and 86.64%; wrong-skill controls fell to 86.59% and 79.96%. Reward-shuffled
+and cosine controls stayed at 50%, candidate permutation stayed at 100%, and
+the controller remained frozen. This closes the plumbing proof, not the
+promotion claim: multi-seed retention and online task-shift audits remain the
+next gate before learned routing can replace the safe default.
+
 ## Critic and per-cell plasticity follow-up
 
 The action-conditioned critic was implemented as a zero-impact auxiliary head:

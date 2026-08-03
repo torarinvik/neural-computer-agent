@@ -125,6 +125,67 @@ class SkillArtifactBank:
         return int(selected), float(cosine[order[0]]), float(margin)
 
     @torch.no_grad()
+    def resolve_with_selector(
+            self, query: torch.Tensor, selector: torch.nn.Module, *,
+            record_access: bool = True,
+            ) -> tuple[int, float, float]:
+        """Resolve through an explicitly supplied learned row selector.
+
+        This is opt-in: the bank's production default remains cosine routing.
+        The selector receives the query and all valid opaque row keys and must
+        return one scalar score per row.  Confidence is the top softmax score
+        and margin is the top-minus-runner-up raw-score difference, giving the
+        same abstention vocabulary as :meth:`resolve`.
+        """
+        if query.shape != (self.width,):
+            raise ValueError("query must have shape [width]")
+        valid = self.memory.store.valid.nonzero(as_tuple=False).squeeze(1)
+        if not valid.numel():
+            raise KeyError("query resolved against an empty skill bank")
+        bank_keys = self.memory.store.keys[valid]
+        query = query.to(device=bank_keys.device, dtype=bank_keys.dtype)
+        try:
+            parameter = next(selector.parameters())
+        except StopIteration:
+            parameter = None
+        if parameter is None:
+            selector_query = query
+            selector_keys = bank_keys
+        else:
+            selector_query = query.to(
+                device=parameter.device, dtype=parameter.dtype)
+            selector_keys = bank_keys.to(
+                device=parameter.device, dtype=parameter.dtype)
+        scores = selector(
+            selector_query.unsqueeze(0), selector_keys.unsqueeze(0))
+        if scores.shape != (1, valid.numel()):
+            raise ValueError(
+                "selector must return scores with shape [batch, rows]")
+        scores = scores.squeeze(0).to(device=bank_keys.device)
+        order = scores.argsort(descending=True)
+        selected = valid[order[0]]
+        probabilities = torch.softmax(scores, dim=0)
+        margin = (
+            scores[order[0]] - scores[order[1]]
+            if order.numel() > 1 else scores.new_tensor(1.0))
+        if record_access:
+            self.memory.store.access_count[selected] += 1
+        return (
+            int(selected), float(probabilities[order[0]]), float(margin))
+
+    def _load_checked_artifact(self, index: int) -> dict[str, Any]:
+        if index < 0 or index >= len(self.paths) or self.paths[index] is None:
+            raise KeyError("query resolved to an empty skill row")
+        path = self.directory / self.paths[index]
+        expected_hash = self.artifact_sha256[index]
+        if expected_hash is not None:
+            actual_hash = self._file_sha256(path)
+            if actual_hash != expected_hash:
+                raise ValueError(
+                    "skill artifact hash mismatch; refusing corrupted file")
+        return torch.load(path, map_location="cpu", weights_only=False)
+
+    @torch.no_grad()
     def retrieve_index(
             self, query: torch.Tensor, *, record_access: bool = True,
             ) -> tuple[int, float]:
@@ -158,16 +219,36 @@ class SkillArtifactBank:
         ):
             raise LookupError(
                 "skill address below confidence/margin threshold; abstaining")
-        if index < 0 or index >= len(self.paths) or self.paths[index] is None:
-            raise KeyError("query resolved to an empty skill row")
-        path = self.directory / self.paths[index]
-        expected_hash = self.artifact_sha256[index]
-        if expected_hash is not None:
-            actual_hash = self._file_sha256(path)
-            if actual_hash != expected_hash:
-                raise ValueError(
-                    "skill artifact hash mismatch; refusing corrupted file")
-        artifact = torch.load(path, map_location="cpu", weights_only=False)
+        artifact = self._load_checked_artifact(index)
+        self.memory.store.access_count[index] += 1
+        self.hot[index] = artifact
+        return index, confidence, artifact
+
+    def promote_with_selector(
+            self, query: torch.Tensor, selector: torch.nn.Module, *,
+            min_confidence: float | None = None,
+            min_margin: float | None = None,
+            ) -> tuple[int, float, dict[str, Any]]:
+        """Promote an artifact using an explicitly supplied learned selector.
+
+        The selector is never persisted or silently installed.  Callers must
+        pass it on every use, and the same hash verification and abstention
+        checks as cosine promotion apply.
+        """
+        if min_confidence is not None and not 0.0 <= min_confidence <= 1.0:
+            raise ValueError("selector min_confidence must be between 0 and 1")
+        if min_margin is not None and min_margin < 0.0:
+            raise ValueError("min_margin must be nonnegative")
+        index, confidence, margin = self.resolve_with_selector(
+            query, selector, record_access=False)
+        if (
+                min_confidence is not None and confidence < min_confidence
+        ) or (
+                min_margin is not None and margin < min_margin
+        ):
+            raise LookupError(
+                "skill selector address below threshold; abstaining")
+        artifact = self._load_checked_artifact(index)
         self.memory.store.access_count[index] += 1
         self.hot[index] = artifact
         return index, confidence, artifact

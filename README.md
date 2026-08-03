@@ -1681,6 +1681,20 @@ reward-dependent routing diagnostic, not yet a production bank change: the
 seed-variance and sample-efficiency curve must be measured across more skills
 and then integrated with behavioral and retention audits.
 
+## Reward-routed real skill-bank integration (2026-08-03)
+
+The selector was then exercised through the actual hot/cold bank rather than
+only tensors. Real span-nine and span-ten successor-slot artifacts were saved
+behind random opaque addresses, the bank was reloaded, and 64 held-out queries
+were promoted through the reward-trained selector. Routing was **64/64**;
+reload rows were exact; and the rehydrated behavior matched the direct child
+at **91.45%** for span nine and **86.64%** for span ten. Wrong-skill controls
+fell to **86.59%** and **79.96%**, respectively. Reward-shuffled and cosine
+controls were both **50.00%**, candidate permutation was **100.00%**, and the
+controller stayed frozen. This validates the plumbing and causal artifact
+selection, but promotion remains opt-in until multi-seed retention and online
+task-shift audits are added.
+
 ## Latest breakthrough: span-three working-memory compounding (2026-08-02)
 
 The sequence branch now demonstrates the desired learn-to-learn effect on a
