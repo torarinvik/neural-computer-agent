@@ -396,6 +396,14 @@ left the new route at chance, and candidate permutation remained exact. The
 next experiment is the same update applied to real bank artifacts across
 multiple task shifts, with behavior and artifact-retention gates.
 
+The same method now passes through a real disk-backed replacement: after
+reloading the bank, the distilled selector routed the old row and newly
+replaced row correctly, while direct and routed behavior matched at 92.45%
+and 88.05%. New-only updates erased the old route; distilled replay retained
+it; shuffled rewards failed the new route. The next step is to extend this
+from one two-skill replacement to repeated task shifts and a longer retention
+window before changing the production default.
+
 ## Critic and per-cell plasticity follow-up
 
 The action-conditioned critic was implemented as a zero-impact auxiliary head:

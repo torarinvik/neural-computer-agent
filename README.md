@@ -1715,6 +1715,19 @@ result is now replicated at the plumbing level; the remaining promotion gate
 is whether online task shifts and repeated acquisition preserve the older
 artifact behavior under a learned selector.
 
+## Online retention through disk-backed replacement (2026-08-03)
+
+The distilled update was exercised through a real bank lifecycle: an old
+span-nine artifact and an unused opaque address were saved, the placeholder
+was replaced by span ten, and the bank was reloaded before promotion. The
+naive new-only arm learned span ten at **100%** but erased span nine (**0%**).
+The distilled arm retained span nine at **100%** and learned span ten at
+**100%**, with shuffled rewards leaving the new route at **0%**. Both rows
+selected correctly after replacement; direct and routed behavior matched at
+**92.45%** and **88.05%**, respectively. This is a diagnostic milestone for
+memory-side continual learning, not yet a general production policy: broader
+task shifts and longer retention windows remain to be audited.
+
 ## Latest breakthrough: span-three working-memory compounding (2026-08-02)
 
 The sequence branch now demonstrates the desired learn-to-learn effect on a
