@@ -1,0 +1,126 @@
+{
+  "schema": "complement-population-selection-v1",
+  "claim_boundary": "The learner receives only controller-visible latent features, opaque attempted actions, and scalar attempted-action outcomes. Private and full audit labels are verifier-side only.",
+  "configuration": {
+    "parent": "artifacts/checkpoints/span10_cold_rehydrated_8192_e384_seed9954815.pt",
+    "report": "/tmp/nca_population/complement_population_1024.json",
+    "checkpoint_out": "/tmp/nca_population/complement_population_winner.pt",
+    "work_dir": "/tmp/nca_population/arms",
+    "arm_seeds": "93783,93784,93785",
+    "data_seed": 93783,
+    "private_seed": 395083,
+    "full_seed": 495083,
+    "shuffled_seed": 93786,
+    "train_lifetimes": 1024,
+    "private_count": 256,
+    "full_count": 1024,
+    "span": 10,
+    "distractors": 2,
+    "epochs": 128,
+    "batch_size": 512,
+    "learning_rate": 0.001,
+    "binary_margin": 0.25,
+    "skill_adapter_width": 256,
+    "skill_adapter_gate_hidden": 64,
+    "replay_buffer_in": "artifacts/memory/span11_replay_buffer_seed93703.pt",
+    "replay_residual_penalty": 0.01,
+    "replay_gate_penalty": 0.01,
+    "replay_logit_penalty": 0.01,
+    "minimum_causal_gain": 5.0,
+    "minimum_complement_accuracy": 0.6,
+    "maximum_retention_drop_points": 2.0,
+    "device": "mps"
+  },
+  "arms": [
+    {
+      "seed": 93783,
+      "training_report": "/tmp/nca_population/arms/arm0_seed93783.json",
+      "checkpoint": "/tmp/nca_population/arms/arm0_seed93783.pt",
+      "private_report": "/tmp/nca_population/arms/arm0_seed93783_private_audit.json",
+      "private": {
+        "complement_accuracy": 0.677734375,
+        "causal_gain_points": 18.828123807907104,
+        "retention_margin": {
+          "span9": -0.009982645511627197,
+          "span10": 0.0
+        },
+        "minimum_retention_margin": -0.009982645511627197,
+        "reset_accuracy": 0.4000000059604645,
+        "causal_ok": true,
+        "accuracy_ok": true,
+        "retention_ok": true,
+        "reset_ok": false,
+        "selection_eligible": false
+      }
+    },
+    {
+      "seed": 93784,
+      "training_report": "/tmp/nca_population/arms/arm1_seed93784.json",
+      "checkpoint": "/tmp/nca_population/arms/arm1_seed93784.pt",
+      "private_report": "/tmp/nca_population/arms/arm1_seed93784_private_audit.json",
+      "private": {
+        "complement_accuracy": 0.7066406011581421,
+        "causal_gain_points": 21.601560711860657,
+        "retention_margin": {
+          "span9": -0.0008680224418640137,
+          "span10": 0.00039058923721313477
+        },
+        "minimum_retention_margin": -0.0008680224418640137,
+        "reset_accuracy": 0.4000000059604645,
+        "causal_ok": true,
+        "accuracy_ok": true,
+        "retention_ok": true,
+        "reset_ok": false,
+        "selection_eligible": false
+      }
+    },
+    {
+      "seed": 93785,
+      "training_report": "/tmp/nca_population/arms/arm2_seed93785.json",
+      "checkpoint": "/tmp/nca_population/arms/arm2_seed93785.pt",
+      "private_report": "/tmp/nca_population/arms/arm2_seed93785_private_audit.json",
+      "private": {
+        "complement_accuracy": 0.694531261920929,
+        "causal_gain_points": 20.468750596046448,
+        "retention_margin": {
+          "span9": -0.0043402910232543945,
+          "span10": -0.00390625
+        },
+        "minimum_retention_margin": -0.0043402910232543945,
+        "reset_accuracy": 0.5,
+        "causal_ok": true,
+        "accuracy_ok": true,
+        "retention_ok": true,
+        "reset_ok": true,
+        "selection_eligible": true
+      }
+    }
+  ],
+  "selection": {
+    "winner_seed": 93785,
+    "private_rejection_reason": null
+  },
+  "full_audit": "/tmp/nca_population/arms/winner_full_audit.json",
+  "full_summary": {
+    "complement_accuracy": 0.6680663824081421,
+    "causal_gain_points": 16.279292106628418,
+    "retention_margin": {
+      "span9": -0.019748270511627197,
+      "span10": -0.01611328125
+    },
+    "minimum_retention_margin": -0.019748270511627197,
+    "reset_accuracy": 0.5,
+    "causal_ok": true,
+    "accuracy_ok": true,
+    "retention_ok": true,
+    "reset_ok": true,
+    "selection_eligible": true
+  },
+  "shuffled_complement_accuracy": 0.516796886920929,
+  "promotion": {
+    "promoted": true,
+    "checkpoint": "/tmp/nca_population/complement_population_winner.pt",
+    "shuffled_ok": true
+  },
+  "elapsed_seconds": 202.70516458305065
+}

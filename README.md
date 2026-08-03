@@ -1942,6 +1942,27 @@ experience has not yet produced a strong second compounding gain. The complete
 curve and rejected controls are recorded in
 `session_records/sequence_working_memory_2026-08-02/complement_margin_frontier_2026-08-03.md`.
 
+### Complement population-selection frontier
+
+To reduce seed-sensitive interference, three complement-slot clones were
+raced on the same target stream (`--data-seed`) and selected by a private
+causal/accuracy/retention screen. The selected child then faced a larger
+untouched audit, reset-memory control, and matched outcome-shuffled control.
+The 1,024-lifetime race replicated twice on disjoint streams: the promoted
+children reached **66.81%/+16.28 points** and **67.64%/+16.90 points** causal
+complement performance, with span-nine/span-ten retention drops bounded by
+−1.97/−1.61 and −1.58/−1.22 points. Full reset controls were exactly 50.00%,
+and shuffled controls returned to 51.68% and 50.50%.
+
+This is a robust population-promotion result, not yet a sample-efficiency
+win: three clones cost about three training exposures. A 2,048-lifetime
+replicate improved complement accuracy to 69.88% and causal gain to +19.05
+points, but violated the span-nine retention gate (−2.67 points), so it was
+rejected. The private reset check is advisory at 256 samples because it is too
+noisy; full promotion still requires the reset band. Reports and the exact
+selection logic are in
+`session_records/sequence_working_memory_2026-08-02/population_races_2026-08-03/`.
+
 ## Latest breakthrough: span-three working-memory compounding (2026-08-02)
 
 The sequence branch now demonstrates the desired learn-to-learn effect on a

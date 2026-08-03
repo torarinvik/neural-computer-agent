@@ -583,6 +583,11 @@ def main() -> None:
             "its gate"))
     parser.add_argument("--seed", type=int, default=30941)
     parser.add_argument(
+        "--data-seed", type=int,
+        help=(
+            "seed freshly collected target/rehearsal streams separately "
+            "from model initialization; population arms can share data"))
+    parser.add_argument(
         "--buffer-exploration", type=float, default=1.0,
         help=(
             "probability of uniform exploration while collecting replay; "
@@ -885,6 +890,7 @@ def main() -> None:
     if args.replay_refinement_epochs and args.replay_buffer_in is None:
         raise ValueError("replay refinement requires --replay-buffer-in")
     seed_everything(args.seed)
+    data_seed = args.seed if args.data_seed is None else args.data_seed
     device = torch.device(args.device)
     payload = torch.load(args.parent, map_location=device, weights_only=False)
     base_configuration = dict(payload["model_configuration"])
@@ -956,7 +962,7 @@ def main() -> None:
     else:
         target_buffer = _collect_buffer(
             base, count=args.train_lifetimes, span=args.span,
-            distractors=args.distractors, seed=args.seed, device=device,
+            distractors=args.distractors, seed=data_seed, device=device,
             position_augmentation=args.position_augmentation,
             include_intention=include_intention,
             include_workspace=include_workspace,
@@ -975,7 +981,7 @@ def main() -> None:
             buffer_parts.append(_collect_buffer(
                 base, count=args.rehearsal_lifetimes, span=rehearsal_span,
                 distractors=args.distractors,
-                seed=args.seed + (index + 1) * 1_000_003,
+                seed=data_seed + (index + 1) * 1_000_003,
                 device=device,
                 position_augmentation=args.position_augmentation,
                 include_intention=include_intention,

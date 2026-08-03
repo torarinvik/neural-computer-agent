@@ -79,6 +79,26 @@ margin/continuation/1,024-lifetime curve is in
 - SHA-256 seed 93776: `027692ea475430598994d7085cc6fd1b2796b89ad4d8efd99cb37357bc7a934a`
 - SHA-256 shuffled control: `01cdbe5a7a0fd6f7fbfcebc0fa656bd1004c2c62565b9eb004495e33f1a11b71`
 
+### Complement population-selection checkpoints
+
+`complement_population_winner_seed93785.pt` and
+`complement_population_winner_seed93789.pt` are the two promoted winners of
+three-clone races on disjoint 1,024-lifetime streams. Their full audits reached
+66.81%/+16.28 points and 67.64%/+16.90 points complement/causal performance;
+span-nine/span-ten retention stayed within −1.97/−1.61 and −1.58/−1.22
+points. Full reset controls were 50.00%; matched shuffled controls
+(`complement_population_shuffled_seed93786.pt` and
+`complement_population_shuffled_seed93790.pt`) returned to 51.68% and 50.50%.
+
+These are promoted partial-capability checkpoints, not mastery defaults. The
+population costs three clone trainings, so it currently demonstrates robust
+selection rather than a lower verifier-bit cost. A 2,048-lifetime population
+race selected seed 93791 but was rejected after a −2.67-point span-nine
+retention drop; its local candidate is retained as
+`complement_population_2048_rejected_seed93791.pt`. Reports and selection
+logic are in
+`session_records/sequence_working_memory_2026-08-02/population_races_2026-08-03/`.
+
 ## Procedural-shape relative operations
 
 `unified_next_error_balanced_primary_seed43601.pt` and
