@@ -265,6 +265,35 @@ def _replay_refinement_indices(
         else replay_indices)
 
 
+def _protected_rehearsal_mask(
+        replay_mask: torch.Tensor, *, target_rows: int,
+        protect_rehearsal: bool) -> torch.Tensor:
+    """Mark current-run rehearsal as protected without changing provenance.
+
+    ``replay_mask`` historically meant persisted rows only.  That made
+    retention penalties silently skip freshly collected rehearsal streams.
+    This separate mask lets an experiment protect all non-target rehearsal
+    rows while preserving the old default and the persisted-buffer provenance
+    semantics.
+    """
+    if replay_mask.ndim != 1:
+        raise ValueError("replay mask must be one-dimensional")
+    protected = replay_mask.clone()
+    if not protect_rehearsal:
+        return protected
+    if target_rows < 0 or target_rows > protected.numel():
+        raise ValueError("target rows must fit within the replay mask")
+    # A freshly collected buffer is laid out as target rows followed by
+    # rehearsal rows, then any persisted rows. Persisted rows are already
+    # marked in replay_mask, so only the non-persisted suffix is added here.
+    persisted_start = protected.numel()
+    persisted = torch.nonzero(protected, as_tuple=False).flatten()
+    if persisted.numel():
+        persisted_start = int(persisted.min())
+    protected[target_rows:persisted_start] = True
+    return protected
+
+
 def _balanced_provenance_loss(
         score: torch.Tensor, source_target: torch.Tensor) -> torch.Tensor:
     """Use equal total weight for fresh and persisted provenance classes."""
@@ -335,6 +364,32 @@ def _query_curriculum_indices(
         span, device=device).repeat_interleave(target_lifetimes)
     return torch.arange(total_rows, device=device)[
         (~target_mask) | (query_index < cutoff)]
+
+
+def _query_window_indices(
+        total_rows: int, *, target_lifetimes: int, span: int,
+        start: int, end: int, device: torch.device) -> torch.Tensor:
+    """Keep replay rows and a selected query window from the fresh target.
+
+    Query positions are a generic stream coordinate, not a semantic task
+    label.  A successor slot can therefore be trained only where the parent
+    has not already demonstrated the primitive, while all rehearsal and
+    persisted-replay rows remain available to protect older skills.
+    """
+    if target_lifetimes < 1 or span < 1:
+        raise ValueError("target lifetimes and span must be positive")
+    if not 0 <= start < end <= span:
+        raise ValueError("query window must satisfy 0 <= start < end <= span")
+    target_rows = target_lifetimes * span
+    if target_rows > total_rows:
+        raise ValueError("target stream is shorter than its declared size")
+    target_mask = torch.zeros(total_rows, dtype=torch.bool, device=device)
+    target_mask[:target_rows] = True
+    query_index = torch.zeros(total_rows, dtype=torch.long, device=device)
+    query_index[:target_rows] = torch.arange(
+        span, device=device).repeat_interleave(target_lifetimes)
+    selected_target = target_mask & (query_index >= start) & (query_index < end)
+    return torch.arange(total_rows, device=device)[~target_mask | selected_target]
 
 
 def _base_mistake_weights(
@@ -582,6 +637,12 @@ def main() -> None:
         "--replay-logit-penalty", type=float, default=0.0,
         help="penalize action-logit changes on persisted transitions")
     parser.add_argument(
+        "--protect-rehearsal", action="store_true",
+        help=(
+            "also apply replay weights and retention penalties to freshly "
+            "collected non-target rehearsal rows; default preserves the "
+            "historical persisted-only mask"))
+    parser.add_argument(
         "--replay-gate-source-weight", type=float, default=0.0,
         help=(
             "train the successor gate to distinguish fresh versus persisted "
@@ -655,6 +716,16 @@ def main() -> None:
         help=(
             "number of initial query positions in the curriculum warmup; "
             "zero disables the staged prefix"))
+    parser.add_argument(
+        "--query-window-start", type=int, default=0,
+        help=(
+            "first fresh-target query position trained by the successor "
+            "slot; zero with --query-window-end zero disables the window"))
+    parser.add_argument(
+        "--query-window-end", type=int, default=0,
+        help=(
+            "exclusive fresh-target query position for a generic training "
+            "window; zero means the end of the span"))
     parser.add_argument(
         "--base-mistake-weight", type=float, default=1.0,
         help=(
@@ -814,6 +885,8 @@ def main() -> None:
             or args.skill_adapter_gate_hidden < 0
             or args.query_curriculum_warmup_epochs < 0
             or args.query_curriculum_cutoff < 0
+            or args.query_window_start < 0
+            or args.query_window_end < 0
             or args.test_episodes < 2):
         raise ValueError("invalid replay-buffer dimensions")
     if args.replay_max_transitions < 0:
@@ -835,6 +908,13 @@ def main() -> None:
             "query-curriculum-cutoff is required for a warmup curriculum")
     if args.query_curriculum_cutoff > args.span:
         raise ValueError("query-curriculum-cutoff cannot exceed span")
+    query_window_active = bool(
+        args.query_window_start or args.query_window_end)
+    query_window_end = args.query_window_end or args.span
+    if query_window_active and not (
+            0 <= args.query_window_start < query_window_end <= args.span):
+        raise ValueError(
+            "query window must satisfy 0 <= start < end <= span")
     if args.skill_adapter_residual_scale <= 0.0:
         raise ValueError("skill-adapter-residual-scale must be positive")
     if args.train_existing_skill_slot and not args.skill_adapter_width:
@@ -857,9 +937,15 @@ def main() -> None:
     if args.query_curriculum_warmup_epochs and args.buffer_in is not None:
         raise ValueError(
             "query curriculum needs a freshly collected target stream")
+    if query_window_active and args.buffer_in is not None:
+        raise ValueError(
+            "query windows need a freshly collected target stream")
     if args.query_curriculum_warmup_epochs and args.replay_refinement_epochs:
         raise ValueError(
             "query curriculum cannot be combined with staged replay refinement")
+    if query_window_active and args.replay_refinement_epochs:
+        raise ValueError(
+            "query windows cannot be combined with staged replay refinement")
     if args.action_conditioned_critic_weight < 0:
         raise ValueError("action-conditioned-critic-weight must not be negative")
     if args.action_conditioned_critic_policy_weight < 0:
@@ -1094,18 +1180,22 @@ def main() -> None:
     rehearsal_lifetime_count = (
         args.rehearsal_lifetimes * len(rehearsal_spans)
         if args.buffer_in is None else 0)
+    protected_mask = _protected_rehearsal_mask(
+        replay_mask,
+        target_rows=(args.train_lifetimes * args.span),
+        protect_rehearsal=args.protect_rehearsal)
     if args.shuffle_outcomes:
         generator = torch.Generator(device="cpu").manual_seed(args.seed + 1)
         permutation = torch.randperm(
             outcomes.shape[0], generator=generator).to(device)
         outcomes = outcomes[permutation]
     query_sample_weights = _outcome_only_query_weights(
-        features, outcomes, replay_mask,
+        features, outcomes, protected_mask,
         age_column=(features.shape[1] - 1 if include_event_age else None),
         power=args.query_difficulty_power,
         floor=args.query_difficulty_floor)
     query_sample_weights = query_sample_weights * _base_mistake_weights(
-        base_logits, actions, outcomes, replay_mask,
+        base_logits, actions, outcomes, protected_mask,
         weight=args.base_mistake_weight)
     curriculum_indices = None
     if args.query_curriculum_warmup_epochs:
@@ -1113,6 +1203,12 @@ def main() -> None:
             features.shape[0], target_lifetimes=args.train_lifetimes,
             span=args.span, cutoff=args.query_curriculum_cutoff,
             device=device)
+    window_indices = None
+    if query_window_active:
+        window_indices = _query_window_indices(
+            features.shape[0], target_lifetimes=args.train_lifetimes,
+            span=args.span, start=args.query_window_start,
+            end=query_window_end, device=device)
     if args.skill_adapter_width:
         existing_slots = tuple(base_configuration.get(
             "skill_adapter_widths", ()))
@@ -1303,7 +1399,7 @@ def main() -> None:
                     inherited = base.action_adapter(base_features)
                     current = student.action_adapter(base_features)
                     logits = logits + current - inherited
-                batch_replay_mask = replay_mask[indices]
+                batch_replay_mask = protected_mask[indices]
                 loss = (
                     _weighted_binary_margin_loss(
                         logits, actions[indices], outcomes[indices],
@@ -1395,8 +1491,9 @@ def main() -> None:
                 optimizer.step()
 
     all_indices = torch.arange(features.shape[0], device=device)
-    fresh_indices = all_indices[~replay_mask]
-    replay_indices = all_indices[replay_mask]
+    fresh_indices = all_indices[~protected_mask]
+    replay_indices = all_indices[protected_mask]
+    training_indices = all_indices if window_indices is None else window_indices
     gate_targets = None
     if (
             args.replay_refinement_epochs
@@ -1406,7 +1503,7 @@ def main() -> None:
             raise ValueError("gate preservation requires a skill adapter")
         with torch.no_grad():
             gate_targets = _skill_slot_logits(student, features)[3].squeeze(1)
-            gate_targets = gate_targets.masked_fill(replay_mask, 0.0)
+            gate_targets = gate_targets.masked_fill(protected_mask, 0.0)
     if args.replay_refinement_epochs:
         if not bool(fresh_indices.numel()) or not bool(replay_indices.numel()):
             raise ValueError("staged replay needs fresh and persisted samples")
@@ -1443,14 +1540,14 @@ def main() -> None:
             gate_penalty=args.replay_gate_penalty,
             logit_penalty=args.replay_logit_penalty)
         train_epochs(
-            args.epochs, all_indices,
+            args.epochs, training_indices,
             outcome_weight=args.replay_outcome_weight,
             residual_penalty=args.replay_residual_penalty,
             gate_penalty=args.replay_gate_penalty,
             logit_penalty=args.replay_logit_penalty)
     else:
         train_epochs(
-            args.epochs, all_indices,
+            args.epochs, training_indices,
             outcome_weight=args.replay_outcome_weight,
             residual_penalty=args.replay_residual_penalty,
             gate_penalty=args.replay_gate_penalty,
@@ -1490,6 +1587,7 @@ def main() -> None:
         "replay_residual_penalty": args.replay_residual_penalty,
         "replay_gate_penalty": args.replay_gate_penalty,
         "replay_logit_penalty": args.replay_logit_penalty,
+        "protect_rehearsal": args.protect_rehearsal,
         "replay_gate_source_weight": args.replay_gate_source_weight,
         "replay_refinement_epochs": args.replay_refinement_epochs,
         "replay_refine_gate_only": args.replay_refine_gate_only,
@@ -1501,6 +1599,9 @@ def main() -> None:
         "query_curriculum_warmup_epochs": (
             args.query_curriculum_warmup_epochs),
         "query_curriculum_cutoff": args.query_curriculum_cutoff,
+        "query_window_start": args.query_window_start,
+        "query_window_end": (
+            query_window_end if query_window_active else 0),
         "base_mistake_weight": args.base_mistake_weight,
         "target_operation": args.target_operation,
         "test_operation": (

@@ -7,7 +7,9 @@ from .train_sequence_reward_buffer import (
     _action_conditioned_policy_loss, _balanced_provenance_loss,
     _base_mistake_weights,
     _collect_buffer, _outcome_only_query_weights,
-    _query_curriculum_indices, _remove_final_slot_from_logits,
+    _protected_rehearsal_mask,
+    _query_curriculum_indices, _query_window_indices,
+    _remove_final_slot_from_logits,
     _replay_refinement_indices,
     _skill_slot_logits,
     _weighted_binary_complement_loss, _weighted_binary_margin_loss)
@@ -269,6 +271,25 @@ def test_query_curriculum_keeps_replay_and_a_target_prefix() -> None:
         14, target_lifetimes=2, span=4, cutoff=2,
         device=torch.device("cpu"))
     assert indices.tolist() == [0, 1, 2, 3, 8, 9, 10, 11, 12, 13]
+
+
+def test_query_window_keeps_replay_and_a_target_suffix() -> None:
+    indices = _query_window_indices(
+        14, target_lifetimes=2, span=4, start=2, end=4,
+        device=torch.device("cpu"))
+    assert indices.tolist() == [4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+
+
+def test_protected_rehearsal_mask_marks_only_non_target_fresh_rows() -> None:
+    replay = torch.tensor(
+        [False] * 8 + [False] * 6 + [True] * 3)
+    protected = _protected_rehearsal_mask(
+        replay, target_rows=8, protect_rehearsal=True)
+    assert protected.tolist() == (
+        [False] * 8 + [True] * 6 + [True] * 3)
+    assert torch.equal(
+        _protected_rehearsal_mask(
+            replay, target_rows=8, protect_rehearsal=False), replay)
 
 
 def test_base_mistake_weights_ignore_replay_rows() -> None:

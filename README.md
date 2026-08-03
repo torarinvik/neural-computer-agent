@@ -2034,6 +2034,23 @@ slot selectivity / credit routing, not more target data or a longer blind
 span-eleven run. The full smoke reports and hashes are in
 `session_records/sequence_working_memory_2026-08-02/suffix_routing_smoke_2026-08-03/`.
 
+### Protected-rehearsal mask correction (2026-08-03)
+
+The reward-buffer trainer had a retention-control bug: freshly collected
+span-nine/span-ten rehearsal rows were marked as fresh, so replay/gate
+penalties never reached them. The opt-in `--protect-rehearsal` mask now marks
+non-target rehearsal rows as protected while leaving the historical default
+unchanged. Its unit test covers target, rehearsal, and persisted-row layout.
+
+The corrected 64-lifetime smoke produced **+2.13 points** of causal gain with
+span-nine/span-ten changes of −1.56/−0.59 points. A 256-lifetime escalation
+produced only +1.53 points; the matched outcome-shuffled control produced
+−7.48 points, so the small real signal is reward-dependent but below the +5
+promotion bar. A strong gate penalty preserved old behavior but produced zero
+new learning. This fixes the experiment's interpretation; it does not solve
+span eleven. The full reports and controls are in
+`session_records/sequence_working_memory_2026-08-02/protected_rehearsal_routing_2026-08-03/`.
+
 ## Latest breakthrough: span-three working-memory compounding (2026-08-02)
 
 The sequence branch now demonstrates the desired learn-to-learn effect on a
