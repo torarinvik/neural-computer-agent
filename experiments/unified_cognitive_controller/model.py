@@ -175,6 +175,7 @@ class UnifiedCognitiveController(nn.Module):
             action_adapter_emits_intention: bool = False,
             skill_adapter_widths: tuple[int, ...] = (),
             skill_adapter_gate_mode: str = "sigmoid",
+            skill_adapter_gate_modes: tuple[str, ...] = (),
             skill_adapter_gate_hidden: int = 0,
             skill_adapter_gate_hidden_from: int | None = None,
             skill_adapter_residual_scales: tuple[float, ...] = (),
@@ -207,6 +208,10 @@ class UnifiedCognitiveController(nn.Module):
         if skill_adapter_gate_mode not in ("sigmoid", "relu"):
             raise ValueError(
                 "skill adapter gate mode must be sigmoid or relu")
+        if any(mode not in ("sigmoid", "relu")
+               for mode in skill_adapter_gate_modes):
+            raise ValueError(
+                "per-slot skill adapter gate modes must be sigmoid or relu")
         if (
                 width < 16 or workspace_slots < 1 or intention_width < 2
                 or adaptive_memory_read_hidden < 0
@@ -282,6 +287,7 @@ class UnifiedCognitiveController(nn.Module):
             action_adapter_emits_intention)
         self.skill_adapter_widths = tuple(skill_adapter_widths)
         self.skill_adapter_gate_mode = skill_adapter_gate_mode
+        self.skill_adapter_gate_modes = tuple(skill_adapter_gate_modes)
         self.skill_adapter_gate_hidden = skill_adapter_gate_hidden
         self.skill_adapter_gate_hidden_from = skill_adapter_gate_hidden_from
         self.skill_adapter_residual_scales = tuple(
@@ -542,6 +548,10 @@ class UnifiedCognitiveController(nn.Module):
             + (action_adapter_width if action_adapter_width else 0))
         prior_read_width = 0
         for slot_index, slot_width in enumerate(self.skill_adapter_widths):
+            slot_gate_mode = (
+                skill_adapter_gate_modes[slot_index]
+                if slot_index < len(skill_adapter_gate_modes)
+                else skill_adapter_gate_mode)
             reads_legacy = (
                 skill_adapter_legacy_read_from is not None
                 and slot_index >= skill_adapter_legacy_read_from)
@@ -680,7 +690,7 @@ class UnifiedCognitiveController(nn.Module):
             # rectified bias only keeps the gate's own gradient alive.
             nn.init.constant_(
                 output_layer.bias,
-                1.0 if skill_adapter_gate_mode == "relu" else -2.0)
+                1.0 if slot_gate_mode == "relu" else -2.0)
             self.skill_adapter_gates.append(gate)
             refiner_width = (
                 self.skill_adapter_gate_refiner_widths[slot_index]
@@ -1416,13 +1426,16 @@ class UnifiedCognitiveController(nn.Module):
                     score = score + gate_refiner(own_features)
                 if not isinstance(gate_extension, nn.Identity):
                     score = score + gate_extension(own_features)
+                slot_gate_mode = (
+                    self.skill_adapter_gate_modes[slot_index]
+                    if slot_index < len(self.skill_adapter_gate_modes)
+                    else self.skill_adapter_gate_mode)
                 opening = (
                     # leaky_relu at slope zero is exactly relu, so a finished
                     # anneal restores exact-zero gating bit for bit.
                     torch.nn.functional.leaky_relu(
                         score, self.skill_adapter_gate_leak)
-                    if self.skill_adapter_gate_mode == "relu"
-                    else torch.sigmoid(score))
+                    if slot_gate_mode == "relu" else torch.sigmoid(score))
                 hidden_read = adapter[1](adapter[0](own_features))
                 residual = adapter[2](hidden_read)
                 if slot_index < len(self.skill_adapter_residual_scales):

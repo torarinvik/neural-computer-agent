@@ -177,45 +177,103 @@ def _skill_slot_logits(
     if features.shape[1] != expected_width:
         raise ValueError("cached feature width does not match skill slot")
     slot_features = features[:, :base_width]
-    reads = []
-    if model.skill_adapter_legacy_read_from is not None:
-        if model.relation_adapter is not None:
-            reads.append(model.relation_adapter[1](
-                model.relation_adapter[0](slot_features)))
-        if model.action_adapter is not None:
-            reads.append(model.action_adapter[1](
-                model.action_adapter[0](slot_features)))
+    legacy_reads = []
+    if model.relation_adapter is not None:
+        legacy_reads.append(model.relation_adapter[1](
+            model.relation_adapter[0](slot_features)))
+    if model.action_adapter is not None:
+        legacy_reads.append(model.action_adapter[1](
+            model.action_adapter[0](slot_features)))
     cursor = base_width
+    workspace = usage = intention = event_snapshot = age = None
     if workspace_width:
-        reads.append(features[:, cursor:cursor + workspace_width])
+        workspace = features[:, cursor:cursor + workspace_width]
         cursor += workspace_width
     if usage_width:
-        reads.append(features[:, cursor:cursor + usage_width])
+        usage = features[:, cursor:cursor + usage_width]
         cursor += usage_width
     if intention_width:
-        reads.append(features[:, cursor:cursor + intention_width])
+        intention = features[:, cursor:cursor + intention_width]
         cursor += intention_width
     if event_snapshot_width:
-        reads.append(features[:, cursor:cursor + event_snapshot_width])
+        event_snapshot = features[:, cursor:cursor + event_snapshot_width]
         cursor += event_snapshot_width
     if age_width:
-        reads.append(features[:, cursor:cursor + age_width])
+        age = features[:, cursor:cursor + age_width]
         cursor += age_width
     if parent_action_width:
-        reads.append(features[:, cursor:cursor + parent_action_width])
+        parent_action = features[:, cursor:cursor + parent_action_width]
         cursor += parent_action_width
-    if parent_entropy_width:
-        reads.append(features[:, cursor:cursor + parent_entropy_width])
-    if reads:
-        projected = model.skill_adapter_read_projections[slot_index](
-            torch.cat(reads, dim=-1))
-        own_features = torch.cat([slot_features, projected], dim=-1)
     else:
-        own_features = slot_features
+        parent_action = None
+    if parent_entropy_width:
+        parent_entropy = features[:, cursor:cursor + parent_entropy_width]
+    else:
+        parent_entropy = None
+
+    def compose_slot_features(
+            index: int, prior_hidden: list[torch.Tensor],
+            ) -> torch.Tensor:
+        reads = []
+        if (model.skill_adapter_reads_prior and prior_hidden
+                and (model.skill_adapter_reads_prior_from is None
+                     or index >= model.skill_adapter_reads_prior_from)):
+            reads += (
+                prior_hidden[-model.skill_adapter_prior_read_limit:]
+                if model.skill_adapter_prior_read_limit else prior_hidden)
+        if (model.skill_adapter_legacy_read_from is not None
+                and index >= model.skill_adapter_legacy_read_from):
+            reads += legacy_reads
+        if (workspace is not None
+                and model.skill_adapter_reads_workspace_from is not None
+                and index >= model.skill_adapter_reads_workspace_from):
+            reads.append(workspace)
+        if (usage is not None
+                and model.skill_adapter_reads_workspace_usage_from is not None
+                and index >= model.skill_adapter_reads_workspace_usage_from):
+            reads.append(usage)
+        if (intention is not None
+                and model.skill_adapter_reads_intention_from is not None
+                and index >= model.skill_adapter_reads_intention_from):
+            reads.append(intention)
+        if (event_snapshot is not None
+                and model.skill_adapter_reads_event_snapshot_from is not None
+                and index >= model.skill_adapter_reads_event_snapshot_from):
+            reads.append(event_snapshot)
+        if (age is not None
+                and model.skill_adapter_reads_event_age_from is not None
+                and index >= model.skill_adapter_reads_event_age_from):
+            reads.append(age)
+        if (parent_action is not None
+                and model.skill_adapter_reads_parent_action_from is not None
+                and index >= model.skill_adapter_reads_parent_action_from):
+            reads.append(parent_action)
+        if (parent_entropy is not None
+                and model.skill_adapter_reads_parent_entropy_from is not None
+                and index >= model.skill_adapter_reads_parent_entropy_from):
+            reads.append(parent_entropy)
+        if not reads:
+            return slot_features
+        projected = model.skill_adapter_read_projections[index](
+            torch.cat(reads, dim=-1))
+        return torch.cat([slot_features, projected], dim=-1)
+
+    prior_hidden: list[torch.Tensor] = []
+    if model.skill_adapter_reads_prior:
+        for index in range(slot_index):
+            with torch.no_grad():
+                prior_features = compose_slot_features(index, prior_hidden)
+                prior_hidden.append(model.skill_adapters[index][1](
+                    model.skill_adapters[index][0](prior_features)))
+    own_features = compose_slot_features(slot_index, prior_hidden)
     score = model.skill_adapter_gates[slot_index](own_features)
+    slot_gate_mode = (
+        model.skill_adapter_gate_modes[slot_index]
+        if slot_index < len(model.skill_adapter_gate_modes)
+        else model.skill_adapter_gate_mode)
     opening = (
         F.leaky_relu(score, model.skill_adapter_gate_leak)
-        if model.skill_adapter_gate_mode == "relu"
+        if slot_gate_mode == "relu"
         else torch.sigmoid(score))
     hidden_read = model.skill_adapters[slot_index][1](
         model.skill_adapters[slot_index][0](own_features))
@@ -796,6 +854,12 @@ def main() -> None:
     parser.add_argument(
         "--skill-adapter-gate-mode", choices=("sigmoid", "relu"),
         default="sigmoid")
+    parser.add_argument(
+        "--skill-adapter-append-gate-mode", choices=("sigmoid", "relu"),
+        default=None,
+        help=(
+            "gate mode for only a newly appended successor slot; inherited "
+            "slots keep their checkpoint behavior"))
     parser.add_argument("--skill-adapter-gate-hidden", type=int, default=0)
     parser.add_argument(
         "--skill-adapter-reads-intention", action="store_true",
@@ -815,6 +879,11 @@ def main() -> None:
         help=(
             "give the successor slot a normalized generic stream clock; "
             "this is not a task or operation label"))
+    parser.add_argument(
+        "--skill-adapter-reads-prior", action="store_true",
+        help=(
+            "let only a newly appended slot read the hidden outputs of "
+            "earlier learned slots as generic compositional context"))
     parser.add_argument(
         "--skill-adapter-reads-parent-action", action="store_true",
         help=(
@@ -1235,6 +1304,20 @@ def main() -> None:
                 existing_scales
                 + (1.0,) * (len(existing_slots) - len(existing_scales))
                 + (args.skill_adapter_residual_scale,))
+            inherited_modes = tuple(base_configuration.get(
+                "skill_adapter_gate_modes", ()))
+            if not inherited_modes:
+                inherited_modes = (base_configuration.get(
+                    "skill_adapter_gate_mode", "sigmoid"),) * len(
+                        existing_slots)
+            configuration["skill_adapter_gate_modes"] = (
+                inherited_modes + (
+                    args.skill_adapter_append_gate_mode
+                    or args.skill_adapter_gate_mode,))
+            if args.skill_adapter_reads_prior:
+                configuration["skill_adapter_reads_prior"] = True
+                configuration["skill_adapter_reads_prior_from"] = len(
+                    existing_slots)
             if args.skill_adapter_reads_parent_action:
                 configuration[
                     "skill_adapter_reads_parent_action_from"] = len(

@@ -29,11 +29,14 @@ from .train_sequence_working_memory import (
 
 
 def _audit(model, *, spans: tuple[int, ...], count: int, distractors: int,
-           seed: int, device: torch.device) -> dict[str, dict[str, float]]:
+           seed: int, device: torch.device, target_span: int | None = None,
+           target_operation: str = "mixed") -> dict[str, dict[str, float]]:
     return {
         str(span): evaluate_sequence_memory(
             model, count=count, span=span, distractors=distractors,
-            seed=seed + index * 100_003, operation="mixed", device=device)
+            seed=seed + index * 100_003,
+            operation=(target_operation if span == target_span else "mixed"),
+            device=device)
         for index, span in enumerate(spans)
     }
 
@@ -45,6 +48,10 @@ def main() -> None:
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--seed", type=int, default=93501)
     parser.add_argument("--span", type=int, required=True)
+    parser.add_argument(
+        "--target-operation", choices=("mixed", "forward", "reverse"),
+        default="mixed",
+        help="operation used for the new target; rehearsal remains mixed")
     parser.add_argument("--slot-width", type=int, default=256)
     parser.add_argument("--steps", type=int, default=8)
     parser.add_argument("--batch-size", type=int, default=32)
@@ -151,7 +158,7 @@ def main() -> None:
     # Check the central invariant before spending any training experience.
     initial_batch = generate_sequence_memory_batch(
         args.batch_size, span=args.span, distractors=args.distractors,
-        seed=args.seed + 1_000, operation="mixed",
+        seed=args.seed + 1_000, operation=args.target_operation,
         position_augmentation=args.position_augmentation, device=device)
     with torch.no_grad():
         parent_probe = rollout_sequence_memory(
@@ -173,7 +180,8 @@ def main() -> None:
     parent_audit = _audit(
         parent_model, spans=audit_spans, count=args.test_count,
         distractors=args.distractors, seed=args.seed + 2_000_000,
-        device=device)
+        device=device, target_span=args.span,
+        target_operation=args.target_operation)
     schedule = (args.span, *rehearsal_spans)
     history: list[dict[str, float | int]] = []
     seen_bits = 0
@@ -208,7 +216,8 @@ def main() -> None:
             train_position_augmentation = args.position_augmentation
         batch = generate_sequence_memory_batch(
             args.batch_size, span=train_span, distractors=train_distractors,
-            seed=args.seed + step * 10_007, operation="mixed",
+            seed=args.seed + step * 10_007,
+            operation=(args.target_operation if is_target else "mixed"),
             position_blend=position_blend,
             position_augmentation=train_position_augmentation, device=device)
         result = None
@@ -219,7 +228,7 @@ def main() -> None:
                 args.batch_size, span=train_span,
                 distractors=train_distractors,
                 seed=args.seed + step * 10_007 + epoch * 1_000_003,
-                operation="mixed",
+                operation=(args.target_operation if is_target else "mixed"),
                 position_blend=position_blend,
                 position_augmentation=train_position_augmentation,
                 sequence_override=batch.sequence,
@@ -300,7 +309,8 @@ def main() -> None:
     child_audit = _audit(
         student, spans=audit_spans, count=args.test_count,
         distractors=args.distractors, seed=args.seed + 2_000_000,
-        device=device)
+        device=device, target_span=args.span,
+        target_operation=args.target_operation)
     # The newly appended slot should be causally necessary for the target, but
     # its zeroed version must leave inherited spans governed by the parent.
     zeroed = _model(
@@ -313,7 +323,8 @@ def main() -> None:
     zeroed_audit = _audit(
         zeroed, spans=audit_spans, count=args.test_count,
         distractors=args.distractors, seed=args.seed + 2_000_000,
-        device=device)
+        device=device, target_span=args.span,
+        target_operation=args.target_operation)
     retention_deltas = {
         str(span): child_audit[str(span)]["accuracy"]
         - parent_audit[str(span)]["accuracy"]
@@ -332,6 +343,7 @@ def main() -> None:
         "checkpoint_out": str(args.checkpoint_out),
         "seed": args.seed,
         "target_span": args.span,
+        "target_operation": args.target_operation,
         "inherited_rehearsal_spans": list(inherited_spans),
         "slot": slot,
         "slot_width": args.slot_width,
