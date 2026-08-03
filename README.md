@@ -1927,6 +1927,21 @@ fell by **6.76/12.53 points**. Both representations therefore fail the causal
 and retention bars. Stop expanding this feature list and return to a genuinely
 selective gate or an explicit promotion/rejection population.
 
+### Complement margin-loss frontier
+
+Replacing the complement learner's ordinary binary cross-entropy with a
+constant-gradient binary margin objective improved the 512-lifetime arm while
+preserving the audits. Two independent seeds reached **63.52%/61.59%** with
+**+13.04/+10.88-point** causal gains and span-nine/span-ten changes within
+−1.55/−1.54 points. A matched shuffled-outcome control returned to **50.09%**.
+This is the current partial, retention-safe acquisition checkpoint—not
+mastery. Escalating to 1,024 lifetimes reached 66.7–68.1%, but three of four
+margin/seed arms violated retention; one safe arm is diagnostic only. Protected
+continuation of the learned slot added at most 0.76 points, so repeated
+experience has not yet produced a strong second compounding gain. The complete
+curve and rejected controls are recorded in
+`session_records/sequence_working_memory_2026-08-02/complement_margin_frontier_2026-08-03.md`.
+
 ## Latest breakthrough: span-three working-memory compounding (2026-08-02)
 
 The sequence branch now demonstrates the desired learn-to-learn effect on a

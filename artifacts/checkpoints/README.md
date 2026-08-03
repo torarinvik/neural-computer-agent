@@ -60,6 +60,25 @@ not replace the replicated 256-lifetime candidate.
 - Buffer SHA-256:
   `338168fed5bede7fb0fad070c37fe78f3fa6ef37a97496dbb92e7a341f52d64a`
 
+### Replicated margin-loss complement checkpoint
+
+`complement_margin_slot_seed93775.pt` and
+`complement_margin_slot_seed93776.pt` are the current replicated,
+retention-safe 512-lifetime complement acquisition checkpoints. They use the
+same successor-slot architecture but train the binary complement residual with
+a constant-gradient margin objective. Independent audits reached 63.52% and
+61.59%, with +13.04/+10.88-point zeroed-slot causal gains; span-nine/span-ten
+retention stayed within −1.55/−1.54 points. A matched shuffled-outcome control
+(`complement_margin_slot_shuffled_seed93782.pt`) scored 50.09%.
+
+These are partial-capability checkpoints, not mastery defaults. The complete
+margin/continuation/1,024-lifetime curve is in
+`session_records/sequence_working_memory_2026-08-02/complement_margin_frontier_2026-08-03.md`.
+
+- SHA-256 seed 93775: `ca46796008a851cfa4915dbed6fbdfc623564d4ff34d24f2215166db5ae5a698`
+- SHA-256 seed 93776: `027692ea475430598994d7085cc6fd1b2796b89ad4d8efd99cb37357bc7a934a`
+- SHA-256 shuffled control: `01cdbe5a7a0fd6f7fbfcebc0fa656bd1004c2c62565b9eb004495e33f1a11b71`
+
 ## Procedural-shape relative operations
 
 `unified_next_error_balanced_primary_seed43601.pt` and
