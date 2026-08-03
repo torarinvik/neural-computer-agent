@@ -1824,7 +1824,8 @@ Both preserved old skills, but produced only **+0.99/+0.71 points** with no
 zeroed-slot causal separation. This is a bounded negative for the simplest
 critic auxiliary; the representation probe says the next useful change must
 improve how that information drives the slot/action update, not add another
-encoder.
+encoder. The two unpromoted critic checkpoints are retained under
+`artifacts/checkpoints/span11_slot_extension_critic*.pt` for inspection.
 
 ## Latest breakthrough: span-three working-memory compounding (2026-08-02)
 

@@ -1054,7 +1054,9 @@ action's scalar outcome, then discarded) was tested at weights 0.5 and 5.0.
 Both preserved old skills, but produced only **+0.99/+0.71 points** with no
 zeroed-slot causal separation. This is a bounded negative for the simplest
 critic auxiliary; the representation probe says the next useful change must
-improve how existing information drives the slot/action update.
+improve how existing information drives the slot/action update. The two
+unpromoted critic checkpoints are retained under
+`artifacts/checkpoints/span11_slot_extension_critic*.pt`.
 
 ## Cloud archive
 

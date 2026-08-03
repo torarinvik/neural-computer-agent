@@ -2,7 +2,8 @@
   "schema": "sequence-skill-slot-extension-v1",
   "claim_boundary": "The parent controller is frozen. Only a new generic successor slot is trained. Span identities are verifier-side curriculum metadata, and correct actions are never supplied to the model.",
   "parent": "artifacts/checkpoints/span10_cold_rehydrated_8192_e384_seed9954815.pt",
-  "checkpoint_out": "/tmp/span11_critic5_93605.pt",
+    "checkpoint_out": "/tmp/span11_critic5_93605.pt",
+    "archived_checkpoint": "artifacts/checkpoints/span11_slot_extension_critic5_seed93605.pt",
   "seed": 93605,
   "target_span": 11,
   "inherited_rehearsal_spans": [

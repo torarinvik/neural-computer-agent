@@ -1,5 +1,15 @@
 # Curated checkpoints
 
+## Successor-slot frontier diagnostics
+
+`span11_slot_extension_critic_seed93604.pt` and
+`span11_slot_extension_critic5_seed93605.pt` preserve the two temporary
+action-conditioned critic arms used in the span-eleven extension probe. They
+are intentionally **not promoted**: both preserved the parent skills but did
+not create a zeroed-slot causal gain. The corresponding reports, including
+all audit metrics and the discarded-critic boundary, are in
+`session_records/sequence_working_memory_2026-08-02/`.
+
 ## Procedural-shape relative operations
 
 `unified_next_error_balanced_primary_seed43601.pt` and
