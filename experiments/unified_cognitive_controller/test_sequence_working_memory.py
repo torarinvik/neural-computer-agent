@@ -4,7 +4,9 @@ from .model import UnifiedCognitiveController
 from .train_sequence_working_memory import (
     generate_sequence_memory_batch, rollout_sequence_memory)
 from .train_sequence_reward_buffer import (
-    _balanced_provenance_loss, _replay_refinement_indices, _skill_slot_logits)
+    _action_conditioned_policy_loss, _balanced_provenance_loss,
+    _collect_buffer, _replay_refinement_indices, _skill_slot_logits,
+    _weighted_binary_complement_loss)
 
 
 def test_sequence_memory_generation_is_deterministic_and_balanced() -> None:
@@ -153,6 +155,49 @@ def test_appended_slot_replay_helper_uses_the_final_slot_projection() -> None:
     assert model.skill_adapter_read_projections[1].weight.grad is not None
     assert model.skill_adapters[0][2].weight.grad is None
     assert model.skill_adapter_read_projections[0].weight.grad is None
+
+
+def test_replay_buffer_can_supply_a_generic_event_snapshot_read() -> None:
+    model = UnifiedCognitiveController(
+        width=16, workspace_slots=2, intention_width=8,
+        skill_adapter_widths=(16,),
+        skill_adapter_reads_event_snapshot_from=0)
+    features, base_logits, actions, outcomes = _collect_buffer(
+        model, count=8, span=2, distractors=1, seed=26012,
+        device=torch.device("cpu"), position_augmentation=True,
+        include_event_snapshot=True)
+    assert features.shape == (16, 16 * 2 + 16)
+    assert base_logits.shape == actions.shape + (2,)
+    assert outcomes.shape == actions.shape
+    logits, *_ = _skill_slot_logits(model, features)
+    assert logits.shape == (16, 2)
+
+
+def test_critic_policy_bridge_trains_the_slot_but_not_the_critic_target() -> None:
+    logits = torch.zeros(4, 2, requires_grad=True)
+    critic = torch.tensor(
+        ((2.0, -1.0), (-1.0, 2.0), (0.5, 0.5), (2.0, -1.0)),
+        requires_grad=True)
+    fresh = torch.tensor([True, False, True, True])
+    loss = _action_conditioned_policy_loss(
+        logits, critic, fresh, temperature=1.0)
+    loss.backward()
+    assert logits.grad is not None
+    assert critic.grad is None
+
+
+def test_binary_complement_loss_uses_only_attempted_action_and_outcome() -> None:
+    logits = torch.tensor(
+        ((2.0, -2.0), (-2.0, 2.0), (-2.0, 2.0), (2.0, -2.0)),
+        requires_grad=True)
+    attempted = torch.tensor((0, 1, 0, 1))
+    outcomes = torch.tensor((1.0, 1.0, 0.0, 0.0))
+    replay = torch.zeros(4, dtype=torch.bool)
+    loss = _weighted_binary_complement_loss(
+        logits, attempted, outcomes, replay, 1.0)
+    assert float(loss.detach()) < 0.03
+    loss.backward()
+    assert logits.grad is not None
 
 
 def test_address_conditioned_write_content_breaks_slot_symmetry() -> None:

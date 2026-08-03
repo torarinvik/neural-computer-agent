@@ -1058,6 +1058,29 @@ improve how existing information drives the slot/action update. The two
 unpromoted critic checkpoints are retained under
 `artifacts/checkpoints/span11_slot_extension_critic*.pt`.
 
+## Successor replay-credit sweep (2026-08-03)
+
+The successor branch was moved to a frozen latent replay buffer containing
+only controller-visible features, opaque attempted actions, and scalar
+outcomes. The collector now automatically caches inherited workspace, usage,
+event-snapshot, and age reads; targeted tests cover the new event-snapshot
+path. Detached critics, a binary-complement bandit control, and a nonlinear
+gate were evaluated with shuffled-outcome and zeroed-slot controls.
+
+The strongest safe arm (seed 93712) reached a **0.89-point causal span-11
+gain**, with span-9/span-10 retention changes of **−1.04/−0.43 points**. It
+remains below the pre-registered 5-point causal bar. More unique data,
+on-policy replay, higher learning rate, and longer reuse did not improve the
+bound; restoring distractors after an easy arm also removed its gain. The
+full sweep and exact commands are in
+`span11_replay_credit_assignment_2026-08-03.md`.
+
+This closes the current critic/gate knob fork. Since the independent frozen
+input probe decoded action at **84.66% linear / 87.71% MLP**, the remaining
+problem is reward-to-output credit and difficulty, not sensory representation.
+The next branch should add a smaller intermediate primitive or an explicit
+per-output curriculum.
+
 ## Cloud archive
 
 The current Vast instance was quiescent when archived. The load-bearing

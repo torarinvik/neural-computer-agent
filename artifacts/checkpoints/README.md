@@ -10,6 +10,12 @@ not create a zeroed-slot causal gain. The corresponding reports, including
 all audit metrics and the discarded-critic boundary, are in
 `session_records/sequence_working_memory_2026-08-02/`.
 
+`span11_replay_credit_candidate_seed93712.pt` is the strongest unpromoted
+replay-credit candidate: hidden successor gate plus binary outcome/critic
+diagnostics. It reached a 0.89-point causal gain while retaining old spans
+within two points, below the 5-point promotion bar. Its replay evidence is
+preserved as `artifacts/memory/span11_replay_buffer_seed93703.pt`.
+
 ## Procedural-shape relative operations
 
 `unified_next_error_balanced_primary_seed43601.pt` and

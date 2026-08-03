@@ -1827,6 +1827,34 @@ improve how that information drives the slot/action update, not add another
 encoder. The two unpromoted critic checkpoints are retained under
 `artifacts/checkpoints/span11_slot_extension_critic*.pt` for inspection.
 
+## Successor replay-credit sweep (2026-08-03)
+
+The next diagnostic branch moved successor-slot learning onto a frozen latent
+replay buffer containing only controller-visible features, opaque attempted
+actions, and scalar outcomes. The collector was corrected to include inherited
+workspace, usage, event-snapshot, and age reads automatically; a regression
+test now checks the event-snapshot path. A detached action-conditioned critic,
+an optional binary-complement bandit loss, and a nonlinear successor gate were
+tested as small, explicitly unpromoted controls.
+
+The best safe arm (seed 93712: hidden gate, binary outcome loss, binary critic
+loss, detached critic bridge, and persisted old-span replay) produced a
+**0.89-point causal span-11 gain**, with span-9/span-10 retention changes of
+**−1.04/−0.43 points**. Its shuffled-outcome control collapsed and the
+zeroed-slot replay returned to the parent, so the signal is real but below the
+pre-registered **5-point causal promotion bar**. More data, on-policy replay,
+higher learning rates, and 32× reuse did not improve that bound; hard span 11
+also regressed when distractors were restored after an easier no-distractor
+arm. The complete sweep is recorded in
+`session_records/sequence_working_memory_2026-08-02/span11_replay_credit_assignment_2026-08-03.md`.
+
+This closes the current “add another critic/gate knob” fork. The earlier input
+probe still shows **84.66% linear / 87.71% MLP** action decoding at the slot
+input, so the remaining gap is reward-to-output credit and task difficulty,
+not missing sensory information. The next high-ROI move is a smaller
+intermediate primitive or an explicit per-output curriculum, not a longer
+blind span-11 run.
+
 ## Latest breakthrough: span-three working-memory compounding (2026-08-02)
 
 The sequence branch now demonstrates the desired learn-to-learn effect on a

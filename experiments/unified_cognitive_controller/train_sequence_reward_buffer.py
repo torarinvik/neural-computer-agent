@@ -27,6 +27,29 @@ from .train_sequence_working_memory import (
 BUFFER_SCHEMA = "latent-action-outcome-buffer-v1"
 
 
+def _action_conditioned_policy_loss(
+        logits: torch.Tensor, critic_logits: torch.Tensor,
+        fresh_mask: torch.Tensor, *, temperature: float) -> torch.Tensor:
+    """Distill a detached action-success critic into the new policy slot.
+
+    The critic is trained only from attempted opaque actions and scalar
+    outcomes.  Detaching its prediction makes this a one-way credit bridge:
+    the slot learns to select the critic's currently best action, while the
+    critic cannot be rewarded by changing its own target.  Old replay rows
+    are excluded by ``fresh_mask`` so this auxiliary cannot rewrite inherited
+    behavior.
+    """
+    if temperature <= 0.0:
+        raise ValueError("critic policy temperature must be positive")
+    if not bool(fresh_mask.any()):
+        return logits.sum() * 0.0
+    target = F.softmax(
+        critic_logits.detach()[fresh_mask] / temperature, dim=-1)
+    return F.kl_div(
+        F.log_softmax(logits[fresh_mask], dim=-1), target,
+        reduction="batchmean")
+
+
 def _validate_buffer_tensors(
         tensors: tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor],
         *, device: torch.device,
@@ -131,11 +154,16 @@ def _skill_slot_logits(
     intention_width = (
         model.intention_width
         if model.skill_adapter_reads_intention_from is not None else 0)
+    event_snapshot_width = (
+        model.width
+        if getattr(model, "skill_adapter_reads_event_snapshot_from", None)
+        is not None else 0)
     age_width = (
         1 if getattr(model, "skill_adapter_reads_event_age_from", None)
         is not None else 0)
     expected_width = (
-        base_width + workspace_width + usage_width + intention_width + age_width)
+        base_width + workspace_width + usage_width + intention_width
+        + event_snapshot_width + age_width)
     if features.shape[1] != expected_width:
         raise ValueError("cached feature width does not match skill slot")
     slot_features = features[:, :base_width]
@@ -157,6 +185,9 @@ def _skill_slot_logits(
     if intention_width:
         reads.append(features[:, cursor:cursor + intention_width])
         cursor += intention_width
+    if event_snapshot_width:
+        reads.append(features[:, cursor:cursor + event_snapshot_width])
+        cursor += event_snapshot_width
     if age_width:
         reads.append(features[:, cursor:cursor + age_width])
     if reads:
@@ -244,13 +275,42 @@ def _weighted_attempted_success_loss(
     return (per_example * weights).sum() / weights.sum().clamp_min(1.0)
 
 
+def _weighted_binary_complement_loss(
+        logits: torch.Tensor, attempted: torch.Tensor,
+        outcomes: torch.Tensor, replay_mask: torch.Tensor,
+        replay_outcome_weight: float,
+        positive_outcome_weight: float = 1.0) -> torch.Tensor:
+    """Diagnostic binary bandit loss using the logically implied alternative.
+
+    With exactly two opaque actions, a failed attempt identifies the other
+    action as the successful alternative.  This derives a training target from
+    the attempted action and scalar outcome only; it stores or receives no
+    correct-action label.  It is intentionally an explicit binary control,
+    not a claim about the general N-action architecture.
+    """
+    if logits.shape[1] != 2:
+        raise ValueError("binary complement loss requires exactly two actions")
+    target = torch.where(outcomes > 0.5, attempted, 1 - attempted)
+    per_example = F.cross_entropy(logits, target, reduction="none")
+    per_example = per_example * torch.where(
+        outcomes > 0.5,
+        torch.full_like(per_example, positive_outcome_weight),
+        torch.ones_like(per_example))
+    weights = torch.where(
+        replay_mask,
+        torch.full_like(per_example, replay_outcome_weight),
+        torch.ones_like(per_example))
+    return (per_example * weights).sum() / weights.sum().clamp_min(1.0)
+
+
 def _collect_buffer(
         model: UnifiedCognitiveController, *, count: int, span: int,
         distractors: int, seed: int, device: torch.device,
         position_augmentation: bool, include_intention: bool = False,
         include_workspace: bool = False,
         include_workspace_usage: bool = False,
-        include_event_age: bool = False,
+        include_event_snapshot: bool = False,
+        include_event_age: bool = False, exploration: float = 1.0,
         ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """Collect latent transitions using uniformly random opaque actions."""
     batch = generate_sequence_memory_batch(
@@ -284,12 +344,19 @@ def _collect_buffer(
             usage_before = (
                 None if state.workspace_usage is None
                 else state.workspace_usage.clone())
+            event_snapshot_before = state.latest_event.clone()
             age_before = (
                 None if state.event_age is None else state.event_age.clone())
             output, state = model.step(
                 frame, state, previous_action,
                 previous_reward * has_feedback, has_feedback)
-            action = torch.randint(ACTIONS, (count,), device=device)
+            if not 0.0 <= exploration <= 1.0:
+                raise ValueError("buffer exploration must be within [0, 1]")
+            probabilities = torch.softmax(output.logits, dim=-1)
+            behavior = (
+                probabilities * (1.0 - exploration)
+                + exploration / ACTIONS)
+            action = torch.multinomial(behavior, 1).squeeze(1)
             outcome = (
                 action == batch.correct_actions[:, query]).to(torch.float32)
             feature_parts = [hidden_before, event]
@@ -302,6 +369,8 @@ def _collect_buffer(
                 feature_parts.append(usage_before)
             if include_intention:
                 feature_parts.append(output.intention.detach())
+            if include_event_snapshot:
+                feature_parts.append(event_snapshot_before)
             if include_event_age:
                 if age_before is None:
                     age_before = torch.zeros(count, 1, device=device)
@@ -367,6 +436,11 @@ def main() -> None:
             "during replay refinement, freeze the new residual and train "
             "its gate"))
     parser.add_argument("--seed", type=int, default=30941)
+    parser.add_argument(
+        "--buffer-exploration", type=float, default=1.0,
+        help=(
+            "probability of uniform exploration while collecting replay; "
+            "zero follows the frozen parent policy"))
     parser.add_argument("--train-lifetimes", type=int, default=2048)
     parser.add_argument("--rehearse-spans", default="")
     parser.add_argument("--rehearsal-lifetimes", type=int, default=512)
@@ -380,6 +454,16 @@ def main() -> None:
         help=(
             "multiply observed successful-attempt loss; this is a reward "
             "balance control, not a correct-action label"))
+    parser.add_argument(
+        "--binary-complement-loss", action="store_true",
+        help=(
+            "diagnostic only: for two opaque actions, treat a failed attempt "
+            "as evidence for the other action; no unattempted label is stored"))
+    parser.add_argument(
+        "--binary-complement-critic-loss", action="store_true",
+        help=(
+            "apply the same binary-only outcome inference to the temporary "
+            "per-action critic; diagnostic control"))
     parser.add_argument("--action-adapter-width", type=int, default=64)
     parser.add_argument(
         "--skill-adapter-width", type=int, default=0,
@@ -399,6 +483,18 @@ def main() -> None:
     parser.add_argument(
         "--action-conditioned-critic-weight", type=float, default=1.0,
         help="weight the critic's attempted-outcome loss")
+    parser.add_argument(
+        "--action-conditioned-critic-policy-weight", type=float, default=0.0,
+        help=(
+            "distill the detached critic's per-action success estimate into "
+            "the fresh successor-slot policy after warmup"))
+    parser.add_argument(
+        "--action-conditioned-critic-policy-warmup", type=int, default=4,
+        help="critic-only epochs before policy distillation begins")
+    parser.add_argument(
+        "--action-conditioned-critic-policy-temperature", type=float,
+        default=1.0,
+        help="temperature for the detached critic policy target")
     parser.add_argument(
         "--skill-adapter-gate-mode", choices=("sigmoid", "relu"),
         default="sigmoid")
@@ -478,6 +574,8 @@ def main() -> None:
         raise ValueError("invalid replay-buffer dimensions")
     if args.replay_max_transitions < 0:
         raise ValueError("replay-max-transitions must not be negative")
+    if not 0.0 <= args.buffer_exploration <= 1.0:
+        raise ValueError("buffer exploration must be within [0, 1]")
     if args.replay_refinement_epochs < 0:
         raise ValueError("replay-refinement-epochs must not be negative")
     if args.residual_penalty < 0:
@@ -486,6 +584,15 @@ def main() -> None:
         raise ValueError("positive-outcome-weight must not be negative")
     if args.action_conditioned_critic_weight < 0:
         raise ValueError("action-conditioned-critic-weight must not be negative")
+    if args.action_conditioned_critic_policy_weight < 0:
+        raise ValueError(
+            "action-conditioned-critic-policy-weight must not be negative")
+    if args.action_conditioned_critic_policy_warmup < 0:
+        raise ValueError(
+            "action-conditioned-critic-policy-warmup must not be negative")
+    if args.action_conditioned_critic_policy_temperature <= 0.0:
+        raise ValueError(
+            "action-conditioned-critic-policy-temperature must be positive")
     if (args.replay_outcome_weight < 0
             or args.replay_residual_penalty < 0
             or args.replay_gate_penalty < 0
@@ -525,6 +632,28 @@ def main() -> None:
     device = torch.device(args.device)
     payload = torch.load(args.parent, map_location=device, weights_only=False)
     base_configuration = dict(payload["model_configuration"])
+    # A successor slot inherits these generic reads from the parent. Cache the
+    # same pre-step tensors that the slot reads; otherwise append runs can
+    # train against a narrower representation than the live model consumes.
+    include_intention = (
+        args.skill_adapter_reads_intention
+        or base_configuration.get("skill_adapter_reads_intention_from")
+        is not None)
+    include_workspace = (
+        args.skill_adapter_reads_workspace
+        or base_configuration.get("skill_adapter_reads_workspace_from")
+        is not None)
+    include_workspace_usage = (
+        args.skill_adapter_reads_workspace_usage
+        or base_configuration.get("skill_adapter_reads_workspace_usage_from")
+        is not None)
+    include_event_snapshot = (
+        base_configuration.get("skill_adapter_reads_event_snapshot_from")
+        is not None)
+    include_event_age = (
+        args.skill_adapter_reads_event_age
+        or base_configuration.get("skill_adapter_reads_event_age_from")
+        is not None)
     base = UnifiedCognitiveController(**base_configuration).to(device)
     compatibility = base.load_state_dict(
         payload["state_dict"], strict=False)
@@ -564,10 +693,12 @@ def main() -> None:
             base, count=args.train_lifetimes, span=args.span,
             distractors=args.distractors, seed=args.seed, device=device,
             position_augmentation=args.position_augmentation,
-            include_intention=args.skill_adapter_reads_intention,
-            include_workspace=args.skill_adapter_reads_workspace,
-            include_workspace_usage=args.skill_adapter_reads_workspace_usage,
-            include_event_age=args.skill_adapter_reads_event_age)
+            include_intention=include_intention,
+            include_workspace=include_workspace,
+            include_workspace_usage=include_workspace_usage,
+            include_event_snapshot=include_event_snapshot,
+            include_event_age=include_event_age,
+            exploration=args.buffer_exploration)
         buffer_parts = [target_buffer]
         stream_specs.append({
             "kind": "target", "span": args.span,
@@ -579,10 +710,12 @@ def main() -> None:
                 seed=args.seed + (index + 1) * 1_000_003,
                 device=device,
                 position_augmentation=args.position_augmentation,
-                include_intention=args.skill_adapter_reads_intention,
-                include_workspace=args.skill_adapter_reads_workspace,
-                include_workspace_usage=args.skill_adapter_reads_workspace_usage,
-                include_event_age=args.skill_adapter_reads_event_age))
+                include_intention=include_intention,
+                include_workspace=include_workspace,
+                include_workspace_usage=include_workspace_usage,
+                include_event_snapshot=include_event_snapshot,
+                include_event_age=include_event_age,
+                exploration=args.buffer_exploration))
             stream_specs.append({
                 "kind": "rehearsal", "span": rehearsal_span,
                 "lifetimes": args.rehearsal_lifetimes})
@@ -636,6 +769,12 @@ def main() -> None:
                 base_configuration,
                 skill_adapter_widths=existing_slots + (
                     args.skill_adapter_width,))
+            if args.skill_adapter_gate_hidden:
+                # Give only the new slot a nonlinear gate.  The index keeps
+                # every inherited gate shape and checkpoint key unchanged.
+                configuration.update(
+                    skill_adapter_gate_hidden=args.skill_adapter_gate_hidden,
+                    skill_adapter_gate_hidden_from=len(existing_slots))
         else:
             configuration = dict(
                 base_configuration,
@@ -735,7 +874,7 @@ def main() -> None:
         optimizer = torch.optim.AdamW(
             trainable_parameters, lr=args.learning_rate,
             weight_decay=1e-5)
-        for _ in range(epochs):
+        for epoch_index in range(epochs):
             permutation = sample_indices[torch.randperm(
                 sample_indices.shape[0], device=device)]
             for start in range(0, sample_indices.shape[0], args.batch_size):
@@ -761,17 +900,41 @@ def main() -> None:
                     current = student.action_adapter(base_features)
                     logits = logits + current - inherited
                 batch_replay_mask = replay_mask[indices]
-                loss = _weighted_attempted_success_loss(
-                    logits, actions[indices], outcomes[indices],
-                    batch_replay_mask, outcome_weight,
-                    args.positive_outcome_weight)
-                if critic_logits is not None and args.action_conditioned_critic_weight:
-                    critic_loss = _weighted_attempted_success_loss(
-                        critic_logits, actions[indices], outcomes[indices],
+                loss = (
+                    _weighted_binary_complement_loss(
+                        logits, actions[indices], outcomes[indices],
                         batch_replay_mask, outcome_weight,
                         args.positive_outcome_weight)
+                    if args.binary_complement_loss else
+                    _weighted_attempted_success_loss(
+                        logits, actions[indices], outcomes[indices],
+                        batch_replay_mask, outcome_weight,
+                        args.positive_outcome_weight))
+                if critic_logits is not None and args.action_conditioned_critic_weight:
+                    critic_loss = (
+                        _weighted_binary_complement_loss(
+                            critic_logits, actions[indices], outcomes[indices],
+                            batch_replay_mask, outcome_weight,
+                            args.positive_outcome_weight)
+                        if args.binary_complement_critic_loss else
+                        _weighted_attempted_success_loss(
+                            critic_logits, actions[indices], outcomes[indices],
+                            batch_replay_mask, outcome_weight,
+                            args.positive_outcome_weight))
                     loss = loss + (
                         args.action_conditioned_critic_weight * critic_loss)
+                if (
+                        critic_logits is not None
+                        and args.action_conditioned_critic_policy_weight
+                        and epoch_index >= args.action_conditioned_critic_policy_warmup):
+                    fresh_mask = ~batch_replay_mask
+                    loss = loss + (
+                        args.action_conditioned_critic_policy_weight
+                        * _action_conditioned_policy_loss(
+                            base_logits[indices] + logits_residual,
+                            critic_logits, fresh_mask,
+                            temperature=(
+                                args.action_conditioned_critic_policy_temperature)))
                 if residual_penalty and bool(batch_replay_mask.any()):
                     loss = loss + residual_penalty * residual[
                         batch_replay_mask].square().mean()
@@ -883,10 +1046,19 @@ def main() -> None:
         "residual_action_adapter": args.residual_action_adapter,
         "residual_penalty": args.residual_penalty,
         "positive_outcome_weight": args.positive_outcome_weight,
+        "buffer_exploration": args.buffer_exploration,
+        "binary_complement_loss": args.binary_complement_loss,
+        "binary_complement_critic_loss": args.binary_complement_critic_loss,
         "action_conditioned_critic_width": (
             args.action_conditioned_critic_width),
         "action_conditioned_critic_weight": (
             args.action_conditioned_critic_weight),
+        "action_conditioned_critic_policy_weight": (
+            args.action_conditioned_critic_policy_weight),
+        "action_conditioned_critic_policy_warmup": (
+            args.action_conditioned_critic_policy_warmup),
+        "action_conditioned_critic_policy_temperature": (
+            args.action_conditioned_critic_policy_temperature),
         "skill_adapter_width": args.skill_adapter_width,
         "skill_adapter_gate_mode": args.skill_adapter_gate_mode,
         "skill_adapter_reads_intention": args.skill_adapter_reads_intention,
