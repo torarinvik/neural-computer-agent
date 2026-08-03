@@ -1,5 +1,18 @@
 # Curated checkpoints
 
+## Frozen-core raw token alignment
+
+`amodal_token_aligned_frontend_seed996001.pt` and
+`amodal_token_aligned_frontend_seed996101.pt` are independently trained
+frontends for the frozen amodal controller. A fixed 16x16 RGB patch-token
+sensor is aligned to the existing vision neural-IR basis using paired
+encoded-event consistency only. The controller, original vision encoder,
+input bus, and decoder are not updated. Two independent 32-update runs pass
+the composition, shuffled-partner, contradictory-reversal, and N=1 retention
+gates; `session_records/amodal_latent_alignment_2026-08-03/` contains the
+training and 512-lifetime saved-frontend replay reports. These are synthetic
+raw-token adapters, not natural-language or reward-only alignment claims.
+
 ## Successor-slot frontier diagnostics
 
 `span11_slot_extension_critic_seed93604.pt` and

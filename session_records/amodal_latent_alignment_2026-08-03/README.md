@@ -204,3 +204,60 @@ the pooled accuracy, utility, latency, redundant-view, and no-history gates.
 The calibration and final reports are `wait_threshold_calibration_seed993001.json`,
 `adaptive_wait_calibrated_seed992101.json`, and
 `adaptive_wait_calibrated_seed992201.json`.
+
+## Independent token-sensor alignment
+
+The next boundary tested whether a second raw stream could be made compatible
+with the same frozen controller without introducing a language-specific
+reasoner. A fixed 16x16 raster sensor converted each ordinary RGB view into a
+sequence of continuous three-channel patch tokens. A small token frontend was
+trained only with paired encoded-event consistency against the frozen vision
+encoder. The controller, original vision encoder, input bus, and decoder were
+unchanged; training used no verifier bits, semantic labels, token names,
+correct-action labels, or task metadata.
+
+Two independent 32-update runs passed the pre-registered composition and
+causal gates. A separate 512-lifetime replay loaded the saved frontend without
+the training optimizer and reported:
+
+| appearance | fused | shuffled partner | contradictory flip | N=1 |
+|---|---:|---:|---:|---:|
+| bars | 98.32% | 51.41% | 93.59% | 97.54% |
+| diamonds | 91.88% | 54.22% | 75.70% | 99.96% |
+| dot-pairs | 94.69% | 50.16% | 90.59% | 97.85% |
+
+The individual streams remained at their single-view baselines. The
+cross-episode shuffle control stayed near chance, while the contradictory
+partner replay produced the expected relation reversal. This is the first
+qualified token-stream bridge into the shared neural IR in addition to the
+synthetic audio bridge. It is not yet natural language-token grounding,
+arbitrary cold-start modality alignment, or reward-only encoder learning.
+
+Artifacts:
+
+- `artifacts/checkpoints/amodal_token_aligned_frontend_seed996001.pt`
+- `artifacts/checkpoints/amodal_token_aligned_frontend_seed996101.pt`
+- `token_alignment_seed996001.json`
+- `token_alignment_seed996101.json`
+- `token_adapter_replay_seed996901.json`
+
+The first two tokenizations (8x8 and 16x16 integer codebooks) reduced
+consistency loss but failed the causal gate. The promoted continuous 16x16
+sensor fixed that information bottleneck; training on the held-out palette
+family was also necessary for shape generalization. This records a useful
+sample-efficiency lesson: improve recoverability and variation at the raw
+sensor boundary before spending controller updates.
+
+## Sparse timing-reward controls (negative evidence)
+
+The timing branch also tested whether scalar verifier utility could replace
+the calibrated/self-supervised arrival target immediately. A small
+metadata-only policy-gradient arm, both from scratch and initialized from the
+arrival predictor, collapsed toward fixed wait/release behavior rather than
+recovering the adaptive policy. A small UCB threshold bandit was less brittle
+but selected different thresholds across short seeds and batch sizes. These
+are bounded sample-starvation/credit-assignment negatives, not evidence that
+reward learning is impossible. The verifier-only threshold calibration at
+0.15 remains the promoted timing policy; the experimental trainers are kept
+in `train_amodal_wait_reward.py` and `train_amodal_wait_bandit.py` for a later
+larger-data study.

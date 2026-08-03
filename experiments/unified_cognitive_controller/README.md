@@ -115,6 +115,30 @@ a non-held-out split (selected value **0.15**) and passed two fresh held-out
 audits with the same controls; see `wait_threshold_calibration_seed993001.json`
 and the two `adaptive_wait_calibrated_*.json` reports.
 
+## Independent token-sensor alignment (2026-08-03)
+
+The next raw-stream boundary uses a fixed 16x16 raster sensor whose outputs
+are continuous RGB patch tokens. A small token frontend learned to emit the
+frozen vision encoder's opaque neural-IR basis from paired encoded-event
+consistency. The controller, original vision frontend, input bus, and decoder
+were frozen; no verifier bits, semantic labels, token names, or correct-action
+labels entered training. Two independent 32-update runs passed the full
+composition and causal gates. In an independent 512-lifetime replay of the
+saved frontend, bars/diamonds/dot-pairs fused accuracy was **98.32%/91.88%/
+94.69%**; shuffled partners were **51.41%/54.22%/50.16%**, contradictory
+partners flipped **93.59%/75.70%/90.59%**, and N=1 retention stayed
+**97.54--99.96%**. This is a second non-audio raw-stream bridge into the same
+frozen controller. It is deliberately narrow evidence: synthetic RGB tokens
+are not natural language, arbitrary cold-start sensors, or reward-only encoder
+alignment. Artifacts and reports are in
+`session_records/amodal_latent_alignment_2026-08-03/`:
+
+- `artifacts/checkpoints/amodal_token_aligned_frontend_seed996001.pt`
+- `artifacts/checkpoints/amodal_token_aligned_frontend_seed996101.pt`
+- `token_alignment_seed996001.json`
+- `token_alignment_seed996101.json`
+- `token_adapter_replay_seed996901.json`
+
 ## Extracted neural-IR migration rung (2026-08-01)
 
 The first four migration gates are implemented without retraining:

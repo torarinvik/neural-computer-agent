@@ -309,6 +309,23 @@ held-out audits using that value passed the pooled accuracy, utility, latency,
 redundant-view, and no-history gates. The calibration and final reports are in
 `session_records/amodal_latent_alignment_2026-08-03/`.
 
+The next modality boundary is now qualified with an independent token sensor.
+A fixed 16x16 raster sensor emits continuous RGB patch tokens; a small token
+frontend learned the frozen vision neural-IR basis from paired encoded-event
+consistency only. No verifier bits, semantic labels, token names, or controller
+updates were used. Two independent 32-update runs passed the full causal gate:
+the 512-lifetime saved-frontend replay reached **98.32%/91.88%/94.69%** on
+bars/diamonds/dot-pairs, while shuffled partners stayed at **51.41%/54.22%/
+50.16%** and contradictory partners flipped predictions at **93.59%/75.70%/
+90.59%**. N=1 retention remained **97.54--99.96%**, and the controller hash
+was unchanged. The promoted artifacts are
+`artifacts/checkpoints/amodal_token_aligned_frontend_seed996001.pt` and
+`...seed996101.pt`; training and independent replay reports are in
+`session_records/amodal_latent_alignment_2026-08-03/`. This establishes a
+second non-audio raw-stream bridge into the same controller, but it is still a
+synthetic RGB-token sensor—not natural language tokens, arbitrary cold-start
+modalities, or reward-only encoder alignment.
+
 ## North star
 
 Maximize verified reusable capability gained per unique interaction.

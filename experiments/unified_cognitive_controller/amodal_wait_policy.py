@@ -63,3 +63,25 @@ class AmodalArrivalPredictor(nn.Module):
                 f"features must have shape [batch, {AMODAL_WAIT_FEATURES}]"
             )
         return torch.sigmoid(self.network(features)).squeeze(-1)
+
+
+class AmodalWaitDecisionPolicy(nn.Module):
+    """Metadata-only policy whose probability means ``wait``."""
+
+    def __init__(self, hidden: int = 16) -> None:
+        super().__init__()
+        if hidden < 1:
+            raise ValueError("hidden must be positive")
+        self.hidden = hidden
+        self.network = nn.Sequential(
+            nn.Linear(AMODAL_WAIT_FEATURES, hidden),
+            nn.GELU(),
+            nn.Linear(hidden, 1),
+        )
+
+    def forward(self, features: torch.Tensor) -> torch.Tensor:
+        if features.ndim != 2 or features.shape[1] != AMODAL_WAIT_FEATURES:
+            raise ValueError(
+                f"features must have shape [batch, {AMODAL_WAIT_FEATURES}]"
+            )
+        return torch.sigmoid(self.network(features)).squeeze(-1)

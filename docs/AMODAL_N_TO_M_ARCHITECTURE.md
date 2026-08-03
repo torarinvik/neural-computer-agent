@@ -405,6 +405,18 @@ This is still **not yet the target architecture** because:
 - the token-stream result is not yet an unseen natural-language or speech
   frontend/backend qualification; those adapters still require causal audits.
 
+The synthetic token boundary is now qualified separately from the earlier
+reward-trained token experiment. A fixed 16x16 RGB patch-token sensor and a
+small frontend learned the frozen vision neural-IR basis from paired
+encoded-event consistency only. Two independent 32-update runs passed, and a
+saved-frontend 512-lifetime replay reached 98.32%/91.88%/94.69% fused on
+bars/diamonds/dot-pairs, with shuffled partners near chance and contradictory
+prediction flips of 93.59%/75.70%/90.59%. The controller and N=1 behavior were
+unchanged. This qualifies another raw-stream adapter into the shared IR; it
+does not qualify natural language, arbitrary tokenization, cold-start
+alignment, or reward-only encoder learning. Reports and artifacts are in
+`session_records/amodal_latent_alignment_2026-08-03/`.
+
 The first complete runtime composition API is now implemented as
 `AmodalControllerRuntime`. It keeps a single extracted controller core, accepts
 any nonempty mapping of registered raw frontends or already encoded events,
@@ -464,9 +476,11 @@ asynchronous or naturally multimodal operation.
    neural-IR alignment diagnostic, not arbitrary natural-modality transfer.
    The saved adapter replay is independently qualified, and a synthetic raw
    audio frontend now passes the same frozen-core composition and causal gates.
-   Waveform noise and burst-dropout robustness are also qualified; the next
-   boundary is genuinely missing complementary evidence and a different
-   token/audio sensor before unfreezing the controller.
+   Waveform noise and burst-dropout robustness are also qualified. A separate
+   continuous RGB patch-token frontend now passes the same frozen-core
+   composition and causal gates from paired unlabeled consistency; independent
+   replay is recorded alongside the audio reports. Natural language, arbitrary
+   raw token streams, and cold-start alignment remain open.
 10. Require complementary evidence split across two encoders.
 11. Train audio and language frontends/backends only after the generic buses pass.
 12. Freeze the controller and qualify genuinely new sensors and outputs.

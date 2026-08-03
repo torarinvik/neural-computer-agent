@@ -12,7 +12,11 @@ import torch
 
 from .amodal_interface import AmodalEvent
 from .amodal_runtime import AmodalControllerRuntime, AmodalEventWindowBuffer
-from .amodal_wait_policy import AmodalArrivalPredictor, arrival_features
+from .amodal_wait_policy import (
+    AmodalArrivalPredictor,
+    AmodalWaitDecisionPolicy,
+    arrival_features,
+)
 from .audit_audio_timing_buffer import _load_runtime
 from .environment import NULL_ACTION, generate_lifetimes
 from .train_amodal_audio_alignment import render_pair_relation_audio
@@ -29,9 +33,13 @@ def _sha256(path: Path) -> str:
 
 def _load_predictor(path: Path, device: torch.device) -> AmodalArrivalPredictor:
     payload = torch.load(path, map_location=device, weights_only=False)
-    if payload.get("schema") != "amodal-arrival-predictor-v1":
+    schema = payload.get("schema")
+    if schema == "amodal-arrival-predictor-v1":
+        predictor = AmodalArrivalPredictor(int(payload["hidden"])).to(device)
+    elif schema == "amodal-wait-decision-policy-v1":
+        predictor = AmodalWaitDecisionPolicy(int(payload["hidden"])).to(device)
+    else:
         raise ValueError("unsupported arrival predictor artifact schema")
-    predictor = AmodalArrivalPredictor(int(payload["hidden"])).to(device)
     predictor.load_state_dict(payload["state_dict"])
     return predictor.eval()
 

@@ -1,7 +1,11 @@
 import torch
 
 from .amodal_runtime import AmodalEventWindowStatus
-from .amodal_wait_policy import AmodalArrivalPredictor, arrival_features
+from .amodal_wait_policy import (
+    AmodalArrivalPredictor,
+    AmodalWaitDecisionPolicy,
+    arrival_features,
+)
 
 
 def test_arrival_features_use_only_generic_transport_metadata() -> None:
@@ -22,5 +26,12 @@ def test_arrival_features_use_only_generic_transport_metadata() -> None:
 def test_arrival_predictor_has_generic_bounded_probability_output() -> None:
     predictor = AmodalArrivalPredictor(hidden=8)
     probabilities = predictor(torch.zeros(4, 5))
+    assert probabilities.shape == (4,)
+    assert torch.all((probabilities >= 0) & (probabilities <= 1))
+
+
+def test_wait_decision_policy_returns_wait_probability() -> None:
+    policy = AmodalWaitDecisionPolicy(hidden=8)
+    probabilities = policy(torch.zeros(4, 5))
     assert probabilities.shape == (4,)
     assert torch.all((probabilities >= 0) & (probabilities <= 1))
