@@ -1,0 +1,20 @@
+{
+  "schema": "skill-bank-router-online-audit-v1",
+  "parent": "artifacts/checkpoints/span8_addressed_parent_scale1_seed32001.pt",
+  "seed": 93202,
+  "old_span_private": 9,
+  "new_span_private": 10,
+  "phase_one_updates": 512,
+  "phase_two_updates": 512,
+  "batch_size": 64,
+  "distill_weight": 0.1,
+  "verifier_bits": 131072,
+  "phase_one": {"old": 1.0, "new": 0.0},
+  "naive_new_only": {"old": 0.0, "new": 1.0},
+  "distilled_replay": {"old": 1.0, "new": 0.953125},
+  "shuffled_distilled": {"old": 1.0, "new": 0.0},
+  "permutation_old": 1.0,
+  "permutation_new": 0.953125,
+  "controller_weights_unchanged": true,
+  "accepted_diagnostic": true
+}

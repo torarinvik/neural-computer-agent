@@ -388,6 +388,14 @@ behavior equivalence at 93.49% for span nine and 87.66% for span ten. The
 remaining promotion gate is repeated acquisition under task shift with
 retention of the previously stored artifact behavior.
 
+The online selector audit now has a replicated retention repair. New-skill-only
+updates moved the new route to 100% but erased the old route (0%). Adding a
+small output-distillation loss on replayed old queries retained the old at
+100% and learned the new at 100% and 95.31% across two seeds. Shuffled rewards
+left the new route at chance, and candidate permutation remained exact. The
+next experiment is the same update applied to real bank artifacts across
+multiple task shifts, with behavior and artifact-retention gates.
+
 ## Critic and per-cell plasticity follow-up
 
 The action-conditioned critic was implemented as a zero-impact auxiliary head:

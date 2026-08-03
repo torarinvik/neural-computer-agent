@@ -1695,6 +1695,19 @@ controller stayed frozen. This validates the plumbing and causal artifact
 selection, but promotion remains opt-in until multi-seed retention and online
 task-shift audits are added.
 
+## Online selector retention: replay distillation (2026-08-03)
+
+The first continual-routing experiment exposed the expected stability/plasticity
+failure: after skill 9 was mastered, new-skill-only updates learned skill 10
+at **100%** while old skill 9 fell to **0%**. A small task-agnostic replay
+distillation term preserved the old selector outputs while scalar outcomes
+trained the new skill. Two seeds retained skill 9 at **100%** and learned skill
+10 at **100.00%** and **95.31%**; shuffled rewards left the new skill at
+**0%**, while candidate permutation remained exact. This is a replicated
+router-level anti-forgetting result, not yet a production claim: the next gate
+is to apply the same online update to real bank artifacts and audit behavioral
+retention after multiple task shifts.
+
 An independent seed reproduced the routing gates (16/16 held-out queries per
 skill, 100% normal, 50% shuffled/cosine, 100% permutation) and direct-vs-routed
 behavior equivalence at 93.49% for span nine and 87.66% for span ten. The

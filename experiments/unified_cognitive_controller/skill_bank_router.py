@@ -74,3 +74,12 @@ def attempted_outcome_loss(
         raise ValueError("outcomes must be binary scalar rewards")
     selected = logits.gather(1, attempted[:, None]).squeeze(1)
     return F.binary_cross_entropy_with_logits(selected, outcomes)
+
+
+def selector_distillation_loss(
+        current_logits: torch.Tensor, teacher_logits: torch.Tensor,
+        ) -> torch.Tensor:
+    """Preserve an earlier selector's opaque decisions during new learning."""
+    if current_logits.shape != teacher_logits.shape:
+        raise ValueError("teacher and current selector shapes must match")
+    return F.mse_loss(current_logits, teacher_logits.detach())

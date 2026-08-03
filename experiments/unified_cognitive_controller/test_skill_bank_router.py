@@ -2,7 +2,11 @@ import pytest
 import torch
 
 from .audit_skill_bank_reward_router import _random_opaque_keys
-from .skill_bank_router import SkillAddressSelector, attempted_outcome_loss
+from .skill_bank_router import (
+    SkillAddressSelector,
+    attempted_outcome_loss,
+    selector_distillation_loss,
+)
 
 
 def test_skill_address_selector_broadcasts_and_is_permutation_equivariant():
@@ -52,3 +56,14 @@ def test_random_opaque_keys_are_deterministic_normalized_and_unaligned():
     assert torch.equal(first, second)
     assert not torch.equal(first, other)
     assert torch.allclose(first.norm(dim=-1), torch.ones(3))
+
+
+def test_selector_distillation_loss_detaches_teacher_and_checks_shape():
+    current = torch.randn(3, 2, requires_grad=True)
+    teacher = torch.randn(3, 2, requires_grad=True)
+    loss = selector_distillation_loss(current, teacher)
+    loss.backward()
+    assert current.grad is not None
+    assert teacher.grad is None
+    with pytest.raises(ValueError, match="shapes"):
+        selector_distillation_loss(current, torch.randn(2, 2))
