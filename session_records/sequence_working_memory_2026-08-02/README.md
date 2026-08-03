@@ -382,6 +382,12 @@ the controller remained frozen. This closes the plumbing proof, not the
 promotion claim: multi-seed retention and online task-shift audits remain the
 next gate before learned routing can replace the safe default.
 
+An independent seed reproduced the full routing gates (16/16 per skill,
+100% normal, 50% shuffled/cosine, 100% permutation) and direct-vs-routed
+behavior equivalence at 93.49% for span nine and 87.66% for span ten. The
+remaining promotion gate is repeated acquisition under task shift with
+retention of the previously stored artifact behavior.
+
 ## Critic and per-cell plasticity follow-up
 
 The action-conditioned critic was implemented as a zero-impact auxiliary head:

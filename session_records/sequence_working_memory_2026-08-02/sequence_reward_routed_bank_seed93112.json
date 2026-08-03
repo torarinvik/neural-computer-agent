@@ -1,0 +1,38 @@
+{
+  "schema": "sequence-reward-routed-bank-audit-v1",
+  "base": "artifacts/checkpoints/span8_addressed_parent_scale1_seed32001.pt",
+  "children": [
+    "artifacts/checkpoints/span9_age_replay_pen003_e384_seed48002.pt",
+    "artifacts/checkpoints/span10_cold_rehydrated_8192_e384_seed9954815.pt"
+  ],
+  "spans_private_to_verifier": [9, 10],
+  "seed": 93112,
+  "updates": 1024,
+  "batch_size": 64,
+  "verifier_bits": 65536,
+  "train_queries_per_skill": 16,
+  "test_queries_per_skill": 16,
+  "behavior_count": 128,
+  "normal_accuracy": 1.0,
+  "reward_shuffled_accuracy": 0.5,
+  "candidate_permutation_accuracy": 1.0,
+  "cosine_baseline_accuracy": 0.5,
+  "bank_reload_exact": true,
+  "routed_all_correct": true,
+  "controller_weights_frozen": true,
+  "behavior": {
+    "9": {
+      "direct_accuracy": 0.9348958135,
+      "routed_accuracy": 0.9348958135,
+      "wrong_skill_accuracy": 0.9010416865,
+      "routed_matches_direct": true
+    },
+    "10": {
+      "direct_accuracy": 0.8765624762,
+      "routed_accuracy": 0.8765624762,
+      "wrong_skill_accuracy": 0.84375,
+      "routed_matches_direct": true
+    }
+  },
+  "accepted_diagnostic": true
+}

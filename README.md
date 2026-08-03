@@ -1695,6 +1695,13 @@ controller stayed frozen. This validates the plumbing and causal artifact
 selection, but promotion remains opt-in until multi-seed retention and online
 task-shift audits are added.
 
+An independent seed reproduced the routing gates (16/16 held-out queries per
+skill, 100% normal, 50% shuffled/cosine, 100% permutation) and direct-vs-routed
+behavior equivalence at 93.49% for span nine and 87.66% for span ten. The
+result is now replicated at the plumbing level; the remaining promotion gate
+is whether online task shifts and repeated acquisition preserve the older
+artifact behavior under a learned selector.
+
 ## Latest breakthrough: span-three working-memory compounding (2026-08-02)
 
 The sequence branch now demonstrates the desired learn-to-learn effect on a
