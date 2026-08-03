@@ -1728,6 +1728,33 @@ selected correctly after replacement; direct and routed behavior matched at
 memory-side continual learning, not yet a general production policy: broader
 task shifts and longer retention windows remain to be audited.
 
+## Replay rebuild across three opaque skill rows (2026-08-03)
+
+The next routing audit compared two ways to add a third skill family while the
+controller stayed frozen: incremental updates with output-distilled replay,
+and rebuilding the small selector from accumulated opaque query/attempt/outcome
+replay. The selector never received span identities or correct-row labels;
+the verifier retained those privately. At 1,024 updates per arm (65,536
+verifier bits), both the incremental and replay-rebuild arms reached
+**100% on all three held-out skill families** after the final shift. The
+rebuild arm also mastered the first two rows before the third row was added.
+
+The independent-random-outcome rebuild null scored `[0%, 100%, 0%]` across
+the three rows (33.3% aggregate), while the candidate-row permutation control
+remained **100%**. The controller digest was unchanged. A smaller 512-update
+pilot was seed-sensitive and failed to master the middle row, so this is a
+bounded compute/data result rather than evidence that rebuilding is always
+better than online distillation. It does show that an ever-growing external
+replay bank can support selector reconstruction without changing controller
+weights or exposing semantic labels.
+
+The full report is
+`session_records/sequence_working_memory_2026-08-02/skill_bank_router_rebuild_seed93401.json`.
+The next gate is repeated multi-seed three-row behavior through the real
+disk-backed bank, followed by a longer sequence of replacements and retention
+audits; this diagnostic alone does not promote learned routing to the default
+cosine resolver.
+
 ## Latest breakthrough: span-three working-memory compounding (2026-08-02)
 
 The sequence branch now demonstrates the desired learn-to-learn effect on a

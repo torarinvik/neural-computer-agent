@@ -963,6 +963,31 @@ span8_replica_fresh_seed30568.pt     sha256 29e8e00296897f44a96c47ae3e6902f053c8
 span8_replica_shuffled_seed30569.pt  sha256 efb70095a5ade9c72d8b702dff0dfc0cb6ac1b3d2f35608109a7375387552e36
 ```
 
+## Three-row replay rebuild diagnostic (2026-08-03)
+
+The selector was next tested on three sequential skill families (spans 9, 10,
+and 11) behind fixed random opaque row keys. The controller was frozen. The
+incremental arm used scalar-outcome updates plus output-distilled replay; the
+rebuild arm discarded only selector weights and relearned from the accumulated
+opaque query/attempt/outcome replay. No span identity or correct row was
+exposed to either learner.
+
+At 1,024 updates per arm and 65,536 verifier bits, the incremental arm scored
+`[1.00, 1.00, 1.00]` after the third shift and the replay-rebuild arm scored
+`[1.00, 1.00, 1.00]`. The rebuild arm already mastered the first two rows
+before adding the third. The independent-random-outcome null scored
+`[0.00, 1.00, 0.00]` (33.3% aggregate), and reversing the physical candidate
+row order left the rebuild scores at `[1.00, 1.00, 1.00]`. The controller
+weights were bit-identical before and after the audit.
+
+This is a diagnostic of external replay supporting selector reconstruction,
+not a claim that rebuilding dominates online updates: a 512-update pilot was
+seed-sensitive and failed on the middle row. The report is
+`skill_bank_router_rebuild_seed93401.json`. The next experiment must repeat
+the three-row result across seeds using real disk-backed artifacts, then test
+longer replacement sequences and behavioral/retention gates before learned
+routing can replace the safe cosine default.
+
 ## Cloud archive
 
 The current Vast instance was quiescent when archived. The load-bearing
