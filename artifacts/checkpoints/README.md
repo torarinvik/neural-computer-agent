@@ -106,6 +106,22 @@ kept only for analysis: `complement_population_continuation_*`,
 audits are recorded in
 `session_records/sequence_working_memory_2026-08-02/continuation_and_gate_frontier_2026-08-03/`.
 
+### Verified fourth-slot complement compounding
+
+`complement_population_fourth_slot_seed93871.pt` is the first promoted
+fourth-slot successor of the three-slot population parent. It used 1,536 new
+target lifetimes plus span-nine/span-ten rehearsal, and reached 71.90% versus
+66.58% for the parent (+5.31 points). Two additional independent audits gave
++5.95/+5.80 points; reset and blank controls were ~50%, shuffled outcomes were
+54.48%, and old-span retention stayed within 0.05 points. Its SHA-256 is
+`61f97ee8f7ce0d2ec32e065aeaa6c72ce05a8ff7332698a3b1b89f0f58fcf262`.
+
+`complement_population_fourth_slot_shuffled_seed93872.pt` is the matched
+adversarial control. The same recipe from seed 93873 is retained but
+unpromoted as `complement_population_fourth_slot_replica_seed93873_unpromoted.pt`
+because its causal gain was +2.97 points. Full reports are in
+`session_records/sequence_working_memory_2026-08-02/fourth_slot_compounding_2026-08-03/`.
+
 ## Procedural-shape relative operations
 
 `unified_next_error_balanced_primary_seed43601.pt` and

@@ -1982,6 +1982,24 @@ replay trainer now rejects latent-buffer feature-width mismatches explicitly.
 Full reports are in
 `session_records/sequence_working_memory_2026-08-02/continuation_and_gate_frontier_2026-08-03/`.
 
+### Verified fourth-slot complement compounding (2026-08-03)
+
+Starting from the promoted three-slot parent, a new zero-impact fourth slot
+trained on 1,536 fresh complement lifetimes with span-nine/span-ten rehearsal
+and stronger generic residual/gate/logit penalties. The promoted candidate
+reached **71.90% vs 66.58%** on its first full audit (**+5.31 points**), with
+reset 49.96%, blank 49.98%, shuffled control 54.48%, and old-span changes
+of +0.04/−0.01 points. Two additional independent audit seeds gave
+**+5.95/+5.80 points**, so the checkpoint itself is robust rather than a
+single audit-seed fluke. The checkpoint is
+`artifacts/checkpoints/complement_population_fourth_slot_seed93871.pt`.
+
+The same recipe from a second training seed produced +2.97 points and missed
+the promotion bar, so seed-to-seed acquisition variance remains. This is a
+verified single-checkpoint compounding milestone—not a claim that every seed
+will succeed—and the complete reports are in
+`session_records/sequence_working_memory_2026-08-02/fourth_slot_compounding_2026-08-03/`.
+
 ## Latest breakthrough: span-three working-memory compounding (2026-08-02)
 
 The sequence branch now demonstrates the desired learn-to-learn effect on a
