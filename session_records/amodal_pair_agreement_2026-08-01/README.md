@@ -46,6 +46,6 @@ renderers, and encoder families before promotion to a general N-to-M claim.
 - `training_seed175201.json`
 - `audit_seed175101_4096.json`
 - `audit_seed175201_4096.json`
-- `experiments/unified_cognitive_controller/train_amodal_pair_agreement.py`
-- `experiments/unified_cognitive_controller/audit_amodal_pair_agreement.py`
+- `experiments/archive/unified_cognitive_controller/train_amodal_pair_agreement.py`
+- `experiments/archive/unified_cognitive_controller/audit_amodal_pair_agreement.py`
 

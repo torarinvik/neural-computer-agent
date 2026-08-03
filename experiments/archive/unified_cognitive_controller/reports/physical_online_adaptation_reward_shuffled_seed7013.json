@@ -1,0 +1,2561 @@
+{
+  "accounting": {
+    "candidate_query_bits": 110592,
+    "future_query_training_bits": 36864,
+    "generated_training_contexts": 86016,
+    "optimizer_updates": 48,
+    "persisted_histories": 6144,
+    "physical_banks": 6144,
+    "physical_candidate_evaluations": 144,
+    "replayed_examples": 0,
+    "unique_training_verifier_bits": 196608
+  },
+  "binary_retention": {
+    "active_state_reset": {
+      "accuracy_by_trial": [
+        0.4951171875,
+        0.49462890625,
+        0.5009765625,
+        0.50048828125,
+        0.50048828125,
+        0.4990234375
+      ],
+      "final_accuracy": 0.4990234375,
+      "learning_gain": 0.0040039122104644775,
+      "post_feedback_accuracy": 0.4991210997104645,
+      "query_accuracy": 0.4991210997104645,
+      "zero_shot_accuracy": 0.4951171875
+    },
+    "blank_vision": {
+      "accuracy_by_trial": [
+        0.517578125,
+        0.49462890625,
+        0.4990234375,
+        0.505859375,
+        0.501953125,
+        0.5009765625
+      ],
+      "final_accuracy": 0.5009765625,
+      "learning_gain": -0.01708984375,
+      "post_feedback_accuracy": 0.50048828125,
+      "query_accuracy": 0.50048828125,
+      "zero_shot_accuracy": 0.517578125
+    },
+    "feedback_shuffled": {
+      "accuracy_by_trial": [
+        0.4951171875,
+        0.5087890625,
+        0.5087890625,
+        0.5087890625,
+        0.5087890625,
+        0.5087890625
+      ],
+      "final_accuracy": 0.5087890625,
+      "learning_gain": 0.013671875,
+      "post_feedback_accuracy": 0.5087890625,
+      "query_accuracy": 0.5087890625,
+      "zero_shot_accuracy": 0.4951171875
+    },
+    "gate": {
+      "accepted": true,
+      "active_state_reset_hurts": true,
+      "counterfactual_flip_at_least_80": true,
+      "few_shot_breakthrough": true,
+      "normal_few_shot_at_least_85": true,
+      "reversed_few_shot_at_least_85": true,
+      "shuffled_feedback_hurts": true,
+      "vision_causally_used": true,
+      "zero_shot_near_chance": true
+    },
+    "normal": {
+      "accuracy_by_trial": [
+        0.4951171875,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "final_accuracy": 1.0,
+      "learning_gain": 0.5048828125,
+      "post_feedback_accuracy": 1.0,
+      "query_accuracy": 1.0,
+      "zero_shot_accuracy": 0.4951171875
+    },
+    "post_feedback_prediction_flip_rate": 1.0,
+    "reversed_rule": {
+      "accuracy_by_trial": [
+        0.5048828125,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "final_accuracy": 1.0,
+      "learning_gain": 0.4951171875,
+      "post_feedback_accuracy": 1.0,
+      "query_accuracy": 1.0,
+      "zero_shot_accuracy": 0.5048828125
+    },
+    "workspace_disabled": {
+      "accuracy_by_trial": [
+        0.4951171875,
+        0.892578125,
+        0.9765625,
+        0.92724609375,
+        0.82861328125,
+        0.68896484375
+      ],
+      "final_accuracy": 0.68896484375,
+      "learning_gain": 0.36767578125,
+      "post_feedback_accuracy": 0.86279296875,
+      "query_accuracy": 0.86279296875,
+      "zero_shot_accuracy": 0.4951171875
+    }
+  },
+  "boundary_signal_visible_to_learner": false,
+  "changed_parameters": [
+    "memory_replacement_extra_gate.weight"
+  ],
+  "checkpoint_saved": false,
+  "configuration": {
+    "bank_capacity": 6,
+    "banks": 128,
+    "checkpoint_in": "artifacts/candidates/unified_memory_online_utility_seed6810.pt",
+    "checkpoint_out": null,
+    "device": "cuda",
+    "perturbation": 3.0,
+    "phase_steps": 12,
+    "report": "experiments/archive/unified_cognitive_controller/reports/physical_online_adaptation_reward_shuffled_seed7013.json",
+    "seed": 7013,
+    "shuffle_physical_rewards": true,
+    "step_size": 1.5,
+    "test_banks": 2048
+  },
+  "endpoint_reports": [
+    {
+      "frozen": {
+        "accuracy": 0.951904296875,
+        "gate": {
+          "accepted": true,
+          "age_feature_is_causal": true,
+          "captures_75_percent_of_best_control_gap": true,
+          "frequency_feature_is_causal": true,
+          "learned_target_at_least_75": true,
+          "oracle_is_solved": true,
+          "reliability_feature_is_causal": true,
+          "visible_oracle_target_at_least_85": true,
+          "within_3_points_of_visible_oracle": true
+        },
+        "generated_contexts": 28672,
+        "policy_accuracies": {
+          "age_shuffled": 0.893798828125,
+          "fixed": 0.8776041865348816,
+          "frequency": 0.9122721552848816,
+          "frequency_shuffled": 0.8900553584098816,
+          "learned": 0.951904296875,
+          "oracle": 0.9635416865348816,
+          "random": 0.87646484375,
+          "recency": 0.9115397930145264,
+          "reliability": 0.8806966543197632,
+          "reliability_shuffled": 0.951904296875,
+          "skip": 0.859130859375,
+          "visible_oracle": 0.955322265625
+        },
+        "policy_target_eviction_rates": {
+          "age_shuffled": 0.32373046875,
+          "fixed": 0.17138671875,
+          "frequency": 0.5146484375,
+          "frequency_shuffled": 0.271484375,
+          "learned": 0.8935546875,
+          "oracle": 1.0,
+          "random": 0.13916015625,
+          "recency": 0.4814453125,
+          "reliability": 0.18212890625,
+          "reliability_shuffled": 0.8935546875,
+          "skip": 0.0,
+          "visible_oracle": 0.9248046875
+        },
+        "replace_rate": 0.9814453125,
+        "residual_weights": [
+          -14.157493591308594,
+          0.0
+        ],
+        "target_eviction_rate": 0.8935546875
+      },
+      "learned": {
+        "accuracy": 0.9415690898895264,
+        "gate": {
+          "accepted": false,
+          "age_feature_is_causal": true,
+          "captures_75_percent_of_best_control_gap": false,
+          "frequency_feature_is_causal": true,
+          "learned_target_at_least_75": true,
+          "oracle_is_solved": true,
+          "reliability_feature_is_causal": true,
+          "visible_oracle_target_at_least_85": true,
+          "within_3_points_of_visible_oracle": true
+        },
+        "generated_contexts": 28672,
+        "policy_accuracies": {
+          "age_shuffled": 0.9006348252296448,
+          "fixed": 0.8776041865348816,
+          "frequency": 0.9122721552848816,
+          "frequency_shuffled": 0.8849284648895264,
+          "learned": 0.9415690898895264,
+          "oracle": 0.9635416865348816,
+          "random": 0.87646484375,
+          "recency": 0.9115397930145264,
+          "reliability": 0.8806966543197632,
+          "reliability_shuffled": 0.9429525136947632,
+          "skip": 0.859130859375,
+          "visible_oracle": 0.955322265625
+        },
+        "policy_target_eviction_rates": {
+          "age_shuffled": 0.3876953125,
+          "fixed": 0.17138671875,
+          "frequency": 0.5146484375,
+          "frequency_shuffled": 0.20361328125,
+          "learned": 0.7880859375,
+          "oracle": 1.0,
+          "random": 0.13916015625,
+          "recency": 0.4814453125,
+          "reliability": 0.18212890625,
+          "reliability_shuffled": 0.7900390625,
+          "skip": 0.0,
+          "visible_oracle": 0.9248046875
+        },
+        "replace_rate": 0.92919921875,
+        "residual_weights": [
+          -20.157493591308594,
+          3.0
+        ],
+        "target_eviction_rate": 0.7880859375
+      },
+      "phase": "old_equal",
+      "reliability_residual_ablated": {
+        "accuracy": 0.9436035752296448,
+        "gate": {
+          "accepted": false,
+          "age_feature_is_causal": true,
+          "captures_75_percent_of_best_control_gap": false,
+          "frequency_feature_is_causal": true,
+          "learned_target_at_least_75": true,
+          "oracle_is_solved": true,
+          "reliability_feature_is_causal": true,
+          "visible_oracle_target_at_least_85": true,
+          "within_3_points_of_visible_oracle": true
+        },
+        "generated_contexts": 28672,
+        "policy_accuracies": {
+          "age_shuffled": 0.9014486074447632,
+          "fixed": 0.8776041865348816,
+          "frequency": 0.9122721552848816,
+          "frequency_shuffled": 0.8846029043197632,
+          "learned": 0.9436035752296448,
+          "oracle": 0.9635416865348816,
+          "random": 0.87646484375,
+          "recency": 0.9115397930145264,
+          "reliability": 0.8806966543197632,
+          "reliability_shuffled": 0.9436035752296448,
+          "skip": 0.859130859375,
+          "visible_oracle": 0.955322265625
+        },
+        "policy_target_eviction_rates": {
+          "age_shuffled": 0.39404296875,
+          "fixed": 0.17138671875,
+          "frequency": 0.5146484375,
+          "frequency_shuffled": 0.20068359375,
+          "learned": 0.79443359375,
+          "oracle": 1.0,
+          "random": 0.13916015625,
+          "recency": 0.4814453125,
+          "reliability": 0.18212890625,
+          "reliability_shuffled": 0.79443359375,
+          "skip": 0.0,
+          "visible_oracle": 0.9248046875
+        },
+        "replace_rate": 0.92236328125,
+        "residual_weights": [
+          -20.157493591308594,
+          3.0
+        ],
+        "target_eviction_rate": 0.79443359375
+      },
+      "weights": [
+        0.5,
+        0.5,
+        0.0
+      ]
+    },
+    {
+      "frozen": {
+        "accuracy": 0.9204102158546448,
+        "gate": {
+          "accepted": false,
+          "age_feature_is_causal": false,
+          "captures_75_percent_of_best_control_gap": false,
+          "frequency_feature_is_causal": false,
+          "learned_target_at_least_75": false,
+          "oracle_is_solved": true,
+          "reliability_feature_is_causal": false,
+          "visible_oracle_target_at_least_85": true,
+          "within_3_points_of_visible_oracle": false
+        },
+        "generated_contexts": 28672,
+        "policy_accuracies": {
+          "age_shuffled": 0.8938802480697632,
+          "fixed": 0.8818359971046448,
+          "frequency": 0.9038900136947632,
+          "frequency_shuffled": 0.8911947011947632,
+          "learned": 0.9204102158546448,
+          "oracle": 0.9627279043197632,
+          "random": 0.8771159648895264,
+          "recency": 0.9056803584098816,
+          "reliability": 0.9030762314796448,
+          "reliability_shuffled": 0.9204102158546448,
+          "skip": 0.8610840439796448,
+          "visible_oracle": 0.9536947011947632
+        },
+        "policy_target_eviction_rates": {
+          "age_shuffled": 0.30029296875,
+          "fixed": 0.1689453125,
+          "frequency": 0.4228515625,
+          "frequency_shuffled": 0.248046875,
+          "learned": 0.55908203125,
+          "oracle": 1.0,
+          "random": 0.14599609375,
+          "recency": 0.4111328125,
+          "reliability": 0.41064453125,
+          "reliability_shuffled": 0.55908203125,
+          "skip": 0.0,
+          "visible_oracle": 0.90478515625
+        },
+        "replace_rate": 0.9853515625,
+        "residual_weights": [
+          -14.157493591308594,
+          0.0
+        ],
+        "target_eviction_rate": 0.55908203125
+      },
+      "learned": {
+        "accuracy": 0.9104818105697632,
+        "gate": {
+          "accepted": false,
+          "age_feature_is_causal": false,
+          "captures_75_percent_of_best_control_gap": false,
+          "frequency_feature_is_causal": false,
+          "learned_target_at_least_75": false,
+          "oracle_is_solved": true,
+          "reliability_feature_is_causal": false,
+          "visible_oracle_target_at_least_85": true,
+          "within_3_points_of_visible_oracle": false
+        },
+        "generated_contexts": 28672,
+        "policy_accuracies": {
+          "age_shuffled": 0.8913574814796448,
+          "fixed": 0.8818359971046448,
+          "frequency": 0.9038900136947632,
+          "frequency_shuffled": 0.8824869990348816,
+          "learned": 0.9104818105697632,
+          "oracle": 0.9627279043197632,
+          "random": 0.8771159648895264,
+          "recency": 0.9056803584098816,
+          "reliability": 0.9030762314796448,
+          "reliability_shuffled": 0.9178873896598816,
+          "skip": 0.8610840439796448,
+          "visible_oracle": 0.9536947011947632
+        },
+        "policy_target_eviction_rates": {
+          "age_shuffled": 0.29150390625,
+          "fixed": 0.1689453125,
+          "frequency": 0.4228515625,
+          "frequency_shuffled": 0.169921875,
+          "learned": 0.462890625,
+          "oracle": 1.0,
+          "random": 0.14599609375,
+          "recency": 0.4111328125,
+          "reliability": 0.41064453125,
+          "reliability_shuffled": 0.546875,
+          "skip": 0.0,
+          "visible_oracle": 0.90478515625
+        },
+        "replace_rate": 0.9482421875,
+        "residual_weights": [
+          -18.657493591308594,
+          4.5
+        ],
+        "target_eviction_rate": 0.462890625
+      },
+      "phase": "reliability_dominant",
+      "reliability_residual_ablated": {
+        "accuracy": 0.9173991084098816,
+        "gate": {
+          "accepted": false,
+          "age_feature_is_causal": false,
+          "captures_75_percent_of_best_control_gap": false,
+          "frequency_feature_is_causal": false,
+          "learned_target_at_least_75": false,
+          "oracle_is_solved": true,
+          "reliability_feature_is_causal": false,
+          "visible_oracle_target_at_least_85": true,
+          "within_3_points_of_visible_oracle": false
+        },
+        "generated_contexts": 28672,
+        "policy_accuracies": {
+          "age_shuffled": 0.8951009511947632,
+          "fixed": 0.8818359971046448,
+          "frequency": 0.9038900136947632,
+          "frequency_shuffled": 0.8855794668197632,
+          "learned": 0.9173991084098816,
+          "oracle": 0.9627279043197632,
+          "random": 0.8771159648895264,
+          "recency": 0.9056803584098816,
+          "reliability": 0.9030762314796448,
+          "reliability_shuffled": 0.9173991084098816,
+          "skip": 0.8610840439796448,
+          "visible_oracle": 0.9536947011947632
+        },
+        "policy_target_eviction_rates": {
+          "age_shuffled": 0.326171875,
+          "fixed": 0.1689453125,
+          "frequency": 0.4228515625,
+          "frequency_shuffled": 0.2041015625,
+          "learned": 0.53271484375,
+          "oracle": 1.0,
+          "random": 0.14599609375,
+          "recency": 0.4111328125,
+          "reliability": 0.41064453125,
+          "reliability_shuffled": 0.53271484375,
+          "skip": 0.0,
+          "visible_oracle": 0.90478515625
+        },
+        "replace_rate": 0.93896484375,
+        "residual_weights": [
+          -18.657493591308594,
+          4.5
+        ],
+        "target_eviction_rate": 0.53271484375
+      },
+      "weights": [
+        0.3,
+        0.3,
+        0.4
+      ]
+    },
+    {
+      "frozen": {
+        "accuracy": 0.956298828125,
+        "gate": {
+          "accepted": true,
+          "age_feature_is_causal": true,
+          "captures_75_percent_of_best_control_gap": true,
+          "frequency_feature_is_causal": true,
+          "learned_target_at_least_75": true,
+          "oracle_is_solved": true,
+          "reliability_feature_is_causal": true,
+          "visible_oracle_target_at_least_85": true,
+          "within_3_points_of_visible_oracle": true
+        },
+        "generated_contexts": 28672,
+        "policy_accuracies": {
+          "age_shuffled": 0.9029948115348816,
+          "fixed": 0.8809407949447632,
+          "frequency": 0.9191081523895264,
+          "frequency_shuffled": 0.8894857168197632,
+          "learned": 0.956298828125,
+          "oracle": 0.96484375,
+          "random": 0.8772786855697632,
+          "recency": 0.90966796875,
+          "reliability": 0.882080078125,
+          "reliability_shuffled": 0.956298828125,
+          "skip": 0.8650716543197632,
+          "visible_oracle": 0.9584147334098816
+        },
+        "policy_target_eviction_rates": {
+          "age_shuffled": 0.3427734375,
+          "fixed": 0.17431640625,
+          "frequency": 0.53173828125,
+          "frequency_shuffled": 0.27197265625,
+          "learned": 0.9033203125,
+          "oracle": 1.0,
+          "random": 0.13525390625,
+          "recency": 0.46435546875,
+          "reliability": 0.1708984375,
+          "reliability_shuffled": 0.9033203125,
+          "skip": 0.0,
+          "visible_oracle": 0.93115234375
+        },
+        "replace_rate": 0.9833984375,
+        "residual_weights": [
+          -14.157493591308594,
+          0.0
+        ],
+        "target_eviction_rate": 0.9033203125
+      },
+      "learned": {
+        "accuracy": 0.9405924677848816,
+        "gate": {
+          "accepted": false,
+          "age_feature_is_causal": false,
+          "captures_75_percent_of_best_control_gap": false,
+          "frequency_feature_is_causal": true,
+          "learned_target_at_least_75": false,
+          "oracle_is_solved": true,
+          "reliability_feature_is_causal": true,
+          "visible_oracle_target_at_least_85": true,
+          "within_3_points_of_visible_oracle": true
+        },
+        "generated_contexts": 28672,
+        "policy_accuracies": {
+          "age_shuffled": 0.904541015625,
+          "fixed": 0.8809407949447632,
+          "frequency": 0.9191081523895264,
+          "frequency_shuffled": 0.8817545771598816,
+          "learned": 0.9405924677848816,
+          "oracle": 0.96484375,
+          "random": 0.8772786855697632,
+          "recency": 0.90966796875,
+          "reliability": 0.882080078125,
+          "reliability_shuffled": 0.9396973252296448,
+          "skip": 0.8650716543197632,
+          "visible_oracle": 0.9584147334098816
+        },
+        "policy_target_eviction_rates": {
+          "age_shuffled": 0.390625,
+          "fixed": 0.17431640625,
+          "frequency": 0.53173828125,
+          "frequency_shuffled": 0.1962890625,
+          "learned": 0.7490234375,
+          "oracle": 1.0,
+          "random": 0.13525390625,
+          "recency": 0.46435546875,
+          "reliability": 0.1708984375,
+          "reliability_shuffled": 0.75439453125,
+          "skip": 0.0,
+          "visible_oracle": 0.93115234375
+        },
+        "replace_rate": 0.94091796875,
+        "residual_weights": [
+          -20.157493591308594,
+          9.0
+        ],
+        "target_eviction_rate": 0.7490234375
+      },
+      "phase": "old_return",
+      "reliability_residual_ablated": {
+        "accuracy": 0.947265625,
+        "gate": {
+          "accepted": false,
+          "age_feature_is_causal": false,
+          "captures_75_percent_of_best_control_gap": false,
+          "frequency_feature_is_causal": true,
+          "learned_target_at_least_75": true,
+          "oracle_is_solved": true,
+          "reliability_feature_is_causal": true,
+          "visible_oracle_target_at_least_85": true,
+          "within_3_points_of_visible_oracle": true
+        },
+        "generated_contexts": 28672,
+        "policy_accuracies": {
+          "age_shuffled": 0.907470703125,
+          "fixed": 0.8809407949447632,
+          "frequency": 0.9191081523895264,
+          "frequency_shuffled": 0.881103515625,
+          "learned": 0.947265625,
+          "oracle": 0.96484375,
+          "random": 0.8772786855697632,
+          "recency": 0.90966796875,
+          "reliability": 0.882080078125,
+          "reliability_shuffled": 0.947265625,
+          "skip": 0.8650716543197632,
+          "visible_oracle": 0.9584147334098816
+        },
+        "policy_target_eviction_rates": {
+          "age_shuffled": 0.404296875,
+          "fixed": 0.17431640625,
+          "frequency": 0.53173828125,
+          "frequency_shuffled": 0.19384765625,
+          "learned": 0.81640625,
+          "oracle": 1.0,
+          "random": 0.13525390625,
+          "recency": 0.46435546875,
+          "reliability": 0.1708984375,
+          "reliability_shuffled": 0.81640625,
+          "skip": 0.0,
+          "visible_oracle": 0.93115234375
+        },
+        "replace_rate": 0.92919921875,
+        "residual_weights": [
+          -20.157493591308594,
+          9.0
+        ],
+        "target_eviction_rate": 0.81640625
+      },
+      "weights": [
+        0.5,
+        0.5,
+        0.0
+      ]
+    },
+    {
+      "frozen": {
+        "accuracy": 0.9287923574447632,
+        "gate": {
+          "accepted": false,
+          "age_feature_is_causal": false,
+          "captures_75_percent_of_best_control_gap": false,
+          "frequency_feature_is_causal": false,
+          "learned_target_at_least_75": false,
+          "oracle_is_solved": true,
+          "reliability_feature_is_causal": false,
+          "visible_oracle_target_at_least_85": true,
+          "within_3_points_of_visible_oracle": true
+        },
+        "generated_contexts": 28672,
+        "policy_accuracies": {
+          "age_shuffled": 0.8979492783546448,
+          "fixed": 0.8842774033546448,
+          "frequency": 0.9112956523895264,
+          "frequency_shuffled": 0.8897298574447632,
+          "learned": 0.9287923574447632,
+          "oracle": 0.9641927480697632,
+          "random": 0.8776856064796448,
+          "recency": 0.9078776240348816,
+          "reliability": 0.9007976055145264,
+          "reliability_shuffled": 0.9287923574447632,
+          "skip": 0.8627116084098816,
+          "visible_oracle": 0.9544271230697632
+        },
+        "policy_target_eviction_rates": {
+          "age_shuffled": 0.30908203125,
+          "fixed": 0.1669921875,
+          "frequency": 0.4658203125,
+          "frequency_shuffled": 0.2509765625,
+          "learned": 0.638671875,
+          "oracle": 1.0,
+          "random": 0.1455078125,
+          "recency": 0.4296875,
+          "reliability": 0.37548828125,
+          "reliability_shuffled": 0.638671875,
+          "skip": 0.0,
+          "visible_oracle": 0.90234375
+        },
+        "replace_rate": 0.98583984375,
+        "residual_weights": [
+          -14.157493591308594,
+          0.0
+        ],
+        "target_eviction_rate": 0.638671875
+      },
+      "learned": {
+        "accuracy": 0.9049479365348816,
+        "gate": {
+          "accepted": false,
+          "age_feature_is_causal": false,
+          "captures_75_percent_of_best_control_gap": false,
+          "frequency_feature_is_causal": false,
+          "learned_target_at_least_75": false,
+          "oracle_is_solved": true,
+          "reliability_feature_is_causal": false,
+          "visible_oracle_target_at_least_85": true,
+          "within_3_points_of_visible_oracle": false
+        },
+        "generated_contexts": 28672,
+        "policy_accuracies": {
+          "age_shuffled": 0.8939616084098816,
+          "fixed": 0.8842774033546448,
+          "frequency": 0.9112956523895264,
+          "frequency_shuffled": 0.8785807490348816,
+          "learned": 0.9049479365348816,
+          "oracle": 0.9641927480697632,
+          "random": 0.8776856064796448,
+          "recency": 0.9078776240348816,
+          "reliability": 0.9007976055145264,
+          "reliability_shuffled": 0.9209798574447632,
+          "skip": 0.8627116084098816,
+          "visible_oracle": 0.9544271230697632
+        },
+        "policy_target_eviction_rates": {
+          "age_shuffled": 0.27783203125,
+          "fixed": 0.1669921875,
+          "frequency": 0.4658203125,
+          "frequency_shuffled": 0.1162109375,
+          "learned": 0.3974609375,
+          "oracle": 1.0,
+          "random": 0.1455078125,
+          "recency": 0.4296875,
+          "reliability": 0.37548828125,
+          "reliability_shuffled": 0.57080078125,
+          "skip": 0.0,
+          "visible_oracle": 0.90234375
+        },
+        "replace_rate": 0.9482421875,
+        "residual_weights": [
+          -21.657493591308594,
+          13.5
+        ],
+        "target_eviction_rate": 0.3974609375
+      },
+      "phase": "all_equal",
+      "reliability_residual_ablated": {
+        "accuracy": 0.9224447011947632,
+        "gate": {
+          "accepted": false,
+          "age_feature_is_causal": false,
+          "captures_75_percent_of_best_control_gap": false,
+          "frequency_feature_is_causal": false,
+          "learned_target_at_least_75": false,
+          "oracle_is_solved": true,
+          "reliability_feature_is_causal": false,
+          "visible_oracle_target_at_least_85": true,
+          "within_3_points_of_visible_oracle": false
+        },
+        "generated_contexts": 28672,
+        "policy_accuracies": {
+          "age_shuffled": 0.9038086533546448,
+          "fixed": 0.8842774033546448,
+          "frequency": 0.9112956523895264,
+          "frequency_shuffled": 0.8833822011947632,
+          "learned": 0.9224447011947632,
+          "oracle": 0.9641927480697632,
+          "random": 0.8776856064796448,
+          "recency": 0.9078776240348816,
+          "reliability": 0.9007976055145264,
+          "reliability_shuffled": 0.9224447011947632,
+          "skip": 0.8627116084098816,
+          "visible_oracle": 0.9544271230697632
+        },
+        "policy_target_eviction_rates": {
+          "age_shuffled": 0.36181640625,
+          "fixed": 0.1669921875,
+          "frequency": 0.4658203125,
+          "frequency_shuffled": 0.18896484375,
+          "learned": 0.583984375,
+          "oracle": 1.0,
+          "random": 0.1455078125,
+          "recency": 0.4296875,
+          "reliability": 0.37548828125,
+          "reliability_shuffled": 0.583984375,
+          "skip": 0.0,
+          "visible_oracle": 0.90234375
+        },
+        "replace_rate": 0.9208984375,
+        "residual_weights": [
+          -21.657493591308594,
+          13.5
+        ],
+        "target_eviction_rate": 0.583984375
+      },
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ]
+    }
+  ],
+  "four_rule_retention": {
+    "active_state_reset": {
+      "accuracy_by_trial": [
+        0.49072265625,
+        0.5,
+        0.74853515625,
+        0.5,
+        0.498046875,
+        0.5078125
+      ],
+      "final_accuracy": 0.5078125,
+      "learning_gain": 0.0728759765625,
+      "post_feedback_accuracy": 0.5635986328125,
+      "query_accuracy": 0.5635986328125,
+      "zero_shot_accuracy": 0.49072265625
+    },
+    "blank_vision": {
+      "accuracy_by_trial": [
+        0.49462890625,
+        0.5,
+        0.75146484375,
+        0.7490234375,
+        0.74951171875,
+        0.7529296875
+      ],
+      "final_accuracy": 0.7529296875,
+      "learning_gain": 0.256103515625,
+      "post_feedback_accuracy": 0.750732421875,
+      "query_accuracy": 0.750732421875,
+      "zero_shot_accuracy": 0.49462890625
+    },
+    "feedback_shuffled": {
+      "accuracy_by_trial": [
+        0.49072265625,
+        0.501953125,
+        0.5,
+        0.482421875,
+        0.51318359375,
+        0.48291015625
+      ],
+      "final_accuracy": 0.48291015625,
+      "learning_gain": 0.00390625,
+      "post_feedback_accuracy": 0.49462890625,
+      "query_accuracy": 0.49462890625,
+      "zero_shot_accuracy": 0.49072265625
+    },
+    "gate": {
+      "accepted": true,
+      "active_state_reset_hurts": true,
+      "counterfactual_flip_at_least_80": true,
+      "few_shot_breakthrough": true,
+      "normal_few_shot_at_least_85": true,
+      "reversed_few_shot_at_least_85": true,
+      "shuffled_feedback_hurts": true,
+      "vision_causally_used": true,
+      "zero_shot_near_chance": true
+    },
+    "normal": {
+      "accuracy_by_trial": [
+        0.49072265625,
+        0.5,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "final_accuracy": 1.0,
+      "learning_gain": 0.50927734375,
+      "post_feedback_accuracy": 1.0,
+      "query_accuracy": 1.0,
+      "zero_shot_accuracy": 0.49072265625
+    },
+    "post_feedback_prediction_flip_rate": 1.0,
+    "reversed_rule": {
+      "accuracy_by_trial": [
+        0.50927734375,
+        0.5,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "final_accuracy": 1.0,
+      "learning_gain": 0.49072265625,
+      "post_feedback_accuracy": 1.0,
+      "query_accuracy": 1.0,
+      "zero_shot_accuracy": 0.50927734375
+    },
+    "workspace_disabled": {
+      "accuracy_by_trial": [
+        0.49072265625,
+        0.50439453125,
+        0.99658203125,
+        0.8349609375,
+        0.7392578125,
+        0.67578125
+      ],
+      "final_accuracy": 0.67578125,
+      "learning_gain": 0.3209228515625,
+      "post_feedback_accuracy": 0.8116455078125,
+      "query_accuracy": 0.8116455078125,
+      "zero_shot_accuracy": 0.49072265625
+    }
+  },
+  "gate": {
+    "accepted": false,
+    "binary_retained": true,
+    "every_phase_near_oracle_and_target_at_least_72": false,
+    "every_physical_history_persisted": true,
+    "four_rule_retained": true,
+    "maximum_physical_tensor_reward_difference_at_most_1_point": true,
+    "old_utility_returns_within_5_points": true,
+    "only_extra_residual_changed": true,
+    "physical_and_tensor_winners_always_match": false,
+    "reliability_phase_beats_frozen_by_4_target_points": false,
+    "reliability_residual_adds_4_target_points": false
+  },
+  "history": [
+    {
+      "aligned_physical_rewards": [
+        0.96484375,
+        0.9609375,
+        0.9596354365348816
+      ],
+      "direction": [
+        -1.0,
+        1.0
+      ],
+      "elapsed_seconds": 3.0992414199281484,
+      "histories_persisted": 128,
+      "history_seconds": 1.2592901240568608,
+      "phase": "old_equal",
+      "physical_candidate_seconds": 1.0280142240226269,
+      "physical_rewards": [
+        0.9596354365348816,
+        0.96484375,
+        0.9609375
+      ],
+      "physical_winner": 0,
+      "residual_weights": [
+        -15.657493591308594,
+        1.5
+      ],
+      "step": 1,
+      "tensor_rewards": [
+        0.9596354961395264,
+        0.9648438096046448,
+        0.9609375
+      ],
+      "tensor_winner": 1,
+      "winner_target_eviction_rate": 0.890625
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9609375,
+        0.9583333730697632,
+        0.9479166865348816
+      ],
+      "direction": [
+        -1.0,
+        1.0
+      ],
+      "elapsed_seconds": 5.4259738239925355,
+      "histories_persisted": 128,
+      "history_seconds": 1.1751580948475748,
+      "phase": "old_equal",
+      "physical_candidate_seconds": 1.0165765308775008,
+      "physical_rewards": [
+        0.9479166865348816,
+        0.9583333730697632,
+        0.9609375
+      ],
+      "physical_winner": 0,
+      "residual_weights": [
+        -17.157493591308594,
+        3.0
+      ],
+      "step": 2,
+      "tensor_rewards": [
+        0.9479167461395264,
+        0.9583333730697632,
+        0.9609375
+      ],
+      "tensor_winner": 2,
+      "winner_target_eviction_rate": 0.8046875
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9661458730697632,
+        0.96875,
+        0.96875
+      ],
+      "direction": [
+        1.0,
+        1.0
+      ],
+      "elapsed_seconds": 7.851038277847692,
+      "histories_persisted": 128,
+      "history_seconds": 1.1593067040666938,
+      "phase": "old_equal",
+      "physical_candidate_seconds": 1.0882428782060742,
+      "physical_rewards": [
+        0.9661458730697632,
+        0.96875,
+        0.96875
+      ],
+      "physical_winner": 1,
+      "residual_weights": [
+        -17.157493591308594,
+        3.0
+      ],
+      "step": 3,
+      "tensor_rewards": [
+        0.9661458730697632,
+        0.96875,
+        0.9687500596046448
+      ],
+      "tensor_winner": 2,
+      "winner_target_eviction_rate": 0.9140625
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9791666865348816,
+        0.9752604365348816,
+        0.9713541865348816
+      ],
+      "direction": [
+        -1.0,
+        -1.0
+      ],
+      "elapsed_seconds": 10.224548343801871,
+      "histories_persisted": 128,
+      "history_seconds": 1.1660946400370449,
+      "phase": "old_equal",
+      "physical_candidate_seconds": 1.0231906839180738,
+      "physical_rewards": [
+        0.9791666865348816,
+        0.9752604365348816,
+        0.9713541865348816
+      ],
+      "physical_winner": 0,
+      "residual_weights": [
+        -18.657493591308594,
+        1.5
+      ],
+      "step": 4,
+      "tensor_rewards": [
+        0.9791666865348816,
+        0.9752604365348816,
+        0.9713541865348816
+      ],
+      "tensor_winner": 0,
+      "winner_target_eviction_rate": 0.921875
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9505208730697632,
+        0.94921875,
+        0.9544271230697632
+      ],
+      "direction": [
+        1.0,
+        -1.0
+      ],
+      "elapsed_seconds": 12.572200084803626,
+      "histories_persisted": 128,
+      "history_seconds": 1.1528516979888082,
+      "phase": "old_equal",
+      "physical_candidate_seconds": 1.0176670781802386,
+      "physical_rewards": [
+        0.9544271230697632,
+        0.9505208730697632,
+        0.94921875
+      ],
+      "physical_winner": 2,
+      "residual_weights": [
+        -20.157493591308594,
+        3.0
+      ],
+      "step": 5,
+      "tensor_rewards": [
+        0.9544271230697632,
+        0.9505208730697632,
+        0.94921875
+      ],
+      "tensor_winner": 0,
+      "winner_target_eviction_rate": 0.875
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9700521230697632,
+        0.96875,
+        0.97265625
+      ],
+      "direction": [
+        1.0,
+        1.0
+      ],
+      "elapsed_seconds": 14.904167915927246,
+      "histories_persisted": 128,
+      "history_seconds": 1.158069035038352,
+      "phase": "old_equal",
+      "physical_candidate_seconds": 1.0182259595021605,
+      "physical_rewards": [
+        0.9700521230697632,
+        0.97265625,
+        0.96875
+      ],
+      "physical_winner": 2,
+      "residual_weights": [
+        -21.657493591308594,
+        1.5
+      ],
+      "step": 6,
+      "tensor_rewards": [
+        0.9700521230697632,
+        0.97265625,
+        0.96875
+      ],
+      "tensor_winner": 1,
+      "winner_target_eviction_rate": 0.875
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9596354365348816,
+        0.9596354365348816,
+        0.9609375
+      ],
+      "direction": [
+        -1.0,
+        -1.0
+      ],
+      "elapsed_seconds": 17.218141886871308,
+      "histories_persisted": 128,
+      "history_seconds": 1.1548258871771395,
+      "phase": "old_equal",
+      "physical_candidate_seconds": 1.0254032858647406,
+      "physical_rewards": [
+        0.9596354365348816,
+        0.9596354365348816,
+        0.9609375
+      ],
+      "physical_winner": 2,
+      "residual_weights": [
+        -20.157493591308594,
+        3.0
+      ],
+      "step": 7,
+      "tensor_rewards": [
+        0.9596354961395264,
+        0.9596354961395264,
+        0.9609375
+      ],
+      "tensor_winner": 2,
+      "winner_target_eviction_rate": 0.8671875
+    },
+    {
+      "aligned_physical_rewards": [
+        0.96875,
+        0.9713541865348816,
+        0.9765625
+      ],
+      "direction": [
+        -1.0,
+        1.0
+      ],
+      "elapsed_seconds": 19.567442427854985,
+      "histories_persisted": 128,
+      "history_seconds": 1.156455506104976,
+      "phase": "old_equal",
+      "physical_candidate_seconds": 1.027224293211475,
+      "physical_rewards": [
+        0.96875,
+        0.9713541865348816,
+        0.9765625
+      ],
+      "physical_winner": 2,
+      "residual_weights": [
+        -18.657493591308594,
+        1.5
+      ],
+      "step": 8,
+      "tensor_rewards": [
+        0.9687500596046448,
+        0.9713541865348816,
+        0.9765625
+      ],
+      "tensor_winner": 2,
+      "winner_target_eviction_rate": 0.9296875
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9700521230697632,
+        0.9700521230697632,
+        0.9700521230697632
+      ],
+      "direction": [
+        -1.0,
+        -1.0
+      ],
+      "elapsed_seconds": 21.902530375868082,
+      "histories_persisted": 128,
+      "history_seconds": 1.1567322460468858,
+      "phase": "old_equal",
+      "physical_candidate_seconds": 1.0174333900213242,
+      "physical_rewards": [
+        0.9700521230697632,
+        0.9700521230697632,
+        0.9700521230697632
+      ],
+      "physical_winner": 0,
+      "residual_weights": [
+        -20.157493591308594,
+        0.0
+      ],
+      "step": 9,
+      "tensor_rewards": [
+        0.9700521230697632,
+        0.9700521230697632,
+        0.9700521230697632
+      ],
+      "tensor_winner": 0,
+      "winner_target_eviction_rate": 0.828125
+    },
+    {
+      "aligned_physical_rewards": [
+        0.96484375,
+        0.96484375,
+        0.96484375
+      ],
+      "direction": [
+        1.0,
+        1.0
+      ],
+      "elapsed_seconds": 24.203838764922693,
+      "histories_persisted": 128,
+      "history_seconds": 1.1606631730683148,
+      "phase": "old_equal",
+      "physical_candidate_seconds": 1.017271860036999,
+      "physical_rewards": [
+        0.96484375,
+        0.96484375,
+        0.96484375
+      ],
+      "physical_winner": 0,
+      "residual_weights": [
+        -18.657493591308594,
+        1.5
+      ],
+      "step": 10,
+      "tensor_rewards": [
+        0.96484375,
+        0.96484375,
+        0.96484375
+      ],
+      "tensor_winner": 0,
+      "winner_target_eviction_rate": 0.9296875
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9609375,
+        0.9674479365348816,
+        0.9635416865348816
+      ],
+      "direction": [
+        -1.0,
+        1.0
+      ],
+      "elapsed_seconds": 26.612621079897508,
+      "histories_persisted": 128,
+      "history_seconds": 1.1983665311709046,
+      "phase": "old_equal",
+      "physical_candidate_seconds": 1.0695135479327291,
+      "physical_rewards": [
+        0.9609375,
+        0.9635416865348816,
+        0.9674479365348816
+      ],
+      "physical_winner": 1,
+      "residual_weights": [
+        -18.657493591308594,
+        1.5
+      ],
+      "step": 11,
+      "tensor_rewards": [
+        0.9609375,
+        0.9635416865348816,
+        0.9674479365348816
+      ],
+      "tensor_winner": 2,
+      "winner_target_eviction_rate": 0.8984375
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9609375,
+        0.9557291865348816,
+        0.9557291865348816
+      ],
+      "direction": [
+        -1.0,
+        1.0
+      ],
+      "elapsed_seconds": 28.961526039987803,
+      "histories_persisted": 128,
+      "history_seconds": 1.158567844890058,
+      "phase": "old_equal",
+      "physical_candidate_seconds": 1.0207915878854692,
+      "physical_rewards": [
+        0.9557291865348816,
+        0.9557291865348816,
+        0.9609375
+      ],
+      "physical_winner": 0,
+      "residual_weights": [
+        -20.157493591308594,
+        3.0
+      ],
+      "step": 12,
+      "tensor_rewards": [
+        0.9557291865348816,
+        0.9557291865348816,
+        0.9609375
+      ],
+      "tensor_winner": 2,
+      "winner_target_eviction_rate": 0.8359375
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9440104365348816,
+        0.9479166865348816,
+        0.9401041865348816
+      ],
+      "direction": [
+        1.0,
+        -1.0
+      ],
+      "elapsed_seconds": 36.68001271900721,
+      "histories_persisted": 128,
+      "history_seconds": 1.1967876721173525,
+      "phase": "reliability_dominant",
+      "physical_candidate_seconds": 1.054117226973176,
+      "physical_rewards": [
+        0.9479166865348816,
+        0.9440104365348816,
+        0.9401041865348816
+      ],
+      "physical_winner": 1,
+      "residual_weights": [
+        -20.157493591308594,
+        3.0
+      ],
+      "step": 1,
+      "tensor_rewards": [
+        0.9479166865348816,
+        0.9440104365348816,
+        0.9401041865348816
+      ],
+      "tensor_winner": 0,
+      "winner_target_eviction_rate": 0.6484375
+    },
+    {
+      "aligned_physical_rewards": [
+        0.94140625,
+        0.9479166865348816,
+        0.9440104365348816
+      ],
+      "direction": [
+        -1.0,
+        1.0
+      ],
+      "elapsed_seconds": 39.05038948589936,
+      "histories_persisted": 128,
+      "history_seconds": 1.1536863478831947,
+      "phase": "reliability_dominant",
+      "physical_candidate_seconds": 1.0730959065258503,
+      "physical_rewards": [
+        0.94140625,
+        0.9440104365348816,
+        0.9479166865348816
+      ],
+      "physical_winner": 1,
+      "residual_weights": [
+        -20.157493591308594,
+        3.0
+      ],
+      "step": 2,
+      "tensor_rewards": [
+        0.94140625,
+        0.9440104365348816,
+        0.9479166865348816
+      ],
+      "tensor_winner": 2,
+      "winner_target_eviction_rate": 0.5390625
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9427083730697632,
+        0.9427083730697632,
+        0.9440104365348816
+      ],
+      "direction": [
+        -1.0,
+        1.0
+      ],
+      "elapsed_seconds": 41.4070080218371,
+      "histories_persisted": 128,
+      "history_seconds": 1.1609851839020848,
+      "phase": "reliability_dominant",
+      "physical_candidate_seconds": 1.0203152971807867,
+      "physical_rewards": [
+        0.9427083730697632,
+        0.9427083730697632,
+        0.9440104365348816
+      ],
+      "physical_winner": 2,
+      "residual_weights": [
+        -18.657493591308594,
+        1.5
+      ],
+      "step": 3,
+      "tensor_rewards": [
+        0.9427083730697632,
+        0.9427083730697632,
+        0.9440104365348816
+      ],
+      "tensor_winner": 2,
+      "winner_target_eviction_rate": 0.6875
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9401041865348816,
+        0.94140625,
+        0.9375
+      ],
+      "direction": [
+        -1.0,
+        1.0
+      ],
+      "elapsed_seconds": 43.73835261282511,
+      "histories_persisted": 128,
+      "history_seconds": 1.1670822899322957,
+      "phase": "reliability_dominant",
+      "physical_candidate_seconds": 1.0249212039634585,
+      "physical_rewards": [
+        0.9375,
+        0.9401041865348816,
+        0.94140625
+      ],
+      "physical_winner": 1,
+      "residual_weights": [
+        -18.657493591308594,
+        1.5
+      ],
+      "step": 4,
+      "tensor_rewards": [
+        0.9375,
+        0.9401041865348816,
+        0.94140625
+      ],
+      "tensor_winner": 2,
+      "winner_target_eviction_rate": 0.640625
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9348958730697632,
+        0.9453125,
+        0.9401041865348816
+      ],
+      "direction": [
+        -1.0,
+        1.0
+      ],
+      "elapsed_seconds": 46.109864639816806,
+      "histories_persisted": 128,
+      "history_seconds": 1.165415280032903,
+      "phase": "reliability_dominant",
+      "physical_candidate_seconds": 1.0222117248922586,
+      "physical_rewards": [
+        0.9348958730697632,
+        0.9401041865348816,
+        0.9453125
+      ],
+      "physical_winner": 1,
+      "residual_weights": [
+        -18.657493591308594,
+        1.5
+      ],
+      "step": 5,
+      "tensor_rewards": [
+        0.9348958730697632,
+        0.9401041865348816,
+        0.9453125
+      ],
+      "tensor_winner": 2,
+      "winner_target_eviction_rate": 0.671875
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9401041865348816,
+        0.94140625,
+        0.9401041865348816
+      ],
+      "direction": [
+        -1.0,
+        -1.0
+      ],
+      "elapsed_seconds": 48.464789976831526,
+      "histories_persisted": 128,
+      "history_seconds": 1.1647597108967602,
+      "phase": "reliability_dominant",
+      "physical_candidate_seconds": 1.0151558199431747,
+      "physical_rewards": [
+        0.9401041865348816,
+        0.94140625,
+        0.9401041865348816
+      ],
+      "physical_winner": 1,
+      "residual_weights": [
+        -18.657493591308594,
+        1.5
+      ],
+      "step": 6,
+      "tensor_rewards": [
+        0.9401042461395264,
+        0.94140625,
+        0.9401042461395264
+      ],
+      "tensor_winner": 1,
+      "winner_target_eviction_rate": 0.6484375
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9479166865348816,
+        0.9401041865348816,
+        0.9518229365348816
+      ],
+      "direction": [
+        1.0,
+        1.0
+      ],
+      "elapsed_seconds": 50.804983532987535,
+      "histories_persisted": 128,
+      "history_seconds": 1.1600349340587854,
+      "phase": "reliability_dominant",
+      "physical_candidate_seconds": 1.0156862908042967,
+      "physical_rewards": [
+        0.9401041865348816,
+        0.9479166865348816,
+        0.9518229365348816
+      ],
+      "physical_winner": 2,
+      "residual_weights": [
+        -20.157493591308594,
+        0.0
+      ],
+      "step": 7,
+      "tensor_rewards": [
+        0.9401041865348816,
+        0.9479166865348816,
+        0.9518229365348816
+      ],
+      "tensor_winner": 2,
+      "winner_target_eviction_rate": 0.6796875
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9466146230697632,
+        0.9518229365348816,
+        0.9505208730697632
+      ],
+      "direction": [
+        -1.0,
+        -1.0
+      ],
+      "elapsed_seconds": 53.13415036490187,
+      "histories_persisted": 128,
+      "history_seconds": 1.170933746965602,
+      "phase": "reliability_dominant",
+      "physical_candidate_seconds": 1.0256383444648236,
+      "physical_rewards": [
+        0.9505208730697632,
+        0.9518229365348816,
+        0.9466146230697632
+      ],
+      "physical_winner": 1,
+      "residual_weights": [
+        -20.157493591308594,
+        0.0
+      ],
+      "step": 8,
+      "tensor_rewards": [
+        0.9505208730697632,
+        0.9518229365348816,
+        0.9466146230697632
+      ],
+      "tensor_winner": 1,
+      "winner_target_eviction_rate": 0.7265625
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9518229365348816,
+        0.9505208730697632,
+        0.9505208730697632
+      ],
+      "direction": [
+        1.0,
+        1.0
+      ],
+      "elapsed_seconds": 55.49210601998493,
+      "histories_persisted": 128,
+      "history_seconds": 1.154715578071773,
+      "phase": "reliability_dominant",
+      "physical_candidate_seconds": 1.022197196027264,
+      "physical_rewards": [
+        0.9505208730697632,
+        0.9505208730697632,
+        0.9518229365348816
+      ],
+      "physical_winner": 0,
+      "residual_weights": [
+        -18.657493591308594,
+        1.5
+      ],
+      "step": 9,
+      "tensor_rewards": [
+        0.9505208730697632,
+        0.9505208730697632,
+        0.9518229365348816
+      ],
+      "tensor_winner": 2,
+      "winner_target_eviction_rate": 0.6875
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9544271230697632,
+        0.9466146230697632,
+        0.94921875
+      ],
+      "direction": [
+        1.0,
+        1.0
+      ],
+      "elapsed_seconds": 57.79421266890131,
+      "histories_persisted": 128,
+      "history_seconds": 1.1505960901267827,
+      "phase": "reliability_dominant",
+      "physical_candidate_seconds": 1.0100473137572408,
+      "physical_rewards": [
+        0.9466146230697632,
+        0.94921875,
+        0.9544271230697632
+      ],
+      "physical_winner": 0,
+      "residual_weights": [
+        -17.157493591308594,
+        3.0
+      ],
+      "step": 10,
+      "tensor_rewards": [
+        0.9466146230697632,
+        0.94921875,
+        0.9544271230697632
+      ],
+      "tensor_winner": 2,
+      "winner_target_eviction_rate": 0.609375
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9427083730697632,
+        0.9440104365348816,
+        0.94140625
+      ],
+      "direction": [
+        -1.0,
+        1.0
+      ],
+      "elapsed_seconds": 60.12510320986621,
+      "histories_persisted": 128,
+      "history_seconds": 1.169896017992869,
+      "phase": "reliability_dominant",
+      "physical_candidate_seconds": 1.0149828412104398,
+      "physical_rewards": [
+        0.94140625,
+        0.9427083730697632,
+        0.9440104365348816
+      ],
+      "physical_winner": 1,
+      "residual_weights": [
+        -17.157493591308594,
+        3.0
+      ],
+      "step": 11,
+      "tensor_rewards": [
+        0.94140625,
+        0.9427083730697632,
+        0.9440104365348816
+      ],
+      "tensor_winner": 2,
+      "winner_target_eviction_rate": 0.59375
+    },
+    {
+      "aligned_physical_rewards": [
+        0.94140625,
+        0.9401041865348816,
+        0.9348958730697632
+      ],
+      "direction": [
+        -1.0,
+        1.0
+      ],
+      "elapsed_seconds": 62.47703273780644,
+      "histories_persisted": 128,
+      "history_seconds": 1.1561263359617442,
+      "phase": "reliability_dominant",
+      "physical_candidate_seconds": 1.0293599122669548,
+      "physical_rewards": [
+        0.9348958730697632,
+        0.94140625,
+        0.9401041865348816
+      ],
+      "physical_winner": 0,
+      "residual_weights": [
+        -18.657493591308594,
+        4.5
+      ],
+      "step": 12,
+      "tensor_rewards": [
+        0.9348958730697632,
+        0.9414063096046448,
+        0.9401042461395264
+      ],
+      "tensor_winner": 1,
+      "winner_target_eviction_rate": 0.5234375
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9583333730697632,
+        0.9557291865348816,
+        0.9544271230697632
+      ],
+      "direction": [
+        1.0,
+        1.0
+      ],
+      "elapsed_seconds": 70.18891588086262,
+      "histories_persisted": 128,
+      "history_seconds": 1.1736859751399606,
+      "phase": "old_return",
+      "physical_candidate_seconds": 1.084064839174971,
+      "physical_rewards": [
+        0.9557291865348816,
+        0.9583333730697632,
+        0.9544271230697632
+      ],
+      "physical_winner": 0,
+      "residual_weights": [
+        -17.157493591308594,
+        6.0
+      ],
+      "step": 1,
+      "tensor_rewards": [
+        0.9557291865348816,
+        0.9583333730697632,
+        0.9544271230697632
+      ],
+      "tensor_winner": 1,
+      "winner_target_eviction_rate": 0.8359375
+    },
+    {
+      "aligned_physical_rewards": [
+        0.96484375,
+        0.96484375,
+        0.9635416865348816
+      ],
+      "direction": [
+        -1.0,
+        1.0
+      ],
+      "elapsed_seconds": 72.50467051099986,
+      "histories_persisted": 128,
+      "history_seconds": 1.1580562249291688,
+      "phase": "old_return",
+      "physical_candidate_seconds": 1.0202528778463602,
+      "physical_rewards": [
+        0.96484375,
+        0.96484375,
+        0.9635416865348816
+      ],
+      "physical_winner": 0,
+      "residual_weights": [
+        -18.657493591308594,
+        7.5
+      ],
+      "step": 2,
+      "tensor_rewards": [
+        0.96484375,
+        0.96484375,
+        0.9635417461395264
+      ],
+      "tensor_winner": 0,
+      "winner_target_eviction_rate": 0.8515625
+    },
+    {
+      "aligned_physical_rewards": [
+        0.96875,
+        0.96875,
+        0.9674479365348816
+      ],
+      "direction": [
+        -1.0,
+        -1.0
+      ],
+      "elapsed_seconds": 74.86442644498311,
+      "histories_persisted": 128,
+      "history_seconds": 1.1796080018393695,
+      "phase": "old_return",
+      "physical_candidate_seconds": 1.040971975075081,
+      "physical_rewards": [
+        0.96875,
+        0.9674479365348816,
+        0.96875
+      ],
+      "physical_winner": 0,
+      "residual_weights": [
+        -20.157493591308594,
+        6.0
+      ],
+      "step": 3,
+      "tensor_rewards": [
+        0.96875,
+        0.9674479961395264,
+        0.96875
+      ],
+      "tensor_winner": 0,
+      "winner_target_eviction_rate": 0.8203125
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9609375,
+        0.9661458730697632,
+        0.96484375
+      ],
+      "direction": [
+        -1.0,
+        -1.0
+      ],
+      "elapsed_seconds": 77.26641053380445,
+      "histories_persisted": 128,
+      "history_seconds": 1.1874519479461014,
+      "phase": "old_return",
+      "physical_candidate_seconds": 1.0477642321493477,
+      "physical_rewards": [
+        0.96484375,
+        0.9661458730697632,
+        0.9609375
+      ],
+      "physical_winner": 1,
+      "residual_weights": [
+        -20.157493591308594,
+        6.0
+      ],
+      "step": 4,
+      "tensor_rewards": [
+        0.96484375,
+        0.9661458730697632,
+        0.9609375596046448
+      ],
+      "tensor_winner": 1,
+      "winner_target_eviction_rate": 0.8046875
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9596354365348816,
+        0.9635416865348816,
+        0.9609375
+      ],
+      "direction": [
+        -1.0,
+        -1.0
+      ],
+      "elapsed_seconds": 79.60333122080192,
+      "histories_persisted": 128,
+      "history_seconds": 1.1597951338626444,
+      "phase": "old_return",
+      "physical_candidate_seconds": 1.0130057618953288,
+      "physical_rewards": [
+        0.9609375,
+        0.9596354365348816,
+        0.9635416865348816
+      ],
+      "physical_winner": 1,
+      "residual_weights": [
+        -20.157493591308594,
+        6.0
+      ],
+      "step": 5,
+      "tensor_rewards": [
+        0.9609375,
+        0.9596354365348816,
+        0.9635416865348816
+      ],
+      "tensor_winner": 2,
+      "winner_target_eviction_rate": 0.84375
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9661458730697632,
+        0.96875,
+        0.9674479365348816
+      ],
+      "direction": [
+        1.0,
+        -1.0
+      ],
+      "elapsed_seconds": 81.95492391986772,
+      "histories_persisted": 128,
+      "history_seconds": 1.1797391620930284,
+      "phase": "old_return",
+      "physical_candidate_seconds": 1.0227504868526012,
+      "physical_rewards": [
+        0.9674479365348816,
+        0.96875,
+        0.9661458730697632
+      ],
+      "physical_winner": 1,
+      "residual_weights": [
+        -20.157493591308594,
+        6.0
+      ],
+      "step": 6,
+      "tensor_rewards": [
+        0.9674479365348816,
+        0.96875,
+        0.9661458730697632
+      ],
+      "tensor_winner": 1,
+      "winner_target_eviction_rate": 0.9140625
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9635416865348816,
+        0.9609375,
+        0.95703125
+      ],
+      "direction": [
+        -1.0,
+        1.0
+      ],
+      "elapsed_seconds": 84.31427871389315,
+      "histories_persisted": 128,
+      "history_seconds": 1.1584292841143906,
+      "phase": "old_return",
+      "physical_candidate_seconds": 1.0251700861845165,
+      "physical_rewards": [
+        0.95703125,
+        0.9609375,
+        0.9635416865348816
+      ],
+      "physical_winner": 0,
+      "residual_weights": [
+        -21.657493591308594,
+        7.5
+      ],
+      "step": 7,
+      "tensor_rewards": [
+        0.95703125,
+        0.9609375,
+        0.9635416865348816
+      ],
+      "tensor_winner": 2,
+      "winner_target_eviction_rate": 0.734375
+    },
+    {
+      "aligned_physical_rewards": [
+        0.96875,
+        0.9765625,
+        0.97265625
+      ],
+      "direction": [
+        1.0,
+        1.0
+      ],
+      "elapsed_seconds": 86.6656346428208,
+      "histories_persisted": 128,
+      "history_seconds": 1.1696458889637142,
+      "phase": "old_return",
+      "physical_candidate_seconds": 1.0130701730959117,
+      "physical_rewards": [
+        0.96875,
+        0.97265625,
+        0.9765625
+      ],
+      "physical_winner": 1,
+      "residual_weights": [
+        -21.657493591308594,
+        7.5
+      ],
+      "step": 8,
+      "tensor_rewards": [
+        0.96875,
+        0.97265625,
+        0.9765625
+      ],
+      "tensor_winner": 2,
+      "winner_target_eviction_rate": 0.859375
+    },
+    {
+      "aligned_physical_rewards": [
+        0.96875,
+        0.96875,
+        0.96484375
+      ],
+      "direction": [
+        1.0,
+        1.0
+      ],
+      "elapsed_seconds": 89.01622431282885,
+      "histories_persisted": 128,
+      "history_seconds": 1.1684524388983846,
+      "phase": "old_return",
+      "physical_candidate_seconds": 1.0183525488246232,
+      "physical_rewards": [
+        0.96875,
+        0.96875,
+        0.96484375
+      ],
+      "physical_winner": 0,
+      "residual_weights": [
+        -20.157493591308594,
+        9.0
+      ],
+      "step": 9,
+      "tensor_rewards": [
+        0.96875,
+        0.96875,
+        0.96484375
+      ],
+      "tensor_winner": 0,
+      "winner_target_eviction_rate": 0.8828125
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9635416865348816,
+        0.9661458730697632,
+        0.9622396230697632
+      ],
+      "direction": [
+        1.0,
+        -1.0
+      ],
+      "elapsed_seconds": 91.37786688585766,
+      "histories_persisted": 128,
+      "history_seconds": 1.1669614899437875,
+      "phase": "old_return",
+      "physical_candidate_seconds": 1.0249290450010449,
+      "physical_rewards": [
+        0.9661458730697632,
+        0.9635416865348816,
+        0.9622396230697632
+      ],
+      "physical_winner": 1,
+      "residual_weights": [
+        -20.157493591308594,
+        9.0
+      ],
+      "step": 10,
+      "tensor_rewards": [
+        0.9661458730697632,
+        0.9635416865348816,
+        0.9622396230697632
+      ],
+      "tensor_winner": 0,
+      "winner_target_eviction_rate": 0.828125
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9479166865348816,
+        0.9596354365348816,
+        0.9557291865348816
+      ],
+      "direction": [
+        1.0,
+        1.0
+      ],
+      "elapsed_seconds": 93.72059913980775,
+      "histories_persisted": 128,
+      "history_seconds": 1.1653956598602235,
+      "phase": "old_return",
+      "physical_candidate_seconds": 1.0239807448815554,
+      "physical_rewards": [
+        0.9479166865348816,
+        0.9557291865348816,
+        0.9596354365348816
+      ],
+      "physical_winner": 1,
+      "residual_weights": [
+        -20.157493591308594,
+        9.0
+      ],
+      "step": 11,
+      "tensor_rewards": [
+        0.9479166865348816,
+        0.9557291865348816,
+        0.9596354365348816
+      ],
+      "tensor_winner": 2,
+      "winner_target_eviction_rate": 0.8125
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9622396230697632,
+        0.96875,
+        0.9635416865348816
+      ],
+      "direction": [
+        1.0,
+        -1.0
+      ],
+      "elapsed_seconds": 96.07975229388103,
+      "histories_persisted": 128,
+      "history_seconds": 1.15428128791973,
+      "phase": "old_return",
+      "physical_candidate_seconds": 1.0143039599061012,
+      "physical_rewards": [
+        0.96875,
+        0.9635416865348816,
+        0.9622396230697632
+      ],
+      "physical_winner": 1,
+      "residual_weights": [
+        -20.157493591308594,
+        9.0
+      ],
+      "step": 12,
+      "tensor_rewards": [
+        0.96875,
+        0.9635416865348816,
+        0.9622396230697632
+      ],
+      "tensor_winner": 0,
+      "winner_target_eviction_rate": 0.8359375
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9283854365348816,
+        0.9283854365348816,
+        0.9296875
+      ],
+      "direction": [
+        1.0,
+        -1.0
+      ],
+      "elapsed_seconds": 103.67925233393908,
+      "histories_persisted": 128,
+      "history_seconds": 1.1671343988273293,
+      "phase": "all_equal",
+      "physical_candidate_seconds": 1.0809245712589473,
+      "physical_rewards": [
+        0.9296875,
+        0.9283854365348816,
+        0.9283854365348816
+      ],
+      "physical_winner": 2,
+      "residual_weights": [
+        -21.657493591308594,
+        10.5
+      ],
+      "step": 1,
+      "tensor_rewards": [
+        0.9296875,
+        0.9283854961395264,
+        0.9283854961395264
+      ],
+      "tensor_winner": 0,
+      "winner_target_eviction_rate": 0.5859375
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9348958730697632,
+        0.9348958730697632,
+        0.9401041865348816
+      ],
+      "direction": [
+        -1.0,
+        1.0
+      ],
+      "elapsed_seconds": 106.0392883180175,
+      "histories_persisted": 128,
+      "history_seconds": 1.1620383530389518,
+      "phase": "all_equal",
+      "physical_candidate_seconds": 1.0369814580772072,
+      "physical_rewards": [
+        0.9348958730697632,
+        0.9348958730697632,
+        0.9401041865348816
+      ],
+      "physical_winner": 2,
+      "residual_weights": [
+        -20.157493591308594,
+        9.0
+      ],
+      "step": 2,
+      "tensor_rewards": [
+        0.9348958730697632,
+        0.9348958730697632,
+        0.9401041865348816
+      ],
+      "tensor_winner": 2,
+      "winner_target_eviction_rate": 0.71875
+    },
+    {
+      "aligned_physical_rewards": [
+        0.953125,
+        0.9518229365348816,
+        0.9479166865348816
+      ],
+      "direction": [
+        1.0,
+        -1.0
+      ],
+      "elapsed_seconds": 108.37581224483438,
+      "histories_persisted": 128,
+      "history_seconds": 1.1550456259865314,
+      "phase": "all_equal",
+      "physical_candidate_seconds": 1.016381521243602,
+      "physical_rewards": [
+        0.953125,
+        0.9518229365348816,
+        0.9479166865348816
+      ],
+      "physical_winner": 0,
+      "residual_weights": [
+        -18.657493591308594,
+        7.5
+      ],
+      "step": 3,
+      "tensor_rewards": [
+        0.953125,
+        0.9518229961395264,
+        0.9479166865348816
+      ],
+      "tensor_winner": 0,
+      "winner_target_eviction_rate": 0.671875
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9427083730697632,
+        0.9427083730697632,
+        0.9427083730697632
+      ],
+      "direction": [
+        -1.0,
+        1.0
+      ],
+      "elapsed_seconds": 110.76451034191996,
+      "histories_persisted": 128,
+      "history_seconds": 1.1973725710995495,
+      "phase": "all_equal",
+      "physical_candidate_seconds": 1.0279499527532607,
+      "physical_rewards": [
+        0.9427083730697632,
+        0.9427083730697632,
+        0.9427083730697632
+      ],
+      "physical_winner": 0,
+      "residual_weights": [
+        -20.157493591308594,
+        9.0
+      ],
+      "step": 4,
+      "tensor_rewards": [
+        0.9427083730697632,
+        0.9427083730697632,
+        0.9427083730697632
+      ],
+      "tensor_winner": 0,
+      "winner_target_eviction_rate": 0.578125
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9309896230697632,
+        0.92578125,
+        0.9401041865348816
+      ],
+      "direction": [
+        -1.0,
+        -1.0
+      ],
+      "elapsed_seconds": 113.1854501189664,
+      "histories_persisted": 128,
+      "history_seconds": 1.1923068251926452,
+      "phase": "all_equal",
+      "physical_candidate_seconds": 1.0637471319641918,
+      "physical_rewards": [
+        0.9401041865348816,
+        0.9309896230697632,
+        0.92578125
+      ],
+      "physical_winner": 2,
+      "residual_weights": [
+        -18.657493591308594,
+        10.5
+      ],
+      "step": 5,
+      "tensor_rewards": [
+        0.9401042461395264,
+        0.9309896230697632,
+        0.9257813096046448
+      ],
+      "tensor_winner": 0,
+      "winner_target_eviction_rate": 0.59375
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9361979365348816,
+        0.9375,
+        0.9427083730697632
+      ],
+      "direction": [
+        -1.0,
+        1.0
+      ],
+      "elapsed_seconds": 115.53998744580895,
+      "histories_persisted": 128,
+      "history_seconds": 1.1908883950673044,
+      "phase": "all_equal",
+      "physical_candidate_seconds": 1.011726733064279,
+      "physical_rewards": [
+        0.9361979365348816,
+        0.9375,
+        0.9427083730697632
+      ],
+      "physical_winner": 2,
+      "residual_weights": [
+        -17.157493591308594,
+        9.0
+      ],
+      "step": 6,
+      "tensor_rewards": [
+        0.9361979365348816,
+        0.9375,
+        0.9427083730697632
+      ],
+      "tensor_winner": 2,
+      "winner_target_eviction_rate": 0.6328125
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9544271230697632,
+        0.9518229365348816,
+        0.9505208730697632
+      ],
+      "direction": [
+        -1.0,
+        1.0
+      ],
+      "elapsed_seconds": 117.90356128802523,
+      "histories_persisted": 128,
+      "history_seconds": 1.1688146989326924,
+      "phase": "all_equal",
+      "physical_candidate_seconds": 1.0169932588469237,
+      "physical_rewards": [
+        0.9505208730697632,
+        0.9518229365348816,
+        0.9544271230697632
+      ],
+      "physical_winner": 0,
+      "residual_weights": [
+        -18.657493591308594,
+        10.5
+      ],
+      "step": 7,
+      "tensor_rewards": [
+        0.9505208730697632,
+        0.9518229365348816,
+        0.9544271230697632
+      ],
+      "tensor_winner": 2,
+      "winner_target_eviction_rate": 0.6171875
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9440104365348816,
+        0.9388021230697632,
+        0.93359375
+      ],
+      "direction": [
+        -1.0,
+        -1.0
+      ],
+      "elapsed_seconds": 120.22207959694788,
+      "histories_persisted": 128,
+      "history_seconds": 1.1606055239681154,
+      "phase": "all_equal",
+      "physical_candidate_seconds": 1.0198614979162812,
+      "physical_rewards": [
+        0.9440104365348816,
+        0.9388021230697632,
+        0.93359375
+      ],
+      "physical_winner": 0,
+      "residual_weights": [
+        -20.157493591308594,
+        9.0
+      ],
+      "step": 8,
+      "tensor_rewards": [
+        0.9440104365348816,
+        0.9388021230697632,
+        0.93359375
+      ],
+      "tensor_winner": 0,
+      "winner_target_eviction_rate": 0.6328125
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9244791865348816,
+        0.9231771230697632,
+        0.9244791865348816
+      ],
+      "direction": [
+        -1.0,
+        1.0
+      ],
+      "elapsed_seconds": 122.56288130185567,
+      "histories_persisted": 128,
+      "history_seconds": 1.1558159359265119,
+      "phase": "all_equal",
+      "physical_candidate_seconds": 1.0227757969405502,
+      "physical_rewards": [
+        0.9231771230697632,
+        0.9244791865348816,
+        0.9244791865348816
+      ],
+      "physical_winner": 0,
+      "residual_weights": [
+        -21.657493591308594,
+        10.5
+      ],
+      "step": 9,
+      "tensor_rewards": [
+        0.9231771230697632,
+        0.9244792461395264,
+        0.9244792461395264
+      ],
+      "tensor_winner": 1,
+      "winner_target_eviction_rate": 0.5546875
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9309896230697632,
+        0.9283854365348816,
+        0.9322916865348816
+      ],
+      "direction": [
+        1.0,
+        -1.0
+      ],
+      "elapsed_seconds": 124.9420395239722,
+      "histories_persisted": 128,
+      "history_seconds": 1.1789141518529505,
+      "phase": "all_equal",
+      "physical_candidate_seconds": 1.031284051714465,
+      "physical_rewards": [
+        0.9322916865348816,
+        0.9309896230697632,
+        0.9283854365348816
+      ],
+      "physical_winner": 2,
+      "residual_weights": [
+        -23.157493591308594,
+        12.0
+      ],
+      "step": 10,
+      "tensor_rewards": [
+        0.9322917461395264,
+        0.9309896230697632,
+        0.9283854365348816
+      ],
+      "tensor_winner": 0,
+      "winner_target_eviction_rate": 0.5546875
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9453125,
+        0.9466146230697632,
+        0.9427083730697632
+      ],
+      "direction": [
+        1.0,
+        -1.0
+      ],
+      "elapsed_seconds": 127.31615980993956,
+      "histories_persisted": 128,
+      "history_seconds": 1.1619645128957927,
+      "phase": "all_equal",
+      "physical_candidate_seconds": 1.0325330100022256,
+      "physical_rewards": [
+        0.9466146230697632,
+        0.9453125,
+        0.9427083730697632
+      ],
+      "physical_winner": 1,
+      "residual_weights": [
+        -23.157493591308594,
+        12.0
+      ],
+      "step": 11,
+      "tensor_rewards": [
+        0.9466146230697632,
+        0.9453125,
+        0.9427083730697632
+      ],
+      "tensor_winner": 0,
+      "winner_target_eviction_rate": 0.6015625
+    },
+    {
+      "aligned_physical_rewards": [
+        0.9427083730697632,
+        0.93359375,
+        0.9361979365348816
+      ],
+      "direction": [
+        1.0,
+        1.0
+      ],
+      "elapsed_seconds": 129.70046769897453,
+      "histories_persisted": 128,
+      "history_seconds": 1.17481658491306,
+      "phase": "all_equal",
+      "physical_candidate_seconds": 1.0381009059492499,
+      "physical_rewards": [
+        0.93359375,
+        0.9361979365348816,
+        0.9427083730697632
+      ],
+      "physical_winner": 0,
+      "residual_weights": [
+        -21.657493591308594,
+        13.5
+      ],
+      "step": 12,
+      "tensor_rewards": [
+        0.93359375,
+        0.9361979365348816,
+        0.9427083730697632
+      ],
+      "tensor_winner": 2,
+      "winner_target_eviction_rate": 0.578125
+    }
+  ],
+  "maximum_physical_tensor_reward_difference": 5.960464477539063e-08,
+  "model_configuration": {
+    "adaptive_memory_read": true,
+    "adaptive_memory_read_hidden": 8,
+    "adaptive_memory_replace": true,
+    "adaptive_memory_replace_features": 7,
+    "adaptive_memory_replace_hidden": 8,
+    "intention_width": 24,
+    "width": 96,
+    "workspace_slots": 8
+  },
+  "optimizer_reset_at_boundaries": false,
+  "phases": [
+    {
+      "name": "old_equal",
+      "weights": [
+        0.5,
+        0.5,
+        0.0
+      ]
+    },
+    {
+      "name": "reliability_dominant",
+      "weights": [
+        0.3,
+        0.3,
+        0.4
+      ]
+    },
+    {
+      "name": "old_return",
+      "weights": [
+        0.5,
+        0.5,
+        0.0
+      ]
+    },
+    {
+      "name": "all_equal",
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ]
+    }
+  ],
+  "physical_tensor_winner_matches": 19,
+  "schema": "unified-controller-physical-online-adaptation-v1",
+  "semantic_or_utility_labels_used_for_training": false,
+  "tensor_arena_role": "parity_audit_only",
+  "total_seconds": 135.91753782797605,
+  "training_signal": "three_candidate_physical_verified_horse_race"
+}

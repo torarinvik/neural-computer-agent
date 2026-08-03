@@ -1,0 +1,41 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "missing_evidence_population_2026-08-03",
+  "status": "accepted_replicated_population_frontier",
+  "unique_verifier_bits": 83968,
+  "unique_logical_lifetimes": 8192,
+  "optimizer_updates": 5248,
+  "replayed_examples": 4096,
+  "diagnostic_lifetimes_charged_to_budget": 8192,
+  "wall_time_seconds": null,
+  "latency": "offline MPS training and verifier audit; online latency not measured",
+  "stable_bits_to_threshold": null,
+  "retention_on_mastered_primitives": {
+    "selected_seed_996062_span_10_delta": 0.0026366711,
+    "selected_seed_996062_span_9_delta": -0.0088975430,
+    "replica_seed_996061_span_10_delta": -0.0002685785,
+    "replica_seed_996061_span_9_delta": -0.0080566406,
+    "retention_tolerance": 0.02,
+    "retention_gate": "passed"
+  },
+  "transfer_ratio_against_fresh_learner": null,
+  "claim_boundary": "Verified population frontier only; no mastery or replay-efficiency claim.",
+  "verification": {
+    "screen_count": 1024,
+    "high_power_count": 4096,
+    "all_four_screen_arms_accepted": true,
+    "selected_seed_996062_gain": 0.0201748610,
+    "selected_seed_996062_ci_95": [0.0171342324, 0.0231939182],
+    "replica_seed_996061_gain": 0.0156028271,
+    "replica_seed_996061_ci_95": [0.0127397021, 0.0185324922],
+    "selected_blank_control": 0.5021972656,
+    "selected_reset_control": 0.5001775622,
+    "replica_blank_control": 0.4966486096,
+    "replica_reset_control": 0.4994895160
+  },
+  "curated_checkpoint": {
+    "seed": 996062,
+    "path": "artifacts/checkpoints/span11_missing_evidence_population_seed996062.pt",
+    "sha256": "c00a81ce929ddb55ce8dfb644805974e0c33d9301540041157f03fc558c1cf6b"
+  }
+}

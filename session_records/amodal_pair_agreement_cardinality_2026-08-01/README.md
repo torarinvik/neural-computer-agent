@@ -63,4 +63,4 @@ temporal grouping still require separate audits.
 - `amodal_pair_agreement_seed176101_h64_u256.pt` (under `artifacts/checkpoints`)
 - rejected-candidate reports `audit_seed176201_n10_*`,
   `audit_seed176301_n10_*`, and `audit_seed176401_n10_*`
-- `experiments/unified_cognitive_controller/audit_amodal_pair_agreement_cardinality.py`
+- `experiments/archive/unified_cognitive_controller/audit_amodal_pair_agreement_cardinality.py`

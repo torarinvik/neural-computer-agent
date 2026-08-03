@@ -95,4 +95,4 @@ Not demonstrated:
 - `bankwise_h16.json`
 
 The executable audit is
-`experiments/unified_cognitive_controller/audit_adaptive_physical_pruning.py`.
+`experiments/archive/unified_cognitive_controller/audit_adaptive_physical_pruning.py`.

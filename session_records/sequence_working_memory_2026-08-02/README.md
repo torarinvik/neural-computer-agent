@@ -1081,6 +1081,51 @@ problem is reward-to-output credit and difficulty, not sensory representation.
 The next branch should add a smaller intermediate primitive or an explicit
 per-output curriculum.
 
+## Outcome-only position weighting rejection (2026-08-03)
+
+Position-difficulty weighting produced a tempting **+2.38-point** causal
+screen, but it opened a missing-evidence shortcut: blank accuracy fell to
+**34.87%**. The corrected hard gate rejected it, and the checkpoint was not
+curated. Its accounting and receipts are in
+`position_weighted_rejection_2026-08-03/`.
+
+## Target-diversity and successor-slot screen rejections (2026-08-03)
+
+Suffix-only credit, a matched full-window continuation, position rerender
+augmentation, and a fresh appended slot all failed the first acquisition gate
+against the accepted missing-evidence parent. Their blank/reset controls were
+safe, but none improved held-out target behavior; the tempting positive
+zeroed-slot gaps therefore do not count. Receipts and accounting are in
+`target_diversity_rejections_2026-08-03/`.
+
+## Missing-evidence population breakthrough (2026-08-03)
+
+A four-arm population race using the accepted protected missing-evidence
+recipe passed a common 1,024-lifetime audit at **+2.04–+2.33 points** for
+every arm. The selected seed held **+2.02 points** at 4,096 lifetimes with a
+95% interval of **[+1.71, +2.32]**; an independent second arm also passed at
+**+1.56 points**. Blank/reset controls stayed at chance and old-span
+retention stayed within tolerance. The selected checkpoint is curated and
+the full accounting is in `missing_evidence_population_2026-08-03/`.
+
+The intervening event-age, workspace-context, action-adapter, critic-policy,
+and larger rehydration tests all failed acquisition or retention and remain
+unpromoted. Their exact negative evidence is in
+`credit_mechanism_rejections_2026-08-03/`.
+
+## Missing-evidence rehearsal frontier (2026-08-03)
+
+Protected blank/missing-evidence rehearsal produced the next control-safe
+frontier. Two independent 512-target runs passed the corrected 1,024-lifetime
+acquisition, causal-slot, retention, blank, and reset gates at **+2.43/+2.65
+points**. The stronger seed's 4,096-lifetime audit remained accepted at
+**+1.77 points**, with a 95% paired-lifetime interval of **[+1.48, +2.05]**;
+blank/reset controls stayed at **49.76%/49.67%**, and old-span retention was
+within the two-point gate. The missing-evidence controls are charged to the
+budget, so the audit objective still has no replay-savings credit and is not
+an autonomous-stop or mastery claim. Full receipts and accounting are in
+`missing_evidence_rehearsal_frontier_2026-08-03/`.
+
 ## Cloud archive
 
 The current Vast instance was quiescent when archived. The load-bearing

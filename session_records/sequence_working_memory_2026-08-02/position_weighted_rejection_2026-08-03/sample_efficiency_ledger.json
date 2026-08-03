@@ -1,0 +1,29 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "position_weighted_rejection_2026-08-03",
+  "status": "decisively_rejected_missing_evidence_control",
+  "unique_verifier_bits": 3840,
+  "unique_logical_lifetimes": 384,
+  "optimizer_updates": 960,
+  "replayed_examples": 256,
+  "diagnostic_lifetimes_charged_to_budget": 384,
+  "wall_time_seconds": null,
+  "latency": "offline MPS training and verifier audit; online latency not measured",
+  "stable_bits_to_threshold": null,
+  "retention_on_mastered_primitives": {
+    "span_10_delta": 0.0,
+    "span_9_delta": -0.0125867724,
+    "retention_tolerance": 0.02,
+    "retention_gate": "passed_but_insufficient"
+  },
+  "transfer_ratio_against_fresh_learner": null,
+  "claim_boundary": "Rejected because the blank/missing-evidence control was not near chance.",
+  "verification": {
+    "audit_count": 256,
+    "causal_gain": 0.0237925649,
+    "blank_control_accuracy": 0.3487215936,
+    "reset_control_accuracy": 0.4968039691,
+    "blank_control_passed": false,
+    "accepted": false
+  }
+}

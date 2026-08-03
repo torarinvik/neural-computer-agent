@@ -16,7 +16,7 @@ Selected run:
 - checkpoint:
   `artifacts/checkpoints/unified_memory_persistent_physical_seed7032.pt`
 - report:
-  `experiments/unified_cognitive_controller/reports/persistent_physical_adaptation_seed7032_banks16.json`
+  `experiments/archive/unified_cognitive_controller/reports/persistent_physical_adaptation_seed7032_banks16.json`
 
 ## Main evidence
 

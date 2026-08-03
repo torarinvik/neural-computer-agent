@@ -1,0 +1,86 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "credit_mechanism_rejections_2026-08-03",
+  "status": "decisively_rejected_before_promotion",
+  "unique_verifier_bits": 47232,
+  "unique_logical_lifetimes": 4608,
+  "optimizer_updates": 3072,
+  "replayed_examples": 2304,
+  "diagnostic_lifetimes_charged_to_budget": 4608,
+  "wall_time_seconds": null,
+  "latency": "offline MPS training and verifier audit; online latency not measured",
+  "stable_bits_to_threshold": null,
+  "transfer_ratio_against_fresh_learner": null,
+  "claim_boundary": "All six credit-mechanism arms were rejected; no capability or mastery claim.",
+  "arms": [
+    {
+      "name": "event_age_append_996054",
+      "unique_verifier_bits": 5248,
+      "unique_logical_lifetimes": 512,
+      "optimizer_updates": 352,
+      "child_over_parent_gain": 0.0003551245,
+      "causal_gain": 0.0003551245,
+      "blank_control": 0.4719460309,
+      "reset_control": 0.5095880628,
+      "accepted": false
+    },
+    {
+      "name": "event_age_difficulty_996055",
+      "unique_verifier_bits": 5248,
+      "unique_logical_lifetimes": 512,
+      "optimizer_updates": 352,
+      "child_over_parent_gain": -0.0031960607,
+      "causal_gain": -0.0031960607,
+      "blank_control": 0.4680397809,
+      "reset_control": 0.5049715638,
+      "accepted": false
+    },
+    {
+      "name": "frontier_rehydration_996056",
+      "unique_verifier_bits": 20992,
+      "unique_logical_lifetimes": 2048,
+      "optimizer_updates": 1312,
+      "child_over_parent_gain": 0.0023082495,
+      "causal_gain": 0.0291193128,
+      "paired_interval_lower": -0.0017755671,
+      "blank_control": 0.4920987189,
+      "reset_control": 0.4982244372,
+      "accepted": false
+    },
+    {
+      "name": "action_adapter_996057",
+      "unique_verifier_bits": 5248,
+      "unique_logical_lifetimes": 512,
+      "optimizer_updates": 352,
+      "child_over_parent_gain": -0.0944602489,
+      "causal_gain": 0.0010653138,
+      "blank_control": 0.5973011255,
+      "reset_control": 0.5475852489,
+      "old_span_10_delta": -0.109375,
+      "old_span_9_delta": -0.1006944179,
+      "accepted": false
+    },
+    {
+      "name": "workspace_context_996058",
+      "unique_verifier_bits": 5248,
+      "unique_logical_lifetimes": 512,
+      "optimizer_updates": 352,
+      "child_over_parent_gain": -0.0010653138,
+      "causal_gain": -0.0010653138,
+      "blank_control": 0.4747869372,
+      "reset_control": 0.50390625,
+      "accepted": false
+    },
+    {
+      "name": "critic_policy_996059",
+      "unique_verifier_bits": 5248,
+      "unique_logical_lifetimes": 512,
+      "optimizer_updates": 352,
+      "child_over_parent_gain": -0.0145596266,
+      "causal_gain": 0.0408380628,
+      "blank_control": 0.4591619372,
+      "reset_control": 0.5014204383,
+      "accepted": false
+    }
+  ]
+}

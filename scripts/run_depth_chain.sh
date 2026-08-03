@@ -28,7 +28,7 @@ for entry in "${RUNGS[@]}"; do
   else
     echo "=== rung $RUNG : $TASK (support $SUP) on $(basename "$PARENT")"
     echo "    replay: $REPLAY  support: $RSUP"
-    python -m experiments.unified_cognitive_controller.train_fourth_primitive_transfer \
+    python -m experiments.archive.unified_cognitive_controller.train_fourth_primitive_transfer \
       --parent "$PARENT" --report "$REPORT" --checkpoint-out "$NEXT" \
       --device cuda --seed "$SEED" --steps 6144 \
       --new-task "$TASK" --new-support-trials "$SUP" \

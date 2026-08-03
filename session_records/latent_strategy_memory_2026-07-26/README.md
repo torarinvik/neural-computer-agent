@@ -50,7 +50,7 @@ Shuffling strategy keys did not lower reward on seed 7042. Thus the positive
 pilot is not causally attributable to correct context addressing.
 
 Canonical report:
-`experiments/unified_cognitive_controller/reports/strategy_memory_audit_seeds7042_7043.json`
+`experiments/archive/unified_cognitive_controller/reports/strategy_memory_audit_seeds7042_7043.json`
 
 ## What this localized
 

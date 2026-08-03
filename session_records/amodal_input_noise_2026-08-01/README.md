@@ -55,5 +55,5 @@ without changing that result or the promoted frozen bus.
 - `audit_baseline_vs_adapted_24update_4096.json`
 - `training_outcome_only_8update.json`
 - `training_outcome_only_24update.json`
-- `experiments/unified_cognitive_controller/audit_amodal_input_noise.py`
+- `experiments/archive/unified_cognitive_controller/audit_amodal_input_noise.py`
 

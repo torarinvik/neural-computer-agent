@@ -29,4 +29,4 @@ additional evidence remain future experiments.
 
 The audit artifact is `timestamp_timeline_audit_4096.json` in this directory.
 The implementation is
-`experiments/unified_cognitive_controller/audit_amodal_event_timeline.py`.
+`experiments/archive/unified_cognitive_controller/audit_amodal_event_timeline.py`.

@@ -294,6 +294,32 @@ controller.
 
 ## Current implementation boundary (August 2026)
 
+The canonical production implementation is now under `src/neural_computer/`.
+It exposes an opaque event collection, an event-token controller, generic
+feedback vectors, and an intention fan-out runtime. The older integrated
+controller and its checkpoint converters remain under
+`experiments/archive/unified_cognitive_controller/` solely for historical replay and
+are not the production agent API.
+
+The production package closes the structural boundary gaps as follows:
+
+- `EventTokenWindow` retains payloads, presence, confidence, source keys,
+  timestamps, durations, and age across controller updates; attention is an
+  explicit per-token operation rather than a pre-controller reducer.
+- `ControllerFeedback` carries an opaque learned feedback vector plus scalar
+  reward, propensity, and feedback presence. No discrete device-action space
+  enters the controller.
+- `ContentAddressedMemory` is the single runtime contract for controller
+  queries, writes, receipts, versioning, and exact disk snapshots.
+- Generic reliability and wait policies can be trained from latent/transport
+  evidence and scalar utility without modality-specific branches.
+- `save_runtime` and `load_runtime_components` serialize controller, encoders,
+  decoders, memory, and transport policies as independently loadable
+  components.
+
+These are structural and causal-contract milestones; they do not by themselves
+qualify natural-language grounding or broad multimodal transfer.
+
 The original prototype path is:
 
 ```text
@@ -467,6 +493,19 @@ Therefore current results establish extracted vision-grounded neural IR,
 cognition, memory, audited M-output fan-out, and synchronous complementary N=2
 composition plus an explicit N-to-M runtime wrapper—not yet unrestricted
 asynchronous or naturally multimodal operation.
+
+A promoted outcome-only delayed rung now adds a narrower temporal result. With
+stream `a` arriving at tick 0, stream `b` at tick 1, an opaque action at tick
+2, and scalar reward/propensity feedback at tick 3, an independent 2,048-step
+run reached 100% fused reward. Missing evidence and shuffled partners remained
+near the expected 50% partial-information ceiling; contradictory evidence
+collapsed to zero reward. This qualifies fixed-schedule asynchronous evidence
+accumulation and delayed feedback through the clean runtime, not learned
+wait/proceed decisions, recovery of absent evidence, natural sensor timing, or
+persistent-memory utility. The optional memory arm filled its bounded store,
+but clearing memory changed reward by only 0.15 percentage points, so memory
+remains an unpromoted capability frontier. Evidence is in
+`session_records/async_memory_amodal_2026-08-03/`.
 
 ## Behavior-preserving migration order
 

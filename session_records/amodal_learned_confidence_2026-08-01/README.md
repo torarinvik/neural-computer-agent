@@ -45,5 +45,5 @@ Artifacts:
 - `training_seed173201.json`
 - `audit_seed173101_4096.json`
 - `audit_seed173201_4096.json`
-- `experiments/unified_cognitive_controller/train_amodal_confidence_estimator.py`
-- `experiments/unified_cognitive_controller/audit_amodal_learned_confidence.py`
+- `experiments/archive/unified_cognitive_controller/train_amodal_confidence_estimator.py`
+- `experiments/archive/unified_cognitive_controller/audit_amodal_learned_confidence.py`

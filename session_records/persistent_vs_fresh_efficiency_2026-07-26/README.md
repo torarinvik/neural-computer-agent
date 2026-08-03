@@ -31,7 +31,7 @@ four-rule retention passed in every arm. The aligned-reward experiment passed;
 the existing shuffled-reward control remained rejected.
 
 Canonical comparison:
-`experiments/unified_cognitive_controller/reports/persistent_vs_fresh_efficiency_seeds7032_7034.json`
+`experiments/archive/unified_cognitive_controller/reports/persistent_vs_fresh_efficiency_seeds7032_7034.json`
 
 ## Interpretation
 

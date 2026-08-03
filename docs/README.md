@@ -12,14 +12,19 @@
    frontier, and links to evidence.
 4. [`FAST_ITERATION.md`](FAST_ITERATION.md) defines campaign-sizing practice.
 
+The canonical implementation is in `../src/neural_computer/`. Experiment
+directories may retain historical trainers and compatibility readers, but new
+runtime code must import the production package rather than defining agent
+interfaces inside `experiments/`.
+
 ## Supporting design documents
 
 - [`../experiments/forward_transfer_attention/AMODAL_CONCEPT_SPACE_DESIGN.md`](../experiments/forward_transfer_attention/AMODAL_CONCEPT_SPACE_DESIGN.md)
   explains the representational motivation for learned modality-independent
   concepts and intentions.
-- [`../experiments/unified_cognitive_controller/SCRIPT_ALIGNMENT_LADDER.md`](../experiments/unified_cognitive_controller/SCRIPT_ALIGNMENT_LADDER.md)
+- [`../experiments/archive/unified_cognitive_controller/SCRIPT_ALIGNMENT_LADDER.md`](../experiments/archive/unified_cognitive_controller/SCRIPT_ALIGNMENT_LADDER.md)
   turns the target architecture into auditable migration gates.
-- [`../experiments/unified_cognitive_controller/CONTINUAL_LEARNING_DECISIONS.md`](../experiments/unified_cognitive_controller/CONTINUAL_LEARNING_DECISIONS.md)
+- [`../experiments/archive/unified_cognitive_controller/CONTINUAL_LEARNING_DECISIONS.md`](../experiments/archive/unified_cognitive_controller/CONTINUAL_LEARNING_DECISIONS.md)
   records continual-learning methods compatible with the target.
 
 ## Historical evidence

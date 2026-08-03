@@ -33,10 +33,10 @@ is a shadow parity audit only.
 
 - `artifacts/checkpoints/unified_memory_physical_online_seed7012.pt`
 - `artifacts/checkpoints/unified_memory_physical_online_seed7015.pt`
-- `experiments/unified_cognitive_controller/reports/physical_online_parity_seed7001_banks32.json`
-- `experiments/unified_cognitive_controller/reports/physical_online_adaptation_seed7012.json`
-- `experiments/unified_cognitive_controller/reports/physical_online_adaptation_seed7015.json`
-- `experiments/unified_cognitive_controller/reports/physical_online_adaptation_reward_shuffled_seed7013.json`
+- `experiments/archive/unified_cognitive_controller/reports/physical_online_parity_seed7001_banks32.json`
+- `experiments/archive/unified_cognitive_controller/reports/physical_online_adaptation_seed7012.json`
+- `experiments/archive/unified_cognitive_controller/reports/physical_online_adaptation_seed7015.json`
+- `experiments/archive/unified_cognitive_controller/reports/physical_online_adaptation_reward_shuffled_seed7013.json`
 
 ## Honest frontier
 

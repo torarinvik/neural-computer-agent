@@ -1051,7 +1051,7 @@ relational rather than tied to the original rectangles.
 Long-lived physical banks that accumulate experience across multiple updates,
 consolidation, deletion/merging, unbounded memory, and cross-modality transfer
 remain open.
-See `experiments/unified_cognitive_controller/README.md`.
+See `experiments/archive/unified_cognitive_controller/README.md`.
 
 The two-decision identify-then-act task requires the agent to:
 
@@ -1091,7 +1091,10 @@ See:
 
 | Path | Contents |
 |---|---|
-| `experiments/unified_cognitive_controller/` | Single-controller few-shot binding, retention, and persistent-memory interface |
+| `src/neural_computer/` | Canonical production neural-IR interface, amodal controller, event bus, asynchronous runtime, and decoder fan-out |
+| `experiments/async_memory_amodal/` | Promoted delayed-feedback/asynchronous outcome-only audit and memory diagnostic |
+| `experiments/outcome_only_amodal/` | Promoted synchronous outcome-only multimodal complement audit |
+| `experiments/archive/unified_cognitive_controller/` | Single-controller few-shot binding, retention, and persistent-memory interface |
 | `experiments/forward_transfer_attention/` | Main sample-efficiency, transfer, memory, binding, and causal-audit research |
 | `experiments/syllogimous_neural_computer/` | Learned external-memory neural computer |
 | `experiments/syllogimous_latent_agent/` | Latent real-time agent and sensory models |
@@ -1102,6 +1105,27 @@ See:
 | `artifacts/manifests/` | Checksums for curated and excluded historical artifacts |
 | `session_records/` | Compact historical reports and continuation notes |
 
+The maintained agent implementation lives under `src/neural_computer/`. The
+`experiments/` tree contains trainers, probes, audits, and historical
+compatibility readers; it is not the production import surface. New agent code
+should import from `neural_computer`.
+
+The production runtime now retains timestamped event tokens across updates,
+learns generic event reliability and wait/proceed policies, owns content-
+addressed working-to-disk memory through one versioned contract, and saves
+controller/adapters/memory as independent checkpoint components. These are
+implementation milestones; natural-language and broad cross-modal capability
+still require separate causal qualification.
+
+The latest promoted clean-runtime rung uses outcome-only delayed feedback:
+stream `a` arrives at tick 0, stream `b` at tick 1, the opaque action at tick 2,
+and scalar reward/propensity feedback at tick 3. Seed 37 reached 100% fused
+reward while missing and shuffled evidence stayed near the 50% partial-
+information ceiling and contradictory evidence collapsed to zero. The
+memory-enabled arm filled its store but showed no causal utility, so persistent
+recall remains explicitly unpromoted. See
+`session_records/async_memory_amodal_2026-08-03/README.md`.
+
 ## Setup
 
 Python 3.11 or newer is recommended.
@@ -1111,6 +1135,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
+python -m pip install -e .
 ```
 
 CUDA-capable PyTorch is recommended for training. CPU and Apple unified-memory
@@ -1119,9 +1144,14 @@ backends are useful for tests and tiny diagnostics.
 ## Verify
 
 ```bash
-python -m pytest experiments/forward_transfer_attention -q
+./scripts/test_canonical.sh
+./scripts/test_archived_experiments.sh
 ./scripts/verify_curated_artifacts.sh
 ```
+
+The canonical suite covers only `tests/` and the production package. Archived
+experiment regressions remain runnable through the explicit archive command;
+they are intentionally excluded from normal development runs.
 
 The narrow current-task regression suite is:
 
@@ -1584,7 +1614,7 @@ weighting, but the evidence does not support fixed weights as universally
 superior to the uniform baseline. The promoted idea is the gated continuation
 decision, driven by held-out progress and retention—not unconditional extra
 training. The reusable audit is
-`experiments/unified_cognitive_controller/audit_nback_continuation.py`.
+`experiments/archive/unified_cognitive_controller/audit_nback_continuation.py`.
 The complete reports and negative-control provenance are in
 `session_records/brainworkshop_three_stream_2026-08-02/README.md`.
 

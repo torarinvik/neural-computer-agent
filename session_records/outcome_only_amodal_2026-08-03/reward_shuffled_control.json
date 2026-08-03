@@ -1,0 +1,89 @@
+{
+  "experiment": "outcome-only-complement",
+  "seed": 19,
+  "steps": 256,
+  "batch_size": 256,
+  "reward_shuffle_control": true,
+  "raw_streams": {
+    "a": "hidden high bit + independent distractors",
+    "b": "hidden low bit + independent distractors"
+  },
+  "learner_visible_feedback": [
+    "scalar verifier reward",
+    "exact sampled-action propensity"
+  ],
+  "history": [
+    {
+      "step": 1,
+      "fused_reward": 0.2587890625
+    },
+    {
+      "step": 32,
+      "fused_reward": 0.248046875
+    },
+    {
+      "step": 64,
+      "fused_reward": 0.25390625
+    },
+    {
+      "step": 96,
+      "fused_reward": 0.267578125
+    },
+    {
+      "step": 128,
+      "fused_reward": 0.26171875
+    },
+    {
+      "step": 160,
+      "fused_reward": 0.2626953125
+    },
+    {
+      "step": 192,
+      "fused_reward": 0.2509765625
+    },
+    {
+      "step": 224,
+      "fused_reward": 0.2548828125
+    },
+    {
+      "step": 256,
+      "fused_reward": 0.2373046875
+    }
+  ],
+  "passive_fresh_reward": 0.24560546875,
+  "conditions": {
+    "fused": 0.26220703125,
+    "a_only": 0.2529296875,
+    "b_only": 0.2509765625,
+    "missing_a": 0.25830078125,
+    "missing_b": 0.23828125,
+    "shuffled_partner": 0.25,
+    "action_shuffled": 0.26318359375,
+    "intention_shuffled": 0.244140625,
+    "intention_zero": 0.2470703125,
+    "random_action": 0.26513671875
+  },
+  "reversal_reward": 0.24365234375,
+  "promotion_gate": {
+    "fused_min": 0.8,
+    "single_stream_max": 0.65,
+    "partial_evidence_max": 0.65,
+    "shuffle_gap_min": 0.25,
+    "intention_intervention_max": 0.4
+  },
+  "promoted": false,
+  "accounting": {
+    "unique_verifier_bits": 131072,
+    "unique_logical_lifetimes": 65536,
+    "optimizer_updates": 256,
+    "replayed_examples": 0,
+    "diagnostic_lifetimes_charged_to_budget": 33792,
+    "audit_lifetimes": 24576,
+    "wall_time_seconds": 4.476500499997201,
+    "mean_inference_latency_ms": 0.04429691191115692,
+    "stable_bits_to_threshold": null,
+    "retention_on_mastered_primitives": null,
+    "transfer_ratio_against_fresh_learner": null
+  },
+  "memory_corruption_control": "not_applicable: isolated controller run has no external memory component"
+}

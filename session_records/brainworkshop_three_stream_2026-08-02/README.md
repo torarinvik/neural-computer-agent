@@ -348,7 +348,7 @@ answer-loss-only fork.
 
 The high-precision audit is saved as
 `nback8_multirung_retention_audit_seed48300.json`, and the reusable evaluator is
-`experiments/unified_cognitive_controller/audit_nback_checkpoint_retention.py`.
+`experiments/archive/unified_cognitive_controller/audit_nback_checkpoint_retention.py`.
 The current frontier is therefore **retention-safe 8-back acquisition**, not
 another unbounded continuation. Any new branch must first pass a tiny gain gate
 and then the original-safe full ladder (1/5/6/7/8), with reset and time-shuffle

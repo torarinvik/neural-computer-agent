@@ -32,16 +32,16 @@ candidate committed. The committed tensors survived disk save/reload exactly.
 | disk persistence | pass |
 
 The executable probe is
-`experiments/unified_cognitive_controller/probe_memory_transaction.py`.
+`experiments/archive/unified_cognitive_controller/probe_memory_transaction.py`.
 The reusable transaction API is
 `DiskLatentMemory.transactional_replace()` in
-`experiments/unified_cognitive_controller/memory.py`.
+`experiments/archive/unified_cognitive_controller/memory.py`.
 
 ## Learned-head integration and adversarial audit
 
 The promoted receipt-trained plasticity head is now connected to the
 transaction path by
-`experiments/unified_cognitive_controller/audit_transactional_plasticity.py`.
+`experiments/archive/unified_cognitive_controller/audit_transactional_plasticity.py`.
 The audit uses the same latent receipt histories for two arms:
 
 * **learned:** the eight-feature head chooses the replacement row;
@@ -85,7 +85,7 @@ least one retained verifier in 5/32 learned banks (mean minimum-score drop
 0.125), proving causal dependence on the stored contents. Every committed
 bank survived exact save/reload of keys, values, and volatility. The complete
 report is `transactional_stream_audit.json`, and the executable is
-`experiments/unified_cognitive_controller/audit_transactional_stream.py`.
+`experiments/archive/unified_cognitive_controller/audit_transactional_stream.py`.
 
 This is a persistent-memory and safety breakthrough, not yet a claim that the
 controller has learned an unrelated cognitive primitive. The next frontier is

@@ -1,0 +1,86 @@
+{
+  "all_admission_gates_passed": false,
+  "checkpoint_saved": false,
+  "configuration": {
+    "bank_capacity": 8,
+    "batch_size": 512,
+    "checkpoint_in": "artifacts/candidates/unified_selective_memory_atom_seed5402_steps80_v2.pt",
+    "checkpoint_out": "artifacts/candidates/unified_selective_disk_cosine_gate_seed5702.pt",
+    "decision_temperature": 20.0,
+    "device": "cuda",
+    "initial_threshold": 0.5,
+    "learning_rate": 0.05,
+    "log_every": 10,
+    "read_cost": 0.01,
+    "report": "experiments/archive/unified_cognitive_controller/reports/selective_disk_cosine_rejection_seed5702.json",
+    "seed": 5702,
+    "steps": 40,
+    "test_contexts": 4096,
+    "write_threshold": 0.5
+  },
+  "evaluation": {
+    "absent_context_false_accept_rate": 0.2912743389606476,
+    "accuracy": 0.862548828125,
+    "gate": {
+      "absent_false_accept_at_most_25": false,
+      "accepted": false,
+      "accuracy_at_least_85": true,
+      "improves_ungated_by_15": true,
+      "memory_is_causal": true
+    },
+    "no_memory_accuracy": 0.500244140625,
+    "read_accept_rate": 0.675537109375,
+    "stored_context_accept_rate": 0.9200958609580994,
+    "threshold": 0.8308072686195374,
+    "ungated_accuracy": 0.552978515625
+  },
+  "history": [
+    {
+      "accuracy": 0.64453125,
+      "elapsed_seconds": 1.0087597509846091,
+      "loss": 0.023655587807297707,
+      "read_rate": 0.90625,
+      "step": 1,
+      "threshold": 0.550000011920929
+    },
+    {
+      "accuracy": 0.84375,
+      "elapsed_seconds": 1.4004821269772947,
+      "loss": 0.07101670652627945,
+      "read_rate": 0.501953125,
+      "step": 10,
+      "threshold": 0.9368297457695007
+    },
+    {
+      "accuracy": 0.8046875,
+      "elapsed_seconds": 1.8971765730530024,
+      "loss": -0.017857562750577927,
+      "read_rate": 0.68359375,
+      "step": 20,
+      "threshold": 0.8002626299858093
+    },
+    {
+      "accuracy": 0.810546875,
+      "elapsed_seconds": 2.314622482052073,
+      "loss": -0.09590569883584976,
+      "read_rate": 0.541015625,
+      "step": 30,
+      "threshold": 0.8826765418052673
+    },
+    {
+      "accuracy": 0.828125,
+      "elapsed_seconds": 2.783147426089272,
+      "loss": -0.06380008906126022,
+      "read_rate": 0.66796875,
+      "step": 40,
+      "threshold": 0.8308072686195374
+    }
+  ],
+  "learned_memory_read_threshold": 0.8308072686195374,
+  "model_weights_changed": false,
+  "schema": "unified-controller-memory-rejection-v1",
+  "semantic_or_match_labels_used_for_training": false,
+  "total_seconds": 3.1053628590889275,
+  "training_signal": "verified_query_success_minus_generic_read_cost",
+  "unique_contexts_seen": 20480
+}

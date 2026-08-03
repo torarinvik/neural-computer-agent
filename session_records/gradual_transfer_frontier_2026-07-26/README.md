@@ -21,7 +21,7 @@ earlier malformed audit that changed both the history and target was discarded
 and overwritten.
 
 Canonical report:
-`experiments/unified_cognitive_controller/reports/gradual_transfer_audit_seeds7032_7034.json`
+`experiments/archive/unified_cognitive_controller/reports/gradual_transfer_audit_seeds7032_7034.json`
 
 ## What did not pass
 

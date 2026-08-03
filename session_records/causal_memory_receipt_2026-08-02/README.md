@@ -81,11 +81,11 @@ failed to learn.
 - The new targeted tests cover unequal-strength redirection and repeated-row
   outcome accounting.
 - The executable probe is
-  `experiments/unified_cognitive_controller/probe_causal_memory_receipt.py`.
+  `experiments/archive/unified_cognitive_controller/probe_causal_memory_receipt.py`.
 - The learned-controller integration audit is
-  `experiments/unified_cognitive_controller/audit_receipt_volatility_controller.py`.
+  `experiments/archive/unified_cognitive_controller/audit_receipt_volatility_controller.py`.
 - The fresh receipt-trained head is produced by
-  `experiments/unified_cognitive_controller/train_receipt_plasticity_head.py`.
+  `experiments/archive/unified_cognitive_controller/train_receipt_plasticity_head.py`.
 
 No semantic task IDs, correct actions, or row labels enter the learner-facing
 interface. The receipt is generic provenance metadata, analogous to a CPU

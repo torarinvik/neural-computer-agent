@@ -105,7 +105,7 @@ The full 0.1361 audit still passed: 95.90% overall, 97.85% pure-next, 95.53%
 strict conflict, 48.83% after memory reset, 94.43% candidate flip rate, 93.16%
 reverse flip rate, and 99.35% old-skill retention. The adaptive runner and
 candidate are saved as
-`experiments/unified_cognitive_controller/train_microscopic_gate.py` and
+`experiments/archive/unified_cognitive_controller/train_microscopic_gate.py` and
 `artifacts/checkpoints/unified_procedural_shape_span5_adaptive1361_seed45601.pt`.
 
 This is stronger evidence than a fixed-budget run: the system crossed three

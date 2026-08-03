@@ -140,6 +140,6 @@ Not yet demonstrated:
 
 Executable sources:
 
-- `experiments/unified_cognitive_controller/audit_adaptive_hot_memory.py`
-- `experiments/unified_cognitive_controller/select_hot_memory_decay.py`
-- `experiments/unified_cognitive_controller/memory.py`
+- `experiments/archive/unified_cognitive_controller/audit_adaptive_hot_memory.py`
+- `experiments/archive/unified_cognitive_controller/select_hot_memory_decay.py`
+- `experiments/archive/unified_cognitive_controller/memory.py`

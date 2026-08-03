@@ -61,9 +61,9 @@ read/no-read.
 
 ## Important files
 
-- `experiments/unified_cognitive_controller/train_shadow_compute_advantage.py`
-- `experiments/unified_cognitive_controller/train_shadow_compute_critic.py`
-- `experiments/unified_cognitive_controller/audit_inherited_compute_gate.py`
+- `experiments/archive/unified_cognitive_controller/train_shadow_compute_advantage.py`
+- `experiments/archive/unified_cognitive_controller/train_shadow_compute_critic.py`
+- `experiments/archive/unified_cognitive_controller/audit_inherited_compute_gate.py`
 - `session_records/shadow_compute_allocation_2026-07-26/README.md`
 - `experiments/forward_transfer_attention/SAMPLE_EFFICIENCY_LEDGER.md`
 

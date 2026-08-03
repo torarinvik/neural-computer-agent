@@ -54,5 +54,5 @@ not an excuse to promote those weights.
 - `rejected_scalar_n3_rehearsal.json`
 - `rejected_consistency_8update.json`
 - `rejected_consistency_64update.json`
-- `experiments/unified_cognitive_controller/audit_amodal_n3_confidence.py`
+- `experiments/archive/unified_cognitive_controller/audit_amodal_n3_confidence.py`
 
