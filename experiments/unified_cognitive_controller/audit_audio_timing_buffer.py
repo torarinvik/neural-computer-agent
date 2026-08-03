@@ -194,6 +194,65 @@ def _rollout(
     }
 
 
+@torch.no_grad()
+def _rollout_redundant_missing(
+    runtime: AmodalControllerRuntime,
+    frames: torch.Tensor,
+    audio: torch.Tensor,
+    labels: torch.Tensor,
+    *,
+    missing_trial: int,
+) -> dict[str, float | int]:
+    """Release one missing stream after a generic one-step timeout.
+
+    The full visual stream is intentionally redundant, so this audit measures
+    whether the transport policy is graceful and timely rather than asking an
+    impossible single-view task to recover complementary evidence.
+    """
+    count, trials = frames.shape[:2]
+    buffer = AmodalEventWindowBuffer(
+        ("stream_a", "stream_b"), max_wait=1.0
+    )
+    state = runtime.initial_state(count, device=frames.device)
+    action = torch.full((count,), NULL_ACTION, dtype=torch.long, device=frames.device)
+    reward = torch.zeros(count, device=frames.device)
+    actions = torch.full(
+        (count, trials), -1, dtype=torch.long, device=frames.device
+    )
+    processed = 0
+    partial_windows = 0
+    for trial in range(trials):
+        arrivals = {
+            "stream_a": _event(runtime, "stream_a", frames[:, trial], trial)
+        }
+        if trial != missing_trial:
+            arrivals["stream_b"] = _event(
+                runtime, "stream_b", audio[:, trial], trial
+            )
+        for window in buffer.push(arrivals):
+            timestamp = int(round(window.timestamp))
+            feedback = torch.full_like(reward, float(processed > 0))
+            output, state = runtime.step_events(
+                window.collection, state, action, reward * feedback, feedback
+            )
+            action = output.decoded["action"].argmax(dim=-1)
+            reward = (action == labels[:, timestamp]).float()
+            actions[:, timestamp] = action
+            processed += 1
+            partial_windows += int(not window.complete)
+    if processed != trials:
+        raise AssertionError("timeout buffer did not release every timestamp")
+    return {
+        "accuracy": float(
+            (actions[:, 1:] == labels[:, 1:]).float().mean()
+        ),
+        "processed_windows": processed,
+        "partial_windows": partial_windows,
+        "pending_windows": len(buffer.pending_timestamps),
+        "timeout_steps": 1,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--controller", type=Path, required=True)
@@ -251,6 +310,18 @@ def main() -> None:
                 "unbuffered_delayed",
             )
         }
+        full_audio = render_pair_relation_audio(
+            batch.frames.flatten(0, 1), samples=samples
+        ).reshape(args.count, batch.trials, 1, samples)
+        results[appearance]["redundant_missing_timeout"] = (
+            _rollout_redundant_missing(
+                runtime,
+                batch.frames,
+                full_audio,
+                batch.correct_actions,
+                missing_trial=2,
+            )
+        )
     buffered = [
         results[appearance]["delayed"]["accuracy"] for appearance in appearances
     ]
@@ -262,12 +333,21 @@ def main() -> None:
         results[appearance]["unbuffered_delayed"]["accuracy"]
         for appearance in appearances
     ]
+    missing_redundant = [
+        results[appearance]["redundant_missing_timeout"]["accuracy"]
+        for appearance in appearances
+    ]
     passed = bool(
         min(buffered) >= 0.85
         and min(out_of_order) >= 0.85
         and max(unbuffered) <= 0.65
+        and min(missing_redundant) >= 0.85
         and all(
             results[appearance]["delayed"]["pending_windows"] == 0
+            and results[appearance]["redundant_missing_timeout"]["partial_windows"]
+            == 1
+            and results[appearance]["redundant_missing_timeout"]["pending_windows"]
+            == 0
             for appearance in appearances
         )
     )
@@ -296,6 +376,7 @@ def main() -> None:
             "buffered_delayed_min": min(buffered),
             "out_of_order_min": min(out_of_order),
             "unbuffered_delayed_max": max(unbuffered),
+            "redundant_missing_timeout_min": min(missing_redundant),
         },
         "passed": passed,
     }

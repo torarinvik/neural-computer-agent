@@ -164,3 +164,15 @@ synthetic audio stream; a learned wait/timeout policy for genuinely missing
 events remains open. Evidence is in
 `audio_timing_buffer_seed991001.json` and
 `audio_timing_buffer_seed991002.json`.
+
+The buffer now supports an explicit bounded timeout. When audio is absent, it
+releases a partial collection with the audio slot marked `present=False` and
+confidence zero rather than inventing a payload or waiting forever. On a
+redundant full-view task, omitting one audio event preserved 89.26--99.49%
+accuracy across appearances, released exactly one partial window, and left no
+pending windows on both 512-lifetime seeds. On the complementary task, missing
+audio remains near chance—as it must because the remaining view lacks the
+required evidence—but the timeout still makes progress deterministically.
+This is generic bounded missing-event handling, not a task-specific fallback.
+Reports: `audio_timing_timeout_seed991001.json` and
+`audio_timing_timeout_seed991002.json`.

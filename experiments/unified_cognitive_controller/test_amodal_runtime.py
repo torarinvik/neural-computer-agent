@@ -563,3 +563,16 @@ def test_streaming_window_buffer_waits_for_all_handles_and_releases_in_order() -
     ready = buffer.push({"vision": first})
     assert [window.timestamp for window in ready] == [2.0]
     assert buffer.pending_timestamps == ()
+
+
+def test_streaming_window_buffer_timeout_marks_missing_payload_absent() -> None:
+    buffer = AmodalEventWindowBuffer(("vision", "audio"), max_wait=1.0)
+    first = AmodalEvent(torch.ones(2, 4), timestamp=torch.zeros(2))
+    later = AmodalEvent(torch.full((2, 4), 2.0), timestamp=torch.ones(2))
+    assert buffer.push({"vision": first}) == []
+    ready = buffer.push({"vision": later})
+    assert len(ready) == 1
+    assert not ready[0].complete
+    assert torch.equal(ready[0].collection.present[0], torch.tensor([True, False]))
+    assert torch.equal(ready[0].collection.payload[:, 1], torch.zeros(2, 4))
+    assert torch.equal(ready[0].collection.confidence[:, 1], torch.zeros(2))

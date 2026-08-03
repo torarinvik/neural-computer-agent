@@ -292,15 +292,19 @@ class AmodalEventWindow:
 
     timestamp: float
     collection: AmodalEventCollection
+    complete: bool = True
 
 
 class AmodalEventWindowBuffer:
-    """Buffer out-of-order streams until one complete timestamp window exists.
+    """Buffer streams until a complete or bounded-expired timestamp window.
 
     ``stream_names`` are runtime transport handles, not semantic modality
     labels. The handles never enter event payloads. The buffer only uses each
     event's generic timestamp and can therefore impose a bounded wait on any
-    combination of encoders without knowing what they represent.
+    combination of encoders without knowing what they represent. With
+    ``max_wait`` set, the value is measured in the same opaque timestamp units
+    and expired windows carry an explicit presence mask rather than fabricated
+    sensory content.
     """
 
     def __init__(
@@ -308,6 +312,7 @@ class AmodalEventWindowBuffer:
         stream_names: Sequence[str],
         *,
         tolerance: float = 0.0,
+        max_wait: float | None = None,
     ) -> None:
         names = tuple(stream_names)
         if not names or any(not name for name in names):
@@ -316,8 +321,11 @@ class AmodalEventWindowBuffer:
             raise ValueError("stream_names must be unique")
         if tolerance < 0:
             raise ValueError("tolerance must be nonnegative")
+        if max_wait is not None and max_wait < 0:
+            raise ValueError("max_wait must be nonnegative")
         self.stream_names = names
         self.tolerance = float(tolerance)
+        self.max_wait = None if max_wait is None else float(max_wait)
         self._pending: dict[float, dict[str, AmodalEvent]] = {}
 
     @staticmethod
@@ -350,19 +358,82 @@ class AmodalEventWindowBuffer:
                 raise ValueError("duplicate event for one stream/timestamp")
             bucket[name] = event
         ready: list[AmodalEventWindow] = []
+        current_timestamp = max(self._pending)
         for timestamp in sorted(tuple(self._pending)):
             bucket = self._pending[timestamp]
-            if not all(name in bucket for name in self.stream_names):
-                continue
-            events = [bucket[name] for name in self.stream_names]
-            ready.append(
-                AmodalEventWindow(
-                    timestamp=timestamp,
-                    collection=AmodalEventCollection.from_events(events),
-                )
+            complete = all(name in bucket for name in self.stream_names)
+            expired = (
+                self.max_wait is not None
+                and current_timestamp - timestamp >= self.max_wait
             )
+            if not complete and not expired:
+                continue
+            ready.append(self._release(timestamp, bucket, complete=complete))
             del self._pending[timestamp]
+        ready.sort(key=lambda window: window.timestamp)
         return ready
+
+    def _release(
+        self,
+        timestamp: float,
+        bucket: Mapping[str, AmodalEvent],
+        *,
+        complete: bool,
+    ) -> AmodalEventWindow:
+        if complete:
+            events = [bucket[name] for name in self.stream_names]
+            collection = AmodalEventCollection.from_events(events)
+            return AmodalEventWindow(timestamp, collection, complete=True)
+        template = next(iter(bucket.values()))
+        batch, width = template.payload.shape
+        payloads = []
+        present = []
+        confidence = []
+        timestamps = []
+        for name in self.stream_names:
+            event = bucket.get(name)
+            if event is None:
+                payloads.append(torch.zeros_like(template.payload))
+                present.append(False)
+                confidence.append(
+                    torch.zeros(
+                        batch,
+                        dtype=template.payload.dtype,
+                        device=template.payload.device,
+                    )
+                )
+                timestamps.append(torch.full(
+                    (batch,), timestamp, device=template.payload.device
+                ))
+            else:
+                event.validate(width=width)
+                payloads.append(event.payload)
+                present.append(True)
+                confidence.append(
+                    event.confidence.reshape(batch)
+                    if event.confidence is not None
+                    else torch.ones(
+                        batch,
+                        dtype=event.payload.dtype,
+                        device=event.payload.device,
+                    )
+                )
+                timestamps.append(
+                    event.timestamp.reshape(batch)
+                    if event.timestamp is not None
+                    else torch.full(
+                        (batch,), timestamp, device=event.payload.device
+                    )
+                )
+        collection = AmodalEventCollection(
+            payload=torch.stack(payloads, dim=1),
+            present=torch.tensor(
+                [present], dtype=torch.bool, device=template.payload.device
+            ).expand(batch, -1),
+            confidence=torch.stack(confidence, dim=1),
+            timestamp=torch.stack(timestamps, dim=1),
+        ).validate(width=width)
+        return AmodalEventWindow(timestamp, collection, complete=False)
 
     @property
     def pending_timestamps(self) -> tuple[float, ...]:

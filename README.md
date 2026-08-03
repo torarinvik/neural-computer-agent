@@ -280,8 +280,16 @@ The timestamp frontier has now advanced: a generic event-window buffer restores
 one-trial delayed and out-of-order audio without changing the controller.
 Buffered delayed accuracy was **93.01%/89.02%/95.55%** on
 bars/diamonds/dot-pairs, versus **49.57%/52.73%/49.61%** unbuffered. The cost is
-one measured event interval of latency; learned timeout behavior for genuinely
-missing events remains open.
+one measured event interval of latency. It now also has a bounded generic
+timeout: when one stream is genuinely absent, the buffer releases a partial
+window with an explicit presence mask and zero confidence instead of waiting
+forever or fabricating evidence. In redundant full-view audits, omitting one
+audio event retained **89.26--99.49%** accuracy, released exactly one partial
+window, and left no pending windows on either fresh 512-lifetime seed. The
+complementary missing-view control remains near chance, as it should because
+the remaining stream does not contain the missing evidence. This is transport
+progress, not learned missing-event recovery; the new reports are in
+`session_records/amodal_latent_alignment_2026-08-03/`.
 
 ## North star
 

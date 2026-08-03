@@ -87,7 +87,16 @@ out-of-order delivery from timestamps alone: two fresh 512-lifetime audits
 reached 93.01%/89.02%/95.55% buffered delayed accuracy on
 bars/diamonds/dot-pairs, while the unbuffered delayed control stayed at
 49.57%/52.73%/49.61%. The measured cost is exactly one event interval of
-latency; missing-event timeout policy remains open.
+latency. It now also supports a generic bounded timeout: a missing stream is
+released as an explicit `present=False`, zero-confidence slot rather than an
+invented payload or an indefinitely pending window. On a redundant full-view
+audit, omitting one audio event retained 89.26--99.49% accuracy across both
+fresh 512-lifetime seeds, released exactly one partial window, and left no
+pending windows. The complementary missing-view control remains near chance,
+as required because the remaining stream lacks the answer evidence. This
+qualifies bounded transport progress, not learned missing-event recovery; the
+reports are `audio_timing_timeout_seed991001.json` and
+`audio_timing_timeout_seed991002.json`.
 
 ## Extracted neural-IR migration rung (2026-08-01)
 

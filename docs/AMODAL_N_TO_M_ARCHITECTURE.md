@@ -445,8 +445,11 @@ asynchronous or naturally multimodal operation.
 8. ~~Qualify timestamp-preserving out-of-order and bounded-jitter delivery.~~
    A generic timestamp window buffer now also restores one-step delayed audio
    composition with one step of measured arrival latency; evidence is in
-   `session_records/amodal_latent_alignment_2026-08-03/`. Qualify learned
-   timeout and missing-stream policies next.
+   `session_records/amodal_latent_alignment_2026-08-03/`. The same generic
+   buffer now has a bounded timeout that releases an explicit partial window
+   with presence masking when a stream is absent; redundant-view audits retain
+   89.26--99.49% accuracy with exactly one partial window and no stuck pending
+   state. This is transport-level progress, not a learned missing-event policy.
 9. ~~Add a runtime-variable encoder registry and controller/decoder wrapper.~~
    A reverse-basis synthetic encoder can now be aligned with a frozen controller
    by paired unlabeled sensory consistency; the three-appearance composition and
