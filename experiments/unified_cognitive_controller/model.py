@@ -187,6 +187,8 @@ class UnifiedCognitiveController(nn.Module):
             skill_adapter_reads_workspace_usage_from: int | None = None,
             skill_adapter_reads_event_snapshot_from: int | None = None,
             skill_adapter_reads_event_age_from: int | None = None,
+            skill_adapter_reads_parent_action_from: int | None = None,
+            skill_adapter_parent_action_probabilities: bool = False,
             skill_adapter_multiplies_intention_from: int | None = None,
             skill_adapter_outer_multiplies_intention_from: int | None = None,
             skill_adapter_outer_interaction_width: int = 0,
@@ -348,6 +350,15 @@ class UnifiedCognitiveController(nn.Module):
             skill_adapter_reads_event_snapshot_from)
         self.skill_adapter_reads_event_age_from = (
             skill_adapter_reads_event_age_from)
+        # A slot may read the inherited controller's current action logits as
+        # a generic context signal.  This is not a task label: it lets a new
+        # residual learn when the frozen parent is already confident versus
+        # when it needs help, which is the missing distinction in the
+        # retention-sensitive complement experiments.
+        self.skill_adapter_reads_parent_action_from = (
+            skill_adapter_reads_parent_action_from)
+        self.skill_adapter_parent_action_probabilities = bool(
+            skill_adapter_parent_action_probabilities)
         # A generic bilinear binding feature lets a later skill condition an
         # inherited amodal intention on state carried from an earlier sensory
         # event. The index preserves every older slot's shape. No operation or
@@ -546,6 +557,9 @@ class UnifiedCognitiveController(nn.Module):
             reads_event_age = (
                 skill_adapter_reads_event_age_from is not None
                 and slot_index >= skill_adapter_reads_event_age_from)
+            reads_parent_action = (
+                skill_adapter_reads_parent_action_from is not None
+                and slot_index >= skill_adapter_reads_parent_action_from)
             multiplies_intention = (
                 skill_adapter_multiplies_intention_from is not None
                 and slot_index
@@ -578,6 +592,7 @@ class UnifiedCognitiveController(nn.Module):
                 + (workspace_slots if reads_workspace_usage else 0)
                 + (width if reads_event_snapshot else 0)
                 + (1 if reads_event_age else 0)
+                + (ACTIONS if reads_parent_action else 0)
                 + (intention_width if multiplies_intention else 0)
                 + (
                     skill_adapter_outer_interaction_width ** 2
@@ -1336,6 +1351,22 @@ class UnifiedCognitiveController(nn.Module):
                         else torch.zeros(
                             event.shape[0], 1, device=event.device,
                             dtype=event.dtype))
+                if (
+                        self.skill_adapter_reads_parent_action_from
+                        is not None
+                        and slot_index
+                        >= self.skill_adapter_reads_parent_action_from):
+                    # Compute the inherited action before this slot's
+                    # residual is added.  It is a generic confidence/context
+                    # signal, not a verifier-private correct answer.
+                    parent_action = (
+                        self.actuator(intention)
+                        if self.actuator is not None else torch.zeros(
+                            event.shape[0], ACTIONS, device=event.device,
+                            dtype=event.dtype))
+                    if self.skill_adapter_parent_action_probabilities:
+                        parent_action = torch.softmax(parent_action, dim=-1)
+                    reads.append(parent_action)
                 if reads:
                     if (
                             self.skill_adapter_ablate_prior_read

@@ -161,9 +161,13 @@ def _skill_slot_logits(
     age_width = (
         1 if getattr(model, "skill_adapter_reads_event_age_from", None)
         is not None else 0)
+    parent_action_width = (
+        ACTIONS
+        if getattr(model, "skill_adapter_reads_parent_action_from", None)
+        is not None else 0)
     expected_width = (
         base_width + workspace_width + usage_width + intention_width
-        + event_snapshot_width + age_width)
+        + event_snapshot_width + age_width + parent_action_width)
     if features.shape[1] != expected_width:
         raise ValueError("cached feature width does not match skill slot")
     slot_features = features[:, :base_width]
@@ -190,6 +194,9 @@ def _skill_slot_logits(
         cursor += event_snapshot_width
     if age_width:
         reads.append(features[:, cursor:cursor + age_width])
+        cursor += age_width
+    if parent_action_width:
+        reads.append(features[:, cursor:cursor + parent_action_width])
     if reads:
         projected = model.skill_adapter_read_projections[slot_index](
             torch.cat(reads, dim=-1))
@@ -439,6 +446,8 @@ def _collect_buffer(
         include_workspace_usage: bool = False,
         include_event_snapshot: bool = False,
         include_event_age: bool = False, exploration: float = 1.0,
+        include_parent_action: bool = False,
+        parent_action_probabilities: bool = False,
         operation: str = "mixed",
         ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """Collect latent transitions using uniformly random opaque actions."""
@@ -504,6 +513,14 @@ def _collect_buffer(
                 if age_before is None:
                     age_before = torch.zeros(count, 1, device=device)
                 feature_parts.append(age_before)
+            if include_parent_action:
+                # For an appended slot, the frozen base output is exactly the
+                # inherited action context. Existing-slot continuation removes
+                # its inherited final residual before training.
+                parent_action = output.logits.detach()
+                if parent_action_probabilities:
+                    parent_action = torch.softmax(parent_action, dim=-1)
+                feature_parts.append(parent_action)
             features.append(torch.cat(feature_parts, dim=-1))
             base_logits.append(output.logits.detach())
             actions.append(action)
@@ -705,6 +722,16 @@ def main() -> None:
             "give the successor slot a normalized generic stream clock; "
             "this is not a task or operation label"))
     parser.add_argument(
+        "--skill-adapter-reads-parent-action", action="store_true",
+        help=(
+            "give the successor slot the inherited controller action logits "
+            "as a generic context/novelty signal"))
+    parser.add_argument(
+        "--skill-adapter-parent-action-probabilities", action="store_true",
+        help=(
+            "normalize the inherited action context to probabilities before "
+            "the successor slot reads it"))
+    parser.add_argument(
         "--skill-adapter-read-bottleneck", type=int, default=0,
         help=(
             "compress a wide workspace/legacy read before the successor "
@@ -835,6 +862,12 @@ def main() -> None:
         raise ValueError("workspace-usage reads require a skill slot")
     if args.skill_adapter_reads_event_age and not args.skill_adapter_width:
         raise ValueError("event-age reads require a skill slot")
+    if args.skill_adapter_reads_parent_action and not args.skill_adapter_width:
+        raise ValueError("parent-action reads require a skill slot")
+    if (args.skill_adapter_parent_action_probabilities
+            and not args.skill_adapter_reads_parent_action):
+        raise ValueError(
+            "parent-action probabilities require parent-action reads")
     if args.append_skill_slot and not args.skill_adapter_width:
         raise ValueError("appending a skill slot requires --skill-adapter-width")
     if (args.action_conditioned_critic_width
@@ -877,6 +910,13 @@ def main() -> None:
         args.skill_adapter_reads_event_age
         or base_configuration.get("skill_adapter_reads_event_age_from")
         is not None)
+    include_parent_action = (
+        args.skill_adapter_reads_parent_action
+        or base_configuration.get("skill_adapter_reads_parent_action_from")
+        is not None)
+    parent_action_probabilities = (
+        args.skill_adapter_parent_action_probabilities
+        or base_configuration.get("skill_adapter_parent_action_probabilities", False))
     base = UnifiedCognitiveController(**base_configuration).to(device)
     compatibility = base.load_state_dict(
         payload["state_dict"], strict=False)
@@ -923,6 +963,8 @@ def main() -> None:
             include_workspace_usage=include_workspace_usage,
             include_event_snapshot=include_event_snapshot,
             include_event_age=include_event_age,
+            include_parent_action=include_parent_action,
+            parent_action_probabilities=parent_action_probabilities,
             exploration=args.buffer_exploration,
             operation=args.target_operation)
         buffer_parts = [target_buffer]
@@ -941,6 +983,8 @@ def main() -> None:
                 include_workspace_usage=include_workspace_usage,
                 include_event_snapshot=include_event_snapshot,
                 include_event_age=include_event_age,
+                include_parent_action=include_parent_action,
+                parent_action_probabilities=parent_action_probabilities,
                 exploration=args.buffer_exploration,
                 operation="mixed"))
             stream_specs.append({
@@ -992,12 +1036,17 @@ def main() -> None:
         with torch.no_grad():
             base_logits[fresh_mask] = _remove_final_slot_from_logits(
                 base, features[fresh_mask], base_logits[fresh_mask])
+            if include_parent_action:
+                features[fresh_mask, -ACTIONS:] = base_logits[fresh_mask]
             if persisted_parent_matches_target and persisted_count:
                 persisted_start = features.shape[0] - persisted_count
                 base_logits[persisted_start:] = (
                     _remove_final_slot_from_logits(
                         base, features[persisted_start:],
                         base_logits[persisted_start:]))
+                if include_parent_action:
+                    features[persisted_start:, -ACTIONS:] = (
+                        base_logits[persisted_start:])
     rehearsal_lifetime_count = (
         args.rehearsal_lifetimes * len(rehearsal_spans)
         if args.buffer_in is None else 0)
@@ -1046,6 +1095,10 @@ def main() -> None:
                 existing_scales
                 + (1.0,) * (len(existing_slots) - len(existing_scales))
                 + (args.skill_adapter_residual_scale,))
+            if args.skill_adapter_reads_parent_action:
+                configuration[
+                    "skill_adapter_reads_parent_action_from"] = len(
+                        existing_slots)
             if args.skill_adapter_gate_hidden:
                 # Give only the new slot a nonlinear gate.  The index keeps
                 # every inherited gate shape and checkpoint key unchanged.
@@ -1070,6 +1123,8 @@ def main() -> None:
                     0 if args.skill_adapter_reads_workspace_usage else None),
                 skill_adapter_reads_event_age_from=(
                     0 if args.skill_adapter_reads_event_age else None),
+                skill_adapter_reads_parent_action_from=(
+                    0 if args.skill_adapter_reads_parent_action else None),
                 event_age=args.skill_adapter_reads_event_age,
                 skill_adapter_read_bottleneck=args.skill_adapter_read_bottleneck,
                 skill_adapter_critic_width=(
@@ -1427,6 +1482,8 @@ def main() -> None:
         "skill_adapter_reads_workspace_usage": (
             args.skill_adapter_reads_workspace_usage),
         "skill_adapter_reads_event_age": args.skill_adapter_reads_event_age,
+        "skill_adapter_reads_parent_action": (
+            args.skill_adapter_reads_parent_action),
         "skill_adapter_read_bottleneck": args.skill_adapter_read_bottleneck,
         "skill_adapter_no_legacy_read": args.skill_adapter_no_legacy_read,
         "train_parent_action_adapter": args.train_parent_action_adapter,

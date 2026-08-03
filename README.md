@@ -1912,6 +1912,16 @@ calibration, and a smaller slot) are archived in
 `session_records/sequence_working_memory_2026-08-02/complement_retention_controls_2026-08-03.md`;
 none produced a robust promotion.
 
+The first task-agnostic context fork is now wired but remains negative. A
+successor slot can read the inherited controller's action vector before its
+own residual is applied; this is intended as a generic parent-confidence
+signal for the plasticity gate. With raw action logits at 512 target
+lifetimes (seed `93770`), independent complement accuracy was **51.94%** versus
+50.48% with the slot zeroed, only **+1.46 points** causally. It therefore
+misses the +5-point bar and is not promoted. The code and audit are retained
+for the normalized-probability follow-up, documented in
+`session_records/sequence_working_memory_2026-08-02/parent_action_context_2026-08-03.md`.
+
 ## Latest breakthrough: span-three working-memory compounding (2026-08-02)
 
 The sequence branch now demonstrates the desired learn-to-learn effect on a
