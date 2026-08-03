@@ -237,6 +237,17 @@ relevance breakthrough and
 `session_records/amodal_pair_agreement_cardinality_2026-08-01/README.md` for
 the gradual N=2→N=11 audit and N=12 boundary.
 
+The complete N-to-M runtime wrapper is now behaviorally qualified on that
+promoted complementary skill. Two independently registered external frontends
+feed one frozen controller and one decoder bus; the 4,096-lifetime audit
+reaches **96.57%/91.13%/95.56%** on bars/diamonds/dot-pairs, with a 512-lifetime
+replica at **97.03%/90.27%/95.66%**. Individual streams and shuffled partners
+remain near chance, contradictory partners cause the expected flips, and every
+wrapper action logit matches the prior explicit bus path exactly (maximum drift
+`0.0`). This qualifies the runtime boundary for an existing skill, not natural
+audio/language transfer or cold-start cross-modal learning. Evidence is in
+`session_records/amodal_runtime_composition_2026-08-03/`.
+
 ## North star
 
 Maximize verified reusable capability gained per unique interaction.

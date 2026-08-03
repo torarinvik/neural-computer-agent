@@ -415,6 +415,17 @@ pre-encoded sensor injection, missing-frontend rejection, and two-backend
 fan-out are covered by tests. This is an interface/plumbing milestone, not a
 claim that arbitrary natural modalities already learn or transfer.
 
+The wrapper has now passed a behavioral audit using the promoted complementary
+N=2 skill. With two independently registered external vision frontends and one
+frozen controller, the 4,096-lifetime MPS audit reached 96.57% on bars, 91.13%
+on diamonds, and 95.56% on dot-pairs; an independent 512-lifetime replica
+reached 97.03%, 90.27%, and 95.66%. Individual streams and shuffled partners
+remained near chance, contradictory partners caused the expected prediction
+flips, and wrapper outputs were exactly equal to the prior explicit bus path
+(maximum action-logit difference 0.0). This qualifies the runtime boundary for
+an existing causal skill, not natural audio/language transfer or cold-start
+cross-modal learning.
+
 Therefore current results establish extracted vision-grounded neural IR,
 cognition, memory, audited M-output fan-out, and synchronous complementary N=2
 composition plus an explicit N-to-M runtime wrapper—not yet unrestricted

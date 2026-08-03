@@ -1,0 +1,75 @@
+{
+  "appearance_gates": {
+    "bars": true,
+    "diamonds": true,
+    "dot_pairs": true
+  },
+  "claim": "The complete N-to-M runtime wrapper preserves the prior causal complementary N=2 result while keeping one frozen controller and two independently registered encoder frontends.",
+  "configuration": {
+    "count": 512,
+    "decoder_count": 1,
+    "device": "mps",
+    "encoder_count": 2,
+    "seed": 250002
+  },
+  "controller": "artifacts/checkpoints/unified_repertoire_span2_amodal_intention_seed122005.pt",
+  "controller_parameters_unchanged": true,
+  "controller_sha256": "9eea7ab479cb8450737f040b76495cc5ec737e970cdc165af2446873e530cd6c",
+  "input_bus": "artifacts/checkpoints/amodal_input_bus_complementary_seed145001.pt",
+  "input_bus_sha256": "4ae96f60b99107834c27840b8841e8b2ba20c10e6565c220b5607fb9c80d3c71",
+  "passed": true,
+  "results": {
+    "bars": {
+      "contradictory_partner_accuracy": 0.091796875,
+      "contradictory_prediction_flip_rate": 0.8785156011581421,
+      "duplicate_actions_exact": true,
+      "duplicate_max_logit_difference": 0.0,
+      "duplicate_n2_accuracy": 0.9800781011581421,
+      "full_n1_accuracy": 0.9800781011581421,
+      "fused_accuracy": 0.9703124761581421,
+      "legacy_wrapper_exact": true,
+      "legacy_wrapper_max_logit_difference": 0.0,
+      "permuted_stream_order_accuracy": 0.9703124761581421,
+      "permuted_stream_order_actions_exact": true,
+      "permuted_stream_order_max_logit_difference": 0.0,
+      "shuffled_partner_accuracy": 0.5199218988418579,
+      "stream_a_accuracy": 0.5601562261581421,
+      "stream_b_accuracy": 0.4390625059604645
+    },
+    "diamonds": {
+      "contradictory_partner_accuracy": 0.17031249403953552,
+      "contradictory_prediction_flip_rate": 0.732421875,
+      "duplicate_actions_exact": true,
+      "duplicate_max_logit_difference": 0.0,
+      "duplicate_n2_accuracy": 1.0,
+      "full_n1_accuracy": 1.0,
+      "fused_accuracy": 0.9027343988418579,
+      "legacy_wrapper_exact": true,
+      "legacy_wrapper_max_logit_difference": 0.0,
+      "permuted_stream_order_accuracy": 0.9027343988418579,
+      "permuted_stream_order_actions_exact": true,
+      "permuted_stream_order_max_logit_difference": 0.0,
+      "shuffled_partner_accuracy": 0.5289062261581421,
+      "stream_a_accuracy": 0.5023437738418579,
+      "stream_b_accuracy": 0.503125011920929
+    },
+    "dot_pairs": {
+      "contradictory_partner_accuracy": 0.03554687649011612,
+      "contradictory_prediction_flip_rate": 0.921093761920929,
+      "duplicate_actions_exact": true,
+      "duplicate_max_logit_difference": 0.0,
+      "duplicate_n2_accuracy": 0.9800781011581421,
+      "full_n1_accuracy": 0.9800781011581421,
+      "fused_accuracy": 0.9566406011581421,
+      "legacy_wrapper_exact": true,
+      "legacy_wrapper_max_logit_difference": 0.0,
+      "permuted_stream_order_accuracy": 0.9566406011581421,
+      "permuted_stream_order_actions_exact": true,
+      "permuted_stream_order_max_logit_difference": 0.0,
+      "shuffled_partner_accuracy": 0.506640613079071,
+      "stream_a_accuracy": 0.518359363079071,
+      "stream_b_accuracy": 0.50390625
+    }
+  },
+  "schema": "amodal-runtime-wrapper-composition-audit-v1"
+}

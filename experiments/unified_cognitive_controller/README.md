@@ -33,6 +33,17 @@ ownership boundary only. The next experiment must put a second synthetic
 encoder through it and measure reward-dependent learning, dropout robustness,
 and sample-efficiency transfer while keeping the controller frozen first.
 
+The first behavioral wrapper audit now passes on the promoted complementary
+two-stream skill. Two independently registered external frontends and the
+frozen controller reached 96.57%/91.13%/95.56% on bars/diamonds/dot-pairs in a
+4,096-lifetime audit, with a 512-lifetime replica at 97.03%/90.27%/95.66%.
+Individual streams and shuffled partners stayed near chance; contradictory
+partners flipped predictions; and every wrapper action logit matched the old
+explicit bus path exactly (maximum difference 0.0). The reports are in
+`session_records/amodal_runtime_composition_2026-08-03/`. This validates the
+architecture boundary for an existing skill, not natural audio/language
+transfer or cold-start cross-modal learning.
+
 ## Extracted neural-IR migration rung (2026-08-01)
 
 The first four migration gates are implemented without retraining:

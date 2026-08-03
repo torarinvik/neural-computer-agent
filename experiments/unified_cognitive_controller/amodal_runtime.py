@@ -685,7 +685,7 @@ def runtime_from_legacy_payload(
     if not isinstance(configuration, Mapping) or not isinstance(state, Mapping):
         raise TypeError("legacy payload lacks model configuration or state dict")
     model = UnifiedCognitiveController(**dict(configuration)).to(device)
-    model.load_state_dict(state)
+    _load_controller_state_compatibly(model, state)
     return ExtractedAmodalRuntime.from_legacy(model, copy_model=False)
 
 
@@ -705,9 +705,38 @@ def runtime_from_extracted_payload(
     blank = UnifiedCognitiveController(**dict(configuration)).to(device)
     runtime = ExtractedAmodalRuntime.from_legacy(blank, copy_model=False)
     runtime.encoder.load_state_dict(payload["encoder_state_dict"])
-    runtime.controller.load_state_dict(payload["controller_state_dict"])
+    _load_controller_state_compatibly(runtime.controller, payload["controller_state_dict"])
     runtime.decoder.load_state_dict(payload["decoder_state_dict"])
     return runtime
+
+
+def _load_controller_state_compatibly(
+    model: UnifiedCognitiveController,
+    state: Mapping[str, torch.Tensor],
+) -> None:
+    """Load checkpoints across zero-initialized optional controller additions.
+
+    The critic-scale parameters were added after the promoted amodal
+    checkpoint was created. They are zero-initialized and have no effect until
+    explicitly trained, so an older checkpoint may omit only those keys. Any
+    other missing or unexpected key remains a hard error; this is deliberately
+    not a general ``strict=False`` escape hatch.
+    """
+    incompatible = model.load_state_dict(state, strict=False)
+    allowed_missing = {
+        name
+        for name in incompatible.missing_keys
+        if name.startswith("skill_adapter_critic_scales.")
+    }
+    unexpected = set(incompatible.unexpected_keys)
+    remaining_missing = set(incompatible.missing_keys) - allowed_missing
+    if remaining_missing or unexpected:
+        details = []
+        if remaining_missing:
+            details.append(f"missing keys: {sorted(remaining_missing)}")
+        if unexpected:
+            details.append(f"unexpected keys: {sorted(unexpected)}")
+        raise RuntimeError("incompatible controller checkpoint (" + "; ".join(details) + ")")
 
 
 def canonicalize_action_adapter_payload(payload: Mapping[str, Any]) -> dict[str, Any]:

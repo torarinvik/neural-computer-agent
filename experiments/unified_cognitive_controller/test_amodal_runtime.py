@@ -186,6 +186,22 @@ def test_extracted_components_round_trip_independently(tmp_path: Path) -> None:
         assert torch.equal(value, disk_runtime.legacy_state_dict()[name]), name
 
 
+def test_legacy_loader_allows_only_new_zero_initialized_critic_scale() -> None:
+    configuration = _configuration(skill_adapter_widths=(8,))
+    legacy = UnifiedCognitiveController(**configuration)
+    state = dict(legacy.state_dict())
+    key = "skill_adapter_critic_scales.0"
+    assert key in state
+    del state[key]
+    runtime = runtime_from_legacy_payload(
+        {"model_configuration": configuration, "state_dict": state}
+    )
+    assert torch.equal(
+        runtime.controller.skill_adapter_critic_scales[0],
+        torch.zeros_like(runtime.controller.skill_adapter_critic_scales[0]),
+    )
+
+
 def test_interface_rejects_wrong_width_and_schema() -> None:
     with pytest.raises(ValueError, match="event width"):
         AmodalEvent(torch.zeros(2, 3)).validate(width=4)
