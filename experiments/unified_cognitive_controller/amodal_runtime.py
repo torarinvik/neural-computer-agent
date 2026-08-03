@@ -287,6 +287,90 @@ class AmodalEventTimeline:
 
 
 @dataclass(frozen=True)
+class AmodalEventWindow:
+    """One timestamp-aligned collection released by a streaming buffer."""
+
+    timestamp: float
+    collection: AmodalEventCollection
+
+
+class AmodalEventWindowBuffer:
+    """Buffer out-of-order streams until one complete timestamp window exists.
+
+    ``stream_names`` are runtime transport handles, not semantic modality
+    labels. The handles never enter event payloads. The buffer only uses each
+    event's generic timestamp and can therefore impose a bounded wait on any
+    combination of encoders without knowing what they represent.
+    """
+
+    def __init__(
+        self,
+        stream_names: Sequence[str],
+        *,
+        tolerance: float = 0.0,
+    ) -> None:
+        names = tuple(stream_names)
+        if not names or any(not name for name in names):
+            raise ValueError("stream_names must be nonempty")
+        if len(set(names)) != len(names):
+            raise ValueError("stream_names must be unique")
+        if tolerance < 0:
+            raise ValueError("tolerance must be nonnegative")
+        self.stream_names = names
+        self.tolerance = float(tolerance)
+        self._pending: dict[float, dict[str, AmodalEvent]] = {}
+
+    @staticmethod
+    def _timestamp(event: AmodalEvent) -> float:
+        event.validate()
+        if event.timestamp is None:
+            raise ValueError("buffered events require timestamps")
+        values = event.timestamp.reshape(-1)
+        if values.numel() == 0 or not torch.equal(values, values[:1].expand_as(values)):
+            raise ValueError("batched buffered timestamps must be uniform")
+        return float(values[0])
+
+    def _slot(self, timestamp: float) -> float:
+        for existing in self._pending:
+            if abs(existing - timestamp) <= self.tolerance:
+                return existing
+        return timestamp
+
+    def push(self, arrivals: Mapping[str, AmodalEvent]) -> list[AmodalEventWindow]:
+        """Add any newly arrived events and release complete windows in order."""
+        if not arrivals:
+            raise ValueError("at least one event arrival is required")
+        for name, event in arrivals.items():
+            if name not in self.stream_names:
+                raise KeyError(f"unknown buffered stream {name!r}")
+            timestamp = self._timestamp(event)
+            slot = self._slot(timestamp)
+            bucket = self._pending.setdefault(slot, {})
+            if name in bucket:
+                raise ValueError("duplicate event for one stream/timestamp")
+            bucket[name] = event
+        ready: list[AmodalEventWindow] = []
+        for timestamp in sorted(tuple(self._pending)):
+            bucket = self._pending[timestamp]
+            if not all(name in bucket for name in self.stream_names):
+                continue
+            events = [bucket[name] for name in self.stream_names]
+            ready.append(
+                AmodalEventWindow(
+                    timestamp=timestamp,
+                    collection=AmodalEventCollection.from_events(events),
+                )
+            )
+            del self._pending[timestamp]
+        return ready
+
+    @property
+    def pending_timestamps(self) -> tuple[float, ...]:
+        """Return incomplete timestamp windows in chronological order."""
+        return tuple(sorted(self._pending))
+
+
+@dataclass(frozen=True)
 class AmodalRuntimeOutput:
     """One controller update plus every registered decoder result.
 

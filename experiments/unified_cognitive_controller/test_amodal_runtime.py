@@ -8,6 +8,7 @@ from .amodal_runtime import (
     EXTRACTED_CHECKPOINT_FORMAT,
     ActionIntentDecoder,
     AmodalControllerRuntime,
+    AmodalEventWindowBuffer,
     AmodalEventTimeline,
     AmodalInputBus,
     AmodalOutputBus,
@@ -541,3 +542,24 @@ def test_event_timeline_reorders_delivery_but_respects_timestamp_boundaries() ->
     delayed = AmodalEvent(second, timestamp=torch.ones(3))
     assert len(AmodalEventTimeline([event_a, delayed]).windows()) == 2
     assert len(AmodalEventTimeline([event_a, delayed], tolerance=1.0).windows()) == 1
+
+
+def test_streaming_window_buffer_waits_for_all_handles_and_releases_in_order() -> None:
+    first = AmodalEvent(torch.ones(2, 4), timestamp=torch.full((2,), 2.0))
+    second = AmodalEvent(torch.full((2, 4), 2.0), timestamp=torch.full((2,), 2.0))
+    earlier_first = AmodalEvent(
+        torch.full((2, 4), 3.0), timestamp=torch.zeros(2)
+    )
+    earlier_second = AmodalEvent(
+        torch.full((2, 4), 4.0), timestamp=torch.zeros(2)
+    )
+    buffer = AmodalEventWindowBuffer(("vision", "audio"))
+    assert buffer.push({"audio": second}) == []
+    assert buffer.pending_timestamps == (2.0,)
+    assert buffer.push({"vision": earlier_first}) == []
+    ready = buffer.push({"audio": earlier_second})
+    assert [window.timestamp for window in ready] == [0.0]
+    assert torch.equal(ready[0].collection.payload[:, 0], earlier_first.payload)
+    ready = buffer.push({"vision": first})
+    assert [window.timestamp for window in ready] == [2.0]
+    assert buffer.pending_timestamps == ()

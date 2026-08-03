@@ -443,7 +443,10 @@ asynchronous or naturally multimodal operation.
    the clean base intention.~~
 7. ~~Accept variable-size synchronous visual event sets.~~
 8. ~~Qualify timestamp-preserving out-of-order and bounded-jitter delivery.~~
-   Then qualify learned delay, noisy, and missing-stream policies.
+   A generic timestamp window buffer now also restores one-step delayed audio
+   composition with one step of measured arrival latency; evidence is in
+   `session_records/amodal_latent_alignment_2026-08-03/`. Qualify learned
+   timeout and missing-stream policies next.
 9. ~~Add a runtime-variable encoder registry and controller/decoder wrapper.~~
    A reverse-basis synthetic encoder can now be aligned with a frozen controller
    by paired unlabeled sensory consistency; the three-appearance composition and

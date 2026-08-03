@@ -276,6 +276,13 @@ and 88.63--88.75% under 25% burst dropout. Whole-stream omission, low
 confidence, and one-trial delay correctly expose the remaining frontier:
 learned missing-event and timing handling.
 
+The timestamp frontier has now advanced: a generic event-window buffer restores
+one-trial delayed and out-of-order audio without changing the controller.
+Buffered delayed accuracy was **93.01%/89.02%/95.55%** on
+bars/diamonds/dot-pairs, versus **49.57%/52.73%/49.61%** unbuffered. The cost is
+one measured event interval of latency; learned timeout behavior for genuinely
+missing events remains open.
+
 ## North star
 
 Maximize verified reusable capability gained per unique interaction.

@@ -81,6 +81,14 @@ Full stream omission, low-confidence events, and a one-trial delay correctly
 remain unsolved and expose the next frontier: learned missing-event and timing
 handling.
 
+That timing rung is now partially closed without changing the controller. The
+generic `AmodalEventWindowBuffer` restores a one-trial delayed audio stream and
+out-of-order delivery from timestamps alone: two fresh 512-lifetime audits
+reached 93.01%/89.02%/95.55% buffered delayed accuracy on
+bars/diamonds/dot-pairs, while the unbuffered delayed control stayed at
+49.57%/52.73%/49.61%. The measured cost is exactly one event interval of
+latency; missing-event timeout policy remains open.
+
 ## Extracted neural-IR migration rung (2026-08-01)
 
 The first four migration gates are implemented without retraining:

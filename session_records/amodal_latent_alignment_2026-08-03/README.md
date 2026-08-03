@@ -140,3 +140,27 @@ confidence correctly collapse toward the single-view/chance baseline. This
 localizes the remaining frontier to a learned missing-event and timing policy,
 not denoising. Evidence is in
 `audio_robustness_seed990002.json` and `audio_robustness_seed990003.json`.
+
+## Timestamp-buffer breakthrough
+
+The remaining one-trial delay failure was repaired at the transport boundary,
+not by adding task logic to the controller. `AmodalEventWindowBuffer` holds
+opaque events by their generic timestamps and releases a complete window when
+all registered stream handles have arrived. It never reads payload semantics,
+correct answers, or modality names.
+
+Two fresh 512-lifetime audits show the effect:
+
+| appearance | buffered one-step delay | out-of-order buffered | unbuffered delay |
+|---|---:|---:|---:|
+| bars | 93.01% | 93.01% | 49.57% |
+| diamonds | 89.02% | 89.02% | 52.73% |
+| dot-pairs | 95.55% | 95.55% | 49.61% |
+
+The buffered delayed path processes every window with exactly one step of
+arrival latency and no pending windows. The synchronous and out-of-order paths
+are identical. This qualifies generic timestamp synchronization for a delayed
+synthetic audio stream; a learned wait/timeout policy for genuinely missing
+events remains open. Evidence is in
+`audio_timing_buffer_seed991001.json` and
+`audio_timing_buffer_seed991002.json`.

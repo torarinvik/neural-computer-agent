@@ -4,6 +4,8 @@ from .amodal_interface import AmodalEvent, AmodalEventCollection, IntentEvent
 from .amodal_runtime import (
     ActionIntentDecoder,
     AmodalControllerRuntime,
+    AmodalEventWindow,
+    AmodalEventWindowBuffer,
     AmodalEventTimeline,
     AmodalInputBus,
     AmodalOutputBus,
@@ -19,6 +21,8 @@ __all__ = [
     "AmodalControllerRuntime",
     "AmodalEvent",
     "AmodalEventCollection",
+    "AmodalEventWindow",
+    "AmodalEventWindowBuffer",
     "AmodalEventTimeline",
     "AmodalInputBus",
     "AmodalOutputBus",
