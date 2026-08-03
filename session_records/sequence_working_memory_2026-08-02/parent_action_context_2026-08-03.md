@@ -21,16 +21,27 @@ are `complement_parentaction_512_93770.json` and
 `complement_parentaction_512_93770_audit.json` in this directory; the
 unpromoted checkpoint is retained only for reproducibility.
 
-## Next bounded fork
+## Normalized follow-up
 
-Repeat the same 512-lifetime experiment with the inherited action vector
-normalized to a probability simplex. Use a freshly regenerated replay buffer
-with the identical feature layout, then apply the same causal, reset, shuffled,
-cue-blank, and span-nine/span-ten retention audits. A single promising seed is
-not enough: promotion still requires an independent replicate and the existing
-two-point retention gate.
+The matched probability-simplex follow-up used the same 512 target lifetimes,
+freshly regenerated 2,432-transition replay buffer, penalties, and audit:
 
-This keeps the investigation small and reversible. If normalized context also
-fails, stop expanding the feature list and return to the task-agnostic gate or
-population-selection alternatives; do not scale the complement task to 2,048
-lifetime exposures while retention remains seed-sensitive.
+| Arm | Complement | Zeroed-slot | Causal gain | Span 9 Δ | Span 10 Δ |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| normalized parent probabilities, seed 93771 | 53.29% | 50.94% | +2.35 pp | −6.76 pp | −12.53 pp |
+
+This also misses the +5-point causal bar and violates the two-point retention
+gate. It is rejected, not promoted. The exact reports are
+`complement_parentaction_probability_512_93771.json` and
+`complement_parentaction_probability_512_93771_audit.json`; the checkpoint and
+normalized replay buffer are retained only to make the negative result
+reproducible.
+
+## Decision
+
+Both raw-logit and normalized-parent-action context fail. Normalizing the
+signal does not make it selective; it makes the old-skill interference worse.
+Stop expanding this feature list and return to a genuinely context-selective
+plasticity mechanism or an explicit verifier-side promotion/rejection
+population. Do not scale the complement task to 2,048 lifetime exposures
+while the retention gate remains seed-sensitive.

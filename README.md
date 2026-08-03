@@ -1921,6 +1921,11 @@ lifetimes (seed `93770`), independent complement accuracy was **51.94%** versus
 misses the +5-point bar and is not promoted. The code and audit are retained
 for the normalized-probability follow-up, documented in
 `session_records/sequence_working_memory_2026-08-02/parent_action_context_2026-08-03.md`.
+The matched probability-simplex follow-up (seed `93771`) reached **53.29%**
+with only **+2.35 points** of causal gain, while span-nine/span-ten retention
+fell by **6.76/12.53 points**. Both representations therefore fail the causal
+and retention bars. Stop expanding this feature list and return to a genuinely
+selective gate or an explicit promotion/rejection population.
 
 ## Latest breakthrough: span-three working-memory compounding (2026-08-02)
 
