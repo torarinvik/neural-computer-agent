@@ -204,6 +204,8 @@ def _skill_slot_logits(
     hidden_read = model.skill_adapters[slot_index][1](
         model.skill_adapters[slot_index][0](own_features))
     residual = model.skill_adapters[slot_index][2](hidden_read) * opening
+    if slot_index < len(model.skill_adapter_residual_scales):
+        residual = residual * model.skill_adapter_residual_scales[slot_index]
     critic_logits = None
     critic_residual = None
     critic = model.skill_adapter_critics[slot_index]
@@ -252,11 +254,91 @@ def _balanced_provenance_loss(
             score, target, reduction="none") * weights).mean()
 
 
+def _outcome_only_query_weights(
+        features: torch.Tensor, outcomes: torch.Tensor,
+        replay_mask: torch.Tensor, *, age_column: int | None,
+        power: float, floor: float) -> torch.Tensor:
+    """Prioritize hard stream positions using verifier outcomes only.
+
+    ``event_age`` is a generic stream clock, not a task or answer label.  For
+    each fresh age bucket we estimate difficulty as ``1 - mean(outcome)`` and
+    normalize the resulting weights to mean one.  Persisted replay rows are
+    deliberately left at weight one: old-skill protection should not be
+    weakened by a noisy difficulty estimate from the new task.  This is a
+    curriculum signal, not privileged supervision; no correct action is read.
+    """
+    if power < 0.0:
+        raise ValueError("query difficulty power must not be negative")
+    if not 0.0 <= floor <= 1.0:
+        raise ValueError("query difficulty floor must be within [0, 1]")
+    weights = torch.ones_like(outcomes)
+    if power == 0.0 or not bool((~replay_mask).any()):
+        return weights
+    if age_column is None:
+        raise ValueError(
+            "query difficulty requires a generic event-age feature")
+    ages = features[:, age_column]
+    fresh = ~replay_mask
+    fresh_ages = torch.unique(ages[fresh], sorted=True)
+    for age in fresh_ages:
+        bucket = fresh & (ages == age)
+        difficulty = (1.0 - outcomes[bucket].mean()).clamp_min(floor)
+        weights[bucket] = difficulty.pow(power)
+    mean = weights[fresh].mean().clamp_min(torch.finfo(weights.dtype).eps)
+    weights[fresh] = weights[fresh] / mean
+    return weights
+
+
+def _query_curriculum_indices(
+        total_rows: int, *, target_lifetimes: int, span: int,
+        cutoff: int, device: torch.device) -> torch.Tensor:
+    """Keep all replay/rehearsal rows and only a target prefix for warmup."""
+    if target_lifetimes < 1 or span < 1:
+        raise ValueError("target lifetimes and span must be positive")
+    if not 1 <= cutoff <= span:
+        raise ValueError("query curriculum cutoff must be within the span")
+    target_rows = target_lifetimes * span
+    if target_rows > total_rows:
+        raise ValueError("target stream is shorter than its declared size")
+    target_mask = torch.zeros(total_rows, dtype=torch.bool, device=device)
+    target_mask[:target_rows] = True
+    query_index = torch.zeros(total_rows, dtype=torch.long, device=device)
+    query_index[:target_rows] = torch.arange(
+        span, device=device).repeat_interleave(target_lifetimes)
+    return torch.arange(total_rows, device=device)[
+        (~target_mask) | (query_index < cutoff)]
+
+
+def _base_mistake_weights(
+        base_logits: torch.Tensor, attempted: torch.Tensor,
+        outcomes: torch.Tensor, replay_mask: torch.Tensor,
+        *, weight: float) -> torch.Tensor:
+    """Focus binary complementary updates where the frozen parent is wrong.
+
+    The target is reconstructed only from the attempted opaque action and its
+    scalar outcome.  This control is intentionally binary: for two actions a
+    failed attempt identifies the alternative, while for a larger action set
+    it would invent information and must not be enabled by the trainer.
+    Persisted rows stay at weight one so the control cannot silently weaken
+    old-skill rehearsal.
+    """
+    if weight < 1.0:
+        raise ValueError("base mistake weight must be at least one")
+    weights = torch.ones_like(outcomes)
+    if weight == 1.0:
+        return weights
+    target = torch.where(outcomes > 0.5, attempted, 1 - attempted)
+    mistake = base_logits.argmax(dim=1) != target
+    weights[mistake & ~replay_mask] = weight
+    return weights
+
+
 def _weighted_attempted_success_loss(
         logits: torch.Tensor, attempted: torch.Tensor,
         outcomes: torch.Tensor, replay_mask: torch.Tensor,
         replay_outcome_weight: float,
-        positive_outcome_weight: float = 1.0) -> torch.Tensor:
+        positive_outcome_weight: float = 1.0,
+        sample_weight: torch.Tensor | None = None) -> torch.Tensor:
     """Weight old replay outcomes separately from fresh-task outcomes."""
     selected = logits.gather(1, attempted.unsqueeze(1)).squeeze(1)
     per_example = F.binary_cross_entropy_with_logits(
@@ -272,6 +354,8 @@ def _weighted_attempted_success_loss(
         replay_mask,
         torch.full_like(per_example, replay_outcome_weight),
         torch.ones_like(per_example))
+    if sample_weight is not None:
+        weights = weights * sample_weight
     return (per_example * weights).sum() / weights.sum().clamp_min(1.0)
 
 
@@ -279,7 +363,8 @@ def _weighted_binary_complement_loss(
         logits: torch.Tensor, attempted: torch.Tensor,
         outcomes: torch.Tensor, replay_mask: torch.Tensor,
         replay_outcome_weight: float,
-        positive_outcome_weight: float = 1.0) -> torch.Tensor:
+        positive_outcome_weight: float = 1.0,
+        sample_weight: torch.Tensor | None = None) -> torch.Tensor:
     """Diagnostic binary bandit loss using the logically implied alternative.
 
     With exactly two opaque actions, a failed attempt identifies the other
@@ -300,6 +385,37 @@ def _weighted_binary_complement_loss(
         replay_mask,
         torch.full_like(per_example, replay_outcome_weight),
         torch.ones_like(per_example))
+    if sample_weight is not None:
+        weights = weights * sample_weight
+    return (per_example * weights).sum() / weights.sum().clamp_min(1.0)
+
+
+def _weighted_binary_margin_loss(
+        logits: torch.Tensor, attempted: torch.Tensor,
+        outcomes: torch.Tensor, replay_mask: torch.Tensor,
+        replay_outcome_weight: float, margin: float = 1.0,
+        sample_weight: torch.Tensor | None = None) -> torch.Tensor:
+    """Use an outcome-only hinge to correct a frozen binary parent.
+
+    Cross-entropy can saturate when inherited logits have very large margins.
+    The hinge keeps a constant gradient while the implied target is still on
+    the wrong side of the requested margin.  As with the complement loss, the
+    alternative target is valid only for two opaque actions.
+    """
+    if logits.shape[1] != 2:
+        raise ValueError("binary margin loss requires exactly two actions")
+    if margin < 0.0:
+        raise ValueError("binary margin must not be negative")
+    target = torch.where(outcomes > 0.5, attempted, 1 - attempted)
+    target_logit = logits.gather(1, target.unsqueeze(1)).squeeze(1)
+    other_logit = logits.gather(1, (1 - target).unsqueeze(1)).squeeze(1)
+    per_example = F.relu(margin - (target_logit - other_logit))
+    weights = torch.where(
+        replay_mask,
+        torch.full_like(per_example, replay_outcome_weight),
+        torch.ones_like(per_example))
+    if sample_weight is not None:
+        weights = weights * sample_weight
     return (per_example * weights).sum() / weights.sum().clamp_min(1.0)
 
 
@@ -311,11 +427,12 @@ def _collect_buffer(
         include_workspace_usage: bool = False,
         include_event_snapshot: bool = False,
         include_event_age: bool = False, exploration: float = 1.0,
+        operation: str = "mixed",
         ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """Collect latent transitions using uniformly random opaque actions."""
     batch = generate_sequence_memory_batch(
         count, span=span, distractors=distractors, seed=seed,
-        operation="mixed", position_augmentation=position_augmentation,
+        operation=operation, position_augmentation=position_augmentation,
         device=device)
     null = torch.full(
         (count,), NULL_ACTION, dtype=torch.long, device=device)
@@ -445,6 +562,18 @@ def main() -> None:
     parser.add_argument("--rehearse-spans", default="")
     parser.add_argument("--rehearsal-lifetimes", type=int, default=512)
     parser.add_argument("--span", type=int, default=8)
+    parser.add_argument(
+        "--target-operation",
+        choices=("forward", "reverse", "mixed", "complement"),
+        default="mixed",
+        help=(
+            "operation for the new target stream; complement is an adjacent "
+            "primitive"))
+    parser.add_argument(
+        "--test-operation",
+        choices=("forward", "reverse", "mixed", "complement"),
+        default=None,
+        help="held-out operation; defaults to target-operation")
     parser.add_argument("--distractors", type=int, default=2)
     parser.add_argument("--epochs", type=int, default=128)
     parser.add_argument("--batch-size", type=int, default=512)
@@ -455,6 +584,31 @@ def main() -> None:
             "multiply observed successful-attempt loss; this is a reward "
             "balance control, not a correct-action label"))
     parser.add_argument(
+        "--query-difficulty-power", type=float, default=0.0,
+        help=(
+            "outcome-only curriculum: upweight fresh stream positions with "
+            "lower observed success; requires the generic event-age read"))
+    parser.add_argument(
+        "--query-difficulty-floor", type=float, default=0.25,
+        help=(
+            "minimum per-position difficulty before applying the query "
+            "difficulty power"))
+    parser.add_argument(
+        "--query-curriculum-warmup-epochs", type=int, default=0,
+        help=(
+            "train a fresh target prefix for this many epochs before the "
+            "full query sequence; requires a freshly collected target"))
+    parser.add_argument(
+        "--query-curriculum-cutoff", type=int, default=0,
+        help=(
+            "number of initial query positions in the curriculum warmup; "
+            "zero disables the staged prefix"))
+    parser.add_argument(
+        "--base-mistake-weight", type=float, default=1.0,
+        help=(
+            "binary diagnostic: upweight fresh rows where the frozen parent "
+            "disagrees with the outcome-implied action"))
+    parser.add_argument(
         "--binary-complement-loss", action="store_true",
         help=(
             "diagnostic only: for two opaque actions, treat a failed attempt "
@@ -464,12 +618,28 @@ def main() -> None:
         help=(
             "apply the same binary-only outcome inference to the temporary "
             "per-action critic; diagnostic control"))
+    parser.add_argument(
+        "--binary-margin-loss", action="store_true",
+        help=(
+            "diagnostic only: replace binary policy cross-entropy with a "
+            "constant-gradient outcome-implied margin loss"))
+    parser.add_argument(
+        "--binary-margin-critic-loss", action="store_true",
+        help="apply the binary margin loss to the temporary critic")
+    parser.add_argument(
+        "--binary-margin", type=float, default=1.0,
+        help="requested target-vs-alternative logit margin")
     parser.add_argument("--action-adapter-width", type=int, default=64)
     parser.add_argument(
         "--skill-adapter-width", type=int, default=0,
         help=(
             "train one new successor skill slot while preserving the "
             "parent action adapter"))
+    parser.add_argument(
+        "--skill-adapter-residual-scale", type=float, default=1.0,
+        help=(
+            "fixed positive amplitude for the newly appended slot residual; "
+            "zero output still preserves insertion exactly"))
     parser.add_argument(
         "--append-skill-slot", action="store_true",
         help=(
@@ -570,6 +740,8 @@ def main() -> None:
             or args.action_conditioned_critic_width < 0
             or args.skill_adapter_read_bottleneck < 0
             or args.skill_adapter_gate_hidden < 0
+            or args.query_curriculum_warmup_epochs < 0
+            or args.query_curriculum_cutoff < 0
             or args.test_episodes < 2):
         raise ValueError("invalid replay-buffer dimensions")
     if args.replay_max_transitions < 0:
@@ -582,6 +754,34 @@ def main() -> None:
         raise ValueError("residual-penalty must not be negative")
     if args.positive_outcome_weight < 0:
         raise ValueError("positive-outcome-weight must not be negative")
+    if args.query_difficulty_power < 0:
+        raise ValueError("query-difficulty-power must not be negative")
+    if not 0.0 <= args.query_difficulty_floor <= 1.0:
+        raise ValueError("query-difficulty-floor must be within [0, 1]")
+    if args.query_curriculum_warmup_epochs and not args.query_curriculum_cutoff:
+        raise ValueError(
+            "query-curriculum-cutoff is required for a warmup curriculum")
+    if args.query_curriculum_cutoff > args.span:
+        raise ValueError("query-curriculum-cutoff cannot exceed span")
+    if args.skill_adapter_residual_scale <= 0.0:
+        raise ValueError("skill-adapter-residual-scale must be positive")
+    if args.base_mistake_weight < 1.0:
+        raise ValueError("base-mistake-weight must be at least one")
+    if args.base_mistake_weight > 1.0 and not args.binary_complement_loss:
+        raise ValueError(
+            "base-mistake-weight requires the binary complement diagnostic")
+    if (args.binary_margin_loss or args.binary_margin_critic_loss) \
+            and not args.binary_complement_loss:
+        raise ValueError(
+            "binary margin diagnostics require the binary complement loss")
+    if args.binary_margin < 0.0:
+        raise ValueError("binary-margin must not be negative")
+    if args.query_curriculum_warmup_epochs and args.buffer_in is not None:
+        raise ValueError(
+            "query curriculum needs a freshly collected target stream")
+    if args.query_curriculum_warmup_epochs and args.replay_refinement_epochs:
+        raise ValueError(
+            "query curriculum cannot be combined with staged replay refinement")
     if args.action_conditioned_critic_weight < 0:
         raise ValueError("action-conditioned-critic-weight must not be negative")
     if args.action_conditioned_critic_policy_weight < 0:
@@ -698,7 +898,8 @@ def main() -> None:
             include_workspace_usage=include_workspace_usage,
             include_event_snapshot=include_event_snapshot,
             include_event_age=include_event_age,
-            exploration=args.buffer_exploration)
+            exploration=args.buffer_exploration,
+            operation=args.target_operation)
         buffer_parts = [target_buffer]
         stream_specs.append({
             "kind": "target", "span": args.span,
@@ -715,7 +916,8 @@ def main() -> None:
                 include_workspace_usage=include_workspace_usage,
                 include_event_snapshot=include_event_snapshot,
                 include_event_age=include_event_age,
-                exploration=args.buffer_exploration))
+                exploration=args.buffer_exploration,
+                operation="mixed"))
             stream_specs.append({
                 "kind": "rehearsal", "span": rehearsal_span,
                 "lifetimes": args.rehearsal_lifetimes})
@@ -757,6 +959,20 @@ def main() -> None:
         permutation = torch.randperm(
             outcomes.shape[0], generator=generator).to(device)
         outcomes = outcomes[permutation]
+    query_sample_weights = _outcome_only_query_weights(
+        features, outcomes, replay_mask,
+        age_column=(features.shape[1] - 1 if include_event_age else None),
+        power=args.query_difficulty_power,
+        floor=args.query_difficulty_floor)
+    query_sample_weights = query_sample_weights * _base_mistake_weights(
+        base_logits, actions, outcomes, replay_mask,
+        weight=args.base_mistake_weight)
+    curriculum_indices = None
+    if args.query_curriculum_warmup_epochs:
+        curriculum_indices = _query_curriculum_indices(
+            features.shape[0], target_lifetimes=args.train_lifetimes,
+            span=args.span, cutoff=args.query_curriculum_cutoff,
+            device=device)
     if args.skill_adapter_width:
         existing_slots = tuple(base_configuration.get(
             "skill_adapter_widths", ()))
@@ -769,6 +985,12 @@ def main() -> None:
                 base_configuration,
                 skill_adapter_widths=existing_slots + (
                     args.skill_adapter_width,))
+            existing_scales = tuple(base_configuration.get(
+                "skill_adapter_residual_scales", ()))
+            configuration["skill_adapter_residual_scales"] = (
+                existing_scales
+                + (1.0,) * (len(existing_slots) - len(existing_scales))
+                + (args.skill_adapter_residual_scale,))
             if args.skill_adapter_gate_hidden:
                 # Give only the new slot a nonlinear gate.  The index keeps
                 # every inherited gate shape and checkpoint key unchanged.
@@ -779,6 +1001,8 @@ def main() -> None:
             configuration = dict(
                 base_configuration,
                 skill_adapter_widths=(args.skill_adapter_width,),
+                skill_adapter_residual_scales=(
+                    args.skill_adapter_residual_scale,),
                 skill_adapter_gate_mode=args.skill_adapter_gate_mode,
                 skill_adapter_gate_hidden=args.skill_adapter_gate_hidden,
                 skill_adapter_legacy_read_from=(
@@ -901,26 +1125,40 @@ def main() -> None:
                     logits = logits + current - inherited
                 batch_replay_mask = replay_mask[indices]
                 loss = (
+                    _weighted_binary_margin_loss(
+                        logits, actions[indices], outcomes[indices],
+                        batch_replay_mask, outcome_weight,
+                        args.binary_margin, query_sample_weights[indices])
+                    if args.binary_margin_loss else
                     _weighted_binary_complement_loss(
                         logits, actions[indices], outcomes[indices],
                         batch_replay_mask, outcome_weight,
-                        args.positive_outcome_weight)
+                        args.positive_outcome_weight,
+                        query_sample_weights[indices])
                     if args.binary_complement_loss else
                     _weighted_attempted_success_loss(
                         logits, actions[indices], outcomes[indices],
                         batch_replay_mask, outcome_weight,
-                        args.positive_outcome_weight))
+                        args.positive_outcome_weight,
+                        query_sample_weights[indices]))
                 if critic_logits is not None and args.action_conditioned_critic_weight:
                     critic_loss = (
+                        _weighted_binary_margin_loss(
+                            critic_logits, actions[indices], outcomes[indices],
+                            batch_replay_mask, outcome_weight,
+                            args.binary_margin, query_sample_weights[indices])
+                        if args.binary_margin_critic_loss else
                         _weighted_binary_complement_loss(
                             critic_logits, actions[indices], outcomes[indices],
                             batch_replay_mask, outcome_weight,
-                            args.positive_outcome_weight)
+                            args.positive_outcome_weight,
+                            query_sample_weights[indices])
                         if args.binary_complement_critic_loss else
                         _weighted_attempted_success_loss(
                             critic_logits, actions[indices], outcomes[indices],
                             batch_replay_mask, outcome_weight,
-                            args.positive_outcome_weight))
+                            args.positive_outcome_weight,
+                            query_sample_weights[indices]))
                     loss = loss + (
                         args.action_conditioned_critic_weight * critic_loss)
                 if (
@@ -1002,6 +1240,19 @@ def main() -> None:
             gate_penalty=args.replay_gate_penalty,
             logit_penalty=args.replay_logit_penalty,
             gate_targets=gate_targets)
+    elif curriculum_indices is not None:
+        train_epochs(
+            args.query_curriculum_warmup_epochs, curriculum_indices,
+            outcome_weight=args.replay_outcome_weight,
+            residual_penalty=args.replay_residual_penalty,
+            gate_penalty=args.replay_gate_penalty,
+            logit_penalty=args.replay_logit_penalty)
+        train_epochs(
+            args.epochs, all_indices,
+            outcome_weight=args.replay_outcome_weight,
+            residual_penalty=args.replay_residual_penalty,
+            gate_penalty=args.replay_gate_penalty,
+            logit_penalty=args.replay_logit_penalty)
     else:
         train_epochs(
             args.epochs, all_indices,
@@ -1013,7 +1264,9 @@ def main() -> None:
     audit = evaluate_sequence_memory(
         student, count=args.test_episodes, span=args.span,
         distractors=args.distractors, seed=args.seed + 90_000,
-        operation="mixed", device=device)
+        operation=(args.target_operation
+                   if args.test_operation is None else args.test_operation),
+        device=device)
     report = {
         "schema": "latent-replay-adapter-v2",
         "claim_boundary": (
@@ -1046,9 +1299,22 @@ def main() -> None:
         "residual_action_adapter": args.residual_action_adapter,
         "residual_penalty": args.residual_penalty,
         "positive_outcome_weight": args.positive_outcome_weight,
+        "query_difficulty_power": args.query_difficulty_power,
+        "query_difficulty_floor": args.query_difficulty_floor,
+        "query_curriculum_warmup_epochs": (
+            args.query_curriculum_warmup_epochs),
+        "query_curriculum_cutoff": args.query_curriculum_cutoff,
+        "base_mistake_weight": args.base_mistake_weight,
+        "target_operation": args.target_operation,
+        "test_operation": (
+            args.target_operation
+            if args.test_operation is None else args.test_operation),
         "buffer_exploration": args.buffer_exploration,
         "binary_complement_loss": args.binary_complement_loss,
         "binary_complement_critic_loss": args.binary_complement_critic_loss,
+        "binary_margin_loss": args.binary_margin_loss,
+        "binary_margin_critic_loss": args.binary_margin_critic_loss,
+        "binary_margin": args.binary_margin,
         "action_conditioned_critic_width": (
             args.action_conditioned_critic_width),
         "action_conditioned_critic_weight": (
@@ -1060,6 +1326,8 @@ def main() -> None:
         "action_conditioned_critic_policy_temperature": (
             args.action_conditioned_critic_policy_temperature),
         "skill_adapter_width": args.skill_adapter_width,
+        "skill_adapter_residual_scale": (
+            args.skill_adapter_residual_scale),
         "skill_adapter_gate_mode": args.skill_adapter_gate_mode,
         "skill_adapter_reads_intention": args.skill_adapter_reads_intention,
         "skill_adapter_reads_workspace": args.skill_adapter_reads_workspace,

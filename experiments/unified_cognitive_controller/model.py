@@ -176,6 +176,7 @@ class UnifiedCognitiveController(nn.Module):
             skill_adapter_gate_mode: str = "sigmoid",
             skill_adapter_gate_hidden: int = 0,
             skill_adapter_gate_hidden_from: int | None = None,
+            skill_adapter_residual_scales: tuple[float, ...] = (),
             skill_adapter_gate_refiner_widths: tuple[int, ...] = (),
             skill_adapter_gate_extension_widths: tuple[int, ...] = (),
             skill_adapter_reads_prior: bool = False,
@@ -238,6 +239,10 @@ class UnifiedCognitiveController(nn.Module):
                 or len(skill_adapter_gate_extension_widths)
                 > len(skill_adapter_widths)):
             raise ValueError("controller dimensions are too small")
+        if (
+                len(skill_adapter_residual_scales) > len(skill_adapter_widths)
+                or any(value <= 0.0 for value in skill_adapter_residual_scales)):
+            raise ValueError("skill adapter residual scales must be positive")
         self.width = width
         self.workspace_slots = workspace_slots
         self.intention_width = intention_width
@@ -275,6 +280,8 @@ class UnifiedCognitiveController(nn.Module):
         self.skill_adapter_gate_mode = skill_adapter_gate_mode
         self.skill_adapter_gate_hidden = skill_adapter_gate_hidden
         self.skill_adapter_gate_hidden_from = skill_adapter_gate_hidden_from
+        self.skill_adapter_residual_scales = tuple(
+            float(value) for value in skill_adapter_residual_scales)
         self.skill_adapter_gate_refiner_widths = tuple(
             skill_adapter_gate_refiner_widths)
         self.skill_adapter_gate_extension_widths = tuple(
@@ -1356,6 +1363,9 @@ class UnifiedCognitiveController(nn.Module):
                     else torch.sigmoid(score))
                 hidden_read = adapter[1](adapter[0](own_features))
                 residual = adapter[2](hidden_read)
+                if slot_index < len(self.skill_adapter_residual_scales):
+                    residual = residual * self.skill_adapter_residual_scales[
+                        slot_index]
                 residual = residual * opening
                 critic = self.skill_adapter_critics[slot_index]
                 if not isinstance(critic, nn.Identity):

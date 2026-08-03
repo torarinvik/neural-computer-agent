@@ -16,6 +16,27 @@ diagnostics. It reached a 0.89-point causal gain while retaining old spans
 within two points, below the 5-point promotion bar. Its replay evidence is
 preserved as `artifacts/memory/span11_replay_buffer_seed93703.pt`.
 
+## Adjacent complement primitive
+
+`complement_slot_candidate_seed93748.pt` is a validated but not yet mastered
+successor-slot candidate for a visibly distinct complement operation. It
+reached 59.77% on an independent 1,024-lifetime audit versus 50.64% for the
+parent and 50.64% with the appended slot zeroed: a 9.12-point causal gain.
+Old span-nine/span-ten retention changed by −0.01/−0.04 points, and the
+matched outcome-shuffled control scored 47.56%. The complete cue-blank,
+memory-reset, and retention audit is
+`session_records/sequence_working_memory_2026-08-02/complement_slot_audit_seed294800.json`.
+
+- SHA-256 candidate:
+  `8db94b3f3fe95bdbf40f53c1bc6effcbac96f4e3cfcbcdc5caeed55207462e4c`
+- SHA-256 shuffled control:
+  `6c081a068a934e215a68481e803651db9a3ab135af19d47f9ab237e44f9f5243`
+
+`complement_slot_shuffled_control_seed93749.pt` is retained as the adversarial
+outcome-shuffled control. Neither checkpoint is a deployment default: 59.77%
+is a partial acquisition result, so a second truthful replication is required
+before promoting the primitive.
+
 ## Procedural-shape relative operations
 
 `unified_next_error_balanced_primary_seed43601.pt` and

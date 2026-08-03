@@ -1855,6 +1855,36 @@ not missing sensory information. The next high-ROI move is a smaller
 intermediate primitive or an explicit per-output curriculum, not a longer
 blind span-11 run.
 
+## Adjacent complement primitive (2026-08-03)
+
+Before spending more compute on the difficult span-eleven successor, the
+controller was tested on a smaller adjacent primitive. A third, visibly
+distinct operation cue required the complementary binary action (`1 -
+sequence`). The new successor slot was trained from controller-visible latent
+features, attempted opaque actions, and scalar verifier outcomes only; no
+correct action or semantic rule was placed in the replay buffer.
+
+The longer truthful arm (seed `93748`, 256 fresh lifetimes, 128 epochs, two
+distractors) reached **59.77%** on an independent 1,024-lifetime audit, versus
+**50.64%** for its parent and **50.64%** when every parameter in the appended
+slot was zeroed. This is a **9.12-point causal gain**, above the registered
+five-point promotion bar. The operation-cue-blank control returned to 45.16%
+and the complete-memory reset to 50.00%. Span-nine and span-ten retention
+changed by only −0.01 and −0.04 points, within the two-point gate. A matched
+outcome-shuffled child scored 47.56%, so the gain does not survive destroying
+the scalar reward correspondence.
+
+This is a real but partial acquisition result, not mastery: the complement
+primitive is at 59.77%, so it is archived as a validated adjacent-primitive
+candidate rather than a deployment checkpoint. The checkpoint and independent
+audit are `artifacts/checkpoints/complement_slot_candidate_seed93748.pt` and
+`session_records/sequence_working_memory_2026-08-02/complement_slot_audit_seed294800.json`;
+the full interpretation is in
+`session_records/sequence_working_memory_2026-08-02/complement_slot_2026-08-03.md`.
+The next efficient gate is a second truthful replication with the same causal,
+cue-blank, reset, shuffled-outcome, and old-skill retention controls. Span
+eleven remains paused until this adjacent primitive reproduces.
+
 ## Latest breakthrough: span-three working-memory compounding (2026-08-02)
 
 The sequence branch now demonstrates the desired learn-to-learn effect on a

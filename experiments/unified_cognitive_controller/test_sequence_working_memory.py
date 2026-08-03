@@ -5,8 +5,11 @@ from .train_sequence_working_memory import (
     generate_sequence_memory_batch, rollout_sequence_memory)
 from .train_sequence_reward_buffer import (
     _action_conditioned_policy_loss, _balanced_provenance_loss,
-    _collect_buffer, _replay_refinement_indices, _skill_slot_logits,
-    _weighted_binary_complement_loss)
+    _base_mistake_weights,
+    _collect_buffer, _outcome_only_query_weights,
+    _query_curriculum_indices, _replay_refinement_indices,
+    _skill_slot_logits,
+    _weighted_binary_complement_loss, _weighted_binary_margin_loss)
 
 
 def test_sequence_memory_generation_is_deterministic_and_balanced() -> None:
@@ -36,6 +39,18 @@ def test_operation_counterfactual_changes_only_query_cue_and_answers() -> None:
         normal.operation_bits, 1 - reversed_operation.operation_bits)
     assert torch.equal(
         normal.correct_actions, reversed_operation.correct_actions.flip(1))
+
+
+def test_complement_operation_is_a_distinct_visible_adjacent_primitive() -> None:
+    forward = generate_sequence_memory_batch(
+        16, span=3, distractors=1, seed=260021, operation="forward")
+    complement = generate_sequence_memory_batch(
+        16, span=3, distractors=1, seed=260021, operation="complement")
+    assert torch.equal(forward.input_frames, complement.input_frames)
+    assert torch.equal(forward.distractor_frames, complement.distractor_frames)
+    assert torch.equal(complement.operation_bits, torch.zeros(16, dtype=torch.long))
+    assert torch.equal(complement.correct_actions, 1 - complement.sequence)
+    assert not torch.equal(forward.query_frames, complement.query_frames)
 
 
 def test_sequence_counterfactual_is_a_valid_pixel_rerender() -> None:
@@ -198,6 +213,46 @@ def test_binary_complement_loss_uses_only_attempted_action_and_outcome() -> None
     assert float(loss.detach()) < 0.03
     loss.backward()
     assert logits.grad is not None
+
+
+def test_query_difficulty_weights_use_only_fresh_age_buckets() -> None:
+    features = torch.zeros(7, 3)
+    features[:, -1] = torch.tensor((1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0))
+    outcomes = torch.tensor((1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0))
+    replay = torch.tensor((False, False, False, False, False, False, True))
+    weights = _outcome_only_query_weights(
+        features, outcomes, replay, age_column=2, power=1.0, floor=0.25)
+    assert float(weights[2]) > float(weights[0]) > float(weights[4])
+    assert float(weights[6]) == 1.0
+    assert torch.isclose(weights[~replay].mean(), torch.tensor(1.0))
+
+
+def test_query_curriculum_keeps_replay_and_a_target_prefix() -> None:
+    indices = _query_curriculum_indices(
+        14, target_lifetimes=2, span=4, cutoff=2,
+        device=torch.device("cpu"))
+    assert indices.tolist() == [0, 1, 2, 3, 8, 9, 10, 11, 12, 13]
+
+
+def test_base_mistake_weights_ignore_replay_rows() -> None:
+    base_logits = torch.tensor(
+        ((3.0, -3.0), (-3.0, 3.0), (3.0, -3.0), (-3.0, 3.0)))
+    attempted = torch.tensor((0, 1, 0, 1))
+    outcomes = torch.tensor((1.0, 0.0, 0.0, 1.0))
+    replay = torch.tensor((False, False, True, False))
+    weights = _base_mistake_weights(
+        base_logits, attempted, outcomes, replay, weight=5.0)
+    assert weights.tolist() == [1.0, 5.0, 1.0, 1.0]
+
+
+def test_binary_margin_loss_pushes_against_a_large_wrong_parent_margin() -> None:
+    logits = torch.tensor(((100.0, -100.0), (100.0, -100.0)))
+    attempted = torch.tensor((1, 0))
+    outcomes = torch.tensor((1.0, 0.0))
+    replay = torch.zeros(2, dtype=torch.bool)
+    loss = _weighted_binary_margin_loss(
+        logits, attempted, outcomes, replay, 1.0, margin=1.0)
+    assert float(loss) > 100.0
 
 
 def test_address_conditioned_write_content_breaks_slot_symmetry() -> None:

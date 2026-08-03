@@ -112,8 +112,9 @@ def generate_sequence_memory_batch(
         raise ValueError("span must be positive")
     if distractors < 0:
         raise ValueError("distractors must not be negative")
-    if operation not in ("forward", "reverse", "mixed"):
-        raise ValueError("operation must be forward, reverse, or mixed")
+    if operation not in ("forward", "reverse", "mixed", "complement"):
+        raise ValueError(
+            "operation must be forward, reverse, mixed, or complement")
     if not 0.0 <= position_blend <= 1.0:
         raise ValueError("position blend must be within [0, 1]")
     if position_shift:
@@ -121,7 +122,7 @@ def generate_sequence_memory_batch(
 
     generator = torch.Generator().manual_seed(seed)
     sequence = _balanced_binary_sequences(count, span, generator)
-    if operation == "forward":
+    if operation in ("forward", "complement"):
         operation_bits = torch.zeros(count, dtype=torch.long)
     elif operation == "reverse":
         operation_bits = torch.ones(count, dtype=torch.long)
@@ -200,7 +201,14 @@ def generate_sequence_memory_batch(
     query_frames = backgrounds.expand(
         -1, span, -1, IMAGE_SIZE, IMAGE_SIZE).clone()
     for row in range(count):
-        operation_column = 2 if int(operation_bits[row]) == 0 else 27
+        if operation == "complement":
+            # A third generic operation cue. It carries no operation name
+            # or answer; it only makes this adjacent primitive observable
+            # without conflating it with the inherited forward/reverse
+            # protocol.
+            operation_column = 14
+        else:
+            operation_column = 2 if int(operation_bits[row]) == 0 else 27
         query_frames[row, :, :, 2:5, operation_column:operation_column + 3] = (
             0.95)
         for query_index in range(span):
@@ -215,12 +223,16 @@ def generate_sequence_memory_batch(
         count, -1)
     selected_index = torch.where(
         operation_bits.unsqueeze(1).bool(), reverse_index, source_index)
-    correct = torch.gather(sequence, 1, selected_index)
+    correct = (
+        1 - sequence if operation == "complement"
+        else torch.gather(sequence, 1, selected_index))
 
     if reverse_sequence:
         sequence = sequence.flip(1)
         input_frames = input_frames.flip(1)
-        correct = torch.gather(sequence, 1, selected_index)
+        correct = (
+            1 - sequence if operation == "complement"
+            else torch.gather(sequence, 1, selected_index))
 
     return SequenceMemoryBatch(
         input_frames.to(device), distractor_frames.to(device),
@@ -294,7 +306,11 @@ def rollout_sequence_memory(
         frame = batch.query_frames[:, query_index]
         if operation_cue_blank:
             frame = frame.clone()
+            # Clear every public operation-cue slot, including the center
+            # cue used by the adjacent complement primitive. The ordinal
+            # query marks at the bottom remain intact.
             frame[:, :, 2:5, 2:5] = 0.0
+            frame[:, :, 2:5, 14:17] = 0.0
             frame[:, :, 2:5, 27:30] = 0.0
         feedback = torch.full_like(
             previous_reward, float(query_index > 0))
