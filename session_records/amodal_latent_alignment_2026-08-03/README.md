@@ -280,6 +280,33 @@ Artifacts:
 - `text_alignment_seed997101.json`
 - `text_adapter_replay_seed997901.json`
 
+## Grounded-caption alignment
+
+The next experiment replaced meaningless sensor symbols with short grounded
+captions: an external source described visible shape, colour, and location.
+It never received the hidden rule, feedback, correct action, or task ID. A
+small word-embedding frontend aligned captions to the frozen vision neural-IR
+using paired encoded-event consistency only.
+
+Two independent 32-update runs passed. A fresh 512-lifetime replay of the
+saved frontend reported:
+
+| appearance | fused | shuffled captions | contradictory flip | N=1 |
+|---|---:|---:|---:|---:|
+| bars | 98.36% | 48.91% | 93.87% | 98.16% |
+| diamonds | 93.20% | 53.63% | 78.98% | 99.96% |
+| dot-pairs | 95.16% | 50.66% | 89.14% | 99.10% |
+
+This is the first grounded-caption bridge into the shared IR. It remains a
+synthetic caption source, so it does not yet qualify a pretrained LLM encoder,
+free-form natural language, or natural speech. Artifacts:
+
+- `artifacts/checkpoints/amodal_caption_aligned_frontend_seed999001.pt`
+- `artifacts/checkpoints/amodal_caption_aligned_frontend_seed999101.pt`
+- `caption_alignment_seed999001.json`
+- `caption_alignment_seed999101.json`
+- `caption_adapter_replay_seed999901.json`
+
 ## Replicated three-modality composition
 
 The saved vision, synthetic-audio, and discrete-text frontends were then

@@ -1,0 +1,42 @@
+{
+  "adapter": "artifacts/checkpoints/amodal_caption_aligned_frontend_seed999001.pt",
+  "adapter_sha256": "4cc32fa86c06e9099f777bfc44aa38302429133c07621a58b3c777a4e10c801e",
+  "configuration": {
+    "device": "cpu",
+    "eval_count": 512,
+    "seed": 999901
+  },
+  "controller": "artifacts/checkpoints/unified_repertoire_span2_amodal_intention_seed122005.pt",
+  "controller_parameters_unchanged": true,
+  "controller_sha256": "9eea7ab479cb8450737f040b76495cc5ec737e970cdc165af2446873e530cd6c",
+  "input_bus": "artifacts/checkpoints/amodal_input_bus_complementary_seed145001.pt",
+  "input_bus_sha256": "4ae96f60b99107834c27840b8841e8b2ba20c10e6565c220b5607fb9c80d3c71",
+  "passed": true,
+  "results": {
+    "bars": {
+      "caption_only_accuracy": 0.500781238079071,
+      "contradictory_partner_accuracy": 0.044921875,
+      "contradictory_prediction_flip_rate": 0.938671886920929,
+      "full_n1_accuracy": 0.981640636920929,
+      "fused_accuracy": 0.983593761920929,
+      "shuffled_partner_accuracy": 0.48906248807907104
+    },
+    "diamonds": {
+      "caption_only_accuracy": 0.507031261920929,
+      "contradictory_partner_accuracy": 0.14218750596046448,
+      "contradictory_prediction_flip_rate": 0.789843738079071,
+      "full_n1_accuracy": 0.9996093511581421,
+      "fused_accuracy": 0.9320312738418579,
+      "shuffled_partner_accuracy": 0.536328136920929
+    },
+    "dot_pairs": {
+      "caption_only_accuracy": 0.5152343511581421,
+      "contradictory_partner_accuracy": 0.06015624850988388,
+      "contradictory_prediction_flip_rate": 0.891406238079071,
+      "full_n1_accuracy": 0.991015613079071,
+      "fused_accuracy": 0.9515625238418579,
+      "shuffled_partner_accuracy": 0.506640613079071
+    }
+  },
+  "schema": "amodal-caption-frontend-replay-v1"
+}

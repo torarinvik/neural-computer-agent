@@ -426,6 +426,14 @@ near chance and contradictory flips of 87.42%/78.48%/95.08%. This is text
 transport plumbing, not natural-language semantics; the next language claim
 requires a real text stream and a separate grounding audit.
 
+A grounded-caption adapter now passes that narrower bridge. An external source
+describes visible shape, colour, and location in a short word sequence, never
+the hidden rule or correct action. Paired consistency aligns a small word
+frontend into the frozen IR; a 512-lifetime saved replay reaches
+98.36%/93.20%/95.16% fused on bars/diamonds/dot-pairs, with shuffled captions
+near chance and contradictory flips above 78%. This is synthetic grounded
+language transport, not a pretrained LLM or free-form natural-language claim.
+
 The three qualified frontends now compose simultaneously through the same
 input bus. Two independent 512-lifetime frozen-core audits of vision plus
 synthetic audio plus discrete text reached 96.05--96.37% bars, 98.12--98.16%

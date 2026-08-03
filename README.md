@@ -337,6 +337,18 @@ remained frozen. This qualifies discrete text transport, not natural-language
 semantics; the symbols are deliberately meaningless sensor bytes. Artifacts
 and reports are in `session_records/amodal_latent_alignment_2026-08-03/`.
 
+The next caption-level bridge also passed. An external caption source provided
+short word sequences describing only visible object properties (shape, colour,
+and location); it never received the hidden rule, feedback, or correct action.
+A small word-embedding frontend aligned those captions into the frozen neural
+IR using paired consistency. Independent saved-frontend replay reached
+**98.36%/93.20%/95.16%** fused on bars/diamonds/dot-pairs, shuffled captions
+stayed at **48.91%/53.63%/50.66%**, contradictory captions flipped
+**93.87%/78.98%/89.14%**, and N=1 retention was **98.16--100%**. Two training
+seeds passed. This is the first grounded-caption result, but it is still
+synthetic language supervision rather than a pretrained LLM or natural speech.
+Reports and artifacts are in `session_records/amodal_latent_alignment_2026-08-03/`.
+
 The three qualified raw paths now compose simultaneously without retraining the
 controller: vision + synthetic audio + discrete text. Two independent
 512-lifetime audits reached triple fused accuracy of **96.05--96.37%** on

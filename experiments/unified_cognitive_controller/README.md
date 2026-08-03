@@ -160,6 +160,24 @@ intentionally meaningless sensor bytes. Evidence is in
 `amodal_text_aligned_frontend_seed997001.pt` and
 `amodal_text_aligned_frontend_seed997101.pt`.
 
+## Grounded-caption alignment (2026-08-03)
+
+The next bridge uses short word sequences describing only visible object
+properties: shape, colour, and location. The external caption source receives
+no hidden rule, feedback, correct action, or task ID. A small word-embedding
+frontend learns the frozen vision neural-IR basis from paired consistency only.
+
+Two independent 32-update runs pass. An independent 512-lifetime replay of
+the saved frontend reaches **98.36%/93.20%/95.16%** fused on
+bars/diamonds/dot-pairs; shuffled captions are **48.91%/53.63%/50.66%**,
+contradictory flips are **93.87%/78.98%/89.14%**, and N=1 retention is
+**98.16--100%**. This is a grounded-caption adapter result, not a pretrained
+LLM or natural speech claim. Reports are
+`caption_alignment_seed999001.json`, `caption_alignment_seed999101.json`,
+and `caption_adapter_replay_seed999901.json`; artifacts are
+`amodal_caption_aligned_frontend_seed999001.pt` and
+`amodal_caption_aligned_frontend_seed999101.pt`.
+
 ## Replicated three-modality composition (2026-08-03)
 
 The saved vision, synthetic-audio, and discrete-text frontends now feed one

@@ -21,6 +21,13 @@ symbols and align them to the frozen neural IR by paired consistency. The
 reports are in `session_records/amodal_latent_alignment_2026-08-03/`. They do
 not claim natural-language grounding.
 
+`amodal_caption_aligned_frontend_seed999001.pt` and
+`amodal_caption_aligned_frontend_seed999101.pt` are grounded-caption
+frontends. Their external captions describe visible shape, colour, and
+location only; the saved 512-lifetime replay passes the causal gates. The
+reports are in `session_records/amodal_latent_alignment_2026-08-03/`; this is
+synthetic grounded language transport, not an LLM encoder claim.
+
 The three-modality composition audit combines the promoted vision, audio, and
 text frontends without another checkpoint; its two fresh 512-lifetime reports
 are `three_modality_998001.json` and `three_modality_998101.json` under
