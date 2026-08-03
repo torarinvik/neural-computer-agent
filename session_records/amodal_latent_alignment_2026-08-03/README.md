@@ -280,6 +280,31 @@ Artifacts:
 - `text_alignment_seed997101.json`
 - `text_adapter_replay_seed997901.json`
 
+## Replicated three-modality composition
+
+The saved vision, synthetic-audio, and discrete-text frontends were then
+registered together on one frozen `AmodalControllerRuntime`. No optimizer or
+controller update was used in this audit. Two independent 512-lifetime runs
+passed:
+
+| appearance | triple fused | shuffled triple | contradictory flip | order agreement |
+|---|---:|---:|---:|---:|
+| bars | 96.05--96.37% | 49.65--49.84% | 90.20--90.31% | 100% |
+| diamonds | 98.12--98.16% | 50.78--51.05% | 89.22--90.31% | 100% |
+| dot-pairs | 96.29--96.60% | 49.69--50.16% | 93.83--93.98% | 100% |
+
+Every individual stream remained near chance. Cross-episode shuffling all
+auxiliary streams collapsed the triple, while reversing both auxiliary streams
+caused the expected query-action reversal. Exact stream-order permutation
+agreement was 100%, demonstrating that the three simultaneous events are
+handled as an unordered modality set rather than fixed modality slots.
+
+This is the first replicated simultaneous three-raw-stream result for the
+shared frozen controller. It uses synthetic sensors and therefore does not yet
+claim natural-language grounding, arbitrary N-stream scaling, or learned
+cross-modal relevance. Reports: `three_modality_998001.json` and
+`three_modality_998101.json`.
+
 ## Sparse timing-reward controls (negative evidence)
 
 The timing branch also tested whether scalar verifier utility could replace

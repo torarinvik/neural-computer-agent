@@ -426,6 +426,14 @@ near chance and contradictory flips of 87.42%/78.48%/95.08%. This is text
 transport plumbing, not natural-language semantics; the next language claim
 requires a real text stream and a separate grounding audit.
 
+The three qualified frontends now compose simultaneously through the same
+input bus. Two independent 512-lifetime frozen-core audits of vision plus
+synthetic audio plus discrete text reached 96.05--96.37% bars, 98.12--98.16%
+diamonds, and 96.29--96.60% dot-pairs; shuffled triples stayed near chance,
+contradictory flips stayed above 89%, and stream-order agreement was exactly
+100%. This qualifies simultaneous N=3 transport and set permutation, but not
+natural-language grounding, learned cross-modal relevance, or arbitrary N.
+
 The first complete runtime composition API is now implemented as
 `AmodalControllerRuntime`. It keeps a single extracted controller core, accepts
 any nonempty mapping of registered raw frontends or already encoded events,

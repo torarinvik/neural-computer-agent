@@ -21,6 +21,11 @@ symbols and align them to the frozen neural IR by paired consistency. The
 reports are in `session_records/amodal_latent_alignment_2026-08-03/`. They do
 not claim natural-language grounding.
 
+The three-modality composition audit combines the promoted vision, audio, and
+text frontends without another checkpoint; its two fresh 512-lifetime reports
+are `three_modality_998001.json` and `three_modality_998101.json` under
+`session_records/amodal_latent_alignment_2026-08-03/`.
+
 ## Successor-slot frontier diagnostics
 
 `span11_slot_extension_critic_seed93604.pt` and

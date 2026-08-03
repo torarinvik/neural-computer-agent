@@ -160,6 +160,26 @@ intentionally meaningless sensor bytes. Evidence is in
 `amodal_text_aligned_frontend_seed997001.pt` and
 `amodal_text_aligned_frontend_seed997101.pt`.
 
+## Replicated three-modality composition (2026-08-03)
+
+The saved vision, synthetic-audio, and discrete-text frontends now feed one
+frozen controller and one unchanged input bus simultaneously. Two independent
+512-lifetime audits passed the N=3 gate:
+
+| appearance | triple fused | shuffled triple | contradictory flip | permutation agreement |
+|---|---:|---:|---:|---:|
+| bars | 96.05--96.37% | 49.65--49.84% | 90.31--90.20% | 100% |
+| diamonds | 98.12--98.16% | 50.78--51.05% | 90.31--89.22% | 100% |
+| dot-pairs | 96.29--96.60% | 49.69--50.16% | 93.98--93.83% | 100% |
+
+All individual-stream controls remained near chance, while both two-stream
+vision+audio and vision+text pairs retained their composition gates. The
+contradictory triple reverses both auxiliary streams and produces the expected
+action reversal. This is a simultaneous three-raw-stream frozen-core result,
+not natural-language grounding or unrestricted N-stream scaling. Reports are
+`three_modality_998001.json` and `three_modality_998101.json`; the audit logic
+is `audit_amodal_three_modality.py`.
+
 ## Extracted neural-IR migration rung (2026-08-01)
 
 The first four migration gates are implemented without retraining:

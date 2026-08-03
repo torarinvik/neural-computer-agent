@@ -337,6 +337,18 @@ remained frozen. This qualifies discrete text transport, not natural-language
 semantics; the symbols are deliberately meaningless sensor bytes. Artifacts
 and reports are in `session_records/amodal_latent_alignment_2026-08-03/`.
 
+The three qualified raw paths now compose simultaneously without retraining the
+controller: vision + synthetic audio + discrete text. Two independent
+512-lifetime audits reached triple fused accuracy of **96.05--96.37%** on
+bars, **98.12--98.16%** on diamonds, and **96.29--96.60%** on dot-pairs.
+Every single-stream control stayed near chance, cross-episode stream shuffles
+stayed near chance, contradictory triples flipped **89.2--93.98%** of query
+actions, and stream-order permutation agreement was **100%**. This is the
+first replicated simultaneous three-raw-stream result for the shared frozen
+controller. It still uses synthetic sensors and does not establish natural
+language grounding or arbitrary N-stream scaling. Reports are in
+`session_records/amodal_latent_alignment_2026-08-03/three_modality_*.json`.
+
 ## North star
 
 Maximize verified reusable capability gained per unique interaction.
