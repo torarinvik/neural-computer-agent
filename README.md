@@ -1094,6 +1094,7 @@ See:
 | `src/neural_computer/` | Canonical production neural-IR interface, amodal controller, event bus, asynchronous runtime, and decoder fan-out |
 | `experiments/async_memory_amodal/` | Promoted delayed-feedback/asynchronous outcome-only audit and memory diagnostic |
 | `experiments/outcome_only_amodal/` | Promoted synchronous outcome-only multimodal complement audit |
+| `experiments/memory_retention_amodal/` | Outcome-only retention, persistent-memory, causal-corruption, and fresh-initialization transfer audits |
 | `experiments/archive/unified_cognitive_controller/` | Single-controller few-shot binding, retention, and persistent-memory interface |
 | `experiments/forward_transfer_attention/` | Main sample-efficiency, transfer, memory, binding, and causal-audit research |
 | `experiments/syllogimous_neural_computer/` | Learned external-memory neural computer |
@@ -1126,6 +1127,46 @@ memory-enabled arm filled its store but showed no causal utility, so persistent
 recall remains explicitly unpromoted. See
 `session_records/async_memory_amodal_2026-08-03/README.md`.
 
+The current retention audit verifies persistent reload, checksum rejection, and
+atomic recovery. Runtime v27 canonically combines payload-only memory addresses
+with a residual learned-event identity path, strongest-prior write binding, and
+the opaque-feedback value residual. The v73 three-seed,
+four-pair token-diverse rung now also qualifies matched fresh transfer, with
+fresh-over-transferred ratios of `2.103x`, `1.538x`, and `2.000x`; this is a
+narrow outcome-only retention/transfer result, not natural-modality or general
+episodic-memory capability. The corrected v76 three-seed v27 rung now also
+promotes learned three-slot/two-row retention with bounded persistent memory.
+See
+`session_records/memory_retention_amodal_v73_2026-08-04/README.md`.
+
+The original v74 three-slot/two-row rung is retained as a superseded harness
+record because its duplicated counterfactual arms did not preserve balanced
+target positions. The corrected evidence is in
+`session_records/memory_retention_amodal_v76_2026-08-04/README.md`.
+See `session_records/memory_retention_amodal_v74_2026-08-04/README.md`.
+
+The v75 synthetic neural-IR cross-adapter rung is now narrowly promoted:
+paired opaque-event alignment lets a frozen controller retrieve writer-side
+memory through a replaceable reader adapter. v77 extends that boundary to
+three rows with persistent reload/recovery and an outcome-only target cue;
+capacity-two seeds 17, 18, and 19 pass the fresh-token and swapped-slot gates.
+The read path now rejects near-miss rows instead of returning the nearest
+occupied value.
+Neither rung establishes natural-modality grounding or general episodic
+utility. See
+`session_records/cross_adapter_memory_amodal_v77_2026-08-04/README.md`.
+
+The v78 follow-up removes the recency shortcut from that boundary: the opaque
+cue arrives before three rows, but the cued row appears at a randomized
+position. A trainer-only counterfactual write-utility intervention stabilizes
+the generic memory policy across seeds 17, 18, and 19. Fresh-reader minima are
+`0.991`, `0.988`, and `0.998`, fresh aligned-vs-raw gain minima are
+`+0.476`, `+0.458`, and `+0.482`, and persistent reload/recovery plus checksum,
+clear, corruption, and swapped-row controls pass. Cue ablations remain
+diagnostics rather than a cue-conditioned utility claim; capacity-one
+compression and general episodic memory remain open. Evidence is in
+`session_records/cross_adapter_memory_amodal_v78_2026-08-04/`.
+
 ## Setup
 
 Python 3.11 or newer is recommended.
@@ -1144,14 +1185,17 @@ backends are useful for tests and tiny diagnostics.
 ## Verify
 
 ```bash
+./scripts/lint_canonical.sh
 ./scripts/test_canonical.sh
 ./scripts/test_archived_experiments.sh
 ./scripts/verify_curated_artifacts.sh
 ```
 
-The canonical suite covers only `tests/` and the production package. Archived
-experiment regressions remain runnable through the explicit archive command;
-they are intentionally excluded from normal development runs.
+The canonical lint and test surfaces cover `src/neural_computer/`, `tests/`,
+and the currently maintained retention trainer. Archived experiment
+regressions remain runnable through the explicit archive command; historical
+research trainers and compatibility readers are intentionally excluded from
+normal production linting.
 
 The narrow current-task regression suite is:
 

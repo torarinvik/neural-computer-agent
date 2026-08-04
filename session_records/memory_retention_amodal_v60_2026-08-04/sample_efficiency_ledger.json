@@ -1,0 +1,13 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "memory_retention_amodal_v60_2026-08-04",
+  "status": "interface_correction_transfer_population_unqualified",
+  "population_seeds": [17, 18, 19],
+  "mechanism": "payload_only_memory_address_v1",
+  "main_parent_stable_by_seed": [true, true, true],
+  "unseen_token_retention": [0.7890625, 0.73828125, 0.84375],
+  "transfer_status_by_seed": ["qualified", "fresh_retention_not_stable", "qualified"],
+  "persistent_reload_intact": [0.98046875, 1.0, 1.0],
+  "persistent_corruption_rejected": [true, true, true],
+  "claim_boundary": "Promote the address contract correction in runtime v24; do not claim learned population transfer."
+}

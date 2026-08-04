@@ -1,0 +1,11 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "memory_retention_amodal_v61_2026-08-04",
+  "status": "promoted_narrow_retention_transfer_unqualified",
+  "population_seeds": [17, 18, 19],
+  "mechanism": "fixed_parent_randomized_retention_tokens",
+  "unseen_token_retention": [0.99609375, 1.0, 1.0],
+  "main_parent_stable_by_seed": [true, true, true],
+  "transfer_status_by_seed": ["qualified", "fresh_retention_not_stable", "fresh_retention_not_stable"],
+  "claim_boundary": "Token-diverse narrow retention is qualified; fresh-learner transfer population is not."
+}

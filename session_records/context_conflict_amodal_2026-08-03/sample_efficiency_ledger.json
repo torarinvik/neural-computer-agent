@@ -1,0 +1,64 @@
+{
+  "experiment": "context_conflict_amodal_2026-08-03",
+  "status": "accepted_outcome_only_contextual_contradiction_arbitration",
+  "claim_boundary": "Promoted stable context-to-source arbitration for one synthetic contradictory-candidate family with frozen frontends; temporal trust reversal and natural contradiction resolution remain unqualified.",
+  "learner_visible_information": [
+    "standardized learned event tensors",
+    "scalar verifier outcome",
+    "exact sampled-action propensity during training"
+  ],
+  "hidden_from_learner": [
+    "target action",
+    "context-to-candidate trust rule",
+    "assignment-shuffled intervention label",
+    "semantic candidate identity"
+  ],
+  "promotion_runs": {
+    "seeds": [17, 18, 19],
+    "steps": 512,
+    "batch_size": 256,
+    "unique_verifier_bits": 393216,
+    "unique_logical_lifetimes": 393216,
+    "optimizer_updates": 1536,
+    "replayed_examples": 0,
+    "diagnostic_lifetimes_charged_to_budget": 89088,
+    "wall_time_seconds": 26.269580667,
+    "mean_inference_latency_ms": [0.0474535103, 0.0539794805, 0.0542228040],
+    "stable_bits_to_threshold": null,
+    "stable_bits_to_threshold_by_seed": [98304, 16384, 16384],
+    "retention_on_mastered_primitives": null,
+    "transfer_ratio_against_fresh_learner": null,
+    "clean_reward": [0.99951171875, 1.0, 1.0],
+    "context_zero_reward": [0.99951171875, 1.0, 0.99951171875],
+    "context_one_reward": [1.0, 1.0, 1.0],
+    "stream_order_shuffled_reward": [1.0, 1.0, 1.0],
+    "assignment_shuffled_reward": [0.49560546875, 0.50439453125, 0.5068359375],
+    "context_inverted_reward": [0.00048828125, 0.0, 0.0],
+    "action_shuffled_reward": [0.4931640625, 0.51904296875, 0.484375],
+    "intention_shuffled_reward": [0.515625, 0.50390625, 0.490234375],
+    "intention_zero_reward": [0.505859375, 0.4814453125, 0.4814453125],
+    "promotion_gate_passed": true
+  },
+  "reward_shuffled_negative_control": {
+    "seed": 17,
+    "steps": 512,
+    "batch_size": 256,
+    "unique_verifier_bits": 131072,
+    "unique_logical_lifetimes": 131072,
+    "optimizer_updates": 512,
+    "wall_time_seconds": 8.140769584,
+    "clean_reward": 0.486328125,
+    "context_zero_reward": 0.52490234375,
+    "context_one_reward": 0.49658203125,
+    "stream_order_shuffled_reward": 0.513671875,
+    "promotion_gate_passed": false
+  },
+  "promotion_gate": {
+    "clean_and_both_contexts_min": 0.8,
+    "stream_order_shuffled_min": 0.8,
+    "assignment_shuffled_max": 0.65,
+    "context_inverted_max": 0.65,
+    "intervention_max": 0.65,
+    "reward_shuffled_control_must_fail": true
+  }
+}

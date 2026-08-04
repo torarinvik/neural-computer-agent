@@ -1,0 +1,175 @@
+{
+  "experiment": "outcome-only-cross-adapter-memory-retrieval",
+  "seed": 17,
+  "base_steps": 512,
+  "adapter_steps": 512,
+  "alignment_steps": 512,
+  "batch_size": 16,
+  "slot_count": 3,
+  "memory_capacity": 2,
+  "event_window_capacity": 4,
+  "learner_visible_inputs": [
+    "opaque writer event",
+    "opaque reader event",
+    "opaque probe action",
+    "scalar probe outcome",
+    "scalar recall outcome"
+  ],
+  "adapter_boundary": {
+    "writer": "fixed opaque event adapter",
+    "reader": "trainable generic linear event adapter",
+    "reader_raw_basis": "fixed random orthogonal latent basis",
+    "controller_frozen_during_reader_phase": true,
+    "memory_top_k": 1,
+    "memory_capacity": 2,
+    "memory_read_match_threshold": 0.75,
+    "memory_write_match_threshold": 0.95,
+    "event_window_capacity": 4,
+    "paired_unlabeled_alignment": true,
+    "randomize_event_tokens": true,
+    "token_reuse_steps": 4,
+    "random_orthogonal_basis": true,
+    "target_cue": true,
+    "target_presentation": "cued_row_random_position",
+    "writer_intervention_steps": 512,
+    "writer_intervention_protocol": "counterfactual_leave_one_out_v1"
+  },
+  "conditions": {
+    "writer": 0.4951171875,
+    "reader": 0.5341796875,
+    "raw_reader": 0.5087890625,
+    "clear": 0.4853515625,
+    "corrupt": 0.4892578125,
+    "swapped_slot": 0.509765625,
+    "random_action": 0.517578125,
+    "missing_cue": 0.4931640625,
+    "swapped_cue": 0.50390625
+  },
+  "promotion_gate": {
+    "writer_min": 0.8,
+    "reader_min": 0.8,
+    "raw_reader_max": 0.65,
+    "clear_max": 0.65,
+    "corrupt_max": 0.65,
+    "swapped_slot_max": 0.65,
+    "missing_cue_and_swapped_cue": "diagnostic_only; no cue-conditioned selection claim",
+    "reader_clear_gap_min": 0.25,
+    "reader_population_min": 0.9,
+    "paired_reader_vs_raw_gain_min": 0.0,
+    "mean_reader_vs_raw_gain_min": 0.15,
+    "swapped_population_max": 0.65,
+    "stable_prefix_required": true
+  },
+  "zero_shot_reader_recall": 0.490234375,
+  "reader_alignment_final_mse": 0.0009522828040644526,
+  "fresh_token_population": {
+    "writer": {
+      "mean": 0.508544921875,
+      "minimum": 0.4794921875,
+      "maximum": 0.5458984375,
+      "per_pair": [
+        0.4794921875,
+        0.5458984375,
+        0.49609375,
+        0.5126953125
+      ]
+    },
+    "reader": {
+      "mean": 0.514892578125,
+      "minimum": 0.5078125,
+      "maximum": 0.5185546875,
+      "per_pair": [
+        0.517578125,
+        0.5078125,
+        0.515625,
+        0.5185546875
+      ]
+    },
+    "raw_reader": {
+      "mean": 0.50244140625,
+      "minimum": 0.4921875,
+      "maximum": 0.517578125,
+      "per_pair": [
+        0.5048828125,
+        0.517578125,
+        0.4921875,
+        0.4951171875
+      ]
+    },
+    "swapped_slot": {
+      "mean": 0.490478515625,
+      "minimum": 0.4736328125,
+      "maximum": 0.5048828125,
+      "per_pair": [
+        0.4736328125,
+        0.4951171875,
+        0.5048828125,
+        0.48828125
+      ]
+    },
+    "reader_vs_raw_gain": {
+      "mean": 0.012451171875,
+      "minimum": -0.009765625,
+      "maximum": 0.0234375,
+      "per_pair": [
+        0.0126953125,
+        -0.009765625,
+        0.0234375,
+        0.0234375
+      ]
+    }
+  },
+  "persistent_memory": {
+    "reload_intact_recall": 0.41796875,
+    "corruption_rejected": true,
+    "recovery_intact_recall": 0.41796875
+  },
+  "base_stable_bits_to_threshold": null,
+  "writer_intervention_accounting": {
+    "steps": 512,
+    "optimizer_updates": 512,
+    "unique_verifier_bits": 32768,
+    "unique_logical_lifetimes": 8192,
+    "verifier_outcome_events": 65536,
+    "feedback_events": 49152,
+    "mean_write_utility": 0.0,
+    "history": [
+      0.5,
+      0.6875,
+      0.5,
+      0.5,
+      0.4375,
+      0.3125,
+      0.5625,
+      0.625,
+      0.375,
+      0.4375,
+      0.5625,
+      0.5625,
+      0.25,
+      0.4375,
+      0.5,
+      0.8125,
+      0.4375
+    ]
+  },
+  "adapter_stable_bits_to_threshold": null,
+  "promoted": false,
+  "claim_boundary": "Synthetic outcome-only cross-adapter retrieval with randomized target position and a cue-assisted training curriculum; cue removal and cue swaps are reported diagnostics, not a cue-conditioned selection claim; bounded memory is qualified only under the stated read-match contract; no natural-modality alignment or general episodic-memory claim",
+  "accounting": {
+    "unique_verifier_bits": 114688,
+    "unique_logical_lifetimes": 24576,
+    "optimizer_updates": 2048,
+    "alignment_optimizer_updates": 512,
+    "unlabeled_alignment_events": 8192,
+    "replayed_examples": 0,
+    "verifier_outcome_events": 147456,
+    "feedback_events": 98304,
+    "wall_time_seconds": 95.95252883300418,
+    "mean_action_latency_ms": 0.0,
+    "stable_bits_to_threshold": null,
+    "retention_on_mastered_primitives": null,
+    "transfer_ratio_against_fresh_learner": null,
+    "persistent_audit_verifier_bits": 1280
+  }
+}

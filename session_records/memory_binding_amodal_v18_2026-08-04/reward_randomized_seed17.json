@@ -1,0 +1,14 @@
+{
+  "seed": 17,
+  "steps": 128,
+  "batch_size": 4,
+  "reward_randomized_control": true,
+  "intact": 0.5234375,
+  "clear": 0.5390625,
+  "corrupt": 0.5625,
+  "swapped_slot": 0.53125,
+  "swapped_scope": 0.6015625,
+  "random_action": 0.4921875,
+  "stable_bits_to_threshold": null,
+  "promoted": false
+}

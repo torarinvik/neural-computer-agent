@@ -12,7 +12,6 @@ from dataclasses import dataclass
 
 import torch
 
-
 EVENT_SCHEMA = "neural-computer.amodal-event.v2"
 INTENTION_SCHEMA = "neural-computer.intent-event.v2"
 EVENT_WINDOW_SCHEMA = "neural-computer.event-window.v1"
@@ -20,8 +19,13 @@ MEMORY_SCHEMA = "neural-computer.content-addressed-memory.v1"
 
 
 def _validate_batch(value: torch.Tensor | None, batch: int, name: str) -> None:
-    if value is not None and value.shape[0] != batch:
+    if value is not None and (value.ndim == 0 or value.shape[0] != batch):
         raise ValueError(f"{name} batch does not match payload")
+
+
+def _validate_finite(value: torch.Tensor | None, name: str) -> None:
+    if value is not None and not bool(torch.isfinite(value).all()):
+        raise ValueError(f"{name} must contain only finite values")
 
 
 @dataclass(frozen=True)
@@ -45,10 +49,15 @@ class AmodalEvent:
                 f"event width {self.payload.shape[1]} does not match {width}"
             )
         batch = self.payload.shape[0]
+        _validate_finite(self.payload, "event payload")
         _validate_batch(self.source_key, batch, "source_key")
         _validate_batch(self.timestamp, batch, "timestamp")
         _validate_batch(self.duration, batch, "duration")
         _validate_batch(self.confidence, batch, "confidence")
+        _validate_finite(self.source_key, "source_key")
+        _validate_finite(self.timestamp, "timestamp")
+        _validate_finite(self.duration, "duration")
+        _validate_finite(self.confidence, "confidence")
         if self.duration is not None and torch.any(self.duration < 0):
             raise ValueError("event duration cannot be negative")
         if self.confidence is not None and torch.any(self.confidence < 0):
@@ -165,6 +174,11 @@ class AmodalEventCollection:
             raise ValueError("presence mask must be boolean with shape [batch, events]")
         if self.confidence.shape != (batch, events):
             raise ValueError("confidence must have shape [batch, events]")
+        _validate_finite(self.payload, "collection payload")
+        _validate_finite(self.source_key, "source_key")
+        _validate_finite(self.timestamp, "timestamp")
+        _validate_finite(self.duration, "duration")
+        _validate_finite(self.confidence, "confidence")
         if torch.any(self.confidence < 0):
             raise ValueError("event confidence cannot be negative")
         for name, value in (
@@ -173,9 +187,10 @@ class AmodalEventCollection:
         ):
             if value is not None and value.shape != (batch, events):
                 raise ValueError(f"{name} must have shape [batch, events]")
-        if self.source_key is not None:
-            if self.source_key.ndim != 3 or self.source_key.shape[:2] != (batch, events):
-                raise ValueError("source_key must have shape [batch, events, key_width]")
+        if self.source_key is not None and (
+            self.source_key.ndim != 3 or self.source_key.shape[:2] != (batch, events)
+        ):
+            raise ValueError("source_key must have shape [batch, events, key_width]")
         if self.duration is not None and torch.any(self.duration < 0):
             raise ValueError("event duration cannot be negative")
         return self
@@ -260,6 +275,12 @@ class EventTokenWindow:
                 raise ValueError(f"event-window {name} must have shape [batch, tokens]")
         if self.timestamp_present.dtype != torch.bool:
             raise ValueError("event-window timestamp_present must be boolean")
+        _validate_finite(self.payload, "event-window payload")
+        _validate_finite(self.source_key, "source_key")
+        _validate_finite(self.confidence, "event-window confidence")
+        _validate_finite(self.timestamp, "event-window timestamp")
+        _validate_finite(self.duration, "event-window duration")
+        _validate_finite(self.age, "event-window age")
         if torch.any(self.confidence < 0) or torch.any(self.duration < 0):
             raise ValueError("event-window confidence and duration cannot be negative")
         if torch.any(self.age < 0):
@@ -292,6 +313,7 @@ class ControllerFeedback:
     def validate(self, *, batch: int, action_width: int) -> ControllerFeedback:
         if self.action.ndim != 2 or self.action.shape != (batch, action_width):
             raise ValueError(f"action must have shape [{batch}, {action_width}]")
+        _validate_finite(self.action, "feedback action")
         for name, value in (
             ("reward", self.reward),
             ("propensity", self.propensity),
@@ -299,6 +321,7 @@ class ControllerFeedback:
         ):
             if value.shape not in ((batch,), (batch, 1)):
                 raise ValueError(f"{name} must have shape [{batch}] or [{batch}, 1]")
+            _validate_finite(value, f"feedback {name}")
         if torch.any(self.propensity <= 0) or torch.any(self.propensity > 1):
             raise ValueError("feedback propensity must be in (0, 1]")
         if torch.any(self.has_feedback < 0) or torch.any(self.has_feedback > 1):
@@ -326,7 +349,11 @@ class IntentEvent:
                 f"intention width {self.payload.shape[1]} does not match {width}"
             )
         batch = self.payload.shape[0]
+        _validate_finite(self.payload, "intention payload")
         _validate_batch(self.timestamp, batch, "timestamp")
         _validate_batch(self.confidence, batch, "confidence")
         _validate_batch(self.target_key, batch, "target_key")
+        _validate_finite(self.timestamp, "timestamp")
+        _validate_finite(self.confidence, "confidence")
+        _validate_finite(self.target_key, "target_key")
         return self

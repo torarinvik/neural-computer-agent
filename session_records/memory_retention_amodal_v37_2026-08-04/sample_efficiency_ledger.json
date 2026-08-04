@@ -1,0 +1,31 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "memory_retention_amodal_v37_2026-08-04",
+  "status": "rejected_write_critic_credit",
+  "population_seeds": [19],
+  "write_credit": "critic_v1",
+  "differentiable_transaction": true,
+  "unique_verifier_bits": 22528,
+  "unique_logical_lifetimes": 9216,
+  "optimizer_updates": 576,
+  "replayed_examples": 0,
+  "verifier_outcome_events": 22528,
+  "feedback_events": 13312,
+  "diagnostic_verifier_bits": 14080,
+  "diagnostic_logical_lifetimes": 5120,
+  "wall_time_seconds": 8.999489542002266,
+  "verification": {
+    "intact_recall": 0.736328125,
+    "clear_memory": 0.517578125,
+    "corrupt_memory": 0.4814453125,
+    "reverse_order": 0.744140625,
+    "target_first": 0.5224609375,
+    "target_last": 0.9970703125,
+    "missing_write_cue": 0.72265625,
+    "missing_query_cue": 0.765625,
+    "random_action": 0.484375,
+    "parent_stable": true,
+    "promotion_gate_passed": false
+  },
+  "claim_boundary": "Rejected credit estimator. The critic remains opt-in training infrastructure; no checkpoint, weight, or retention capability is promoted."
+}

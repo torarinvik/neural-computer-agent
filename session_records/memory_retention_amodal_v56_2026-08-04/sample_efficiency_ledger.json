@@ -1,0 +1,14 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "memory_retention_amodal_v56_2026-08-04",
+  "status": "rejected_recall_only_rehearsal_parent_retention",
+  "population_seeds": [19],
+  "parent_credit": "counterfactual_recall_fixed_write",
+  "parent_stable": true,
+  "stable_bits_to_threshold": null,
+  "intact_recall": 1.0,
+  "clear_memory_recall": 0.48046875,
+  "corrupt_memory_recall": 0.5185546875,
+  "retention_on_mastered_primitives": 0.76953125,
+  "claim_boundary": "Removing unidentifiable probe credit during both acquisition and rehearsal destabilizes mastered-parent retention and does not qualify."
+}

@@ -1,0 +1,16 @@
+{
+  "experiment": "outcome-only-cue-guided-memory-retention",
+  "version": "v27",
+  "seed": 18,
+  "phase1_steps": 512,
+  "phase2_steps": 512,
+  "batch_size": 16,
+  "slot_count": 3,
+  "memory_capacity": 2,
+  "event_window_capacity": 4,
+  "configuration": {"retention_order": "balanced", "write_credit": "counterfactual_v2", "randomize_event_tokens": true, "retention_token_reuse_steps": 4, "retention_warmup_steps": 64, "retention_write_policy_reset": true, "parent_rehearsal_steps": 1, "retention_early_stop_validations": 3, "learning_rate": 0.002, "controller_runtime": "neural-computer.controller.v27", "stable_memory_address": true, "identity_memory_address": false},
+  "conditions": {"intact": 0.9970703125, "clear": 0.4833984375, "corrupt": 0.50390625, "reverse_order": 0.9990234375, "random_action": 0.4931640625, "missing_write_cue": 0.64453125, "missing_query_cue": 0.9970703125, "target_first": 0.9970703125, "target_last": 0.9990234375},
+  "persistent_memory": {"reload_intact_recall": 0.9921875, "corruption_rejected": true, "recovery_intact_recall": 1.0},
+  "accounting": {"unique_verifier_bits": 35840, "unique_logical_lifetimes": 13824, "optimizer_updates": 864, "replayed_examples": 0, "stable_validation_step": 64, "stable_bits_to_threshold": 23552, "retention_on_mastered_primitives": 1.0, "unseen_token_minimum": 0.8359375, "parent_stable": true},
+  "promoted": true
+}

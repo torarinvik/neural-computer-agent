@@ -1,0 +1,15 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "memory_retention_amodal_v52_2026-08-04",
+  "status": "rejected_fixed_write_parent_scaffold_retention_regression",
+  "population_seeds": [19],
+  "parent_credit": "counterfactual_action_fixed_write",
+  "retained_parent_stable": true,
+  "retained_stable_bits_to_threshold": null,
+  "retention_on_mastered_primitives": 0.7734375,
+  "best_validation_parent_retention": 0.765625,
+  "fresh_parent_stable_by_seed": [true, true, false],
+  "fresh_stable_bits_to_thresholds": [null, 24576, null],
+  "transfer_status": "fresh_parent_not_qualified",
+  "claim_boundary": "The fixed-write parent scaffold improves acquisition variance but regresses retention and is not promoted."
+}

@@ -1,0 +1,22 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "memory-retention-amodal-v74-three-slot-two-row",
+  "status": "superseded_harness_bug",
+  "superseded_by": "memory_retention_amodal_v76_2026-08-04",
+  "seeds": [17],
+  "phase1_steps": 1024,
+  "phase2_steps": 1024,
+  "batch_size": 16,
+  "slot_count": 3,
+  "memory_capacity": 2,
+  "event_window_capacity": 4,
+  "unique_verifier_bits": 111616,
+  "unique_logical_lifetimes": 39424,
+  "optimizer_updates": 2464,
+  "replayed_examples": 0,
+  "stable_bits_to_threshold": null,
+  "retention_on_mastered_primitives": 1.0,
+  "unseen_token_minimum": 0.671875,
+  "persistent_reload_intact": 0.6328125,
+  "claim_boundary": "Historical diagnostic only. Balanced counterfactual arms were paired with inconsistent target-position assignments; do not use this record as decisive rejection evidence. Corrected evidence is in memory_retention_amodal_v76_2026-08-04."
+}

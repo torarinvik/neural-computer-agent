@@ -1,0 +1,70 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "memory_retention_amodal_v46_2026-08-04",
+  "status": "persistent_boundary_promoted_transfer_inconclusive_no_checkpoint",
+  "population_seeds": [17, 18, 19],
+  "phase1_steps_requested": 1024,
+  "phase2_steps_requested": 2048,
+  "transfer_phase1_steps_requested": 512,
+  "transfer_phase2_steps_requested": 256,
+  "batch_size": 16,
+  "retention_order": "balanced",
+  "write_credit": "counterfactual_v2",
+  "retention_write_policy_reset": true,
+  "parent_rehearsal_steps": 1,
+  "parent_rehearsal_interval": 1,
+  "retention_early_stop_validations": 3,
+  "persistent_memory_audit": true,
+  "unique_verifier_bits": 258048,
+  "unique_logical_lifetimes": 108032,
+  "logical_lifetime_observations": 150016,
+  "optimizer_updates": 6752,
+  "replayed_examples": 0,
+  "verifier_outcome_events": 300032,
+  "parent_rehearsal_outcome_events": 83968,
+  "feedback_events": 192000,
+  "parent_rehearsal_feedback_events": 41984,
+  "diagnostic_verifier_bits": 174592,
+  "diagnostic_logical_lifetimes": 61824,
+  "wall_time_seconds": 136.16858391699498,
+  "mean_conditions": {
+    "intact": 0.9951171875,
+    "clear_memory": 0.5110677083333334,
+    "corrupt_memory": 0.4934895833333333,
+    "reverse_order": 0.9957682291666666,
+    "target_first": 0.9912109375,
+    "target_last": 0.9983723958333334,
+    "random_action": 0.4925130208333333,
+    "missing_write_cue": 0.7490234375,
+    "missing_query_cue": 0.9947916666666666,
+    "mastered_primitive_retention": 0.99609375
+  },
+  "persistent_memory": {
+    "reload_intact_recall_mean": 0.9908854166666666,
+    "recovery_intact_recall_mean": 1.0,
+    "corruption_rejected_all_seeds": true,
+    "per_seed_reload_intact_recall": {
+      "17": 0.98828125,
+      "18": 0.984375,
+      "19": 1.0
+    }
+  },
+  "transfer": {
+    "per_seed_ratio_fresh_over_transferred_bits": {
+      "17": null,
+      "18": null,
+      "19": 1.5384615384615385
+    },
+    "qualified_ratio_replications": 1,
+    "transferred_stable_bits_seed_19": 13312,
+    "fresh_stable_bits_seed_19": 20480
+  },
+  "promotion": {
+    "retention_gate_promoted_seeds": [17, 19],
+    "retention_gate_rejected_seeds": [18],
+    "checkpoint_promoted": false,
+    "persistent_boundary_population_qualified": true,
+    "transfer_population_qualified": false
+  },
+  "claim_boundary": "Three-seed persistent storage reload, checksum rejection, and atomic recovery are qualified for the narrow verifier. Do not claim a checkpoint, general persistent episodic capability, or population-level transfer efficiency until transfer stability is replicated and seed-18 retention variance is resolved."
+}

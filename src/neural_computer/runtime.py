@@ -14,6 +14,7 @@ import torch
 from torch import nn
 
 from .controller import (
+    EXECUTION_STATES,
     AmodalCognitiveController,
     ControllerOutput,
     ControllerState,
@@ -26,11 +27,10 @@ from .interface import (
     ControllerFeedback,
     IntentEvent,
 )
-from .memory import ContentAddressedMemory
+from .memory import MemoryBackend
 from .policies import EventWaitPolicy
 
-
-RUNTIME_FORMAT = "neural-computer.amodal-runtime.v1"
+RUNTIME_FORMAT = "neural-computer.amodal-runtime.v27"
 
 
 class OpaqueProtocolDecoder(nn.Module):
@@ -113,6 +113,28 @@ class AmodalRuntimeOutput:
     controller: ControllerOutput
     intention: IntentEvent
     decoded: dict[str, torch.Tensor]
+    execution_logits: torch.Tensor
+
+
+@dataclass(frozen=True)
+class AmodalExecutionResult:
+    """One bounded execution decision from the single controller.
+
+    ``output`` is the latest controller output.  A ``wait`` result is
+    intentionally non-committing: the caller may append later events and
+    continue from ``state``.  A ``think`` decision consumes an internal quiet
+    controller tick and is therefore bounded by ``think_budget``.  If the
+    policy still requests thought at the bound, the runtime returns a forced
+    ``commit`` so an agent cannot deliberate indefinitely.
+    """
+
+    output: AmodalRuntimeOutput
+    state: ControllerState
+    initial_decision: str
+    decision: str
+    think_ticks: int
+    forced_commit: bool
+    trace: tuple[AmodalRuntimeOutput, ...]
 
 
 @dataclass(frozen=True)
@@ -226,7 +248,7 @@ class AmodalEventWindowBuffer:
 
         current = max(self._pending)
         ready: list[AmodalEventWindow] = []
-        for timestamp in sorted(tuple(self._pending)):
+        for timestamp in sorted(self._pending):
             bucket = self._pending[timestamp]
             complete = all(name in bucket for name in self.stream_names)
             expired = self.max_wait is not None and current - timestamp >= self.max_wait
@@ -352,10 +374,12 @@ class AmodalControllerRuntime(nn.Module):
         encoders: Mapping[str, nn.Module] | None = None,
         input_bus: AmodalInputBus | None = None,
         output_bus: AmodalOutputBus | None = None,
-        memory: ContentAddressedMemory | None = None,
+        memory: MemoryBackend | None = None,
         wait_policy: EventWaitPolicy | None = None,
     ) -> None:
         super().__init__()
+        if memory is not None and not isinstance(memory, MemoryBackend):
+            raise TypeError("memory must implement the MemoryBackend contract")
         self.controller = controller
         self.encoders = nn.ModuleDict(dict(encoders or {}))
         self.input_bus = input_bus or AmodalInputBus(controller.width)
@@ -428,6 +452,10 @@ class AmodalControllerRuntime(nn.Module):
         *,
         elapsed: torch.Tensor | float = 1.0,
         disable_workspace: bool = False,
+        memory_scope: torch.Tensor | None = None,
+        sample_memory_writes: bool = False,
+        memory_write_override: torch.Tensor | None = None,
+        memory_write_uniform: torch.Tensor | None = None,
     ) -> tuple[AmodalRuntimeOutput, ControllerState]:
         collection = self.input_bus(events)
         controller_output, next_state = self.controller.step(
@@ -437,6 +465,10 @@ class AmodalControllerRuntime(nn.Module):
             self.memory,
             elapsed=elapsed,
             disable_workspace=disable_workspace,
+            memory_scope=memory_scope,
+            sample_memory_writes=sample_memory_writes,
+            memory_write_override=memory_write_override,
+            memory_write_uniform=memory_write_uniform,
         )
         intention = controller_output.intention
         return (
@@ -444,9 +476,117 @@ class AmodalControllerRuntime(nn.Module):
                 controller=controller_output,
                 intention=intention,
                 decoded=self.output_bus(intention),
+                execution_logits=controller_output.execution_logits,
             ),
             next_state,
         )
+
+    @staticmethod
+    def _quiet_feedback(feedback: ControllerFeedback) -> ControllerFeedback:
+        """Remove repeated outcome credit from an internal thought tick."""
+        return ControllerFeedback(
+            action=torch.zeros_like(feedback.action),
+            reward=torch.zeros_like(feedback.reward),
+            propensity=torch.ones_like(feedback.propensity),
+            has_feedback=torch.zeros_like(feedback.has_feedback),
+        )
+
+    @staticmethod
+    def _uniform_execution_state(logits: torch.Tensor) -> str:
+        """Return a batch-wide decision for the bounded convenience API."""
+        if logits.ndim != 2 or logits.shape[1] != len(EXECUTION_STATES):
+            raise ValueError("execution logits have the wrong shape")
+        choices = logits.argmax(dim=-1)
+        if choices.numel() == 0 or not torch.all(choices == choices[0]):
+            raise ValueError(
+                "automatic deliberation requires one trajectory or a batch with "
+                "a uniform execution decision"
+            )
+        return EXECUTION_STATES[int(choices[0])]
+
+    def deliberate(
+        self,
+        events: AmodalEventCollection | Sequence[AmodalEvent],
+        state: ControllerState,
+        feedback: ControllerFeedback,
+        *,
+        think_budget: int = 1,
+        execution_mode: str | None = None,
+        elapsed: torch.Tensor | float = 1.0,
+        disable_workspace: bool = False,
+        memory_scope: torch.Tensor | None = None,
+    ) -> AmodalExecutionResult:
+        """Run one bounded ``WAIT / THINK / COMMIT`` controller cycle.
+
+        The default uses the controller's learned execution head.  An
+        explicit ``execution_mode`` is useful for fixed-compute controls and
+        causal audits, while the controller still produces the same opaque
+        intention.  Automatic mode is deliberately single-trajectory (or
+        uniform-batch) to avoid silently merging different per-example
+        schedules; callers with mixed schedules should partition the batch.
+        """
+        if think_budget < 0:
+            raise ValueError("think_budget must be nonnegative")
+        if execution_mode is not None and execution_mode not in EXECUTION_STATES:
+            raise ValueError(f"unknown execution mode {execution_mode!r}")
+
+        current_events = events
+        current_state = state
+        current_feedback = feedback
+        trace: list[AmodalRuntimeOutput] = []
+        think_ticks = 0
+        forced_commit = False
+        initial_decision: str | None = None
+
+        while True:
+            output, next_state = self.step_events(
+                current_events,
+                current_state,
+                current_feedback,
+                elapsed=elapsed,
+                disable_workspace=disable_workspace,
+                memory_scope=memory_scope,
+            )
+            trace.append(output)
+            decision = execution_mode or self._uniform_execution_state(
+                output.execution_logits
+            )
+            if initial_decision is None:
+                initial_decision = decision
+            if decision != "think":
+                return AmodalExecutionResult(
+                    output=output,
+                    state=next_state,
+                    initial_decision=initial_decision,
+                    decision=decision,
+                    think_ticks=think_ticks,
+                    forced_commit=False,
+                    trace=tuple(trace),
+                )
+            if think_ticks >= think_budget:
+                forced_commit = True
+                return AmodalExecutionResult(
+                    output=output,
+                    state=next_state,
+                    initial_decision=initial_decision,
+                    decision="commit",
+                    think_ticks=think_ticks,
+                    forced_commit=forced_commit,
+                    trace=tuple(trace),
+                )
+            think_ticks += 1
+            current_events = AmodalEventCollection.empty(
+                output.intention.payload.shape[0],
+                self.event_width,
+                device=output.intention.payload.device,
+                dtype=output.intention.payload.dtype,
+            )
+            current_state = next_state
+            current_feedback = self._quiet_feedback(feedback)
+            # Explicit THINK means spend the whole requested budget.  Learned
+            # mode can stop early when its next output says WAIT or COMMIT.
+            if execution_mode is not None:
+                execution_mode = "think" if think_ticks < think_budget else "commit"
 
     def step_streams(
         self,
@@ -459,6 +599,7 @@ class AmodalControllerRuntime(nn.Module):
         device: torch.device | str | None = None,
         dtype: torch.dtype = torch.float32,
         disable_workspace: bool = False,
+        memory_scope: torch.Tensor | None = None,
     ) -> tuple[AmodalRuntimeOutput, ControllerState]:
         events = self.encode_streams(
             streams,
@@ -472,6 +613,7 @@ class AmodalControllerRuntime(nn.Module):
             feedback,
             elapsed=elapsed,
             disable_workspace=disable_workspace,
+            memory_scope=memory_scope,
         )
 
     def initial_state(
@@ -531,18 +673,101 @@ class AmodalControllerRuntime(nn.Module):
             "components": self.component_state_dicts(),
         }
 
-    def load_component_state_dicts(self, components: Mapping[str, object]) -> None:
+    def load_component_state_dicts(
+        self,
+        components: Mapping[str, object],
+        *,
+        allow_missing_execution: bool = False,
+    ) -> None:
         expected = set(self.component_state_dicts())
         actual = set(components)
         if actual != expected:
             raise ValueError(f"component set mismatch: expected {sorted(expected)}, got {sorted(actual)}")
-        self.controller.load_state_dict(components["controller"])
+        controller_result = self.controller.load_state_dict(
+            components["controller"], strict=not allow_missing_execution
+        )
+        if allow_missing_execution and any(
+            key == "memory_address.weight" for key in controller_result.missing_keys
+        ):
+            # v17 used independent event/state projections for reads and
+            # writes. Seed the v18 shared event address from the old query
+            # projection's event slice so legacy checkpoints retain a useful
+            # starting point while the new path remains independently trained.
+            old_query_weight = components["controller"].get("memory_query.weight")
+            old_query_bias = components["controller"].get("memory_query.bias")
+            if old_query_weight is not None and old_query_bias is not None:
+                with torch.no_grad():
+                    self.controller.memory_address.weight.copy_(
+                        old_query_weight[:, : self.controller.width]
+                    )
+                    self.controller.memory_address.bias.copy_(old_query_bias)
+        if allow_missing_execution and any(
+            key == "memory_write_policy.0.weight"
+            for key in controller_result.missing_keys
+        ):
+            # Legacy v18 had a linear value-context gate. Preserve its initial
+            # write propensity as the v19 policy bias while leaving the new
+            # nonlinear feature weights trainable.
+            old_write_bias = components["controller"].get("memory_write.bias")
+            if old_write_bias is not None:
+                with torch.no_grad():
+                    self.controller.memory_write_policy[-1].bias.copy_(
+                        old_write_bias
+                    )
+        if allow_missing_execution:
+            non_execution_unexpected = [
+                key
+                for key in controller_result.unexpected_keys
+                if not key.startswith("execution_policy.")
+                and not key.startswith("execution_transport_policy.")
+                and not key.startswith("execution_timeout_policy.")
+                and not key.startswith("event_pair_")
+                and not key.startswith("event_feedback_relevance.")
+                and not key.startswith("event_feedback_source_relevance.")
+                and not key.startswith("source_credit_policy.")
+                and not key.startswith("memory_address.")
+                and not key.startswith("event_address_relevance.")
+                and not key.startswith("memory_query.")
+                and not key.startswith("memory_key.")
+                and not key.startswith("memory_write_policy.")
+                and not key.startswith("memory_value_feedback.")
+            ]
+            missing = list(controller_result.missing_keys)
+            non_execution_missing = [
+                key
+                for key in missing
+                if not key.startswith("execution_policy.")
+                and not key.startswith("execution_transport_policy.")
+                and not key.startswith("execution_timeout_policy.")
+                and not key.startswith("event_pair_")
+                and not key.startswith("event_feedback_relevance.")
+                and not key.startswith("event_feedback_source_relevance.")
+                and not key.startswith("source_credit_policy.")
+                and not key.startswith("memory_address.")
+                and not key.startswith("event_address_relevance.")
+                and not key.startswith("memory_write_policy.")
+                and not key.startswith("memory_value_feedback.")
+            ]
+            if non_execution_unexpected or non_execution_missing:
+                raise ValueError(
+                    "legacy checkpoint has incompatible controller parameters: "
+                    f"missing={non_execution_missing}, unexpected={non_execution_unexpected}"
+                )
         self.input_bus.load_state_dict(components["input_bus"])
         for name, encoder in self.encoders.items():
             encoder.load_state_dict(components["encoders"][name])
         for name, decoder in self.output_bus.decoders.items():
             decoder.load_state_dict(components["decoders"][name])
         if self.memory is not None:
-            self.memory.load_state_dict(components["memory"])
+            previous_memory = {
+                name: value.detach().clone()
+                for name, value in self.memory.state_dict().items()
+            }
+            try:
+                self.memory.load_state_dict(components["memory"])
+                self.memory.validate_state()
+            except Exception:
+                self.memory.load_state_dict(previous_memory)
+                raise
         if self.wait_policy is not None:
             self.wait_policy.load_state_dict(components["wait_policy"])

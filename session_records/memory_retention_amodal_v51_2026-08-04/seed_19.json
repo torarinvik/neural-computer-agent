@@ -1,0 +1,690 @@
+{
+  "experiment": "outcome-only-cue-guided-memory-retention",
+  "seed": 19,
+  "phase1_steps": 1024,
+  "phase2_steps": 2048,
+  "batch_size": 16,
+  "reward_shuffle_control": false,
+  "learner_visible_inputs": [
+    "opaque target cue event",
+    "opaque slot event",
+    "opaque probe action",
+    "scalar probe outcome",
+    "scalar recall outcome"
+  ],
+  "memory_training": {
+    "capacity": 1,
+    "scope_capacity": 32,
+    "write_threshold": 0.5,
+    "differentiable_transaction": true,
+    "parent_differentiable_transaction": true,
+    "controller_runtime": "v23",
+    "retention_order": "balanced",
+    "memory_write_cost": 0.0,
+    "stochastic_write_sampling": true,
+    "write_credit": "counterfactual_v2",
+    "counterfactual_arm_multiplier": 2,
+    "parent_protection": "none",
+    "retention_warmup_steps": 64,
+    "retention_write_policy_reset": true,
+    "parent_rehearsal_steps": 1,
+    "parent_rehearsal_interval": 1,
+    "parent_credit": "counterfactual_action",
+    "retention_early_stop_validations": 3,
+    "transfer_phase1_steps": 512,
+    "transfer_phase2_steps": 256,
+    "transfer_fresh_seeds": 3,
+    "outcome_value_critic": false,
+    "persistent_memory_audit": false,
+    "persistent_reload_intact": null,
+    "persistent_corruption_rejected": null,
+    "persistent_recovery_intact": null,
+    "parent_stable": false,
+    "retention_blocked": true,
+    "retention_validation_count": 0,
+    "best_validation_metric": null,
+    "retention_on_mastered_primitives": 0.5625,
+    "retention_on_unseen_event_tokens": 0.515625,
+    "transfer_ratio_against_fresh_learner": null,
+    "claim_boundary": "retention qualification only; no promotion without population replication"
+  },
+  "history": [
+    {
+      "curriculum": "single",
+      "step": 1,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single",
+      "step": 32,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 32,
+      "reward": 0.40625
+    },
+    {
+      "curriculum": "single",
+      "step": 64,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 64,
+      "reward": 0.4296875
+    },
+    {
+      "curriculum": "single",
+      "step": 96,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 96,
+      "reward": 0.5390625
+    },
+    {
+      "curriculum": "single",
+      "step": 128,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 128,
+      "reward": 0.5390625
+    },
+    {
+      "curriculum": "single",
+      "step": 160,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 160,
+      "reward": 0.4765625
+    },
+    {
+      "curriculum": "single",
+      "step": 192,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 192,
+      "reward": 0.515625
+    },
+    {
+      "curriculum": "single",
+      "step": 224,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 224,
+      "reward": 0.4609375
+    },
+    {
+      "curriculum": "single",
+      "step": 256,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 256,
+      "reward": 0.4765625
+    },
+    {
+      "curriculum": "single",
+      "step": 288,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 288,
+      "reward": 0.4921875
+    },
+    {
+      "curriculum": "single",
+      "step": 320,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 320,
+      "reward": 0.53125
+    },
+    {
+      "curriculum": "single",
+      "step": 352,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 352,
+      "reward": 0.421875
+    },
+    {
+      "curriculum": "single",
+      "step": 384,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 384,
+      "reward": 0.53125
+    },
+    {
+      "curriculum": "single",
+      "step": 416,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 416,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single",
+      "step": 448,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 448,
+      "reward": 0.484375
+    },
+    {
+      "curriculum": "single",
+      "step": 480,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 480,
+      "reward": 0.421875
+    },
+    {
+      "curriculum": "single",
+      "step": 512,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 512,
+      "reward": 0.4296875
+    },
+    {
+      "curriculum": "single",
+      "step": 544,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 544,
+      "reward": 0.546875
+    },
+    {
+      "curriculum": "single",
+      "step": 576,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 576,
+      "reward": 0.5703125
+    },
+    {
+      "curriculum": "single",
+      "step": 608,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 608,
+      "reward": 0.5546875
+    },
+    {
+      "curriculum": "single",
+      "step": 640,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 640,
+      "reward": 0.4921875
+    },
+    {
+      "curriculum": "single",
+      "step": 672,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 672,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single",
+      "step": 704,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 704,
+      "reward": 0.4609375
+    },
+    {
+      "curriculum": "single",
+      "step": 736,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 736,
+      "reward": 0.484375
+    },
+    {
+      "curriculum": "single",
+      "step": 768,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 768,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single",
+      "step": 800,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 800,
+      "reward": 0.484375
+    },
+    {
+      "curriculum": "single",
+      "step": 832,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 832,
+      "reward": 0.4765625
+    },
+    {
+      "curriculum": "single",
+      "step": 864,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 864,
+      "reward": 0.5390625
+    },
+    {
+      "curriculum": "single",
+      "step": 896,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 896,
+      "reward": 0.5078125
+    },
+    {
+      "curriculum": "single",
+      "step": 928,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 928,
+      "reward": 0.4375
+    },
+    {
+      "curriculum": "single",
+      "step": 960,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 960,
+      "reward": 0.515625
+    },
+    {
+      "curriculum": "single",
+      "step": 992,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 992,
+      "reward": 0.421875
+    },
+    {
+      "curriculum": "single",
+      "step": 1024,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 1024,
+      "reward": 0.5625
+    }
+  ],
+  "conditions": {
+    "intact": 0.5087890625,
+    "clear": 0.4921875,
+    "corrupt": 0.4951171875,
+    "reverse_order": 0.5078125,
+    "random_action": 0.5234375,
+    "missing_write_cue": 0.490234375,
+    "missing_query_cue": 0.4765625,
+    "target_first": 0.4765625,
+    "target_last": 0.505859375
+  },
+  "promotion_gate": {
+    "intact_min": 0.7,
+    "clear_max": 0.6,
+    "corrupt_max": 0.6,
+    "reverse_order_min": 0.65,
+    "causal_gap_min": 0.15,
+    "cue_gain_min": 0.1,
+    "stable_validation_required": true,
+    "retention_on_mastered_primitives_min": 0.9
+  },
+  "promoted": false,
+  "transfer": {
+    "unseen_event_token_zero_shot_intact": 0.51953125,
+    "phase1_steps": 512,
+    "phase2_steps": 256,
+    "fresh_initialization_seeds": 3,
+    "fresh_parent_stable_by_seed": [
+      false,
+      false,
+      false
+    ],
+    "fresh_stable_bits_to_thresholds": [
+      null,
+      null,
+      null
+    ],
+    "transfer_status": "transferred_parent_not_qualified",
+    "transferred_stable_bits_to_threshold": null,
+    "fresh_stable_bits_to_threshold": null,
+    "ratio_fresh_over_transferred_bits": null,
+    "transferred_accounting": {
+      "unique_verifier_bits": 16384,
+      "unique_logical_lifetimes": 8192,
+      "logical_lifetime_observations": 8192,
+      "optimizer_updates": 512,
+      "replayed_examples": 0,
+      "verifier_outcome_events": 16384,
+      "parent_rehearsal_outcome_events": 0,
+      "feedback_events": 8192,
+      "parent_rehearsal_feedback_events": 0,
+      "diagnostic_verifier_bits": 4096,
+      "diagnostic_logical_lifetimes": 2048,
+      "phase1_updates": 512,
+      "phase2_updates": 0,
+      "parent_rehearsal_updates": 0,
+      "parent_stable": false,
+      "retention_blocked": true,
+      "retention_validation_count": 0,
+      "best_validation_metric": null,
+      "best_validation_parent_retention": null,
+      "stable_validation_step": null,
+      "stable_bits_to_threshold": null,
+      "mean_memory_write_strength": 0.00616232108642123,
+      "committed_write_rate": 0.007080078125,
+      "retention_order": "balanced",
+      "memory_write_cost": 0.0,
+      "stochastic_write_sampling": true,
+      "differentiable_memory": true,
+      "parent_differentiable_memory": true,
+      "write_credit": "counterfactual_v2",
+      "parent_credit": "counterfactual_action",
+      "counterfactual_arm_multiplier": 2,
+      "mean_write_critic_loss": null,
+      "mean_outcome_value_critic_loss": null,
+      "outcome_value_critic": false,
+      "parent_protection": "none",
+      "retention_warmup_steps": 64,
+      "retention_write_policy_reset": false,
+      "parent_rehearsal_steps": 1,
+      "parent_rehearsal_interval": 1,
+      "retention_early_stop_validations": 3,
+      "wall_time_seconds": 7.536950333000277
+    },
+    "fresh_accounting": {
+      "unique_verifier_bits": 16384,
+      "unique_logical_lifetimes": 8192,
+      "logical_lifetime_observations": 8192,
+      "optimizer_updates": 512,
+      "replayed_examples": 0,
+      "verifier_outcome_events": 16384,
+      "parent_rehearsal_outcome_events": 0,
+      "feedback_events": 8192,
+      "parent_rehearsal_feedback_events": 0,
+      "diagnostic_verifier_bits": 4096,
+      "diagnostic_logical_lifetimes": 2048,
+      "phase1_updates": 512,
+      "phase2_updates": 0,
+      "parent_rehearsal_updates": 0,
+      "parent_stable": false,
+      "retention_blocked": true,
+      "retention_validation_count": 0,
+      "best_validation_metric": null,
+      "best_validation_parent_retention": null,
+      "stable_validation_step": null,
+      "stable_bits_to_threshold": null,
+      "mean_memory_write_strength": 0.7500093728303909,
+      "committed_write_rate": 0.74749755859375,
+      "retention_order": "balanced",
+      "memory_write_cost": 0.0,
+      "stochastic_write_sampling": true,
+      "differentiable_memory": true,
+      "parent_differentiable_memory": true,
+      "write_credit": "counterfactual_v2",
+      "parent_credit": "counterfactual_action",
+      "counterfactual_arm_multiplier": 2,
+      "mean_write_critic_loss": null,
+      "mean_outcome_value_critic_loss": null,
+      "outcome_value_critic": false,
+      "parent_protection": "none",
+      "retention_warmup_steps": 64,
+      "retention_write_policy_reset": false,
+      "parent_rehearsal_steps": 1,
+      "parent_rehearsal_interval": 1,
+      "retention_early_stop_validations": 3,
+      "wall_time_seconds": 7.767399083000782
+    },
+    "fresh_accountings": [
+      {
+        "unique_verifier_bits": 16384,
+        "unique_logical_lifetimes": 8192,
+        "logical_lifetime_observations": 8192,
+        "optimizer_updates": 512,
+        "replayed_examples": 0,
+        "verifier_outcome_events": 16384,
+        "parent_rehearsal_outcome_events": 0,
+        "feedback_events": 8192,
+        "parent_rehearsal_feedback_events": 0,
+        "diagnostic_verifier_bits": 4096,
+        "diagnostic_logical_lifetimes": 2048,
+        "phase1_updates": 512,
+        "phase2_updates": 0,
+        "parent_rehearsal_updates": 0,
+        "parent_stable": false,
+        "retention_blocked": true,
+        "retention_validation_count": 0,
+        "best_validation_metric": null,
+        "best_validation_parent_retention": null,
+        "stable_validation_step": null,
+        "stable_bits_to_threshold": null,
+        "mean_memory_write_strength": 0.7500093728303909,
+        "committed_write_rate": 0.74749755859375,
+        "retention_order": "balanced",
+        "memory_write_cost": 0.0,
+        "stochastic_write_sampling": true,
+        "differentiable_memory": true,
+        "parent_differentiable_memory": true,
+        "write_credit": "counterfactual_v2",
+        "parent_credit": "counterfactual_action",
+        "counterfactual_arm_multiplier": 2,
+        "mean_write_critic_loss": null,
+        "mean_outcome_value_critic_loss": null,
+        "outcome_value_critic": false,
+        "parent_protection": "none",
+        "retention_warmup_steps": 64,
+        "retention_write_policy_reset": false,
+        "parent_rehearsal_steps": 1,
+        "parent_rehearsal_interval": 1,
+        "retention_early_stop_validations": 3,
+        "wall_time_seconds": 7.767399083000782
+      },
+      {
+        "unique_verifier_bits": 16384,
+        "unique_logical_lifetimes": 8192,
+        "logical_lifetime_observations": 8192,
+        "optimizer_updates": 512,
+        "replayed_examples": 0,
+        "verifier_outcome_events": 16384,
+        "parent_rehearsal_outcome_events": 0,
+        "feedback_events": 8192,
+        "parent_rehearsal_feedback_events": 0,
+        "diagnostic_verifier_bits": 4096,
+        "diagnostic_logical_lifetimes": 2048,
+        "phase1_updates": 512,
+        "phase2_updates": 0,
+        "parent_rehearsal_updates": 0,
+        "parent_stable": false,
+        "retention_blocked": true,
+        "retention_validation_count": 0,
+        "best_validation_metric": null,
+        "best_validation_parent_retention": null,
+        "stable_validation_step": null,
+        "stable_bits_to_threshold": null,
+        "mean_memory_write_strength": 0.494146800134331,
+        "committed_write_rate": 0.48626708984375,
+        "retention_order": "balanced",
+        "memory_write_cost": 0.0,
+        "stochastic_write_sampling": true,
+        "differentiable_memory": true,
+        "parent_differentiable_memory": true,
+        "write_credit": "counterfactual_v2",
+        "parent_credit": "counterfactual_action",
+        "counterfactual_arm_multiplier": 2,
+        "mean_write_critic_loss": null,
+        "mean_outcome_value_critic_loss": null,
+        "outcome_value_critic": false,
+        "parent_protection": "none",
+        "retention_warmup_steps": 64,
+        "retention_write_policy_reset": false,
+        "parent_rehearsal_steps": 1,
+        "parent_rehearsal_interval": 1,
+        "retention_early_stop_validations": 3,
+        "wall_time_seconds": 7.675671124998189
+      },
+      {
+        "unique_verifier_bits": 16384,
+        "unique_logical_lifetimes": 8192,
+        "logical_lifetime_observations": 8192,
+        "optimizer_updates": 512,
+        "replayed_examples": 0,
+        "verifier_outcome_events": 16384,
+        "parent_rehearsal_outcome_events": 0,
+        "feedback_events": 8192,
+        "parent_rehearsal_feedback_events": 0,
+        "diagnostic_verifier_bits": 4096,
+        "diagnostic_logical_lifetimes": 2048,
+        "phase1_updates": 512,
+        "phase2_updates": 0,
+        "parent_rehearsal_updates": 0,
+        "parent_stable": false,
+        "retention_blocked": true,
+        "retention_validation_count": 0,
+        "best_validation_metric": null,
+        "best_validation_parent_retention": null,
+        "stable_validation_step": null,
+        "stable_bits_to_threshold": null,
+        "mean_memory_write_strength": 0.3437426087621134,
+        "committed_write_rate": 0.3525390625,
+        "retention_order": "balanced",
+        "memory_write_cost": 0.0,
+        "stochastic_write_sampling": true,
+        "differentiable_memory": true,
+        "parent_differentiable_memory": true,
+        "write_credit": "counterfactual_v2",
+        "parent_credit": "counterfactual_action",
+        "counterfactual_arm_multiplier": 2,
+        "mean_write_critic_loss": null,
+        "mean_outcome_value_critic_loss": null,
+        "outcome_value_critic": false,
+        "parent_protection": "none",
+        "retention_warmup_steps": 64,
+        "retention_write_policy_reset": false,
+        "parent_rehearsal_steps": 1,
+        "parent_rehearsal_interval": 1,
+        "retention_early_stop_validations": 3,
+        "wall_time_seconds": 7.4955030840064865
+      }
+    ]
+  },
+  "persistent_memory": {
+    "audit_enabled": false,
+    "reload_intact_recall": null,
+    "corruption_rejected": null,
+    "recovery_intact_recall": null,
+    "storage": "temporary_atomic_snapshot"
+  },
+  "accounting": {
+    "unique_verifier_bits": 32768,
+    "unique_logical_lifetimes": 16384,
+    "logical_lifetime_observations": 16384,
+    "optimizer_updates": 1024,
+    "replayed_examples": 0,
+    "verifier_outcome_events": 32768,
+    "parent_rehearsal_outcome_events": 0,
+    "feedback_events": 16384,
+    "parent_rehearsal_feedback_events": 0,
+    "diagnostic_verifier_bits": 9472,
+    "diagnostic_logical_lifetimes": 4608,
+    "phase1_updates": 1024,
+    "phase2_updates": 0,
+    "parent_rehearsal_updates": 0,
+    "parent_stable": false,
+    "retention_blocked": true,
+    "retention_validation_count": 0,
+    "best_validation_metric": null,
+    "best_validation_parent_retention": null,
+    "stable_validation_step": null,
+    "stable_bits_to_threshold": null,
+    "mean_memory_write_strength": 0.045624013993624146,
+    "committed_write_rate": 0.04718017578125,
+    "retention_order": "balanced",
+    "memory_write_cost": 0.0,
+    "stochastic_write_sampling": true,
+    "differentiable_memory": true,
+    "parent_differentiable_memory": true,
+    "write_credit": "counterfactual_v2",
+    "parent_credit": "counterfactual_action",
+    "counterfactual_arm_multiplier": 2,
+    "mean_write_critic_loss": null,
+    "mean_outcome_value_critic_loss": null,
+    "outcome_value_critic": false,
+    "parent_protection": "none",
+    "retention_warmup_steps": 64,
+    "retention_write_policy_reset": true,
+    "parent_rehearsal_steps": 1,
+    "parent_rehearsal_interval": 1,
+    "retention_early_stop_validations": 3,
+    "wall_time_seconds": 14.972656749996531,
+    "mean_inference_latency_ms": 0.28383886717620044,
+    "retention_on_mastered_primitives": 0.5625,
+    "transfer_ratio_against_fresh_learner": null
+  }
+}

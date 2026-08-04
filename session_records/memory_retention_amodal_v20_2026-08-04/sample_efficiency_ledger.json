@@ -1,0 +1,77 @@
+{
+  "status": "rejected_outcome_only_retention_no_causal_gain",
+  "experiment": "outcome-only-cue-guided-memory-retention",
+  "runtime": "neural-computer.amodal-runtime.v20",
+  "rung": "subminute",
+  "ordinary": {
+    "seed": 17,
+    "phase1_steps": 64,
+    "phase2_steps": 128,
+    "batch_size": 16,
+    "unique_verifier_bits": 8192,
+    "unique_logical_lifetimes": 3072,
+    "optimizer_updates": 192,
+    "replayed_examples": 0,
+    "wall_time_seconds": 2.340544416998455,
+    "intact": 0.4921875,
+    "clear": 0.5146484375,
+    "corrupt": 0.4970703125,
+    "reverse_order": 0.490234375,
+    "random_action": 0.5126953125,
+    "committed_write_rate": 0.24088541666666666
+  },
+  "reward_shuffled_control": {
+    "seed": 17,
+    "intact": 0.486328125,
+    "committed_write_rate": 0.10709635416666667
+  },
+  "promotion_gate": {
+    "intact_min": 0.7,
+    "clear_max": 0.6,
+    "corrupt_max": 0.6,
+    "reverse_order_min": 0.65,
+    "causal_gap_min": 0.15
+  },
+  "promoted": false,
+  "bridged_parent_rung": {
+    "seed": 17,
+    "phase1_steps": 1024,
+    "phase2_steps": 128,
+    "unique_verifier_bits": 38912,
+    "unique_logical_lifetimes": 18432,
+    "optimizer_updates": 1152,
+    "replayed_examples": 0,
+    "wall_time_seconds": 9.995441292005125,
+    "single_parent_prefix": 1.0,
+    "intact": 0.501953125,
+    "clear": 0.5048828125,
+    "corrupt": 0.51953125,
+    "reverse_order": 0.48046875,
+    "random_action": 0.4970703125,
+    "committed_write_rate": 0.9468858506944444,
+    "promoted": false
+  },
+  "bridged_reward_shuffled_control": {
+    "seed": 17,
+    "intact": 0.51171875,
+    "committed_write_rate": 0.017849392361111112,
+    "promoted": false
+  },
+  "parent_protected_diagnostic": {
+    "seed": 17,
+    "phase1_steps": 1024,
+    "phase2_steps": 512,
+    "unique_verifier_bits": 57344,
+    "unique_logical_lifetimes": 24576,
+    "optimizer_updates": 1536,
+    "replayed_examples": 0,
+    "intact": 0.534423828125,
+    "clear": 0.50146484375,
+    "corrupt": 0.510986328125,
+    "reverse_order": 0.5185546875,
+    "intact_clear_gap": 0.032958984375,
+    "promoted": false,
+    "claim_boundary": "diagnostic only; below retention gate"
+  },
+  "next_rung": "diagnose phase-transition credit assignment and protect parent capability before any three-minute promotion"
+}

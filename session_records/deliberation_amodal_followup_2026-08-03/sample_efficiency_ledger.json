@@ -1,0 +1,32 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "deliberation_amodal_followup_2026-08-03",
+  "status": "accepted_outcome_only_wait_commit_execution_frontier_think_unqualified",
+  "unique_verifier_bits": 49152,
+  "unique_logical_lifetimes": 24576,
+  "optimizer_updates": 24576,
+  "replayed_examples": 0,
+  "diagnostic_lifetimes_charged_to_budget": 192,
+  "wall_time_seconds": 30.2462,
+  "latency": "0.672 ms mean rollout latency across three CPU seeds",
+  "stable_bits_to_threshold": 8194,
+  "retention_on_mastered_primitives": null,
+  "transfer_ratio_against_fresh_learner": null,
+  "claim_boundary": "Promoted outcome-only WAIT/COMMIT execution control after observable transport warmup; THINK and general adaptive compute allocation remain unqualified.",
+  "verification": {
+    "seeds": [17, 18, 19],
+    "warmup_steps_per_seed": 4096,
+    "execution_updates_per_seed": 4096,
+    "mixed_adaptive_reward": [1.0, 1.0, 1.0],
+    "mixed_adaptive_utility": [0.89765625, 0.89765625, 0.89765625],
+    "mixed_commit_immediate_utility": [0.76171875, 0.76171875, 0.7890625],
+    "mixed_wait_fixed_utility": [0.8000000000000002, 0.8000000000000002, 0.8000000000000002],
+    "complete_adaptive_commit_fraction": [1.0, 0.99609375, 1.0],
+    "delayed_adaptive_wait_fraction": [1.0, 1.0, 1.0],
+    "mixed_adaptive_think_fraction": [0.0, 0.0, 0.0],
+    "mixed_random_action_reward": [0.2421875, 0.203125, 0.26953125],
+    "promotion_gate_passed": true,
+    "think_promotion_gate_passed": false,
+    "reason": "adaptive mixed utility replicated above fixed controls, with complete-window commit and delayed-window wait behavior; no causal think-required task yet"
+  }
+}

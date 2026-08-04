@@ -1,0 +1,42 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "deliberation_mixed_arbitration_2026-08-03",
+  "status": "accepted_outcome_only_wait_think_commit_arbitration",
+  "unique_verifier_bits": 73728,
+  "unique_logical_lifetimes": 36864,
+  "optimizer_updates": 36864,
+  "replayed_examples": 0,
+  "diagnostic_lifetimes_charged_to_budget": 3264,
+  "wall_time_seconds": 67.095,
+  "latency": "mean rollout latency recorded separately per seed by train_steps",
+  "stable_bits_to_threshold": 24576,
+  "retention_on_mastered_primitives": null,
+  "transfer_ratio_against_fresh_learner": null,
+  "claim_boundary": "Promoted a narrow outcome-only mixed WAIT/THINK/COMMIT execution policy for complete, delayed, and think-required verifier states; broad compute allocation and multimodal transfer remain unqualified.",
+  "verification": {
+    "seeds": [17, 18, 19],
+    "warmup_steps_per_seed": 8192,
+    "execution_updates_per_seed": 4096,
+    "execution_cost": {
+      "wait": 0.2,
+      "think": 0.35,
+      "commit": 0.0
+    },
+    "complete_adaptive_reward": [1.0, 1.0, 1.0],
+    "complete_adaptive_commit_fraction": [1.0, 1.0, 1.0],
+    "delayed_adaptive_reward": [1.0, 1.0, 1.0],
+    "delayed_adaptive_utility": [0.8, 0.8, 0.8],
+    "delayed_adaptive_wait_fraction": [1.0, 1.0, 1.0],
+    "think_required_adaptive_reward": [1.0, 1.0, 1.0],
+    "think_required_adaptive_utility": [0.65, 0.65, 0.65],
+    "think_required_adaptive_think_fraction": [1.0, 1.0, 1.0],
+    "mixed_adaptive_reward": [1.0, 1.0, 1.0],
+    "mixed_adaptive_utility": [0.862890625, 0.8658203125, 0.8580078125],
+    "mixed_optimal_expected_utility": 0.8625,
+    "mixed_fixed_commit_expected_utility": 0.75,
+    "mixed_fixed_wait_expected_utility": 0.675,
+    "mixed_fixed_think_expected_utility": 0.65,
+    "promotion_gate_passed": true,
+    "reason": "all three causal execution decisions replicate across seeds and held-out mixed reward is perfect with utility at the expected optimum within finite-sample variation"
+  }
+}

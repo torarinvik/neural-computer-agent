@@ -1,0 +1,20 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "memory_retention_amodal_v48_2026-08-04",
+  "status": "decisively_rejected_transfer_control_fresh_parent_not_qualified",
+  "population_seeds": [17],
+  "phase1_steps_requested": 1024,
+  "phase2_steps_requested": 2048,
+  "transfer_phase1_steps_requested": 2048,
+  "transfer_phase2_steps_requested": 2048,
+  "retained_stable_bits_to_threshold": 34816,
+  "transferred_stable_bits_to_threshold": 28672,
+  "fresh_phase1_updates": 2048,
+  "fresh_phase2_updates": 0,
+  "fresh_stable_bits_to_threshold": null,
+  "fresh_parent_stable": false,
+  "transfer_ratio_against_fresh_learner": null,
+  "retained_parent_stable": true,
+  "retained_mastered_primitive_retention": 0.98828125,
+  "claim_boundary": "The fresh control does not qualify its parent even under an extended matched phase-1 budget; no transfer ratio, checkpoint, or general transfer claim is promoted."
+}

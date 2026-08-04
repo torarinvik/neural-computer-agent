@@ -1,0 +1,37 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "deliberation_timeout_absence_2026-08-03",
+  "status": "accepted_outcome_only_bounded_timeout_termination",
+  "unique_verifier_bits": 98304,
+  "unique_logical_lifetimes": 49152,
+  "optimizer_updates": 49152,
+  "replayed_examples": 0,
+  "diagnostic_lifetimes_charged_to_budget": 384,
+  "wall_time_seconds": 77.141,
+  "latency": "per-stage rollout latency recorded by train_steps",
+  "stable_bits_to_threshold": null,
+  "retention_on_mastered_primitives": 1.0,
+  "transfer_ratio_against_fresh_learner": null,
+  "claim_boundary": "Promoted one-controller bounded termination after a permanently missing partner in the timestamp-buffer verifier; broad learned absence handling and multimodal transfer remain unqualified.",
+  "verification": {
+    "seeds": [17, 18, 19],
+    "stage1_warmup_steps_per_seed": 8192,
+    "stage1_execution_updates_per_seed": 4096,
+    "stage2_timeout_updates_per_seed": 4096,
+    "execution_cost": {
+      "wait": 0.2,
+      "think": 0.35,
+      "commit": 0.0
+    },
+    "timestamp_jitter": 0.1,
+    "buffer_tolerance": 0.25,
+    "paired_mixed_audit_episodes_per_seed": 1024,
+    "learned_mixed_utility": [0.6713, 0.7016, 0.6704],
+    "paired_immediate_commit_utility": [0.6152, 0.6338, 0.6152],
+    "paired_utility_gain": [0.0561, 0.0678, 0.0551],
+    "timeout_commit_fraction": [1.0, 1.0, 1.0],
+    "indefinite_wait_missing_completion": 0.0,
+    "promotion_gate_passed": true,
+    "reason": "all three seeds terminate missing-partner episodes after one bounded quiet tick and beat a paired immediate-commit control while retaining complete, delayed, and think-required behavior"
+  }
+}

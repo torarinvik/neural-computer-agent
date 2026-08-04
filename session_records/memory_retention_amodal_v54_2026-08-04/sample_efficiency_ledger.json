@@ -1,0 +1,21 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "memory_retention_amodal_v54_2026-08-04",
+  "status": "rejected_optimizer_reset_no_gain",
+  "population_seeds": [19],
+  "arms": {
+    "no_reset": {
+      "stable_bits_to_threshold": 17920,
+      "intact_recall": 1.0,
+      "clear_memory_recall": 0.48046875,
+      "corrupt_memory_recall": 0.5185546875
+    },
+    "reset_optimizer_state": {
+      "stable_bits_to_threshold": 23040,
+      "intact_recall": 1.0,
+      "clear_memory_recall": 0.48046875,
+      "corrupt_memory_recall": 0.5185546875
+    }
+  },
+  "claim_boundary": "Optimizer-state clearing is implemented for phase isolation but did not improve the matched retention rung and was slower in this seed-19 control."
+}

@@ -1,0 +1,105 @@
+{
+  "experiment": "contradiction_amodal_2026-08-03",
+  "status": "rejected_temporal_trust_reversal_rung",
+  "runtime_format": "neural-computer.amodal-runtime.v17",
+  "source_credit_update": "neutral output bias; normalized source-key attribution; mean over present event tokens",
+  "switch_probability": 0.2,
+  "claim_boundary": "The corrected verifier and generic feedback path do not yet qualify arbitrary hidden source-role reversal; the fixed-role source-trust calibration remains a separate promoted capability.",
+  "learner_visible_information": [
+    "standardized learned event tensors",
+    "previous opaque action",
+    "previous scalar verifier outcome",
+    "exact sampled-action propensity during training"
+  ],
+  "hidden_from_learner": [
+    "current reliable source",
+    "target action",
+    "reversal location"
+  ],
+  "diagnostic_run": {
+    "seed": 17,
+    "steps": 512,
+    "batch_size": 128,
+    "sequence_length": 8,
+    "block_length": 2,
+    "learning_rate": 0.001,
+    "unique_verifier_bits": 524288,
+    "unique_logical_lifetimes": 524288,
+    "optimizer_updates": 512,
+    "replayed_examples": 0,
+    "diagnostic_lifetimes_charged_to_budget": 67584,
+    "wall_time_seconds": 27.9705604999981,
+    "mean_inference_latency_ms": 0.04240320088540195,
+    "stable_bits_to_threshold": null,
+    "markov_overall": 0.7001953125,
+    "markov_post_transition": 0.5635491606714629,
+    "reversal_overall": 0.8037109375,
+    "reversal_post_transition": 0.8098958333333334,
+    "stream_order_shuffled_overall": 0.687744140625,
+    "no_feedback_post_transition": 0.5033185840707964,
+    "feedback_shuffled_post_transition": 0.519674355495251,
+    "action_shuffled_overall": 0.498779296875,
+    "intention_shuffled_overall": 0.509521484375,
+    "intention_zero_overall": 0.5068359375,
+    "promotion_gate_passed": false
+  },
+  "lower_learning_rate_replication": {
+    "learning_rate": 0.0005,
+    "steps": 1024,
+    "batch_size": 128,
+    "sequence_length": 8,
+    "block_length": 2,
+    "promotion_requires_all_three_seeds": true,
+    "seeds": {
+      "17": {
+        "markov_overall": 0.764404296875,
+        "markov_post_transition": 0.6223021582733813,
+        "reversal_post_transition": 0.7701822916666666,
+        "stream_order_shuffled_overall": 0.747802734375,
+        "no_feedback_post_transition": 0.49668141592920356,
+        "feedback_shuffled_post_transition": 0.5413839891451832,
+        "action_shuffled_overall": 0.508544921875,
+        "intention_shuffled_overall": 0.486328125,
+        "intention_zero_overall": 0.4931640625,
+        "promotion_gate_passed": true,
+        "stable_bits_to_threshold": 1048576
+      },
+      "18": {
+        "markov_overall": 0.67626953125,
+        "markov_post_transition": 0.6571428571428571,
+        "reversal_post_transition": 0.49609375,
+        "stream_order_shuffled_overall": 0.658447265625,
+        "no_feedback_post_transition": 0.5006784260515604,
+        "feedback_shuffled_post_transition": 0.5296969696969697,
+        "action_shuffled_overall": 0.505859375,
+        "intention_shuffled_overall": 0.485595703125,
+        "intention_zero_overall": 0.493896484375,
+        "promotion_gate_passed": false,
+        "stable_bits_to_threshold": null
+      },
+      "19": {
+        "markov_overall": 0.65771484375,
+        "markov_post_transition": 0.6651216685979142,
+        "reversal_post_transition": 0.4869791666666667,
+        "stream_order_shuffled_overall": 0.66357421875,
+        "no_feedback_post_transition": 0.5357575757575758,
+        "feedback_shuffled_post_transition": 0.4975903614457831,
+        "action_shuffled_overall": 0.49072265625,
+        "intention_shuffled_overall": 0.50537109375,
+        "intention_zero_overall": 0.502685546875,
+        "promotion_gate_passed": false,
+        "stable_bits_to_threshold": null
+      }
+    },
+    "population_promotion": false
+  },
+  "promotion_gate": {
+    "markov_overall_min": 0.60,
+    "markov_post_transition_min": 0.60,
+    "reversal_post_transition_min": 0.75,
+    "stream_order_shuffled_overall_min": 0.70,
+    "no_feedback_post_transition_max": 0.65,
+    "feedback_shuffled_post_transition_max": 0.65,
+    "intervention_overall_max": 0.65
+  }
+}

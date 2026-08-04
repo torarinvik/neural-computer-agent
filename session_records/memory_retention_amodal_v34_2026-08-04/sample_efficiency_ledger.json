@@ -1,0 +1,29 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "memory_retention_amodal_v34_2026-08-04",
+  "status": "rejected_memory_read_state_candidate",
+  "population_seeds": [19],
+  "unique_verifier_bits": 21504,
+  "unique_logical_lifetimes": 8704,
+  "optimizer_updates": 544,
+  "replayed_examples": 0,
+  "verifier_outcome_events": 21504,
+  "feedback_events": 12800,
+  "diagnostic_verifier_bits": 13824,
+  "diagnostic_logical_lifetimes": 4992,
+  "wall_time_seconds": null,
+  "wall_time_note": "Initial candidate invocation did not write a timed report; retain the condition/accounting result, not a fabricated wall-time value.",
+  "verification": {
+    "intact_recall": 0.521484375,
+    "clear_memory": 0.498046875,
+    "corrupt_memory": 0.4931640625,
+    "reverse_order": 0.486328125,
+    "target_first": 0.490234375,
+    "target_last": 0.5068359375,
+    "random_action": 0.5068359375,
+    "promotion_gate_passed": false,
+    "parent_stable": true,
+    "retention_blocked": false
+  },
+  "claim_boundary": "Rejected architectural candidate. No v24 schema, checkpoint migration, weight, or capability claim is retained."
+}

@@ -1,0 +1,67 @@
+{
+  "experiment": "calibration_conflict_amodal_2026-08-03",
+  "status": "accepted_stable_outcome_only_source_trust_reuse",
+  "runtime_format": "neural-computer.amodal-runtime.v14",
+  "source_trust_binding_scale": 0.25,
+  "claim_boundary": "Promoted stable hidden-source calibration from scalar verifier outcomes across a four-tick contradictory two-stream episode; trust reversal, natural modality grounding, and general contradiction resolution remain unqualified.",
+  "learner_visible_information": [
+    "standardized learned event tensors",
+    "previous opaque action",
+    "previous scalar verifier outcome",
+    "exact sampled-action propensity during training"
+  ],
+  "hidden_from_learner": [
+    "stable reliable source",
+    "target action",
+    "source role label"
+  ],
+  "promotion_runs": {
+    "seeds": [17, 18, 19],
+    "steps": 512,
+    "batch_size": 256,
+    "sequence_length": 4,
+    "unique_verifier_bits": 1572864,
+    "unique_logical_lifetimes": 1572864,
+    "optimizer_updates": 1536,
+    "replayed_examples": 0,
+    "diagnostic_lifetimes_charged_to_budget": 282624,
+    "wall_time_seconds": 87.86575649999577,
+    "mean_inference_latency_ms": [
+      0.04641402515589976,
+      0.04665286268192015,
+      0.046294159455881334
+    ],
+    "stable_bits_to_threshold": [327680, 262144, 196608],
+    "retention_on_mastered_primitives": null,
+    "transfer_ratio_against_fresh_learner": null,
+    "clean_post_calibration": [1.0, 0.7552083333333334, 1.0],
+    "stream_order_shuffled_post_calibration": [1.0, 0.7599283854166666, 1.0],
+    "no_feedback_post_calibration": [0.4998372395833333, 0.48876953125, 0.4982096354166667],
+    "feedback_shuffled_post_calibration": [0.5008138020833334, 0.501953125, 0.4830729166666667],
+    "action_shuffled_post_calibration": [0.4949544270833333, 0.5030924479166667, 0.4986979166666667],
+    "intention_shuffled_post_calibration": [0.4991861979166667, 0.50732421875, 0.4982096354166667],
+    "intention_zero_post_calibration": [0.5008138020833334, 0.4957682291666667, 0.5006510416666666],
+    "promotion_gate_passed": true
+  },
+  "reward_shuffled_negative_control": {
+    "seed": 17,
+    "steps": 512,
+    "batch_size": 256,
+    "sequence_length": 4,
+    "unique_verifier_bits": 524288,
+    "unique_logical_lifetimes": 524288,
+    "optimizer_updates": 512,
+    "replayed_examples": 0,
+    "wall_time_seconds": 22.66709175000142,
+    "clean_post_calibration": 0.49267578125,
+    "stream_order_shuffled_post_calibration": 0.50146484375,
+    "promotion_gate_passed": false
+  },
+  "promotion_gate": {
+    "clean_post_calibration_min": 0.75,
+    "stream_order_post_calibration_min": 0.70,
+    "no_feedback_and_shuffled_feedback_max": 0.65,
+    "intervention_max": 0.65,
+    "reward_shuffled_control_must_fail": true
+  }
+}

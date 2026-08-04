@@ -1,0 +1,17 @@
+{
+  "seed": 19,
+  "steps": 256,
+  "intact": 1.0,
+  "clear": 0.494140625,
+  "corrupt": 0.537109375,
+  "fresh": 0.5,
+  "replacement": 1.0,
+  "random_action": 0.50390625,
+  "unique_verifier_bits": 512,
+  "stable_bits_to_threshold": 320,
+  "diagnostic_lifetimes_charged_to_budget": 4224,
+  "write_threshold": 0.5,
+  "differentiable_write_strength_path": true,
+  "committed_write_rate": 1.0,
+  "promoted": true
+}

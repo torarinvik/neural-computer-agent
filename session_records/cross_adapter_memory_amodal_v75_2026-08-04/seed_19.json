@@ -1,0 +1,13 @@
+{
+  "experiment": "outcome-only-cross-adapter-memory-retrieval",
+  "seed": 19,
+  "base_steps": 512,
+  "alignment_steps": 512,
+  "adapter_steps": 512,
+  "conditions": {"writer": 1.0, "reader": 0.998046875, "raw_reader": 0.4853515625, "clear": 0.4921875, "corrupt": 0.47265625, "swapped_slot": 0.48828125, "random_action": 0.46875},
+  "reader_alignment_final_mse": 0.015330941416323185,
+  "fresh_token_population": {"writer_minimum": 0.99609375, "reader_minimum": 0.9990234375, "raw_reader_maximum": 0.765625, "reader_vs_raw_gain_mean": 0.3134765625, "reader_vs_raw_gain_minimum": 0.234375, "swapped_slot_maximum": 0.5234375},
+  "accounting": {"unique_verifier_bits": 65536, "unique_logical_lifetimes": 16384, "optimizer_updates": 1536, "alignment_optimizer_updates": 512, "unlabeled_alignment_events": 8192, "verifier_outcome_events": 65536, "feedback_events": 32768, "base_stable_bits_to_threshold": 128, "adapter_stable_bits_to_threshold": 1},
+  "promoted": true,
+  "claim_boundary": "synthetic neural-IR cross-adapter retrieval only"
+}

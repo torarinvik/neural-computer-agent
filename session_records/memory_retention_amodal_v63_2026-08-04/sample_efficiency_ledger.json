@@ -1,0 +1,10 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "memory_retention_amodal_v63_2026-08-04",
+  "status": "rejected_transfer_variance_persists",
+  "population_seeds": [17, 18, 19],
+  "transfer_phase1_steps": 1024,
+  "transfer_phase2_steps": 512,
+  "transfer_status_by_seed": ["qualified", "fresh_retention_not_stable", "fresh_retention_not_stable"],
+  "claim_boundary": "Doubling fresh retention does not qualify population transfer."
+}

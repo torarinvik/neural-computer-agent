@@ -1,0 +1,22 @@
+{
+  "experiment": "outcome-only-cross-adapter-memory-retrieval",
+  "seed": 18,
+  "base_steps": 512,
+  "alignment_steps": 512,
+  "adapter_steps": 512,
+  "batch_size": 16,
+  "slot_count": 3,
+  "memory_capacity": 2,
+  "event_window_capacity": 4,
+  "target_cue": true,
+  "target_presentation": "cued_row_last",
+  "read_match_threshold": 0.75,
+  "write_match_threshold": 0.95,
+  "conditions": {"writer": 0.9951171875, "reader": 0.9970703125, "raw_reader": 0.478515625, "clear": 0.5283203125, "corrupt": 0.4794921875, "swapped_slot": 0.4921875, "random_action": 0.490234375},
+  "fresh_token_population": {"writer_minimum": 0.99609375, "reader_minimum": 0.9970703125, "raw_reader_maximum": 0.5166015625, "reader_vs_raw_gain_mean": 0.5048828125, "reader_vs_raw_gain_minimum": 0.482421875, "swapped_slot_maximum": 0.5087890625},
+  "persistent_memory": {"reload_intact_recall": 1.0, "corruption_rejected": true, "recovery_intact_recall": 1.0},
+  "base_stable_bits_to_threshold": 160,
+  "adapter_stable_bits_to_threshold": 1,
+  "accounting": {"unique_verifier_bits": 81920, "unique_logical_lifetimes": 16384, "optimizer_updates": 1536, "alignment_optimizer_updates": 512, "unlabeled_alignment_events": 8192, "verifier_outcome_events": 81920, "feedback_events": 49152, "persistent_audit_verifier_bits": 1280, "wall_time_seconds": 64.17304516599688},
+  "promoted": true
+}

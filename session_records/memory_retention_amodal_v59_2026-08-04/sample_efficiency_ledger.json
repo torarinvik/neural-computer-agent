@@ -1,0 +1,14 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "memory_retention_amodal_v59_2026-08-04",
+  "status": "rejected_identity_address_initialization",
+  "population_seeds": [17, 18, 19],
+  "mechanisms": ["identity_memory_address", "identity_residual_memory_address"],
+  "long_unseen_token_retention": [0.546875, 0.71875, 0.99609375],
+  "long_transfer_status_by_seed": [
+    "transferred_parent_not_qualified",
+    "qualified",
+    "qualified"
+  ],
+  "claim_boundary": "Address initialization is not a stable population solution; no weights or branch are promoted."
+}

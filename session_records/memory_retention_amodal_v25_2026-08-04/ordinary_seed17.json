@@ -1,0 +1,402 @@
+{
+  "experiment": "outcome-only-cue-guided-memory-retention",
+  "seed": 17,
+  "phase1_steps": 1280,
+  "phase2_steps": 640,
+  "batch_size": 16,
+  "reward_shuffle_control": false,
+  "learner_visible_inputs": [
+    "opaque target cue event",
+    "opaque slot event",
+    "opaque probe action",
+    "scalar probe outcome",
+    "scalar recall outcome"
+  ],
+  "memory_training": {
+    "capacity": 1,
+    "scope_capacity": 16,
+    "write_threshold": 0.5,
+    "differentiable_transaction": true,
+    "controller_runtime": "v22",
+    "retention_order": "random",
+    "memory_write_cost": 0.0,
+    "parent_protection": "none",
+    "retention_warmup_steps": 128,
+    "parent_stable": true,
+    "retention_blocked": false,
+    "claim_boundary": "retention qualification only; no promotion without population replication"
+  },
+  "history": [
+    {
+      "curriculum": "single",
+      "step": 1,
+      "reward": 0.375
+    },
+    {
+      "curriculum": "single",
+      "step": 32,
+      "reward": 0.625
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 32,
+      "reward": 0.484375
+    },
+    {
+      "curriculum": "single",
+      "step": 64,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 64,
+      "reward": 0.46875
+    },
+    {
+      "curriculum": "single",
+      "step": 96,
+      "reward": 0.3125
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 96,
+      "reward": 0.5390625
+    },
+    {
+      "curriculum": "single",
+      "step": 128,
+      "reward": 0.625
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 128,
+      "reward": 0.4609375
+    },
+    {
+      "curriculum": "single",
+      "step": 160,
+      "reward": 0.3125
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 160,
+      "reward": 0.484375
+    },
+    {
+      "curriculum": "single",
+      "step": 192,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 192,
+      "reward": 0.484375
+    },
+    {
+      "curriculum": "single",
+      "step": 224,
+      "reward": 0.375
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 224,
+      "reward": 0.4921875
+    },
+    {
+      "curriculum": "single",
+      "step": 256,
+      "reward": 0.6875
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 256,
+      "reward": 0.453125
+    },
+    {
+      "curriculum": "single",
+      "step": 288,
+      "reward": 0.375
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 288,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single",
+      "step": 320,
+      "reward": 0.375
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 320,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single",
+      "step": 352,
+      "reward": 0.4375
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 352,
+      "reward": 0.5234375
+    },
+    {
+      "curriculum": "single",
+      "step": 384,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 384,
+      "reward": 0.4921875
+    },
+    {
+      "curriculum": "single",
+      "step": 416,
+      "reward": 0.5625
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 416,
+      "reward": 0.453125
+    },
+    {
+      "curriculum": "single",
+      "step": 448,
+      "reward": 0.6875
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 448,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single",
+      "step": 480,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 480,
+      "reward": 0.4765625
+    },
+    {
+      "curriculum": "single",
+      "step": 512,
+      "reward": 0.4375
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 512,
+      "reward": 0.546875
+    },
+    {
+      "curriculum": "single",
+      "step": 544,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 544,
+      "reward": 0.4921875
+    },
+    {
+      "curriculum": "single",
+      "step": 576,
+      "reward": 0.5625
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 576,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single",
+      "step": 608,
+      "reward": 0.75
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 608,
+      "reward": 0.4921875
+    },
+    {
+      "curriculum": "single",
+      "step": 640,
+      "reward": 0.1875
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 640,
+      "reward": 0.53125
+    },
+    {
+      "curriculum": "single",
+      "step": 672,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 672,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single",
+      "step": 704,
+      "reward": 0.375
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 704,
+      "reward": 0.515625
+    },
+    {
+      "curriculum": "single",
+      "step": 736,
+      "reward": 0.375
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 736,
+      "reward": 0.5546875
+    },
+    {
+      "curriculum": "single",
+      "step": 768,
+      "reward": 0.25
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 768,
+      "reward": 0.5390625
+    },
+    {
+      "curriculum": "single",
+      "step": 800,
+      "reward": 0.4375
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 800,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single",
+      "step": 832,
+      "reward": 0.4375
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 832,
+      "reward": 0.546875
+    },
+    {
+      "curriculum": "single",
+      "step": 864,
+      "reward": 0.625
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 864,
+      "reward": 0.5546875
+    },
+    {
+      "curriculum": "single",
+      "step": 896,
+      "reward": 0.6875
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 896,
+      "reward": 0.5
+    },
+    {
+      "curriculum": "single",
+      "step": 928,
+      "reward": 0.5625
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 928,
+      "reward": 0.5078125
+    },
+    {
+      "curriculum": "single",
+      "step": 960,
+      "reward": 0.875
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 960,
+      "reward": 0.6640625
+    },
+    {
+      "curriculum": "single",
+      "step": 992,
+      "reward": 0.875
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 992,
+      "reward": 0.953125
+    },
+    {
+      "curriculum": "single",
+      "step": 1024,
+      "reward": 1.0
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 1024,
+      "reward": 0.96875
+    },
+    {
+      "curriculum": "single",
+      "step": 1056,
+      "reward": 1.0
+    },
+    {
+      "curriculum": "single_audit",
+      "step": 1056,
+      "reward": 0.984375
+    }
+  ],
+  "conditions": {
+    "intact": 0.5205078125,
+    "clear": 0.505859375,
+    "corrupt": 0.521484375,
+    "reverse_order": 0.521484375,
+    "random_action": 0.490234375
+  },
+  "promotion_gate": {
+    "intact_min": 0.7,
+    "clear_max": 0.6,
+    "corrupt_max": 0.6,
+    "reverse_order_min": 0.65,
+    "causal_gap_min": 0.15
+  },
+  "promoted": false,
+  "accounting": {
+    "unique_verifier_bits": 33792,
+    "unique_logical_lifetimes": 16896,
+    "optimizer_updates": 1056,
+    "replayed_examples": 0,
+    "verifier_outcome_events": 33792,
+    "feedback_events": 16896,
+    "diagnostic_verifier_bits": 8448,
+    "diagnostic_logical_lifetimes": 4224,
+    "phase1_updates": 1056,
+    "phase2_updates": 0,
+    "parent_stable": true,
+    "retention_blocked": false,
+    "mean_memory_write_strength": 0.5182348881481271,
+    "committed_write_rate": 0.5112452651515151,
+    "retention_order": "random",
+    "memory_write_cost": 0.0,
+    "parent_protection": "none",
+    "retention_warmup_steps": 128,
+    "wall_time_seconds": 12.305526457996166
+  }
+}

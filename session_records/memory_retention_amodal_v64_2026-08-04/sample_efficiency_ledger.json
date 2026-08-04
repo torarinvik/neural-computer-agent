@@ -1,0 +1,8 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "memory_retention_amodal_v64_2026-08-04",
+  "status": "rejected_transfer_population_unqualified",
+  "population_seeds": [18],
+  "transfer_status": "fresh_retention_not_stable",
+  "claim_boundary": "Fixed-token warmup is not sufficient evidence for reusable transfer."
+}
