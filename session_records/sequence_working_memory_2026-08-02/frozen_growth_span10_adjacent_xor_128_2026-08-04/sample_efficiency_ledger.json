@@ -1,0 +1,33 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "frozen-growth-span10-adjacent-xor-128-2026-08-04",
+  "status": "decisively_rejected_diagnostic",
+  "mechanism": "frozen external growth acquisition for an orthogonal adjacent comparison primitive",
+  "learner_visible_information": [
+    "rendered sensory events",
+    "opaque attempted actions",
+    "deterministic scalar verifier outcomes"
+  ],
+  "runs": [
+    {
+      "seed": 65009,
+      "unique_logical_lifetimes": 2048,
+      "unique_verifier_bits": 14336,
+      "verifier_bits": 14336,
+      "optimizer_updates": 128,
+      "replayed_examples": 0,
+      "wall_seconds": 119.24694924999494,
+      "stable_bits_to_threshold": null,
+      "retention_on_mastered_primitives": {
+        "span4": 0.0,
+        "span6": -0.005208373069763184,
+        "span8": 0.00390625
+      },
+      "transfer_ratio_against_fresh_learner": null,
+      "target_gain": -0.006249964237213135,
+      "growth_is_causally_used": false,
+      "gates_pass": false
+    }
+  ],
+  "claim_boundary": "Adjacent-XOR acquisition was rejected at the sub-minute diagnostic rung; no orthogonal factor was promoted or scaled."
+}

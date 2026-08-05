@@ -1,0 +1,201 @@
+{
+  "schema": "canonical-no-replay-retention-v1",
+  "claim_boundary": "The canonical controller is trained on a one-way span curriculum. After a span stage ends, no old-span examples are replayed into the optimizer; old spans are evaluation-only.",
+  "seed": 69301,
+  "stages": [
+    2,
+    3,
+    4
+  ],
+  "updates_per_stage": 8,
+  "batch_size": 4,
+  "audit_count": 16,
+  "mastery_threshold": 0.8,
+  "retention_tolerance": 0.05,
+  "shuffle_outcomes": false,
+  "span_update_counts": {
+    "2": 8,
+    "3": 8,
+    "4": 8
+  },
+  "history": [
+    {
+      "global_update": 1,
+      "stage": 0,
+      "train_span": 2,
+      "local_update": 1,
+      "unique_logical_lifetimes": 4,
+      "unique_verifier_bits": 8,
+      "training_accuracy": 0.625,
+      "loss": 0.6785003542900085,
+      "heldout_accuracy": {
+        "2": 0.5
+      }
+    },
+    {
+      "global_update": 4,
+      "stage": 0,
+      "train_span": 2,
+      "local_update": 4,
+      "unique_logical_lifetimes": 16,
+      "unique_verifier_bits": 32,
+      "training_accuracy": 0.625,
+      "loss": 0.6693645715713501,
+      "heldout_accuracy": {
+        "2": 0.5
+      }
+    },
+    {
+      "global_update": 8,
+      "stage": 0,
+      "train_span": 2,
+      "local_update": 8,
+      "unique_logical_lifetimes": 32,
+      "unique_verifier_bits": 64,
+      "training_accuracy": 0.75,
+      "loss": 0.6262489557266235,
+      "heldout_accuracy": {
+        "2": 0.5
+      }
+    },
+    {
+      "global_update": 9,
+      "stage": 1,
+      "train_span": 3,
+      "local_update": 1,
+      "unique_logical_lifetimes": 36,
+      "unique_verifier_bits": 76,
+      "training_accuracy": 0.3333333432674408,
+      "loss": 0.7592419981956482,
+      "heldout_accuracy": {
+        "2": 0.5,
+        "3": 0.6666666865348816
+      }
+    },
+    {
+      "global_update": 12,
+      "stage": 1,
+      "train_span": 3,
+      "local_update": 4,
+      "unique_logical_lifetimes": 48,
+      "unique_verifier_bits": 112,
+      "training_accuracy": 0.75,
+      "loss": 0.6071110963821411,
+      "heldout_accuracy": {
+        "2": 0.5,
+        "3": 0.6666666865348816
+      }
+    },
+    {
+      "global_update": 16,
+      "stage": 1,
+      "train_span": 3,
+      "local_update": 8,
+      "unique_logical_lifetimes": 64,
+      "unique_verifier_bits": 160,
+      "training_accuracy": 0.5833333134651184,
+      "loss": 0.6383094191551208,
+      "heldout_accuracy": {
+        "2": 0.5,
+        "3": 0.6666666865348816
+      }
+    },
+    {
+      "global_update": 17,
+      "stage": 2,
+      "train_span": 4,
+      "local_update": 1,
+      "unique_logical_lifetimes": 68,
+      "unique_verifier_bits": 176,
+      "training_accuracy": 0.5,
+      "loss": 0.6217402815818787,
+      "heldout_accuracy": {
+        "2": 0.5,
+        "3": 0.6666666865348816,
+        "4": 0.75
+      }
+    },
+    {
+      "global_update": 20,
+      "stage": 2,
+      "train_span": 4,
+      "local_update": 4,
+      "unique_logical_lifetimes": 80,
+      "unique_verifier_bits": 224,
+      "training_accuracy": 0.75,
+      "loss": 0.5910927653312683,
+      "heldout_accuracy": {
+        "2": 0.5,
+        "3": 0.6666666865348816,
+        "4": 0.75
+      }
+    },
+    {
+      "global_update": 24,
+      "stage": 2,
+      "train_span": 4,
+      "local_update": 8,
+      "unique_logical_lifetimes": 96,
+      "unique_verifier_bits": 288,
+      "training_accuracy": 0.75,
+      "loss": 0.5497644543647766,
+      "heldout_accuracy": {
+        "2": 0.5,
+        "3": 0.6666666865348816,
+        "4": 0.75
+      }
+    }
+  ],
+  "retention_summary": {
+    "stable_bits_to_threshold": {
+      "2": null,
+      "3": null,
+      "4": null
+    },
+    "retention": {
+      "2": {
+        "mastery_before_later_learning": 0.5,
+        "minimum_after_mastery": 0.5,
+        "retention_delta": 0.0,
+        "within_tolerance": false
+      },
+      "3": {
+        "mastery_before_later_learning": 0.6666666865348816,
+        "minimum_after_mastery": 0.6666666865348816,
+        "retention_delta": 0.0,
+        "within_tolerance": false
+      },
+      "4": {
+        "mastery_before_later_learning": 0.75,
+        "minimum_after_mastery": 0.75,
+        "retention_delta": 0.0,
+        "within_tolerance": false
+      }
+    },
+    "target_final_accuracy": 0.75,
+    "all_prior_retained": false,
+    "target_mastered": false
+  },
+  "final_controls": {
+    "blank_sequence": 0.5,
+    "workspace_disabled": 0.5,
+    "reversal_probe": 0.5
+  },
+  "accounting": {
+    "unique_logical_lifetimes": 96,
+    "unique_verifier_bits": 288,
+    "optimizer_updates": 24,
+    "replayed_examples": 0,
+    "diagnostic_lifetimes_charged_to_budget": 108,
+    "wall_seconds": 1.0644494589942042
+  },
+  "gates": {
+    "no_replayed_examples": true,
+    "all_prior_spans_retained": false,
+    "target_span_mastered": false,
+    "blank_sequence_near_chance": true,
+    "workspace_ablation_is_informative": true,
+    "reversal_is_not_claimed_as_mastery": true
+  },
+  "accepted_diagnostic": false
+}

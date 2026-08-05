@@ -62,6 +62,7 @@ def build_runtime(
     width: int = 16,
     slot_count: int = 2,
     memory_capacity: int = 2,
+    memory_write_threshold: float = 0.0,
     event_window_capacity: int | None = None,
     memory_scope_capacity: int | None = None,
 ) -> AmodalControllerRuntime:
@@ -88,7 +89,7 @@ def build_runtime(
             scope_capacity=(
                 batch_size if memory_scope_capacity is None else memory_scope_capacity
             ),
-            write_threshold=0.0,
+            write_threshold=memory_write_threshold,
         ),
     )
 
@@ -166,7 +167,11 @@ def _probe(
     payload: torch.Tensor,
     uniform: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor, Any]:
-    output, state = runtime.controller.step(
+    # This is an action preview. The same payload is committed once, with
+    # its scalar outcome, by _store_output below. Advancing the state here
+    # would insert every probe event twice and evict an earlier cue from the
+    # bounded event window before the retention decision is made.
+    output, _ = runtime.controller.step(
         _event(payload), state, _feedback(payload.shape[0]), memory=None
     )
     distribution = Categorical(logits=runtime.output_bus(output.intention)["protocol"])
@@ -709,6 +714,8 @@ def train_writer_intervention(
     target_cue: bool,
     randomize_slot_order: bool = False,
     reward_shuffle: bool = False,
+    randomize_event_tokens: bool = False,
+    token_reuse_steps: int = 4,
 ) -> dict[str, object]:
     """Train generic write utility with paired write/skip interventions.
 
@@ -719,6 +726,8 @@ def train_writer_intervention(
     """
     if steps < 1:
         raise ValueError("writer intervention steps must be positive")
+    if token_reuse_steps < 1:
+        raise ValueError("token reuse steps must be positive")
     seed_everything(seed)
     runtime.train()
     for parameter in runtime.parameters():
@@ -728,19 +737,29 @@ def train_writer_intervention(
     optimizer = torch.optim.Adam(
         runtime.controller.memory_write_policy.parameters(), lr=2e-3
     )
+    capacity_one_tail_isolation = (
+        runtime.memory is not None and getattr(runtime.memory, "capacity", None) == 1
+    )
     batch = verifier.batch_size
     paired_batch = batch * 2
     scope = torch.arange(paired_batch, dtype=torch.long)
     history: list[float] = []
     write_utilities: list[float] = []
+    token_block: torch.Tensor | None = None
+    token_block_step = token_reuse_steps
     for step in range(1, steps + 1):
+        if randomize_event_tokens and token_block_step >= token_reuse_steps:
+            token_block = torch.randn_like(tokens)
+            token_block_step = 0
+        episode_tokens = token_block if token_block is not None else tokens
+        token_block_step += 1
         verifier.reset()
         paired_verifier = verifier.duplicate_rows(2)
         runtime.memory.clear()
         state = runtime.initial_state(paired_batch, device="cpu")
         if target_cue:
             _, state = runtime.controller.step(
-                _event(tokens[paired_verifier.query_slot]),
+                _event(episode_tokens[paired_verifier.query_slot]),
                 state,
                 _feedback(paired_batch),
                 memory=None,
@@ -779,7 +798,7 @@ def train_writer_intervention(
         with runtime.memory.differentiable_transaction():
             for position in range(verifier.slot_count):
                 slot = paired_slots[:, position]
-                payload = tokens[slot]
+                payload = episode_tokens[slot]
                 paired_uniform = torch.rand(batch).repeat_interleave(2)
                 action, propensity_log, state = _probe(
                     runtime, state, payload, uniform=paired_uniform
@@ -792,15 +811,33 @@ def train_writer_intervention(
                         torch.float32
                     )
                 branch_position_mask = position == paired_branch_position
-                write_uniform = torch.where(
-                    branch_position_mask & (arm == 0),
-                    torch.zeros(paired_batch),
-                    torch.where(
-                        branch_position_mask & (arm == 1),
-                        torch.ones(paired_batch),
-                        torch.rand(batch).repeat_interleave(2),
-                    ),
-                )
+                if capacity_one_tail_isolation and position > 0:
+                    # A one-slot store cannot identify the utility of an
+                    # earlier candidate if a later write is allowed to erase
+                    # both counterfactual arms.  Isolate the causal write by
+                    # skipping the suffix after the selected position. This
+                    # changes only the trainer's paired intervention; the
+                    # deployed policy still sees ordinary sequential events.
+                    suffix_uniform = torch.ones(paired_batch)
+                    write_uniform = torch.where(
+                        branch_position_mask & (arm == 0),
+                        torch.zeros(paired_batch),
+                        torch.where(
+                            branch_position_mask & (arm == 1),
+                            torch.ones(paired_batch),
+                            suffix_uniform,
+                        ),
+                    )
+                else:
+                    write_uniform = torch.where(
+                        branch_position_mask & (arm == 0),
+                        torch.zeros(paired_batch),
+                        torch.where(
+                            branch_position_mask & (arm == 1),
+                            torch.ones(paired_batch),
+                            torch.rand(batch).repeat_interleave(2),
+                        ),
+                    )
                 state, output = _store_output(
                     runtime,
                     state,
@@ -815,7 +852,7 @@ def train_writer_intervention(
                 branch_strengths.append(output.controller.memory_write_strength)
 
             query_output, _ = runtime.step_events(
-                _event(tokens[paired_verifier.query_slot]),
+                _event(episode_tokens[paired_verifier.query_slot]),
                 runtime.initial_state(paired_batch, device="cpu"),
                 _feedback(paired_batch),
                 memory_scope=scope,
@@ -852,8 +889,17 @@ def train_writer_intervention(
                 strength[:, 0].clamp(1e-6, 1.0 - 1e-6)
             )
             write_utility = pair_rewards[:, 0] - pair_rewards[:, 1]
-            loss = action_loss - (write_utility.detach() * write_logit).mean()
-            loss = loss - 0.01 * distribution.entropy().mean()
+            write_credit_loss = -(write_utility.detach() * write_logit).mean()
+            if capacity_one_tail_isolation:
+                # The paired intervention is measuring retention utility, not
+                # relearning the probe/query policy. Letting query REINFORCE
+                # gradients flow through the one-slot memory gate creates a
+                # strong unconditional-write pressure and drowns the
+                # content-conditioned contrast.
+                loss = write_credit_loss
+            else:
+                loss = action_loss + write_credit_loss
+                loss = loss - 0.01 * distribution.entropy().mean()
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(
@@ -873,6 +919,10 @@ def train_writer_intervention(
         "verifier_outcome_events": steps * paired_batch * (verifier.slot_count + 1),
         "feedback_events": steps * paired_batch * verifier.slot_count,
         "mean_write_utility": sum(write_utilities) / max(1, len(write_utilities)),
+        "capacity_one_tail_isolation": capacity_one_tail_isolation,
+        "capacity_one_action_credit_isolated": capacity_one_tail_isolation,
+        "randomize_event_tokens": randomize_event_tokens,
+        "token_reuse_steps": token_reuse_steps,
         "history": history,
     }
 
@@ -990,6 +1040,7 @@ def run_experiment(
     batch_size: int = 16,
     slot_count: int = 2,
     memory_capacity: int = 2,
+    memory_write_threshold: float = 0.0,
     event_window_capacity: int | None = None,
     writer_intervention_steps: int = 0,
     persistent_memory_audit: bool = False,
@@ -1007,6 +1058,8 @@ def run_experiment(
         raise ValueError("slot count must be at least two")
     if memory_capacity < 1:
         raise ValueError("memory capacity must be positive")
+    if not 0.0 <= memory_write_threshold <= 1.0:
+        raise ValueError("memory write threshold must lie in [0, 1]")
     if writer_intervention_steps < 0:
         raise ValueError("writer intervention steps cannot be negative")
     if token_reuse_steps < 1:
@@ -1018,6 +1071,7 @@ def run_experiment(
         batch_size=batch_size,
         slot_count=slot_count,
         memory_capacity=memory_capacity,
+        memory_write_threshold=memory_write_threshold,
         event_window_capacity=event_window_capacity,
         memory_scope_capacity=(
             batch_size * 2
@@ -1076,6 +1130,8 @@ def run_experiment(
             target_cue=target_cue,
             randomize_slot_order=randomize_slot_order,
             reward_shuffle=reward_shuffle,
+            randomize_event_tokens=randomize_event_tokens,
+            token_reuse_steps=token_reuse_steps,
         )
     reader_zero_shot = evaluate_condition(
         runtime,
@@ -1247,6 +1303,7 @@ def run_experiment(
         "batch_size": batch_size,
         "slot_count": slot_count,
         "memory_capacity": memory_capacity,
+        "memory_write_threshold": memory_write_threshold,
         "event_window_capacity": runtime.controller.event_window_capacity,
         "learner_visible_inputs": [
             "opaque writer event",
@@ -1262,6 +1319,7 @@ def run_experiment(
             "controller_frozen_during_reader_phase": True,
             "memory_top_k": 1,
             "memory_capacity": memory_capacity,
+            "memory_write_threshold": memory_write_threshold,
             "memory_read_match_threshold": runtime.memory.configuration()[
                 "read_match_threshold"
             ],
@@ -1284,7 +1342,11 @@ def run_experiment(
                 else "fixed_slot_order"
             ),
             "writer_intervention_steps": writer_intervention_steps,
-            "writer_intervention_protocol": "counterfactual_leave_one_out_v1",
+            "writer_intervention_protocol": (
+                "counterfactual_leave_one_out_v2_token_diverse"
+                if randomize_event_tokens
+                else "counterfactual_leave_one_out_v1"
+            ),
         },
         "conditions": conditions,
         "promotion_gate": {
@@ -1335,6 +1397,7 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--slot-count", type=int, default=2)
     parser.add_argument("--memory-capacity", type=int, default=2)
+    parser.add_argument("--memory-write-threshold", type=float, default=0.0)
     parser.add_argument("--event-window-capacity", type=int)
     parser.add_argument("--writer-intervention-steps", type=int, default=0)
     parser.add_argument("--persistent-memory-audit", action="store_true")

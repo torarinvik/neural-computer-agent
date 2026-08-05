@@ -1,0 +1,343 @@
+{
+  "schema": "canonical-no-replay-learned-route-v1",
+  "claim_boundary": "A frozen canonical parent acquires spans 3 and 4 as independent executable artifacts. A permutation-equivariant opaque router discovers artifact addresses from fresh attempted-row outcomes. No occupancy feature or span label is supplied to the router.",
+  "seed": 69401,
+  "stages": [
+    2,
+    3,
+    4
+  ],
+  "updates_per_stage": 8,
+  "batch_size": 4,
+  "audit_count": 16,
+  "route_updates": 8,
+  "route_batch_size": 4,
+  "growth_width": 64,
+  "route_input": "controller_hidden_only",
+  "artifact_memory": "session_records/sequence_working_memory_2026-08-02/canonical_no_replay_learned_route_subminute_2026-08-04/artifact_memory",
+  "router_checkpoint": "session_records/sequence_working_memory_2026-08-02/canonical_no_replay_learned_route_subminute_2026-08-04/opaque_address_router.pt",
+  "candidate_keys": [
+    [
+      0.2153625190258026,
+      0.3748045563697815,
+      0.19985784590244293,
+      -0.15432383120059967,
+      0.09090207517147064,
+      0.23314200341701508,
+      -0.07211645692586899,
+      0.2544238567352295,
+      -0.03208335489034653,
+      -0.25925368070602417,
+      -0.07949542254209518,
+      -0.09879105538129807,
+      -0.1010139063000679,
+      -0.29571789503097534,
+      0.23749499022960663,
+      0.01567114144563675,
+      0.004686923697590828,
+      -0.10107030719518661,
+      0.03346136957406998,
+      -0.2663421630859375,
+      -0.16801543533802032,
+      -0.1922525018453598,
+      -0.1891539841890335,
+      0.20836159586906433,
+      0.06855694949626923,
+      -0.12595702707767487,
+      -0.04388478025794029,
+      0.1993425190448761,
+      0.12354183942079544,
+      -0.26803818345069885,
+      -0.01152039784938097,
+      -0.045389216393232346
+    ],
+    [
+      0.34540143609046936,
+      -0.08298078924417496,
+      0.26676690578460693,
+      -0.05669026076793671,
+      -0.12284854799509048,
+      -0.05777006223797798,
+      0.12789621949195862,
+      -0.18864011764526367,
+      0.010094653815031052,
+      0.04084448888897896,
+      0.1935577392578125,
+      -0.1656075119972229,
+      0.09672843664884567,
+      -0.3541790544986725,
+      0.020662466064095497,
+      -0.062493521720170975,
+      0.20222826302051544,
+      0.04807719215750694,
+      -0.1832709163427353,
+      0.061371270567178726,
+      -0.1841762512922287,
+      0.02039661817252636,
+      -0.3164745569229126,
+      -0.23209038376808167,
+      0.27037477493286133,
+      0.09498871862888336,
+      -0.2764182388782501,
+      0.1938350796699524,
+      -0.20565897226333618,
+      -0.12527921795845032,
+      -0.012396642006933689,
+      0.009989898651838303
+    ],
+    [
+      0.054356250911951065,
+      0.20640915632247925,
+      -0.2592763900756836,
+      0.1398661881685257,
+      0.13537895679473877,
+      0.23027724027633667,
+      -0.13134914636611938,
+      0.27758172154426575,
+      0.12428314238786697,
+      -0.164088636636734,
+      -0.009512871503829956,
+      -0.2820679545402527,
+      -0.12220888584852219,
+      -0.006064230110496283,
+      -0.08782106637954712,
+      0.014422756619751453,
+      -0.11387762427330017,
+      -0.08202791959047318,
+      0.26474860310554504,
+      -0.10991297662258148,
+      -0.24005062878131866,
+      -0.06515982747077942,
+      -0.19608710706233978,
+      -0.22104713320732117,
+      -0.2155107706785202,
+      0.47382140159606934,
+      0.024424495175480843,
+      -0.14620287716388702,
+      -0.038875121623277664,
+      -0.048185620456933975,
+      0.0689915344119072,
+      0.06715741008520126
+    ]
+  ],
+  "route_accuracy": 0.3333333432674408,
+  "reward_shuffled_route_accuracy": 0.3333333432674408,
+  "candidate_permutation_accuracy": 0.3333333432674408,
+  "selected_rows": {
+    "2": 0,
+    "3": 0,
+    "4": 0
+  },
+  "selected_behavior": {
+    "2": 0.625,
+    "3": 0.6041666865348816,
+    "4": 0.546875
+  },
+  "wrong_behavior": {
+    "2": 0.5,
+    "3": 0.5,
+    "4": 0.5
+  },
+  "controls": {
+    "blank_sequence": 0.515625,
+    "workspace_disabled": 0.46875
+  },
+  "stable_bits_to_threshold": {
+    "2": null,
+    "3": null,
+    "4": null
+  },
+  "history": {
+    "2": {
+      "training": [
+        {
+          "update": 1,
+          "training_accuracy": 0.5,
+          "loss": 0.6937777996063232
+        },
+        {
+          "update": 2,
+          "training_accuracy": 0.5,
+          "loss": 0.6913349628448486
+        },
+        {
+          "update": 3,
+          "training_accuracy": 0.125,
+          "loss": 0.6849607229232788
+        },
+        {
+          "update": 4,
+          "training_accuracy": 0.125,
+          "loss": 0.6558077335357666
+        },
+        {
+          "update": 5,
+          "training_accuracy": 0.5,
+          "loss": 0.6953960657119751
+        },
+        {
+          "update": 6,
+          "training_accuracy": 0.5,
+          "loss": 0.6986157298088074
+        },
+        {
+          "update": 7,
+          "training_accuracy": 0.625,
+          "loss": 0.728874683380127
+        },
+        {
+          "update": 8,
+          "training_accuracy": 0.25,
+          "loss": 0.637962281703949
+        }
+      ],
+      "progress": [
+        {
+          "update": 4,
+          "heldout_accuracy": 0.5
+        },
+        {
+          "update": 8,
+          "heldout_accuracy": 0.59375
+        }
+      ]
+    },
+    "3": {
+      "training": [
+        {
+          "update": 1,
+          "training_accuracy": 0.3333333432674408,
+          "loss": 0.6570941805839539
+        },
+        {
+          "update": 2,
+          "training_accuracy": 0.8333333134651184,
+          "loss": 0.7807807922363281
+        },
+        {
+          "update": 3,
+          "training_accuracy": 0.5,
+          "loss": 0.6942723393440247
+        },
+        {
+          "update": 4,
+          "training_accuracy": 0.5833333134651184,
+          "loss": 0.7128006815910339
+        },
+        {
+          "update": 5,
+          "training_accuracy": 0.6666666865348816,
+          "loss": 0.7304752469062805
+        },
+        {
+          "update": 6,
+          "training_accuracy": 0.25,
+          "loss": 0.6298605799674988
+        },
+        {
+          "update": 7,
+          "training_accuracy": 0.6666666865348816,
+          "loss": 0.7188351154327393
+        },
+        {
+          "update": 8,
+          "training_accuracy": 0.5,
+          "loss": 0.6748631596565247
+        }
+      ],
+      "progress": [
+        {
+          "update": 4,
+          "heldout_accuracy": 0.5
+        },
+        {
+          "update": 8,
+          "heldout_accuracy": 0.5
+        }
+      ]
+    },
+    "4": {
+      "training": [
+        {
+          "update": 1,
+          "training_accuracy": 0.5,
+          "loss": 0.6955428719520569
+        },
+        {
+          "update": 2,
+          "training_accuracy": 0.5625,
+          "loss": 0.7127161622047424
+        },
+        {
+          "update": 3,
+          "training_accuracy": 0.5,
+          "loss": 0.6900728344917297
+        },
+        {
+          "update": 4,
+          "training_accuracy": 0.5,
+          "loss": 0.6840108633041382
+        },
+        {
+          "update": 5,
+          "training_accuracy": 0.375,
+          "loss": 0.6441278457641602
+        },
+        {
+          "update": 6,
+          "training_accuracy": 0.3125,
+          "loss": 0.6213827133178711
+        },
+        {
+          "update": 7,
+          "training_accuracy": 0.5625,
+          "loss": 0.6750799417495728
+        },
+        {
+          "update": 8,
+          "training_accuracy": 0.625,
+          "loss": 0.6797183156013489
+        }
+      ],
+      "progress": [
+        {
+          "update": 4,
+          "heldout_accuracy": 0.5
+        },
+        {
+          "update": 8,
+          "heldout_accuracy": 0.5
+        }
+      ]
+    }
+  },
+  "accounting": {
+    "unique_logical_lifetimes": 96,
+    "unique_verifier_bits": 288,
+    "optimizer_updates": 40,
+    "replayed_examples": 0,
+    "route_optimizer_updates": 16,
+    "route_unique_lifetimes": 64,
+    "route_replayed_examples": 0,
+    "stable_bits_to_threshold": {
+      "2": null,
+      "3": null,
+      "4": null
+    },
+    "diagnostic_lifetimes_charged_to_budget": 48,
+    "wall_seconds": 1.4469080830021994
+  },
+  "gates": {
+    "no_replayed_examples": true,
+    "learned_route_at_least_90": false,
+    "reward_shuffled_route_near_chance": true,
+    "candidate_permutation_invariant": false,
+    "all_prior_spans_retained": false,
+    "target_span_mastered": false,
+    "wrong_artifact_is_causal": false,
+    "blank_sequence_near_chance": true,
+    "workspace_ablation_is_informative": true,
+    "frozen_parent_core": true
+  },
+  "accepted_diagnostic": false
+}

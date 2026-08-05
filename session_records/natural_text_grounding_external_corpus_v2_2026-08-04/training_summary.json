@@ -1,0 +1,57 @@
+{
+  "schema": "amodal-external-caption-corpus-v2-training-summary-v1",
+  "controller_frozen": true,
+  "text_source": "external_corpus_v2",
+  "caption_corpus_sha256": "3ed04b7e985d40852dd599bf13c236f36ecabe4aa997263acbedf3f21dd921ed",
+  "training_gate": {
+    "updates": 16,
+    "batch_size": 128,
+    "eval_count": 96,
+    "seeds": {
+      "1002001": {
+        "passed": true,
+        "minimum_fused_accuracy": 0.9333333373,
+        "maximum_shuffled_partner_accuracy": 0.5447916389,
+        "maximum_contradictory_partner_accuracy": 0.1552083343,
+        "minimum_contradictory_prediction_flip_rate": 0.7781249881,
+        "minimum_full_n1_accuracy": 0.9781249762,
+        "optimizer_updates": 16,
+        "paired_unlabeled_frames": 36864,
+        "wall_time_seconds": 135.97152787499363,
+        "adapter": "artifacts/checkpoints/amodal_external_corpus_v2_text_frontend_seed1002001_u16.pt",
+        "adapter_sha256": "2086a1b2752c113973e3fe5d0355daaa677ef34e8a11f77f920514ca46578c4c"
+      },
+      "1002002": {
+        "passed": true,
+        "minimum_fused_accuracy": 0.9114583135,
+        "maximum_shuffled_partner_accuracy": 0.5437499881,
+        "maximum_contradictory_partner_accuracy": 0.1614583284,
+        "minimum_contradictory_prediction_flip_rate": 0.75,
+        "minimum_full_n1_accuracy": 0.9822916389,
+        "optimizer_updates": 16,
+        "paired_unlabeled_frames": 36864,
+        "wall_time_seconds": 133.22761029099638,
+        "adapter": "artifacts/checkpoints/amodal_external_corpus_v2_text_frontend_seed1002002_u16.pt",
+        "adapter_sha256": "f31c39647946f869f123ec2813fe1bd07430edd4834bf6dd6e3639083bd8f9f5"
+      },
+      "1002003": {
+        "passed": true,
+        "minimum_fused_accuracy": 0.9229166508,
+        "maximum_shuffled_partner_accuracy": 0.5427083373,
+        "maximum_contradictory_partner_accuracy": 0.1489583403,
+        "minimum_contradictory_prediction_flip_rate": 0.7937499881,
+        "minimum_full_n1_accuracy": 0.9750000238,
+        "optimizer_updates": 16,
+        "paired_unlabeled_frames": 36864,
+        "wall_time_seconds": 119.5832305829972,
+        "adapter": "artifacts/checkpoints/amodal_external_corpus_v2_text_frontend_seed1002003_u16.pt",
+        "adapter_sha256": "afe2d1536ae4291622affa4ed1277be86371bfcd30d380e39906eee31304cebb"
+      }
+    }
+  },
+  "negative_evidence": {
+    "v1_seed1002002_n1024": "failed hard diamond/style-4 cell",
+    "paired_text_views_probe": "no early causal signal",
+    "extra_updates_seed1002002_u24": "overfit hard held-out style"
+  }
+}

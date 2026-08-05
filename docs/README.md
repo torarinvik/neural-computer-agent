@@ -11,6 +11,8 @@
 3. [`../README.md`](../README.md) summarizes the project, current audited
    frontier, and links to evidence.
 4. [`FAST_ITERATION.md`](FAST_ITERATION.md) defines campaign-sizing practice.
+5. [`PROMOTION_FIREWALL.md`](PROMOTION_FIREWALL.md) defines the machine-checkable
+   evidence bundle and one-use holdout guard for promotion claims.
 
 The canonical implementation is in `../src/neural_computer/`. Experiment
 directories may retain historical trainers and compatibility readers, but new

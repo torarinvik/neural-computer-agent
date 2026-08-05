@@ -13,14 +13,19 @@ from __future__ import annotations
 
 import argparse
 import copy
-from dataclasses import asdict, dataclass
 import itertools
 import json
 import math
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from time import perf_counter
 
 import torch
+
+from neural_computer.plasticity import (
+    project_gradient_against_reference,
+    project_parameter_update_against_reference,
+)
 
 from .environment import ACTIONS, IMAGE_SIZE, NULL_ACTION
 from .legacy_model import ControllerState, UnifiedCognitiveController
@@ -731,77 +736,6 @@ def binary_outcome_complete_targets(
         raise ValueError("outcome completion is exact only for two actions")
     return torch.where(
         outcomes > 0.5, attempted_actions, 1 - attempted_actions)
-
-
-def project_gradient_against_reference(
-        named_parameters: list[tuple[str, torch.nn.Parameter]],
-        reference_gradient: dict[str, torch.Tensor],
-        strength: float) -> tuple[bool, float | None, float | None]:
-    """Remove a target-gradient component that opposes verified rehearsal."""
-    if not 0.0 <= strength <= 1.0:
-        raise ValueError("projection strength must be within [0, 1]")
-    target_norm_sq = torch.zeros(
-        (), device=named_parameters[0][1].device)
-    reference_norm_sq = torch.zeros_like(target_norm_sq)
-    dot = torch.zeros_like(target_norm_sq)
-    for name, parameter in named_parameters:
-        if parameter.grad is None:
-            continue
-        reference = reference_gradient[name]
-        dot += torch.sum(parameter.grad * reference)
-        target_norm_sq += torch.sum(parameter.grad.square())
-        reference_norm_sq += torch.sum(reference.square())
-    if float(target_norm_sq) == 0.0 or float(reference_norm_sq) == 0.0:
-        return False, None, None
-    cosine = float(dot / torch.sqrt(target_norm_sq * reference_norm_sq))
-    applied = float(dot) < 0.0 and strength > 0.0
-    if applied:
-        coefficient = strength * dot / reference_norm_sq
-        with torch.no_grad():
-            for name, parameter in named_parameters:
-                if parameter.grad is not None:
-                    parameter.grad.sub_(
-                        coefficient * reference_gradient[name])
-    post_dot = torch.zeros_like(dot)
-    for name, parameter in named_parameters:
-        if parameter.grad is not None:
-            post_dot += torch.sum(
-                parameter.grad * reference_gradient[name])
-    return applied, cosine, float(post_dot)
-
-
-def project_parameter_update_against_reference(
-        named_parameters: list[tuple[str, torch.nn.Parameter]],
-        parameters_before: dict[str, torch.Tensor],
-        reference_gradient: dict[str, torch.Tensor],
-        strength: float) -> tuple[bool, float | None, float | None]:
-    """Remove an actual optimizer update that would raise rehearsal loss."""
-    if not 0.0 <= strength <= 1.0:
-        raise ValueError("projection strength must be within [0, 1]")
-    update_norm_sq = torch.zeros(
-        (), device=named_parameters[0][1].device)
-    reference_norm_sq = torch.zeros_like(update_norm_sq)
-    dot = torch.zeros_like(update_norm_sq)
-    for name, parameter in named_parameters:
-        update = parameter.detach() - parameters_before[name]
-        reference = reference_gradient[name]
-        dot += torch.sum(update * reference)
-        update_norm_sq += torch.sum(update.square())
-        reference_norm_sq += torch.sum(reference.square())
-    if float(update_norm_sq) == 0.0 or float(reference_norm_sq) == 0.0:
-        return False, None, None
-    cosine = float(dot / torch.sqrt(update_norm_sq * reference_norm_sq))
-    applied = float(dot) > 0.0 and strength > 0.0
-    if applied:
-        coefficient = strength * dot / reference_norm_sq
-        with torch.no_grad():
-            for name, parameter in named_parameters:
-                parameter.sub_(coefficient * reference_gradient[name])
-    post_dot = torch.zeros_like(dot)
-    for name, parameter in named_parameters:
-        update = parameter.detach() - parameters_before[name]
-        post_dot += torch.sum(update * reference_gradient[name])
-    return applied, cosine, float(post_dot)
 
 
 def rollout_procedural_shape_span(

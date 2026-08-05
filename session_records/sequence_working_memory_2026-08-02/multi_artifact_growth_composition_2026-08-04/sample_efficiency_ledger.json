@@ -1,0 +1,41 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "multi-artifact-growth-composition-2026-08-04",
+  "status": "promoted_narrow_two_seed_composition",
+  "mechanism": "verified top-k opaque promotion plus disjoint growth-slot composition",
+  "learner_visible_information": [
+    "rendered sensory events",
+    "opaque candidate artifact keys",
+    "verified tensor payloads",
+    "deterministic scalar verifier outcomes"
+  ],
+  "runs": [
+    {
+      "seed": 69001,
+      "unique_logical_lifetimes": 320,
+      "unique_verifier_bits": 2560,
+      "verifier_bits": 2560,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "wall_seconds": 94.96702945799916,
+      "stable_bits_to_threshold": null,
+      "retention_on_mastered_primitives": null,
+      "transfer_ratio_against_fresh_learner": null,
+      "gates_pass": true
+    },
+    {
+      "seed": 69002,
+      "unique_logical_lifetimes": 320,
+      "unique_verifier_bits": 2560,
+      "verifier_bits": 2560,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "wall_seconds": null,
+      "stable_bits_to_threshold": null,
+      "retention_on_mastered_primitives": null,
+      "transfer_ratio_against_fresh_learner": null,
+      "gates_pass": true
+    }
+  ],
+  "claim_boundary": "Narrow replicated composition: two verified opaque growth artifacts execute in disjoint slots of one frozen controller and retain both procedures. Arbitrary program composition, sequential factor algebra, and general cognition remain unqualified."
+}

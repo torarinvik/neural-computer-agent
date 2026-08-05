@@ -1,0 +1,53 @@
+{
+  "schema": "amodal-external-caption-corpus-v2-replay-summary-v1",
+  "training_optimizer_loaded": false,
+  "evaluation_count_per_appearance_style": 1024,
+  "text_source": "external_corpus_v2",
+  "caption_corpus_sha256": "3ed04b7e985d40852dd599bf13c236f36ecabe4aa997263acbedf3f21dd921ed",
+  "heldout_styles": [3, 4],
+  "controller_parameters_unchanged": {
+    "1002001": true,
+    "1002002": true,
+    "1002003": true
+  },
+  "seeds": {
+    "1002001": {
+      "passed": true,
+      "minimum_fused_accuracy": 0.9365234375,
+      "maximum_shuffled_partner_accuracy": 0.5353515744,
+      "maximum_contradictory_partner_accuracy": 0.1478515565,
+      "minimum_contradictory_prediction_flip_rate": 0.7886718512,
+      "minimum_full_n1_accuracy": 0.9794921875,
+      "adapter_sha256": "2086a1b2752c113973e3fe5d0355daaa677ef34e8a11f77f920514ca46578c4c",
+      "report": "saved_replay_seed1002001_n1024.json"
+    },
+    "1002002": {
+      "passed": true,
+      "minimum_fused_accuracy": 0.9230468869,
+      "maximum_shuffled_partner_accuracy": 0.5458984375,
+      "maximum_contradictory_partner_accuracy": 0.1517578065,
+      "minimum_contradictory_prediction_flip_rate": 0.7712890506,
+      "minimum_full_n1_accuracy": 0.9751952887,
+      "adapter_sha256": "f31c39647946f869f123ec2813fe1bd07430edd4834bf6dd6e3639083bd8f9f5",
+      "report": "saved_replay_seed1002002_n1024.json"
+    },
+    "1002003": {
+      "passed": true,
+      "minimum_fused_accuracy": 0.9357421994,
+      "maximum_shuffled_partner_accuracy": 0.5419921875,
+      "maximum_contradictory_partner_accuracy": 0.1371093690,
+      "minimum_contradictory_prediction_flip_rate": 0.8130859137,
+      "minimum_full_n1_accuracy": 0.9775390625,
+      "adapter_sha256": "afe2d1536ae4291622affa4ed1277be86371bfcd30d380e39906eee31304cebb",
+      "report": "saved_replay_seed1002003_n1024.json"
+    }
+  },
+  "strict_gate": {
+    "fused_accuracy_minimum": 0.9,
+    "shuffled_partner_accuracy_maximum": 0.6,
+    "contradictory_partner_accuracy_maximum": 0.25,
+    "contradictory_prediction_flip_rate_minimum": 0.75,
+    "vision_only_accuracy_minimum": 0.95
+  },
+  "interpretation": "All three independent v2 external-corpus frontends pass the exact curated-artifact replay. The v2 data repair removes the v1 seed-1002002 hard-cell failure without changing the cognitive core or frontend architecture."
+}

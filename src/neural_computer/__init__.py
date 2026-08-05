@@ -4,12 +4,35 @@ Historical trainers and checkpoint readers live under ``experiments``.  New
 agent code imports from this package instead.
 """
 
+from .addressing import (
+    FactorizedOpaqueAddressRouter,
+    OpaqueAddressRouter,
+    attempted_outcome_loss,
+    selector_distillation_loss,
+)
+from .artifact_memory import (
+    ARTIFACT_MEMORY_SCHEMA,
+    ArtifactHandle,
+    ExecutableArtifactMemory,
+)
 from .checkpoint import load_runtime_components, save_runtime
 from .controller import (
     EXECUTION_STATES,
     AmodalCognitiveController,
     ControllerOutput,
     ControllerState,
+)
+from .credit import (
+    factorized_counterfactual_policy_loss,
+    paired_counterfactual_advantage,
+    paired_counterfactual_policy_loss,
+    paired_counterfactual_ranking_loss,
+)
+from .growth import (
+    GrowthLoadReceipt,
+    compose_growth_artifacts,
+    freeze_core,
+    load_growth_artifact,
 )
 from .interface import (
     EVENT_SCHEMA,
@@ -33,7 +56,31 @@ from .memory import (
     MemoryWriteReceipt,
     PersistentContentAddressedMemory,
 )
+from .plasticity import (
+    ExternalMemoryWritePolicy,
+    MemoryWriteObservation,
+    accumulate_current_gradients,
+    project_gradient_against_reference,
+    project_parameter_update_against_reference,
+    zero_gradient_map,
+)
 from .policies import EventReliabilityPolicy, EventWaitPolicy
+from .promotion import (
+    HOLDOUT_LEDGER_SCHEMA,
+    PROMOTION_SCHEMA,
+    HoldoutLedger,
+    MetricRequirement,
+    PromotionDecision,
+    PromotionEvidence,
+    PromotionGate,
+    PromotionRejected,
+    evaluate_promotion,
+    read_promotion_record,
+    require_promotion,
+    sha256_file,
+    sha256_files,
+    write_promotion_record,
+)
 from .runtime import (
     AmodalControllerRuntime,
     AmodalEventTimeline,
@@ -48,14 +95,17 @@ from .runtime import (
 )
 
 __all__ = [
+    "ARTIFACT_MEMORY_SCHEMA",
     "EVENT_SCHEMA",
     "EVENT_WINDOW_SCHEMA",
     "EXECUTION_STATES",
+    "HOLDOUT_LEDGER_SCHEMA",
     "INTENTION_SCHEMA",
     "MEMORY_BACKEND_FORMAT",
     "MEMORY_READ_MATCH_THRESHOLD",
     "MEMORY_SCHEMA",
     "MEMORY_SNAPSHOT_FORMAT",
+    "PROMOTION_SCHEMA",
     "AmodalCognitiveController",
     "AmodalControllerRuntime",
     "AmodalEvent",
@@ -68,6 +118,7 @@ __all__ = [
     "AmodalInputBus",
     "AmodalOutputBus",
     "AmodalRuntimeOutput",
+    "ArtifactHandle",
     "ContentAddressedMemory",
     "ControllerFeedback",
     "ControllerOutput",
@@ -75,13 +126,44 @@ __all__ = [
     "EventReliabilityPolicy",
     "EventTokenWindow",
     "EventWaitPolicy",
+    "ExecutableArtifactMemory",
+    "ExternalMemoryWritePolicy",
+    "FactorizedOpaqueAddressRouter",
+    "GrowthLoadReceipt",
+    "HoldoutLedger",
     "IntentEvent",
     "MemoryBackend",
     "MemoryQuery",
     "MemoryRead",
+    "MemoryWriteObservation",
     "MemoryWriteReceipt",
+    "MetricRequirement",
+    "OpaqueAddressRouter",
     "OpaqueProtocolDecoder",
     "PersistentContentAddressedMemory",
+    "PromotionDecision",
+    "PromotionEvidence",
+    "PromotionGate",
+    "PromotionRejected",
+    "accumulate_current_gradients",
+    "attempted_outcome_loss",
+    "compose_growth_artifacts",
+    "evaluate_promotion",
+    "factorized_counterfactual_policy_loss",
+    "freeze_core",
+    "load_growth_artifact",
     "load_runtime_components",
+    "paired_counterfactual_advantage",
+    "paired_counterfactual_policy_loss",
+    "paired_counterfactual_ranking_loss",
+    "project_gradient_against_reference",
+    "project_parameter_update_against_reference",
+    "read_promotion_record",
+    "require_promotion",
     "save_runtime",
+    "selector_distillation_loss",
+    "sha256_file",
+    "sha256_files",
+    "write_promotion_record",
+    "zero_gradient_map",
 ]

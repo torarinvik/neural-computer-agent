@@ -142,6 +142,14 @@ retention on mastered primitives, fresh-learner transfer, and persistent
 memory qualification. Reports and exact accounting are in
 `session_records/memory_retention_amodal_v39_2026-08-04/`.
 
+The parent-acquisition trainer now uses the canonical factorized counterfactual
+credit primitive for paired probe and recall action decisions. Their verifier
+outcomes remain separate factors; the write decision remains separately
+credited because this phase does not yet isolate a write/skip arm. A small
+integration smoke run executes the factorized path with zero replay and is
+recorded as infrastructure validation only. This does not expand the v39
+capability claim.
+
 ## v40–v41: primitive retention and parent-preserving qualification
 
 The first longer v40 run reached `0.998` intact retention but forgot the
@@ -412,3 +420,62 @@ corruption controls reject altered state. This promotes only the narrow
 outcome-only three-slot/two-row retention capability, not general episodic
 memory or natural-modality grounding. Evidence is in
 `session_records/memory_retention_amodal_v76_2026-08-04/`.
+
+## 2026-08-04: three-factor parent credit and retention boundary
+
+The parent-acquisition trainer now separates probe action, write/skip, and
+recall action into three common-random intervention factors. Recall uses a
+differentiable memory transaction so the value path can learn, while a forced
+write can explicitly detach its gate gradient. A direct unit test verifies
+that recall gradients reach the memory-value path without reaching the write
+policy head.
+
+At the 1,024-update parent rung, seed 17 reached `0.980` mastered-primitive
+retention and `0.744` mean unseen-token retention; seed 69415 replicated
+`0.992` and `0.734`. Intact recall was `0.787`/`0.747` and reverse-order
+recall `0.742`/`0.720`. Reward-shuffled training stayed at chance. This is a
+replicated narrow parent-acquisition and memory-value credit signal, not a
+promotion: target-last recall was about `0.99`, while target-first remained
+about `0.50` in both seeds.
+
+The retention counterfactual was also corrected so non-branch positions are
+forced to skip, matching its stated intervention. Parent-protected retention
+controls preserve mastered skills but do not remove the recency shortcut;
+unprotected retention updates catastrophically forget the parent. Those
+controls are rejected. The next experiment must create negative utility for
+overwriting an already retained target while keeping the parent frozen; more
+generic write features or longer unprotected retention training are not the
+answer. Reports and ledgers are in the
+`counterfactual_three_factor_value_gradient_*` and
+`counterfactual_three_factor_retention_v2_*` directories under
+`session_records/sequence_working_memory_2026-08-02/`.
+
+## v77: isolated external-writer overwrite credit
+
+The next bottleneck was not the frozen controller's representation or memory
+address; it was credit assignment for a write that can preserve or destroy an
+already stored event. The `external_overwrite_v2` protocol freezes the
+controller and trains a separately versioned memory-side writer from three
+common-random outcome factors: target write versus skip, true distractor
+overwrite versus skip after the target is stored, and target write after a
+distractor is stored. The target and distractor remain trainer-only
+intervention state.
+
+The first attempt used an unbounded residual and returned to the last-write
+shortcut at 64 updates. A corrected factor order, sharper generic frozen
+relevance prior, and bounded `tanh` residual produced the accepted writer. The
+64-update seed-17 rung reached target-first `0.949`, target-last `0.971`,
+intact `0.965`, mastered-parent retention `0.973`, and unseen-token minimum
+`0.957`. Seed 69415 replicated target-first `0.983`, target-last `0.982`,
+intact `0.977`, mastered retention `0.965`, and unseen minimum `0.961`.
+The reward-shuffled control stayed at chance (`0.483` intact,
+`0.508`/`0.499` target-first/last) and never qualified its parent. All runs
+used zero replayed examples.
+
+This is a promoted narrow causal overwrite-credit rung, not a claim of
+general continual learning or arbitrary new computation. Reports and ledgers
+are in the three `external_write_relevance_prior_v10*` directories under
+`session_records/sequence_working_memory_2026-08-02/`. The next gate is
+transfer to larger slot banks and persistent memory, followed by tests that
+the writer learns new write utilities rather than merely executing the frozen
+relevance prior.

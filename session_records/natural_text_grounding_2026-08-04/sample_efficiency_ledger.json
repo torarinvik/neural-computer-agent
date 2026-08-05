@@ -1,0 +1,24 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "natural_text_grounding_2026-08-04",
+  "status": "retracted_metadata_leak_before_population_promotion",
+  "unique_verifier_bits": 0,
+  "unique_logical_lifetimes": 0,
+  "optimizer_updates": [24, 32, 40],
+  "paired_unlabeled_frames": [55296, 73728, 92160],
+  "replayed_examples": 0,
+  "wall_time_seconds": "recorded in future reruns after timing instrumentation; historical reports predate that field",
+  "stable_bits_to_threshold": null,
+  "retention_on_mastered_primitives": "vision-only full_n1 minimum 0.9677 across retained saved-frontends",
+  "transfer_ratio_against_fresh_learner": null,
+  "claim_boundary": "No raw UTF-8 grounded-text capability is currently qualified from this record; prior runs used verifier-generated context IDs in the caption renderer. The corrected pixel-only three-seed training result and its 2/3 independent replay are recorded in ../natural_text_grounding_pixel_only_2026-08-04/ and remain unpromoted.",
+  "controls": [
+    "paired held-out paraphrase styles",
+    "cross-lifetime text shuffle",
+    "contradictory grounded text",
+    "text-only chance control",
+    "vision-only retention",
+    "optimizer-free saved-frontend replay"
+  ],
+  "negative_evidence": "Byte GRU alignment failed while the character n-gram frontend succeeded, localizing the short-rung bottleneck to raw word recoverability."
+}

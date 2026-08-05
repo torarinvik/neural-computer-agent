@@ -1,0 +1,32 @@
+{
+  "decision": "promote_static_pre_authored_annotation_table_v3",
+  "population": "development",
+  "prior_bridge": "../natural_text_grounding_external_corpus_v2_2026-08-04/promotion.json",
+  "rejected_repairs": {
+    "32_update_alias_table": "failed to improve the hard cells",
+    "compact_heldout_syntax": "restored stable contradiction flips without lowering the gate",
+    "diamond_replay": "failed to improve the hard cells",
+    "four_update_probe": "no causal signal",
+    "initial_alias_table": "seed 1003002 failed hard diamond cells",
+    "paired_text_views": "failed to improve the hard cells",
+    "stable_lexicon": "removed avoidable synonym-learning burden while retaining complete static sentences"
+  },
+  "schema": "amodal-external-annotation-table-v3-development-manifest-v1",
+  "source_annotation_table": "../../experiments/natural_text_grounding/external_caption_annotation_table_v3.json",
+  "source_annotation_table_sha256": "68ff321b07a4f1196c878a6b6a67a87e726c3b4f1d9ad381aa61e1e09b649d90",
+  "training_reports": {
+    "1003001": {
+      "path": "training_seed1003001_u25.json",
+      "sha256": "01dff9c1066d8479d62875e491be39055093ef4fd59f48f9324018d6c6bf3181"
+    },
+    "1003002": {
+      "path": "training_seed1003002_u25.json",
+      "sha256": "fadfb211db160117103ebcd72dcfc1fe2ae89d76ef527d2aeb8cf5206946d865"
+    },
+    "1003003": {
+      "path": "training_seed1003003_u25.json",
+      "sha256": "24ba8817c32a17e35d69ac94cbe8c3eb1c6822d09cf48749a8f9176225ffef9f"
+    }
+  },
+  "training_summary": "training_summary.json"
+}

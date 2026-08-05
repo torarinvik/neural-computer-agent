@@ -1,0 +1,52 @@
+{
+  "schema": "amodal-grounded-byte-text-pixel-only-replay-summary-v1",
+  "training_optimizer_loaded": false,
+  "evaluation_count_per_appearance_style": 256,
+  "heldout_styles": [3, 4],
+  "controller_parameters_unchanged": {
+    "1001001": true,
+    "1001002": true,
+    "1001003": true
+  },
+  "seeds": {
+    "1001001": {
+      "passed": false,
+      "minimum_fused_accuracy": 0.9195312262,
+      "maximum_shuffled_partner_accuracy": 0.546875,
+      "maximum_contradictory_partner_accuracy": 0.1710937470,
+      "minimum_contradictory_prediction_flip_rate": 0.7484375238,
+      "minimum_full_n1_accuracy": 0.9757812619,
+      "failure_cell": "diamonds/style-4",
+      "adapter_sha256": "dd105ccae765c8ed990ebb30fa060a10b941ef53c59a8bc5a33d8b4d08e15949",
+      "report": "saved_replay_seed1001001_n256.json"
+    },
+    "1001002": {
+      "passed": true,
+      "minimum_fused_accuracy": 0.9234374762,
+      "maximum_shuffled_partner_accuracy": 0.546875,
+      "maximum_contradictory_partner_accuracy": 0.15625,
+      "minimum_contradictory_prediction_flip_rate": 0.7718750238,
+      "minimum_full_n1_accuracy": 0.9773437381,
+      "adapter_sha256": "aa1a83c7fc253debc3997b7d3ed83cc0da9ef7ffe10f75ce25ef7afe69572b1d",
+      "report": "saved_replay_seed1001002_n256.json"
+    },
+    "1001003": {
+      "passed": true,
+      "minimum_fused_accuracy": 0.9367187619,
+      "maximum_shuffled_partner_accuracy": 0.5335937738,
+      "maximum_contradictory_partner_accuracy": 0.1429687440,
+      "minimum_contradictory_prediction_flip_rate": 0.7937499881,
+      "minimum_full_n1_accuracy": 0.9757812619,
+      "adapter_sha256": "63eee555af88a83df14971e420da5f9e42345c38bbfa167f844b3586284ee287",
+      "report": "saved_replay_seed1001003_n256.json"
+    }
+  },
+  "strict_gate": {
+    "fused_accuracy_minimum": 0.9,
+    "shuffled_partner_accuracy_maximum": 0.6,
+    "contradictory_partner_accuracy_maximum": 0.25,
+    "contradictory_prediction_flip_rate_minimum": 0.75,
+    "vision_only_accuracy_minimum": 0.95
+  },
+  "interpretation": "Development-only 256-lifetime replay: two of three independent saved frontends pass and seed 1001001 is a finite-sample near miss. The promotion decision uses the stronger 1,024-lifetime replay in saved_frontend_replay_n1024_summary.json."
+}

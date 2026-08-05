@@ -38,6 +38,7 @@ LEGACY_RUNTIME_FORMAT_V23 = "neural-computer.amodal-runtime.v23"
 LEGACY_RUNTIME_FORMAT_V24 = "neural-computer.amodal-runtime.v24"
 LEGACY_RUNTIME_FORMAT_V25 = "neural-computer.amodal-runtime.v25"
 LEGACY_RUNTIME_FORMAT_V26 = "neural-computer.amodal-runtime.v26"
+LEGACY_RUNTIME_FORMAT_V27 = "neural-computer.amodal-runtime.v27"
 
 
 def _memory_configuration_matches(
@@ -114,6 +115,7 @@ def load_runtime_components(
     payload_format = payload.get("format")
     if payload_format not in {
         RUNTIME_FORMAT,
+        LEGACY_RUNTIME_FORMAT_V27,
         LEGACY_RUNTIME_FORMAT_V26,
         LEGACY_RUNTIME_FORMAT_V25,
         LEGACY_RUNTIME_FORMAT_V24,
@@ -146,6 +148,7 @@ def load_runtime_components(
         raise ValueError("unsupported neural-IR schema in runtime checkpoint")
     expected_configuration = runtime.configuration()
     legacy = payload_format in {
+        LEGACY_RUNTIME_FORMAT_V27,
         LEGACY_RUNTIME_FORMAT_V26,
         LEGACY_RUNTIME_FORMAT_V25,
         LEGACY_RUNTIME_FORMAT,
@@ -190,6 +193,7 @@ def load_runtime_components(
             LEGACY_RUNTIME_FORMAT_V24,
             LEGACY_RUNTIME_FORMAT_V26,
             LEGACY_RUNTIME_FORMAT_V25,
+            LEGACY_RUNTIME_FORMAT_V27,
             LEGACY_RUNTIME_FORMAT_V22,
             LEGACY_RUNTIME_FORMAT_V21,
             LEGACY_RUNTIME_FORMAT_V20,
@@ -217,6 +221,7 @@ def load_runtime_components(
             LEGACY_RUNTIME_FORMAT_V24,
             LEGACY_RUNTIME_FORMAT_V26,
             LEGACY_RUNTIME_FORMAT_V25,
+            LEGACY_RUNTIME_FORMAT_V27,
             LEGACY_RUNTIME_FORMAT_V22,
             LEGACY_RUNTIME_FORMAT_V21,
             LEGACY_RUNTIME_FORMAT_V20,
@@ -243,6 +248,7 @@ def load_runtime_components(
             LEGACY_RUNTIME_FORMAT_V24,
             LEGACY_RUNTIME_FORMAT_V26,
             LEGACY_RUNTIME_FORMAT_V25,
+            LEGACY_RUNTIME_FORMAT_V27,
             LEGACY_RUNTIME_FORMAT_V22,
             LEGACY_RUNTIME_FORMAT_V21,
             LEGACY_RUNTIME_FORMAT_V20,
@@ -264,6 +270,7 @@ def load_runtime_components(
             LEGACY_RUNTIME_FORMAT_V24,
             LEGACY_RUNTIME_FORMAT_V26,
             LEGACY_RUNTIME_FORMAT_V25,
+            LEGACY_RUNTIME_FORMAT_V27,
             LEGACY_RUNTIME_FORMAT_V22,
             LEGACY_RUNTIME_FORMAT_V21,
             LEGACY_RUNTIME_FORMAT_V20,
@@ -283,6 +290,7 @@ def load_runtime_components(
             LEGACY_RUNTIME_FORMAT_V24,
             LEGACY_RUNTIME_FORMAT_V26,
             LEGACY_RUNTIME_FORMAT_V25,
+            LEGACY_RUNTIME_FORMAT_V27,
             LEGACY_RUNTIME_FORMAT_V22,
             LEGACY_RUNTIME_FORMAT_V21,
             LEGACY_RUNTIME_FORMAT_V20,
@@ -369,6 +377,15 @@ def load_runtime_components(
         elif payload_format == LEGACY_RUNTIME_FORMAT_V26:
             legacy_controller["schema"] = "neural-computer.controller.v26"
         payload_controller = payload["configuration"]["controller"]
+        if payload_format == LEGACY_RUNTIME_FORMAT_V27:
+            for growth_field in (
+                "growth_register_widths",
+                "growth_prior_only_from",
+                "growth_recurrent_from",
+                "growth_boundary",
+            ):
+                legacy_controller.pop(growth_field, None)
+            legacy_controller["schema"] = "neural-computer.controller.v27"
         for compatibility_field in (
             "memory_address",
             "event_address_relevance",
@@ -412,6 +429,7 @@ def load_runtime_components(
             LEGACY_RUNTIME_FORMAT_V24,
             LEGACY_RUNTIME_FORMAT_V26,
             LEGACY_RUNTIME_FORMAT_V25,
+            LEGACY_RUNTIME_FORMAT_V27,
             LEGACY_RUNTIME_FORMAT_V22,
             LEGACY_RUNTIME_FORMAT_V21,
             LEGACY_RUNTIME_FORMAT_V20,
@@ -490,6 +508,7 @@ def load_runtime_components(
             LEGACY_RUNTIME_FORMAT_V24,
             LEGACY_RUNTIME_FORMAT_V26,
             LEGACY_RUNTIME_FORMAT_V25,
+            LEGACY_RUNTIME_FORMAT_V27,
         }:
             runtime.controller.stable_memory_address = False
         runtime.controller.memory_address_residual = (

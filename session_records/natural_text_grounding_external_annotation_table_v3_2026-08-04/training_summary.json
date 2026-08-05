@@ -1,0 +1,67 @@
+{
+  "aggregate": {
+    "maximum_contradictory_partner_accuracy": 0.1614583283662796,
+    "maximum_shuffled_partner_accuracy": 0.5395833253860474,
+    "minimum_contradictory_prediction_flip_rate": 0.7572916746139526,
+    "minimum_full_n1_accuracy": 0.9739583134651184,
+    "minimum_fused_accuracy": 0.918749988079071
+  },
+  "annotation_table_sha256": "68ff321b07a4f1196c878a6b6a67a87e726c3b4f1d9ad381aa61e1e09b649d90",
+  "controller_frozen": true,
+  "negative_evidence": {
+    "32_update_alias_table": "still failed the hard diamond cells",
+    "diamond_replay": "did not improve the hard diamond cells",
+    "four_update_probe": "no grounded signal; fused accuracy remained at chance",
+    "initial_alias_table": "seed 1003002 failed hard diamond heldout cells",
+    "paired_text_views": "did not improve the hard diamond cells",
+    "stable_lexicon_and_compact_heldout": "selected final data repair; all three training seeds passed"
+  },
+  "schema": "amodal-external-annotation-table-v3-training-summary-v1",
+  "text_source": "external_annotation_table_v3",
+  "training_gate": {
+    "batch_size": 128,
+    "eval_count": 96,
+    "seeds": {
+      "1003001": {
+        "adapter": "artifacts/checkpoints/amodal_external_annotation_table_v3_text_frontend_seed1003001_u25.pt",
+        "adapter_sha256": "c4c6cfa80a72e9da2f8485386fb82902f79aef16f15d8ef5e5567e444ca1bd83",
+        "maximum_contradictory_partner_accuracy": 0.15520833432674408,
+        "maximum_shuffled_partner_accuracy": 0.5322916507720947,
+        "minimum_contradictory_prediction_flip_rate": 0.7802083492279053,
+        "minimum_full_n1_accuracy": 0.9760416746139526,
+        "minimum_fused_accuracy": 0.9322916865348816,
+        "optimizer_updates": 25,
+        "paired_unlabeled_frames": 57600,
+        "passed": true,
+        "wall_time_seconds": 119.1887859999988
+      },
+      "1003002": {
+        "adapter": "artifacts/checkpoints/amodal_external_annotation_table_v3_text_frontend_seed1003002_u25.pt",
+        "adapter_sha256": "062c7f08ba0c4733b88ec3e3ae1829108386744111aa7a3c31765ef56ae2f8bd",
+        "maximum_contradictory_partner_accuracy": 0.1614583283662796,
+        "maximum_shuffled_partner_accuracy": 0.534375011920929,
+        "minimum_contradictory_prediction_flip_rate": 0.7572916746139526,
+        "minimum_full_n1_accuracy": 0.9739583134651184,
+        "minimum_fused_accuracy": 0.918749988079071,
+        "optimizer_updates": 25,
+        "paired_unlabeled_frames": 57600,
+        "passed": true,
+        "wall_time_seconds": 164.70742258400423
+      },
+      "1003003": {
+        "adapter": "artifacts/checkpoints/amodal_external_annotation_table_v3_text_frontend_seed1003003_u25.pt",
+        "adapter_sha256": "79c1a291043c284b132884201c1606bf041c0c1f5d71be3eb612936403faa95d",
+        "maximum_contradictory_partner_accuracy": 0.14479166269302368,
+        "maximum_shuffled_partner_accuracy": 0.5395833253860474,
+        "minimum_contradictory_prediction_flip_rate": 0.784375011920929,
+        "minimum_full_n1_accuracy": 0.9833333492279053,
+        "minimum_fused_accuracy": 0.9229166507720947,
+        "optimizer_updates": 25,
+        "paired_unlabeled_frames": 57600,
+        "passed": true,
+        "wall_time_seconds": 118.86605258299096
+      }
+    },
+    "updates": 25
+  }
+}

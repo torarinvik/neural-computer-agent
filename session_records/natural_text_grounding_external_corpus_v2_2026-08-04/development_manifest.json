@@ -1,0 +1,19 @@
+{
+  "schema": "amodal-external-caption-corpus-v2-development-manifest-v1",
+  "population": "development",
+  "training_summary": "training_summary.json",
+  "source_corpus": "../../experiments/natural_text_grounding/external_caption_corpus_v2.json",
+  "source_corpus_sha256": "3ed04b7e985d40852dd599bf13c236f36ecabe4aa997263acbedf3f21dd921ed",
+  "prior_bridge": "../natural_text_grounding_pixel_only_2026-08-04/promotion.json",
+  "training_reports": {
+    "1002001": "training_seed1002001_u16.json",
+    "1002002": "training_seed1002002_u16.json",
+    "1002003": "training_seed1002003_u16.json"
+  },
+  "rejected_repairs": {
+    "v1_seed1002002_n1024": "prior external_corpus population record",
+    "paired_text_views": "diagnostic probe at 8 updates",
+    "extra_updates": "seed 1002002 at 24 updates"
+  },
+  "decision": "promote_v2_order_augmented_external_caption_corpus"
+}

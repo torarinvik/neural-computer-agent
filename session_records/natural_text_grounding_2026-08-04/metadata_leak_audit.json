@@ -1,0 +1,19 @@
+{
+  "schema": "grounded-text-metadata-leak-audit-v1",
+  "status": "prior_raw_byte_results_retracted",
+  "affected_records": [
+    "byte_gru_failed_seed1001001.json",
+    "byte_cnn_seed1001001_u24.json",
+    "byte_cnn_seed1001002_u24_near_miss.json",
+    "byte_cnn_seed1001002_u32.json",
+    "byte_cnn_seed1001003_u32_near_miss.json",
+    "byte_cnn_seed1001003_u40_near_miss.json",
+    "saved_frontend_replay_summary.json",
+    "paired_view_followup_summary.json",
+    "representation_frontier_followups.json"
+  ],
+  "cause": "render_grounded_text received generate_lifetimes(...).context_ids and used those verifier-generated pair identities to choose the shape word.",
+  "why_invalid": "context_ids are not rendered pixels and were not available to a deployed text source; the text stream therefore carried privileged verifier information.",
+  "repair": "render_grounded_text now accepts pixels only and derives coarse color, brightness, position, and orientation descriptors from the visible mask.",
+  "claim_boundary": "No raw-byte grounded-text capability is currently promoted. A fresh pixel-only population must be run from the repaired boundary."
+}

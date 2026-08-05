@@ -1,0 +1,63 @@
+{
+  "aggregate": {
+    "maximum_contradictory_partner_accuracy": 0.16464844346046448,
+    "maximum_shuffled_partner_accuracy": 0.5462890863418579,
+    "minimum_contradictory_prediction_flip_rate": 0.7542968988418579,
+    "minimum_full_n1_accuracy": 0.975390613079071,
+    "minimum_fused_accuracy": 0.913867175579071
+  },
+  "annotation_table_sha256": "68ff321b07a4f1196c878a6b6a67a87e726c3b4f1d9ad381aa61e1e09b649d90",
+  "controller_parameters_unchanged": {
+    "1003001": true,
+    "1003002": true,
+    "1003003": true
+  },
+  "evaluation_count_per_appearance_style": 1024,
+  "heldout_styles": [
+    3,
+    4
+  ],
+  "interpretation": "All three independent static annotation-table frontends pass the exact optimizer-free 1,024-lifetime replay. The frozen controller and visual path remain unchanged.",
+  "schema": "amodal-external-annotation-table-v3-replay-summary-v1",
+  "seeds": {
+    "1003001": {
+      "adapter_sha256": "c4c6cfa80a72e9da2f8485386fb82902f79aef16f15d8ef5e5567e444ca1bd83",
+      "maximum_contradictory_partner_accuracy": 0.15566405653953552,
+      "maximum_shuffled_partner_accuracy": 0.545117199420929,
+      "minimum_contradictory_prediction_flip_rate": 0.7777343988418579,
+      "minimum_full_n1_accuracy": 0.9759765863418579,
+      "minimum_fused_accuracy": 0.9283202886581421,
+      "passed": true,
+      "report": "saved_replay_seed1003001_n1024.json"
+    },
+    "1003002": {
+      "adapter_sha256": "062c7f08ba0c4733b88ec3e3ae1829108386744111aa7a3c31765ef56ae2f8bd",
+      "maximum_contradictory_partner_accuracy": 0.16269531846046448,
+      "maximum_shuffled_partner_accuracy": 0.5462890863418579,
+      "minimum_contradictory_prediction_flip_rate": 0.7542968988418579,
+      "minimum_full_n1_accuracy": 0.975390613079071,
+      "minimum_fused_accuracy": 0.913867175579071,
+      "passed": true,
+      "report": "saved_replay_seed1003002_n1024.json"
+    },
+    "1003003": {
+      "adapter_sha256": "79c1a291043c284b132884201c1606bf041c0c1f5d71be3eb612936403faa95d",
+      "maximum_contradictory_partner_accuracy": 0.16464844346046448,
+      "maximum_shuffled_partner_accuracy": 0.538867175579071,
+      "minimum_contradictory_prediction_flip_rate": 0.7568359375,
+      "minimum_full_n1_accuracy": 0.98046875,
+      "minimum_fused_accuracy": 0.9214843511581421,
+      "passed": true,
+      "report": "saved_replay_seed1003003_n1024.json"
+    }
+  },
+  "strict_gate": {
+    "contradictory_partner_accuracy_maximum": 0.25,
+    "contradictory_prediction_flip_rate_minimum": 0.75,
+    "fused_accuracy_minimum": 0.9,
+    "shuffled_partner_accuracy_maximum": 0.6,
+    "vision_only_accuracy_minimum": 0.95
+  },
+  "text_source": "external_annotation_table_v3",
+  "training_optimizer_loaded": false
+}

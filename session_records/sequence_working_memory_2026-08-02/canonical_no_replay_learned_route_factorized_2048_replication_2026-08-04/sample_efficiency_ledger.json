@@ -1,0 +1,40 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "canonical-no-replay-factorized-learned-route-replication-2048-2026-08-04",
+  "status": "decisively_rejected_for_unstable_span4_acquisition",
+  "mechanism": "frozen parent plus independently acquired executable artifacts and factorized outcome-trained opaque query/key routing",
+  "seed": 69414,
+  "updates_per_stage": 512,
+  "unique_logical_lifetimes": 24576,
+  "unique_verifier_bits": 73728,
+  "verifier_bits": 73728,
+  "optimizer_updates": 5632,
+  "replayed_examples": 0,
+  "route_optimizer_updates": 4096,
+  "route_unique_lifetimes": 65536,
+  "route_unique_verifier_bits": 65536,
+  "route_replayed_examples": 0,
+  "diagnostic_lifetimes_charged_to_budget": 192,
+  "stable_bits_to_threshold": {
+    "span_2": 2048,
+    "span_3": 3072,
+    "span_4": null
+  },
+  "retention_on_mastered_primitives": {
+    "span_2": true,
+    "span_3": true
+  },
+  "transfer_ratio_against_fresh_learner": null,
+  "route_accuracy": 1.0,
+  "reward_shuffled_route_accuracy": 0.3333333333333333,
+  "candidate_permutation_accuracy": 1.0,
+  "selected_accuracy": {
+    "span_2": 1.0,
+    "span_3": 1.0,
+    "span_4": 0.796875
+  },
+  "blank_sequence_accuracy": 0.5,
+  "workspace_disabled_accuracy": 0.671875,
+  "gates_pass": false,
+  "claim_boundary": "Rejected strict promotion because span 4 did not remain at the mastery threshold on every later measured prefix. The route mechanism itself passed its causal and permutation controls."
+}

@@ -1,0 +1,130 @@
+{
+  "schema": "opaque-address-routed-acquired-procedure-bank-v2",
+  "claim_boundary": "Multiple independently acquired, same-schema working-memory growth artifacts are routed by a replaceable memory-side router. The router sees opaque keys, attempted rows, and scalar outcomes; procedure identities remain verifier-private.",
+  "parent": "artifacts/checkpoints/span8_addressed_parent_scale1_seed32001.pt",
+  "artifacts": [
+    "session_records/sequence_working_memory_2026-08-02/frozen_growth_span10_complement_512_2026-08-04/memory",
+    "session_records/sequence_working_memory_2026-08-02/frozen_growth_span10_complement_reverse_512_2026-08-04/memory",
+    "session_records/sequence_working_memory_2026-08-02/frozen_growth_span10_complement_rotate_512_2026-08-04/memory"
+  ],
+  "bank": "session_records/sequence_working_memory_2026-08-02/opaque_route_acquired_three_procedure_compositional_2026-08-04/bank",
+  "seed": 66006,
+  "updates": 512,
+  "batch_size": 64,
+  "unique_logical_lifetimes": 3072,
+  "unique_verifier_bits": 144,
+  "verifier_bits": 32768,
+  "optimizer_updates": 512,
+  "replayed_examples": 32624,
+  "reward_shuffled_verifier_bits": 32768,
+  "wall_seconds": 44.56695675000083,
+  "normal_route_accuracy": 1.0,
+  "reward_shuffled_route_accuracy": 0.3333333432674408,
+  "candidate_permutation_accuracy": 1.0,
+  "cosine_baseline_accuracy": 0.3333333432674408,
+  "selected_rows": [
+    0,
+    1,
+    2
+  ],
+  "bank_reload_exact": true,
+  "controller_weights_unchanged": true,
+  "corruption_rejected": true,
+  "behavior": {
+    "complement": {
+      "selected_row": 0,
+      "expected_row": 0,
+      "selected_route_accuracy": 1.0,
+      "selected_artifact_accuracy": 0.768750011920929,
+      "all_artifact_accuracies": {
+        "1": 0.2953124940395355,
+        "2": 0.7593749761581421,
+        "0": 0.768750011920929
+      },
+      "wrong_artifact_accuracies": {
+        "1": 0.2953124940395355,
+        "2": 0.7593749761581421
+      },
+      "zero_artifact_accuracy": 0.2953124940395355,
+      "wrong_address_discriminative": {
+        "1": true,
+        "2": false
+      },
+      "causal_artifact_rows": [
+        "2",
+        "0"
+      ],
+      "selected_within_five_points_of_best": true,
+      "selected_artifact_is_causal": true
+    },
+    "complement_reverse": {
+      "selected_row": 1,
+      "expected_row": 1,
+      "selected_route_accuracy": 1.0,
+      "selected_artifact_accuracy": 0.6265624761581421,
+      "all_artifact_accuracies": {
+        "0": 0.2734375,
+        "2": 0.2734375,
+        "1": 0.6265624761581421
+      },
+      "wrong_artifact_accuracies": {
+        "0": 0.2734375,
+        "2": 0.2734375
+      },
+      "zero_artifact_accuracy": 0.2734375,
+      "wrong_address_discriminative": {
+        "0": true,
+        "2": true
+      },
+      "causal_artifact_rows": [
+        "1"
+      ],
+      "selected_within_five_points_of_best": true,
+      "selected_artifact_is_causal": true
+    },
+    "complement_rotate": {
+      "selected_row": 2,
+      "expected_row": 2,
+      "selected_route_accuracy": 1.0,
+      "selected_artifact_accuracy": 0.65625,
+      "all_artifact_accuracies": {
+        "0": 0.660937488079071,
+        "1": 0.30156248807907104,
+        "2": 0.65625
+      },
+      "wrong_artifact_accuracies": {
+        "0": 0.660937488079071,
+        "1": 0.30156248807907104
+      },
+      "zero_artifact_accuracy": 0.30000001192092896,
+      "wrong_address_discriminative": {
+        "0": false,
+        "1": true
+      },
+      "causal_artifact_rows": [
+        "0",
+        "2"
+      ],
+      "selected_within_five_points_of_best": true,
+      "selected_artifact_is_causal": true
+    }
+  },
+  "router_latency_ms_per_query": 0.0007226561441105636,
+  "gates": {
+    "normal_route_at_least_90": true,
+    "reward_shuffled_route_near_chance": true,
+    "candidate_permutation_invariant": true,
+    "cosine_baseline_near_chance": true,
+    "all_rows_selected": true,
+    "all_wrong_addresses_discriminative": false,
+    "all_selected_artifacts_causal": true,
+    "all_tasks_have_a_causal_artifact": true,
+    "selected_within_five_points_of_best": true,
+    "beneficial_off_diagonal_transfer_observed": true,
+    "bank_reload_exact": true,
+    "controller_frozen": true,
+    "corruption_rejected": true
+  },
+  "accepted_diagnostic": false,
+  "accepted_compositional_diagnostic": true
+}

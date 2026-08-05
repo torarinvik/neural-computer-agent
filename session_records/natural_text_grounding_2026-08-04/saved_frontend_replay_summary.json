@@ -1,0 +1,28 @@
+{
+  "schema": "amodal-grounded-byte-text-replay-audit-v1",
+  "training_optimizer_loaded": false,
+  "evaluation_count_per_appearance_style": 256,
+  "heldout_styles": [3, 4],
+  "seeds": {
+    "1001001_u24": {
+      "min_fused_accuracy": 0.942187488079071,
+      "max_shuffled_partner_accuracy": 0.5296875238418579,
+      "min_contradictory_prediction_flip_rate": 0.8062499761581421,
+      "min_full_n1_accuracy": 0.9781249761581421
+    },
+    "1001002_u32": {
+      "min_fused_accuracy": 0.9125000238418579,
+      "max_shuffled_partner_accuracy": 0.5531250238418579,
+      "min_contradictory_prediction_flip_rate": 0.73046875,
+      "min_full_n1_accuracy": 0.979687511920929
+    },
+    "1001003_u40": {
+      "min_fused_accuracy": 0.891406238079071,
+      "max_shuffled_partner_accuracy": 0.535937488079071,
+      "min_contradictory_prediction_flip_rate": 0.7437499761581421,
+      "min_full_n1_accuracy": 0.9742187261581421
+    }
+  },
+  "interpretation": "Saved frontend state reproduces the causal bridge; strict population promotion remains open."
+}
+

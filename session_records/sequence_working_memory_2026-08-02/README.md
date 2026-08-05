@@ -1126,6 +1126,91 @@ budget, so the audit objective still has no replay-savings credit and is not
 an autonomous-stop or mastery claim. Full receipts and accounting are in
 `missing_evidence_rehearsal_frontier_2026-08-03/`.
 
+## Protected-plasticity successor rejection (2026-08-04)
+
+Aggregate rehearsal-gradient projection produced a real causal complement
+signal, reaching **+10.06 points** at one seed with old-span changes of
+−1.80/−1.24 points. The independent seed reached +9.01 points but lost
+−4.50/−3.47 points on old spans. A verifier-visible behavioral-retention
+rollback narrowed the loss to −2.53/−1.78 while retaining +6.86 points, but
+still missed the span-nine gate. The branch is rejected before promotion; the
+remaining problem is context-selective plasticity, not more aggregate replay.
+
+The full accounting and the explicit complement-audit correction are in
+`protected_plasticity_frontier_2026-08-04/`.
+
+## No-replay span-retention breakthrough (2026-08-04)
+
+The direct shared-parameter curriculum reached span 4 but forgot earlier
+spans: span 2 fell by **12.5 points** and span 3 by **8.3 points**. A summed
+append-only growth bank reduced some interference but still failed the strict
+retention gate. Both mechanisms were recorded as rejected controls.
+
+The successful design treats acquired capability as an external executable
+file. A frozen span-2 parent receives independently learned span-3 and span-4
+artifacts; a memory-side router selects one artifact from opaque controller
+context and event-window occupancy. Two prefix-audited seeds passed with
+**100% route accuracy**, **100% span-2 and span-3 accuracy**, and span-4 at
+**87.5%/90.625%**. Span 4 remained above the 80% threshold from **12,288
+stable verifier bits** onward in both runs. Blank controls were **50.0–51.2%**,
+the parent core was bit-identical, and replayed examples were **0**.
+
+This is a promoted narrow no-replay retention mechanism, not a claim that
+shared-weight SGD has solved catastrophic forgetting. The retained state is
+isolated, versioned capability memory, which is consistent with the intended
+CPU/filesystem architecture. Full reports, ledgers, and artifacts are in
+`canonical_no_replay_artifact_bank_512_2026-08-04/` and its replication
+directory.
+
+## Learned opaque address discovery (2026-08-04)
+
+The occupancy-derived route was then replaced with a genuinely learned,
+permutation-equivariant address path. Candidate artifact keys are independent
+random opaque vectors; a factorized query/key router learns which key to select
+from controller hidden state and fresh scalar attempted-row outcomes only. It
+does not receive occupancy, span labels, candidate coordinates, or the correct
+row. Each route example is generated and consumed once, with no route replay.
+
+Two independent accepted seeds reached **100% route accuracy**, **100%
+candidate-permutation accuracy**, and **33.3% reward-shuffled accuracy** (the
+three-way chance baseline). Selected behavior retained spans 2/3 at
+**100%/98.96%** and **100%/97.92%**, with span 4 at **86.72%/87.11%**. Stable
+span-4 acquisition began after **16,384/12,288 verifier bits**. The route used
+65,536 unique logical lifetimes and verifier bits per accepted run, with zero
+replayed route examples. A same-seed lower-capacity replication reached the
+route gates but failed the strict stable span-4 gate, so it remains rejected.
+
+This is evidence for learned opaque address discovery in an isolated capability
+memory, not yet evidence that arbitrary new computation can be learned by a
+frozen controller. Full reports and ledgers are in the two
+`canonical_no_replay_learned_route_factorized_2048*` accepted directories;
+failed-capacity records are retained beside them.
+
+## Counterfactual credit for opaque route decisions (2026-08-04)
+
+The first general credit-assignment step replaces independent noisy route
+labels with common-random counterfactual pairs. Each pair shares one fresh
+controller query but attempts two distinct opaque artifact rows; only the two
+scalar verifier outcomes train the score preference. Binary intervention
+decisions use the same paired difference through a policy-gradient loss. No
+correct row, semantic label, or counterfactual metadata enters the deployed
+controller.
+
+With the parent and capability budget held at the accepted 512-update rung,
+route accuracy rose from **70.8%** at 512 paired updates to **83.3%** at 1,024.
+At 2,048 paired updates, two independent seeds passed: **100% route**, **100%
+candidate permutation**, and **33.3%/35.9% shuffled outcome** controls.
+Selected execution retained spans 2/3 at **100%/95.3%** and **100%/97.9%**,
+with span 4 at **88.7%/87.1%**. Each run used **0 replayed examples**,
+**65,536 counterfactual pairs**, and **131,072 route verifier bits**. The
+lower-update rungs are recorded as rejected for insufficient route acquisition.
+
+This is a promoted narrow credit-assignment mechanism for memory-side route
+decisions. It does not yet solve credit assignment when several writes,
+actions, and newly learned computations interact over long horizons. Full
+reports and ledgers are in the two
+`canonical_counterfactual_route_credit_logistic_2048*` directories.
+
 ## Cloud archive
 
 The current Vast instance was quiescent when archived. The load-bearing
@@ -1140,3 +1225,46 @@ The bank manifest now records a SHA-256 for every opaque skill artifact.
 Promotion verifies that hash before loading from disk, and a tampered-file
 regression test rejects modified cold artifacts while legacy manifests remain
 loadable and are upgraded on their next save.
+
+## Three-factor parent credit boundary (2026-08-04)
+
+The three-factor intervention separately credits probe action, write/skip, and
+recall action. The recall factor retains a differentiable memory-value path
+while detaching the forced write-gate gradient; the reward-shuffled control
+stays at chance. Two seeds replicate strong parent acquisition and unseen-token
+retention (`0.980/0.744` and `0.992/0.734`), but both retain a target-last
+shortcut (`~0.99`) and fail target-first (`~0.50`). No checkpoint is promoted.
+
+Parent-protected retention controls preserve old skills but fail to learn
+target-conditioned write selectivity; the unprotected control forgets the
+parent. The remaining bottleneck is counterfactual utility for overwriting an
+already retained target, not generic memory addressing or reward plumbing.
+Receipts and sample-efficiency ledgers are in the
+`counterfactual_three_factor_value_gradient_*` and
+`counterfactual_three_factor_retention_v2_*` directories.
+
+## External memory-side overwrite credit (2026-08-04)
+
+The protected-controller experiment isolated the next missing mechanism: a
+memory-side writer must learn when a write preserves useful state and when it
+overwrites it. `external_overwrite_v2` freezes the controller and trains only
+an independently versioned writer using three outcome-only counterfactual
+factors. The second factor was corrected to always mean target-then-true-
+distractor; the third factor supplies the complementary distractor-then-target
+case.
+
+An unbounded residual failed at 64 updates by reverting to the last-write
+shortcut. The accepted v10 writer uses a frozen generic relevance prior plus a
+bounded `tanh` residual. On the 64-update rung, seed 17 scored `0.949` target
+first and `0.971` target last, with `0.965` intact recall and `0.973` mastered
+retention. Seed 69415 replicated `0.983`/`0.982`, `0.977` intact, and `0.965`
+mastered retention. The reward-shuffled control stayed at `0.483` intact and
+`0.508`/`0.499` target-first/last, with parent retention at `0.453` and no
+stable qualification. Every arm used zero replayed examples.
+
+This is a promoted narrow credit-assignment breakthrough for an isolated
+memory growth component. It is not yet general continual learning: the
+controller remains frozen, the verifier is a two-slot synthetic pressure test,
+and transfer to larger banks, persistent reload, and genuinely new learned
+write utilities remain open. Full accounting is in the three v10 report
+directories and their `sample_efficiency_ledger.json` files.

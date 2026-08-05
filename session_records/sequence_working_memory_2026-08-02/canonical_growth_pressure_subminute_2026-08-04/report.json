@@ -1,0 +1,178 @@
+{
+  "schema": "canonical-working-memory-growth-pressure-v1",
+  "claim_boundary": "Canonical amodal controller growth registers pass a narrow producer-to-prior-only-consumer working-memory pressure test; this is not arbitrary program induction.",
+  "seed": 69201,
+  "parent_updates": 8,
+  "growth_updates": 8,
+  "batch_size": 4,
+  "audit_count": 16,
+  "span": 3,
+  "behavior": {
+    "parent": 0.5,
+    "producer_only": 0.5,
+    "consumer_only": 0.5,
+    "composed": 0.5,
+    "blank_sequence": 0.5,
+    "cue_ablated": 0.5,
+    "producer_zeroed": 0.5,
+    "prior_read_ablated": 0.5,
+    "reward_shuffled": 0.5
+  },
+  "accounting": {
+    "unique_logical_lifetimes": 96,
+    "unique_verifier_bits": 288,
+    "optimizer_updates": 24,
+    "replayed_examples": 0,
+    "wall_seconds": 1.519612624993897
+  },
+  "artifact_memory": {
+    "producer_reload_exact": true,
+    "consumer_reload_exact": true,
+    "occupied_rows": [
+      0,
+      1
+    ]
+  },
+  "history": {
+    "parent": [
+      {
+        "update": 1,
+        "training_accuracy": 0.6666666865348816,
+        "loss": 0.6992238163948059
+      },
+      {
+        "update": 2,
+        "training_accuracy": 0.8333333134651184,
+        "loss": 0.679526150226593
+      },
+      {
+        "update": 3,
+        "training_accuracy": 0.4166666567325592,
+        "loss": 0.6756899356842041
+      },
+      {
+        "update": 4,
+        "training_accuracy": 0.4166666567325592,
+        "loss": 0.6725771427154541
+      },
+      {
+        "update": 5,
+        "training_accuracy": 0.5833333134651184,
+        "loss": 0.6596866250038147
+      },
+      {
+        "update": 6,
+        "training_accuracy": 0.6666666865348816,
+        "loss": 0.653520941734314
+      },
+      {
+        "update": 7,
+        "training_accuracy": 0.5833333134651184,
+        "loss": 0.6530478000640869
+      },
+      {
+        "update": 8,
+        "training_accuracy": 0.4166666567325592,
+        "loss": 0.6608796715736389
+      }
+    ],
+    "producer": [
+      {
+        "update": 1,
+        "training_accuracy": 0.5833333134651184,
+        "loss": 0.7592656016349792
+      },
+      {
+        "update": 2,
+        "training_accuracy": 0.5,
+        "loss": 0.7617373466491699
+      },
+      {
+        "update": 3,
+        "training_accuracy": 0.8333333134651184,
+        "loss": 0.7477211952209473
+      },
+      {
+        "update": 4,
+        "training_accuracy": 0.4166666567325592,
+        "loss": 0.7620919346809387
+      },
+      {
+        "update": 5,
+        "training_accuracy": 0.5,
+        "loss": 0.7594507336616516
+      },
+      {
+        "update": 6,
+        "training_accuracy": 0.6666666865348816,
+        "loss": 0.7520963549613953
+      },
+      {
+        "update": 7,
+        "training_accuracy": 0.5,
+        "loss": 0.7553238272666931
+      },
+      {
+        "update": 8,
+        "training_accuracy": 0.4166666567325592,
+        "loss": 0.7567686438560486
+      }
+    ],
+    "consumer": [
+      {
+        "update": 1,
+        "training_accuracy": 0.5833333134651184,
+        "loss": 0.7035142779350281
+      },
+      {
+        "update": 2,
+        "training_accuracy": 0.6666666865348816,
+        "loss": 0.6988046169281006
+      },
+      {
+        "update": 3,
+        "training_accuracy": 0.6666666865348816,
+        "loss": 0.6969444155693054
+      },
+      {
+        "update": 4,
+        "training_accuracy": 0.25,
+        "loss": 0.7139014601707458
+      },
+      {
+        "update": 5,
+        "training_accuracy": 0.4166666567325592,
+        "loss": 0.7089250683784485
+      },
+      {
+        "update": 6,
+        "training_accuracy": 0.5833333134651184,
+        "loss": 0.6999492645263672
+      },
+      {
+        "update": 7,
+        "training_accuracy": 0.5,
+        "loss": 0.70335453748703
+      },
+      {
+        "update": 8,
+        "training_accuracy": 0.4166666567325592,
+        "loss": 0.7070581316947937
+      }
+    ]
+  },
+  "gates": {
+    "parent_forward_above_chance": false,
+    "composed_beats_parent": false,
+    "composed_beats_producer_only": false,
+    "consumer_only_near_chance": true,
+    "producer_ablation_is_causal": false,
+    "prior_read_ablation_is_causal": false,
+    "missing_sequence_near_chance": true,
+    "cue_ablation_is_causal": false,
+    "reward_shuffled_near_chance": true,
+    "core_unchanged": true,
+    "artifact_reload_exact": true
+  },
+  "accepted_diagnostic": false
+}

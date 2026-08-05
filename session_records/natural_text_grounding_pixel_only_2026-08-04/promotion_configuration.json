@@ -1,0 +1,37 @@
+{
+  "schema": "amodal-grounded-byte-text-promotion-configuration-v1",
+  "controller": "unified_repertoire_span2_amodal_intention_seed122005.pt",
+  "input_bus": "amodal_input_bus_complementary_seed145001.pt",
+  "frontend": "byte_text_grounded_description_cnn",
+  "training": {
+    "updates": 16,
+    "batch_size": 128,
+    "learning_rate": 0.003,
+    "position_bins": 0,
+    "paired_text_views": false,
+    "diamond_replay": false,
+    "unique_verifier_bits": 0,
+    "unique_logical_lifetimes": 0
+  },
+  "promotion_replay": {
+    "command_module": "experiments.natural_text_grounding.audit_saved_frontend",
+    "count_per_appearance_style": 1024,
+    "appearances": ["bars", "diamonds", "dot_pairs"],
+    "heldout_styles": [3, 4],
+    "training_optimizer_loaded": false
+  },
+  "strict_gate": {
+    "fused_accuracy_minimum": 0.9,
+    "shuffled_partner_accuracy_maximum": 0.6,
+    "contradictory_partner_accuracy_maximum": 0.25,
+    "contradictory_prediction_flip_rate_minimum": 0.75,
+    "vision_only_accuracy_minimum": 0.95,
+    "controller_parameters_unchanged": true
+  },
+  "source_hashes": {
+    "train.py": "6ef035e1a23b2b2ca223654e38c35360d6764a6a5e1277e09f6ed006f3955fff",
+    "audit_saved_frontend.py": "040885a1bfe409b55e9793dea74cb6506890e142bfd33c72bbc4e5c260a1f88c",
+    "environment.py": "f273d109fec7c1c5a5dfbbf2ec556338300bbfa3cd8510c1af8e05bda0b43437",
+    "train_complementary_input_bus.py": "89e1112a7f478b8ae3c41d649cdc98edafdd07be4d8f07f77c9035ad21edaf37"
+  }
+}

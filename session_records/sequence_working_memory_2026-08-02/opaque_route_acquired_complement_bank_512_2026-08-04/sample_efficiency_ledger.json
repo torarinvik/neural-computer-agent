@@ -1,0 +1,98 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "opaque-routed-acquired-working-memory-procedures-2026-08-04",
+  "status": "promoted_narrow_two_acquisition_two_router_seed_breakthrough",
+  "mechanism": "frozen-controller external growth acquisition plus opaque outcome-trained artifact addressing",
+  "learner_visible_information": [
+    "rendered sensory events",
+    "opaque attempted actions",
+    "opaque candidate artifact keys",
+    "opaque attempted artifact rows",
+    "deterministic scalar verifier outcomes"
+  ],
+  "acquisition_runs": [
+    {
+      "seed": 65005,
+      "procedure": "complement",
+      "unique_logical_lifetimes": 8192,
+      "unique_verifier_bits": 57344,
+      "optimizer_updates": 512,
+      "replayed_examples": 0,
+      "wall_seconds": 286.43914608299383,
+      "target_gain": 0.46718746423721313,
+      "retention_on_mastered_primitives": {
+        "4": 0.0,
+        "6": -0.0078125,
+        "8": 0.0
+      },
+      "gates_pass": true
+    },
+    {
+      "seed": 65006,
+      "procedure": "complement_reverse",
+      "unique_logical_lifetimes": 8192,
+      "unique_verifier_bits": 57344,
+      "optimizer_updates": 512,
+      "replayed_examples": 0,
+      "wall_seconds": 292.25461579200055,
+      "target_gain": 0.3593750298023224,
+      "retention_on_mastered_primitives": {
+        "4": 0.0,
+        "6": 0.0078125,
+        "8": 0.00390625
+      },
+      "gates_pass": true
+    }
+  ],
+  "routing_runs": [
+    {
+      "seed": 66002,
+      "unique_logical_lifetimes": 2048,
+      "unique_verifier_bits": 64,
+      "verifier_bits": 32768,
+      "optimizer_updates": 512,
+      "replayed_examples": 32704,
+      "wall_seconds": 35.028261749990634,
+      "router_latency_ms_per_query": 0.0011757813354051905,
+      "normal_route_accuracy": 1.0,
+      "reward_shuffled_route_accuracy": 0.5,
+      "candidate_permutation_accuracy": 1.0,
+      "cosine_baseline_accuracy": 0.5,
+      "all_wrong_addresses_discriminative": true,
+      "all_selected_artifacts_causal": true,
+      "gates_pass": true
+    },
+    {
+      "seed": 66003,
+      "unique_logical_lifetimes": 2048,
+      "unique_verifier_bits": 64,
+      "verifier_bits": 32768,
+      "optimizer_updates": 512,
+      "replayed_examples": 32704,
+      "wall_seconds": 36.142518332999316,
+      "normal_route_accuracy": 1.0,
+      "reward_shuffled_route_accuracy": 0.5,
+      "candidate_permutation_accuracy": 1.0,
+      "cosine_baseline_accuracy": 0.5,
+      "all_wrong_addresses_discriminative": true,
+      "all_selected_artifacts_causal": true,
+      "gates_pass": true
+    }
+  ],
+  "rejected_controls": [
+    {
+      "name": "forward_span10_acquisition",
+      "seed": 65001,
+      "target_gain": 0.0015625357627868652,
+      "reason": "parent was already near mastery; growth was not causal"
+    },
+    {
+      "name": "rotate_span12_acquisition",
+      "seed": 65003,
+      "target_gain": -0.01171875,
+      "reason": "no causal target gain at the promoted diagnostic budget"
+    }
+  ],
+  "transfer_ratio_against_fresh_learner": null,
+  "claim_boundary": "Narrow replicated breakthrough: two independently acquired external working-memory procedures are selected through opaque outcome-trained addressing and are causally necessary after retrieval. Arbitrary program induction, cold-start general address discovery, and broad continuous learning remain unqualified."
+}

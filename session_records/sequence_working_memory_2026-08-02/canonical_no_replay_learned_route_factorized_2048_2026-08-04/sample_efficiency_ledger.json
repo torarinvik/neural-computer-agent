@@ -1,0 +1,83 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "canonical-no-replay-factorized-learned-route-2048-2026-08-04",
+  "status": "promoted_narrow_two_seed_learned_opaque_address_discovery",
+  "mechanism": "frozen parent plus independently acquired executable artifacts and factorized outcome-trained opaque query/key routing",
+  "learner_visible_information": [
+    "rendered sensory events",
+    "opaque attempted actions",
+    "deterministic scalar verifier outcomes",
+    "controller-produced hidden query"
+  ],
+  "runs": [
+    {
+      "seed": 69413,
+      "unique_logical_lifetimes": 24576,
+      "unique_verifier_bits": 73728,
+      "verifier_bits": 73728,
+      "optimizer_updates": 5632,
+      "replayed_examples": 0,
+      "route_optimizer_updates": 4096,
+      "route_unique_lifetimes": 65536,
+      "route_unique_verifier_bits": 65536,
+      "route_replayed_examples": 0,
+      "diagnostic_lifetimes_charged_to_budget": 192,
+      "stable_bits_to_threshold": {
+        "span_2": 2048,
+        "span_3": 3072,
+        "span_4": 16384
+      },
+      "retention_on_mastered_primitives": {
+        "span_2": true,
+        "span_3": true
+      },
+      "transfer_ratio_against_fresh_learner": null,
+      "route_accuracy": 1.0,
+      "reward_shuffled_route_accuracy": 0.3333333333333333,
+      "candidate_permutation_accuracy": 1.0,
+      "selected_accuracy": {
+        "span_2": 1.0,
+        "span_3": 0.9895833134651184,
+        "span_4": 0.8671875
+      },
+      "blank_sequence_accuracy": 0.5,
+      "workspace_disabled_accuracy": 0.734375,
+      "gates_pass": true
+    },
+    {
+      "seed": 69415,
+      "unique_logical_lifetimes": 24576,
+      "unique_verifier_bits": 73728,
+      "verifier_bits": 73728,
+      "optimizer_updates": 5632,
+      "replayed_examples": 0,
+      "route_optimizer_updates": 4096,
+      "route_unique_lifetimes": 65536,
+      "route_unique_verifier_bits": 65536,
+      "route_replayed_examples": 0,
+      "diagnostic_lifetimes_charged_to_budget": 192,
+      "stable_bits_to_threshold": {
+        "span_2": 2048,
+        "span_3": 3072,
+        "span_4": 12288
+      },
+      "retention_on_mastered_primitives": {
+        "span_2": true,
+        "span_3": true
+      },
+      "transfer_ratio_against_fresh_learner": null,
+      "route_accuracy": 1.0,
+      "reward_shuffled_route_accuracy": 0.3333333333333333,
+      "candidate_permutation_accuracy": 1.0,
+      "selected_accuracy": {
+        "span_2": 1.0,
+        "span_3": 0.9791666865348816,
+        "span_4": 0.87109375
+      },
+      "blank_sequence_accuracy": 0.49609375,
+      "workspace_disabled_accuracy": 0.70703125,
+      "gates_pass": true
+    }
+  ],
+  "claim_boundary": "Replicated narrow learned opaque address discovery and no-replay retention across spans 2 to 4. This is not general address discovery, arbitrary program induction, or shared-weight no-forgetting."
+}

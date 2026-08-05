@@ -1,0 +1,63 @@
+{
+  "schema": "online-opaque-routed-growth-audit-v1",
+  "claim_boundary": "A new artifact is appended after an older artifact is already deployed. The expanded bank routes both procedures through a frozen controller using opaque outcome-trained addressing.",
+  "parent": "artifacts/checkpoints/span8_addressed_parent_scale1_seed32001.pt",
+  "sources": [
+    "session_records/sequence_working_memory_2026-08-02/frozen_growth_span10_complement_512_2026-08-04/memory",
+    "session_records/sequence_working_memory_2026-08-02/frozen_growth_span10_complement_reverse_512_2026-08-04/memory"
+  ],
+  "bank": "session_records/sequence_working_memory_2026-08-02/online_routed_growth_replication_2026-08-04/bank",
+  "seed": 68002,
+  "rows": {
+    "first": 0,
+    "second": 1
+  },
+  "unique_logical_lifetimes": 2048,
+  "unique_verifier_bits": 64,
+  "verifier_bits": 32768,
+  "optimizer_updates": 512,
+  "replayed_examples": 32704,
+  "wall_seconds": 27.73913329199422,
+  "first_accuracy_before_append": 0.7671874761581421,
+  "first_accuracy_after_append": 0.7671874761581421,
+  "normal_route_accuracy": 1.0,
+  "reward_shuffled_route_accuracy": 0.5,
+  "behavior": {
+    "complement": {
+      "selected_row": 0,
+      "route_accuracy": 1.0,
+      "accuracies": {
+        "selected": 0.776562511920929,
+        "wrong": 0.2953124940395355,
+        "zero": 0.30000001192092896
+      },
+      "wrong_address_discriminative": true,
+      "selected_artifact_causal": true
+    },
+    "complement_reverse": {
+      "selected_row": 1,
+      "route_accuracy": 1.0,
+      "accuracies": {
+        "selected": 0.645312488079071,
+        "wrong": 0.27656251192092896,
+        "zero": 0.27656251192092896
+      },
+      "wrong_address_discriminative": true,
+      "selected_artifact_causal": true
+    }
+  },
+  "controller_weights_unchanged": true,
+  "corruption_rejected": true,
+  "gates": {
+    "append_used_new_row": true,
+    "old_behavior_retained_after_append": true,
+    "normal_route_at_least_90": true,
+    "reward_shuffled_route_near_chance": true,
+    "both_artifacts_selected": true,
+    "all_wrong_addresses_discriminative": true,
+    "all_selected_artifacts_causal": true,
+    "controller_frozen": true,
+    "corruption_rejected": true
+  },
+  "accepted_diagnostic": true
+}

@@ -1,0 +1,39 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "canonical-no-replay-factorized-learned-route-replication-2026-08-04",
+  "status": "replicated_promoted_result",
+  "reference": "../canonical_no_replay_learned_route_factorized_2048_2026-08-04/report.json",
+  "seed": 69415,
+  "unique_logical_lifetimes": 24576,
+  "unique_verifier_bits": 73728,
+  "verifier_bits": 73728,
+  "optimizer_updates": 5632,
+  "replayed_examples": 0,
+  "route_optimizer_updates": 4096,
+  "route_unique_lifetimes": 65536,
+  "route_unique_verifier_bits": 65536,
+  "route_replayed_examples": 0,
+  "diagnostic_lifetimes_charged_to_budget": 192,
+  "stable_bits_to_threshold": {
+    "span_2": 2048,
+    "span_3": 3072,
+    "span_4": 12288
+  },
+  "retention_on_mastered_primitives": {
+    "span_2": true,
+    "span_3": true
+  },
+  "transfer_ratio_against_fresh_learner": null,
+  "route_accuracy": 1.0,
+  "reward_shuffled_route_accuracy": 0.3333333333333333,
+  "candidate_permutation_accuracy": 1.0,
+  "selected_accuracy": {
+    "span_2": 1.0,
+    "span_3": 0.9791666865348816,
+    "span_4": 0.87109375
+  },
+  "blank_sequence_accuracy": 0.49609375,
+  "workspace_disabled_accuracy": 0.70703125,
+  "gates_pass": true,
+  "claim_boundary": "Independent replication of narrow factorized learned opaque routing with no-replay executable-artifact retention."
+}

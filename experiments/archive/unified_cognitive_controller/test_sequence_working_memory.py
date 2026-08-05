@@ -1,19 +1,26 @@
 import torch
 
 from .legacy_model import UnifiedCognitiveController
-from .train_sequence_working_memory import (
-    generate_sequence_memory_batch, rollout_sequence_memory)
 from .train_sequence_reward_buffer import (
-    _action_conditioned_policy_loss, _balanced_provenance_loss,
+    _action_conditioned_policy_loss,
+    _balanced_provenance_loss,
     _base_mistake_weights,
-    _collect_buffer, _outcome_only_position_weights,
+    _collect_buffer,
+    _outcome_only_position_weights,
     _outcome_only_query_weights,
     _protected_rehearsal_mask,
-    _query_curriculum_indices, _query_window_indices,
+    _query_curriculum_indices,
+    _query_window_indices,
     _remove_final_slot_from_logits,
     _replay_refinement_indices,
     _skill_slot_logits,
-    _weighted_binary_complement_loss, _weighted_binary_margin_loss)
+    _weighted_binary_complement_loss,
+    _weighted_binary_margin_loss,
+)
+from .train_sequence_working_memory import (
+    generate_sequence_memory_batch,
+    rollout_sequence_memory,
+)
 
 
 def test_sequence_memory_generation_is_deterministic_and_balanced() -> None:
@@ -55,6 +62,84 @@ def test_complement_operation_is_a_distinct_visible_adjacent_primitive() -> None
     assert torch.equal(complement.operation_bits, torch.zeros(16, dtype=torch.long))
     assert torch.equal(complement.correct_actions, 1 - complement.sequence)
     assert not torch.equal(forward.query_frames, complement.query_frames)
+
+
+def test_complement_reverse_is_a_distinct_visible_primitive() -> None:
+    batch = generate_sequence_memory_batch(
+        16, span=3, distractors=1, seed=260022,
+        operation="complement_reverse")
+    expected = 1 - batch.sequence.flip(1)
+    assert torch.equal(batch.operation_bits, torch.zeros(16, dtype=torch.long))
+    assert torch.equal(batch.correct_actions, expected)
+    complement = generate_sequence_memory_batch(
+        16, span=3, distractors=1, seed=260022, operation="complement")
+    assert not torch.equal(batch.query_frames, complement.query_frames)
+
+
+def test_undo_complement_exposes_producer_and_consumer_cues() -> None:
+    batch = generate_sequence_memory_batch(
+        16, span=3, distractors=1, seed=260027,
+        operation="undo_complement")
+    complement = generate_sequence_memory_batch(
+        16, span=3, distractors=1, seed=260027, operation="complement")
+    assert torch.equal(batch.correct_actions, batch.sequence)
+    assert torch.equal(batch.operation_bits, torch.zeros(16, dtype=torch.long))
+    assert not torch.equal(batch.query_frames, complement.query_frames)
+
+
+def test_producer_global_parity_keeps_the_producer_cue_visible() -> None:
+    batch = generate_sequence_memory_batch(
+        16, span=3, distractors=1, seed=260028,
+        operation="producer_global_parity")
+    assert torch.equal(
+        batch.correct_actions,
+        batch.sequence.sum(dim=1, keepdim=True).remainder(2).expand_as(
+            batch.sequence),
+    )
+    complement = generate_sequence_memory_batch(
+        16, span=3, distractors=1, seed=260028, operation="complement")
+    assert not torch.equal(batch.query_frames, complement.query_frames)
+
+
+def test_complement_rotate_is_a_distinct_visible_primitive() -> None:
+    batch = generate_sequence_memory_batch(
+        16, span=3, distractors=1, seed=260023,
+        operation="complement_rotate")
+    expected = 1 - batch.sequence.roll(-1, dims=1)
+    assert torch.equal(batch.correct_actions, expected)
+    rotate = generate_sequence_memory_batch(
+        16, span=3, distractors=1, seed=260023, operation="rotate")
+    assert not torch.equal(batch.query_frames, rotate.query_frames)
+
+
+def test_adjacent_xor_is_a_distinct_visible_primitive() -> None:
+    batch = generate_sequence_memory_batch(
+        16, span=3, distractors=1, seed=260024, operation="adjacent_xor")
+    expected = (batch.sequence != batch.sequence.roll(-1, dims=1)).long()
+    assert torch.equal(batch.correct_actions, expected)
+    rotate = generate_sequence_memory_batch(
+        16, span=3, distractors=1, seed=260024, operation="rotate")
+    assert not torch.equal(batch.query_frames, rotate.query_frames)
+
+
+def test_prefix_parity_is_a_distinct_visible_primitive() -> None:
+    batch = generate_sequence_memory_batch(
+        16, span=3, distractors=1, seed=260025, operation="prefix_parity")
+    expected = torch.cumsum(batch.sequence, dim=1).remainder(2)
+    assert torch.equal(batch.correct_actions, expected)
+    rotate = generate_sequence_memory_batch(
+        16, span=3, distractors=1, seed=260025, operation="rotate")
+    assert not torch.equal(batch.query_frames, rotate.query_frames)
+
+
+def test_global_parity_is_a_distinct_visible_primitive() -> None:
+    batch = generate_sequence_memory_batch(
+        16, span=3, distractors=1, seed=260026, operation="global_parity")
+    expected = batch.sequence.sum(dim=1, keepdim=True).remainder(2)
+    assert torch.equal(batch.correct_actions, expected.expand_as(batch.sequence))
+    rotate = generate_sequence_memory_batch(
+        16, span=3, distractors=1, seed=260026, operation="rotate")
+    assert not torch.equal(batch.query_frames, rotate.query_frames)
 
 
 def test_sequence_counterfactual_is_a_valid_pixel_rerender() -> None:

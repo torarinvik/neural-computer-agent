@@ -33,6 +33,50 @@ text frontends without another checkpoint; its two fresh 512-lifetime reports
 are `three_modality_998001.json` and `three_modality_998101.json` under
 `session_records/amodal_latent_alignment_2026-08-03/`.
 
+## Corrected pixel-only byte frontend
+
+`amodal_pixel_only_text_frontend_seed1001001_u16.pt`,
+`amodal_pixel_only_text_frontend_seed1001002_u16.pt`, and
+`amodal_pixel_only_text_frontend_seed1001003_u16.pt` are three corrected
+character n-gram frontends trained from visible-pixel descriptions and paired
+encoded-event consistency against the frozen amodal controller. The original
+raw-byte record was retracted after a hidden context-ID leak; these artifacts
+use the repaired pixel-only renderer.
+
+All three pass the 16-update training-time causal gate. Independent saved
+replay over 1,024 lives per held-out cell passes all three seeds. The earlier
+256-lifetime seed-1001001 near miss disappears at population size. These
+artifacts are **promoted for synthetic pixel-grounded UTF-8 event transport**,
+not for open-ended natural-language understanding. The complete accounting
+and replay reports are in
+`session_records/natural_text_grounding_pixel_only_2026-08-04/`.
+
+## Independent external-caption corpus v2
+
+`amodal_external_corpus_v2_text_frontend_seed1002001_u16.pt`,
+`amodal_external_corpus_v2_text_frontend_seed1002002_u16.pt`, and
+`amodal_external_corpus_v2_text_frontend_seed1002003_u16.pt` use the same
+frozen controller, input bus, decoder, and byte frontend as the pixel-only
+bridge, but train from a separately versioned corpus with two authored
+paraphrase variants per style. All three pass the independent 1,024-lifetime
+replay gate. They are promoted for controlled external-corpus-backed UTF-8
+event transport, not open-ended language understanding. Reports and the
+corpus hash are in
+`session_records/natural_text_grounding_external_corpus_v2_2026-08-04/`.
+
+## Static pre-authored annotation table v3
+
+`amodal_external_annotation_table_v3_text_frontend_seed1003001_u25.pt`,
+`...seed1003002_u25.pt`, and `...seed1003003_u25.pt` use the same frozen
+controller, input bus, decoder, and byte CNN, but consume a versioned table of
+complete pre-authored captions. The runtime performs only a pixel-only join to
+an annotation row; it does not fill language slots or receive verifier
+metadata. All three pass the 1,024-lifetime saved-artifact replay with fused
+accuracy minima of 92.83%, 91.39%, and 92.15%, respectively. This promotes
+static pre-authored caption transport into the frozen amodal event basis, not
+open-world language understanding. Evidence and the exact table hash are in
+`session_records/natural_text_grounding_external_annotation_table_v3_2026-08-04/`.
+
 ## Successor-slot frontier diagnostics
 
 `span11_slot_extension_critic_seed93604.pt` and

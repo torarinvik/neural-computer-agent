@@ -1,0 +1,45 @@
+{
+  "controller": {
+    "path": "../../artifacts/checkpoints/unified_repertoire_span2_amodal_intention_seed122005.pt",
+    "sha256": "9eea7ab479cb8450737f040b76495cc5ec737e970cdc165af2446873e530cd6c"
+  },
+  "evaluation": "optimizer-free saved frontend replay, 1024 lives per appearance/style cell",
+  "frontends": {
+    "1003001": {
+      "path": "../../artifacts/checkpoints/amodal_external_annotation_table_v3_text_frontend_seed1003001_u25.pt",
+      "sha256": "c4c6cfa80a72e9da2f8485386fb82902f79aef16f15d8ef5e5567e444ca1bd83"
+    },
+    "1003002": {
+      "path": "../../artifacts/checkpoints/amodal_external_annotation_table_v3_text_frontend_seed1003002_u25.pt",
+      "sha256": "062c7f08ba0c4733b88ec3e3ae1829108386744111aa7a3c31765ef56ae2f8bd"
+    },
+    "1003003": {
+      "path": "../../artifacts/checkpoints/amodal_external_annotation_table_v3_text_frontend_seed1003003_u25.pt",
+      "sha256": "79c1a291043c284b132884201c1606bf041c0c1f5d71be3eb612936403faa95d"
+    }
+  },
+  "input_bus": {
+    "path": "../../artifacts/checkpoints/amodal_input_bus_complementary_seed145001.pt",
+    "sha256": "4ae96f60b99107834c27840b8841e8b2ba20c10e6565c220b5607fb9c80d3c71"
+  },
+  "population": "promotion",
+  "replay_reports": {
+    "1003001": {
+      "path": "saved_replay_seed1003001_n1024.json",
+      "sha256": "e9be8cf4d994325df9212d8d2d3f1a21eca8f53f827b31bf27f409957472a49a"
+    },
+    "1003002": {
+      "path": "saved_replay_seed1003002_n1024.json",
+      "sha256": "d5afd79e12bc1a58dfd8af413aa3fd31885683a3573e294f249cd2fb6bb41984"
+    },
+    "1003003": {
+      "path": "saved_replay_seed1003003_n1024.json",
+      "sha256": "fd4a62380afd52059a5e1e1d83e4c22880465be03e7e07fb49ff8420ec7f54b4"
+    }
+  },
+  "schema": "amodal-external-annotation-table-v3-promotion-manifest-v1",
+  "source_annotation_table": {
+    "path": "../../experiments/natural_text_grounding/external_caption_annotation_table_v3.json",
+    "sha256": "68ff321b07a4f1196c878a6b6a67a87e726c3b4f1d9ad381aa61e1e09b649d90"
+  }
+}

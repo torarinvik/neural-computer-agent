@@ -30,7 +30,7 @@ from .interface import (
 from .memory import MemoryBackend
 from .policies import EventWaitPolicy
 
-RUNTIME_FORMAT = "neural-computer.amodal-runtime.v27"
+RUNTIME_FORMAT = "neural-computer.amodal-runtime.v28"
 
 
 class OpaqueProtocolDecoder(nn.Module):
@@ -456,6 +456,7 @@ class AmodalControllerRuntime(nn.Module):
         sample_memory_writes: bool = False,
         memory_write_override: torch.Tensor | None = None,
         memory_write_uniform: torch.Tensor | None = None,
+        memory_write_gradient: bool = True,
     ) -> tuple[AmodalRuntimeOutput, ControllerState]:
         collection = self.input_bus(events)
         controller_output, next_state = self.controller.step(
@@ -469,6 +470,7 @@ class AmodalControllerRuntime(nn.Module):
             sample_memory_writes=sample_memory_writes,
             memory_write_override=memory_write_override,
             memory_write_uniform=memory_write_uniform,
+            memory_write_gradient=memory_write_gradient,
         )
         intention = controller_output.intention
         return (

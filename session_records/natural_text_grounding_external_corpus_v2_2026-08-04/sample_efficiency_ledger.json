@@ -1,0 +1,27 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "natural_text_grounding_external_corpus_v2_2026-08-04",
+  "status": "promoted_three_seed_independent_external_caption_corpus_v2",
+  "unique_verifier_bits": 0,
+  "unique_logical_lifetimes": 0,
+  "optimizer_updates": [16, 16, 16],
+  "paired_unlabeled_frames": [36864, 36864, 36864],
+  "replayed_examples": 0,
+  "wall_time_seconds": [135.97152787499363, 133.22761029099638, 119.5832305829972],
+  "stable_bits_to_threshold": null,
+  "retention_on_mastered_primitives": "saved replay full-vision minimum 0.97520 across the three v2 frontends",
+  "transfer_ratio_against_fresh_learner": null,
+  "claim_boundary": "Promoted a controlled independently authored corpus-backed UTF-8 event source into the frozen amodal neural-IR boundary. This is not open-world natural-language understanding, speech, or semantic reasoning.",
+  "controls": [
+    "held-out syntax and word-order styles",
+    "cross-lifetime text shuffle",
+    "contradictory grounded text",
+    "full-vision retention",
+    "optimizer-free saved-frontend replay",
+    "controller hash and unchanged-parameter checks",
+    "caption corpus SHA-256 binding",
+    "pixel-only source audit"
+  ],
+  "data_repair": "Two authored training variants per corpus style; no controller, frontend, or protocol-specific reasoning branch changed.",
+  "next_step": "Keep v2 frozen and test a genuinely independently produced caption stream under the same metadata and population gate."
+}

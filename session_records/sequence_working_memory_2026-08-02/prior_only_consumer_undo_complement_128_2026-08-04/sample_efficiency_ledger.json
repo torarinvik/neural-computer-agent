@@ -1,0 +1,24 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "prior-only-consumer-undo-complement-128-2026-08-04",
+  "status": "rejected_parent_saturation_control",
+  "mechanism": "prior-only consumer over an external complement producer",
+  "runs": [
+    {
+      "seed": 69101,
+      "unique_logical_lifetimes": 2048,
+      "unique_verifier_bits": 20480,
+      "verifier_bits": 20480,
+      "optimizer_updates": 128,
+      "replayed_examples": 0,
+      "wall_seconds": 55.08243737500743,
+      "stable_bits_to_threshold": null,
+      "retention_on_mastered_primitives": null,
+      "transfer_ratio_against_fresh_learner": null,
+      "parent_accuracy": 0.699999988079071,
+      "composed_accuracy": 0.6953125,
+      "gates_pass": false
+    }
+  ],
+  "claim_boundary": "The chain was rejected because the parent already solved the target; no capability gain was claimed."
+}

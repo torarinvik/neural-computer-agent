@@ -11,19 +11,29 @@ the representation or adding semantic labels.
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import math
 from pathlib import Path
+from time import perf_counter
 
 import torch
 import torch.nn.functional as F
+
+from neural_computer.plasticity import (
+    accumulate_current_gradients,
+    project_gradient_against_reference,
+    project_parameter_update_against_reference,
+    zero_gradient_map,
+)
 
 from .environment import ACTIONS, NULL_ACTION
 from .legacy_model import UnifiedCognitiveController
 from .train import seed_everything
 from .train_sequence_working_memory import (
-    evaluate_sequence_memory, generate_sequence_memory_batch)
-
+    evaluate_sequence_memory,
+    generate_sequence_memory_batch,
+)
 
 BUFFER_SCHEMA = "latent-action-outcome-buffer-v1"
 
@@ -734,6 +744,26 @@ def main() -> None:
         "--replay-logit-penalty", type=float, default=0.0,
         help="penalize action-logit changes on persisted transitions")
     parser.add_argument(
+        "--rehearsal-gradient-projection", type=float, default=0.0,
+        help=(
+            "project fresh-target gradients away from the aggregate gradient "
+            "of protected rehearsal rows; trainer-only stability control"))
+    parser.add_argument(
+        "--project-optimizer-update", action="store_true",
+        help=(
+            "also project the post-AdamW target update against protected "
+            "rehearsal; useful for adaptive-optimizer drift"))
+    parser.add_argument(
+        "--reference-only-rehearsal", action="store_true",
+        help=(
+            "use protected rehearsal only to form the gradient reference; "
+            "never apply optimizer steps to those rows"))
+    parser.add_argument(
+        "--replay-retention-tolerance", type=float, default=-1.0,
+        help=(
+            "reject a fresh update when protected attempted-outcome "
+            "agreement falls by more than this tolerance; -1 disables"))
+    parser.add_argument(
         "--protect-rehearsal", action="store_true",
         help=(
             "also apply replay weights and retention penalties to freshly "
@@ -1099,6 +1129,39 @@ def main() -> None:
             or args.replay_gate_source_weight < 0
             or args.replay_gate_preserve_fresh_weight < 0):
         raise ValueError("replay weights and penalties must not be negative")
+    if not 0.0 <= args.rehearsal_gradient_projection <= 1.0:
+        raise ValueError(
+            "rehearsal-gradient projection must be within [0, 1]")
+    if (
+            args.reference_only_rehearsal
+            and args.rehearsal_gradient_projection == 0.0):
+        raise ValueError(
+            "reference-only rehearsal requires rehearsal gradient projection")
+    if (
+            args.rehearsal_gradient_projection > 0.0
+            and not args.reference_only_rehearsal):
+        raise ValueError(
+            "rehearsal gradient projection requires --reference-only-rehearsal")
+    if (
+            args.project_optimizer_update
+            and args.rehearsal_gradient_projection == 0.0):
+        raise ValueError(
+            "optimizer-update projection requires rehearsal gradient "
+            "projection")
+    if args.replay_retention_tolerance < -1.0:
+        raise ValueError(
+            "replay-retention tolerance must be -1 or nonnegative")
+    if (
+            args.replay_retention_tolerance >= 0.0
+            and args.rehearsal_gradient_projection == 0.0):
+        raise ValueError(
+            "replay-retention rejection requires rehearsal gradient "
+            "projection")
+    if args.rehearsal_gradient_projection > 0.0 \
+            and args.replay_refinement_epochs:
+        raise ValueError(
+            "protected rehearsal projection cannot be combined with staged "
+            "replay refinement")
     if args.skill_adapter_width and args.residual_action_adapter:
         raise ValueError(
             "skill-adapter-width and residual-action-adapter are exclusive")
@@ -1541,22 +1604,93 @@ def main() -> None:
             protected_replay_logits = protected_replay_logits.detach()
             protected_replay_residual = protected_replay_residual.detach()
             protected_replay_opening = protected_replay_opening.detach()
+    optimizer_update_count = 0
+    replayed_example_count = 0
+    rehearsal_gradient_evaluation_count = 0
+    replay_update_rejection_count = 0
+
+    @torch.no_grad()
+    def replay_retention_accuracy() -> float:
+        """Measure verifier-visible attempted-outcome agreement."""
+        if not bool(replay_indices.numel()):
+            raise ValueError("replay retention requires protected samples")
+        total = torch.zeros((), device=device)
+        count = 0
+        for start in range(0, replay_indices.shape[0], args.batch_size):
+            indices = replay_indices[start:start + args.batch_size]
+            if args.skill_adapter_width:
+                (
+                    logits_residual, _, _, _,
+                    _, critic_residual,
+                ) = _skill_slot_logits(student, features[indices])
+            else:
+                logits_residual = student.action_adapter(features[indices])
+                critic_residual = None
+            logits = base_logits[indices] + logits_residual
+            if critic_residual is not None:
+                logits = logits + critic_residual
+            predicted_success = (
+                logits.argmax(dim=1) == actions[indices])
+            observed_success = outcomes[indices] > 0.5
+            total += (predicted_success == observed_success).float().sum()
+            count += indices.shape[0]
+        return float(total / max(count, 1))
+
     def train_epochs(
             epochs: int, sample_indices: torch.Tensor, *,
             outcome_weight: float, residual_penalty: float,
             gate_penalty: float, logit_penalty: float,
-            gate_targets: torch.Tensor | None = None) -> None:
+            gate_targets: torch.Tensor | None = None,
+            protected_rehearsal: bool = False) -> None:
+        nonlocal optimizer_update_count, replayed_example_count
+        nonlocal rehearsal_gradient_evaluation_count
+        nonlocal replay_update_rejection_count
         trainable_parameters = [
             parameter for parameter in student.parameters()
+            if parameter.requires_grad]
+        named_trainable_parameters = [
+            (name, parameter) for name, parameter in student.named_parameters()
             if parameter.requires_grad]
         optimizer = torch.optim.AdamW(
             trainable_parameters, lr=args.learning_rate,
             weight_decay=1e-5)
+        reference_gradient = (
+            zero_gradient_map(named_trainable_parameters)
+            if protected_rehearsal else None)
         for epoch_index in range(epochs):
-            permutation = sample_indices[torch.randperm(
-                sample_indices.shape[0], device=device)]
-            for start in range(0, sample_indices.shape[0], args.batch_size):
-                indices = permutation[start:start + args.batch_size]
+            if protected_rehearsal:
+                assert reference_gradient is not None
+                for value in reference_gradient.values():
+                    value.zero_()
+                replay_permutation = replay_indices[torch.randperm(
+                    replay_indices.shape[0], device=device)]
+                target_permutation = sample_indices[torch.randperm(
+                    sample_indices.shape[0], device=device)]
+                phase_batches = [
+                    (
+                        replay_permutation[start:start + args.batch_size],
+                        True,
+                    )
+                    for start in range(
+                        0, replay_permutation.shape[0], args.batch_size)]
+                phase_batches.extend(
+                    (
+                        target_permutation[start:start + args.batch_size],
+                        False,
+                    )
+                    for start in range(
+                        0, target_permutation.shape[0], args.batch_size))
+            else:
+                permutation = sample_indices[torch.randperm(
+                    sample_indices.shape[0], device=device)]
+                phase_batches = [
+                    (
+                        permutation[start:start + args.batch_size],
+                        False,
+                    )
+                    for start in range(
+                        0, permutation.shape[0], args.batch_size)]
+            for indices, reference_only in phase_batches:
                 if args.skill_adapter_width:
                     (
                         logits_residual, residual, opening, gate_score,
@@ -1652,7 +1786,10 @@ def main() -> None:
                     loss = loss + logit_penalty * (
                         logits_residual[batch_replay_mask]
                         - logit_target[batch_replay_mask]).square().mean()
-                if (args.replay_gate_source_weight and gate_score is not None):
+                if (
+                        args.replay_gate_source_weight
+                        and gate_score is not None
+                        and not reference_only):
                     source_target = (~batch_replay_mask).to(gate_score.dtype)
                     loss = loss + args.replay_gate_source_weight * _balanced_provenance_loss(
                         gate_score.squeeze(1), source_target)
@@ -1666,7 +1803,59 @@ def main() -> None:
                     loss = loss + args.residual_penalty * residual.square().mean()
                 optimizer.zero_grad(set_to_none=True)
                 loss.backward()
+                replayed_example_count += int(batch_replay_mask.sum().item())
+                if reference_only:
+                    assert reference_gradient is not None
+                    accumulate_current_gradients(
+                        named_trainable_parameters, reference_gradient)
+                    rehearsal_gradient_evaluation_count += 1
+                    optimizer.zero_grad(set_to_none=True)
+                    continue
+                retention_enabled = (
+                    reference_gradient is not None
+                    and args.replay_retention_tolerance >= 0.0)
+                replay_accuracy_before = (
+                    replay_retention_accuracy() if retention_enabled else None)
+                parameters_before = (
+                    {
+                        name: parameter.detach().clone()
+                        for name, parameter in named_trainable_parameters
+                    }
+                    if reference_gradient is not None
+                    and (args.project_optimizer_update or retention_enabled)
+                    else None)
+                optimizer_before = (
+                    copy.deepcopy(optimizer.state_dict())
+                    if retention_enabled else None)
+                if reference_gradient is not None:
+                    project_gradient_against_reference(
+                        named_trainable_parameters, reference_gradient,
+                        args.rehearsal_gradient_projection)
                 optimizer.step()
+                if (
+                        reference_gradient is not None
+                        and args.project_optimizer_update):
+                    assert parameters_before is not None
+                    project_parameter_update_against_reference(
+                        named_trainable_parameters, parameters_before,
+                        reference_gradient,
+                        args.rehearsal_gradient_projection)
+                if retention_enabled:
+                    assert replay_accuracy_before is not None
+                    replay_accuracy_after = replay_retention_accuracy()
+                    if replay_accuracy_after < (
+                            replay_accuracy_before
+                            - args.replay_retention_tolerance):
+                        assert parameters_before is not None
+                        assert optimizer_before is not None
+                        with torch.no_grad():
+                            for name, parameter in named_trainable_parameters:
+                                parameter.copy_(parameters_before[name])
+                        optimizer.load_state_dict(optimizer_before)
+                        optimizer.zero_grad(set_to_none=True)
+                        replay_update_rejection_count += 1
+                        continue
+                optimizer_update_count += 1
 
     all_indices = torch.arange(features.shape[0], device=device)
     fresh_indices = all_indices[~protected_mask]
@@ -1682,7 +1871,43 @@ def main() -> None:
         with torch.no_grad():
             gate_targets = _skill_slot_logits(student, features)[3].squeeze(1)
             gate_targets = gate_targets.masked_fill(protected_mask, 0.0)
-    if args.replay_refinement_epochs:
+    training_started = perf_counter()
+    if args.rehearsal_gradient_projection > 0.0:
+        if not bool(fresh_indices.numel()) or not bool(replay_indices.numel()):
+            raise ValueError(
+                "protected rehearsal projection needs fresh and protected "
+                "samples")
+        if curriculum_indices is not None:
+            curriculum_fresh_indices = curriculum_indices[
+                ~protected_mask[curriculum_indices]]
+            train_epochs(
+                args.query_curriculum_warmup_epochs,
+                curriculum_fresh_indices,
+                outcome_weight=args.replay_outcome_weight,
+                residual_penalty=args.replay_residual_penalty,
+                gate_penalty=args.replay_gate_penalty,
+                logit_penalty=args.replay_logit_penalty,
+                protected_rehearsal=True)
+            train_epochs(
+                args.epochs, fresh_indices,
+                outcome_weight=args.replay_outcome_weight,
+                residual_penalty=args.replay_residual_penalty,
+                gate_penalty=args.replay_gate_penalty,
+                logit_penalty=args.replay_logit_penalty,
+                protected_rehearsal=True)
+        else:
+            selected_fresh_indices = (
+                fresh_indices
+                if window_indices is None else
+                window_indices[~protected_mask[window_indices]])
+            train_epochs(
+                args.epochs, selected_fresh_indices,
+                outcome_weight=args.replay_outcome_weight,
+                residual_penalty=args.replay_residual_penalty,
+                gate_penalty=args.replay_gate_penalty,
+                logit_penalty=args.replay_logit_penalty,
+                protected_rehearsal=True)
+    elif args.replay_refinement_epochs:
         if not bool(fresh_indices.numel()) or not bool(replay_indices.numel()):
             raise ValueError("staged replay needs fresh and persisted samples")
         train_epochs(
@@ -1730,6 +1955,7 @@ def main() -> None:
             residual_penalty=args.replay_residual_penalty,
             gate_penalty=args.replay_gate_penalty,
             logit_penalty=args.replay_logit_penalty)
+    training_wall_seconds = perf_counter() - training_started
     student.eval()
     audit = evaluate_sequence_memory(
         student, count=args.test_episodes, span=args.span,
@@ -1751,6 +1977,15 @@ def main() -> None:
         "unique_train_lifetimes": args.train_lifetimes,
         "unique_rehearsal_lifetimes": rehearsal_lifetime_count,
         "total_unique_lifetimes": args.train_lifetimes + rehearsal_lifetime_count,
+        "unique_verifier_bits": sum(
+            int(spec["lifetimes"]) * int(spec["span"])
+            for spec in stream_specs),
+        "optimizer_updates": optimizer_update_count,
+        "replayed_examples": replayed_example_count,
+        "rehearsal_gradient_evaluations": (
+            rehearsal_gradient_evaluation_count),
+        "replay_update_rejections": replay_update_rejection_count,
+        "training_wall_seconds": training_wall_seconds,
         "query_transition_count": int(features.shape[0]),
         "rehearse_spans": rehearsal_spans,
         "rehearsal_lifetimes_per_stream": args.rehearsal_lifetimes,
@@ -1766,6 +2001,12 @@ def main() -> None:
         "replay_residual_penalty": args.replay_residual_penalty,
         "replay_gate_penalty": args.replay_gate_penalty,
         "replay_logit_penalty": args.replay_logit_penalty,
+        "rehearsal_gradient_projection": (
+            args.rehearsal_gradient_projection),
+        "project_optimizer_update": args.project_optimizer_update,
+        "reference_only_rehearsal": args.reference_only_rehearsal,
+        "replay_retention_tolerance": args.replay_retention_tolerance,
+        "replay_retention_metric": "attempted_outcome_agreement",
         "protect_rehearsal": args.protect_rehearsal,
         "replay_gate_source_weight": args.replay_gate_source_weight,
         "replay_refinement_epochs": args.replay_refinement_epochs,

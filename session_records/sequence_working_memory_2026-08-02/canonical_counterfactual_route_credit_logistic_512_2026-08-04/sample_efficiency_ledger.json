@@ -1,0 +1,22 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "canonical-counterfactual-route-credit-logistic-512-2026-08-04",
+  "status": "decisively_rejected_for_insufficient_route_acquisition",
+  "seed": 69411,
+  "unique_logical_lifetimes": 24576,
+  "unique_verifier_bits": 73728,
+  "optimizer_updates": 2560,
+  "replayed_examples": 0,
+  "route_optimizer_updates": 1024,
+  "route_unique_lifetimes": 16384,
+  "route_unique_verifier_bits": 32768,
+  "route_counterfactual_pairs": 16384,
+  "route_replayed_examples": 0,
+  "stable_bits_to_threshold": {"span_2": 2048, "span_3": 3072, "span_4": 12288},
+  "route_accuracy": 0.7083333134651184,
+  "reward_shuffled_route_accuracy": 0.3333333432674408,
+  "candidate_permutation_accuracy": 0.7083333134651184,
+  "selected_accuracy": {"span_2": 1.0, "span_3": 0.75, "span_4": 0.88671875},
+  "gates_pass": false,
+  "claim_boundary": "Rejected for insufficient route acquisition; retained as a positive mechanistic credit signal."
+}

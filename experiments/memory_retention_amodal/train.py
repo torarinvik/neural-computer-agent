@@ -24,8 +24,12 @@ from neural_computer import (
     AmodalOutputBus,
     ContentAddressedMemory,
     ControllerFeedback,
+    ExternalMemoryWritePolicy,
+    MemoryWriteObservation,
     OpaqueProtocolDecoder,
     PersistentContentAddressedMemory,
+    factorized_counterfactual_policy_loss,
+    paired_counterfactual_policy_loss,
 )
 
 from .environment import OutcomeOnlyRetentionVerifier
@@ -77,6 +81,22 @@ def build_runtime(
             ),
             write_threshold=0.5,
         ),
+    )
+
+
+def _build_external_write_policy(
+    runtime: AmodalControllerRuntime,
+) -> ExternalMemoryWritePolicy:
+    return ExternalMemoryWritePolicy(
+        event_width=runtime.event_width,
+        hidden_width=runtime.controller.width,
+        workspace_width=runtime.controller.width,
+        key_width=runtime.controller.width,
+        value_width=runtime.controller.width,
+        memory_read_width=runtime.controller.width,
+        action_width=2,
+        controller_write_context_width=runtime.controller.width * 4,
+        controller_write_relevance_width=1,
     )
 
 
@@ -336,6 +356,7 @@ def _store_outcome(
     sample_memory_writes: bool = False,
     memory_write_override: torch.Tensor | None = None,
     memory_write_uniform: torch.Tensor | None = None,
+    memory_write_gradient: bool = True,
 ) -> tuple[Any, torch.Tensor, torch.Tensor, torch.Tensor | None, torch.Tensor]:
     opaque_action = torch.nn.functional.one_hot(action, num_classes=2).to(torch.float32)
     output, state = runtime.step_events(
@@ -352,6 +373,7 @@ def _store_outcome(
         sample_memory_writes=sample_memory_writes,
         memory_write_override=memory_write_override,
         memory_write_uniform=memory_write_uniform,
+        memory_write_gradient=memory_write_gradient,
     )
     receipt = output.controller.memory_write_receipt
     assert receipt is not None
@@ -370,6 +392,106 @@ def _store_outcome(
             dim=-1,
         ).detach(),
     )
+
+
+def _store_external_outcome(
+    runtime: AmodalControllerRuntime,
+    state: Any,
+    action: torch.Tensor,
+    reward: torch.Tensor,
+    propensity: torch.Tensor,
+    scope: torch.Tensor,
+    *,
+    write_policy: ExternalMemoryWritePolicy,
+    write_override: torch.Tensor | None = None,
+    write_uniform: torch.Tensor | None = None,
+) -> tuple[Any, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Route one write through an isolated, trainable memory-side policy.
+
+    The controller processes feedback with its own write disabled.  The
+    external policy then sees the resulting controller-native observation and
+    the memory backend commits only its binary decision.  This keeps the
+    controller frozen while allowing external state to learn and makes the
+    writer's policy-gradient log probability explicit rather than borrowing
+    the frozen controller head's probability.
+    """
+    if write_override is not None and write_uniform is not None:
+        raise ValueError("external write override and uniform are mutually exclusive")
+    batch = action.shape[0]
+    opaque_action = torch.nn.functional.one_hot(action, num_classes=2).to(torch.float32)
+    previous_event = state.latest_event.detach()
+    output, state = runtime.step_events(
+        _empty(batch, runtime.event_width),
+        state,
+        _feedback(
+            batch,
+            action=opaque_action,
+            reward=reward,
+            propensity=propensity,
+            has_feedback=torch.ones(batch),
+        ),
+        memory_scope=scope,
+        memory_write_override=torch.zeros(batch),
+        memory_write_gradient=False,
+    )
+    controller_output = output.controller
+    if controller_output.memory_read is None:
+        memory_read_value = torch.zeros_like(controller_output.memory_value)
+        memory_read_hit = torch.zeros(batch)
+    else:
+        memory_read_value = controller_output.memory_read.value
+        memory_read_hit = controller_output.memory_read.hit.to(torch.float32)
+    if controller_output.memory_write_context is None:
+        raise RuntimeError("controller did not emit a memory write context")
+    if controller_output.memory_write_relevance is None:
+        raise RuntimeError("controller did not emit memory write relevance")
+    observation = MemoryWriteObservation(
+        event=previous_event,
+        hidden=state.hidden.detach(),
+        workspace_read=controller_output.workspace_read.detach(),
+        query_key=controller_output.memory_query_key.detach(),
+        write_value=controller_output.memory_value.detach(),
+        controller_write_proposal=controller_output.memory_write_strength.detach(),
+        controller_write_context=controller_output.memory_write_context.detach(),
+        controller_write_relevance=controller_output.memory_write_relevance.detach(),
+        memory_read_value=memory_read_value.detach(),
+        memory_read_hit=memory_read_hit.detach(),
+        action=opaque_action.detach(),
+        reward=reward.detach(),
+        propensity=propensity.detach(),
+        has_feedback=torch.ones(batch),
+    )
+    probability = write_policy(observation).clamp(1e-6, 1.0 - 1e-6)
+    if write_override is not None:
+        sample = write_override.reshape(-1).to(
+            device=probability.device, dtype=probability.dtype
+        )
+        if sample.shape != probability.shape:
+            raise ValueError("external write override has the wrong shape")
+        if not bool(torch.all((sample == 0.0) | (sample == 1.0))):
+            raise ValueError("external write override must be binary")
+    else:
+        uniform = (
+            torch.rand_like(probability)
+            if write_uniform is None
+            else write_uniform.reshape(-1).to(
+                device=probability.device, dtype=probability.dtype
+            )
+        )
+        if uniform.shape != probability.shape:
+            raise ValueError("external write uniform has the wrong shape")
+        sample = (uniform < probability).to(probability.dtype)
+    log_probability = (
+        sample * probability.log() + (1.0 - sample) * (1.0 - probability).log()
+    )
+    receipt = runtime.memory.write(
+        controller_output.memory_key.detach(),
+        controller_output.memory_value.detach(),
+        sample.detach(),
+        timestamp=controller_output.intention.timestamp,
+        scope=scope,
+    )
+    return state, probability, receipt.committed, log_probability, observation.features().detach()
 
 
 def _paired_uniforms(batch: int, *, antithetic: bool = True) -> torch.Tensor:
@@ -641,11 +763,10 @@ def _counterfactual_intervention_episode(
                     torch.float32
                 )
             branch_mask = paired_branch_positions == position
-            normal_uniform = _paired_uniforms(batch, antithetic=False)
             write_uniform = torch.where(
                 branch_mask & (arm == 0),
                 torch.zeros(paired_batch),
-                torch.where(branch_mask, torch.ones(paired_batch), normal_uniform),
+                torch.ones(paired_batch),
             )
             (
                 state,
@@ -698,8 +819,11 @@ def _counterfactual_intervention_episode(
         write_logit = torch.stack(branch_logits, dim=1).gather(
             1, branch_positions[:, None]
         ).squeeze(1)
-        write_utility = pair_rewards[:, 0] - pair_rewards[:, 1]
-        loss = action_loss - (write_utility.detach() * write_logit).mean()
+        credit_loss, _ = paired_counterfactual_policy_loss(
+            write_logit,
+            pair_rewards,
+        )
+        loss = action_loss + credit_loss
         if memory_write_cost:
             loss = loss + memory_write_cost * torch.stack(strengths).mean()
         optimizer.zero_grad(set_to_none=True)
@@ -717,6 +841,379 @@ def _counterfactual_intervention_episode(
         strengths,
         committed,
         0.95 * baseline + 0.05 * float(reward.mean()),
+    )
+
+
+def _counterfactual_overwrite_episode(
+    runtime: AmodalControllerRuntime,
+    verifier: OutcomeOnlyRetentionVerifier,
+    tokens: torch.Tensor,
+    *,
+    optimizer: torch.optim.Optimizer,
+    baseline: float,
+    reward_shuffle: bool,
+    memory_write_cost: float,
+    differentiable_memory: bool,
+    retention_order: str = "target_first",
+    external_write_policy: ExternalMemoryWritePolicy | None = None,
+    bidirectional: bool = False,
+) -> tuple[torch.Tensor, list[torch.Tensor], torch.Tensor, float]:
+    """Credit target retention and distractor overwrite separately.
+
+    The first factor compares target write versus skip. The second factor
+    writes the target in both arms, then compares distractor write versus
+    skip. This creates the missing negative utility signal: a distractor write
+    can now be judged against an arm that already holds the target. The target
+    slot is trainer-only intervention state; the controller sees only opaque
+    events, opaque actions, and scalar outcomes.
+    """
+    del differentiable_memory
+    verifier.reset()
+    batch = verifier.batch_size
+    paired_batch = batch * 2
+    scope = torch.arange(paired_batch, dtype=torch.long)
+    if bidirectional:
+        optimizer.zero_grad(set_to_none=True)
+
+    def optimize(loss: torch.Tensor) -> None:
+        if bidirectional:
+            parameters = [
+                parameter
+                for group in optimizer.param_groups
+                for parameter in group["params"]
+                if parameter.requires_grad
+            ]
+            gradients = torch.autograd.grad(
+                loss,
+                parameters,
+                allow_unused=True,
+            )
+            norm_sq = torch.zeros((), device=parameters[0].device)
+            for gradient in gradients:
+                if gradient is not None:
+                    norm_sq = norm_sq + torch.sum(gradient.square())
+            scale = norm_sq.sqrt().clamp_min(1e-8)
+            for parameter, gradient in zip(parameters, gradients, strict=True):
+                if gradient is None:
+                    continue
+                normalized = gradient / scale
+                if parameter.grad is None:
+                    parameter.grad = normalized.detach().clone()
+                else:
+                    parameter.grad.add_(normalized.detach())
+            return
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        parameters = [
+            parameter
+            for group in optimizer.param_groups
+            for parameter in group["params"]
+            if parameter.grad is not None
+        ]
+        torch.nn.utils.clip_grad_norm_(parameters, max_norm=5.0)
+        optimizer.step()
+
+    def shared_recall_action(logits: torch.Tensor) -> torch.Tensor:
+        distribution = Categorical(logits=logits)
+        uniform = _paired_uniforms(batch, antithetic=False).reshape(batch, 2)
+        uniform = uniform[:, 0].repeat_interleave(2)
+        return (
+            uniform[:, None] >= distribution.probs.cumsum(dim=-1)
+        ).sum(dim=-1).clamp_max(distribution.probs.shape[-1] - 1)
+
+    strengths: list[torch.Tensor] = []
+    committed: list[torch.Tensor] = []
+
+    def store(
+        state: Any,
+        action: torch.Tensor,
+        propensity: torch.Tensor,
+        reward: torch.Tensor,
+        override: torch.Tensor,
+    ) -> tuple[Any, torch.Tensor, torch.Tensor, torch.Tensor | None, torch.Tensor]:
+        if external_write_policy is not None:
+            external_state, probability, receipt, log_probability, features = (
+                _store_external_outcome(
+                    runtime,
+                    state,
+                    action,
+                    reward,
+                    propensity,
+                    scope,
+                    write_policy=external_write_policy,
+                    write_override=override,
+                )
+            )
+            return (
+                external_state,
+                probability,
+                receipt,
+                log_probability,
+                features,
+            )
+        return _store_outcome(
+            runtime,
+            state,
+            action,
+            reward,
+            propensity,
+            scope,
+            sample_memory_writes=False,
+            memory_write_override=override,
+            memory_write_gradient=False,
+        )
+
+    # Factor 1: retain the target rather than skipping it.
+    paired_verifier = verifier.duplicate_rows(2)
+    target_slot = paired_verifier.query_slot
+    runtime.memory.clear()
+    state = runtime.initial_state(paired_batch, device="cpu")
+    _, state = runtime.controller.step(
+        _event(tokens[target_slot]),
+        state,
+        _feedback(paired_batch),
+        memory=None,
+    )
+    action, propensity, _, state = _probe_without_writing(
+        runtime,
+        state,
+        _event(tokens[target_slot]),
+        uniform=_paired_uniforms(batch, antithetic=False),
+    )
+    probe_reward = paired_verifier.score_probe(target_slot, action)
+    if reward_shuffle:
+        probe_reward = torch.randint(0, 2, (paired_batch,)).to(torch.float32)
+    state, target_strength, target_committed, _target_log_probability, _ = store(
+        state,
+        action,
+        propensity,
+        probe_reward,
+        (torch.arange(paired_batch) % 2 == 0).to(torch.float32),
+    )
+    query_output, _ = runtime.step_events(
+        _event(tokens[target_slot]),
+        runtime.initial_state(paired_batch, device="cpu"),
+        _feedback(paired_batch),
+        memory_scope=scope,
+        memory_write_override=(
+            torch.zeros(paired_batch) if external_write_policy is not None else None
+        ),
+        memory_write_gradient=False,
+    )
+    target_recall = shared_recall_action(query_output.decoded["protocol"])
+    target_recall_reward = paired_verifier.score_recall(target_recall).reshape(
+        batch, 2
+    )
+    if reward_shuffle:
+        target_recall_reward = torch.randint(0, 2, (batch, 2)).to(torch.float32)
+    target_score = torch.logit(
+        target_strength.reshape(batch, 2)[:, 0].clamp(1e-6, 1.0 - 1e-6)
+    )
+    target_loss, _ = paired_counterfactual_policy_loss(
+        target_score,
+        target_recall_reward,
+    )
+    if memory_write_cost:
+        target_loss = target_loss + memory_write_cost * target_strength.mean()
+    optimize(target_loss)
+    strengths.append(target_strength.detach())
+    committed.append(target_committed)
+
+    # Factor 2: with the target already retained, credit true distractor
+    # overwrite.  This intervention is deliberately target-first regardless
+    # of the outer curriculum order; the opposite temporal case is factor 3.
+    paired_verifier = verifier.duplicate_rows(2)
+    target_slot = paired_verifier.query_slot
+    target_first_slots = _retention_slots(paired_verifier, "target_first")
+    distractor_slot = target_first_slots[:, 1]
+    runtime.memory.clear()
+    state = runtime.initial_state(paired_batch, device="cpu")
+    _, state = runtime.controller.step(
+        _event(tokens[target_slot]),
+        state,
+        _feedback(paired_batch),
+        memory=None,
+    )
+    target_action, target_propensity, _, state = _probe_without_writing(
+        runtime,
+        state,
+        _event(tokens[target_slot]),
+        uniform=_paired_uniforms(batch, antithetic=False),
+    )
+    target_reward = paired_verifier.score_probe(target_slot, target_action)
+    if reward_shuffle:
+        target_reward = torch.randint(0, 2, (paired_batch,)).to(torch.float32)
+    state, _, _, _, _ = store(
+        state,
+        target_action,
+        target_propensity,
+        target_reward,
+        torch.ones(paired_batch),
+    )
+    distractor_action, distractor_propensity, _, state = _probe_without_writing(
+        runtime,
+        state,
+        _event(tokens[distractor_slot]),
+        uniform=_paired_uniforms(batch, antithetic=False),
+    )
+    distractor_reward = paired_verifier.score_probe(
+        distractor_slot, distractor_action
+    )
+    if reward_shuffle:
+        distractor_reward = torch.randint(0, 2, (paired_batch,)).to(torch.float32)
+    (
+        state,
+        distractor_strength,
+        distractor_committed,
+        _distractor_log_probability,
+        _,
+    ) = store(
+        state,
+        distractor_action,
+        distractor_propensity,
+        distractor_reward,
+        (torch.arange(paired_batch) % 2 == 0).to(torch.float32),
+    )
+    query_output, _ = runtime.step_events(
+        _event(tokens[target_slot]),
+        runtime.initial_state(paired_batch, device="cpu"),
+        _feedback(paired_batch),
+        memory_scope=scope,
+        memory_write_override=(
+            torch.zeros(paired_batch) if external_write_policy is not None else None
+        ),
+        memory_write_gradient=False,
+    )
+    overwrite_recall = shared_recall_action(query_output.decoded["protocol"])
+    overwrite_reward = paired_verifier.score_recall(overwrite_recall).reshape(
+        batch, 2
+    )
+    if reward_shuffle:
+        overwrite_reward = torch.randint(0, 2, (batch, 2)).to(torch.float32)
+    distractor_score = torch.logit(
+        distractor_strength.reshape(batch, 2)[:, 0].clamp(1e-6, 1.0 - 1e-6)
+    )
+    overwrite_loss, _ = paired_counterfactual_policy_loss(
+        distractor_score,
+        overwrite_reward,
+    )
+    if memory_write_cost:
+        overwrite_loss = overwrite_loss + memory_write_cost * distractor_strength.mean()
+    optimize(overwrite_loss)
+    strengths.append(distractor_strength.detach())
+    committed.append(distractor_committed)
+
+    if bidirectional:
+        # Complement the protected-target factor with the opposite temporal
+        # case: a distractor is already present, so writing the target must
+        # receive positive utility for the target-last path. Without this arm
+        # the writer only learns "do not overwrite a target" and has no
+        # outcome-only signal that a later target should replace a distractor.
+        paired_verifier = verifier.duplicate_rows(2)
+        target_slot = paired_verifier.query_slot
+        distractor_slot = _retention_slots(
+            paired_verifier, "target_last"
+        )[:, 0]
+        runtime.memory.clear()
+        state = runtime.initial_state(paired_batch, device="cpu")
+        _, state = runtime.controller.step(
+            _event(tokens[target_slot]),
+            state,
+            _feedback(paired_batch),
+            memory=None,
+        )
+        distractor_action, distractor_propensity, _, state = _probe_without_writing(
+            runtime,
+            state,
+            _event(tokens[distractor_slot]),
+            uniform=_paired_uniforms(batch, antithetic=False),
+        )
+        distractor_reward = paired_verifier.score_probe(
+            distractor_slot, distractor_action
+        )
+        if reward_shuffle:
+            distractor_reward = torch.randint(0, 2, (paired_batch,)).to(
+                torch.float32
+            )
+        state, _, _, _, _ = store(
+            state,
+            distractor_action,
+            distractor_propensity,
+            distractor_reward,
+            torch.ones(paired_batch),
+        )
+        target_action, target_propensity, _, state = _probe_without_writing(
+            runtime,
+            state,
+            _event(tokens[target_slot]),
+            uniform=_paired_uniforms(batch, antithetic=False),
+        )
+        target_reward = paired_verifier.score_probe(target_slot, target_action)
+        if reward_shuffle:
+            target_reward = torch.randint(0, 2, (paired_batch,)).to(torch.float32)
+        (
+            state,
+            target_after_distractor_strength,
+            target_after_distractor_committed,
+            _target_after_distractor_log_probability,
+            _,
+        ) = store(
+            state,
+            target_action,
+            target_propensity,
+            target_reward,
+            (torch.arange(paired_batch) % 2 == 0).to(torch.float32),
+        )
+        query_output, _ = runtime.step_events(
+            _event(tokens[target_slot]),
+            runtime.initial_state(paired_batch, device="cpu"),
+            _feedback(paired_batch),
+            memory_scope=scope,
+            memory_write_override=(
+                torch.zeros(paired_batch)
+                if external_write_policy is not None
+                else None
+            ),
+            memory_write_gradient=False,
+        )
+        target_after_distractor_recall = shared_recall_action(
+            query_output.decoded["protocol"]
+        )
+        target_after_distractor_reward = paired_verifier.score_recall(
+            target_after_distractor_recall
+        ).reshape(batch, 2)
+        if reward_shuffle:
+            target_after_distractor_reward = torch.randint(
+                0, 2, (batch, 2)
+            ).to(torch.float32)
+        target_after_distractor_score = torch.logit(
+            target_after_distractor_strength.reshape(batch, 2)[:, 0].clamp(
+                1e-6, 1.0 - 1e-6
+            )
+        )
+        reverse_loss, _ = paired_counterfactual_policy_loss(
+            target_after_distractor_score,
+            target_after_distractor_reward,
+        )
+        if memory_write_cost:
+            reverse_loss = reverse_loss + memory_write_cost * target_after_distractor_strength.mean()
+        optimize(reverse_loss)
+        strengths.append(target_after_distractor_strength.detach())
+        committed.append(target_after_distractor_committed)
+        parameters = [
+            parameter
+            for group in optimizer.param_groups
+            for parameter in group["params"]
+            if parameter.grad is not None
+        ]
+        torch.nn.utils.clip_grad_norm_(parameters, max_norm=5.0)
+        optimizer.step()
+
+    return (
+        overwrite_reward.reshape(-1),
+        strengths,
+        torch.cat(committed),
+        0.95 * baseline + 0.05 * float(overwrite_reward.mean()),
     )
 
 
@@ -755,11 +1252,11 @@ def _counterfactual_parent_episode(
         _feedback(paired_batch),
         memory=None,
     )
-    context = (
-        runtime.memory.differentiable_transaction()
-        if differentiable_memory
-        else nullcontext()
-    )
+    # The write factor receives credit through its forced-decision
+    # log-probability only. A differentiable memory read here would let the
+    # terminal recall loss update the write/value path and contaminate the
+    # write-vs-skip intervention with downstream credit.
+    context = nullcontext()
     strengths: list[torch.Tensor] = []
     probe_log_probabilities: list[torch.Tensor] = []
     write_log_probabilities: list[torch.Tensor] = []
@@ -817,19 +1314,29 @@ def _counterfactual_parent_episode(
         recall_pair = recall_reward.reshape(batch, 2)
         probe_log_pair = probe_log_probability.reshape(batch, 2)
         recall_log_pair = distribution.log_prob(forced_actions).reshape(batch, 2)
-        probe_utility = probe_pair[:, 1] - probe_pair[:, 0]
         recall_utility = recall_pair[:, 1] - recall_pair[:, 0]
-        loss_terms = [
-            recall_utility.detach()
-            * (recall_log_pair[:, 1] - recall_log_pair[:, 0])
-        ]
+        decision_scores = torch.stack(
+            [
+                probe_log_pair[:, 1] - probe_log_pair[:, 0],
+                recall_log_pair[:, 1] - recall_log_pair[:, 0],
+            ],
+            dim=1,
+        )
+        utilities = torch.stack([probe_pair, recall_pair], dim=1)
         if include_probe_credit:
-            loss_terms.insert(
-                0,
-                probe_utility.detach()
-                * (probe_log_pair[:, 1] - probe_log_pair[:, 0]),
+            loss, _ = factorized_counterfactual_policy_loss(
+                decision_scores,
+                utilities,
+                positive_arm=1,
+                negative_arm=0,
             )
-        loss = -torch.stack(loss_terms, dim=0).sum(dim=0).mean()
+        else:
+            loss, _ = paired_counterfactual_policy_loss(
+                decision_scores[:, 1],
+                recall_pair,
+                positive_arm=1,
+                negative_arm=0,
+            )
         if write_log_probabilities:
             write_log_pair = torch.stack(write_log_probabilities, dim=1).reshape(
                 batch, 2, -1
@@ -856,6 +1363,231 @@ def _counterfactual_parent_episode(
         strengths,
         committed,
         0.95 * baseline + 0.05 * float(recall_reward.mean()),
+    )
+
+
+def _counterfactual_three_factor_episode(
+    runtime: AmodalControllerRuntime,
+    verifier: OutcomeOnlyRetentionVerifier,
+    tokens: torch.Tensor,
+    *,
+    optimizer: torch.optim.Optimizer,
+    baseline: float,
+    reward_shuffle: bool,
+    memory_write_cost: float,
+    differentiable_memory: bool,
+) -> tuple[torch.Tensor, list[torch.Tensor], torch.Tensor, float]:
+    """Credit probe action, write/skip, and recall action separately.
+
+    Each factor receives its own common-random pair. The probe factor forces
+    actions 0/1 and scores the probe outcome; the write factor forces
+    write/skip and scores final recall; the recall factor forces actions 0/1
+    after a matched write and scores final recall. No terminal reward is
+    broadcast across factors, which prevents a successful recall from being
+    incorrectly attributed to every decision in the episode.
+    """
+    verifier.reset()
+    batch = verifier.batch_size
+    paired_batch = batch * 2
+    forced_actions = torch.arange(paired_batch, dtype=torch.long) % 2
+    strengths: list[torch.Tensor] = []
+    committed = torch.zeros(paired_batch, dtype=torch.bool)
+    final_reward = torch.zeros(paired_batch)
+
+    def fresh_pair() -> OutcomeOnlyRetentionVerifier:
+        return verifier.duplicate_rows(2)
+
+    def optimize(loss: torch.Tensor) -> None:
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        parameters = [
+            parameter
+            for group in optimizer.param_groups
+            for parameter in group["params"]
+            if parameter.grad is not None
+        ]
+        torch.nn.utils.clip_grad_norm_(parameters, max_norm=5.0)
+        optimizer.step()
+
+    # Factor 1: probe action -> probe outcome.
+    paired_verifier = fresh_pair()
+    state = runtime.initial_state(paired_batch, device="cpu")
+    _, state = runtime.controller.step(
+        _event(tokens[paired_verifier.query_slot]),
+        state,
+        _feedback(paired_batch),
+        memory=None,
+    )
+    action, _, log_probability, _ = _probe_without_writing(
+        runtime,
+        state,
+        _event(tokens[paired_verifier.query_slot]),
+        forced_action=forced_actions,
+    )
+    probe_reward = paired_verifier.score_probe(
+        paired_verifier.query_slot, action
+    ).reshape(batch, 2)
+    if reward_shuffle:
+        probe_reward = torch.randint(0, 2, probe_reward.shape).to(torch.float32)
+    probe_scores = log_probability.reshape(batch, 2)[:, 1]
+    probe_loss, _ = paired_counterfactual_policy_loss(
+        probe_scores,
+        probe_reward[:, [1, 0]],
+    )
+    optimize(probe_loss)
+
+    # Factor 2: write/skip -> recall outcome.
+    paired_verifier = fresh_pair()
+    scope = torch.arange(paired_batch, dtype=torch.long)
+    runtime.memory.clear()
+    state = runtime.initial_state(paired_batch, device="cpu")
+    _, state = runtime.controller.step(
+        _event(tokens[paired_verifier.query_slot]),
+        state,
+        _feedback(paired_batch),
+        memory=None,
+    )
+    action, propensity, _, state = _probe_without_writing(
+        runtime,
+        state,
+        _event(tokens[paired_verifier.query_slot]),
+        uniform=_paired_uniforms(batch, antithetic=False),
+    )
+    probe_reward = paired_verifier.score_probe(
+        paired_verifier.query_slot, action
+    )
+    if reward_shuffle:
+        probe_reward = torch.randint(0, 2, (paired_batch,)).to(torch.float32)
+    write_override = (torch.arange(paired_batch) % 2 == 0).to(torch.float32)
+    # The write factor receives credit through its forced-decision
+    # log-probability only. A differentiable memory read here would let the
+    # terminal recall loss update the write/value path and contaminate the
+    # write-vs-skip intervention with downstream credit.
+    context = nullcontext()
+    with context:
+        (
+            state,
+            write_strength,
+            write_committed,
+            write_log_probability,
+            _critic_features,
+        ) = _store_outcome(
+            runtime,
+            state,
+            action,
+            probe_reward,
+            propensity,
+            scope,
+            sample_memory_writes=False,
+            memory_write_override=write_override,
+        )
+        assert write_log_probability is not None
+        query_output, _ = runtime.step_events(
+            _event(tokens[paired_verifier.query_slot]),
+            runtime.initial_state(paired_batch, device="cpu"),
+            _feedback(paired_batch),
+            memory_scope=scope,
+        )
+        recall_distribution = Categorical(
+            logits=query_output.decoded["protocol"]
+        )
+        # Couple the downstream stochasticity without forcing the same action:
+        # the write intervention must be allowed to change the recall policy,
+        # while both arms receive the same exogenous random draw.
+        shared_uniform = _paired_uniforms(batch, antithetic=False).reshape(
+            batch, 2
+        )[:, 0].repeat_interleave(2)
+        recall_action = (
+            shared_uniform[:, None] >= recall_distribution.probs.cumsum(dim=-1)
+        ).sum(dim=-1).clamp_max(1)
+        recall_reward = paired_verifier.score_recall(recall_action).reshape(
+            batch, 2
+        )
+        if reward_shuffle:
+            recall_reward = torch.randint(0, 2, recall_reward.shape).to(
+                torch.float32
+            )
+        write_scores = write_log_probability.reshape(batch, 2)[:, 0]
+        write_loss, _ = paired_counterfactual_policy_loss(
+            write_scores,
+            recall_reward,
+        )
+        if memory_write_cost:
+            write_loss = write_loss + memory_write_cost * write_strength.mean()
+        optimize(write_loss)
+    strengths.append(write_strength.detach())
+    committed = write_committed
+
+    # Factor 3: recall action -> recall outcome after an identical write.
+    paired_verifier = fresh_pair()
+    runtime.memory.clear()
+    state = runtime.initial_state(paired_batch, device="cpu")
+    _, state = runtime.controller.step(
+        _event(tokens[paired_verifier.query_slot]),
+        state,
+        _feedback(paired_batch),
+        memory=None,
+    )
+    action, propensity, _, state = _probe_without_writing(
+        runtime,
+        state,
+        _event(tokens[paired_verifier.query_slot]),
+        uniform=_paired_uniforms(batch, antithetic=False),
+    )
+    probe_reward = paired_verifier.score_probe(
+        paired_verifier.query_slot, action
+    )
+    if reward_shuffle:
+        probe_reward = torch.randint(0, 2, (paired_batch,)).to(torch.float32)
+    # Preserve the value gradient needed to teach recall from memory, but do
+    # not let the terminal recall loss update the forced write-gate policy.
+    context = (
+        runtime.memory.differentiable_transaction()
+        if differentiable_memory
+        else nullcontext()
+    )
+    with context:
+        state, write_strength, _, _, _ = _store_outcome(
+            runtime,
+            state,
+            action,
+            probe_reward,
+            propensity,
+            scope,
+            sample_memory_writes=False,
+            memory_write_override=torch.ones(paired_batch),
+            memory_write_gradient=False,
+        )
+        query_output, _ = runtime.step_events(
+            _event(tokens[paired_verifier.query_slot]),
+            runtime.initial_state(paired_batch, device="cpu"),
+            _feedback(paired_batch),
+            memory_scope=scope,
+        )
+        recall_distribution = Categorical(
+            logits=query_output.decoded["protocol"]
+        )
+        recall_log_probability = recall_distribution.log_prob(forced_actions)
+        recall_reward = paired_verifier.score_recall(forced_actions).reshape(
+            batch, 2
+        )
+        if reward_shuffle:
+            recall_reward = torch.randint(0, 2, recall_reward.shape).to(
+                torch.float32
+            )
+        recall_scores = recall_log_probability.reshape(batch, 2)[:, 1]
+        recall_loss, _ = paired_counterfactual_policy_loss(
+            recall_scores,
+            recall_reward[:, [1, 0]],
+        )
+        optimize(recall_loss)
+    strengths.append(write_strength.detach())
+    final_reward = recall_reward.reshape(-1)
+    return (
+        final_reward,
+        strengths,
+        committed,
+        0.95 * baseline + 0.05 * float(final_reward.mean()),
     )
 
 
@@ -1082,6 +1814,78 @@ def _episode(
     )
 
 
+@torch.no_grad()
+def _external_memory_episode(
+    runtime: AmodalControllerRuntime,
+    verifier: OutcomeOnlyRetentionVerifier,
+    tokens: torch.Tensor,
+    scope: torch.Tensor,
+    *,
+    write_policy: ExternalMemoryWritePolicy,
+    curriculum: str = "retention",
+    memory_condition: str = "intact",
+    reverse_order: bool = False,
+    retention_order: str = "random",
+) -> torch.Tensor:
+    """Evaluate a frozen controller with an isolated external writer."""
+    verifier.reset()
+    batch = verifier.batch_size
+    runtime.memory.clear()
+    state = runtime.initial_state(batch, device="cpu")
+    cue_missing = memory_condition == "missing_write_cue"
+    if not cue_missing:
+        _, state = runtime.controller.step(
+            _event(tokens[verifier.query_slot]), state, _feedback(batch), memory=None
+        )
+    if curriculum == "single":
+        slots = verifier.query_slot[:, None]
+    else:
+        slots = (
+            verifier.order.flip(1)
+            if reverse_order
+            else _retention_slots(verifier, retention_order)
+        )
+    for position in range(slots.shape[1]):
+        slot = slots[:, position]
+        action, propensity, _, state = _probe_without_writing(
+            runtime, state, _event(tokens[slot])
+        )
+        reward = verifier.score_probe(slot, action)
+        state, _, _, _, _ = _store_external_outcome(
+            runtime,
+            state,
+            action,
+            reward,
+            propensity,
+            scope,
+            write_policy=write_policy,
+        )
+    if memory_condition == "clear":
+        runtime.memory.clear()
+    elif memory_condition == "corrupt":
+        runtime.memory.values.zero_()
+    query_events = (
+        _empty(batch, runtime.event_width)
+        if memory_condition == "missing_query_cue"
+        else _event(tokens[verifier.query_slot])
+    )
+    query_output, _ = runtime.step_events(
+        query_events,
+        runtime.initial_state(batch, device="cpu"),
+        _feedback(batch),
+        memory_scope=scope,
+        memory_write_override=torch.zeros(batch),
+        memory_write_gradient=False,
+    )
+    distribution = Categorical(logits=query_output.decoded["protocol"])
+    action = (
+        torch.randint(0, 2, (batch,))
+        if memory_condition == "random_action"
+        else distribution.sample()
+    )
+    return verifier.score_recall(action)
+
+
 def train_curriculum(
     runtime: AmodalControllerRuntime,
     verifier: OutcomeOnlyRetentionVerifier,
@@ -1108,6 +1912,7 @@ def train_curriculum(
     randomize_event_tokens: bool = False,
     retention_token_reuse_steps: int = 4,
     learning_rate: float = 2e-3,
+    external_write_policy: ExternalMemoryWritePolicy | None = None,
 ) -> tuple[list[dict[str, float | int | str]], dict[str, object]]:
     if min(phase1_steps, phase2_steps) < 1:
         raise ValueError("curriculum steps must be positive")
@@ -1121,8 +1926,16 @@ def train_curriculum(
         "critic_v1",
         "counterfactual_v1",
         "counterfactual_v2",
+        "counterfactual_overwrite_v1",
+        "external_overwrite_v1",
+        "external_overwrite_v2",
     }:
         raise ValueError("unknown write credit mode")
+    if (
+        write_credit in {"external_overwrite_v1", "external_overwrite_v2"}
+        and external_write_policy is None
+    ):
+        raise ValueError("external overwrite credit requires an external writer")
     if write_credit == "counterfactual_v1" and not stochastic_write_sampling:
         raise ValueError("counterfactual write credit requires stochastic writes")
     if not 0 <= retention_warmup_steps <= phase2_steps:
@@ -1142,6 +1955,7 @@ def train_curriculum(
         "counterfactual_action",
         "counterfactual_action_fixed_write",
         "counterfactual_recall_fixed_write",
+        "counterfactual_three_factor",
     }:
         raise ValueError("unknown parent credit mode")
     runtime.train()
@@ -1163,6 +1977,8 @@ def train_curriculum(
         optimizer_parameters.extend(write_critic.parameters())
     if value_critic is not None:
         optimizer_parameters.extend(value_critic.parameters())
+    if external_write_policy is not None:
+        optimizer_parameters.extend(external_write_policy.parameters())
     optimizer = torch.optim.Adam(optimizer_parameters, lr=learning_rate)
     scope = torch.arange(verifier.batch_size, dtype=torch.long)
     baseline = 0.5
@@ -1184,6 +2000,7 @@ def train_curriculum(
     retention_validation_count = 0
     best_validation_metric: float | None = None
     best_validation_state: dict[str, torch.Tensor] | None = None
+    best_external_write_state: dict[str, torch.Tensor] | None = None
     best_validation_parent_eligible = False
     best_validation_parent_retention: float | None = None
     stable_parent_audits = 0
@@ -1223,8 +2040,18 @@ def train_curriculum(
                 runtime,
                 parent_write_policy_protection != "freeze_parent_phase",
             )
+            if external_write_policy is not None:
+                for parameter in external_write_policy.parameters():
+                    parameter.requires_grad_(False)
         else:
-            _set_memory_write_policy_trainable(runtime, True)
+            if write_credit in {"external_overwrite_v1", "external_overwrite_v2"}:
+                for parameter in runtime.parameters():
+                    parameter.requires_grad_(False)
+                assert external_write_policy is not None
+                for parameter in external_write_policy.parameters():
+                    parameter.requires_grad_(True)
+            else:
+                _set_memory_write_policy_trainable(runtime, True)
         if curriculum == "retention" and not parent_stable and not reward_shuffle:
             # Do not spend retention budget on an unqualified parent. The
             # reward-shuffled control is intentionally allowed through so it
@@ -1273,7 +2100,18 @@ def train_curriculum(
                 retention_token_block_step += 1
             else:
                 episode_tokens = tokens
-            if curriculum == "single" and parent_credit in {
+            if curriculum == "single" and parent_credit == "counterfactual_three_factor":
+                reward, gates, committed, baseline = _counterfactual_three_factor_episode(
+                    runtime,
+                    verifier,
+                    episode_tokens,
+                    optimizer=optimizer,
+                    baseline=baseline,
+                    reward_shuffle=reward_shuffle,
+                    memory_write_cost=memory_write_cost,
+                    differentiable_memory=True,
+                )
+            elif curriculum == "single" and parent_credit in {
                 "counterfactual_action",
                 "counterfactual_action_fixed_write",
                 "counterfactual_recall_fixed_write",
@@ -1294,6 +2132,56 @@ def train_curriculum(
                     },
                     include_probe_credit=parent_credit
                     != "counterfactual_recall_fixed_write",
+                )
+            elif (
+                curriculum == "retention"
+                and write_credit == "counterfactual_overwrite_v1"
+            ):
+                reward, gates, committed, baseline = _counterfactual_overwrite_episode(
+                    runtime,
+                    verifier,
+                    episode_tokens,
+                    optimizer=optimizer,
+                    baseline=baseline,
+                    reward_shuffle=reward_shuffle,
+                    memory_write_cost=memory_write_cost,
+                    differentiable_memory=differentiable_memory,
+                    retention_order=active_order,
+                )
+            elif (
+                curriculum == "retention"
+                and write_credit == "external_overwrite_v1"
+            ):
+                assert external_write_policy is not None
+                reward, gates, committed, baseline = _counterfactual_overwrite_episode(
+                    runtime,
+                    verifier,
+                    episode_tokens,
+                    optimizer=optimizer,
+                    baseline=baseline,
+                    reward_shuffle=reward_shuffle,
+                    memory_write_cost=memory_write_cost,
+                    differentiable_memory=False,
+                    retention_order=active_order,
+                    external_write_policy=external_write_policy,
+                )
+            elif (
+                curriculum == "retention"
+                and write_credit == "external_overwrite_v2"
+            ):
+                assert external_write_policy is not None
+                reward, gates, committed, baseline = _counterfactual_overwrite_episode(
+                    runtime,
+                    verifier,
+                    episode_tokens,
+                    optimizer=optimizer,
+                    baseline=baseline,
+                    reward_shuffle=reward_shuffle,
+                    memory_write_cost=memory_write_cost,
+                    differentiable_memory=False,
+                    retention_order=active_order,
+                    external_write_policy=external_write_policy,
+                    bidirectional=True,
                 )
             elif curriculum == "retention" and write_credit in {
                 "counterfactual_v1",
@@ -1434,12 +2322,18 @@ def train_curriculum(
                 curriculum_label == "retention"
                 and (step % 64 == 0 or step == steps)
             ):
+                validation_writer = (
+                    external_write_policy
+                    if write_credit in {"external_overwrite_v1", "external_overwrite_v2"}
+                    else None
+                )
                 validation_intact = evaluate_condition(
                     runtime,
                     retention_validation_verifier,
                     tokens,
                     condition="intact",
                     episodes=16,
+                    external_write_policy=validation_writer,
                 )
                 validation_clear = evaluate_condition(
                     runtime,
@@ -1447,6 +2341,7 @@ def train_curriculum(
                     tokens,
                     condition="clear",
                     episodes=16,
+                    external_write_policy=validation_writer,
                 )
                 validation_target_first = evaluate_condition(
                     runtime,
@@ -1454,6 +2349,7 @@ def train_curriculum(
                     tokens,
                     condition="target_first",
                     episodes=16,
+                    external_write_policy=validation_writer,
                 )
                 validation_target_last = evaluate_condition(
                     runtime,
@@ -1461,6 +2357,7 @@ def train_curriculum(
                     tokens,
                     condition="target_last",
                     episodes=16,
+                    external_write_policy=validation_writer,
                 )
                 validation_missing_write = evaluate_condition(
                     runtime,
@@ -1468,12 +2365,14 @@ def train_curriculum(
                     tokens,
                     condition="missing_write_cue",
                     episodes=16,
+                    external_write_policy=validation_writer,
                 )
                 validation_parent_retention = evaluate_parent_condition(
                     runtime,
                     parent_audit_verifier,
                     tokens,
                     episodes=8,
+                    external_write_policy=validation_writer,
                 )
                 validation_order_score = min(
                     validation_target_first, validation_target_last
@@ -1510,6 +2409,14 @@ def train_curriculum(
                         name: value.detach().clone()
                         for name, value in runtime.state_dict().items()
                     }
+                    best_external_write_state = (
+                        None
+                        if external_write_policy is None
+                        else {
+                            name: value.detach().clone()
+                            for name, value in external_write_policy.state_dict().items()
+                        }
+                    )
                 history.append(
                     {
                         "curriculum": "retention_validation",
@@ -1544,10 +2451,36 @@ def train_curriculum(
             break
     if best_validation_state is not None:
         runtime.load_state_dict(best_validation_state)
+    if best_external_write_state is not None and external_write_policy is not None:
+        external_write_policy.load_state_dict(best_external_write_state)
     for parameter in runtime.parameters():
         parameter.requires_grad = True
     counterfactual_arm_multiplier = (
-        2 if write_credit in {"counterfactual_v1", "counterfactual_v2"} else 1
+        2
+        if write_credit
+        in {
+            "counterfactual_v1",
+            "counterfactual_v2",
+            "counterfactual_overwrite_v1",
+            "external_overwrite_v1",
+            "external_overwrite_v2",
+        }
+        else 1
+    )
+    retention_counterfactual_factor_count = (
+        3
+        if write_credit == "external_overwrite_v2"
+        else 2
+        if write_credit in {"counterfactual_overwrite_v1", "external_overwrite_v1"}
+        else 1
+    )
+    retention_counterfactual_optimizer_multiplier = (
+        1
+        if write_credit == "external_overwrite_v2"
+        else retention_counterfactual_factor_count
+    )
+    counterfactual_factor_count = (
+        3 if parent_credit == "counterfactual_three_factor" else 1
     )
     validation_records = [
         record
@@ -1573,38 +2506,60 @@ def train_curriculum(
         + (retention_warmup_steps + stable_validation_step)
         * verifier.batch_size
         * (verifier.slot_count + 1)
+        * retention_counterfactual_factor_count
         if stable_validation_step is not None
         else None
     )
     return history, {
-        "unique_verifier_bits": phase1_updates * verifier.batch_size * 2
+        "unique_verifier_bits": phase1_updates
+        * verifier.batch_size
+        * 2
+        * counterfactual_factor_count
         + phase2_updates
         * verifier.batch_size
         * (verifier.slot_count + 1)
+        * retention_counterfactual_factor_count
         + parent_rehearsal_updates * verifier.batch_size * 2,
-        "unique_logical_lifetimes": (phase1_updates + phase2_updates)
-        * verifier.batch_size
-        + parent_rehearsal_updates * verifier.batch_size,
-        "logical_lifetime_observations": phase1_updates * verifier.batch_size
-        + phase2_updates * verifier.batch_size * counterfactual_arm_multiplier
-        + parent_rehearsal_updates * verifier.batch_size,
-        "optimizer_updates": phase1_updates
+        "unique_logical_lifetimes": phase1_updates * verifier.batch_size
         + phase2_updates
+        * verifier.batch_size
+        * retention_counterfactual_factor_count
+        + parent_rehearsal_updates * verifier.batch_size,
+        "logical_lifetime_observations": phase1_updates
+        * verifier.batch_size
+        * counterfactual_factor_count
+        + phase2_updates * verifier.batch_size * counterfactual_arm_multiplier
+        * retention_counterfactual_factor_count
+        + parent_rehearsal_updates * verifier.batch_size,
+        "optimizer_updates": phase1_updates * counterfactual_factor_count
+        + phase2_updates * retention_counterfactual_optimizer_multiplier
         + parent_rehearsal_updates,
         "replayed_examples": 0,
-        "verifier_outcome_events": phase1_updates * verifier.batch_size * 2
+        "verifier_outcome_events": phase1_updates
+        * verifier.batch_size
+        * 2
+        * counterfactual_factor_count
         + phase2_updates
         * verifier.batch_size
         * (verifier.slot_count + 1)
-        * counterfactual_arm_multiplier,
+        * counterfactual_arm_multiplier
+        * retention_counterfactual_factor_count,
+        "retention_counterfactual_factor_outcome_events": phase2_updates
+        * verifier.batch_size
+        * (verifier.slot_count + 1)
+        * counterfactual_arm_multiplier
+        * retention_counterfactual_factor_count,
         "parent_rehearsal_outcome_events": parent_rehearsal_updates
         * verifier.batch_size
         * 2,
-        "feedback_events": phase1_updates * verifier.batch_size
+        "feedback_events": phase1_updates
+        * verifier.batch_size
+        * counterfactual_factor_count
         + phase2_updates
         * verifier.batch_size
         * verifier.slot_count
-        * counterfactual_arm_multiplier,
+        * counterfactual_arm_multiplier
+        * retention_counterfactual_factor_count,
         "parent_rehearsal_feedback_events": parent_rehearsal_updates
         * verifier.batch_size,
         "diagnostic_verifier_bits": diagnostic_verifier_bits,
@@ -1633,6 +2588,25 @@ def train_curriculum(
             retention_write_policy_reset
         ),
         "counterfactual_arm_multiplier": counterfactual_arm_multiplier,
+        "retention_counterfactual_factor_count": retention_counterfactual_factor_count,
+        "retention_counterfactual_optimizer_multiplier": (
+            retention_counterfactual_optimizer_multiplier
+        ),
+        "retention_counterfactual_factor_optimizer_updates": (
+            phase2_updates * retention_counterfactual_optimizer_multiplier
+        ),
+        "counterfactual_factor_count": counterfactual_factor_count,
+        "counterfactual_factor_outcome_events": (
+            phase1_updates
+            * verifier.batch_size
+            * 2
+            * counterfactual_factor_count
+        ),
+        "counterfactual_factor_optimizer_updates": (
+            phase1_updates * counterfactual_factor_count
+            if parent_credit == "counterfactual_three_factor"
+            else 0
+        ),
         "mean_write_critic_loss": (
             sum(critic_losses) / max(1, len(critic_losses))
             if critic_losses
@@ -1664,6 +2638,7 @@ def evaluate_condition(
     *,
     condition: str,
     episodes: int = 64,
+    external_write_policy: ExternalMemoryWritePolicy | None = None,
 ) -> float:
     valid = {
         "intact",
@@ -1682,24 +2657,42 @@ def evaluate_condition(
     scope = torch.arange(verifier.batch_size, dtype=torch.long)
     total = 0.0
     for _ in range(episodes):
-        reward, _, _, _ = _episode(
-            runtime,
-            verifier,
-            tokens,
-            scope,
-            curriculum="retention",
-            reward_shuffle=False,
-            train=False,
-            reverse_order=condition == "reverse_order",
-            memory_condition=condition,
-            retention_order=(
-                "target_first"
-                if condition == "target_first"
-                else "target_last"
-                if condition == "target_last"
-                else "random"
-            ),
-        )
+        if external_write_policy is None:
+            reward, _, _, _ = _episode(
+                runtime,
+                verifier,
+                tokens,
+                scope,
+                curriculum="retention",
+                reward_shuffle=False,
+                train=False,
+                reverse_order=condition == "reverse_order",
+                memory_condition=condition,
+                retention_order=(
+                    "target_first"
+                    if condition == "target_first"
+                    else "target_last"
+                    if condition == "target_last"
+                    else "random"
+                ),
+            )
+        else:
+            reward = _external_memory_episode(
+                runtime,
+                verifier,
+                tokens,
+                scope,
+                write_policy=external_write_policy,
+                memory_condition=condition,
+                reverse_order=condition == "reverse_order",
+                retention_order=(
+                    "target_first"
+                    if condition == "target_first"
+                    else "target_last"
+                    if condition == "target_last"
+                    else "random"
+                ),
+            )
         total += float(reward.sum())
     runtime.train()
     return total / (episodes * verifier.batch_size)
@@ -1715,6 +2708,7 @@ def evaluate_unseen_token_population(
     slot_count: int = 2,
     pairs: int = 4,
     episodes: int = 16,
+    external_write_policy: ExternalMemoryWritePolicy | None = None,
 ) -> dict[str, float | list[float]]:
     """Evaluate retention on several unseen opaque token populations.
 
@@ -1739,6 +2733,7 @@ def evaluate_unseen_token_population(
                 tokens,
                 condition="intact",
                 episodes=episodes,
+                external_write_policy=external_write_policy,
             )
         )
     return {
@@ -1756,21 +2751,32 @@ def evaluate_parent_condition(
     tokens: torch.Tensor,
     *,
     episodes: int = 8,
+    external_write_policy: ExternalMemoryWritePolicy | None = None,
 ) -> float:
     """Audit the mastered single-event parent before entering retention."""
     runtime.eval()
     scope = torch.arange(verifier.batch_size, dtype=torch.long)
     total = 0.0
     for _ in range(episodes):
-        reward, _, _, _ = _episode(
-            runtime,
-            verifier,
-            tokens,
-            scope,
-            curriculum="single",
-            reward_shuffle=False,
-            train=False,
-        )
+        if external_write_policy is None:
+            reward, _, _, _ = _episode(
+                runtime,
+                verifier,
+                tokens,
+                scope,
+                curriculum="single",
+                reward_shuffle=False,
+                train=False,
+            )
+        else:
+            reward = _external_memory_episode(
+                runtime,
+                verifier,
+                tokens,
+                scope,
+                write_policy=external_write_policy,
+                curriculum="single",
+            )
         total += float(reward.sum())
     runtime.train()
     return total / (episodes * verifier.batch_size)
@@ -1881,7 +2887,23 @@ def run_experiment(
         event_window_capacity=max(event_window_capacity, slot_count + 1),
         memory_scope_capacity=(
             batch_size * 2
-            if write_credit in {"counterfactual_v1", "counterfactual_v2"}
+            if (
+                write_credit
+                in {
+                    "counterfactual_v1",
+                    "counterfactual_v2",
+                    "counterfactual_overwrite_v1",
+                    "external_overwrite_v1",
+                    "external_overwrite_v2",
+                }
+                or parent_credit
+                in {
+                    "counterfactual_action",
+                    "counterfactual_action_fixed_write",
+                    "counterfactual_recall_fixed_write",
+                    "counterfactual_three_factor",
+                }
+            )
             else batch_size
         ),
         memory_value_feedback=memory_value_feedback,
@@ -1889,6 +2911,11 @@ def run_experiment(
         stable_memory_address=stable_memory_address,
     )
     tokens = torch.randn(slot_count, runtime.event_width)
+    external_write_policy = (
+        _build_external_write_policy(runtime)
+        if write_credit in {"external_overwrite_v1", "external_overwrite_v2"}
+        else None
+    )
     verifier = OutcomeOnlyRetentionVerifier(
         batch_size=batch_size, seed=seed + 10, slot_count=slot_count
     )
@@ -1917,6 +2944,7 @@ def run_experiment(
         randomize_event_tokens=randomize_event_tokens,
         retention_token_reuse_steps=retention_token_reuse_steps,
         learning_rate=learning_rate,
+        external_write_policy=external_write_policy,
     )
     conditions = {
         condition: evaluate_condition(
@@ -1928,6 +2956,7 @@ def run_experiment(
             ),
             tokens,
             condition=condition,
+            external_write_policy=external_write_policy,
         )
         for index, condition in enumerate(
             (
@@ -1953,6 +2982,7 @@ def run_experiment(
         ),
         tokens,
         episodes=16,
+        external_write_policy=external_write_policy,
     )
     mastered_elapsed = time.perf_counter() - mastered_start
     unseen_token_population = evaluate_unseen_token_population(
@@ -1961,6 +2991,7 @@ def run_experiment(
         event_width=runtime.event_width,
         seed=seed + 400_000,
         slot_count=slot_count,
+        external_write_policy=external_write_policy,
     )
     unseen_token_retention = float(unseen_token_population["mean"])
     unseen_token_retention_min = float(unseen_token_population["minimum"])
@@ -2027,6 +3058,7 @@ def run_experiment(
             transfer_tokens_for_training,
             condition="intact",
             episodes=16,
+            external_write_policy=external_write_policy,
         )
         transferred_runtime = build_runtime(
             seed=seed + 500_002,
@@ -2039,6 +3071,11 @@ def run_experiment(
             stable_memory_address=stable_memory_address,
         )
         transferred_runtime.load_state_dict(runtime.state_dict())
+        transferred_external_write_policy = (
+            _build_external_write_policy(transferred_runtime)
+            if write_credit in {"external_overwrite_v1", "external_overwrite_v2"}
+            else None
+        )
         transfer_training_options = {
             "memory_write_cost": memory_write_cost,
             "parent_protection": parent_protection,
@@ -2066,6 +3103,7 @@ def run_experiment(
             retention_order=retention_order,
             retention_warmup_steps=retention_warmup_steps,
             write_credit=write_credit,
+            external_write_policy=transferred_external_write_policy,
             **transfer_training_options,
         )
         fresh_accountings: list[dict[str, object]] = []
@@ -2085,6 +3123,11 @@ def run_experiment(
                 seed=transfer_verifier_seed,
                 slot_count=slot_count,
             )
+            fresh_external_write_policy = (
+                _build_external_write_policy(fresh_runtime)
+                if write_credit in {"external_overwrite_v1", "external_overwrite_v2"}
+                else None
+            )
             _, fresh_accounting = train_curriculum(
                 fresh_runtime,
                 fresh_verifier,
@@ -2096,6 +3139,7 @@ def run_experiment(
                 retention_order=retention_order,
                 retention_warmup_steps=retention_warmup_steps,
                 write_credit=write_credit,
+                external_write_policy=fresh_external_write_policy,
                 **transfer_training_options,
             )
             fresh_accountings.append(fresh_accounting)
@@ -2158,7 +3202,7 @@ def run_experiment(
         not reward_shuffle
         and retention_order in {"random", "balanced"}
         and parent_protection == "none"
-        and phase2_steps > retention_warmup_steps
+        and phase2_steps - retention_warmup_steps >= 64
         and bool(accounting["parent_stable"])
         and not bool(accounting["retention_blocked"])
         and accounting["stable_bits_to_threshold"] is not None
@@ -2170,6 +3214,7 @@ def run_experiment(
         and conditions["reverse_order"] >= 0.65
         and conditions["target_first"] >= 0.70
         and conditions["target_last"] >= 0.70
+        and abs(conditions["target_first"] - conditions["target_last"]) <= 0.10
         and conditions["target_first"] - conditions["missing_write_cue"] >= 0.10
         and conditions["intact"] - conditions["clear"] >= 0.15
         and conditions["intact"] - conditions["corrupt"] >= 0.15
@@ -2204,6 +3249,11 @@ def run_experiment(
             "memory_write_cost": memory_write_cost,
             "stochastic_write_sampling": stochastic_write_sampling,
             "write_credit": write_credit,
+            "external_write_policy": (
+                None
+                if external_write_policy is None
+                else external_write_policy.configuration()
+            ),
             "counterfactual_arm_multiplier": accounting[
                 "counterfactual_arm_multiplier"
             ],
@@ -2258,6 +3308,8 @@ def run_experiment(
             "stable_validation_required": True,
             "retention_on_mastered_primitives_min": 0.90,
             "retention_on_unseen_event_tokens_min": 0.70,
+            "retention_updates_min": 64,
+            "target_order_symmetry_max_gap": 0.10,
         },
         "promoted": promotion,
         "transfer": transfer_report,
@@ -2305,6 +3357,9 @@ def main() -> None:
             "critic_v1",
             "counterfactual_v1",
             "counterfactual_v2",
+            "counterfactual_overwrite_v1",
+            "external_overwrite_v1",
+            "external_overwrite_v2",
         ),
         default="global_baseline",
     )
@@ -2330,6 +3385,7 @@ def main() -> None:
             "counterfactual_action",
             "counterfactual_action_fixed_write",
             "counterfactual_recall_fixed_write",
+            "counterfactual_three_factor",
         ),
         default="policy_gradient",
     )

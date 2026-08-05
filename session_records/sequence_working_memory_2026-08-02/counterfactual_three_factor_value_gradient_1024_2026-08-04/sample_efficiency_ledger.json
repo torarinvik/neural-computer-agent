@@ -1,0 +1,52 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "counterfactual-three-factor-parent-credit-2026-08-04",
+  "status": "replicated_parent_acquisition_not_retention_promoted",
+  "mechanism": "separate common-random probe, write-skip, and recall interventions with differentiable memory-value credit and detached forced write-gate gradients",
+  "runs": [
+    {
+      "seed": 17,
+      "unique_logical_lifetimes": 11280,
+      "unique_verifier_bits": 67632,
+      "optimizer_updates": 2113,
+      "replayed_examples": 0,
+      "counterfactual_factor_count": 3,
+      "counterfactual_factor_outcome_events": 67584,
+      "counterfactual_factor_optimizer_updates": 2112,
+      "stable_parent": true,
+      "mastered_primitive_retention": 0.98046875,
+      "unseen_token_retention": 0.744140625,
+      "intact_recall": 0.787109375,
+      "reverse_order_recall": 0.7421875,
+      "target_first_recall": 0.46875,
+      "target_last_recall": 0.99609375,
+      "reward_shuffled": false,
+      "gates_pass": false
+    },
+    {
+      "seed": 69415,
+      "unique_logical_lifetimes": 3600,
+      "unique_verifier_bits": 21552,
+      "optimizer_updates": 673,
+      "replayed_examples": 0,
+      "counterfactual_factor_count": 3,
+      "counterfactual_factor_outcome_events": 21504,
+      "counterfactual_factor_optimizer_updates": 672,
+      "stable_parent": true,
+      "mastered_primitive_retention": 0.9921875,
+      "unseen_token_retention": 0.734375,
+      "intact_recall": 0.7470703125,
+      "reverse_order_recall": 0.7197265625,
+      "target_first_recall": 0.4951171875,
+      "target_last_recall": 0.98828125,
+      "reward_shuffled": false,
+      "gates_pass": false
+    }
+  ],
+  "controls": {
+    "reward_shuffled_intact_recall": 0.486328125,
+    "reward_shuffled_unseen_token_retention": 0.482421875,
+    "reward_shuffled_replayed_examples": 0
+  },
+  "claim_boundary": "Replicated narrow parent/value credit and isolated memory-value learning. Target-conditioned multi-event write selectivity and general continual retention remain unqualified."
+}

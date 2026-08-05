@@ -200,6 +200,26 @@ Memory reads preserve gradients through query-key scoring and value weighting;
 inside an explicit differentiable transaction, pending values are mixed by a
 trainable write-strength gate. Durable storage mutation remains detached and
 explicitly stateful so persistence never captures an autograd graph.
+The canonical executable-artifact store additionally exposes verified top-k
+opaque candidate promotion. This permits a caller to measure or compose
+reusable learned factors without adding task semantics to the memory backend;
+single-artifact execution, multi-artifact composition, and transfer policy
+remain caller-owned and independently replaceable.
+The production package now also exposes the caller-owned
+`compose_growth_artifacts()` merge: it remaps verified payloads into disjoint
+growth namespaces and rejects collisions before generic frozen-core loading.
+A paired working-memory audit promotes the narrow result that two such factors
+can execute together in one frozen controller while retaining both private
+procedures; sequential factor algebra and arbitrary program synthesis remain
+unqualified.
+The follow-on working-memory audit now qualifies a narrower sequential ABI:
+an external producer artifact feeds a prior-only recurrent consumer slot, and
+the pair learns span-twelve global parity while each isolated factor remains at
+chance. This is evidence for learned register-to-register composition under a
+frozen core, not unrestricted program algebra. The generic producer/consumer
+growth-register boundary is now implemented in the canonical controller and
+passes a two-seed rendered-event pressure test; the older span-twelve result
+remains an archived compatibility-fixture result.
 An optional opaque runtime memory scope selects an isolated fixed-capacity bank
 for each independent batched trajectory; it is execution context rather than a
 semantic, modality, or task field, and the default single-scope layout remains
@@ -368,6 +388,15 @@ The production package closes the structural boundary gaps as follows:
 
 These are structural and causal-contract milestones; they do not by themselves
 qualify natural-language grounding or broad multimodal transfer.
+
+Protected plasticity is trainer infrastructure rather than a deployed
+reasoning module. The canonical package exposes aggregate rehearsal-gradient
+projection and detached gradient accumulation so a new update can remove only
+the component that conflicts with verified old behavior. It is compatible with
+zero-impact growth adapters and preserves the learner-visible boundary: the
+controller still receives only learned events, opaque attempted actions, and
+scalar verifier outcomes. Any use of the mechanism must retain fresh old-skill
+audits, shuffled-outcome controls, and unique-experience accounting.
 
 The first variable-deliberation outcome-only rung is recorded under
 `session_records/deliberation_amodal_2026-08-03/`. It validates the bounded
@@ -963,6 +992,78 @@ clear-memory, corruption, and swapped-row controls pass. Cue removal and cue
 swapping remain diagnostics, not a cue-conditioned selection claim; capacity
 one and general episodic memory remain open. Evidence is in
 `session_records/cross_adapter_memory_amodal_v78_2026-08-04/`.
+
+The v79 capacity-one follow-up found a separate implementation bottleneck in
+the experiment harness: action sampling had advanced the event window, then
+the outcome-bearing write advanced it again for the same payload. The corrected
+preview/commit lifecycle inserts each learned event once, so bounded windows
+retain earlier cues. Stable-content prior binding keeps timing and payload
+identity separate, while the one-slot intervention isolates downstream writes
+when assigning generic retention utility. The corrected rung reaches strong
+main and causal-control recall across three seeds, but two seeds remain below
+the fresh-token population gate. This qualifies the lifecycle and causal
+mechanism fix; capacity-one population promotion and general episodic memory
+remain open. Evidence is in
+`session_records/cross_adapter_memory_amodal_v79_2026-08-04/`.
+
+The v80 rung closes the remaining capacity-one population gap by making the
+trainer-only counterfactual write intervention token-diverse, with the same
+four-episode opaque-token reuse schedule used during base acquisition. All
+three seeds pass the fresh-token, causal-control, persistent-reload, and
+reward-shuffled gates. This promotes synthetic outcome-only capacity-one
+cross-adapter retrieval with randomized target position; natural-modality
+grounding and general episodic memory remain open. Evidence is in
+`session_records/cross_adapter_memory_amodal_v80_2026-08-04/`.
+
+The working-memory pressure test now qualifies a narrow frozen-controller
+growth boundary. A slot-free parent receives a zero-output generic successor
+state; only that state is trained from rendered events, opaque attempted
+actions, and scalar verifier outcomes. Parent-logit distillation on fresh
+rehearsal streams protects inherited behavior, while
+`ExecutableArtifactMemory` stores and reloads the tensor-only growth artifact
+through `load_growth_artifact`. Two seeds improve an adjacent complement
+primitive by `+32.03/+33.59` percentage points, zeroing the artifact returns
+to the parent, the shared controller digest remains unchanged, rehydration
+matches the live child, and spans 4/6/8 remain within the two-point retention
+gate. The unprotected control loses 3.91 points on span eight, establishing
+the retention failure that the distillation term repairs. A reward-shuffled
+control still gains `+7.03` points, far below aligned training, so exclusive
+reward attribution remains unqualified.
+
+This is not yet cold-start address discovery, arbitrary procedure induction,
+variable-capacity mastery, or general cognition. The result is recorded in
+`session_records/sequence_working_memory_2026-08-02/frozen_growth_complement_distill_2026-08-04/`.
+
+The initial raw-byte language follow-up is retracted. Its caption renderer
+used verifier-generated context IDs to choose a shape word, so the text stream
+was not pixel-only. The renderer has been repaired to derive descriptors from
+pixels. The corrected character n-gram CNN passes the three-seed training-time
+gate, and all three independent saved frontends pass a 1,024-lifetime replay.
+This promotes synthetic pixel-grounded UTF-8 event transport into the frozen
+amodal boundary, not open-ended natural-language understanding. The evidence
+is retained under
+`session_records/natural_text_grounding_pixel_only_2026-08-04/`.
+
+The follow-up external-corpus boundary is promoted separately. A versioned,
+independently authored phrase corpus with two training variants per style
+passes all three 1,024-lifetime saved-frontend replays using the same frozen
+controller and byte frontend. This establishes controlled corpus-backed UTF-8
+event transport, not open-world language understanding. Evidence is under
+`session_records/natural_text_grounding_external_corpus_v2_2026-08-04/`.
+
+The next caption boundary is also promoted. Three independently trained byte
+frontends consume a versioned static annotation table whose entries are
+complete pre-authored sentences, rather than runtime templates with slots.
+The pixel-only source performs only the image-to-annotation join; no verifier
+metadata or semantic target enters the learner. At 1,024 fresh lifetimes per
+appearance/style cell, the three saved frontends reach minimum fused accuracy
+of `92.83%`, `91.39%`, and `92.15%`, with shuffled partners at most `54.61%`,
+contradictory partners at most `16.27%`, contradiction flips at least
+`75.43%`, and full-vision retention at least `97.54%`. This promotes static
+pre-authored caption transport into the frozen amodal neural IR. It remains a
+controlled synthetic visible-scene annotation benchmark, not open-world
+language understanding, speech, or general semantic reasoning. Evidence is in
+`session_records/natural_text_grounding_external_annotation_table_v3_2026-08-04/`.
 
 ## Behavior-preserving migration order
 

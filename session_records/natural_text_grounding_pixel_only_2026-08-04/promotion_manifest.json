@@ -1,0 +1,41 @@
+{
+  "schema": "amodal-grounded-byte-text-promotion-manifest-v1",
+  "population": "promotion",
+  "evaluation": "optimizer-free saved frontend replay, 1024 lives per appearance/style cell",
+  "replay_reports": {
+    "1001001": {
+      "path": "saved_replay_seed1001001_n1024.json",
+      "sha256": "a004815656c46154e0919a2456cf4e4e14e603463a11e882add9b90fa4f89ad2"
+    },
+    "1001002": {
+      "path": "saved_replay_seed1001002_n1024.json",
+      "sha256": "ce47da6cc1d09d67313dc03fe86fcb559ec0a96d129969875ee8cc6e496fd862"
+    },
+    "1001003": {
+      "path": "saved_replay_seed1001003_n1024.json",
+      "sha256": "72b38cba440893bd99c952cdb1b48d99a0d9e640a2224d9eee758995c4432bad"
+    }
+  },
+  "controller": {
+    "path": "../../artifacts/checkpoints/unified_repertoire_span2_amodal_intention_seed122005.pt",
+    "sha256": "9eea7ab479cb8450737f040b76495cc5ec737e970cdc165af2446873e530cd6c"
+  },
+  "input_bus": {
+    "path": "../../artifacts/checkpoints/amodal_input_bus_complementary_seed145001.pt",
+    "sha256": "4ae96f60b99107834c27840b8841e8b2ba20c10e6565c220b5607fb9c80d3c71"
+  },
+  "frontends": {
+    "1001001": {
+      "path": "../../artifacts/checkpoints/amodal_pixel_only_text_frontend_seed1001001_u16.pt",
+      "sha256": "dd105ccae765c8ed990ebb30fa060a10b941ef53c59a8bc5a33d8b4d08e15949"
+    },
+    "1001002": {
+      "path": "../../artifacts/checkpoints/amodal_pixel_only_text_frontend_seed1001002_u16.pt",
+      "sha256": "aa1a83c7fc253debc3997b7d3ed83cc0da9ef7ffe10f75ce25ef7afe69572b1d"
+    },
+    "1001003": {
+      "path": "../../artifacts/checkpoints/amodal_pixel_only_text_frontend_seed1001003_u16.pt",
+      "sha256": "63eee555af88a83df14971e420da5f9e42345c38bbfa167f844b3586284ee287"
+    }
+  }
+}

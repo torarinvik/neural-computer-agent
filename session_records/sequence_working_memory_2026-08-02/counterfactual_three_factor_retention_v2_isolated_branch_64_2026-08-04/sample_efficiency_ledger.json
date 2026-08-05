@@ -1,0 +1,21 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "counterfactual-three-factor-retention-v2-isolated-branch-2026-08-04",
+  "status": "rejected_order_selectivity_failure",
+  "mechanism": "parent-protected paired write-skip intervention with all non-branch writes forced to skip",
+  "unique_verifier_bits": 70656,
+  "unique_logical_lifetimes": 12288,
+  "optimizer_updates": 2176,
+  "replayed_examples": 0,
+  "parent_stable": true,
+  "mastered_primitive_retention": 0.9921875,
+  "unseen_token_retention": 0.7451171875,
+  "intact_recall": 0.74609375,
+  "reverse_order_recall": 0.748046875,
+  "target_first_recall": 0.39453125,
+  "target_last_recall": 0.9921875,
+  "clear_memory_recall": 0.5068359375,
+  "counterfactual_arm_multiplier": 2,
+  "counterfactual_factor_count": 3,
+  "claim_boundary": "Parent preservation passed, but target-conditioned write selectivity failed; no retention capability is promoted."
+}

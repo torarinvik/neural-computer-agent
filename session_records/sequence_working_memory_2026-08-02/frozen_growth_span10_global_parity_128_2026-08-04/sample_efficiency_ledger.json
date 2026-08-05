@@ -1,0 +1,31 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "frozen-growth-span10-global-parity-diagnostic-2026-08-04",
+  "status": "rejected_no_causal_signal",
+  "mechanism": "zero-output successor growth with parent-logit rehearsal distillation",
+  "learner_visible_information": [
+    "rendered sensory events",
+    "opaque attempted actions",
+    "deterministic scalar verifier outcomes"
+  ],
+  "runs": [
+    {
+      "seed": 65008,
+      "unique_logical_lifetimes": 2048,
+      "unique_verifier_bits": 14336,
+      "optimizer_updates": 128,
+      "replayed_examples": 0,
+      "wall_seconds": 99.21531466700253,
+      "target_gain": 0.0015624761581420898,
+      "stable_bits_to_threshold": null,
+      "retention_on_mastered_primitives": {
+        "4": 0.0,
+        "6": 0.0,
+        "8": 0.0
+      },
+      "transfer_ratio_against_fresh_learner": null,
+      "gates_pass": false
+    }
+  ],
+  "claim_boundary": "No causal global-parity acquisition at the diagnostic budget; no claim about impossibility or longer-horizon learning."
+}

@@ -20,11 +20,12 @@ from torch import nn
 
 from .environment import CognitiveLifetimeBatch, generate_lifetimes
 from .legacy_model import UnifiedCognitiveController
-from .train import (
-    attempted_success_loss, evaluate, rollout, seed_everything)
+from .train import attempted_success_loss, evaluate, rollout, seed_everything
 from .train_fourth_primitive_transfer import (
-    _headline_accuracy, _load, _replay_loss_and_leakage)
-
+    _headline_accuracy,
+    _load,
+    _replay_loss_and_leakage,
+)
 
 UNRELATED_REPLAY_SPECS = (
     ("binary_mapping", "bars"),
@@ -67,6 +68,7 @@ def _slot_prefixes(slot: int) -> tuple[str, ...]:
         f"skill_adapter_gate_refiners.{slot}.",
         f"skill_adapter_gate_extensions.{slot}.",
         f"skill_adapter_read_projections.{slot}.",
+        f"skill_adapter_recurrent_cells.{slot}.",
         f"skill_adapter_critics.{slot}.",
         f"skill_adapter_critic_scales.{slot}")
 
@@ -469,8 +471,7 @@ def main() -> None:
 
     started = time.perf_counter()
     history = []
-    leak_updates = max(
-        1, int(round(args.steps * args.gate_leak_anneal_fraction)))
+    leak_updates = max(1, round(args.steps * args.gate_leak_anneal_fraction))
     for update in range(1, args.steps + 1):
         student.train()
         student.skill_adapter_gate_leak = (
@@ -494,8 +495,8 @@ def main() -> None:
         else:
             # Replace whole sensory episodes rather than interpolate pixels.
             # Counts stay even so each constituent generator remains balanced.
-            diamond_count = int(round(
-                args.batch_size * appearance_blend / 2.0)) * 2
+            diamond_count = round(
+                args.batch_size * appearance_blend / 2.0) * 2
             diamond_count = min(args.batch_size, max(0, diamond_count))
             bar_count = args.batch_size - diamond_count
             parts = []

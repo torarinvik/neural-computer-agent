@@ -1,0 +1,80 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "frozen-controller-external-growth-acquisition-2026-08-04",
+  "status": "promoted_narrow_two_seed_replication",
+  "mechanism": "zero-output successor growth plus parent-logit rehearsal distillation",
+  "learner_visible_information": [
+    "rendered sensory events",
+    "opaque attempted actions",
+    "deterministic scalar attempted-action outcomes"
+  ],
+  "runs": [
+    {
+      "seed": 61004,
+      "unique_logical_lifetimes": 4096,
+      "unique_verifier_bits": 20480,
+      "optimizer_updates": 256,
+      "replayed_examples": 0,
+      "wall_seconds": 77.04779320799571,
+      "stable_bits_to_threshold": null,
+      "target_gain": 0.3203125,
+      "retention_deltas": {
+        "4": 0.0,
+        "6": -0.0026041269302368164,
+        "8": -0.001953125
+      },
+      "gates_pass": true
+    },
+    {
+      "seed": 61005,
+      "unique_logical_lifetimes": 4096,
+      "unique_verifier_bits": 20480,
+      "optimizer_updates": 256,
+      "replayed_examples": 0,
+      "wall_seconds": 64.1746089579974,
+      "stable_bits_to_threshold": null,
+      "target_gain": 0.3359375,
+      "retention_deltas": {
+        "4": 0.0,
+        "6": -0.0078125,
+        "8": 0.0
+      },
+      "gates_pass": true
+    }
+  ],
+  "rejected_controls": [
+    {
+      "name": "unprotected_new_growth",
+      "seed": 61004,
+      "unique_verifier_bits": 20480,
+      "target_gain": 0.34375,
+      "retention_deltas": {
+        "4": 0.0,
+        "6": -0.013020813465118408,
+        "8": -0.0390625
+      },
+      "reason": "target learned but span-eight retention violated the two-point gate"
+    },
+    {
+      "name": "success_only_objective",
+      "seed": 61003,
+      "unique_verifier_bits": 2560,
+      "target_gain": 0.0,
+      "reason": "same-budget control produced no causal target gain"
+    },
+    {
+      "name": "reward_shuffled_attribution_control",
+      "seed": 61006,
+      "unique_verifier_bits": 20480,
+      "target_gain": 0.0703125,
+      "retention_deltas": {
+        "4": 0.0,
+        "6": 0.0,
+        "8": 0.0
+      },
+      "reason": "gain is much smaller than aligned training but remains above chance; do not claim exclusive reward attribution"
+    }
+  ],
+  "transfer_ratio_against_fresh_learner": null,
+  "claim_boundary": "Narrow replicated frozen-controller external-growth acquisition with bounded retention; reward attribution, cold-start address discovery, and general cognition remain unqualified."
+}

@@ -1,0 +1,61 @@
+{
+  "annotation_table_sha256": "68ff321b07a4f1196c878a6b6a67a87e726c3b4f1d9ad381aa61e1e09b649d90",
+  "controller": "unified_repertoire_span2_amodal_intention_seed122005.pt",
+  "frontend": "byte_text_grounded_description_cnn",
+  "input_bus": "amodal_input_bus_complementary_seed145001.pt",
+  "promotion_replay": {
+    "appearances": [
+      "bars",
+      "diamonds",
+      "dot_pairs"
+    ],
+    "command_module": "experiments.natural_text_grounding.audit_saved_frontend",
+    "count_per_appearance_style": 1024,
+    "heldout_styles": [
+      3,
+      4
+    ],
+    "training_optimizer_loaded": false
+  },
+  "required_controls": [
+    "heldout_styles",
+    "shuffled_partner",
+    "contradictory_partner",
+    "full_vision_retention",
+    "controller_parameters_unchanged",
+    "pixel_only_annotation_join",
+    "optimizer_free_saved_frontend_replay",
+    "annotation_table_hash_bound",
+    "static_captions_without_runtime_slots",
+    "versioned_external_annotation_table"
+  ],
+  "schema": "amodal-external-annotation-table-v3-promotion-configuration-v1",
+  "source_hashes": {
+    "audit_saved_frontend.py": "9ec3fa441d00fd5d41ff2ff788a13c345b3208995e3b00a2dccb916405a6c6c5",
+    "environment.py": "f273d109fec7c1c5a5dfbbf2ec556338300bbfa3cd8510c1af8e05bda0b43437",
+    "external_caption_annotation_table_v3.json": "68ff321b07a4f1196c878a6b6a67a87e726c3b4f1d9ad381aa61e1e09b649d90",
+    "external_caption_source.py": "ac4fd8957ead9ca6e6e4cb370bf667dbb8c1818de31fd98b6ee5bb6c95e50dda",
+    "train.py": "9c03fe0afbc123b446ee8ca08feefb57bc2a4486a3b794941159373cb4c1e4de",
+    "train_complementary_input_bus.py": "89e1112a7f478b8ae3c41d649cdc98edafdd07be4d8f07f77c9035ad21edaf37"
+  },
+  "strict_gate": {
+    "contradictory_partner_accuracy_maximum": 0.25,
+    "contradictory_prediction_flip_rate_minimum": 0.75,
+    "controller_parameters_unchanged": true,
+    "fused_accuracy_minimum": 0.9,
+    "shuffled_partner_accuracy_maximum": 0.6,
+    "vision_only_accuracy_minimum": 0.95
+  },
+  "text_source": "external_annotation_table_v3",
+  "training": {
+    "batch_size": 128,
+    "diamond_replay": false,
+    "learning_rate": 0.003,
+    "paired_text_views": false,
+    "position_bins": 0,
+    "replayed_examples": 0,
+    "unique_logical_lifetimes": 0,
+    "unique_verifier_bits": 0,
+    "updates": 25
+  }
+}

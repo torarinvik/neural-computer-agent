@@ -1,0 +1,156 @@
+{
+  "adapter": "artifacts/checkpoints/amodal_external_annotation_table_v3_text_frontend_seed1003002_u25.pt",
+  "adapter_sha256": "062c7f08ba0c4733b88ec3e3ae1829108386744111aa7a3c31765ef56ae2f8bd",
+  "caption_corpus_sha256": "68ff321b07a4f1196c878a6b6a67a87e726c3b4f1d9ad381aa61e1e09b649d90",
+  "controller": "artifacts/checkpoints/unified_repertoire_span2_amodal_intention_seed122005.pt",
+  "controller_parameters_unchanged": true,
+  "controller_sha256": "9eea7ab479cb8450737f040b76495cc5ec737e970cdc165af2446873e530cd6c",
+  "evaluation_count_per_appearance_style": 1024,
+  "final_by_appearance": {
+    "bars": {
+      "0": {
+        "contradictory_partner_accuracy": 0.03437500074505806,
+        "contradictory_prediction_flip_rate": 0.947265625,
+        "full_n1_accuracy": 0.978320300579071,
+        "fused_accuracy": 0.981640636920929,
+        "shuffled_partner_accuracy": 0.4917968809604645,
+        "text_only_accuracy": 0.49628907442092896
+      },
+      "1": {
+        "contradictory_partner_accuracy": 0.03437500074505806,
+        "contradictory_prediction_flip_rate": 0.9439452886581421,
+        "full_n1_accuracy": 0.977343738079071,
+        "fused_accuracy": 0.978320300579071,
+        "shuffled_partner_accuracy": 0.49980467557907104,
+        "text_only_accuracy": 0.4847656190395355
+      },
+      "2": {
+        "contradictory_partner_accuracy": 0.03476562350988388,
+        "contradictory_prediction_flip_rate": 0.946093738079071,
+        "full_n1_accuracy": 0.979687511920929,
+        "fused_accuracy": 0.9808593988418579,
+        "shuffled_partner_accuracy": 0.5082031488418579,
+        "text_only_accuracy": 0.48222655057907104
+      },
+      "3": {
+        "contradictory_partner_accuracy": 0.04160156100988388,
+        "contradictory_prediction_flip_rate": 0.9384765625,
+        "full_n1_accuracy": 0.98046875,
+        "fused_accuracy": 0.9800781011581421,
+        "shuffled_partner_accuracy": 0.4935546815395355,
+        "text_only_accuracy": 0.4927734434604645
+      },
+      "4": {
+        "contradictory_partner_accuracy": 0.03437500074505806,
+        "contradictory_prediction_flip_rate": 0.9482421875,
+        "full_n1_accuracy": 0.975390613079071,
+        "fused_accuracy": 0.982617199420929,
+        "shuffled_partner_accuracy": 0.5062500238418579,
+        "text_only_accuracy": 0.49589842557907104
+      }
+    },
+    "diamonds": {
+      "0": {
+        "contradictory_partner_accuracy": 0.15273436903953552,
+        "contradictory_prediction_flip_rate": 0.7621093988418579,
+        "full_n1_accuracy": 0.999804675579071,
+        "fused_accuracy": 0.914843738079071,
+        "shuffled_partner_accuracy": 0.5390625,
+        "text_only_accuracy": 0.4996093809604645
+      },
+      "1": {
+        "contradictory_partner_accuracy": 0.15644530951976776,
+        "contradictory_prediction_flip_rate": 0.768750011920929,
+        "full_n1_accuracy": 0.9996093511581421,
+        "fused_accuracy": 0.9251953363418579,
+        "shuffled_partner_accuracy": 0.541210949420929,
+        "text_only_accuracy": 0.4761718809604645
+      },
+      "2": {
+        "contradictory_partner_accuracy": 0.15449218451976776,
+        "contradictory_prediction_flip_rate": 0.7685546875,
+        "full_n1_accuracy": 1.0,
+        "fused_accuracy": 0.923046886920929,
+        "shuffled_partner_accuracy": 0.536914050579071,
+        "text_only_accuracy": 0.486328125
+      },
+      "3": {
+        "contradictory_partner_accuracy": 0.15957030653953552,
+        "contradictory_prediction_flip_rate": 0.7542968988418579,
+        "full_n1_accuracy": 0.999804675579071,
+        "fused_accuracy": 0.913867175579071,
+        "shuffled_partner_accuracy": 0.5423828363418579,
+        "text_only_accuracy": 0.49589842557907104
+      },
+      "4": {
+        "contradictory_partner_accuracy": 0.16269531846046448,
+        "contradictory_prediction_flip_rate": 0.758593738079071,
+        "full_n1_accuracy": 0.9994140863418579,
+        "fused_accuracy": 0.9212890863418579,
+        "shuffled_partner_accuracy": 0.5462890863418579,
+        "text_only_accuracy": 0.501757800579071
+      }
+    },
+    "dot_pairs": {
+      "0": {
+        "contradictory_partner_accuracy": 0.04511718824505806,
+        "contradictory_prediction_flip_rate": 0.9009765386581421,
+        "full_n1_accuracy": 0.984179675579071,
+        "fused_accuracy": 0.946093738079071,
+        "shuffled_partner_accuracy": 0.5003906488418579,
+        "text_only_accuracy": 0.4994140565395355
+      },
+      "1": {
+        "contradictory_partner_accuracy": 0.05097656324505806,
+        "contradictory_prediction_flip_rate": 0.889453113079071,
+        "full_n1_accuracy": 0.986328125,
+        "fused_accuracy": 0.9404296875,
+        "shuffled_partner_accuracy": 0.49101561307907104,
+        "text_only_accuracy": 0.502148449420929
+      },
+      "2": {
+        "contradictory_partner_accuracy": 0.04414062574505806,
+        "contradictory_prediction_flip_rate": 0.903515636920929,
+        "full_n1_accuracy": 0.985546886920929,
+        "fused_accuracy": 0.9476562738418579,
+        "shuffled_partner_accuracy": 0.500781238079071,
+        "text_only_accuracy": 0.4837890565395355
+      },
+      "3": {
+        "contradictory_partner_accuracy": 0.05449218675494194,
+        "contradictory_prediction_flip_rate": 0.8824218511581421,
+        "full_n1_accuracy": 0.984570324420929,
+        "fused_accuracy": 0.9369140863418579,
+        "shuffled_partner_accuracy": 0.4886718690395355,
+        "text_only_accuracy": 0.48906248807907104
+      },
+      "4": {
+        "contradictory_partner_accuracy": 0.05351562425494194,
+        "contradictory_prediction_flip_rate": 0.887890636920929,
+        "full_n1_accuracy": 0.985546886920929,
+        "fused_accuracy": 0.94140625,
+        "shuffled_partner_accuracy": 0.4916015565395355,
+        "text_only_accuracy": 0.49394530057907104
+      }
+    }
+  },
+  "frontend_kind": "byte_text_grounded_description_cnn",
+  "heldout_styles": [
+    3,
+    4
+  ],
+  "input_bus": "artifacts/checkpoints/amodal_input_bus_complementary_seed145001.pt",
+  "input_bus_sha256": "4ae96f60b99107834c27840b8841e8b2ba20c10e6565c220b5607fb9c80d3c71",
+  "passed": true,
+  "schema": "amodal-grounded-byte-text-replay-audit-v2",
+  "seed": 1003002,
+  "strict_gate": {
+    "contradictory_partner_accuracy_maximum": 0.25,
+    "contradictory_prediction_flip_rate_minimum": 0.75,
+    "fused_accuracy_minimum": 0.9,
+    "shuffled_partner_accuracy_maximum": 0.6,
+    "vision_only_accuracy_minimum": 0.95
+  },
+  "text_source": "external_annotation_table_v3",
+  "training_optimizer_loaded": false
+}

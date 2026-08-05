@@ -38,6 +38,19 @@ removal and cue swapping remain diagnostics rather than a cue-conditioned
 selection claim. Evidence is in
 `session_records/cross_adapter_memory_amodal_v78_2026-08-04/`.
 
+The v79 capacity-one diagnostic corrected the event lifecycle so action
+previews do not append a second copy of the same payload. The one-slot rung
+then reaches strong main and causal-control recall across three seeds, but the
+fresh-token population minimum remains below the promotion gate for two seeds.
+See `session_records/cross_adapter_memory_amodal_v79_2026-08-04/` for the
+exact accounting and longer diagnostics.
+
+The v80 rung closes that gap by using token-diverse counterfactual write credit
+with the same four-episode opaque-token reuse schedule as base acquisition.
+All three seeds pass the capacity-one fresh-token and causal gates, including
+persistent reload/recovery and reward-shuffled controls. Evidence is in
+`session_records/cross_adapter_memory_amodal_v80_2026-08-04/`.
+
 Run a short rung with:
 
 ```bash

@@ -6,7 +6,9 @@ import torch
 from .audit_pair_numerosity_continuation import _parse_values
 from .legacy_model import UnifiedCognitiveController
 from .train_pair_numerosity_transfer import (
-    _build_student, _retained_within_parent_floor)
+    _build_student,
+    _retained_within_parent_floor,
+)
 
 
 def test_slot_specific_read_ablation_preserves_older_slots() -> None:
@@ -69,6 +71,7 @@ def test_continuation_reuses_the_existing_final_slot_bit_identically() -> None:
         "skill_adapter_gate_refiners.1.",
         "skill_adapter_gate_extensions.1.",
         "skill_adapter_read_projections.1.",
+        "skill_adapter_recurrent_cells.1.",
         "skill_adapter_critics.1.",
         "skill_adapter_critic_scales.1")
     for name, value in parent.state_dict().items():

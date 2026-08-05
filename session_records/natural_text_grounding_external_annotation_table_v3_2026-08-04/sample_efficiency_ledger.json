@@ -1,0 +1,28 @@
+{
+  "capability_boundary": "static pre-authored visible-scene captions aligned into the frozen amodal event basis",
+  "controller_frozen": true,
+  "decision": "promoted",
+  "experiment": "natural_text_grounding_external_annotation_table_v3_2026-08-04",
+  "latency": "not measured in this representation qualification",
+  "optimizer_updates": 25,
+  "paired_unlabeled_frames_per_seed": 57600,
+  "promotion_holdout": {
+    "attempt_id": "saved-frontend-replay-v3-n1024-1003001-1003002-1003003",
+    "holdout_id": "natural-text-external-annotation-table-v3-2026-08-04-n1024",
+    "manifest_digest": "91a4f97082fb19b3422aa6d84ee75307ad03f1f47a2b34466a97d5b8707d470e",
+    "schema": "neural-computer.holdout-ledger.v1"
+  },
+  "promotion_replay_lifetimes": 1024,
+  "replayed_examples": 0,
+  "retention_on_mastered_primitives": "minimum full_n1_accuracy recorded in replay summary",
+  "schema": "amodal-external-annotation-table-v3-sample-efficiency-ledger-v1",
+  "stable_bits_to_threshold": "not applicable; no verifier signal",
+  "training_wall_time_seconds": {
+    "1003001": 119.1887859999988,
+    "1003002": 164.70742258400423,
+    "1003003": 118.86605258299096
+  },
+  "transfer_ratio_against_fresh_learner": "not measured; frozen-controller adapter qualification",
+  "unique_logical_lifetimes": 0,
+  "unique_verifier_bits": 0
+}

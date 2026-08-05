@@ -1,0 +1,119 @@
+{
+  "schema": "multi-artifact-growth-composition-audit-v1",
+  "claim_boundary": "Two verified opaque artifacts can be promoted together, remapped into disjoint generic growth slots, and executed by one frozen controller on two verifier-private procedures. This does not qualify arbitrary program synthesis or sequential factor algebra.",
+  "parent": "artifacts/checkpoints/span8_addressed_parent_scale1_seed32001.pt",
+  "artifacts": [
+    "session_records/sequence_working_memory_2026-08-02/frozen_growth_span10_complement_512_2026-08-04/memory",
+    "session_records/sequence_working_memory_2026-08-02/frozen_growth_span10_complement_reverse_512_2026-08-04/memory"
+  ],
+  "bank": "session_records/sequence_working_memory_2026-08-02/multi_artifact_growth_composition_span12_probe_2026-08-04/bank",
+  "seed": 69102,
+  "count": 32,
+  "span": 12,
+  "distractors": 1,
+  "accounting": {
+    "unique_logical_lifetimes": 128,
+    "unique_verifier_bits": 768,
+    "verifier_bits": 768,
+    "optimizer_updates": 0,
+    "replayed_examples": 0,
+    "wall_seconds": 31.577466083996114,
+    "stable_bits_to_threshold": null,
+    "retention_on_mastered_primitives": null,
+    "transfer_ratio_against_fresh_learner": null
+  },
+  "top_k_handles": [
+    {
+      "index": 1,
+      "confidence": 0.9486854076385498,
+      "margin": 0.01608109474182129
+    },
+    {
+      "index": 0,
+      "confidence": 0.9326043128967285,
+      "margin": 0.9326043128967285
+    }
+  ],
+  "behavior": {
+    "complement": {
+      "parent": 0.2239583283662796,
+      "factor_a": 0.828125,
+      "factor_b": 0.21875,
+      "composed": 0.8307291865348816
+    },
+    "complement_reverse": {
+      "parent": 0.1953125,
+      "factor_a": 0.1953125,
+      "factor_b": 0.6145833134651184,
+      "composed": 0.6145833134651184
+    }
+  },
+  "receipts": {
+    "blank": {
+      "loaded_keys": 0,
+      "core_unchanged": true,
+      "namespaces": []
+    },
+    "factor_a": {
+      "loaded_keys": 7,
+      "core_unchanged": true,
+      "namespaces": [
+        "slot0",
+        "slot0",
+        "slot0",
+        "slot0",
+        "slot0",
+        "slot0",
+        "slot0"
+      ]
+    },
+    "factor_b": {
+      "loaded_keys": 7,
+      "core_unchanged": true,
+      "namespaces": [
+        "slot1",
+        "slot1",
+        "slot1",
+        "slot1",
+        "slot1",
+        "slot1",
+        "slot1"
+      ]
+    },
+    "composed": {
+      "loaded_keys": 14,
+      "core_unchanged": true,
+      "namespaces": [
+        "slot0",
+        "slot0",
+        "slot0",
+        "slot0",
+        "slot0",
+        "slot0",
+        "slot0",
+        "slot1",
+        "slot1",
+        "slot1",
+        "slot1",
+        "slot1",
+        "slot1",
+        "slot1"
+      ]
+    }
+  },
+  "controller_core_unchanged": true,
+  "top_k_retrieved_two": true,
+  "namespaces_disjoint": true,
+  "blank_insertion_exact": true,
+  "gates": {
+    "top_k_retrieved_two": true,
+    "namespaces_disjoint": true,
+    "blank_insertion_exact": true,
+    "controller_core_unchanged": true,
+    "factor_a_beats_parent_on_first": true,
+    "factor_b_beats_parent_on_second": true,
+    "composed_retains_first_factor": true,
+    "composed_retains_second_factor": true
+  },
+  "accepted_diagnostic": true
+}

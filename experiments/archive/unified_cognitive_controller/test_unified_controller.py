@@ -3,26 +3,57 @@ from pathlib import Path
 import pytest
 import torch
 
-from .environment import NULL_ACTION, generate_lifetimes
-from .memory import DiskLatentMemory, TieredLatentMemory
-from .legacy_model import UnifiedCognitiveController, full_memory_usage_features
-from .probe_persistent_interface import _add_context_signatures
-from .train import attempted_success_loss, evaluate, rollout
-from .train_frequency_recency_replacement import frequency_recency_batch
-from .train_memory_replacement import _bank_outcomes
-from .train_redundancy_transfer import (
-    _expanded_eight_feature_controller,
-    _stable_crossing,
-    build_transfer_arms,
-    initialize_from_saved_strategy,
-    redundancy_utility_batch,
+from .compare_persistent_fresh_efficiency import _arm_metrics
+from .dynamic_working_memory import (
+    CapabilityLedger,
+    DynamicWorkingMemory,
+    LatencyTimer,
 )
+from .environment import generate_lifetimes
+from .legacy_model import UnifiedCognitiveController, full_memory_usage_features
+from .memory import DiskLatentMemory, TieredLatentMemory
+from .probe_online_disk_habit import run_probe as run_online_disk_habit_probe
+from .probe_online_disk_task_shift import (
+    run_probe as run_online_disk_task_shift_probe,
+)
+from .probe_persistent_interface import _add_context_signatures
+from .probe_persistent_physical_stream import (
+    _future_for_actions,
+    _ranked_age,
+)
+from .strategy_memory import (
+    LatentStrategyMemory,
+    VerifierTrainedContextEncoder,
+    physical_context_key,
+)
+from .train import attempted_success_loss, evaluate, rollout
 from .train_contextual_full_residual import (
     adapter_scores,
     full_residual_context_key,
     residual_scores,
     retrieve_residual,
     select_verified_candidate,
+)
+from .train_cost_aware_requery import (
+    CostAwareComputeValue,
+    initialize_from_four_feature,
+)
+from .train_fourth_primitive_transfer import (
+    _alignment_volatility,
+    _blend_unit_update,
+    _gradient_alignment,
+    _importance_volatility,
+    _prior_slot_prefixes,
+    _relative_state_drift,
+)
+from .train_frequency_recency_replacement import frequency_recency_batch
+from .train_memory_replacement import _bank_outcomes
+from .train_online_task_shift_gate import (
+    _gate_actions as task_shift_gate_actions,
+)
+from .train_online_task_shift_gate import (
+    _reward_direction,
+    _task_shift_batch,
 )
 from .train_passive_replacement_critic import (
     CRITIC_INPUT_WIDTH,
@@ -33,36 +64,19 @@ from .train_passive_replacement_critic import (
     exploration_probabilities,
     immediate_read_evidence,
 )
-from .train_shadow_compute_critic import (
-    ShadowComputeCritic,
-    _shadow_metrics,
-    controlled_features,
-    selected_compute_loss,
+from .train_persistent_memory import _grouped_read
+from .train_persistent_physical_utility_adaptation import (
+    _curriculum_phases,
+    _restore_strategy_memory,
+    _strategy_memory_payload,
+    _value_diverse_admission,
 )
-from .train_shadow_compute_advantage import (
-    ComputeAdvantageHead,
-    attempted_advantage_target,
-)
-from .train_thought_compute_transfer import (
-    _active_features as active_thought_features,
-    _metrics as thought_compute_metrics,
-    _stable_bits as stable_thought_bits,
-)
-from .train_fourth_primitive_transfer import (
-    _alignment_volatility,
-    _blend_unit_update,
-    _gradient_alignment,
-    _importance_volatility,
-    _prior_slot_prefixes,
-    _relative_state_drift,
-)
-from .train_shared_compute_value import (
-    SharedComputeValue,
-    initialize_from_advantage,
-)
-from .train_cost_aware_requery import (
-    CostAwareComputeValue,
-    initialize_from_four_feature,
+from .train_redundancy_transfer import (
+    _expanded_eight_feature_controller,
+    _stable_crossing,
+    build_transfer_arms,
+    initialize_from_saved_strategy,
+    redundancy_utility_batch,
 )
 from .train_requery_transfer import _candidate_name
 from .train_safe_requery_adaptation import (
@@ -74,38 +88,30 @@ from .train_safe_requery_adaptation import (
     paired_ips_improvement,
     skill_head_payload,
 )
+from .train_shadow_compute_advantage import (
+    ComputeAdvantageHead,
+    attempted_advantage_target,
+)
+from .train_shadow_compute_critic import (
+    ShadowComputeCritic,
+    _shadow_metrics,
+    controlled_features,
+    selected_compute_loss,
+)
+from .train_shared_compute_value import (
+    SharedComputeValue,
+    initialize_from_advantage,
+)
+from .train_thought_compute_transfer import (
+    _active_features as active_thought_features,
+)
+from .train_thought_compute_transfer import (
+    _metrics as thought_compute_metrics,
+)
+from .train_thought_compute_transfer import (
+    _stable_bits as stable_thought_bits,
+)
 from .verified_skill_store import VerifiedSkillStore
-from .train_persistent_memory import _grouped_read
-from .probe_persistent_physical_stream import (
-    _future_for_actions,
-    _ranked_age,
-)
-from .probe_online_disk_habit import run_probe as run_online_disk_habit_probe
-from .probe_online_disk_task_shift import (
-    run_probe as run_online_disk_task_shift_probe,
-)
-from .train_online_task_shift_gate import (
-    _gate_actions as task_shift_gate_actions,
-    _reward_direction,
-    _task_shift_batch,
-)
-from .compare_persistent_fresh_efficiency import _arm_metrics
-from .strategy_memory import (
-    LatentStrategyMemory,
-    VerifierTrainedContextEncoder,
-    physical_context_key,
-)
-from .train_persistent_physical_utility_adaptation import (
-    _curriculum_phases,
-    _restore_strategy_memory,
-    _strategy_memory_payload,
-    _value_diverse_admission,
-)
-from .dynamic_working_memory import (
-    CapabilityLedger,
-    DynamicWorkingMemory,
-    LatencyTimer,
-)
 
 
 def test_requery_curriculum_preserves_operation_aligned_head() -> None:
@@ -446,7 +452,10 @@ def test_operation_cues_never_occlude_stimulus_or_context_pixels() -> None:
     looks like a hard task rather than a broken rendering.
     """
     from experiments.archive.unified_cognitive_controller.environment import (
-        _MASK_BANKS, _OPERATION_CUE_SLOTS, IMAGE_SIZE)
+        _MASK_BANKS,
+        _OPERATION_CUE_SLOTS,
+        IMAGE_SIZE,
+    )
     glyphs = torch.zeros(IMAGE_SIZE, IMAGE_SIZE, dtype=torch.bool)
     for bank in _MASK_BANKS.values():
         glyphs |= bank.sum(dim=(0, 1)) > 0
@@ -482,7 +491,8 @@ def test_contextual_composition_cue_does_not_disturb_the_xor_slot() -> None:
     plain = generate_lifetimes(
         16, 6, seed=33, task="visible_context", support_trials=1)
     from experiments.archive.unified_cognitive_controller.environment import (
-        _OPERATION_CUE_SLOTS)
+        _OPERATION_CUE_SLOTS,
+    )
     size = composition.frames.shape[-1]
     center = size // 2
     columns = slice(center - 2, center + 3)
@@ -655,6 +665,87 @@ def test_rectified_slot_gate_can_shut_exactly_and_sigmoid_cannot() -> None:
         assert torch.equal(
             rollout(base, batch, sample_actions=False)["logits"],
             rollout(extended, batch, sample_actions=False)["logits"]), mode
+
+
+def test_prior_only_slot_is_a_behavior_preserving_producer_consumer_boundary() -> None:
+    base = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8)
+    chained = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        skill_adapter_widths=(16, 16),
+        skill_adapter_reads_prior=True,
+        skill_adapter_reads_prior_from=1,
+        skill_adapter_prior_only_from=1)
+    missing, unexpected = chained.load_state_dict(
+        base.state_dict(), strict=False)
+    assert not unexpected
+    assert set(missing) == {
+        name for name in chained.state_dict()
+        if name.startswith("skill_adapter")}
+    assert chained.skill_adapters[0][0].in_features == 64
+    assert chained.skill_adapters[1][0].in_features == 16
+    assert chained.skill_adapter_gates[1].in_features == 16
+
+    batch = generate_lifetimes(8, 4, seed=64)
+    base_result = rollout(base, batch, sample_actions=False)
+    chained_result = rollout(chained, batch, sample_actions=False)
+    assert torch.equal(base_result["logits"], chained_result["logits"])
+
+    # Once the slots carry nonzero learned state, only the consumer's
+    # producer-register read should be able to affect its output.
+    with torch.no_grad():
+        for parameter in chained.skill_adapters.parameters():
+            parameter.normal_(0.0, 0.2)
+        for gate in chained.skill_adapter_gates:
+            gate.weight.zero_()
+            gate.bias.fill_(1.0)
+    state = chained.initial_state(8, device="cpu")
+    normal = chained.step(
+        batch.frames[:, 0], state,
+        torch.zeros(8, dtype=torch.long), torch.zeros(8), torch.zeros(8))[0]
+    chained.skill_adapter_ablate_prior_read_slot = 1
+    ablated = chained.step(
+        batch.frames[:, 0], state,
+        torch.zeros(8, dtype=torch.long), torch.zeros(8), torch.zeros(8))[0]
+    assert not torch.equal(normal.logits, ablated.logits)
+
+
+def test_prior_only_consumer_can_carry_a_generic_recurrent_register() -> None:
+    base = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8)
+    chained = UnifiedCognitiveController(
+        width=32, workspace_slots=4, intention_width=8,
+        skill_adapter_widths=(16, 16),
+        skill_adapter_reads_prior=True,
+        skill_adapter_reads_prior_from=1,
+        skill_adapter_prior_only_from=1,
+        skill_adapter_recurrent_from=1)
+    missing, unexpected = chained.load_state_dict(
+        base.state_dict(), strict=False)
+    assert not unexpected
+    assert set(missing) == {
+        name for name in chained.state_dict()
+        if name.startswith("skill_adapter")}
+    assert isinstance(
+        chained.skill_adapter_recurrent_cells[0], torch.nn.Identity)
+    assert isinstance(
+        chained.skill_adapter_recurrent_cells[1], torch.nn.GRUCell)
+    assert chained.skill_adapters[1][0].in_features == 16
+
+    frames = torch.randn(8, 3, 32, 32)
+    actions = torch.full((8,), 2, dtype=torch.long)
+    zeros = torch.zeros(8)
+    state = chained.initial_state(8, device="cpu")
+    assert state.skill_adapter_state is not None
+    assert state.skill_adapter_state[1] is not None
+    first, state = chained.step(frames, state, actions, zeros, zeros)
+    first_register = state.skill_adapter_state[1]
+    assert first_register is not None
+    second, state = chained.step(frames, state, actions, zeros, zeros)
+    second_register = state.skill_adapter_state[1]
+    assert second_register is not None
+    assert not torch.equal(first_register, second_register)
+    assert first.logits.shape == second.logits.shape == (8, 2)
 
 
 def test_slot_gate_hidden_layer_is_optional_and_preserves_behavior() -> None:

@@ -1,0 +1,344 @@
+{
+  "schema": "canonical-no-replay-learned-route-v1",
+  "claim_boundary": "A frozen canonical parent acquires spans 3 and 4 as independent executable artifacts. A permutation-equivariant opaque router discovers artifact addresses from fresh attempted-row outcomes. No occupancy feature or span label is supplied to the router.",
+  "seed": 69410,
+  "stages": [
+    2,
+    3,
+    4
+  ],
+  "updates_per_stage": 8,
+  "batch_size": 4,
+  "audit_count": 16,
+  "route_updates": 8,
+  "route_batch_size": 4,
+  "growth_width": 64,
+  "router": "factorized_opaque_query_key_v1",
+  "route_input": "controller_hidden_only",
+  "artifact_memory": "session_records/sequence_working_memory_2026-08-02/canonical_no_replay_learned_route_factorized_subminute_2026-08-04/artifact_memory",
+  "router_checkpoint": "session_records/sequence_working_memory_2026-08-02/canonical_no_replay_learned_route_factorized_subminute_2026-08-04/opaque_address_router.pt",
+  "candidate_keys": [
+    [
+      0.1736242026090622,
+      0.052706290036439896,
+      0.12046229839324951,
+      0.02645544894039631,
+      -0.12496547400951385,
+      0.21404872834682465,
+      0.2613377571105957,
+      -0.08481238782405853,
+      -0.15072660148143768,
+      -0.08555147796869278,
+      0.1731078177690506,
+      0.02687923051416874,
+      0.3396977186203003,
+      0.04842568188905716,
+      0.27902865409851074,
+      -0.12331536412239075,
+      0.030605725944042206,
+      -0.1854662150144577,
+      -0.24630765616893768,
+      0.20429125428199768,
+      -0.10915910452604294,
+      0.09358544647693634,
+      -0.1593380570411682,
+      0.05340023711323738,
+      0.02790720760822296,
+      0.0016971849836409092,
+      0.3849674463272095,
+      0.029753487557172775,
+      0.17441460490226746,
+      0.21514326333999634,
+      -0.31564781069755554,
+      0.1747962385416031
+    ],
+    [
+      -0.009413517080247402,
+      0.09699589759111404,
+      -0.17370183765888214,
+      -0.00472948607057333,
+      -0.27623093128204346,
+      0.12601827085018158,
+      0.04234178364276886,
+      -0.1520560383796692,
+      -0.02544938027858734,
+      -0.2758166193962097,
+      -0.080830417573452,
+      -0.3914733827114105,
+      -0.12127809226512909,
+      0.43884342908859253,
+      -0.021100200712680817,
+      -0.1281294971704483,
+      0.10598421841859818,
+      -0.2691180408000946,
+      -0.19744455814361572,
+      -0.20132850110530853,
+      -0.08092690259218216,
+      -0.0851915255188942,
+      -0.12001685798168182,
+      0.00950635876506567,
+      -0.13837851583957672,
+      -0.10478545725345612,
+      -0.03914521634578705,
+      0.05827268585562706,
+      0.11883822083473206,
+      -0.24892275035381317,
+      -0.14024770259857178,
+      -0.24548262357711792
+    ],
+    [
+      -0.04913501441478729,
+      0.2686168849468231,
+      -0.0463506244122982,
+      -0.0590401366353035,
+      0.18002162873744965,
+      0.47928792238235474,
+      0.18594995141029358,
+      -0.004489984828978777,
+      -0.10827428102493286,
+      0.0743655413389206,
+      0.09138156473636627,
+      -0.03132724016904831,
+      0.26573625206947327,
+      0.05394531786441803,
+      0.006770492997020483,
+      0.034642256796360016,
+      0.03468169644474983,
+      0.2257268726825714,
+      -0.24232573807239532,
+      0.21435275673866272,
+      -0.05381867289543152,
+      0.0763978362083435,
+      -0.08986825495958328,
+      0.40804922580718994,
+      -0.016271334141492844,
+      -0.14610226452350616,
+      -0.17739543318748474,
+      0.2418658286333084,
+      0.17915061116218567,
+      0.14050814509391785,
+      -0.1332346349954605,
+      -0.02027982659637928
+    ]
+  ],
+  "route_accuracy": 0.3333333432674408,
+  "reward_shuffled_route_accuracy": 0.3333333432674408,
+  "candidate_permutation_accuracy": 0.3333333432674408,
+  "selected_rows": {
+    "2": 0,
+    "3": 0,
+    "4": 0
+  },
+  "selected_behavior": {
+    "2": 0.5,
+    "3": 0.5416666865348816,
+    "4": 0.5625
+  },
+  "wrong_behavior": {
+    "2": 0.5,
+    "3": 0.5,
+    "4": 0.5
+  },
+  "controls": {
+    "blank_sequence": 0.5,
+    "workspace_disabled": 0.5625
+  },
+  "stable_bits_to_threshold": {
+    "2": null,
+    "3": null,
+    "4": null
+  },
+  "history": {
+    "2": {
+      "training": [
+        {
+          "update": 1,
+          "training_accuracy": 0.875,
+          "loss": 0.6904441714286804
+        },
+        {
+          "update": 2,
+          "training_accuracy": 0.375,
+          "loss": 0.730644941329956
+        },
+        {
+          "update": 3,
+          "training_accuracy": 0.5,
+          "loss": 0.6975760459899902
+        },
+        {
+          "update": 4,
+          "training_accuracy": 0.5,
+          "loss": 0.6956403255462646
+        },
+        {
+          "update": 5,
+          "training_accuracy": 0.375,
+          "loss": 0.7079323530197144
+        },
+        {
+          "update": 6,
+          "training_accuracy": 0.5,
+          "loss": 0.6937333345413208
+        },
+        {
+          "update": 7,
+          "training_accuracy": 0.75,
+          "loss": 0.6759222745895386
+        },
+        {
+          "update": 8,
+          "training_accuracy": 0.5,
+          "loss": 0.6933700442314148
+        }
+      ],
+      "progress": [
+        {
+          "update": 4,
+          "heldout_accuracy": 0.65625
+        },
+        {
+          "update": 8,
+          "heldout_accuracy": 0.5
+        }
+      ]
+    },
+    "3": {
+      "training": [
+        {
+          "update": 1,
+          "training_accuracy": 0.4166666567325592,
+          "loss": 0.6987584233283997
+        },
+        {
+          "update": 2,
+          "training_accuracy": 0.4166666567325592,
+          "loss": 0.6976903080940247
+        },
+        {
+          "update": 3,
+          "training_accuracy": 0.5,
+          "loss": 0.6911581158638
+        },
+        {
+          "update": 4,
+          "training_accuracy": 0.4166666567325592,
+          "loss": 0.6955191493034363
+        },
+        {
+          "update": 5,
+          "training_accuracy": 0.4166666567325592,
+          "loss": 0.6937530040740967
+        },
+        {
+          "update": 6,
+          "training_accuracy": 0.5,
+          "loss": 0.6852004528045654
+        },
+        {
+          "update": 7,
+          "training_accuracy": 0.9166666865348816,
+          "loss": 0.656223714351654
+        },
+        {
+          "update": 8,
+          "training_accuracy": 0.5,
+          "loss": 0.6802351474761963
+        }
+      ],
+      "progress": [
+        {
+          "update": 4,
+          "heldout_accuracy": 0.5
+        },
+        {
+          "update": 8,
+          "heldout_accuracy": 0.5
+        }
+      ]
+    },
+    "4": {
+      "training": [
+        {
+          "update": 1,
+          "training_accuracy": 0.5625,
+          "loss": 0.6875611543655396
+        },
+        {
+          "update": 2,
+          "training_accuracy": 0.5625,
+          "loss": 0.686427891254425
+        },
+        {
+          "update": 3,
+          "training_accuracy": 0.4375,
+          "loss": 0.6943340301513672
+        },
+        {
+          "update": 4,
+          "training_accuracy": 0.5,
+          "loss": 0.6869862079620361
+        },
+        {
+          "update": 5,
+          "training_accuracy": 0.625,
+          "loss": 0.6745626926422119
+        },
+        {
+          "update": 6,
+          "training_accuracy": 0.375,
+          "loss": 0.689363956451416
+        },
+        {
+          "update": 7,
+          "training_accuracy": 0.75,
+          "loss": 0.6570553779602051
+        },
+        {
+          "update": 8,
+          "training_accuracy": 0.4375,
+          "loss": 0.6748607158660889
+        }
+      ],
+      "progress": [
+        {
+          "update": 4,
+          "heldout_accuracy": 0.5
+        },
+        {
+          "update": 8,
+          "heldout_accuracy": 0.5
+        }
+      ]
+    }
+  },
+  "accounting": {
+    "unique_logical_lifetimes": 96,
+    "unique_verifier_bits": 288,
+    "optimizer_updates": 40,
+    "replayed_examples": 0,
+    "route_optimizer_updates": 16,
+    "route_unique_lifetimes": 64,
+    "route_replayed_examples": 0,
+    "stable_bits_to_threshold": {
+      "2": null,
+      "3": null,
+      "4": null
+    },
+    "diagnostic_lifetimes_charged_to_budget": 48,
+    "wall_seconds": 1.7661175829998683
+  },
+  "gates": {
+    "no_replayed_examples": true,
+    "learned_route_at_least_90": false,
+    "reward_shuffled_route_near_chance": true,
+    "candidate_permutation_invariant": false,
+    "all_prior_spans_retained": false,
+    "target_span_mastered": false,
+    "wrong_artifact_is_causal": false,
+    "blank_sequence_near_chance": true,
+    "workspace_ablation_is_informative": false,
+    "frozen_parent_core": true
+  },
+  "accepted_diagnostic": false
+}

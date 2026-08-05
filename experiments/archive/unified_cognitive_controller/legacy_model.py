@@ -12,8 +12,8 @@ from dataclasses import dataclass
 import torch
 from torch import nn
 
-from .legacy_interface import AmodalEvent, IntentEvent
 from .environment import ACTIONS
+from .legacy_interface import AmodalEvent, IntentEvent
 
 
 def full_memory_usage_features(
@@ -85,6 +85,9 @@ class ControllerState:
     # Optional normalized stream clock.  It carries only generic event age,
     # never a task or operation identity, and is opt-in for new adapters.
     event_age: torch.Tensor | None = None
+    # Optional per-slot recurrent registers for generic producer/consumer
+    # growth chains. ``None`` keeps legacy state construction compatible.
+    skill_adapter_state: tuple[torch.Tensor | None, ...] | None = None
 
     def detach(self) -> ControllerState:
         return ControllerState(
@@ -94,7 +97,12 @@ class ControllerState:
             else self.workspace_usage.detach(),
             None if self.workspace_volatility is None
             else self.workspace_volatility.detach(),
-            None if self.event_age is None else self.event_age.detach())
+            None if self.event_age is None else self.event_age.detach(),
+            None
+            if self.skill_adapter_state is None
+            else tuple(
+                None if value is None else value.detach()
+                for value in self.skill_adapter_state))
 
 
 @dataclass
@@ -184,6 +192,8 @@ class UnifiedCognitiveController(nn.Module):
             skill_adapter_reads_prior: bool = False,
             skill_adapter_legacy_read_from: int | None = None,
             skill_adapter_reads_prior_from: int | None = None,
+            skill_adapter_prior_only_from: int | None = None,
+            skill_adapter_recurrent_from: int | None = None,
             skill_adapter_reads_intention_from: int | None = None,
             skill_adapter_reads_workspace_from: int | None = None,
             skill_adapter_reads_workspace_usage_from: int | None = None,
@@ -232,6 +242,12 @@ class UnifiedCognitiveController(nn.Module):
                 or skill_adapter_outer_interaction_width < 0
                 or skill_adapter_prior_read_limit < 0
                 or skill_adapter_critic_width < 0
+                or (
+                    skill_adapter_prior_only_from is not None
+                    and skill_adapter_prior_only_from < 1)
+                or (
+                    skill_adapter_recurrent_from is not None
+                    and skill_adapter_recurrent_from < 1)
                 or not 0.0 <= workspace_usage_decay < 1.0
                 or not 0.0 <= workspace_volatility_protection <= 1.0
                 or not 0.0 <= workspace_volatility_failure <= 1.0
@@ -341,6 +357,15 @@ class UnifiedCognitiveController(nn.Module):
         # index means only the slot a rung adds takes the wider input, exactly
         # as for the legacy reads.
         self.skill_adapter_reads_prior_from = skill_adapter_reads_prior_from
+        # A later slot can be made a pure consumer of the immediately
+        # preceding learned register. This is a generic producer/consumer ABI:
+        # the consumer cannot bypass the producer through raw event or
+        # recurrent-state features. Older slots retain their input shapes.
+        self.skill_adapter_prior_only_from = skill_adapter_prior_only_from
+        # Optional slot-local recurrent state turns a producer register into a
+        # temporal working register for a consumer. It is generic state, not a
+        # task-specific memory branch, and is absent from older checkpoints.
+        self.skill_adapter_recurrent_from = skill_adapter_recurrent_from
         # A later slot may transform the parent's already-computed amodal
         # intention directly. The index keeps every older slot's input shape
         # unchanged when this interface is introduced on a new rung.
@@ -543,6 +568,7 @@ class UnifiedCognitiveController(nn.Module):
         self.skill_adapter_outer_intention_projections = nn.ModuleList()
         self.skill_adapter_critics = nn.ModuleList()
         self.skill_adapter_critic_scales = nn.ParameterList()
+        self.skill_adapter_recurrent_cells = nn.ModuleList()
         legacy_read_width = (
             (relation_adapter_width if relation_adapter_width else 0)
             + (action_adapter_width if action_adapter_width else 0))
@@ -558,6 +584,12 @@ class UnifiedCognitiveController(nn.Module):
             reads_prior = skill_adapter_reads_prior and (
                 skill_adapter_reads_prior_from is None
                 or slot_index >= skill_adapter_reads_prior_from)
+            prior_only = (
+                skill_adapter_prior_only_from is not None
+                and slot_index >= skill_adapter_prior_only_from)
+            if prior_only and not reads_prior:
+                raise ValueError(
+                    "prior-only skill adapters must read a prior slot")
             reads_intention = (
                 skill_adapter_reads_intention_from is not None
                 and slot_index >= skill_adapter_reads_intention_from)
@@ -622,7 +654,13 @@ class UnifiedCognitiveController(nn.Module):
                 skill_adapter_read_bottleneck
                 if raw_read and skill_adapter_read_bottleneck
                 else raw_read)
-            slot_input = width * 2 + read_width
+            slot_input = read_width if prior_only else width * 2 + read_width
+            recurrent = (
+                skill_adapter_recurrent_from is not None
+                and slot_index >= skill_adapter_recurrent_from)
+            self.skill_adapter_recurrent_cells.append(
+                nn.GRUCell(slot_input, slot_input)
+                if recurrent else nn.Identity())
             adapter = nn.Sequential(
                 nn.Linear(slot_input, slot_width),
                 nn.GELU(),
@@ -1079,6 +1117,18 @@ class UnifiedCognitiveController(nn.Module):
             if self.workspace_volatility else None,
             torch.zeros(batch_size, 1, device=device, dtype=dtype)
             if self.event_age else None,
+            tuple(
+                torch.zeros(
+                    batch_size,
+                    cell.hidden_size,
+                    device=device,
+                    dtype=dtype,
+                )
+                if isinstance(cell, nn.GRUCell) else None
+                for cell in self.skill_adapter_recurrent_cells
+            )
+            if self.skill_adapter_recurrent_from is not None
+            else None,
         )
 
     def step_event(
@@ -1237,6 +1287,7 @@ class UnifiedCognitiveController(nn.Module):
                 deferred_action_residual = action_residual
         skill_adapter_openings = None
         skill_adapter_residual_norms = None
+        next_skill_states = state.skill_adapter_state
         if len(self.skill_adapters):
             # Successor slots read the same generic prior-state/query-event
             # pair as the legacy adapters: no task, context, or action label.
@@ -1244,6 +1295,14 @@ class UnifiedCognitiveController(nn.Module):
             openings = []
             residual_norms = []
             prior_reads: list[torch.Tensor] = []
+            has_recurrent_slot = any(
+                isinstance(cell, nn.GRUCell)
+                for cell in self.skill_adapter_recurrent_cells)
+            if next_skill_states is None and has_recurrent_slot:
+                next_skill_states = [
+                    None for _ in self.skill_adapter_recurrent_cells]
+            elif next_skill_states is not None:
+                next_skill_states = list(next_skill_states)
             # The legacy adapters hold what rungs two and three consolidated.
             # Their hidden layers are read on the same terms as a slot's: their
             # writes remain gated exactly as before.
@@ -1350,12 +1409,12 @@ class UnifiedCognitiveController(nn.Module):
                         and slot_index
                         >= self.skill_adapter_reads_workspace_usage_from):
                     reads.append(
-                        (state.workspace_usage
+                        state.workspace_usage
                          if state.workspace_usage is not None
                          else torch.zeros(
                              state.workspace.shape[:2],
                              device=state.workspace.device,
-                             dtype=state.workspace.dtype)))
+                             dtype=state.workspace.dtype))
                 if (
                         self.skill_adapter_reads_event_snapshot_from
                         is not None
@@ -1417,10 +1476,26 @@ class UnifiedCognitiveController(nn.Module):
                     read_vector = torch.cat(reads, dim=-1)
                     projection = self.skill_adapter_read_projections[slot_index]
                     projected_read = projection(read_vector)
-                    own_features = torch.cat(
-                        [slot_features, projected_read], dim=-1)
+                    if (
+                            self.skill_adapter_prior_only_from is not None
+                            and slot_index
+                            >= self.skill_adapter_prior_only_from):
+                        own_features = projected_read
+                    else:
+                        own_features = torch.cat(
+                            [slot_features, projected_read], dim=-1)
                 else:
                     own_features = slot_features
+                recurrent_cell = self.skill_adapter_recurrent_cells[slot_index]
+                if isinstance(recurrent_cell, nn.GRUCell):
+                    previous_register = next_skill_states[slot_index]
+                    if previous_register is None:
+                        previous_register = own_features.new_zeros(
+                            own_features.shape[0], recurrent_cell.hidden_size)
+                    recurrent_register = recurrent_cell(
+                        own_features, previous_register)
+                    own_features = recurrent_register
+                    next_skill_states[slot_index] = recurrent_register
                 score = gate(own_features)
                 if not isinstance(gate_refiner, nn.Identity):
                     score = score + gate_refiner(own_features)
@@ -1491,7 +1566,8 @@ class UnifiedCognitiveController(nn.Module):
             hidden, workspace, event, workspace_usage,
             workspace_volatility,
             (current_event_age + 1.0 / self.event_age_scale
-             if self.event_age and current_event_age is not None else None))
+             if self.event_age and current_event_age is not None else None),
+            None if next_skill_states is None else tuple(next_skill_states))
 
     def step(
             self, frame: torch.Tensor, state: ControllerState,

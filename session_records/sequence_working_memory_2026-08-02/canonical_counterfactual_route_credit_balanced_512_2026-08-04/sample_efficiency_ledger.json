@@ -1,0 +1,20 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "canonical-counterfactual-route-credit-balanced-linear-512-2026-08-04",
+  "status": "decisively_rejected_for_unbounded_pair_score_objective",
+  "seed": 69411,
+  "updates_per_stage": 512,
+  "unique_logical_lifetimes": 24576,
+  "unique_verifier_bits": 73728,
+  "optimizer_updates": 2560,
+  "replayed_examples": 0,
+  "route_optimizer_updates": 1024,
+  "route_unique_lifetimes": 16384,
+  "route_unique_verifier_bits": 32768,
+  "route_counterfactual_pairs": 16384,
+  "route_replayed_examples": 0,
+  "route_accuracy": 0.3333333432674408,
+  "candidate_permutation_accuracy": 0.3333333432674408,
+  "reward_shuffled_route_accuracy": 0.3333333432674408,
+  "claim_boundary": "The raw linear multi-row score-difference objective is rejected; bounded pairwise preference credit is the retained mechanism."
+}

@@ -1,0 +1,27 @@
+{
+  "schema": "amodal-grounded-byte-text-paired-view-followup-v1",
+  "parent_record": "natural_text_grounding_2026-08-04",
+  "training_signal": "paired_encoded_event_consistency_with_two_styles_per_scene",
+  "controller_frozen": true,
+  "seeds": {
+    "1001003_paired_u32": {
+      "updates": 32,
+      "paired_unlabeled_frames": 24576,
+      "minimum_heldout_fused_accuracy": 0.9093750119,
+      "minimum_contradiction_flip_rate": 0.7395833135,
+      "maximum_shuffled_partner_accuracy": 0.5520833135,
+      "minimum_vision_only_accuracy": 0.9677083492,
+      "passed": false
+    },
+    "1001003_paired_u40": {
+      "updates": 40,
+      "paired_unlabeled_frames": 30720,
+      "minimum_heldout_fused_accuracy": 0.9083333611,
+      "minimum_contradiction_flip_rate": 0.7291666865,
+      "maximum_shuffled_partner_accuracy": 0.5385416746,
+      "minimum_vision_only_accuracy": 0.9677083492,
+      "passed": false
+    }
+  },
+  "interpretation": "Paired paraphrases improve fused diamond accuracy but do not clear the strict contradiction-flip gate. No population promotion or controller change is justified."
+}

@@ -35,6 +35,7 @@ class ControllerState:
     workspace_usage: torch.Tensor
     event_window: EventTokenWindow
     source_trust: torch.Tensor
+    growth_registers: tuple[torch.Tensor, ...] | None = None
 
     def detached(self) -> ControllerState:
         return ControllerState(
@@ -57,6 +58,11 @@ class ControllerState:
                 ),
             ),
             source_trust=self.source_trust.detach(),
+            growth_registers=(
+                None
+                if self.growth_registers is None
+                else tuple(register.detach() for register in self.growth_registers)
+            ),
         )
 
 
@@ -75,6 +81,8 @@ class ControllerOutput:
     execution_logits: torch.Tensor
     memory_write_log_probability: torch.Tensor | None = None
     memory_write_sample: torch.Tensor | None = None
+    memory_write_context: torch.Tensor | None = None
+    memory_write_relevance: torch.Tensor | None = None
 
 
 class AmodalCognitiveController(nn.Module):
@@ -99,6 +107,9 @@ class AmodalCognitiveController(nn.Module):
         memory_value_feedback: bool = True,
         stable_memory_address: bool = True,
         memory_address_residual: bool = True,
+        growth_register_widths: Sequence[int] = (),
+        growth_prior_only_from: int | None = None,
+        growth_recurrent_from: int | None = None,
     ) -> None:
         super().__init__()
         if min(width, workspace_slots, intention_width, feedback_width) < 1:
@@ -107,6 +118,19 @@ class AmodalCognitiveController(nn.Module):
             raise ValueError("event and memory capacities must be positive")
         if source_key_width < 0:
             raise ValueError("source_key_width cannot be negative")
+        growth_widths = tuple(int(value) for value in growth_register_widths)
+        if any(value < 1 for value in growth_widths):
+            raise ValueError("growth register widths must be positive")
+        for name, value in (
+            ("growth_prior_only_from", growth_prior_only_from),
+            ("growth_recurrent_from", growth_recurrent_from),
+        ):
+            if value is not None and not 0 <= value < len(growth_widths):
+                raise ValueError(
+                    f"{name} must be a valid growth slot index when configured"
+                )
+        if growth_prior_only_from == 0:
+            raise ValueError("the first growth slot cannot be prior-only")
         self.width = width
         self.workspace_slots = workspace_slots
         self.intention_width = intention_width
@@ -118,6 +142,12 @@ class AmodalCognitiveController(nn.Module):
         self.memory_value_feedback_enabled = memory_value_feedback
         self.stable_memory_address = stable_memory_address
         self.memory_address_residual = memory_address_residual
+        self.growth_register_widths = growth_widths
+        self.growth_prior_only_from = growth_prior_only_from
+        self.growth_recurrent_from = growth_recurrent_from
+        # Diagnostic-only causal intervention. It is intentionally not part
+        # of the serialized controller contract or the learned interface.
+        self.growth_ablate_prior_from: int | None = None
         self.source_credit_decay = 0.9
         self.source_trust_binding_scale = 0.25
 
@@ -254,10 +284,34 @@ class AmodalCognitiveController(nn.Module):
         nn.init.zeros_(self.execution_timeout_policy[-1].weight)
         nn.init.zeros_(self.execution_timeout_policy[-1].bias)
 
+        # Growth slots are the CPU expansion boundary: they are generic
+        # learned registers whose weights can be trained, evicted, composed,
+        # and reloaded outside the frozen controller core.  A prior-only slot
+        # receives only the preceding register, never raw events or the
+        # controller hidden state.  The output heads start at zero so merely
+        # declaring an empty growth boundary is behavior-preserving.
+        self.growth_slots = nn.ModuleList()
+        for index, register_width in enumerate(growth_widths):
+            if growth_prior_only_from is not None and index >= growth_prior_only_from:
+                input_width = growth_widths[index - 1]
+            else:
+                input_width = width * 3
+            slot = nn.ModuleDict(
+                {
+                    "input": nn.Linear(input_width, register_width),
+                    "output": nn.Linear(register_width, intention_width),
+                }
+            )
+            if growth_recurrent_from is not None and index >= growth_recurrent_from:
+                slot["recurrent"] = nn.GRUCell(register_width, register_width)
+            nn.init.zeros_(slot["output"].weight)
+            nn.init.zeros_(slot["output"].bias)
+            self.growth_slots.append(slot)
+
     def configuration(self) -> dict[str, object]:
         """Return only constructor data needed to rebuild this component."""
         return {
-            "schema": "neural-computer.controller.v27",
+            "schema": "neural-computer.controller.v28",
             "width": self.width,
             "workspace_slots": self.workspace_slots,
             "intention_width": self.intention_width,
@@ -284,7 +338,7 @@ class AmodalCognitiveController(nn.Module):
             "memory_write_policy": "event_state_workspace_address_v1",
             "memory_write_sampling": "bernoulli_straight_through_v1",
             "memory_write_event_window": "latest_pair_context_match_max_v3",
-            "memory_write_event_match": "latest_prior_cosine_and_max_v2",
+            "memory_write_event_match": "latest_prior_stable_content_cosine_and_max_v3",
             "memory_value_feedback": (
                 "feedback_residual_v1"
                 if self.memory_value_feedback_enabled
@@ -300,6 +354,10 @@ class AmodalCognitiveController(nn.Module):
             "source_credit_projection": "vector_to_trust_space",
             "source_trust_binding": bool(self.source_key_width),
             "source_trust_binding_scale": self.source_trust_binding_scale,
+            "growth_register_widths": self.growth_register_widths,
+            "growth_prior_only_from": self.growth_prior_only_from,
+            "growth_recurrent_from": self.growth_recurrent_from,
+            "growth_boundary": "generic_register_chain_v1",
         }
 
     def initial_state(
@@ -331,6 +389,14 @@ class AmodalCognitiveController(nn.Module):
                 self.source_key_width,
                 device=device,
                 dtype=dtype,
+            ),
+            growth_registers=(
+                tuple(
+                    torch.zeros(batch_size, register_width, device=device, dtype=dtype)
+                    for register_width in self.growth_register_widths
+                )
+                if self.growth_register_widths
+                else None
             ),
         )
 
@@ -506,21 +572,30 @@ class AmodalCognitiveController(nn.Module):
         temporal_payload = temporal_payload + torch.tanh(self.event_pair_output(pair_context))
         positions = torch.arange(events, device=payload.device).view(1, events)
         prior_present = window.present & (positions != latest_index.view(batch, 1))
+        # Matching a current event to a prior cue is a content-binding
+        # decision. Keep transport timing out of this comparison: a token's
+        # age and confidence may change between cue, write, and recall, while
+        # its learned payload should remain the stable identity signal used by
+        # the generic write policy.
+        prior_binding_payload = torch.nn.functional.normalize(address_payload, dim=-1)
         prior_context = (
-            (temporal_payload * prior_present.unsqueeze(-1).to(payload.dtype)).sum(dim=1)
+            (prior_binding_payload * prior_present.unsqueeze(-1).to(payload.dtype)).sum(dim=1)
             / prior_present.sum(dim=1, keepdim=True).clamp_min(1).to(payload.dtype)
         )
-        latest_payload = temporal_payload.gather(
+        latest_binding_payload = address_payload.gather(
             1,
             latest_index.view(batch, 1, 1).expand(-1, 1, self.width),
         ).squeeze(1)
-        latest_prior_match = latest_payload * prior_context
+        latest_binding_payload = torch.nn.functional.normalize(
+            latest_binding_payload, dim=-1
+        )
+        latest_prior_match = latest_binding_payload * prior_context
         latest_prior_similarity = (
-            torch.nn.functional.normalize(latest_payload, dim=-1)
+            torch.nn.functional.normalize(latest_binding_payload, dim=-1)
             * torch.nn.functional.normalize(prior_context, dim=-1)
         ).sum(dim=-1, keepdim=True)
-        latest_normalized = torch.nn.functional.normalize(latest_payload, dim=-1)
-        prior_normalized = torch.nn.functional.normalize(temporal_payload, dim=-1)
+        latest_normalized = torch.nn.functional.normalize(latest_binding_payload, dim=-1)
+        prior_normalized = torch.nn.functional.normalize(prior_binding_payload, dim=-1)
         latest_prior_scores = torch.einsum(
             "bw,bew->be", latest_normalized, prior_normalized
         )
@@ -601,8 +676,8 @@ class AmodalCognitiveController(nn.Module):
             bound
             + torch.tanh(latest_pair_context)
             + latest_prior_match
-            + latest_prior_similarity.expand_as(latest_payload)
-            + latest_prior_max_similarity.expand_as(latest_payload)
+            + latest_prior_similarity.expand_as(latest_binding_payload)
+            + latest_prior_max_similarity.expand_as(latest_binding_payload)
         )
         return (
             bound,
@@ -612,6 +687,7 @@ class AmodalCognitiveController(nn.Module):
             trust,
             address_event,
             write_event_context,
+            latest_prior_max_similarity,
         )
 
     def step(
@@ -627,6 +703,7 @@ class AmodalCognitiveController(nn.Module):
         sample_memory_writes: bool = False,
         memory_write_override: torch.Tensor | None = None,
         memory_write_uniform: torch.Tensor | None = None,
+        memory_write_gradient: bool = True,
     ) -> tuple[ControllerOutput, ControllerState]:
         if memory is not None and not isinstance(memory, MemoryBackend):
             raise TypeError("memory must implement the MemoryBackend contract")
@@ -685,6 +762,7 @@ class AmodalCognitiveController(nn.Module):
             reliability,
             address_event,
             write_event_context,
+            write_relevance,
         ) = self._bind_events(
             window, state.hidden, feedback_embedding, feedback_source_context
         )
@@ -742,6 +820,39 @@ class AmodalCognitiveController(nn.Module):
 
         combined = torch.cat([hidden, workspace_read, event], dim=-1)
         intention = self.intention(combined)
+        growth_registers: tuple[torch.Tensor, ...] | None = None
+        if self.growth_slots:
+            if state.growth_registers is None or len(state.growth_registers) != len(
+                self.growth_slots
+            ):
+                raise ValueError("state does not contain the configured growth registers")
+            previous_registers = state.growth_registers
+            next_registers: list[torch.Tensor] = []
+            growth_residual = torch.zeros_like(intention)
+            for index, slot in enumerate(self.growth_slots):
+                if (
+                    self.growth_prior_only_from is not None
+                    and index >= self.growth_prior_only_from
+                ):
+                    slot_input = next_registers[index - 1]
+                    if (
+                        self.growth_ablate_prior_from is not None
+                        and index >= self.growth_ablate_prior_from
+                    ):
+                        slot_input = torch.zeros_like(slot_input)
+                else:
+                    slot_input = combined
+                register = slot["input"](slot_input)
+                if "recurrent" in slot:
+                    register = slot["recurrent"](register, previous_registers[index])
+                next_registers.append(register)
+                growth_residual = growth_residual + slot["output"](register)
+            growth_registers = tuple(next_registers)
+            # Normalize only across the configured number of slots.  This
+            # keeps adding an independent artifact from changing the scale
+            # merely because the bank grew, while retaining a direct learned
+            # path from every register to the opaque intention.
+            intention = intention + growth_residual / (len(self.growth_slots) ** 0.5)
         # Occupancy is transport metadata, not a modality or task label.  It
         # lets the execution policy distinguish a complete event window from
         # a partial one without adding a special reasoning branch.
@@ -833,6 +944,8 @@ class AmodalCognitiveController(nn.Module):
                 + memory_write_strength
                 - memory_write_strength.detach()
             )
+            if not memory_write_gradient:
+                memory_write_backend_strength = memory_write_sample.detach()
         elif sample_memory_writes:
             probability = memory_write_strength.clamp(1e-6, 1.0 - 1e-6)
             memory_write_sample = torch.bernoulli(probability)
@@ -849,6 +962,8 @@ class AmodalCognitiveController(nn.Module):
                 + memory_write_strength
                 - memory_write_strength.detach()
             )
+            if not memory_write_gradient:
+                memory_write_backend_strength = memory_write_sample.detach()
         memory_value = self.memory_value(memory_value_context)
         if self.memory_value_feedback_enabled and self.memory_value_feedback is not None:
             memory_value = memory_value + self.memory_value_feedback(feedback_embedding)
@@ -866,6 +981,8 @@ class AmodalCognitiveController(nn.Module):
             execution_logits=execution_logits,
             memory_write_log_probability=memory_write_log_probability,
             memory_write_sample=memory_write_sample,
+            memory_write_context=memory_write_context,
+            memory_write_relevance=write_relevance,
         )
         memory_write_receipt = (
             memory.write(
@@ -892,6 +1009,8 @@ class AmodalCognitiveController(nn.Module):
             execution_logits=output.execution_logits,
             memory_write_log_probability=output.memory_write_log_probability,
             memory_write_sample=output.memory_write_sample,
+            memory_write_context=output.memory_write_context,
+            memory_write_relevance=output.memory_write_relevance,
         )
         if disable_workspace:
             workspace = torch.zeros_like(workspace)
@@ -902,5 +1021,6 @@ class AmodalCognitiveController(nn.Module):
             workspace_usage=usage,
             event_window=window,
             source_trust=source_trust,
+            growth_registers=growth_registers,
         )
         return output, next_state

@@ -1,0 +1,16 @@
+{
+  "artifact_sha256": [
+    "20cb3a11b65275f0253c36fa0f01a3461409b7abab05cbd4f3946c55f64d672a",
+    "c5ade6c569984470a688e3d457d43b7b95eed9eadcb32fe922a285afb5878a4f"
+  ],
+  "capacity": 2,
+  "manifest_version": 2,
+  "paths": [
+    "artifact-v00000001.pt",
+    "artifact-v00000002.pt"
+  ],
+  "schema": "neural-computer.executable-artifact-memory.v1",
+  "width": 64,
+  "write_match_threshold": 0.999,
+  "write_threshold": 0.5
+}

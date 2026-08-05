@@ -1167,6 +1167,59 @@ diagnostics rather than a cue-conditioned utility claim; capacity-one
 compression and general episodic memory remain open. Evidence is in
 `session_records/cross_adapter_memory_amodal_v78_2026-08-04/`.
 
+The v79 capacity-one follow-up exposed and fixed a trainer lifecycle bug: a
+probe payload was being inserted twice, once for action preview and once for
+outcome storage, evicting the cue from the bounded event window. The corrected
+single-commit lifecycle, explicit write abstention threshold, stable-content
+prior binding, and suffix-isolated counterfactual write credit produce
+`0.993–0.999` writer recall and `0.810–0.997` reader recall across three seeds,
+with clear, corrupt, and swapped-slot controls near chance. Seed 17 passes the
+fresh-token gate, but seeds 18 and 19 remain below the strict fresh-population
+minimum even after a longer rung. This is a qualified implementation and
+causal-mechanism breakthrough, not yet a three-seed promoted capacity-one
+population capability. The remaining bottleneck is fresh-token generalization
+of the learned one-slot write policy. Evidence is in
+`session_records/cross_adapter_memory_amodal_v79_2026-08-04/`.
+
+The v80 follow-up closes that bottleneck by making the trainer-only
+counterfactual write intervention token-diverse, with the same four-episode
+opaque-token reuse schedule used during base acquisition. All three seeds now
+pass the capacity-one promotion gate: fresh-reader minima are `0.991`,
+`0.996`, and `0.944`; fresh aligned-vs-raw gain minima are `+0.494`, `+0.466`,
+and `+0.421`; persistent reload/recovery pass; and reward shuffling collapses
+to chance. This promotes synthetic outcome-only capacity-one cross-adapter
+retrieval with randomized target position. Natural-modality grounding and
+general episodic memory remain unqualified. Evidence is in
+`session_records/cross_adapter_memory_amodal_v80_2026-08-04/`.
+
+The initial raw-language rung under `experiments/natural_text_grounding/` is
+retracted: its caption renderer used verifier-generated context IDs to choose
+a shape word. The renderer is now pixel-only. The corrected character n-gram
+CNN passes the three-seed training-time gate and all three independent saved
+frontends pass a 1,024-lifetime replay. This promotes synthetic
+pixel-grounded UTF-8 event transport into the frozen amodal boundary, not
+open-ended natural-language understanding. Evidence and the audit are in
+`session_records/natural_text_grounding_pixel_only_2026-08-04/`.
+
+The next external-corpus boundary is also promoted: a separately versioned,
+independently authored phrase corpus with two order-augmented training
+variants per style passes all three 1,024-lifetime saved-front-end replays.
+This is controlled corpus-backed text transport, still not open-world language
+understanding. Evidence is in
+`session_records/natural_text_grounding_external_corpus_v2_2026-08-04/`.
+
+The next caption boundary is now promoted as well. Three independently trained
+byte frontends consume a versioned table of complete pre-authored captions;
+runtime performs only a pixel-only image/annotation join and never fills
+language slots or receives verifier metadata. At 1,024 fresh lives per
+appearance/style cell, the three saved frontends reach minimum fused accuracy
+of **92.83%**, **91.39%**, and **92.15%**, while shuffled partners remain at
+most **54.61%**, contradiction flips remain at least **75.43%**, and full
+vision retention remains at least **97.54%**. This promotes static
+pre-authored caption transport into the frozen amodal event basis, not
+open-world language understanding, speech, or semantic reasoning. Evidence is
+in `session_records/natural_text_grounding_external_annotation_table_v3_2026-08-04/`.
+
 ## Setup
 
 Python 3.11 or newer is recommended.
@@ -2279,6 +2332,33 @@ high-ROI experiment is a one-axis span-four escalation with explicit
 span-two/span-three rehearsal and the same adversarial gates; more duration on
 span three is not justified.
 
+## Latest frozen-growth acquisition result (2026-08-04)
+
+Brain Workshop-style working-memory tasks now pressure-test the isolated
+long-term-memory boundary itself. A slot-free span-eight parent receives one
+zero-output generic successor slot. The shared controller is frozen; only the
+successor growth state learns from rendered events, opaque attempted actions,
+and scalar verifier outcomes. Parent-logit distillation on fresh rehearsal
+streams protects inherited behavior, and the learned tensor mapping is stored
+and reloaded through `ExecutableArtifactMemory`.
+
+On the adjacent complement primitive, two independent runs improved the
+parent from **42.19% to 74.22%** and **41.41% to 75.00%** after **20,480
+unique verifier bits** each. Zeroing only the rehydrated artifact returned to
+the parent accuracies, while the fresh rehydrated child matched the live child
+exactly. The shared controller stayed bit-identical, SHA-256 corruption was
+rejected, and spans 4/6/8 retained within the two-point gate in both runs.
+
+The unprotected arm learned the target but lost 3.91 points on span eight; a
+same-budget success-only objective produced no target gain. This isolates
+task-agnostic rehearsal distillation as the useful anti-forgetting mechanism
+at this rung. It is a narrow replicated frozen-controller/external-growth
+result—not cold-start address discovery, arbitrary program induction, or
+general cognition. The reward-shuffled control still gained 7.03 points,
+well below the aligned gain, so exclusive reward attribution remains open.
+Full reports and the accounting ledger are in
+`session_records/sequence_working_memory_2026-08-02/frozen_growth_complement_distill_2026-08-04/`.
+
 ### Replicated three-skill cold-bank routing (2026-08-03)
 
 The reward-trained external-bank selector now routes among three real skill
@@ -2291,3 +2371,77 @@ architecture rejection. This advances the cold-bank architecture, but does not
 yet prove cold-start skill acquisition, long-horizon retention, or span-eleven
 mastery. See
 `session_records/sequence_working_memory_2026-08-02/three_skill_real_bank_routing_2026-08-03/`.
+
+### Replicated opaque-address execution routing (2026-08-04)
+
+The working-memory pressure test now covers the missing address-mediated
+step: a frozen span-ten parent emits an opaque query, a replaceable
+memory-side router selects among two random-key executable artifacts using
+only attempted rows and scalar verifier outcomes, and the generic growth
+loader rehydrates the selected artifact.
+
+Two independent 512-update runs reached 100% held-out routing, 50% under
+reward shuffling, 100% under candidate-row permutation, and 50% for a raw
+cosine-key baseline. Both selected artifacts were causal under zeroing; the
+complement wrong-row control fell from 74.5/75.8% to 51.2/51.6%. Reload,
+frozen-core, and corruption checks passed. The mixed procedure's wrong-row
+control was not discriminative, so it is explicitly not used as evidence.
+
+Accounting is separated: each run used 2,048 unique logical lifetimes and 64
+unique query/attempt verifier pairs, while sampling 32,768 verifier bits over
+512 optimizer updates, of which 32,704 were replayed samples. This promotes a
+narrow opaque-address routing diagnostic, not general address discovery,
+arbitrary program induction, or broad continuous learning. Reports and the
+ledger are in
+`session_records/sequence_working_memory_2026-08-02/opaque_route_mixed_procedures_accounted_2026-08-04/`.
+
+### Breakthrough: opaque routing of independently acquired procedures (2026-08-04)
+
+The working-memory pressure test now demonstrates the intended CPU/filesystem
+boundary in a narrow, causal form. A frozen span-eight parent independently
+acquired two span-ten procedures into the same generic external growth schema:
+`complement` and `complement_reverse` (reverse, then complement). After 512
+updates, the artifacts improved their parent baselines of 29.7% and 27.8% to
+76.4% and 63.8%, with all frozen-core, retention, rehydration, and integrity
+gates passing.
+
+A replaceable memory-side router then selected the necessary artifact from
+random opaque keys using only attempted rows and scalar verifier outcomes.
+Across two router seeds, routing was 100%, reward-shuffled routing 50%, row
+permutation 100%, and cosine-only matching 50%. Selected execution reached
+75.3--76.2% for complement and 63.6--63.9% for complement-reverse; every
+wrong-artifact control fell to roughly 27--30%, matching zeroed-growth
+controls. This is narrow evidence that external memory can hold multiple
+independently acquired executable states and retrieve the one required by the
+current working-memory computation while the controller remains frozen.
+
+It does not yet establish arbitrary program induction, cold-start general
+address discovery, or broad intelligence. Failed forward and rotate controls
+are retained as negative evidence. Full reports and accounting are in
+`session_records/sequence_working_memory_2026-08-02/opaque_route_acquired_complement_bank_512_2026-08-04/`.
+
+The online memory lifecycle also passes: an artifact can be written, evicted,
+cold-reloaded, joined by a newly appended artifact, compacted, and reloaded
+without changing payload hashes or opaque keys. A three-row stress test
+showed that a complement-rotate artifact transfers to complement and vice
+versa, so that bank was not promoted as three independent procedures; shared
+subroutine transfer is now an explicit next measurement rather than being
+mistaken for address failure.
+
+The transfer-aware three-row audit passes as a compositional diagnostic: all
+three procedures have at least one causal artifact, selected execution stays
+within five points of the best available artifact, and complement ↔
+complement-rotate transfer is measured explicitly. The strict independence
+gate remains false, which is informative rather than hidden—long-term memory
+may contain reusable factors as well as standalone skills.
+
+The first orthogonal global-aggregation candidate (`global_parity`) produced
+no causal gain at the diagnostic budget and was rejected rather than scaled;
+global credit assignment remains open.
+
+The strongest current result is replicated online growth: write one artifact,
+append a second after deployment, and route both through the frozen
+controller. The old skill remains unchanged, routing is 100% with 50%
+shuffled-outcome controls, and both selected artifacts remain causal. Evidence
+is in
+`session_records/sequence_working_memory_2026-08-02/online_routed_growth_2026-08-04/`.

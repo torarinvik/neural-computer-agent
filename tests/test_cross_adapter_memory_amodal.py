@@ -8,7 +8,11 @@ from experiments.cross_adapter_memory_amodal.environment import (
 )
 from experiments.cross_adapter_memory_amodal.train import (
     ReaderEventAdapter,
+    _event,
+    _feedback,
+    _probe,
     _slot_order,
+    _store,
     build_runtime,
 )
 
@@ -69,6 +73,62 @@ def test_cross_adapter_runtime_expands_event_window_for_three_slots() -> None:
     runtime = build_runtime(seed=5, batch_size=2, slot_count=3, memory_capacity=2)
     assert runtime.controller.event_window_capacity == 4
     assert runtime.memory.capacity == 2
+
+
+def test_probe_preview_does_not_insert_a_duplicate_event() -> None:
+    runtime = build_runtime(
+        seed=5,
+        batch_size=2,
+        slot_count=3,
+        memory_capacity=1,
+        memory_write_threshold=0.5,
+    )
+    payload = torch.randn(2, runtime.event_width)
+    state = runtime.initial_state(2, device="cpu")
+    action, propensity_log, preview_state = _probe(runtime, state, payload)
+
+    assert preview_state.event_window.present.sum().item() == 0
+    state = _store(
+        runtime,
+        preview_state,
+        payload,
+        action,
+        propensity_log,
+        torch.ones(2),
+        torch.arange(2, dtype=torch.long),
+    )
+    assert state.event_window.present.sum().item() == 2
+    assert torch.allclose(state.event_window.payload[:, 0], payload)
+
+
+def test_probe_preview_preserves_an_earlier_cue_in_the_bounded_window() -> None:
+    runtime = build_runtime(
+        seed=5,
+        batch_size=2,
+        slot_count=3,
+        memory_capacity=1,
+        memory_write_threshold=0.5,
+    )
+    cue = torch.randn(2, runtime.event_width)
+    state = runtime.initial_state(2, device="cpu")
+    _, state = runtime.controller.step(
+        _event(cue), state, _feedback(2), memory=None
+    )
+    payloads = [torch.randn(2, runtime.event_width) for _ in range(3)]
+    for payload in payloads:
+        action, propensity_log, state = _probe(runtime, state, payload)
+        state = _store(
+            runtime,
+            state,
+            payload,
+            action,
+            propensity_log,
+            torch.ones(2),
+            torch.arange(2, dtype=torch.long),
+        )
+
+    assert state.event_window.present.sum().item() == 8
+    assert torch.allclose(state.event_window.payload[:, 0], cue)
 
 
 def test_target_cue_places_the_target_row_last() -> None:

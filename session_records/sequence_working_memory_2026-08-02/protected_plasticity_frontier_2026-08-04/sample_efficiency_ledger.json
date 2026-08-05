@@ -1,0 +1,64 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "protected_plasticity_frontier_2026-08-04",
+  "status": "decisively_rejected_before_promotion",
+  "unique_verifier_bits_per_full_arm": 2560,
+  "unique_logical_lifetimes_per_full_arm": 256,
+  "optimizer_updates_control": 1024,
+  "optimizer_updates_protected": 640,
+  "rehearsal_gradient_evaluations_protected": 384,
+  "replayed_examples_per_full_arm": 155648,
+  "wall_time_seconds": "6.1-9.5 MPS training, audit excluded",
+  "latency": "offline MPS training and verifier audit; online latency not measured",
+  "stable_bits_to_threshold": null,
+  "transfer_ratio_against_fresh_learner": null,
+  "claim_boundary": "Protected plasticity is a trainer-only diagnostic; no promoted capability or mastery claim.",
+  "arms": [
+    {
+      "name": "protected_pen03_seed93748",
+      "unique_verifier_bits": 2560,
+      "causal_gain_points": 10.05859375,
+      "old_span9_delta_points": -1.8012,
+      "old_span10_delta_points": -1.2402,
+      "blank_cue_accuracy": 0.4646484,
+      "reset_accuracy": 0.5,
+      "accepted": false,
+      "reason": "single-seed result"
+    },
+    {
+      "name": "protected_pen03_seed93750",
+      "unique_verifier_bits": 2560,
+      "causal_gain_points": 9.01367068,
+      "old_span9_delta_points": -4.5029,
+      "old_span10_delta_points": -3.4668,
+      "accepted": false,
+      "reason": "retention gate failure"
+    },
+    {
+      "name": "protected_behavior_retention005_seed93750",
+      "unique_verifier_bits": 2560,
+      "causal_gain_points": 6.85546994,
+      "old_span9_delta_points": -2.5282,
+      "old_span10_delta_points": -1.7774,
+      "replay_update_rejections": 81,
+      "accepted": false,
+      "reason": "span-nine retention gate failure"
+    },
+    {
+      "name": "protected_loss_retention001_seed93750",
+      "unique_verifier_bits": 2560,
+      "optimizer_updates": 52,
+      "replay_update_rejections": 588,
+      "accepted": false,
+      "reason": "functional loss constraint froze useful plasticity"
+    },
+    {
+      "name": "protected_loss_retention010_seed93750",
+      "unique_verifier_bits": 2560,
+      "optimizer_updates": 62,
+      "replay_update_rejections": 578,
+      "accepted": false,
+      "reason": "functional loss constraint froze useful plasticity"
+    }
+  ]
+}

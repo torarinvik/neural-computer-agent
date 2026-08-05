@@ -14,8 +14,9 @@ and differentiable workspace are literal RAM/VRAM-resident fast memory.
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
+import itertools
 import json
+from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter
 
@@ -112,9 +113,17 @@ def generate_sequence_memory_batch(
         raise ValueError("span must be positive")
     if distractors < 0:
         raise ValueError("distractors must not be negative")
-    if operation not in ("forward", "reverse", "mixed", "complement"):
+    if operation not in (
+        "forward", "reverse", "mixed", "complement", "complement_reverse",
+        "complement_rotate", "adjacent_xor", "prefix_parity", "global_parity",
+        "rotate", "undo_complement", "producer_global_parity",
+    ):
         raise ValueError(
-            "operation must be forward, reverse, mixed, or complement")
+            "operation must be forward, reverse, mixed, complement, "
+            "complement_reverse, complement_rotate, adjacent_xor, "
+            "prefix_parity, global_parity, rotate, undo_complement, or "
+            "producer_global_parity"
+        )
     if not 0.0 <= position_blend <= 1.0:
         raise ValueError("position blend must be within [0, 1]")
     if position_shift:
@@ -122,7 +131,11 @@ def generate_sequence_memory_batch(
 
     generator = torch.Generator().manual_seed(seed)
     sequence = _balanced_binary_sequences(count, span, generator)
-    if operation in ("forward", "complement"):
+    if operation in (
+        "forward", "complement", "complement_reverse", "complement_rotate",
+        "adjacent_xor", "prefix_parity", "global_parity", "rotate",
+        "undo_complement", "producer_global_parity",
+    ):
         operation_bits = torch.zeros(count, dtype=torch.long)
     elif operation == "reverse":
         operation_bits = torch.ones(count, dtype=torch.long)
@@ -207,10 +220,46 @@ def generate_sequence_memory_batch(
             # without conflating it with the inherited forward/reverse
             # protocol.
             operation_column = 14
+        elif operation == "undo_complement":
+            # Keep the producer cue visible so an acquired complement factor
+            # can open. The second generic cue marks the consumer phase; a
+            # prior-only consumer receives it only through the producer's
+            # learned register, never as a raw event feature.
+            operation_column = 14
+        elif operation == "producer_global_parity":
+            # The complement producer cue remains visible while the global
+            # aggregation cue defines the consumer's verifier objective.
+            operation_column = 14
+        elif operation == "complement_reverse":
+            # A fifth generic operation cue selects reverse-then-complement.
+            # It carries no operation name or answer.
+            operation_column = 19
+        elif operation == "rotate":
+            # A fourth generic operation cue selects the next-item rotation.
+            # It is a visual event, not a semantic operation label.
+            operation_column = 9
+        elif operation == "complement_rotate":
+            # A sixth generic operation cue selects rotate-then-complement.
+            # It carries no operation name or answer.
+            operation_column = 24
+        elif operation == "adjacent_xor":
+            # A seventh generic operation cue selects adjacent comparison.
+            # It carries no operation name or answer.
+            operation_column = 5
+        elif operation == "prefix_parity":
+            # A cumulative binding cue; it is a visual event, not a label.
+            operation_column = 0
+        elif operation == "global_parity":
+            # A global aggregation cue; it carries no answer or task label.
+            operation_column = 28
         else:
             operation_column = 2 if int(operation_bits[row]) == 0 else 27
         query_frames[row, :, :, 2:5, operation_column:operation_column + 3] = (
             0.95)
+        if operation == "undo_complement":
+            query_frames[row, :, :, 2:5, 6:9] = 0.95
+        if operation == "producer_global_parity":
+            query_frames[row, :, :, 2:5, 28:31] = 0.95
         for query_index in range(span):
             # A unary ordinal cue: no written number or semantic position ID.
             for mark in range(query_index + 1):
@@ -221,18 +270,57 @@ def generate_sequence_memory_batch(
     source_index = torch.arange(span).unsqueeze(0).expand(count, -1)
     reverse_index = torch.arange(span - 1, -1, -1).unsqueeze(0).expand(
         count, -1)
-    selected_index = torch.where(
-        operation_bits.unsqueeze(1).bool(), reverse_index, source_index)
-    correct = (
-        1 - sequence if operation == "complement"
-        else torch.gather(sequence, 1, selected_index))
+    rotate_index = (source_index + 1) % span
+    selected_index = (
+        rotate_index
+        if operation in ("rotate", "complement_rotate", "adjacent_xor")
+        else reverse_index
+        if operation == "complement_reverse"
+        else torch.where(
+            operation_bits.unsqueeze(1).bool(), reverse_index, source_index
+        )
+    )
+    selected_sequence = torch.gather(sequence, 1, selected_index)
+    if operation == "adjacent_xor":
+        correct = (sequence != selected_sequence).long()
+    elif operation == "prefix_parity":
+        correct = torch.cumsum(sequence, dim=1).remainder(2)
+    elif operation == "global_parity":
+        correct = sequence.sum(dim=1, keepdim=True).remainder(2).expand_as(sequence)
+    elif operation in (
+        "complement", "complement_reverse", "complement_rotate"
+    ):
+        correct = 1 - selected_sequence
+    elif operation == "undo_complement":
+        correct = selected_sequence
+    elif operation == "producer_global_parity":
+        correct = sequence.sum(dim=1, keepdim=True).remainder(2).expand_as(sequence)
+    else:
+        correct = selected_sequence
 
     if reverse_sequence:
         sequence = sequence.flip(1)
         input_frames = input_frames.flip(1)
-        correct = (
-            1 - sequence if operation == "complement"
-            else torch.gather(sequence, 1, selected_index))
+        selected_sequence = torch.gather(sequence, 1, selected_index)
+        if operation == "adjacent_xor":
+            correct = (sequence != selected_sequence).long()
+        elif operation == "prefix_parity":
+            correct = torch.cumsum(sequence, dim=1).remainder(2)
+        elif operation == "global_parity":
+            correct = sequence.sum(dim=1, keepdim=True).remainder(2).expand_as(
+                sequence
+            )
+        elif operation in (
+            "complement", "complement_reverse", "complement_rotate"
+        ):
+            correct = 1 - selected_sequence
+        elif operation == "undo_complement":
+            correct = selected_sequence
+        elif operation == "producer_global_parity":
+            correct = sequence.sum(dim=1, keepdim=True).remainder(2).expand_as(
+                sequence)
+        else:
+            correct = selected_sequence
 
     return SequenceMemoryBatch(
         input_frames.to(device), distractor_frames.to(device),
@@ -514,7 +602,9 @@ def main() -> None:
             "the target span is sampled first, and repeated values weight "
             "rehearsal frequency"))
     parser.add_argument(
-        "--operation", choices=("forward", "reverse", "mixed"),
+        "--operation", choices=(
+            "forward", "reverse", "mixed", "rotate", "undo_complement",
+            "producer_global_parity"),
         default="mixed")
     parser.add_argument("--width", type=int, default=64)
     parser.add_argument("--workspace-slots", type=int, default=4)
@@ -567,7 +657,7 @@ def main() -> None:
             not 0.0 < value <= 1.0 for value in curriculum
             ) or any(
                 later <= earlier
-                for earlier, later in zip(curriculum, curriculum[1:])):
+                for earlier, later in itertools.pairwise(curriculum)):
         raise ValueError(
             "position curriculum must be strictly increasing within (0, 1]")
     configuration: dict[str, object] = {
@@ -618,8 +708,7 @@ def main() -> None:
                 "train-only-action-adapter requires action_adapter_width")
         for name, parameter in model.named_parameters():
             parameter.requires_grad_(
-                name.startswith("action_adapter.")
-                or name.startswith("action_adapter_gate."))
+                name.startswith(("action_adapter.", "action_adapter_gate.")))
     trainable_parameters = [
         parameter for parameter in model.parameters()
         if parameter.requires_grad]

@@ -1,0 +1,20 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "counterfactual-factorized-credit-integration-smoke-2026-08-04",
+  "status": "infrastructure_validation_only",
+  "seed": 17,
+  "unique_logical_lifetimes": 128,
+  "unique_verifier_bits": 256,
+  "optimizer_updates": 8,
+  "replayed_examples": 0,
+  "diagnostic_verifier_bits": 3072,
+  "diagnostic_logical_lifetimes": 1024,
+  "parent_credit": "counterfactual_action",
+  "factorized_decisions": ["probe_action", "recall_action"],
+  "conditions": {
+    "intact": 0.5009765625,
+    "clear": 0.5068359375,
+    "reverse_order": 0.53515625
+  },
+  "claim_boundary": "The factorized multi-decision path executed with correct detached outcome accounting; the parent was intentionally undertrained, so no capability or retention claim is made."
+}
