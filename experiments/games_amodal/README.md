@@ -69,8 +69,16 @@ Status:
   Evidence:
   `session_records/games_amodal_2026-08-06/ewc_consolidation_plastic_core_v1_2026-08-06/`.
 
-Open next rungs: the three-game ladder (composing successive Fisher maps —
-the designed stressor for anchor staleness and diagonal blindness, where an
-enhanced consolidation rule would earn novelty), lambda robustness,
-positive-transfer measurement through the continually trained core, and
-routing over more than two games.
+**Where knowledge must live:** see
+[docs/DYNAMIC_BRAIN_ARCHITECTURE.md](../../docs/DYNAMIC_BRAIN_ARCHITECTURE.md)
+— the canonical mapping. Skills and information belong in the external
+memory bank, not in controller/encoder/decoder weights. The promoted EWC
+rung stores game skill in core weights and is recorded there as a
+transitional violation, retired by the skill-externalization rung.
+
+Open next rung: **skill externalization** (design in the architecture doc)
+— consolidate acquired game skills into fetchable bank artifacts, prove the
+double dissociation (bank fetched → mastery; bank withheld → chance), then
+demonstrate compositional transfer on a third overlapping game. Behind it:
+the three-game consolidation ladder, lambda robustness, and routing over
+more than two games.

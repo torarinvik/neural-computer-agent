@@ -16,6 +16,14 @@ counterfactual labels for actions it did not attempt.
 
 ## Canonical architecture
 
+**The authoritative statement of the end goal and of where every kind of
+knowledge is allowed to live is
+[docs/DYNAMIC_BRAIN_ARCHITECTURE.md](docs/DYNAMIC_BRAIN_ARCHITECTURE.md).**
+Its non-negotiable rule: skills and information are stored in the external,
+unboundedly growing memory bank — never burned into the weights of the
+controller, the encoders, or the decoders, which all stay fixed-size. Any
+result that stores skill in weights is a recorded transitional violation.
+
 The target is an **amodal N-to-M neural computer**:
 
 ```text
