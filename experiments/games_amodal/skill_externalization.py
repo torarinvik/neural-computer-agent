@@ -222,7 +222,23 @@ def train_externalized_skills(
         decoy_loss = ignorance_loss(
             decoy_rollout["logits"], decoy_rollout["mask"]
         )
-        loss = skill_loss + ignorance_weight * (null_loss + decoy_loss)
+        other = games[(games.index(game) + 1) % len(games)]
+        cross_rollout = rollout_with_artifact(
+            agent,
+            game,
+            artifacts[other].detach(),
+            batch_size=batch_size,
+            steps=ignorance_steps,
+            seed=seed + 900_000 + update,
+            sample=True,
+            gamma=gamma,
+        )
+        cross_loss = ignorance_loss(
+            cross_rollout["logits"], cross_rollout["mask"]
+        )
+        loss = skill_loss + ignorance_weight * (
+            null_loss + decoy_loss + cross_loss
+        )
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(trainable, max_norm=1.0)
@@ -234,6 +250,7 @@ def train_externalized_skills(
                 "skill_loss": float(skill_loss.detach()),
                 "ignorance_loss": float(null_loss.detach()),
                 "decoy_loss": float(decoy_loss.detach()),
+                "cross_loss": float(cross_loss.detach()),
                 "mastery": float((summary["total_reward"] > 0).float().mean()),
                 "replayed_examples": 0.0,
             }
