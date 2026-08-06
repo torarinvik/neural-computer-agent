@@ -48,7 +48,8 @@ from neural_computer import (
 FIRST_APPEND = ("rotate4", "rotate", 4)
 SECOND_APPEND = ("adjacent_xor4", "adjacent_xor", 4)
 THIRD_APPEND = ("complement_rotate4", "complement_rotate", 4)
-APPEND_SPECS = (FIRST_APPEND, SECOND_APPEND, THIRD_APPEND)
+FOURTH_APPEND = ("prefix_parity4", "prefix_parity", 4)
+APPEND_SPECS = (FIRST_APPEND, SECOND_APPEND, THIRD_APPEND, FOURTH_APPEND)
 ALL_PROGRAMS = (*PROGRAMS, *APPEND_SPECS)
 ROUTE_WIDTH = 48
 
