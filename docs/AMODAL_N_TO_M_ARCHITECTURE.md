@@ -2759,3 +2759,34 @@ program induction, or general continual learning. The short rung correctly
 rejected a source view whose fresh retention fell to `0.625`. Evidence and
 accounting are in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_multi_transfer_replicated_promoted_v1_2026-08-06/`.
+
+## Fresh-outcome neural consolidation of external files (2026-08-06)
+
+The previous multi-source result reduced physical rows while retaining two
+separate executable views. The stricter follow-up now tests shared
+computation: an inherited student starts from source 0, learns both source
+procedures from fresh outcomes, and must replace both protected files with one
+routed stack whose aliases resolve to the same artifact digest. A fresh student
+receives the same mixed-source budget. When the stable-prefix curves tie, the
+inherited state is retained only if a fresh maximin verifier gives it a strict
+worst-source behavior margin of `0.02`.
+
+Across seeds `69316` and `69317`, the inherited shared students reached
+source behavior `0.9688/1.0000` and `0.9922/1.0000`, while fresh controls
+reached `0.7461/1.0000` and `0.8164/1.0000`. The compacted replacement was
+`335,456` bytes versus `670,912` bytes for the two source artifacts, a `0.5`
+payload ratio. After reload, both aliases resolved to the identical digest and
+preserved source behavior at `0.9648/1.0000` and `0.9922/1.0000`; both aliases
+remained independently protected. The shared artifact then transferred to the
+new target and the grown-bank target reloaded at `1.0000` in both replicas.
+The frozen controller was unchanged and replayed examples were zero.
+
+This promotes bounded behavior-verified neural consolidation: one external
+network now carries two learned procedures instead of merely co-locating two
+networks in one row. The primary stable-prefix selector tied in both replicas,
+so the report explicitly records the secondary fresh maximin verifier rather
+than misrepresenting the tie as a stable-prefix win. It does not yet establish
+arbitrary program induction, unrestricted memory growth, or general continual
+learning. The short rung rejected the transaction before source mastery. Full
+accounting and reports are in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_distilled_consolidation_replicated_promoted_v1_2026-08-06/`.

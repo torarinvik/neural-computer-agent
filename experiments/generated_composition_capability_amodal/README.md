@@ -158,6 +158,31 @@ bounded external transfer rather than general continual learning. Evidence is
 archived in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_multi_transfer_replicated_promoted_v1_2026-08-06/`.
 
+The stricter neural-consolidation audit replaces those two separate views with
+one shared routed stack. The inherited student starts from source 0 and learns
+both source procedures from fresh outcomes; the fresh student is a control. If
+the stable-prefix curves tie, inherited weights are retained only when a fresh
+maximin verifier gives them a strict worst-source behavior margin:
+
+```bash
+PYTHONPATH=src uv run python -m experiments.generated_composition_capability_amodal.train_distilled_consolidation \
+  --seed 69316 --parent-updates 128 --source-updates 256 \
+  --consolidation-updates 256 --target-updates 256 \
+  --batch-size 16 --audit-count 64 --retention-probes 4 --eval-every 32 \
+  --source-ids 0 2 --target-id 1 \
+  --program-spec reverse,adjacent_xor,complement,prefix_parity \
+  --program-spec prefix_parity,global_parity,rotate,complement \
+  --program-spec global_parity,reverse,adjacent_xor,rotate \
+  --report-out /tmp/generated-composition-distilled-consolidation/report.json
+```
+
+Replicated seeds retained both source procedures in one shared artifact at a
+`0.5000` payload ratio, with reloaded source behavior `0.9648/1.0000` and
+`0.9922/1.0000`. The consolidated target reloaded at `1.0000` in both runs.
+This is behavior-verified neural consolidation, not logical two-view packing,
+unrestricted growth, or general continual learning. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_distilled_consolidation_replicated_promoted_v1_2026-08-06/`.
+
 The same runtime grammar can compose nonlocal temporal and aggregation
 primitives:
 

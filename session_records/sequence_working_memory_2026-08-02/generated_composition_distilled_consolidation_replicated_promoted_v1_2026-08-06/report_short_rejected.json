@@ -1,0 +1,188 @@
+{
+  "schema": "neural-computer.generated-composition-distilled-consolidation-report.v1",
+  "claim_boundary": "One external routed stack was trained from fresh outcomes to execute two prior procedures, replacing two protected source files through one shared executable artifact. This is bounded behavior-verified neural consolidation, not general continual learning.",
+  "seed": 69316,
+  "source_ids": [
+    0,
+    2
+  ],
+  "target_id": 1,
+  "programs": [
+    [
+      "reverse",
+      "adjacent_xor",
+      "complement",
+      "prefix_parity"
+    ],
+    [
+      "prefix_parity",
+      "global_parity",
+      "rotate",
+      "complement"
+    ],
+    [
+      "global_parity",
+      "reverse",
+      "adjacent_xor",
+      "rotate"
+    ]
+  ],
+  "sources": [
+    {
+      "id": 0,
+      "behavior": 0.625,
+      "stable_bits_to_threshold": null,
+      "progress": [
+        {
+          "update": 16,
+          "unique_verifier_bits": 512,
+          "heldout_accuracy": 0.625
+        }
+      ],
+      "artifact_digest": "1c836ae13d12a54c3e93083db182ceaaeba33f52b0b529186fcfb2ced4700395"
+    },
+    {
+      "id": 2,
+      "behavior": 1.0,
+      "stable_bits_to_threshold": 512,
+      "progress": [
+        {
+          "update": 16,
+          "unique_verifier_bits": 512,
+          "heldout_accuracy": 1.0
+        }
+      ],
+      "artifact_digest": "8c7541c0b33dcd0ad6d20ef3780db6b4d6a5d25cd3233fc557f0dc2574e721ff"
+    }
+  ],
+  "student_candidates": {
+    "inherited": {
+      "behavior": {
+        "0": 0.625,
+        "2": 1.0
+      },
+      "stable_bits_to_threshold": 512,
+      "progress": [
+        {
+          "update": 16,
+          "unique_verifier_bits": 512,
+          "heldout_accuracy": 0.875
+        },
+        {
+          "update": 32,
+          "unique_verifier_bits": 1024,
+          "heldout_accuracy": 0.765625
+        }
+      ]
+    },
+    "fresh": {
+      "behavior": {
+        "0": 0.625,
+        "2": 1.0
+      },
+      "stable_bits_to_threshold": 512,
+      "progress": [
+        {
+          "update": 16,
+          "unique_verifier_bits": 512,
+          "heldout_accuracy": 0.875
+        },
+        {
+          "update": 32,
+          "unique_verifier_bits": 1024,
+          "heldout_accuracy": 0.765625
+        }
+      ]
+    }
+  },
+  "student_selection": {
+    "accepted": false,
+    "selected_index": null,
+    "stable_bits_to_threshold": [
+      512,
+      512
+    ],
+    "reason": "candidate stable-prefix result is tied",
+    "selection_policy": "stable-prefix selector; tied prefixes require a fresh maximin behavior margin for inherited weights",
+    "inherited_min_behavior": 0.625,
+    "fresh_min_behavior": 0.625,
+    "inherited_weights_help": false,
+    "behavior_margin": 0.02
+  },
+  "source_bank": {
+    "rows": [
+      0,
+      1
+    ],
+    "capacity": 2,
+    "protected": false,
+    "address_similarity": [
+      [
+        1.0000001192092896,
+        0.9999361634254456
+      ],
+      [
+        0.9999361634254456,
+        1.0000001192092896
+      ]
+    ],
+    "addresses_separated": true
+  },
+  "consolidation": {
+    "accepted": false,
+    "rows_before": 2,
+    "rows_after": 2,
+    "rows_saved": 0,
+    "shared_artifact": false,
+    "behavior_after_reload": {},
+    "alias_digests_after_reload": {},
+    "retention_probe_outcomes": [],
+    "verifier_passed": false,
+    "protected_after_reload": [
+      false,
+      false
+    ],
+    "source_payload_bytes": 670912,
+    "replacement_payload_bytes": 0,
+    "payload_ratio": 0.0
+  },
+  "target_candidates": {
+    "stable_bits_to_threshold": [],
+    "behavior": [],
+    "selected_index": null
+  },
+  "target_admission": null,
+  "frozen_core": {
+    "digest_before": "8cc97a89375ddbfa3c6297a875f14ac534155893b12437958e062d14779f0926",
+    "digest_after": "8cc97a89375ddbfa3c6297a875f14ac534155893b12437958e062d14779f0926",
+    "unchanged": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 8320,
+    "unique_logical_lifetimes": 2752,
+    "optimizer_updates": 168,
+    "replayed_examples": 0
+  },
+  "gates": {
+    "parent_stable": false,
+    "sources_stable": false,
+    "sources_mastered": false,
+    "sources_protected": false,
+    "source_addresses_separated": true,
+    "student_inherited_weights_verified": false,
+    "student_both_sources_mastered": false,
+    "shared_artifact_payload_reduced": true,
+    "consolidation_accepted": false,
+    "consolidation_saved_row": false,
+    "consolidated_aliases_share_artifact": false,
+    "consolidated_sources_retained": false,
+    "consolidated_sources_protected": false,
+    "target_unique_winner": false,
+    "target_grown_after_consolidation": false,
+    "target_reloaded_mastered": false,
+    "core_unchanged": true,
+    "no_replayed_examples": true
+  },
+  "wall_seconds": 5.720053666998865,
+  "promoted": false
+}
