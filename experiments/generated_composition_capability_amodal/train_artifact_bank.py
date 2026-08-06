@@ -32,7 +32,9 @@ from experiments.working_memory_continuous.canonical_growth_pressure_test import
 from neural_computer import (
     ExecutableArtifactMemory,
     ExternalCapabilityLifecycle,
+    OpaqueAppendOnlyRouteChain,
     OpaqueAddressRouter,
+    OpaqueViewRouteExtension,
     PersistentOpaqueStateStore,
     RetentionPolicyConfig,
     paired_counterfactual_ranking_loss,
@@ -159,6 +161,327 @@ def _train_router(
     }
 
 
+def _append_scores(
+    base_router: OpaqueAddressRouter,
+    extensions: tuple[OpaqueViewRouteExtension, ...],
+    queries: torch.Tensor,
+    base_keys: torch.Tensor,
+    *,
+    active_extension_count: int,
+) -> torch.Tensor:
+    if not 0 <= active_extension_count <= len(extensions):
+        raise ValueError("active extension count is out of range")
+    chain = OpaqueAppendOnlyRouteChain(
+        base_router,
+        width=ROUTE_WIDTH,
+        extensions=extensions,
+    )
+    failures = torch.zeros(
+        queries.shape[0], len(extensions), dtype=torch.bool
+    )
+    if active_extension_count:
+        failures[:, :active_extension_count] = True
+    return chain(queries, base_keys, failures)
+
+
+def _train_append_extension(
+    parent,
+    established_scores,
+    composition_id: int,
+    *,
+    updates: int,
+    batch_size: int,
+    seed: int,
+    shuffle_outcomes: bool,
+) -> tuple[OpaqueViewRouteExtension, dict[str, int]]:
+    """Train one route stage only from fresh outcomes for its new artifact."""
+
+    extension = OpaqueViewRouteExtension(width=ROUTE_WIDTH, hidden=64)
+    optimizer = torch.optim.AdamW(
+        extension.parameters(), lr=3e-3, weight_decay=1e-5
+    )
+    extension.train()
+    for update in range(updates):
+        query_count = batch_size // 2 if shuffle_outcomes else batch_size
+        queries = _route_queries(
+            parent,
+            operation="generated_composition",
+            span=SPAN,
+            count=query_count,
+            seed=seed + update * 10_007,
+            generated_composition_ids=(composition_id,),
+        )
+        if shuffle_outcomes:
+            queries = queries.repeat_interleave(2, dim=0)
+        with torch.no_grad():
+            established = established_scores(queries)
+            established_best = established.max(dim=-1).values
+        delta = extension(queries)
+        candidate_scores = torch.stack(
+            (established_best, established_best + delta), dim=1
+        )
+        attempted = torch.tensor([[1, 0]], dtype=torch.long).expand(
+            batch_size, -1
+        )
+        if shuffle_outcomes:
+            utilities = torch.tensor(
+                [[1.0, 0.0], [0.0, 1.0]], dtype=torch.float32
+            ).repeat(query_count, 1)
+        else:
+            utilities = torch.tensor([[1.0, 0.0]]).expand(batch_size, -1)
+        loss, _ = paired_counterfactual_ranking_loss(
+            candidate_scores, attempted, utilities
+        )
+        loss = loss + 0.10 * delta.square().mean()
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(extension.parameters(), 1.0)
+        optimizer.step()
+    extension.eval()
+    return extension, {
+        "unique_route_lifetimes": updates * batch_size,
+        "unique_route_verifier_bits": updates * batch_size * 2,
+        "route_optimizer_updates": updates,
+    }
+
+
+@torch.no_grad()
+def _append_route_accuracy(
+    base_router: OpaqueAddressRouter,
+    extensions: tuple[OpaqueViewRouteExtension, ...],
+    parent,
+    base_keys: torch.Tensor,
+    composition_ids: tuple[int, ...],
+    base_count: int,
+    *,
+    count: int,
+    seed: int,
+    permute_base_keys: bool = False,
+) -> float:
+    permutation = torch.arange(base_count - 1, -1, -1)
+    keys = base_keys[permutation] if permute_base_keys else base_keys
+    correct: list[torch.Tensor] = []
+    for index, composition_id in enumerate(composition_ids):
+        queries = _route_queries(
+            parent,
+            operation="generated_composition",
+            span=SPAN,
+            count=count,
+            seed=seed + index * 10_007,
+            generated_composition_ids=(composition_id,),
+        )
+        active = max(0, index - base_count + 1)
+        predictions = _append_scores(
+            base_router,
+            extensions,
+            queries,
+            keys,
+            active_extension_count=active,
+        ).argmax(dim=-1)
+        if permute_base_keys:
+            predictions = torch.where(
+                predictions < base_count,
+                permutation[predictions.clamp_max(base_count - 1)],
+                predictions,
+            )
+        correct.append(predictions == index)
+    return float(torch.cat(correct).float().mean())
+
+
+def _run_append_only_routes(
+    parent,
+    candidate_keys: torch.Tensor,
+    composition_ids: tuple[int, ...],
+    *,
+    base_count: int,
+    updates: int,
+    batch_size: int,
+    route_audit_count: int,
+    seed: int,
+    root: Path,
+) -> dict[str, object]:
+    if not 1 <= base_count < len(composition_ids):
+        raise ValueError("append-only routing needs at least one new artifact")
+    base_keys = candidate_keys[:base_count]
+    base_ids = composition_ids[:base_count]
+    if base_count == 1:
+        base_router = OpaqueAddressRouter(width=ROUTE_WIDTH, hidden=64)
+        base_accounting = {
+            "unique_route_lifetimes": 0,
+            "unique_route_verifier_bits": 0,
+            "route_optimizer_updates": 0,
+        }
+    else:
+        base_router, base_accounting = _train_router(
+            parent,
+            base_keys,
+            base_ids,
+            updates=updates,
+            batch_size=batch_size,
+            seed=seed,
+            shuffle_outcomes=False,
+        )
+    extensions: list[OpaqueViewRouteExtension] = []
+    shuffled_extensions: list[OpaqueViewRouteExtension] = []
+    append_accounting: list[dict[str, int]] = []
+    shuffled_accounting: list[dict[str, int]] = []
+    for append_index, composition_id in enumerate(composition_ids[base_count:]):
+        established = tuple(extensions)
+
+        def established_scores(
+            queries: torch.Tensor,
+            prior=established,
+        ) -> torch.Tensor:
+            return _append_scores(
+                base_router,
+                prior,
+                queries,
+                base_keys,
+                active_extension_count=len(prior),
+            )
+
+        extension, accounting = _train_append_extension(
+            parent,
+            established_scores,
+            composition_id,
+            updates=updates,
+            batch_size=batch_size,
+            seed=seed + 20_000 + append_index * 1_000_003,
+            shuffle_outcomes=False,
+        )
+        shuffled_extension, shuffled_item = _train_append_extension(
+            parent,
+            established_scores,
+            composition_id,
+            updates=updates,
+            batch_size=batch_size,
+            seed=seed + 30_000 + append_index * 1_000_003,
+            shuffle_outcomes=True,
+        )
+        extensions.append(extension)
+        shuffled_extensions.append(shuffled_extension)
+        append_accounting.append(accounting)
+        shuffled_accounting.append(shuffled_item)
+
+    route_accuracy = _append_route_accuracy(
+        base_router,
+        tuple(extensions),
+        parent,
+        base_keys,
+        composition_ids,
+        base_count,
+        count=route_audit_count,
+        seed=seed + 50_000,
+    )
+    permuted_accuracy = _append_route_accuracy(
+        base_router,
+        tuple(extensions),
+        parent,
+        base_keys,
+        composition_ids,
+        base_count,
+        count=route_audit_count,
+        seed=seed + 50_000,
+        permute_base_keys=True,
+    )
+    shuffled_route_accuracy_samples: list[float] = []
+    for replicate in range(len(shuffled_extensions)):
+        variant = list(extensions)
+        variant[replicate] = shuffled_extensions[replicate]
+        for audit_index in range(2):
+            shuffled_route_accuracy_samples.append(
+                _append_route_accuracy(
+                    base_router,
+                    tuple(variant),
+                    parent,
+                    base_keys,
+                    composition_ids,
+                    base_count,
+                    count=route_audit_count,
+                    seed=seed
+                    + 60_000
+                    + replicate * 1_000_003
+                    + audit_index * 100_003,
+                )
+            )
+
+    base_store = PersistentOpaqueStateStore(
+        root / "append_only_base_router.pt",
+        configuration={
+            "component": "generated-composition-append-only-base-router",
+            "schema": "neural-computer.opaque-address-router.v1",
+            "width": ROUTE_WIDTH,
+            "hidden": 64,
+            "candidate_count": base_count,
+        },
+    )
+    base_store.save_module(base_router)
+    extension_stores: list[PersistentOpaqueStateStore] = []
+    for index, extension in enumerate(extensions):
+        store = PersistentOpaqueStateStore(
+            root / f"append_only_extension_{index + 1}.pt",
+            configuration={
+                "component": f"generated-composition-append-only-extension-{index + 1}",
+                "schema": "neural-computer.opaque-view-route-extension.v1",
+                "width": ROUTE_WIDTH,
+                "hidden": 64,
+            },
+        )
+        store.save_module(extension)
+        extension_stores.append(store)
+    reloaded_base = OpaqueAddressRouter(width=ROUTE_WIDTH, hidden=64)
+    base_store.load_module(reloaded_base)
+    reloaded_extensions: list[OpaqueViewRouteExtension] = []
+    for store in extension_stores:
+        extension = OpaqueViewRouteExtension(width=ROUTE_WIDTH, hidden=64)
+        store.load_module(extension)
+        reloaded_extensions.append(extension)
+    reloaded_route_accuracy = _append_route_accuracy(
+        reloaded_base,
+        tuple(reloaded_extensions),
+        parent,
+        base_keys,
+        composition_ids,
+        base_count,
+        count=route_audit_count,
+        seed=seed + 50_000,
+    )
+    cold_start_old_accuracy = _append_route_accuracy(
+        base_router,
+        tuple(extensions),
+        parent,
+        base_keys,
+        base_ids,
+        base_count,
+        count=route_audit_count,
+        seed=seed + 70_000,
+    )
+    route_accounting = {
+        "unique_route_lifetimes": base_accounting["unique_route_lifetimes"]
+        + sum(item["unique_route_lifetimes"] for item in append_accounting)
+        + sum(item["unique_route_lifetimes"] for item in shuffled_accounting),
+        "unique_route_verifier_bits": base_accounting["unique_route_verifier_bits"]
+        + sum(item["unique_route_verifier_bits"] for item in append_accounting)
+        + sum(item["unique_route_verifier_bits"] for item in shuffled_accounting),
+        "route_optimizer_updates": base_accounting["route_optimizer_updates"]
+        + sum(item["route_optimizer_updates"] for item in append_accounting)
+        + sum(item["route_optimizer_updates"] for item in shuffled_accounting),
+    }
+    return {
+        "route_mode": "append_only",
+        "route_accuracy": route_accuracy,
+        "permuted_route_accuracy": permuted_accuracy,
+        "shuffled_route_accuracy": sum(shuffled_route_accuracy_samples)
+        / len(shuffled_route_accuracy_samples),
+        "shuffled_route_accuracy_samples": shuffled_route_accuracy_samples,
+        "reloaded_route_accuracy": reloaded_route_accuracy,
+        "cold_start_old_accuracy": cold_start_old_accuracy,
+        "route_accounting": route_accounting,
+        "base_count": base_count,
+        "extension_count": len(extensions),
+    }
+
+
 @torch.no_grad()
 def _route_accuracy(
     router,
@@ -246,6 +569,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("composition IDs must be unique")
     if any(composition_id < 0 or composition_id >= COMPOSITION_COUNT for composition_id in composition_ids):
         raise ValueError("composition ID is out of range")
+    if args.route_mode == "append_only" and not 1 <= args.base_route_count < len(composition_ids):
+        raise ValueError(
+            "append-only routing needs at least one base row and one appended row"
+        )
 
     root = args.report_out.parent
     root.mkdir(parents=True, exist_ok=True)
@@ -376,85 +703,123 @@ def run(args: argparse.Namespace) -> dict[str, object]:
 
     bank.save()
     candidate_keys = torch.stack([key_by_composition[composition_id] for composition_id in composition_ids])
-    router, route_accounting = _train_router(
-        parent,
-        candidate_keys,
-        composition_ids,
-        updates=args.route_updates,
-        batch_size=args.route_batch_size,
-        seed=args.seed + 70_000,
-        shuffle_outcomes=False,
-    )
     route_audit_count = max(args.audit_count, args.route_audit_count)
-    route_accuracy = _route_accuracy(
-        router,
-        parent,
-        candidate_keys,
-        composition_ids,
-        count=route_audit_count,
-        seed=args.seed + 90_000,
-    )
-    permuted_accuracy = _route_accuracy(
-        router,
-        parent,
-        candidate_keys,
-        composition_ids,
-        count=route_audit_count,
-        seed=args.seed + 90_000,
-        permute_keys=True,
-    )
-    shuffled_route_accuracy_samples: list[float] = []
-    shuffled_accounting: list[dict[str, int]] = []
-    for replicate in range(SHUFFLE_REPLICATES):
-        shuffled_router, accounting = _train_router(
+    if args.route_mode == "append_only":
+        route_result = _run_append_only_routes(
+            parent,
+            candidate_keys,
+            composition_ids,
+            base_count=args.base_route_count,
+            updates=args.route_updates,
+            batch_size=args.route_batch_size,
+            route_audit_count=route_audit_count,
+            seed=args.seed + 70_000,
+            root=root,
+        )
+        route_mode = route_result["route_mode"]
+        route_accuracy = float(route_result["route_accuracy"])
+        permuted_accuracy = float(route_result["permuted_route_accuracy"])
+        shuffled_route_accuracy = float(route_result["shuffled_route_accuracy"])
+        shuffled_route_accuracy_samples = list(
+            route_result["shuffled_route_accuracy_samples"]
+        )
+        reloaded_route_accuracy = float(
+            route_result["reloaded_route_accuracy"]
+        )
+        cold_start_old_accuracy = float(
+            route_result["cold_start_old_accuracy"]
+        )
+        route_accounting = dict(route_result["route_accounting"])
+        route_accounting["replayed_route_examples"] = 0
+    else:
+        router, route_accounting = _train_router(
             parent,
             candidate_keys,
             composition_ids,
             updates=args.route_updates,
             batch_size=args.route_batch_size,
-            seed=args.seed + 80_000 + replicate * 1_000_003,
-            shuffle_outcomes=True,
+            seed=args.seed + 70_000,
+            shuffle_outcomes=False,
         )
-        shuffled_accounting.append(accounting)
-        shuffled_route_accuracy_samples.extend(
-            _route_accuracy(
-                shuffled_router,
+        route_mode = "bank"
+        route_accuracy = _route_accuracy(
+            router,
+            parent,
+            candidate_keys,
+            composition_ids,
+            count=route_audit_count,
+            seed=args.seed + 90_000,
+        )
+        permuted_accuracy = _route_accuracy(
+            router,
+            parent,
+            candidate_keys,
+            composition_ids,
+            count=route_audit_count,
+            seed=args.seed + 90_000,
+            permute_keys=True,
+        )
+        shuffled_route_accuracy_samples = []
+        shuffled_accounting: list[dict[str, int]] = []
+        for replicate in range(SHUFFLE_REPLICATES):
+            shuffled_router, accounting = _train_router(
                 parent,
                 candidate_keys,
                 composition_ids,
-                count=route_audit_count,
-                seed=args.seed
-                + 90_000
-                + replicate * 1_000_003
-                + audit_index * 100_003,
+                updates=args.route_updates,
+                batch_size=args.route_batch_size,
+                seed=args.seed + 80_000 + replicate * 1_000_003,
+                shuffle_outcomes=True,
             )
-            for audit_index in range(2)
+            shuffled_accounting.append(accounting)
+            shuffled_route_accuracy_samples.extend(
+                _route_accuracy(
+                    shuffled_router,
+                    parent,
+                    candidate_keys,
+                    composition_ids,
+                    count=route_audit_count,
+                    seed=args.seed
+                    + 90_000
+                    + replicate * 1_000_003
+                    + audit_index * 100_003,
+                )
+                for audit_index in range(2)
+            )
+        shuffled_route_accuracy = sum(shuffled_route_accuracy_samples) / len(
+            shuffled_route_accuracy_samples
         )
-    shuffled_route_accuracy = sum(shuffled_route_accuracy_samples) / len(
-        shuffled_route_accuracy_samples
-    )
-
-    router_store = PersistentOpaqueStateStore(
-        root / "router.pt",
-        configuration={
-            "component": "generated-composition-artifact-router",
-            "schema": "neural-computer.opaque-address-router.v1",
-            "width": ROUTE_WIDTH,
-            "hidden": 64,
-            "candidate_count": len(composition_ids),
-        },
-    )
-    router_store.save_module(router)
-    reloaded_router = OpaqueAddressRouter(width=ROUTE_WIDTH, hidden=64)
-    router_store.load_module(reloaded_router)
-    reloaded_route_accuracy = _route_accuracy(
-        reloaded_router,
-        parent,
-        candidate_keys,
-        composition_ids,
-        count=route_audit_count,
-        seed=args.seed + 90_000,
-    )
+        router_store = PersistentOpaqueStateStore(
+            root / "router.pt",
+            configuration={
+                "component": "generated-composition-artifact-router",
+                "schema": "neural-computer.opaque-address-router.v1",
+                "width": ROUTE_WIDTH,
+                "hidden": 64,
+                "candidate_count": len(composition_ids),
+            },
+        )
+        router_store.save_module(router)
+        reloaded_router = OpaqueAddressRouter(width=ROUTE_WIDTH, hidden=64)
+        router_store.load_module(reloaded_router)
+        reloaded_route_accuracy = _route_accuracy(
+            reloaded_router,
+            parent,
+            candidate_keys,
+            composition_ids,
+            count=route_audit_count,
+            seed=args.seed + 90_000,
+        )
+        cold_start_old_accuracy = route_accuracy
+        route_accounting = {
+            "unique_route_lifetimes": route_accounting["unique_route_lifetimes"]
+            + sum(item["unique_route_lifetimes"] for item in shuffled_accounting),
+            "unique_route_verifier_bits": route_accounting["unique_route_verifier_bits"]
+            + sum(item["unique_route_verifier_bits"] for item in shuffled_accounting),
+            "route_optimizer_updates": route_accounting["route_optimizer_updates"]
+            + sum(item["route_optimizer_updates"] for item in shuffled_accounting),
+            "replayed_route_examples": 0,
+        }
 
     corruption_rejected = False
     artifact_path = bank.directory / (bank.paths[0] or "")
@@ -467,15 +832,6 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     artifact_path.write_bytes(original_bytes)
 
     parent_digest_after = _digest_core(parent, ())
-    route_accounting = {
-        "unique_route_lifetimes": route_accounting["unique_route_lifetimes"]
-        + sum(item["unique_route_lifetimes"] for item in shuffled_accounting),
-        "unique_route_verifier_bits": route_accounting["unique_route_verifier_bits"]
-        + sum(item["unique_route_verifier_bits"] for item in shuffled_accounting),
-        "route_optimizer_updates": route_accounting["route_optimizer_updates"]
-        + sum(item["route_optimizer_updates"] for item in shuffled_accounting),
-        "replayed_route_examples": 0,
-    }
     report = {
         "schema": "neural-computer.generated-composition-artifact-bank-report.v1",
         "claim_boundary": (
@@ -487,6 +843,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         ),
         "seed": args.seed,
         "composition_ids": list(composition_ids),
+        "route_mode": route_mode,
+        "base_route_count": args.base_route_count,
         "parent_updates": args.parent_updates,
         "artifact_updates": args.artifact_updates,
         "route_updates": args.route_updates,
@@ -554,6 +912,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "all_rows_present": len(bank.occupied) == len(composition_ids),
             "all_rows_protected": int(bank.protection_mask().sum()) == len(composition_ids),
             "route_mastered": route_accuracy >= THRESHOLD,
+            "cold_start_old_retained": cold_start_old_accuracy >= THRESHOLD,
             "candidate_permutation_invariant": permuted_accuracy >= THRESHOLD,
             "reward_shuffled_not_mastered": (
                 sum(shuffled_route_accuracy_samples)
@@ -582,6 +941,8 @@ def main() -> None:
     parser.add_argument("--parent-updates", type=int, default=32)
     parser.add_argument("--artifact-updates", type=int, default=32)
     parser.add_argument("--route-updates", type=int, default=128)
+    parser.add_argument("--route-mode", choices=("bank", "append_only"), default="bank")
+    parser.add_argument("--base-route-count", type=int, default=2)
     parser.add_argument("--composition-ids", type=int, nargs="+", default=tuple(range(COMPOSITION_COUNT)))
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--route-batch-size", type=int, default=8)
