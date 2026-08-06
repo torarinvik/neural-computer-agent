@@ -291,6 +291,16 @@ permutation, reload, corruption, causal wrong-artifact, and zero-replay gates.
 This is still one protected append, not repeated open-ended growth, arbitrary
 program induction, or general continual learning.
 
+`ExternalCapabilityPipeline` is the canonical variable-length composition
+boundary for those programs. It keeps one recurrent state per memory-side
+program and serially passes the opaque intention from one adapter to the next;
+an empty pipeline is an exact identity. Programs must share only the versioned
+event/action/intention dimensions, so stacking or replacing them does not
+resize the controller or add a task-specific reasoning branch. This is the
+execution foundation for testing reusable program composition; the pipeline
+itself does not claim that independently learned programs will solve an
+arbitrary novel composition.
+
 `EpisodicCreditHead` isolates event-credit state for one external capability.
 The two-step follow-up trains one fresh head per appended procedure while the
 shared context encoder and earlier credit heads remain frozen. Across two

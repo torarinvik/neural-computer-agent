@@ -8,6 +8,7 @@ decoder on the intention bus.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 import torch
@@ -17,6 +18,7 @@ from .episodic import EpisodicContextEncoder, EpisodicIntentAdapter
 from .interface import IntentEvent
 
 EXTERNAL_CAPABILITY_SCHEMA = "neural-computer.external-capability.v1"
+EXTERNAL_CAPABILITY_PIPELINE_SCHEMA = "neural-computer.external-capability-pipeline.v1"
 
 
 @dataclass(frozen=True)
@@ -30,6 +32,25 @@ class ExternalCapabilityState:
             raise ValueError("capability context state has the wrong shape")
         if not bool(torch.isfinite(self.context).all()):
             raise ValueError("capability context state must be finite")
+        return self
+
+
+@dataclass(frozen=True)
+class ExternalCapabilityPipelineState:
+    """Independent recurrent states for a memory-side capability pipeline."""
+
+    programs: tuple[ExternalCapabilityState, ...]
+
+    def validate(
+        self,
+        *,
+        batch_size: int,
+        hidden_sizes: tuple[int, ...],
+    ) -> ExternalCapabilityPipelineState:
+        if len(self.programs) != len(hidden_sizes):
+            raise ValueError("pipeline state does not match program count")
+        for state, hidden in zip(self.programs, hidden_sizes, strict=True):
+            state.validate(batch_size=batch_size, hidden=hidden)
         return self
 
 
@@ -55,14 +76,17 @@ class ExternalCapabilityProgram(nn.Module):
         adapter_hidden: int = 64,
     ) -> None:
         super().__init__()
-        if min(
-            event_width,
-            action_width,
-            intention_width,
-            context_hidden,
-            context_width,
-            adapter_hidden,
-        ) < 1:
+        if (
+            min(
+                event_width,
+                action_width,
+                intention_width,
+                context_hidden,
+                context_width,
+                adapter_hidden,
+            )
+            < 1
+        ):
             raise ValueError("external capability dimensions must be positive")
         self.event_width = int(event_width)
         self.action_width = int(action_width)
@@ -149,3 +173,134 @@ class ExternalCapabilityProgram(nn.Module):
         )
         adapted = self.intent_adapter(intention, context.context)
         return adapted, ExternalCapabilityState(next_context)
+
+
+class ExternalCapabilityPipeline(nn.Module):
+    """Compose zero or more replaceable capability programs in memory.
+
+    The pipeline is an orchestration boundary, not a controller branch. Each
+    program receives the same standardized event, opaque feedback, and scalar
+    outcome, while the adapted intention from one program becomes the opaque
+    input to the next. Every program retains its own recurrent state outside
+    the controller, so the chain can grow, shrink, persist, or be rehydrated
+    without resizing the controller or merging program memories.
+    """
+
+    def __init__(
+        self,
+        programs: Iterable[ExternalCapabilityProgram] = (),
+        *,
+        event_width: int | None = None,
+        action_width: int | None = None,
+        intention_width: int | None = None,
+    ) -> None:
+        super().__init__()
+        members = tuple(programs)
+        if members:
+            dimensions = {
+                "event_width": members[0].event_width,
+                "action_width": members[0].action_width,
+                "intention_width": members[0].intention_width,
+            }
+            for program in members[1:]:
+                if any(
+                    getattr(program, name) != value
+                    for name, value in dimensions.items()
+                ):
+                    raise ValueError(
+                        "pipeline programs must share interface dimensions"
+                    )
+        else:
+            if None in (event_width, action_width, intention_width):
+                raise ValueError(
+                    "empty pipelines require event, action, and intention widths"
+                )
+            dimensions = {
+                "event_width": int(event_width),
+                "action_width": int(action_width),
+                "intention_width": int(intention_width),
+            }
+        if min(dimensions.values()) < 1:
+            raise ValueError("pipeline interface dimensions must be positive")
+        self.event_width = dimensions["event_width"]
+        self.action_width = dimensions["action_width"]
+        self.intention_width = dimensions["intention_width"]
+        self.programs = nn.ModuleList(members)
+
+    @property
+    def hidden_sizes(self) -> tuple[int, ...]:
+        return tuple(program.context_hidden for program in self.programs)
+
+    def configuration(self) -> dict[str, object]:
+        """Return the versioned, order-sensitive composition contract."""
+
+        return {
+            "schema": EXTERNAL_CAPABILITY_PIPELINE_SCHEMA,
+            "event_width": self.event_width,
+            "action_width": self.action_width,
+            "intention_width": self.intention_width,
+            "program_count": len(self.programs),
+            "program_schemas": tuple(
+                program.configuration()["schema"] for program in self.programs
+            ),
+            "state": "independent_external_recurrent_contexts_v1",
+            "composition": "adapted_intention_serial_chain_v1",
+        }
+
+    def initial_state(
+        self,
+        batch_size: int,
+        *,
+        device: torch.device | str,
+        dtype: torch.dtype = torch.float32,
+    ) -> ExternalCapabilityPipelineState:
+        return ExternalCapabilityPipelineState(
+            tuple(
+                program.initial_state(batch_size, device=device, dtype=dtype)
+                for program in self.programs
+            )
+        )
+
+    def step(
+        self,
+        *,
+        event: torch.Tensor,
+        action: torch.Tensor,
+        outcome: torch.Tensor,
+        intention: IntentEvent,
+        state: ExternalCapabilityPipelineState,
+        present: torch.Tensor | None = None,
+    ) -> tuple[IntentEvent, ExternalCapabilityPipelineState]:
+        """Run one event through the chain while preserving state isolation."""
+
+        if event.ndim != 2 or event.shape[1] != self.event_width:
+            raise ValueError("event has the wrong shape for pipeline")
+        if action.ndim != 2 or action.shape != (
+            event.shape[0],
+            self.action_width,
+        ):
+            raise ValueError("action has the wrong shape for pipeline")
+        if outcome.ndim != 1 or outcome.shape[0] != event.shape[0]:
+            raise ValueError("outcome has the wrong shape for pipeline")
+        intention.validate(width=self.intention_width)
+        state.validate(
+            batch_size=event.shape[0],
+            hidden_sizes=self.hidden_sizes,
+        )
+        current = intention
+        next_states: list[ExternalCapabilityState] = []
+        for program, program_state in zip(
+            self.programs,
+            state.programs,
+            strict=True,
+        ):
+            current, next_state = program.step(
+                event=event,
+                action=action,
+                outcome=outcome,
+                intention=current,
+                state=program_state,
+                present=present,
+            )
+            next_states.append(next_state)
+        return current, ExternalCapabilityPipelineState(tuple(next_states))

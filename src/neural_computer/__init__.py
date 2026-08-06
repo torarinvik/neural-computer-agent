@@ -24,7 +24,10 @@ from .artifact_memory import (
     ExecutableArtifactMemory,
 )
 from .capability import (
+    EXTERNAL_CAPABILITY_PIPELINE_SCHEMA,
     EXTERNAL_CAPABILITY_SCHEMA,
+    ExternalCapabilityPipeline,
+    ExternalCapabilityPipelineState,
     ExternalCapabilityProgram,
     ExternalCapabilityState,
 )
@@ -188,6 +191,7 @@ __all__ = [
     "EVENT_SCHEMA",
     "EVENT_WINDOW_SCHEMA",
     "EXECUTION_STATES",
+    "EXTERNAL_CAPABILITY_PIPELINE_SCHEMA",
     "EXTERNAL_CAPABILITY_SCHEMA",
     "GROWTH_PRIOR_SCHEMA",
     "HOLDOUT_LEDGER_SCHEMA",
@@ -241,6 +245,8 @@ __all__ = [
     "ExecutableArtifactMemory",
     "ExternalCapabilityEvictionPolicy",
     "ExternalCapabilityLifecycle",
+    "ExternalCapabilityPipeline",
+    "ExternalCapabilityPipelineState",
     "ExternalCapabilityProgram",
     "ExternalCapabilityState",
     "ExternalGrowthPrior",

@@ -8,6 +8,7 @@ from neural_computer import (
     EpisodicContextEncoder,
     EpisodicCreditHead,
     EpisodicIntentAdapter,
+    ExternalCapabilityPipeline,
     ExternalCapabilityProgram,
     IntentEvent,
     OnlineEpisodicRelationReader,
@@ -126,6 +127,82 @@ def test_external_capability_program_keeps_state_outside_controller() -> None:
     assert program.configuration()["schema"] == (
         "neural-computer.external-capability.v1"
     )
+
+
+def test_external_capability_pipeline_keeps_program_states_independent() -> None:
+    first = ExternalCapabilityProgram(
+        event_width=4,
+        action_width=2,
+        intention_width=6,
+        context_hidden=8,
+        context_width=5,
+        adapter_hidden=7,
+    )
+    second = ExternalCapabilityProgram(
+        event_width=4,
+        action_width=2,
+        intention_width=6,
+        context_hidden=9,
+        context_width=5,
+        adapter_hidden=7,
+    )
+    pipeline = ExternalCapabilityPipeline((first, second))
+    intention = IntentEvent(torch.randn(3, 6))
+    event = torch.randn(3, 4)
+    action = torch.zeros(3, 2)
+    outcome = torch.zeros(3)
+    state = pipeline.initial_state(3, device="cpu")
+
+    adapted, next_state = pipeline.step(
+        event=event,
+        action=action,
+        outcome=outcome,
+        intention=intention,
+        state=state,
+    )
+    first_intention, first_state = first.step(
+        event=event,
+        action=action,
+        outcome=outcome,
+        intention=intention,
+        state=state.programs[0],
+    )
+    expected, second_state = second.step(
+        event=event,
+        action=action,
+        outcome=outcome,
+        intention=first_intention,
+        state=state.programs[1],
+    )
+
+    assert torch.equal(adapted.payload, expected.payload)
+    assert torch.equal(next_state.programs[0].context, first_state.context)
+    assert torch.equal(next_state.programs[1].context, second_state.context)
+    assert pipeline.configuration()["program_count"] == 2
+    assert pipeline.configuration()["program_schemas"] == (
+        "neural-computer.external-capability.v1",
+        "neural-computer.external-capability.v1",
+    )
+
+
+def test_empty_external_capability_pipeline_is_identity() -> None:
+    pipeline = ExternalCapabilityPipeline(
+        event_width=4,
+        action_width=2,
+        intention_width=6,
+    )
+    intention = IntentEvent(torch.randn(3, 6))
+    adapted, next_state = pipeline.step(
+        event=torch.randn(3, 4),
+        action=torch.zeros(3, 2),
+        outcome=torch.zeros(3),
+        intention=intention,
+        state=pipeline.initial_state(3, device="cpu"),
+    )
+
+    assert torch.equal(adapted.payload, intention.payload)
+    assert next_state.programs == ()
+    assert pipeline.configuration()["program_count"] == 0
 
 
 def test_online_relation_reader_returns_external_content_age_context() -> None:
