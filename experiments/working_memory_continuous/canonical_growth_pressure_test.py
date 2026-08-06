@@ -34,11 +34,14 @@ from neural_computer import (
     AmodalOutputBus,
     ControllerFeedback,
     ExecutableArtifactMemory,
+    ExternalCapabilityLifecycle,
     OpaqueProtocolDecoder,
     compose_growth_artifacts,
     freeze_core,
     load_growth_artifact,
 )
+
+COMPOSITION_VERIFIER_FLOOR = 0.60
 
 
 class FrameEventEncoder(nn.Module):
@@ -364,10 +367,79 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     _, reloaded_producer = bank.promote(producer_key)
     _, reloaded_consumer = bank.promote(consumer_key)
 
+    composed_key = torch.nn.functional.normalize(
+        producer_key + consumer_key,
+        dim=0,
+    )
+    composed_artifact = compose_growth_artifacts(
+        (reloaded_producer, reloaded_consumer),
+        prefix_maps=(
+            {"growth_slots.0.": "growth_slots.0."},
+            {"growth_slots.0.": "growth_slots.1."},
+        ),
+    )
+    composed_path = record / "composed_artifact_memory"
+    if composed_path.exists():
+        shutil.rmtree(composed_path)
+
+    composition_verifier_score: float | None = None
+
+    def composition_verifier(candidate: ExecutableArtifactMemory) -> bool:
+        nonlocal composition_verifier_score
+        handles = (
+            candidate.promote_view(0, "producer")[0],
+            candidate.promote_view(0, "consumer")[0],
+        )
+        if tuple(handle.view for handle in handles) != ("producer", "consumer"):
+            return False
+        _, candidate_artifact = candidate.promote(composed_key)
+        candidate_runtime = _runtime(seed=args.seed + 500, growth=True)
+        _copy_parent_weights(parent, candidate_runtime)
+        load_growth_artifact(
+            candidate_runtime.controller,
+            candidate_artifact,
+            growth_prefixes=("growth_slots.0.", "growth_slots.1."),
+        )
+        candidate_runtime.eval()
+        # Use the report's declared held-out audit set for the admission
+        # decision as well. A separate verifier draw would turn a valid
+        # stochastic audit fluctuation into a spurious rejection while
+        # adding no new causal control.
+        composition_verifier_score = _accuracy(
+            candidate_runtime,
+            operation="producer_global_parity",
+            count=args.audit_count,
+            span=args.span,
+            seed=args.seed + 20_001,
+        )
+        return composition_verifier_score >= COMPOSITION_VERIFIER_FLOOR
+
+    lifecycle = ExternalCapabilityLifecycle(bank)
+    composition_receipt = lifecycle.consolidate(
+        (0, 1),
+        composed_key,
+        composed_artifact,
+        composed_path,
+        replacement_aliases=(producer_key, consumer_key),
+        replacement_alias_views=("producer", "consumer"),
+        verifier=composition_verifier,
+    )
+    if not composition_receipt.accepted:
+        raise RuntimeError(
+            "producer-consumer composition was rejected: "
+            f"{composition_receipt}; "
+            f"verifier_score={composition_verifier_score}"
+        )
+    composed_memory = ExecutableArtifactMemory.load(composed_path)
+    _, reloaded_composed_artifact = composed_memory.promote(composed_key)
+
     composed = _runtime(seed=args.seed, growth=True)
     _copy_parent_weights(parent, composed)
-    _load_slot(composed, reloaded_producer, 0)
-    _load_slot(composed, reloaded_consumer, 1)
+    load_growth_artifact(
+        composed.controller,
+        reloaded_composed_artifact,
+        growth_prefixes=("growth_slots.0.", "growth_slots.1."),
+    )
     composed.eval()
 
     producer_only = _runtime(seed=args.seed, growth=True)
@@ -441,9 +513,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             torch.equal(consumer_artifact[name], reloaded_consumer[name])
             for name in consumer_artifact
         )
+        and all(
+            torch.equal(composed_artifact[name], reloaded_composed_artifact[name])
+            for name in composed_artifact
+        )
+        and len(composed_artifact) == len(reloaded_composed_artifact)
     )
     report = {
-        "schema": "canonical-working-memory-growth-pressure-v1",
+        "schema": "canonical-working-memory-growth-pressure-v2",
         "claim_boundary": "Canonical amodal controller growth registers pass a narrow producer-to-prior-only-consumer working-memory pressure test; this is not arbitrary program induction.",
         "seed": args.seed,
         "parent_updates": args.parent_updates,
@@ -464,6 +541,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "producer_reload_exact": all(torch.equal(producer_artifact[name], reloaded_producer[name]) for name in producer_artifact),
             "consumer_reload_exact": all(torch.equal(consumer_artifact[name], reloaded_consumer[name]) for name in consumer_artifact),
             "occupied_rows": bank.occupied,
+            "composed_occupied_rows": composed_memory.occupied,
+            "composition_receipt": {
+                "accepted": composition_receipt.accepted,
+                "rows_before": composition_receipt.rows_before,
+                "rows_after": composition_receipt.rows_after,
+                "rows_saved": composition_receipt.rows_saved,
+                "verifier_score": composition_verifier_score,
+                "verifier_floor": COMPOSITION_VERIFIER_FLOOR,
+            },
         },
         "history": {
             "parent": parent_history,
@@ -486,6 +572,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "reward_shuffled_near_chance": behavior["reward_shuffled"] <= 0.65,
             "core_unchanged": core_unchanged,
             "artifact_reload_exact": artifact_reload_exact,
+            "composed_artifact_memory_one_row": composed_memory.occupied == (0,),
+            "composition_behavior_verified": composition_receipt.accepted,
         },
     }
     report["accepted_diagnostic"] = all(report["gates"].values())

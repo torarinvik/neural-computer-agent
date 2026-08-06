@@ -1,0 +1,48 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "parent-conditioned-external-capability-bank-v2-2026-08-06",
+  "status": "promoted_replicated_three_program_external_capability_bank",
+  "seeds": [69316, 69317],
+  "programs": [
+    {"label": "reverse4", "operation": "reverse", "span": 4},
+    {"label": "forward4", "operation": "forward", "span": 4},
+    {"label": "complement4", "operation": "complement", "span": 4}
+  ],
+  "parent_operation": "forward",
+  "parent_span": 2,
+  "parent_updates": 128,
+  "updates_per_program": 256,
+  "batch_size": 16,
+  "audit_count": 64,
+  "eval_every": 32,
+  "external_program": "recurrent_context_encoder_plus_intention_adapter_v1",
+  "capability_local_decoder": "opaque_protocol_decoder_hidden16",
+  "parent_stable_bits_to_threshold": [2048, 1024],
+  "program_stable_bits_to_threshold": {
+    "69316": {"reverse4": 14336, "forward4": 8192, "complement4": 12288},
+    "69317": {"reverse4": 10240, "forward4": 6144, "complement4": 6144}
+  },
+  "selected_accuracy": {
+    "69316": {"reverse4": 0.89453125, "forward4": 0.97265625, "complement4": 0.8984375},
+    "69317": {"reverse4": 0.93359375, "forward4": 0.9609375, "complement4": 0.9921875}
+  },
+  "wrong_program_accuracy": {
+    "69316": {"reverse4": 0.56640625, "forward4": 0.09375, "complement4": 0.40625},
+    "69317": {"reverse4": 0.5390625, "forward4": 0.046875, "complement4": 0.47265625}
+  },
+  "route_accuracy": [1.0, 1.0],
+  "reward_shuffled_route_accuracy": [0.0, 0.0833333358168602],
+  "candidate_permutation_accuracy": [1.0, 1.0],
+  "reloaded_route_accuracy": [1.0, 1.0],
+  "parent_retention": [1.0, 1.0],
+  "reloaded_parent_retention": [1.0, 1.0],
+  "core_unchanged": [true, true],
+  "corruption_rejected": [true, true],
+  "replayed_examples": 0,
+  "optimizer_updates_per_seed": 896,
+  "unique_verifier_bits_per_seed": 77824,
+  "route_optimizer_updates_per_seed": 2048,
+  "route_unique_verifier_bits_per_seed": 65536,
+  "promotion_gate_passed": true,
+  "claim_boundary": "Promoted replicated three-program memory-side external computation and routing; sequential capacity pressure, eviction/consolidation, nonstationary reversal, unrestricted growth, and general continual learning remain unqualified."
+}

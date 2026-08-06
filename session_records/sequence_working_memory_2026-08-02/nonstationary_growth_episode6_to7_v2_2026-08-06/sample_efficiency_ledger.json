@@ -1,0 +1,37 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "nonstationary-growth-episode6-to7-v2-2026-08-06",
+  "status": "promoted_antithetic_null_nonstationary_growth",
+  "claim_boundary": "Frozen length-six capabilities retain while eight new length-seven capabilities are acquired from fresh outcomes without replay; this is one bounded temporal distribution-shift result, not general continual learning.",
+  "seeds": [69316, 69317],
+  "distribution_shift": "episode_length_6_to_7",
+  "old_families": [0, 1],
+  "new_family_count": 8,
+  "training_batch_size": 16,
+  "audit_batch_size": 64,
+  "unique_verifier_bits": 852144,
+  "unique_logical_lifetimes": 151728,
+  "optimizer_updates": 11264,
+  "replayed_examples": 0,
+  "wall_time_seconds": 8.886861916995258,
+  "stable_bits_to_threshold": null,
+  "retention_on_mastered_primitives": [1.0, 1.0],
+  "transfer_ratio_against_fresh_learner": null,
+  "verification": {
+    "old_route_retained": [true, true],
+    "candidate_permutation_invariant": [true, true],
+    "minimum_new_route_selection": [0.96875, 0.9375],
+    "shifted_credit_signal": [true, true],
+    "new_routes_causal": [true, true],
+    "retention_reversal_safe": [true, true],
+    "antithetic_reward_shuffled_not_selected": [true, true],
+    "zero_replay": [true, true],
+    "promotion_gate_passed": true
+  },
+  "rejected_controls": [
+    {
+      "experiment": "nonstationary_growth_episode6_to7_rejected_v1_2026-08-06",
+      "reason": "ordinary random shuffling produced a seed-69316 false positive at 0.640625; the antithetic null repairs the control without changing aligned training"
+    }
+  ]
+}

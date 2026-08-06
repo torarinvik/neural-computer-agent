@@ -1,0 +1,30 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "nonstationary-growth-episode6-to7-rejected-v1-2026-08-06",
+  "status": "rejected_cross_seed_shifted_reward_shuffle_gate",
+  "claim_boundary": "Frozen length-six capabilities and fresh length-seven external additions retain route and credit behavior without replay, but one seed has a shifted-distribution reward-shuffled false positive.",
+  "seeds": [69316, 69317],
+  "distribution_shift": "episode_length_6_to_7",
+  "old_families": [0, 1],
+  "new_family_count": 8,
+  "audit_batch_size": 64,
+  "unique_verifier_bits": 852144,
+  "unique_logical_lifetimes": 151728,
+  "optimizer_updates": 11264,
+  "replayed_examples": 0,
+  "wall_time_seconds": 8.515615459007677,
+  "stable_bits_to_threshold": null,
+  "retention_on_mastered_primitives": [1.0, 1.0],
+  "transfer_ratio_against_fresh_learner": null,
+  "verification": {
+    "old_route_retained": [true, true],
+    "candidate_permutation_invariant": [true, true],
+    "minimum_new_route_selection": [0.96875, 0.9375],
+    "shifted_credit_signal": [true, true],
+    "retention_reversal_safe": [true, true],
+    "zero_replay": [true, true],
+    "reward_shuffled_extension_not_selected": [false, true],
+    "promotion_gate_passed": false
+  },
+  "rejection_reason": "seed 69316 selected shifted family 7 at 0.640625 under reward-shuffled outcomes; lowering the control threshold would conceal a real nonstationary credit-calibration failure"
+}

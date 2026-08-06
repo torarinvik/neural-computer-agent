@@ -1,0 +1,94 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "online_view_growth_retention_v2_2026-08-06",
+  "status": "promoted_retention_safe_online_executable_view_growth",
+  "claim_boundary": "Promoted one retention-safe online addition of an executable external-memory view with a frozen controller and frozen old router; this remains bounded continual memory, not general continual learning.",
+  "unique_verifier_bits": 786432,
+  "unique_logical_lifetimes": 196608,
+  "optimizer_updates": 12288,
+  "replayed_examples": 0,
+  "wall_time_seconds": 619.2359,
+  "latency": "per-seed wall time is recorded in each promoted report; retention uses eight fresh held-out probes per capability",
+  "stable_bits_to_threshold": null,
+  "retention_on_mastered_primitives": {
+    "threshold": 0.70,
+    "probes_per_capability": 8,
+    "seed_69316_old_floors": {
+      "forward": 0.90625,
+      "reverse": 0.76953125,
+      "complement": 0.8828125,
+      "complement_reverse": 0.83984375
+    },
+    "seed_69316_new_floor": 0.89453125,
+    "seed_69317_old_floors": {
+      "forward": 0.87109375,
+      "reverse": 0.8046875,
+      "complement": 0.828125,
+      "complement_reverse": 0.84375
+    },
+    "seed_69317_new_floor": 0.8671875
+  },
+  "transfer_ratio_against_fresh_learner": null,
+  "verification": {
+    "seeds": [69316, 69317],
+    "old_artifact_updates": 1024,
+    "new_artifact_updates": 1024,
+    "base_route_updates": 2048,
+    "extension_route_updates": 256,
+    "audit_count": 64,
+    "retention_probes": 8,
+    "batch_size": 16,
+    "route_batch_size": 16,
+    "behavior_tolerance": 0.05,
+    "per_seed": {
+      "69316": {
+        "unique_verifier_bits": 393216,
+        "unique_logical_lifetimes": 98304,
+        "optimizer_updates": 6144,
+        "retention_observations": 40,
+        "replayed_examples": 0,
+        "wall_seconds": 306.5053435,
+        "base_old_route_accuracy": 1.0,
+        "old_route_accuracy_after_extension": 1.0,
+        "new_route_accuracy": 1.0,
+        "combined_five_view_accuracy": 1.0,
+        "candidate_permutation_accuracy": 1.0,
+        "reward_shuffled_new_selection_rate": 0.27734375,
+        "all_gates_passed": true
+      },
+      "69317": {
+        "unique_verifier_bits": 393216,
+        "unique_logical_lifetimes": 98304,
+        "optimizer_updates": 6144,
+        "retention_observations": 40,
+        "replayed_examples": 0,
+        "wall_seconds": 312.730576625,
+        "base_old_route_accuracy": 0.96875,
+        "old_route_accuracy_after_extension": 0.96875,
+        "new_route_accuracy": 1.0,
+        "combined_five_view_accuracy": 0.984375,
+        "candidate_permutation_accuracy": 0.984375,
+        "reward_shuffled_new_selection_rate": 0.25,
+        "all_gates_passed": true
+      }
+    }
+  },
+  "rejected_controls": [
+    {
+      "seed": 69316,
+      "old_artifact_updates": 64,
+      "new_artifact_updates": 64,
+      "reason": "new candidate did not establish stable mastery at the 0.70 retention threshold; transaction rejected before adoption"
+    },
+    {
+      "seed": 69316,
+      "old_artifact_updates": 64,
+      "new_artifact_updates": 256,
+      "retention_threshold": 0.70,
+      "retention_probes": 8,
+      "old_retained_floors": [0.64453125, 0.60546875, 0.6484375, 0.63671875],
+      "new_candidate_outcomes": [0.68359375, 0.6875, 0.6796875, 0.68359375, 0.68359375, 0.6875, 0.68359375, 0.6796875],
+      "reason": "under-trained old and new artifacts failed the declared retention contract; candidate was rejected before route evaluation"
+    }
+  ]
+}

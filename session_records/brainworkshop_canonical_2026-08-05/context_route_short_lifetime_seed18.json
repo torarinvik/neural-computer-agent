@@ -1,0 +1,437 @@
+{
+  "schema": "neural-computer.brainworkshop-context-route.v1",
+  "status": "promoted_cue_conditioned_short_lifetime_route",
+  "n_back_families": [
+    2,
+    3,
+    4
+  ],
+  "cue_symbols": {
+    "2": 4,
+    "3": 5,
+    "4": 6
+  },
+  "steps": 8,
+  "first_baseline_controls": {
+    "fresh": 0.5,
+    "time_shuffle": 0.5,
+    "history_reset": 0.5
+  },
+  "cue_controls": {
+    "2": {
+      "fresh": 1.0,
+      "time_shuffle": 0.5104166865348816,
+      "history_reset": 0.5
+    },
+    "3": {
+      "fresh": 1.0,
+      "time_shuffle": 0.5604166984558105,
+      "history_reset": 0.6000000238418579
+    },
+    "4": {
+      "fresh": 1.0,
+      "time_shuffle": 0.4817708432674408,
+      "history_reset": 0.5
+    }
+  },
+  "cue_shuffled_controls": {
+    "2": {
+      "fresh": 0.6805555820465088,
+      "time_shuffle": 0.4861111342906952,
+      "history_reset": 0.5
+    },
+    "3": {
+      "fresh": 0.8020833134651184,
+      "time_shuffle": 0.5666666626930237,
+      "history_reset": 0.6000000238418579
+    },
+    "4": {
+      "fresh": 0.578125,
+      "time_shuffle": 0.4739583432674408,
+      "history_reset": 0.5
+    }
+  },
+  "cue_separation_passed": true,
+  "cue_absent_controls": {
+    "2": {
+      "fresh": 1.0,
+      "time_shuffle": 0.5104166865348816,
+      "history_reset": 0.5
+    },
+    "3": {
+      "fresh": 0.8041666150093079,
+      "time_shuffle": 0.543749988079071,
+      "history_reset": 0.6000000238418579
+    },
+    "4": {
+      "fresh": 0.578125,
+      "time_shuffle": 0.4739583432674408,
+      "history_reset": 0.5
+    }
+  },
+  "candidate_audits": {
+    "2:0": [
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      }
+    ],
+    "3:1": [
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      }
+    ],
+    "4:2": [
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      }
+    ]
+  },
+  "context_route_payload": {
+    "schema": "neural-computer.persistent-opaque-context-route-evidence.v1",
+    "width": 32,
+    "matching_tolerance": 0.0001,
+    "prior_strength": 1.0,
+    "mastery_threshold": 0.8,
+    "min_mastery_observations": 8,
+    "reversal_threshold": 0.5,
+    "reversal_patience": 4,
+    "slot_count": 3,
+    "version": 8198,
+    "contexts": [
+      {
+        "key": [
+          -0.2212037295103073,
+          0.19751077890396118,
+          -0.12247243523597717,
+          -0.1811918318271637,
+          0.11956578493118286,
+          0.038295499980449677,
+          0.06882239133119583,
+          0.26313045620918274,
+          0.09665066748857498,
+          -0.045492023229599,
+          0.1721602827310562,
+          0.28409868478775024,
+          0.12382891774177551,
+          -0.03234123811125755,
+          -0.40212583541870117,
+          0.19789813458919525,
+          -0.39430224895477295,
+          -0.05000656843185425,
+          0.018969951197504997,
+          -0.046162232756614685,
+          0.1486758142709732,
+          -0.13286451995372772,
+          -0.17837654054164886,
+          0.0910872220993042,
+          0.03573755919933319,
+          0.13141638040542603,
+          -0.014349259436130524,
+          -0.1407068967819214,
+          0.1116684228181839,
+          0.04905461519956589,
+          0.10042205452919006,
+          0.3628091514110565
+        ],
+        "evidence": {
+          "schema": "neural-computer.persistent-opaque-route-evidence.v1",
+          "prior_strength": 1.0,
+          "mastery_threshold": 0.8,
+          "min_mastery_observations": 8,
+          "reversal_threshold": 0.5,
+          "reversal_patience": 4,
+          "attempts": [
+            4608,
+            0,
+            0
+          ],
+          "successes": [
+            4608.0,
+            0.0,
+            0.0
+          ],
+          "stable_prefix_minimum": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "protected": [
+            true,
+            false,
+            false
+          ],
+          "reversal_streak": [
+            0,
+            0,
+            0
+          ],
+          "reversal_count": [
+            0,
+            0,
+            0
+          ],
+          "preferred_slot": 0,
+          "last_slot": 0,
+          "last_outcome": 1.0,
+          "version": 4611
+        }
+      },
+      {
+        "key": [
+          -0.04218604043126106,
+          -0.15719525516033173,
+          -0.1408495008945465,
+          0.20591281354427338,
+          -0.0011390515137463808,
+          -0.18684686720371246,
+          0.05157911777496338,
+          -0.21103915572166443,
+          0.23232710361480713,
+          0.3782910108566284,
+          -0.011210311204195023,
+          0.05027414485812187,
+          -0.3476083278656006,
+          -0.010685420595109463,
+          0.27024343609809875,
+          0.16431958973407745,
+          0.17332182824611664,
+          0.05237580090761185,
+          0.14747169613838196,
+          0.12253729999065399,
+          -0.16141840815544128,
+          -0.1385241448879242,
+          -0.1055581346154213,
+          -0.059692613780498505,
+          0.11325301229953766,
+          0.18216629326343536,
+          -0.027298692613840103,
+          0.025222018361091614,
+          -0.2727641463279724,
+          -0.07348424196243286,
+          -0.11979538947343826,
+          0.37068620324134827
+        ],
+        "evidence": {
+          "schema": "neural-computer.persistent-opaque-route-evidence.v1",
+          "prior_strength": 1.0,
+          "mastery_threshold": 0.8,
+          "min_mastery_observations": 8,
+          "reversal_threshold": 0.5,
+          "reversal_patience": 4,
+          "attempts": [
+            0,
+            2560,
+            0
+          ],
+          "successes": [
+            0.0,
+            2560.0,
+            0.0
+          ],
+          "stable_prefix_minimum": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "protected": [
+            false,
+            true,
+            false
+          ],
+          "reversal_streak": [
+            0,
+            0,
+            0
+          ],
+          "reversal_count": [
+            0,
+            0,
+            0
+          ],
+          "preferred_slot": 1,
+          "last_slot": 1,
+          "last_outcome": 1.0,
+          "version": 2563
+        }
+      },
+      {
+        "key": [
+          -0.13819196820259094,
+          -0.13177789747714996,
+          -0.08312923461198807,
+          0.024256300181150436,
+          -0.20838519930839539,
+          0.25149020552635193,
+          -0.1420561671257019,
+          0.350490003824234,
+          -0.06589683145284653,
+          0.06638234853744507,
+          -0.023614173755049706,
+          -0.02561960741877556,
+          -0.4752400815486908,
+          -0.17945414781570435,
+          -0.04964393004775047,
+          0.10728367418050766,
+          -0.03062804415822029,
+          0.12714622914791107,
+          -0.14291119575500488,
+          0.26532524824142456,
+          0.2486429512500763,
+          0.039265215396881104,
+          0.10844401270151138,
+          0.16576910018920898,
+          -0.3436436653137207,
+          -0.1432953178882599,
+          0.05535921826958656,
+          -0.009602603502571583,
+          -0.14517129957675934,
+          -0.1267031580209732,
+          0.1398364007472992,
+          -0.12391763180494308
+        ],
+        "evidence": {
+          "schema": "neural-computer.persistent-opaque-route-evidence.v1",
+          "prior_strength": 1.0,
+          "mastery_threshold": 0.8,
+          "min_mastery_observations": 8,
+          "reversal_threshold": 0.5,
+          "reversal_patience": 4,
+          "attempts": [
+            0,
+            0,
+            1024
+          ],
+          "successes": [
+            0.0,
+            0.0,
+            1024.0
+          ],
+          "stable_prefix_minimum": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "protected": [
+            false,
+            false,
+            true
+          ],
+          "reversal_streak": [
+            0,
+            0,
+            0
+          ],
+          "reversal_count": [
+            0,
+            0,
+            0
+          ],
+          "preferred_slot": 2,
+          "last_slot": 2,
+          "last_outcome": 1.0,
+          "version": 1027
+        }
+      }
+    ]
+  },
+  "controller_frozen": true,
+  "prior_bank_unchanged_during_third_growth": true,
+  "unique_verifier_bits": 86016,
+  "unique_logical_lifetimes": 18432,
+  "optimizer_updates": 576,
+  "replayed_examples": 0,
+  "promotion_gates": {
+    "cue_controls": true,
+    "candidate_audits": true,
+    "cue_separation": true,
+    "prior_bank_unchanged": true
+  },
+  "claim_boundary": "A learned event cue can select among bounded opaque external slots without changing the controller; cue-free short-lifetime routing and general continual learning remain unqualified."
+}

@@ -205,6 +205,29 @@ long-span mastery, natural language, or general cognition. The harness is
 `canonical_growth_pressure_test.py`; the full reports and accounting are in
 `session_records/sequence_working_memory_2026-08-02/canonical_growth_pressure_consumer_long_2026-08-04/`.
 
+## Lifecycle-backed capability composition (2026-08-06)
+
+The canonical pressure harness now composes the producer and prior-only
+consumer through `ExternalCapabilityLifecycle`. Admission builds one
+namespaced executable artifact in a separate destination, attaches opaque
+producer/consumer views, reloads it in a fresh runtime, and adopts it only
+after the held-out behavior verifier passes. This removes the last manual
+composition path from the canonical proof.
+
+Two seeds pass the promoted rung: the consolidated bank shrinks from two
+physical rows to one, verifier/final composition accuracy is `76.82%` and
+`64.06%`, blank-sequence accuracy is `50.00%` and `50.52%`, and
+reward-shuffled accuracy is `59.38%` and `44.53%`. Producer-zeroing,
+prior-read ablation, exact artifact reload, frozen-core, and zero-replay
+controls pass. The full records and ledger are in
+`session_records/sequence_working_memory_2026-08-02/canonical_growth_pressure_lifecycle_composition_v1_2026-08-06/`.
+
+This is a stronger CPU/filesystem boundary result: learned external state can
+be transactionally composed and verified as one executable capability. It is
+still a narrow working-memory diagnostic, not arbitrary program induction,
+unrestricted growth, positive transfer against a fresh learner, or general
+continual learning.
+
 ## No-replay retention through executable capability files (2026-08-04)
 
 The first shared-parameter curriculum established the failure mode: span 4

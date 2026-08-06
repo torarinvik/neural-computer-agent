@@ -1268,3 +1268,551 @@ controller remains frozen, the verifier is a two-slot synthetic pressure test,
 and transfer to larger banks, persistent reload, and genuinely new learned
 write utilities remain open. Full accounting is in the three v10 report
 directories and their `sample_efficiency_ledger.json` files.
+
+## Stable controller-native value path for three-slot banks (2026-08-05)
+
+The writer-only larger-bank rung exposed a representation bottleneck: its
+write probabilities correctly selected the target in both orders, but a value
+produced after a longer distractor prefix was not decoded reliably after a
+reset. A zero-initialized controller-native value path keyed by the current
+learned event and opaque feedback fixes that context dependence. The controller
+learns it during parent acquisition and is frozen during retention; the
+external writer remains the isolated growing component.
+
+Seed 17 passed the three-slot/one-row/64-update gate with target-first/last
+`0.963/0.940`, intact `0.947`, mastered retention `0.980`, unseen minimum
+`0.945`, stable bits `20,480`, and zero replay. Seed 69415 passed after the
+smallest tested phase-1 extension to 800 steps with `0.986/0.991`, intact
+`0.989`, mastered retention `0.977`, unseen minimum `0.961`, and stable bits
+`35,840`. The original 704-step seed-69415 run was blocked by the parent
+stability gate; it is recorded as a curriculum-budget rejection. The
+reward-shuffled control stayed at chance and failed all capability gates. The
+same persistent backend reloaded at `0.965`/`0.996`, rejected checksum
+corruption in both seeds, and recovered at `0.938`/`1.000`.
+
+This is a promoted narrow three-slot retention mechanism, not general
+continual learning, arbitrary new computation, or persistent-memory transfer.
+The reports and sample-efficiency ledgers are in the six one-row
+`external_write_stable_value_v14*` directories.
+
+The same mechanism also passed the two-row three-slot bank: seed 17 retained
+the one-row metrics and reloaded at `0.965`, while seed 69415 reloaded at
+`0.996`; both rejected checksum corruption and recovered at `0.938`/`1.000`.
+Those reports are in the two `external_write_stable_value_v14_two_row*`
+directories.
+
+## Four-slot temporal-bank replication (2026-08-05)
+
+The same stable controller-native value path and isolated external writer passed
+a four-slot/two-row bank. Seed 17 reached target-first/last `0.981/0.982`,
+intact `0.986`, mastered retention `0.992`, and unseen minimum `0.980`. Seed
+69415 replicated `0.982/0.970`, intact `0.983`, mastered retention `0.977`,
+and unseen minimum `0.973`; persistent reload was `0.988`, corruption was
+rejected, and recovery was `1.000`. The reward-shuffled control remained at
+chance. All runs used zero replayed examples. Reports and ledgers are in the
+three `external_write_stable_value_v15*` directories.
+
+## Five-slot temporal-bank scaling (2026-08-05)
+
+The stable controller-native value path and isolated external writer scaled to
+a five-slot, two-row bank. Seed 17 passed at 704 requested phase-1 steps with
+target-first/last `0.974/0.973`, intact `0.975`, mastered retention `0.961`,
+and unseen-token minimum `0.965`. Seed 69415 failed at 800 phase-1 steps
+because parent acquisition never stabilized; following the experiment ladder,
+only the curriculum budget was changed. At 1,600 requested phase-1 steps, the
+same seed stabilized after 1,152 effective phase-1 updates and passed with
+target-first/last `0.978/0.987`, intact `0.983`, mastered retention `0.992`,
+and unseen-token minimum `0.969`.
+
+The successful replication's persistent-memory audit reloaded at `0.984`,
+rejected checksum corruption, and recovered at `1.000`. The reward-shuffled
+control stayed at chance (`0.476` intact; `0.514`/`0.503` target-first/last).
+All runs used zero replayed examples. This is a promoted narrow five-slot
+scaling/persistence result, not general continual learning or arbitrary new
+computation. The phase-1 extension is part of the result; the 800-step failure
+is retained as a curriculum-budget rejection. Full reports and ledgers are in
+the five `external_write_stable_value_v16*` directories.
+
+## Learned utility-based eviction (2026-08-05)
+
+The full-bank eviction fallback is now qualified as a separate memory-side
+learning problem. A frozen controller and stable external writer feed opaque
+candidate rows to an independently versioned scorer. Paired common-random
+counterfactual arms force row 0 versus row 1 and train only from scalar recall
+differences; the controller receives no row index, target label, or
+counterfactual metadata.
+
+Seed 17 reached balanced/target-first/target-last recall
+`0.916/0.903/0.981`, and seed 69415 replicated `0.963/0.912/0.999`.
+Strength-based eviction was `0.488/0.512` on target-first, versus learned
+`0.903/0.912`; random target-first was `0.737/0.756`. Both runs passed
+clear-memory, corruption, persistent reload, checksum rejection, and recovery
+controls. The reward-shuffled control remained at chance and failed parent
+acquisition. All runs used zero replayed examples.
+
+This is a promoted narrow learned-eviction boundary for the three-slot/two-row
+verifier. It does not establish general episodic memory, arbitrary new
+computation, or general continual learning. The three reports and ledgers are
+in the `learned_eviction_v1_*` directories beside this record.
+
+## Variable-capacity append-only memory (2026-08-05)
+
+The fixed-row-count assumption is now isolated behind a new replaceable
+`AppendOnlyContentAddressedMemory` backend. The frozen canonical controller
+appends unmatched opaque learned keys, upserts matching keys, and retrieves
+records after a state reset. Its persistent replacement stores variable-length
+state atomically with checksums.
+
+Across seeds 17 and 69415, the backend passed 64, 256, and 1,024 records with
+`1.000` permuted exact recall at every scale, zero clear-memory hits, and
+`1.000` persistent reload/recovery. Fresh-token hit rates remained below
+`1.1%`; checksum corruption was rejected at every scale. No optimizer updates
+or replayed examples were used.
+
+This promotes the logical storage-growth boundary through the frozen runtime.
+It does not establish learned compression, new procedure acquisition, or
+general continual learning. Reports and ledgers are in the two
+`memory_growth_append_only_v1_*` directories.
+
+## Routed artifact compaction (2026-08-05)
+
+The first compaction attempt exposed the next architectural boundary: putting
+two independent procedures in one row and executing both at once changes the
+controller’s behavior. The corrected memory contract keeps one physical row
+with multiple opaque aliases, but each verified alias also returns an opaque
+view identifier. The caller projects only that view into the frozen growth
+state.
+
+Two 512-update seeds passed behavior preservation, parent retention, reload,
+checksum rejection, frozen-core equality, and rejected-candidate controls.
+The source bank shrank from two rows to one, with zero optimizer updates and
+zero replayed examples during consolidation. This is promoted routed logical
+compaction, not unrestricted procedure induction or general continual
+learning. Independent capabilities stay append-only unless a held-out
+behavior verifier admits the compact routed form. Evidence is in
+`artifact_consolidation_v1_2026-08-05/`.
+
+## Outcome-only executable-view routing (2026-08-05)
+
+The caller view-selection shortcut is now replaced by a learned
+`FactorizedOpaqueAddressRouter`. It receives controller-produced query tensors,
+opaque candidate keys, attempted-view outcomes, and scalar verifier outcomes;
+semantic task/span identity remains trainer-private.
+
+Two seeds reached `1.000` held-out route accuracy and `1.000` candidate
+permutation accuracy. Reward-shuffled routing stayed at `0.438/0.500`, wrong
+views were causally worse, and reload/corruption/frozen-core gates passed. The
+64-update pilot is retained as a curriculum rejection because the second
+procedure was not yet mastered, while route accuracy was already perfect.
+
+This promotes learned routing between already-acquired executable views, not
+general continual learning or arbitrary new program induction. Evidence is in
+`artifact_view_routing_v1_2026-08-05/`.
+
+## Four-view routing scaling (2026-08-05)
+
+The learned view router now scales from two to four independently acquired
+span-4 procedures in one physical row. Context-derived addresses collided at
+four views, so the promoted design uses independent opaque storage identities
+and the joint opaque scorer with paired counterfactual credit.
+
+Seeds 69316 and 69317 passed route/permutation accuracy `1.000/1.000` and
+`0.969/0.969`, reward-shuffled routing `0.215/0.250`, four-procedure mastery,
+wrong-view causal separation, reload, corruption, exact-candidate, and
+frozen-core gates. The failed address, factorized-router, and direct-credit
+controls are retained in the scaling record.
+
+This promotes bounded four-view routing, not unrestricted memory growth or
+general continual learning. Evidence is in
+`artifact_view_routing_scaling_v1_2026-08-05/`.
+
+## Outcome-gated online view growth (2026-08-05)
+
+The next boundary is now qualified across two seeds. After the four-view
+router is frozen, a fifth `rotate` procedure is acquired into external growth
+memory and attached through a zero-initialized route extension. The extension
+uses fresh fifth-procedure paired scalar outcomes only; no old route examples
+are replayed after the extension.
+
+The evidence rejects optimistic preemption: the frozen four-view router can
+confidently misroute a novel procedure. The promoted selector therefore gives
+known routes priority and opens the new view only after an observed failed old
+attempt. Seeds 69316 and 69317 recovered the new view at `1.000/1.000`, kept
+old-route accuracy at `1.000/0.988`, reached combined five-view accuracy
+`1.000/0.994`, preserved candidate permutation behavior, and recorded zero
+old false positives and zero reward-shuffled new selections. Reload,
+corruption, frozen-core, frozen-router, and causal wrong-view gates passed.
+
+This promotes safe outcome-gated external capability addition with a bounded
+one-failure cold start. It does not establish immediate novel-task routing,
+unrestricted continual learning, arbitrary new computation, or unbounded
+memory growth. Evidence is in `online_view_growth_v1_2026-08-05/`.
+
+## Two-step replay-free external view growth (2026-08-05)
+
+The one-failure boundary now survives two sequential capability additions.
+The frozen four-view controller/router acquires `rotate` as view `4`, then
+acquires `complement_rotate` as view `5`. The first extension is frozen while
+the second is trained; the second procedure first fails through the old route
+and then through the first extension before the second extension is opened.
+Both additions remain in one physical artifact row with six opaque views.
+
+Across seeds 69316 and 69317, base old-route accuracy was `1.000/0.984`, both
+new-view routes were `1.000/1.000`, and the complete two-step chain reached
+`1.000/0.995`. Candidate permutation accuracy matched the chain. The first
+extension selected itself on the second procedure at `1.000/1.000`, while
+reward-shuffled first and second extensions selected their new views at
+`0.000/0.000`. Selected behavior, wrong-view causal separation, exact reload,
+checksum rejection, frozen controller core, frozen first extension, and
+no-replay gates all passed.
+
+This promotes a bounded two-step outcome-gated external fallback and
+replay-free consolidation result. It does not establish unrestricted memory
+growth, arbitrary new computation, open-ended task discovery, or general
+continual learning. Reports and accounting are in
+`multistep_view_growth_v1_2026-08-05/`.
+
+## Three-step replay-free external view growth (2026-08-05)
+
+The cumulative fallback chain now survives a third sequential capability
+addition. After the frozen four-view base, `rotate`, `complement_rotate`, and
+`adjacent_xor` are acquired one at a time. Each later procedure passes through
+the old router and every earlier extension as a failed opaque attempt. All
+seven views remain isolated aliases in one physical artifact row.
+
+Seeds 69316 and 69317 reached old-route retention `1.000/0.992`, all three
+new-view routes `1.000/1.000`, and complete three-step routing
+`1.000/0.998`. Candidate permutation accuracy matched. Every prior-extension
+attempt rate was `1.000` on later procedures; reward-shuffled new-view
+selection was `0.000` for every extension on both seeds. Behavior, causal
+wrong-view, exact reload, corruption, frozen-core, frozen-extension, and
+zero-replay gates all passed.
+
+This is the next promoted bounded continual-memory result: three sequential
+external additions without controller updates or replay of earlier route
+examples. It still does not establish unrestricted memory growth, arbitrary
+new computation, open-ended task discovery, learned compression, or general
+continual learning. Evidence is in
+`three_step_view_growth_v1_2026-08-05/`.
+
+## Behavior-verified fixed-capacity artifact compression (2026-08-05)
+
+The seven-view chain now has a real payload-capacity result, not only one-row
+logical compaction. A caller-owned, versioned float16 codec compresses the
+complete seven-view tensor payload before transactional promotion; the frozen
+runtime explicitly casts it back at the growth boundary. Across seeds 69316
+and 69317, raw tensor bytes fell from `202,944` to `101,472` (`0.500`), and
+serialized artifact bytes fell from `212,863` to `111,167` (`0.522`).
+
+Compressed and uncompressed selected behavior were identical for every one of
+the seven views on both audits. Wrong-view causal separation, exact opaque
+aliases, reload, checksum rejection, frozen-core, frozen-extension, and
+zero-replay gates all passed. Compression used zero optimizer updates and no
+replayed examples.
+
+This promotes behavior-verified fixed-capacity tensor compression for the
+bounded seven-view artifact chain. It is a storage codec, not learned new
+computation; arbitrary compression, open-ended memory growth, and general
+continual learning remain unqualified. Evidence is in
+`three_step_view_compression_v1_2026-08-05/`.
+
+## Behavior-verified int8 artifact quantization (2026-08-05)
+
+The same seven-view artifact now survives per-tensor symmetric int8
+quantization with explicit scale tensors. Across seeds 69316 and 69317, the
+payload fell from `202,944` to `50,848` bytes (`0.2506`), and the serialized
+artifact fell to `69,771` bytes (`0.3278`). Quantized selected behavior stayed
+within the predeclared five-point retention tolerance and above the behavior
+floor on both seeds; wrong-view causal separation remained true.
+
+Exact aliases, reload, checksum rejection, frozen controller/extension state,
+and zero replay all passed. Quantization used zero optimizer updates. This is
+the strongest current storage result, but it is still a replaceable codec and
+not learned new computation or general continual learning. Evidence is in
+`three_step_view_quantization_v1_2026-08-05/`.
+
+## Behavior-verified packed int4 artifact quantization (2026-08-05)
+
+The seven-view chain also survives packed signed-int4 storage. The
+caller-owned codec quantizes each floating tensor per output row, packs two
+values per byte, and stores explicit scales and original shapes. Decompression
+occurs before the strict frozen-growth loader, leaving the controller and
+memory backend unchanged.
+
+Across seeds 69316 and 69317, raw tensor payload bytes fell from `202,944` to
+`30,184` (`0.1487`), and serialized artifact bytes fell from `212,863` to
+`58,007` (`0.2725`). The three-step route chain remained `1.000/0.998`,
+minimum packed behavior was `0.7227/0.7305`, and packed behavior, wrong-view
+causality, exact reload, corruption rejection, frozen-core, frozen-extension,
+and zero-replay gates all passed.
+
+This promotes behavior-verified packed int4 storage quantization for a bounded
+external artifact chain. It is not learned compression, arbitrary new
+computation, open-ended memory growth, or general continual learning. Evidence
+is in `three_step_view_int4_v1_2026-08-05/`.
+
+## Replicated episodic context and causal credit (2026-08-05)
+
+The next continual-learning bottleneck now has a promoted memory-side
+pressure test. `EpisodicContextEncoder` consumes ordered learned events,
+opaque actions, scalar outcomes, and presence. It learns context from paired
+augmented episodes without task labels, while paired write-intervention
+outcomes train per-event credit. A frozen opaque router then appends a new
+external route from fresh outcomes only.
+
+Across seeds 69316 and 69317, context-based old-route accuracy was
+`0.9688/1.000` versus `0.500/0.500` for pooled events. Candidate permutation,
+new-route recovery, extension ablation, decisive-position credit, old-route
+retention, shuffled-outcome rejection, and zero-replay gates all passed.
+
+This promotes a bounded episodic-context and counterfactual-credit mechanism,
+not unrestricted memory growth, arbitrary program induction, or general
+continual learning. Evidence is in
+`episodic_context_credit_v1_2026-08-05/`.
+
+## Replicated two-step isolated-credit growth (2026-08-05)
+
+The episodic context/credit loop now survives two sequential fresh additions.
+The shared context encoder and old credit head are frozen; each new external
+capability receives isolated event-credit state and a route extension trained
+only from fresh paired outcomes. A later procedure must pass the old route and
+the earlier extension before its own route activates.
+
+Across seeds 69316 and 69317, both new routes selected at `1.000/1.000`, old
+route retention and candidate permutation passed, prior-extension attempts
+were present, and old/new credit-position accuracy was `1.000/1.000`.
+New-route ablations and shuffled-outcome extensions selected `0.000/0.000`,
+with zero replay after either append.
+
+This promotes bounded two-step external growth with isolated credit state. It
+does not establish unrestricted memory growth, learned eviction,
+nonstationary discovery, arbitrary program induction, or general continual
+learning. Evidence is in
+`episodic_context_credit_multistep_v1_2026-08-05/`.
+
+## Four-step isolated-credit growth (2026-08-05)
+
+The same frozen episodic boundary now survives four sequential fresh
+additions. Families `2,3,4,5` each receive an isolated route extension and
+credit head. A later family must first fail through every earlier extension;
+future inactive extensions are not counted as prior attempts. The per-event
+credit target uses the opaque temporal position represented by each family
+pattern rather than treating a family identifier as an event position.
+
+Across seeds 69316 and 69317, old and new route selection, candidate
+permutation, old-route retention, and old/new credit-position accuracy were
+all `1.000`. Required prior-extension attempts were `1.000`, disabling each
+required extension reduced selection to `0.000`, reward-shuffled extensions
+were selected at `0.000`, and replay remained zero. Each seed used `122,880`
+unique verifier bits, `30,976` logical lifetimes, and `2,048` optimizer
+updates.
+
+This promotes bounded four-step replay-free external growth with isolated
+episodic credit state. It does not establish unbounded memory growth, learned
+consolidation, arbitrary program induction, or general continual learning.
+Evidence is in
+`episodic_context_credit_four_step_v1_2026-08-05/`.
+
+## Eight-step episodic-context growth (2026-08-05)
+
+The finite four-token pattern bank was replaced for this pressure test by ten
+same-statistics temporal patterns of length five. After the old context and
+router were frozen, families `2` through `9` were acquired sequentially with
+independent route and credit state.
+
+Across seeds 69316 and 69317, old-route accuracy, pooled-baseline separation,
+candidate permutation, all eight new routes, old-route retention, and old/new
+credit accuracy were `1.000`. Required extensions were attempted at `1.000`,
+required-extension ablations and reward-shuffled extensions selected at
+`0.000`, and replay remained zero. Each seed used `286,720` unique verifier
+bits, `62,464` logical lifetimes, and `4,352` optimizer updates.
+
+The short-budget control failed old-route retention at `0.500` on both seeds;
+the promoted schedule increases context and router training while preserving
+fresh isolated external credit updates. This is a measured scaling cost, not
+an omitted failure. The result promotes bounded eight-step replay-free growth,
+not unbounded memory, learned consolidation, arbitrary program induction, or
+general continual learning. Evidence is in
+`episodic_context_credit_eight_step_v1_2026-08-05/`.
+
+## Generated-pattern length-six growth (2026-08-05)
+
+The pattern vocabulary is now generated from episode length rather than
+limited to the compatibility bank. With length six, the harness provides 20
+same-statistics procedures; families `2..9` were acquired sequentially after
+the old context and router were frozen.
+
+Across seeds 69316 and 69317, old-route accuracy, candidate permutation, all
+eight new routes, old-route retention, and isolated credit accuracy passed;
+required extensions were attempted at `1.000`, extension ablations and
+reward-shuffled extensions selected at `0.000`, and replay was zero. The
+promoted protocol used `393,216` unique verifier bits, `75,776` logical
+lifetimes, and `5,632` optimizer updates per seed.
+
+The under-budget control failed seed 69316 at `0.500` old-route accuracy and
+passed seed 69317, so it remains rejected. This makes context-acquisition
+scaling an explicit requirement for longer histories. Evidence is in
+`episodic_context_credit_generated_len6_eight_step_v1_2026-08-05/`.
+
+## Retention-safe memory boundary (2026-08-05)
+
+The next implementation bottleneck was silent replacement of a mastered
+capability. `CapabilityRetentionLedger` now sits outside the frozen
+controller and records only opaque learned addresses plus scalar verifier
+outcomes. Stable prefix mastery protects rows from both canonical content
+memory and executable-artifact eviction; one noisy failure is tolerated, while
+sustained low outcomes trigger a reversible new mastery era. If the entire
+bank is protected, the write fails explicitly and asks the caller to grow or
+perform verified consolidation.
+
+The ledger persists beside disk snapshots, survives artifact compaction, and
+`evaluate_retention_gate` rejects a candidate consolidation whenever any
+retained capability falls below its declared floor. The canonical package now
+has 220 passing tests, including persistence, runtime-checkpoint round trips,
+noisy-failure hysteresis, reversal, protected compaction, full-capacity
+protection, and rejected-retention-gate controls.
+
+This is a foundational safety mechanism, not a Brain Workshop mastery claim.
+The generated length-six extension below now reports stable prefix acquisition,
+complete retention reversal, and growth-when-full controls.
+
+## Generated length-six growth with retention reversal (2026-08-05)
+
+The generated length-six sequence is now composed with the external retention
+ledger. Across seeds 69316 and 69317, all ten opaque capabilities initially
+became protected; a fully protected bank refused eviction; four sustained low
+outcomes released only the newest capability; and four fresh successful
+outcomes re-protected it. The route, permutation, causal-ablation,
+isolated-credit, reward-shuffle, and zero-replay gates remained passing.
+
+Each seed accounted for `393,304` unique verifier bits, `75,864` logical
+lifetimes, `5,632` optimizer updates, and `88` retention observations. This
+promotes bounded replay-free growth with a retention-safe reversible memory
+boundary. It does not establish learned consolidation, unrestricted memory
+growth, arbitrary new computation, or general continual learning. Evidence is
+in `episodic_context_credit_generated_len6_eight_step_retention_v1_2026-08-05/`.
+
+## Retention-aware artifact consolidation (2026-08-05)
+
+The memory-side compaction boundary now protects mastered source rows and
+registers fresh mastery evidence for the replacement. A two-phase audit first
+verifies a candidate without adoption, then records eight held-out retention
+probes per source capability before the final consolidation. Across seeds
+69316 and 69317, two rows became one, aliases and executable views survived
+reload, the frozen core and behavior were preserved, corruption was rejected,
+and consolidation used zero optimizer updates and zero replay. The short
+64-update control failed stable candidate mastery and was not adopted.
+
+This promotes retention-aware behavior-verified logical compaction. It remains
+bounded memory management, not learned byte compression, unrestricted growth,
+arbitrary new computation, or general continual learning. Evidence is in
+`artifact_consolidation_retention_v2_2026-08-05/`.
+
+## Opaque learned sequential consolidation (2026-08-06)
+
+The canonical package now contains a permutation-equivariant memory-side
+consolidation policy. It learns pair selection from scalar rewrite utility over
+opaque controller-native rows, while immutable transactions and fresh
+retention outcomes gate adoption. Across seeds 69316 and 69317, it selected
+verifiable pairs on every 512-bank held-out audit and composed four accepted
+rewrites from eight rows to four. Candidate permutation, corruption,
+reward-shuffle, retention, source immutability, and zero-replay controls passed.
+
+This promotes learned opaque latent compaction, not yet executable-artifact
+behavioral consolidation, learned byte compression, unrestricted memory growth,
+arbitrary new computation, or general continual learning. Evidence is in
+`opaque_consolidation_v1_2026-08-06/`.
+
+## Learned executable-artifact consolidation (2026-08-06)
+
+The learned opaque policy was next applied to four independently acquired
+executable growth artifacts. At 1,024 acquisition updates, both canonical
+seeds passed three sequential retention-gated rewrites from four physical rows
+to one. All four views remained behaviorally usable through each rewrite and
+after persistent reload; aliases, frozen-core equality, checksum corruption,
+and zero-replay controls also passed. The controller received zero optimizer
+updates during consolidation. The protected-source transaction now builds a
+disposable candidate, probes fresh outcomes, applies retention, and only then
+invokes the behavior verifier.
+
+The matched 512-update control was rejected because its candidate retention
+prefix did not establish stable `.75` mastery. This promotes bounded
+executable-artifact logical compaction and identifies acquisition depth as the
+current bottleneck; it does not establish byte compression, arbitrary program
+induction, unrestricted memory growth, or general continual learning. Evidence
+is in `learned_executable_consolidation_v1_2026-08-06/`.
+
+## Learned executable route acquisition (2026-08-06)
+
+The compacted executable bank now has a learned acquisition path as well as a
+storage path. Across seeds 69316 and 69317, an opaque permutation-equivariant
+router learned four executable addresses from attempted outcomes, resolved
+the selected alias through generic memory promotion, and preserved routed
+behavior after reload. Route accuracy was `1.000` and `0.945`; permutation
+accuracy matched those values; reward-shuffled controls stayed at `0.277` and
+`0.250`; and wrong-view behavior was causally lower for every operation.
+
+This is promoted bounded learned address acquisition over compacted external
+executable memory. It remains a foundation for continual learning, not
+arbitrary new skill induction, byte compression, unrestricted memory growth,
+or general continual learning. Evidence is in
+`learned_executable_route_acquisition_v1_2026-08-06/`.
+
+## Retention-safe online executable growth (2026-08-06)
+
+The fifth-view online extension now uses the external retention ledger as a
+transaction boundary. Across seeds 69316 and 69317, four old executable views
+were protected from fresh outcomes, a new `rotate` view was probed in a
+disposable candidate store, and the replacement row was adopted only after
+candidate retention and independent behavior gates passed. One physical row
+held five opaque views; the controller and old router stayed frozen; the new
+route was learned with zero replay after extension.
+
+Both seeds passed old-route retention, new-view learning, candidate permutation,
+wrong-view causality, reward shuffle, reload, checksum corruption, and frozen
+core/router controls. Combined five-view route accuracy was `1.000` and
+`0.9844`; the new route was `1.000` on both seeds. The short acquisition
+control was rejected for failing the `0.70` retention contract. This promotes
+one bounded retention-safe online executable addition, not unrestricted memory
+growth, arbitrary new computation, or general continual learning. Evidence is
+in `online_view_growth_retention_v2_2026-08-06/`.
+
+## Retention-safe two-step executable growth (2026-08-06)
+
+The online extension now composes twice under the retention ledger. Across
+seeds 69316 and 69317, four old executable views were protected, `rotate` was
+acquired and protected, and `complement_rotate` was then acquired through a
+second disposable candidate transaction. All six opaque views remained in one
+physical row while the controller, old router, and first extension stayed
+frozen. Two-step route accuracy was `1.000` and `0.9974`, with zero replayed
+route examples after either addition.
+
+Both seeds passed intermediate and final retention, behavior-preservation,
+permutation, causal, reward-shuffle, reload, corruption, and frozen-core
+controls. The short acquisition control was rejected when the first protected
+extension fell below its retention floor. This promotes bounded two-step
+retention-safe growth, not open-ended additions, arbitrary new computation, or
+general continual learning. Evidence is in
+`multistep_view_growth_retention_v2_2026-08-06/`.
+
+## Protected artifact capacity growth (2026-08-06)
+
+`ExecutableArtifactMemory.grow()` is now the explicit escape hatch when a
+full bank contains only protected rows. Across seeds 69316 and 69317, a third
+write was refused rather than evicting either mastered row; a separate larger
+bank copied verified artifacts and retention state; and the new artifact was
+admitted only after growth. Source state remained unchanged and all artifacts
+reloaded successfully. This promotes a memory safety boundary, not learned
+capacity planning or general continual learning. Evidence is in
+`artifact_capacity_growth_v1_2026-08-06/`.
+
+## Three-step retention growth promotion (2026-08-06)
+
+The three-step harness applies retention-safe transactions to seven opaque
+views and to float16, int8, and int4 storage replacements. Seeds 69316 and
+69317 both passed the full audit, including three protected intermediate
+replacements, all storage controls, frozen controller/earlier extensions, and
+zero replay. The earlier seed-69317 rejection was traced to inconsistent raw
+minimum versus stable-prefix retention accounting and is retained as a
+historical control. Evidence is in
+`three_step_view_growth_retention_exploration_2026-08-06/`.

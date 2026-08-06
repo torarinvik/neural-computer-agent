@@ -1,0 +1,53 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "artifact-capacity-planning-v1-2026-08-06",
+  "status": "promoted_bounded_learned_admission_planning",
+  "seeds": [69316, 69317],
+  "width": 8,
+  "initial_capacity": 2,
+  "planner_training_capacity": 5,
+  "updates_per_seed": 1024,
+  "batch_size": 32,
+  "retention_probes_per_seed": 8,
+  "unique_verifier_bits_per_seed": 262144,
+  "unique_logical_lifetimes_per_seed": 65536,
+  "optimizer_updates_per_seed": 2048,
+  "total_unique_verifier_bits": 524288,
+  "total_unique_logical_lifetimes": 131072,
+  "total_optimizer_updates": 4096,
+  "retention_observations_total": 32,
+  "replayed_examples": 0,
+  "controller_optimizer_updates": 0,
+  "wall_seconds_total": 4.696469915994385,
+  "stable_bits_to_threshold": [
+    262144,
+    262144
+  ],
+  "retention_on_mastered_primitives": [
+    1.0,
+    1.0
+  ],
+  "transfer_ratio_against_fresh_learner": null,
+  "verification": {
+    "seeds": [69316, 69317],
+    "learned_action_accuracy": [
+      0.98046875,
+      0.9765625
+    ],
+    "learned_ambiguous_choice_accuracy": [
+      0.9090909090909091,
+      0.8787878787878788
+    ],
+    "reward_shuffled_ambiguous_choice_accuracy": [
+      0.5454545454545454,
+      0.5454545454545454
+    ],
+    "candidate_permutation_invariant": [true, true],
+    "protected_bank_planned_growth": [true, true],
+    "source_immutable": [true, true],
+    "retention_transferred": [true, true],
+    "reloaded_all_artifacts": [true, true],
+    "promotion_gate_passed": true,
+    "claim_boundary": "Promoted bounded learned opaque admission planning with protected-capacity growth; unrestricted memory growth, arbitrary computation, and general continual learning remain unqualified."
+  }
+}

@@ -1,0 +1,414 @@
+from __future__ import annotations
+
+import pytest
+import torch
+
+from experiments.brainworkshop_canonical import (
+    BrainWorkshopEventEncoder,
+    CanonicalBrainWorkshopAgent,
+    NBackVerifier,
+    train_reward_only,
+)
+from neural_computer import (
+    AdaptiveOnlineEpisodicRelationReader,
+    RetentionPolicyConfig,
+)
+
+
+def test_nback_verifier_hides_target_and_scores_only_after_warmup() -> None:
+    verifier = NBackVerifier(batch_size=2, n_back=2, steps=4, seed=17)
+    verifier.reset()
+    first = verifier.score(torch.zeros(2, dtype=torch.long))
+    second = verifier.score(torch.zeros(2, dtype=torch.long))
+    third = verifier.score(torch.zeros(2, dtype=torch.long))
+    assert not bool(first.eligible.any())
+    assert not bool(second.eligible.any())
+    assert bool(third.eligible.all())
+    assert verifier.done is False
+
+
+def test_nback_verifier_can_expose_a_rendered_cue_without_task_metadata() -> None:
+    verifier = NBackVerifier(
+        batch_size=2,
+        n_back=2,
+        steps=4,
+        symbol_count=4,
+        cue_symbol=4,
+        seed=17,
+    )
+    verifier.reset()
+
+    assert torch.equal(verifier.observation(), torch.full((2,), 4))
+    cue_score = verifier.score(torch.zeros(2, dtype=torch.long))
+    assert not bool(cue_score.eligible.any())
+    assert verifier.eligible_trials == 2
+    assert verifier.steps == 5
+
+
+def test_nback_targets_are_balanced_and_time_shuffle_preserves_balance() -> None:
+    for time_shuffle in (False, True):
+        verifier = NBackVerifier(
+            batch_size=3,
+            n_back=2,
+            steps=6,
+            seed=17,
+            time_shuffle=time_shuffle,
+        )
+        verifier.reset()
+        rewards = []
+        while not verifier.done:
+            rewards.append(verifier.score(torch.zeros(3, dtype=torch.long)).reward)
+        observed = torch.stack(rewards, dim=1)[:, 2:].sum(dim=1)
+        assert torch.equal(observed, torch.full((3,), 2.0))
+
+
+def test_event_encoder_is_a_learned_frontend() -> None:
+    encoder = BrainWorkshopEventEncoder(symbol_count=4, event_width=6)
+    encoded = encoder(torch.tensor([0, 3], dtype=torch.long))
+    assert encoded.shape == (2, 6)
+    assert encoder.configuration()["schema"] == (
+        "neural-computer.brainworkshop-event-encoder.v1"
+    )
+
+
+def test_canonical_rollout_uses_keypress_and_retention_boundaries() -> None:
+    agent = CanonicalBrainWorkshopAgent(
+        n_back=2,
+        event_width=12,
+        intention_width=5,
+        feedback_width=4,
+        retention_config=RetentionPolicyConfig(
+            mastery_threshold=0.0,
+            min_mastery_observations=1,
+        ),
+        seed=17,
+    )
+    verifier = NBackVerifier(batch_size=3, n_back=2, steps=5, seed=23)
+    rollout = agent.rollout(verifier, sample=False)
+    assert rollout.events.shape == (3, 5, 12)
+    assert rollout.actions.shape == (3, 5)
+    assert rollout.rewards.shape == (3, 5)
+    assert rollout.eligible.shape == (3, 5)
+    assert rollout.context.shape == (3, 12)
+    assert torch.all((rollout.propensities > 0.0) & (rollout.propensities <= 1.0))
+    assert len(agent.retention.payload()["records"]) == 1
+    assert agent.retention.status(agent.capability_address).protected
+
+
+def test_reward_only_pilot_freezes_shared_controller_and_replays_nothing() -> None:
+    agent = CanonicalBrainWorkshopAgent(
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        seed=17,
+    )
+    history = train_reward_only(
+        agent,
+        n_back=2,
+        updates=2,
+        batch_size=4,
+        steps=4,
+        seed=31,
+    )
+    assert len(history) == 2
+    assert all(row.replayed_examples == 0 for row in history)
+    assert all(not parameter.requires_grad for parameter in agent.controller.parameters())
+    assert any(parameter.requires_grad for parameter in agent.intent_adapter.parameters())
+    assert len(agent.retention.payload()["records"]) == 0
+
+
+def test_relation_reader_can_replace_gru_context_in_canonical_runner() -> None:
+    agent = CanonicalBrainWorkshopAgent(
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        reader_kind="relation",
+        seed=17,
+    )
+    rollout = agent.rollout(NBackVerifier(batch_size=2, n_back=2, steps=4, seed=29))
+    assert rollout.context.shape == (2, 8)
+    assert agent.reader_kind == "relation"
+
+
+def test_appended_slot_uses_shared_bus_and_exact_mixture_propensity() -> None:
+    agent = CanonicalBrainWorkshopAgent(
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        reader_kind="relation",
+        seed=17,
+    )
+    slot = agent.add_relation_capability(n_back=3, seed=23)
+    rollout = agent.rollout(
+        NBackVerifier(batch_size=3, n_back=3, steps=5, seed=29),
+        sample=True,
+        record_retention=False,
+        exploration_probability=0.5,
+    )
+    assert slot == 1
+    assert "keypress_extension_1" in agent.runtime.output_bus.decoders
+    assert rollout.selected_slots.shape == (3, 5)
+    assert torch.all((rollout.propensities > 0.0) & (rollout.propensities <= 1.0))
+    forced = agent.rollout(
+        NBackVerifier(batch_size=3, n_back=3, steps=5, seed=31),
+        sample=False,
+        record_retention=False,
+        forced_slot=slot,
+    )
+    assert torch.equal(forced.selected_slots, torch.ones_like(forced.selected_slots))
+
+
+def test_adaptive_slot_is_provisioned_without_a_task_horizon() -> None:
+    agent = CanonicalBrainWorkshopAgent(
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        reader_kind="relation",
+        seed=17,
+    )
+
+    slot = agent.add_adaptive_relation_capability(memory_capacity=5, seed=23)
+
+    extension = agent.extensions[slot - 1]
+    assert extension.memory_capacity == 5
+    assert not hasattr(extension, "n_back")
+    assert isinstance(extension.reader, AdaptiveOnlineEpisodicRelationReader)
+
+
+def test_adaptive_slot_can_grow_its_external_window() -> None:
+    agent = CanonicalBrainWorkshopAgent(
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        reader_kind="relation",
+        seed=17,
+    )
+    slot = agent.add_adaptive_relation_capability(memory_capacity=5, seed=23)
+    controller_before = {
+        name: value.detach().clone()
+        for name, value in agent.controller.state_dict().items()
+    }
+
+    agent.expand_adaptive_relation_capability(slot, memory_capacity=6)
+
+    assert agent.extensions[slot - 1].memory_capacity == 6
+    assert agent.extensions[slot - 1].reader.memory_capacity == 6
+    for name, value in agent.controller.state_dict().items():
+        assert torch.equal(value, controller_before[name])
+
+
+def test_failed_adaptive_growth_resets_only_the_unmastered_external_slot() -> None:
+    agent = CanonicalBrainWorkshopAgent(
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        reader_kind="relation",
+        seed=17,
+    )
+    slot = agent.add_adaptive_relation_capability(memory_capacity=5, seed=23)
+    extension_before = {
+        name: value.detach().clone()
+        for name, value in agent.extensions[slot - 1].state_dict().items()
+    }
+    decoder_before = {
+        name: value.detach().clone()
+        for name, value in agent.extension_decoder(slot).state_dict().items()
+    }
+    controller_before = {
+        name: value.detach().clone()
+        for name, value in agent.controller.state_dict().items()
+    }
+
+    agent.expand_adaptive_relation_capability(
+        slot,
+        memory_capacity=6,
+        reset_failed_reader=True,
+        reset_seed=71,
+    )
+
+    extension_after = agent.extensions[slot - 1]
+    decoder_after = agent.extension_decoder(slot)
+    assert extension_after.memory_capacity == 6
+    assert extension_after.reader.memory_capacity == 6
+    assert any(
+        not torch.equal(value, extension_after.state_dict()[name])
+        for name, value in extension_before.items()
+    )
+    assert any(
+        not torch.equal(value, decoder_after.state_dict()[name])
+        for name, value in decoder_before.items()
+    )
+    for name, value in agent.controller.state_dict().items():
+        assert torch.equal(value, controller_before[name])
+
+
+def test_unprotected_capability_replacement_clears_stale_routes_and_protects_mastery() -> None:
+    agent = CanonicalBrainWorkshopAgent(
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        reader_kind="relation",
+        seed=17,
+    )
+    slot = agent.add_adaptive_relation_capability(memory_capacity=5, seed=23)
+    cue_event = agent.runtime.encoders["stimulus"](torch.tensor([3]))[0]
+    for _ in range(2):
+        agent.context_route_evidence.observe(cue_event, slot, 0.0)
+    receipt = agent.replace_unprotected_adaptive_relation_capability(
+        slot,
+        memory_capacity=6,
+        seed=71,
+    )
+
+    assert receipt["evicted_protected"] is False
+    assert receipt["evicted_route_protected"] is False
+    assert agent.context_route_evidence.protected_slots() == (False, False)
+    assert agent.context_route_evidence.preferred_order(cue_event) == (0, 1)
+
+    for _ in range(8):
+        agent.retention.observe(agent.capability_address_for(slot), 1.0)
+    with pytest.raises(ValueError, match="protected capability"):
+        agent.replace_unprotected_adaptive_relation_capability(
+            slot,
+            memory_capacity=7,
+            seed=72,
+        )
+
+
+def test_persistent_route_evidence_selects_an_opaque_slot_without_core_changes() -> None:
+    agent = CanonicalBrainWorkshopAgent(
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        reader_kind="relation",
+        seed=17,
+    )
+    slot = agent.add_relation_capability(n_back=3, seed=23)
+    controller_before = {
+        name: value.detach().clone()
+        for name, value in agent.controller.state_dict().items()
+    }
+
+    for _ in range(agent.route_evidence.min_mastery_observations):
+        agent.route_evidence.observe(slot, 1.0)
+    rollout = agent.rollout(
+        NBackVerifier(batch_size=3, n_back=3, steps=5, seed=37),
+        sample=False,
+        record_retention=False,
+        persistent_route=True,
+    )
+
+    assert torch.equal(
+        rollout.selected_slots[:, 0],
+        torch.full((3,), slot, dtype=torch.long),
+    )
+    assert agent.route_evidence.status().preferred_slot == slot
+    for name, value in agent.controller.state_dict().items():
+        assert torch.equal(value, controller_before[name])
+
+
+def test_context_route_uses_a_learned_event_cue_and_keeps_core_opaque() -> None:
+    agent = CanonicalBrainWorkshopAgent(
+        symbol_count=7,
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        reader_kind="relation",
+        seed=17,
+    )
+    slot = agent.add_relation_capability(n_back=3, seed=23)
+    encoder = agent.runtime.encoders["stimulus"]
+    cue_event = encoder(torch.tensor([4], dtype=torch.long))[0]
+    for _ in range(agent.context_route_evidence.min_mastery_observations):
+        agent.context_route_evidence.observe(cue_event, slot, 1.0)
+    controller_before = {
+        name: value.detach().clone()
+        for name, value in agent.controller.state_dict().items()
+    }
+
+    rollout = agent.rollout(
+        NBackVerifier(
+            batch_size=3,
+            n_back=3,
+            steps=5,
+            symbol_count=4,
+            cue_symbol=4,
+            seed=37,
+        ),
+        sample=False,
+        record_retention=False,
+        context_route=True,
+    )
+
+    assert torch.equal(
+        rollout.selected_slots[:, 0],
+        torch.full((3,), slot, dtype=torch.long),
+    )
+    for name, value in agent.controller.state_dict().items():
+        assert torch.equal(value, controller_before[name])
+
+
+def test_route_state_round_trips_without_loading_controller_weights() -> None:
+    agent = CanonicalBrainWorkshopAgent(
+        symbol_count=7,
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        reader_kind="relation",
+        seed=17,
+    )
+    slot = agent.add_relation_capability(n_back=3, seed=23)
+    cue_event = agent.runtime.encoders["stimulus"](
+        torch.tensor([4], dtype=torch.long)
+    )[0]
+    for _ in range(agent.route_evidence.min_mastery_observations):
+        agent.route_evidence.observe(slot, 1.0)
+        agent.context_route_evidence.observe(cue_event, slot, 1.0)
+    payload = agent.route_state_payload()
+
+    restored = CanonicalBrainWorkshopAgent(
+        symbol_count=7,
+        n_back=2,
+        event_width=8,
+        intention_width=4,
+        feedback_width=4,
+        reader_kind="relation",
+        seed=17,
+    )
+    restored.add_relation_capability(n_back=3, seed=23)
+    controller_before = {
+        name: value.detach().clone()
+        for name, value in restored.controller.state_dict().items()
+    }
+    restored.load_route_state_payload(payload)
+
+    assert restored.route_state_payload() == payload
+    rollout = restored.rollout(
+        NBackVerifier(
+            batch_size=2,
+            n_back=3,
+            steps=5,
+            symbol_count=4,
+            cue_symbol=4,
+            seed=41,
+        ),
+        sample=False,
+        record_retention=False,
+        context_route=True,
+    )
+    assert torch.equal(
+        rollout.selected_slots[:, 0],
+        torch.full((2,), slot, dtype=torch.long),
+    )
+    for name, value in restored.controller.state_dict().items():
+        assert torch.equal(value, controller_before[name])

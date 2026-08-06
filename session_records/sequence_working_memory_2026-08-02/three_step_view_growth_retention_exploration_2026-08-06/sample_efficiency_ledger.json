@@ -1,0 +1,73 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "three_step_view_growth_retention_exploration_2026-08-06",
+  "status": "promoted_cross_seed_storage_retention",
+  "claim_boundary": "Two independent seeds completed retention-safe seven-view growth and float16/int8/int4 storage transactions with the frozen controller and zero replay. Promotion uses stable cumulative-prefix retention accounting.",
+  "unique_verifier_bits": 262144,
+  "unique_logical_lifetimes": 65536,
+  "optimizer_updates": 4096,
+  "replayed_examples": 0,
+  "wall_time_seconds": 948.092470958,
+  "wall_time_seconds_by_seed": {
+    "69316": 607.216437833,
+    "69317": 340.876033125
+  },
+  "latency": "full evidence wall time is recorded independently for both promoted seeds",
+  "stable_bits_to_threshold": null,
+  "retention_on_mastered_primitives": {
+    "threshold": 0.70,
+    "probes_per_capability": 8,
+    "positive_seed": 69316,
+    "replication_seed": 69317,
+    "growth_candidate_floors": {
+      "rotate": 0.83203125,
+      "complement_rotate": 0.8232421875,
+      "adjacent_xor": 0.72314453125
+    },
+    "storage_candidate_floors": {
+      "float16": 0.7216796875,
+      "int8": 0.72119140625,
+      "int4": 0.7138671875
+    },
+    "replication_growth_candidate_floors": {
+      "rotate": 0.78369140625,
+      "complement_rotate": 0.7939453125,
+      "adjacent_xor": 0.70703125
+    },
+    "replication_storage_candidate_floors": {
+      "float16": 0.7119140625,
+      "int8": 0.70458984375,
+      "int4": 0.7236328125
+    },
+    "historical_pre_fix_rejection": {
+      "seed": 69317,
+      "capability": "adjacent_xor",
+      "raw_minimum": 0.68359375,
+      "cause": "retention floor used raw minimum while the gate used stable cumulative-prefix minimum"
+    }
+  },
+  "transfer_ratio_against_fresh_learner": null,
+  "verification": {
+    "positive_seed": {
+      "seed": 69316,
+      "unique_verifier_bits": 262144,
+      "unique_logical_lifetimes": 65536,
+      "optimizer_updates": 4096,
+      "retention_observations": 224,
+      "compression_audit_lifetimes_per_format": 448,
+      "compression_audit_verifier_bits_per_format": 1792,
+      "compression_formats": ["float16", "int8", "int4"],
+      "replayed_examples": 0,
+      "all_growth_and_storage_gates_passed": true,
+      "stable_prefix_retention_accounting": true
+    },
+    "replication_seed": {
+      "seed": 69317,
+      "retention_threshold": 0.70,
+      "retention_probes": 8,
+      "replayed_examples": 0,
+      "all_growth_and_storage_gates_passed": true,
+      "stable_prefix_retention_accounting": true
+    }
+  }
+}

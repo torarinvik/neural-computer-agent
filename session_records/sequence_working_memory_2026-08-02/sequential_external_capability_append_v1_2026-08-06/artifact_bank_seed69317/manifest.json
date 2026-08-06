@@ -1,0 +1,32 @@
+{
+  "alias_keys": [
+    [],
+    [],
+    [],
+    []
+  ],
+  "alias_views": [
+    [],
+    [],
+    [],
+    []
+  ],
+  "artifact_sha256": [
+    "6025cbd59d4d0173ea45b33b940dfdc47d09a2a24cf114d32258d6def3365a5a",
+    "f9898e96e05aa66ab14b84e48aee14f6036aa53a29592f62780e263d02c78fc6",
+    "5841fded66dc29d56da0e5619456a3d3e7eadf66269b39b01a64aa1e89c6f406",
+    "e404eeca1e1fda105b777bb4c23d27db6c89db9321c09c49746de0be9c6e4531"
+  ],
+  "capacity": 4,
+  "manifest_version": 4,
+  "paths": [
+    "artifact-v00000001.pt",
+    "artifact-v00000002.pt",
+    "artifact-v00000003.pt",
+    "artifact-v00000004.pt"
+  ],
+  "schema": "neural-computer.executable-artifact-memory.v2",
+  "width": 48,
+  "write_match_threshold": 0.99999,
+  "write_threshold": 0.5
+}

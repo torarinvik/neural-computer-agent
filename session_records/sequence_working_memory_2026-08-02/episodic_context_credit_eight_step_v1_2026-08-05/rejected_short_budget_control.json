@@ -1,0 +1,19 @@
+{
+  "schema": "neural-computer.episodic-context-credit-short-budget-control.v1",
+  "new_families": [2, 3, 4, 5, 6, 7, 8, 9],
+  "seeds": [69316, 69317],
+  "context_updates": 128,
+  "credit_updates": 128,
+  "route_updates": 256,
+  "external_credit_updates": 128,
+  "context_old_route_accuracy": [0.5, 0.5],
+  "pooled_baseline_old_route_accuracy": [0.5, 0.5],
+  "candidate_permutation_accuracy": [0.5, 0.5],
+  "new_route_selection": [1.0, 1.0],
+  "new_credit_position_accuracy": [0.75, 1.0],
+  "replayed_examples": 0,
+  "unique_verifier_bits_per_seed": 258048,
+  "unique_logical_lifetimes_per_seed": 55552,
+  "optimizer_updates_per_seed": 3584,
+  "claim_boundary": "Rejected because the longer temporal context did not preserve the mastered old route at the short training budget; this is a budget-control failure, not a promotion."
+}

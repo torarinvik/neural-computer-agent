@@ -1,0 +1,13 @@
+{
+  "schema": "neural-computer.artifact-view-routing-rejection.v1",
+  "seed": 69316,
+  "updates": 64,
+  "route_updates": 256,
+  "route_accuracy": 1.0,
+  "candidate_permutation_accuracy": 1.0,
+  "reward_shuffled_route_accuracy": 0.5,
+  "selected_behavior": {"2": 0.875, "3": 0.7916666865348816, "4": 0.671875},
+  "wrong_behavior": {"3": 0.6770833134651184, "4": 0.6875},
+  "promoted": false,
+  "rejection_reason": "View routing learned, but the span-4 artifact was undertrained and the end-to-end wrong-view causal gate failed."
+}

@@ -1,0 +1,52 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "three-step-view-growth-v1-2026-08-05",
+  "status": "promoted_three_step_outcome_gated_growth",
+  "seeds": [69316, 69317],
+  "old_operations": ["forward", "reverse", "complement", "complement_reverse"],
+  "new_operations": ["rotate", "complement_rotate", "adjacent_xor"],
+  "old_route_updates_per_seed": 2048,
+  "new_extension_updates_per_seed": 512,
+  "reward_shuffled_extension_updates_per_seed": 512,
+  "artifact_updates_per_old_procedure": 512,
+  "artifact_updates_per_new_procedure": 512,
+  "batch_size": 16,
+  "route_batch_size": 16,
+  "audit_count": 64,
+  "physical_rows": 1,
+  "views": 7,
+  "unique_logical_lifetimes_per_seed": [65536, 65536],
+  "unique_verifier_bits_per_seed": [262144, 262144],
+  "optimizer_updates_per_seed": [4096, 4096],
+  "base_route_optimizer_updates_per_seed": [2048, 2048],
+  "extension_route_optimizer_updates_per_seed": [1536, 1536],
+  "route_unique_verifier_bits_per_seed": [163840, 163840],
+  "replayed_examples_after_each_extension": [[0, 0, 0], [0, 0, 0]],
+  "wall_seconds": [319.16825920799965, 307.7724607499995],
+  "base_old_route_accuracy": [1.0, 0.9921875],
+  "new_route_accuracy": {
+    "rotate": [1.0, 1.0],
+    "complement_rotate": [1.0, 1.0],
+    "adjacent_xor": [1.0, 1.0]
+  },
+  "three_step_route_accuracy": [1.0, 0.998046875],
+  "candidate_permutation_accuracy": [1.0, 0.998046875],
+  "prior_extension_attempt_rates": {
+    "rotate_on_complement_rotate": [1.0, 1.0],
+    "rotate_on_adjacent_xor": [1.0, 1.0],
+    "complement_rotate_on_adjacent_xor": [1.0, 1.0]
+  },
+  "reward_shuffled_new_selection_rates": {
+    "rotate": [0.0, 0.0],
+    "complement_rotate": [0.0, 0.0],
+    "adjacent_xor": [0.0, 0.0]
+  },
+  "minimum_selected_behavior": [0.72265625, 0.7109375],
+  "behavior_floor": 0.70,
+  "wrong_view_causal_gate": [true, true],
+  "persistent_reload_gate": [true, true],
+  "corruption_rejected": [true, true],
+  "frozen_controller_gate": [true, true],
+  "frozen_extensions_gate": [true, true],
+  "claim_boundary": "Promoted bounded three-step outcome-gated external fallback and replay-free consolidation; not unrestricted memory growth, arbitrary new computation, open-ended task discovery, learned compression, or general continual learning."
+}

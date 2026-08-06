@@ -1,0 +1,288 @@
+{
+  "schema": "neural-computer.brainworkshop-canonical-smoke.v1",
+  "status": "reward_only_pilot",
+  "n_back": 2,
+  "reader": "relation",
+  "batch_size": 32,
+  "steps": 6,
+  "eligible_trials": 4,
+  "eligible_accuracy": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+  ],
+  "mean_eligible_accuracy": 1.0,
+  "baseline_controls": {
+    "fresh": 0.5,
+    "time_shuffle": 0.5,
+    "history_reset": 0.5
+  },
+  "post_controls": {
+    "fresh": 1.0,
+    "time_shuffle": 0.5364583134651184,
+    "history_reset": 0.5
+  },
+  "unique_verifier_bits": 4096,
+  "unique_logical_lifetimes": 1024,
+  "evaluation_verifier_bits_per_control": 128,
+  "optimizer_updates": 32,
+  "replayed_examples": 0,
+  "training_history": [
+    {
+      "update": 1,
+      "loss": -0.009832499548792839,
+      "eligible_accuracy": 0.484375,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 2,
+      "loss": 0.00551129225641489,
+      "eligible_accuracy": 0.5078125,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 3,
+      "loss": 0.021639838814735413,
+      "eligible_accuracy": 0.53125,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 4,
+      "loss": -0.03134382516145706,
+      "eligible_accuracy": 0.4609375,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 5,
+      "loss": -0.013580653816461563,
+      "eligible_accuracy": 0.5078125,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 6,
+      "loss": -0.032533444464206696,
+      "eligible_accuracy": 0.5546875,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 7,
+      "loss": -0.034794338047504425,
+      "eligible_accuracy": 0.5859375,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 8,
+      "loss": 0.028891339898109436,
+      "eligible_accuracy": 0.765625,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 9,
+      "loss": -0.03790488466620445,
+      "eligible_accuracy": 0.765625,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 10,
+      "loss": -0.02209307998418808,
+      "eligible_accuracy": 0.8515625,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 11,
+      "loss": -0.02509847655892372,
+      "eligible_accuracy": 0.8671875,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 12,
+      "loss": 0.02081836387515068,
+      "eligible_accuracy": 0.90625,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 13,
+      "loss": -0.008527849800884724,
+      "eligible_accuracy": 0.8203125,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 14,
+      "loss": -0.0033998223952949047,
+      "eligible_accuracy": 0.90625,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 15,
+      "loss": 0.0008141927537508309,
+      "eligible_accuracy": 0.890625,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 16,
+      "loss": -1.820343459257856e-05,
+      "eligible_accuracy": 0.875,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 17,
+      "loss": -0.0010480291675776243,
+      "eligible_accuracy": 0.9296875,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 18,
+      "loss": -0.0009921775199472904,
+      "eligible_accuracy": 0.9140625,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 19,
+      "loss": 8.186466402548831e-06,
+      "eligible_accuracy": 0.96875,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 20,
+      "loss": 0.0047125318087637424,
+      "eligible_accuracy": 0.984375,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 21,
+      "loss": -0.0,
+      "eligible_accuracy": 0.9765625,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 22,
+      "loss": -0.0,
+      "eligible_accuracy": 1.0,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 23,
+      "loss": -0.0,
+      "eligible_accuracy": 1.0,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 24,
+      "loss": -0.0,
+      "eligible_accuracy": 1.0,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 25,
+      "loss": -0.0,
+      "eligible_accuracy": 1.0,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 26,
+      "loss": -0.0,
+      "eligible_accuracy": 1.0,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 27,
+      "loss": -0.0,
+      "eligible_accuracy": 1.0,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 28,
+      "loss": -0.0,
+      "eligible_accuracy": 1.0,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 29,
+      "loss": -0.0,
+      "eligible_accuracy": 1.0,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 30,
+      "loss": -0.0,
+      "eligible_accuracy": 1.0,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 31,
+      "loss": -0.0,
+      "eligible_accuracy": 1.0,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    },
+    {
+      "update": 32,
+      "loss": -0.0,
+      "eligible_accuracy": 1.0,
+      "unique_verifier_bits": 128,
+      "replayed_examples": 0
+    }
+  ],
+  "keypress_decoder_schema": "neural-computer.keypress-decoder.v1",
+  "retention_records": 1,
+  "retention_protected": 0
+}

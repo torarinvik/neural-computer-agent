@@ -1,0 +1,13 @@
+{
+  "policy": {
+    "mastery_threshold": 0.8,
+    "min_mastery_observations": 8,
+    "recent_window": 8,
+    "reversal_patience": 4,
+    "reversal_threshold": 0.5
+  },
+  "records": [],
+  "schema": "neural-computer.capability-retention-ledger.v1",
+  "step": 0,
+  "width": 48
+}

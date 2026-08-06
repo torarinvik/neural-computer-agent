@@ -1,0 +1,652 @@
+{
+  "schema": "neural-computer.brainworkshop-context-route-failure-demotion.v1",
+  "status": "promoted_failure_only_context_route_demotion",
+  "old_cue": 4,
+  "new_cue": 5,
+  "unknown_cue": 6,
+  "old_n_back": 2,
+  "new_n_back": 4,
+  "transition_batches": 12,
+  "reversal_threshold": 0.75,
+  "reversal_patience": 4,
+  "old_calibration": [
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    }
+  ],
+  "new_calibration_under_different_cue": [
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    }
+  ],
+  "old_status_before_change": {
+    "key": [
+      -0.2212037295103073,
+      0.19751077890396118,
+      -0.12247243523597717,
+      -0.1811918318271637,
+      0.11956578493118286,
+      0.038295499980449677,
+      0.06882239133119583,
+      0.26313045620918274,
+      0.09665066748857498,
+      -0.045492023229599,
+      0.1721602827310562,
+      0.28409868478775024,
+      0.12382891774177551,
+      -0.03234123811125755,
+      -0.40212583541870117,
+      0.19789813458919525,
+      -0.39430224895477295,
+      -0.05000656843185425,
+      0.018969951197504997,
+      -0.046162232756614685,
+      0.1486758142709732,
+      -0.13286451995372772,
+      -0.17837654054164886,
+      0.0910872220993042,
+      0.03573755919933319,
+      0.13141638040542603,
+      -0.014349259436130524,
+      -0.1407068967819214,
+      0.1116684228181839,
+      0.04905461519956589,
+      0.10042205452919006,
+      0.3628091514110565
+    ],
+    "evidence": {
+      "attempts": [
+        8
+      ],
+      "successes": [
+        8.0
+      ],
+      "posterior": [
+        0.9
+      ],
+      "stable_prefix_minimum": [
+        1.0
+      ],
+      "protected": [
+        true
+      ],
+      "reversal_streak": [
+        0
+      ],
+      "reversal_count": [
+        0
+      ],
+      "preferred_slot": 0,
+      "last_slot": 0,
+      "last_outcome": 1.0,
+      "version": 9
+    },
+    "preferred_order": [
+      0
+    ]
+  },
+  "transition": [
+    {
+      "batch": 1,
+      "eligible_accuracy": 0.7578125,
+      "first_selected_slot": 0.0,
+      "slot_0_eligible_fraction": 0.4296875,
+      "slot_1_eligible_fraction": 0.5703125
+    },
+    {
+      "batch": 2,
+      "eligible_accuracy": 0.78125,
+      "first_selected_slot": 0.0,
+      "slot_0_eligible_fraction": 0.515625,
+      "slot_1_eligible_fraction": 0.484375
+    },
+    {
+      "batch": 3,
+      "eligible_accuracy": 0.765625,
+      "first_selected_slot": 0.0,
+      "slot_0_eligible_fraction": 0.484375,
+      "slot_1_eligible_fraction": 0.515625
+    },
+    {
+      "batch": 4,
+      "eligible_accuracy": 0.765625,
+      "first_selected_slot": 0.0,
+      "slot_0_eligible_fraction": 0.4375,
+      "slot_1_eligible_fraction": 0.5625
+    },
+    {
+      "batch": 5,
+      "eligible_accuracy": 0.765625,
+      "first_selected_slot": 0.0,
+      "slot_0_eligible_fraction": 0.453125,
+      "slot_1_eligible_fraction": 0.546875
+    },
+    {
+      "batch": 6,
+      "eligible_accuracy": 0.7578125,
+      "first_selected_slot": 0.0,
+      "slot_0_eligible_fraction": 0.4375,
+      "slot_1_eligible_fraction": 0.5625
+    },
+    {
+      "batch": 7,
+      "eligible_accuracy": 0.7578125,
+      "first_selected_slot": 0.0,
+      "slot_0_eligible_fraction": 0.453125,
+      "slot_1_eligible_fraction": 0.546875
+    },
+    {
+      "batch": 8,
+      "eligible_accuracy": 0.75,
+      "first_selected_slot": 0.0,
+      "slot_0_eligible_fraction": 0.4453125,
+      "slot_1_eligible_fraction": 0.5546875
+    },
+    {
+      "batch": 9,
+      "eligible_accuracy": 1.0,
+      "first_selected_slot": 1.0,
+      "slot_0_eligible_fraction": 0.0,
+      "slot_1_eligible_fraction": 1.0
+    },
+    {
+      "batch": 10,
+      "eligible_accuracy": 1.0,
+      "first_selected_slot": 1.0,
+      "slot_0_eligible_fraction": 0.0,
+      "slot_1_eligible_fraction": 1.0
+    },
+    {
+      "batch": 11,
+      "eligible_accuracy": 1.0,
+      "first_selected_slot": 1.0,
+      "slot_0_eligible_fraction": 0.0,
+      "slot_1_eligible_fraction": 1.0
+    },
+    {
+      "batch": 12,
+      "eligible_accuracy": 1.0,
+      "first_selected_slot": 1.0,
+      "slot_0_eligible_fraction": 0.0,
+      "slot_1_eligible_fraction": 1.0
+    }
+  ],
+  "old_status_after_transition": {
+    "key": [
+      -0.2212037295103073,
+      0.19751077890396118,
+      -0.12247243523597717,
+      -0.1811918318271637,
+      0.11956578493118286,
+      0.038295499980449677,
+      0.06882239133119583,
+      0.26313045620918274,
+      0.09665066748857498,
+      -0.045492023229599,
+      0.1721602827310562,
+      0.28409868478775024,
+      0.12382891774177551,
+      -0.03234123811125755,
+      -0.40212583541870117,
+      0.19789813458919525,
+      -0.39430224895477295,
+      -0.05000656843185425,
+      0.018969951197504997,
+      -0.046162232756614685,
+      0.1486758142709732,
+      -0.13286451995372772,
+      -0.17837654054164886,
+      0.0910872220993042,
+      0.03573755919933319,
+      0.13141638040542603,
+      -0.014349259436130524,
+      -0.1407068967819214,
+      0.1116684228181839,
+      0.04905461519956589,
+      0.10042205452919006,
+      0.3628091514110565
+    ],
+    "evidence": {
+      "attempts": [
+        4,
+        12
+      ],
+      "successes": [
+        1.2317708432674408,
+        12.0
+      ],
+      "posterior": [
+        0.3719618072112401,
+        0.9285714285714286
+      ],
+      "stable_prefix_minimum": [
+        1.0,
+        1.0
+      ],
+      "protected": [
+        false,
+        true
+      ],
+      "reversal_streak": [
+        0,
+        0
+      ],
+      "reversal_count": [
+        1,
+        0
+      ],
+      "preferred_slot": 1,
+      "last_slot": 1,
+      "last_outcome": 1.0,
+      "version": 30
+    },
+    "preferred_order": [
+      1,
+      0
+    ]
+  },
+  "new_status_after_transition": {
+    "key": [
+      -0.04218604043126106,
+      -0.15719525516033173,
+      -0.1408495008945465,
+      0.20591281354427338,
+      -0.0011390515137463808,
+      -0.18684686720371246,
+      0.05157911777496338,
+      -0.21103915572166443,
+      0.23232710361480713,
+      0.3782910108566284,
+      -0.011210311204195023,
+      0.05027414485812187,
+      -0.3476083278656006,
+      -0.010685420595109463,
+      0.27024343609809875,
+      0.16431958973407745,
+      0.17332182824611664,
+      0.05237580090761185,
+      0.14747169613838196,
+      0.12253729999065399,
+      -0.16141840815544128,
+      -0.1385241448879242,
+      -0.1055581346154213,
+      -0.059692613780498505,
+      0.11325301229953766,
+      0.18216629326343536,
+      -0.027298692613840103,
+      0.025222018361091614,
+      -0.2727641463279724,
+      -0.07348424196243286,
+      -0.11979538947343826,
+      0.37068620324134827
+    ],
+    "evidence": {
+      "attempts": [
+        0,
+        8
+      ],
+      "successes": [
+        0.0,
+        8.0
+      ],
+      "posterior": [
+        0.5,
+        0.9
+      ],
+      "stable_prefix_minimum": [
+        1.0,
+        1.0
+      ],
+      "protected": [
+        false,
+        true
+      ],
+      "reversal_streak": [
+        0,
+        0
+      ],
+      "reversal_count": [
+        0,
+        0
+      ],
+      "preferred_slot": 1,
+      "last_slot": 1,
+      "last_outcome": 1.0,
+      "version": 10
+    },
+    "preferred_order": [
+      1,
+      0
+    ]
+  },
+  "new_controls_same_old_cue": {
+    "fresh": 1.0,
+    "time_shuffle": 0.4713541567325592,
+    "history_reset": 0.5
+  },
+  "new_controls_new_cue": {
+    "fresh": 1.0,
+    "time_shuffle": 0.4713541567325592,
+    "history_reset": 0.5
+  },
+  "unknown_cue_controls": {
+    "fresh": 0.7604166865348816,
+    "time_shuffle": 0.4557291567325592,
+    "history_reset": 0.5
+  },
+  "old_forced_retention_after_change": [
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    }
+  ],
+  "preferred_route_order_after_failure_only_demotion": [
+    1,
+    0
+  ],
+  "reload_selected_route": [
+    1,
+    1
+  ],
+  "route_state_payload": {
+    "schema": "neural-computer.brainworkshop-route-state.v1",
+    "slot_count": 2,
+    "route_evidence": {
+      "schema": "neural-computer.persistent-opaque-route-evidence.v1",
+      "prior_strength": 1.0,
+      "mastery_threshold": 0.8,
+      "min_mastery_observations": 8,
+      "reversal_threshold": 0.5,
+      "reversal_patience": 4,
+      "attempts": [
+        0,
+        0
+      ],
+      "successes": [
+        0.0,
+        0.0
+      ],
+      "stable_prefix_minimum": [
+        1.0,
+        1.0
+      ],
+      "protected": [
+        false,
+        false
+      ],
+      "reversal_streak": [
+        0,
+        0
+      ],
+      "reversal_count": [
+        0,
+        0
+      ],
+      "preferred_slot": null,
+      "last_slot": null,
+      "last_outcome": null,
+      "version": 2
+    },
+    "context_route_evidence": {
+      "schema": "neural-computer.persistent-opaque-context-route-evidence.v1",
+      "width": 32,
+      "matching_tolerance": 0.0001,
+      "prior_strength": 1.0,
+      "mastery_threshold": 0.8,
+      "min_mastery_observations": 8,
+      "reversal_threshold": 0.75,
+      "reversal_patience": 4,
+      "slot_count": 2,
+      "version": 40,
+      "contexts": [
+        {
+          "key": [
+            -0.2212037295103073,
+            0.19751077890396118,
+            -0.12247243523597717,
+            -0.1811918318271637,
+            0.11956578493118286,
+            0.038295499980449677,
+            0.06882239133119583,
+            0.26313045620918274,
+            0.09665066748857498,
+            -0.045492023229599,
+            0.1721602827310562,
+            0.28409868478775024,
+            0.12382891774177551,
+            -0.03234123811125755,
+            -0.40212583541870117,
+            0.19789813458919525,
+            -0.39430224895477295,
+            -0.05000656843185425,
+            0.018969951197504997,
+            -0.046162232756614685,
+            0.1486758142709732,
+            -0.13286451995372772,
+            -0.17837654054164886,
+            0.0910872220993042,
+            0.03573755919933319,
+            0.13141638040542603,
+            -0.014349259436130524,
+            -0.1407068967819214,
+            0.1116684228181839,
+            0.04905461519956589,
+            0.10042205452919006,
+            0.3628091514110565
+          ],
+          "evidence": {
+            "schema": "neural-computer.persistent-opaque-route-evidence.v1",
+            "prior_strength": 1.0,
+            "mastery_threshold": 0.8,
+            "min_mastery_observations": 8,
+            "reversal_threshold": 0.75,
+            "reversal_patience": 4,
+            "attempts": [
+              4,
+              12
+            ],
+            "successes": [
+              1.2317708432674408,
+              12.0
+            ],
+            "stable_prefix_minimum": [
+              1.0,
+              1.0
+            ],
+            "protected": [
+              false,
+              true
+            ],
+            "reversal_streak": [
+              0,
+              0
+            ],
+            "reversal_count": [
+              1,
+              0
+            ],
+            "preferred_slot": 1,
+            "last_slot": 1,
+            "last_outcome": 1.0,
+            "version": 30
+          }
+        },
+        {
+          "key": [
+            -0.04218604043126106,
+            -0.15719525516033173,
+            -0.1408495008945465,
+            0.20591281354427338,
+            -0.0011390515137463808,
+            -0.18684686720371246,
+            0.05157911777496338,
+            -0.21103915572166443,
+            0.23232710361480713,
+            0.3782910108566284,
+            -0.011210311204195023,
+            0.05027414485812187,
+            -0.3476083278656006,
+            -0.010685420595109463,
+            0.27024343609809875,
+            0.16431958973407745,
+            0.17332182824611664,
+            0.05237580090761185,
+            0.14747169613838196,
+            0.12253729999065399,
+            -0.16141840815544128,
+            -0.1385241448879242,
+            -0.1055581346154213,
+            -0.059692613780498505,
+            0.11325301229953766,
+            0.18216629326343536,
+            -0.027298692613840103,
+            0.025222018361091614,
+            -0.2727641463279724,
+            -0.07348424196243286,
+            -0.11979538947343826,
+            0.37068620324134827
+          ],
+          "evidence": {
+            "schema": "neural-computer.persistent-opaque-route-evidence.v1",
+            "prior_strength": 1.0,
+            "mastery_threshold": 0.8,
+            "min_mastery_observations": 8,
+            "reversal_threshold": 0.75,
+            "reversal_patience": 4,
+            "attempts": [
+              0,
+              8
+            ],
+            "successes": [
+              0.0,
+              8.0
+            ],
+            "stable_prefix_minimum": [
+              1.0,
+              1.0
+            ],
+            "protected": [
+              false,
+              true
+            ],
+            "reversal_streak": [
+              0,
+              0
+            ],
+            "reversal_count": [
+              0,
+              0
+            ],
+            "preferred_slot": 1,
+            "last_slot": 1,
+            "last_outcome": 1.0,
+            "version": 10
+          }
+        }
+      ]
+    }
+  },
+  "prior_bank_unchanged": true,
+  "controller_frozen": true,
+  "unique_verifier_bits": 46592,
+  "unique_logical_lifetimes": 10624,
+  "optimizer_updates": 320,
+  "replayed_examples": 0,
+  "verifier_outcome_events": 95616,
+  "feedback_events": 46592,
+  "promotion_gates": {
+    "failure_only_route_demoted": true,
+    "new_route_mastered": true,
+    "new_capability_calibrated_under_different_cue": true,
+    "old_capability_retained": true,
+    "route_state_reload": true,
+    "prior_bank_unchanged": true
+  },
+  "claim_boundary": "A protected opaque route was demoted by fresh changed-task scalar failures without same-cue calibration, and a previously learned external slot became preferred while the old capability was retained. This is bounded failure-driven nonstationary memory, not general continual learning or unrestricted memory growth."
+}

@@ -1,0 +1,62 @@
+{
+  "schema": "neural-computer.brainworkshop-learned-eviction.v1",
+  "source_run": {
+    "train_worlds": 4,
+    "eval_worlds": 8,
+    "policy": {
+      "candidate_width": 32,
+      "context_width": 32,
+      "hidden": 32,
+      "schema": "neural-computer.external-capability-eviction-policy.v1"
+    },
+    "learner_visible_inputs": [
+      "opaque incoming learned event tensor",
+      "opaque capability address tensor",
+      "deterministic scalar verifier outcomes"
+    ],
+    "replacement_learning_rate": 0.003
+  },
+  "status": "promoted_learned_capability_eviction",
+  "promotion_gates": {
+    "base_retention": true,
+    "controller_frozen": true,
+    "feature_corruption_chance": true,
+    "learned_selection": true,
+    "prior_mastered_bank_unchanged": true,
+    "protected_mastery_mask": true,
+    "replacement_fresh": true,
+    "retained_capability": true,
+    "reward_shuffle_chance": true,
+    "stale_route_cleared": true,
+    "zero_replay": true
+  },
+  "selection": {
+    "accuracy": null,
+    "selected_slots": null,
+    "oracle_slots": null
+  },
+  "controls": {
+    "reward_shuffle_accuracy": 0.5,
+    "corrupted_feature_accuracy": 0.5
+  },
+  "replacement": {
+    "selected_slot": 2,
+    "oracle_slot": 2,
+    "selection_correct": true,
+    "replacement_fresh": 1.0,
+    "retained_capability": 1.0,
+    "base_retention": 1.0,
+    "automatic_route_score": 0.8062499761581421,
+    "stale_route_cleared": true,
+    "prior_mastered_bank_unchanged": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 945792,
+    "unique_logical_lifetimes": 236288,
+    "optimizer_updates": 2912,
+    "replayed_examples": 0,
+    "verifier_outcome_events": 2540544,
+    "feedback_events": 945792
+  },
+  "claim_boundary": "Promoted learned outcome-only utility selection for a bounded canonical capability bank only; retention masking remains explicit. This does not establish persistent learned consolidation, unbounded memory, arbitrary new computation, or general continual learning."
+}

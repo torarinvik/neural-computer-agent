@@ -1,0 +1,14 @@
+{
+  "schema": "neural-computer.multistep-view-growth-rejected-control.v1",
+  "status": "rejected",
+  "seed": 69316,
+  "old_artifact_updates": 64,
+  "new_artifact_updates_per_addition": 64,
+  "base_route_updates": 64,
+  "route_extension_updates_per_addition": 64,
+  "audit_count": 16,
+  "retention_probes": 4,
+  "retention_threshold": 0.60,
+  "behavior_tolerance": 0.10,
+  "reason": "The first protected extension was rejected because a retained capability fell below the declared retention floor. No candidate was adopted."
+}
