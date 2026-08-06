@@ -1,0 +1,106 @@
+{
+  "config": {
+    "batch_size": 64,
+    "eval_seeds": 8,
+    "event_width": 64,
+    "gamma": 0.95,
+    "hidden": 64,
+    "intent_width": 32,
+    "learning_rate": 0.001,
+    "steps": 64,
+    "updates": 400
+  },
+  "gates": {
+    "both_capabilities_protected": true,
+    "no_replay": true,
+    "pong_acquired": true,
+    "pong_random_near_chance": true,
+    "pong_shuffled_near_chance": true,
+    "snake_acquired": true,
+    "snake_retained": true,
+    "snake_state_unchanged": true
+  },
+  "pong": {
+    "random": {
+      "mastery": 0.076171875,
+      "mean_foods": 0.376953125,
+      "mean_survival": 11.900390625,
+      "per_seed_mastery": [
+        0.09375,
+        0.03125,
+        0.0625,
+        0.078125,
+        0.109375,
+        0.09375,
+        0.078125,
+        0.0625
+      ]
+    },
+    "shuffled": {
+      "mastery": 0.076171875,
+      "mean_foods": 0.376953125,
+      "mean_survival": 11.900390625,
+      "per_seed_mastery": [
+        0.09375,
+        0.03125,
+        0.0625,
+        0.078125,
+        0.109375,
+        0.09375,
+        0.078125,
+        0.0625
+      ]
+    },
+    "trained": {
+      "mastery": 0.91796875,
+      "mean_foods": 4.58984375,
+      "mean_survival": 59.32421875,
+      "per_seed_mastery": [
+        0.90625,
+        0.96875,
+        0.9375,
+        0.9375,
+        0.90625,
+        0.859375,
+        0.921875,
+        0.90625
+      ]
+    }
+  },
+  "promoted": true,
+  "seed": 69316,
+  "snake": {
+    "after": {
+      "mastery": 0.96875,
+      "mean_foods": 3.828125,
+      "mean_survival": 63.14453125,
+      "per_seed_mastery": [
+        1.0,
+        0.9375,
+        0.953125,
+        0.96875,
+        0.953125,
+        0.96875,
+        1.0,
+        0.96875
+      ]
+    },
+    "before": {
+      "mastery": 0.96875,
+      "mean_foods": 3.828125,
+      "mean_survival": 63.14453125,
+      "per_seed_mastery": [
+        1.0,
+        0.9375,
+        0.953125,
+        0.96875,
+        0.953125,
+        0.96875,
+        1.0,
+        0.96875
+      ]
+    },
+    "digest_after": "078431edf36771e2a5e9b878807a2e13d6dd94e234a3c1c3a98be4659a93d6ae",
+    "digest_before": "078431edf36771e2a5e9b878807a2e13d6dd94e234a3c1c3a98be4659a93d6ae"
+  }
+}

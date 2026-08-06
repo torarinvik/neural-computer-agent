@@ -53,7 +53,7 @@ class RolloutSummary:
 
 
 class SnakePolicy(nn.Module):
-    """Frontend encoder, intent adapter, and keypress decoder for Snake."""
+    """Frontend encoder, intent adapter, and keypress decoder for one game."""
 
     def __init__(
         self,
@@ -63,17 +63,19 @@ class SnakePolicy(nn.Module):
         event_width: int,
         intent_width: int,
         hidden: int,
+        channels: int = 3,
+        action_count: int = 4,
     ) -> None:
         super().__init__()
         self.encoder = GridEventEncoder(
-            channels=3, height=height, width=width, event_width=event_width
+            channels=channels, height=height, width=width, event_width=event_width
         )
         self.intent_adapter = nn.Sequential(
             nn.Linear(event_width, hidden),
             nn.GELU(),
             nn.Linear(hidden, intent_width),
         )
-        self.decoder = KeypressDecoder(intent_width, 4, hidden=hidden)
+        self.decoder = KeypressDecoder(intent_width, action_count, hidden=hidden)
 
     def decide(self, observation: torch.Tensor, *, sample: bool):
         event = self.encoder(observation)
@@ -140,6 +142,7 @@ def train_reward_only(
     gamma: float,
     learning_rate: float,
     shuffle_rewards: bool,
+    verifier_factory=SnakeVerifier,
 ) -> list[dict[str, float]]:
     """Train from fresh scalar outcomes only; no lifetime is ever replayed.
 
@@ -151,7 +154,7 @@ def train_reward_only(
     optimizer = torch.optim.Adam(policy.parameters(), lr=learning_rate)
     history: list[dict[str, float]] = []
     for update in range(updates):
-        verifier = SnakeVerifier(batch_size=batch_size, seed=seed + update)
+        verifier = verifier_factory(batch_size=batch_size, seed=seed + update)
         summary = rollout(
             policy,
             verifier,
@@ -192,12 +195,13 @@ def evaluate(
     steps: int,
     seeds: tuple[int, ...],
     gamma: float,
+    verifier_factory=SnakeVerifier,
 ) -> dict[str, object]:
     masteries: list[float] = []
     foods: list[float] = []
     survival: list[float] = []
     for seed in seeds:
-        verifier = SnakeVerifier(batch_size=batch_size, seed=seed)
+        verifier = verifier_factory(batch_size=batch_size, seed=seed)
         with torch.no_grad():
             summary = rollout(
                 policy,
@@ -219,11 +223,16 @@ def evaluate(
 
 
 def capability_key(
-    policy: SnakePolicy, *, batch_size: int, steps: int, seed: int
+    policy: SnakePolicy,
+    *,
+    batch_size: int,
+    steps: int,
+    seed: int,
+    verifier_factory=SnakeVerifier,
 ) -> torch.Tensor:
     """Derive an opaque episodic context key from fresh greedy events."""
 
-    verifier = SnakeVerifier(batch_size=batch_size, seed=seed)
+    verifier = verifier_factory(batch_size=batch_size, seed=seed)
     verifier.reset(seed=seed)
     payloads: list[torch.Tensor] = []
     with torch.no_grad():

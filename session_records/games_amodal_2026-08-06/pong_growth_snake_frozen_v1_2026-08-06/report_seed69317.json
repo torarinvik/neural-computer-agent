@@ -1,0 +1,106 @@
+{
+  "config": {
+    "batch_size": 64,
+    "eval_seeds": 8,
+    "event_width": 64,
+    "gamma": 0.95,
+    "hidden": 64,
+    "intent_width": 32,
+    "learning_rate": 0.001,
+    "steps": 64,
+    "updates": 400
+  },
+  "gates": {
+    "both_capabilities_protected": true,
+    "no_replay": true,
+    "pong_acquired": true,
+    "pong_random_near_chance": true,
+    "pong_shuffled_near_chance": true,
+    "snake_acquired": true,
+    "snake_retained": true,
+    "snake_state_unchanged": true
+  },
+  "pong": {
+    "random": {
+      "mastery": 0.0390625,
+      "mean_foods": 0.27734375,
+      "mean_survival": 10.60546875,
+      "per_seed_mastery": [
+        0.046875,
+        0.0625,
+        0.015625,
+        0.0625,
+        0.046875,
+        0.03125,
+        0.0,
+        0.046875
+      ]
+    },
+    "shuffled": {
+      "mastery": 0.029296875,
+      "mean_foods": 0.25390625,
+      "mean_survival": 10.30078125,
+      "per_seed_mastery": [
+        0.03125,
+        0.03125,
+        0.03125,
+        0.046875,
+        0.015625,
+        0.015625,
+        0.03125,
+        0.03125
+      ]
+    },
+    "trained": {
+      "mastery": 0.833984375,
+      "mean_foods": 4.169921875,
+      "mean_survival": 54.537109375,
+      "per_seed_mastery": [
+        0.859375,
+        0.765625,
+        0.828125,
+        0.828125,
+        0.765625,
+        0.875,
+        0.875,
+        0.875
+      ]
+    }
+  },
+  "promoted": true,
+  "seed": 69317,
+  "snake": {
+    "after": {
+      "mastery": 0.94140625,
+      "mean_foods": 3.68359375,
+      "mean_survival": 62.705078125,
+      "per_seed_mastery": [
+        0.96875,
+        0.953125,
+        0.921875,
+        0.953125,
+        0.9375,
+        0.921875,
+        0.96875,
+        0.90625
+      ]
+    },
+    "before": {
+      "mastery": 0.94140625,
+      "mean_foods": 3.68359375,
+      "mean_survival": 62.705078125,
+      "per_seed_mastery": [
+        0.96875,
+        0.953125,
+        0.921875,
+        0.953125,
+        0.9375,
+        0.921875,
+        0.96875,
+        0.90625
+      ]
+    },
+    "digest_after": "0a3ff81d4138a61b73c1effc06c8e04be36625427178860c64a4ab7011426920",
+    "digest_before": "0a3ff81d4138a61b73c1effc06c8e04be36625427178860c64a4ab7011426920"
+  }
+}
