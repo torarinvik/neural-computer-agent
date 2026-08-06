@@ -1,0 +1,31 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "generated-composition-artifact-bank-three-replicated-promoted-v1-2026-08-06",
+  "status": "replicated_promoted_three_isolated_generated_composition_artifacts",
+  "seeds": [69316, 69317],
+  "composition_ids": [0, 1, 2],
+  "parent_updates": 128,
+  "artifact_updates": 256,
+  "route_updates": 256,
+  "route_shuffle_replicates": 3,
+  "batch_size": 16,
+  "route_batch_size": 16,
+  "audit_count": 64,
+  "route_audit_count": 512,
+  "retention_probes": 4,
+  "artifact_behavior_per_seed": {
+    "69316": {"0": 1.0, "1": 0.9453125, "2": 0.96875},
+    "69317": {"0": 0.95703125, "1": 0.96484375, "2": 0.98046875}
+  },
+  "route_accuracy_per_seed": [1.0, 1.0],
+  "permuted_route_accuracy_per_seed": [1.0, 1.0],
+  "shuffled_route_accuracy_mean_per_seed": [0.4855685631434123, 0.3937717080116272],
+  "unique_verifier_bits_per_seed": [162816, 162816],
+  "unique_logical_lifetimes_per_seed": [43776, 43776],
+  "optimizer_updates_per_seed": [896, 896],
+  "route_optimizer_updates_per_seed": [1024, 1024],
+  "replayed_examples": 0,
+  "core_unchanged": [true, true],
+  "promotion_gate_passed": true,
+  "claim_boundary": "Replicated three isolated generated composition artifacts with protected append-only memory and opaque routing; general continual learning and open-ended growth remain unqualified."
+}
