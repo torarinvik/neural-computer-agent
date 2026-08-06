@@ -246,6 +246,47 @@ def _train_append_extension(
 
 
 @torch.no_grad()
+def _append_stage_accuracy(
+    base_router: OpaqueAddressRouter,
+    extensions: tuple[OpaqueViewRouteExtension, ...],
+    parent,
+    base_keys: torch.Tensor,
+    composition_id: int,
+    target_index: int,
+    base_count: int,
+    *,
+    count: int,
+    seed: int,
+    permute_base_keys: bool = False,
+) -> float:
+    permutation = torch.arange(base_count - 1, -1, -1)
+    keys = base_keys[permutation] if permute_base_keys else base_keys
+    queries = _route_queries(
+        parent,
+        operation="generated_composition",
+        span=SPAN,
+        count=count,
+        seed=seed,
+        generated_composition_ids=(composition_id,),
+    )
+    active = max(0, target_index - base_count + 1)
+    predictions = _append_scores(
+        base_router,
+        extensions,
+        queries,
+        keys,
+        active_extension_count=active,
+    ).argmax(dim=-1)
+    if permute_base_keys:
+        predictions = torch.where(
+            predictions < base_count,
+            permutation[predictions.clamp_max(base_count - 1)],
+            predictions,
+        )
+    return float((predictions == target_index).float().mean())
+
+
+@torch.no_grad()
 def _append_route_accuracy(
     base_router: OpaqueAddressRouter,
     extensions: tuple[OpaqueViewRouteExtension, ...],
@@ -258,34 +299,22 @@ def _append_route_accuracy(
     seed: int,
     permute_base_keys: bool = False,
 ) -> float:
-    permutation = torch.arange(base_count - 1, -1, -1)
-    keys = base_keys[permutation] if permute_base_keys else base_keys
-    correct: list[torch.Tensor] = []
-    for index, composition_id in enumerate(composition_ids):
-        queries = _route_queries(
-            parent,
-            operation="generated_composition",
-            span=SPAN,
-            count=count,
-            seed=seed + index * 10_007,
-            generated_composition_ids=(composition_id,),
-        )
-        active = max(0, index - base_count + 1)
-        predictions = _append_scores(
+    correct = [
+        _append_stage_accuracy(
             base_router,
             extensions,
-            queries,
-            keys,
-            active_extension_count=active,
-        ).argmax(dim=-1)
-        if permute_base_keys:
-            predictions = torch.where(
-                predictions < base_count,
-                permutation[predictions.clamp_max(base_count - 1)],
-                predictions,
-            )
-        correct.append(predictions == index)
-    return float(torch.cat(correct).float().mean())
+            parent,
+            base_keys,
+            composition_id,
+            index,
+            base_count,
+            count=count,
+            seed=seed + index * 10_007,
+            permute_base_keys=permute_base_keys,
+        )
+        for index, composition_id in enumerate(composition_ids)
+    ]
+    return sum(correct) / len(correct)
 
 
 def _run_append_only_routes(
@@ -390,12 +419,13 @@ def _run_append_only_routes(
         variant[replicate] = shuffled_extensions[replicate]
         for audit_index in range(2):
             shuffled_route_accuracy_samples.append(
-                _append_route_accuracy(
+                _append_stage_accuracy(
                     base_router,
                     tuple(variant),
                     parent,
                     base_keys,
-                    composition_ids,
+                    composition_ids[base_count + replicate],
+                    base_count + replicate,
                     base_count,
                     count=route_audit_count,
                     seed=seed
