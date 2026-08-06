@@ -121,6 +121,7 @@ def _route_queries(
     span: int,
     count: int,
     seed: int,
+    generated_composition_ids: tuple[int, ...] | None = None,
 ) -> torch.Tensor:
     batch = generate_sequence_memory_batch(
         count,
@@ -128,6 +129,7 @@ def _route_queries(
         distractors=1,
         seed=seed,
         operation=operation,
+        generated_composition_ids=generated_composition_ids,
     )
     state = parent.initial_state(batch.batch_size, device=batch.input_frames.device)
     zeros = torch.zeros(batch.batch_size, device=batch.input_frames.device)
