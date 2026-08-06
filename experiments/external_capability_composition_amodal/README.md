@@ -44,3 +44,9 @@ This tests whether separating output calibration from new memory-side
 computation improves inherited sample efficiency without changing the frozen
 controller or opaque pipeline contract. A nonzero warm-up is an experiment,
 not an architectural requirement.
+
+The same audit also accepts `--decoder-initialization head`. This copies the
+retained head decoder into the new consumer decoder before training; the
+original head decoder remains untouched. It tests a reusable output-interface
+prior without exposing protocol formats to the controller or consumer. The
+default is `fresh`, so existing baselines remain unchanged.

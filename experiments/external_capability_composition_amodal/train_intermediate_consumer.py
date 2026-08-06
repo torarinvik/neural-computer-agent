@@ -171,6 +171,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     for parameter in pipeline.programs[0].parameters():
         parameter.requires_grad_(False)
     consumer_decoder = _decoder()
+    if args.decoder_initialization == "head":
+        consumer_decoder.load_state_dict(head_decoder.state_dict())
     torch.manual_seed(args.seed + 90_001)
     consumer_history, consumer_progress = _train_composition(
         parent,
@@ -337,6 +339,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             seed=args.seed + 30_001,
         ),
         "consumer": {
+            "decoder_initialization": args.decoder_initialization,
             "pipeline_warmup_updates": args.pipeline_warmup_updates,
             "stable_bits_to_threshold": consumer_stable,
             "target_accuracy": target_accuracy,
@@ -427,6 +430,12 @@ def main() -> None:
     parser.add_argument("--eval-every", type=int, default=32)
     parser.add_argument("--mastery-threshold", type=float, default=0.75)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
+    parser.add_argument(
+        "--decoder-initialization",
+        choices=("fresh", "head"),
+        default="fresh",
+        help="initialize the new output decoder randomly or from the retained head decoder",
+    )
     parser.add_argument(
         "--pipeline-warmup-updates",
         type=int,
