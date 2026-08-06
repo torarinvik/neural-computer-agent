@@ -7,6 +7,7 @@ agent code imports from this package instead.
 from .addressing import (
     FactorizedOpaqueAddressRouter,
     OpaqueAddressRouter,
+    OpaqueAppendOnlyRouteChain,
     OpaqueCandidateGrowthRouter,
     OpaqueViewRouteExtension,
     PersistentOpaqueContextRouteEvidence,
@@ -276,6 +277,7 @@ __all__ = [
     "OnlineEpisodicRelationReader",
     "OnlineEpisodicRelationState",
     "OpaqueAddressRouter",
+    "OpaqueAppendOnlyRouteChain",
     "OpaqueCandidateGrowthRouter",
     "OpaqueCapacityPlanner",
     "OpaqueConsolidationPolicy",

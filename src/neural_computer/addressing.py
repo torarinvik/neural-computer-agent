@@ -9,6 +9,7 @@ to the frozen controller.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 import torch
@@ -830,6 +831,104 @@ def failure_gated_view_scores(
         old_best - torch.finfo(old_best.dtype).eps,
     )
     return torch.cat((old_scores, new_score.unsqueeze(1)), dim=1)
+
+
+class OpaqueAppendOnlyRouteChain(nn.Module):
+    """Compose append-only route extensions behind one frozen route bank.
+
+    Each extension is an independently replaceable memory-side component.  A
+    stage can only add its row after the caller supplies scalar failure
+    evidence for that stage; with no failures, the original bank remains the
+    argmax.  This keeps cold-start growth behavior-preserving while allowing
+    an arbitrary number of sequential appends instead of a hand-wired
+    two-extension experiment.
+    """
+
+    schema = "neural-computer.opaque-append-only-route-chain.v1"
+
+    def __init__(
+        self,
+        base_router: nn.Module,
+        *,
+        width: int,
+        extensions: Iterable[OpaqueViewRouteExtension] = (),
+    ) -> None:
+        super().__init__()
+        if width < 1:
+            raise ValueError("route-chain width must be positive")
+        self.width = int(width)
+        self.base_router = base_router
+        self.extensions = nn.ModuleList()
+        for extension in extensions:
+            self.append(extension)
+
+    def append(self, extension: OpaqueViewRouteExtension) -> None:
+        """Attach one new route extension without changing the base router."""
+
+        if not isinstance(extension, OpaqueViewRouteExtension):
+            raise TypeError("route-chain extensions must be opaque view routes")
+        if extension.width != self.width:
+            raise ValueError("route-chain extension width must match the chain")
+        self.extensions.append(extension)
+
+    def configuration(self) -> dict[str, object]:
+        """Return the versioned route-chain contract."""
+
+        return {
+            "schema": self.schema,
+            "width": self.width,
+            "extension_count": len(self.extensions),
+            "failure_signal": "per_stage_scalar_verifier_failure_v1",
+            "cold_start": "base_routes_preserved_until_failure",
+        }
+
+    def forward(
+        self,
+        query: torch.Tensor,
+        keys: torch.Tensor,
+        failed_stages: torch.Tensor | bool | None = None,
+    ) -> torch.Tensor:
+        """Return base rows plus all append rows for the current route state.
+
+        ``failed_stages`` is either a scalar applied to every extension or a
+        boolean tensor of shape ``[batch, extension_count]``.  A ``False``
+        stage is forced below the best established route, while a ``True``
+        stage may compete by adding its learned residual score.
+        """
+
+        if query.ndim != 2 or query.shape[1] != self.width:
+            raise ValueError("query must have shape [batch, route width]")
+        batch_size = query.shape[0]
+        extension_count = len(self.extensions)
+        if failed_stages is None:
+            failures = torch.zeros(
+                batch_size,
+                extension_count,
+                dtype=torch.bool,
+                device=query.device,
+            )
+        elif isinstance(failed_stages, bool):
+            failures = torch.full(
+                (batch_size, extension_count),
+                failed_stages,
+                dtype=torch.bool,
+                device=query.device,
+            )
+        else:
+            if failed_stages.shape != (batch_size, extension_count):
+                raise ValueError(
+                    "failed_stages must have shape [batch, extension_count]"
+                )
+            failures = failed_stages.to(device=query.device, dtype=torch.bool)
+
+        scores = self.base_router(query, keys)
+        for index, extension in enumerate(self.extensions):
+            scores = failure_gated_view_scores(
+                scores,
+                extension(query),
+                failures[:, index],
+            )
+        return scores
 
 
 def failure_gated_candidate_scores(
