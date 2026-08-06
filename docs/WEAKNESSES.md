@@ -22,11 +22,13 @@ rung promotes, rejects, or qualifies. Ordered by severity.
    `docs/DYNAMIC_BRAIN_ARCHITECTURE.md`). Next: once externalization
    promotes, retire the violation by re-running the continual-learning
    ladder with bank-stored skills.
-3. **Positive core transfer is unreliable** — frozen-core transfer was
-   seed-sensitive and can be strongly negative (qualified
-   `shared_controller_two_game_qualified_v1`). Next: measure transfer
-   through the EWC-consolidated plastic core, then through fetched bank
-   artifacts (Phase 3 compositional-transfer design).
+3. **Positive transfer measured but not yet promoted** — the
+   EWC-consolidated plastic core beats a fresh core on Pong acquisition on
+   both seeds (eval 0.8125/0.9688 vs 0.7051/0.6641; evidence:
+   `plastic_core_positive_transfer_v1_2026-08-06`), reversing the
+   frozen-core rung's seed-negative result. Cross-run comparison only.
+   Next: same-run randomized transfer harness with nulls and more seeds,
+   then transfer through fetched bank artifacts (Phase 3).
 4. **EWC untested beyond one consolidation step** — one lambda, two games.
    Successive Fisher maps must compose; anchor staleness and diagonal
    blindness untested. Next: three-game ladder (Breakout now available),

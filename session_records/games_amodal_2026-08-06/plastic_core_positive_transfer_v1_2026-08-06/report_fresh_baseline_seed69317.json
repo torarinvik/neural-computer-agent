@@ -1,0 +1,19 @@
+{
+  "eval": {
+    "mastery": 0.6640625,
+    "per_seed_mastery": [
+      0.703125,
+      0.6875,
+      0.671875,
+      0.6875,
+      0.640625,
+      0.59375,
+      0.828125,
+      0.5
+    ]
+  },
+  "mean_training_mastery": 0.22520833333333334,
+  "no_replay": true,
+  "seed": 69317,
+  "updates_to_half_mastery": 400.0
+}
