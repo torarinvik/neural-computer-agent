@@ -55,7 +55,22 @@ Status:
   replicating the parent repository's calibration bottleneck. Evidence:
   `session_records/games_amodal_2026-08-06/shared_controller_two_game_qualified_v1_2026-08-06/`.
 
-Open next rungs: routing over more than two game slots, growing new slots
-through the router's failure gate, mid-lifetime route queries, and — the
-main open problem — making core transfer reliably positive (controller
-growth registers or prior calibration, not more budget).
+- `protected_plasticity.py` — rejected: projecting Pong updates against a
+  reference direction accumulated from late-phase Snake policy gradients
+  rescues nothing (engagement at chance; the direction is noise). Preserved
+  as the first-order control for the promoted consolidation rung.
+- `ewc_plasticity.py` — **promoted on both seeds**: replay-free two-game
+  continual learning in one fully plastic amodal core. Snake retained at
+  0.8438/0.9395 (before: 0.8555/0.9297) while Pong reached 0.8125/0.9688
+  through the same moving core; the unprotected baseline forgets to
+  0.0391/0.0137 and the permuted-Fisher null fails, proving the sensitivity
+  assignment is causal. Strict setting: no stored data, no frozen weights,
+  no per-game core state, no old-environment access after acquisition.
+  Evidence:
+  `session_records/games_amodal_2026-08-06/ewc_consolidation_plastic_core_v1_2026-08-06/`.
+
+Open next rungs: the three-game ladder (composing successive Fisher maps —
+the designed stressor for anchor staleness and diagonal blindness, where an
+enhanced consolidation rule would earn novelty), lambda robustness,
+positive-transfer measurement through the continually trained core, and
+routing over more than two games.
