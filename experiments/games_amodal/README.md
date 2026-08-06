@@ -26,5 +26,16 @@ Run the wiring smoke (random policy, no learning claim):
 uv run python -m experiments.games_amodal.train --seed 0 --report-out /tmp/games-amodal-smoke.json
 ```
 
-Status: environments and event-bus wiring only. No acquisition, retention, or
-transfer result exists yet for this rung.
+Status:
+
+- `snake_acquisition.py` — promoted on seeds 69316/69317: greedy mastery
+  0.9453/0.9414 with random and reward-shuffled nulls at chance and zero
+  replay. Evidence:
+  `session_records/games_amodal_2026-08-06/snake_acquisition_v1_2026-08-06/`.
+- `pong_growth.py` — promoted on both seeds: Pong acquired at 0.9180/0.8340
+  mastery as an isolated slot while every Snake parameter stayed bit-for-bit
+  frozen and Snake re-audited unchanged. Evidence:
+  `session_records/games_amodal_2026-08-06/pong_growth_snake_frozen_v1_2026-08-06/`.
+
+Open next rung: learned routing between games from opaque events alone,
+through the promoted shared candidate growth router.
