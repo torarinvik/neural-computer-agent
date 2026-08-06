@@ -41,10 +41,13 @@ rung promotes, rejects, or qualifies. Ordered by severity.
    (architecture-doc violation 2). Next: peripheral-swap diagnostic —
    fresh peripherals + frozen core/artifacts; recovery cost measures the
    leak.
-7. **Routing is first-frame-only over two candidates** — promoted
-   `game_routing_native_actions_v1` queries the first observation only.
-   Next: mid-lifetime route queries and a three-candidate bank with
-   Breakout.
+7. **Three-game routing qualified, not promoted** — the mechanism extends
+   structurally to three slots (permutation 1.0, nulls clean, Snake routes
+   1.0), but the Breakout slot plateaus at ~0.54 mastery regardless of
+   budget and the Pong/Breakout siblings confuse the router (0.69-0.90).
+   Evidence: `three_game_routing_qualified_v1_2026-08-06`. Next: stronger
+   slot policies for compound games; key separation trained on sibling
+   contrast.
 8. **No memory bank in the games runtime** — `memory=None` everywhere;
    games needing recall are unplayable. Next: wire `ContentAddressedMemory`
    into a hidden-state game once externalization stabilizes.
