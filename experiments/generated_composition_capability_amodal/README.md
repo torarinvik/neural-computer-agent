@@ -50,3 +50,18 @@ PYTHONPATH=src uv run python -m experiments.generated_composition_capability_amo
 
 The two-artifact result is promoted only as bounded no-replay growth. It does
 not claim general continual learning or open-ended program induction.
+
+The stronger append-only route-chain audit freezes the base route and learns
+one extension per new artifact:
+
+```bash
+PYTHONPATH=src uv run python -m experiments.generated_composition_capability_amodal.train_artifact_bank \
+  --route-mode append_only --base-route-count 1 \
+  --parent-updates 128 --artifact-updates 256 --route-updates 256 \
+  --composition-ids 0 1 2 --batch-size 16 --route-batch-size 16 \
+  --audit-count 64 --route-audit-count 512 --retention-probes 4 \
+  --eval-every 32 --report-out /tmp/generated-composition-append-only/report.json
+```
+
+This append-only route result is replicated for seeds 69316 and 69317. It is
+still bounded growth over the fixed generated grammar.

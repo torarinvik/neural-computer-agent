@@ -2601,3 +2601,27 @@ grammar/distribution shift beyond the six predeclared compositions, and
 capacity/consolidation when the append-only bank cannot grow indefinitely.
 Evidence is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_artifact_bank_three_replicated_promoted_v1_2026-08-06/`.
+
+## Replicated append-only route growth (2026-08-06)
+
+The from-scratch bank router was then replaced in the pressure test by the
+generic append-only route chain. One base route was established once; each
+new artifact trained only a fresh `OpaqueViewRouteExtension` stage while the
+base and earlier stages were frozen. The stage-specific shuffled control was
+also corrected to score only the randomized new stage rather than averaging
+over unaffected old rows.
+
+Across seeds `69316` and `69317`, three artifact behaviors were
+`1.000`/`0.945`/`0.969` and `0.957`/`0.965`/`0.980`; causal route accuracy,
+base-key permutation accuracy, cold-start old-route retention, and reload
+accuracy were all `1.000` in both runs. Stage-specific shuffled controls were
+`0.000` throughout, and protected rows, corruption rejection, frozen-core,
+and zero-replay gates passed.
+
+This is the current strongest continual-learning result: replicated
+append-only external capability and route growth without updating earlier
+route stages. It remains bounded: the six-composition generator and cue
+family are predeclared, the artifact blueprint is fixed, and persistent
+consolidation beyond append-only capacity is not yet demonstrated. Evidence
+is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_artifact_bank_append_only_three_replicated_promoted_v1_2026-08-06/`.
