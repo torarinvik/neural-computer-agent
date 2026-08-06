@@ -281,6 +281,37 @@ def test_generated_composition_accepts_a_withheld_four_primitive_program() -> No
         )
 
 
+def test_generated_composition_accepts_withheld_temporal_and_aggregation_primitives() -> None:
+    from .train_sequence_working_memory import _GENERATED_PRIMITIVE_COLUMNS
+
+    withheld = (("reverse", "adjacent_xor", "complement", "prefix_parity"),)
+    batch = generate_sequence_memory_batch(
+        32,
+        span=4,
+        distractors=1,
+        seed=260034,
+        operation="generated_composition",
+        generated_composition_ids=(0,),
+        generated_compositions=withheld,
+    )
+    expected = batch.sequence.flip(1)
+    expected = (expected != expected.roll(shifts=-1, dims=1)).long()
+    expected = 1 - expected
+    expected = torch.cumsum(expected, dim=1).remainder(2)
+    assert torch.equal(batch.correct_actions, expected)
+    active = [
+        column
+        for column in _GENERATED_PRIMITIVE_COLUMNS.values()
+        if bool(
+            (
+                batch.query_frames[:, :, :, 2:22, column:column + 3]
+                > 0.9
+            ).any()
+        )
+    ]
+    assert len(active) == 4
+
+
 def test_sequence_counterfactual_is_a_valid_pixel_rerender() -> None:
     normal = generate_sequence_memory_batch(
         32, span=2, distractors=1, seed=26003, operation="mixed")

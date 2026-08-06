@@ -2670,3 +2670,29 @@ controller interface. It still does not establish arbitrary open-ended
 program induction or unrestricted memory growth; the external artifact
 blueprint and append-only capacity remain bounded. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_artifact_bank_runtime_grammar_replicated_promoted_v1_2026-08-06/`.
+
+## Runtime composition of temporal and aggregation primitives (2026-08-06)
+
+The runtime primitive registry was then extended beyond reversible pointwise
+operations to include `adjacent_xor`, `prefix_parity`, and `global_parity`.
+Four verifier-private four-primitive programs mixed these operations with
+reverse, complement, and rotation:
+
+`reverse -> adjacent_xor -> complement -> prefix_parity`,
+`prefix_parity -> global_parity -> rotate -> complement`,
+`global_parity -> reverse -> adjacent_xor -> rotate`, and
+`complement -> prefix_parity -> reverse -> global_parity`.
+
+Across seeds `69316` and `69317`, artifact behavior was
+`0.9336/0.9570`, `1.0000/1.0000`, `1.0000/1.0000`, and `1.0000/1.0000`.
+Causal route accuracy, candidate-key permutation, cold-start old-route
+retention, and reload were `1.0000` in both runs. Every stage-specific
+reward-shuffled control was `0.0000`; protected-row, corruption, frozen-core,
+and zero-replay gates passed.
+
+This promotes one compositional external interface for runtime-supplied
+temporal and aggregation procedures, strengthening mechanism-transfer evidence
+beyond a finite reversible grammar. It remains bounded continual external
+growth: the artifact blueprint and append-only capacity are finite, and
+arbitrary open-ended program induction is still unverified. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_artifact_bank_runtime_nonlocal_replicated_promoted_v1_2026-08-06/`.

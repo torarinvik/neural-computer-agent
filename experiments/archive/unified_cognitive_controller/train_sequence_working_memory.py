@@ -70,10 +70,16 @@ class SequenceMemoryBatch:
 
 
 _GENERATED_PRIMITIVE_COLUMNS = {
-    "forward": 2,
-    "reverse": 27,
-    "complement": 14,
-    "rotate": 9,
+    # Generic cue patches occupy disjoint three-pixel columns. Their
+    # coordinates are rendering details, not semantic fields exposed to the
+    # controller.
+    "forward": 0,
+    "reverse": 4,
+    "complement": 8,
+    "rotate": 12,
+    "adjacent_xor": 16,
+    "prefix_parity": 20,
+    "global_parity": 24,
 }
 _GENERATED_COMPOSITIONS = (
     ("reverse", "complement"),
@@ -129,6 +135,14 @@ def _apply_generated_primitive(
         return 1 - sequence
     if primitive == "rotate":
         return sequence.roll(shifts=-1, dims=1)
+    if primitive == "adjacent_xor":
+        return (sequence != sequence.roll(shifts=-1, dims=1)).to(
+            dtype=sequence.dtype
+        )
+    if primitive == "prefix_parity":
+        return torch.cumsum(sequence, dim=1).remainder(2)
+    if primitive == "global_parity":
+        return sequence.sum(dim=1, keepdim=True).remainder(2).expand_as(sequence)
     raise ValueError(f"unknown generated primitive: {primitive}")
 
 

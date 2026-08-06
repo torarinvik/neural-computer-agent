@@ -113,3 +113,27 @@ This runtime-grammar result is replicated for seeds `69316` and `69317` in
 It promotes mechanism transfer to four-primitive runtime programs, while
 unrestricted capacity and arbitrary open-ended program induction remain
 unqualified.
+
+The same runtime grammar can compose nonlocal temporal and aggregation
+primitives:
+
+```bash
+PYTHONPATH=src uv run python -m experiments.generated_composition_capability_amodal.train_artifact_bank \
+  --route-mode append_only --base-route-count 1 \
+  --parent-updates 128 --artifact-updates 256 --route-updates 256 \
+  --composition-ids 0 1 2 3 \
+  --program-spec reverse,adjacent_xor,complement,prefix_parity \
+  --program-spec prefix_parity,global_parity,rotate,complement \
+  --program-spec global_parity,reverse,adjacent_xor,rotate \
+  --program-spec complement,prefix_parity,reverse,global_parity \
+  --batch-size 16 --route-batch-size 16 --audit-count 64 \
+  --route-audit-count 512 --retention-probes 4 --eval-every 32 \
+  --report-out /tmp/generated-composition-runtime-nonlocal/report.json
+```
+
+This nonlocal runtime-grammar result is replicated for seeds `69316` and
+`69317` in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_artifact_bank_runtime_nonlocal_replicated_promoted_v1_2026-08-06/`.
+It promotes a shared compositional interface for temporal and aggregation
+procedures, while unrestricted capacity and arbitrary open-ended program
+induction remain unqualified.
