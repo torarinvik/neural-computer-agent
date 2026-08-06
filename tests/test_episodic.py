@@ -205,6 +205,53 @@ def test_empty_external_capability_pipeline_is_identity() -> None:
     assert pipeline.configuration()["program_count"] == 0
 
 
+def test_external_capability_pipeline_can_hide_events_after_first_program() -> None:
+    def make_programs() -> tuple[ExternalCapabilityProgram, ...]:
+        return tuple(
+            ExternalCapabilityProgram(
+                event_width=4,
+                action_width=2,
+                intention_width=6,
+                context_hidden=8,
+                context_width=5,
+                adapter_hidden=7,
+            )
+            for _ in range(2)
+        )
+
+    visible = ExternalCapabilityPipeline(make_programs())
+    hidden = ExternalCapabilityPipeline(
+        make_programs(),
+        hide_downstream_events=True,
+    )
+    intention = IntentEvent(torch.randn(3, 6))
+    event = torch.randn(3, 4)
+    action = torch.zeros(3, 2)
+    outcome = torch.zeros(3)
+    visible_state = visible.initial_state(3, device="cpu")
+    hidden_state = hidden.initial_state(3, device="cpu")
+    _, visible_next = visible.step(
+        event=event,
+        action=action,
+        outcome=outcome,
+        intention=intention,
+        state=visible_state,
+    )
+    _, hidden_next = hidden.step(
+        event=event,
+        action=action,
+        outcome=outcome,
+        intention=intention,
+        state=hidden_state,
+    )
+
+    assert not torch.equal(
+        visible_next.programs[1].context,
+        hidden_next.programs[1].context,
+    )
+    assert hidden.configuration()["event_visibility"] == "head_only"
+
+
 def test_online_relation_reader_returns_external_content_age_context() -> None:
     reader = OnlineEpisodicRelationReader(
         event_width=4,

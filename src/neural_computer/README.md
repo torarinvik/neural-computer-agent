@@ -299,7 +299,11 @@ event/action/intention dimensions, so stacking or replacing them does not
 resize the controller or add a task-specific reasoning branch. This is the
 execution foundation for testing reusable program composition; the pipeline
 itself does not claim that independently learned programs will solve an
-arbitrary novel composition.
+arbitrary novel composition. Its optional `head_only` event-visibility mode
+gives the first program the learned event while later programs receive only
+the prior opaque intention, opaque feedback, and scalar outcome. That mode is
+a diagnostic and execution contract for detecting raw-event shortcutting; it
+does not assign semantic meaning to the intermediate intention.
 
 `EpisodicCreditHead` isolates event-credit state for one external capability.
 The two-step follow-up trains one fresh head per appended procedure while the

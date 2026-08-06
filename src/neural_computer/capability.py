@@ -193,6 +193,7 @@ class ExternalCapabilityPipeline(nn.Module):
         event_width: int | None = None,
         action_width: int | None = None,
         intention_width: int | None = None,
+        hide_downstream_events: bool = False,
     ) -> None:
         super().__init__()
         members = tuple(programs)
@@ -225,6 +226,7 @@ class ExternalCapabilityPipeline(nn.Module):
         self.event_width = dimensions["event_width"]
         self.action_width = dimensions["action_width"]
         self.intention_width = dimensions["intention_width"]
+        self.hide_downstream_events = bool(hide_downstream_events)
         self.programs = nn.ModuleList(members)
 
     @property
@@ -242,6 +244,9 @@ class ExternalCapabilityPipeline(nn.Module):
             "program_count": len(self.programs),
             "program_schemas": tuple(
                 program.configuration()["schema"] for program in self.programs
+            ),
+            "event_visibility": (
+                "head_only" if self.hide_downstream_events else "all_programs"
             ),
             "state": "independent_external_recurrent_contexts_v1",
             "composition": "adapted_intention_serial_chain_v1",
@@ -289,18 +294,29 @@ class ExternalCapabilityPipeline(nn.Module):
         )
         current = intention
         next_states: list[ExternalCapabilityState] = []
-        for program, program_state in zip(
-            self.programs,
-            state.programs,
-            strict=True,
+        for index, (program, program_state) in enumerate(
+            zip(
+                self.programs,
+                state.programs,
+                strict=True,
+            )
         ):
+            program_event = event
+            program_present = present
+            if self.hide_downstream_events and index > 0:
+                program_event = torch.zeros_like(event)
+                program_present = torch.zeros(
+                    event.shape[0],
+                    dtype=torch.bool,
+                    device=event.device,
+                )
             current, next_state = program.step(
-                event=event,
+                event=program_event,
                 action=action,
                 outcome=outcome,
                 intention=current,
                 state=program_state,
-                present=present,
+                present=program_present,
             )
             next_states.append(next_state)
         return current, ExternalCapabilityPipelineState(tuple(next_states))

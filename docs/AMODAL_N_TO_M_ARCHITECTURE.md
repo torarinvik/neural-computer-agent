@@ -2319,7 +2319,10 @@ controls passed; the second primitive was causal on both seeds. However, the
 first primitive was not causal on seed `69317`, and a fully fresh trainable
 pipeline did not reach stable mastery on either seed. This is retained as a
 rejected general-composition diagnostic, not as arbitrary program induction or
-fresh-learner transfer. Evidence is in
+fresh-learner transfer. A cheap visibility control rehydrated the seed-69317
+artifact and removed raw events from downstream programs; accuracy fell from
+`0.8828` to `0.5195`, showing that the current chain still has a substantial
+raw-event shortcut. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/external_capability_composition_rejected_v1_2026-08-06/`.
 
 ## Lifecycle-backed learned executable compaction (2026-08-06)

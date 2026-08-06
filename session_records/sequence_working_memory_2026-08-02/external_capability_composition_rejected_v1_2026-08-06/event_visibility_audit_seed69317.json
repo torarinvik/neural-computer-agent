@@ -1,0 +1,19 @@
+{
+  "schema": "neural-computer.external-capability-event-visibility-audit.v1",
+  "claim_boundary": "A persisted composition is evaluated with all programs seeing the learned event and again with only the first program seeing it. The latter is a shortcut diagnostic, not a new training result.",
+  "seed": 69317,
+  "pipeline_state": "/tmp/composition_state/pipeline.pt",
+  "decoder_state": "/tmp/composition_state/decoder.pt",
+  "normal_accuracy": 0.8828125,
+  "head_only_accuracy": 0.51953125,
+  "head_only_drop": 0.36328125,
+  "accounting": {
+    "unique_verifier_bits": 4096,
+    "diagnostic_verifier_bits": 512,
+    "unique_logical_lifetimes": 2048,
+    "optimizer_updates": 128,
+    "replayed_examples": 0
+  },
+  "parent_mastered": true,
+  "head_only_composition_preserved": false
+}

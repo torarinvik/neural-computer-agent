@@ -33,7 +33,12 @@ Persistence and safety controls passed on both seeds: exact pipeline/decoder
 reload, behavior-preserving reload, checksum corruption rejection, unchanged
 controller digest, and zero replay. The implementation cost was high
 (`430.35s` / `463.84s`), so the next step is a cheaper shared-rollout
-diagnostic before increasing task breadth.
+diagnostic before increasing task breadth. That diagnostic rehydrated the
+seed-69317 artifact without primitive replay: normal execution scored `0.8828`,
+while hiding raw events from downstream programs scored `0.5195`, a `0.3633`
+drop. This confirms that the current composition result still relies heavily
+on later programs rereading the original event stream.
 
 Full reports and accounting are in `report_seed69316.json`,
-`report_seed69317.json`, and `sample_efficiency_ledger.json`.
+`report_seed69317.json`, `event_visibility_audit_seed69317.json`, and
+`sample_efficiency_ledger.json`.

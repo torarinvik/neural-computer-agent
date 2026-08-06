@@ -17,4 +17,7 @@ diagnostic in
 The pipeline beat the blank control on both seeds, but the first primitive was
 not causal on one seed and the fully fresh pipeline did not reach stable
 mastery. The result therefore does not establish arbitrary program induction
-or positive transfer against a fresh learner.
+or positive transfer against a fresh learner. `audit_event_visibility.py`
+rehydrates a persisted pipeline and removes raw events from downstream
+programs; the seed-69317 result drops from `0.8828` to `0.5195`, exposing the
+current shortcut rather than hiding it.
