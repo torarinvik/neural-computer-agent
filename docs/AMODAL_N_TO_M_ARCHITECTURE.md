@@ -2873,8 +2873,10 @@ This is the first promoted fix for the specific dense-expansion failure: the
 old source no longer loses route probability mass merely because a new slot is
 trained. It is bounded replay-free dense external growth, not unrestricted
 continual learning, neural compression, arbitrary program induction, or
-general continual learning. The mask currently evaluates all slots and then
-suppresses ineligible routes, so sparse slot execution is the next bottleneck.
+general continual learning. The mask now skips globally ineligible slots, and
+a matched full audit preserved every gate and metric while reducing paired
+wall time from `961.3s` to `831.4s`. Batch-divergent masks still execute their
+active-slot union, so grouped per-mask execution remains a bottleneck.
 The action-feedback rollout also now clamps exact-zero logged propensities to
 the smallest positive dtype value, fixing a long-run validation failure.
 Evidence and accounting are archived in

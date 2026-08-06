@@ -40,5 +40,9 @@ feedback contract for long rollouts.
 This promotes bounded replay-free dense slot growth with external route
 binding. It does not establish unrestricted memory growth, neural compression,
 arbitrary program induction, or general continual learning. The current mask
-is correctness-first and still evaluates masked slots internally; sparse
-execution is the next performance bottleneck.
+is correctness-first and now skips globally ineligible slots. A matched
+seed-`69316` sparse-execution audit passed the same four-source gates with
+identical source behavior, target behavior, masks, and accounting. Wall time
+fell from `961.3s` to `831.4s` in the paired runs. Batch-divergent masks still
+execute the union of active slots, so finer-grained grouped execution remains
+a future optimization.

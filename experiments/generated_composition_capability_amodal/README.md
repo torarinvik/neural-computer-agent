@@ -276,8 +276,10 @@ feedback boundary.
 This promotes bounded replay-free dense growth with external route binding.
 It does not establish unrestricted memory growth, neural compression,
 arbitrary program induction, or general continual learning. The current mask
-prevents interference but still evaluates masked slots internally; sparse
-execution is the next implementation bottleneck. Evidence is archived in
+prevents interference and now skips globally ineligible slots; a matched
+four-source follow-up reduced paired wall time from `961.3s` to `831.4s` while
+preserving every metric and gate. Batch-divergent masks still execute their
+active-slot union. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_sequential_route_bound_dense_four_source_replicated_promoted_v1_2026-08-06/`.
 
 The same runtime grammar can compose nonlocal temporal and aggregation

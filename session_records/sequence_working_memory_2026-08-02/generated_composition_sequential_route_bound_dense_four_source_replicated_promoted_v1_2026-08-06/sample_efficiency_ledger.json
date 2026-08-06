@@ -69,6 +69,17 @@
     "change": "clamp logged propensities to dtype tiny before next feedback validation",
     "reason": "long four-source rollout exposed exact-zero softmax probabilities"
   },
+  "sparse_execution_follow_up": {
+    "seed": 69316,
+    "promoted": true,
+    "reference_wall_seconds": 961.3217642920063,
+    "sparse_wall_seconds": 831.4222969580005,
+    "wall_time_ratio": 0.8648976532741588,
+    "gates_equal_to_reference": true,
+    "behavior_equal_to_reference": true,
+    "report": "report_sparse_execution_seed69316.json",
+    "remaining_bottleneck": "batch-divergent masks execute the union of active slots"
+  },
   "promotion_gate_passed": true,
   "claim_boundary": "Replicated four-source replay-free dense external growth with opaque slot binding, one physical artifact row, target transfer, and reversal/recovery; sparse execution, neural compression, unrestricted memory growth, and general continual learning remain unqualified."
 }

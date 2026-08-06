@@ -420,6 +420,7 @@ class ExternalCapabilityComposition(nn.Module):
             "state": "independent_external_recurrent_contexts_v1",
             "routing": "learned_event_conditioned_soft_slot_binding_v1",
             "binding": "optional_opaque_external_slot_mask_v1",
+            "execution": "masked_sparse_active_slots_v1",
         }
 
     def initial_state(
@@ -481,6 +482,14 @@ class ExternalCapabilityComposition(nn.Module):
             slot_mask = slot_mask.to(device=event.device)
         current = intention
         next_states = list(state.programs)
+        if slot_mask is None:
+            active_indices = tuple(range(len(self.programs)))
+        else:
+            active_indices = tuple(
+                index
+                for index in range(len(self.programs))
+                if bool(slot_mask[:, index].any())
+            )
         for step_index in range(self.composition_steps):
             router_input = torch.cat(
                 (event, action, outcome.unsqueeze(1), current.payload),
@@ -496,12 +505,9 @@ class ExternalCapabilityComposition(nn.Module):
                 )
             weights = torch.softmax(route_logits, dim=-1)
             candidates: list[torch.Tensor] = []
-            step_states: list[ExternalCapabilityState] = []
-            for program, program_state in zip(
-                self.programs,
-                next_states,
-                strict=True,
-            ):
+            for index in active_indices:
+                program = self.programs[index]
+                program_state = next_states[index]
                 adapted, next_state = program.step(
                     event=event,
                     action=action,
@@ -511,11 +517,20 @@ class ExternalCapabilityComposition(nn.Module):
                     present=present,
                 )
                 candidates.append(adapted.payload)
-                step_states.append(next_state)
+                if slot_mask is not None:
+                    enabled = slot_mask[:, index].unsqueeze(-1)
+                    next_state = ExternalCapabilityState(
+                        torch.where(
+                            enabled,
+                            next_state.context,
+                            program_state.context,
+                        )
+                    )
+                next_states[index] = next_state
+            active_weights = weights[:, list(active_indices)]
             current = IntentEvent(
                 torch.stack(candidates, dim=1)
-                .mul(weights.unsqueeze(-1))
+                .mul(active_weights.unsqueeze(-1))
                 .sum(dim=1)
             )
-            next_states = step_states
         return current, ExternalCapabilityPipelineState(tuple(next_states))

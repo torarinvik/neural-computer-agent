@@ -244,14 +244,27 @@ def test_external_capability_composition_accepts_opaque_slot_binding() -> None:
         "state": state,
     }
 
-    adapted, _ = composition.step(
+    adapted, next_state = composition.step(
         **kwargs,
-        slot_mask=torch.tensor([[True, False], [False, True]]),
+        slot_mask=torch.tensor([[True, False], [True, False]]),
     )
 
     assert adapted.payload.shape == (2, 6)
+    assert torch.equal(next_state.programs[1].context, state.programs[1].context)
     assert composition.configuration()["binding"] == (
         "optional_opaque_external_slot_mask_v1"
+    )
+    assert composition.configuration()["execution"] == "masked_sparse_active_slots_v1"
+    mixed_state = composition.initial_state(2, device="cpu")
+    _, mixed_next_state = composition.step(
+        **{**kwargs, "state": mixed_state},
+        slot_mask=torch.tensor([[True, False], [False, True]]),
+    )
+    assert torch.equal(
+        mixed_next_state.programs[0].context[1], mixed_state.programs[0].context[1]
+    )
+    assert torch.equal(
+        mixed_next_state.programs[1].context[0], mixed_state.programs[1].context[0]
     )
     with pytest.raises(ValueError, match="at least one slot"):
         composition.step(**kwargs, slot_mask=torch.zeros(2, 2, dtype=torch.bool))
