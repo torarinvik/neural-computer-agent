@@ -1,0 +1,50 @@
+{
+  "config": {
+    "batch_size": 64,
+    "intervals": [
+      1,
+      8
+    ],
+    "steps": 64,
+    "updates": 600
+  },
+  "results": {
+    "interval_1": {
+      "eval": {
+        "mastery": 0.85546875,
+        "per_seed_mastery": [
+          0.796875,
+          0.890625,
+          0.90625,
+          0.78125,
+          0.921875,
+          0.84375,
+          0.875,
+          0.828125
+        ]
+      },
+      "mean_training_mastery": 0.6361458333333333,
+      "no_replay": true,
+      "updates_to_half_mastery": 93.0
+    },
+    "interval_8": {
+      "eval": {
+        "mastery": 0.845703125,
+        "per_seed_mastery": [
+          0.828125,
+          0.765625,
+          0.8125,
+          0.859375,
+          0.875,
+          0.84375,
+          0.859375,
+          0.921875
+        ]
+      },
+      "mean_training_mastery": 0.6940885416666667,
+      "no_replay": true,
+      "updates_to_half_mastery": 93.0
+    }
+  },
+  "seed": 69316
+}

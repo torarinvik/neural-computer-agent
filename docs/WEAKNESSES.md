@@ -32,10 +32,6 @@ rung promotes, rejects, or qualifies. Ordered by severity.
    blindness untested. Next: three-game ladder (Breakout now available),
    where an enhanced consolidation rule would earn novelty if vanilla
    cracks.
-5. **One-step truncated gradients through the recurrent core** —
-   `state.detached()` per step in all game trainers limits credit over
-   time; suspected cause of the shared-controller acquisition gap (0.86 vs
-   0.94 standalone). Next: k-step truncation control at matched budget.
 6. **Peripheral skill leakage unquantified** — per-game encoders/decoders
    train jointly with play, so strategy may hide there
    (architecture-doc violation 2). Next: peripheral-swap diagnostic —
@@ -61,6 +57,13 @@ rung promotes, rejects, or qualifies. Ordered by severity.
     any external write-up.
 
 ## Retired
+
+- **One-step truncated BPTT as suspected acquisition bottleneck** —
+  retired 2026-08-06 by measurement: detach interval 8 matches interval 1
+  on endpoint mastery and curves at matched budgets
+  (`bptt_window_diagnostic_v1_2026-08-06`). The shared-controller
+  acquisition gap is attributed to the recurrent optimization landscape,
+  not truncation. `detach_interval` remains available in the trainers.
 
 - **Catastrophic forgetting in the plastic core** — retired 2026-08-06 by
   `ewc_consolidation_plastic_core_v1` (Fisher consolidation; permuted-null
