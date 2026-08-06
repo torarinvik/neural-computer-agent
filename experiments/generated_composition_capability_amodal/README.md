@@ -134,6 +134,30 @@ fresh bits on seed `69316`, and `4,096` versus `10,240` on seed `69317`.
 Both candidates are compared on fresh held-out outcomes; old-file retention,
 candidate selection, capacity growth, frozen-core, and zero-replay gates pass.
 
+The next pressure test compares two protected external files, then compacts
+them into one physical row with independently addressable opaque views before
+growing capacity for the selected target:
+
+```bash
+PYTHONPATH=src uv run python -m experiments.generated_composition_capability_amodal.train_multi_transfer \
+  --seed 69316 --parent-updates 128 --source-updates 256 \
+  --candidate-updates 256 --batch-size 16 --audit-count 64 \
+  --retention-probes 4 --eval-every 32 \
+  --source-ids 0 2 --target-id 1 \
+  --program-spec reverse,adjacent_xor,complement,prefix_parity \
+  --program-spec prefix_parity,global_parity,rotate,complement \
+  --program-spec global_parity,reverse,adjacent_xor,rotate \
+  --report-out /tmp/generated-composition-multi-transfer/report.json
+```
+
+The two-seed promoted audit selected source 0 at `6,144` and `4,096` stable
+target bits versus `10,240` fresh bits, saved one physical row while retaining
+both source views, and admitted the target by growth after compaction. This is
+logical storage compaction rather than neural weight compression, and remains
+bounded external transfer rather than general continual learning. Evidence is
+archived in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_multi_transfer_replicated_promoted_v1_2026-08-06/`.
+
 The same runtime grammar can compose nonlocal temporal and aggregation
 primitives:
 

@@ -2722,3 +2722,40 @@ general continual learning: the prior/target family, candidate selector, and
 fixed artifact blueprint remain bounded, and transfer across arbitrary task
 families still requires evidence. Record:
 `session_records/sequence_working_memory_2026-08-02/generated_composition_transfer_replicated_promoted_v1_2026-08-06/`.
+
+## Multi-source transfer and finite-capacity logical compaction (2026-08-06)
+
+The next audit increased pressure on the external memory boundary rather than
+adding another isolated row. Two independently learned protected files were
+compared as initializations for a new runtime program, alongside a fresh
+candidate. The source files were
+`reverse -> adjacent_xor -> complement -> prefix_parity` and
+`global_parity -> reverse -> adjacent_xor -> rotate`; the target was
+`prefix_parity -> global_parity -> rotate -> complement`. All target arms
+received fresh target outcomes only while the parent controller stayed frozen.
+
+Across seeds `69316` and `69317`, the stable target prefixes were:
+
+| seed | inherited source 0 | inherited source 2 | fresh | selected |
+| ---: | ---: | ---: | ---: | --- |
+| 69316 | 6,144 bits | 10,240 bits | 10,240 bits | source 0 |
+| 69317 | 4,096 bits | 10,240 bits | 10,240 bits | source 0 |
+
+The stable-prefix selector chose source 0 uniquely in both replicas. Before
+target admission, the protected two-row bank was rewritten through
+`ExternalCapabilityLifecycle.consolidate` into one physical row containing
+two opaque namespaced views. The behavior verifier independently reloaded
+both views, preserving source behavior at `0.9336/1.0000` and `0.9492/1.0000`.
+Both views remained protected, one physical row was saved, and the target was
+then admitted by growing capacity from one to two. The grown target reloaded at
+`1.0000` in both seeds. Frozen-core digests were unchanged and replayed
+examples were zero.
+
+This promotes replicated multi-source bounded external transfer and
+behavior-verified logical storage compaction. It is deliberately not called
+neural weight compression: the compacted row retains separate executable
+views. It also does not establish unrestricted memory growth, arbitrary
+program induction, or general continual learning. The short rung correctly
+rejected a source view whose fresh retention fell to `0.625`. Evidence and
+accounting are in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_multi_transfer_replicated_promoted_v1_2026-08-06/`.
