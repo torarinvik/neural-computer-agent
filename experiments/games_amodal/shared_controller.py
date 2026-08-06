@@ -212,6 +212,7 @@ def train_game(
     gamma: float,
     learning_rate: float,
     shuffle_rewards: bool,
+    detach_interval: int = 1,
 ) -> list[dict[str, float]]:
     optimizer = torch.optim.Adam(trainable, lr=learning_rate)
     history: list[dict[str, float]] = []
@@ -224,6 +225,7 @@ def train_game(
             seed=seed + update,
             sample=True,
             gamma=gamma,
+            detach_interval=detach_interval,
         )
         advantage = summary["advantage"]
         assert advantage is not None
