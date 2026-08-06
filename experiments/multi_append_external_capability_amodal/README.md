@@ -1,14 +1,15 @@
 # Multi-append external capability growth
 
-This audit extends the promoted three-program external bank through two
-protected sequential appends: `rotate4`, then `adjacent_xor4`. Each new
+This audit extends the promoted three-program external bank through three
+protected sequential appends: `rotate4`, then `adjacent_xor4`, then
+`complement_rotate4`. Each new
 program is learned in a fresh external recurrent state, the prior bank is
 grown transactionally when every existing row is protected, and only the new
 route extension is trainable after each append.
 
 The parent controller, earlier artifacts, and earlier route policies remain
 frozen. Route state is persisted through `PersistentOpaqueStateStore`; the
-artifact bank and retention ledger use `ExecutableArtifactMemory`. The second
+artifact bank and retention ledger use `ExecutableArtifactMemory`. Each
 extension is activated only after the established route has produced a fresh
 failure, preserving the fallback chain.
 
@@ -22,7 +23,7 @@ PYTHONPATH=src uv run python -m experiments.multi_append_external_capability_amo
   --report-out /tmp/multi-append-external/report.json
 ```
 
-Promotion requires both append boundaries, all five capabilities, old and
+Promotion requires all three append boundaries, all six capabilities, old and
 new route retention, candidate permutation, causal wrong-artifact separation,
 route and artifact reload, corruption rejection, frozen parent/earlier-route
 digests, and zero replay. This is still bounded external growth, not general

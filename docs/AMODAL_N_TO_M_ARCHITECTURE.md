@@ -2488,3 +2488,25 @@ learning: the family generator remains finite, each new route still uses an
 externally trained blueprint, and arbitrary new computation/open-ended
 compression remain unverified. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14to16to18_remediated_v1_2026-08-06/`.
+
+## Generic append-only route isolation (2026-08-06)
+
+The memory-side append boundary is now a reusable
+`OpaqueAppendOnlyRouteChain`, rather than a hand-wired two-extension
+experiment. It composes any number of independently persisted route
+extensions behind the frozen base router. A newly appended route remains
+below the established bank until its stage receives scalar failure evidence;
+later stages can activate only after all earlier stages have failed. The
+controller and base router therefore remain unchanged while external
+computation grows.
+
+The generalized audit replicated three protected append boundaries across two
+seeds: `rotate4`, `adjacent_xor4`, and `complement_rotate4`, producing six
+protected artifacts. Old, append, and combined route accuracy were `1.000` in
+both seeds; reward-shuffled append selection was `0.000` for every append;
+candidate permutation, causal wrong-artifact behavior, reload, corruption
+rejection, frozen digests, and zero replay all passed. This is a stronger
+bounded external-growth result and a real route-isolation gain, but it still
+does not establish general continual learning, unrestricted memory growth,
+arbitrary new computation, or open-ended compression. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/multi_append_external_capability_v2_three_step_2026-08-06/`.
