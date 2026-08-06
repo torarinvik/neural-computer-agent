@@ -503,7 +503,7 @@ class ExecutableArtifactMemory:
 
         self._validate_key(key, self.width)
         self.retention.observe(key, outcome)
-        self.save()
+        self.save_retention()
 
     def observe_retention_batch(
         self,
@@ -518,7 +518,7 @@ class ExecutableArtifactMemory:
             self._validate_key(key, self.width)
         for key, outcome in entries:
             self.retention.observe(key, outcome)
-        self.save()
+        self.save_retention()
 
     @torch.no_grad()
     def put(
@@ -768,7 +768,7 @@ class ExecutableArtifactMemory:
     def save(self) -> None:
         """Persist the address rows and manifest through atomic snapshots."""
         self.rows.snapshot(self.directory / "rows.pt")
-        self.retention.save(self._retention_path())
+        self.save_retention()
         manifest_text = json.dumps(
             self._manifest_payload(), indent=2, sort_keys=True
         ) + "\n"
@@ -780,6 +780,11 @@ class ExecutableArtifactMemory:
             self._manifest_checksum_path(),
             hashlib.sha256(manifest_text.encode()).hexdigest() + "\n",
         )
+
+    def save_retention(self) -> None:
+        """Persist only mutable retention state after an outcome update."""
+
+        self.retention.save(self._retention_path())
 
     def validate(self) -> None:
         """Verify metadata, rows, and every live artifact before serving them."""

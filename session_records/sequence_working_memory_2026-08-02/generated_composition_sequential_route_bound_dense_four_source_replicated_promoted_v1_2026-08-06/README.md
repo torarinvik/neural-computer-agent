@@ -66,6 +66,14 @@ reduced eight retention saves to one while preserving the same ledger state.
 The full audit again passed every semantic gate, but its wall time was noisy
 (`1,363.9s` versus `1,244.6s`), so no end-to-end speedup is claimed yet.
 
+The persistence boundary was then narrowed further: retention-only updates now
+write only `retention-ledger.json`, leaving the structural rows, manifest, and
+manifest checksum untouched. The seed-`69316` audit remained semantically
+identical, but took `1,332.2s` (`1.070x` the prior persisted-binding run), so
+this is promoted as a correctness and write-scope improvement, not a timing
+gain. The negative timing result is retained in
+`report_retention_only_persistence_seed69316.json`.
+
 The manifest now has an atomic SHA-256 sidecar. Legacy stores without the
 sidecar still load, while tampering with persisted alias bindings is rejected
 before execution.

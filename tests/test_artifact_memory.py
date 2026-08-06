@@ -117,15 +117,15 @@ def test_retention_batch_preserves_order_and_persists_once(tmp_path) -> None:
     memory = ExecutableArtifactMemory(tmp_path / "batch", width=4, capacity=1)
     key = torch.tensor([1.0, 0.0, 0.0, 0.0])
     memory.put(key, _artifact(1.0))
-    original_save = memory.save
+    original_save_retention = memory.retention.save
     save_calls = 0
 
-    def save_once() -> None:
+    def save_once(path) -> None:
         nonlocal save_calls
         save_calls += 1
-        original_save()
+        original_save_retention(path)
 
-    memory.save = save_once
+    memory.retention.save = save_once
 
     memory.observe_retention_batch(((key, 1.0), (key, 0.0), (key, 1.0)))
 
@@ -134,6 +134,22 @@ def test_retention_batch_preserves_order_and_persists_once(tmp_path) -> None:
     assert save_calls == 1
     restored = ExecutableArtifactMemory.load(tmp_path / "batch")
     assert restored.retention.status(key).observations == 3
+
+
+def test_retention_only_persistence_leaves_structural_snapshot_unchanged(tmp_path) -> None:
+    directory = tmp_path / "retention-only"
+    memory = ExecutableArtifactMemory(directory, width=4, capacity=1)
+    key = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    memory.put(key, _artifact(1.0))
+    manifest_before = (directory / "manifest.json").read_bytes()
+    checksum_before = (directory / "manifest.sha256").read_bytes()
+    retention_before = (directory / "retention-ledger.json").read_bytes()
+
+    memory.observe_retention(key, 1.0)
+
+    assert (directory / "manifest.json").read_bytes() == manifest_before
+    assert (directory / "manifest.sha256").read_bytes() == checksum_before
+    assert (directory / "retention-ledger.json").read_bytes() != retention_before
 
 
 def test_legacy_alias_manifest_defaults_null_bindings(tmp_path) -> None:

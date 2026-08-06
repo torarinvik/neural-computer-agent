@@ -294,6 +294,14 @@ Persisted binding metadata is protected by an atomic `manifest.sha256`
 sidecar; sidecarless legacy stores remain readable, while tampered bindings
 are rejected before execution.
 
+Retention-only updates now persist only `retention-ledger.json`, so they do not
+rewrite structural artifact rows, the manifest, or its checksum. The matched
+seed-`69316` audit passed the same gates and metrics, but took `1,332.2s`
+versus `1,244.6s` for the prior persisted-binding run. This promotes narrower
+write scope and crash-boundary clarity, not an end-to-end performance gain;
+the negative timing result is archived in
+`report_retention_only_persistence_seed69316.json`.
+
 The same runtime grammar can compose nonlocal temporal and aggregation
 primitives:
 

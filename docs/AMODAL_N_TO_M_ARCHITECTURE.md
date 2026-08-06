@@ -2894,3 +2894,11 @@ semantically exact, but wall time was noisy, so this is a transaction/write
 amortization primitive rather than a promoted end-to-end speedup.
 The manifest also carries an atomic SHA-256 sidecar: legacy sidecarless stores
 remain readable, but tampered persisted bindings are rejected before execution.
+Retention-only outcome updates now persist only the mutable retention ledger;
+the structural artifact rows, manifest, and manifest checksum remain untouched.
+This narrows the durable write boundary and is covered by a focused invariant
+test. A matched four-source audit preserved every semantic gate and metric, but
+ran `7.0%` slower end to end, so the change is a correctness/write-scope
+improvement rather than a promoted throughput claim. The timing record is
+archived in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_sequential_route_bound_dense_four_source_replicated_promoted_v1_2026-08-06/report_retention_only_persistence_seed69316.json`.

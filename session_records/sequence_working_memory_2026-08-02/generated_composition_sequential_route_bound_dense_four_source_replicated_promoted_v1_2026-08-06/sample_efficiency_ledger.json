@@ -115,6 +115,18 @@
     "end_to_end_speedup_promoted": false,
     "remaining_bottleneck": "filesystem and artifact execution variance still dominates full audit wall time"
   },
+  "retention_only_persistence_follow_up": {
+    "seed": 69316,
+    "semantic_gates_passed": true,
+    "report": "report_retention_only_persistence_seed69316.json",
+    "persisted_binding_wall_seconds": 1244.6177032910055,
+    "retention_only_wall_seconds": 1332.187087875005,
+    "wall_time_ratio": 1.0703584597522999,
+    "structural_snapshot_untouched": true,
+    "end_to_end_speedup_promoted": false,
+    "promoted_as": "retention-only write-scope and correctness boundary",
+    "reason": "semantic behavior was identical, but full-audit timing was 7.0% slower"
+  },
   "manifest_binding_integrity": {
     "legacy_sidecarless_load_supported": true,
     "tampered_alias_binding_rejected": true,
