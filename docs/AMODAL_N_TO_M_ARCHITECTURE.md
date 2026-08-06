@@ -2551,3 +2551,34 @@ procedures that are not predeclared in the append schedule, followed by
 capacity growth/compression beyond a fixed-size recurrent artifact blueprint.
 Evidence is in
 `session_records/sequence_working_memory_2026-08-02/multi_append_external_capability_v4_two_unseen_2026-08-06/`.
+
+## Generated composition artifacts with isolated retention (2026-08-06)
+
+The generated-composition pressure test exposed two useful boundaries. First,
+the verifier had to render a generic ordinal cue so noncommutative primitive
+orders were learner-identifiable; the previous same-set cue was ambiguous.
+Second, a shared external composition stack failed to expand through six fresh
+no-replay curriculum phases, while one isolated composition artifact reached
+`0.9766` behavior after a stable `16,384` verifier bits.
+
+The next implementation therefore uses the memory boundary directly: each
+new generated composition is acquired as an isolated routed external artifact
+and admitted to `ExecutableArtifactMemory` only after stable behavior. Fresh
+retention outcomes protect the row before transactional growth. An opaque
+`OpaqueAddressRouter` then selects among rows from learned event/key
+compatibility; candidate-key permutation, reload, corruption, frozen-core,
+and replicated reward-shuffled controls are required.
+
+The two-artifact audit promoted this bounded result. Composition behaviors were
+`1.0000` and `0.9453`; causal and permuted routing were both `1.0000`; all rows
+were protected; reload and corruption checks passed; the parent core was
+unchanged; and replay was zero. Three independent reward-shuffled routers,
+each tested on two fresh route sets, averaged `0.2580`, so the negative-control
+gate passed despite two noisy `0.76–0.78` samples. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_artifact_bank_promoted_v1_2026-08-06/`.
+
+This is the first promoted generated-composition artifact-bank result, not
+general continual learning. The remaining boundary is a third unseen
+composition plus fresh-seed replication, followed by artifacts whose
+computation is not drawn from the fixed six-composition grammar and memory
+capacity/consolidation beyond a bounded row bank.

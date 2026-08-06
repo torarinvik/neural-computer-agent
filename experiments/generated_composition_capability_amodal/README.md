@@ -35,3 +35,18 @@ PYTHONPATH=src uv run python -m experiments.generated_composition_capability_amo
   --batch-size 8 --audit-count 16 --eval-every 16 \
   --report-out /tmp/generated-composition-routed/report.json
 ```
+
+The promoted append-only artifact-bank audit acquires each generated
+composition in an isolated external row, protects it with fresh retention
+outcomes, and trains an opaque router without updating older artifacts:
+
+```bash
+PYTHONPATH=src uv run python -m experiments.generated_composition_capability_amodal.train_artifact_bank \
+  --parent-updates 128 --artifact-updates 256 --route-updates 256 \
+  --composition-ids 0 1 --batch-size 16 --route-batch-size 16 \
+  --audit-count 64 --route-audit-count 512 --retention-probes 4 \
+  --eval-every 32 --report-out /tmp/generated-composition-artifact-bank/report.json
+```
+
+The two-artifact result is promoted only as bounded no-replay growth. It does
+not claim general continual learning or open-ended program induction.
