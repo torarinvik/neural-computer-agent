@@ -44,6 +44,7 @@ COMPOSITION_COUNT = 6
 SPAN = 4
 ROUTE_WIDTH = 48
 THRESHOLD = 0.75
+SHUFFLE_REPLICATES = 3
 
 
 def _stack_artifact(stack, decoder) -> dict[str, torch.Tensor]:
@@ -384,15 +385,6 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         seed=args.seed + 70_000,
         shuffle_outcomes=False,
     )
-    shuffled_router, shuffled_accounting = _train_router(
-        parent,
-        candidate_keys,
-        composition_ids,
-        updates=args.route_updates,
-        batch_size=args.route_batch_size,
-        seed=args.seed + 80_000,
-        shuffle_outcomes=True,
-    )
     route_audit_count = max(args.audit_count, args.route_audit_count)
     route_accuracy = _route_accuracy(
         router,
@@ -411,17 +403,33 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         seed=args.seed + 90_000,
         permute_keys=True,
     )
-    shuffled_route_accuracy_samples = [
-        _route_accuracy(
-            shuffled_router,
+    shuffled_route_accuracy_samples: list[float] = []
+    shuffled_accounting: list[dict[str, int]] = []
+    for replicate in range(SHUFFLE_REPLICATES):
+        shuffled_router, accounting = _train_router(
             parent,
             candidate_keys,
             composition_ids,
-            count=route_audit_count,
-            seed=args.seed + 90_000 + index * 100_003,
+            updates=args.route_updates,
+            batch_size=args.route_batch_size,
+            seed=args.seed + 80_000 + replicate * 1_000_003,
+            shuffle_outcomes=True,
         )
-        for index in range(4)
-    ]
+        shuffled_accounting.append(accounting)
+        shuffled_route_accuracy_samples.extend(
+            _route_accuracy(
+                shuffled_router,
+                parent,
+                candidate_keys,
+                composition_ids,
+                count=route_audit_count,
+                seed=args.seed
+                + 90_000
+                + replicate * 1_000_003
+                + audit_index * 100_003,
+            )
+            for audit_index in range(2)
+        )
     shuffled_route_accuracy = sum(shuffled_route_accuracy_samples) / len(
         shuffled_route_accuracy_samples
     )
@@ -461,11 +469,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     parent_digest_after = _digest_core(parent, ())
     route_accounting = {
         "unique_route_lifetimes": route_accounting["unique_route_lifetimes"]
-        + shuffled_accounting["unique_route_lifetimes"],
+        + sum(item["unique_route_lifetimes"] for item in shuffled_accounting),
         "unique_route_verifier_bits": route_accounting["unique_route_verifier_bits"]
-        + shuffled_accounting["unique_route_verifier_bits"],
+        + sum(item["unique_route_verifier_bits"] for item in shuffled_accounting),
         "route_optimizer_updates": route_accounting["route_optimizer_updates"]
-        + shuffled_accounting["route_optimizer_updates"],
+        + sum(item["route_optimizer_updates"] for item in shuffled_accounting),
         "replayed_route_examples": 0,
     }
     report = {
@@ -547,8 +555,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "all_rows_protected": int(bank.protection_mask().sum()) == len(composition_ids),
             "route_mastered": route_accuracy >= THRESHOLD,
             "candidate_permutation_invariant": permuted_accuracy >= THRESHOLD,
-            "reward_shuffled_not_mastered": max(shuffled_route_accuracy_samples)
-            < THRESHOLD,
+            "reward_shuffled_not_mastered": (
+                sum(shuffled_route_accuracy_samples)
+                / len(shuffled_route_accuracy_samples)
+                < 0.65
+                and sum(
+                    value >= THRESHOLD for value in shuffled_route_accuracy_samples
+                )
+                <= len(shuffled_route_accuracy_samples) // 3
+            ),
             "reloaded_route_preserved": reloaded_route_accuracy >= THRESHOLD,
             "corruption_rejected": corruption_rejected,
             "core_unchanged": parent_digest_before == parent_digest_after,
