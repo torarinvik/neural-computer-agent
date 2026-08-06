@@ -2337,6 +2337,22 @@ selection: inherited composition state must beat a fresh baseline on a fresh
 probe before it is installed. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/external_capability_composition_corrected_rejected_v1_2026-08-06/`.
 
+## Head-only intermediate consumer (2026-08-06)
+
+The stricter follow-up trains a downstream external consumer while the
+pipeline hides raw events from every program after the head. On seed `69316`,
+the consumer reaches `0.8633` versus `0.5586` for a blank pipeline; zeroing the
+head or consumer reduces performance to `0.5859` and `0.5391`, respectively.
+This demonstrates that a memory-side consumer can learn a causal computation
+from an opaque intermediate rather than merely rereading the sensory event.
+
+It is not yet positive continual-learning transfer: the fresh head-only
+pipeline reaches stable mastery in `6,144` verifier bits versus `16,384` for
+the inherited consumer. The next target is a replay-free curriculum or
+external prior that improves consumer acquisition while preserving this
+head-only contract. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/external_capability_intermediate_consumer_rejected_v1_2026-08-06/`.
+
 ## Lifecycle-backed learned executable compaction (2026-08-06)
 
 The same coordinator now owns the learned executable-artifact consolidation

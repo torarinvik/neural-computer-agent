@@ -28,3 +28,11 @@ selector. On the corrected reports it selects the composed candidate for seed
 69316 (`2,048` bits) and the fresh candidate for seed 69317 (`6,144` bits),
 which is the intended safe fallback while inherited transfer remains
 seed-sensitive.
+
+`train_intermediate_consumer.py` is the stricter follow-up. It trains a
+downstream consumer while downstream events are hidden, so the consumer must
+use the prior opaque intention. On seed 69316 it reaches `0.8633` versus
+`0.5586` for a blank pipeline and both program ablations are causal, but the
+fresh head-only learner reaches mastery in `6,144` bits versus `16,384` for
+the inherited consumer. The result is retained as an intermediate-only
+capability diagnostic, not positive transfer.
