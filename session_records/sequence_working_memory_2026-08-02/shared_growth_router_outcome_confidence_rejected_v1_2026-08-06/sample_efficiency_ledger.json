@@ -1,0 +1,23 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "shared-growth-router-outcome-confidence-rejected-v1-2026-08-06",
+  "status": "rejected_shared_update_destabilization",
+  "claim_boundary": "An outcome-driven opaque acquisition scheduler does not improve the promoted 32-capability shared-router rung; it destabilizes shared updates and is not retained.",
+  "seed": 69316,
+  "distribution_shift_sequence": [6, 8, 10, 12],
+  "families_per_shift": [8, 10, 12],
+  "total_capabilities": 32,
+  "shared_route_updates": 8192,
+  "shared_route_hidden": 256,
+  "route_query_representation": "trajectory_stats",
+  "candidate_key_bootstrap": "random",
+  "acquisition_policy": "outcome_confidence",
+  "unique_verifier_bits": 2965768,
+  "unique_logical_lifetimes": 56840,
+  "optimizer_updates": 55552,
+  "replayed_examples": 0,
+  "phase_minimum_route_selection": [0.90625, 0.671875, 0.71875],
+  "matched_promoted_round_robin_phase_minimum": [0.984375, 0.96875, 0.921875],
+  "promotion_gate_passed": false,
+  "rejection_reason": "confidence-driven oversampling destabilized the shared route representation and failed new-route recovery plus retention/reversal gates"
+}

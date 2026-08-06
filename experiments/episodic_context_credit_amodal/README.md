@@ -224,3 +224,10 @@ leaves 7 pending. In both cases all occupied rows are protected and pending
 candidates consume no executable capacity. This qualifies safe partial
 admission, not a 46-capability learning promotion: the late-shift route gate
 still fails and the original verifier stream is unchanged.
+
+An outcome-confidence target-acquisition control was also rejected against the
+promoted 32-capability rung. Concentrating shared-router updates on currently
+weak opaque candidates lowered seed-69316 phase floors to `0.9063/0.6719/0.7188`
+from the matched round-robin `0.9844/0.9688/0.9219`, and failed new-route and
+retention gates. The scheduler is discarded; evidence is in
+`session_records/sequence_working_memory_2026-08-02/shared_growth_router_outcome_confidence_rejected_v1_2026-08-06/`.
