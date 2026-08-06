@@ -36,3 +36,11 @@ use the prior opaque intention. On seed 69316 it reaches `0.8633` versus
 fresh head-only learner reaches mastery in `6,144` bits versus `16,384` for
 the inherited consumer. The result is retained as an intermediate-only
 capability diagnostic, not positive transfer.
+
+The consumer audit accepts `--pipeline-warmup-updates` as a replay-free
+training control. During warm-up, only the output decoder learns; the consumer
+is evaluated without a gradient and is enabled for the remaining updates.
+This tests whether separating output calibration from new memory-side
+computation improves inherited sample efficiency without changing the frozen
+controller or opaque pipeline contract. A nonzero warm-up is an experiment,
+not an architectural requirement.

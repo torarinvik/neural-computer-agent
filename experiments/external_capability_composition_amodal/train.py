@@ -217,7 +217,10 @@ def _train_composition(
     learning_rate: float,
     train_pipeline: bool,
     shuffle_outcomes: bool = False,
+    pipeline_warmup_updates: int = 0,
 ) -> tuple[list[dict[str, float | int]], list[dict[str, float | int]]]:
+    if pipeline_warmup_updates < 0 or pipeline_warmup_updates > updates:
+        raise ValueError("pipeline warmup must be within the update budget")
     trainable = list(decoder.parameters())
     if train_pipeline:
         trainable.extend(pipeline.parameters())
@@ -226,9 +229,10 @@ def _train_composition(
     optimizer = torch.optim.AdamW(trainable, lr=learning_rate, weight_decay=1e-5)
     history: list[dict[str, float | int]] = []
     progress: list[dict[str, float | int]] = []
-    pipeline.train(train_pipeline)
     decoder.train()
     for update in range(1, updates + 1):
+        train_pipeline_for_update = train_pipeline and update > pipeline_warmup_updates
+        pipeline.train(train_pipeline_for_update)
         batch = generate_sequence_memory_batch(
             batch_size,
             span=span,
@@ -243,7 +247,7 @@ def _train_composition(
             batch,
             train=True,
             shuffle_outcomes=shuffle_outcomes,
-            train_pipeline=train_pipeline,
+            train_pipeline=train_pipeline_for_update,
         )
         optimizer.zero_grad(set_to_none=True)
         result["loss"].backward()
@@ -283,7 +287,7 @@ def _train_composition(
                     ),
                 }
             )
-            pipeline.train(train_pipeline)
+            pipeline.train(train_pipeline_for_update)
             decoder.train()
     pipeline.eval()
     decoder.eval()

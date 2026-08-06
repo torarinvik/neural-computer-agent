@@ -184,6 +184,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         eval_every=args.eval_every,
         learning_rate=args.learning_rate,
         train_pipeline=True,
+        pipeline_warmup_updates=args.pipeline_warmup_updates,
     )
 
     fresh_pipeline = _head_only_pipeline(
@@ -336,6 +337,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             seed=args.seed + 30_001,
         ),
         "consumer": {
+            "pipeline_warmup_updates": args.pipeline_warmup_updates,
             "stable_bits_to_threshold": consumer_stable,
             "target_accuracy": target_accuracy,
             "history": consumer_history,
@@ -425,6 +427,12 @@ def main() -> None:
     parser.add_argument("--eval-every", type=int, default=32)
     parser.add_argument("--mastery-threshold", type=float, default=0.75)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
+    parser.add_argument(
+        "--pipeline-warmup-updates",
+        type=int,
+        default=0,
+        help="train only the decoder before enabling the consumer pipeline",
+    )
     args = parser.parse_args()
     report = run(args)
     print(
