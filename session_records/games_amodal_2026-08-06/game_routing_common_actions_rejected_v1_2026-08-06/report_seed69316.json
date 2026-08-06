@@ -1,0 +1,58 @@
+{
+  "audit": {
+    "permutation_accuracy": 1.0,
+    "routed_mastery": {
+      "pong": 0.751953125,
+      "snake": 0.96875
+    },
+    "routing_accuracy": {
+      "pong": 0.9765625,
+      "snake": 1.0
+    }
+  },
+  "config": {
+    "batch_size": 64,
+    "eval_seeds": 8,
+    "event_width": 64,
+    "gamma": 0.95,
+    "hidden": 64,
+    "intent_width": 32,
+    "learning_rate": 0.001,
+    "route_learning_rate": 0.003,
+    "route_updates": 256,
+    "router_hidden": 64,
+    "steps": 64,
+    "updates": 400
+  },
+  "gates": {
+    "no_replay": true,
+    "permutation_invariant": true,
+    "routed_mastery": false,
+    "routing_accurate": true,
+    "shuffled_near_chance": true,
+    "slots_unchanged": true
+  },
+  "promoted": false,
+  "seed": 69316,
+  "shuffled_audit": {
+    "permutation_accuracy": 1.0,
+    "routed_mastery": {
+      "pong": 0.14453125,
+      "snake": 0.96875
+    },
+    "routing_accuracy": {
+      "pong": 0.0,
+      "snake": 1.0
+    }
+  },
+  "slot_digests": {
+    "after": [
+      "078431edf36771e2a5e9b878807a2e13d6dd94e234a3c1c3a98be4659a93d6ae",
+      "f699e43fc021ee26d80146d710c76a8f67fa6caeabc873a2dbe9276cbb7358be"
+    ],
+    "before": [
+      "078431edf36771e2a5e9b878807a2e13d6dd94e234a3c1c3a98be4659a93d6ae",
+      "f699e43fc021ee26d80146d710c76a8f67fa6caeabc873a2dbe9276cbb7358be"
+    ]
+  }
+}

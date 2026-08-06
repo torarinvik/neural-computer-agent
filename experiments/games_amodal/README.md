@@ -37,5 +37,13 @@ Status:
   frozen and Snake re-audited unchanged. Evidence:
   `session_records/games_amodal_2026-08-06/pong_growth_snake_frozen_v1_2026-08-06/`.
 
-Open next rung: learned routing between games from opaque events alone,
-through the promoted shared candidate growth router.
+- `game_routing.py` — promoted on both seeds: the shared
+  `OpaqueCandidateGrowthRouter` routes opaque event queries to the correct
+  frozen slot at 1.0000 accuracy on both games, with routed end-to-end
+  mastery 0.9688/0.8516 and 0.9414/0.8047, permutation invariance, an
+  outcome-shuffled null at exactly chance, and zero replay. The common
+  four-key action space was rejected as an acquisition control. Evidence:
+  `session_records/games_amodal_2026-08-06/game_routing_native_actions_v1_2026-08-06/`.
+
+Open next rungs: routing over more than two game slots, growing new slots
+through the router's failure gate, and mid-lifetime route queries.
