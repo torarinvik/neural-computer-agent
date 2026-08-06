@@ -100,8 +100,11 @@ from .keypress import (
 )
 from .lifecycle import (
     CAPABILITY_LIFECYCLE_SCHEMA,
+    CAPABILITY_STAGING_SCHEMA,
     CapabilityAdmissionReceipt,
+    ConfidenceAwareCapabilityStaging,
     ExternalCapabilityLifecycle,
+    StagedCapabilityReceipt,
 )
 from .memory import (
     APPEND_ONLY_MEMORY_BACKEND_FORMAT,
@@ -177,6 +180,7 @@ __all__ = [
     "APPEND_ONLY_MEMORY_SNAPSHOT_FORMAT",
     "ARTIFACT_MEMORY_SCHEMA",
     "CAPABILITY_LIFECYCLE_SCHEMA",
+    "CAPABILITY_STAGING_SCHEMA",
     "CAPACITY_PLANNER_SCHEMA",
     "CONSOLIDATION_OPERATION_COUNT",
     "CONSOLIDATION_POLICY_SCHEMA",
@@ -218,6 +222,7 @@ __all__ = [
     "CapabilityRetentionStatus",
     "CapacityPlan",
     "CapacityPlannerOutput",
+    "ConfidenceAwareCapabilityStaging",
     "ConsolidationPolicyOutput",
     "ConsolidationProposal",
     "ContentAddressedMemory",
@@ -274,6 +279,7 @@ __all__ = [
     "PromotionRejected",
     "RetentionGateDecision",
     "RetentionPolicyConfig",
+    "StagedCapabilityReceipt",
     "accumulate_current_gradients",
     "apply_consolidation_proposal",
     "attempted_outcome_loss",

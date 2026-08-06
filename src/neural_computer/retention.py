@@ -376,6 +376,38 @@ class CapabilityRetentionLedger:
                 selected._records[digest] = deepcopy(record)
         return selected
 
+    def adopt(
+        self,
+        source: CapabilityRetentionLedger,
+        key: torch.Tensor,
+    ) -> CapabilityRetentionStatus:
+        """Adopt one externally accumulated opaque evidence record.
+
+        This transfers verifier accounting across an external-memory boundary
+        without replaying the observations that produced it.  It is used when
+        a staged candidate has earned admission: the candidate's evidence is
+        moved into the executable bank's ledger as state, not reconstructed by
+        fabricating new outcomes.
+        """
+
+        if not isinstance(source, CapabilityRetentionLedger):
+            raise TypeError("retention evidence source must be a capability ledger")
+        if source.width != self.width:
+            raise ValueError("retention evidence ledgers must have matching widths")
+        if source.config.as_dict() != self.config.as_dict():
+            raise ValueError("retention evidence ledgers must have matching policies")
+        normalized = _validate_key(key, self.width)
+        digest = _key_digest(normalized, self.width)
+        record = source._records.get(digest)
+        if record is None:
+            raise KeyError("retention evidence source has no record for key")
+        if digest in self._records:
+            raise ValueError("retention evidence key already exists in destination")
+        self._records[digest] = deepcopy(record)
+        self._step = max(self._step, source._step) + 1
+        self.validate()
+        return self.status(normalized)
+
     def validate(self) -> None:
         """Validate persisted opaque state before it governs eviction."""
 

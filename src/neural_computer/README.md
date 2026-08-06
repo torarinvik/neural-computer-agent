@@ -68,6 +68,15 @@ unchanged. It does not execute artifacts, choose semantic routes, or update
 controller weights. The promoted two-step growth audit uses this coordinator
 for both additions and passes frozen-core, retention, permutation, reload,
 corruption, shuffled-outcome, and zero-replay controls.
+
+`ConfidenceAwareCapabilityStaging` is the fail-closed admission boundary for
+new growth. It keeps an opaque candidate artifact outside the executable bank
+until deterministic verifier outcomes clear a stable-prefix mastery gate, then
+transfers the accumulated scalar evidence into the destination retention ledger
+without replaying old episodes. A candidate that has not earned stable mastery
+cannot evict or dilute an existing protected row. The current queue is
+deliberately an in-process external state; durable artifact spooling is a
+separate follow-up rather than an implicit claim of crash-safe staging.
 The executable compaction audit now uses the same coordinator for all three
 rewrites and defaults its separate opaque route-acquisition arm to 2,048 fresh
 paired-outcome updates per arm after a 512-update control failed its

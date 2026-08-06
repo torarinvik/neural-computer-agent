@@ -2346,3 +2346,25 @@ learned register capabilities in one working-memory computation, not arbitrary
 program induction, unrestricted memory growth, broad transfer, or general
 continual learning. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/canonical_growth_pressure_lifecycle_composition_v1_2026-08-06/`.
+
+## Confidence-aware staged admission (2026-08-06)
+
+The production memory boundary now includes
+`ConfidenceAwareCapabilityStaging`. A new opaque artifact is held outside the
+executable bank while the frozen controller continues producing verifier
+outcomes. Only a stable-prefix mastery gate can promote it through
+`ExternalCapabilityLifecycle`; until then it cannot consume capacity, evict a
+protected row, or be mistaken for a retained capability.
+
+On promotion, the staging ledger transfers the accumulated scalar evidence
+directly into the executable memory ledger. This preserves the no-replay
+contract: admission does not regenerate old episodes or fabricate fresh
+outcomes. The staged queue is currently in-process external state, so durable
+artifact spooling and crash recovery remain explicit follow-up work rather than
+an unearned claim.
+
+This closes the gap between “the retention policy exists” and “unverified
+growth is actually prevented from perturbing the protected bank.” It is a
+safety and lifecycle gain, not evidence of better route learning or general
+continual learning. The implementation is covered by the lifecycle and
+retention test suites.

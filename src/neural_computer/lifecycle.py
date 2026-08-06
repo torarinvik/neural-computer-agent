@@ -16,9 +16,15 @@ import torch
 
 from .artifact_memory import ArtifactConsolidationReceipt, ExecutableArtifactMemory
 from .capacity import CapacityPlan, OpaqueCapacityPlanner
-from .retention import CapabilityRetentionProbe
+from .retention import (
+    CapabilityRetentionLedger,
+    CapabilityRetentionProbe,
+    CapabilityRetentionStatus,
+    RetentionPolicyConfig,
+)
 
 CAPABILITY_LIFECYCLE_SCHEMA = "neural-computer.external-capability-lifecycle.v1"
+CAPABILITY_STAGING_SCHEMA = "neural-computer.external-capability-staging.v1"
 
 
 @dataclass(frozen=True)
@@ -33,6 +39,28 @@ class CapabilityAdmissionReceipt:
     rows_before: int
     rows_after: int
     reason: str = ""
+
+
+@dataclass(frozen=True)
+class StagedCapabilityReceipt:
+    """Result of one verifier update for a staged opaque capability."""
+
+    accepted: bool
+    pending: bool
+    action: str
+    index: int | None
+    key_digest: str
+    observations: int
+    stable_prefix_minimum: float
+    reason: str = ""
+
+
+@dataclass
+class _StagedCapability:
+    key: torch.Tensor
+    artifact: dict[str, torch.Tensor]
+    strength: float
+    evidence: CapabilityRetentionLedger
 
 
 def _artifact_summary(
@@ -334,8 +362,241 @@ class ExternalCapabilityLifecycle:
         return receipt
 
 
+class ConfidenceAwareCapabilityStaging:
+    """Stage opaque growth until verifier evidence earns executable admission.
+
+    A staged artifact is external mutable state and is deliberately absent from
+    the executable bank.  The controller remains frozen while a caller records
+    deterministic scalar verifier outcomes.  Once the candidate's stable
+    prefix clears the configured threshold, this coordinator delegates the
+    normal protected admission transaction and transfers the accumulated
+    evidence directly into the destination ledger.  No old episode or raw
+    trajectory is replayed.
+
+    Staging is intentionally an in-process queue in this first contract.  A
+    durable artifact spool can replace it later without changing the evidence
+    or lifecycle interfaces.
+    """
+
+    schema = CAPABILITY_STAGING_SCHEMA
+
+    def __init__(
+        self,
+        lifecycle: ExternalCapabilityLifecycle,
+        *,
+        candidate_threshold: float | None = None,
+        min_candidate_observations: int | None = None,
+        reversal_threshold: float | None = None,
+        reversal_patience: int | None = None,
+        recent_window: int | None = None,
+    ) -> None:
+        if not isinstance(lifecycle, ExternalCapabilityLifecycle):
+            raise TypeError("staging requires an external capability lifecycle")
+        destination_policy = lifecycle.memory.retention.config
+        resolved_threshold = (
+            destination_policy.mastery_threshold
+            if candidate_threshold is None
+            else float(candidate_threshold)
+        )
+        resolved_observations = (
+            destination_policy.min_mastery_observations
+            if min_candidate_observations is None
+            else int(min_candidate_observations)
+        )
+        resolved_reversal_threshold = (
+            destination_policy.reversal_threshold
+            if reversal_threshold is None
+            else float(reversal_threshold)
+        )
+        resolved_reversal_patience = (
+            destination_policy.reversal_patience
+            if reversal_patience is None
+            else int(reversal_patience)
+        )
+        resolved_recent_window = (
+            destination_policy.recent_window
+            if recent_window is None
+            else int(recent_window)
+        )
+        if not 0.0 <= resolved_threshold <= 1.0:
+            raise ValueError("candidate threshold must lie in [0, 1]")
+        if resolved_observations < 1:
+            raise ValueError("minimum candidate observations must be positive")
+        self.lifecycle = lifecycle
+        self.candidate_threshold = resolved_threshold
+        self.min_candidate_observations = resolved_observations
+        self._policy = RetentionPolicyConfig(
+            mastery_threshold=self.candidate_threshold,
+            min_mastery_observations=self.min_candidate_observations,
+            reversal_threshold=resolved_reversal_threshold,
+            reversal_patience=resolved_reversal_patience,
+            recent_window=resolved_recent_window,
+        ).validate()
+        if self._policy.as_dict() != destination_policy.as_dict():
+            raise ValueError(
+                "staging policy must match the destination retention policy"
+            )
+        self._staged: dict[str, _StagedCapability] = {}
+
+    @property
+    def pending_count(self) -> int:
+        """Return the number of candidates not yet admitted or discarded."""
+
+        return len(self._staged)
+
+    def configuration(self) -> dict[str, object]:
+        """Return the versioned staging contract without artifact contents."""
+
+        return {
+            "schema": self.schema,
+            "width": self.lifecycle.width,
+            "candidate_threshold": self.candidate_threshold,
+            "min_candidate_observations": self.min_candidate_observations,
+            "policy": self._policy.as_dict(),
+            "storage": "external_in_process_staging_v1",
+        }
+
+    def _validate_key(self, key: torch.Tensor) -> torch.Tensor:
+        if not isinstance(key, torch.Tensor):
+            raise TypeError("staged capability key must be a tensor")
+        if key.shape != (self.lifecycle.width,):
+            raise ValueError(
+                f"staged capability key must have shape [{self.lifecycle.width}]"
+            )
+        if not bool(torch.isfinite(key).all()):
+            raise ValueError("staged capability key must be finite")
+        return key.detach().to(device="cpu", dtype=torch.float32).clone()
+
+    def _digest(self, key: torch.Tensor) -> str:
+        ledger = CapabilityRetentionLedger(
+            self.lifecycle.width,
+            config=self._policy,
+        )
+        return ledger.status(key).key_digest
+
+    def stage(
+        self,
+        key: torch.Tensor,
+        artifact: Mapping[str, torch.Tensor],
+        *,
+        strength: float = 1.0,
+    ) -> CapabilityRetentionStatus:
+        """Place one unverified opaque artifact outside the executable bank."""
+
+        normalized_key = self._validate_key(key)
+        _artifact_summary(artifact, width=self.lifecycle.width)
+        if not 0.0 < strength <= 1.0:
+            raise ValueError("staged capability strength must lie in (0, 1]")
+        digest = self._digest(normalized_key)
+        if digest in self._staged:
+            raise ValueError("staged capability key already exists")
+        evidence = CapabilityRetentionLedger(
+            self.lifecycle.width,
+            config=self._policy,
+        )
+        status = evidence.status(normalized_key)
+        self._staged[digest] = _StagedCapability(
+            key=normalized_key,
+            artifact={
+                name: value.detach().to(device="cpu").clone()
+                for name, value in artifact.items()
+            },
+            strength=float(strength),
+            evidence=evidence,
+        )
+        return status
+
+    def status(self, key: torch.Tensor) -> CapabilityRetentionStatus:
+        """Return the current evidence for one pending candidate."""
+
+        normalized_key = self._validate_key(key)
+        digest = self._digest(normalized_key)
+        candidate = self._staged.get(digest)
+        if candidate is None:
+            raise KeyError("capability key is not staged")
+        return candidate.evidence.status(normalized_key)
+
+    def pending_statuses(self) -> tuple[CapabilityRetentionStatus, ...]:
+        """Return pending evidence in deterministic opaque-key order."""
+
+        return tuple(
+            candidate.evidence.status(candidate.key)
+            for _digest, candidate in sorted(self._staged.items())
+        )
+
+    def observe(
+        self,
+        key: torch.Tensor,
+        outcome: float | torch.Tensor,
+        *,
+        plan: CapacityPlan | None = None,
+        grow_destination: Path | None = None,
+    ) -> StagedCapabilityReceipt:
+        """Record one outcome and admit only after stable candidate mastery."""
+
+        normalized_key = self._validate_key(key)
+        digest = self._digest(normalized_key)
+        candidate = self._staged.get(digest)
+        if candidate is None:
+            raise KeyError("capability key is not staged")
+        status = candidate.evidence.observe(normalized_key, outcome)
+        if not status.protected:
+            return StagedCapabilityReceipt(
+                accepted=False,
+                pending=True,
+                action="stage",
+                index=None,
+                key_digest=status.key_digest,
+                observations=status.observations,
+                stable_prefix_minimum=status.stable_prefix_minimum,
+                reason="candidate remains staged until stable mastery is verified",
+            )
+
+        admission = self.lifecycle.admit(
+            normalized_key,
+            candidate.artifact,
+            plan=plan,
+            grow_destination=grow_destination,
+            strength=candidate.strength,
+        )
+        if not admission.accepted:
+            return StagedCapabilityReceipt(
+                accepted=False,
+                pending=True,
+                action=admission.action,
+                index=admission.index,
+                key_digest=status.key_digest,
+                observations=status.observations,
+                stable_prefix_minimum=status.stable_prefix_minimum,
+                reason=f"stable candidate remains staged: {admission.reason}",
+            )
+        self.lifecycle.memory.retention.adopt(candidate.evidence, normalized_key)
+        self.lifecycle.memory.save()
+        self._staged.pop(digest)
+        adopted = self.lifecycle.memory.retention.status(normalized_key)
+        return StagedCapabilityReceipt(
+            accepted=True,
+            pending=False,
+            action=admission.action,
+            index=admission.index,
+            key_digest=adopted.key_digest,
+            observations=adopted.observations,
+            stable_prefix_minimum=adopted.stable_prefix_minimum,
+            reason="stable candidate admitted with transferred evidence",
+        )
+
+    def discard(self, key: torch.Tensor) -> bool:
+        """Discard one pending candidate without touching executable memory."""
+
+        normalized_key = self._validate_key(key)
+        return self._staged.pop(self._digest(normalized_key), None) is not None
+
+
 __all__ = [
     "CAPABILITY_LIFECYCLE_SCHEMA",
+    "CAPABILITY_STAGING_SCHEMA",
     "CapabilityAdmissionReceipt",
+    "ConfidenceAwareCapabilityStaging",
     "ExternalCapabilityLifecycle",
+    "StagedCapabilityReceipt",
 ]

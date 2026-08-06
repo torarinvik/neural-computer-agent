@@ -5,6 +5,7 @@ import torch
 
 from neural_computer import (
     CapabilityRetentionLedger,
+    ConfidenceAwareCapabilityStaging,
     ExecutableArtifactMemory,
     ExternalCapabilityLifecycle,
     OpaqueCapacityPlanner,
@@ -141,3 +142,64 @@ def test_lifecycle_rejects_unverified_consolidation_without_mutating_source(
     assert lifecycle.memory is memory
     assert lifecycle.memory.capacity == 2
     assert lifecycle.memory.occupied == (0, 1)
+
+
+def test_confidence_aware_staging_adopts_without_replaying_evidence(tmp_path) -> None:
+    memory = _memory(tmp_path, capacity=2)
+    lifecycle = ExternalCapabilityLifecycle(memory)
+    staging = ConfidenceAwareCapabilityStaging(
+        lifecycle,
+        candidate_threshold=0.75,
+        min_candidate_observations=2,
+    )
+    key = torch.tensor([0.0, 0.0, 1.0, 0.0])
+
+    status = staging.stage(key, _artifact(3.0))
+    assert status.observations == 0
+    assert staging.pending_count == 1
+    assert memory.occupied == ()
+
+    pending = staging.observe(key, 1.0)
+    assert pending.pending
+    assert not pending.accepted
+    assert memory.occupied == ()
+
+    admitted = staging.observe(key, 1.0)
+    assert admitted.accepted
+    assert not admitted.pending
+    assert admitted.action == "admit"
+    assert staging.pending_count == 0
+    assert memory.occupied == (0,)
+    assert memory.retention.is_protected(key)
+    assert memory.retention.status(key).observations == 2
+    memory.promote(key)
+
+
+def test_confidence_aware_staging_keeps_unstable_candidate_out_of_full_bank(
+    tmp_path,
+) -> None:
+    memory = _memory(tmp_path, capacity=2)
+    lifecycle = ExternalCapabilityLifecycle(memory)
+    first = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    second = torch.tensor([0.0, 1.0, 0.0, 0.0])
+    candidate = torch.tensor([0.0, 0.0, 1.0, 0.0])
+    for key, value in ((first, 1.0), (second, 2.0)):
+        memory.put(key, _artifact(value))
+        memory.observe_retention(key, 1.0)
+        memory.observe_retention(key, 1.0)
+
+    staging = ConfidenceAwareCapabilityStaging(
+        lifecycle,
+        candidate_threshold=0.75,
+        min_candidate_observations=2,
+    )
+    staging.stage(candidate, _artifact(3.0))
+    staging.observe(candidate, 1.0)
+    result = staging.observe(candidate, 0.0)
+
+    assert not result.accepted
+    assert result.pending
+    assert "stable mastery" in result.reason
+    assert staging.pending_count == 1
+    assert memory.occupied == (0, 1)
+    assert memory.protection_mask().tolist() == [True, True]
