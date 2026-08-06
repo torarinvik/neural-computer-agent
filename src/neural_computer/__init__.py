@@ -173,6 +173,7 @@ from .runtime import (
     AmodalRuntimeOutput,
     OpaqueProtocolDecoder,
 )
+from .state_store import OPAQUE_STATE_STORE_SCHEMA, PersistentOpaqueStateStore
 
 __all__ = [
     "ADMISSION_ACTIONS",
@@ -197,6 +198,7 @@ __all__ = [
     "MEMORY_READ_MATCH_THRESHOLD",
     "MEMORY_SCHEMA",
     "MEMORY_SNAPSHOT_FORMAT",
+    "OPAQUE_STATE_STORE_SCHEMA",
     "PROMOTION_SCHEMA",
     "RETENTION_LEDGER_SCHEMA",
     "AdaptiveOnlineEpisodicRelationReader",
@@ -272,6 +274,7 @@ __all__ = [
     "PersistentContentAddressedMemory",
     "PersistentOpaqueContextRouteEvidence",
     "PersistentOpaqueRouteEvidence",
+    "PersistentOpaqueStateStore",
     "PersistentRouteEvidenceStatus",
     "PromotionDecision",
     "PromotionEvidence",

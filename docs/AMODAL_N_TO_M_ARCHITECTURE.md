@@ -2373,3 +2373,20 @@ outcome-only audit admitted `43/46` candidates for seed 69316 and `39/46` for
 seed 69317; the remaining `3` and `7` stayed pending, with every occupied row
 protected and no pending candidate consuming executable capacity. The route
 frontier itself remains rejected because the late-shift mastery gate fails.
+
+## Durable learned route state (2026-08-06)
+
+The external-memory contract now includes `PersistentOpaqueStateStore` for
+replaceable learned route and utility policy weights. A route policy is no
+longer an experiment-local raw `torch.save(state_dict)` beside the artifact
+bank: its state is written atomically with a versioned JSON configuration and
+SHA-256 tensor digest, and reload validates keys and shapes before mutating the
+replacement module. The canonical parent-conditioned and sequential append
+audits now use this store for their route policies and extensions.
+
+This closes a persistence inconsistency at the memory boundary. Artifact files,
+retention evidence, and the learned policy that addresses them can now be
+reloaded as independently versioned external state. It does not make a route
+policy semantically general, provide distributed transactions, or establish
+general continual learning; route behavior still requires held-out verifier
+and corruption controls.

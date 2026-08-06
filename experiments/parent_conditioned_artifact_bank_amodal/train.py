@@ -27,6 +27,7 @@ from neural_computer import (
     ExternalCapabilityProgram,
     OpaqueAddressRouter,
     OpaqueProtocolDecoder,
+    PersistentOpaqueStateStore,
     paired_counterfactual_ranking_loss,
 )
 
@@ -638,12 +639,22 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         )
 
     router_path = args.report_out.parent / "router.pt"
-    torch.save(router.state_dict(), router_path)
+    route_state = PersistentOpaqueStateStore(
+        router_path,
+        configuration={
+            "component": "parent-conditioned-artifact-route",
+            "schema": "neural-computer.opaque-address-router.v1",
+            "width": 48,
+            "hidden": 64,
+            "candidate_count": len(PROGRAMS),
+        },
+    )
+    route_state.save_module(router)
     reloaded = ExecutableArtifactMemory.load(bank_path)
     reloaded_candidates = reloaded.address_rows()
     reloaded_keys = torch.stack([key for _, key in reloaded_candidates])
     reloaded_router = OpaqueAddressRouter(width=48, hidden=64)
-    reloaded_router.load_state_dict(torch.load(router_path, weights_only=False))
+    route_state.load_module(reloaded_router)
     reloaded_router.eval()
     reloaded_route_accuracy = _route_accuracy(
         reloaded_router,

@@ -102,6 +102,15 @@ key coordinates. `ExecutableArtifactMemory.address_rows()` and
 growth-state execution. These are replaceable memory policies, not
 modality-specific branches in the controller.
 
+`PersistentOpaqueStateStore` is the durable state boundary for those learned
+memory policies. It atomically snapshots a route or utility policy's tensor
+state together with a versioned JSON configuration and SHA-256 state digest;
+`load_module()` validates the contract before mutating the replacement module.
+This keeps learned address weights independent from both the frozen controller
+and executable artifact files, so a restart restores the policy that makes the
+files usable rather than only restoring the files themselves. It stores no
+task labels, modality formats, protocol IDs, or semantic coordinate meanings.
+
 `PersistentOpaqueRouteEvidence` is the small persistent policy for append-only
 capability banks. It stores only opaque slot attempts and scalar verifier
 outcomes, and promotes a slot to preferred status only after a stable-prefix
