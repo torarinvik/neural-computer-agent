@@ -115,6 +115,11 @@
     "end_to_end_speedup_promoted": false,
     "remaining_bottleneck": "filesystem and artifact execution variance still dominates full audit wall time"
   },
+  "manifest_binding_integrity": {
+    "legacy_sidecarless_load_supported": true,
+    "tampered_alias_binding_rejected": true,
+    "mechanism": "atomic manifest.sha256 sidecar"
+  },
   "promotion_gate_passed": true,
   "claim_boundary": "Replicated four-source replay-free dense external growth with opaque slot binding, one physical artifact row, target transfer, and reversal/recovery; sparse execution, neural compression, unrestricted memory growth, and general continual learning remain unqualified."
 }

@@ -339,7 +339,14 @@ class ExecutableArtifactMemory:
         path = self.directory / "manifest.json"
         if not path.exists():
             return
-        payload = json.loads(path.read_text())
+        manifest_text = path.read_text()
+        checksum_path = self._manifest_checksum_path()
+        if checksum_path.exists():
+            expected = checksum_path.read_text().strip()
+            actual = hashlib.sha256(manifest_text.encode()).hexdigest()
+            if expected != actual:
+                raise ValueError("artifact-memory manifest checksum mismatch")
+        payload = json.loads(manifest_text)
         if payload.get("schema") not in {
             LEGACY_ARTIFACT_MEMORY_SCHEMA,
             ARTIFACT_MEMORY_SCHEMA,
@@ -420,6 +427,9 @@ class ExecutableArtifactMemory:
 
     def _retention_path(self) -> Path:
         return self.directory / "retention-ledger.json"
+
+    def _manifest_checksum_path(self) -> Path:
+        return self.directory / "manifest.sha256"
 
     def _row_retention_keys(self, index: int) -> tuple[torch.Tensor, ...]:
         """Return the primary and every opaque alias key for one row."""
@@ -759,9 +769,16 @@ class ExecutableArtifactMemory:
         """Persist the address rows and manifest through atomic snapshots."""
         self.rows.snapshot(self.directory / "rows.pt")
         self.retention.save(self._retention_path())
+        manifest_text = json.dumps(
+            self._manifest_payload(), indent=2, sort_keys=True
+        ) + "\n"
         _atomic_text_write(
             self.directory / "manifest.json",
-            json.dumps(self._manifest_payload(), indent=2, sort_keys=True) + "\n",
+            manifest_text,
+        )
+        _atomic_text_write(
+            self._manifest_checksum_path(),
+            hashlib.sha256(manifest_text.encode()).hexdigest() + "\n",
         )
 
     def validate(self) -> None:

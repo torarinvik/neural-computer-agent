@@ -145,6 +145,7 @@ def test_legacy_alias_manifest_defaults_null_bindings(tmp_path) -> None:
     memory.alias_views[0] = ["legacy-alias"]
     memory.save()
     manifest_path = tmp_path / "legacy" / "manifest.json"
+    (tmp_path / "legacy" / "manifest.sha256").unlink()
     manifest = json.loads(manifest_path.read_text())
     manifest.pop("alias_bindings")
     manifest_path.write_text(json.dumps(manifest))
@@ -153,6 +154,24 @@ def test_legacy_alias_manifest_defaults_null_bindings(tmp_path) -> None:
 
     handle, _ = restored.promote(alias)
     assert handle.binding is None
+
+
+def test_manifest_checksum_rejects_tampered_alias_binding(tmp_path) -> None:
+    memory = ExecutableArtifactMemory(tmp_path / "checksummed", width=4, capacity=1)
+    primary = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    alias = torch.tensor([0.0, 1.0, 0.0, 0.0])
+    memory.put(primary, _artifact(1.0))
+    memory.alias_keys[0] = [alias]
+    memory.alias_views[0] = ["bound-alias"]
+    memory.alias_bindings[0] = [{"slot_indices": [0, 1]}]
+    memory.save()
+    manifest_path = tmp_path / "checksummed" / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["alias_bindings"][0][0]["slot_indices"] = [0, 1, 2]
+    manifest_path.write_text(json.dumps(manifest))
+
+    with pytest.raises(ValueError, match="manifest checksum"):
+        ExecutableArtifactMemory.load(tmp_path / "checksummed")
 
 
 

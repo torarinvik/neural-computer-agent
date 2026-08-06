@@ -290,6 +290,9 @@ mask reference, making batched retention/manifest writes the next bottleneck.
 The batch API is now implemented and a focused control reduced eight saves to
 one with identical ledger state. The full audit remained semantically exact,
 but wall time was noisy (`1,363.9s`), so an end-to-end speedup is not promoted.
+Persisted binding metadata is protected by an atomic `manifest.sha256`
+sidecar; sidecarless legacy stores remain readable, while tampered bindings
+are rejected before execution.
 
 The same runtime grammar can compose nonlocal temporal and aggregation
 primitives:

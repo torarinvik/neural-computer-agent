@@ -65,3 +65,7 @@ The follow-up adds ordered batch retention persistence. A focused control
 reduced eight retention saves to one while preserving the same ledger state.
 The full audit again passed every semantic gate, but its wall time was noisy
 (`1,363.9s` versus `1,244.6s`), so no end-to-end speedup is claimed yet.
+
+The manifest now has an atomic SHA-256 sidecar. Legacy stores without the
+sidecar still load, while tampering with persisted alias bindings is rejected
+before execution.

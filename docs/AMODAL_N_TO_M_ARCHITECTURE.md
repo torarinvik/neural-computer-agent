@@ -2892,3 +2892,5 @@ Ordered batch retention persistence is now available and reduces a focused
 eight-outcome sequence from eight saves to one. The full audit remained
 semantically exact, but wall time was noisy, so this is a transaction/write
 amortization primitive rather than a promoted end-to-end speedup.
+The manifest also carries an atomic SHA-256 sidecar: legacy sidecarless stores
+remain readable, but tampered persisted bindings are rejected before execution.
