@@ -330,12 +330,25 @@ def generate_sequence_memory_batch(
             operation_column = 28
         elif operation == "generated_composition":
             # The sampled grammar emits two generic primitive cues. The
-            # verifier-private composition ID never enters the learner.
-            for primitive in _GENERATED_COMPOSITIONS[int(composition_ids[row])]:
+            # verifier-private composition ID never enters the learner. A
+            # generic ordinal marker makes execution order observable without
+            # naming the composition or exposing its answer.
+            for primitive_index, primitive in enumerate(
+                _GENERATED_COMPOSITIONS[int(composition_ids[row])]
+            ):
                 operation_column = _GENERATED_PRIMITIVE_COLUMNS[primitive]
+                cue_start = 2 + primitive_index * 5
                 query_frames[
-                    row, :, :, 2:5, operation_column:operation_column + 3
+                    row,
+                    :,
+                    :,
+                    cue_start:cue_start + 3,
+                    operation_column:operation_column + 3,
                 ] = 0.95
+                marker_start = 24 + primitive_index * 4
+                query_frames[
+                    row, :, :, 27:30, marker_start:marker_start + 2
+                ] = 0.85
             operation_column = None
         else:
             operation_column = 2 if int(operation_bits[row]) == 0 else 27

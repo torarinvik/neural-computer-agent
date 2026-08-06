@@ -162,8 +162,8 @@ def test_generated_composition_is_deterministic_and_renders_two_primitive_cues()
             for column in cue_columns
             if bool(
                 (
-                    batch.query_frames[row, :, :, 2:5, column:column + 3]
-                    > 0.9
+                        batch.query_frames[row, :, :, 2:10, column:column + 3]
+                        > 0.9
                 ).any()
             )
         ]
@@ -190,6 +190,28 @@ def test_generated_composition_pool_can_admit_one_new_program_at_a_time() -> Non
     assert torch.equal(batch.query_frames, duplicate.query_frames)
     assert torch.equal(batch.correct_actions, 1 - batch.sequence.flip(1))
     assert torch.equal(batch.operation_bits, torch.zeros(32, dtype=torch.long))
+
+
+def test_generated_composition_order_is_learner_visible_but_not_named() -> None:
+    first = generate_sequence_memory_batch(
+        32,
+        span=4,
+        distractors=1,
+        seed=260031,
+        operation="generated_composition",
+        generated_composition_ids=(4,),
+    )
+    second = generate_sequence_memory_batch(
+        32,
+        span=4,
+        distractors=1,
+        seed=260031,
+        operation="generated_composition",
+        generated_composition_ids=(5,),
+    )
+    assert torch.equal(first.input_frames, second.input_frames)
+    assert not torch.equal(first.query_frames, second.query_frames)
+    assert not torch.equal(first.correct_actions, second.correct_actions)
 
 
 def test_sequence_counterfactual_is_a_valid_pixel_rerender() -> None:
