@@ -1,0 +1,214 @@
+{
+  "bank": {
+    "pong": {
+      "artifact_norm": 3.0622689723968506,
+      "artifact_parameters": 512
+    },
+    "snake": {
+      "artifact_norm": 2.6551148891448975,
+      "artifact_parameters": 512
+    }
+  },
+  "computing_parameters": {
+    "controller": 148546,
+    "peripherals": 23063
+  },
+  "conditions": {
+    "pong": {
+      "cross_artifact": {
+        "mastery": 0.076171875,
+        "per_seed_mastery": [
+          0.0625,
+          0.0625,
+          0.0625,
+          0.078125,
+          0.109375,
+          0.078125,
+          0.078125,
+          0.078125
+        ]
+      },
+      "fetched": {
+        "mastery": 0.828125,
+        "per_seed_mastery": [
+          0.90625,
+          0.859375,
+          0.78125,
+          0.796875,
+          0.84375,
+          0.765625,
+          0.796875,
+          0.875
+        ]
+      },
+      "random_artifact": {
+        "mastery": 0.314453125,
+        "per_seed_mastery": [
+          0.453125,
+          0.28125,
+          0.28125,
+          0.28125,
+          0.3125,
+          0.359375,
+          0.28125,
+          0.265625
+        ]
+      },
+      "shuffled": {
+        "mastery": 0.037109375,
+        "per_seed_mastery": [
+          0.03125,
+          0.046875,
+          0.0625,
+          0.015625,
+          0.0625,
+          0.046875,
+          0.03125,
+          0.0
+        ]
+      },
+      "withheld": {
+        "mastery": 0.021484375,
+        "per_seed_mastery": [
+          0.0,
+          0.015625,
+          0.015625,
+          0.0625,
+          0.015625,
+          0.03125,
+          0.0,
+          0.03125
+        ]
+      }
+    },
+    "snake": {
+      "cross_artifact": {
+        "mastery": 0.0,
+        "per_seed_mastery": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "fetched": {
+        "mastery": 0.92578125,
+        "per_seed_mastery": [
+          0.921875,
+          0.984375,
+          0.9375,
+          0.953125,
+          0.921875,
+          0.859375,
+          0.921875,
+          0.90625
+        ]
+      },
+      "random_artifact": {
+        "mastery": 0.00390625,
+        "per_seed_mastery": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.015625,
+          0.015625,
+          0.0,
+          0.0
+        ]
+      },
+      "shuffled": {
+        "mastery": 0.001953125,
+        "per_seed_mastery": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.015625
+        ]
+      },
+      "withheld": {
+        "mastery": 0.00390625,
+        "per_seed_mastery": [
+          0.03125,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    }
+  },
+  "config": {
+    "artifact_tokens": 8,
+    "batch_size": 64,
+    "eval_seeds": 8,
+    "event_width": 64,
+    "feedback_width": 16,
+    "gamma": 0.95,
+    "hidden": 32,
+    "ignorance_steps": 16,
+    "ignorance_weight": 1.0,
+    "intent_width": 32,
+    "learning_rate": 0.001,
+    "steps": 64,
+    "updates": 1600
+  },
+  "games": [
+    "snake",
+    "pong"
+  ],
+  "gates": {
+    "artifact_content_causal": false,
+    "computing_components_fixed_size": true,
+    "cross_artifact_fails": true,
+    "ignorant_without_bank": true,
+    "no_replay": true,
+    "shuffled_near_chance": true,
+    "skill_with_bank": true
+  },
+  "promoted": false,
+  "seed": 69316,
+  "training_tail": [
+    {
+      "cross_loss": 0.00041082457755692303,
+      "decoy_loss": 0.012002089060842991,
+      "game": 1.0,
+      "ignorance_loss": 0.0028576962649822235,
+      "mastery": 0.984375,
+      "replayed_examples": 0.0,
+      "skill_loss": -1.215706706047058,
+      "update": 1598.0
+    },
+    {
+      "cross_loss": 0.00018661202921066433,
+      "decoy_loss": 0.0026792092248797417,
+      "game": 0.0,
+      "ignorance_loss": 0.004468600731343031,
+      "mastery": 0.828125,
+      "replayed_examples": 0.0,
+      "skill_loss": -0.049780767410993576,
+      "update": 1599.0
+    },
+    {
+      "cross_loss": 0.00043463235488161445,
+      "decoy_loss": 0.0033231419511139393,
+      "game": 1.0,
+      "ignorance_loss": 0.0005921832635067403,
+      "mastery": 0.96875,
+      "replayed_examples": 0.0,
+      "skill_loss": -0.9799220561981201,
+      "update": 1600.0
+    }
+  ]
+}

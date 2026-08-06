@@ -6,15 +6,18 @@ rung promotes, rejects, or qualifies. Ordered by severity.
 
 ## Open
 
-1. **Skill externalization incomplete on Pong** — the double dissociation is
-   full for Snake, but Pong leaks ~0.2-0.4 mastery through one context null
-   per seed (which null varies by seed — boundary noise, not a shortcut).
-   Evidence: `skill_externalization_*` archives; v5 (ignorance weight 2.0)
-   in flight. Next: if v5 fails, qualify the rung and redesign with
-   per-game null gates scaled to game guessability or richer decoy sets.
-   No further global-dial escalation (stopping rule set 2026-08-06).
-2. **Skills still live in weights everywhere except the externalization
-   harness** — the promoted EWC rung stores game skill in core weights
+1. **Skill-externalization identity check is not seed-robust** — v5
+   promoted fully on seed 69316 (all seven gates: necessity, content, and
+   identity causality with fixed computing parameters); seed 69317 leaks
+   on one gate (Pong artifact partially plays Snake, 0.4141). Evidence:
+   `skill_externalization_qualified_v1_2026-08-06`. Next: per-game null
+   gates scaled to game guessability and richer decoy sets — no further
+   global-dial escalation (stopping rule).
+2. **Consolidation of already-acquired skills into artifacts is unbuilt**
+   — externalized skills were acquired externalized from the start; the
+   promoted EWC rung's weight-stored skills cannot yet be migrated into
+   the bank. Also: skills still live in weights everywhere except the
+   externalization harness — the promoted EWC rung stores game skill in core weights
    (recorded transitional violation in
    `docs/DYNAMIC_BRAIN_ARCHITECTURE.md`). Next: once externalization
    promotes, retire the violation by re-running the continual-learning
