@@ -114,6 +114,26 @@ It promotes mechanism transfer to four-primitive runtime programs, while
 unrestricted capacity and arbitrary open-ended program induction remain
 unqualified.
 
+The transfer pressure test compares an inherited external file with a fresh
+candidate on a new runtime program. A stable-prefix verifier selects a unique
+winner before the candidate is admitted beside the protected source:
+
+```bash
+PYTHONPATH=src uv run python -m experiments.generated_composition_capability_amodal.train_transfer \
+  --parent-updates 128 --source-updates 256 --candidate-updates 256 \
+  --batch-size 16 --audit-count 64 --retention-probes 4 --eval-every 32 \
+  --program-spec reverse,adjacent_xor,complement,prefix_parity \
+  --program-spec prefix_parity,global_parity,rotate,complement \
+  --report-out /tmp/generated-composition-transfer/report.json
+```
+
+This transfer audit is replicated for seeds `69316` and `69317` in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_transfer_replicated_promoted_v1_2026-08-06/`.
+The inherited candidate reaches the new target in `6,144` versus `10,240`
+fresh bits on seed `69316`, and `4,096` versus `10,240` on seed `69317`.
+Both candidates are compared on fresh held-out outcomes; old-file retention,
+candidate selection, capacity growth, frozen-core, and zero-replay gates pass.
+
 The same runtime grammar can compose nonlocal temporal and aggregation
 primitives:
 

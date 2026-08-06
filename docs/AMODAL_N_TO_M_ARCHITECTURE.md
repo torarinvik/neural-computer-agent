@@ -2696,3 +2696,29 @@ beyond a finite reversible grammar. It remains bounded continual external
 growth: the artifact blueprint and append-only capacity are finite, and
 arbitrary open-ended program induction is still unverified. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_artifact_bank_runtime_nonlocal_replicated_promoted_v1_2026-08-06/`.
+
+## Replicated replay-free positive transfer from external memory (2026-08-06)
+
+The generated-composition harness now compares an inherited external artifact
+with a fresh candidate on a genuinely different runtime program. The source
+file learned `reverse -> adjacent_xor -> complement -> prefix_parity`; the new
+target was `prefix_parity -> global_parity -> rotate -> complement`. Both arms
+received fresh target outcomes only. A stable-prefix selector admitted a
+candidate only when one arm had a unique verified winner, while the source row
+was protected and retained.
+
+Across seeds `69316` and `69317`, the inherited candidate reached stable target
+mastery at `6,144` and `4,096` fresh verifier bits, while matched fresh
+candidates required `10,240` bits in both runs. The resulting fresh-over-
+inherited transfer ratios are `1.667x` and `2.500x`. Source retention floors
+were `0.9336` in both runs; the inherited candidate was uniquely selected and
+admitted through transactional growth, with frozen controller digests and zero
+replay preserved. Source snapshots reloaded with behavior `0.9297` and
+`0.9609`, and both corruption controls were rejected.
+
+This is the first replicated positive sample-efficiency transfer result for
+the isolated external capability boundary. It does not yet establish broad
+general continual learning: the prior/target family, candidate selector, and
+fixed artifact blueprint remain bounded, and transfer across arbitrary task
+families still requires evidence. Record:
+`session_records/sequence_working_memory_2026-08-02/generated_composition_transfer_replicated_promoted_v1_2026-08-06/`.
