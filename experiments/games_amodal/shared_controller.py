@@ -128,8 +128,18 @@ def rollout(
     seed: int,
     sample: bool,
     gamma: float,
+    detach_interval: int = 1,
 ) -> dict[str, torch.Tensor | None]:
-    """Play fresh lifetimes through the shared controller, outcome-only."""
+    """Play fresh lifetimes through the shared controller, outcome-only.
+
+    ``detach_interval`` controls truncated backpropagation through the
+    recurrent state during sampling: 1 (default) reproduces the promoted
+    one-step regime, k lets policy-gradient credit flow across k controller
+    steps before the state is detached.
+    """
+
+    if detach_interval < 1:
+        raise ValueError("detach interval must be positive")
 
     verifier = GAME_VERIFIERS[game](batch_size=batch_size, seed=seed)
     verifier.reset(seed=seed)
@@ -146,7 +156,7 @@ def rollout(
     log_propensities: list[torch.Tensor] = []
     masks: list[torch.Tensor] = []
     alive = torch.ones(batch_size, dtype=torch.bool)
-    for _ in range(steps):
+    for step in range(steps):
         if not bool(alive.any()):
             break
         masks.append(alive.float())
@@ -165,7 +175,8 @@ def rollout(
             propensity=decision.propensity.detach(),
             has_feedback=torch.ones(batch_size),
         )
-        state = state.detached() if sample else state
+        if sample and (step + 1) % detach_interval == 0:
+            state = state.detached()
     reward_matrix = torch.stack(rewards, dim=1)
     mask_matrix = torch.stack(masks, dim=1)
     returns = torch.zeros_like(reward_matrix)

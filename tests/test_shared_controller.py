@@ -76,3 +76,22 @@ def test_evaluate_game_is_deterministic() -> None:
         agent, "snake", batch_size=4, steps=8, seeds=(5, 6), gamma=0.9
     )
     assert first == second
+
+
+def test_detach_interval_extends_gradient_flow() -> None:
+    agent = _agent()
+    truncated = rollout(
+        agent, "snake", batch_size=2, steps=8, seed=9, sample=True,
+        gamma=0.9, detach_interval=1,
+    )
+    windowed = rollout(
+        agent, "snake", batch_size=2, steps=8, seed=9, sample=True,
+        gamma=0.9, detach_interval=4,
+    )
+    for summary in (truncated, windowed):
+        loss = -(
+            summary["advantage"] * summary["log_propensity"] * summary["mask"]
+        ).sum()
+        agent.zero_grad(set_to_none=True)
+        loss.backward()
+    assert windowed["log_propensity"].shape == truncated["log_propensity"].shape
