@@ -1,0 +1,54 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "shared-growth-router-6to8to10to12-trajectory-stats-8192-v1-2026-08-06",
+  "status": "promoted_shared_router_bounded_three_shift_growth_reduced_budget",
+  "claim_boundary": "One permutation-equivariant shared candidate router per shift acquires 30 new opaque capabilities across three nonstationary shifts while a frozen controller and earlier external state retain 32 total capabilities with zero replay at half the previous shared-router update budget. This remains bounded continual learning.",
+  "seeds": [69316, 69317],
+  "distribution_shift_sequence": [6, 8, 10, 12],
+  "families_per_shift": [8, 10, 12],
+  "total_capabilities": 32,
+  "shared_expansion_count": 3,
+  "max_candidates_per_expansion": 12,
+  "route_query_representation": "trajectory_stats",
+  "candidate_key_bootstrap": "random",
+  "training_batch_size": 16,
+  "audit_batch_size": 64,
+  "shared_route_updates": 8192,
+  "shared_route_hidden": 256,
+  "unique_verifier_bits": 5931536,
+  "unique_logical_lifetimes": 113680,
+  "optimizer_updates": 111104,
+  "replayed_examples": 0,
+  "wall_time_seconds": 236.09335295800702,
+  "stable_bits_to_threshold": null,
+  "retention_on_mastered_primitives": [1.0, 1.0],
+  "transfer_ratio_against_fresh_learner": null,
+  "verification": {
+    "phase_1_minimum_route_selection": [0.984375, 0.984375],
+    "phase_2_minimum_route_selection": [0.96875, 0.90625],
+    "phase_3_minimum_route_selection": [0.921875, 0.90625],
+    "old_route_retained": [true, true],
+    "candidate_permutation_invariant": [true, true],
+    "operational_route_permutation": [0.9875, 0.9802083333333333],
+    "credit_signal_survives_all_shifts": [true, true],
+    "new_routes_causal": [true, true],
+    "retention_reversal_safe": [true, true],
+    "zero_centered_antithetic_reward_shuffled_not_selected": [true, true],
+    "zero_replay": [true, true],
+    "promotion_gate_passed": true
+  },
+  "rejected_controls": [
+    {
+      "description": "Matched 16,384-update shared-router rung",
+      "reason": "retained all gates but is dominated on optimizer-update cost; kept as the stronger-depth control"
+    },
+    {
+      "description": "Matched 1,024-update shared-router rung",
+      "reason": "both seeds failed new-route and/or retention gates"
+    },
+    {
+      "description": "Copy-on-write shared-router prior at 1,024 updates",
+      "reason": "benefited one seed but failed to replicate on the second seed"
+    }
+  ]
+}

@@ -672,3 +672,13 @@ index. This is a bounded reusable-growth result, not general continual
 learning, and acquisition currently requires 16,384 route updates per
 expansion. See
 `session_records/sequence_working_memory_2026-08-02/shared_growth_router_6to8to10to12_trajectory_stats_v1_2026-08-06/`.
+
+The shared-router acquisition budget has since been cut to 8,192 updates per
+expansion. Both seeds still pass the full 6→8→10→12, 32-capability audit with
+phase floors `0.9844/0.9844`, `0.9688/0.9063`, and `0.9219/0.9063`, operational
+permutation `0.9875/0.9802`, causal credit, retention, reversal, null, and
+zero-replay gates. Total optimizer updates fall 46.9% versus the previous
+rung. This promotes acquisition efficiency for the existing bounded policy;
+the fixed trajectory query and random opaque-key association remain open.
+See
+`session_records/sequence_working_memory_2026-08-02/shared_growth_router_6to8to10to12_trajectory_stats_8192_v1_2026-08-06/`.

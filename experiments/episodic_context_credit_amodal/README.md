@@ -198,3 +198,12 @@ index. The 16,384-update shared-router budget is still high, so this promotes
 reusable bounded growth rather than general continual learning or
 sample-efficient transfer. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/shared_growth_router_6to8to10to12_trajectory_stats_v1_2026-08-06/`.
+
+The same shared router then passes 6→8→10→12 at 8,192 updates per expansion.
+Across both seeds, phase floors are `0.9844/0.9844`, `0.9688/0.9063`, and
+`0.9219/0.9063`; operational permutation is `0.9875/0.9802`, all causal,
+retention, reversal, null, and zero-replay gates pass, and the bank still
+reaches 32 capabilities. Total optimizer updates fall by 46.9% versus the
+16,384-update rung. Copy-on-write router priors and prototype-address
+controls did not replicate and are not promoted. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/shared_growth_router_6to8to10to12_trajectory_stats_8192_v1_2026-08-06/`.

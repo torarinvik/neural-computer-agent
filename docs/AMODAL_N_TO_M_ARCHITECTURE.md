@@ -2115,6 +2115,23 @@ is to reduce acquisition cost and remove the fixed trajectory summary.
 Evidence is in
 `session_records/sequence_working_memory_2026-08-02/shared_growth_router_6to8to10to12_trajectory_stats_v1_2026-08-06/`.
 
+## Shared-router acquisition efficiency (2026-08-06)
+
+The same shared-router architecture now passes the complete 6→8→10→12
+schedule with 8,192 rather than 16,384 updates per expansion. Across two
+seeds, phase minima are `0.9844/0.9844`, `0.9688/0.9063`, and
+`0.9219/0.9063`; direct candidate permutation is exact and operational
+permutation is `0.9875/0.9802`. Causal credit, full-bank protection,
+reversal/recovery, reward-shuffled null, and zero replay all pass. Total
+optimizer updates fall from `104,704` to `55,552` per seed, a `46.9%`
+reduction, while the bank still reaches 32 capabilities.
+
+This promotes the reduced acquisition budget, not the exploratory prior or
+prototype-address controls: those did not replicate across seeds. The fixed
+trajectory-statistics query and arbitrary random candidate-key associations
+remain the next generalization bottleneck. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/shared_growth_router_6to8to10to12_trajectory_stats_8192_v1_2026-08-06/`.
+
 ## Frozen-core recurrent transfer control (2026-08-06)
 
 The next bottleneck was tested directly rather than inferred from retention:
