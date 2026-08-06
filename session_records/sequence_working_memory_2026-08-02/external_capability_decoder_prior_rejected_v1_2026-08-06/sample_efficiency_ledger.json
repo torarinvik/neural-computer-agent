@@ -1,0 +1,34 @@
+{
+  "experiment": "external_capability_decoder_prior_rejected_v1_2026-08-06",
+  "status": "rejected_positive_transfer",
+  "claim": "Initializing a new head-only consumer decoder from the retained head decoder was tested without replay and did not improve stable-prefix sample efficiency.",
+  "seeds": [69316],
+  "accounting_by_arm": {
+    "head_prior16_pilot": {
+      "unique_verifier_bits": 9984,
+      "unique_logical_lifetimes": 2688,
+      "optimizer_updates": 304,
+      "replayed_examples": 0,
+      "wall_seconds": 15.768530041
+    },
+    "head_prior64_medium": {
+      "unique_verifier_bits": 79872,
+      "unique_logical_lifetimes": 21504,
+      "optimizer_updates": 1216,
+      "replayed_examples": 0,
+      "wall_seconds": 168.692765792
+    },
+    "head_prior128_full": {
+      "unique_verifier_bits": 159744,
+      "unique_logical_lifetimes": 43008,
+      "optimizer_updates": 2432,
+      "replayed_examples": 0,
+      "wall_seconds": 297.323744541
+    }
+  },
+  "retention_on_mastered_primitives": "The original head decoder and frozen head program remained unchanged and reloadable; the shared controller digest was unchanged.",
+  "transfer_ratio_against_fresh_learner": {
+    "head_prior128_full": 0.7272727273
+  },
+  "reason_rejected": "The retained decoder prior reached 0.83984375 but required 22528 stable verifier bits versus 16384 for the fresh decoder baseline, so its early endpoint advantage was not stable mastery."
+}
