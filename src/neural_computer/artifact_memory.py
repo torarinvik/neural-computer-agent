@@ -374,7 +374,8 @@ class ExecutableArtifactMemory:
             raise ValueError("artifact-memory alias view metadata mismatch")
         self.alias_views = []
         alias_bindings = payload.get(
-            "alias_bindings", [[] for _ in range(self.capacity)]
+            "alias_bindings",
+            [[None] * len(row_aliases) for row_aliases in aliases],
         )
         if not isinstance(alias_bindings, list) or len(alias_bindings) != self.capacity:
             raise ValueError("artifact-memory alias binding metadata mismatch")
@@ -492,6 +493,21 @@ class ExecutableArtifactMemory:
 
         self._validate_key(key, self.width)
         self.retention.observe(key, outcome)
+        self.save()
+
+    def observe_retention_batch(
+        self,
+        observations: Sequence[tuple[torch.Tensor, float | torch.Tensor]],
+    ) -> None:
+        """Record ordered verifier outcomes and persist the bank once."""
+
+        entries = tuple(observations)
+        if not entries:
+            return
+        for key, _outcome in entries:
+            self._validate_key(key, self.width)
+        for key, outcome in entries:
+            self.retention.observe(key, outcome)
         self.save()
 
     @torch.no_grad()

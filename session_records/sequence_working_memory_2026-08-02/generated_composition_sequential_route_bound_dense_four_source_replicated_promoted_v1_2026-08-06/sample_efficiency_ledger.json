@@ -103,6 +103,18 @@
     "behavior_equal_to_reference": true,
     "remaining_bottleneck": "repeated retention and manifest writes"
   },
+  "batched_retention_follow_up": {
+    "seed": 69316,
+    "semantic_gates_passed": true,
+    "report": "report_batched_persistence_seed69316.json",
+    "focused_scalar_save_calls": 8,
+    "focused_batch_save_calls": 1,
+    "persisted_binding_wall_seconds": 1244.6177032910055,
+    "batched_wall_seconds": 1363.867502375011,
+    "wall_time_ratio": 1.095812391844248,
+    "end_to_end_speedup_promoted": false,
+    "remaining_bottleneck": "filesystem and artifact execution variance still dominates full audit wall time"
+  },
   "promotion_gate_passed": true,
   "claim_boundary": "Replicated four-source replay-free dense external growth with opaque slot binding, one physical artifact row, target transfer, and reversal/recovery; sparse execution, neural compression, unrestricted memory growth, and general continual learning remain unqualified."
 }

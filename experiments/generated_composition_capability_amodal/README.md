@@ -287,6 +287,9 @@ consumed from reloaded `ArtifactHandle` values during retention and behavior
 probes. A full seed-`69316` audit reproduced the same gates and metrics. The
 write-heavy persistence path took `1,244.6s` versus `831.4s` for the in-memory
 mask reference, making batched retention/manifest writes the next bottleneck.
+The batch API is now implemented and a focused control reduced eight saves to
+one with identical ledger state. The full audit remained semantically exact,
+but wall time was noisy (`1,363.9s`), so an end-to-end speedup is not promoted.
 
 The same runtime grammar can compose nonlocal temporal and aggregation
 primitives:

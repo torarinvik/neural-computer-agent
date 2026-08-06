@@ -60,3 +60,8 @@ metadata survives manifest save/load, growth, compaction, consolidation,
 binding from reloaded `ArtifactHandle` metadata and reproduced every gate and
 metric. Its wall time was `1,244.6s`, so repeated retention/manifest writes
 are now the main persistence bottleneck.
+
+The follow-up adds ordered batch retention persistence. A focused control
+reduced eight retention saves to one while preserving the same ledger state.
+The full audit again passed every semantic gate, but its wall time was noisy
+(`1,363.9s` versus `1,244.6s`), so no end-to-end speedup is claimed yet.

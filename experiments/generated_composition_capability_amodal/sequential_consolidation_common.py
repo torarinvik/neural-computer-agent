@@ -68,12 +68,14 @@ def reversal_recovery(
     recovery_observations: int,
 ) -> dict[str, object]:
     before = bank.retention.status(key)
-    for _ in range(reversal_patience):
-        bank.observe_retention(key, 0.0)
+    bank.observe_retention_batch(
+        tuple((key, 0.0) for _ in range(reversal_patience))
+    )
     after_reversal = bank.retention.status(key)
     row_protected_after_reversal = bool(bank.protection_mask()[row])
-    for _ in range(recovery_observations):
-        bank.observe_retention(key, 1.0)
+    bank.observe_retention_batch(
+        tuple((key, 1.0) for _ in range(recovery_observations))
+    )
     recovered = bank.retention.status(key)
     return {
         "before": asdict(before),

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 import torch
 
@@ -109,6 +111,49 @@ def test_compaction_refuses_to_drop_a_protected_artifact(tmp_path) -> None:
             tmp_path / "unsafe-consolidation",
             verifier=lambda _: True,
         )
+
+
+def test_retention_batch_preserves_order_and_persists_once(tmp_path) -> None:
+    memory = ExecutableArtifactMemory(tmp_path / "batch", width=4, capacity=1)
+    key = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    memory.put(key, _artifact(1.0))
+    original_save = memory.save
+    save_calls = 0
+
+    def save_once() -> None:
+        nonlocal save_calls
+        save_calls += 1
+        original_save()
+
+    memory.save = save_once
+
+    memory.observe_retention_batch(((key, 1.0), (key, 0.0), (key, 1.0)))
+
+    status = memory.retention.status(key)
+    assert status.observations == 3
+    assert save_calls == 1
+    restored = ExecutableArtifactMemory.load(tmp_path / "batch")
+    assert restored.retention.status(key).observations == 3
+
+
+def test_legacy_alias_manifest_defaults_null_bindings(tmp_path) -> None:
+    memory = ExecutableArtifactMemory(tmp_path / "legacy", width=4, capacity=1)
+    primary = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    alias = torch.tensor([0.0, 1.0, 0.0, 0.0])
+    memory.put(primary, _artifact(1.0))
+    memory.alias_keys[0] = [alias]
+    memory.alias_views[0] = ["legacy-alias"]
+    memory.save()
+    manifest_path = tmp_path / "legacy" / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest.pop("alias_bindings")
+    manifest_path.write_text(json.dumps(manifest))
+
+    restored = ExecutableArtifactMemory.load(tmp_path / "legacy")
+
+    handle, _ = restored.promote(alias)
+    assert handle.binding is None
+
 
 
 def test_growth_preserves_protected_rows_and_allows_new_write(tmp_path) -> None:

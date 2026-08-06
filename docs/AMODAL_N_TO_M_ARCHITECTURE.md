@@ -2888,3 +2888,7 @@ consolidation, and both promotion paths; a full seed-`69316` audit consumed the
 binding from reloaded handles and reproduced every semantic gate and metric.
 The audit took `1,244.6s` versus `831.4s` for the in-memory reference, so
 batched retention and manifest writes are now the main persistence bottleneck.
+Ordered batch retention persistence is now available and reduces a focused
+eight-outcome sequence from eight saves to one. The full audit remained
+semantically exact, but wall time was noisy, so this is a transaction/write
+amortization primitive rather than a promoted end-to-end speedup.

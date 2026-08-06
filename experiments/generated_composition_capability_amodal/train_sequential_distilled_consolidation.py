@@ -285,8 +285,7 @@ def _observe_mastery(
         )
         for probe in range(observations)
     ]
-    for outcome in outcomes:
-        bank.observe_retention(key, outcome)
+    bank.observe_retention_batch(tuple((key, outcome) for outcome in outcomes))
     return outcomes
 
 
