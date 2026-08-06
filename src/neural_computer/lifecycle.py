@@ -428,6 +428,41 @@ class ExternalCapabilityLifecycle:
             reason="artifact admitted into available capacity",
         )
 
+    def admit_selected_candidate(
+        self,
+        candidates: Sequence[tuple[torch.Tensor, Mapping[str, torch.Tensor]]],
+        progress: Sequence[Sequence[float]],
+        *,
+        threshold: float = 0.75,
+        bits_per_observation: int = 1,
+        grow_destination: Path | None = None,
+        strength: float = 1.0,
+    ) -> tuple[CapabilityCandidateSelection, CapabilityAdmissionReceipt | None]:
+        """Admit only a unique stable-prefix winner from opaque candidates.
+
+        Candidate state is not interpreted here. The caller supplies fresh
+        verifier curves aligned with candidate order; an unstable result or a
+        tie leaves the executable store unchanged.
+        """
+
+        if len(candidates) != len(progress):
+            raise ValueError("candidate artifacts and progress must align")
+        selection = select_capability_candidate(
+            progress,
+            threshold=threshold,
+            bits_per_observation=bits_per_observation,
+        )
+        if not selection.accepted or selection.selected_index is None:
+            return selection, None
+        key, artifact = candidates[selection.selected_index]
+        receipt = self.admit(
+            key,
+            artifact,
+            grow_destination=grow_destination,
+            strength=strength,
+        )
+        return selection, receipt
+
     def consolidate(
         self,
         source_indices: Sequence[int],

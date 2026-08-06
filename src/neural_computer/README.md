@@ -85,6 +85,10 @@ replaceable learners compete for a new task. It selects only a unique
 stable-prefix winner from fresh held-out curves; unstable candidates and ties
 are rejected. This lets inherited composition state compete against a fresh
 candidate without allowing a lucky final score or a prior to silently win.
+`ExternalCapabilityLifecycle.admit_selected_candidate` makes that decision
+atomic with admission: a rejected selection leaves the executable bank
+unchanged, while only the selected opaque artifact is passed through the
+normal capacity and protection policy.
 The executable compaction audit now uses the same coordinator for all three
 rewrites and defaults its separate opaque route-acquisition arm to 2,048 fresh
 paired-outcome updates per arm after a 512-update control failed its

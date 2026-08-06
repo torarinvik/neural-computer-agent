@@ -106,6 +106,51 @@ def test_lifecycle_grows_when_every_existing_capability_is_protected(tmp_path) -
     assert memory.occupied == (0, 1)
 
 
+def test_lifecycle_admits_only_the_stable_prefix_candidate(tmp_path) -> None:
+    memory = _memory(tmp_path, capacity=1)
+    lifecycle = ExternalCapabilityLifecycle(memory)
+    candidates = (
+        (torch.tensor([1.0, 0.0, 0.0, 0.0]), _artifact(1.0)),
+        (torch.tensor([0.0, 1.0, 0.0, 0.0]), _artifact(2.0)),
+    )
+
+    selection, receipt = lifecycle.admit_selected_candidate(
+        candidates,
+        ((0.80, 0.80), (0.50, 0.80)),
+        threshold=0.75,
+        bits_per_observation=8,
+    )
+
+    assert selection.accepted
+    assert selection.selected_index == 0
+    assert receipt is not None and receipt.accepted
+    assert lifecycle.memory.promote(candidates[0][0])[0].index == 0
+    with pytest.raises(LookupError):
+        lifecycle.memory.promote(candidates[1][0])
+
+
+def test_lifecycle_leaves_store_unchanged_when_candidate_selection_ties(
+    tmp_path,
+) -> None:
+    memory = _memory(tmp_path, capacity=1)
+    lifecycle = ExternalCapabilityLifecycle(memory)
+    candidates = (
+        (torch.tensor([1.0, 0.0, 0.0, 0.0]), _artifact(1.0)),
+        (torch.tensor([0.0, 1.0, 0.0, 0.0]), _artifact(2.0)),
+    )
+
+    selection, receipt = lifecycle.admit_selected_candidate(
+        candidates,
+        ((0.80, 0.80), (0.90, 0.90)),
+        threshold=0.75,
+        bits_per_observation=8,
+    )
+
+    assert not selection.accepted
+    assert receipt is None
+    assert lifecycle.memory.occupied == ()
+
+
 def test_lifecycle_evicts_only_an_unprotected_row(tmp_path) -> None:
     memory = _memory(tmp_path, capacity=2)
     lifecycle = ExternalCapabilityLifecycle(memory)
