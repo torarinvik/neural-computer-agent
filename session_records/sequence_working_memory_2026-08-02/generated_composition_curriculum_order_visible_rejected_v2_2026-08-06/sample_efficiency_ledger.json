@@ -1,0 +1,28 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "generated-composition-curriculum-order-visible-rejected-v2-2026-08-06",
+  "status": "rejected_short_no_replay_curriculum_order_visible",
+  "seed": 69316,
+  "stack": "routed",
+  "program_count": 2,
+  "composition_ids": [0, 1, 2, 3, 4, 5],
+  "parent_updates": 32,
+  "phase_updates": 16,
+  "batch_size": 8,
+  "audit_count": 16,
+  "unique_logical_lifetimes": 1792,
+  "unique_verifier_bits": 8192,
+  "optimizer_updates": 128,
+  "replayed_examples": 0,
+  "fresh_generated_examples": 768,
+  "parent_stable_bits_to_threshold": 512,
+  "final_retention": {
+    "0": 0.359375,
+    "1": 0.328125,
+    "2": 0.359375,
+    "3": 0.3125,
+    "4": 0.671875,
+    "5": 0.734375
+  },
+  "claim_boundary": "Rejected the corrected short no-replay curriculum budget; no weights or artifact promoted."
+}
