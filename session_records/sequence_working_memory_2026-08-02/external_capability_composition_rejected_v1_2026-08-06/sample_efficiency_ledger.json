@@ -1,0 +1,25 @@
+{
+  "experiment": "external_capability_composition_rejected_v1_2026-08-06",
+  "status": "rejected_general_composition",
+  "claim": "Frozen independently learned external programs can beat a blank pipeline on one novel composed target, but robust composition and fresh-learner transfer are not established.",
+  "seeds": [69316, 69317],
+  "accounting_by_seed": {
+    "69316": {
+      "unique_verifier_bits": 184320,
+      "unique_logical_lifetimes": 51200,
+      "optimizer_updates": 2688,
+      "replayed_examples": 0,
+      "wall_seconds": 430.3503875000024
+    },
+    "69317": {
+      "unique_verifier_bits": 184320,
+      "unique_logical_lifetimes": 51200,
+      "optimizer_updates": 2688,
+      "replayed_examples": 0,
+      "wall_seconds": 463.8377532500017
+    }
+  },
+  "retention_on_mastered_primitives": "primitive artifacts remain available and their reports are retained; no controller weights changed",
+  "transfer_ratio_against_fresh_learner": null,
+  "reason_rejected": "The first program was not causal on seed 69317 and the fresh trainable pipeline did not reach stable mastery on either seed."
+}

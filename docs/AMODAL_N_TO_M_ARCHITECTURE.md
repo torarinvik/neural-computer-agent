@@ -2301,6 +2301,27 @@ capacity pressure, and positive transfer against a fresh learner. Evidence is
 in
 `session_records/sequence_working_memory_2026-08-02/multistep_view_growth_lifecycle_v1_2026-08-06/`.
 
+## External capability composition pipeline (2026-08-06)
+
+The production package now exposes `ExternalCapabilityPipeline`, a
+variable-length memory-side execution chain. Each program keeps its own
+recurrent state outside the controller, and only the learned intention is
+passed from one program to the next. An empty pipeline is an exact identity;
+adding or replacing programs does not resize the controller or create a
+task-specific reasoning branch.
+
+The first behavioral pressure test learned separate `complement4` and
+`reverse4` programs, froze them, and trained a fresh decoder on the novel
+`complement_reverse4` target. The composed pipeline beat the blank pipeline at
+`0.9492` versus `0.5508` on seed `69316` and `0.8828` versus `0.6641` on seed
+`69317`. Exact reload, corruption rejection, frozen-core, and shuffled-outcome
+controls passed; the second primitive was causal on both seeds. However, the
+first primitive was not causal on seed `69317`, and a fully fresh trainable
+pipeline did not reach stable mastery on either seed. This is retained as a
+rejected general-composition diagnostic, not as arbitrary program induction or
+fresh-learner transfer. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/external_capability_composition_rejected_v1_2026-08-06/`.
+
 ## Lifecycle-backed learned executable compaction (2026-08-06)
 
 The same coordinator now owns the learned executable-artifact consolidation
