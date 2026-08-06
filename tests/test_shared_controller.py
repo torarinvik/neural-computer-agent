@@ -78,20 +78,25 @@ def test_evaluate_game_is_deterministic() -> None:
     assert first == second
 
 
-def test_detach_interval_extends_gradient_flow() -> None:
+def test_detach_interval_backward_succeeds_across_windows() -> None:
     agent = _agent()
-    truncated = rollout(
-        agent, "snake", batch_size=2, steps=8, seed=9, sample=True,
-        gamma=0.9, detach_interval=1,
-    )
-    windowed = rollout(
-        agent, "snake", batch_size=2, steps=8, seed=9, sample=True,
-        gamma=0.9, detach_interval=4,
-    )
-    for summary in (truncated, windowed):
+    for interval in (1, 4):
+        torch.manual_seed(9)
+        summary = rollout(
+            agent, "snake", batch_size=2, steps=8, seed=9, sample=True,
+            gamma=0.9, detach_interval=interval,
+        )
         loss = -(
             summary["advantage"] * summary["log_propensity"] * summary["mask"]
         ).sum()
         agent.zero_grad(set_to_none=True)
         loss.backward()
-    assert windowed["log_propensity"].shape == truncated["log_propensity"].shape
+        assert bool(torch.isfinite(loss))
+        grads = [
+            p.grad
+            for p in agent.controller.parameters()
+            if p.grad is not None
+        ]
+        assert grads
+        assert all(bool(torch.isfinite(g).all()) for g in grads)
+    agent.zero_grad(set_to_none=True)
