@@ -2625,3 +2625,23 @@ family are predeclared, the artifact blueprint is fixed, and persistent
 consolidation beyond append-only capacity is not yet demonstrated. Evidence
 is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_artifact_bank_append_only_three_replicated_promoted_v1_2026-08-06/`.
+
+## Append-only acquisition across a grammar shift (2026-08-06)
+
+The same frozen append-only route chain then replaced the fourth family member
+with composition ID `6`, a three-primitive `reverse -> complement -> rotate`
+program. This tests a longer computation and a changed composition grammar
+without changing the controller, base route, or established route stages.
+
+In the first run, artifact behavior was `0.9102`, `0.8555`, `0.9453`, and
+`1.0000`; causal route accuracy, candidate-key permutation, cold-start
+old-route retention, and reload were all `1.0000`. Every stage-specific
+reward-shuffled control was `0.0000`; protected-row, corruption, frozen-core,
+and zero-replay gates all passed.
+
+This promotes one-seed append-only acquisition across a longer-program grammar
+shift. It is a meaningful increase in external capability growth, but not a
+claim of general continual learning: the program grammar, artifact blueprint,
+and append-only memory capacity are still bounded. Fresh-seed replication and
+open-ended program induction remain required. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_artifact_bank_append_only_grammar_shift_promoted_v1_2026-08-06/`.

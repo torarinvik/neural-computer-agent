@@ -65,3 +65,26 @@ PYTHONPATH=src uv run python -m experiments.generated_composition_capability_amo
 
 This append-only route result is replicated for seeds 69316 and 69317. It is
 still bounded growth over the fixed generated grammar.
+
+The next pressure test replaces the fourth family member with composition ID
+`6`, a three-primitive `reverse -> complement -> rotate` program. It keeps the
+same frozen append-only route chain while testing a longer computation and a
+grammar shift:
+
+```bash
+PYTHONPATH=src uv run python -m experiments.generated_composition_capability_amodal.train_artifact_bank \
+  --route-mode append_only --base-route-count 1 \
+  --parent-updates 128 --artifact-updates 256 --route-updates 256 \
+  --composition-ids 0 1 2 6 --batch-size 16 --route-batch-size 16 \
+  --audit-count 64 --route-audit-count 512 --retention-probes 4 \
+  --eval-every 32 --report-out /tmp/generated-composition-artifact-bank-grammar-shift-v1/report.json
+```
+
+The one-seed grammar-shift result is promoted in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_artifact_bank_append_only_grammar_shift_promoted_v1_2026-08-06/`.
+It acquired the longer artifact at `1.0000` behavior, retained all four
+routes at `1.0000`, passed cold-start old-route retention and all causal,
+reload, corruption, frozen-core, and zero-replay gates, and rejected every
+stage-specific reward-shuffled control. Fresh-seed replication is required;
+this remains bounded continual external growth rather than general continual
+learning.
