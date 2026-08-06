@@ -20,17 +20,29 @@ from experiments.working_memory_continuous.canonical_growth_pressure_test import
     _digest_core,
     _runtime,
 )
-from neural_computer import ExternalCapabilityPipeline
+from neural_computer import (
+    ExternalCapabilityComposition,
+    ExternalCapabilityPipeline,
+)
 
 
-def _new_pipeline(seed: int, *, program_count: int) -> ExternalCapabilityPipeline:
+def _new_stack(
+    seed: int,
+    *,
+    program_count: int,
+    stack: str,
+) -> ExternalCapabilityPipeline | ExternalCapabilityComposition:
     if program_count < 2:
         raise ValueError("compositional pipeline needs at least two programs")
     programs = tuple(
         _new_capability(seed + index + 1)[0]
         for index in range(program_count)
     )
-    return ExternalCapabilityPipeline(programs)
+    if stack == "serial":
+        return ExternalCapabilityPipeline(programs)
+    if stack == "routed":
+        return ExternalCapabilityComposition(programs)
+    raise ValueError("stack must be serial or routed")
 
 
 def run(args: argparse.Namespace) -> dict[str, object]:
@@ -61,7 +73,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     )
     parent.eval()
     parent_digest_before = _digest_core(parent, ())
-    pipeline = _new_pipeline(args.seed + 1, program_count=args.program_count)
+    pipeline = _new_stack(
+        args.seed + 1,
+        program_count=args.program_count,
+        stack=args.stack,
+    )
     _unused_program, decoder = _new_capability(
         args.seed + 10_000 + args.program_count
     )
@@ -108,6 +124,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         ),
         "seed": args.seed,
         "program_count": args.program_count,
+        "stack": args.stack,
         "pipeline_configuration": pipeline.configuration(),
         "parent_updates": args.parent_updates,
         "capability_updates": args.updates,
@@ -154,6 +171,7 @@ def main() -> None:
     parser.add_argument("--parent-updates", type=int, default=128)
     parser.add_argument("--updates", type=int, default=256)
     parser.add_argument("--program-count", type=int, default=2)
+    parser.add_argument("--stack", choices=("serial", "routed"), default="serial")
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--audit-count", type=int, default=64)
     parser.add_argument("--eval-every", type=int, default=32)
