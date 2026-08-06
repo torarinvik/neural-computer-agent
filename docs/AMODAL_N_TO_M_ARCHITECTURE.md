@@ -2582,3 +2582,22 @@ general continual learning. The remaining boundary is a third unseen
 composition plus fresh-seed replication, followed by artifacts whose
 computation is not drawn from the fixed six-composition grammar and memory
 capacity/consolidation beyond a bounded row bank.
+
+## Replicated three-artifact composition growth (2026-08-06)
+
+The append-only generated-composition bank was then extended to composition
+ID `2` and rerun with a fresh seed. Across seeds `69316` and `69317`, all three
+artifacts mastered (`1.000`/`0.945`/`0.969` and `0.957`/`0.965`/`0.980`), causal
+and candidate-permuted route accuracy were `1.000` in both runs, and every
+row was protected. Reload, corruption rejection, frozen-core, and zero-replay
+gates passed; replicated reward-shuffled controls averaged `0.486` and
+`0.394`.
+
+This is now a replicated three-artifact no-replay growth result for the fixed
+six-composition grammar. It materially reduces the risk that isolated
+external memory growth is merely a one-row or one-seed effect, but it remains
+bounded continual artifact growth. The next bottlenecks are a fourth row,
+grammar/distribution shift beyond the six predeclared compositions, and
+capacity/consolidation when the append-only bank cannot grow indefinitely.
+Evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_artifact_bank_three_replicated_promoted_v1_2026-08-06/`.
