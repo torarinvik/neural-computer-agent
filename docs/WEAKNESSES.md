@@ -37,11 +37,13 @@ rung promotes, rejects, or qualifies. Ordered by severity.
    `ewc_ladder_three_game_qualified_v1_2026-08-06`. Next: the enhanced
    consolidation rule should target acquisition headroom (adaptive
    per-parameter release), not stronger anchoring.
-6. **Peripheral skill leakage unquantified** — per-game encoders/decoders
-   train jointly with play, so strategy may hide there
-   (architecture-doc violation 2). Next: peripheral-swap diagnostic —
-   fresh peripherals + frozen core/artifacts; recovery cost measures the
-   leak.
+6. **Peripheral skill leakage quantified: real but bounded** — fresh
+   peripherals recover 0.94/0.83 mastery through the trained frozen core
+   at half budget (core-resident strategy), while a random-core control
+   reaches 0.53/0.67 (peripheral capacity is nonzero). Evidence:
+   `peripheral_leak_diagnostic_v1_2026-08-06`. Next: the externalization
+   ignorance objective is the squeezing mechanism; re-measure after
+   externalized ladders land.
 7. **Three-game routing qualified, not promoted** — the mechanism extends
    structurally to three slots (permutation 1.0, nulls clean, Snake routes
    1.0), but the Breakout slot plateaus at ~0.54 mastery regardless of

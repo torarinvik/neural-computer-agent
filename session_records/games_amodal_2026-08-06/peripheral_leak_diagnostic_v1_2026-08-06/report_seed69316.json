@@ -1,0 +1,85 @@
+{
+  "config": {
+    "batch_size": 64,
+    "recovery_budgets": [
+      100,
+      300
+    ],
+    "steps": 64,
+    "updates": 600
+  },
+  "original_mastery": {
+    "mastery": 0.85546875,
+    "per_seed_mastery": [
+      0.796875,
+      0.890625,
+      0.90625,
+      0.78125,
+      0.921875,
+      0.84375,
+      0.875,
+      0.828125
+    ]
+  },
+  "recovery": {
+    "budget_100": {
+      "no_replay": true,
+      "through_random_frozen_core": {
+        "mastery": 0.013671875,
+        "per_seed_mastery": [
+          0.015625,
+          0.015625,
+          0.0,
+          0.015625,
+          0.0,
+          0.03125,
+          0.0,
+          0.03125
+        ]
+      },
+      "through_trained_frozen_core": {
+        "mastery": 0.318359375,
+        "per_seed_mastery": [
+          0.25,
+          0.28125,
+          0.375,
+          0.3125,
+          0.359375,
+          0.28125,
+          0.328125,
+          0.359375
+        ]
+      }
+    },
+    "budget_300": {
+      "no_replay": true,
+      "through_random_frozen_core": {
+        "mastery": 0.525390625,
+        "per_seed_mastery": [
+          0.484375,
+          0.453125,
+          0.578125,
+          0.578125,
+          0.671875,
+          0.4375,
+          0.453125,
+          0.546875
+        ]
+      },
+      "through_trained_frozen_core": {
+        "mastery": 0.9375,
+        "per_seed_mastery": [
+          0.984375,
+          0.875,
+          0.9375,
+          0.9375,
+          0.9375,
+          0.9375,
+          0.96875,
+          0.921875
+        ]
+      }
+    }
+  },
+  "seed": 69316
+}
