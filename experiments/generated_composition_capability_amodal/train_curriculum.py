@@ -15,6 +15,9 @@ from pathlib import Path
 from time import perf_counter
 
 from experiments.frozen_core_transfer_amodal.train import _train_with_progress
+from experiments.archive.unified_cognitive_controller.train_sequence_working_memory import (
+    _GENERATED_COMPOSITIONS,
+)
 from experiments.parent_conditioned_artifact_bank_amodal.train import (
     _capability_accuracy,
     _new_capability,
@@ -28,7 +31,7 @@ from experiments.working_memory_continuous.canonical_growth_pressure_test import
 from .train_pipeline import _new_stack
 
 
-COMPOSITION_COUNT = 6
+COMPOSITION_COUNT = len(_GENERATED_COMPOSITIONS)
 SPAN = 4
 THRESHOLD = 0.75
 

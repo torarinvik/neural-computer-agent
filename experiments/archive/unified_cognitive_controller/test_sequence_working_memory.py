@@ -147,10 +147,12 @@ def test_generated_composition_is_deterministic_and_renders_two_primitive_cues()
 
     batch = generate_sequence_memory_batch(
         48, span=4, distractors=1, seed=260029,
-        operation="generated_composition")
+        operation="generated_composition",
+        generated_composition_ids=tuple(range(6)))
     duplicate = generate_sequence_memory_batch(
         48, span=4, distractors=1, seed=260029,
-        operation="generated_composition")
+        operation="generated_composition",
+        generated_composition_ids=tuple(range(6)))
     assert torch.equal(batch.input_frames, duplicate.input_frames)
     assert torch.equal(batch.query_frames, duplicate.query_frames)
     assert torch.equal(batch.correct_actions, duplicate.correct_actions)
@@ -212,6 +214,34 @@ def test_generated_composition_order_is_learner_visible_but_not_named() -> None:
     assert torch.equal(first.input_frames, second.input_frames)
     assert not torch.equal(first.query_frames, second.query_frames)
     assert not torch.equal(first.correct_actions, second.correct_actions)
+
+
+def test_generated_composition_grammar_can_emit_three_primitive_programs() -> None:
+    from .train_sequence_working_memory import _GENERATED_PRIMITIVE_COLUMNS
+
+    batch = generate_sequence_memory_batch(
+        32,
+        span=4,
+        distractors=1,
+        seed=260032,
+        operation="generated_composition",
+        generated_composition_ids=(6,),
+    )
+    expected = batch.sequence.flip(1)
+    expected = 1 - expected
+    expected = expected.roll(shifts=-1, dims=1)
+    assert torch.equal(batch.correct_actions, expected)
+    active = [
+        column
+        for column in _GENERATED_PRIMITIVE_COLUMNS.values()
+        if bool(
+            (
+                batch.query_frames[:, :, :, 2:17, column:column + 3]
+                > 0.9
+            ).any()
+        )
+    ]
+    assert len(active) == 3
 
 
 def test_sequence_counterfactual_is_a_valid_pixel_rerender() -> None:

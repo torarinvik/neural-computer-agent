@@ -82,6 +82,12 @@ _GENERATED_COMPOSITIONS = (
     ("complement", "rotate"),
     ("reverse", "rotate"),
     ("rotate", "reverse"),
+    ("reverse", "complement", "rotate"),
+    ("rotate", "complement", "reverse"),
+    ("complement", "rotate", "reverse"),
+    ("reverse", "rotate", "complement"),
+    ("complement", "reverse", "rotate"),
+    ("rotate", "reverse", "complement"),
 )
 
 
@@ -106,17 +112,22 @@ def _apply_generated_compositions(
     sequence: torch.Tensor,
     composition_ids: torch.Tensor,
 ) -> torch.Tensor:
-    """Apply one sampled two-primitive program independently to each row."""
+    """Apply one sampled primitive program independently to each row."""
+
+    def apply_program(
+        row_sequence: torch.Tensor, primitives: tuple[str, ...]
+    ) -> torch.Tensor:
+        result = row_sequence
+        for primitive in primitives:
+            result = _apply_generated_primitive(result, primitive)
+        return result[0]
 
     return torch.stack(
         tuple(
-            _apply_generated_primitive(
-                _apply_generated_primitive(
-                    sequence[row : row + 1],
-                    _GENERATED_COMPOSITIONS[int(composition_ids[row])][0],
-                ),
-                _GENERATED_COMPOSITIONS[int(composition_ids[row])][1],
-            )[0]
+            apply_program(
+                sequence[row : row + 1],
+                _GENERATED_COMPOSITIONS[int(composition_ids[row])],
+            )
             for row in range(sequence.shape[0])
         )
     )
@@ -345,7 +356,7 @@ def generate_sequence_memory_batch(
                     cue_start:cue_start + 3,
                     operation_column:operation_column + 3,
                 ] = 0.95
-                marker_start = 24 + primitive_index * 4
+                marker_start = 24 + primitive_index * 2
                 query_frames[
                     row, :, :, 27:30, marker_start:marker_start + 2
                 ] = 0.85
