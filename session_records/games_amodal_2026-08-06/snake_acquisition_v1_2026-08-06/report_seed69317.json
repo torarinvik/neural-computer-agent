@@ -1,0 +1,115 @@
+{
+  "conditions": {
+    "random": {
+      "mastery": 0.0,
+      "mean_foods": 0.0625,
+      "mean_survival": 5.0,
+      "per_seed_mastery": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "shuffled": {
+      "mastery": 0.0,
+      "mean_foods": 0.044921875,
+      "mean_survival": 4.0,
+      "per_seed_mastery": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "trained": {
+      "mastery": 0.94140625,
+      "mean_foods": 3.896484375,
+      "mean_survival": 62.970703125,
+      "per_seed_mastery": [
+        0.9375,
+        0.953125,
+        0.953125,
+        0.9375,
+        0.953125,
+        0.921875,
+        0.9375,
+        0.9375
+      ]
+    }
+  },
+  "config": {
+    "batch_size": 64,
+    "eval_seeds": 8,
+    "event_width": 64,
+    "gamma": 0.95,
+    "hidden": 64,
+    "intent_width": 32,
+    "learning_rate": 0.001,
+    "steps": 64,
+    "updates": 400
+  },
+  "gates": {
+    "acquired": true,
+    "capability_protected": true,
+    "no_replay": true,
+    "random_near_chance": true,
+    "shuffled_near_chance": true
+  },
+  "promoted": true,
+  "retention": {
+    "observations": 8,
+    "protected": true
+  },
+  "seed": 69317,
+  "training_tail": [
+    {
+      "loss": -0.2794068455696106,
+      "mastery": 1.0,
+      "mean_foods": 4.15625,
+      "mean_survival": 63.453125,
+      "replayed_examples": 0.0,
+      "update": 396.0
+    },
+    {
+      "loss": -0.609732985496521,
+      "mastery": 0.984375,
+      "mean_foods": 3.875,
+      "mean_survival": 63.296875,
+      "replayed_examples": 0.0,
+      "update": 397.0
+    },
+    {
+      "loss": -1.2484294176101685,
+      "mastery": 0.953125,
+      "mean_foods": 3.703125,
+      "mean_survival": 60.296875,
+      "replayed_examples": 0.0,
+      "update": 398.0
+    },
+    {
+      "loss": -1.085342288017273,
+      "mastery": 0.953125,
+      "mean_foods": 3.828125,
+      "mean_survival": 61.625,
+      "replayed_examples": 0.0,
+      "update": 399.0
+    },
+    {
+      "loss": -1.0740909576416016,
+      "mastery": 0.984375,
+      "mean_foods": 4.015625,
+      "mean_survival": 61.609375,
+      "replayed_examples": 0.0,
+      "update": 400.0
+    }
+  ]
+}
