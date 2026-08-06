@@ -1,0 +1,115 @@
+{
+  "acquisition_curves": {
+    "pong_random_core": {
+      "final_training_mastery": 0.953125,
+      "mean_training_mastery": 0.577421875,
+      "updates_to_half_mastery": 203.0
+    },
+    "pong_trained_core": {
+      "final_training_mastery": 0.515625,
+      "mean_training_mastery": 0.3497135416666667,
+      "updates_to_half_mastery": 221.0
+    },
+    "snake_phase_one": {
+      "final_training_mastery": 0.859375,
+      "mean_training_mastery": 0.6361458333333333,
+      "updates_to_half_mastery": 93.0
+    }
+  },
+  "config": {
+    "batch_size": 64,
+    "eval_seeds": 8,
+    "event_width": 64,
+    "feedback_width": 16,
+    "gamma": 0.95,
+    "hidden": 32,
+    "intent_width": 32,
+    "learning_rate": 0.001,
+    "steps": 64,
+    "updates": 600
+  },
+  "controller_digest": {
+    "after": "c45469dbf87f0acf416b9277fc9c70f87390226052264915d6a9c0a07b129a41",
+    "before": "c45469dbf87f0acf416b9277fc9c70f87390226052264915d6a9c0a07b129a41"
+  },
+  "core_transfer_margin": -0.4140625,
+  "gates": {
+    "controller_unchanged": true,
+    "no_replay": true,
+    "pong_acquired_through_frozen_core": false,
+    "pong_shuffled_near_chance": true,
+    "snake_acquired": true,
+    "snake_retained": true
+  },
+  "pong": {
+    "random_core": {
+      "mastery": 0.93359375,
+      "per_seed_mastery": [
+        0.9375,
+        0.890625,
+        0.921875,
+        0.953125,
+        0.9375,
+        0.921875,
+        0.953125,
+        0.953125
+      ]
+    },
+    "shuffled": {
+      "mastery": 0.037109375,
+      "per_seed_mastery": [
+        0.03125,
+        0.046875,
+        0.0625,
+        0.015625,
+        0.0625,
+        0.046875,
+        0.03125,
+        0.0
+      ]
+    },
+    "trained_core": {
+      "mastery": 0.51953125,
+      "per_seed_mastery": [
+        0.59375,
+        0.53125,
+        0.515625,
+        0.4375,
+        0.453125,
+        0.515625,
+        0.578125,
+        0.53125
+      ]
+    }
+  },
+  "promoted": false,
+  "seed": 69316,
+  "snake": {
+    "after": {
+      "mastery": 0.85546875,
+      "per_seed_mastery": [
+        0.796875,
+        0.890625,
+        0.90625,
+        0.78125,
+        0.921875,
+        0.84375,
+        0.875,
+        0.828125
+      ]
+    },
+    "before": {
+      "mastery": 0.85546875,
+      "per_seed_mastery": [
+        0.796875,
+        0.890625,
+        0.90625,
+        0.78125,
+        0.921875,
+        0.84375,
+        0.875,
+        0.828125
+      ]
+    }
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "config": {
+    "batch_size": 32,
+    "eval_seeds": 8,
+    "event_width": 64,
+    "feedback_width": 16,
+    "gamma": 0.95,
+    "hidden": 32,
+    "intent_width": 32,
+    "learning_rate": 0.001,
+    "steps": 64,
+    "updates": 300
+  },
+  "controller_digest": {
+    "after": "d4f9998f7b9de7c2a6bc6cb0d03be655848346d6065dc56ba0e8b8ae2b802035",
+    "before": "d4f9998f7b9de7c2a6bc6cb0d03be655848346d6065dc56ba0e8b8ae2b802035"
+  },
+  "core_transfer_margin": 0.52734375,
+  "gates": {
+    "controller_unchanged": true,
+    "no_replay": true,
+    "pong_acquired_through_frozen_core": false,
+    "pong_shuffled_near_chance": true,
+    "snake_acquired": false,
+    "snake_retained": true
+  },
+  "pong": {
+    "random_core": {
+      "mastery": 0.0625,
+      "per_seed_mastery": [
+        0.03125,
+        0.0,
+        0.03125,
+        0.03125,
+        0.15625,
+        0.15625,
+        0.03125,
+        0.0625
+      ]
+    },
+    "shuffled": {
+      "mastery": 0.09375,
+      "per_seed_mastery": [
+        0.03125,
+        0.125,
+        0.09375,
+        0.125,
+        0.09375,
+        0.03125,
+        0.125,
+        0.125
+      ]
+    },
+    "trained_core": {
+      "mastery": 0.58984375,
+      "per_seed_mastery": [
+        0.8125,
+        0.53125,
+        0.625,
+        0.53125,
+        0.53125,
+        0.59375,
+        0.5,
+        0.59375
+      ]
+    }
+  },
+  "promoted": false,
+  "seed": 69316,
+  "snake": {
+    "after": {
+      "mastery": 0.62890625,
+      "per_seed_mastery": [
+        0.5625,
+        0.65625,
+        0.5625,
+        0.6875,
+        0.78125,
+        0.5625,
+        0.65625,
+        0.5625
+      ]
+    },
+    "before": {
+      "mastery": 0.62890625,
+      "per_seed_mastery": [
+        0.5625,
+        0.65625,
+        0.5625,
+        0.6875,
+        0.78125,
+        0.5625,
+        0.65625,
+        0.5625
+      ]
+    }
+  }
+}
