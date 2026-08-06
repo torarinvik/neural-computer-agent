@@ -106,6 +106,7 @@ def _rollout_pipeline(
     *,
     train: bool,
     shuffle_outcomes: bool = False,
+    train_pipeline: bool = False,
 ) -> dict[str, torch.Tensor]:
     device = batch.input_frames.device
     state = parent.initial_state(batch.batch_size, device=device)
@@ -129,6 +130,7 @@ def _rollout_pipeline(
         with torch.no_grad():
             event = encoder(frame)
             output, state = parent.step_streams({"vision": frame}, state, feedback)
+        if train_pipeline:
             adapted, pipeline_state = pipeline.step(
                 event=event,
                 action=previous_action,
@@ -137,14 +139,30 @@ def _rollout_pipeline(
                 state=pipeline_state,
                 present=present,
             )
+        else:
+            with torch.no_grad():
+                adapted, pipeline_state = pipeline.step(
+                    event=event,
+                    action=previous_action,
+                    outcome=previous_reward,
+                    intention=output.intention,
+                    state=pipeline_state,
+                    present=present,
+                )
         return decoder(adapted)
 
     for frame in batch.input_frames.transpose(0, 1):
-        with torch.no_grad():
+        if train_pipeline:
             tick(frame, quiet)
+        else:
+            with torch.no_grad():
+                tick(frame, quiet)
     for frame in batch.distractor_frames.transpose(0, 1):
-        with torch.no_grad():
+        if train_pipeline:
             tick(frame, quiet)
+        else:
+            with torch.no_grad():
+                tick(frame, quiet)
 
     losses: list[torch.Tensor] = []
     rewards: list[torch.Tensor] = []
@@ -224,6 +242,7 @@ def _train_composition(
             batch,
             train=True,
             shuffle_outcomes=shuffle_outcomes,
+            train_pipeline=train_pipeline,
         )
         optimizer.zero_grad(set_to_none=True)
         result["loss"].backward()

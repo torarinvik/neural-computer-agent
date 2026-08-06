@@ -2317,9 +2317,11 @@ The first behavioral pressure test learned separate `complement4` and
 `69317`. Exact reload, corruption rejection, frozen-core, and shuffled-outcome
 controls passed; the second primitive was causal on both seeds. However, the
 first primitive was not causal on seed `69317`, and a fully fresh trainable
-pipeline did not reach stable mastery on either seed. This is retained as a
-rejected general-composition diagnostic, not as arbitrary program induction or
-fresh-learner transfer. A cheap visibility control rehydrated the seed-69317
+pipeline result from the first harness is invalid because a `no_grad` scope
+blocked its program gradients; it is retained only for provenance. This is
+retained as a rejected general-composition diagnostic, not as arbitrary
+program induction or fresh-learner transfer. A cheap visibility control
+rehydrated the seed-69317
 artifact and removed raw events from downstream programs; accuracy fell from
 `0.8828` to `0.5195`, showing that the current chain still has a substantial
 raw-event shortcut. Evidence is in

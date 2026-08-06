@@ -21,6 +21,8 @@
   },
   "retention_on_mastered_primitives": "primitive artifacts remain available and their reports are retained; no controller weights changed",
   "transfer_ratio_against_fresh_learner": null,
+  "prior_fresh_control_valid": false,
+  "prior_fresh_control_invalid_reason": "The composition rollout accidentally wrapped trainable pipeline execution in no_grad; the corrected control must be rerun.",
   "shortcut_audit": {
     "seed": 69317,
     "normal_accuracy": 0.8828125,

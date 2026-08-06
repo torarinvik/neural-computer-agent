@@ -15,19 +15,22 @@ examples were replayed.
 | composed stable bits | 2,048 | 14,336 |
 | composed held-out accuracy | 0.9492 | 0.8828 |
 | blank-pipeline accuracy | 0.5508 | 0.6641 |
-| fresh trainable-pipeline stable bits | none | none |
-| fresh trainable-pipeline accuracy | 0.5703 | 0.6758 |
+| prior fresh-pipeline stable bits* | none | none |
+| prior fresh-pipeline accuracy* | 0.5703 | 0.6758 |
 | shuffled-outcome accuracy | 0.5547 | 0.5273 |
 | zero-first-program accuracy | 0.8477 | 0.8984 |
 | zero-second-program accuracy | 0.5117 | 0.5273 |
 
 The composed pipeline clearly beats the blank pipeline on both seeds, and the
 second primitive is causal on both. The first primitive is causal only on seed
-69316; on seed 69317 it is redundant or mildly harmful. The fully fresh
-pipeline never reaches stable mastery, so a fresh-learner transfer ratio is
-undefined. These results support a useful frozen-program composition signal,
-but not robust arbitrary composition or positive transfer against a fresh
-learner.
+69316; on seed 69317 it is redundant or mildly harmful. The prior fresh-pipeline
+control was invalid: a harness `no_grad` scope prevented its pipeline weights
+from receiving gradients. Its values are retained for provenance but cannot be
+used to calculate a fresh-learner transfer ratio. These results support a
+useful frozen-program composition signal, but not robust arbitrary composition
+or positive transfer against a fresh learner.
+
+\* Invalid prior control; the corrected rerun is pending.
 
 Persistence and safety controls passed on both seeds: exact pipeline/decoder
 reload, behavior-preserving reload, checksum corruption rejection, unchanged
