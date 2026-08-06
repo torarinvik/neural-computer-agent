@@ -60,6 +60,7 @@ class SharedControllerAgent(nn.Module):
         intention_width: int,
         feedback_width: int,
         hidden: int,
+        event_window_capacity: int = 4,
     ) -> None:
         super().__init__()
         controller = AmodalCognitiveController(
@@ -67,7 +68,7 @@ class SharedControllerAgent(nn.Module):
             workspace_slots=4,
             intention_width=intention_width,
             feedback_width=feedback_width,
-            event_window_capacity=4,
+            event_window_capacity=event_window_capacity,
         )
         self.runtime = AmodalControllerRuntime(
             controller,

@@ -1,0 +1,113 @@
+{
+  "bank": {
+    "artifact_norm": 2.5679805278778076,
+    "artifact_parameters": 512
+  },
+  "computing_parameters": {
+    "controller": 148546,
+    "peripherals": 13604
+  },
+  "conditions": {
+    "fetched": {
+      "mastery": 0.927734375,
+      "per_seed_mastery": [
+        0.890625,
+        0.890625,
+        0.9375,
+        0.921875,
+        0.890625,
+        0.953125,
+        1.0,
+        0.9375
+      ]
+    },
+    "random_artifact": {
+      "mastery": 0.935546875,
+      "per_seed_mastery": [
+        0.90625,
+        0.9375,
+        0.9375,
+        0.875,
+        0.953125,
+        0.984375,
+        0.984375,
+        0.90625
+      ]
+    },
+    "shuffled": {
+      "mastery": 0.0,
+      "per_seed_mastery": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "withheld": {
+      "mastery": 0.0625,
+      "per_seed_mastery": [
+        0.046875,
+        0.03125,
+        0.078125,
+        0.0625,
+        0.078125,
+        0.0625,
+        0.078125,
+        0.0625
+      ]
+    }
+  },
+  "config": {
+    "artifact_tokens": 8,
+    "batch_size": 64,
+    "eval_seeds": 8,
+    "event_width": 64,
+    "feedback_width": 16,
+    "gamma": 0.95,
+    "hidden": 32,
+    "ignorance_steps": 16,
+    "ignorance_weight": 1.0,
+    "intent_width": 32,
+    "learning_rate": 0.001,
+    "steps": 64,
+    "updates": 600
+  },
+  "game": "snake",
+  "gates": {
+    "artifact_content_causal": false,
+    "computing_components_fixed_size": true,
+    "ignorant_without_bank": true,
+    "no_replay": true,
+    "shuffled_near_chance": true,
+    "skill_with_bank": true
+  },
+  "promoted": false,
+  "seed": 69317,
+  "training_tail": [
+    {
+      "ignorance_loss": 0.003682713257148862,
+      "mastery": 0.9375,
+      "replayed_examples": 0.0,
+      "skill_loss": -0.9852926731109619,
+      "update": 598.0
+    },
+    {
+      "ignorance_loss": 0.004273653496056795,
+      "mastery": 0.890625,
+      "replayed_examples": 0.0,
+      "skill_loss": -1.0244067907333374,
+      "update": 599.0
+    },
+    {
+      "ignorance_loss": 0.0018640410853549838,
+      "mastery": 0.9375,
+      "replayed_examples": 0.0,
+      "skill_loss": -1.4050519466400146,
+      "update": 600.0
+    }
+  ]
+}
