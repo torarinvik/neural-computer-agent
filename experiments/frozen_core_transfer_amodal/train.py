@@ -123,6 +123,7 @@ def _train_with_progress(
     shuffle_outcomes: bool = False,
     auxiliary_operation: str | None = None,
     auxiliary_span: int | None = None,
+    additional_auxiliary_operations: tuple[tuple[str, int], ...] = (),
     credit_mode: str = "sampled",
 ) -> tuple[list[dict[str, float | int]], list[dict[str, float | int]]]:
     trainable = [parameter for parameter in runtime.parameters() if parameter.requires_grad]
@@ -157,6 +158,7 @@ def _train_with_progress(
             raise ValueError(f"unknown credit mode: {credit_mode!r}")
         loss = result["loss"]
         verifier_bits = batch_size * span
+        rehearsal_streams = 0
         if auxiliary_operation is not None:
             if auxiliary_span is None:
                 raise ValueError("auxiliary span is required with auxiliary operation")
@@ -183,6 +185,40 @@ def _train_with_progress(
             )
             loss = loss + auxiliary_result["loss"]
             verifier_bits += batch_size * auxiliary_span
+            rehearsal_streams += 1
+        for auxiliary_index, (additional_operation, additional_span) in enumerate(
+            additional_auxiliary_operations,
+            start=1,
+        ):
+            if additional_span < 1:
+                raise ValueError("additional auxiliary spans must be positive")
+            additional_batch = generate_sequence_memory_batch(
+                batch_size,
+                span=additional_span,
+                distractors=1,
+                seed=seed
+                + 5_000_003
+                + auxiliary_index * 1_000_003
+                + update * 20_021,
+                operation=additional_operation,
+            )
+            additional_result = (
+                _rollout(
+                    runtime,
+                    additional_batch,
+                    train=True,
+                    shuffle_outcomes=shuffle_outcomes,
+                )
+                if credit_mode == "sampled"
+                else _paired_rollout(
+                    runtime,
+                    additional_batch,
+                    shuffle_outcomes=shuffle_outcomes,
+                )
+            )
+            loss = loss + additional_result["loss"]
+            verifier_bits += batch_size * additional_span
+            rehearsal_streams += 1
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(trainable, 1.0)
@@ -190,7 +226,9 @@ def _train_with_progress(
         history.append(
             {
                 "update": update,
-                "unique_logical_lifetimes": update * batch_size,
+                "unique_logical_lifetimes": update
+                * batch_size
+                * (1 + rehearsal_streams),
                 "unique_verifier_bits": update * verifier_bits,
                 "training_accuracy": float(result["rewards"].mean()),
                 "loss": float(loss.detach()),
@@ -201,7 +239,7 @@ def _train_with_progress(
             progress.append(
                 {
                     "update": update,
-                    "unique_verifier_bits": update * batch_size * span,
+                    "unique_verifier_bits": update * verifier_bits,
                     "heldout_accuracy": _accuracy(
                         runtime,
                         operation=operation,
@@ -271,7 +309,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("unknown credit mode")
     if args.parent_extra_updates < 0:
         raise ValueError("parent extra updates must be non-negative")
-    rehearsal_operation = "forward" if args.rehearse_span else None
+    rehearsal_operations: list[tuple[str, int]] = []
+    if args.rehearse_span:
+        rehearsal_operations.append(("forward", args.rehearse_span))
+    if args.parent_extra_updates:
+        rehearsal_operations.append((args.parent_extra_operation, 2))
+    rehearsal_operation = rehearsal_operations[0][0] if rehearsal_operations else None
+    rehearsal_span = rehearsal_operations[0][1] if rehearsal_operations else None
+    additional_rehearsal_operations = tuple(rehearsal_operations[1:])
 
     parent = _runtime(seed=args.seed, growth=False)
     torch.manual_seed(args.seed + 900_001)
@@ -350,7 +395,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         audit_count=args.audit_count,
         eval_every=args.eval_every,
         auxiliary_operation=rehearsal_operation,
-        auxiliary_span=args.rehearse_span or None,
+        auxiliary_span=rehearsal_span,
+        additional_auxiliary_operations=additional_rehearsal_operations,
         credit_mode=args.credit_mode,
     )
     transferred_digest_after = _state_digest(transferred, ("growth_slots.0.",))
@@ -367,7 +413,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         audit_count=args.audit_count,
         eval_every=args.eval_every,
         auxiliary_operation=rehearsal_operation,
-        auxiliary_span=args.rehearse_span or None,
+        auxiliary_span=rehearsal_span,
+        additional_auxiliary_operations=additional_rehearsal_operations,
         credit_mode=args.credit_mode,
     )
 
@@ -387,12 +434,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         eval_every=args.eval_every,
         shuffle_outcomes=True,
         auxiliary_operation=rehearsal_operation,
-        auxiliary_span=args.rehearse_span or None,
+        auxiliary_span=rehearsal_span,
+        additional_auxiliary_operations=additional_rehearsal_operations,
         credit_mode=args.credit_mode,
     )
 
     bits_per_update = args.batch_size * (
-        args.target_span + args.rehearse_span
+        args.target_span + sum(span for _, span in rehearsal_operations)
     )
 
     transferred_stable_bits = _stable_bits(
@@ -515,8 +563,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "learning_rate": args.learning_rate,
         "online_rehearsal": (
             None
-            if args.rehearse_span == 0
-            else {"operation": "forward", "span": args.rehearse_span}
+            if not rehearsal_operations
+            else [
+                {"operation": operation, "span": span}
+                for operation, span in rehearsal_operations
+            ]
         ),
         "replayed_examples": 0,
         "parent": {
@@ -577,7 +628,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 + args.parent_extra_updates * args.batch_size * 2
                 + args.transfer_updates
                 * args.batch_size
-                * (1 + bool(args.rehearse_span))
+                * (1 + len(rehearsal_operations))
                 * 3
             ),
             "optimizer_updates": (
