@@ -28,6 +28,7 @@ Hard gates:
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
 from pathlib import Path
 
@@ -85,7 +86,13 @@ class PaddedVerifier:
 
 
 def padded_factory(game: str):
-    base = {"snake": SnakeVerifier, "pong": PongVerifier}[game]
+    from experiments.games_amodal.environments import BreakoutVerifier
+
+    base = {
+        "snake": SnakeVerifier,
+        "pong": PongVerifier,
+        "breakout": BreakoutVerifier,
+    }[game]
 
     def factory(*, batch_size: int, seed: int) -> PaddedVerifier:
         return PaddedVerifier(base(batch_size=batch_size, seed=seed))
@@ -119,10 +126,36 @@ def lifetime_mastery(
     return (total > 0).float()
 
 
-def first_observation(factory, *, batch_size: int, seed: int) -> torch.Tensor:
+def route_observations(
+    factory, *, batch_size: int, seed: int, frames: int = 1
+) -> list[torch.Tensor]:
+    """Collect the first ``frames`` observations under uniform random play.
+
+    ``frames=1`` reproduces the promoted first-frame query; larger values
+    let the route query average over a short mid-lifetime window, which is
+    required once games are not distinguishable from their opening frame.
+    """
+
+    if frames < 1:
+        raise ValueError("route query needs at least one frame")
     verifier = factory(batch_size=batch_size, seed=seed)
     verifier.reset(seed=seed)
-    return verifier.observation()
+    observations = [verifier.observation()]
+    generator = torch.Generator().manual_seed(seed + 1)
+    for _ in range(frames - 1):
+        actions = torch.randint(
+            0, verifier.action_count, (batch_size,), generator=generator
+        )
+        verifier.step(actions)
+        observations.append(verifier.observation())
+    return observations
+
+
+def encode_route_query(
+    route_encoder, observations: list[torch.Tensor]
+) -> torch.Tensor:
+    payloads = [route_encoder(obs).payload for obs in observations]
+    return torch.stack(payloads).mean(dim=0)
 
 
 def slot_candidate_key(
@@ -156,6 +189,7 @@ def train_router(
     seed: int,
     learning_rate: float,
     shuffle_outcomes: bool,
+    query_frames: int = 1,
 ) -> list[dict[str, float]]:
     """Rank attempted slot pairs by realized mastery utilities only."""
 
@@ -182,15 +216,24 @@ def train_router(
         )
         if shuffle_outcomes:
             utilities = utilities[:, torch.randperm(utilities.shape[1])]
-        observation = first_observation(
-            factory, batch_size=batch_size, seed=lifetime_seed
+        query = encode_route_query(
+            route_encoder,
+            route_observations(
+                factory,
+                batch_size=batch_size,
+                seed=lifetime_seed,
+                frames=query_frames,
+            ),
         )
-        query = route_encoder(observation).payload
         scores = router(query, keys)
-        attempted = torch.tensor([[0, 1]]).expand(batch_size, -1)
-        loss, _ = paired_counterfactual_ranking_loss(
-            scores, attempted, utilities
-        )
+        pair_losses = []
+        for left, right in itertools.combinations(range(len(slots)), 2):
+            attempted = torch.tensor([[left, right]]).expand(batch_size, -1)
+            pair_loss, _ = paired_counterfactual_ranking_loss(
+                scores, attempted, utilities[:, [left, right]]
+            )
+            pair_losses.append(pair_loss)
+        loss = torch.stack(pair_losses).mean()
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(trainable, max_norm=1.0)
@@ -216,23 +259,29 @@ def routing_audit(
     batch_size: int,
     steps: int,
     seeds: tuple[int, ...],
+    query_frames: int = 1,
 ) -> dict[str, object]:
     """Measure routing accuracy, routed mastery, and permutation invariance."""
 
     accuracy: dict[str, float] = {}
     routed_mastery: dict[str, float] = {}
     permutation_matches: list[float] = []
-    permutation = torch.tensor([1, 0])
+    generator = torch.Generator().manual_seed(len(slots))
+    permutation = torch.randperm(len(slots), generator=generator)
+    while len(slots) > 1 and bool(
+        (permutation == torch.arange(len(slots))).all()
+    ):
+        permutation = torch.randperm(len(slots), generator=generator)
     for game in games:
         factory = padded_factory(game)
         hits: list[float] = []
         masteries: list[float] = []
         for seed in seeds:
-            observation = first_observation(
-                factory, batch_size=batch_size, seed=seed
+            observations = route_observations(
+                factory, batch_size=batch_size, seed=seed, frames=query_frames
             )
             with torch.no_grad():
-                query = route_encoder(observation).payload
+                query = encode_route_query(route_encoder, observations)
                 selection = router(query, keys).argmax(dim=1)
                 permuted = router(query, keys[permutation]).argmax(dim=1)
             hits.append(
@@ -273,8 +322,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "hidden": args.hidden,
     }
     common = {"batch_size": args.batch_size, "steps": args.steps}
-    games = ("snake", "pong")
-    native_actions = {"snake": 4, "pong": 3}
+    games = tuple(args.games.split(","))
+    if len(games) < 2:
+        raise ValueError("routing needs at least two games")
+    native_actions = {"snake": 4, "pong": 3, "breakout": 3}
     slots: list[SnakePolicy] = []
     for index, game in enumerate(games):
         slot = SnakePolicy(
@@ -338,6 +389,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         games,
         updates=args.route_updates,
         shuffle_outcomes=False,
+        query_frames=args.query_frames,
         **router_common,
     )
     shuffled_history = train_router(
@@ -348,6 +400,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         games,
         updates=args.route_updates,
         shuffle_outcomes=True,
+        query_frames=args.query_frames,
         **router_common,
     )
     digests_after = [parameter_digest(slot) for slot in slots]
@@ -360,6 +413,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         games,
         correct_slot,
         seeds=eval_seeds,
+        query_frames=args.query_frames,
         **common,
     )
     shuffled_audit = routing_audit(
@@ -370,6 +424,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         games,
         correct_slot,
         seeds=eval_seeds,
+        query_frames=args.query_frames,
         **common,
     )
 
@@ -422,6 +477,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--games", type=str, default="snake,pong")
+    parser.add_argument("--query-frames", type=int, default=1)
     parser.add_argument("--updates", type=int, default=400)
     parser.add_argument("--route-updates", type=int, default=256)
     parser.add_argument("--batch-size", type=int, default=64)
