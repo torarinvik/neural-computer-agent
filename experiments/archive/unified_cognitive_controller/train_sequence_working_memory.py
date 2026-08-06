@@ -150,6 +150,7 @@ def _identity_masks(
 def generate_sequence_memory_batch(
         count: int, *, span: int, distractors: int, seed: int,
         operation: str = "mixed", heldout: bool = False,
+        generated_composition_ids: tuple[int, ...] | None = None,
         position_shift: bool = False,
         position_blend: float = 0.0,
         position_augmentation: bool = False,
@@ -166,6 +167,15 @@ def generate_sequence_memory_batch(
         raise ValueError("span must be positive")
     if distractors < 0:
         raise ValueError("distractors must not be negative")
+    if generated_composition_ids is not None:
+        if not generated_composition_ids:
+            raise ValueError("generated composition pool must not be empty")
+        if any(
+            composition_id < 0
+            or composition_id >= len(_GENERATED_COMPOSITIONS)
+            for composition_id in generated_composition_ids
+        ):
+            raise ValueError("generated composition ID is out of range")
     if operation not in (
         "forward", "reverse", "mixed", "complement", "complement_reverse",
         "complement_rotate", "adjacent_xor", "prefix_parity", "global_parity",
@@ -186,9 +196,16 @@ def generate_sequence_memory_batch(
     generator = torch.Generator().manual_seed(seed)
     sequence = _balanced_binary_sequences(count, span, generator)
     if operation == "generated_composition":
-        composition_ids = torch.randint(
-            len(_GENERATED_COMPOSITIONS), (count,), generator=generator
+        composition_pool = tuple(
+            range(len(_GENERATED_COMPOSITIONS))
+            if generated_composition_ids is None
+            else generated_composition_ids
         )
+        pool = torch.tensor(composition_pool, dtype=torch.long)
+        composition_ids = torch.randint(
+            len(composition_pool), (count,), generator=generator
+        )
+        composition_ids = pool[composition_ids]
         operation_bits = composition_ids.remainder(2)
     elif operation in (
         "forward", "complement", "complement_reverse", "complement_rotate",

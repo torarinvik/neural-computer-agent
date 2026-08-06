@@ -320,6 +320,7 @@ def _train_capability(
     audit_count: int,
     eval_every: int,
     learning_rate: float,
+    generated_composition_ids: tuple[int, ...] | None = None,
 ) -> tuple[list[dict[str, float | int]], list[dict[str, float | int]]]:
     trainable = list(program.parameters()) + list(decoder.parameters())
     optimizer = torch.optim.AdamW(trainable, lr=learning_rate, weight_decay=1e-5)
@@ -334,6 +335,7 @@ def _train_capability(
             distractors=1,
             seed=seed + update * 10_007,
             operation=operation,
+            generated_composition_ids=generated_composition_ids,
         )
         target_result = _rollout_capability(
             parent,
@@ -379,6 +381,7 @@ def _train_capability(
                 distractors=1,
                 seed=seed + 1_000_000 + update,
                 operation=operation,
+                generated_composition_ids=generated_composition_ids,
             )
             progress.append(
                 {
@@ -412,6 +415,7 @@ def _capability_accuracy(
     span: int,
     count: int,
     seed: int,
+    generated_composition_ids: tuple[int, ...] | None = None,
 ) -> float:
     batch = generate_sequence_memory_batch(
         count,
@@ -419,6 +423,7 @@ def _capability_accuracy(
         distractors=1,
         seed=seed,
         operation=operation,
+        generated_composition_ids=generated_composition_ids,
     )
     return float(
         _rollout_capability(parent, program, decoder, batch, train=False)[
