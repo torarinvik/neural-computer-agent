@@ -19,7 +19,9 @@ import torch.nn.functional as F
 
 from experiments.frozen_core_transfer_amodal.train import _train_with_progress
 from experiments.archive.unified_cognitive_controller.train_sequence_working_memory import (
+    GeneratedCompositionGrammar,
     _GENERATED_COMPOSITIONS,
+    _resolve_generated_compositions,
 )
 from experiments.parent_conditioned_artifact_bank_amodal.train import (
     _capability_accuracy,
@@ -50,6 +52,20 @@ SPAN = 4
 ROUTE_WIDTH = 48
 THRESHOLD = 0.75
 SHUFFLE_REPLICATES = 3
+
+
+def _parse_program_specs(
+    specs: list[str] | None,
+) -> GeneratedCompositionGrammar:
+    """Parse verifier-private runtime programs without exposing them to the agent."""
+
+    if not specs:
+        return _resolve_generated_compositions(None)
+    grammar = tuple(
+        tuple(primitive.strip() for primitive in spec.split(",") if primitive.strip())
+        for spec in specs
+    )
+    return _resolve_generated_compositions(grammar)
 
 
 def _stack_artifact(stack, decoder) -> dict[str, torch.Tensor]:
@@ -89,7 +105,14 @@ def _load_stack_artifact(
     return stack, decoder
 
 
-def _generated_key(parent, composition_id: int, *, count: int, seed: int) -> torch.Tensor:
+def _generated_key(
+    parent,
+    composition_id: int,
+    *,
+    count: int,
+    seed: int,
+    generated_compositions: GeneratedCompositionGrammar,
+) -> torch.Tensor:
     return F.normalize(
         _route_queries(
             parent,
@@ -98,6 +121,7 @@ def _generated_key(parent, composition_id: int, *, count: int, seed: int) -> tor
             count=count,
             seed=seed,
             generated_composition_ids=(composition_id,),
+            generated_compositions=generated_compositions,
         ).mean(dim=0),
         dim=0,
     )
@@ -112,6 +136,7 @@ def _train_router(
     batch_size: int,
     seed: int,
     shuffle_outcomes: bool,
+    generated_compositions: GeneratedCompositionGrammar,
 ) -> tuple[OpaqueAddressRouter, dict[str, int]]:
     router = OpaqueAddressRouter(width=int(candidate_keys.shape[-1]), hidden=64)
     optimizer = torch.optim.AdamW(router.parameters(), lr=3e-3, weight_decay=1e-5)
@@ -128,6 +153,7 @@ def _train_router(
             count=batch_size,
             seed=seed + update * 10_007,
             generated_composition_ids=(composition_id,),
+            generated_compositions=generated_compositions,
         )
         competitor = torch.randint(
             row_count - 1,
@@ -196,6 +222,7 @@ def _train_append_extension(
     batch_size: int,
     seed: int,
     shuffle_outcomes: bool,
+    generated_compositions: GeneratedCompositionGrammar,
 ) -> tuple[OpaqueViewRouteExtension, dict[str, int]]:
     """Train one route stage only from fresh outcomes for its new artifact."""
 
@@ -213,6 +240,7 @@ def _train_append_extension(
             count=query_count,
             seed=seed + update * 10_007,
             generated_composition_ids=(composition_id,),
+            generated_compositions=generated_compositions,
         )
         if shuffle_outcomes:
             queries = queries.repeat_interleave(2, dim=0)
@@ -260,6 +288,7 @@ def _append_stage_accuracy(
     *,
     count: int,
     seed: int,
+    generated_compositions: GeneratedCompositionGrammar,
     permute_base_keys: bool = False,
 ) -> float:
     permutation = torch.arange(base_count - 1, -1, -1)
@@ -271,6 +300,7 @@ def _append_stage_accuracy(
         count=count,
         seed=seed,
         generated_composition_ids=(composition_id,),
+        generated_compositions=generated_compositions,
     )
     active = max(0, target_index - base_count + 1)
     predictions = _append_scores(
@@ -300,6 +330,7 @@ def _append_route_accuracy(
     *,
     count: int,
     seed: int,
+    generated_compositions: GeneratedCompositionGrammar,
     permute_base_keys: bool = False,
 ) -> float:
     correct = [
@@ -314,6 +345,7 @@ def _append_route_accuracy(
             count=count,
             seed=seed + index * 10_007,
             permute_base_keys=permute_base_keys,
+            generated_compositions=generated_compositions,
         )
         for index, composition_id in enumerate(composition_ids)
     ]
@@ -331,6 +363,7 @@ def _run_append_only_routes(
     route_audit_count: int,
     seed: int,
     root: Path,
+    generated_compositions: GeneratedCompositionGrammar,
 ) -> dict[str, object]:
     if not 1 <= base_count < len(composition_ids):
         raise ValueError("append-only routing needs at least one new artifact")
@@ -352,6 +385,7 @@ def _run_append_only_routes(
             batch_size=batch_size,
             seed=seed,
             shuffle_outcomes=False,
+            generated_compositions=generated_compositions,
         )
     extensions: list[OpaqueViewRouteExtension] = []
     shuffled_extensions: list[OpaqueViewRouteExtension] = []
@@ -380,6 +414,7 @@ def _run_append_only_routes(
             batch_size=batch_size,
             seed=seed + 20_000 + append_index * 1_000_003,
             shuffle_outcomes=False,
+            generated_compositions=generated_compositions,
         )
         shuffled_extension, shuffled_item = _train_append_extension(
             parent,
@@ -389,6 +424,7 @@ def _run_append_only_routes(
             batch_size=batch_size,
             seed=seed + 30_000 + append_index * 1_000_003,
             shuffle_outcomes=True,
+            generated_compositions=generated_compositions,
         )
         extensions.append(extension)
         shuffled_extensions.append(shuffled_extension)
@@ -404,6 +440,7 @@ def _run_append_only_routes(
         base_count,
         count=route_audit_count,
         seed=seed + 50_000,
+        generated_compositions=generated_compositions,
     )
     permuted_accuracy = _append_route_accuracy(
         base_router,
@@ -414,6 +451,7 @@ def _run_append_only_routes(
         base_count,
         count=route_audit_count,
         seed=seed + 50_000,
+        generated_compositions=generated_compositions,
         permute_base_keys=True,
     )
     shuffled_route_accuracy_samples: list[float] = []
@@ -435,6 +473,7 @@ def _run_append_only_routes(
                     + 60_000
                     + replicate * 1_000_003
                     + audit_index * 100_003,
+                    generated_compositions=generated_compositions,
                 )
             )
 
@@ -478,6 +517,7 @@ def _run_append_only_routes(
         base_count,
         count=route_audit_count,
         seed=seed + 50_000,
+        generated_compositions=generated_compositions,
     )
     cold_start_old_accuracy = _append_route_accuracy(
         base_router,
@@ -488,6 +528,7 @@ def _run_append_only_routes(
         base_count,
         count=route_audit_count,
         seed=seed + 70_000,
+        generated_compositions=generated_compositions,
     )
     route_accounting = {
         "unique_route_lifetimes": base_accounting["unique_route_lifetimes"]
@@ -524,6 +565,7 @@ def _route_accuracy(
     *,
     count: int,
     seed: int,
+    generated_compositions: GeneratedCompositionGrammar,
     permute_keys: bool = False,
 ) -> float:
     permutation = torch.arange(len(composition_ids) - 1, -1, -1)
@@ -537,6 +579,7 @@ def _route_accuracy(
             count=count,
             seed=seed + index * 10_007,
             generated_composition_ids=(composition_id,),
+            generated_compositions=generated_compositions,
         )
         predictions = router(queries, keys).argmax(dim=-1)
         if permute_keys:
@@ -555,6 +598,7 @@ def _probe_artifact(
     count: int,
     probes: int,
     seed: int,
+    generated_compositions: GeneratedCompositionGrammar,
 ) -> list[float]:
     outcomes: list[float] = []
     for probe in range(probes):
@@ -569,6 +613,7 @@ def _probe_artifact(
             count=count,
             seed=seed + probe * 101,
             generated_composition_ids=(composition_id,),
+            generated_compositions=generated_compositions,
         )
         outcomes.append(outcome)
         bank.observe_retention(key, outcome)
@@ -595,12 +640,20 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         or args.route_audit_count % 2
     ):
         raise ValueError("batch sizes and audit count must be even")
-    composition_ids = tuple(args.composition_ids)
+    generated_compositions = _parse_program_specs(args.program_spec)
+    composition_ids = tuple(
+        range(len(generated_compositions))
+        if args.composition_ids is None
+        else args.composition_ids
+    )
     if not composition_ids:
         raise ValueError("at least one composition ID is required")
     if len(set(composition_ids)) != len(composition_ids):
         raise ValueError("composition IDs must be unique")
-    if any(composition_id < 0 or composition_id >= COMPOSITION_COUNT for composition_id in composition_ids):
+    if any(
+        composition_id < 0 or composition_id >= len(generated_compositions)
+        for composition_id in composition_ids
+    ):
         raise ValueError("composition ID is out of range")
     if args.route_mode == "append_only" and not 1 <= args.base_route_count < len(composition_ids):
         raise ValueError(
@@ -667,12 +720,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             eval_every=args.eval_every,
             learning_rate=args.learning_rate,
             generated_composition_ids=(composition_id,),
+            generated_compositions=generated_compositions,
         )
         key = _generated_key(
             parent,
             composition_id,
             count=args.audit_count,
             seed=args.seed + 40_000 + phase_index,
+            generated_compositions=generated_compositions,
         )
         artifact = _stack_artifact(stack, decoder)
         if phase_index == 0:
@@ -711,6 +766,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             count=args.audit_count,
             seed=args.seed + 50_000 + phase_index,
             generated_composition_ids=(composition_id,),
+            generated_compositions=generated_compositions,
         )
         retention[str(composition_id)] = _probe_artifact(
             parent,
@@ -721,6 +777,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             count=args.audit_count,
             probes=args.retention_probes,
             seed=args.seed + 60_000 + phase_index * 1_000,
+            generated_compositions=generated_compositions,
         )
         histories[str(composition_id)] = {
             "history": history,
@@ -748,6 +805,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             route_audit_count=route_audit_count,
             seed=args.seed + 70_000,
             root=root,
+            generated_compositions=generated_compositions,
         )
         route_mode = route_result["route_mode"]
         route_accuracy = float(route_result["route_accuracy"])
@@ -773,6 +831,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             batch_size=args.route_batch_size,
             seed=args.seed + 70_000,
             shuffle_outcomes=False,
+            generated_compositions=generated_compositions,
         )
         route_mode = "bank"
         route_accuracy = _route_accuracy(
@@ -782,6 +841,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             composition_ids,
             count=route_audit_count,
             seed=args.seed + 90_000,
+            generated_compositions=generated_compositions,
         )
         permuted_accuracy = _route_accuracy(
             router,
@@ -790,6 +850,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             composition_ids,
             count=route_audit_count,
             seed=args.seed + 90_000,
+            generated_compositions=generated_compositions,
             permute_keys=True,
         )
         shuffled_route_accuracy_samples = []
@@ -803,6 +864,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 batch_size=args.route_batch_size,
                 seed=args.seed + 80_000 + replicate * 1_000_003,
                 shuffle_outcomes=True,
+                generated_compositions=generated_compositions,
             )
             shuffled_accounting.append(accounting)
             shuffled_route_accuracy_samples.extend(
@@ -816,6 +878,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                     + 90_000
                     + replicate * 1_000_003
                     + audit_index * 100_003,
+                    generated_compositions=generated_compositions,
                 )
                 for audit_index in range(2)
             )
@@ -842,6 +905,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             composition_ids,
             count=route_audit_count,
             seed=args.seed + 90_000,
+            generated_compositions=generated_compositions,
         )
         cold_start_old_accuracy = route_accuracy
         route_accounting = {
@@ -876,6 +940,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         ),
         "seed": args.seed,
         "composition_ids": list(composition_ids),
+        "composition_programs": [
+            list(generated_compositions[composition_id])
+            for composition_id in composition_ids
+        ],
         "route_mode": route_mode,
         "base_route_count": args.base_route_count,
         "parent_updates": args.parent_updates,
@@ -977,7 +1045,16 @@ def main() -> None:
     parser.add_argument("--route-updates", type=int, default=128)
     parser.add_argument("--route-mode", choices=("bank", "append_only"), default="bank")
     parser.add_argument("--base-route-count", type=int, default=2)
-    parser.add_argument("--composition-ids", type=int, nargs="+", default=tuple(range(COMPOSITION_COUNT)))
+    parser.add_argument("--composition-ids", type=int, nargs="+", default=None)
+    parser.add_argument(
+        "--program-spec",
+        action="append",
+        default=None,
+        help=(
+            "verifier-private runtime program as comma-separated primitives; "
+            "repeat for a custom grammar"
+        ),
+    )
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--route-batch-size", type=int, default=8)
     parser.add_argument("--audit-count", type=int, default=16)

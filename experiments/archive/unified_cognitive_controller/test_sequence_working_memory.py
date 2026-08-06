@@ -236,12 +236,49 @@ def test_generated_composition_grammar_can_emit_three_primitive_programs() -> No
         for column in _GENERATED_PRIMITIVE_COLUMNS.values()
         if bool(
             (
-                batch.query_frames[:, :, :, 2:17, column:column + 3]
+                batch.query_frames[:, :, :, 2:22, column:column + 3]
                 > 0.9
             ).any()
         )
     ]
     assert len(active) == 3
+
+
+def test_generated_composition_accepts_a_withheld_four_primitive_program() -> None:
+    from .train_sequence_working_memory import _GENERATED_PRIMITIVE_COLUMNS
+
+    withheld = (("forward", "reverse", "complement", "rotate"),)
+    batch = generate_sequence_memory_batch(
+        32,
+        span=4,
+        distractors=1,
+        seed=260033,
+        operation="generated_composition",
+        generated_composition_ids=(0,),
+        generated_compositions=withheld,
+    )
+    expected = batch.sequence.flip(1)
+    expected = 1 - expected
+    expected = expected.roll(shifts=-1, dims=1)
+    assert torch.equal(batch.correct_actions, expected)
+    active = [
+        column
+        for column in _GENERATED_PRIMITIVE_COLUMNS.values()
+        if bool(
+            (
+                batch.query_frames[:, :, :, 2:22, column:column + 3]
+                > 0.9
+            ).any()
+        )
+    ]
+    assert len(active) == 4
+    for marker_start in (24, 26, 28, 30):
+        assert bool(
+            (
+                batch.query_frames[:, :, :, 27:30, marker_start:marker_start + 2]
+                > 0.8
+            ).any()
+        )
 
 
 def test_sequence_counterfactual_is_a_valid_pixel_rerender() -> None:

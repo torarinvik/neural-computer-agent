@@ -12,6 +12,7 @@ import torch
 import torch.nn.functional as F
 
 from experiments.archive.unified_cognitive_controller.train_sequence_working_memory import (
+    GeneratedCompositionGrammar,
     generate_sequence_memory_batch,
 )
 from experiments.frozen_core_transfer_amodal.train import _train_with_progress
@@ -122,6 +123,7 @@ def _route_queries(
     count: int,
     seed: int,
     generated_composition_ids: tuple[int, ...] | None = None,
+    generated_compositions: GeneratedCompositionGrammar | None = None,
 ) -> torch.Tensor:
     batch = generate_sequence_memory_batch(
         count,
@@ -130,6 +132,7 @@ def _route_queries(
         seed=seed,
         operation=operation,
         generated_composition_ids=generated_composition_ids,
+        generated_compositions=generated_compositions,
     )
     state = parent.initial_state(batch.batch_size, device=batch.input_frames.device)
     zeros = torch.zeros(batch.batch_size, device=batch.input_frames.device)
@@ -323,6 +326,7 @@ def _train_capability(
     eval_every: int,
     learning_rate: float,
     generated_composition_ids: tuple[int, ...] | None = None,
+    generated_compositions: GeneratedCompositionGrammar | None = None,
 ) -> tuple[list[dict[str, float | int]], list[dict[str, float | int]]]:
     trainable = list(program.parameters()) + list(decoder.parameters())
     optimizer = torch.optim.AdamW(trainable, lr=learning_rate, weight_decay=1e-5)
@@ -338,6 +342,7 @@ def _train_capability(
             seed=seed + update * 10_007,
             operation=operation,
             generated_composition_ids=generated_composition_ids,
+            generated_compositions=generated_compositions,
         )
         target_result = _rollout_capability(
             parent,
@@ -384,6 +389,7 @@ def _train_capability(
                 seed=seed + 1_000_000 + update,
                 operation=operation,
                 generated_composition_ids=generated_composition_ids,
+                generated_compositions=generated_compositions,
             )
             progress.append(
                 {
@@ -418,6 +424,7 @@ def _capability_accuracy(
     count: int,
     seed: int,
     generated_composition_ids: tuple[int, ...] | None = None,
+    generated_compositions: GeneratedCompositionGrammar | None = None,
 ) -> float:
     batch = generate_sequence_memory_batch(
         count,
@@ -426,6 +433,7 @@ def _capability_accuracy(
         seed=seed,
         operation=operation,
         generated_composition_ids=generated_composition_ids,
+        generated_compositions=generated_compositions,
     )
     return float(
         _rollout_capability(parent, program, decoder, batch, train=False)[

@@ -2645,3 +2645,28 @@ grammar shift. It is a meaningful increase in external capability growth, but
 not a claim of general continual learning: the program grammar, artifact
 blueprint, and append-only memory capacity are still bounded. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_artifact_bank_append_only_grammar_shift_replicated_promoted_v1_2026-08-06/`.
+
+## Runtime-supplied grammar mechanism transfer (2026-08-06)
+
+The generated-composition boundary was then generalized so the verifier can
+provide a runtime-private grammar rather than selecting only from the static
+two- and three-primitive table. The audit supplied four four-primitive
+programs: `forward -> reverse -> complement -> rotate`,
+`rotate -> complement -> reverse -> forward`,
+`complement -> rotate -> forward -> reverse`, and
+`reverse -> forward -> rotate -> complement`.
+
+These longer programs were acquired through the same frozen append-only route
+chain. Across seeds `69316` and `69317`, artifact behavior was
+`0.9219/0.9375`, `0.9141/0.9648`, `0.9609/0.9609`, and `0.9766/0.9492`;
+causal route accuracy, candidate-key permutation, cold-start old-route
+retention, and reload were `1.0000` in both runs. Every stage-specific
+reward-shuffled control was `0.0000`, and protected-row, corruption,
+frozen-core, and zero-replay gates passed.
+
+This is replicated mechanism-transfer evidence: the acquisition path now
+accepts a withheld runtime grammar and longer programs without changing the
+controller interface. It still does not establish arbitrary open-ended
+program induction or unrestricted memory growth; the external artifact
+blueprint and append-only capacity remain bounded. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_artifact_bank_runtime_grammar_replicated_promoted_v1_2026-08-06/`.

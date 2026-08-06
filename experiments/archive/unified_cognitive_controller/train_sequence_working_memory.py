@@ -89,6 +89,30 @@ _GENERATED_COMPOSITIONS = (
     ("complement", "reverse", "rotate"),
     ("rotate", "reverse", "complement"),
 )
+GeneratedCompositionGrammar = tuple[tuple[str, ...], ...]
+
+
+def _resolve_generated_compositions(
+    generated_compositions: GeneratedCompositionGrammar | None,
+) -> GeneratedCompositionGrammar:
+    """Resolve and validate a verifier-private runtime program grammar."""
+
+    grammar = (
+        _GENERATED_COMPOSITIONS
+        if generated_compositions is None
+        else tuple(tuple(program) for program in generated_compositions)
+    )
+    if not grammar:
+        raise ValueError("generated composition grammar must not be empty")
+    known_primitives = set(_GENERATED_PRIMITIVE_COLUMNS)
+    for program in grammar:
+        if not program:
+            raise ValueError("generated composition programs must not be empty")
+        if any(primitive not in known_primitives for primitive in program):
+            raise ValueError("generated composition contains an unknown primitive")
+        if len(program) > 4:
+            raise ValueError("generated composition programs support at most four primitives")
+    return grammar
 
 
 def _apply_generated_primitive(
@@ -111,8 +135,11 @@ def _apply_generated_primitive(
 def _apply_generated_compositions(
     sequence: torch.Tensor,
     composition_ids: torch.Tensor,
+    compositions: GeneratedCompositionGrammar | None = None,
 ) -> torch.Tensor:
     """Apply one sampled primitive program independently to each row."""
+
+    grammar = _resolve_generated_compositions(compositions)
 
     def apply_program(
         row_sequence: torch.Tensor, primitives: tuple[str, ...]
@@ -126,7 +153,7 @@ def _apply_generated_compositions(
         tuple(
             apply_program(
                 sequence[row : row + 1],
-                _GENERATED_COMPOSITIONS[int(composition_ids[row])],
+                grammar[int(composition_ids[row])],
             )
             for row in range(sequence.shape[0])
         )
@@ -162,6 +189,7 @@ def generate_sequence_memory_batch(
         count: int, *, span: int, distractors: int, seed: int,
         operation: str = "mixed", heldout: bool = False,
         generated_composition_ids: tuple[int, ...] | None = None,
+        generated_compositions: GeneratedCompositionGrammar | None = None,
         position_shift: bool = False,
         position_blend: float = 0.0,
         position_augmentation: bool = False,
@@ -178,12 +206,13 @@ def generate_sequence_memory_batch(
         raise ValueError("span must be positive")
     if distractors < 0:
         raise ValueError("distractors must not be negative")
+    composition_grammar = _resolve_generated_compositions(generated_compositions)
     if generated_composition_ids is not None:
         if not generated_composition_ids:
             raise ValueError("generated composition pool must not be empty")
         if any(
             composition_id < 0
-            or composition_id >= len(_GENERATED_COMPOSITIONS)
+            or composition_id >= len(composition_grammar)
             for composition_id in generated_composition_ids
         ):
             raise ValueError("generated composition ID is out of range")
@@ -208,7 +237,7 @@ def generate_sequence_memory_batch(
     sequence = _balanced_binary_sequences(count, span, generator)
     if operation == "generated_composition":
         composition_pool = tuple(
-            range(len(_GENERATED_COMPOSITIONS))
+            range(len(composition_grammar))
             if generated_composition_ids is None
             else generated_composition_ids
         )
@@ -345,7 +374,7 @@ def generate_sequence_memory_batch(
             # generic ordinal marker makes execution order observable without
             # naming the composition or exposing its answer.
             for primitive_index, primitive in enumerate(
-                _GENERATED_COMPOSITIONS[int(composition_ids[row])]
+                composition_grammar[int(composition_ids[row])]
             ):
                 operation_column = _GENERATED_PRIMITIVE_COLUMNS[primitive]
                 cue_start = 2 + primitive_index * 5
@@ -393,7 +422,7 @@ def generate_sequence_memory_batch(
     )
     if operation == "generated_composition":
         selected_sequence = _apply_generated_compositions(
-            sequence, composition_ids
+            sequence, composition_ids, composition_grammar
         )
     else:
         selected_sequence = torch.gather(sequence, 1, selected_index)
@@ -421,7 +450,7 @@ def generate_sequence_memory_batch(
         input_frames = input_frames.flip(1)
         if operation == "generated_composition":
             selected_sequence = _apply_generated_compositions(
-                sequence, composition_ids
+                sequence, composition_ids, composition_grammar
             )
         else:
             selected_sequence = torch.gather(sequence, 1, selected_index)

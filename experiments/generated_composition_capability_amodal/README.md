@@ -1,9 +1,10 @@
 # Generated compositional capability pilot
 
 This pilot trains one fresh external capability against a frozen parent
-controller on `generated_composition`. Each lifetime samples a two-primitive
-program from a verifier-private grammar and renders the two primitive cues as
-ordinary learned events. The controller receives no program ID, primitive
+controller on `generated_composition`. The default verifier-private grammar
+contains two- and three-primitive programs, while the renderer can also accept
+a runtime-supplied grammar of longer programs. Primitive cues are rendered as
+ordinary learned events; the controller receives no program ID, primitive
 labels, correct actions, or verifier-private composition metadata.
 
 Run the short rung with:
@@ -88,3 +89,27 @@ passed cold-start old-route retention and all causal, reload, corruption,
 frozen-core, and zero-replay gates, and rejected every stage-specific
 reward-shuffled control. This is replicated bounded continual external growth,
 not general continual learning.
+
+The renderer and route-key path also accept a runtime-supplied verifier-private
+grammar. Repeat `--program-spec` for each custom program, using comma-separated
+primitive names:
+
+```bash
+PYTHONPATH=src uv run python -m experiments.generated_composition_capability_amodal.train_artifact_bank \
+  --route-mode append_only --base-route-count 1 \
+  --parent-updates 128 --artifact-updates 256 --route-updates 256 \
+  --composition-ids 0 1 2 3 \
+  --program-spec forward,reverse,complement,rotate \
+  --program-spec rotate,complement,reverse,forward \
+  --program-spec complement,rotate,forward,reverse \
+  --program-spec reverse,forward,rotate,complement \
+  --batch-size 16 --route-batch-size 16 --audit-count 64 \
+  --route-audit-count 512 --retention-probes 4 --eval-every 32 \
+  --report-out /tmp/generated-composition-runtime-program/report.json
+```
+
+This runtime-grammar result is replicated for seeds `69316` and `69317` in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_artifact_bank_runtime_grammar_replicated_promoted_v1_2026-08-06/`.
+It promotes mechanism transfer to four-primitive runtime programs, while
+unrestricted capacity and arbitrary open-ended program induction remain
+unqualified.
