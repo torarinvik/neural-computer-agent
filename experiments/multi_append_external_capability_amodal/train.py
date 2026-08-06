@@ -623,7 +623,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     artifact_path.write_bytes(intact + b"corruption")
     corruption_rejected = False
     try:
-        ExecutableArtifactMemory.load(second_path)
+        ExecutableArtifactMemory.load(growth_paths[-1])
     except ValueError as error:
         corruption_rejected = "hash mismatch" in str(error)
     artifact_path.write_bytes(intact)
