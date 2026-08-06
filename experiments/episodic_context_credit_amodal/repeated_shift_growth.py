@@ -149,11 +149,15 @@ def _credit_accuracy(
         family_total = int(weights.shape[0])
         correct += family_correct
         total += family_total
-        group = next(
-            index
-            for index, (start, end, _length) in enumerate(schedule[1:], start=1)
-            if start <= family < end
-        ) if family >= 2 else 0
+        group = (
+            next(
+                index
+                for index, (start, end, _length) in enumerate(schedule[1:], start=1)
+                if start <= family < end
+            )
+            if family >= 2
+            else 0
+        )
         group_correct[str(group)] = group_correct.get(str(group), 0) + family_correct
         group_total[str(group)] = group_total.get(str(group), 0) + family_total
     return {
@@ -188,9 +192,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     if len(schedule) < 3:
         raise ValueError("the repeated-shift audit requires at least two shifts")
     new_families = tuple(
-        family
-        for start, end, _length in schedule[1:]
-        for family in range(start, end)
+        family for start, end, _length in schedule[1:] for family in range(start, end)
     )
     patterns_by_length = {
         episode_length: _pattern_bank(
@@ -283,9 +285,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     for shift_index, (start, end, episode_length) in enumerate(schedule[1:], start=1):
         phase_families = tuple(range(start, end))
         phase_prior = (
-            growth_prior
-            if args.growth_initialization == "prior_average"
-            else None
+            growth_prior if args.growth_initialization == "prior_average" else None
         )
         prior_source_counts.append(
             0 if phase_prior is None else phase_prior.source_count
@@ -409,26 +409,25 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         patterns_by_length=patterns_by_length,
         seed=args.seed + 70_001,
     )
+    base_credit_bits = (
+        args.credit_updates * args.batch_size * args.base_episode_length * 2
+    )
+    external_credit_bits = sum(
+        args.external_credit_updates * args.batch_size * episode_length * 2
+        for _start, _end, episode_length in schedule[1:]
+        for _ in range(_end - _start)
+    )
+    route_bits = args.route_updates * args.batch_size * 2
+    extension_route_bits = (
+        2 * len(new_families) * args.extension_updates * args.batch_size * 2
+    )
+    retention_bits = int(retention["observation_count"])
     bits = (
-        args.credit_updates
-        * args.batch_size
-        * args.base_episode_length
-        * 2
-        + sum(
-            args.external_credit_updates
-            * args.batch_size
-            * episode_length
-            * 2
-            for _start, _end, episode_length in schedule[1:]
-            for _ in range(_end - _start)
-        )
-        + (
-            args.route_updates
-            + 2 * len(new_families) * args.extension_updates
-        )
-        * args.batch_size
-        * 2
-        + int(retention["observation_count"])
+        base_credit_bits
+        + external_credit_bits
+        + route_bits
+        + extension_route_bits
+        + retention_bits
     )
     lifetimes = (
         args.context_updates * 2
@@ -441,13 +440,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         * args.batch_size
         + int(retention["observation_count"])
     )
+    wall_seconds = time.perf_counter() - started
     report: dict[str, object] = {
         "schema": "neural-computer.episodic-context-credit-repeated-shift-report.v1",
         "claim_boundary": (
-            "A frozen base capability set survives two sequential temporal "
-            "distribution shifts while fresh external routes and isolated "
-            "credit heads are acquired without replay. This is a bounded "
-            "repeated-shift diagnostic, not general continual learning."
+            f"A frozen base capability set survives {len(schedule) - 1} "
+            "sequential temporal distribution shifts while fresh external "
+            "routes and isolated credit heads are acquired without replay. "
+            "This is a bounded repeated-shift diagnostic, not general "
+            "continual learning."
         ),
         "seed": args.seed,
         "schedule": [
@@ -487,20 +488,31 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 + len(new_families)
                 * (args.external_credit_updates + 2 * args.extension_updates)
             ),
+            "base_credit_verifier_bits": base_credit_bits,
+            "external_credit_verifier_bits": external_credit_bits,
+            "base_route_verifier_bits": route_bits,
+            "extension_route_verifier_bits": extension_route_bits,
+            "retention_verifier_bits": retention_bits,
+            "route_optimizer_updates": (
+                args.route_updates + 2 * len(new_families) * args.extension_updates
+            ),
+            "credit_optimizer_updates": args.credit_updates,
+            "external_credit_optimizer_updates": (
+                len(new_families) * args.external_credit_updates
+            ),
             "replayed_examples": 0,
             "distribution_shifts": len(schedule) - 1,
-            "wall_seconds": time.perf_counter() - started,
+            "wall_seconds": wall_seconds,
+            "latency_seconds_per_unique_lifetime": wall_seconds / max(lifetimes, 1),
+            "transfer_ratio_against_fresh_learner": None,
         },
     }
     report["gates"] = {
         "old_route_retained": old_route_accuracy >= 0.8,
         "candidate_permutation_invariant": permutation_accuracy >= 0.8,
-        "new_routes_recovered": all(
-            value >= 0.8 for value in new_selection.values()
-        ),
+        "new_routes_recovered": all(value >= 0.8 for value in new_selection.values()),
         "new_routes_causal": all(
-            new_selection[key] >= ablated_selection[key] + 0.5
-            for key in new_selection
+            new_selection[key] >= ablated_selection[key] + 0.5 for key in new_selection
         ),
         "reward_shuffled_not_selected": all(
             value <= 0.5 for value in shuffled_selection.values()
@@ -511,7 +523,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         ),
         "credit_signal_survives_all_shifts": all(
             credit_accuracy.get(key, 0.0) >= 0.66
-            for key in ("old", "combined", *[f"shift_{i}" for i in range(1, len(schedule))])
+            for key in (
+                "old",
+                "combined",
+                *[f"shift_{i}" for i in range(1, len(schedule))],
+            )
         ),
         "no_replay_after_shifts": True,
         "retention_reversal_safe": (

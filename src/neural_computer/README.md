@@ -709,3 +709,14 @@ hidden 512, and an adaptive late-budget control. This is evidence for
 confidence-aware targeted acquisition and capacity planning, not a reason to
 weaken the retention gate. See
 `session_records/sequence_working_memory_2026-08-02/shared_growth_router_6to8to10to12to14_46caps_rejected_v1_2026-08-06/`.
+
+The matched modular route/credit boundary now passes the same fourth shift
+with 46 total capabilities when each new route and credit head is isolated
+from earlier learned state. Across seeds `69316` and `69317`, final-shift
+route floors are `0.8594` and `0.8750`; old-route retention, permutation,
+causal extension, null, full-bank protection, reversal/recovery, and
+zero-replay gates all pass. This localizes the shared-router 46-capability
+failure to interference in one mutable candidate scorer, not to external
+memory capacity. The modular result remains a bounded externally trained
+route/credit mechanism, not general continual learning. See
+`session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14_isolated_v1_2026-08-06/`.

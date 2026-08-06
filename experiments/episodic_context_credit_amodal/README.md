@@ -231,3 +231,15 @@ weak opaque candidates lowered seed-69316 phase floors to `0.9063/0.6719/0.7188`
 from the matched round-robin `0.9844/0.9688/0.9219`, and failed new-route and
 retention gates. The scheduler is discarded; evidence is in
 `session_records/sequence_working_memory_2026-08-02/shared_growth_router_outcome_confidence_rejected_v1_2026-08-06/`.
+
+The matched modular fourth-shift audit keeps each new route and credit head
+isolated instead of sharing one mutable candidate router. Under the same
+length-six → eight → ten → twelve → fourteen schedule, both seeds now pass at
+46 total capabilities: final-shift route floors are `0.8594` and `0.8750`,
+old routes remain perfect, causal/permutation/null controls pass, and the
+retention ledger protects all rows while releasing and recovering only the
+reversed target. This isolates the earlier 46-capability failure to shared
+router interference rather than external-bank capacity. The result still
+uses externally trained per-capability route/credit state and is not general
+continual learning. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14_isolated_v1_2026-08-06/`.
