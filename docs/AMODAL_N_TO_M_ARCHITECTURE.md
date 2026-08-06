@@ -2633,15 +2633,15 @@ with composition ID `6`, a three-primitive `reverse -> complement -> rotate`
 program. This tests a longer computation and a changed composition grammar
 without changing the controller, base route, or established route stages.
 
-In the first run, artifact behavior was `0.9102`, `0.8555`, `0.9453`, and
-`1.0000`; causal route accuracy, candidate-key permutation, cold-start
-old-route retention, and reload were all `1.0000`. Every stage-specific
-reward-shuffled control was `0.0000`; protected-row, corruption, frozen-core,
-and zero-replay gates all passed.
+Across seeds `69316` and `69317`, artifact behavior was respectively
+`0.9102/0.9688`, `0.8555/0.9414`, `0.9453/0.9609`, and `1.0000/0.9844` for
+IDs `0`, `1`, `2`, and `6`. Causal route accuracy, candidate-key permutation,
+cold-start old-route retention, and reload were all `1.0000` in both runs.
+Every stage-specific reward-shuffled control was `0.0000`; protected-row,
+corruption, frozen-core, and zero-replay gates all passed.
 
-This promotes one-seed append-only acquisition across a longer-program grammar
-shift. It is a meaningful increase in external capability growth, but not a
-claim of general continual learning: the program grammar, artifact blueprint,
-and append-only memory capacity are still bounded. Fresh-seed replication and
-open-ended program induction remain required. Evidence is in
-`session_records/sequence_working_memory_2026-08-02/generated_composition_artifact_bank_append_only_grammar_shift_promoted_v1_2026-08-06/`.
+This promotes replicated append-only acquisition across a longer-program
+grammar shift. It is a meaningful increase in external capability growth, but
+not a claim of general continual learning: the program grammar, artifact
+blueprint, and append-only memory capacity are still bounded. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_artifact_bank_append_only_grammar_shift_replicated_promoted_v1_2026-08-06/`.

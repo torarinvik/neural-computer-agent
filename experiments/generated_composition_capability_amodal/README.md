@@ -80,11 +80,11 @@ PYTHONPATH=src uv run python -m experiments.generated_composition_capability_amo
   --eval-every 32 --report-out /tmp/generated-composition-artifact-bank-grammar-shift-v1/report.json
 ```
 
-The one-seed grammar-shift result is promoted in
-`session_records/sequence_working_memory_2026-08-02/generated_composition_artifact_bank_append_only_grammar_shift_promoted_v1_2026-08-06/`.
-It acquired the longer artifact at `1.0000` behavior, retained all four
-routes at `1.0000`, passed cold-start old-route retention and all causal,
-reload, corruption, frozen-core, and zero-replay gates, and rejected every
-stage-specific reward-shuffled control. Fresh-seed replication is required;
-this remains bounded continual external growth rather than general continual
-learning.
+The grammar-shift result was replicated with seeds `69316` and `69317` and is
+archived in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_artifact_bank_append_only_grammar_shift_replicated_promoted_v1_2026-08-06/`.
+Both runs acquired the longer artifact, retained all four routes at `1.0000`,
+passed cold-start old-route retention and all causal, reload, corruption,
+frozen-core, and zero-replay gates, and rejected every stage-specific
+reward-shuffled control. This is replicated bounded continual external growth,
+not general continual learning.
