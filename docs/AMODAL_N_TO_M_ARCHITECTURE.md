@@ -2510,3 +2510,23 @@ bounded external-growth result and a real route-isolation gain, but it still
 does not establish general continual learning, unrestricted memory growth,
 arbitrary new computation, or open-ended compression. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/multi_append_external_capability_v2_three_step_2026-08-06/`.
+
+## Route-isolated acquisition of an unseen procedure (2026-08-06)
+
+The route-isolated bank then appended `prefix_parity4`, a cumulative temporal
+procedure outside the earlier forward/reverse/complement/rotation append set.
+Across seeds 69316 and 69317, all seven artifacts remained protected, old and
+new route accuracy was `1.000`, reward-shuffled selection was `0.000` for all
+four append stages, and selected prefix-parity behavior was `0.8789` and
+`0.8359`. Causal wrong-artifact behavior, route and artifact reload,
+corruption rejection, frozen parent/base-router digests, and zero replay all
+passed.
+
+This is the first replicated evidence that the route-isolated external
+blueprint can acquire one computation outside the earlier append family while
+preserving prior capabilities. It still does not establish open-ended
+program induction: the procedure generator, event cue, recurrent capability
+blueprint, and decoder family are fixed by the experiment. The next boundary
+is multiple genuinely different unseen procedures and transfer of the
+acquisition mechanism itself. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/multi_append_external_capability_v3_unseen_prefix_parity_2026-08-06/`.
