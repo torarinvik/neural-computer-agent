@@ -2530,3 +2530,24 @@ blueprint, and decoder family are fixed by the experiment. The next boundary
 is multiple genuinely different unseen procedures and transfer of the
 acquisition mechanism itself. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/multi_append_external_capability_v3_unseen_prefix_parity_2026-08-06/`.
+
+## Multiple unseen temporal procedures (2026-08-06)
+
+The same route-isolated bank then acquired two distinct unseen temporal
+aggregations, `prefix_parity4` and `global_parity4`, after the earlier three
+append procedures. Across seeds 69316 and 69317, all eight artifacts stayed
+protected, every old/new/combined route was `1.000`, reward-shuffled selection
+was `0.000` for every append, and selected behavior for prefix parity was
+`0.8789`/`0.8359` while global parity was `1.000`/`1.000`. Causal
+wrong-artifact behavior, reload, corruption rejection, frozen parent and
+base-router digests, and zero replay all passed.
+
+This strengthens the acquisition claim from one unseen procedure to two
+different unseen temporal procedures. It still does not establish open-ended
+program induction: the experiment supplies the procedure generator and
+operation cues, and every capability uses the same fixed external blueprint
+and decoder family. The next bottleneck is therefore mechanism transfer to
+procedures that are not predeclared in the append schedule, followed by
+capacity growth/compression beyond a fixed-size recurrent artifact blueprint.
+Evidence is in
+`session_records/sequence_working_memory_2026-08-02/multi_append_external_capability_v4_two_unseen_2026-08-06/`.
