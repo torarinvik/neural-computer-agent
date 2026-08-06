@@ -142,6 +142,34 @@ def test_global_parity_is_a_distinct_visible_primitive() -> None:
     assert not torch.equal(batch.query_frames, rotate.query_frames)
 
 
+def test_generated_composition_is_deterministic_and_renders_two_primitive_cues() -> None:
+    from .train_sequence_working_memory import _GENERATED_PRIMITIVE_COLUMNS
+
+    batch = generate_sequence_memory_batch(
+        48, span=4, distractors=1, seed=260029,
+        operation="generated_composition")
+    duplicate = generate_sequence_memory_batch(
+        48, span=4, distractors=1, seed=260029,
+        operation="generated_composition")
+    assert torch.equal(batch.input_frames, duplicate.input_frames)
+    assert torch.equal(batch.query_frames, duplicate.query_frames)
+    assert torch.equal(batch.correct_actions, duplicate.correct_actions)
+
+    cue_columns = tuple(_GENERATED_PRIMITIVE_COLUMNS.values())
+    for row in range(batch.batch_size):
+        active = [
+            column
+            for column in cue_columns
+            if bool(
+                (
+                    batch.query_frames[row, :, :, 2:5, column:column + 3]
+                    > 0.9
+                ).any()
+            )
+        ]
+        assert len(active) == 2
+
+
 def test_sequence_counterfactual_is_a_valid_pixel_rerender() -> None:
     normal = generate_sequence_memory_batch(
         32, span=2, distractors=1, seed=26003, operation="mixed")

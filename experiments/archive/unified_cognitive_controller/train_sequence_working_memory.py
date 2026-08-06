@@ -69,6 +69,59 @@ class SequenceMemoryBatch:
         return int(self.input_frames.shape[1])
 
 
+_GENERATED_PRIMITIVE_COLUMNS = {
+    "forward": 2,
+    "reverse": 27,
+    "complement": 14,
+    "rotate": 9,
+}
+_GENERATED_COMPOSITIONS = (
+    ("reverse", "complement"),
+    ("complement", "reverse"),
+    ("rotate", "complement"),
+    ("complement", "rotate"),
+    ("reverse", "rotate"),
+    ("rotate", "reverse"),
+)
+
+
+def _apply_generated_primitive(
+    sequence: torch.Tensor,
+    primitive: str,
+) -> torch.Tensor:
+    """Apply one verifier-private primitive to binary sequence rows."""
+
+    if primitive == "forward":
+        return sequence
+    if primitive == "reverse":
+        return sequence.flip(1)
+    if primitive == "complement":
+        return 1 - sequence
+    if primitive == "rotate":
+        return sequence.roll(shifts=-1, dims=1)
+    raise ValueError(f"unknown generated primitive: {primitive}")
+
+
+def _apply_generated_compositions(
+    sequence: torch.Tensor,
+    composition_ids: torch.Tensor,
+) -> torch.Tensor:
+    """Apply one sampled two-primitive program independently to each row."""
+
+    return torch.stack(
+        tuple(
+            _apply_generated_primitive(
+                _apply_generated_primitive(
+                    sequence[row : row + 1],
+                    _GENERATED_COMPOSITIONS[int(composition_ids[row])][0],
+                ),
+                _GENERATED_COMPOSITIONS[int(composition_ids[row])][1],
+            )[0]
+            for row in range(sequence.shape[0])
+        )
+    )
+
+
 def _balanced_binary_sequences(
         count: int, span: int, generator: torch.Generator) -> torch.Tensor:
     """Cover every binary sequence evenly before deterministic shuffling."""
@@ -117,12 +170,13 @@ def generate_sequence_memory_batch(
         "forward", "reverse", "mixed", "complement", "complement_reverse",
         "complement_rotate", "adjacent_xor", "prefix_parity", "global_parity",
         "rotate", "undo_complement", "producer_global_parity",
+        "generated_composition",
     ):
         raise ValueError(
             "operation must be forward, reverse, mixed, complement, "
             "complement_reverse, complement_rotate, adjacent_xor, "
             "prefix_parity, global_parity, rotate, undo_complement, or "
-            "producer_global_parity"
+            "producer_global_parity, or generated_composition"
         )
     if not 0.0 <= position_blend <= 1.0:
         raise ValueError("position blend must be within [0, 1]")
@@ -131,7 +185,12 @@ def generate_sequence_memory_batch(
 
     generator = torch.Generator().manual_seed(seed)
     sequence = _balanced_binary_sequences(count, span, generator)
-    if operation in (
+    if operation == "generated_composition":
+        composition_ids = torch.randint(
+            len(_GENERATED_COMPOSITIONS), (count,), generator=generator
+        )
+        operation_bits = composition_ids.remainder(2)
+    elif operation in (
         "forward", "complement", "complement_reverse", "complement_rotate",
         "adjacent_xor", "prefix_parity", "global_parity", "rotate",
         "undo_complement", "producer_global_parity",
@@ -252,10 +311,21 @@ def generate_sequence_memory_batch(
         elif operation == "global_parity":
             # A global aggregation cue; it carries no answer or task label.
             operation_column = 28
+        elif operation == "generated_composition":
+            # The sampled grammar emits two generic primitive cues. The
+            # verifier-private composition ID never enters the learner.
+            for primitive in _GENERATED_COMPOSITIONS[int(composition_ids[row])]:
+                operation_column = _GENERATED_PRIMITIVE_COLUMNS[primitive]
+                query_frames[
+                    row, :, :, 2:5, operation_column:operation_column + 3
+                ] = 0.95
+            operation_column = None
         else:
             operation_column = 2 if int(operation_bits[row]) == 0 else 27
-        query_frames[row, :, :, 2:5, operation_column:operation_column + 3] = (
-            0.95)
+        if operation_column is not None:
+            query_frames[
+                row, :, :, 2:5, operation_column:operation_column + 3
+            ] = 0.95
         if operation == "undo_complement":
             query_frames[row, :, :, 2:5, 6:9] = 0.95
         if operation == "producer_global_parity":
@@ -280,7 +350,12 @@ def generate_sequence_memory_batch(
             operation_bits.unsqueeze(1).bool(), reverse_index, source_index
         )
     )
-    selected_sequence = torch.gather(sequence, 1, selected_index)
+    if operation == "generated_composition":
+        selected_sequence = _apply_generated_compositions(
+            sequence, composition_ids
+        )
+    else:
+        selected_sequence = torch.gather(sequence, 1, selected_index)
     if operation == "adjacent_xor":
         correct = (sequence != selected_sequence).long()
     elif operation == "prefix_parity":
@@ -295,13 +370,20 @@ def generate_sequence_memory_batch(
         correct = selected_sequence
     elif operation == "producer_global_parity":
         correct = sequence.sum(dim=1, keepdim=True).remainder(2).expand_as(sequence)
+    elif operation == "generated_composition":
+        correct = selected_sequence
     else:
         correct = selected_sequence
 
     if reverse_sequence:
         sequence = sequence.flip(1)
         input_frames = input_frames.flip(1)
-        selected_sequence = torch.gather(sequence, 1, selected_index)
+        if operation == "generated_composition":
+            selected_sequence = _apply_generated_compositions(
+                sequence, composition_ids
+            )
+        else:
+            selected_sequence = torch.gather(sequence, 1, selected_index)
         if operation == "adjacent_xor":
             correct = (sequence != selected_sequence).long()
         elif operation == "prefix_parity":
@@ -319,6 +401,8 @@ def generate_sequence_memory_batch(
         elif operation == "producer_global_parity":
             correct = sequence.sum(dim=1, keepdim=True).remainder(2).expand_as(
                 sequence)
+        elif operation == "generated_composition":
+            correct = selected_sequence
         else:
             correct = selected_sequence
 
