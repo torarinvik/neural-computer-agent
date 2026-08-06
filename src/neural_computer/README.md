@@ -729,3 +729,13 @@ optimizer updates, or replay. This closes the durable-state boundary for the
 bounded result while leaving unbounded acquisition and general continual
 learning open. See
 `session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14_persistent_v1_2026-08-06/`.
+
+The persistent modular boundary now survives a fifth temporal shift to 62
+capabilities. A fresh 32-probe confidence screen remediates only weak
+external modules with one additional 256-update block; both seeds pass final
+route floors `0.8906` and `0.8594`, hard retention/reversal/recovery,
+persistent route/credit reload, corruption rejection, and zero replay. The
+no-remediation control remains rejected on the retention gate. This promotes
+confidence-triggered external acquisition depth, not unbounded growth,
+arbitrary program induction, or general continual learning. See
+`session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14to16_remediated_v1_2026-08-06/`.

@@ -450,6 +450,80 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             }
         )
 
+    remediation_history: list[dict[str, object]] = []
+    remediation_optimizer_updates = 0
+    remediation_diagnostic_bits = 0
+    if args.remediation_rounds > 0 and args.remediation_updates > 0:
+        for remediation_round in range(args.remediation_rounds):
+            before: dict[str, float] = {}
+            current_extensions = tuple(extensions)
+            for family in new_families:
+                probe_scores = [
+                    _extension_selection(
+                        router,
+                        query,
+                        old_keys,
+                        family=family,
+                        extensions=current_extensions,
+                        seed=(
+                            args.seed
+                            + 300_000
+                            + remediation_round * 10_000
+                            + repetition * 101
+                            + family
+                        ),
+                        batch_size=args.audit_batch_size,
+                    )[0]
+                    for repetition in range(args.remediation_probe_repetitions)
+                ]
+                before[str(family)] = min(probe_scores)
+            remediation_diagnostic_bits += (
+                len(new_families) * args.remediation_probe_repetitions
+            )
+            weak_families = [
+                family
+                for family in new_families
+                if (before[str(family)] < args.remediation_threshold)
+            ]
+            if not weak_families:
+                break
+            for family in weak_families:
+                extension_index = new_families.index(family)
+                prior = ExternalGrowthPrior.from_module(extensions[extension_index])
+                extensions[extension_index] = train_extension(
+                    query,
+                    new_family=family,
+                    updates=args.remediation_updates,
+                    batch_size=args.batch_size,
+                    seed=(args.seed + 200_000 + remediation_round * 10_000 + family),
+                    negative_families=tuple(range(family)),
+                    growth_prior=prior,
+                    growth_prior_reset_prefixes=(),
+                    growth_prior_mix=1.0,
+                )
+                remediation_optimizer_updates += args.remediation_updates
+            after_extensions = tuple(extensions)
+            after = {
+                str(family): _extension_selection(
+                    router,
+                    query,
+                    old_keys,
+                    family=family,
+                    extensions=after_extensions,
+                    seed=args.seed + 60_001 + family,
+                    batch_size=args.audit_batch_size,
+                )[0]
+                for family in weak_families
+            }
+            remediation_history.append(
+                {
+                    "round": remediation_round + 1,
+                    "weak_families": weak_families,
+                    "before": before,
+                    "after": after,
+                }
+            )
+
     extension_tuple = tuple(extensions)
     shuffled_tuple = tuple(shuffled_extensions)
     persistent_state = _persist_and_reload_state(
@@ -564,12 +638,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     extension_route_bits = (
         2 * len(new_families) * args.extension_updates * args.batch_size * 2
     )
+    remediation_route_bits = remediation_optimizer_updates * args.batch_size * 2
     retention_bits = int(retention["observation_count"])
     bits = (
         base_credit_bits
         + external_credit_bits
         + route_bits
         + extension_route_bits
+        + remediation_route_bits
+        + remediation_diagnostic_bits
         + retention_bits
     )
     lifetimes = (
@@ -579,6 +656,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             + args.route_updates
             + len(new_families)
             * (args.external_credit_updates + 2 * args.extension_updates)
+            + remediation_optimizer_updates
+            + remediation_diagnostic_bits
         )
         * args.batch_size
         + int(retention["observation_count"])
@@ -620,6 +699,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             else "none"
         ),
         "growth_prior_source_counts": prior_source_counts,
+        "remediation_history": remediation_history,
         "retention_reversal": retention,
         "persistent_state": {
             "state_file_count": persistent_state["state_file_count"],
@@ -638,11 +718,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 + args.route_updates
                 + len(new_families)
                 * (args.external_credit_updates + 2 * args.extension_updates)
+                + remediation_optimizer_updates
             ),
             "base_credit_verifier_bits": base_credit_bits,
             "external_credit_verifier_bits": external_credit_bits,
             "base_route_verifier_bits": route_bits,
             "extension_route_verifier_bits": extension_route_bits,
+            "remediation_route_verifier_bits": remediation_route_bits,
+            "remediation_diagnostic_verifier_bits": remediation_diagnostic_bits,
             "retention_verifier_bits": retention_bits,
             "route_optimizer_updates": (
                 args.route_updates + 2 * len(new_families) * args.extension_updates
@@ -651,6 +734,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "external_credit_optimizer_updates": (
                 len(new_families) * args.external_credit_updates
             ),
+            "remediation_optimizer_updates": remediation_optimizer_updates,
             "persistence_verifier_bits": 0,
             "persistence_optimizer_updates": 0,
             "persistence_replayed_examples": 0,
@@ -722,6 +806,10 @@ def main() -> None:
     parser.add_argument("--external-credit-updates", type=int, default=128)
     parser.add_argument("--route-updates", type=int, default=1024)
     parser.add_argument("--extension-updates", type=int, default=256)
+    parser.add_argument("--remediation-updates", type=int, default=0)
+    parser.add_argument("--remediation-rounds", type=int, default=0)
+    parser.add_argument("--remediation-probe-repetitions", type=int, default=8)
+    parser.add_argument("--remediation-threshold", type=float, default=0.8)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--audit-batch-size", type=int, default=64)
     parser.add_argument(
@@ -737,7 +825,14 @@ def main() -> None:
         help="fraction of prior representation to blend into a fresh adapter",
     )
     args = parser.parse_args()
-    if args.base_episode_length < 2 or args.audit_batch_size < 1:
+    if (
+        args.base_episode_length < 2
+        or args.audit_batch_size < 1
+        or args.remediation_updates < 0
+        or args.remediation_rounds < 0
+        or args.remediation_probe_repetitions < 1
+        or not 0.0 <= args.remediation_threshold <= 1.0
+    ):
         raise SystemExit("base episode length and audit batch size are invalid")
     report = run(args)
     args.report_out.parent.mkdir(parents=True, exist_ok=True)

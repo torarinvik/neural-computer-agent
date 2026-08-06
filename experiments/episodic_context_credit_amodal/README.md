@@ -250,3 +250,13 @@ reload 89 state files into fresh modules with exact route/credit behavior and
 reject a corrupted state checksum, without verifier bits, optimizer updates,
 or replay during persistence. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14_persistent_v1_2026-08-06/`.
+
+The fifth-shift follow-up extends the same persistent modular boundary to 62
+capabilities (length 6 → 8 → 10 → 12 → 14 → 16). A 32-probe confidence
+screen triggers one fresh 256-update remediation block only for weak external
+modules. Both seeds pass with final-shift route floors `0.8906` and `0.8594`,
+full-bank retention/reversal/recovery, persistent reload, corruption, and
+zero replay. The matched no-remediation seed-69317 control fails only the
+hard retention gate, so the repair is targeted acquisition rather than a
+weaker definition of mastery. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14to16_remediated_v1_2026-08-06/`.
