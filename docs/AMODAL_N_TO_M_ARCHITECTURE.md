@@ -2327,6 +2327,16 @@ artifact and removed raw events from downstream programs; accuracy fell from
 raw-event shortcut. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/external_capability_composition_rejected_v1_2026-08-06/`.
 
+The corrected fresh-gradient rerun repairs the control but does not earn a
+two-seed promotion: seed `69316` reaches `2,048` composed bits versus `6,144`
+for fresh (`3.0x` fresh-over-composed), while seed `69317` reaches `14,336`
+composed bits versus `6,144` for fresh (`0.429x`). The first primitive is also
+noncausal on seed `69317`. This makes the current transfer effect
+seed-sensitive. The next implementation target is verifier-gated candidate
+selection: inherited composition state must beat a fresh baseline on a fresh
+probe before it is installed. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/external_capability_composition_corrected_rejected_v1_2026-08-06/`.
+
 ## Lifecycle-backed learned executable compaction (2026-08-06)
 
 The same coordinator now owns the learned executable-artifact consolidation

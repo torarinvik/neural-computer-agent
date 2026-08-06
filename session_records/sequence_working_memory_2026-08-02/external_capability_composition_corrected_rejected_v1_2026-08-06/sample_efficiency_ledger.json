@@ -1,0 +1,28 @@
+{
+  "experiment": "external_capability_composition_corrected_rejected_v1_2026-08-06",
+  "status": "rejected_seed_sensitive_transfer",
+  "claim": "A frozen external composition can accelerate a novel target on one seed, but the transfer effect is not replicated against a genuinely trainable fresh pipeline.",
+  "seeds": [69316, 69317],
+  "accounting_by_seed": {
+    "69316": {
+      "unique_verifier_bits": 184320,
+      "unique_logical_lifetimes": 51200,
+      "optimizer_updates": 2688,
+      "replayed_examples": 0,
+      "wall_seconds": 348.07315825000114
+    },
+    "69317": {
+      "unique_verifier_bits": 184320,
+      "unique_logical_lifetimes": 51200,
+      "optimizer_updates": 2688,
+      "replayed_examples": 0,
+      "wall_seconds": 361.0283759160084
+    }
+  },
+  "retention_on_mastered_primitives": "primitive artifacts remain frozen and reloadable; the shared controller digest is unchanged",
+  "transfer_ratio_against_fresh_learner": {
+    "69316": 3.0,
+    "69317": 0.42857142857142855
+  },
+  "reason_rejected": "The positive transfer effect did not replicate across seeds, and the first primitive failed the causal gate on seed 69317."
+}
