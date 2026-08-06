@@ -45,5 +45,17 @@ Status:
   four-key action space was rejected as an acquisition control. Evidence:
   `session_records/games_amodal_2026-08-06/game_routing_native_actions_v1_2026-08-06/`.
 
+- `shared_controller.py` — qualified: both games run through one
+  `AmodalCognitiveController` behind the production N-to-M runtime with exact
+  retention, a bit-for-bit frozen core, and zero replay on both seeds. Seed
+  69317 fully promoted (Pong 0.9082 through the frozen Snake-trained core,
+  half mastery in 119 vs the random core's 215 updates); seed 69316 showed
+  genuine negative transfer (0.5195 vs 0.9336 through a random core).
+  Reliable positive core transfer is NOT promoted — it is seed-sensitive,
+  replicating the parent repository's calibration bottleneck. Evidence:
+  `session_records/games_amodal_2026-08-06/shared_controller_two_game_qualified_v1_2026-08-06/`.
+
 Open next rungs: routing over more than two game slots, growing new slots
-through the router's failure gate, and mid-lifetime route queries.
+through the router's failure gate, mid-lifetime route queries, and — the
+main open problem — making core transfer reliably positive (controller
+growth registers or prior calibration, not more budget).
