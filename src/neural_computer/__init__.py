@@ -25,8 +25,10 @@ from .artifact_memory import (
     ExecutableArtifactMemory,
 )
 from .capability import (
+    EXTERNAL_CAPABILITY_COMPOSITION_SCHEMA,
     EXTERNAL_CAPABILITY_PIPELINE_SCHEMA,
     EXTERNAL_CAPABILITY_SCHEMA,
+    ExternalCapabilityComposition,
     ExternalCapabilityPipeline,
     ExternalCapabilityPipelineState,
     ExternalCapabilityProgram,
@@ -196,6 +198,7 @@ __all__ = [
     "EVENT_SCHEMA",
     "EVENT_WINDOW_SCHEMA",
     "EXECUTION_STATES",
+    "EXTERNAL_CAPABILITY_COMPOSITION_SCHEMA",
     "EXTERNAL_CAPABILITY_PIPELINE_SCHEMA",
     "EXTERNAL_CAPABILITY_SCHEMA",
     "GROWTH_PRIOR_SCHEMA",
@@ -249,6 +252,7 @@ __all__ = [
     "EventTokenWindow",
     "EventWaitPolicy",
     "ExecutableArtifactMemory",
+    "ExternalCapabilityComposition",
     "ExternalCapabilityEvictionPolicy",
     "ExternalCapabilityLifecycle",
     "ExternalCapabilityPipeline",

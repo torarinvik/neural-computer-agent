@@ -19,6 +19,9 @@ from .interface import IntentEvent
 
 EXTERNAL_CAPABILITY_SCHEMA = "neural-computer.external-capability.v1"
 EXTERNAL_CAPABILITY_PIPELINE_SCHEMA = "neural-computer.external-capability-pipeline.v1"
+EXTERNAL_CAPABILITY_COMPOSITION_SCHEMA = (
+    "neural-computer.external-capability-composition.v1"
+)
 
 
 @dataclass(frozen=True)
@@ -319,4 +322,177 @@ class ExternalCapabilityPipeline(nn.Module):
                 present=program_present,
             )
             next_states.append(next_state)
+        return current, ExternalCapabilityPipelineState(tuple(next_states))
+
+
+class ExternalCapabilityComposition(nn.Module):
+    """Bind independently learned external programs into a learned sequence.
+
+    Every slot is evaluated from the current opaque intention and an external
+    router chooses the slot for each composition step. The controller remains
+    unaware of slot identity; program states, router weights, and binding
+    decisions all live outside it. Soft routing keeps the boundary
+    differentiable while scalar outcome training discovers which learned
+    event cues should open each slot.
+    """
+
+    def __init__(
+        self,
+        programs: Iterable[ExternalCapabilityProgram] = (),
+        *,
+        event_width: int | None = None,
+        action_width: int | None = None,
+        intention_width: int | None = None,
+        composition_steps: int = 2,
+        router_hidden: int = 64,
+    ) -> None:
+        super().__init__()
+        members = tuple(programs)
+        if members:
+            dimensions = {
+                "event_width": members[0].event_width,
+                "action_width": members[0].action_width,
+                "intention_width": members[0].intention_width,
+            }
+            for program in members[1:]:
+                if any(
+                    getattr(program, name) != value
+                    for name, value in dimensions.items()
+                ):
+                    raise ValueError(
+                        "composition programs must share interface dimensions"
+                    )
+        else:
+            if None in (event_width, action_width, intention_width):
+                raise ValueError(
+                    "empty compositions require event, action, and intention widths"
+                )
+            dimensions = {
+                "event_width": int(event_width),
+                "action_width": int(action_width),
+                "intention_width": int(intention_width),
+            }
+        if len(members) < 2:
+            raise ValueError("compositions require at least two programs")
+        if composition_steps < 1 or router_hidden < 1:
+            raise ValueError("composition steps and router hidden must be positive")
+        if min(dimensions.values()) < 1:
+            raise ValueError("composition interface dimensions must be positive")
+        self.event_width = dimensions["event_width"]
+        self.action_width = dimensions["action_width"]
+        self.intention_width = dimensions["intention_width"]
+        self.composition_steps = int(composition_steps)
+        self.router_hidden = int(router_hidden)
+        self.programs = nn.ModuleList(members)
+        router_input = (
+            self.event_width
+            + self.action_width
+            + 1
+            + self.intention_width
+        )
+        self.router = nn.Sequential(
+            nn.Linear(router_input, self.router_hidden),
+            nn.GELU(),
+            nn.Linear(
+                self.router_hidden,
+                self.composition_steps * len(self.programs),
+            ),
+        )
+
+    @property
+    def hidden_sizes(self) -> tuple[int, ...]:
+        return tuple(program.context_hidden for program in self.programs)
+
+    def configuration(self) -> dict[str, object]:
+        """Return the versioned learned-binding contract."""
+
+        return {
+            "schema": EXTERNAL_CAPABILITY_COMPOSITION_SCHEMA,
+            "event_width": self.event_width,
+            "action_width": self.action_width,
+            "intention_width": self.intention_width,
+            "program_count": len(self.programs),
+            "composition_steps": self.composition_steps,
+            "router_hidden": self.router_hidden,
+            "program_schemas": tuple(
+                program.configuration()["schema"] for program in self.programs
+            ),
+            "state": "independent_external_recurrent_contexts_v1",
+            "routing": "learned_event_conditioned_soft_slot_binding_v1",
+        }
+
+    def initial_state(
+        self,
+        batch_size: int,
+        *,
+        device: torch.device | str,
+        dtype: torch.dtype = torch.float32,
+    ) -> ExternalCapabilityPipelineState:
+        return ExternalCapabilityPipelineState(
+            tuple(
+                program.initial_state(batch_size, device=device, dtype=dtype)
+                for program in self.programs
+            )
+        )
+
+    def step(
+        self,
+        *,
+        event: torch.Tensor,
+        action: torch.Tensor,
+        outcome: torch.Tensor,
+        intention: IntentEvent,
+        state: ExternalCapabilityPipelineState,
+        present: torch.Tensor | None = None,
+    ) -> tuple[IntentEvent, ExternalCapabilityPipelineState]:
+        """Apply a learned slot sequence while keeping state external."""
+
+        if event.ndim != 2 or event.shape[1] != self.event_width:
+            raise ValueError("event has the wrong shape for composition")
+        if action.ndim != 2 or action.shape != (
+            event.shape[0],
+            self.action_width,
+        ):
+            raise ValueError("action has the wrong shape for composition")
+        if outcome.ndim != 1 or outcome.shape[0] != event.shape[0]:
+            raise ValueError("outcome has the wrong shape for composition")
+        intention.validate(width=self.intention_width)
+        state.validate(
+            batch_size=event.shape[0],
+            hidden_sizes=self.hidden_sizes,
+        )
+        current = intention
+        next_states = list(state.programs)
+        for step_index in range(self.composition_steps):
+            router_input = torch.cat(
+                (event, action, outcome.unsqueeze(1), current.payload),
+                dim=-1,
+            )
+            route_logits = self.router(router_input).reshape(
+                event.shape[0], self.composition_steps, len(self.programs)
+            )[:, step_index]
+            weights = torch.softmax(route_logits, dim=-1)
+            candidates: list[torch.Tensor] = []
+            step_states: list[ExternalCapabilityState] = []
+            for program, program_state in zip(
+                self.programs,
+                next_states,
+                strict=True,
+            ):
+                adapted, next_state = program.step(
+                    event=event,
+                    action=action,
+                    outcome=outcome,
+                    intention=current,
+                    state=program_state,
+                    present=present,
+                )
+                candidates.append(adapted.payload)
+                step_states.append(next_state)
+            current = IntentEvent(
+                torch.stack(candidates, dim=1)
+                .mul(weights.unsqueeze(-1))
+                .sum(dim=1)
+            )
+            next_states = step_states
         return current, ExternalCapabilityPipelineState(tuple(next_states))

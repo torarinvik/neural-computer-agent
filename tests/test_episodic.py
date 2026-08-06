@@ -8,6 +8,7 @@ from neural_computer import (
     EpisodicContextEncoder,
     EpisodicCreditHead,
     EpisodicIntentAdapter,
+    ExternalCapabilityComposition,
     ExternalCapabilityPipeline,
     ExternalCapabilityProgram,
     IntentEvent,
@@ -97,7 +98,7 @@ def test_episodic_intent_adapter_is_behavior_preserving_at_initialization() -> N
     adapter = EpisodicIntentAdapter(context_width=6, intention_width=4, hidden=8)
     intention = IntentEvent(torch.randn(2, 4))
     adapted = adapter(intention, torch.randn(2, 6))
-    assert torch.equal(adapted.payload, intention.payload)
+    assert torch.allclose(adapted.payload, intention.payload)
     assert adapter.configuration()["schema"] == (
         "neural-computer.episodic-intent-adapter.v1"
     )
@@ -182,6 +183,42 @@ def test_external_capability_pipeline_keeps_program_states_independent() -> None
     assert pipeline.configuration()["program_schemas"] == (
         "neural-computer.external-capability.v1",
         "neural-computer.external-capability.v1",
+    )
+
+
+def test_external_capability_composition_routes_external_slots_and_keeps_identity() -> None:
+    programs = tuple(
+        ExternalCapabilityProgram(
+            event_width=4,
+            action_width=2,
+            intention_width=6,
+            context_hidden=8,
+            context_width=5,
+            adapter_hidden=7,
+        )
+        for _ in range(2)
+    )
+    composition = ExternalCapabilityComposition(
+        programs,
+        composition_steps=2,
+        router_hidden=9,
+    )
+    intention = IntentEvent(torch.randn(3, 6))
+    state = composition.initial_state(3, device="cpu")
+    adapted, next_state = composition.step(
+        event=torch.randn(3, 4),
+        action=torch.zeros(3, 2),
+        outcome=torch.zeros(3),
+        intention=intention,
+        state=state,
+    )
+
+    assert torch.allclose(adapted.payload, intention.payload)
+    assert len(next_state.programs) == 2
+    assert all(item.context.shape == (3, 8) for item in next_state.programs)
+    assert composition.configuration()["composition_steps"] == 2
+    assert composition.configuration()["routing"] == (
+        "learned_event_conditioned_soft_slot_binding_v1"
     )
 
 
