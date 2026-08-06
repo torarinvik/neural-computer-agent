@@ -17,12 +17,12 @@ from time import perf_counter
 import torch
 import torch.nn.functional as F
 
-from experiments.frozen_core_transfer_amodal.train import _train_with_progress
 from experiments.archive.unified_cognitive_controller.train_sequence_working_memory import (
-    GeneratedCompositionGrammar,
     _GENERATED_COMPOSITIONS,
+    GeneratedCompositionGrammar,
     _resolve_generated_compositions,
 )
+from experiments.frozen_core_transfer_amodal.train import _train_with_progress
 from experiments.parent_conditioned_artifact_bank_amodal.train import (
     _capability_accuracy,
     _new_capability,
@@ -37,15 +37,15 @@ from experiments.working_memory_continuous.canonical_growth_pressure_test import
 from neural_computer import (
     ExecutableArtifactMemory,
     ExternalCapabilityLifecycle,
-    OpaqueAppendOnlyRouteChain,
     OpaqueAddressRouter,
+    OpaqueAppendOnlyRouteChain,
     OpaqueViewRouteExtension,
     PersistentOpaqueStateStore,
     RetentionPolicyConfig,
     paired_counterfactual_ranking_loss,
 )
-from .train_pipeline import _new_stack
 
+from .train_pipeline import _new_stack
 
 COMPOSITION_COUNT = len(_GENERATED_COMPOSITIONS)
 SPAN = 4
@@ -84,8 +84,6 @@ def _stack_artifact(stack, decoder) -> dict[str, torch.Tensor]:
 def _load_stack_artifact(
     artifact: dict[str, torch.Tensor],
 ) -> tuple[torch.nn.Module, torch.nn.Module]:
-    stack = _new_stack(seed=0, program_count=2, stack="routed")
-    decoder = _new_capability(seed=1)[1]
     stack_state = {
         name.removeprefix("stack."): value
         for name, value in artifact.items()
@@ -98,6 +96,19 @@ def _load_stack_artifact(
     }
     if not stack_state or not decoder_state:
         raise ValueError("composition artifact is missing stack or decoder state")
+    program_indices = {
+        int(name.split(".")[1])
+        for name in stack_state
+        if name.startswith("programs.")
+    }
+    if not program_indices or program_indices != set(range(max(program_indices) + 1)):
+        raise ValueError("composition artifact has non-contiguous program slots")
+    stack = _new_stack(
+        seed=0,
+        program_count=max(program_indices) + 1,
+        stack="routed",
+    )
+    decoder = _new_capability(seed=1)[1]
     stack.load_state_dict(stack_state, strict=True)
     decoder.load_state_dict(decoder_state, strict=True)
     stack.eval()

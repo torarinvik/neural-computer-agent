@@ -4,6 +4,14 @@ import pytest
 import torch
 from torch import nn
 
+from experiments.generated_composition_capability_amodal.train_artifact_bank import (
+    _load_stack_artifact,
+    _stack_artifact,
+)
+from experiments.generated_composition_capability_amodal.train_pipeline import (
+    _new_stack,
+)
+from experiments.parent_conditioned_artifact_bank_amodal.train import _new_capability
 from neural_computer import (
     compose_growth_artifacts,
     compress_growth_artifact,
@@ -57,6 +65,20 @@ def test_growth_loader_rejects_core_entries_and_shape_mismatches() -> None:
             {"growth.weight": torch.zeros(2, 2)},
             growth_prefixes=("growth.",),
         )
+
+
+def test_composition_artifact_loader_infers_expanded_slot_count() -> None:
+    stack = _new_stack(seed=17, program_count=3, stack="routed")
+    _unused_program, decoder = _new_capability(18)
+    artifact = _stack_artifact(stack, decoder)
+
+    restored_stack, restored_decoder = _load_stack_artifact(artifact)
+
+    assert len(restored_stack.programs) == 3
+    for name, value in stack.state_dict().items():
+        assert torch.equal(restored_stack.state_dict()[name], value)
+    for name, value in decoder.state_dict().items():
+        assert torch.equal(restored_decoder.state_dict()[name], value)
 
 
 def test_growth_composition_remaps_disjoint_namespaces_and_clones_values() -> None:

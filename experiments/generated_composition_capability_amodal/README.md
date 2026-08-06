@@ -214,6 +214,37 @@ unrestricted memory growth, arbitrary program induction, or general continual
 learning. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_distilled_consolidation_three_source_replicated_promoted_v1_2026-08-06/`.
 
+## Sequential slot-isolated growth across four sources (2026-08-06)
+
+The next pressure test makes the no-replay boundary explicit. Four source
+procedures are acquired sequentially. Each new procedure is learned in a
+fresh neural slot, then appended under an opaque alias into one physical
+artifact row; earlier slots and decoders are never updated. A target is
+transferred from the first retained slot and admitted by capacity growth.
+
+```bash
+PYTHONPATH=src uv run python -m experiments.generated_composition_capability_amodal.train_sequential_slot_isolated_consolidation \
+  --seed 69316 --parent-updates 128 --source-updates 256 --target-updates 256 \
+  --batch-size 16 --audit-count 64 --retention-probes 4 --eval-every 32 \
+  --report-out /tmp/generated-composition-sequential-slot-isolated-four/report.json
+```
+
+Replicated seeds `69316` and `69317` accepted all three sequential appends.
+The four source aliases shared one physical row and retained behavior after
+reload at `0.9570/1.0000/0.9531/1.0000` and
+`0.9805/1.0000/0.9844/1.0000`. The inherited target reached stable mastery at
+`2,048` fresh bits in both replicas versus `14,336` and `8,192` for matched
+fresh controls, and reloaded at `1.0000`. Alias-specific reversal/recovery,
+target reversal/recovery, corruption rejection, frozen-core, and zero-replay
+gates passed. The four-slot payload ratio was `1.0000`: this is safe
+capacity growth, not neural weight compression.
+
+The companion dense shared-weight expansion control was rejected. It learned
+the new source at `1.0000` but dropped source 0 from `0.9531` to `0.6250`
+without old-source replay, showing that frozen tensors alone do not provide
+route isolation. Evidence, accounting, and both rejected controls are in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_sequential_slot_isolated_four_source_replicated_promoted_v1_2026-08-06/`.
+
 The same runtime grammar can compose nonlocal temporal and aggregation
 primitives:
 

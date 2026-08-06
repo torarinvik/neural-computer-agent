@@ -2816,3 +2816,35 @@ source set with nonstationary and reversal controls, where retention must hold
 without relying on the fixed finite grammar or blueprint. Full reports and
 accounting are archived in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_distilled_consolidation_three_source_replicated_promoted_v1_2026-08-06/`.
+
+## Four-source replay-free slot-isolated growth (2026-08-06)
+
+The sequential nonstationary pressure test now acquires source procedures
+`0`, `2`, `3`, and `4` one at a time. Each new procedure is learned in a
+fresh neural slot from fresh verifier outcomes only. The slot is appended into
+one physical external artifact row under a new opaque alias; earlier slot
+weights, decoders, and retention evidence remain untouched. This makes the
+controller/frozen-core boundary useful for continual learning without asking
+the core to replay old source streams.
+
+Across replicated seeds `69316` and `69317`, all three `2 -> 1` consolidation
+transactions passed behavior verification and reload. The final four aliases
+resolved to one physical row, with source behavior
+`0.9570/1.0000/0.9531/1.0000` and `0.9805/1.0000/0.9844/1.0000`. The target
+was learned from the first retained slot and reached stable mastery at
+`2,048` fresh verifier bits in both replicas, versus `14,336` and `8,192` for
+matched fresh controls. It reloaded at `1.0000` after capacity growth.
+
+Fresh alias reversal released and recovered only the selected alias while the
+shared physical row stayed protected by the other source aliases. The
+separate target row released and recovered independently. Checksum corruption
+was rejected, the frozen controller digest was unchanged, and replayed
+examples were zero. The final payload ratio was `1.0000`, so this is
+capacity-safe slot isolation rather than neural compression.
+
+The paired dense shared-weight expansion control was rejected: source 2
+reached `1.0000`, but source 0 fell from `0.9531` to `0.6250` when the new
+route was trained without old-source replay. This isolates the next real
+bottleneck: a new route needs an opaque address/context binding that prevents
+interference on old inputs. Evidence and accounting are archived in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_sequential_slot_isolated_four_source_replicated_promoted_v1_2026-08-06/`.
