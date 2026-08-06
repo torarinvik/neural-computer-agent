@@ -2443,6 +2443,28 @@ policy semantically general, provide distributed transactions, or establish
 general continual learning; route behavior still requires held-out verifier
 and corruption controls.
 
+## Unseen external computation and multi-parent retention (2026-08-06)
+
+The frozen-core transfer harness tested `prefix_parity`, a temporal procedure
+outside the earlier forward/reverse/complement transfer set. The shared
+controller remained frozen and one generic external recurrent slot learned the
+new computation from fresh rendered events, opaque actions, and scalar
+outcomes. Seed 69316 reached stable mastery in `12,288` verifier bits versus
+`18,432` for a fresh learner (`1.5×` fresh-over-transferred), while seed 69317
+reached mastery but tied the fresh learner at `24,576` bits. Parent retention,
+frozen-core equality, causal shuffled controls, and zero replay held.
+
+This establishes unseen-procedure acquisition through the generic memory-side
+blueprint, not replicated positive transfer. A second-parent rehearsal repair
+then preserved the additional parent stream but caused seed-sensitive
+interference with the first parent and removed the transfer advantage. The
+trainer now supports fresh rehearsal for every mastered parent task, but the
+result remains rejected as a general continual-learning solution. The next
+implementation target is route-isolated external growth: independent artifact
+and decoder paths must prevent a new computation from perturbing old output
+residuals. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/frozen_core_unseen_prefix_parity_rejected_v1_2026-08-06/`.
+
 ## Remediated six-shift external growth to 80 capabilities (2026-08-06)
 
 The repeated-shift pressure test now extends the frozen episodic context and

@@ -19,3 +19,12 @@ behavior, unchanged frozen-core digest, a parent-calibrated shuffled-outcome
 control, a causal gap over that control, zero replay, and positive transfer
 across both seeds. The promoted evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/frozen_core_transfer_parent_conditioned_v1_2026-08-06/`.
+
+The unseen-procedure follow-up uses `prefix_parity`, outside the promoted
+forward/reverse/complement set. The same generic external blueprint acquires
+it and reaches positive transfer on seed 69316, but ties the fresh learner on
+seed 69317. Adding a second parent procedure and rehearsing both streams
+preserves one parent on some seeds while creating interference on another.
+This is retained as a diagnostic; route-isolated external artifacts are the
+next repair. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/frozen_core_unseen_prefix_parity_rejected_v1_2026-08-06/`.

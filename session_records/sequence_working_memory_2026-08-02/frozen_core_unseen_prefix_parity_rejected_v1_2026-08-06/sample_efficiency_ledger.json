@@ -1,0 +1,59 @@
+{
+  "experiment": "frozen_core_unseen_prefix_parity_rejected_v1_2026-08-06",
+  "status": "rejected_replicated_positive_transfer",
+  "claim": "A frozen external recurrent blueprint can acquire unseen prefix-parity computation, but positive transfer and multi-parent retention are not yet replicated.",
+  "seeds": [69316, 69317],
+  "accounting_by_arm": {
+    "seed69316_pilot": {
+      "unique_verifier_bits": 9728,
+      "unique_logical_lifetimes": 3328,
+      "optimizer_updates": 224,
+      "replayed_examples": 0,
+      "wall_seconds": 12.952867375
+    },
+    "seed69316_direct_medium": {
+      "unique_verifier_bits": 75776,
+      "unique_logical_lifetimes": 25600,
+      "optimizer_updates": 832,
+      "replayed_examples": 0,
+      "wall_seconds": 111.177853125
+    },
+    "seed69317_direct_medium": {
+      "unique_verifier_bits": 75776,
+      "unique_logical_lifetimes": 25600,
+      "optimizer_updates": 832,
+      "replayed_examples": 0,
+      "wall_seconds": 106.675466
+    },
+    "seed69317_parent_extra_unfixed": {
+      "unique_verifier_bits": 83968,
+      "unique_logical_lifetimes": 29696,
+      "optimizer_updates": 832,
+      "replayed_examples": 0,
+      "wall_seconds": 118.342649417
+    },
+    "seed69316_parent_extra_fixed": {
+      "unique_verifier_bits": 108544,
+      "unique_logical_lifetimes": 41984,
+      "optimizer_updates": 832,
+      "replayed_examples": 0,
+      "wall_seconds": 228.968173208
+    },
+    "seed69317_parent_extra_fixed": {
+      "unique_verifier_bits": 108544,
+      "unique_logical_lifetimes": 41984,
+      "optimizer_updates": 832,
+      "replayed_examples": 0,
+      "wall_seconds": 214.782749585
+    }
+  },
+  "retention_on_mastered_primitives": "Direct growth retained the original parent. The multi-parent trainer preserved the second parent on seed 69316 and the first parent on seed 69316, but not the first parent on seed 69317.",
+  "transfer_ratio_against_fresh_learner": {
+    "seed69316_direct_medium": 1.5,
+    "seed69317_direct_medium": 1.0,
+    "seed69317_parent_extra_unfixed": 1.6,
+    "seed69316_parent_extra_fixed": 0.8571428571,
+    "seed69317_parent_extra_fixed": null
+  },
+  "reason_rejected": "Unseen prefix-parity acquisition is replicated as a capability, but direct positive transfer ties on seed 69317; adding a second fresh parent stream trades transfer for interference and still fails retention on seed 69317."
+}
