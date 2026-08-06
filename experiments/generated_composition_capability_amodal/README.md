@@ -17,3 +17,12 @@ PYTHONPATH=src uv run python -m experiments.generated_composition_capability_amo
 This is an acquisition diagnostic, not a continual-learning promotion. The
 full promotion must append the generated capability behind the protected
 route chain and retain every previously mastered artifact.
+
+The serial external-stack diagnostic is:
+
+```bash
+PYTHONPATH=src uv run python -m experiments.generated_composition_capability_amodal.train_pipeline \
+  --parent-updates 32 --updates 64 --program-count 2 --batch-size 8 \
+  --audit-count 16 --eval-every 16 \
+  --report-out /tmp/generated-composition-pipeline/report.json
+```
