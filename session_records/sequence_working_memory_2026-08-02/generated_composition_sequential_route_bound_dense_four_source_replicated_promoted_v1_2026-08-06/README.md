@@ -46,3 +46,10 @@ identical source behavior, target behavior, masks, and accounting. Wall time
 fell from `961.3s` to `831.4s` in the paired runs. Batch-divergent masks still
 execute the union of active slots, so finer-grained grouped execution remains
 a future optimization.
+
+A Python-level per-mask subset/scatter implementation was tested and rejected
+for performance: it preserved every semantic gate but took `935.2s` versus
+`831.4s` for the sparse baseline. The full semantic pass and rejection record
+are retained in `report_grouped_execution_semantic_pass_seed69316.json` and
+`report_grouped_execution_rejected_seed69316.json`. The next attempt should
+use compiled or batched grouped execution.
