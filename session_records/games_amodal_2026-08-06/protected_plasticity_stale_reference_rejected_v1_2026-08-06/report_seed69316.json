@@ -1,0 +1,184 @@
+{
+  "conditions": {
+    "protected": {
+      "curves": {
+        "final_training_mastery": 0.59375,
+        "gradient_projected_fraction": 0.505,
+        "mean_training_mastery": 0.23106770833333334,
+        "update_projected_fraction": 0.0
+      },
+      "pong": {
+        "mastery": 0.62109375,
+        "per_seed_mastery": [
+          0.578125,
+          0.65625,
+          0.65625,
+          0.5625,
+          0.6875,
+          0.59375,
+          0.65625,
+          0.578125
+        ]
+      },
+      "snake_after": {
+        "mastery": 0.009765625,
+        "per_seed_mastery": [
+          0.0,
+          0.0,
+          0.0,
+          0.015625,
+          0.03125,
+          0.0,
+          0.0,
+          0.03125
+        ]
+      }
+    },
+    "random_ref": {
+      "curves": {
+        "final_training_mastery": 0.4375,
+        "gradient_projected_fraction": 0.505,
+        "mean_training_mastery": 0.292109375,
+        "update_projected_fraction": 0.0
+      },
+      "pong": {
+        "mastery": 0.451171875,
+        "per_seed_mastery": [
+          0.5,
+          0.5,
+          0.390625,
+          0.359375,
+          0.421875,
+          0.4375,
+          0.5,
+          0.5
+        ]
+      },
+      "snake_after": {
+        "mastery": 0.029296875,
+        "per_seed_mastery": [
+          0.0,
+          0.0,
+          0.015625,
+          0.03125,
+          0.03125,
+          0.03125,
+          0.046875,
+          0.078125
+        ]
+      }
+    },
+    "shuffled": {
+      "curves": {
+        "final_training_mastery": 0.078125,
+        "gradient_projected_fraction": 0.0,
+        "mean_training_mastery": 0.07731770833333333,
+        "update_projected_fraction": 0.0
+      },
+      "pong": {
+        "mastery": 0.076171875,
+        "per_seed_mastery": [
+          0.09375,
+          0.03125,
+          0.0625,
+          0.078125,
+          0.109375,
+          0.09375,
+          0.078125,
+          0.0625
+        ]
+      },
+      "snake_after": {
+        "mastery": 0.01171875,
+        "per_seed_mastery": [
+          0.015625,
+          0.015625,
+          0.015625,
+          0.015625,
+          0.0,
+          0.0,
+          0.0,
+          0.03125
+        ]
+      }
+    },
+    "unprotected": {
+      "curves": {
+        "final_training_mastery": 0.078125,
+        "gradient_projected_fraction": 0.0,
+        "mean_training_mastery": 0.07877604166666667,
+        "update_projected_fraction": 0.0
+      },
+      "pong": {
+        "mastery": 0.0625,
+        "per_seed_mastery": [
+          0.015625,
+          0.046875,
+          0.09375,
+          0.0625,
+          0.09375,
+          0.046875,
+          0.0625,
+          0.078125
+        ]
+      },
+      "snake_after": {
+        "mastery": 0.0,
+        "per_seed_mastery": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    }
+  },
+  "config": {
+    "batch_size": 64,
+    "eval_seeds": 8,
+    "event_width": 64,
+    "feedback_width": 16,
+    "forgetting_delta": 0.15,
+    "gamma": 0.95,
+    "hidden": 32,
+    "intent_width": 32,
+    "learning_rate": 0.001,
+    "projection_strength": 1.0,
+    "reference_window": 200,
+    "retention_epsilon": 0.05,
+    "steps": 64,
+    "updates": 600
+  },
+  "gates": {
+    "baseline_forgets": true,
+    "no_replay": true,
+    "pong_acquired": false,
+    "protected_retention": false,
+    "random_direction_fails": true,
+    "shuffled_near_chance": true,
+    "snake_acquired": true
+  },
+  "promoted": false,
+  "seed": 69316,
+  "snake_before": {
+    "mastery": 0.85546875,
+    "per_seed_mastery": [
+      0.796875,
+      0.890625,
+      0.90625,
+      0.78125,
+      0.921875,
+      0.84375,
+      0.875,
+      0.828125
+    ]
+  },
+  "snake_curve": {
+    "final_training_mastery": 0.859375,
+    "mean_training_mastery": 0.6361458333333333
+  }
+}
