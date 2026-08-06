@@ -203,3 +203,59 @@ def test_confidence_aware_staging_keeps_unstable_candidate_out_of_full_bank(
     assert staging.pending_count == 1
     assert memory.occupied == (0, 1)
     assert memory.protection_mask().tolist() == [True, True]
+
+
+def test_confidence_aware_staging_reloads_pending_evidence(tmp_path) -> None:
+    memory = _memory(tmp_path, capacity=1)
+    lifecycle = ExternalCapabilityLifecycle(memory)
+    staging_directory = tmp_path / "staging"
+    staging = ConfidenceAwareCapabilityStaging(
+        lifecycle,
+        candidate_threshold=0.75,
+        min_candidate_observations=2,
+        staging_directory=staging_directory,
+    )
+    key = torch.tensor([0.0, 0.0, 1.0, 0.0])
+    staging.stage(key, _artifact(3.0))
+    staging.observe(key, 1.0)
+    assert (staging_directory / "manifest.json").is_file()
+    assert tuple(staging_directory.glob("candidate-*.pt"))
+
+    restored = ConfidenceAwareCapabilityStaging(
+        lifecycle,
+        candidate_threshold=0.75,
+        min_candidate_observations=2,
+        staging_directory=staging_directory,
+    )
+    assert restored.pending_count == 1
+    assert restored.status(key).observations == 1
+    admitted = restored.observe(key, 1.0)
+
+    assert admitted.accepted
+    assert restored.pending_count == 0
+    assert not tuple(staging_directory.glob("candidate-*.pt"))
+    assert memory.retention.status(key).observations == 2
+
+
+def test_confidence_aware_staging_rejects_corrupt_artifact_snapshot(tmp_path) -> None:
+    memory = _memory(tmp_path, capacity=1)
+    lifecycle = ExternalCapabilityLifecycle(memory)
+    staging_directory = tmp_path / "staging"
+    staging = ConfidenceAwareCapabilityStaging(
+        lifecycle,
+        candidate_threshold=0.75,
+        min_candidate_observations=2,
+        staging_directory=staging_directory,
+    )
+    key = torch.tensor([0.0, 0.0, 1.0, 0.0])
+    staging.stage(key, _artifact(3.0))
+    artifact_path = next(staging_directory.glob("candidate-*.pt"))
+    artifact_path.write_bytes(artifact_path.read_bytes() + b"corruption")
+
+    with pytest.raises(ValueError, match="checksum"):
+        ConfidenceAwareCapabilityStaging(
+            lifecycle,
+            candidate_threshold=0.75,
+            min_candidate_observations=2,
+            staging_directory=staging_directory,
+        )

@@ -323,6 +323,12 @@ class CapabilityRetentionLedger:
         record = self._records.get(digest)
         return bool(record is not None and record.protected)
 
+    def contains(self, key: torch.Tensor) -> bool:
+        """Return whether opaque evidence exists without creating a record."""
+
+        normalized = _validate_key(key, self.width)
+        return _key_digest(normalized, self.width) in self._records
+
     def mask_eviction_scores(
         self,
         keys: torch.Tensor,

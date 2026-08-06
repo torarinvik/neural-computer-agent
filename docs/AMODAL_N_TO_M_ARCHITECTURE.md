@@ -2359,9 +2359,10 @@ protected row, or be mistaken for a retained capability.
 On promotion, the staging ledger transfers the accumulated scalar evidence
 directly into the executable memory ledger. This preserves the no-replay
 contract: admission does not regenerate old episodes or fabricate fresh
-outcomes. The staged queue is currently in-process external state, so durable
-artifact spooling and crash recovery remain explicit follow-up work rather than
-an unearned claim.
+outcomes. With an optional staging directory, atomic artifact snapshots,
+checksums, and restart recovery preserve pending candidates across process
+boundaries. Admission and executable-memory replacement remain separate
+transactions, so this does not claim a distributed multi-process commit.
 
 This closes the gap between “the retention policy exists” and “unverified
 growth is actually prevented from perturbing the protected bank.” It is a

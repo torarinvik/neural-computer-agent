@@ -8,6 +8,10 @@ behavior verifier and the code that executes a promoted artifact.
 
 from __future__ import annotations
 
+import hashlib
+import json
+import os
+import tempfile
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -82,6 +86,50 @@ def _artifact_summary(
     flat = torch.cat(tensors)
     positions = torch.linspace(0, flat.numel() - 1, width).round().long()
     return flat[positions]
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _atomic_write_text(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        dir=path.parent,
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+    )
+    os.close(descriptor)
+    temporary_path = Path(temporary_name)
+    try:
+        temporary_path.write_text(text)
+        with temporary_path.open("rb") as stream:
+            os.fsync(stream.fileno())
+        temporary_path.replace(path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+
+
+def _atomic_save_torch(path: Path, payload: object) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        dir=path.parent,
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+    )
+    os.close(descriptor)
+    temporary_path = Path(temporary_name)
+    try:
+        torch.save(payload, temporary_path)
+        with temporary_path.open("rb") as stream:
+            os.fsync(stream.fileno())
+        temporary_path.replace(path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
 
 
 class ExternalCapabilityLifecycle:
@@ -373,9 +421,10 @@ class ConfidenceAwareCapabilityStaging:
     evidence directly into the destination ledger.  No old episode or raw
     trajectory is replayed.
 
-    Staging is intentionally an in-process queue in this first contract.  A
-    durable artifact spool can replace it later without changing the evidence
-    or lifecycle interfaces.
+    With ``staging_directory`` supplied, candidate artifacts and evidence are
+    persisted through atomic, checksummed snapshots.  The executable memory
+    and the staging queue remain separate stores; restarting the process does
+    not silently discard a candidate that is still awaiting verification.
     """
 
     schema = CAPABILITY_STAGING_SCHEMA
@@ -389,6 +438,7 @@ class ConfidenceAwareCapabilityStaging:
         reversal_threshold: float | None = None,
         reversal_patience: int | None = None,
         recent_window: int | None = None,
+        staging_directory: Path | None = None,
     ) -> None:
         if not isinstance(lifecycle, ExternalCapabilityLifecycle):
             raise TypeError("staging requires an external capability lifecycle")
@@ -436,7 +486,12 @@ class ConfidenceAwareCapabilityStaging:
             raise ValueError(
                 "staging policy must match the destination retention policy"
             )
+        self.staging_directory = (
+            None if staging_directory is None else Path(staging_directory)
+        )
         self._staged: dict[str, _StagedCapability] = {}
+        if self.staging_directory is not None:
+            self._load()
 
     @property
     def pending_count(self) -> int:
@@ -453,8 +508,124 @@ class ConfidenceAwareCapabilityStaging:
             "candidate_threshold": self.candidate_threshold,
             "min_candidate_observations": self.min_candidate_observations,
             "policy": self._policy.as_dict(),
-            "storage": "external_in_process_staging_v1",
+            "storage": (
+                "external_durable_staging_v1"
+                if self.staging_directory is not None
+                else "external_in_process_staging_v1"
+            ),
         }
+
+    @property
+    def _manifest_path(self) -> Path:
+        if self.staging_directory is None:
+            raise RuntimeError("staging persistence is not configured")
+        return self.staging_directory / "manifest.json"
+
+    def _artifact_path(self, digest: str) -> Path:
+        if self.staging_directory is None:
+            raise RuntimeError("staging persistence is not configured")
+        return self.staging_directory / f"candidate-{digest}.pt"
+
+    def _manifest_payload(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "width": self.lifecycle.width,
+            "policy": self._policy.as_dict(),
+            "candidates": [
+                {
+                    "key_digest": digest,
+                    "key": candidate.key.tolist(),
+                    "strength": candidate.strength,
+                    "artifact_file": self._artifact_path(digest).name,
+                    "artifact_sha256": _sha256_file(self._artifact_path(digest)),
+                    "evidence": candidate.evidence.payload(),
+                }
+                for digest, candidate in sorted(self._staged.items())
+            ],
+        }
+
+    def _persist(self) -> None:
+        if self.staging_directory is None:
+            return
+        self.staging_directory.mkdir(parents=True, exist_ok=True)
+        for digest, candidate in sorted(self._staged.items()):
+            _atomic_save_torch(self._artifact_path(digest), candidate.artifact)
+        _atomic_write_text(
+            self._manifest_path,
+            json.dumps(self._manifest_payload(), indent=2, sort_keys=True) + "\n",
+        )
+        live_files = {
+            self._artifact_path(digest).name for digest in self._staged
+        }
+        for path in self.staging_directory.glob("candidate-*.pt"):
+            if path.name not in live_files:
+                path.unlink()
+
+    def _load(self) -> None:
+        if self.staging_directory is None:
+            return
+        manifest_path = self._manifest_path
+        if not manifest_path.exists():
+            return
+        payload = json.loads(manifest_path.read_text())
+        if payload.get("schema") != self.schema:
+            raise ValueError("staging manifest schema is incompatible")
+        if int(payload.get("width", -1)) != self.lifecycle.width:
+            raise ValueError("staging manifest width is incompatible")
+        if payload.get("policy") != self._policy.as_dict():
+            raise ValueError("staging manifest policy is incompatible")
+        candidates = payload.get("candidates")
+        if not isinstance(candidates, list):
+            raise TypeError("staging manifest candidates must be a list")
+        for item in candidates:
+            if not isinstance(item, dict):
+                raise TypeError("staging manifest candidate must be a dictionary")
+            digest = item.get("key_digest")
+            key_payload = item.get("key")
+            artifact_file = item.get("artifact_file")
+            expected_hash = item.get("artifact_sha256")
+            evidence_payload = item.get("evidence")
+            if (
+                not isinstance(digest, str)
+                or not isinstance(key_payload, list)
+                or not isinstance(artifact_file, str)
+                or not isinstance(expected_hash, str)
+                or not isinstance(evidence_payload, dict)
+            ):
+                raise TypeError("staging manifest candidate fields are invalid")
+            key = self._validate_key(torch.tensor(key_payload, dtype=torch.float32))
+            if self._digest(key) != digest:
+                raise ValueError("staging manifest key digest mismatch")
+            expected_file = self._artifact_path(digest)
+            if artifact_file != expected_file.name:
+                raise ValueError("staging manifest artifact path is invalid")
+            if not expected_file.is_file() or _sha256_file(expected_file) != expected_hash:
+                raise ValueError("staged artifact checksum mismatch")
+            artifact = torch.load(expected_file, map_location="cpu", weights_only=False)
+            if not isinstance(artifact, dict):
+                raise TypeError("staged artifact payload must be a dictionary")
+            _artifact_summary(artifact, width=self.lifecycle.width)
+            evidence = CapabilityRetentionLedger.from_payload(evidence_payload)
+            if evidence.width != self.lifecycle.width:
+                raise ValueError("staged evidence width is incompatible")
+            if evidence.config.as_dict() != self._policy.as_dict():
+                raise ValueError("staged evidence policy is incompatible")
+            if not evidence.contains(key):
+                raise ValueError("staged evidence record is missing")
+            if evidence.status(key).key_digest != digest:
+                raise ValueError("staged evidence key digest mismatch")
+            strength = float(item.get("strength", 1.0))
+            if not 0.0 < strength <= 1.0:
+                raise ValueError("staged capability strength is invalid")
+            self._staged[digest] = _StagedCapability(
+                key=key,
+                artifact={
+                    name: value.detach().to(device="cpu").clone()
+                    for name, value in artifact.items()
+                },
+                strength=strength,
+                evidence=evidence,
+            )
 
     def _validate_key(self, key: torch.Tensor) -> torch.Tensor:
         if not isinstance(key, torch.Tensor):
@@ -487,6 +658,8 @@ class ConfidenceAwareCapabilityStaging:
         _artifact_summary(artifact, width=self.lifecycle.width)
         if not 0.0 < strength <= 1.0:
             raise ValueError("staged capability strength must lie in (0, 1]")
+        if self.lifecycle.memory.retention.contains(normalized_key):
+            raise ValueError("capability key already has destination evidence")
         digest = self._digest(normalized_key)
         if digest in self._staged:
             raise ValueError("staged capability key already exists")
@@ -504,6 +677,11 @@ class ConfidenceAwareCapabilityStaging:
             strength=float(strength),
             evidence=evidence,
         )
+        try:
+            self._persist()
+        except Exception:
+            self._staged.pop(digest, None)
+            raise
         return status
 
     def status(self, key: torch.Tensor) -> CapabilityRetentionStatus:
@@ -541,6 +719,7 @@ class ConfidenceAwareCapabilityStaging:
             raise KeyError("capability key is not staged")
         status = candidate.evidence.observe(normalized_key, outcome)
         if not status.protected:
+            self._persist()
             return StagedCapabilityReceipt(
                 accepted=False,
                 pending=True,
@@ -573,6 +752,7 @@ class ConfidenceAwareCapabilityStaging:
         self.lifecycle.memory.retention.adopt(candidate.evidence, normalized_key)
         self.lifecycle.memory.save()
         self._staged.pop(digest)
+        self._persist()
         adopted = self.lifecycle.memory.retention.status(normalized_key)
         return StagedCapabilityReceipt(
             accepted=True,
@@ -589,7 +769,16 @@ class ConfidenceAwareCapabilityStaging:
         """Discard one pending candidate without touching executable memory."""
 
         normalized_key = self._validate_key(key)
-        return self._staged.pop(self._digest(normalized_key), None) is not None
+        digest = self._digest(normalized_key)
+        candidate = self._staged.pop(digest, None)
+        if candidate is None:
+            return False
+        try:
+            self._persist()
+        except Exception:
+            self._staged[digest] = candidate
+            raise
+        return True
 
 
 __all__ = [
