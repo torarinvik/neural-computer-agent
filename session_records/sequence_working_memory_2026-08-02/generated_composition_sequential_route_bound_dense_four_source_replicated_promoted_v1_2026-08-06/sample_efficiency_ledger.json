@@ -91,6 +91,18 @@
     "reason": "Python subset/scatter overhead exceeded saved masked-slot compute",
     "next_direction": "compiled_or_batched_grouped_execution"
   },
+  "persisted_binding_follow_up": {
+    "seed": 69316,
+    "promoted": true,
+    "reference_report": "report_sparse_execution_seed69316.json",
+    "report": "report_persisted_binding_seed69316.json",
+    "reference_wall_seconds": 831.4222969580005,
+    "persisted_binding_wall_seconds": 1244.6177032910055,
+    "wall_time_ratio": 1.496974170460427,
+    "gates_equal_to_reference": true,
+    "behavior_equal_to_reference": true,
+    "remaining_bottleneck": "repeated retention and manifest writes"
+  },
   "promotion_gate_passed": true,
   "claim_boundary": "Replicated four-source replay-free dense external growth with opaque slot binding, one physical artifact row, target transfer, and reversal/recovery; sparse execution, neural compression, unrestricted memory growth, and general continual learning remain unqualified."
 }

@@ -282,6 +282,12 @@ preserving every metric and gate. Batch-divergent masks still execute their
 active-slot union. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_sequential_route_bound_dense_four_source_replicated_promoted_v1_2026-08-06/`.
 
+The alias slot binding is now persisted as opaque memory metadata and is
+consumed from reloaded `ArtifactHandle` values during retention and behavior
+probes. A full seed-`69316` audit reproduced the same gates and metrics. The
+write-heavy persistence path took `1,244.6s` versus `831.4s` for the in-memory
+mask reference, making batched retention/manifest writes the next bottleneck.
+
 The same runtime grammar can compose nonlocal temporal and aggregation
 primitives:
 

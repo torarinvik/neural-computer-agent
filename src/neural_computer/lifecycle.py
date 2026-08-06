@@ -18,7 +18,11 @@ from pathlib import Path
 
 import torch
 
-from .artifact_memory import ArtifactConsolidationReceipt, ExecutableArtifactMemory
+from .artifact_memory import (
+    ArtifactBinding,
+    ArtifactConsolidationReceipt,
+    ExecutableArtifactMemory,
+)
 from .capacity import CapacityPlan, OpaqueCapacityPlanner
 from .retention import (
     CapabilityRetentionLedger,
@@ -474,6 +478,7 @@ class ExternalCapabilityLifecycle:
         strength: float = 1.0,
         replacement_aliases: Sequence[torch.Tensor] = (),
         replacement_alias_views: Sequence[str | None] = (),
+        replacement_alias_bindings: Sequence[ArtifactBinding | None] = (),
         candidate_outcomes: (
             Sequence[float] | torch.Tensor | Sequence[CapabilityRetentionProbe] | None
         ) = None,
@@ -495,6 +500,7 @@ class ExternalCapabilityLifecycle:
             strength=strength,
             replacement_aliases=replacement_aliases,
             replacement_alias_views=replacement_alias_views,
+            replacement_alias_bindings=replacement_alias_bindings,
             candidate_outcomes=candidate_outcomes,
             candidate_outcome_probe=candidate_outcome_probe,
             retained_scores=retained_scores,

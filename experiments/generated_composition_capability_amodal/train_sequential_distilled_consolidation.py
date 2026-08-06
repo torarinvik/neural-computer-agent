@@ -65,6 +65,7 @@ from experiments.working_memory_continuous.canonical_growth_pressure_test import
     _runtime,
 )
 from neural_computer import (
+    EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA,
     CapabilityRetentionProbe,
     ExecutableArtifactMemory,
     ExternalCapabilityLifecycle,
@@ -324,6 +325,29 @@ def _source_behavior_with_slot_mask(
     )
 
 
+def _slot_binding(allowed_slots: tuple[int, ...]) -> dict[str, object]:
+    return {
+        "schema": EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA,
+        "slot_indices": list(allowed_slots),
+    }
+
+
+def _slots_from_binding(
+    binding: dict[str, object] | None,
+    fallback: tuple[int, ...],
+) -> tuple[int, ...]:
+    if binding is None:
+        return fallback
+    if binding.get("schema") != EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA:
+        raise ValueError("unsupported external capability slot binding")
+    slots = binding.get("slot_indices")
+    if not isinstance(slots, list) or any(
+        not isinstance(slot, int) or isinstance(slot, bool) for slot in slots
+    ):
+        raise ValueError("external capability slot binding has invalid indices")
+    return tuple(slots)
+
+
 def _behaviors_with_slot_masks(
     parent,
     artifact: dict[str, torch.Tensor],
@@ -348,6 +372,36 @@ def _behaviors_with_slot_masks(
     }
 
 
+def _behaviors_from_memory_bindings(
+    parent,
+    bank: ExecutableArtifactMemory,
+    keys: tuple[torch.Tensor, ...],
+    program_ids: tuple[int, ...],
+    grammar,
+    *,
+    fallback_slots_by_program: dict[int, tuple[int, ...]],
+    count: int,
+    seed: int,
+) -> dict[str, float]:
+    outcomes: dict[str, float] = {}
+    for index, (key, program_id) in enumerate(zip(keys, program_ids, strict=True)):
+        handle, artifact = bank.promote(key)
+        allowed_slots = _slots_from_binding(
+            handle.binding,
+            fallback_slots_by_program[program_id],
+        )
+        outcomes[str(program_id)] = _source_behavior_with_slot_mask(
+            parent,
+            artifact,
+            program_id,
+            grammar,
+            count=count,
+            seed=seed + index * 10_003,
+            allowed_slots=allowed_slots,
+        )
+    return outcomes
+
+
 def _probe_bank_aliases_with_slot_masks(
     parent,
     candidate: ExecutableArtifactMemory,
@@ -367,9 +421,14 @@ def _probe_bank_aliases_with_slot_masks(
             try:
                 handle, artifact = candidate.promote(key)
                 valid = handle.view is None
+                allowed_slots = _slots_from_binding(
+                    handle.binding,
+                    allowed_slots_by_program[program_id],
+                )
             except (LookupError, ValueError):
                 valid = False
                 artifact = {}
+                allowed_slots = allowed_slots_by_program[program_id]
             outcomes.append(
                 _source_behavior_with_slot_mask(
                     parent,
@@ -378,7 +437,7 @@ def _probe_bank_aliases_with_slot_masks(
                     grammar,
                     count=count,
                     seed=seed + index * 10_003 + probe * 101,
-                    allowed_slots=allowed_slots_by_program[program_id],
+                    allowed_slots=allowed_slots,
                 )
                 if valid
                 else 0.0
@@ -722,6 +781,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             consolidation_path,
             verifier=verifier,
             replacement_aliases=candidate_keys,
+            replacement_alias_bindings=tuple(
+                _slot_binding(candidate_slot_masks[program_id])
+                for program_id in candidate_ids
+            ),
             candidate_outcome_probe=candidate_probe,
             retained_scores=retained_scores,
             candidate_threshold=THRESHOLD,
@@ -741,12 +804,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         active_slot_masks = candidate_slot_masks
         current_handle, shared_artifact = bank.promote(new_key)
         current_row = current_handle.index
-        current_behaviors = _behaviors_with_slot_masks(
+        current_behaviors = _behaviors_from_memory_bindings(
             parent,
-            shared_artifact,
+            bank,
+            tuple(active_keys),
             tuple(active_ids),
             grammar,
-            allowed_slots_by_program=active_slot_masks,
+            fallback_slots_by_program=active_slot_masks,
             count=args.audit_count,
             seed=args.seed + 112_000 + stage_index * 10_003,
         )

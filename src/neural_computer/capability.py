@@ -22,6 +22,9 @@ EXTERNAL_CAPABILITY_PIPELINE_SCHEMA = "neural-computer.external-capability-pipel
 EXTERNAL_CAPABILITY_COMPOSITION_SCHEMA = (
     "neural-computer.external-capability-composition.v1"
 )
+EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA = (
+    "neural-computer.external-capability-slot-binding.v1"
+)
 
 
 @dataclass(frozen=True)

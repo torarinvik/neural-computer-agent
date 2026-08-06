@@ -2881,3 +2881,10 @@ The action-feedback rollout also now clamps exact-zero logged propensities to
 the smallest positive dtype value, fixing a long-run validation failure.
 Evidence and accounting are archived in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_sequential_route_bound_dense_four_source_replicated_promoted_v1_2026-08-06/`.
+
+The opaque slot binding is now durable memory metadata rather than an
+experiment-local map. It survives manifest save/load, growth, compaction,
+consolidation, and both promotion paths; a full seed-`69316` audit consumed the
+binding from reloaded handles and reproduced every semantic gate and metric.
+The audit took `1,244.6s` versus `831.4s` for the in-memory reference, so
+batched retention and manifest writes are now the main persistence bottleneck.

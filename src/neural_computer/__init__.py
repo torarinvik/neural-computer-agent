@@ -20,6 +20,7 @@ from .addressing import (
 )
 from .artifact_memory import (
     ARTIFACT_MEMORY_SCHEMA,
+    ArtifactBinding,
     ArtifactConsolidationReceipt,
     ArtifactHandle,
     ExecutableArtifactMemory,
@@ -28,6 +29,7 @@ from .capability import (
     EXTERNAL_CAPABILITY_COMPOSITION_SCHEMA,
     EXTERNAL_CAPABILITY_PIPELINE_SCHEMA,
     EXTERNAL_CAPABILITY_SCHEMA,
+    EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA,
     ExternalCapabilityComposition,
     ExternalCapabilityPipeline,
     ExternalCapabilityPipelineState,
@@ -201,6 +203,7 @@ __all__ = [
     "EXTERNAL_CAPABILITY_COMPOSITION_SCHEMA",
     "EXTERNAL_CAPABILITY_PIPELINE_SCHEMA",
     "EXTERNAL_CAPABILITY_SCHEMA",
+    "EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA",
     "GROWTH_PRIOR_SCHEMA",
     "HOLDOUT_LEDGER_SCHEMA",
     "INTENTION_SCHEMA",
@@ -227,6 +230,7 @@ __all__ = [
     "AmodalOutputBus",
     "AmodalRuntimeOutput",
     "AppendOnlyContentAddressedMemory",
+    "ArtifactBinding",
     "ArtifactConsolidationReceipt",
     "ArtifactHandle",
     "CapabilityAdmissionReceipt",

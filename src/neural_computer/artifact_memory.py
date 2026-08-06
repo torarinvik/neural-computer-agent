@@ -41,6 +41,24 @@ CandidateRetentionOutcomes = (
     | Sequence[CapabilityRetentionProbe]
 )
 
+ArtifactBinding = Mapping[str, Any]
+
+
+def _normalize_alias_binding(binding: ArtifactBinding | None) -> dict[str, Any] | None:
+    """Copy one JSON-safe opaque execution binding for durable storage."""
+
+    if binding is None:
+        return None
+    if not isinstance(binding, Mapping):
+        raise TypeError("artifact alias bindings must be mappings or null")
+    try:
+        normalized = json.loads(json.dumps(dict(binding), sort_keys=True))
+    except (TypeError, ValueError) as exc:
+        raise TypeError("artifact alias bindings must be JSON serializable") from exc
+    if not isinstance(normalized, dict):
+        raise TypeError("artifact alias binding must normalize to an object")
+    return normalized
+
 
 def _structured_retention_outcomes(
     outcomes: CandidateRetentionOutcomes,
@@ -127,6 +145,7 @@ class ArtifactHandle:
     margin: float
     version: int
     view: str | None = None
+    binding: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -188,6 +207,9 @@ class ExecutableArtifactMemory:
         self.artifact_sha256: list[str | None] = [None] * capacity
         self.alias_keys: list[list[torch.Tensor]] = [[] for _ in range(capacity)]
         self.alias_views: list[list[str | None]] = [[] for _ in range(capacity)]
+        self.alias_bindings: list[list[dict[str, Any] | None]] = [
+            [] for _ in range(capacity)
+        ]
         self.hot: dict[int, dict[str, torch.Tensor]] = {}
         self._manifest_version = 0
         self._load_manifest_if_present()
@@ -307,6 +329,9 @@ class ExecutableArtifactMemory:
                 [alias.tolist() for alias in aliases] for aliases in self.alias_keys
             ],
             "alias_views": self.alias_views,
+            "alias_bindings": [
+                list(self._row_alias_bindings(index)) for index in range(self.capacity)
+            ],
             "manifest_version": self._manifest_version,
         }
 
@@ -348,6 +373,12 @@ class ExecutableArtifactMemory:
         if not isinstance(alias_views, list) or len(alias_views) != self.capacity:
             raise ValueError("artifact-memory alias view metadata mismatch")
         self.alias_views = []
+        alias_bindings = payload.get(
+            "alias_bindings", [[] for _ in range(self.capacity)]
+        )
+        if not isinstance(alias_bindings, list) or len(alias_bindings) != self.capacity:
+            raise ValueError("artifact-memory alias binding metadata mismatch")
+        self.alias_bindings = []
         for row_aliases in aliases:
             if not isinstance(row_aliases, list):
                 raise TypeError("artifact-memory aliases must be lists")
@@ -365,6 +396,18 @@ class ExecutableArtifactMemory:
             if any(view is not None and not isinstance(view, str) for view in row_views):
                 raise TypeError("artifact-memory alias views must contain strings or null")
             self.alias_views.append(list(row_views))
+        for row_bindings, row_aliases in zip(
+            alias_bindings,
+            self.alias_keys,
+            strict=True,
+        ):
+            if not isinstance(row_bindings, list):
+                raise TypeError("artifact-memory alias bindings must be lists")
+            if len(row_bindings) != len(row_aliases):
+                raise ValueError("artifact-memory alias bindings must align with keys")
+            self.alias_bindings.append(
+                [_normalize_alias_binding(binding) for binding in row_bindings]
+            )
         self._manifest_version = int(payload.get("manifest_version", 0))
         if self._manifest_version < 0:
             raise ValueError("artifact-memory manifest version cannot be negative")
@@ -382,6 +425,18 @@ class ExecutableArtifactMemory:
         return (
             self.rows.keys[index].detach().cpu(),
             *(alias.detach().cpu() for alias in self.alias_keys[index]),
+        )
+
+    def _row_alias_bindings(
+        self, index: int
+    ) -> tuple[dict[str, Any] | None, ...]:
+        """Return alias bindings aligned with keys, including legacy nulls."""
+
+        return tuple(
+            self.alias_bindings[index][position]
+            if position < len(self.alias_bindings[index])
+            else None
+            for position in range(len(self.alias_keys[index]))
         )
 
     def _row_is_protected(self, index: int) -> bool:
@@ -524,6 +579,7 @@ class ExecutableArtifactMemory:
         self.artifact_sha256[index] = _sha256_file(target_path)
         self.alias_keys[index] = []
         self.alias_views[index] = []
+        self.alias_bindings[index] = []
         self._manifest_version += 1
         self.save()
         return index
@@ -531,7 +587,7 @@ class ExecutableArtifactMemory:
     @torch.no_grad()
     def _resolve(self, query: torch.Tensor) -> ArtifactHandle:
         self._validate_key(query, self.width, "query")
-        scores, views = self._address_matches(query)
+        scores, views, bindings = self._address_matches(query)
         top_scores, top_indices = torch.topk(
             scores, k=min(2, self.capacity)
         )
@@ -542,7 +598,14 @@ class ExecutableArtifactMemory:
         index = int(top_indices[0])
         confidence = float(top_scores[0])
         margin = float(top_scores[0] - top_scores[1]) if top_scores.numel() > 1 else 1.0
-        return ArtifactHandle(index, confidence, margin, self.version, views[index])
+        return ArtifactHandle(
+            index,
+            confidence,
+            margin,
+            self.version,
+            views[index],
+            bindings[index],
+        )
 
     @torch.no_grad()
     def _address_scores(self, query: torch.Tensor) -> torch.Tensor:
@@ -552,7 +615,11 @@ class ExecutableArtifactMemory:
     @torch.no_grad()
     def _address_matches(
         self, query: torch.Tensor
-    ) -> tuple[torch.Tensor, list[str | None]]:
+    ) -> tuple[
+        torch.Tensor,
+        list[str | None],
+        list[dict[str, Any] | None],
+    ]:
         """Return row scores and the opaque view selected for each row."""
         normalized_query = torch.nn.functional.normalize(
             query.to(device=self.rows.keys.device, dtype=self.rows.keys.dtype), dim=0
@@ -561,6 +628,7 @@ class ExecutableArtifactMemory:
             (self.capacity,), -torch.inf, device=self.rows.keys.device
         )
         views: list[str | None] = [None] * self.capacity
+        bindings: list[dict[str, Any] | None] = [None] * self.capacity
         for index in self.occupied:
             candidates = [self.rows.keys[index]] + [
                 alias.to(device=self.rows.keys.device, dtype=self.rows.keys.dtype)
@@ -573,7 +641,9 @@ class ExecutableArtifactMemory:
             views[index] = (
                 self.alias_views[index][best - 1] if best > 0 else None
             )
-        return scores, views
+            alias_bindings = self._row_alias_bindings(index)
+            bindings[index] = alias_bindings[best - 1] if best > 0 else None
+        return scores, views, bindings
 
     def _load_verified(self, index: int) -> dict[str, torch.Tensor]:
         if index < 0 or index >= self.capacity or self.paths[index] is None:
@@ -612,7 +682,7 @@ class ExecutableArtifactMemory:
             raise ValueError("top_k must be a positive integer")
         handles: list[ArtifactHandle] = []
         artifacts: list[dict[str, torch.Tensor]] = []
-        address_scores, views = self._address_matches(query)
+        address_scores, views, bindings = self._address_matches(query)
         scores, indices = torch.topk(address_scores, k=min(top_k, self.capacity))
         for position, (score, index) in enumerate(zip(scores, indices)):
             if (
@@ -635,6 +705,7 @@ class ExecutableArtifactMemory:
                     max(0.0, float(score) - next_score),
                     self.version,
                     views[row],
+                    bindings[row],
                 )
             )
             artifacts.append(artifact)
@@ -733,6 +804,9 @@ class ExecutableArtifactMemory:
                 alias.detach().cpu().clone() for alias in self.alias_keys[index]
             ]
             compacted.alias_views[compacted_index] = list(self.alias_views[index])
+            compacted.alias_bindings[compacted_index] = list(
+                self._row_alias_bindings(index)
+            )
         compacted.save()
         compacted.validate()
         return compacted
@@ -779,6 +853,7 @@ class ExecutableArtifactMemory:
                 alias.detach().cpu().clone() for alias in self.alias_keys[index]
             ]
             grown.alias_views[grown_index] = list(self.alias_views[index])
+            grown.alias_bindings[grown_index] = list(self._row_alias_bindings(index))
         grown.save()
         grown.validate()
         return grown
@@ -794,6 +869,7 @@ class ExecutableArtifactMemory:
         strength: float = 1.0,
         replacement_aliases: Sequence[torch.Tensor] = (),
         replacement_alias_views: Sequence[str | None] = (),
+        replacement_alias_bindings: Sequence[ArtifactBinding | None] = (),
         candidate_outcomes: CandidateRetentionOutcomes | None = None,
         candidate_outcome_probe: (
             Callable[[ExecutableArtifactMemory], CandidateRetentionOutcomes]
@@ -916,8 +992,20 @@ class ExecutableArtifactMemory:
         named_views = [view for view in normalized_alias_views if view is not None]
         if len(set(named_views)) != len(named_views):
             raise ValueError("replacement alias views must be unique")
+        if replacement_alias_bindings and len(replacement_alias_bindings) != len(
+            normalized_aliases
+        ):
+            raise ValueError("replacement alias bindings must align with aliases")
+        normalized_alias_bindings = [
+            _normalize_alias_binding(binding)
+            for binding in (
+                replacement_alias_bindings
+                or (None,) * len(normalized_aliases)
+            )
+        ]
         compacted.alias_keys[replacement_index] = normalized_aliases
         compacted.alias_views[replacement_index] = normalized_alias_views
+        compacted.alias_bindings[replacement_index] = normalized_alias_bindings
         if candidate_outcomes is not None:
             structured = _structured_retention_outcomes(candidate_outcomes)
             if structured is None:
@@ -949,6 +1037,9 @@ class ExecutableArtifactMemory:
                 alias.detach().cpu().clone() for alias in self.alias_keys[index]
             ]
             compacted.alias_views[compacted_index] = list(self.alias_views[index])
+            compacted.alias_bindings[compacted_index] = list(
+                self._row_alias_bindings(index)
+            )
         compacted.save()
         compacted.validate()
         if candidate_outcome_probe is not None:
@@ -1042,7 +1133,16 @@ class ExecutableArtifactMemory:
             raise ValueError("margin must be nonnegative")
         artifact = self._load_verified(index)
         self.hot[index] = artifact
-        return ArtifactHandle(index, confidence, margin, self.version, view), artifact
+        view_index = self.alias_views[index].index(view)
+        bindings = self._row_alias_bindings(index)
+        return ArtifactHandle(
+            index,
+            confidence,
+            margin,
+            self.version,
+            view,
+            bindings[view_index],
+        ), artifact
 
     @classmethod
     def load(

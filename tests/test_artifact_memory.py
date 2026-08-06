@@ -387,6 +387,10 @@ def test_verified_consolidation_preserves_multiple_opaque_addresses(tmp_path) ->
         tmp_path / "consolidated",
         replacement_aliases=(first, second),
         replacement_alias_views=("left", "right"),
+        replacement_alias_bindings=(
+            {"schema": "opaque-slot-binding-v1", "slot_indices": [0, 1]},
+            {"schema": "opaque-slot-binding-v1", "slot_indices": [0, 1, 2]},
+        ),
         verifier=verifier,
     )
     assert receipt.accepted
@@ -398,7 +402,19 @@ def test_verified_consolidation_preserves_multiple_opaque_addresses(tmp_path) ->
     assert first_handle.index == second_handle.index == 0
     assert first_handle.view == "left"
     assert second_handle.view == "right"
+    assert first_handle.binding == {
+        "schema": "opaque-slot-binding-v1",
+        "slot_indices": [0, 1],
+    }
+    assert second_handle.binding == {
+        "schema": "opaque-slot-binding-v1",
+        "slot_indices": [0, 1, 2],
+    }
     assert [view for _, _, view in restored.view_candidates()] == ["left", "right"]
     promoted_view, _ = restored.promote_view(0, "right")
     assert promoted_view.view == "right"
+    assert promoted_view.binding == {
+        "schema": "opaque-slot-binding-v1",
+        "slot_indices": [0, 1, 2],
+    }
     assert len(source.occupied) == 2

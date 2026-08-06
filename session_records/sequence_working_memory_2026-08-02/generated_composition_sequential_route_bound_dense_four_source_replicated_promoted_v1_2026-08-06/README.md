@@ -53,3 +53,10 @@ for performance: it preserved every semantic gate but took `935.2s` versus
 are retained in `report_grouped_execution_semantic_pass_seed69316.json` and
 `report_grouped_execution_rejected_seed69316.json`. The next attempt should
 use compiled or batched grouped execution.
+
+The opaque binding is now durable rather than trainer-local. Alias binding
+metadata survives manifest save/load, growth, compaction, consolidation,
+`promote()`, and `promote_view()`. A full seed-`69316` audit consumed the
+binding from reloaded `ArtifactHandle` metadata and reproduced every gate and
+metric. Its wall time was `1,244.6s`, so repeated retention/manifest writes
+are now the main persistence bottleneck.
