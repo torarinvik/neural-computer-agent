@@ -720,3 +720,12 @@ failure to interference in one mutable candidate scorer, not to external
 memory capacity. The modular result remains a bounded externally trained
 route/credit mechanism, not general continual learning. See
 `session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14_isolated_v1_2026-08-06/`.
+
+The 46-capability modular boundary also persists its external route and
+credit state independently through `PersistentOpaqueStateStore`. Across both
+seeds, 89 state files reload with exact route/credit behavior and deliberate
+checksum corruption is rejected; persistence adds no verifier bits,
+optimizer updates, or replay. This closes the durable-state boundary for the
+bounded result while leaving unbounded acquisition and general continual
+learning open. See
+`session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14_persistent_v1_2026-08-06/`.

@@ -243,3 +243,10 @@ router interference rather than external-bank capacity. The result still
 uses externally trained per-capability route/credit state and is not general
 continual learning. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14_isolated_v1_2026-08-06/`.
+
+The same 46-capability modular boundary now persists every route extension
+and isolated credit head through `PersistentOpaqueStateStore`. Both seeds
+reload 89 state files into fresh modules with exact route/credit behavior and
+reject a corrupted state checksum, without verifier bits, optimizer updates,
+or replay during persistence. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14_persistent_v1_2026-08-06/`.
