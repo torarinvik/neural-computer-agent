@@ -216,3 +216,11 @@ zero-replay controls remain valid. The next bottleneck is targeted,
 confidence-aware acquisition for under-mastered rows, not a weaker retention
 threshold. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/shared_growth_router_6to8to10to12to14_46caps_rejected_v1_2026-08-06/`.
+
+The same fixed-budget outcome streams now pass through the production
+`ConfidenceAwareCapabilityStaging` boundary as a memory-side audit. Seed 69316
+admits 43 of 46 candidates and leaves 3 pending; seed 69317 admits 39 and
+leaves 7 pending. In both cases all occupied rows are protected and pending
+candidates consume no executable capacity. This qualifies safe partial
+admission, not a 46-capability learning promotion: the late-shift route gate
+still fails and the original verifier stream is unchanged.

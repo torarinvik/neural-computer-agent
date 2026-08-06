@@ -50,5 +50,19 @@
     "new_routes_causal",
     "reward_shuffled_not_selected",
     "no_replay_after_shifts"
-  ]
+  ],
+  "staged_admission_audit": {
+    "seeds": [69316, 69317],
+    "source": "the fixed8192 scalar route outcome streams",
+    "additional_verifier_bits": 0,
+    "additional_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "stable_admitted_counts": [43, 39],
+    "pending_counts": [3, 7],
+    "occupied_counts": [43, 39],
+    "protected_occupied_counts": [43, 39],
+    "pending_does_not_consume_capacity": [true, true],
+    "all_occupied_rows_protected": [true, true],
+    "claim_boundary": "safe partial admission under a rejected 46-capability route frontier; not general continual learning"
+  }
 }

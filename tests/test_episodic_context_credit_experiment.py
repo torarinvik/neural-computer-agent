@@ -5,6 +5,7 @@ from torch import nn
 
 from experiments.episodic_context_credit_amodal.shared_growth_router import (
     _route_scores,
+    _staged_admission_audit,
 )
 from experiments.episodic_context_credit_amodal.train import _pattern_bank
 
@@ -65,3 +66,22 @@ def test_permuted_physical_target_does_not_activate_later_growth_router() -> Non
 
     assert int(without_remap.argmax(dim=-1)[0]) == 4
     assert int(with_remap.argmax(dim=-1)[0]) == 3
+
+
+def test_staged_admission_keeps_unstable_rows_pending() -> None:
+    keys = torch.eye(4)
+    result = _staged_admission_audit(
+        keys,
+        [
+            [1.0, 1.0, 1.0, 1.0],
+            [1.0, 1.0, 1.0, 0.0],
+            [1.0, 1.0, 1.0, 1.0],
+            [0.0, 0.0, 0.0, 0.0],
+        ],
+    )
+
+    assert result["admitted_slots"] == [0, 2]
+    assert result["pending_slots"] == [1, 3]
+    assert result["occupied_count"] == 2
+    assert result["all_occupied_rows_protected"]
+    assert result["pending_does_not_consume_capacity"]

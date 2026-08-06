@@ -2368,4 +2368,8 @@ This closes the gap between “the retention policy exists” and “unverified
 growth is actually prevented from perturbing the protected bank.” It is a
 safety and lifecycle gain, not evidence of better route learning or general
 continual learning. The implementation is covered by the lifecycle and
-retention test suites.
+retention test suites. On the fixed 46-capability pressure stream, the same
+outcome-only audit admitted `43/46` candidates for seed 69316 and `39/46` for
+seed 69317; the remaining `3` and `7` stayed pending, with every occupied row
+protected and no pending candidate consuming executable capacity. The route
+frontier itself remains rejected because the late-shift mastery gate fails.

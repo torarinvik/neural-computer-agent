@@ -13,6 +13,7 @@ import argparse
 import json
 import time
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import torch
 from torch.nn import functional as F
@@ -37,7 +38,10 @@ from experiments.episodic_context_credit_amodal.train import (
 )
 from neural_computer import (
     CapabilityRetentionLedger,
+    ConfidenceAwareCapabilityStaging,
     EpisodicContextEncoder,
+    ExecutableArtifactMemory,
+    ExternalCapabilityLifecycle,
     OpaqueCandidateGrowthRouter,
     RetentionPolicyConfig,
     failure_gated_candidate_scores,
@@ -354,6 +358,83 @@ def _candidate_score_permutation_accuracy(
     return correct / total
 
 
+def _staged_admission_audit(
+    all_keys: torch.Tensor,
+    observations: list[list[float]],
+) -> dict[str, object]:
+    """Replay only scalar audit outcomes through the memory admission boundary.
+
+    This is a state-machine audit, not a second verifier run.  The route
+    outcomes were already collected by the retention audit; staging consumes
+    those scalar results to distinguish capabilities that earned executable
+    admission from capabilities that must remain pending.
+    """
+
+    config = RetentionPolicyConfig(
+        mastery_threshold=0.8,
+        min_mastery_observations=4,
+        reversal_threshold=0.5,
+        reversal_patience=4,
+        recent_window=4,
+    )
+    with TemporaryDirectory(prefix="shared-growth-staging-") as directory:
+        memory = ExecutableArtifactMemory(
+            Path(directory) / "memory",
+            width=all_keys.shape[1],
+            capacity=all_keys.shape[0],
+            retention_ledger=CapabilityRetentionLedger(
+                all_keys.shape[1], config=config
+            ),
+        )
+        lifecycle = ExternalCapabilityLifecycle(memory)
+        staging = ConfidenceAwareCapabilityStaging(lifecycle)
+        for key in all_keys:
+            staging.stage(key, {"opaque_route_key": key})
+
+        admitted: set[int] = set()
+        admission_round: dict[int, int] = {}
+        for repetition in range(len(observations[0])):
+            for family, values in enumerate(observations):
+                outcome = values[repetition]
+                key = all_keys[family]
+                if family in admitted:
+                    memory.retention.observe(key, outcome)
+                    continue
+                receipt = staging.observe(key, outcome)
+                if receipt.accepted:
+                    admitted.add(family)
+                    admission_round[family] = repetition + 1
+
+        memory.save()
+        memory.validate()
+        occupied = memory.occupied
+        protected = memory.protection_mask()
+        final_status = [memory.retention.status(key) for key in all_keys if memory.retention.contains(key)]
+        pending = sorted(
+            family for family in range(all_keys.shape[0]) if family not in admitted
+        )
+        return {
+            "admitted_count": len(admitted),
+            "admitted_slots": sorted(admitted),
+            "admission_round": {
+                str(family): round_index
+                for family, round_index in sorted(admission_round.items())
+            },
+            "pending_count": len(pending),
+            "pending_slots": pending,
+            "occupied_count": len(occupied),
+            "protected_occupied_count": sum(
+                bool(protected[index]) for index in occupied
+            ),
+            "all_occupied_rows_protected": bool(occupied)
+            and all(bool(protected[index]) for index in occupied),
+            "pending_does_not_consume_capacity": len(occupied) == len(admitted),
+            "stable_admitted_statuses": sum(
+                status.protected for status in final_status
+            ),
+        }
+
+
 def _retention_reversal_audit_shared(
     base_router,
     query_fn,
@@ -389,6 +470,7 @@ def _retention_reversal_audit_shared(
     for key, values in zip(all_keys, observations, strict=True):
         for value in values:
             ledger.observe(key, value)
+    staged_admission = _staged_admission_audit(all_keys, observations)
     initial_statuses = [ledger.status(key) for key in all_keys]
     full_bank_choice = ledger.choose_eviction_index(
         all_keys, torch.arange(all_keys.shape[0], dtype=torch.float32)
@@ -432,6 +514,7 @@ def _retention_reversal_audit_shared(
         "observation_count": sum(len(values) for values in observations)
         + config.reversal_patience
         + config.min_mastery_observations,
+        "staged_admission": staged_admission,
     }
 
 

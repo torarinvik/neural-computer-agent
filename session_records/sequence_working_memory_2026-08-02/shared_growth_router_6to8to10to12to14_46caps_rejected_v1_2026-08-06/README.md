@@ -27,6 +27,27 @@ used 4,555,128 verifier bits, 83,320 logical lifetimes, and 81,920 optimizer
 updates. The hidden-512 control used the same verifier and optimizer counts as
 the fixed-budget control. All controls replayed zero examples.
 
+## Confidence-aware staged admission audit
+
+The fixed 8,192-update control was replicated with seeds 69316 and 69317
+through the memory-side staging boundary. This audit consumed the existing
+scalar route outcomes; it added no verifier bits, optimizer updates, or replay.
+
+| seed | stable candidates admitted | candidates pending | occupied rows | protected occupied rows |
+| --- | ---: | ---: | ---: | ---: |
+| 69316 | 43/46 | 3 | 43 | 43 |
+| 69317 | 39/46 | 7 | 39 | 39 |
+
+Every occupied row was protected, and every candidate below the stable-prefix
+gate remained outside executable memory. Pending candidates therefore consumed
+no executable capacity and could not evict or dilute a protected row. This is
+a lifecycle-safety result, not a route-learning promotion: the 46-capability
+frontier remains rejected because the late length-14 routes do not all earn
+stable mastery.
+
+The staged reports are `report_seed69316_staged_admission.json` and
+`report_seed69317_staged_admission.json`.
+
 ## Claim boundary
 
 This rejects a naive extension of the 32-capability rung, not the shared-router
