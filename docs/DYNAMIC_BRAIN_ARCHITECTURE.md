@@ -65,6 +65,39 @@ component stays fixed-size.
   protected, consolidated, or evicted — impossible for knowledge smeared
   across weights.
 
+## No theoretical ceiling
+
+The architecture is deliberately shaped like a universal machine. A Turing
+machine is a *finite* control table plus an *unbounded* tape; universality
+comes from that combination, never from enlarging the finite control. The
+mapping here is the same shape:
+
+- fixed controller ↔ finite control,
+- unbounded content-addressed bank ↔ tape,
+- sketchpad ↔ the head's read/write window,
+- the WAIT/THINK/COMMIT deliberation loop ↔ unbounded compute steps per
+  decision (a fixed single forward pass would be a hard ceiling; iterated
+  thought is not),
+- encoder/decoder decoupling ↔ no task excluded by its surface form.
+
+Therefore no computable task is *structurally* out of reach, and growing
+the controller is never the road to generality — a larger control table is
+still finite. The unbounded bank is the source of universality.
+
+Three layers must not be conflated in claims:
+
+1. **Expressibility** — the architecture can represent any computable
+   skill. This is the structural claim above; it has no ceiling.
+2. **Learnability** — whether outcome-only training *finds* a representable
+   skill is a separate question with its own theory (sample complexity, no
+   free lunch). The architecture's answer is composition: the fixed core
+   learns to acquire, fetch, and combine, so new tasks reduce to
+   rearranging verified bank fragments rather than learning from scratch.
+   Learnability results must be claimed per rung, from measured evidence,
+   never inferred from expressibility.
+3. **Practical ceilings** — disk, time, energy. Real, and out of scope for
+   architectural claims.
+
 ## Current violations (transitional, to be retired)
 
 Honesty requires stating where today's promoted results still break the
