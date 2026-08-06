@@ -227,10 +227,16 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         args.batch_size,
         args.route_batch_size,
         args.audit_count,
+        args.route_audit_count,
         args.retention_probes,
     ) < 1:
         raise ValueError("all update and audit counts must be positive")
-    if args.batch_size % 2 or args.route_batch_size % 2 or args.audit_count % 2:
+    if (
+        args.batch_size % 2
+        or args.route_batch_size % 2
+        or args.audit_count % 2
+        or args.route_audit_count % 2
+    ):
         raise ValueError("batch sizes and audit count must be even")
     composition_ids = tuple(args.composition_ids)
     if not composition_ids:
@@ -387,12 +393,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         seed=args.seed + 80_000,
         shuffle_outcomes=True,
     )
+    route_audit_count = max(args.audit_count, args.route_audit_count)
     route_accuracy = _route_accuracy(
         router,
         parent,
         candidate_keys,
         composition_ids,
-        count=args.audit_count,
+        count=route_audit_count,
         seed=args.seed + 90_000,
     )
     permuted_accuracy = _route_accuracy(
@@ -400,7 +407,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         parent,
         candidate_keys,
         composition_ids,
-        count=args.audit_count,
+        count=route_audit_count,
         seed=args.seed + 90_000,
         permute_keys=True,
     )
@@ -410,7 +417,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             parent,
             candidate_keys,
             composition_ids,
-            count=args.audit_count,
+            count=route_audit_count,
             seed=args.seed + 90_000 + index * 100_003,
         )
         for index in range(4)
@@ -437,7 +444,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         parent,
         candidate_keys,
         composition_ids,
-        count=args.audit_count,
+        count=route_audit_count,
         seed=args.seed + 90_000,
     )
 
@@ -478,6 +485,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "batch_size": args.batch_size,
         "route_batch_size": args.route_batch_size,
         "audit_count": args.audit_count,
+        "route_audit_count": route_audit_count,
         "retention_probes": args.retention_probes,
         "artifact_stable_bits_to_threshold": artifact_stable,
         "artifact_behavior": artifact_behavior,
@@ -563,6 +571,7 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--route-batch-size", type=int, default=8)
     parser.add_argument("--audit-count", type=int, default=16)
+    parser.add_argument("--route-audit-count", type=int, default=256)
     parser.add_argument("--retention-probes", type=int, default=4)
     parser.add_argument("--eval-every", type=int, default=16)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
