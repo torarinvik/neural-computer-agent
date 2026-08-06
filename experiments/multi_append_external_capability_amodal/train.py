@@ -1,4 +1,4 @@
-"""Audit two sequential protected appends of external learned programs."""
+"""Audit sequential protected appends of external learned programs."""
 
 from __future__ import annotations
 
@@ -38,20 +38,22 @@ from neural_computer import (
     ExecutableArtifactMemory,
     ExternalCapabilityLifecycle,
     OpaqueAddressRouter,
+    OpaqueAppendOnlyRouteChain,
     OpaqueViewRouteExtension,
     PersistentOpaqueStateStore,
     RetentionPolicyConfig,
-    failure_gated_view_scores,
     paired_counterfactual_ranking_loss,
 )
 
 FIRST_APPEND = ("rotate4", "rotate", 4)
 SECOND_APPEND = ("adjacent_xor4", "adjacent_xor", 4)
-ALL_PROGRAMS = (*PROGRAMS, FIRST_APPEND, SECOND_APPEND)
+THIRD_APPEND = ("complement_rotate4", "complement_rotate", 4)
+APPEND_SPECS = (FIRST_APPEND, SECOND_APPEND, THIRD_APPEND)
+ALL_PROGRAMS = (*PROGRAMS, *APPEND_SPECS)
 ROUTE_WIDTH = 48
 
 
-def _train_second_extension(
+def _train_append_extension(
     parent,
     base_scores: Callable[[torch.Tensor], torch.Tensor],
     *,
@@ -107,32 +109,35 @@ def _train_second_extension(
     }
 
 
-def _two_append_scores(
+def _append_scores(
     base_router: OpaqueAddressRouter,
-    first_extension: OpaqueViewRouteExtension,
-    second_extension: OpaqueViewRouteExtension,
+    extensions: tuple[OpaqueViewRouteExtension, ...],
     queries: torch.Tensor,
     old_keys: torch.Tensor,
     *,
-    first_failed: bool,
-    second_failed: bool,
+    active_extension_count: int,
 ) -> torch.Tensor:
-    established = failure_gated_view_scores(
-        base_router(queries, old_keys),
-        first_extension(queries),
-        first_failed,
+    if not 0 <= active_extension_count <= len(extensions):
+        raise ValueError("active extension count is out of range")
+    chain = OpaqueAppendOnlyRouteChain(
+        base_router,
+        width=ROUTE_WIDTH,
+        extensions=extensions,
     )
-    return failure_gated_view_scores(
-        established,
-        second_extension(queries),
-        second_failed,
+    failures = torch.zeros(
+        queries.shape[0],
+        len(extensions),
+        dtype=torch.bool,
+        device=queries.device,
     )
+    if active_extension_count:
+        failures[:, :active_extension_count] = True
+    return chain(queries, old_keys, failures)
 
 
 def _route_rates(
     base_router: OpaqueAddressRouter,
-    first_extension: OpaqueViewRouteExtension,
-    second_extension: OpaqueViewRouteExtension,
+    extensions: tuple[OpaqueViewRouteExtension, ...],
     parent,
     old_keys: torch.Tensor,
     *,
@@ -140,70 +145,49 @@ def _route_rates(
     seed: int,
 ) -> dict[str, float]:
     old_queries, old_targets = _test_queries(parent, count=audit_count, seed=seed)
-    first_queries = _route_queries(
-        parent,
-        operation=FIRST_APPEND[1],
-        span=4,
-        count=audit_count,
-        seed=seed + 10_001,
+    scores = [
+        _append_scores(
+            base_router,
+            extensions,
+            old_queries,
+            old_keys,
+            active_extension_count=0,
+        )
+    ]
+    for index, (_label, operation, span) in enumerate(APPEND_SPECS, start=1):
+        scores.append(
+            _append_scores(
+                base_router,
+                extensions,
+                _route_queries(
+                    parent,
+                    operation=operation,
+                    span=span,
+                    count=audit_count,
+                    seed=seed + index * 10_001,
+                ),
+                old_keys,
+                active_extension_count=index,
+            )
+        )
+    correct = [(scores[0].argmax(dim=-1) == old_targets).float()]
+    correct.extend(
+        (scores[index].argmax(dim=-1) == len(PROGRAMS) + index - 1).float()
+        for index in range(1, len(scores))
     )
-    second_queries = _route_queries(
-        parent,
-        operation=SECOND_APPEND[1],
-        span=4,
-        count=audit_count,
-        seed=seed + 20_002,
-    )
-    old_scores = _two_append_scores(
-        base_router,
-        first_extension,
-        second_extension,
-        old_queries,
-        old_keys,
-        first_failed=False,
-        second_failed=False,
-    )
-    first_scores = _two_append_scores(
-        base_router,
-        first_extension,
-        second_extension,
-        first_queries,
-        old_keys,
-        first_failed=True,
-        second_failed=False,
-    )
-    second_scores = _two_append_scores(
-        base_router,
-        first_extension,
-        second_extension,
-        second_queries,
-        old_keys,
-        first_failed=True,
-        second_failed=True,
-    )
-    old_predictions = old_scores.argmax(dim=-1)
-    first_predictions = first_scores.argmax(dim=-1)
-    second_predictions = second_scores.argmax(dim=-1)
     return {
-        "old": float((old_predictions == old_targets).float().mean()),
-        "first": float((first_predictions == len(PROGRAMS)).float().mean()),
-        "second": float((second_predictions == len(PROGRAMS) + 1).float().mean()),
-        "combined": float(
-            torch.cat(
-                (
-                    (old_predictions == old_targets).float(),
-                    (first_predictions == len(PROGRAMS)).float(),
-                    (second_predictions == len(PROGRAMS) + 1).float(),
-                )
-            ).mean()
-        ),
+        "old": float(correct[0].mean()),
+        **{
+            label: float(correct[index + 1].mean())
+            for index, (label, _operation, _span) in enumerate(APPEND_SPECS)
+        },
+        "combined": float(torch.cat(correct).mean()),
     }
 
 
 def _permuted_combined_accuracy(
     base_router: OpaqueAddressRouter,
-    first_extension: OpaqueViewRouteExtension,
-    second_extension: OpaqueViewRouteExtension,
+    extensions: tuple[OpaqueViewRouteExtension, ...],
     parent,
     old_keys: torch.Tensor,
     *,
@@ -213,56 +197,32 @@ def _permuted_combined_accuracy(
     permutation = torch.tensor([2, 0, 1], dtype=torch.long)
     permuted_keys = old_keys[permutation]
     old_queries, old_targets = _test_queries(parent, count=audit_count, seed=seed)
-    old_predictions = _two_append_scores(
+    old_predictions = _append_scores(
         base_router,
-        first_extension,
-        second_extension,
+        extensions,
         old_queries,
         permuted_keys,
-        first_failed=False,
-        second_failed=False,
+        active_extension_count=0,
     ).argmax(dim=-1)
     old_predictions = permutation[old_predictions]
-    first_queries = _route_queries(
-        parent,
-        operation=FIRST_APPEND[1],
-        span=4,
-        count=audit_count,
-        seed=seed + 10_001,
-    )
-    second_queries = _route_queries(
-        parent,
-        operation=SECOND_APPEND[1],
-        span=4,
-        count=audit_count,
-        seed=seed + 20_002,
-    )
-    first_predictions = _two_append_scores(
-        base_router,
-        first_extension,
-        second_extension,
-        first_queries,
-        permuted_keys,
-        first_failed=True,
-        second_failed=False,
-    ).argmax(dim=-1)
-    second_predictions = _two_append_scores(
-        base_router,
-        first_extension,
-        second_extension,
-        second_queries,
-        permuted_keys,
-        first_failed=True,
-        second_failed=True,
-    ).argmax(dim=-1)
-    correct = torch.cat(
-        (
-            old_predictions == old_targets,
-            first_predictions == len(PROGRAMS),
-            second_predictions == len(PROGRAMS) + 1,
+    correct = [old_predictions == old_targets]
+    for index, (_label, operation, span) in enumerate(APPEND_SPECS, start=1):
+        queries = _route_queries(
+            parent,
+            operation=operation,
+            span=span,
+            count=audit_count,
+            seed=seed + index * 10_001,
         )
-    )
-    return float(correct.float().mean())
+        predictions = _append_scores(
+            base_router,
+            extensions,
+            queries,
+            permuted_keys,
+            active_extension_count=index,
+        ).argmax(dim=-1)
+        correct.append(predictions == len(PROGRAMS) + index - 1)
+    return float(torch.cat(correct).float().mean())
 
 
 def run(args: argparse.Namespace) -> dict[str, object]:
@@ -316,9 +276,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     )
 
     bank_path = root / "base_bank"
-    first_path = root / "first_grown_bank"
-    second_path = root / "second_grown_bank"
-    for path in (bank_path, first_path, second_path):
+    growth_paths = [
+        root / f"grown_bank_{index + 1}" for index in range(len(APPEND_SPECS))
+    ]
+    for path in (bank_path, *growth_paths):
         if path.exists():
             shutil.rmtree(path)
     bank = ExecutableArtifactMemory(
@@ -401,11 +362,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     base_router = base_result["router"]
     base_digest = _digest_module(base_router)
 
-    append_specs = (FIRST_APPEND, SECOND_APPEND)
     extensions: list[OpaqueViewRouteExtension] = []
+    shuffled_extensions: list[OpaqueViewRouteExtension] = []
     extension_accounting: list[dict[str, int | float]] = []
     append_keys: list[torch.Tensor] = []
-    for append_index, (label, operation, span) in enumerate(append_specs):
+    for append_index, (label, operation, span) in enumerate(APPEND_SPECS):
         program, decoder = _new_capability(args.seed + 10_001 + append_index)
         history, progress = _train_capability(
             parent,
@@ -434,7 +395,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         plan = lifecycle.plan_admission(key, artifact)
         if plan.action != "grow" or not all(lifecycle.protection_mask().tolist()):
             raise RuntimeError("protected append did not select transactional growth")
-        destination = first_path if append_index == 0 else second_path
+        destination = growth_paths[append_index]
         receipt = lifecycle.admit(
             key, artifact, plan=plan, grow_destination=destination
         )
@@ -469,71 +430,47 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "stable_bits_to_threshold": stable_bits[label],
             "retention_observations": observations,
         }
-        if append_index == 0:
-            extension, accounting = _train_route_extension(
-                parent,
+        established_extensions = tuple(extensions)
+
+        def established_scores(
+            queries: torch.Tensor,
+            prior=established_extensions,
+            active_count=append_index,
+        ) -> torch.Tensor:
+            return _append_scores(
                 base_router,
+                prior,
+                queries,
                 old_keys,
-                operation=operation,
-                updates=args.extension_updates,
-                batch_size=args.route_batch_size,
-                seed=args.seed + 100_000,
-                shuffle_outcomes=False,
+                active_extension_count=active_count,
             )
-            shuffled_extension, shuffled_accounting = _train_route_extension(
-                parent,
-                base_router,
-                old_keys,
-                operation=operation,
-                updates=args.extension_updates,
-                batch_size=args.route_batch_size,
-                seed=args.seed + 110_000,
-                shuffle_outcomes=True,
-            )
-            extensions.append(extension)
-            extension_accounting.extend((accounting, shuffled_accounting))
-            shuffled_first = shuffled_extension
-        else:
-            first_extension = extensions[0]
 
-            def established_scores(
-                queries: torch.Tensor,
-                first=first_extension,
-            ) -> torch.Tensor:
-                return failure_gated_view_scores(
-                    base_router(queries, old_keys),
-                    first(queries),
-                    True,
-                )
+        extension, accounting = _train_append_extension(
+            parent,
+            established_scores,
+            operation=operation,
+            updates=args.extension_updates,
+            batch_size=args.route_batch_size,
+            seed=args.seed + 100_000 + append_index * 20_000,
+            shuffle_outcomes=False,
+        )
+        shuffled_extension, shuffled_accounting = _train_append_extension(
+            parent,
+            established_scores,
+            operation=operation,
+            updates=args.extension_updates,
+            batch_size=args.route_batch_size,
+            seed=args.seed + 110_000 + append_index * 20_000,
+            shuffle_outcomes=True,
+        )
+        extensions.append(extension)
+        shuffled_extensions.append(shuffled_extension)
+        extension_accounting.extend((accounting, shuffled_accounting))
 
-            extension, accounting = _train_second_extension(
-                parent,
-                established_scores,
-                operation=operation,
-                updates=args.extension_updates,
-                batch_size=args.route_batch_size,
-                seed=args.seed + 120_000,
-                shuffle_outcomes=False,
-            )
-            shuffled_second, shuffled_accounting = _train_second_extension(
-                parent,
-                established_scores,
-                operation=operation,
-                updates=args.extension_updates,
-                batch_size=args.route_batch_size,
-                seed=args.seed + 130_000,
-                shuffle_outcomes=True,
-            )
-            extensions.append(extension)
-            extension_accounting.extend((accounting, shuffled_accounting))
-            shuffled_second_extension = shuffled_second
-
-    first_extension, second_extension = extensions
     base_digest_after = _digest_module(base_router)
     rates = _route_rates(
         base_router,
-        first_extension,
-        second_extension,
+        tuple(extensions),
         parent,
         old_keys,
         audit_count=args.audit_count,
@@ -541,35 +478,43 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     )
     permuted_accuracy = _permuted_combined_accuracy(
         base_router,
-        first_extension,
-        second_extension,
+        tuple(extensions),
         parent,
         old_keys,
         audit_count=args.audit_count,
         seed=args.seed + 140_000,
     )
-    first_null = _route_rates(
-        base_router,
-        shuffled_first,
-        second_extension,
-        parent,
-        old_keys,
-        audit_count=args.audit_count,
-        seed=args.seed + 150_000,
-    )["first"]
-    second_null = _route_rates(
-        base_router,
-        first_extension,
-        shuffled_second_extension,
-        parent,
-        old_keys,
-        audit_count=args.audit_count,
-        seed=args.seed + 160_000,
-    )["second"]
+    shuffled_selection: dict[str, float] = {}
+    for append_index, ((label, operation, span), shuffled) in enumerate(
+        zip(APPEND_SPECS, shuffled_extensions, strict=True)
+    ):
+        variant = list(extensions)
+        variant[append_index] = shuffled
+        queries = _route_queries(
+            parent,
+            operation=operation,
+            span=span,
+            count=args.audit_count,
+            seed=args.seed + 150_000 + append_index,
+        )
+        shuffled_selection[label] = float(
+            (
+                _append_scores(
+                    base_router,
+                    tuple(variant),
+                    queries,
+                    old_keys,
+                    active_extension_count=append_index + 1,
+                ).argmax(dim=-1)
+                == len(PROGRAMS) + append_index
+            )
+            .float()
+            .mean()
+        )
 
     selected_rows = {
-        "rotate4": len(PROGRAMS),
-        "adjacent_xor4": len(PROGRAMS) + 1,
+        label: len(PROGRAMS) + index
+        for index, (label, _operation, _span) in enumerate(APPEND_SPECS)
     }
     old_queries, _old_targets = _test_queries(
         parent, count=args.audit_count, seed=args.seed + 170_000
@@ -623,37 +568,30 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "candidate_count": len(PROGRAMS),
         },
     )
-    first_store = PersistentOpaqueStateStore(
-        root / "first_extension.pt",
-        configuration={
-            "component": "multi-append-first-extension",
-            "schema": "neural-computer.opaque-view-route-extension.v1",
-            "width": ROUTE_WIDTH,
-            "hidden": 64,
-        },
-    )
-    second_store = PersistentOpaqueStateStore(
-        root / "second_extension.pt",
-        configuration={
-            "component": "multi-append-second-extension",
-            "schema": "neural-computer.opaque-view-route-extension.v1",
-            "width": ROUTE_WIDTH,
-            "hidden": 64,
-        },
-    )
     base_store.save_module(base_router)
-    first_store.save_module(first_extension)
-    second_store.save_module(second_extension)
+    extension_stores = []
+    for index, extension in enumerate(extensions):
+        store = PersistentOpaqueStateStore(
+            root / f"extension_{index + 1}.pt",
+            configuration={
+                "component": f"multi-append-extension-{index + 1}",
+                "schema": "neural-computer.opaque-view-route-extension.v1",
+                "width": ROUTE_WIDTH,
+                "hidden": 64,
+            },
+        )
+        store.save_module(extension)
+        extension_stores.append(store)
     reloaded_base = OpaqueAddressRouter(width=ROUTE_WIDTH, hidden=64)
-    reloaded_first = OpaqueViewRouteExtension(width=ROUTE_WIDTH, hidden=64)
-    reloaded_second = OpaqueViewRouteExtension(width=ROUTE_WIDTH, hidden=64)
     base_store.load_module(reloaded_base)
-    first_store.load_module(reloaded_first)
-    second_store.load_module(reloaded_second)
+    reloaded_extensions = []
+    for store in extension_stores:
+        extension = OpaqueViewRouteExtension(width=ROUTE_WIDTH, hidden=64)
+        store.load_module(extension)
+        reloaded_extensions.append(extension)
     reloaded_rates = _route_rates(
         reloaded_base,
-        reloaded_first,
-        reloaded_second,
+        tuple(reloaded_extensions),
         parent,
         old_keys,
         audit_count=args.audit_count,
@@ -676,7 +614,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     artifact_name = lifecycle.memory.paths[0]
     if artifact_name is None:
         raise RuntimeError("grown bank has no artifact path")
-    artifact_path = second_path / artifact_name
+    artifact_path = growth_paths[-1] / artifact_name
     intact = artifact_path.read_bytes()
     artifact_path.write_bytes(intact + b"corruption")
     corruption_rejected = False
@@ -698,10 +636,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     report = {
         "schema": "neural-computer.multi-append-external-capability-report.v1",
         "claim_boundary": (
-            "Two sequential protected external capability appends use frozen "
-            "parent and prior route state, with fresh scalar outcomes and no "
-            "replay. This is bounded external growth, not general continual "
-            "learning or arbitrary program induction."
+            f"{len(APPEND_SPECS)} sequential protected external capability "
+            "appends use frozen parent and prior route state, with fresh "
+            "scalar outcomes and no replay. This is bounded external growth, "
+            "not general continual learning or arbitrary program induction."
         ),
         "seed": args.seed,
         "programs": [
@@ -714,8 +652,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "protected_base": protected_base,
         "route_rates": rates,
         "candidate_permutation_accuracy": permuted_accuracy,
-        "reward_shuffled_first_selection": first_null,
-        "reward_shuffled_second_selection": second_null,
+        "reward_shuffled_selection": shuffled_selection,
         "reloaded_route_rates": reloaded_rates,
         "selected_behavior": selected_behavior,
         "wrong_behavior": wrong_behavior,
@@ -732,22 +669,27 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 + args.updates
                 * args.batch_size
                 * sum(span + 2 for _, _, span in PROGRAMS)
-                + 2 * args.append_updates * args.batch_size * 6
+                + args.append_updates
+                * args.batch_size
+                * sum(span + 2 for _, _, span in APPEND_SPECS)
                 + base_route_bits
                 + route_bits
-                + 5 * args.retention_probes * args.audit_count * 4
+                + len(ALL_PROGRAMS)
+                * args.retention_probes
+                * args.audit_count
+                * 4
             ),
             "unique_logical_lifetimes": (
                 args.parent_updates * args.batch_size
                 + args.updates * args.batch_size * len(PROGRAMS) * 2
-                + 2 * args.append_updates * args.batch_size * 2
+                + len(APPEND_SPECS) * args.append_updates * args.batch_size * 2
                 + base_route_lifetimes
                 + extension_route_lifetimes
             ),
             "optimizer_updates": (
                 args.parent_updates
                 + args.updates * len(PROGRAMS)
-                + 2 * args.append_updates
+                + len(APPEND_SPECS) * args.append_updates
             ),
             "route_optimizer_updates": int(base_accounting["route_optimizer_updates"])
             + sum(
@@ -758,7 +700,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             ),
             "route_unique_verifier_bits": base_route_bits + route_bits,
             "replayed_examples": 0,
-            "distribution_shifts": 2,
+            "distribution_shifts": len(APPEND_SPECS),
             "wall_seconds": perf_counter() - started,
         },
         "gates": {
@@ -766,16 +708,20 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "all_capabilities_stable": all(
                 value is not None for value in stable_bits.values()
             ),
-            "five_artifacts_present": len(lifecycle.memory.occupied)
+            "all_artifacts_present": len(lifecycle.memory.occupied)
             == len(ALL_PROGRAMS),
             "protected_base": protected_base,
             "protected_after_appends": all(lifecycle.protection_mask().tolist()),
             "old_route_retained": rates["old"] >= 0.8,
-            "first_append_route_recovered": rates["first"] >= 0.8,
-            "second_append_route_recovered": rates["second"] >= 0.8,
+            "all_append_routes_recovered": all(
+                rates[label] >= 0.8
+                for label, _operation, _span in APPEND_SPECS
+            ),
             "combined_route_recovered": rates["combined"] >= 0.8,
             "candidate_permutation_invariant": permuted_accuracy >= 0.8,
-            "reward_shuffled_not_selected": first_null <= 0.5 and second_null <= 0.5,
+            "reward_shuffled_not_selected": all(
+                value <= 0.5 for value in shuffled_selection.values()
+            ),
             "all_selected_capabilities_mastered": all(
                 value >= 0.75 for value in selected_behavior.values()
             ),
