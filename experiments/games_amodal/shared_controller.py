@@ -33,7 +33,11 @@ from pathlib import Path
 import torch
 from torch import nn
 
-from experiments.games_amodal.environments import PongVerifier, SnakeVerifier
+from experiments.games_amodal.environments import (
+    BreakoutVerifier,
+    PongVerifier,
+    SnakeVerifier,
+)
 from experiments.games_amodal.train import GridEventEncoder
 from neural_computer import (
     AmodalCognitiveController,
@@ -45,9 +49,13 @@ from neural_computer import (
 )
 
 GAMES = ("snake", "pong")
-GAME_CHANNELS = {"snake": 3, "pong": 2}
-GAME_ACTIONS = {"snake": 4, "pong": 3}
-GAME_VERIFIERS = {"snake": SnakeVerifier, "pong": PongVerifier}
+GAME_CHANNELS = {"snake": 3, "pong": 2, "breakout": 3}
+GAME_ACTIONS = {"snake": 4, "pong": 3, "breakout": 3}
+GAME_VERIFIERS = {
+    "snake": SnakeVerifier,
+    "pong": PongVerifier,
+    "breakout": BreakoutVerifier,
+}
 
 
 class SharedControllerAgent(nn.Module):
@@ -61,8 +69,10 @@ class SharedControllerAgent(nn.Module):
         feedback_width: int,
         hidden: int,
         event_window_capacity: int = 4,
+        games: tuple[str, ...] = GAMES,
     ) -> None:
         super().__init__()
+        self.games = tuple(games)
         controller = AmodalCognitiveController(
             width=event_width,
             workspace_slots=4,
@@ -79,21 +89,21 @@ class SharedControllerAgent(nn.Module):
                     width=8,
                     event_width=event_width,
                 )
-                for game in GAMES
+                for game in self.games
             },
             output_bus=AmodalOutputBus(
                 {
                     game: KeypressDecoder(
                         intention_width, GAME_ACTIONS[game], hidden=hidden
                     )
-                    for game in GAMES
+                    for game in self.games
                 }
             ),
         )
         self.feedback_encoders = nn.ModuleDict(
             {
                 game: KeypressEncoder(GAME_ACTIONS[game], feedback_width)
-                for game in GAMES
+                for game in self.games
             }
         )
 
