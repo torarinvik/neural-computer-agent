@@ -228,8 +228,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     if not 0.0 <= args.behavior_margin <= 1.0:
         raise ValueError("behavior margin must lie in [0, 1]")
     source_ids = tuple(args.source_ids)
-    if len(source_ids) != 2 or len(set(source_ids)) != 2:
-        raise ValueError("exactly two distinct source IDs are required")
+    if len(source_ids) < 2 or len(set(source_ids)) != len(source_ids):
+        raise ValueError("at least two distinct source IDs are required")
     grammar = _parse_program_specs(
         args.program_spec
         or [",".join(program) for program in DEFAULT_RUNTIME_GRAMMAR]
@@ -340,8 +340,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     )
     inherited_min_behavior = min(inherited_behavior.values())
     fresh_min_behavior = min(fresh_behavior.values())
+    primary_inherited_winner = (
+        student_selection.accepted and student_selection.selected_index == 0
+    )
     inherited_weights_help = (
-        inherited_min_behavior >= fresh_min_behavior + args.behavior_margin
+        primary_inherited_winner
+        or (
+            inherited_min_behavior >= fresh_min_behavior + args.behavior_margin
+            and not student_selection.accepted
+        )
     )
     selected_student = inherited_student if inherited_weights_help else None
     selected_behavior = inherited_behavior if inherited_weights_help else {}
@@ -352,7 +359,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     bank = ExecutableArtifactMemory(
         source_path,
         width=48,
-        capacity=2,
+        capacity=len(source_ids),
         write_match_threshold=0.99999,
     )
     bank.retention.config = RetentionPolicyConfig(
@@ -374,12 +381,17 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         torch.stack(source_keys), dim=-1
     ).T
     addresses_separated = bool(
-        torch.all(address_similarity[~torch.eye(2, dtype=torch.bool)] < 0.99999)
+        torch.all(
+            address_similarity[~torch.eye(len(source_ids), dtype=torch.bool)]
+            < 0.99999
+        )
     )
     if not addresses_separated:
         raise RuntimeError("source memory addresses are not independently resolvable")
     source_rows: list[int] = []
-    for key, artifact in zip(source_keys, source_artifacts, strict=True):
+    for source_index, (key, artifact) in enumerate(
+        zip(source_keys, source_artifacts, strict=True)
+    ):
         receipt = lifecycle.admit(key, artifact)
         if not receipt.accepted or receipt.index is None:
             raise RuntimeError(f"source admission failed: {receipt.reason}")
@@ -394,7 +406,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 seed=args.seed + 80_000 + receipt.index * 10_003 + probe * 101,
             )
             for probe in range(args.retention_probes)
-            for program_id in source_ids[receipt.index : receipt.index + 1]
+            for program_id in source_ids[source_index : source_index + 1]
         ]
         for outcome in outcomes:
             bank.observe_retention(key, outcome)
@@ -633,12 +645,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             ),
             "inherited_min_behavior": inherited_min_behavior,
             "fresh_min_behavior": fresh_min_behavior,
+            "primary_inherited_winner": primary_inherited_winner,
             "inherited_weights_help": inherited_weights_help,
             "behavior_margin": args.behavior_margin,
         },
         "source_bank": {
             "rows": source_rows,
-            "capacity": 2,
+            "capacity": len(source_ids),
             "protected": sources_protected,
             "address_similarity": address_similarity.tolist(),
             "addresses_separated": addresses_separated,
@@ -646,10 +659,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "consolidation": {
             "accepted": consolidation_accepted,
             "rows_before": (
-                consolidation_receipt.rows_before if consolidation_receipt else 2
+                consolidation_receipt.rows_before
+                if consolidation_receipt
+                else len(source_ids)
             ),
             "rows_after": (
-                consolidation_receipt.rows_after if consolidation_receipt else 2
+                consolidation_receipt.rows_after
+                if consolidation_receipt
+                else len(source_ids)
             ),
             "rows_saved": (
                 consolidation_receipt.rows_saved if consolidation_receipt else 0
@@ -699,21 +716,24 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "accounting": {
             "unique_verifier_bits": (
                 args.parent_updates * args.batch_size * 2
-                + 2 * args.source_updates * args.batch_size * (SPAN + 2)
+                + len(source_ids)
+                * args.source_updates
+                * args.batch_size
+                * (SPAN + 2)
                 + 2 * args.consolidation_updates * args.batch_size * (SPAN + 2)
                 + 2 * args.target_updates * args.batch_size * (SPAN + 2)
                 + 2 * args.retention_probes * args.audit_count * SPAN
             ),
             "unique_logical_lifetimes": (
                 args.parent_updates * args.batch_size
-                + 2 * args.source_updates * args.batch_size * 2
+                + len(source_ids) * args.source_updates * args.batch_size * 2
                 + 2 * args.consolidation_updates * args.batch_size * 2
                 + 2 * args.target_updates * args.batch_size * 2
                 + 2 * args.retention_probes * args.audit_count
             ),
             "optimizer_updates": (
                 args.parent_updates
-                + 2 * args.source_updates
+                + len(source_ids) * args.source_updates
                 + 2 * args.consolidation_updates
                 + 2 * args.target_updates
             ),
@@ -739,13 +759,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "sources_protected": sources_protected,
             "source_addresses_separated": addresses_separated,
             "student_inherited_weights_verified": inherited_weights_help,
-            "student_both_sources_mastered": len(selected_behavior) == 2
+            "student_all_sources_mastered": len(selected_behavior) == len(source_ids)
             and min(selected_behavior.values()) >= THRESHOLD,
             "shared_artifact_payload_reduced": selected_payload_bytes
             < source_payload_bytes,
             "consolidation_accepted": consolidation_accepted,
-            "consolidation_saved_row": consolidation_accepted
-            and consolidation_receipt.rows_saved == 1,
+            "consolidation_saved_rows": consolidation_accepted
+            and consolidation_receipt.rows_saved == len(source_ids) - 1,
             "consolidated_aliases_share_artifact": consolidation_accepted
             and len(set(compacted_alias_digests.values())) == 1,
             "consolidated_sources_retained": consolidation_accepted
@@ -792,7 +812,7 @@ def main() -> None:
         default=0.02,
         help="minimum inherited-over-fresh worst-source behavior margin",
     )
-    parser.add_argument("--source-ids", type=int, nargs=2, default=(0, 2))
+    parser.add_argument("--source-ids", type=int, nargs="+", default=(0, 2))
     parser.add_argument("--target-id", type=int, default=1)
     parser.add_argument(
         "--program-spec",

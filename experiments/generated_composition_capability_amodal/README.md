@@ -183,6 +183,37 @@ This is behavior-verified neural consolidation, not logical two-view packing,
 unrestricted growth, or general continual learning. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_distilled_consolidation_replicated_promoted_v1_2026-08-06/`.
 
+## Three-source fresh-outcome neural consolidation (2026-08-06)
+
+The next scaling rung replaces three protected external files with one shared
+routed stack. The inherited student starts from source 0 and learns source
+procedures 0, 2, and 3 from fresh outcomes; a fresh student receives the same
+budget. Stable-prefix selection is authoritative, with the strict maximin
+behavior margin retained only as the tie fallback.
+
+```bash
+PYTHONPATH=src uv run python -m experiments.generated_composition_capability_amodal.train_distilled_consolidation \
+  --seed 69316 --parent-updates 128 --source-updates 256 \
+  --consolidation-updates 512 --target-updates 256 \
+  --batch-size 16 --audit-count 64 --retention-probes 4 --eval-every 32 \
+  --source-ids 0 2 3 --target-id 1 \
+  --program-spec reverse,adjacent_xor,complement,prefix_parity \
+  --program-spec prefix_parity,global_parity,rotate,complement \
+  --program-spec global_parity,reverse,adjacent_xor,rotate \
+  --program-spec complement,prefix_parity,reverse,global_parity \
+  --report-out /tmp/generated-composition-distilled-consolidation-three/report.json
+```
+
+Replicated seeds `69316` and `69317` accepted the shared replacement: three
+rows became one, payload ratio was `0.3333`, all aliases resolved to one
+artifact digest, and source behavior survived reload at
+`0.7578/1.0000/0.8945` and `0.9102/1.0000/1.0000`. The grown target reloaded at
+`1.0000` in both runs. The controller stayed frozen and replayed examples were
+zero. This is replicated, bounded three-source neural consolidation—not
+unrestricted memory growth, arbitrary program induction, or general continual
+learning. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_distilled_consolidation_three_source_replicated_promoted_v1_2026-08-06/`.
+
 The same runtime grammar can compose nonlocal temporal and aggregation
 primitives:
 

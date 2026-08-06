@@ -1,0 +1,504 @@
+{
+  "schema": "neural-computer.generated-composition-distilled-consolidation-report.v1",
+  "claim_boundary": "One external routed stack was trained from fresh outcomes to execute two prior procedures, replacing two protected source files through one shared executable artifact. This is bounded behavior-verified neural consolidation, not general continual learning.",
+  "seed": 69316,
+  "source_ids": [
+    0,
+    2,
+    3
+  ],
+  "target_id": 1,
+  "programs": [
+    [
+      "reverse",
+      "adjacent_xor",
+      "complement",
+      "prefix_parity"
+    ],
+    [
+      "prefix_parity",
+      "global_parity",
+      "rotate",
+      "complement"
+    ],
+    [
+      "global_parity",
+      "reverse",
+      "adjacent_xor",
+      "rotate"
+    ],
+    [
+      "complement",
+      "prefix_parity",
+      "reverse",
+      "global_parity"
+    ]
+  ],
+  "sources": [
+    {
+      "id": 0,
+      "behavior": 0.953125,
+      "stable_bits_to_threshold": 10240,
+      "progress": [
+        {
+          "update": 32,
+          "unique_verifier_bits": 2048,
+          "heldout_accuracy": 0.625
+        },
+        {
+          "update": 64,
+          "unique_verifier_bits": 4096,
+          "heldout_accuracy": 0.53515625
+        },
+        {
+          "update": 96,
+          "unique_verifier_bits": 6144,
+          "heldout_accuracy": 0.69140625
+        },
+        {
+          "update": 128,
+          "unique_verifier_bits": 8192,
+          "heldout_accuracy": 0.609375
+        },
+        {
+          "update": 160,
+          "unique_verifier_bits": 10240,
+          "heldout_accuracy": 0.75390625
+        },
+        {
+          "update": 192,
+          "unique_verifier_bits": 12288,
+          "heldout_accuracy": 0.8671875
+        },
+        {
+          "update": 224,
+          "unique_verifier_bits": 14336,
+          "heldout_accuracy": 0.94921875
+        },
+        {
+          "update": 256,
+          "unique_verifier_bits": 16384,
+          "heldout_accuracy": 0.95703125
+        }
+      ],
+      "artifact_digest": "97fa8a500fe60c44fc1d8047406b23a38c953411140ded59a723e789ab1117b1"
+    },
+    {
+      "id": 2,
+      "behavior": 1.0,
+      "stable_bits_to_threshold": 2048,
+      "progress": [
+        {
+          "update": 32,
+          "unique_verifier_bits": 2048,
+          "heldout_accuracy": 0.859375
+        },
+        {
+          "update": 64,
+          "unique_verifier_bits": 4096,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 96,
+          "unique_verifier_bits": 6144,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 128,
+          "unique_verifier_bits": 8192,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 160,
+          "unique_verifier_bits": 10240,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 192,
+          "unique_verifier_bits": 12288,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 224,
+          "unique_verifier_bits": 14336,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 256,
+          "unique_verifier_bits": 16384,
+          "heldout_accuracy": 1.0
+        }
+      ],
+      "artifact_digest": "564356529f369f5a7c1e12c1d89b7d8e6921d77dfbf0bce66e25e82edd34fdc9"
+    },
+    {
+      "id": 3,
+      "behavior": 0.953125,
+      "stable_bits_to_threshold": 8192,
+      "progress": [
+        {
+          "update": 32,
+          "unique_verifier_bits": 2048,
+          "heldout_accuracy": 0.55859375
+        },
+        {
+          "update": 64,
+          "unique_verifier_bits": 4096,
+          "heldout_accuracy": 0.53125
+        },
+        {
+          "update": 96,
+          "unique_verifier_bits": 6144,
+          "heldout_accuracy": 0.625
+        },
+        {
+          "update": 128,
+          "unique_verifier_bits": 8192,
+          "heldout_accuracy": 0.78515625
+        },
+        {
+          "update": 160,
+          "unique_verifier_bits": 10240,
+          "heldout_accuracy": 0.890625
+        },
+        {
+          "update": 192,
+          "unique_verifier_bits": 12288,
+          "heldout_accuracy": 0.94140625
+        },
+        {
+          "update": 224,
+          "unique_verifier_bits": 14336,
+          "heldout_accuracy": 0.953125
+        },
+        {
+          "update": 256,
+          "unique_verifier_bits": 16384,
+          "heldout_accuracy": 0.953125
+        }
+      ],
+      "artifact_digest": "6529f3821ee8414ff858bc2cbd059a4ed805fa8236fcc6280b72b568d166acfe"
+    }
+  ],
+  "student_candidates": {
+    "inherited": {
+      "behavior": {
+        "0": 0.796875,
+        "2": 1.0,
+        "3": 0.90234375
+      },
+      "stable_bits_to_threshold": 6144,
+      "progress": [
+        {
+          "update": 32,
+          "unique_verifier_bits": 2048,
+          "heldout_accuracy": 0.6875
+        },
+        {
+          "update": 64,
+          "unique_verifier_bits": 4096,
+          "heldout_accuracy": 0.69140625
+        },
+        {
+          "update": 96,
+          "unique_verifier_bits": 6144,
+          "heldout_accuracy": 0.875
+        },
+        {
+          "update": 128,
+          "unique_verifier_bits": 8192,
+          "heldout_accuracy": 0.90234375
+        },
+        {
+          "update": 160,
+          "unique_verifier_bits": 10240,
+          "heldout_accuracy": 0.8671875
+        },
+        {
+          "update": 192,
+          "unique_verifier_bits": 12288,
+          "heldout_accuracy": 0.9140625
+        },
+        {
+          "update": 224,
+          "unique_verifier_bits": 14336,
+          "heldout_accuracy": 0.9375
+        },
+        {
+          "update": 256,
+          "unique_verifier_bits": 16384,
+          "heldout_accuracy": 0.94921875
+        },
+        {
+          "update": 288,
+          "unique_verifier_bits": 18432,
+          "heldout_accuracy": 0.9375
+        },
+        {
+          "update": 320,
+          "unique_verifier_bits": 20480,
+          "heldout_accuracy": 0.93359375
+        },
+        {
+          "update": 352,
+          "unique_verifier_bits": 22528,
+          "heldout_accuracy": 0.890625
+        },
+        {
+          "update": 384,
+          "unique_verifier_bits": 24576,
+          "heldout_accuracy": 0.95703125
+        },
+        {
+          "update": 416,
+          "unique_verifier_bits": 26624,
+          "heldout_accuracy": 0.8828125
+        },
+        {
+          "update": 448,
+          "unique_verifier_bits": 28672,
+          "heldout_accuracy": 0.94140625
+        },
+        {
+          "update": 480,
+          "unique_verifier_bits": 30720,
+          "heldout_accuracy": 0.94140625
+        },
+        {
+          "update": 512,
+          "unique_verifier_bits": 32768,
+          "heldout_accuracy": 0.88671875
+        }
+      ]
+    },
+    "fresh": {
+      "behavior": {
+        "0": 0.78515625,
+        "2": 0.984375,
+        "3": 0.91015625
+      },
+      "stable_bits_to_threshold": 8192,
+      "progress": [
+        {
+          "update": 32,
+          "unique_verifier_bits": 2048,
+          "heldout_accuracy": 0.62109375
+        },
+        {
+          "update": 64,
+          "unique_verifier_bits": 4096,
+          "heldout_accuracy": 0.609375
+        },
+        {
+          "update": 96,
+          "unique_verifier_bits": 6144,
+          "heldout_accuracy": 0.64453125
+        },
+        {
+          "update": 128,
+          "unique_verifier_bits": 8192,
+          "heldout_accuracy": 0.78125
+        },
+        {
+          "update": 160,
+          "unique_verifier_bits": 10240,
+          "heldout_accuracy": 0.75390625
+        },
+        {
+          "update": 192,
+          "unique_verifier_bits": 12288,
+          "heldout_accuracy": 0.75390625
+        },
+        {
+          "update": 224,
+          "unique_verifier_bits": 14336,
+          "heldout_accuracy": 0.7578125
+        },
+        {
+          "update": 256,
+          "unique_verifier_bits": 16384,
+          "heldout_accuracy": 0.765625
+        },
+        {
+          "update": 288,
+          "unique_verifier_bits": 18432,
+          "heldout_accuracy": 0.76953125
+        },
+        {
+          "update": 320,
+          "unique_verifier_bits": 20480,
+          "heldout_accuracy": 0.82421875
+        },
+        {
+          "update": 352,
+          "unique_verifier_bits": 22528,
+          "heldout_accuracy": 0.8828125
+        },
+        {
+          "update": 384,
+          "unique_verifier_bits": 24576,
+          "heldout_accuracy": 0.87890625
+        },
+        {
+          "update": 416,
+          "unique_verifier_bits": 26624,
+          "heldout_accuracy": 0.89453125
+        },
+        {
+          "update": 448,
+          "unique_verifier_bits": 28672,
+          "heldout_accuracy": 0.875
+        },
+        {
+          "update": 480,
+          "unique_verifier_bits": 30720,
+          "heldout_accuracy": 0.890625
+        },
+        {
+          "update": 512,
+          "unique_verifier_bits": 32768,
+          "heldout_accuracy": 0.890625
+        }
+      ]
+    }
+  },
+  "student_selection": {
+    "accepted": true,
+    "selected_index": 0,
+    "stable_bits_to_threshold": [
+      6144,
+      8192
+    ],
+    "reason": "unique stable-prefix candidate selected",
+    "selection_policy": "stable-prefix selector; tied prefixes require a fresh maximin behavior margin for inherited weights",
+    "inherited_min_behavior": 0.796875,
+    "fresh_min_behavior": 0.78515625,
+    "primary_inherited_winner": true,
+    "inherited_weights_help": true,
+    "behavior_margin": 0.02
+  },
+  "source_bank": {
+    "rows": [
+      0,
+      1,
+      2
+    ],
+    "capacity": 3,
+    "protected": true,
+    "address_similarity": [
+      [
+        0.9999999403953552,
+        0.9998669624328613,
+        0.999802827835083
+      ],
+      [
+        0.9998669624328613,
+        1.0000001192092896,
+        0.9997154474258423
+      ],
+      [
+        0.9998026490211487,
+        0.9997154474258423,
+        1.0000001192092896
+      ]
+    ],
+    "addresses_separated": true
+  },
+  "consolidation": {
+    "accepted": true,
+    "rows_before": 3,
+    "rows_after": 1,
+    "rows_saved": 2,
+    "shared_artifact": true,
+    "behavior_after_reload": {
+      "0": 0.7578125,
+      "2": 1.0,
+      "3": 0.89453125
+    },
+    "alias_digests_after_reload": {
+      "0": "fb588bc24ab7b4a94a4d3d41133c231402b56a546433a71e64eb0e0f92d5f504",
+      "2": "fb588bc24ab7b4a94a4d3d41133c231402b56a546433a71e64eb0e0f92d5f504",
+      "3": "fb588bc24ab7b4a94a4d3d41133c231402b56a546433a71e64eb0e0f92d5f504"
+    },
+    "retention_probe_outcomes": [
+      [
+        0.76953125,
+        0.76953125,
+        0.796875,
+        0.7734375
+      ],
+      [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      [
+        0.91796875,
+        0.89453125,
+        0.890625,
+        0.90234375
+      ]
+    ],
+    "verifier_passed": true,
+    "protected_after_reload": [
+      true,
+      true,
+      true
+    ],
+    "source_payload_bytes": 1006368,
+    "replacement_payload_bytes": 335456,
+    "payload_ratio": 0.3333333333333333
+  },
+  "target_candidates": {
+    "stable_bits_to_threshold": [
+      2048,
+      12288
+    ],
+    "behavior": [
+      1.0,
+      0.9921875
+    ],
+    "selected_index": 0
+  },
+  "target_admission": {
+    "accepted": true,
+    "action": "grow",
+    "source_capacity": 1,
+    "destination_capacity": 2,
+    "behavior_after_reload": 1.0
+  },
+  "frozen_core": {
+    "digest_before": "6f6c1b2c04f52255b73768e17b8b28cf88cf14ba6a48437517fe80a07ba8a2ce",
+    "digest_after": "6f6c1b2c04f52255b73768e17b8b28cf88cf14ba6a48437517fe80a07ba8a2ce",
+    "unchanged": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 227328,
+    "unique_logical_lifetimes": 76288,
+    "optimizer_updates": 2432,
+    "replayed_examples": 0
+  },
+  "gates": {
+    "parent_stable": true,
+    "sources_stable": true,
+    "sources_mastered": true,
+    "sources_protected": true,
+    "source_addresses_separated": true,
+    "student_inherited_weights_verified": true,
+    "student_all_sources_mastered": true,
+    "shared_artifact_payload_reduced": true,
+    "consolidation_accepted": true,
+    "consolidation_saved_rows": true,
+    "consolidated_aliases_share_artifact": true,
+    "consolidated_sources_retained": true,
+    "consolidated_sources_protected": true,
+    "target_unique_winner": true,
+    "target_grown_after_consolidation": true,
+    "target_reloaded_mastered": true,
+    "core_unchanged": true,
+    "no_replayed_examples": true
+  },
+  "wall_seconds": 386.20160025000223,
+  "promoted": true
+}

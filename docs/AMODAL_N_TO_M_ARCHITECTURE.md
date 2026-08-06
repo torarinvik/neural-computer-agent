@@ -2790,3 +2790,29 @@ arbitrary program induction, unrestricted memory growth, or general continual
 learning. The short rung rejected the transaction before source mastery. Full
 accounting and reports are in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_distilled_consolidation_replicated_promoted_v1_2026-08-06/`.
+
+## Three-source fresh-outcome neural consolidation (2026-08-06)
+
+The shared neural-consolidation boundary now scales from two to three
+protected external files. Sources 0, 2, and 3 were learned from fresh
+verifier outcomes by one inherited student and compared against a matched
+fresh student. The stable-prefix selector was authoritative; inherited weights
+were retained when they won that learning-curve comparison, with the strict
+fresh maximin behavior margin remaining a tie-only fallback.
+
+Across replicated seeds `69316` and `69317`, the three source rows were
+replaced by one shared routed artifact. Its payload was `335,456` bytes versus
+`1,006,368` bytes for the three source artifacts, a `0.3333` ratio. All three
+aliases resolved to the same artifact digest, remained protected, and passed
+fresh reload retention. Source reload behavior was
+`0.7578/1.0000/0.8945` and `0.9102/1.0000/1.0000`; the grown target reloaded at
+`1.0000` in both replicas. The controller digest was unchanged and replayed
+examples were zero.
+
+This is replicated bounded neural consolidation with external capacity growth,
+not unrestricted memory growth, arbitrary open-ended program induction, or
+general continual learning. The next pressure test is a larger sequential
+source set with nonstationary and reversal controls, where retention must hold
+without relying on the fixed finite grammar or blueprint. Full reports and
+accounting are archived in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_distilled_consolidation_three_source_replicated_promoted_v1_2026-08-06/`.
