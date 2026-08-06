@@ -404,13 +404,19 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         seed=args.seed + 90_000,
         permute_keys=True,
     )
-    shuffled_route_accuracy = _route_accuracy(
-        shuffled_router,
-        parent,
-        candidate_keys,
-        composition_ids,
-        count=args.audit_count,
-        seed=args.seed + 90_000,
+    shuffled_route_accuracy_samples = [
+        _route_accuracy(
+            shuffled_router,
+            parent,
+            candidate_keys,
+            composition_ids,
+            count=args.audit_count,
+            seed=args.seed + 90_000 + index * 100_003,
+        )
+        for index in range(4)
+    ]
+    shuffled_route_accuracy = sum(shuffled_route_accuracy_samples) / len(
+        shuffled_route_accuracy_samples
     )
 
     router_store = PersistentOpaqueStateStore(
@@ -479,6 +485,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "route_accuracy": route_accuracy,
         "permuted_route_accuracy": permuted_accuracy,
         "shuffled_route_accuracy": shuffled_route_accuracy,
+        "shuffled_route_accuracy_samples": shuffled_route_accuracy_samples,
         "reloaded_route_accuracy": reloaded_route_accuracy,
         "physical_rows": len(bank.occupied),
         "protected_rows": int(bank.protection_mask().sum()),
@@ -532,7 +539,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "all_rows_protected": int(bank.protection_mask().sum()) == len(composition_ids),
             "route_mastered": route_accuracy >= THRESHOLD,
             "candidate_permutation_invariant": permuted_accuracy >= THRESHOLD,
-            "reward_shuffled_not_mastered": shuffled_route_accuracy < THRESHOLD,
+            "reward_shuffled_not_mastered": max(shuffled_route_accuracy_samples)
+            < THRESHOLD,
             "reloaded_route_preserved": reloaded_route_accuracy >= THRESHOLD,
             "corruption_rejected": corruption_rejected,
             "core_unchanged": parent_digest_before == parent_digest_after,
