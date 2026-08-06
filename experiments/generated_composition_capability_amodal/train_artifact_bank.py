@@ -858,6 +858,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "retention_outcomes": retention,
         "route_accuracy": route_accuracy,
         "permuted_route_accuracy": permuted_accuracy,
+        "cold_start_old_accuracy": cold_start_old_accuracy,
         "shuffled_route_accuracy": shuffled_route_accuracy,
         "shuffled_route_accuracy_samples": shuffled_route_accuracy_samples,
         "reloaded_route_accuracy": reloaded_route_accuracy,
