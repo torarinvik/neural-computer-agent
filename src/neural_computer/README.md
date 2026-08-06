@@ -682,3 +682,10 @@ rung. This promotes acquisition efficiency for the existing bounded policy;
 the fixed trajectory query and random opaque-key association remain open.
 See
 `session_records/sequence_working_memory_2026-08-02/shared_growth_router_6to8to10to12_trajectory_stats_8192_v1_2026-08-06/`.
+
+The next 46-capability fourth-shift pressure test is intentionally rejected:
+late length-14 rows fail stable protection at hidden 256/8,192 updates,
+hidden 512, and an adaptive late-budget control. This is evidence for
+confidence-aware targeted acquisition and capacity planning, not a reason to
+weaken the retention gate. See
+`session_records/sequence_working_memory_2026-08-02/shared_growth_router_6to8to10to12to14_46caps_rejected_v1_2026-08-06/`.

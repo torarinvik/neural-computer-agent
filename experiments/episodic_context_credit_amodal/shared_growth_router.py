@@ -452,6 +452,22 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         shift_lengths,
         family_counts,
     )
+    if args.shared_route_updates_per_shift is None:
+        shared_updates_by_shift = [
+            args.shared_route_updates for _ in schedule[1:]
+        ]
+    else:
+        shared_updates_by_shift = list(
+            _parse_int_list(
+                args.shared_route_updates_per_shift,
+                name="--shared-route-updates-per-shift",
+                minimum=1,
+            )
+        )
+        if len(shared_updates_by_shift) != len(schedule) - 1:
+            raise SystemExit(
+                "--shared-route-updates-per-shift must provide one value per shift"
+            )
     new_families = tuple(
         family
         for start, end, _length in schedule[1:]
@@ -562,7 +578,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             query,
             phase_keys,
             phase_families,
-            updates=args.shared_route_updates,
+            updates=shared_updates_by_shift[phase],
             batch_size=args.batch_size,
             seed=args.seed + start,
             hidden=args.shared_route_hidden,
@@ -571,7 +587,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             query,
             phase_keys,
             phase_families,
-            updates=args.shared_route_updates,
+            updates=shared_updates_by_shift[phase],
             batch_size=args.batch_size,
             seed=args.seed + start + 10_000,
             shuffled=True,
@@ -596,6 +612,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 "shift_index": phase + 1,
                 "episode_length": episode_length,
                 "families": list(phase_families),
+                "shared_route_updates": shared_updates_by_shift[phase],
                 "minimum_route_selection": min(selections.values()),
                 "route_selection": selections,
             }
@@ -712,7 +729,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             for start, end, length in schedule[1:]
             for _ in range(end - start)
         )
-        + (args.route_updates + 2 * shift_count * args.shared_route_updates)
+        + (args.route_updates + 2 * sum(shared_updates_by_shift))
         * args.batch_size
         * 2
         + int(retention["observation_count"])
@@ -721,7 +738,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         args.context_updates * 2
         + args.credit_updates
         + args.route_updates
-        + shift_count * 2 * args.shared_route_updates
+        + 2 * sum(shared_updates_by_shift)
         + len(new_families) * args.external_credit_updates
         + int(retention["observation_count"])
     )
@@ -745,6 +762,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "new_families": list(new_families),
         "candidate_key_bootstrap": args.candidate_key_bootstrap,
         "route_query_representation": args.route_query_representation,
+        "shared_route_updates_by_shift": shared_updates_by_shift,
         "shared_expansion_count": shift_count,
         "max_candidates_per_expansion": max(
             end - start for start, end, _length in schedule[1:]
@@ -770,7 +788,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 args.context_updates
                 + args.credit_updates
                 + args.route_updates
-                + 2 * shift_count * args.shared_route_updates
+                + 2 * sum(shared_updates_by_shift)
                 + len(new_families) * args.external_credit_updates
             ),
             "replayed_examples": 0,
@@ -824,6 +842,7 @@ def main() -> None:
     parser.add_argument("--external-credit-updates", type=int, default=128)
     parser.add_argument("--route-updates", type=int, default=1024)
     parser.add_argument("--shared-route-updates", type=int, default=1024)
+    parser.add_argument("--shared-route-updates-per-shift", default=None)
     parser.add_argument("--shared-route-hidden", type=int, default=48)
     parser.add_argument(
         "--candidate-key-bootstrap",

@@ -2132,6 +2132,22 @@ trajectory-statistics query and arbitrary random candidate-key associations
 remain the next generalization bottleneck. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/shared_growth_router_6to8to10to12_trajectory_stats_8192_v1_2026-08-06/`.
 
+## Fourth-shift capacity frontier rejected (2026-08-06)
+
+The next 6→8→10→12→14 audit grows the bank to 46 capabilities. The
+8,192-update hidden-256 control reaches a final route floor of `0.8125`, but
+two late rows fail stable protection. A late-shift budget increase to 12,288
+updates worsens the floor to `0.7188`; hidden size 512 at the original budget
+reaches `0.7969` and also fails. Old-route retention, permutation, causal
+credit, reward-shuffled null, and zero replay remain intact in all controls.
+
+This rejects naive width and budget scaling at the 46-capability frontier.
+The next implementation target is confidence-aware late-shift acquisition and
+capacity planning that can detect under-mastered rows, allocate targeted fresh
+outcomes, and refuse promotion until the full bank is protected. Evidence is
+in
+`session_records/sequence_working_memory_2026-08-02/shared_growth_router_6to8to10to12to14_46caps_rejected_v1_2026-08-06/`.
+
 ## Frozen-core recurrent transfer control (2026-08-06)
 
 The next bottleneck was tested directly rather than inferred from retention:

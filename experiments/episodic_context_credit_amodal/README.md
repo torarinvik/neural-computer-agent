@@ -207,3 +207,12 @@ reaches 32 capabilities. Total optimizer updates fall by 46.9% versus the
 16,384-update rung. Copy-on-write router priors and prototype-address
 controls did not replicate and are not promoted. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/shared_growth_router_6to8to10to12_trajectory_stats_8192_v1_2026-08-06/`.
+
+The fourth-shift 6→8→10→12→14 pressure test reaches 46 capabilities but is
+rejected by the hard retention gate. Hidden 256 at 8,192 updates reaches a
+`0.8125` final route floor with two late rows unprotected; extra late-shift
+updates and hidden 512 controls also fail. Routing, causal credit, null, and
+zero-replay controls remain valid. The next bottleneck is targeted,
+confidence-aware acquisition for under-mastered rows, not a weaker retention
+threshold. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/shared_growth_router_6to8to10to12to14_46caps_rejected_v1_2026-08-06/`.
