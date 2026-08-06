@@ -2442,3 +2442,27 @@ reloaded as independently versioned external state. It does not make a route
 policy semantically general, provide distributed transactions, or establish
 general continual learning; route behavior still requires held-out verifier
 and corruption controls.
+
+## Remediated six-shift external growth to 80 capabilities (2026-08-06)
+
+The repeated-shift pressure test now extends the frozen episodic context and
+route boundary from two length-six capabilities through lengths `8, 10, 12,
+14, 16, 18`, reaching 80 total capabilities. Across seeds 69316 and 69317,
+old routes, new route causality, candidate permutation, reward-shuffled null,
+isolated credit, retention reversal/recovery, persistent route/credit reload,
+corruption rejection, and zero replay all pass. The weakest shift floors are
+`0.8203` and `0.8750`.
+
+The key gain is selective acquisition remediation. A fresh outcome probe
+identifies weak rows before admission, and only those external route adapters
+receive additional fresh updates. Seed 69317's unremediated family 54 and
+seed 69316's late family 68 remain rejected until this targeted evidence is
+available; the threshold is not lowered and protected rows are not replayed or
+updated. The full bank refuses eviction, then releases and recovers only the
+deliberately reversed target.
+
+This is the strongest current bounded growth result, not general continual
+learning: the family generator remains finite, each new route still uses an
+externally trained blueprint, and arbitrary new computation/open-ended
+compression remain unverified. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14to16to18_remediated_v1_2026-08-06/`.

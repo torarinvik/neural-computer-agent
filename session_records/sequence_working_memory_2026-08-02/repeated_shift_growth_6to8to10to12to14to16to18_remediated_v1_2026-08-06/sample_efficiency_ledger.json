@@ -1,0 +1,41 @@
+{
+  "experiment": "repeated_shift_growth_6to8to10to12to14to16to18_remediated_v1_2026-08-06",
+  "status": "promoted_replicated_80_capability_six_shift_growth",
+  "claim": "A frozen episodic context and route boundary grows from two length-six capabilities to 80 capabilities across six temporal shifts using isolated external state, selective fresh-outcome remediation, persistence, reversal-safe retention, and zero replay.",
+  "seeds": [69316, 69317],
+  "schedule": {
+    "base_episode_length": 6,
+    "shift_episode_lengths": [8, 10, 12, 14, 16, 18],
+    "families_per_shift": [8, 10, 12, 14, 16, 18],
+    "total_capabilities": 80
+  },
+  "accounting_by_seed": {
+    "69316": {
+      "unique_verifier_bits": 5867368,
+      "unique_logical_lifetimes": 854152,
+      "optimizer_updates": 52992,
+      "remediation_optimizer_updates": 512,
+      "remediation_diagnostic_verifier_bits": 1248,
+      "replayed_examples": 0,
+      "wall_seconds": 106.74359920900315
+    },
+    "69317": {
+      "unique_verifier_bits": 5875560,
+      "unique_logical_lifetimes": 858248,
+      "optimizer_updates": 53248,
+      "remediation_optimizer_updates": 768,
+      "remediation_diagnostic_verifier_bits": 1248,
+      "replayed_examples": 0,
+      "wall_seconds": 93.99599658399529
+    }
+  },
+  "retention_on_mastered_primitives": "All 80 rows were protected before reversal; full-bank eviction was refused, only the target row was released after four failures, and that row re-protected after fresh recovery outcomes. The frozen context/router state and earlier route/credit state were unchanged.",
+  "transfer_ratio_against_fresh_learner": null,
+  "controls": {
+    "seed69317_unremediated_failed_gate": "family 54 remained unprotected",
+    "seed69317_audit128_failed_gate": "family 54 remained unprotected despite a larger audit batch",
+    "threshold_weakened": false,
+    "replay": 0
+  },
+  "next_bottleneck": "The boundary remains a bounded generated family bank; the next challenge is open-ended capability acquisition with learned blueprint/compression or genuine new computation, while preserving the same retention and no-replay guarantees."
+}

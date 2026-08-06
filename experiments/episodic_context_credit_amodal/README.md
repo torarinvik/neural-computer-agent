@@ -260,3 +260,14 @@ zero replay. The matched no-remediation seed-69317 control fails only the
 hard retention gate, so the repair is targeted acquisition rather than a
 weaker definition of mastery. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14to16_remediated_v1_2026-08-06/`.
+
+The sixth-shift follow-up extends the same boundary to length 18 and 80 total
+capabilities. Seed 69316 passes directly; seed 69317 initially leaves a late
+route unprotected. A targeted remediation loop then probes fresh route
+outcomes and spends additional fresh updates only on weak families. Both seeds
+subsequently pass full-bank protection, isolated reversal/recovery,
+persistence, corruption, causal, shuffled, and zero-replay gates. This
+promotes bounded 80-capability growth, not open-ended memory or general
+continual learning. Evidence, including failed pre-remediation controls, is
+in
+`session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14to16to18_remediated_v1_2026-08-06/`.
