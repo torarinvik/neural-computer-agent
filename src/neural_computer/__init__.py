@@ -103,11 +103,14 @@ from .keypress import (
 )
 from .lifecycle import (
     CAPABILITY_LIFECYCLE_SCHEMA,
+    CAPABILITY_SELECTION_SCHEMA,
     CAPABILITY_STAGING_SCHEMA,
     CapabilityAdmissionReceipt,
+    CapabilityCandidateSelection,
     ConfidenceAwareCapabilityStaging,
     ExternalCapabilityLifecycle,
     StagedCapabilityReceipt,
+    select_capability_candidate,
 )
 from .memory import (
     APPEND_ONLY_MEMORY_BACKEND_FORMAT,
@@ -184,6 +187,7 @@ __all__ = [
     "APPEND_ONLY_MEMORY_SNAPSHOT_FORMAT",
     "ARTIFACT_MEMORY_SCHEMA",
     "CAPABILITY_LIFECYCLE_SCHEMA",
+    "CAPABILITY_SELECTION_SCHEMA",
     "CAPABILITY_STAGING_SCHEMA",
     "CAPACITY_PLANNER_SCHEMA",
     "CONSOLIDATION_OPERATION_COUNT",
@@ -222,6 +226,7 @@ __all__ = [
     "ArtifactConsolidationReceipt",
     "ArtifactHandle",
     "CapabilityAdmissionReceipt",
+    "CapabilityCandidateSelection",
     "CapabilityEvictionObservation",
     "CapabilityRetentionLedger",
     "CapabilityRetentionProbe",
@@ -314,6 +319,7 @@ __all__ = [
     "read_promotion_record",
     "require_promotion",
     "save_runtime",
+    "select_capability_candidate",
     "select_growth_artifact_view",
     "selector_distillation_loss",
     "sha256_file",

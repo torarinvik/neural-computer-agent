@@ -29,6 +29,7 @@ from .retention import (
 
 CAPABILITY_LIFECYCLE_SCHEMA = "neural-computer.external-capability-lifecycle.v1"
 CAPABILITY_STAGING_SCHEMA = "neural-computer.external-capability-staging.v1"
+CAPABILITY_SELECTION_SCHEMA = "neural-computer.external-capability-selection.v1"
 
 
 @dataclass(frozen=True)
@@ -59,6 +60,75 @@ class StagedCapabilityReceipt:
     reason: str = ""
 
 
+@dataclass(frozen=True)
+class CapabilityCandidateSelection:
+    """Stable-prefix decision over replaceable external learner candidates."""
+
+    accepted: bool
+    selected_index: int | None
+    stable_bits_to_threshold: tuple[int | None, ...]
+    reason: str = ""
+
+
+def select_capability_candidate(
+    progress: Sequence[Sequence[float]],
+    *,
+    threshold: float = 0.75,
+    bits_per_observation: int = 1,
+) -> CapabilityCandidateSelection:
+    """Select a unique stable-prefix winner without interpreting candidates.
+
+    ``progress`` contains one held-out learning curve per opaque candidate.
+    A candidate is eligible only when its score stays at or above the threshold
+    for every later measured prefix. The earliest eligible prefix wins. Ties
+    are rejected because the verifier has not demonstrated an advantage for a
+    particular inherited candidate.
+    """
+
+    if not progress:
+        raise ValueError("candidate progress must be nonempty")
+    if not 0.0 <= threshold <= 1.0:
+        raise ValueError("candidate threshold must lie in [0, 1]")
+    if bits_per_observation < 1:
+        raise ValueError("bits per observation must be positive")
+    stable_bits: list[int | None] = []
+    for curve in progress:
+        if not curve:
+            raise ValueError("candidate learning curves must be nonempty")
+        scores = tuple(float(score) for score in curve)
+        if any(not 0.0 <= score <= 1.0 for score in scores):
+            raise ValueError("candidate scores must lie in [0, 1]")
+        stable = None
+        for index in range(len(scores)):
+            if all(score >= threshold for score in scores[index:]):
+                stable = (index + 1) * bits_per_observation
+                break
+        stable_bits.append(stable)
+    eligible = [index for index, bits in enumerate(stable_bits) if bits is not None]
+    if not eligible:
+        return CapabilityCandidateSelection(
+            accepted=False,
+            selected_index=None,
+            stable_bits_to_threshold=tuple(stable_bits),
+            reason="no candidate reached a stable-prefix threshold",
+        )
+    best_bits = min(stable_bits[index] for index in eligible)
+    winners = [index for index in eligible if stable_bits[index] == best_bits]
+    if len(winners) != 1:
+        return CapabilityCandidateSelection(
+            accepted=False,
+            selected_index=None,
+            stable_bits_to_threshold=tuple(stable_bits),
+            reason="candidate stable-prefix result is tied",
+        )
+    return CapabilityCandidateSelection(
+        accepted=True,
+        selected_index=winners[0],
+        stable_bits_to_threshold=tuple(stable_bits),
+        reason="unique stable-prefix candidate selected",
+    )
+
+
 @dataclass
 class _StagedCapability:
     key: torch.Tensor
@@ -80,9 +150,7 @@ def _artifact_summary(
             raise TypeError("capability artifacts must map names to tensors")
         if value.numel() == 0 or not bool(torch.isfinite(value).all()):
             raise ValueError("capability artifact tensors must be finite and nonempty")
-        tensors.append(
-            value.detach().reshape(-1).to(dtype=torch.float32, device="cpu")
-        )
+        tensors.append(value.detach().reshape(-1).to(dtype=torch.float32, device="cpu"))
     flat = torch.cat(tensors)
     positions = torch.linspace(0, flat.numel() - 1, width).round().long()
     return flat[positions]
@@ -170,9 +238,7 @@ class ExternalCapabilityLifecycle:
                 "width": self.memory.width,
                 "capacity": self.memory.capacity,
             },
-            "planner": None
-            if self.planner is None
-            else self.planner.configuration(),
+            "planner": None if self.planner is None else self.planner.configuration(),
             "execution": "caller_owned_verified_artifact_loader_v1",
         }
 
@@ -374,10 +440,7 @@ class ExternalCapabilityLifecycle:
         replacement_aliases: Sequence[torch.Tensor] = (),
         replacement_alias_views: Sequence[str | None] = (),
         candidate_outcomes: (
-            Sequence[float]
-            | torch.Tensor
-            | Sequence[CapabilityRetentionProbe]
-            | None
+            Sequence[float] | torch.Tensor | Sequence[CapabilityRetentionProbe] | None
         ) = None,
         candidate_outcome_probe: Callable[[ExecutableArtifactMemory], object]
         | None = None,
@@ -554,9 +617,7 @@ class ConfidenceAwareCapabilityStaging:
             self._manifest_path,
             json.dumps(self._manifest_payload(), indent=2, sort_keys=True) + "\n",
         )
-        live_files = {
-            self._artifact_path(digest).name for digest in self._staged
-        }
+        live_files = {self._artifact_path(digest).name for digest in self._staged}
         for path in self.staging_directory.glob("candidate-*.pt"):
             if path.name not in live_files:
                 path.unlink()
@@ -599,7 +660,10 @@ class ConfidenceAwareCapabilityStaging:
             expected_file = self._artifact_path(digest)
             if artifact_file != expected_file.name:
                 raise ValueError("staging manifest artifact path is invalid")
-            if not expected_file.is_file() or _sha256_file(expected_file) != expected_hash:
+            if (
+                not expected_file.is_file()
+                or _sha256_file(expected_file) != expected_hash
+            ):
                 raise ValueError("staged artifact checksum mismatch")
             artifact = torch.load(expected_file, map_location="cpu", weights_only=False)
             if not isinstance(artifact, dict):

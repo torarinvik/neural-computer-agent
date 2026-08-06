@@ -22,3 +22,9 @@ or positive transfer against a fresh learner. `audit_event_visibility.py`
 rehydrates a persisted pipeline and removes raw events from downstream
 programs; the seed-69317 result drops from `0.8828` to `0.5195`, exposing the
 current shortcut rather than hiding it.
+
+The corrected harness also exposes the generic stable-prefix candidate
+selector. On the corrected reports it selects the composed candidate for seed
+69316 (`2,048` bits) and the fresh candidate for seed 69317 (`6,144` bits),
+which is the intended safe fallback while inherited transfer remains
+seed-sensitive.

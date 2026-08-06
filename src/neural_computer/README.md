@@ -79,6 +79,12 @@ default, and an optional staging directory adds atomic artifact snapshots,
 checksums, and restart recovery. Admission itself remains a separate
 executable-memory transaction, so the API does not overclaim a multi-process
 distributed commit protocol.
+
+`select_capability_candidate` applies the same fail-closed idea when multiple
+replaceable learners compete for a new task. It selects only a unique
+stable-prefix winner from fresh held-out curves; unstable candidates and ties
+are rejected. This lets inherited composition state compete against a fresh
+candidate without allowing a lucky final score or a prior to silently win.
 The executable compaction audit now uses the same coordinator for all three
 rewrites and defaults its separate opaque route-acquisition arm to 2,048 fresh
 paired-outcome updates per arm after a 512-update control failed its

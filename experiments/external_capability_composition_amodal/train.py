@@ -46,6 +46,7 @@ from neural_computer import (
     ExternalCapabilityProgram,
     OpaqueProtocolDecoder,
     PersistentOpaqueStateStore,
+    select_capability_candidate,
 )
 
 PRIMITIVES = (("complement", 4), ("reverse", 4))
@@ -611,6 +612,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         if fresh_stable and composed_stable
         else None
     )
+    candidate_selection = select_capability_candidate(
+        (
+            tuple(float(row["heldout_accuracy"]) for row in composed_progress),
+            tuple(float(row["heldout_accuracy"]) for row in fresh_progress),
+        ),
+        threshold=args.mastery_threshold,
+        bits_per_observation=args.eval_every * bits_per_update,
+    )
     report: dict[str, object] = {
         "schema": "neural-computer.external-capability-composition-report.v1",
         "claim_boundary": (
@@ -651,6 +660,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "zero_second_program_accuracy": zero_second_accuracy,
         },
         "transfer_ratio_fresh_over_composed": transfer_ratio,
+        "candidate_selection": {
+            "accepted": candidate_selection.accepted,
+            "selected_index": candidate_selection.selected_index,
+            "stable_bits_to_threshold": candidate_selection.stable_bits_to_threshold,
+            "reason": candidate_selection.reason,
+        },
         "persistence": {
             "pipeline_digest": pipeline_digest,
             "reloaded_pipeline_digest": reloaded_pipeline_digest,
@@ -702,6 +717,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "first_program_is_causal": zero_first_accuracy < target_accuracy - 0.05,
             "second_program_is_causal": zero_second_accuracy < target_accuracy - 0.05,
             "positive_transfer": transfer_ratio is not None and transfer_ratio > 1.0,
+            "candidate_selector_accepted": candidate_selection.accepted,
             "reload_exact": pipeline_digest == reloaded_pipeline_digest
             and decoder_digest == reloaded_decoder_digest,
             "reload_behavior_preserved": reloaded_accuracy >= target_accuracy - 0.05,

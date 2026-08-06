@@ -4,12 +4,14 @@ import pytest
 import torch
 
 from neural_computer import (
+    CapabilityCandidateSelection,
     CapabilityRetentionLedger,
     ConfidenceAwareCapabilityStaging,
     ExecutableArtifactMemory,
     ExternalCapabilityLifecycle,
     OpaqueCapacityPlanner,
     RetentionPolicyConfig,
+    select_capability_candidate,
 )
 
 
@@ -34,6 +36,40 @@ def _memory(tmp_path, *, capacity: int) -> ExecutableArtifactMemory:
         capacity=capacity,
         retention_ledger=ledger,
     )
+
+
+def test_candidate_selector_picks_unique_stable_prefix_winner() -> None:
+    decision = select_capability_candidate(
+        (
+            (0.80, 0.80, 0.85),
+            (0.50, 0.76, 0.80),
+        ),
+        threshold=0.75,
+        bits_per_observation=16,
+    )
+
+    assert isinstance(decision, CapabilityCandidateSelection)
+    assert decision.accepted
+    assert decision.selected_index == 0
+    assert decision.stable_bits_to_threshold == (16, 32)
+    assert decision.reason == "unique stable-prefix candidate selected"
+
+
+def test_candidate_selector_rejects_ties_and_unstable_curves() -> None:
+    tied = select_capability_candidate(
+        ((0.80, 0.80), (0.90, 0.90)),
+        bits_per_observation=8,
+    )
+    unstable = select_capability_candidate(
+        ((0.80, 0.70, 0.60), (0.60, 0.70, 0.70)),
+        bits_per_observation=8,
+    )
+
+    assert not tied.accepted
+    assert tied.selected_index is None
+    assert "tied" in tied.reason
+    assert not unstable.accepted
+    assert unstable.stable_bits_to_threshold == (None, None)
 
 
 def test_lifecycle_grows_when_every_existing_capability_is_protected(tmp_path) -> None:
@@ -94,7 +130,9 @@ def test_lifecycle_evicts_only_an_unprotected_row(tmp_path) -> None:
         lifecycle.memory.promote(second)
 
 
-def test_lifecycle_planner_masks_protected_eviction_and_selects_growth(tmp_path) -> None:
+def test_lifecycle_planner_masks_protected_eviction_and_selects_growth(
+    tmp_path,
+) -> None:
     memory = _memory(tmp_path, capacity=2)
     lifecycle = ExternalCapabilityLifecycle(
         memory,

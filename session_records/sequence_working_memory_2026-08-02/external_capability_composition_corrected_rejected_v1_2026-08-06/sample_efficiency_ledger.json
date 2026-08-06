@@ -24,5 +24,21 @@
     "69316": 3.0,
     "69317": 0.42857142857142855
   },
+  "stable_prefix_selector": {
+    "69316": {
+      "selected_candidate": "composed",
+      "stable_bits_to_threshold": {
+        "composed": 2048,
+        "fresh": 6144
+      }
+    },
+    "69317": {
+      "selected_candidate": "fresh",
+      "stable_bits_to_threshold": {
+        "composed": 14336,
+        "fresh": 6144
+      }
+    }
+  },
   "reason_rejected": "The positive transfer effect did not replicate across seeds, and the first primitive failed the causal gate on seed 69317."
 }
