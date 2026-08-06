@@ -238,6 +238,7 @@ def _rollout_capability(
     batch,
     *,
     train: bool,
+    capability_slot_mask: torch.Tensor | None = None,
 ) -> dict[str, torch.Tensor]:
     device = batch.input_frames.device
     state = parent.initial_state(batch.batch_size, device=device)
@@ -261,13 +262,18 @@ def _rollout_capability(
         with torch.no_grad():
             event = encoder(frame)
             output, state = parent.step_streams({"vision": frame}, state, feedback)
+        step_kwargs = {
+            "event": event,
+            "action": previous_action,
+            "outcome": previous_reward,
+            "intention": output.intention,
+            "state": capability_state,
+            "present": present,
+        }
+        if capability_slot_mask is not None:
+            step_kwargs["slot_mask"] = capability_slot_mask
         adapted, capability_state = program.step(
-            event=event,
-            action=previous_action,
-            outcome=previous_reward,
-            intention=output.intention,
-            state=capability_state,
-            present=present,
+            **step_kwargs,
         )
         return decoder(adapted)
 
@@ -308,6 +314,9 @@ def _rollout_capability(
             1,
             action.unsqueeze(1),
         ).squeeze(1).detach()
+        previous_propensity = previous_propensity.clamp_min(
+            torch.finfo(probabilities.dtype).tiny
+        )
         previous_has_feedback = torch.ones_like(previous_reward)
     return {"loss": torch.stack(losses).mean(), "rewards": torch.stack(rewards, dim=1)}
 
@@ -425,6 +434,7 @@ def _capability_accuracy(
     seed: int,
     generated_composition_ids: tuple[int, ...] | None = None,
     generated_compositions: GeneratedCompositionGrammar | None = None,
+    capability_slot_mask: torch.Tensor | None = None,
 ) -> float:
     batch = generate_sequence_memory_batch(
         count,
@@ -436,9 +446,14 @@ def _capability_accuracy(
         generated_compositions=generated_compositions,
     )
     return float(
-        _rollout_capability(parent, program, decoder, batch, train=False)[
-            "rewards"
-        ].mean()
+        _rollout_capability(
+            parent,
+            program,
+            decoder,
+            batch,
+            train=False,
+            capability_slot_mask=capability_slot_mask,
+        )["rewards"].mean()
     )
 
 

@@ -419,6 +419,7 @@ class ExternalCapabilityComposition(nn.Module):
             ),
             "state": "independent_external_recurrent_contexts_v1",
             "routing": "learned_event_conditioned_soft_slot_binding_v1",
+            "binding": "optional_opaque_external_slot_mask_v1",
         }
 
     def initial_state(
@@ -444,8 +445,14 @@ class ExternalCapabilityComposition(nn.Module):
         intention: IntentEvent,
         state: ExternalCapabilityPipelineState,
         present: torch.Tensor | None = None,
+        slot_mask: torch.Tensor | None = None,
     ) -> tuple[IntentEvent, ExternalCapabilityPipelineState]:
-        """Apply a learned slot sequence while keeping state external."""
+        """Apply a learned slot sequence while keeping state external.
+
+        ``slot_mask`` is an opaque memory-side binding.  It can restrict the
+        slots eligible for this alias without exposing a task identifier to
+        the controller or changing the learned event representation.
+        """
 
         if event.ndim != 2 or event.shape[1] != self.event_width:
             raise ValueError("event has the wrong shape for composition")
@@ -461,6 +468,17 @@ class ExternalCapabilityComposition(nn.Module):
             batch_size=event.shape[0],
             hidden_sizes=self.hidden_sizes,
         )
+        if slot_mask is not None:
+            if slot_mask.ndim != 2 or slot_mask.shape != (
+                event.shape[0],
+                len(self.programs),
+            ):
+                raise ValueError("slot mask has the wrong shape for composition")
+            if slot_mask.dtype is not torch.bool:
+                raise TypeError("slot mask must be boolean")
+            if not bool(slot_mask.any(dim=-1).all()):
+                raise ValueError("slot mask must allow at least one slot per row")
+            slot_mask = slot_mask.to(device=event.device)
         current = intention
         next_states = list(state.programs)
         for step_index in range(self.composition_steps):
@@ -471,6 +489,11 @@ class ExternalCapabilityComposition(nn.Module):
             route_logits = self.router(router_input).reshape(
                 event.shape[0], self.composition_steps, len(self.programs)
             )[:, step_index]
+            if slot_mask is not None:
+                route_logits = route_logits.masked_fill(
+                    ~slot_mask,
+                    torch.finfo(route_logits.dtype).min,
+                )
             weights = torch.softmax(route_logits, dim=-1)
             candidates: list[torch.Tensor] = []
             step_states: list[ExternalCapabilityState] = []

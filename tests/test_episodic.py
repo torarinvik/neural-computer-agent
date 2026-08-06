@@ -222,6 +222,43 @@ def test_external_capability_composition_routes_external_slots_and_keeps_identit
     )
 
 
+def test_external_capability_composition_accepts_opaque_slot_binding() -> None:
+    programs = tuple(
+        ExternalCapabilityProgram(
+            event_width=4,
+            action_width=2,
+            intention_width=6,
+            context_hidden=8,
+            context_width=5,
+            adapter_hidden=7,
+        )
+        for _ in range(2)
+    )
+    composition = ExternalCapabilityComposition(programs, composition_steps=1)
+    state = composition.initial_state(2, device="cpu")
+    kwargs = {
+        "event": torch.randn(2, 4),
+        "action": torch.zeros(2, 2),
+        "outcome": torch.zeros(2),
+        "intention": IntentEvent(torch.randn(2, 6)),
+        "state": state,
+    }
+
+    adapted, _ = composition.step(
+        **kwargs,
+        slot_mask=torch.tensor([[True, False], [False, True]]),
+    )
+
+    assert adapted.payload.shape == (2, 6)
+    assert composition.configuration()["binding"] == (
+        "optional_opaque_external_slot_mask_v1"
+    )
+    with pytest.raises(ValueError, match="at least one slot"):
+        composition.step(**kwargs, slot_mask=torch.zeros(2, 2, dtype=torch.bool))
+    with pytest.raises(TypeError, match="boolean"):
+        composition.step(**kwargs, slot_mask=torch.ones(2, 2))
+
+
 def test_empty_external_capability_pipeline_is_identity() -> None:
     pipeline = ExternalCapabilityPipeline(
         event_width=4,

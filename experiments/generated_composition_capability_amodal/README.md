@@ -245,6 +245,41 @@ without old-source replay, showing that frozen tensors alone do not provide
 route isolation. Evidence, accounting, and both rejected controls are in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_sequential_slot_isolated_four_source_replicated_promoted_v1_2026-08-06/`.
 
+## Four-source dense expansion with opaque route binding (2026-08-06)
+
+The rejected dense control is now repaired at the external capability
+boundary. `ExternalCapabilityComposition.step()` accepts an optional opaque
+boolean slot mask supplied by memory. An alias is restricted to the slots
+available when it was admitted, while the newly arriving alias can use the
+new slot and earlier slots. The controller still receives only learned event
+tensors and emits learned intentions; no source ID or verifier grammar enters
+the controller.
+
+```bash
+PYTHONPATH=src uv run python -m experiments.generated_composition_capability_amodal.train_sequential_distilled_consolidation \
+  --seed 69316 --parent-updates 128 --source-updates 256 \
+  --consolidation-updates 512 --target-updates 256 \
+  --source-ids 0 2 3 4 --target-id 1 --batch-size 16 \
+  --audit-count 64 --retention-probes 4 --eval-every 32 \
+  --report-out /tmp/generated-composition-sequential-route-bound-four/report.json
+```
+
+Replicated seeds `69316` and `69317` accepted all three dense append stages.
+Final source behavior after reload was `0.9570/1.0000/0.9375/1.0000` and
+`0.9805/1.0000/0.9844/1.0000`; inherited target mastery remained `1.0000`
+after reload at `2,048` stable verifier bits in both runs, versus fresh
+controls at `14,336` and `8,192`. The frozen core, one-row alias identity,
+reversal/recovery, corruption, and zero-replay gates all passed. A long
+rollout also exposed and fixed exact-zero propensity underflow at the opaque
+feedback boundary.
+
+This promotes bounded replay-free dense growth with external route binding.
+It does not establish unrestricted memory growth, neural compression,
+arbitrary program induction, or general continual learning. The current mask
+prevents interference but still evaluates masked slots internally; sparse
+execution is the next implementation bottleneck. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_sequential_route_bound_dense_four_source_replicated_promoted_v1_2026-08-06/`.
+
 The same runtime grammar can compose nonlocal temporal and aggregation
 primitives:
 

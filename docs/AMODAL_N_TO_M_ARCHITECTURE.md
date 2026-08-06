@@ -2848,3 +2848,34 @@ route was trained without old-source replay. This isolates the next real
 bottleneck: a new route needs an opaque address/context binding that prevents
 interference on old inputs. Evidence and accounting are archived in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_sequential_slot_isolated_four_source_replicated_promoted_v1_2026-08-06/`.
+
+## Four-source dense growth with opaque slot binding (2026-08-06)
+
+The rejected dense shared-weight control is now repaired without feeding old
+source examples back into the learner. `ExternalCapabilityComposition` has a
+versioned optional binding contract, `optional_opaque_external_slot_mask_v1`.
+External memory supplies a boolean eligibility mask per alias: an old alias
+can use only the slots available at its admission, while the new alias can
+use the newly appended slot and earlier slots. This binding is outside the
+controller and does not expose source IDs, grammar, task labels, or raw
+protocol formats to it.
+
+The four-source sequence `0 -> 2 -> 3 -> 4` was rerun at the matched dense
+control budget with seeds `69316` and `69317`. All three append transactions
+were adopted; final source behavior after reload was
+`0.9570/1.0000/0.9375/1.0000` and `0.9805/1.0000/0.9844/1.0000`. The
+inherited target reached stable mastery at `2,048` verifier bits in both
+replicas, compared with fresh controls at `14,336` and `8,192`, and reloaded
+at `1.0000`. Frozen-core, one-physical-row alias identity, reversal/recovery,
+corruption, reload, and zero-replay gates all passed.
+
+This is the first promoted fix for the specific dense-expansion failure: the
+old source no longer loses route probability mass merely because a new slot is
+trained. It is bounded replay-free dense external growth, not unrestricted
+continual learning, neural compression, arbitrary program induction, or
+general continual learning. The mask currently evaluates all slots and then
+suppresses ineligible routes, so sparse slot execution is the next bottleneck.
+The action-feedback rollout also now clamps exact-zero logged propensities to
+the smallest positive dtype value, fixing a long-run validation failure.
+Evidence and accounting are archived in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_sequential_route_bound_dense_four_source_replicated_promoted_v1_2026-08-06/`.

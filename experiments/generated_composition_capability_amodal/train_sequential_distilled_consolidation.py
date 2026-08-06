@@ -49,7 +49,6 @@ from experiments.generated_composition_capability_amodal.train_distilled_consoli
     _digest_artifact,
     _parse_program_specs,
     _payload_bytes,
-    _probe_bank_aliases,
     _source_behavior,
     _train_program,
 )
@@ -57,6 +56,7 @@ from experiments.generated_composition_capability_amodal.train_pipeline import (
     _new_stack,
 )
 from experiments.parent_conditioned_artifact_bank_amodal.train import (
+    _capability_accuracy,
     _rollout_capability,
     _stable_bits,
 )
@@ -65,6 +65,7 @@ from experiments.working_memory_continuous.canonical_growth_pressure_test import
     _runtime,
 )
 from neural_computer import (
+    CapabilityRetentionProbe,
     ExecutableArtifactMemory,
     ExternalCapabilityLifecycle,
 )
@@ -167,6 +168,16 @@ def _train_expanded_new_only(
     torch.manual_seed(seed + 2_000)
     stack.train()
     decoder.eval()
+    train_slot_mask = torch.ones(
+        batch_size,
+        len(stack.programs),
+        dtype=torch.bool,
+    )
+    audit_slot_mask = torch.ones(
+        audit_count,
+        len(stack.programs),
+        dtype=torch.bool,
+    )
     for update in range(1, updates + 1):
         target = generate_sequence_memory_batch(
             batch_size,
@@ -177,7 +188,14 @@ def _train_expanded_new_only(
             generated_composition_ids=(new_id,),
             generated_compositions=grammar,
         )
-        target_result = _rollout_capability(parent, stack, decoder, target, train=True)
+        target_result = _rollout_capability(
+            parent,
+            stack,
+            decoder,
+            target,
+            train=True,
+            capability_slot_mask=train_slot_mask,
+        )
         auxiliary = generate_sequence_memory_batch(
             batch_size,
             span=2,
@@ -186,7 +204,12 @@ def _train_expanded_new_only(
             operation="forward",
         )
         auxiliary_result = _rollout_capability(
-            parent, stack, decoder, auxiliary, train=True
+            parent,
+            stack,
+            decoder,
+            auxiliary,
+            train=True,
+            capability_slot_mask=train_slot_mask,
         )
         loss = target_result["loss"] + auxiliary_result["loss"]
         optimizer.zero_grad(set_to_none=True)
@@ -223,7 +246,12 @@ def _train_expanded_new_only(
                     "unique_verifier_bits": update * batch_size * SPAN,
                     "heldout_accuracy": float(
                         _rollout_capability(
-                            parent, stack, decoder, heldout, train=False
+                            parent,
+                            stack,
+                            decoder,
+                            heldout,
+                            train=False,
+                            capability_slot_mask=audit_slot_mask,
                         )["rewards"].mean()
                     ),
                 }
@@ -261,26 +289,102 @@ def _observe_mastery(
     return outcomes
 
 
-def _behaviors(
+def _source_behavior_with_slot_mask(
+    parent,
+    artifact: dict[str, torch.Tensor],
+    program_id: int,
+    grammar,
+    *,
+    count: int,
+    seed: int,
+    allowed_slots: tuple[int, ...],
+) -> float:
+    stack, decoder = _load_stack_artifact(artifact)
+    if not allowed_slots or any(
+        slot < 0 or slot >= len(stack.programs) for slot in allowed_slots
+    ):
+        raise ValueError("allowed slots must identify existing composition slots")
+    slot_mask = torch.zeros(
+        count,
+        len(stack.programs),
+        dtype=torch.bool,
+    )
+    slot_mask[:, list(allowed_slots)] = True
+    return _capability_accuracy(
+        parent,
+        stack,
+        decoder,
+        operation="generated_composition",
+        span=SPAN,
+        count=count,
+        seed=seed,
+        generated_composition_ids=(program_id,),
+        generated_compositions=grammar,
+        capability_slot_mask=slot_mask,
+    )
+
+
+def _behaviors_with_slot_masks(
     parent,
     artifact: dict[str, torch.Tensor],
     program_ids: tuple[int, ...],
     grammar,
     *,
+    allowed_slots_by_program: dict[int, tuple[int, ...]],
     count: int,
     seed: int,
 ) -> dict[str, float]:
     return {
-        str(program_id): _source_behavior(
+        str(program_id): _source_behavior_with_slot_mask(
             parent,
             artifact,
             program_id,
             grammar,
             count=count,
             seed=seed + index * 10_003,
+            allowed_slots=allowed_slots_by_program[program_id],
         )
         for index, program_id in enumerate(program_ids)
     }
+
+
+def _probe_bank_aliases_with_slot_masks(
+    parent,
+    candidate: ExecutableArtifactMemory,
+    keys: tuple[torch.Tensor, ...],
+    program_ids: tuple[int, ...],
+    grammar,
+    *,
+    allowed_slots_by_program: dict[int, tuple[int, ...]],
+    count: int,
+    probes: int,
+    seed: int,
+) -> tuple[CapabilityRetentionProbe, ...]:
+    result: list[CapabilityRetentionProbe] = []
+    for index, (key, program_id) in enumerate(zip(keys, program_ids, strict=True)):
+        outcomes: list[float] = []
+        for probe in range(probes):
+            try:
+                handle, artifact = candidate.promote(key)
+                valid = handle.view is None
+            except (LookupError, ValueError):
+                valid = False
+                artifact = {}
+            outcomes.append(
+                _source_behavior_with_slot_mask(
+                    parent,
+                    artifact,
+                    program_id,
+                    grammar,
+                    count=count,
+                    seed=seed + index * 10_003 + probe * 101,
+                    allowed_slots=allowed_slots_by_program[program_id],
+                )
+                if valid
+                else 0.0
+            )
+        result.append(CapabilityRetentionProbe(key, outcomes))
+    return tuple(result)
 
 
 def run(args: argparse.Namespace) -> dict[str, object]:
@@ -412,8 +516,20 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     active_ids = [first_id]
     active_keys = [first_key]
     shared_artifact = source_artifacts[str(first_id)]
+    initial_stack, _ = _load_stack_artifact(shared_artifact)
+    active_slot_masks: dict[int, tuple[int, ...]] = {
+        first_id: tuple(range(len(initial_stack.programs)))
+    }
     current_row = first_receipt.index
-    current_behaviors = {str(first_id): source_behavior[str(first_id)]}
+    current_behaviors = _behaviors_with_slot_masks(
+        parent,
+        shared_artifact,
+        (first_id,),
+        grammar,
+        allowed_slots_by_program=active_slot_masks,
+        count=args.audit_count,
+        seed=args.seed + 80_500,
+    )
     stage_records: list[dict[str, object]] = []
 
     for stage_index, new_id in enumerate(source_ids[1:], start=1):
@@ -449,6 +565,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             observations=args.retention_probes,
             seed=args.seed + 81_000 + stage_index * 101,
         )
+        old_stack, _ = _load_stack_artifact(shared_artifact)
+        old_slot_count = len(old_stack.programs)
+        candidate_slot_masks = dict(active_slot_masks)
+        candidate_slot_masks[new_id] = tuple(range(old_slot_count + 1))
         candidate, candidate_progress = _train_expanded_new_only(
             parent,
             shared_artifact,
@@ -475,11 +595,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         )
         candidate_ids = (*active_ids, new_id)
         candidate_keys = (*active_keys, new_key)
-        candidate_behavior = _behaviors(
+        candidate_behavior = _behaviors_with_slot_masks(
             parent,
             candidate,
             candidate_ids,
             grammar,
+            allowed_slots_by_program=candidate_slot_masks,
             count=args.audit_count,
             seed=args.seed + 100_000 + stage_index * 10_003,
         )
@@ -517,6 +638,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "candidate_progress": candidate_progress,
             "fresh_progress": fresh_progress,
             "candidate_trained_on_new_source_only": True,
+            "candidate_opaque_slot_masks": {
+                str(program_id): list(candidate_slot_masks[program_id])
+                for program_id in candidate_ids
+            },
         }
         if not candidate_ready:
             record["accepted"] = False
@@ -544,13 +669,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             probe_ids=candidate_ids,
             probe_stage=stage_index,
             probe_capture=capture,
+            probe_slot_masks=candidate_slot_masks,
         ):
-            probes = _probe_bank_aliases(
+            probes = _probe_bank_aliases_with_slot_masks(
                 parent,
                 candidate_bank,
                 probe_keys,
                 probe_ids,
                 grammar,
+                allowed_slots_by_program=probe_slot_masks,
                 count=args.audit_count,
                 probes=args.retention_probes,
                 seed=args.seed + 110_000 + probe_stage * 10_003,
@@ -567,13 +694,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             probe_ids=candidate_ids,
             probe_stage=stage_index,
             probe_capture=capture,
+            probe_slot_masks=candidate_slot_masks,
         ) -> bool:
-            probes = _probe_bank_aliases(
+            probes = _probe_bank_aliases_with_slot_masks(
                 parent,
                 candidate_bank,
                 probe_keys,
                 probe_ids,
                 grammar,
+                allowed_slots_by_program=probe_slot_masks,
                 count=args.audit_count,
                 probes=args.retention_probes,
                 seed=args.seed + 111_000 + probe_stage * 10_003,
@@ -609,13 +738,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         bank = lifecycle.memory
         active_ids.append(new_id)
         active_keys.append(new_key)
+        active_slot_masks = candidate_slot_masks
         current_handle, shared_artifact = bank.promote(new_key)
         current_row = current_handle.index
-        current_behaviors = _behaviors(
+        current_behaviors = _behaviors_with_slot_masks(
             parent,
             shared_artifact,
             tuple(active_ids),
             grammar,
+            allowed_slots_by_program=active_slot_masks,
             count=args.audit_count,
             seed=args.seed + 112_000 + stage_index * 10_003,
         )
@@ -890,6 +1021,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         },
         "sequential_stages": stage_records,
         "active_source_ids": list(active_ids),
+        "active_opaque_slot_masks": {
+            str(program_id): list(active_slot_masks[program_id])
+            for program_id in active_ids
+        },
         "active_source_behavior_after_reload": current_behaviors,
         "active_alias_digests_after_reload": final_alias_digests,
         "target": target_record,
