@@ -394,7 +394,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         artifact = _artifact(program, decoder)
         plan = lifecycle.plan_admission(key, artifact)
         if plan.action != "grow" or not all(lifecycle.protection_mask().tolist()):
-            raise RuntimeError("protected append did not select transactional growth")
+            raise RuntimeError(
+                "protected append did not select transactional growth: "
+                f"append_index={append_index}, action={plan.action}, "
+                f"protection_mask={lifecycle.protection_mask().tolist()}"
+            )
         destination = growth_paths[append_index]
         receipt = lifecycle.admit(
             key, artifact, plan=plan, grow_destination=destination
