@@ -1,0 +1,32 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "nonstationary-growth-full-bank-6to10-rejected-v1-2026-08-06",
+  "status": "rejected_cross_seed_initial_retention_failure",
+  "claim_boundary": "A frozen length-six base and 18 fresh length-ten capabilities preserve routing and credit on both seeds, but seed 69317 fails initial protection for one shifted capability; this is not a promoted general continual-learning result.",
+  "seeds": [69316, 69317],
+  "distribution_shift": "episode_length_6_to_10",
+  "old_families": [0, 1],
+  "new_family_count": 18,
+  "training_batch_size": 16,
+  "audit_batch_size": 64,
+  "unique_verifier_bits": 2031952,
+  "unique_logical_lifetimes": 274768,
+  "optimizer_updates": 18944,
+  "replayed_examples": 0,
+  "wall_time_seconds": 39.41630116599845,
+  "stable_bits_to_threshold": null,
+  "retention_on_mastered_primitives": [1.0, null],
+  "transfer_ratio_against_fresh_learner": null,
+  "verification": {
+    "old_route_retained": [true, true],
+    "candidate_permutation_invariant": [true, true],
+    "minimum_new_route_selection": [0.921875, 0.8125],
+    "shifted_credit_signal": [true, true],
+    "new_routes_causal": [true, true],
+    "retention_reversal_safe": [true, false],
+    "antithetic_reward_shuffled_not_selected": [true, true],
+    "zero_replay": [true, true],
+    "promotion_gate_passed": false
+  },
+  "rejection_reason": "seed 69317 left shifted family 12 unprotected before reversal, so the full protected bank did not refuse eviction"
+}

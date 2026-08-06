@@ -477,3 +477,33 @@ One final 16-update control appended the frozen controller's opaque intention
 state to the relation-gate input. It reached **57.81%** eligible accuracy
 (+1.37) with a **47.85%** time-shuffle control. This confirms that exposing
 the recurrent state alone does not solve the representation-to-action gap.
+
+## Retention-safe memory implementation boundary (2026-08-05)
+
+The canonical `src/neural_computer` runtime now has a persistent
+`CapabilityRetentionLedger` outside the controller. It promotes opaque
+capabilities only after stable prefix mastery, masks protected rows from
+content-memory and artifact eviction, tolerates one-off failures, and
+requires sustained low outcomes before a reversible capability reversal. A
+full protected bank raises an explicit grow/consolidate signal. Runtime
+checkpoints and disk-backed memory preserve this state without replaying old
+examples.
+
+The canonical runtime now also has a replaceable keypress boundary for the
+next Brain Workshop integration: `KeypressEncoder` supplies opaque previous-
+action feedback, while `KeypressDecoder` lowers the controller's intention to
+key-index logits and preserves exact action propensity. This is interface
+plumbing, not a new Brain Workshop capability result; the archived policy
+below still does not consume the canonical runtime or retention ledger.
+
+The existing Brain Workshop policy remains under `experiments/archive/` and
+does not consume this canonical ledger yet. A small no-update audit therefore
+serves only as the current baseline, not an intervention: at `count=64` and
+`trials=10`, eligible parent/continuation scores for 1/5/6/7/8-back were
+`0.885/0.728/0.660/0.635/0.625` and
+`0.901/0.697/0.711/0.688/0.641`; the 8-back history-reset/time-shuffle
+controls were `0.500/0.500` for both. No Brain Workshop capability is
+promoted from this smoke audit. The next real rung must route a replay-free
+5/6/7/8-back extension through the canonical memory boundary and report
+stable-prefix acquisition, complete retention curves, reversal, and
+grow-when-full controls.

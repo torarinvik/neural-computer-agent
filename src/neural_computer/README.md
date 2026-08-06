@@ -12,6 +12,14 @@ Raw modality frontends and protocol backends are independently supplied by the
 caller. Historical controller implementations are archived under
 `experiments/archive/` and must not be imported by production code.
 
+The package includes a concrete keyboard boundary for interactive agents.
+`KeypressEncoder` maps an externally logged key index to a learned opaque
+feedback vector before it reaches the controller. `KeypressDecoder` maps an
+`IntentEvent` to logits over the external key index space and reports the
+exact sampled propensity for outcome-only credit. Neither class adds a
+keypress-specific reasoning branch: replacing the keyboard with another
+decoder leaves the controller interface unchanged.
+
 The package also exposes trainer-only protected-plasticity utilities. They
 accumulate verified rehearsal gradients and remove only target-update
 components that oppose the protected direction; they never add task labels,
@@ -27,18 +35,43 @@ credit to a binary opaque decision while
 attempted memory/artifact rows. Pairing metadata and interventions stay in the
 trainer; the deployed controller sees neither labels nor counterfactual arms.
 
+`ExternalGrowthPrior` is the reusable initialization boundary for external
+growth modules. It averages validated adapter state, loads it copy-on-write
+into a fresh compatible adapter, can reset a capability-specific output head,
+and rejects namespace, shape, dtype, or non-finite drift. Existing capability
+artifacts and the shared controller are never mutated by prior updates. This
+is safe external transfer state, not controller plasticity or a claim of
+sample-efficient general continual learning.
+
 `ExecutableArtifactMemory` is the canonical hot/cold store for opaque learned
 growth artifacts. It addresses artifacts with controller-produced learned
 keys, stores only tensor payloads plus integrity hashes, and supports atomic
 save/reload, verified single- or top-k promotion, hot eviction, and
-behavioral-test compaction. Top-k promotion exposes only verified opaque
-candidates; it does not interpret their tensor payloads or decide whether a
-caller should compose them.
+behavioral-test compaction. An alias may additionally carry an opaque view
+identifier; promotion returns that identifier with the verified handle, while
+the storage backend remains unaware of its meaning. Top-k promotion exposes
+only verified opaque candidates; it does not interpret their tensor payloads or
+decide whether a caller should compose them. `view_candidates()` and
+`promote_view()` expose the same boundary for a replaceable learned router
+when a physical row contains multiple executable views.
 The memory backend does not execute or interpret an artifact: a caller loads
 the verified payload into a generic growth state while the shared controller
 remains frozen. This keeps persistent learned programs independently
 replaceable from the controller and prevents task-specific logic from entering
 the runtime boundary.
+
+`ExternalCapabilityLifecycle` is the canonical coordinator for the mutable
+artifact boundary. It composes opaque admission planning, protected-row
+eviction, capacity growth, and verified consolidation into one versioned
+transaction surface; failed plans and failed verifiers leave the source store
+unchanged. It does not execute artifacts, choose semantic routes, or update
+controller weights. The promoted two-step growth audit uses this coordinator
+for both additions and passes frozen-core, retention, permutation, reload,
+corruption, shuffled-outcome, and zero-replay controls.
+The executable compaction audit now uses the same coordinator for all three
+rewrites and defaults its separate opaque route-acquisition arm to 2,048 fresh
+paired-outcome updates per arm after a 512-update control failed its
+permutation gate.
 
 `freeze_core` and `load_growth_artifact` enforce the complementary rehydration
 boundary: only explicitly prefixed growth state may be loaded into a module,
@@ -58,16 +91,230 @@ key coordinates. `ExecutableArtifactMemory.address_rows()` and
 growth-state execution. These are replaceable memory policies, not
 modality-specific branches in the controller.
 
+`PersistentOpaqueRouteEvidence` is the small persistent policy for append-only
+capability banks. It stores only opaque slot attempts and scalar verifier
+outcomes, and promotes a slot to preferred status only after a stable-prefix
+candidate gate. The route ledger is external mutable state: it can grow,
+serialize, and be replaced without changing controller weights. Its current
+Brain Workshop result promotes bounded three-slot growth for 16-step
+lifetimes, while cue-free short-lifetime task inference remains explicitly
+unqualified.
+
+`PersistentOpaqueContextRouteEvidence` extends that policy with a learned
+event-key index. It keeps one independent opaque evidence ledger per matched
+context, uses append-order fallback for unknown keys, and separates route
+reads from explicit calibration writes. The canonical Brain Workshop audit
+promotes three cue-conditioned short-lifetime slots without changing the
+controller; cue-absent task inference remains unqualified.
+
+The canonical runner exposes the route table through a versioned
+`route_state_payload()` / `load_route_state_payload()` boundary. Reloading it
+validates slot count and context width and does not load or mutate controller
+weights.
+
+Route evidence also has explicit reversal patience: repeated low outcomes can
+retire a stale context-to-slot preference while retaining the underlying
+capability row. `observe_batch()` reduces repeated context/slot attempts to
+one scalar per rollout batch, so patience is not coupled to the number of
+eligible trials in a lifetime. The Brain Workshop failure-only demotion audit
+is promoted across three seeds: fresh changed-task outcomes demote a protected
+route without same-cue calibration, an already learned replacement becomes
+preferred, and the old capability remains independently retained. A separate
+same-cue replacement audit is also promoted. These are bounded
+failure-driven external-memory results, not general continual learning.
+
+`AdaptiveOnlineEpisodicRelationReader` is the generic capability blueprint for
+the next growth rung. It scores each present event/action/outcome row before
+mixing relation contexts, so one fixed external window can learn different
+relation horizons without putting a task horizon in the capability
+constructor. The canonical Brain Workshop audit provisions two slots with the
+same capacity-five adaptive reader, learns n-back-3 and n-back-4 from fresh
+outcomes, retains n-back-2, and passes cue, shuffle, reload, frozen-core, and
+zero-replay controls across three seeds. This is bounded generic capability
+growth; it still requires an observable cue and candidate calibration and is
+not arbitrary program induction or general continual learning.
+
+The same route boundary now supports automatic discovery: a newly acquired
+generic slot can become preferred for an unseen rendered cue from ordinary
+failure-gated fallback outcomes, without a forced candidate-calibration write
+for that cue. The replicated Brain Workshop audit promotes this bounded
+outcome-driven route promotion while preserving old capability retention and
+route-state reload. It remains cue-conditioned external memory, not arbitrary
+new computation or general continual learning.
+
 `compose_growth_artifacts()` is the caller-owned execution-side merge for
-verified top-k payloads. It remaps artifacts into disjoint growth namespaces,
-rejects collisions, and returns detached tensors for the generic loader. The
-working-memory audit demonstrates two independent factors executing together
-in one frozen controller; sequential factor algebra remains unqualified.
+verified payloads. It remaps artifacts into disjoint growth namespaces,
+rejects collisions, and returns detached tensors for the generic loader.
+`select_growth_artifact_view()` projects one opaque namespace after memory-side
+view routing, so independently learned procedures do not execute
+simultaneously merely because they share one compacted row. The working-memory
+audit promotes this routed logical compaction across two seeds; naive
+unrouted composition is explicitly rejected. This is a storage and execution
+contract, not a claim of arbitrary procedure induction or general continual
+learning.
+
+The outcome-only view-routing audit trains `FactorizedOpaqueAddressRouter`
+from paired attempted-view outcomes. Across two seeds it reaches `1.000`
+held-out route accuracy and `1.000` candidate-permutation accuracy, while the
+reward-shuffled control remains at chance and persistent reload preserves the
+selected views. This qualifies routing of already-acquired views only; it does
+not provide arbitrary new computation or general continual learning.
+
+The four-view scaling audit separates opaque storage identities from controller
+queries after operation-derived addresses collide. The joint
+`OpaqueAddressRouter` plus paired counterfactual credit reaches `1.000/0.969`
+route accuracy across two seeds, with `1.000/0.969` candidate-permutation
+accuracy and reward-shuffled routing at `0.215/0.250`. This promotes bounded
+four-view routing, not unrestricted memory growth or general continual
+learning.
+
+The online-view-growth audit adds a fifth executable view after the four-view
+router is frozen. `OpaqueViewRouteExtension` is neutral at creation and is
+trained from fresh paired scalar outcomes for the new view. Because a closed
+router can be confidently wrong on a novel procedure, the safe selector gives
+known routes priority and opens the extension only after an observed failed
+opaque old attempt. Two seeds pass five-view behavior, permutation, reload,
+corruption, frozen-router, and shuffled-outcome controls with zero replayed
+route examples after extension. This is a bounded one-failure cold-start
+capability-addition result, not immediate novel-task routing or general
+continual learning.
+
+The longer three-step harness composes the same transaction through seven
+views and protected float16/int8/int4 replacements. Two independent seeds now
+pass the complete boundary with zero replay and frozen controller/earlier
+extensions. A historical rejection exposed inconsistent raw-minimum versus
+stable-prefix retention accounting; promoted scores and gates now use the
+stable-prefix definition consistently. This remains bounded growth evidence,
+not unrestricted memory growth or general continual learning.
+
+The multi-step view-growth audit extends that boundary to two sequential
+additions. A frozen four-view router first falls back to a new `rotate` view;
+after that extension is frozen, a second `complement_rotate` view is opened
+only after the old route and first extension both fail. Both new views remain
+isolated external artifacts in one physical row. Across two seeds, the full
+chain reached `1.000/0.995` routing accuracy with matching candidate
+permutation accuracy, `1.000/1.000` first-extension failure discrimination,
+zero reward-shuffled new selections, exact reload/corruption protection, and
+zero replay after either extension. This is a bounded two-step fallback and
+consolidation result; it does not establish unrestricted memory growth,
+arbitrary new computation, or general continual learning.
+
+The three-step view-growth audit extends the same boundary to seven opaque
+views in one physical row. After the frozen four-view router, `rotate`,
+`complement_rotate`, and `adjacent_xor` are acquired sequentially. Each later
+extension is opened only after the old route and earlier extensions have been
+attempted and failed; earlier extensions and the controller remain frozen.
+Across two seeds, the complete chain reached `1.000/0.998` with matching
+candidate-permutation accuracy, every prior-extension attempt rate was
+`1.000`, shuffled new-view selection was zero, and reload, corruption,
+wrong-view causality, frozen-core, frozen-extension, and no-replay controls
+passed. This is a bounded three-step growth result, not unrestricted memory
+growth, arbitrary new computation, or general continual learning.
+
+`compress_growth_artifact` adds a replaceable caller-owned fixed-capacity
+codec. It stores floating growth tensors in float16 and requires an explicit
+`allow_dtype_cast=True` at load time; the default loader remains strict. On
+the seven-view audit this halves raw tensor payload bytes and preserves every
+selected behavior and wrong-view causal gate across two seeds. Storage
+compression is behavior-verified outside the controller; it is not learned
+new computation or a general continual-learning claim.
+
+`compress_growth_artifact(..., dtype=torch.int8)` provides the stronger
+per-tensor symmetric quantization variant with explicit scale entries, and
+`decompress_growth_artifact` reconstructs float tensors before execution.
+The seven-view audit reduced raw payloads to `0.2506` of float32 size and
+serialized artifacts to `0.3278`, while retaining behavior and causal gates
+across two seeds. Integer quantization is still a replaceable storage codec,
+not learned computation or general continual learning.
+
+`compress_growth_artifact(..., dtype="int4")` adds a packed signed-int4
+variant with per-output-row scales and explicit original shapes. Two values
+are stored per byte and decompressed before the strict loader. On the same
+seven-view audit it reduced raw payloads to `0.1487` of float32 size and
+serialized artifacts to `0.2725`, while preserving behavior, causal
+wrong-view separation, exact reload, corruption rejection, and frozen-core
+gates across seeds `69316` and `69317`. This remains a replaceable storage
+codec, not learned compression, arbitrary new computation, or general
+continual learning.
+
+`EpisodicContextEncoder` is the next memory-side boundary. It consumes ordered
+learned event tensors, opaque actions, scalar outcomes, and presence, then
+emits a normalized episode context and per-event credit scores. The
+`step()` interface exposes the same recurrent context one event at a time for
+online use, without moving that state into the controller. `EpisodicIntentAdapter`
+is a zero-initialized external residual that can condition an opaque intention
+on that context before a replaceable decoder consumes it. The adapter is
+behavior-preserving until trained and carries no task ID or protocol field.
+`episodic_context_contrastive_loss` trains context from paired augmented
+episodes without task labels; `paired_event_credit_loss` trains event credit
+from common-random scalar intervention outcomes. In the promoted bounded
+audit, this context beat pooled-event routing `0.9688/1.000` versus
+`0.500/0.500`, enabled a fresh no-replay route append, and passed ablation,
+permutation, retention, shuffled-outcome, and credit gates across two seeds.
+This remains replaceable external state, not general continual learning.
+
+`ExternalCapabilityProgram` packages that boundary into one replaceable
+memory-side program: its recurrent context state and intention adapter are
+owned outside the shared controller, while a caller attaches any compatible
+decoder on the output bus. In the promoted two-seed artifact-bank audit, three
+independent programs (`reverse4`, `forward4`, and `complement4`) were acquired
+from fresh rendered episodes, selected with opaque learned route evidence,
+persisted, reloaded, and causally separated from the wrong program.
+Stable-prefix bits, parent retention, shuffled-route, permutation, corruption,
+and frozen-core gates all passed. This is a bounded controller-as-CPU /
+memory-as-files capability result. The follow-on append audit fills a
+capacity-three bank with protected rows, rejects a fourth write rather than
+evicting a mastered program, grows the bank transactionally, and acquires a
+`rotate4` artifact through a fresh route extension while the parent and old
+router remain frozen. Both seeds pass four-program retention, routing,
+permutation, reload, corruption, causal wrong-artifact, and zero-replay gates.
+This is still one protected append, not repeated open-ended growth, arbitrary
+program induction, or general continual learning.
+
+`EpisodicCreditHead` isolates event-credit state for one external capability.
+The two-step follow-up trains one fresh head per appended procedure while the
+shared context encoder and earlier credit heads remain frozen. Across two
+seeds, both sequential routes recovered at `1.000/1.000`, old-route retention,
+prior-extension attempts, new-route ablations, shuffled-outcome controls, and
+per-extension credit localization all passed with zero replay. This is a
+bounded growth result; learned eviction, nonstationary discovery, and general
+continual learning remain open.
+
+`CapabilityRetentionLedger` is the memory-side protection layer for the next
+continual-learning step. It consumes only an opaque learned address and a
+scalar verifier outcome, tracks stable mastery across every measured prefix,
+and masks protected rows from both `ContentAddressedMemory` and
+`ExecutableArtifactMemory` eviction. A single noisy failure does not release a
+mastered capability; sustained low outcomes trigger an explicit reversal and
+start a fresh mastery era. If every occupied row is protected, writes raise a
+growth/consolidation signal instead of silently forgetting a capability. The
+ledger persists beside disk-backed memory and is copied through artifact
+compaction, and canonical runtime checkpoints.
+
+`evaluate_retention_gate` supplies the corresponding transactional promotion
+check: a new capability must pass its stable prefix threshold while every
+already-retained verifier score stays above the declared floor. This is the
+first implementation of retention-safe memory growth in the canonical runtime,
+but it is not yet a Brain Workshop mastery result or a claim of general
+continual learning; the next audit must connect the ledger to a replay-free
+multi-rung Brain Workshop extension and measure reversal behavior.
 
 The public boundary is exposed from `neural_computer.__init__`. Component
 checkpoints are loaded into caller-constructed encoders, controller, memory,
 and decoders through `load_runtime_components`; checkpoint metadata never
 constructs an implicit modality branch.
+
+For a keyboard-backed agent, the normal execution loop is therefore:
+
+```python
+feedback_action = keypress_encoder(previous_key_index)
+feedback = ControllerFeedback(action=feedback_action, ...)
+runtime_output, state = runtime.step_events(events, state, feedback)
+keypress = keypress_decoder.decide(runtime_output.intention)
+```
+
+The decoder owns sampling and propensity accounting. The controller never
+receives raw key codes and never emits device-specific key codes.
 
 The controller also emits an execution-plane policy with three operational
 states: `WAIT` keeps the intention tentative while transport may provide more
@@ -118,7 +365,16 @@ controller state only while executing, prior-only slots receive only the
 preceding learned register, and recurrent consumer registers remain outside
 the frozen core. This is the canonical CPU-like execution boundary for
 externally stored learned factors; it does not assign semantic names to
-registers or claim arbitrary program synthesis.
+registers or claim arbitrary program synthesis. An optional `growth_gated`
+variant adds a zero-initialized learned contribution gate over each opaque
+register, while `growth_recurrent_from=0` gives the first external slot its
+own temporal state. These extensions are behavior-preserving until trained;
+`growth_from_intention=True` exposes the frozen processor's learned intention
+to the external slot, and `growth_gate_from_context=True` lets the gate use
+the current opaque context. The matched transfer audit promotes this
+parent-conditioned recurrent boundary across two seeds (`1.333x--1.667x`
+fresh-over-inherited stable-bit transfer) while retaining the parent. This is
+still a narrow transfer result, not general continual learning.
 
 Memory is a replaceable `MemoryBackend` v1 contract. The default
 `ContentAddressedMemory` keeps a bounded content-addressed index in the
@@ -140,6 +396,23 @@ For batched independent trajectories, an optional opaque `memory_scope` selects
 one of fixed-capacity isolated banks without entering the learned key/value
 content; the legacy single-scope layout and checkpoints remain compatible.
 
+`MemoryCandidates` exposes detached opaque candidate rows for a replaceable
+memory-side policy, and `target_index` lets that policy request generic row
+replacement without adding physical-slot semantics to the controller. The
+`ExternalMemoryEvictionPolicy` qualification uses this interface with paired
+scalar counterfactual outcomes and a frozen controller. It promotes only a
+narrow learned-utility eviction mechanism for the audited synthetic bank; the
+memory backend still does not claim general episodic utility or unrestricted
+learned memory growth.
+
+`AppendOnlyContentAddressedMemory` and its persistent replacement provide the
+next growth boundary. They append unmatched learned keys without changing
+controller shapes, upsert matching keys, and serialize variable-length state
+with checksums. The frozen-controller growth audit passes 64, 256, and 1,024
+opaque records across two seeds with permuted exact recall, zero clear-memory
+hits, and persistent recovery. This qualifies logical storage growth, not
+learned compression or general continual learning.
+
 The original v74 three-slot/two-row rung is retained as a superseded harness
 record because its duplicated counterfactual arms did not preserve balanced
 target positions. The corrected v76 rung now qualifies bounded learned
@@ -160,3 +433,242 @@ controls passing. This is still a bounded synthetic outcome-only result;
 cue-conditioned utility, capacity-one compression, natural modalities, and
 general episodic memory remain unqualified. Evidence is in
 `session_records/cross_adapter_memory_amodal_v78_2026-08-04/`.
+
+## Adaptive reader capacity growth
+
+`AdaptiveOnlineEpisodicRelationReader.expand_capacity()` is the memory-side
+growth boundary. It creates a larger replacement reader without changing the
+controller or previously allocated slots. Learned weights may be copied when
+the candidate is already useful; a fresh larger reader is allowed only for an
+unmastered candidate whose new opaque outcome evidence justifies replacement.
+The canonical audit promotes this failure-triggered reset-and-grow transaction
+from capacity five to six across three seeds, with old-capability retention,
+route reload, causal controls, frozen-core, and zero-replay gates. This is a
+bounded growth contract, not unrestricted memory growth or arbitrary new
+computation.
+
+The growth transaction resets a complete unmastered external slot when fresh
+failure justifies replacement. Resetting only the adaptive reader is unsafe:
+the intention adapter and keypress decoder can already encode a failed route.
+`CanonicalBrainWorkshopAgent.expand_adaptive_relation_capability(...,
+reset_failed_reader=True)` therefore replaces the reader, adapter, route
+scorer, opaque key, and decoder together, while mastered slots and the
+controller remain untouched. The recursive Brain Workshop audit promotes two
+such capacity transactions, `5 -> 6 -> 7`, across three seeds with zero
+replay. This remains a bounded growth contract, not unbounded memory or
+arbitrary new computation.
+
+## Retention-safe capability eviction
+
+`CanonicalBrainWorkshopAgent.replace_unprotected_adaptive_relation_capability()`
+is the bounded-bank lifecycle boundary. It refuses to evict a protected
+capability, clears stale global and context-conditioned route evidence, and
+replaces the complete unprotected external slot. The three-seed canonical
+audit promotes replacement of an unmastered slot while preserving two
+mastered capabilities, restoring route discovery, surviving reload, and
+keeping the controller frozen with zero replay. This is retention-safe slot
+reuse, not yet learned general utility, consolidation, unbounded memory
+growth, or general continual learning.
+
+`ExternalCapabilityEvictionPolicy` is the memory-side learned utility boundary.
+It consumes an incoming learned event tensor plus detached opaque capability
+addresses and scores which unprotected candidate is most disposable. Fresh
+scalar verifier outcomes train the policy; outcome summaries, task IDs, raw
+modalities, and physical protocol formats do not enter the policy input. The
+retention ledger remains an independent safety mask, so learned utility cannot
+evict mastered state. The canonical three-seed audit promotes this narrow
+context-conditioned utility policy with controller freezing, chance-level
+reward-shuffle and feature-corruption controls, stable replacement, stale-route
+reset, and zero replay. It does not claim general episodic utility,
+consolidation, unbounded memory, or general continual learning.
+
+The episodic context-credit harness supports a contiguous sequence of external
+additions through `--new-families`. The four-step audit freezes the shared
+context and old router, gives each new capability an isolated
+`EpisodicCreditHead` and route extension, and requires later capabilities to
+attempt every earlier extension before activation. It passes route,
+permutation, retention, causal-ablation, isolated-credit, and zero-replay
+gates across two seeds. This is bounded replay-free external growth, not yet
+unbounded memory, learned consolidation, arbitrary program induction, or
+general continual learning.
+
+The same harness supports a longer five-token pattern bank and eight
+sequential additions. The promoted eight-step audit preserves the frozen old
+route and isolated credit state across all additions with causal extension
+ablations, candidate permutation, reward-shuffle rejection, and zero replay.
+The short-budget control fails old-route retention, so context and route
+training budgets are scaled with temporal length. This remains a bounded
+continual-memory result, not general continual learning.
+
+The pattern bank can also be generated from an explicit episode length. The
+promoted length-six audit provides 20 same-statistics procedures and eight
+sequential additions with isolated route and credit state. Longer histories
+require a larger frozen-context/router acquisition budget; the seed-unstable
+under-budget control remains rejected evidence.
+
+The generated length-six audit is also composed with the opaque retention
+ledger: all ten capabilities initially protect, a fully protected bank refuses
+eviction, only the newest capability reverses after sustained failures, and it
+re-protects after fresh successful outcomes. Both canonical seeds pass the
+retention, reversal, recovery, causal, and zero-replay gates. This is a
+bounded retention-safe growth contract, not learned consolidation, unrestricted
+memory growth, or general continual learning.
+
+The artifact store now enforces the same boundary during compaction. Generic
+compaction refuses to drop protected rows; consolidating protected rows requires
+fresh candidate outcomes; and an accepted replacement persists those outcomes
+as new retention evidence. The two-seed artifact audit preserves behavior,
+opaque aliases, reload integrity, and the frozen core with zero consolidation
+updates and zero replay. This is retention-aware logical compaction, not learned
+byte compression or general continual learning.
+
+The canonical package now also exposes `OpaqueConsolidationPolicy`. It scores
+unordered pairs using only controller-native keys, values, strength, and
+relative age; `verify_consolidation_proposal` applies an immutable snapshot
+rewrite and requires an independent behavior verifier plus optional retention
+gate before adoption. The two-seed audit learned duplicate-pair selection,
+preserved candidate permutation, and composed four accepted rewrites from
+eight rows to four with zero replay. This is a promoted memory-side mechanism,
+not yet executable-artifact behavioral consolidation or general continual
+learning.
+
+`ExecutableArtifactMemory.consolidate_verified()` also accepts a
+`candidate_outcome_probe`. It builds the candidate in a separate directory,
+lets the caller measure fresh opaque verifier outcomes, applies the retention
+gate, and only then invokes the adoption verifier. This is the required
+transaction path when source rows are already protected; it preserves source
+immutability without substituting synthetic retention outcomes.
+
+The promoted executable route rung composes this with the generic
+`OpaqueAddressRouter`: a learned query selects an opaque alias candidate,
+`ExecutableArtifactMemory.promote()` resolves it, and the caller loads the
+verified view through the frozen controller. The router is permutation
+equivariant and outcome-trained; it does not receive operation names or
+protocol fields. This qualifies bounded learned address acquisition, not
+general skill induction or unrestricted continual learning.
+
+The online view-growth harness now composes that route with the retention
+ledger. Four old executable views are protected from fresh outcomes; a fifth
+view is constructed and probed in a disposable transaction; and adoption
+requires both a new-candidate retention floor and independent old/new behavior
+verification. The promoted two-seed audit retains the frozen controller and
+old router, learns the new route without replay, and preserves five opaque
+views in one physical row. This is a bounded retention-safe online addition,
+not yet unrestricted growth or general continual learning.
+
+The same transaction composes across two sequential additions in the
+multi-step harness. The intermediate replacement is required to become
+protected before the next candidate is built; the second transaction must
+preserve all earlier behavior and the final row must retain six opaque views.
+Two seeds pass this bounded two-step audit with zero replay after either
+addition. This establishes composition of the safety boundary, not open-ended
+growth or general continual learning.
+
+`ExecutableArtifactMemory.grow()` provides the corresponding finite-capacity
+escape hatch: protected eviction fails explicitly, then a new verified bank
+can copy live artifacts, aliases, strengths, and retention records without
+mutating the source. The new bank can admit a capability after growth. This
+is a storage safety primitive, not learned capacity planning or general
+continual learning.
+
+`OpaqueCapacityPlanner` is the next replaceable memory-side boundary. It
+learns to choose generic admission, safe eviction, verified consolidation, or
+capacity growth from an incoming learned key/value and permutation-equivariant
+opaque bank summaries. Retention masks and behavior verification remain
+outside the learned selector. The two-seed capacity-planning audit promotes
+the bounded action mechanism and protected-bank growth path with zero replay;
+it does not establish unrestricted memory growth, arbitrary computation, or
+general continual learning. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/artifact_capacity_planning_v1_2026-08-06/`.
+
+The canonical working-memory growth harness now uses the same lifecycle for
+producer→consumer composition. Two independently acquired growth artifacts
+are transactionally replaced by one namespaced row; a fresh runtime reloads
+the row and must pass the held-out behavior verifier before adoption. Two
+seeds pass the one-row, exact-reload, frozen-core, producer-ablation,
+prior-read-ablation, missing-sequence, and reward-shuffled gates with zero
+replay. This establishes a narrow protocol-agnostic external composition
+boundary, not arbitrary program synthesis or general continual learning. The
+evidence is in
+`session_records/sequence_working_memory_2026-08-02/canonical_growth_pressure_lifecycle_composition_v1_2026-08-06/`.
+
+The external route/credit boundary has also filled the closed generated
+length-six pattern bank: two old capabilities plus 18 sequential additions.
+Across two seeds, all 20 opaque routes retain permutation, causal, reversal,
+recovery, full-bank protection, and zero-replay gates. This is a bounded
+retention result; the remaining challenge is a changing distribution and
+dynamic expansion beyond a fixed family bank.
+
+The first changing-distribution audit freezes length-six capabilities and
+appends length-seven capabilities without replay. Old routes, shifted credit,
+causal additions, reversal/recovery, and retention remain intact, but a
+cross-seed reward-shuffled false positive rejects the rung. The memory boundary
+is therefore ahead of shifted credit calibration; the rejected evidence is in
+`session_records/sequence_working_memory_2026-08-02/nonstationary_growth_episode6_to7_rejected_v1_2026-08-06/`.
+
+The corrected shift harness uses an antithetic trainer-only null for shuffled
+outcomes. It now passes the length-six→length-seven distribution shift across
+two seeds with old-route retention, new-route causality, shifted credit,
+reversal/recovery, and zero replay. This qualifies one controlled
+nonstationary boundary while preserving the rejection record for the weaker
+random-shuffle control.
+
+The full-bank follow-up passes as well: 18 fresh length-seven capabilities
+fill the 20-family bank after a frozen length-six base across two seeds. This
+is the current bounded nonstationary-growth ceiling; repeated distribution
+shifts and dynamically expanded banks remain open.
+
+The length-six→length-eight full-bank audit also passes across two seeds,
+showing the boundary tolerates a larger temporal shift. The weakest route is
+`82.81%`, so repeated shifts and dynamic expansion—not another adjacent-shift
+smoke—are now the meaningful next tests.
+
+The length-six→length-ten full-bank shift is the current rejected frontier:
+one seed leaves a shifted capability below mastery before reversal. The
+correct response is confidence-aware acquisition/retention, not lowering the
+protection threshold.
+
+The repaired 6→10 rung passes both seeds after doubling shifted-extension
+acquisition and stabilizing the antithetic null. This keeps the protection
+threshold hard while making acquisition depth explicit in the evidence; the
+128-update failure remains a regression control.
+
+The repeated-shift boundary now passes length six→eight→ten in one frozen
+run, preserving earlier routes and credit while adding 18 capabilities with
+zero replay. This is the strongest bounded continual-growth evidence; the
+next architectural pressure is a dynamically expandable bank and repeated
+shifts beyond the closed 20-family generator.
+
+The next three-shift audit crosses that ceiling: length six→eight→ten→twelve
+adds 8, 10, and 12 capabilities in sequence, for a 32-capability bank. Across
+two seeds, phase route floors are `89.06%/92.19%`, `89.06%/90.63%`, and
+`85.94%/92.19%`; old-route/permutation, causal credit, full-bank protection,
+isolated reversal/recovery, antithetic null, and zero replay all pass. This
+qualifies dynamic external-bank growth beyond 20 capabilities. It remains a
+finite generated-family result with externally trained route/credit acquisition,
+not unbounded memory growth or general continual learning. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12_v1_2026-08-06/`.
+
+The same 32-capability schedule now supports a copy-on-write average prior for
+new route adapters. Both seeds pass all hard gates at 256 updates per family,
+but the effect is not uniformly positive versus fresh initialization: one
+seed improves its final-shift floor while the other loses a small amount on
+the final shift. The 128-update control fails both seeds at the final shift,
+so prior reuse is promoted as safe state reuse, not as a reliable sample-
+efficiency gain. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12_growth_prior_v1_2026-08-06/`.
+
+`OpaqueCandidateGrowthRouter` is the next reusable memory-side boundary. One
+candidate-conditioned, permutation-equivariant router can score a variable
+opaque candidate bank, avoiding a new learned extension module for every
+capability. The promoted 6→8→10→12 audit uses one router per shift and a
+learned trajectory-statistics query. Across two seeds it grows to 32
+capabilities with phase floors `0.9844/0.9375`, `0.9844/0.9688`, and
+`0.9531/0.9375`; causal, retention, reversal, null, and zero-replay gates
+pass. The corrected strict sequential operational route-permutation audit is
+`0.9906/0.9911`; the earlier `0.4932/0.4943` reading was a harness false
+negative caused by comparing a remapped physical row to its unpermuted family
+index. This is a bounded reusable-growth result, not general continual
+learning, and acquisition currently requires 16,384 route updates per
+expansion. See
+`session_records/sequence_working_memory_2026-08-02/shared_growth_router_6to8to10to12_trajectory_stats_v1_2026-08-06/`.

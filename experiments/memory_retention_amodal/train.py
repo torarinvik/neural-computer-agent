@@ -25,8 +25,8 @@ from neural_computer import (
     ContentAddressedMemory,
     ControllerFeedback,
     ExternalMemoryWritePolicy,
+    KeypressDecoder,
     MemoryWriteObservation,
-    OpaqueProtocolDecoder,
     PersistentContentAddressedMemory,
     factorized_counterfactual_policy_loss,
     paired_counterfactual_policy_loss,
@@ -71,7 +71,7 @@ def build_runtime(
     return AmodalControllerRuntime(
         controller,
         output_bus=AmodalOutputBus(
-            {"protocol": OpaqueProtocolDecoder(4, 2, hidden=8)}
+            {"keypress": KeypressDecoder(4, 2, hidden=8)}
         ),
         memory=ContentAddressedMemory(
             width=width,
@@ -166,8 +166,14 @@ def evaluate_persistent_reload(
     tokens: torch.Tensor,
     *,
     episodes: int = 16,
+    external_write_policy: ExternalMemoryWritePolicy | None = None,
 ) -> dict[str, float | bool]:
-    """Audit reload, checksum rejection, and recovery of a disk-backed store."""
+    """Audit reload, checksum rejection, and recovery of a disk-backed store.
+
+    When supplied, the memory-side writer is used for every training-time
+    write so persistence covers the same boundary as the promoted retention
+    mechanism rather than silently falling back to the controller writer.
+    """
     original_memory = runtime.memory
     scope = torch.arange(verifier.batch_size, dtype=torch.long)
     total = 0.0
@@ -184,7 +190,7 @@ def evaluate_persistent_reload(
             _feedback(verifier.batch_size),
             memory_scope=scope,
         )
-        distribution = Categorical(logits=query_output.decoded["protocol"])
+        distribution = Categorical(logits=query_output.decoded["keypress"])
         return float(verifier.score_recall(distribution.sample()).sum())
 
     with tempfile.TemporaryDirectory(prefix="neural-computer-memory-") as directory:
@@ -216,15 +222,27 @@ def evaluate_persistent_reload(
                         runtime, state, _event(tokens[slot])
                     )
                     reward = verifier.score_probe(slot, action)
-                    state, _, _, _, _ = _store_outcome(
-                        runtime,
-                        state,
-                        action,
-                        reward,
-                        propensity,
-                        scope,
-                        sample_memory_writes=False,
-                    )
+                    if external_write_policy is None:
+                        state, _, _, _, _ = _store_outcome(
+                            runtime,
+                            state,
+                            action,
+                            reward,
+                            propensity,
+                            scope,
+                            sample_memory_writes=False,
+                        )
+                    else:
+                        state, _, _, _, _ = _store_external_outcome(
+                            runtime,
+                            state,
+                            action,
+                            reward,
+                            propensity,
+                            scope,
+                            write_policy=external_write_policy,
+                            write_override=None,
+                        )
                 reloaded = PersistentContentAddressedMemory(
                     width=original_memory.width,
                     capacity=original_memory.capacity,
@@ -311,7 +329,7 @@ def _probe_without_writing(
         _feedback(event.payload.shape[0]),
         memory=None,
     )
-    distribution = Categorical(logits=runtime.output_bus(output.intention)["protocol"])
+    distribution = Categorical(logits=runtime.output_bus(output.intention)["keypress"])
     safe_probs = distribution.probs.clamp_min(1e-6)
     safe_probs = safe_probs / safe_probs.sum(dim=-1, keepdim=True)
     if forced_action is not None:
@@ -462,6 +480,7 @@ def _store_external_outcome(
         has_feedback=torch.ones(batch),
     )
     probability = write_policy(observation).clamp(1e-6, 1.0 - 1e-6)
+    write_value = write_policy.adapt_value(observation)
     if write_override is not None:
         sample = write_override.reshape(-1).to(
             device=probability.device, dtype=probability.dtype
@@ -486,7 +505,7 @@ def _store_external_outcome(
     )
     receipt = runtime.memory.write(
         controller_output.memory_key.detach(),
-        controller_output.memory_value.detach(),
+        write_value,
         sample.detach(),
         timestamp=controller_output.intention.timestamp,
         scope=scope,
@@ -651,7 +670,7 @@ def _counterfactual_retention_episode(
             _feedback(paired_batch),
             memory_scope=scope,
         )
-        distribution = Categorical(logits=query_output.decoded["protocol"])
+        distribution = Categorical(logits=query_output.decoded["keypress"])
         uniform = _paired_uniforms(batch, antithetic=False).to(
             device=distribution.probs.device, dtype=distribution.probs.dtype
         )
@@ -796,7 +815,7 @@ def _counterfactual_intervention_episode(
             _feedback(paired_batch),
             memory_scope=scope,
         )
-        distribution = Categorical(logits=query_output.decoded["protocol"])
+        distribution = Categorical(logits=query_output.decoded["keypress"])
         uniform = _paired_uniforms(batch, antithetic=False).to(
             device=distribution.probs.device, dtype=distribution.probs.dtype
         )
@@ -913,13 +932,16 @@ def _counterfactual_overwrite_episode(
         torch.nn.utils.clip_grad_norm_(parameters, max_norm=5.0)
         optimizer.step()
 
-    def shared_recall_action(logits: torch.Tensor) -> torch.Tensor:
+    def shared_recall_action(
+        logits: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         distribution = Categorical(logits=logits)
         uniform = _paired_uniforms(batch, antithetic=False).reshape(batch, 2)
         uniform = uniform[:, 0].repeat_interleave(2)
-        return (
+        action = (
             uniform[:, None] >= distribution.probs.cumsum(dim=-1)
         ).sum(dim=-1).clamp_max(distribution.probs.shape[-1] - 1)
+        return action, distribution.log_prob(action)
 
     strengths: list[torch.Tensor] = []
     committed: list[torch.Tensor] = []
@@ -1000,7 +1022,9 @@ def _counterfactual_overwrite_episode(
         ),
         memory_write_gradient=False,
     )
-    target_recall = shared_recall_action(query_output.decoded["protocol"])
+    target_recall, _target_recall_log_probability = shared_recall_action(
+        query_output.decoded["keypress"]
+    )
     target_recall_reward = paired_verifier.score_recall(target_recall).reshape(
         batch, 2
     )
@@ -1084,7 +1108,9 @@ def _counterfactual_overwrite_episode(
         ),
         memory_write_gradient=False,
     )
-    overwrite_recall = shared_recall_action(query_output.decoded["protocol"])
+    overwrite_recall, _overwrite_recall_log_probability = shared_recall_action(
+        query_output.decoded["keypress"]
+    )
     overwrite_reward = paired_verifier.score_recall(overwrite_recall).reshape(
         batch, 2
     )
@@ -1105,109 +1131,126 @@ def _counterfactual_overwrite_episode(
 
     if bidirectional:
         # Complement the protected-target factor with the opposite temporal
-        # case: a distractor is already present, so writing the target must
-        # receive positive utility for the target-last path. Without this arm
-        # the writer only learns "do not overwrite a target" and has no
-        # outcome-only signal that a later target should replace a distractor.
+        # case: the complete distractor prefix is already present, so writing
+        # the target must receive positive utility for the target-last path.
+        # With larger banks, using only one distractor would train a shorter
+        # context than evaluation presents and leave the final write
+        # under-credited.
         paired_verifier = verifier.duplicate_rows(2)
         target_slot = paired_verifier.query_slot
-        distractor_slot = _retention_slots(
-            paired_verifier, "target_last"
-        )[:, 0]
+        distractor_slots = _retention_slots(paired_verifier, "target_last")[:, :-1]
         runtime.memory.clear()
-        state = runtime.initial_state(paired_batch, device="cpu")
-        _, state = runtime.controller.step(
-            _event(tokens[target_slot]),
-            state,
-            _feedback(paired_batch),
-            memory=None,
+        transaction = (
+            runtime.memory.differentiable_transaction()
+            if external_write_policy is not None
+            else nullcontext()
         )
-        distractor_action, distractor_propensity, _, state = _probe_without_writing(
-            runtime,
-            state,
-            _event(tokens[distractor_slot]),
-            uniform=_paired_uniforms(batch, antithetic=False),
-        )
-        distractor_reward = paired_verifier.score_probe(
-            distractor_slot, distractor_action
-        )
-        if reward_shuffle:
-            distractor_reward = torch.randint(0, 2, (paired_batch,)).to(
-                torch.float32
+        with transaction:
+            state = runtime.initial_state(paired_batch, device="cpu")
+            _, state = runtime.controller.step(
+                _event(tokens[target_slot]),
+                state,
+                _feedback(paired_batch),
+                memory=None,
             )
-        state, _, _, _, _ = store(
-            state,
-            distractor_action,
-            distractor_propensity,
-            distractor_reward,
-            torch.ones(paired_batch),
-        )
-        target_action, target_propensity, _, state = _probe_without_writing(
-            runtime,
-            state,
-            _event(tokens[target_slot]),
-            uniform=_paired_uniforms(batch, antithetic=False),
-        )
-        target_reward = paired_verifier.score_probe(target_slot, target_action)
-        if reward_shuffle:
-            target_reward = torch.randint(0, 2, (paired_batch,)).to(torch.float32)
-        (
-            state,
-            target_after_distractor_strength,
-            target_after_distractor_committed,
-            _target_after_distractor_log_probability,
-            _,
-        ) = store(
-            state,
-            target_action,
-            target_propensity,
-            target_reward,
-            (torch.arange(paired_batch) % 2 == 0).to(torch.float32),
-        )
-        query_output, _ = runtime.step_events(
-            _event(tokens[target_slot]),
-            runtime.initial_state(paired_batch, device="cpu"),
-            _feedback(paired_batch),
-            memory_scope=scope,
-            memory_write_override=(
-                torch.zeros(paired_batch)
-                if external_write_policy is not None
-                else None
-            ),
-            memory_write_gradient=False,
-        )
-        target_after_distractor_recall = shared_recall_action(
-            query_output.decoded["protocol"]
-        )
-        target_after_distractor_reward = paired_verifier.score_recall(
-            target_after_distractor_recall
-        ).reshape(batch, 2)
-        if reward_shuffle:
-            target_after_distractor_reward = torch.randint(
-                0, 2, (batch, 2)
-            ).to(torch.float32)
-        target_after_distractor_score = torch.logit(
-            target_after_distractor_strength.reshape(batch, 2)[:, 0].clamp(
-                1e-6, 1.0 - 1e-6
+            for distractor_position in range(distractor_slots.shape[1]):
+                distractor_slot = distractor_slots[:, distractor_position]
+                distractor_action, distractor_propensity, _, state = (
+                    _probe_without_writing(
+                        runtime,
+                        state,
+                        _event(tokens[distractor_slot]),
+                        uniform=_paired_uniforms(batch, antithetic=False),
+                    )
+                )
+                distractor_reward = paired_verifier.score_probe(
+                    distractor_slot, distractor_action
+                )
+                if reward_shuffle:
+                    distractor_reward = torch.randint(0, 2, (paired_batch,)).to(
+                        torch.float32
+                    )
+                state, _, _, _, _ = store(
+                    state,
+                    distractor_action,
+                    distractor_propensity,
+                    distractor_reward,
+                    torch.ones(paired_batch),
+                )
+            target_action, target_propensity, _, state = _probe_without_writing(
+                runtime,
+                state,
+                _event(tokens[target_slot]),
+                uniform=_paired_uniforms(batch, antithetic=False),
             )
-        )
-        reverse_loss, _ = paired_counterfactual_policy_loss(
-            target_after_distractor_score,
-            target_after_distractor_reward,
-        )
-        if memory_write_cost:
-            reverse_loss = reverse_loss + memory_write_cost * target_after_distractor_strength.mean()
-        optimize(reverse_loss)
-        strengths.append(target_after_distractor_strength.detach())
-        committed.append(target_after_distractor_committed)
-        parameters = [
-            parameter
-            for group in optimizer.param_groups
-            for parameter in group["params"]
-            if parameter.grad is not None
-        ]
-        torch.nn.utils.clip_grad_norm_(parameters, max_norm=5.0)
-        optimizer.step()
+            target_reward = paired_verifier.score_probe(target_slot, target_action)
+            if reward_shuffle:
+                target_reward = torch.randint(0, 2, (paired_batch,)).to(torch.float32)
+            (
+                state,
+                target_after_distractor_strength,
+                target_after_distractor_committed,
+                _target_after_distractor_log_probability,
+                _,
+            ) = store(
+                state,
+                target_action,
+                target_propensity,
+                target_reward,
+                (torch.arange(paired_batch) % 2 == 0).to(torch.float32),
+            )
+            query_output, _ = runtime.step_events(
+                _event(tokens[target_slot]),
+                runtime.initial_state(paired_batch, device="cpu"),
+                _feedback(paired_batch),
+                memory_scope=scope,
+                memory_write_override=(
+                    torch.zeros(paired_batch)
+                    if external_write_policy is not None
+                    else None
+                ),
+                memory_write_gradient=False,
+            )
+            (
+                target_after_distractor_recall,
+                target_after_distractor_recall_log_probability,
+            ) = shared_recall_action(
+                query_output.decoded["keypress"]
+            )
+            target_after_distractor_reward = paired_verifier.score_recall(
+                target_after_distractor_recall
+            ).reshape(batch, 2)
+            if reward_shuffle:
+                target_after_distractor_reward = torch.randint(
+                    0, 2, (batch, 2)
+                ).to(torch.float32)
+            target_after_distractor_score = torch.logit(
+                target_after_distractor_strength.reshape(batch, 2)[:, 0].clamp(
+                    1e-6, 1.0 - 1e-6
+                )
+            )
+            reverse_loss, _ = paired_counterfactual_policy_loss(
+                target_after_distractor_score,
+                target_after_distractor_reward,
+            )
+            if external_write_policy is not None:
+                reverse_loss = reverse_loss - (
+                    target_after_distractor_reward[:, 0].detach()
+                    * target_after_distractor_recall_log_probability.reshape(batch, 2)[:, 0]
+                ).mean()
+            if memory_write_cost:
+                reverse_loss = reverse_loss + memory_write_cost * target_after_distractor_strength.mean()
+            optimize(reverse_loss)
+            strengths.append(target_after_distractor_strength.detach())
+            committed.append(target_after_distractor_committed)
+            parameters = [
+                parameter
+                for group in optimizer.param_groups
+                for parameter in group["params"]
+                if parameter.grad is not None
+            ]
+            torch.nn.utils.clip_grad_norm_(parameters, max_norm=5.0)
+            optimizer.step()
 
     return (
         overwrite_reward.reshape(-1),
@@ -1306,7 +1349,7 @@ def _counterfactual_parent_episode(
             _feedback(paired_batch),
             memory_scope=scope,
         )
-        distribution = Categorical(logits=query_output.decoded["protocol"])
+        distribution = Categorical(logits=query_output.decoded["keypress"])
         recall_reward = paired_verifier.score_recall(forced_actions)
         if reward_shuffle:
             recall_reward = torch.randint(0, 2, (paired_batch,)).to(torch.float32)
@@ -1489,7 +1532,7 @@ def _counterfactual_three_factor_episode(
             memory_scope=scope,
         )
         recall_distribution = Categorical(
-            logits=query_output.decoded["protocol"]
+            logits=query_output.decoded["keypress"]
         )
         # Couple the downstream stochasticity without forcing the same action:
         # the write intervention must be allowed to change the recall policy,
@@ -1565,7 +1608,7 @@ def _counterfactual_three_factor_episode(
             memory_scope=scope,
         )
         recall_distribution = Categorical(
-            logits=query_output.decoded["protocol"]
+            logits=query_output.decoded["keypress"]
         )
         recall_log_probability = recall_distribution.log_prob(forced_actions)
         recall_reward = paired_verifier.score_recall(forced_actions).reshape(
@@ -1735,7 +1778,7 @@ def _episode(
             _feedback(batch),
             memory_scope=scope,
         )
-        distribution = Categorical(logits=query_output.decoded["protocol"])
+        distribution = Categorical(logits=query_output.decoded["keypress"])
         action = (
             torch.randint(0, 2, (batch,))
             if not train and memory_condition == "random_action"
@@ -1877,7 +1920,7 @@ def _external_memory_episode(
         memory_write_override=torch.zeros(batch),
         memory_write_gradient=False,
     )
-    distribution = Categorical(logits=query_output.decoded["protocol"])
+    distribution = Categorical(logits=query_output.decoded["keypress"])
     action = (
         torch.randint(0, 2, (batch,))
         if memory_condition == "random_action"
@@ -2089,7 +2132,9 @@ def train_curriculum(
             # enough to learn while preserving token diversity across blocks;
             # the token remains unchanged within an episode's write and recall
             # appearances.
-            if randomize_event_tokens and curriculum_label == "retention":
+            if randomize_event_tokens and curriculum_label == "single":
+                episode_tokens = torch.randn_like(tokens)
+            elif randomize_event_tokens and curriculum_label == "retention":
                 if (
                     retention_token_block is None
                     or retention_token_block_step >= retention_token_reuse_steps
@@ -3021,6 +3066,7 @@ def run_experiment(
             ),
             tokens,
             episodes=16,
+            external_write_policy=external_write_policy,
         )
         persistent_reload_intact = float(persistent_audit["reload_intact_recall"])
         persistent_corruption_rejected = bool(

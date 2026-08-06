@@ -1,0 +1,216 @@
+{
+  "accounting": {
+    "counterfactual_eviction_factors": 2,
+    "eviction_updates": 256,
+    "mean_inference_latency_ms": 3.785711598752073,
+    "optimizer_updates": 256,
+    "parent_stable": false,
+    "parent_steps_requested": 704,
+    "parent_updates": 704,
+    "replayed_examples": 0,
+    "unique_logical_lifetimes": 98304,
+    "unique_verifier_bits": 98304,
+    "wall_time_seconds": 31.01254941697698
+  },
+  "batch_size": 32,
+  "claim_boundary": "Narrow learned utility-based eviction for a frozen controller; no general episodic memory or arbitrary computation claim.",
+  "conditions": {
+    "clear_memory": 0.50048828125,
+    "corrupt_memory": 0.5078125,
+    "learned_balanced": 0.52587890625,
+    "learned_target_first": 0.5009765625,
+    "learned_target_last": 0.5048828125,
+    "random_eviction": 0.50732421875,
+    "random_target_first": 0.50439453125,
+    "random_target_last": 0.498046875,
+    "strength_eviction": 0.517578125,
+    "strength_target_first": 0.49951171875,
+    "strength_target_last": 0.48388671875
+  },
+  "eviction_steps": 256,
+  "experiment": "outcome-only-learned-eviction",
+  "history": [
+    {
+      "loss": 0.6931471824645996,
+      "mean_advantage": 0.046875,
+      "step": 1
+    },
+    {
+      "loss": 0.6936333775520325,
+      "mean_advantage": -0.078125,
+      "step": 16
+    },
+    {
+      "loss": 0.696641206741333,
+      "mean_advantage": 0.046875,
+      "step": 32
+    },
+    {
+      "loss": 0.6942441463470459,
+      "mean_advantage": -0.015625,
+      "step": 48
+    },
+    {
+      "loss": 0.6903791427612305,
+      "mean_advantage": -0.09375,
+      "step": 64
+    },
+    {
+      "loss": 0.6941087245941162,
+      "mean_advantage": -0.046875,
+      "step": 80
+    },
+    {
+      "loss": 0.6958703994750977,
+      "mean_advantage": 0.0625,
+      "step": 96
+    },
+    {
+      "loss": 0.685727596282959,
+      "mean_advantage": -0.03125,
+      "step": 112
+    },
+    {
+      "loss": 0.6955006718635559,
+      "mean_advantage": 0.15625,
+      "step": 128
+    },
+    {
+      "loss": 0.6979338526725769,
+      "mean_advantage": 0.078125,
+      "step": 144
+    },
+    {
+      "loss": 0.699788510799408,
+      "mean_advantage": 0.03125,
+      "step": 160
+    },
+    {
+      "loss": 0.6867982149124146,
+      "mean_advantage": -0.125,
+      "step": 176
+    },
+    {
+      "loss": 0.6947370171546936,
+      "mean_advantage": -0.015625,
+      "step": 192
+    },
+    {
+      "loss": 0.6920956373214722,
+      "mean_advantage": -0.015625,
+      "step": 208
+    },
+    {
+      "loss": 0.6914926767349243,
+      "mean_advantage": 0.09375,
+      "step": 224
+    },
+    {
+      "loss": 0.6937073469161987,
+      "mean_advantage": 0.0625,
+      "step": 240
+    },
+    {
+      "loss": 0.6930781006813049,
+      "mean_advantage": 0.03125,
+      "step": 256
+    }
+  ],
+  "learner_visible_inputs": [
+    "opaque target cue event",
+    "opaque slot event",
+    "opaque attempted action",
+    "scalar probe outcome",
+    "opaque candidate key/value/strength/timestamp",
+    "scalar recall outcome"
+  ],
+  "memory_capacity": 2,
+  "parent": {
+    "best_validation_metric": 0.5078125,
+    "best_validation_parent_retention": 0.48046875,
+    "committed_write_rate": 0.5,
+    "counterfactual_arm_multiplier": 2,
+    "counterfactual_factor_count": 3,
+    "counterfactual_factor_optimizer_updates": 2112,
+    "counterfactual_factor_outcome_events": 135168,
+    "diagnostic_logical_lifetimes": 8448,
+    "diagnostic_verifier_bits": 22016,
+    "differentiable_memory": true,
+    "feedback_events": 104448,
+    "learning_rate": 0.002,
+    "logical_lifetime_observations": 79872,
+    "mean_memory_write_strength": 0.4736224700598751,
+    "mean_outcome_value_critic_loss": null,
+    "mean_write_critic_loss": null,
+    "memory_write_cost": 0.0,
+    "optimizer_updates": 2176,
+    "outcome_value_critic": false,
+    "parent_credit": "counterfactual_three_factor",
+    "parent_differentiable_memory": true,
+    "parent_protection": "none",
+    "parent_rehearsal_feedback_events": 0,
+    "parent_rehearsal_interval": 1,
+    "parent_rehearsal_outcome_events": 0,
+    "parent_rehearsal_steps": 0,
+    "parent_rehearsal_updates": 0,
+    "parent_stable": false,
+    "parent_write_policy_protection": "none",
+    "phase1_updates": 704,
+    "phase2_updates": 64,
+    "replayed_examples": 0,
+    "retention_blocked": false,
+    "retention_counterfactual_factor_count": 3,
+    "retention_counterfactual_factor_optimizer_updates": 64,
+    "retention_counterfactual_factor_outcome_events": 49152,
+    "retention_counterfactual_optimizer_multiplier": 1,
+    "retention_early_stop_validations": 0,
+    "retention_order": "balanced",
+    "retention_token_reuse_steps": 4,
+    "retention_validation_count": 1,
+    "retention_warmup_steps": 0,
+    "retention_write_policy_optimizer_state_reset": false,
+    "retention_write_policy_reset": false,
+    "stable_bits_to_threshold": null,
+    "stable_validation_step": null,
+    "stochastic_write_sampling": true,
+    "unique_logical_lifetimes": 28672,
+    "unique_verifier_bits": 159744,
+    "verifier_outcome_events": 184320,
+    "wall_time_seconds": 89.903337249998,
+    "write_credit": "external_overwrite_v2"
+  },
+  "parent_steps": 704,
+  "persistent_memory": {
+    "corruption_rejected": true,
+    "recovery_intact_recall": 0.46875,
+    "reload_intact_recall": 0.4912109375
+  },
+  "policy": {
+    "action_width": 2,
+    "candidate_key_width": 16,
+    "candidate_value_width": 16,
+    "controller_write_context_width": 64,
+    "controller_write_relevance_width": 1,
+    "event_width": 16,
+    "hidden": 101,
+    "hidden_width": 16,
+    "key_width": 16,
+    "memory_read_width": 16,
+    "schema": "neural-computer.external-memory-eviction-policy.v1",
+    "value_width": 16,
+    "workspace_width": 16
+  },
+  "promoted": false,
+  "promotion_gate": {
+    "clear_max": 0.6,
+    "corrupt_max": 0.6,
+    "learned_order_min": 0.75,
+    "parent_stable_required": true,
+    "random_target_first_gap_min": 0.15,
+    "strength_target_first_gap_min": 0.1
+  },
+  "reward_shuffle_control": true,
+  "schema": "neural-computer.learned-eviction-experiment.v1",
+  "seed": 17,
+  "slot_count": 3
+}

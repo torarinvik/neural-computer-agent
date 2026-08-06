@@ -1095,6 +1095,7 @@ See:
 | `experiments/async_memory_amodal/` | Promoted delayed-feedback/asynchronous outcome-only audit and memory diagnostic |
 | `experiments/outcome_only_amodal/` | Promoted synchronous outcome-only multimodal complement audit |
 | `experiments/memory_retention_amodal/` | Outcome-only retention, persistent-memory, causal-corruption, and fresh-initialization transfer audits |
+| `experiments/frozen_core_transfer_amodal/` | Matched fresh-learner controls for recurrent frozen-core external growth and retention |
 | `experiments/archive/unified_cognitive_controller/` | Single-controller few-shot binding, retention, and persistent-memory interface |
 | `experiments/forward_transfer_attention/` | Main sample-efficiency, transfer, memory, binding, and causal-audit research |
 | `experiments/syllogimous_neural_computer/` | Learned external-memory neural computer |

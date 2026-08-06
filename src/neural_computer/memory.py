@@ -15,10 +15,13 @@ import torch
 from torch import nn
 
 from .interface import MEMORY_SCHEMA
+from .retention import CapabilityRetentionLedger
 
 MEMORY_BACKEND_FORMAT = "neural-computer.memory-backend.v1"
+APPEND_ONLY_MEMORY_BACKEND_FORMAT = "neural-computer.append-only-memory-backend.v1"
 LEGACY_MEMORY_SNAPSHOT_FORMAT = "neural-computer.memory-snapshot.v1"
 MEMORY_SNAPSHOT_FORMAT = "neural-computer.memory-snapshot.v2"
+APPEND_ONLY_MEMORY_SNAPSHOT_FORMAT = "neural-computer.append-only-memory-snapshot.v1"
 # Writes reject collisions more strictly than reads reject near-misses. Keeping
 # these contracts separate prevents a noisy query from hallucinating the
 # nearest occupied row while preserving exact content-addressed writes.
@@ -103,6 +106,40 @@ class MemoryWriteReceipt:
         return self
 
 
+@dataclass(frozen=True)
+class MemoryCandidates:
+    """Opaque physical-row candidates exposed to replaceable memory policies."""
+
+    keys: torch.Tensor
+    values: torch.Tensor
+    strengths: torch.Tensor
+    timestamps: torch.Tensor
+    occupied: torch.Tensor
+    schema: str = MEMORY_SCHEMA
+
+    def validate(
+        self, *, width: int, capacity: int, batch: int | None = None
+    ) -> MemoryCandidates:
+        expected = (self.keys.shape[0], capacity, width)
+        if self.schema != MEMORY_SCHEMA:
+            raise ValueError(f"unsupported memory candidates schema: {self.schema}")
+        if self.keys.shape != expected or self.values.shape != expected:
+            raise ValueError("memory candidate keys and values have the wrong shape")
+        scalar_shape = (self.keys.shape[0], capacity)
+        if self.strengths.shape != scalar_shape or self.timestamps.shape != scalar_shape:
+            raise ValueError("memory candidate scalars have the wrong shape")
+        if self.occupied.shape != scalar_shape or self.occupied.dtype != torch.bool:
+            raise ValueError("memory candidate occupancy has the wrong shape and dtype")
+        if batch is not None and self.keys.shape[0] != batch:
+            raise ValueError("memory candidate batch does not match request")
+        for tensor in (self.keys, self.values, self.strengths, self.timestamps):
+            if not bool(torch.isfinite(tensor).all()):
+                raise ValueError("memory candidates must contain finite values")
+        if bool(torch.any(self.strengths < 0) or torch.any(self.strengths > 1)):
+            raise ValueError("memory candidate strengths must lie in [0, 1]")
+        return self
+
+
 class MemoryBackend(nn.Module):
     """Replaceable memory component contract owned by the runtime.
 
@@ -144,6 +181,10 @@ class MemoryBackend(nn.Module):
     def read(self, query: MemoryQuery) -> MemoryRead:
         raise NotImplementedError
 
+    def candidates(self, scope: torch.Tensor | None = None) -> MemoryCandidates:
+        """Return opaque physical rows for an independent memory-side policy."""
+        raise NotImplementedError
+
     def write(
         self,
         key: torch.Tensor,
@@ -152,6 +193,7 @@ class MemoryBackend(nn.Module):
         *,
         timestamp: torch.Tensor | None = None,
         scope: torch.Tensor | None = None,
+        target_index: torch.Tensor | None = None,
     ) -> MemoryWriteReceipt:
         raise NotImplementedError
 
@@ -175,6 +217,7 @@ class ContentAddressedMemory(MemoryBackend):
         query_temperature: float = 0.1,
         write_match_threshold: float = 0.95,
         scope_capacity: int = 1,
+        retention_ledger: CapabilityRetentionLedger | None = None,
     ) -> None:
         super().__init__(width)
         if not isinstance(scope_capacity, int) or min(width, capacity, scope_capacity) < 1:
@@ -190,6 +233,9 @@ class ContentAddressedMemory(MemoryBackend):
         self.query_temperature = float(query_temperature)
         self.write_match_threshold = float(write_match_threshold)
         self.scope_capacity = scope_capacity
+        if retention_ledger is not None and retention_ledger.width != width:
+            raise ValueError("retention ledger width must match memory")
+        self.retention = retention_ledger or CapabilityRetentionLedger(width)
         self._transaction_depth = 0
         self._pending_writes: dict[
             tuple[int, int], tuple[torch.Tensor, torch.Tensor, torch.Tensor]
@@ -368,6 +414,65 @@ class ContentAddressedMemory(MemoryBackend):
             hit=hit,
         ).validate(width=self.width, batch=query.key.shape[0])
 
+    @torch.no_grad()
+    def candidates(self, scope: torch.Tensor | None = None) -> MemoryCandidates:
+        batch = 1 if scope is None else int(scope.numel())
+        scope_ids = self._scope_ids(scope, batch, device=self.keys.device)
+        bank_keys = self._bank(self.keys)
+        bank_values = self._bank(self.values)
+        bank_strengths = self._bank(self.strengths)
+        bank_timestamps = self._bank(self.timestamps)
+        bank_occupied = self._bank(self.occupied)
+        keys: list[torch.Tensor] = []
+        values: list[torch.Tensor] = []
+        strengths: list[torch.Tensor] = []
+        timestamps: list[torch.Tensor] = []
+        occupied: list[torch.Tensor] = []
+        for scope_id in scope_ids.tolist():
+            row_keys = [bank_keys[scope_id, index] for index in range(self.capacity)]
+            row_values = [
+                bank_values[scope_id, index] for index in range(self.capacity)
+            ]
+            row_strengths = bank_strengths[scope_id].clone()
+            row_timestamps = bank_timestamps[scope_id].clone()
+            row_occupied = bank_occupied[scope_id].clone()
+            for index in range(self.capacity):
+                pending = self._pending_writes.get((scope_id, index))
+                if pending is None:
+                    continue
+                pending_key, pending_value, pending_strength = pending
+                row_keys[index] = pending_key
+                row_values[index] = pending_value
+                row_strengths[index] = pending_strength
+                row_occupied[index] = True
+            keys.append(torch.stack(row_keys).detach())
+            values.append(torch.stack(row_values).detach())
+            strengths.append(row_strengths.detach())
+            timestamps.append(row_timestamps.detach())
+            occupied.append(row_occupied.detach())
+        return MemoryCandidates(
+            keys=torch.stack(keys),
+            values=torch.stack(values),
+            strengths=torch.stack(strengths),
+            timestamps=torch.stack(timestamps),
+            occupied=torch.stack(occupied),
+        ).validate(width=self.width, capacity=self.capacity, batch=batch)
+
+    def observe_retention(
+        self, key: torch.Tensor, outcome: float | torch.Tensor
+    ) -> None:
+        """Update persistent mastery state from one scalar verifier outcome."""
+
+        if key.ndim != 1:
+            raise ValueError("retention key must be one-dimensional")
+        self.retention.observe(key, outcome)
+        self._save_retention()
+
+    def _save_retention(self) -> None:
+        """Hook for persistent backends; in-memory state needs no sidecar."""
+
+        return
+
     def write(
         self,
         key: torch.Tensor,
@@ -376,11 +481,13 @@ class ContentAddressedMemory(MemoryBackend):
         *,
         timestamp: torch.Tensor | None = None,
         scope: torch.Tensor | None = None,
+        target_index: torch.Tensor | None = None,
     ) -> MemoryWriteReceipt:
         # Create the view before entering the no-grad durable-state section so
         # the pending transaction path can still differentiate to the caller's
         # write-strength tensor.
-        strength_input = strength.reshape(-1)
+        with torch.enable_grad():
+            strength_input = strength.reshape(-1)
         with torch.no_grad():
             if key.ndim != 2 or value.ndim != 2 or key.shape != value.shape:
                 raise ValueError("memory key and value must have equal [batch, width] shape")
@@ -392,6 +499,16 @@ class ContentAddressedMemory(MemoryBackend):
             self._validate_batch(value, batch, "value")
             if strength.numel() != batch:
                 raise ValueError("memory write strength must have one value per batch row")
+            if target_index is not None:
+                if target_index.numel() != batch or target_index.dtype != torch.long:
+                    raise ValueError(
+                        "memory target index must be int64 with one value per batch row"
+                    )
+                target_index = target_index.reshape(batch).to(device=key.device)
+                if bool(torch.any(target_index < -1)) or bool(
+                    torch.any(target_index >= self.capacity)
+                ):
+                    raise ValueError("memory target index is outside the capacity")
             strength = strength_input.detach().to(self.strengths)
             if not bool(torch.isfinite(strength).all()):
                 raise ValueError("memory write strength must contain only finite values")
@@ -433,15 +550,39 @@ class ContentAddressedMemory(MemoryBackend):
                     and float(best_score) >= self.write_match_threshold
                 ):
                     index = int(best_index)
+                elif target_index is not None and int(target_index[row]) >= 0:
+                    index = int(target_index[row])
+                    if bool(bank_occupied[scope_id, index]) and self.retention.is_protected(
+                        bank_keys[scope_id, index]
+                    ):
+                        raise MemoryError(
+                            "explicit memory write would evict a protected "
+                            "capability; grow or consolidate the memory bank"
+                        )
                 else:
                     free = torch.nonzero(
                         ~bank_occupied[scope_id], as_tuple=False
                     ).reshape(-1)
-                    index = (
-                        int(free[0])
-                        if free.numel()
-                        else int(torch.argmin(bank_strengths[scope_id]))
-                    )
+                    if free.numel():
+                        index = int(free[0])
+                    else:
+                        candidate_indices = torch.arange(
+                            self.capacity, device=self.keys.device
+                        )
+                        candidate_keys = bank_keys[scope_id]
+                        # In the absence of a learned eviction scorer, weak
+                        # rows are the disposable baseline. The retention
+                        # ledger masks mastered rows before this fallback.
+                        candidate_scores = 1.0 - bank_strengths[scope_id]
+                        candidate_position = self.retention.choose_eviction_index(
+                            candidate_keys, candidate_scores
+                        )
+                        if candidate_position is None:
+                            raise MemoryError(
+                                "all occupied memory capabilities are protected; "
+                                "grow or consolidate the memory bank"
+                            )
+                        index = int(candidate_indices[candidate_position])
                 if self._transaction_depth:
                     # Keep a continuous effective row for the duration of
                     # the transaction. Durable storage remains discrete, but
@@ -627,7 +768,591 @@ class PersistentContentAddressedMemory(ContentAddressedMemory):
 
     def __init__(self, width: int, capacity: int, path: Path, **kwargs: Any) -> None:
         self.path = Path(path)
+        retention_ledger = kwargs.get("retention_ledger")
         super().__init__(width, capacity, **kwargs)
+        if self.path.exists():
+            self.load_snapshot(self.path)
+        retention_path = self._retention_path()
+        if retention_ledger is None and retention_path.exists():
+            self.retention = CapabilityRetentionLedger.load(retention_path)
+
+    def _retention_path(self) -> Path:
+        return self.path.with_suffix(self.path.suffix + ".retention.json")
+
+    def _save_retention(self) -> None:
+        self.retention.save(self._retention_path())
+
+    def configuration(self) -> dict[str, int | float | str]:
+        configuration = super().configuration()
+        configuration["persistence"] = "atomic_snapshot"
+        return configuration
+
+    def write(
+        self,
+        key: torch.Tensor,
+        value: torch.Tensor,
+        strength: torch.Tensor,
+        *,
+        timestamp: torch.Tensor | None = None,
+        scope: torch.Tensor | None = None,
+        target_index: torch.Tensor | None = None,
+    ) -> MemoryWriteReceipt:
+        previous = {name: value.detach().clone() for name, value in self.state_dict().items()}
+        previous_pending = dict(self._pending_writes)
+        receipt = super().write(
+            key,
+            value,
+            strength,
+            timestamp=timestamp,
+            scope=scope,
+            target_index=target_index,
+        )
+        if bool(receipt.committed.any()):
+            try:
+                self.snapshot(self.path)
+                self._save_retention()
+            except Exception:
+                self.load_state_dict(previous)
+                self._pending_writes = previous_pending
+                raise
+        return receipt
+
+    @torch.no_grad()
+    def clear(self) -> None:
+        previous = {name: value.detach().clone() for name, value in self.state_dict().items()}
+        previous_pending = dict(self._pending_writes)
+        super().clear()
+        try:
+            self.snapshot(self.path)
+            self._save_retention()
+        except Exception:
+            self.load_state_dict(previous)
+            self._pending_writes = previous_pending
+            raise
+
+
+class AppendOnlyContentAddressedMemory(MemoryBackend):
+    """Variable-capacity append-only learned-latent memory.
+
+    Unlike :class:`ContentAddressedMemory`, this backend never chooses a row
+    to evict. A new unmatched committed key appends a record, while a matching
+    key is updated in place. The logical record count therefore grows without
+    changing the controller or backend interface shapes. Record indices are
+    opaque receipts and are never part of the controller's learned input.
+    """
+
+    format = APPEND_ONLY_MEMORY_BACKEND_FORMAT
+
+    def __init__(
+        self,
+        width: int,
+        *,
+        write_threshold: float = 0.5,
+        query_temperature: float = 0.1,
+        write_match_threshold: float = 0.95,
+        read_match_threshold: float = MEMORY_READ_MATCH_THRESHOLD,
+        scope_capacity: int = 1,
+    ) -> None:
+        super().__init__(width)
+        if not isinstance(scope_capacity, int) or scope_capacity < 1:
+            raise ValueError("memory scope capacity must be positive")
+        if (
+            not 0.0 <= write_threshold <= 1.0
+            or query_temperature <= 0.0
+            or not 0.0 <= write_match_threshold <= 1.0
+            or not 0.0 <= read_match_threshold <= 1.0
+        ):
+            raise ValueError("memory thresholds are invalid")
+        self.write_threshold = float(write_threshold)
+        self.query_temperature = float(query_temperature)
+        self.write_match_threshold = float(write_match_threshold)
+        self.read_match_threshold = float(read_match_threshold)
+        self.scope_capacity = scope_capacity
+        self._transaction_depth = 0
+        self._pending_writes: dict[
+            int, tuple[torch.Tensor, torch.Tensor, torch.Tensor]
+        ] = {}
+        self.register_buffer("keys", torch.empty((0, width)))
+        self.register_buffer("values", torch.empty((0, width)))
+        self.register_buffer("strengths", torch.empty((0,)))
+        self.register_buffer("timestamps", torch.empty((0,)))
+        self.register_buffer("scopes", torch.empty((0,), dtype=torch.long))
+        self.register_buffer("occupied", torch.empty((0,), dtype=torch.bool))
+        self.register_buffer("store_version", torch.zeros((), dtype=torch.long))
+
+    @property
+    def record_count(self) -> int:
+        return int(self.keys.shape[0])
+
+    def _validate_state(self, state: dict[str, torch.Tensor] | None = None) -> None:
+        values = self.state_dict() if state is None else state
+        expected = {
+            "keys",
+            "values",
+            "strengths",
+            "timestamps",
+            "scopes",
+            "occupied",
+            "store_version",
+        }
+        if set(values) != expected:
+            raise ValueError("append-only memory state has an incompatible field set")
+        record_count = values["keys"].shape[0]
+        if values["keys"].ndim != 2 or values["keys"].shape[1] != self.width:
+            raise ValueError("append-only memory keys have the wrong shape")
+        if values["values"].shape != (record_count, self.width):
+            raise ValueError("append-only memory values have the wrong shape")
+        for name in ("keys", "values", "strengths", "timestamps"):
+            if not bool(torch.isfinite(values[name]).all()):
+                raise ValueError(f"append-only memory state {name} must be finite")
+        for name in ("strengths", "timestamps", "scopes", "occupied"):
+            if values[name].shape != (record_count,):
+                raise ValueError(f"append-only memory state {name} has the wrong shape")
+        if torch.any(values["strengths"] < 0) or torch.any(values["strengths"] > 1):
+            raise ValueError("append-only memory strengths must lie in [0, 1]")
+        if values["scopes"].dtype != torch.long:
+            raise ValueError("append-only memory scopes must be int64")
+        if bool(torch.any(values["scopes"] < 0)) or bool(
+            torch.any(values["scopes"] >= self.scope_capacity)
+        ):
+            raise ValueError("append-only memory scopes are outside the configured range")
+        if values["occupied"].dtype != torch.bool:
+            raise ValueError("append-only memory occupancy must be boolean")
+        if (
+            values["store_version"].shape != torch.Size([])
+            or values["store_version"].dtype != torch.long
+            or int(values["store_version"].item()) < 0
+        ):
+            raise ValueError("append-only memory version must be a non-negative int64 scalar")
+
+    def validate_state(self) -> None:
+        self._validate_state()
+
+    def load_state_dict(
+        self,
+        state_dict: dict[str, torch.Tensor],
+        strict: bool = True,
+        assign: bool = False,
+    ):
+        expected = {
+            "keys",
+            "values",
+            "strengths",
+            "timestamps",
+            "scopes",
+            "occupied",
+            "store_version",
+        }
+        if expected.issubset(state_dict):
+            self._validate_state({name: state_dict[name] for name in expected})
+            for name in expected:
+                current = self._buffers[name]
+                self._buffers[name] = torch.empty_like(
+                    state_dict[name], device=current.device
+                )
+        self._pending_writes.clear()
+        return super().load_state_dict(state_dict, strict=strict, assign=assign)
+
+    def _scope_ids(
+        self,
+        scope: torch.Tensor | None,
+        batch: int,
+        *,
+        device: torch.device,
+    ) -> torch.Tensor:
+        if scope is None:
+            return torch.zeros(batch, device=device, dtype=torch.long)
+        if scope.ndim == 0 or scope.numel() != batch:
+            raise ValueError("memory scope must have one int64 value per batch row")
+        if scope.dtype != torch.long:
+            raise ValueError("memory scope must be int64")
+        scope = scope.reshape(batch).to(device=device)
+        if bool(torch.any(scope < 0)) or bool(torch.any(scope >= self.scope_capacity)):
+            raise ValueError("memory scope is outside the configured scope capacity")
+        return scope
+
+    def _record_indices(self, scope_id: int) -> torch.Tensor:
+        return torch.nonzero(
+            self.occupied & (self.scopes == scope_id), as_tuple=False
+        ).reshape(-1)
+
+    def _row_tensors(
+        self, indices: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        keys = [
+            self._pending_writes[int(index)][0]
+            if int(index) in self._pending_writes
+            else self.keys[index]
+            for index in indices.tolist()
+        ]
+        values = [
+            self._pending_writes[int(index)][1]
+            if int(index) in self._pending_writes
+            else self.values[index]
+            for index in indices.tolist()
+        ]
+        if not keys:
+            empty = self.keys.new_empty((0, self.width))
+            return (
+                empty,
+                empty.clone(),
+                self.strengths.new_empty((0,)),
+                self.timestamps.new_empty((0,)),
+            )
+        strengths = self.strengths[indices].clone()
+        timestamps = self.timestamps[indices].clone()
+        for position, index in enumerate(indices.tolist()):
+            pending = self._pending_writes.get(int(index))
+            if pending is not None:
+                strengths[position] = pending[2]
+        return (
+            torch.stack(keys, dim=0),
+            torch.stack(values, dim=0),
+            strengths,
+            timestamps,
+        )
+
+    def read(self, query: MemoryQuery) -> MemoryRead:
+        query.validate(width=self.width)
+        self.validate_state()
+        batch = query.key.shape[0]
+        scope_ids = self._scope_ids(query.scope, batch, device=self.keys.device)
+        query_keys = torch.nn.functional.normalize(
+            query.key.to(device=self.keys.device, dtype=self.keys.dtype), dim=-1
+        )
+        counts = [int(self._record_indices(int(scope_id)).numel()) for scope_id in scope_ids]
+        top_k = min(query.top_k, max(counts, default=0))
+        if top_k == 0:
+            return MemoryRead(
+                value=torch.zeros(batch, self.width, device=self.keys.device),
+                scores=torch.empty(batch, 0, device=self.keys.device),
+                indices=torch.empty(batch, 0, device=self.keys.device, dtype=torch.long),
+                hit=torch.zeros(batch, device=self.keys.device, dtype=torch.bool),
+            ).validate(width=self.width, batch=batch)
+
+        score_rows: list[torch.Tensor] = []
+        index_rows: list[torch.Tensor] = []
+        value_rows: list[torch.Tensor] = []
+        hit_rows: list[torch.Tensor] = []
+        for row, scope_id in enumerate(scope_ids.tolist()):
+            record_indices = self._record_indices(scope_id)
+            row_keys, row_values, _strengths, _timestamps = self._row_tensors(
+                record_indices
+            )
+            row_keys = torch.nn.functional.normalize(row_keys, dim=-1)
+            row_scores = row_keys @ query_keys[row]
+            selected_scores, selected_positions = torch.topk(
+                row_scores, k=min(top_k, row_scores.shape[0])
+            )
+            selected_indices = record_indices[selected_positions]
+            selected_values = row_values[selected_positions]
+            if selected_scores.shape[0] < top_k:
+                pad = top_k - selected_scores.shape[0]
+                selected_scores = torch.cat(
+                    [
+                        selected_scores,
+                        torch.full(
+                            (pad,),
+                            -torch.inf,
+                            dtype=selected_scores.dtype,
+                            device=selected_scores.device,
+                        ),
+                    ]
+                )
+                selected_indices = torch.cat(
+                    [selected_indices, torch.full((pad,), -1, device=selected_indices.device)]
+                )
+                selected_values = torch.cat(
+                    [selected_values, torch.zeros(pad, self.width, device=row_values.device)]
+                )
+            finite = torch.isfinite(selected_scores)
+            matches = finite & (selected_scores >= self.read_match_threshold)
+            safe_scores = torch.where(
+                finite, selected_scores, torch.zeros_like(selected_scores)
+            )
+            weights = torch.softmax(safe_scores / self.query_temperature, dim=0)
+            weights = torch.where(matches, weights, torch.zeros_like(weights))
+            weights = weights / weights.sum().clamp_min(1e-12)
+            score_rows.append(selected_scores)
+            index_rows.append(selected_indices)
+            value_rows.append(torch.einsum("k,kw->w", weights, selected_values))
+            hit_rows.append(matches.any())
+        return MemoryRead(
+            value=torch.stack(value_rows),
+            scores=torch.stack(score_rows),
+            indices=torch.stack(index_rows),
+            hit=torch.stack(hit_rows),
+        ).validate(width=self.width, batch=batch)
+
+    @torch.no_grad()
+    def candidates(self, scope: torch.Tensor | None = None) -> MemoryCandidates:
+        batch = 1 if scope is None else int(scope.numel())
+        scope_ids = self._scope_ids(scope, batch, device=self.keys.device)
+        record_indices = [self._record_indices(int(scope_id)) for scope_id in scope_ids]
+        capacity = max((int(indices.numel()) for indices in record_indices), default=0)
+        key_rows: list[torch.Tensor] = []
+        value_rows: list[torch.Tensor] = []
+        strength_rows: list[torch.Tensor] = []
+        timestamp_rows: list[torch.Tensor] = []
+        occupied_rows: list[torch.Tensor] = []
+        for indices in record_indices:
+            keys, values, strengths, timestamps = self._row_tensors(indices)
+            pad = capacity - keys.shape[0]
+            if pad:
+                keys = torch.cat([keys, self.keys.new_zeros((pad, self.width))])
+                values = torch.cat([values, self.values.new_zeros((pad, self.width))])
+                strengths = torch.cat([strengths, self.strengths.new_zeros((pad,))])
+                timestamps = torch.cat(
+                    [timestamps, self.timestamps.new_zeros((pad,))]
+                )
+            key_rows.append(keys.detach())
+            value_rows.append(values.detach())
+            strength_rows.append(strengths.detach())
+            timestamp_rows.append(timestamps.detach())
+            occupied_rows.append(
+                torch.cat(
+                    [
+                        torch.ones(indices.shape[0], dtype=torch.bool, device=self.keys.device),
+                        torch.zeros(pad, dtype=torch.bool, device=self.keys.device),
+                    ]
+                )
+            )
+        return MemoryCandidates(
+            keys=torch.stack(key_rows),
+            values=torch.stack(value_rows),
+            strengths=torch.stack(strength_rows),
+            timestamps=torch.stack(timestamp_rows),
+            occupied=torch.stack(occupied_rows),
+        ).validate(width=self.width, capacity=capacity, batch=batch)
+
+    def _append_record(
+        self,
+        key: torch.Tensor,
+        value: torch.Tensor,
+        strength: torch.Tensor,
+        timestamp: torch.Tensor,
+        scope_id: torch.Tensor,
+    ) -> int:
+        index = self.record_count
+        self._buffers["keys"] = torch.cat(
+            [self.keys, key.reshape(1, self.width).detach().to(self.keys)]
+        )
+        self._buffers["values"] = torch.cat(
+            [self.values, value.reshape(1, self.width).detach().to(self.values)]
+        )
+        self._buffers["strengths"] = torch.cat(
+            [self.strengths, strength.reshape(1).detach().to(self.strengths)]
+        )
+        self._buffers["timestamps"] = torch.cat(
+            [self.timestamps, timestamp.reshape(1).detach().to(self.timestamps)]
+        )
+        self._buffers["scopes"] = torch.cat(
+            [self.scopes, scope_id.reshape(1).detach().to(self.scopes)]
+        )
+        self._buffers["occupied"] = torch.cat(
+            [self.occupied, torch.ones(1, dtype=torch.bool, device=self.keys.device)]
+        )
+        return index
+
+    @torch.no_grad()
+    def write(
+        self,
+        key: torch.Tensor,
+        value: torch.Tensor,
+        strength: torch.Tensor,
+        *,
+        timestamp: torch.Tensor | None = None,
+        scope: torch.Tensor | None = None,
+        target_index: torch.Tensor | None = None,
+    ) -> MemoryWriteReceipt:
+        if key.ndim != 2 or value.ndim != 2 or key.shape != value.shape:
+            raise ValueError("memory key and value must have equal [batch, width] shape")
+        if key.shape[1] != self.width:
+            raise ValueError(f"memory key and value must have width {self.width}")
+        if not bool(torch.isfinite(key).all()) or not bool(torch.isfinite(value).all()):
+            raise ValueError("memory key and value must contain only finite values")
+        batch = key.shape[0]
+        scope_ids = self._scope_ids(scope, batch, device=self.keys.device)
+        if strength.numel() != batch:
+            raise ValueError("memory write strength must have one value per batch row")
+        with torch.enable_grad():
+            strength_input = strength.reshape(-1)
+        strength_value = strength_input.detach().to(self.strengths)
+        if not bool(torch.isfinite(strength_value).all()) or bool(
+            torch.any(strength_value < 0) or torch.any(strength_value > 1)
+        ):
+            raise ValueError("memory write strength must lie in [0, 1]")
+        if target_index is not None and bool(torch.any(target_index != -1)):
+            raise ValueError("append-only memory does not support target_index replacement")
+        if timestamp is None:
+            timestamp = torch.zeros(batch, device=key.device, dtype=key.dtype)
+        if timestamp.numel() != batch:
+            raise ValueError("memory timestamp must have one value per batch row")
+        timestamp = timestamp.reshape(batch).detach().to(self.timestamps)
+        if not bool(torch.isfinite(timestamp).all()):
+            raise ValueError("memory timestamp must contain only finite values")
+        committed = strength_value > self.write_threshold
+        indices = torch.full((batch,), -1, device=key.device, dtype=torch.long)
+        for row in range(batch):
+            if not bool(committed[row]):
+                continue
+            scope_id = int(scope_ids[row])
+            normalized_key = torch.nn.functional.normalize(
+                key[row].detach().to(self.keys), dim=0
+            )
+            record_indices = self._record_indices(scope_id)
+            if record_indices.numel():
+                row_keys, _row_values, _row_strengths, _row_timestamps = self._row_tensors(
+                    record_indices
+                )
+                scores = torch.nn.functional.normalize(row_keys, dim=-1) @ normalized_key
+                best_score, best_position = torch.max(scores, dim=0)
+            else:
+                best_score = torch.tensor(-torch.inf, device=self.keys.device)
+                best_position = torch.tensor(0, device=self.keys.device, dtype=torch.long)
+            if bool(torch.isfinite(best_score)) and float(best_score) >= self.write_match_threshold:
+                index = int(record_indices[best_position])
+                pending_previous = self._pending_writes.get(index)
+                previous_key = (
+                    pending_previous[0].detach().clone()
+                    if pending_previous is not None
+                    else self.keys[index].detach().clone()
+                )
+                previous_value = (
+                    pending_previous[1].detach().clone()
+                    if pending_previous is not None
+                    else self.values[index].detach().clone()
+                )
+                self._buffers["keys"][index].copy_(key[row].detach().to(self.keys))
+                self._buffers["values"][index].copy_(value[row].detach().to(self.values))
+                self._buffers["strengths"][index].copy_(strength_value[row])
+                self._buffers["timestamps"][index].copy_(timestamp[row])
+            else:
+                previous_key = self.keys.new_zeros((self.width,))
+                previous_value = self.values.new_zeros((self.width,))
+                index = self._append_record(
+                    key[row], value[row], strength_value[row], timestamp[row], scope_ids[row]
+                )
+            if self._transaction_depth:
+                with torch.enable_grad():
+                    gate = strength_input[row].to(
+                        device=self.values.device, dtype=self.values.dtype
+                    )
+                    effective_key = gate * key[row].to(self.keys) + (
+                        1.0 - gate
+                    ) * previous_key
+                    effective_value = gate * value[row].to(self.values) + (
+                        1.0 - gate
+                    ) * previous_value
+                self._pending_writes[index] = (effective_key, effective_value, gate)
+            indices[row] = index
+        if bool(committed.any()):
+            self.store_version.add_(1)
+        self.validate_state()
+        return MemoryWriteReceipt(
+            committed=committed.to(device=key.device),
+            indices=indices,
+            version=int(self.store_version.item()),
+        ).validate(batch=batch)
+
+    @contextmanager
+    def differentiable_transaction(self) -> Iterator[MemoryBackend]:
+        if self._transaction_depth:
+            raise RuntimeError("nested differentiable memory transactions are unsupported")
+        self._transaction_depth = 1
+        self._pending_writes = {}
+        try:
+            yield self
+        finally:
+            self._pending_writes.clear()
+            self._transaction_depth = 0
+
+    @torch.no_grad()
+    def clear(self) -> None:
+        self._pending_writes.clear()
+        device = self.keys.device
+        self._buffers["keys"] = torch.empty((0, self.width), device=device)
+        self._buffers["values"] = torch.empty((0, self.width), device=device)
+        self._buffers["strengths"] = torch.empty((0,), device=device)
+        self._buffers["timestamps"] = torch.empty((0,), device=device)
+        self._buffers["scopes"] = torch.empty((0,), dtype=torch.long, device=device)
+        self._buffers["occupied"] = torch.empty((0,), dtype=torch.bool, device=device)
+        self.store_version.add_(1)
+        self.validate_state()
+
+    @staticmethod
+    def _state_checksum(state: dict[str, torch.Tensor]) -> str:
+        return ContentAddressedMemory._state_checksum(state)
+
+    def snapshot(self, path: Path) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        descriptor, temporary_name = tempfile.mkstemp(
+            dir=path.parent, prefix=f".{path.name}.", suffix=".tmp"
+        )
+        os.close(descriptor)
+        temporary_path = Path(temporary_name)
+        try:
+            state = self.state_dict()
+            torch.save(
+                {
+                    "format": APPEND_ONLY_MEMORY_SNAPSHOT_FORMAT,
+                    "schema": self.schema,
+                    "configuration": self.configuration(),
+                    "state_dict": state,
+                    "state_checksum": self._state_checksum(state),
+                },
+                temporary_path,
+            )
+            with temporary_path.open("rb") as stream:
+                os.fsync(stream.fileno())
+            temporary_path.replace(path)
+            directory = os.open(path.parent, os.O_RDONLY)
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
+        finally:
+            temporary_path.unlink(missing_ok=True)
+
+    def load_snapshot(
+        self, path: Path, *, map_location: torch.device | str = "cpu"
+    ) -> None:
+        payload = torch.load(path, map_location=map_location, weights_only=False)
+        if payload.get("format") != APPEND_ONLY_MEMORY_SNAPSHOT_FORMAT:
+            raise ValueError("unsupported append-only memory snapshot format")
+        if payload.get("schema") != self.schema:
+            raise ValueError("unsupported memory snapshot schema")
+        if payload.get("configuration") != self.configuration():
+            raise ValueError("append-only memory snapshot configuration does not match store")
+        state = payload.get("state_dict")
+        if not isinstance(state, dict):
+            raise TypeError("append-only memory snapshot state is invalid")
+        self._validate_state(state)
+        if payload.get("state_checksum") != self._state_checksum(state):
+            raise ValueError("append-only memory snapshot checksum mismatch")
+        self.load_state_dict(state)
+        self.validate_state()
+
+    def configuration(self) -> dict[str, int | float | str]:
+        return {
+            "format": self.format,
+            "schema": self.schema,
+            "width": self.width,
+            "storage": "append_only",
+            "write_threshold": self.write_threshold,
+            "query_temperature": self.query_temperature,
+            "write_match_threshold": self.write_match_threshold,
+            "read_match_threshold": self.read_match_threshold,
+            "scope_capacity": self.scope_capacity,
+        }
+
+
+class PersistentAppendOnlyContentAddressedMemory(AppendOnlyContentAddressedMemory):
+    """Atomically persisted variable-capacity append-only memory."""
+
+    def __init__(self, width: int, path: Path, **kwargs: Any) -> None:
+        self.path = Path(path)
+        super().__init__(width, **kwargs)
         if self.path.exists():
             self.load_snapshot(self.path)
 
@@ -644,11 +1369,19 @@ class PersistentContentAddressedMemory(ContentAddressedMemory):
         *,
         timestamp: torch.Tensor | None = None,
         scope: torch.Tensor | None = None,
+        target_index: torch.Tensor | None = None,
     ) -> MemoryWriteReceipt:
-        previous = {name: value.detach().clone() for name, value in self.state_dict().items()}
+        previous = {
+            name: value.detach().clone() for name, value in self.state_dict().items()
+        }
         previous_pending = dict(self._pending_writes)
         receipt = super().write(
-            key, value, strength, timestamp=timestamp, scope=scope
+            key,
+            value,
+            strength,
+            timestamp=timestamp,
+            scope=scope,
+            target_index=target_index,
         )
         if bool(receipt.committed.any()):
             try:
@@ -661,7 +1394,9 @@ class PersistentContentAddressedMemory(ContentAddressedMemory):
 
     @torch.no_grad()
     def clear(self) -> None:
-        previous = {name: value.detach().clone() for name, value in self.state_dict().items()}
+        previous = {
+            name: value.detach().clone() for name, value in self.state_dict().items()
+        }
         previous_pending = dict(self._pending_writes)
         super().clear()
         try:

@@ -1,0 +1,16 @@
+{
+  "schema": "neural-computer.episodic-context-credit-generated-short-budget-control.v1",
+  "seeds": [69316, 69317],
+  "episode_length": 6,
+  "pattern_bank_size": 20,
+  "new_families": [2, 3, 4, 5, 6, 7, 8, 9],
+  "context_updates": 512,
+  "credit_updates": 256,
+  "route_updates": 512,
+  "context_old_route_accuracy": [0.5, 1.0],
+  "candidate_permutation_accuracy": [0.5, 1.0],
+  "old_route_retained": [false, true],
+  "promoted": false,
+  "replayed_examples": 0,
+  "claim_boundary": "Rejected as a seed-unstable short-budget control; longer-context acquisition must scale its frozen context and route training budget."
+}

@@ -1,0 +1,48 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "multistep_view_growth_lifecycle_v1_2026-08-06",
+  "status": "promoted_reusable_lifecycle_backed_two_step_growth",
+  "claim_boundary": "Two sequential protected external-capability additions use one canonical lifecycle coordinator with frozen controller and zero route replay; this remains bounded continual memory, not general continual learning.",
+  "unique_verifier_bits": 458752,
+  "unique_logical_lifetimes": 114688,
+  "optimizer_updates": 7168,
+  "replayed_examples": 0,
+  "wall_time_seconds": 479.285225542,
+  "latency": "per-seed wall time is recorded in each report; each of six capabilities receives eight fresh retention observations",
+  "stable_bits_to_threshold": null,
+  "retention_on_mastered_primitives": {
+    "threshold": 0.70,
+    "probes_per_capability": 8,
+    "seed_69316_old_floors": {
+      "forward": 0.84375,
+      "reverse": 0.7265625,
+      "complement": 0.7734375,
+      "complement_reverse": 0.76953125
+    },
+    "seed_69316_rotate_floor": 0.8203125,
+    "seed_69316_complement_rotate_floor": 0.80859375,
+    "seed_69317_old_floors": {
+      "forward": 0.80859375,
+      "reverse": 0.7734375,
+      "complement": 0.8046875,
+      "complement_reverse": 0.7890625
+    },
+    "seed_69317_rotate_floor": 0.765625,
+    "seed_69317_complement_rotate_floor": 0.78515625
+  },
+  "transfer_ratio_against_fresh_learner": null,
+  "verification": {
+    "seeds": [69316, 69317],
+    "old_artifact_updates": 512,
+    "new_artifact_updates_per_addition": 512,
+    "base_route_updates": 2048,
+    "route_extension_updates_per_addition": 512,
+    "audit_count": 64,
+    "retention_probes": 8,
+    "batch_size": 16,
+    "route_batch_size": 16,
+    "behavior_tolerance": 0.05,
+    "lifecycle_schema": "neural-computer.external-capability-lifecycle.v1",
+    "all_gates_passed": true
+  }
+}

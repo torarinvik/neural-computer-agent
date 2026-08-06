@@ -1,0 +1,228 @@
+{
+  "schema": "neural-computer.brainworkshop-adaptive-capability-growth.v1",
+  "status": "promoted_generic_external_capability_growth",
+  "task_horizons_used_only_by_verifier": [
+    2,
+    3,
+    4
+  ],
+  "rendered_cues": {
+    "2": 4,
+    "3": 5,
+    "4": 6
+  },
+  "generic_memory_capacity": 5,
+  "generic_capability_provisioning": [
+    {
+      "slot": 1,
+      "memory_capacity": 5
+    },
+    {
+      "slot": 2,
+      "memory_capacity": 5
+    }
+  ],
+  "no_task_metadata_to_capability": true,
+  "controls": {
+    "2": {
+      "fresh": 1.0,
+      "time_shuffle": 0.5138888955116272,
+      "history_reset": 0.5
+    },
+    "3": {
+      "fresh": 1.0,
+      "time_shuffle": 0.5604166984558105,
+      "history_reset": 0.6000000238418579
+    },
+    "4": {
+      "fresh": 1.0,
+      "time_shuffle": 0.4817708432674408,
+      "history_reset": 0.5
+    }
+  },
+  "cue_shuffled_controls": {
+    "2": {
+      "fresh": 0.6822916865348816,
+      "time_shuffle": 0.4861111342906952,
+      "history_reset": 0.5
+    },
+    "3": {
+      "fresh": 0.800000011920929,
+      "time_shuffle": 0.5708333849906921,
+      "history_reset": 0.6000000238418579
+    },
+    "4": {
+      "fresh": 0.5703125,
+      "time_shuffle": 0.4427083432674408,
+      "history_reset": 0.5
+    }
+  },
+  "cue_separation_passed": true,
+  "old_calibration": [
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    }
+  ],
+  "adaptive_candidate_calibrations": {
+    "3": [
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      }
+    ],
+    "4": [
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      },
+      {
+        "eligible_accuracy": 1.0,
+        "selected_slot_fraction": 1.0
+      }
+    ]
+  },
+  "old_forced_retention": [
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    },
+    {
+      "eligible_accuracy": 1.0,
+      "selected_slot_fraction": 1.0
+    }
+  ],
+  "preferred_route_orders": {
+    "4": [
+      0,
+      1,
+      2
+    ],
+    "5": [
+      1,
+      2,
+      0
+    ],
+    "6": [
+      2,
+      1,
+      0
+    ]
+  },
+  "reload_selected_routes": {
+    "4": [
+      0,
+      0
+    ],
+    "5": [
+      1,
+      1
+    ],
+    "6": [
+      2,
+      2
+    ]
+  },
+  "prior_bank_unchanged": true,
+  "controller_frozen": true,
+  "unique_verifier_bits": 86016,
+  "unique_logical_lifetimes": 18432,
+  "optimizer_updates": 576,
+  "replayed_examples": 0,
+  "verifier_outcome_events": 165888,
+  "feedback_events": 86016,
+  "promotion_gates": {
+    "all_fresh_controls": true,
+    "cue_separation": true,
+    "candidate_calibrations": true,
+    "old_capability_retained": true,
+    "route_state_reload": true,
+    "prior_bank_unchanged": true,
+    "no_task_metadata_to_capability": true
+  },
+  "claim_boundary": "Two new relation capabilities were provisioned with the same generic adaptive bounded-window reader, learned from fresh outcomes, and routed by rendered cues while the controller and old capability stayed frozen. This promotes bounded generic capability growth, not arbitrary program induction, unrestricted memory growth, or general continual learning."
+}

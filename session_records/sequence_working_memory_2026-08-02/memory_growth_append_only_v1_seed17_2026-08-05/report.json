@@ -1,0 +1,66 @@
+{
+  "schema": "neural-computer.append-only-growth-report.v1",
+  "experiment": "append-only-memory-growth-v1",
+  "seed": 17,
+  "width": 16,
+  "batch_size": 32,
+  "record_counts": [
+    64,
+    256,
+    1024
+  ],
+  "conditions": {
+    "64": {
+      "record_count_requested": 64,
+      "record_count_committed": 64,
+      "permuted_recall": 1.0,
+      "fresh_token_hit_rate": 0.0,
+      "clear_memory_hit_rate": 0.0,
+      "write_seconds": 0.012001708993921056,
+      "query_latency_ms": 0.167617187344149,
+      "persistent": {
+        "reload_recall": 1.0,
+        "corruption_rejected": true,
+        "recovery_recall": 1.0
+      }
+    },
+    "256": {
+      "record_count_requested": 256,
+      "record_count_committed": 256,
+      "permuted_recall": 1.0,
+      "fresh_token_hit_rate": 0.00390625,
+      "clear_memory_hit_rate": 0.0,
+      "write_seconds": 0.09868704198743217,
+      "query_latency_ms": 0.3767954101476789,
+      "persistent": {
+        "reload_recall": 1.0,
+        "corruption_rejected": true,
+        "recovery_recall": 1.0
+      }
+    },
+    "1024": {
+      "record_count_requested": 1024,
+      "record_count_committed": 1024,
+      "permuted_recall": 1.0,
+      "fresh_token_hit_rate": 0.0107421875,
+      "clear_memory_hit_rate": 0.0,
+      "write_seconds": 1.4176275829959195,
+      "query_latency_ms": 1.3995215654318827,
+      "persistent": {
+        "reload_recall": 1.0,
+        "corruption_rejected": true,
+        "recovery_recall": 1.0
+      }
+    }
+  },
+  "accounting": {
+    "unique_logical_lifetimes": 1344,
+    "unique_verifier_bits": 1344,
+    "optimizer_updates": 0,
+    "replayed_examples": 0,
+    "controller_frozen": true,
+    "raw_modalities_seen_by_controller": false
+  },
+  "promoted": true,
+  "claim_boundary": "Variable-capacity append-only memory through a frozen canonical controller; no learned compression or general continual-learning claim."
+}

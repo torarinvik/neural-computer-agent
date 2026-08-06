@@ -12,12 +12,16 @@ from neural_computer import (
     AmodalEvent,
     AmodalEventCollection,
     AmodalEventWindowBuffer,
+    AppendOnlyContentAddressedMemory,
+    ArtifactConsolidationReceipt,
     ContentAddressedMemory,
     ControllerFeedback,
     EventWaitPolicy,
+    ExecutableArtifactMemory,
     MemoryBackend,
     MemoryQuery,
     OpaqueProtocolDecoder,
+    PersistentAppendOnlyContentAddressedMemory,
     PersistentContentAddressedMemory,
     freeze_core,
     load_growth_artifact,
@@ -521,6 +525,32 @@ def test_content_addressed_memory_upserts_matching_keys() -> None:
     assert torch.allclose(memory.read(MemoryQuery(key)).value, second_value, atol=1e-5)
 
 
+def test_memory_side_policy_can_select_an_explicit_eviction_row() -> None:
+    memory = ContentAddressedMemory(width=4, capacity=2, write_threshold=0.5)
+    keys = torch.tensor(
+        [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0]]
+    )
+    values = torch.tensor(
+        [[0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
+    )
+    memory.write(keys, values, torch.ones(2))
+    candidates = memory.candidates(torch.tensor([0], dtype=torch.long))
+    assert candidates.keys.shape == (1, 2, 4)
+    replacement_key = torch.tensor([[0.0, 0.0, 1.0, 0.0]])
+    replacement_value = torch.tensor([[1.0, 1.0, 0.0, 0.0]])
+    receipt = memory.write(
+        replacement_key,
+        replacement_value,
+        torch.ones(1),
+        scope=torch.tensor([0], dtype=torch.long),
+        target_index=torch.tensor([1], dtype=torch.long),
+    )
+
+    assert receipt.indices.tolist() == [1]
+    assert torch.allclose(memory.values[1], replacement_value[0])
+    assert torch.allclose(memory.values[0], values[0])
+
+
 def test_scoped_memory_keeps_same_key_bindings_separate() -> None:
     memory = ContentAddressedMemory(width=4, capacity=1, scope_capacity=2)
     key = torch.tensor(
@@ -642,6 +672,110 @@ def test_memory_backend_contract_supports_persistent_replacement(tmp_path) -> No
     replacement.clear()
     cleared = PersistentContentAddressedMemory(width=4, capacity=2, path=path)
     assert not cleared.read(MemoryQuery(key)).hit.any()
+
+
+def test_append_only_memory_grows_without_replacing_prior_records() -> None:
+    memory = AppendOnlyContentAddressedMemory(
+        width=8, write_threshold=0.0, write_match_threshold=0.999
+    )
+    keys = torch.eye(8)
+    values = torch.roll(keys, shifts=1, dims=0)
+    receipt = memory.write(keys, values, torch.ones(8))
+
+    assert receipt.indices.tolist() == list(range(8))
+    assert memory.record_count == 8
+    extra_key = torch.zeros(1, 8)
+    extra_key[0, :2] = torch.tensor([0.6, 0.8])
+    extra_value = torch.zeros(1, 8)
+    extra_value[0, 2:4] = torch.tensor([0.6, 0.8])
+    memory.write(extra_key, extra_value, torch.ones(1))
+
+    assert memory.record_count == 9
+    for index in range(8):
+        read = memory.read(MemoryQuery(keys[index : index + 1]))
+        assert read.hit.tolist() == [True]
+        assert torch.allclose(read.value, values[index : index + 1], atol=1e-5)
+    assert memory.read(MemoryQuery(extra_key)).hit.tolist() == [True]
+    assert memory.candidates().occupied.sum().item() == 9
+
+
+def test_append_only_memory_isolated_scopes_and_empty_reads() -> None:
+    memory = AppendOnlyContentAddressedMemory(
+        width=4, write_threshold=0.0, scope_capacity=2
+    )
+    query_key = torch.tensor([[1.0, 0.0, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0]])
+    memory.write(
+        query_key,
+        torch.tensor([[0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0]]),
+        torch.ones(2),
+        scope=torch.tensor([0, 1]),
+    )
+
+    read = memory.read(MemoryQuery(query_key, scope=torch.tensor([0, 1])))
+    assert read.hit.tolist() == [True, True]
+    assert torch.allclose(read.value[0], torch.tensor([0.0, 1.0, 0.0, 0.0]))
+    assert torch.allclose(read.value[1], torch.tensor([0.0, 0.0, 1.0, 0.0]))
+
+    empty = AppendOnlyContentAddressedMemory(width=4)
+    empty_read = empty.read(MemoryQuery(torch.ones(2, 4)))
+    assert empty_read.hit.tolist() == [False, False]
+    assert empty_read.value.shape == (2, 4)
+    assert empty.candidates().keys.shape == (1, 0, 4)
+
+
+def test_persistent_append_only_memory_reloads_growth_and_rejects_corruption(
+    tmp_path,
+) -> None:
+    path = tmp_path / "append-only-memory.pt"
+    memory = PersistentAppendOnlyContentAddressedMemory(
+        width=8, path=path, write_threshold=0.0, write_match_threshold=0.999
+    )
+    keys = torch.eye(8)
+    values = torch.roll(keys, shifts=1, dims=0)
+    memory.write(keys, values, torch.ones(8))
+    assert memory.record_count == 8
+
+    restored = PersistentAppendOnlyContentAddressedMemory(
+        width=8, path=path, write_threshold=0.0, write_match_threshold=0.999
+    )
+    assert restored.record_count == 8
+    assert restored.read(MemoryQuery(keys[6:7])).hit.tolist() == [True]
+
+    payload = torch.load(path, weights_only=False)
+    payload["state_dict"]["values"][0, 0] += 0.25
+    torch.save(payload, path)
+    with pytest.raises(ValueError, match="checksum"):
+        PersistentAppendOnlyContentAddressedMemory(
+            width=8, path=path, write_threshold=0.0, write_match_threshold=0.999
+        )
+
+
+def test_runtime_checkpoint_round_trips_variable_capacity_memory(tmp_path) -> None:
+    key = torch.zeros(1, 16)
+    key[0, 0] = 1.0
+    value = torch.zeros(1, 16)
+    value[0, 1] = 1.0
+    source = AmodalControllerRuntime(
+        AmodalCognitiveController(
+            width=16, workspace_slots=2, intention_width=5, feedback_width=3
+        ),
+        memory=AppendOnlyContentAddressedMemory(width=16, write_threshold=0.0),
+    )
+    assert source.memory is not None
+    source.memory.write(key, value, torch.ones(1))
+    checkpoint = tmp_path / "append-only-runtime.pt"
+    save_runtime(source, checkpoint)
+
+    restored = AmodalControllerRuntime(
+        AmodalCognitiveController(
+            width=16, workspace_slots=2, intention_width=5, feedback_width=3
+        ),
+        memory=AppendOnlyContentAddressedMemory(width=16, write_threshold=0.0),
+    )
+    load_runtime_components(restored, checkpoint)
+    assert restored.memory is not None
+    assert restored.memory.record_count == 1
+    assert restored.memory.read(MemoryQuery(key)).hit.tolist() == [True]
 
 
 def test_memory_read_reports_and_returns_no_value_for_a_near_miss() -> None:
@@ -791,7 +925,7 @@ def test_runtime_checkpoint_loads_independent_components(tmp_path) -> None:
     restored = build()
     payload = load_runtime_components(restored, checkpoint)
 
-    assert payload["format"] == "neural-computer.amodal-runtime.v28"
+    assert payload["format"] == "neural-computer.amodal-runtime.v29"
     for left, right in zip(source.parameters(), restored.parameters(), strict=True):
         assert torch.equal(left, right)
 
@@ -846,6 +980,36 @@ def test_growth_registers_are_zero_output_until_artifact_is_loaded() -> None:
     assert torch.allclose(base_output.intention.payload, expanded_output.intention.payload)
 
 
+def test_intention_conditioned_growth_is_zero_output_until_trained() -> None:
+    torch.manual_seed(802)
+    base = AmodalCognitiveController(
+        width=16, workspace_slots=2, intention_width=5, feedback_width=3
+    )
+    torch.manual_seed(802)
+    expanded = AmodalCognitiveController(
+        width=16,
+        workspace_slots=2,
+        intention_width=5,
+        feedback_width=3,
+        growth_register_widths=(8,),
+        growth_recurrent_from=0,
+        growth_gated=True,
+        growth_from_intention=True,
+        growth_gate_from_context=True,
+    )
+    assert expanded.growth_slots[0]["input"].in_features == 53
+    assert expanded.growth_slots[0]["gate"].in_features == 53
+    assert expanded.configuration()["growth_from_intention"] is True
+    assert expanded.configuration()["growth_gate_from_context"] is True
+    state = base.initial_state(1, device="cpu")
+    expanded_state = expanded.initial_state(1, device="cpu")
+    event = AmodalEventCollection.from_events([AmodalEvent(torch.randn(1, 16))])
+    feedback = _feedback(1, 3)
+    base_output, _ = base.step(event, state, feedback)
+    expanded_output, _ = expanded.step(event, expanded_state, feedback)
+    assert torch.allclose(base_output.intention.payload, expanded_output.intention.payload)
+
+
 def test_growth_artifact_load_preserves_canonical_core() -> None:
     controller = AmodalCognitiveController(
         width=16,
@@ -867,6 +1031,56 @@ def test_growth_artifact_load_preserves_canonical_core() -> None:
     }
     receipt = load_growth_artifact(controller, artifact, growth_prefixes=growth_prefix)
     assert receipt.core_unchanged
+
+
+def test_artifact_consolidation_verifies_candidate_without_mutating_source(tmp_path) -> None:
+    source = ExecutableArtifactMemory(tmp_path / "source", width=4, capacity=3)
+    artifacts = [
+        {"growth_slots.0.weight": torch.full((2, 2), float(index))}
+        for index in range(3)
+    ]
+    keys = torch.eye(4)[:3]
+    for key, artifact in zip(keys, artifacts, strict=True):
+        source.put(key, artifact)
+
+    def verifier(candidate: ExecutableArtifactMemory) -> bool:
+        assert len(candidate.occupied) == 2
+        _, merged = candidate.promote_index(0)
+        _, survivor = candidate.promote_index(1)
+        return (
+            merged["growth_slots.0.weight"].shape == (2, 2)
+            and survivor["growth_slots.0.weight"][0, 0].item() in {1.0, 2.0}
+        )
+
+    candidate, receipt = source.consolidate_verified(
+        (0, 1),
+        torch.tensor([0.0, 0.0, 0.6, 0.8]),
+        {
+            "growth_slots.0.weight": torch.ones(2, 2),
+            "growth_slots.1.weight": torch.full((2, 2), 2.0),
+        },
+        tmp_path / "accepted",
+        verifier=verifier,
+    )
+    assert isinstance(receipt, ArtifactConsolidationReceipt)
+    assert receipt.accepted
+    assert receipt.rows_before == 3
+    assert receipt.rows_after == 2
+    assert receipt.rows_saved == 1
+    assert candidate is not None and len(candidate.occupied) == 2
+    assert len(source.occupied) == 3
+
+    rejected, rejected_receipt = source.consolidate_verified(
+        (0, 1),
+        torch.tensor([0.0, 0.0, 0.8, 0.6]),
+        {"growth_slots.0.weight": torch.ones(2, 2)},
+        tmp_path / "rejected",
+        verifier=lambda _: False,
+    )
+    assert rejected is None
+    assert not rejected_receipt.accepted
+    assert rejected_receipt.rows_saved == 0
+    assert len(source.occupied) == 3
 
 
 def test_v27_runtime_checkpoint_migrates_without_growth_boundary(tmp_path) -> None:
@@ -898,8 +1112,43 @@ def test_v27_runtime_checkpoint_migrates_without_growth_boundary(tmp_path) -> No
     )
     load_runtime_components(restored, checkpoint)
     assert restored.controller.configuration()["schema"] == (
+        "neural-computer.controller.v29"
+    )
+
+
+def test_v28_runtime_checkpoint_migrates_without_stable_value_head(tmp_path) -> None:
+    source = AmodalControllerRuntime(
+        AmodalCognitiveController(
+            width=16, workspace_slots=2, intention_width=5, feedback_width=3
+        )
+    )
+    payload = source.checkpoint_payload()
+    payload["format"] = "neural-computer.amodal-runtime.v28"
+    payload["configuration"]["format"] = "neural-computer.amodal-runtime.v28"
+    payload["configuration"]["controller"]["schema"] = (
         "neural-computer.controller.v28"
     )
+    payload["configuration"]["controller"].pop("memory_value_stable")
+    payload["components"]["controller"] = {
+        key: value
+        for key, value in payload["components"]["controller"].items()
+        if not key.startswith("memory_value_stable.")
+    }
+    checkpoint = tmp_path / "legacy-runtime-v28.pt"
+    torch.save(payload, checkpoint)
+
+    restored = AmodalControllerRuntime(
+        AmodalCognitiveController(
+            width=16, workspace_slots=2, intention_width=5, feedback_width=3
+        )
+    )
+    load_runtime_components(restored, checkpoint)
+
+    assert restored.controller.configuration()["schema"] == (
+        "neural-computer.controller.v29"
+    )
+    assert restored.controller.memory_value_stable is not None
+    assert torch.count_nonzero(restored.controller.memory_value_stable.weight) == 0
 
 
 def test_v23_runtime_checkpoint_migrates_transport_augmented_address(tmp_path) -> None:
@@ -925,7 +1174,7 @@ def test_v23_runtime_checkpoint_migrates_transport_augmented_address(tmp_path) -
     )
     load_runtime_components(restored, checkpoint)
 
-    assert restored.controller.configuration()["schema"] == "neural-computer.controller.v28"
+    assert restored.controller.configuration()["schema"] == "neural-computer.controller.v29"
     assert restored.controller.configuration()["memory_address"] == (
         "latest_event_token_v1"
     )
@@ -958,7 +1207,7 @@ def test_v24_runtime_checkpoint_migrates_without_feedback_residual(tmp_path) -> 
     )
     load_runtime_components(restored, checkpoint)
 
-    assert restored.controller.configuration()["schema"] == "neural-computer.controller.v28"
+    assert restored.controller.configuration()["schema"] == "neural-computer.controller.v29"
     assert restored.controller.configuration()["memory_value_feedback"] == "none_v1"
     assert restored.controller.memory_value_feedback_enabled is False
     assert restored.controller.stable_memory_address is True
@@ -990,7 +1239,7 @@ def test_v25_runtime_checkpoint_migrates_without_address_residual(tmp_path) -> N
     )
     load_runtime_components(restored, checkpoint)
 
-    assert restored.controller.configuration()["schema"] == "neural-computer.controller.v28"
+    assert restored.controller.configuration()["schema"] == "neural-computer.controller.v29"
     assert restored.controller.configuration()["memory_address"] == (
         "latest_event_payload_v1"
     )
@@ -1094,7 +1343,7 @@ def test_v17_runtime_checkpoint_migrates_to_shared_memory_address(tmp_path) -> N
     )
     load_runtime_components(restored, checkpoint)
 
-    assert restored.controller.configuration()["schema"] == "neural-computer.controller.v28"
+    assert restored.controller.configuration()["schema"] == "neural-computer.controller.v29"
     assert torch.allclose(restored.controller.memory_address.weight, address_weight)
 
 
@@ -1119,7 +1368,7 @@ def test_v19_runtime_checkpoint_migrates_pair_context_write_policy(tmp_path) -> 
     )
     load_runtime_components(restored, checkpoint)
 
-    assert restored.controller.configuration()["schema"] == "neural-computer.controller.v28"
+    assert restored.controller.configuration()["schema"] == "neural-computer.controller.v29"
 
 
 def test_v20_runtime_checkpoint_migrates_to_stochastic_write_capable_runtime(tmp_path) -> None:
@@ -1148,7 +1397,7 @@ def test_v20_runtime_checkpoint_migrates_to_stochastic_write_capable_runtime(tmp
     load_runtime_components(restored, checkpoint)
 
     configuration = restored.controller.configuration()
-    assert configuration["schema"] == "neural-computer.controller.v28"
+    assert configuration["schema"] == "neural-computer.controller.v29"
     assert configuration["memory_write_sampling"] == "bernoulli_straight_through_v1"
 
 
@@ -1174,7 +1423,7 @@ def test_v21_runtime_checkpoint_migrates_latest_event_address_policy(tmp_path) -
     load_runtime_components(restored, checkpoint)
 
     configuration = restored.controller.configuration()
-    assert configuration["schema"] == "neural-computer.controller.v28"
+    assert configuration["schema"] == "neural-computer.controller.v29"
     assert configuration["memory_address"] == "latest_event_token_v1"
 
 
@@ -1200,7 +1449,7 @@ def test_v22_runtime_checkpoint_migrates_latest_prior_match_policy(tmp_path) -> 
     load_runtime_components(restored, checkpoint)
 
     configuration = restored.controller.configuration()
-    assert configuration["schema"] == "neural-computer.controller.v28"
+    assert configuration["schema"] == "neural-computer.controller.v29"
     assert (
         configuration["memory_write_event_match"]
         == "latest_prior_stable_content_cosine_and_max_v3"
@@ -1409,7 +1658,7 @@ def test_v6_runtime_checkpoint_migrates_without_pairwise_event_weights(tmp_path)
     )
     load_runtime_components(restored, checkpoint)
 
-    assert restored.controller.configuration()["schema"] == "neural-computer.controller.v28"
+    assert restored.controller.configuration()["schema"] == "neural-computer.controller.v29"
 
 
 def test_v8_runtime_checkpoint_migrates_without_feedback_binding_weights(tmp_path) -> None:
@@ -1445,7 +1694,7 @@ def test_v8_runtime_checkpoint_migrates_without_feedback_binding_weights(tmp_pat
     )
     load_runtime_components(restored, checkpoint)
 
-    assert restored.controller.configuration()["schema"] == "neural-computer.controller.v28"
+    assert restored.controller.configuration()["schema"] == "neural-computer.controller.v29"
 
 
 def test_v9_runtime_checkpoint_migrates_without_source_credit_weights(tmp_path) -> None:
@@ -1480,7 +1729,7 @@ def test_v9_runtime_checkpoint_migrates_without_source_credit_weights(tmp_path) 
     )
     load_runtime_components(restored, checkpoint)
 
-    assert restored.controller.configuration()["schema"] == "neural-computer.controller.v28"
+    assert restored.controller.configuration()["schema"] == "neural-computer.controller.v29"
 
 
 def test_v10_runtime_checkpoint_migrates_without_source_credit_policy(tmp_path) -> None:
@@ -1517,7 +1766,7 @@ def test_v10_runtime_checkpoint_migrates_without_source_credit_policy(tmp_path) 
     )
     load_runtime_components(restored, checkpoint)
 
-    assert restored.controller.configuration()["schema"] == "neural-computer.controller.v28"
+    assert restored.controller.configuration()["schema"] == "neural-computer.controller.v29"
 
 
 def test_v11_runtime_checkpoint_migrates_without_source_credit_policy(tmp_path) -> None:
@@ -1552,7 +1801,7 @@ def test_v11_runtime_checkpoint_migrates_without_source_credit_policy(tmp_path) 
     )
     load_runtime_components(restored, checkpoint)
 
-    assert restored.controller.configuration()["schema"] == "neural-computer.controller.v28"
+    assert restored.controller.configuration()["schema"] == "neural-computer.controller.v29"
 
 
 def test_v12_runtime_checkpoint_migrates_without_direct_trust_binding(tmp_path) -> None:
@@ -1585,7 +1834,7 @@ def test_v12_runtime_checkpoint_migrates_without_direct_trust_binding(tmp_path) 
     )
     load_runtime_components(restored, checkpoint)
 
-    assert restored.controller.configuration()["schema"] == "neural-computer.controller.v28"
+    assert restored.controller.configuration()["schema"] == "neural-computer.controller.v29"
 
 
 def test_v13_runtime_checkpoint_preserves_previous_trust_binding_scale(tmp_path) -> None:
@@ -1617,7 +1866,7 @@ def test_v13_runtime_checkpoint_preserves_previous_trust_binding_scale(tmp_path)
     )
     load_runtime_components(restored, checkpoint)
 
-    assert restored.controller.configuration()["schema"] == "neural-computer.controller.v28"
+    assert restored.controller.configuration()["schema"] == "neural-computer.controller.v29"
     assert restored.controller.source_trust_binding_scale == 0.5
 
 
@@ -1656,6 +1905,6 @@ def test_v14_runtime_checkpoint_migrates_vector_credit_head(tmp_path) -> None:
     )
     load_runtime_components(restored, checkpoint)
 
-    assert restored.controller.configuration()["schema"] == "neural-computer.controller.v28"
+    assert restored.controller.configuration()["schema"] == "neural-computer.controller.v29"
     assert restored.controller.source_credit_policy[-1].out_features == 4
     assert restored.controller.source_trust_binding_scale == 0.25

@@ -1,0 +1,25 @@
+{
+  "schema": "neural-computer.brainworkshop-route-learner-decision.v1",
+  "status": "rejected_route_interference",
+  "seed": 17,
+  "n_back_families": [2, 3, 4],
+  "proactive_route_post_training_fresh": {
+    "2": 0.6770833135,
+    "3": 0.5166666508,
+    "4": 0.8828125
+  },
+  "time_shuffle": {
+    "2": 0.5069444776,
+    "3": 0.5875000358,
+    "4": 0.4713541567
+  },
+  "history_reset": {
+    "2": 0.5,
+    "3": 0.6000000238,
+    "4": 0.5
+  },
+  "all_forced_candidate_retention_records_protected": true,
+  "prior_slots_unchanged": true,
+  "replayed_examples": 0,
+  "claim_boundary": "A proactive outcome-trained route score improved new-slot discovery but interfered with retained old routes; the route head is not promoted without an old-route preservation invariant."
+}

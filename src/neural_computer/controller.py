@@ -105,11 +105,15 @@ class AmodalCognitiveController(nn.Module):
         memory_top_k: int = 1,
         execution_hidden: int = 16,
         memory_value_feedback: bool = True,
+        stable_memory_value: bool = True,
         stable_memory_address: bool = True,
         memory_address_residual: bool = True,
         growth_register_widths: Sequence[int] = (),
         growth_prior_only_from: int | None = None,
         growth_recurrent_from: int | None = None,
+        growth_gated: bool = False,
+        growth_from_intention: bool = False,
+        growth_gate_from_context: bool = False,
     ) -> None:
         super().__init__()
         if min(width, workspace_slots, intention_width, feedback_width) < 1:
@@ -140,11 +144,15 @@ class AmodalCognitiveController(nn.Module):
         self.memory_top_k = memory_top_k
         self.execution_hidden = execution_hidden
         self.memory_value_feedback_enabled = memory_value_feedback
+        self.stable_memory_value_enabled = stable_memory_value
         self.stable_memory_address = stable_memory_address
         self.memory_address_residual = memory_address_residual
         self.growth_register_widths = growth_widths
         self.growth_prior_only_from = growth_prior_only_from
         self.growth_recurrent_from = growth_recurrent_from
+        self.growth_gated = bool(growth_gated)
+        self.growth_from_intention = bool(growth_from_intention)
+        self.growth_gate_from_context = bool(growth_gate_from_context)
         # Diagnostic-only causal intervention. It is intentionally not part
         # of the serialized controller contract or the learned interface.
         self.growth_ablate_prior_from: int | None = None
@@ -225,6 +233,21 @@ class AmodalCognitiveController(nn.Module):
             nn.LayerNorm(width * 3), nn.Linear(width * 3, intention_width), nn.Tanh()
         )
         self.memory_value = nn.Linear(width * 2, width)
+        # Keep a context-stable value path alongside the recurrent value
+        # projection.  The recurrent path is useful for rich working context,
+        # but it makes a durable file depend on unrelated events that happened
+        # before the write.  This zero-initialized generic head learns during
+        # parent acquisition and remains a controller-native representation;
+        # the external memory writer can then adapt the stored value without
+        # needing to reconstruct controller state.
+        self.memory_value_stable = (
+            nn.Linear(width + feedback_hidden, width)
+            if stable_memory_value
+            else None
+        )
+        if self.memory_value_stable is not None:
+            nn.init.zeros_(self.memory_value_stable.weight)
+            nn.init.zeros_(self.memory_value_stable.bias)
         self.memory_value_feedback = (
             nn.Linear(feedback_hidden, width) if memory_value_feedback else None
         )
@@ -294,6 +317,8 @@ class AmodalCognitiveController(nn.Module):
         for index, register_width in enumerate(growth_widths):
             if growth_prior_only_from is not None and index >= growth_prior_only_from:
                 input_width = growth_widths[index - 1]
+            elif self.growth_from_intention:
+                input_width = width * 3 + intention_width
             else:
                 input_width = width * 3
             slot = nn.ModuleDict(
@@ -304,6 +329,13 @@ class AmodalCognitiveController(nn.Module):
             )
             if growth_recurrent_from is not None and index >= growth_recurrent_from:
                 slot["recurrent"] = nn.GRUCell(register_width, register_width)
+            if self.growth_gated:
+                gate_input_width = (
+                    input_width if self.growth_gate_from_context else register_width
+                )
+                slot["gate"] = nn.Linear(gate_input_width, 1)
+                nn.init.zeros_(slot["gate"].weight)
+                nn.init.zeros_(slot["gate"].bias)
             nn.init.zeros_(slot["output"].weight)
             nn.init.zeros_(slot["output"].bias)
             self.growth_slots.append(slot)
@@ -311,7 +343,7 @@ class AmodalCognitiveController(nn.Module):
     def configuration(self) -> dict[str, object]:
         """Return only constructor data needed to rebuild this component."""
         return {
-            "schema": "neural-computer.controller.v28",
+            "schema": "neural-computer.controller.v29",
             "width": self.width,
             "workspace_slots": self.workspace_slots,
             "intention_width": self.intention_width,
@@ -344,6 +376,11 @@ class AmodalCognitiveController(nn.Module):
                 if self.memory_value_feedback_enabled
                 else "none_v1"
             ),
+            "memory_value_stable": (
+                "event_feedback_residual_v1"
+                if self.stable_memory_value_enabled
+                else "none_v1"
+            ),
             "memory_write_hidden": self.memory_write_hidden,
             "event_feedback_relevance": True,
             "event_feedback_source_relevance": True,
@@ -357,6 +394,9 @@ class AmodalCognitiveController(nn.Module):
             "growth_register_widths": self.growth_register_widths,
             "growth_prior_only_from": self.growth_prior_only_from,
             "growth_recurrent_from": self.growth_recurrent_from,
+            "growth_gated": self.growth_gated,
+            "growth_from_intention": self.growth_from_intention,
+            "growth_gate_from_context": self.growth_gate_from_context,
             "growth_boundary": "generic_register_chain_v1",
         }
 
@@ -842,11 +882,19 @@ class AmodalCognitiveController(nn.Module):
                         slot_input = torch.zeros_like(slot_input)
                 else:
                     slot_input = combined
+                    if self.growth_from_intention:
+                        slot_input = torch.cat((slot_input, intention), dim=-1)
                 register = slot["input"](slot_input)
                 if "recurrent" in slot:
                     register = slot["recurrent"](register, previous_registers[index])
                 next_registers.append(register)
-                growth_residual = growth_residual + slot["output"](register)
+                residual = slot["output"](register)
+                if "gate" in slot:
+                    gate_input = (
+                        slot_input if self.growth_gate_from_context else register
+                    )
+                    residual = residual * torch.sigmoid(slot["gate"](gate_input))
+                growth_residual = growth_residual + residual
             growth_registers = tuple(next_registers)
             # Normalize only across the configured number of slots.  This
             # keeps adding an independent artifact from changing the scale
@@ -965,6 +1013,10 @@ class AmodalCognitiveController(nn.Module):
             if not memory_write_gradient:
                 memory_write_backend_strength = memory_write_sample.detach()
         memory_value = self.memory_value(memory_value_context)
+        if self.stable_memory_value_enabled and self.memory_value_stable is not None:
+            memory_value = memory_value + self.memory_value_stable(
+                torch.cat([address_event, feedback_embedding], dim=-1)
+            )
         if self.memory_value_feedback_enabled and self.memory_value_feedback is not None:
             memory_value = memory_value + self.memory_value_feedback(feedback_embedding)
         output = ControllerOutput(

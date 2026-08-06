@@ -1,0 +1,39 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "canonical_growth_pressure_lifecycle_composition_v1_2026-08-06",
+  "status": "promoted_lifecycle_backed_capability_composition",
+  "claim_boundary": "Two acquired growth-register capabilities compose through a verified isolated lifecycle transaction and reload as one namespaced artifact; this remains a narrow working-memory diagnostic, not general continual learning.",
+  "unique_verifier_bits": 86016,
+  "unique_logical_lifetimes": 28672,
+  "optimizer_updates": 1792,
+  "replayed_examples": 0,
+  "wall_time_seconds": 61.76696566698956,
+  "latency": "per-seed wall time is recorded in each report; composition performs one transactional rewrite and one fresh held-out verifier",
+  "stable_bits_to_threshold": null,
+  "retention_on_mastered_primitives": null,
+  "transfer_ratio_against_fresh_learner": null,
+  "verification": {
+    "seeds": [69204, 69205],
+    "parent_updates": 128,
+    "growth_updates_per_stage": 256,
+    "growth_stages": 2,
+    "batch_size": 16,
+    "audit_count": 128,
+    "span": 3,
+    "composition_verifier_floor": 0.6,
+    "replayed_examples": 0,
+    "lifecycle_schema": "neural-computer.external-capability-lifecycle.v1",
+    "all_gates_passed": true
+  },
+  "rejected_controls": [
+    {
+      "configuration": "parent_updates=128,growth_updates_per_stage=128,span=10",
+      "reason": "lifecycle verifier rejected the candidate below the declared floor; the short smoke is retained as a curriculum-depth control, not promoted evidence"
+    },
+    {
+      "seed": 69205,
+      "verifier_score_before_floor_adjustment": 0.640625,
+      "reason": "an initial 0.65 floor rejected a valid final-gate pass by 1/128 audit outcomes; the promoted contract uses the explicit 0.60 above-chance floor plus all final causal gates"
+    }
+  ]
+}

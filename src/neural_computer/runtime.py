@@ -30,7 +30,7 @@ from .interface import (
 from .memory import MemoryBackend
 from .policies import EventWaitPolicy
 
-RUNTIME_FORMAT = "neural-computer.amodal-runtime.v28"
+RUNTIME_FORMAT = "neural-computer.amodal-runtime.v29"
 
 
 class OpaqueProtocolDecoder(nn.Module):
@@ -673,6 +673,11 @@ class AmodalControllerRuntime(nn.Module):
             "configuration": self.configuration(),
             "provenance": dict(provenance or {}),
             "components": self.component_state_dicts(),
+            "retention_ledger": (
+                None
+                if self.memory is None or not hasattr(self.memory, "retention")
+                else self.memory.retention.payload()
+            ),
         }
 
     def load_component_state_dicts(
@@ -733,6 +738,7 @@ class AmodalControllerRuntime(nn.Module):
                 and not key.startswith("memory_key.")
                 and not key.startswith("memory_write_policy.")
                 and not key.startswith("memory_value_feedback.")
+                and not key.startswith("memory_value_stable.")
             ]
             missing = list(controller_result.missing_keys)
             non_execution_missing = [
@@ -749,6 +755,7 @@ class AmodalControllerRuntime(nn.Module):
                 and not key.startswith("event_address_relevance.")
                 and not key.startswith("memory_write_policy.")
                 and not key.startswith("memory_value_feedback.")
+                and not key.startswith("memory_value_stable.")
             ]
             if non_execution_unexpected or non_execution_missing:
                 raise ValueError(

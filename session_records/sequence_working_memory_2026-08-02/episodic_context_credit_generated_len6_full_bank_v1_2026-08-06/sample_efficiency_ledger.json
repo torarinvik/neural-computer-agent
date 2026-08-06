@@ -1,0 +1,41 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "episodic-context-credit-generated-len6-full-bank-v1-2026-08-06",
+  "status": "promoted_full_pattern_bank_replay_free_growth",
+  "claim_boundary": "Two frozen old capabilities plus 18 sequential external additions fill the 20-family generated pattern bank with calibrated anti-interference credit, isolated reversal/recovery, and zero replay; this remains bounded continual memory.",
+  "episode_length": 6,
+  "pattern_bank_size": 20,
+  "old_families": [0, 1],
+  "new_family_count": 18,
+  "seeds": [69316, 69317],
+  "unique_verifier_bits": 1442128,
+  "unique_logical_lifetimes": 274768,
+  "optimizer_updates": 18944,
+  "replayed_examples": 0,
+  "wall_time_seconds": 10.951457084011054,
+  "latency": "per-seed wall time is recorded in each report; route and extension arms use fresh verifier outcomes",
+  "stable_bits_to_threshold": [655512, 721064],
+  "retention_on_mastered_primitives": [1.0, 1.0],
+  "transfer_ratio_against_fresh_learner": null,
+  "verification": {
+    "minimum_new_route_selection": [0.875, 0.8125],
+    "context_route_mastered": [true, true],
+    "candidate_permutation_invariant": [true, true],
+    "full_bank_refuses_eviction": [true, true],
+    "reversal_releases_only_target": [true, true],
+    "recovered_protected": [true, true],
+    "anti_interference_credit": [true, true],
+    "replayed_examples": [0, 0],
+    "promotion_gate_passed": true
+  },
+  "rejected_controls": [
+    {
+      "description": "The earlier 12-addition rung with the original calibration",
+      "reason": "cross-seed retention failed; retained as the representation/calibration regression control"
+    },
+    {
+      "description": "The 12-addition rung with doubled extension budgets",
+      "reason": "seed 69317 still failed final retention, showing that more updates alone do not solve route interference"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "episodic-context-credit-generated-len6-twelve-step-ext256-v1-2026-08-06",
+  "status": "rejected_extension_budget_control",
+  "seeds": [69316, 69317],
+  "episode_length": 6,
+  "new_family_count": 12,
+  "extension_updates_per_family": 256,
+  "unique_verifier_bits_per_seed": 622712,
+  "unique_logical_lifetimes_per_seed": 149624,
+  "optimizer_updates_per_seed": 10240,
+  "total_unique_verifier_bits": 1245424,
+  "total_unique_logical_lifetimes": 299248,
+  "total_optimizer_updates": 20480,
+  "retention_observations_per_seed": 120,
+  "replayed_examples": 0,
+  "wall_seconds": {
+    "seed69316": 13.785859375006112,
+    "seed69317": 13.677520874996844,
+    "total": 27.463380250002956
+  },
+  "verification": {
+    "seed69316_promoted": true,
+    "seed69317_promoted": false,
+    "seed69317_final_route_selection": 0.75,
+    "seed69317_final_capability_initially_protected": false,
+    "cross_seed_promotion_gate": false,
+    "claim_boundary": "Rejected control; increased extension budget is not a reliable repair for twelve-addition retention scaling."
+  }
+}

@@ -479,3 +479,96 @@ are in the three `external_write_relevance_prior_v10*` directories under
 transfer to larger slot banks and persistent memory, followed by tests that
 the writer learns new write utilities rather than merely executing the frozen
 relevance prior.
+
+## v78: stable controller-native memory values for larger banks
+
+The writer-only approach failed when the bounded bank grew from two to three
+slots: its relevance gate selected the correct target, but the stored value
+depended on the preceding distractor context. The controller now includes an
+identity-initialized generic value path from the current learned event and
+opaque feedback. It is learned during parent acquisition, then frozen while an
+isolated external writer learns overwrite utility.
+
+At the three-slot, one-row, 64-update rung, seed 17 reached target-first/
+target-last `0.963/0.940`, intact `0.947`, mastered retention `0.980`, unseen
+minimum `0.945`, and passed the promotion gate with zero replay. A replication
+with seed 69415 required the smallest tested phase-1 extension from 704 to 800
+steps, then reached `0.986/0.991`, intact `0.989`, mastered retention `0.977`,
+and unseen minimum `0.961`. The reward-shuffled control remained at chance.
+The same persistent backend then reloaded at `0.965`/`0.996`, rejected checksum
+corruption in both seeds, and recovered at `0.938`/`1.000`.
+
+This promotes the stable-value boundary and its checksum-protected persistence
+audit for the narrow three-slot outcome-only pressure test. It does not
+establish general continual learning, arbitrary new computation, or general
+durable episodic memory. Reports and ledgers are in the six
+`external_write_stable_value_v14*` directories under
+`session_records/sequence_working_memory_2026-08-02/`.
+
+The same result also passed a two-row bank with the same metrics in both seeds;
+the independent two-row replication again passed persistence and checksum
+recovery. Those two reports are the `external_write_stable_value_v14_two_row*`
+directories.
+
+## v79: four-slot temporal-bank replication
+
+The stable-value/external-writer mechanism then passed a four-slot, two-row
+bank. Seed 17 reached target-first/last `0.981/0.982`, intact `0.986`,
+mastered retention `0.992`, and unseen minimum `0.980` with zero replay. Seed
+69415 replicated at `0.982/0.970`, intact `0.983`, mastered retention `0.977`,
+and unseen minimum `0.973`; persistent reload was `0.988`, checksum corruption
+was rejected, and recovery was `1.000`. The four-slot reward-shuffled control
+stayed at chance.
+
+This promotes the bounded four-slot/two-row retention and persistence rung, not
+general continual learning or arbitrary new computation. Reports and ledgers
+are in the three `external_write_stable_value_v15*` directories.
+
+## v80: five-slot temporal-bank scaling and persistence
+
+The same stable controller-native value path and isolated external writer were
+extended to a five-slot, two-row bank. Seed 17 passed at the original 704-step
+phase-1 budget with target-first/last `0.974/0.973`, intact `0.975`, mastered
+retention `0.961`, and unseen-token minimum `0.965`. Seed 69415 initially failed
+at 800 phase-1 steps because the parent never stabilized; this is retained as a
+curriculum-budget rejection, not as an architecture failure. Extending only
+that phase to 1,600 requested steps produced a stable parent after 1,152
+effective updates and passed with target-first/last `0.978/0.987`, intact
+`0.983`, mastered retention `0.992`, and unseen-token minimum `0.969`.
+
+The matched persistence audit for the successful replication reloaded at
+`0.984`, rejected checksum corruption, and recovered intact recall at `1.000`.
+The five-slot reward-shuffled control stayed at chance (`0.476` intact,
+`0.514`/`0.503` target-first/last) and failed parent acquisition. Every run
+used zero replayed examples. This promotes a narrow five-slot scaling and
+persistence rung; it does not establish general continual learning, arbitrary
+new computation, or general durable episodic memory. The phase-1 extension is
+part of the replication result, and all accounting is in the five
+`external_write_stable_value_v16*` directories under
+`session_records/sequence_working_memory_2026-08-02/`.
+
+## v81: learned utility-based eviction
+
+The next bottleneck was the full-bank fallback: strength-based eviction could
+discard a row that remained useful even when the frozen controller and the
+external writer had already learned the correct value path. The new
+`ExternalMemoryEvictionPolicy` scores opaque candidate rows from generic
+controller-native write context and memory tensors. Its paired counterfactual
+training compares forced row-0 and row-1 outcomes; physical row identity and
+target labels remain trainer-only.
+
+With the parent acquired on fresh randomized opaque tokens and frozen before
+eviction training, seed 17 reached balanced/target-first/target-last recall
+`0.916/0.903/0.981`; seed 69415 replicated `0.963/0.912/0.999`. Strength
+eviction scored only `0.488/0.512` on target-first, random eviction scored
+`0.737/0.756`, and both learned runs passed clear-memory, corruption,
+persistent reload, checksum-rejection, and recovery controls. The
+reward-shuffled control stayed at chance (`0.526` balanced, `0.501` target
+first) and failed parent acquisition. Every run used zero replayed examples.
+
+This promotes only a narrow, replicated learned-utility eviction mechanism for
+a three-slot/two-row verifier with a frozen controller. It is not a claim of
+general episodic memory, natural-modality transfer, arbitrary computation, or
+general continual learning. Reports and ledgers are in the three
+`learned_eviction_v1_*` directories under
+`session_records/sequence_working_memory_2026-08-02/`.

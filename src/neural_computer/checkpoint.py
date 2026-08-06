@@ -10,6 +10,7 @@ from typing import Any
 import torch
 
 from .interface import EVENT_SCHEMA, INTENTION_SCHEMA
+from .retention import CapabilityRetentionLedger
 from .runtime import RUNTIME_FORMAT, AmodalControllerRuntime
 
 LEGACY_RUNTIME_FORMAT = "neural-computer.amodal-runtime.v1"
@@ -39,6 +40,7 @@ LEGACY_RUNTIME_FORMAT_V24 = "neural-computer.amodal-runtime.v24"
 LEGACY_RUNTIME_FORMAT_V25 = "neural-computer.amodal-runtime.v25"
 LEGACY_RUNTIME_FORMAT_V26 = "neural-computer.amodal-runtime.v26"
 LEGACY_RUNTIME_FORMAT_V27 = "neural-computer.amodal-runtime.v27"
+LEGACY_RUNTIME_FORMAT_V28 = "neural-computer.amodal-runtime.v28"
 
 
 def _memory_configuration_matches(
@@ -115,6 +117,7 @@ def load_runtime_components(
     payload_format = payload.get("format")
     if payload_format not in {
         RUNTIME_FORMAT,
+        LEGACY_RUNTIME_FORMAT_V28,
         LEGACY_RUNTIME_FORMAT_V27,
         LEGACY_RUNTIME_FORMAT_V26,
         LEGACY_RUNTIME_FORMAT_V25,
@@ -148,6 +151,7 @@ def load_runtime_components(
         raise ValueError("unsupported neural-IR schema in runtime checkpoint")
     expected_configuration = runtime.configuration()
     legacy = payload_format in {
+        LEGACY_RUNTIME_FORMAT_V28,
         LEGACY_RUNTIME_FORMAT_V27,
         LEGACY_RUNTIME_FORMAT_V26,
         LEGACY_RUNTIME_FORMAT_V25,
@@ -193,6 +197,7 @@ def load_runtime_components(
             LEGACY_RUNTIME_FORMAT_V24,
             LEGACY_RUNTIME_FORMAT_V26,
             LEGACY_RUNTIME_FORMAT_V25,
+            LEGACY_RUNTIME_FORMAT_V28,
             LEGACY_RUNTIME_FORMAT_V27,
             LEGACY_RUNTIME_FORMAT_V22,
             LEGACY_RUNTIME_FORMAT_V21,
@@ -221,6 +226,7 @@ def load_runtime_components(
             LEGACY_RUNTIME_FORMAT_V24,
             LEGACY_RUNTIME_FORMAT_V26,
             LEGACY_RUNTIME_FORMAT_V25,
+            LEGACY_RUNTIME_FORMAT_V28,
             LEGACY_RUNTIME_FORMAT_V27,
             LEGACY_RUNTIME_FORMAT_V22,
             LEGACY_RUNTIME_FORMAT_V21,
@@ -248,6 +254,7 @@ def load_runtime_components(
             LEGACY_RUNTIME_FORMAT_V24,
             LEGACY_RUNTIME_FORMAT_V26,
             LEGACY_RUNTIME_FORMAT_V25,
+            LEGACY_RUNTIME_FORMAT_V28,
             LEGACY_RUNTIME_FORMAT_V27,
             LEGACY_RUNTIME_FORMAT_V22,
             LEGACY_RUNTIME_FORMAT_V21,
@@ -270,6 +277,7 @@ def load_runtime_components(
             LEGACY_RUNTIME_FORMAT_V24,
             LEGACY_RUNTIME_FORMAT_V26,
             LEGACY_RUNTIME_FORMAT_V25,
+            LEGACY_RUNTIME_FORMAT_V28,
             LEGACY_RUNTIME_FORMAT_V27,
             LEGACY_RUNTIME_FORMAT_V22,
             LEGACY_RUNTIME_FORMAT_V21,
@@ -290,6 +298,7 @@ def load_runtime_components(
             LEGACY_RUNTIME_FORMAT_V24,
             LEGACY_RUNTIME_FORMAT_V26,
             LEGACY_RUNTIME_FORMAT_V25,
+            LEGACY_RUNTIME_FORMAT_V28,
             LEGACY_RUNTIME_FORMAT_V27,
             LEGACY_RUNTIME_FORMAT_V22,
             LEGACY_RUNTIME_FORMAT_V21,
@@ -376,6 +385,8 @@ def load_runtime_components(
             legacy_controller["schema"] = "neural-computer.controller.v25"
         elif payload_format == LEGACY_RUNTIME_FORMAT_V26:
             legacy_controller["schema"] = "neural-computer.controller.v26"
+        elif payload_format == LEGACY_RUNTIME_FORMAT_V28:
+            legacy_controller["schema"] = "neural-computer.controller.v28"
         payload_controller = payload["configuration"]["controller"]
         if payload_format == LEGACY_RUNTIME_FORMAT_V27:
             for growth_field in (
@@ -395,6 +406,7 @@ def load_runtime_components(
             "memory_write_event_window",
             "memory_write_event_match",
             "memory_value_feedback",
+            "memory_value_stable",
         ):
             if compatibility_field not in payload_controller:
                 legacy_controller.pop(compatibility_field, None)
@@ -429,6 +441,7 @@ def load_runtime_components(
             LEGACY_RUNTIME_FORMAT_V24,
             LEGACY_RUNTIME_FORMAT_V26,
             LEGACY_RUNTIME_FORMAT_V25,
+            LEGACY_RUNTIME_FORMAT_V28,
             LEGACY_RUNTIME_FORMAT_V27,
             LEGACY_RUNTIME_FORMAT_V22,
             LEGACY_RUNTIME_FORMAT_V21,
@@ -501,6 +514,18 @@ def load_runtime_components(
             if not key.startswith("source_credit_policy.")
         }
     runtime.load_component_state_dicts(components, allow_missing_execution=legacy)
+    retention_payload = payload.get("retention_ledger")
+    if retention_payload is not None and runtime.memory is not None:
+        if not hasattr(runtime.memory, "retention"):
+            raise ValueError("runtime memory does not support retention state")
+        previous_retention = runtime.memory.retention
+        try:
+            runtime.memory.retention = CapabilityRetentionLedger.from_payload(
+                retention_payload
+            )
+        except Exception:
+            runtime.memory.retention = previous_retention
+            raise
     if legacy:
         # v23 and earlier used transport-augmented event addresses. v24
         # already uses payload-only addresses; v25 adds the feedback residual.
@@ -508,6 +533,7 @@ def load_runtime_components(
             LEGACY_RUNTIME_FORMAT_V24,
             LEGACY_RUNTIME_FORMAT_V26,
             LEGACY_RUNTIME_FORMAT_V25,
+            LEGACY_RUNTIME_FORMAT_V28,
             LEGACY_RUNTIME_FORMAT_V27,
         }:
             runtime.controller.stable_memory_address = False

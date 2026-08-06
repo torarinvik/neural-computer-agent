@@ -1,0 +1,64 @@
+{
+  "schema": "neural-computer.opaque-consolidation-report.v1",
+  "claim_boundary": "A memory-side policy learns opaque pair selection and mechanical consolidation from scalar rewrite utility; transactions remain held-out-verifier gated and do not claim general continual learning.",
+  "seed": 69316,
+  "rows": 8,
+  "width": 16,
+  "updates": 512,
+  "batch_size": 16,
+  "audit_count": 512,
+  "quality_threshold": 0.8,
+  "learned_mean_quality": 0.9965053455671296,
+  "shuffled_mean_quality": 0.6439884028332017,
+  "untrained_mean_quality": 0.2655074666283781,
+  "corrupted_mean_quality": 0.4268241430090711,
+  "learned_duplicate_rate": 1.0,
+  "candidate_permutation_rate": 1.0,
+  "chain": {
+    "initial_rows": 8,
+    "final_rows": 4,
+    "accepted_rewrites": 4,
+    "proposal_scores": [
+      0.9949883818626404,
+      0.9948381781578064,
+      0.9954918622970581,
+      0.995333731174469
+    ],
+    "retention_gates": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "all_retention_gates_passed": true,
+    "source_unchanged_by_transaction": true
+  },
+  "accounting": {
+    "training_logical_lifetimes": 8192,
+    "heldout_audit_logical_lifetimes": 512,
+    "chain_verifier_lifetimes": 4,
+    "unique_logical_lifetimes": 8708,
+    "training_verifier_bits": 229376,
+    "heldout_audit_verifier_bits": 14336,
+    "retention_verifier_bits": 20,
+    "unique_verifier_bits": 243732,
+    "optimizer_updates": 512,
+    "shuffled_control_optimizer_updates": 512,
+    "replayed_examples": 0,
+    "retention_observations": 20,
+    "privileged_task_labels_seen_by_policy": 0,
+    "privileged_correct_rows_seen_by_policy": 0,
+    "wall_seconds": 2.2225284580053994
+  },
+  "gates": {
+    "learned_beats_untrained": true,
+    "learned_beats_reward_shuffled": true,
+    "learned_selects_verifiable_pairs": true,
+    "candidate_permutation_invariant": true,
+    "corruption_is_causal": true,
+    "long_chain_compacted": true,
+    "long_chain_retention_gated": true,
+    "no_replay": true
+  },
+  "promoted": true
+}

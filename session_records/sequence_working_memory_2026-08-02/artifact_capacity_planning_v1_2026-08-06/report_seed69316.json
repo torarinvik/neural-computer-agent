@@ -1,0 +1,89 @@
+{
+  "schema": "neural-computer.artifact-capacity-planning-report.v1",
+  "claim_boundary": "An outcome-trained opaque admission planner selects generic memory actions under capacity pressure; protection and behavior verification remain explicit transaction gates. This is not unrestricted memory growth, arbitrary computation, or general continual learning.",
+  "seed": 69316,
+  "width": 8,
+  "capacity": 5,
+  "updates": 1024,
+  "batch_size": 32,
+  "learned_action_accuracy": 0.98046875,
+  "reward_shuffled_action_accuracy": 0.94140625,
+  "learned_ambiguous_action_accuracy": 0.9090909090909091,
+  "reward_shuffled_ambiguous_action_accuracy": 0.5454545454545454,
+  "permutation_plan": {
+    "original_action": "consolidate",
+    "permuted_action": "consolidate",
+    "original_eviction_index": null,
+    "permuted_eviction_index": null,
+    "permutation": [
+      2,
+      4,
+      0,
+      3,
+      1
+    ]
+  },
+  "protected_growth": {
+    "planner_action": "grow",
+    "source_before": {
+      "capacity": 2,
+      "occupied": [
+        0,
+        1
+      ],
+      "version": 2,
+      "paths": [
+        "artifact-v00000001.pt",
+        "artifact-v00000002.pt"
+      ],
+      "hashes": [
+        "99088362840d793b861e6932b8bbc1f16e9cf38cdba0a2f2a59cb9b7b33d94eb",
+        "f87342cb6a775bef894a509ee9a605685e724ce2264651be541fbcee84aa4055"
+      ]
+    },
+    "source_after": {
+      "capacity": 2,
+      "occupied": [
+        0,
+        1
+      ],
+      "version": 2,
+      "paths": [
+        "artifact-v00000001.pt",
+        "artifact-v00000002.pt"
+      ],
+      "hashes": [
+        "99088362840d793b861e6932b8bbc1f16e9cf38cdba0a2f2a59cb9b7b33d94eb",
+        "f87342cb6a775bef894a509ee9a605685e724ce2264651be541fbcee84aa4055"
+      ]
+    },
+    "reloaded_promoted_indices": [
+      0,
+      1,
+      2
+    ],
+    "retention_transferred": true,
+    "new_artifact_admitted": true
+  },
+  "accounting": {
+    "optimizer_updates": 2048,
+    "unique_logical_lifetimes": 65536,
+    "unique_verifier_bits": 262144,
+    "retention_observations": 16,
+    "replayed_examples": 0,
+    "wall_seconds": 2.346829374997469
+  },
+  "gates": {
+    "learned_action_mastered": true,
+    "learned_ambiguous_choice_mastered": true,
+    "reward_shuffled_near_chance": true,
+    "candidate_permutation_invariant": true,
+    "full_protected_plans_growth": true,
+    "source_immutable": true,
+    "retention_transferred": true,
+    "new_artifact_admitted": true,
+    "reloaded_all_artifacts": true,
+    "no_replayed_examples": true
+  },
+  "promoted": true
+}

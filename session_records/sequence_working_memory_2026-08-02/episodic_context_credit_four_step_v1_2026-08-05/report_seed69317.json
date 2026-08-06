@@ -1,0 +1,146 @@
+{
+  "schema": "neural-computer.episodic-context-credit-multistep-report.v1",
+  "seed": 69317,
+  "event_width": 8,
+  "episode_length": 4,
+  "old_families": [
+    0,
+    1
+  ],
+  "new_families": [
+    2,
+    3,
+    4,
+    5
+  ],
+  "context_updates": 128,
+  "credit_updates": 128,
+  "external_credit_updates": 128,
+  "route_updates": 256,
+  "extension_updates": 128,
+  "batch_size": 16,
+  "context_contrastive_loss": 1.266598617100101e-07,
+  "credit_loss": 0.007685734468395822,
+  "context_old_route_accuracy": 1.0,
+  "pooled_baseline_old_route_accuracy": 0.5,
+  "candidate_permutation_accuracy": 1.0,
+  "new_route_selection": {
+    "2": 1.0,
+    "3": 1.0,
+    "4": 1.0,
+    "5": 1.0
+  },
+  "old_route_failure_on_new": {
+    "2": 1.0,
+    "3": 1.0,
+    "4": 1.0,
+    "5": 1.0
+  },
+  "prior_extension_attempt_rates": {
+    "2": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "3": [
+      1.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "4": [
+      1.0,
+      1.0,
+      1.0,
+      0.0
+    ],
+    "5": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "extension_activation_rates": {
+    "2": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "3": [
+      1.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "4": [
+      1.0,
+      1.0,
+      1.0,
+      0.0
+    ],
+    "5": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "extension_activation_threshold": 1.0,
+  "new_route_selection_without_extension": {
+    "2": 0.0,
+    "3": 0.0,
+    "4": 0.0,
+    "5": 0.0
+  },
+  "reward_shuffled_extension_selection": {
+    "2": 0.0,
+    "3": 0.0,
+    "4": 0.0,
+    "5": 0.0
+  },
+  "credit_position_accuracy": 1.0,
+  "old_credit_position_accuracy": 1.0,
+  "new_credit_position_accuracy": 1.0,
+  "accounting": {
+    "self_supervised_context_updates": 128,
+    "self_supervised_context_lifetimes": 256,
+    "counterfactual_credit_updates": 128,
+    "counterfactual_credit_lifetimes": 2048,
+    "counterfactual_credit_verifier_bits": 16384,
+    "external_credit_head_updates": 512,
+    "external_credit_head_lifetimes": 8192,
+    "external_credit_head_verifier_bits": 65536,
+    "route_optimizer_updates": 256,
+    "route_lifetimes": 4096,
+    "route_verifier_bits": 8192,
+    "extension_optimizer_updates": 512,
+    "shuffled_extension_optimizer_updates": 512,
+    "extension_lifetimes": 8192,
+    "extension_verifier_bits": 16384,
+    "unique_logical_lifetimes": 30976,
+    "unique_verifier_bits": 122880,
+    "optimizer_updates": 2048,
+    "replayed_examples_after_extension": 0,
+    "replayed_examples": 0,
+    "privileged_task_labels_seen_by_model": 0,
+    "privileged_correct_rows_seen_by_model": 0,
+    "wall_seconds": 1.4239951249983278
+  },
+  "gates": {
+    "context_route_mastered": true,
+    "context_beats_pooled_baseline": true,
+    "candidate_permutation_invariant": true,
+    "new_route_recovered": true,
+    "new_route_causal": true,
+    "old_route_retained": true,
+    "reward_shuffled_extension_not_selected": true,
+    "prior_extensions_attempted": true,
+    "credit_position_signal": true,
+    "isolated_new_credit_signal": true,
+    "no_replay_after_extension": true
+  },
+  "promoted": true
+}

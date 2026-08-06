@@ -1,0 +1,44 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "repeated-shift-growth-6to8to10to12-v1-2026-08-06",
+  "status": "promoted_three_sequential_nonstationary_shifts",
+  "claim_boundary": "A frozen length-six base survives fresh length-eight, length-ten, and length-twelve additions with isolated external route/credit state, dynamic growth beyond the prior 20-family bank, full-bank protection, and zero replay; this remains bounded continual learning.",
+  "seeds": [69316, 69317],
+  "distribution_shift_sequence": [6, 8, 10, 12],
+  "families_per_shift": [8, 10, 12],
+  "total_capabilities": 32,
+  "training_batch_size": 16,
+  "audit_batch_size": 64,
+  "extension_updates_per_family": 256,
+  "unique_verifier_bits": 3768848,
+  "unique_logical_lifetimes": 668176,
+  "optimizer_updates": 43520,
+  "replayed_examples": 0,
+  "wall_time_seconds": 54.335953,
+  "stable_bits_to_threshold": null,
+  "retention_on_mastered_primitives": [1.0, 1.0],
+  "transfer_ratio_against_fresh_learner": null,
+  "verification": {
+    "phase_1_minimum_route_selection": [0.921875, 0.890625],
+    "phase_2_minimum_route_selection": [0.890625, 0.90625],
+    "phase_3_minimum_route_selection": [0.921875, 0.859375],
+    "old_route_retained": [true, true],
+    "candidate_permutation_invariant": [true, true],
+    "credit_signal_survives_all_shifts": [true, true],
+    "new_routes_causal": [true, true],
+    "retention_reversal_safe": [true, true],
+    "zero_centered_antithetic_reward_shuffled_not_selected": [true, true],
+    "zero_replay": [true, true],
+    "promotion_gate_passed": true
+  },
+  "rejected_controls": [
+    {
+      "description": "Repeated-shift smoke with 32 extension updates",
+      "reason": "under-budget control failed route and retention gates"
+    },
+    {
+      "description": "single-shift 6→10 with 128 extension updates",
+      "reason": "seed 69317 failed initial protection for one shifted capability"
+    }
+  ]
+}

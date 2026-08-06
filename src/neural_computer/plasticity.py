@@ -85,6 +85,47 @@ class MemoryWriteObservation:
         return features
 
 
+@dataclass(frozen=True)
+class MemoryEvictionObservation:
+    """Opaque write context paired with one candidate physical memory row."""
+
+    write: MemoryWriteObservation
+    candidate_key: torch.Tensor
+    candidate_value: torch.Tensor
+    candidate_strength: torch.Tensor
+    candidate_timestamp: torch.Tensor
+    candidate_occupied: torch.Tensor
+
+    def features(self) -> torch.Tensor:
+        base = self.write.features()
+        tensors = (
+            self.candidate_key,
+            self.candidate_value,
+        )
+        if any(tensor.ndim != 2 for tensor in tensors):
+            raise ValueError("candidate tensors must have shape [batch, width]")
+        if any(tensor.shape[0] != base.shape[0] for tensor in tensors):
+            raise ValueError("candidate tensors must share the write batch")
+        scalars: list[torch.Tensor] = []
+        for tensor in (
+            self.candidate_strength,
+            self.candidate_timestamp,
+            self.candidate_occupied,
+        ):
+            if tensor.ndim == 1:
+                tensor = tensor.unsqueeze(-1)
+            if tensor.ndim != 2 or tensor.shape != (base.shape[0], 1):
+                raise ValueError("candidate scalars must have shape [batch, 1]")
+            scalars.append(tensor.to(device=base.device, dtype=base.dtype))
+        features = torch.cat(
+            (base, tensors[0], tensors[1], *scalars),
+            dim=-1,
+        )
+        if not bool(torch.isfinite(features).all()):
+            raise ValueError("memory eviction observation contains non-finite values")
+        return features
+
+
 class ExternalMemoryWritePolicy(nn.Module):
     """A replaceable writer that can learn while the controller is frozen.
 
@@ -96,7 +137,7 @@ class ExternalMemoryWritePolicy(nn.Module):
     changing the processor's generic write head.
     """
 
-    schema = "neural-computer.external-memory-write-policy.v9"
+    schema = "neural-computer.external-memory-write-policy.v11"
 
     def __init__(
         self,
@@ -145,11 +186,20 @@ class ExternalMemoryWritePolicy(nn.Module):
             nn.GELU(),
             nn.Linear(hidden_width_value, 1),
         )
+        self.value_network = nn.Sequential(
+            nn.Linear(self.feature_width, hidden_width_value),
+            nn.GELU(),
+            nn.Linear(hidden_width_value, value_width),
+        )
         # A zero residual starts from a stable generic relevance prior.  The
         # external writer can adapt that prior, but bounded residual plasticity
         # prevents a short run from erasing the separator it inherited.
         nn.init.zeros_(self.network[-1].weight)
         nn.init.zeros_(self.network[-1].bias)
+        # Preserve the controller's mastered value representation until the
+        # external memory receives a differentiable outcome signal.
+        nn.init.zeros_(self.value_network[-1].weight)
+        nn.init.zeros_(self.value_network[-1].bias)
         # A one-slot memory needs a decisive novelty/relevance boundary: a
         # moderately similar distractor must not overwrite a strongly bound
         # current event.  The prior is generic and frozen; only the external
@@ -157,6 +207,7 @@ class ExternalMemoryWritePolicy(nn.Module):
         self.register_buffer("relevance_scale", torch.tensor(12.0))
         self.register_buffer("relevance_bias", torch.tensor(-9.0))
         self.residual_scale = 0.25
+        self.value_residual_scale = 0.05
 
     def configuration(self) -> dict[str, int | str]:
         return {
@@ -173,6 +224,8 @@ class ExternalMemoryWritePolicy(nn.Module):
             "relevance_prior": "frozen_affine_logit_v2",
             "residual_parameterization": "bounded_tanh_v1",
             "residual_scale": self.residual_scale,
+            "value_parameterization": "bounded_tanh_residual_v1",
+            "value_residual_scale": self.value_residual_scale,
             "hidden": self.hidden,
         }
 
@@ -202,6 +255,227 @@ class ExternalMemoryWritePolicy(nn.Module):
         prior = self.relevance_scale * relevance + self.relevance_bias
         residual = torch.tanh(self.network(features).squeeze(-1))
         return torch.sigmoid(prior + self.residual_scale * residual)
+
+    def adapt_value(self, observation: MemoryWriteObservation) -> torch.Tensor:
+        """Return a bounded, identity-initialized memory-value adaptation."""
+        features = observation.features()
+        expected = (
+            self.event_width
+            + self.hidden_width
+            + self.workspace_width
+            + self.key_width
+            + self.value_width
+            + self.memory_read_width
+            + self.action_width
+            + self.controller_write_context_width
+            + self.controller_write_relevance_width
+            + 5
+        )
+        if features.shape[1] != expected:
+            raise ValueError(
+                f"memory write observation width {features.shape[1]} != {expected}"
+            )
+        value = observation.write_value
+        if value.ndim != 2 or value.shape[1] != self.value_width:
+            raise ValueError("memory write value has the wrong shape")
+        residual = torch.tanh(self.value_network(features))
+        return value + self.value_residual_scale * residual
+
+
+class ExternalMemoryEvictionPolicy(nn.Module):
+    """A replaceable scorer for choosing which opaque row to overwrite.
+
+    The policy is memory-side state: it consumes a generic write observation
+    and one candidate row, then emits a comparable score. Candidate count and
+    physical row identity are supplied by the backend, so the same scorer can
+    rank any bounded capacity without adding a controller branch.
+    """
+
+    schema = "neural-computer.external-memory-eviction-policy.v1"
+
+    def __init__(
+        self,
+        *,
+        event_width: int,
+        hidden_width: int,
+        workspace_width: int,
+        key_width: int,
+        value_width: int,
+        memory_read_width: int,
+        action_width: int,
+        controller_write_context_width: int,
+        controller_write_relevance_width: int,
+        candidate_key_width: int,
+        candidate_value_width: int,
+        hidden: int | None = None,
+    ) -> None:
+        super().__init__()
+        widths = (
+            event_width,
+            hidden_width,
+            workspace_width,
+            key_width,
+            value_width,
+            memory_read_width,
+            action_width,
+            controller_write_context_width,
+            controller_write_relevance_width,
+            candidate_key_width,
+            candidate_value_width,
+        )
+        if min(widths) < 1:
+            raise ValueError("external memory eviction widths must be positive")
+        self.event_width = event_width
+        self.hidden_width = hidden_width
+        self.workspace_width = workspace_width
+        self.key_width = key_width
+        self.value_width = value_width
+        self.memory_read_width = memory_read_width
+        self.action_width = action_width
+        self.controller_write_context_width = controller_write_context_width
+        self.controller_write_relevance_width = controller_write_relevance_width
+        self.candidate_key_width = candidate_key_width
+        self.candidate_value_width = candidate_value_width
+        self.write_observation_width = sum(widths[:-2]) + 5
+        self.feature_width = self.write_observation_width + candidate_key_width + candidate_value_width + 3
+        hidden_width_value = max(16, self.feature_width // 2) if hidden is None else hidden
+        if hidden_width_value < 1:
+            raise ValueError("external memory eviction hidden width must be positive")
+        self.hidden = hidden_width_value
+        self.network = nn.Sequential(
+            nn.Linear(self.feature_width, hidden_width_value),
+            nn.GELU(),
+            nn.Linear(hidden_width_value, 1),
+        )
+        nn.init.zeros_(self.network[-1].weight)
+        nn.init.zeros_(self.network[-1].bias)
+
+    def configuration(self) -> dict[str, int | str]:
+        return {
+            "schema": self.schema,
+            "event_width": self.event_width,
+            "hidden_width": self.hidden_width,
+            "workspace_width": self.workspace_width,
+            "key_width": self.key_width,
+            "value_width": self.value_width,
+            "memory_read_width": self.memory_read_width,
+            "action_width": self.action_width,
+            "controller_write_context_width": self.controller_write_context_width,
+            "controller_write_relevance_width": self.controller_write_relevance_width,
+            "candidate_key_width": self.candidate_key_width,
+            "candidate_value_width": self.candidate_value_width,
+            "hidden": self.hidden,
+        }
+
+    def forward(self, observation: MemoryEvictionObservation) -> torch.Tensor:
+        features = observation.features()
+        if features.shape[1] != self.feature_width:
+            raise ValueError(
+                f"memory eviction observation width {features.shape[1]} != {self.feature_width}"
+            )
+        if observation.candidate_key.shape[1] != self.candidate_key_width:
+            raise ValueError("candidate key has the wrong width")
+        if observation.candidate_value.shape[1] != self.candidate_value_width:
+            raise ValueError("candidate value has the wrong width")
+        return self.network(features).squeeze(-1)
+
+
+@dataclass(frozen=True)
+class CapabilityEvictionObservation:
+    """Opaque context paired with one external capability candidate.
+
+    ``context`` and ``candidate`` are learned tensors or scalar summaries
+    assembled at the memory boundary.  No physical slot index, task name, or
+    verifier target belongs in this observation.  The candidate axis is
+    supplied by the caller so one policy can rank any bounded bank.
+    """
+
+    context: torch.Tensor
+    candidate: torch.Tensor
+
+    def features(self) -> torch.Tensor:
+        if self.context.ndim != 2 or self.candidate.ndim != 2:
+            raise ValueError("capability eviction tensors must be [batch, width]")
+        if self.context.shape[0] != self.candidate.shape[0]:
+            raise ValueError("capability eviction tensors must share a batch")
+        features = torch.cat((self.context, self.candidate), dim=-1)
+        if not bool(torch.isfinite(features).all()):
+            raise ValueError("capability eviction observations must be finite")
+        return features
+
+
+class ExternalCapabilityEvictionPolicy(nn.Module):
+    """Learn a generic disposable-capability score outside the controller.
+
+    The policy is deliberately smaller than the controller and independently
+    replaceable.  It consumes opaque current context and candidate summaries,
+    emits a comparable score whose larger value means more disposable, and
+    leaves protection masking to :class:`CapabilityRetentionLedger`.
+    """
+
+    schema = "neural-computer.external-capability-eviction-policy.v1"
+
+    def __init__(
+        self,
+        *,
+        context_width: int,
+        candidate_width: int,
+        hidden: int = 32,
+    ) -> None:
+        if min(context_width, candidate_width, hidden) < 1:
+            raise ValueError("capability eviction widths must be positive")
+        self.context_width = int(context_width)
+        self.candidate_width = int(candidate_width)
+        self.hidden = int(hidden)
+        super().__init__()
+        self.network = nn.Sequential(
+            nn.Linear(self.context_width + self.candidate_width, self.hidden),
+            nn.GELU(),
+            nn.Linear(self.hidden, 1),
+        )
+        nn.init.zeros_(self.network[-1].weight)
+        nn.init.zeros_(self.network[-1].bias)
+
+    def configuration(self) -> dict[str, int | str]:
+        return {
+            "schema": self.schema,
+            "context_width": self.context_width,
+            "candidate_width": self.candidate_width,
+            "hidden": self.hidden,
+        }
+
+    def forward(self, observation: CapabilityEvictionObservation) -> torch.Tensor:
+        features = observation.features()
+        expected = self.context_width + self.candidate_width
+        if features.shape[1] != expected:
+            raise ValueError(
+                f"capability eviction width {features.shape[1]} != {expected}"
+            )
+        return self.network(features).squeeze(-1)
+
+    def score_candidates(
+        self,
+        context: torch.Tensor,
+        candidates: torch.Tensor,
+    ) -> torch.Tensor:
+        """Score ``[batch, candidates, width]`` without exposing row identity."""
+
+        if context.ndim != 2 or context.shape[1] != self.context_width:
+            raise ValueError(
+                f"context must have shape [batch, {self.context_width}]"
+            )
+        if candidates.ndim != 3 or candidates.shape[2] != self.candidate_width:
+            raise ValueError(
+                "candidates must have shape [batch, rows, candidate_width]"
+            )
+        repeated_context = context[:, None, :].expand(
+            -1, candidates.shape[1], -1
+        )
+        flat = CapabilityEvictionObservation(
+            context=repeated_context.reshape(-1, self.context_width),
+            candidate=candidates.reshape(-1, self.candidate_width),
+        )
+        return self(flat).reshape(candidates.shape[:2])
 
 
 def _validate_inputs(

@@ -1,0 +1,12 @@
+{
+  "schema": "neural-computer.online-view-growth-rejected-control.v1",
+  "status": "rejected",
+  "seed": 69316,
+  "old_artifact_updates": 64,
+  "new_artifact_updates": 256,
+  "retention_threshold": 0.70,
+  "retention_probes": 8,
+  "old_retained_floors": [0.64453125, 0.60546875, 0.6484375, 0.63671875],
+  "new_candidate_outcomes": [0.68359375, 0.6875, 0.6796875, 0.68359375, 0.68359375, 0.6875, 0.68359375, 0.6796875],
+  "reason": "Under-trained old and new artifacts failed the declared retention contract. The candidate was rejected before adoption and route evaluation."
+}
