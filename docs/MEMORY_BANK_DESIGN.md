@@ -559,3 +559,45 @@ acquisition limit applied to cue-conditional branching. Consequence for
 the sharing rung: solo ceilings measured per context are the denominator
 for every gate; demanding 1.0 of a conditional context would test the
 plant, not the bank.
+
+**F16 (probes 20-21). On a sound world, three contradictory contexts hold
+at once — and imposed sharing buys nothing that composition can cash.**
+With the F15 world fixes, the disjoint-oracle bank acquired all three
+factorial contexts simultaneously at or above their solo ceilings
+(dualAC 0.999, dualAD 0.832, dualBC 0.808 vs solo 1.00/0.78/0.78 — the
+bank *helps* the conditional contexts, its first measured positive
+transfer at acquisition time). The F14 acquisition deadlock is closed:
+it was an artifact of the broken world, not a limit of the read path.
+The graded specification signature is now fully resolved per rule:
+
+| swap | shared rule | contradicted rule |
+| --- | ---: | ---: |
+| `dualAD` <- `dualAC` | 1.000 | 0.000 |
+| `dualBC` <- `dualAC` | 1.000 | 0.002 |
+| `dualBC` <- `dualAD` (share nothing) | 0.000 | 0.485 |
+
+A fragment set is a two-rule program; swap it and exactly the rules it
+contradicts invert while the rules it shares survive.
+
+The factorial allocation (one fragment per sub-rule, shared by every
+context that obeys it) also held all three contexts (0.992/0.757/0.747)
+— refuting F16's precursor worry that shared gradients deadlock — but
+was uniformly slightly *worse* than disjoint at matched budget, again.
+And the payoff sharing was supposed to buy did not appear: handing the
+held-out `dualBD` its two ideal already-trained fragments produced
+0.337/0.506 — one rule *inverted*, the other at chance — no better than
+the disjoint bank's composed audit and worse than selector-adaptation
+over a random bank. A fragment trained inside two contexts does not yet
+carry its rule into a novel pairing.
+
+Consequences. (1) The convergent literature finding #2 is now measured
+in-house: composition is a skill; fragments detach from their birth
+contexts only if training constantly re-pairs them (MLC-style
+recombination practice), which the two-phase curriculum never did.
+Imposed allocation cannot substitute for compositional practice. (2)
+Sharing keeps costing a little at acquisition and paying nothing at
+composition, strengthening F14's corollary: reuse should be
+*consolidated in after* acquisition (R3 swap-test merges) or *practiced
+in* (recombination curriculum), never merely declared in the allocation.
+(3) The rung's remaining promotion blocker is seed replication of the
+disjoint result, not any new mechanism.
