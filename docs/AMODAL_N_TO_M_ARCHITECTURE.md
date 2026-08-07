@@ -3514,3 +3514,10 @@ is retained as a bounded robustness mechanism. This remains finite external
 growth, not unrestricted continual learning; effective key rank on the hard
 seed is still only `3.59`. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_source_mastery_full_prior_1024_promoted_v1_2026-08-07/`.
+
+Giving the spatial-binding control twice the local append calibration budget
+(64 updates per stage) leaves the hard seed unchanged at `0.8125`, with two
+unseen targets at `0.0000`; the easy seed remains `1.0000`. Extra local
+calibration is therefore rejected as a remedy, further localizing the failure
+to static query/key alignment. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_spatial_binding_calibration_rejected_v1_2026-08-07/`.

@@ -876,6 +876,11 @@ target, so the prior is retained as a robustness mechanism. This is a bounded
 growth result; the hard seed's key effective rank remains `3.59`, leaving
 representation/alignment as the next bottleneck.
 
+Doubling local append calibration does not change the spatial control's hard
+seed: it remains `0.8125` with two per-target holes. More extension updates
+are therefore not the next move; the alignment must adapt the candidate key to
+the observed behavioral evidence or use a better learned event signature.
+
 The next 46-capability fourth-shift pressure test is intentionally rejected:
 late length-14 rows fail stable protection at hidden 256/8,192 updates,
 hidden 512, and an adaptive late-budget control. This is evidence for
