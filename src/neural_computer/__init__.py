@@ -26,6 +26,7 @@ from .artifact_memory import (
     ExecutableArtifactMemory,
 )
 from .capability import (
+    EXTERNAL_CAPABILITY_APPEND_ONLY_LEARNED_COMPUTE_SCREEN_SCHEMA,
     EXTERNAL_CAPABILITY_COMPOSITION_SCHEMA,
     EXTERNAL_CAPABILITY_COMPUTE_ADMISSION_SCHEMA,
     EXTERNAL_CAPABILITY_COMPUTE_SCREEN_SCHEMA,
@@ -36,6 +37,7 @@ from .capability import (
     EXTERNAL_CAPABILITY_SCHEMA,
     EXTERNAL_CAPABILITY_SHARED_RESIDUAL_SCHEMA,
     EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA,
+    AppendOnlyLearnedComputeCandidateScreen,
     ComputeReuseDecision,
     ExternalCapabilityComposition,
     ExternalCapabilityPipeline,
@@ -221,6 +223,7 @@ __all__ = [
     "EVENT_SCHEMA",
     "EVENT_WINDOW_SCHEMA",
     "EXECUTION_STATES",
+    "EXTERNAL_CAPABILITY_APPEND_ONLY_LEARNED_COMPUTE_SCREEN_SCHEMA",
     "EXTERNAL_CAPABILITY_COMPOSITION_SCHEMA",
     "EXTERNAL_CAPABILITY_COMPUTE_ADMISSION_SCHEMA",
     "EXTERNAL_CAPABILITY_COMPUTE_SCREEN_SCHEMA",
@@ -260,6 +263,7 @@ __all__ = [
     "AmodalOutputBus",
     "AmodalRuntimeOutput",
     "AppendOnlyContentAddressedMemory",
+    "AppendOnlyLearnedComputeCandidateScreen",
     "ArtifactBinding",
     "ArtifactConsolidationReceipt",
     "ArtifactHandle",

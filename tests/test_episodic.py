@@ -5,6 +5,7 @@ import torch
 
 from neural_computer import (
     AdaptiveOnlineEpisodicRelationReader,
+    AppendOnlyLearnedComputeCandidateScreen,
     EpisodicContextEncoder,
     EpisodicCreditHead,
     EpisodicIntentAdapter,
@@ -441,6 +442,76 @@ def test_learned_compute_screen_state_round_trips() -> None:
 
     assert torch.equal(screen(query, keys), restored(query, keys))
     assert screen.configuration() == restored.configuration()
+
+
+def test_append_only_learned_screen_preserves_base_until_failure() -> None:
+    torch.manual_seed(19)
+    screen = AppendOnlyLearnedComputeCandidateScreen(
+        query_width=4,
+        key_width=3,
+        latent_width=5,
+        hidden=8,
+    )
+    screen.enable_base()
+    base_before = {
+        name: value.detach().clone()
+        for name, value in screen.base_screen.state_dict().items()
+    }
+    assert screen.append_extension(2) == 0
+    screen.enable_extension(0)
+    query = torch.randn(3, 4)
+    base_keys = torch.randn(3, 3)
+    extension_keys = torch.randn(2, 3)
+    base_scores = screen.base_screen(query, base_keys)
+
+    cold = screen(query, base_keys, extension_keys)
+    assert torch.equal(cold[:, :3], base_scores)
+    assert torch.equal(cold.argmax(dim=-1), base_scores.argmax(dim=-1))
+
+    failed = screen(
+        query,
+        base_keys,
+        extension_keys,
+        failed_extensions=torch.ones(3, 1, dtype=torch.bool),
+    )
+    assert torch.equal(failed[:, :3], base_scores)
+    expected_extension = base_scores.max(dim=-1).values.unsqueeze(1) + screen.extensions[
+        0
+    ](query, extension_keys)
+    assert torch.allclose(failed[:, 3:], expected_extension)
+    assert all(
+        torch.equal(value, screen.base_screen.state_dict()[name])
+        for name, value in base_before.items()
+    )
+
+
+def test_append_only_learned_screen_state_round_trips() -> None:
+    screen = AppendOnlyLearnedComputeCandidateScreen(
+        query_width=4,
+        key_width=3,
+        latent_width=5,
+        hidden=8,
+        extension_sizes=(1, 2),
+    )
+    screen.enable_base()
+    screen.enable_extension(1)
+    restored = AppendOnlyLearnedComputeCandidateScreen(
+        query_width=4,
+        key_width=3,
+        latent_width=5,
+        hidden=8,
+        extension_sizes=(1, 2),
+    )
+    restored.load_state_dict(screen.state_dict(), strict=True)
+    assert screen.configuration() == restored.configuration()
+    query = torch.randn(2, 4)
+    base_keys = torch.randn(2, 3)
+    extension_keys = torch.randn(3, 3)
+    failures = torch.tensor([[False, True], [True, False]])
+    assert torch.equal(
+        screen(query, base_keys, extension_keys, failures),
+        restored(query, base_keys, extension_keys, failures),
+    )
 
 
 def test_external_capability_pipeline_keeps_program_states_independent() -> None:

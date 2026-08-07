@@ -764,6 +764,14 @@ A direct fresh-outcome calibration of two unseen candidates acquires them at
 rejected shared-screen mutation. The next design must append isolated screen
 state and preserve the frozen prior screen.
 
+The append-only replacement now passes the same two-seed pressure test:
+known routing remains `1.0000`, unseen routing is `0.0000` before the scalar
+failure gate and `1.0000` after 64 fresh updates, with permutation, reload,
+frozen-core, reward-shuffled, and zero-replay controls passing. This promotes
+safe external screen growth only; it is not a claim of unrestricted memory
+growth or general continual learning. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_append_only_promoted_v1_2026-08-07/`.
+
 The next 46-capability fourth-shift pressure test is intentionally rejected:
 late length-14 rows fail stable protection at hidden 256/8,192 updates,
 hidden 512, and an adaptive late-budget control. This is evidence for

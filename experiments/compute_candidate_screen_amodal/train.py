@@ -29,7 +29,10 @@ from experiments.working_memory_continuous.canonical_growth_pressure_test import
     _digest_core,
     _runtime,
 )
-from neural_computer import LearnedComputeCandidateScreen
+from neural_computer import (
+    AppendOnlyLearnedComputeCandidateScreen,
+    LearnedComputeCandidateScreen,
+)
 
 EVENT_WIDTH = 32
 SPAN = 4
@@ -124,6 +127,35 @@ def _route_metrics(
 
 
 @torch.no_grad()
+def _append_only_route_metrics(
+    screen: AppendOnlyLearnedComputeCandidateScreen,
+    queries: torch.Tensor,
+    targets: torch.Tensor,
+    base_keys: torch.Tensor,
+    extension_keys: torch.Tensor,
+    *,
+    failed_extensions: bool,
+) -> dict[str, float]:
+    """Measure an append-only screen after an explicit old-route outcome."""
+
+    scores = screen(
+        queries,
+        base_keys,
+        extension_keys,
+        failed_extensions=failed_extensions,
+    )
+    order = torch.argsort(scores, dim=-1, descending=True, stable=True)
+    top = order[:, 0]
+    rank = (order == targets.unsqueeze(1)).nonzero(as_tuple=False)[:, 1] + 1
+    return {
+        "top1_accuracy": float((top == targets).float().mean()),
+        "mean_fresh_attempts": float(rank.float().mean()),
+        "fresh_verifier_authorized_rate": float((top == targets).float().mean()),
+        "failed_extension_gate": float(failed_extensions),
+    }
+
+
+@torch.no_grad()
 def _permuted_accuracy(
     screen: LearnedComputeCandidateScreen,
     queries: torch.Tensor,
@@ -136,6 +168,39 @@ def _permuted_accuracy(
     permutation = torch.randperm(keys.shape[0], generator=generator)
     local_predictions = screen(queries, keys[permutation]).argmax(dim=-1)
     predictions = permutation[local_predictions]
+    return float((predictions == targets).float().mean())
+
+
+@torch.no_grad()
+def _append_only_permuted_accuracy(
+    screen: AppendOnlyLearnedComputeCandidateScreen,
+    queries: torch.Tensor,
+    targets: torch.Tensor,
+    base_keys: torch.Tensor,
+    extension_keys: torch.Tensor,
+    *,
+    seed: int,
+    failed_extensions: bool,
+) -> float:
+    generator = torch.Generator().manual_seed(seed)
+    base_permutation = torch.randperm(base_keys.shape[0], generator=generator)
+    extension_permutation = torch.randperm(
+        extension_keys.shape[0], generator=generator
+    )
+    scores = screen(
+        queries,
+        base_keys[base_permutation],
+        extension_keys[extension_permutation],
+        failed_extensions=failed_extensions,
+    )
+    local_predictions = scores.argmax(dim=-1)
+    base_count = base_keys.shape[0]
+    predictions = torch.where(
+        local_predictions < base_count,
+        base_permutation[local_predictions.clamp_max(base_count - 1)],
+        base_count
+        + extension_permutation[(local_predictions - base_count).clamp_min(0)],
+    )
     return float((predictions == targets).float().mean())
 
 
@@ -198,6 +263,63 @@ def _train_screen(
     }
 
 
+def _train_append_only_extension(
+    screen: AppendOnlyLearnedComputeCandidateScreen,
+    parent,
+    grammar,
+    extension_keys: torch.Tensor,
+    *,
+    extension_index: int,
+    families: list[int],
+    updates: int,
+    batch_size: int,
+    seed: int,
+    learning_rate: float,
+) -> dict[str, int | float]:
+    """Train only one appended screen from fresh outcomes for its candidates."""
+
+    extension = screen.extensions[extension_index]
+    optimizer = torch.optim.AdamW(
+        extension.parameters(), lr=learning_rate, weight_decay=1e-5
+    )
+    screen.enable_extension(extension_index)
+    local_family = {family: index for index, family in enumerate(families)}
+    informative_pairs = 0
+    last_loss = 0.0
+    for update in range(updates):
+        batch_families = [
+            families[(update * batch_size + row) % len(families)]
+            for row in range(batch_size)
+        ]
+        query = _event_query(
+            parent,
+            grammar,
+            batch_families,
+            seed=seed + update * 10_007,
+        )
+        outcomes = torch.zeros(batch_size, len(families))
+        outcomes[
+            torch.arange(batch_size),
+            torch.tensor([local_family[family] for family in batch_families]),
+        ] = 1.0
+        loss, pairs = extension.outcome_ranking_loss(query, extension_keys, outcomes)
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(extension.parameters(), 1.0)
+        optimizer.step()
+        informative_pairs += pairs
+        last_loss = float(loss.detach())
+    extension.eval()
+    return {
+        "optimizer_updates": updates,
+        "unique_verifier_bits": updates * batch_size * extension_keys.shape[0],
+        "unique_logical_lifetimes": updates * batch_size * extension_keys.shape[0],
+        "informative_candidate_pairs": informative_pairs,
+        "replayed_examples": 0,
+        "final_loss": last_loss,
+    }
+
+
 def run(args: argparse.Namespace) -> dict[str, object]:
     started = perf_counter()
     if args.candidate_count < 4 or args.candidate_count % 2:
@@ -206,6 +328,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("all training and audit budgets must be positive")
     if args.calibration_updates < 0:
         raise ValueError("calibration-updates must be non-negative")
+    if args.append_only_calibration and args.calibration_updates < 1:
+        raise ValueError(
+            "append-only-calibration requires positive calibration-updates"
+        )
     if args.batch_size % 2 or args.audit_count % 2:
         raise ValueError("batch-size and audit-count must be even")
     train_count = args.candidate_count - UNSEEN_CANDIDATES
@@ -331,7 +457,68 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "replayed_examples": 0,
         "final_loss": 0.0,
     }
-    if args.calibration_updates:
+    append_only_screen: AppendOnlyLearnedComputeCandidateScreen | None = None
+    append_only_training: dict[str, int | float] | None = None
+    append_only_unseen_pre_failure_metrics: dict[str, float] | None = None
+    append_only_unseen_permuted_accuracy: float | None = None
+    if args.append_only_calibration:
+        known_keys = keys[:train_count]
+        extension_keys = keys[train_count:]
+        append_only_screen = AppendOnlyLearnedComputeCandidateScreen(
+            EVENT_WIDTH,
+            EVENT_WIDTH,
+            latent_width=args.latent_width,
+            hidden=args.screen_hidden,
+            extension_sizes=(len(unseen_families),),
+        )
+        append_only_screen.base_screen.load_state_dict(screen.state_dict(), strict=True)
+        append_only_screen.freeze_base()
+        calibration_accounting = _train_append_only_extension(
+            append_only_screen,
+            parent,
+            grammar,
+            extension_keys,
+            extension_index=0,
+            families=unseen_families,
+            updates=args.calibration_updates,
+            batch_size=args.batch_size,
+            seed=args.seed + 81_000,
+            learning_rate=args.learning_rate,
+        )
+        novel_context_metrics = _append_only_route_metrics(
+            append_only_screen,
+            novel_context_queries,
+            novel_context_targets,
+            known_keys,
+            extension_keys,
+            failed_extensions=False,
+        )
+        append_only_unseen_pre_failure_metrics = _append_only_route_metrics(
+            append_only_screen,
+            unseen_candidate_queries,
+            unseen_candidate_targets,
+            known_keys,
+            extension_keys,
+            failed_extensions=False,
+        )
+        unseen_candidate_metrics = _append_only_route_metrics(
+            append_only_screen,
+            unseen_candidate_queries,
+            unseen_candidate_targets,
+            known_keys,
+            extension_keys,
+            failed_extensions=True,
+        )
+        append_only_unseen_permuted_accuracy = _append_only_permuted_accuracy(
+            append_only_screen,
+            unseen_candidate_queries,
+            unseen_candidate_targets,
+            known_keys,
+            extension_keys,
+            seed=args.seed + 71_000,
+            failed_extensions=True,
+        )
+    elif args.calibration_updates:
         calibration_accounting = _train_screen(
             screen,
             parent,
@@ -363,13 +550,24 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         novel_context_targets,
         keys,
     )
-    permuted_accuracy = _permuted_accuracy(
-        screen,
-        novel_context_queries,
-        novel_context_targets,
-        keys,
-        seed=args.seed + 70_000,
-    )
+    if append_only_screen is None:
+        permuted_accuracy = _permuted_accuracy(
+            screen,
+            novel_context_queries,
+            novel_context_targets,
+            keys,
+            seed=args.seed + 70_000,
+        )
+    else:
+        permuted_accuracy = _append_only_permuted_accuracy(
+            append_only_screen,
+            novel_context_queries,
+            novel_context_targets,
+            keys[:train_count],
+            keys[train_count:],
+            seed=args.seed + 70_000,
+            failed_extensions=False,
+        )
     cold_screen = LearnedComputeCandidateScreen(
         EVENT_WIDTH,
         EVENT_WIDTH,
@@ -382,26 +580,49 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         novel_context_targets,
         keys,
     )
-    screen_state = {
-        name: value.detach().clone() for name, value in screen.state_dict().items()
-    }
-    reloaded = LearnedComputeCandidateScreen(
-        EVENT_WIDTH,
-        EVENT_WIDTH,
-        latent_width=args.latent_width,
-        hidden=args.screen_hidden,
+    evaluated_screen: torch.nn.Module = (
+        append_only_screen if append_only_screen is not None else screen
     )
+    screen_state = {
+        name: value.detach().clone()
+        for name, value in evaluated_screen.state_dict().items()
+    }
+    if append_only_screen is None:
+        reloaded = LearnedComputeCandidateScreen(
+            EVENT_WIDTH,
+            EVENT_WIDTH,
+            latent_width=args.latent_width,
+            hidden=args.screen_hidden,
+        )
+    else:
+        reloaded = AppendOnlyLearnedComputeCandidateScreen(
+            EVENT_WIDTH,
+            EVENT_WIDTH,
+            latent_width=args.latent_width,
+            hidden=args.screen_hidden,
+            extension_sizes=(len(unseen_families),),
+        )
     reloaded.load_state_dict(screen_state, strict=True)
     reload_exact = all(
         torch.equal(value, reloaded.state_dict()[name])
         for name, value in screen_state.items()
     )
-    reload_metrics = _route_metrics(
-        reloaded,
-        novel_context_queries,
-        novel_context_targets,
-        keys,
-    )
+    if append_only_screen is None:
+        reload_metrics = _route_metrics(
+            reloaded,
+            novel_context_queries,
+            novel_context_targets,
+            keys,
+        )
+    else:
+        reload_metrics = _append_only_route_metrics(
+            reloaded,
+            novel_context_queries,
+            novel_context_targets,
+            keys[:train_count],
+            keys[train_count:],
+            failed_extensions=False,
+        )
     parent_digest_after = _digest_core(parent, ())
     chance = 1.0 / args.candidate_count
     calibration_enabled = args.calibration_updates > 0
@@ -428,6 +649,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             else True
         ),
         "candidate_permutation": permuted_accuracy >= MASTERY_THRESHOLD,
+        "append_only_unseen_candidate_permutation": (
+            append_only_unseen_permuted_accuracy is None
+            or append_only_unseen_permuted_accuracy >= MASTERY_THRESHOLD
+        ),
         "reward_shuffled_null": (
             shuffled_novel_context_metrics["top1_accuracy"] <= chance + 0.15
         ),
@@ -452,7 +677,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "known_candidate_count": len(known_families),
         "unseen_candidate_count": len(unseen_families),
         "calibration_enabled": calibration_enabled,
-        "configuration": screen.configuration(),
+        "append_only_enabled": append_only_screen is not None,
+        "configuration": evaluated_screen.configuration(),
         "budgets": {
             "parent_updates": args.parent_updates,
             "screen_updates": args.screen_updates,
@@ -467,9 +693,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             keys.detach().cpu().contiguous().numpy().tobytes()
         ).hexdigest(),
         "training": training_accounting,
+        "append_only_training": append_only_training,
         "train_metrics": train_metrics,
         "novel_context_metrics": novel_context_metrics,
         "unseen_candidate_metrics": unseen_candidate_metrics,
+        "append_only_unseen_pre_failure_metrics": append_only_unseen_pre_failure_metrics,
+        "append_only_unseen_permuted_accuracy": append_only_unseen_permuted_accuracy,
         "initial_novel_context_metrics": initial_novel_context_metrics,
         "initial_unseen_candidate_metrics": initial_unseen_candidate_metrics,
         "calibrated_novel_context_metrics": calibrated_novel_context_metrics,
@@ -485,18 +714,44 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 if parent_history
                 else 0
             )
-            + training_accounting["unique_verifier_bits"],
+            + training_accounting["unique_verifier_bits"]
+            + (
+                append_only_training["unique_verifier_bits"]
+                if append_only_training is not None
+                else 0
+            )
+            + calibration_accounting["unique_verifier_bits"],
             "unique_logical_lifetimes": (
                 parent_history[-1]["unique_logical_lifetimes"]
                 if parent_history
                 else 0
             )
-            + training_accounting["unique_logical_lifetimes"],
-            "optimizer_updates": args.parent_updates + args.screen_updates,
+            + training_accounting["unique_logical_lifetimes"]
+            + (
+                append_only_training["unique_logical_lifetimes"]
+                if append_only_training is not None
+                else 0
+            )
+            + calibration_accounting["unique_logical_lifetimes"],
+            "optimizer_updates": (
+                args.parent_updates
+                + args.screen_updates
+                + (
+                    append_only_training["optimizer_updates"]
+                    if append_only_training is not None
+                    else 0
+                )
+                + calibration_accounting["optimizer_updates"]
+            ),
             "replayed_examples": 0,
             "screen_informative_pairs": training_accounting[
                 "informative_candidate_pairs"
-            ],
+            ]
+            + (
+                append_only_training["informative_candidate_pairs"]
+                if append_only_training is not None
+                else 0
+            ),
             "calibration_optimizer_updates": calibration_accounting[
                 "optimizer_updates"
             ],
@@ -543,6 +798,11 @@ def main() -> None:
         default=0,
         help="fresh-outcome updates for candidates that had no positive evidence",
     )
+    parser.add_argument(
+        "--append-only-calibration",
+        action="store_true",
+        help="calibrate an isolated extension after the frozen base route fails",
+    )
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--audit-count", type=int, default=96)
     parser.add_argument("--key-samples", type=int, default=16)
@@ -562,6 +822,9 @@ def main() -> None:
                 "promoted": report["promoted"],
                 "novel_context_metrics": report["novel_context_metrics"],
                 "unseen_candidate_metrics": report["unseen_candidate_metrics"],
+                "append_only_unseen_pre_failure_metrics": report[
+                    "append_only_unseen_pre_failure_metrics"
+                ],
                 "calibrated_unseen_candidate_metrics": report[
                     "calibrated_unseen_candidate_metrics"
                 ],

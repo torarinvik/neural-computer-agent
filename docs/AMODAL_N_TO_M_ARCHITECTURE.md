@@ -3338,3 +3338,19 @@ screen itself catastrophically forgets. This rejects shared screen mutation
 as the acquisition mechanism; the next boundary must append isolated screen
 state and gate its activation. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_calibration_rejected_v1_2026-08-07/`.
+
+## Append-only learned screen growth promoted (2026-08-07)
+
+The safe replacement was tested on the same six-candidate opaque-rule
+pressure test. The mastered screen is copied into an independently versioned
+base and frozen; two new candidates receive an isolated learned extension.
+Before a scalar verifier failure, the extension is forced below the base and
+the unseen-candidate top-1 rate is `0.0000`. After that failure, 64 fresh
+outcome updates raise unseen-candidate top-1 to `1.0000` on both seeds while
+known-candidate novel-context routing remains `1.0000`. Base and extension
+candidate permutations, exact reload, frozen-core, reward-shuffled null, and
+zero-replay controls pass. The extension is still an order-only aid and fresh
+verifier admission remains authoritative. This promotes safe append-only
+screen growth, not unrestricted memory growth or general continual learning.
+Evidence and accounting are in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_append_only_promoted_v1_2026-08-07/`.

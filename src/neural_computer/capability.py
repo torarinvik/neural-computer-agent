@@ -21,6 +21,7 @@ from .addressing import (
     FactorizedOpaqueAddressRouter,
     PersistentOpaqueContextRouteEvidence,
     PersistentOpaqueRouteEvidence,
+    failure_gated_candidate_scores,
 )
 from .episodic import EpisodicContextEncoder, EpisodicIntentAdapter
 from .interface import IntentEvent
@@ -47,6 +48,9 @@ EXTERNAL_CAPABILITY_COMPUTE_SCREEN_SCHEMA = (
 )
 EXTERNAL_CAPABILITY_LEARNED_COMPUTE_SCREEN_SCHEMA = (
     "neural-computer.external-capability-learned-compute-screen.v1"
+)
+EXTERNAL_CAPABILITY_APPEND_ONLY_LEARNED_COMPUTE_SCREEN_SCHEMA = (
+    "neural-computer.external-capability-append-only-learned-compute-screen.v1"
 )
 EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA = (
     "neural-computer.external-capability-slot-binding.v1"
@@ -399,6 +403,176 @@ class LearnedComputeCandidateScreen(nn.Module):
             -outcome_delta[informative].detach() * score_delta[informative]
         ).mean()
         return loss, informative_count
+
+
+class AppendOnlyLearnedComputeCandidateScreen(nn.Module):
+    """Grow candidate-screen state without mutating the mastered base.
+
+    The base screen and each appended extension are independent memory-side
+    modules.  An extension can compete only after the caller supplies scalar
+    verifier failure for that stage; before then, the base scores and argmax
+    are preserved exactly.  New evidence is therefore isolated to an
+    append-only state boundary rather than fine-tuning the route that already
+    works.
+    """
+
+    schema = EXTERNAL_CAPABILITY_APPEND_ONLY_LEARNED_COMPUTE_SCREEN_SCHEMA
+
+    def __init__(
+        self,
+        query_width: int,
+        key_width: int,
+        *,
+        latent_width: int = 32,
+        hidden: int = 64,
+        extension_sizes: Iterable[int] = (),
+    ) -> None:
+        super().__init__()
+        self.query_width = int(query_width)
+        self.key_width = int(key_width)
+        self.latent_width = int(latent_width)
+        self.hidden = int(hidden)
+        if min(self.query_width, self.key_width, self.latent_width, self.hidden) < 1:
+            raise ValueError("append-only screen dimensions must be positive")
+        self.base_screen = LearnedComputeCandidateScreen(
+            self.query_width,
+            self.key_width,
+            latent_width=self.latent_width,
+            hidden=self.hidden,
+        )
+        self.extensions = nn.ModuleList()
+        self.extension_sizes: list[int] = []
+        for candidate_count in extension_sizes:
+            self.append_extension(candidate_count)
+
+    def append_extension(self, candidate_count: int) -> int:
+        """Append an isolated candidate group and return its stage index."""
+
+        if candidate_count < 1:
+            raise ValueError("extension candidate count must be positive")
+        extension = LearnedComputeCandidateScreen(
+            self.query_width,
+            self.key_width,
+            latent_width=self.latent_width,
+            hidden=self.hidden,
+        )
+        self.extensions.append(extension)
+        self.extension_sizes.append(int(candidate_count))
+        return len(self.extensions) - 1
+
+    def enable_base(self) -> None:
+        """Enable the learned base screen after its evidence gate passes."""
+
+        self.base_screen.enable()
+
+    def enable_extension(self, index: int) -> None:
+        """Enable one extension after fresh evidence for that group."""
+
+        self.extensions[index].enable()
+
+    def freeze_base(self) -> None:
+        """Freeze the mastered screen while allowing extension training."""
+
+        for parameter in self.base_screen.parameters():
+            parameter.requires_grad_(False)
+
+    def configuration(self) -> dict[str, object]:
+        """Return the versioned append-only screen contract."""
+
+        return {
+            "schema": self.schema,
+            "query_width": self.query_width,
+            "key_width": self.key_width,
+            "latent_width": self.latent_width,
+            "hidden": self.hidden,
+            "extension_sizes": tuple(self.extension_sizes),
+            "base_enabled": bool(self.base_screen.enabled.item()),
+            "extension_enabled": tuple(
+                bool(extension.enabled.item()) for extension in self.extensions
+            ),
+            "failure_signal": "per_extension_scalar_verifier_failure_v1",
+            "growth": "isolated_append_only_memory_state_v1",
+            "role": "order_only_fresh_admission_required",
+        }
+
+    def _validate_extension_inputs(
+        self,
+        query: torch.Tensor,
+        extension_keys: torch.Tensor,
+        failed_extensions: torch.Tensor | bool | None,
+    ) -> torch.Tensor:
+        if extension_keys.ndim == 2:
+            extension_keys = extension_keys.unsqueeze(0).expand(query.shape[0], -1, -1)
+        expected = sum(self.extension_sizes)
+        if (
+            extension_keys.ndim != 3
+            or extension_keys.shape[0] != query.shape[0]
+            or extension_keys.shape[1] != expected
+            or extension_keys.shape[2] != self.key_width
+        ):
+            raise ValueError(
+                "append-only screen extension keys must have shape "
+                f"[batch, {expected}, {self.key_width}] or "
+                f"[{expected}, {self.key_width}]"
+            )
+        if (
+            failed_extensions is not None
+            and not isinstance(failed_extensions, bool)
+            and failed_extensions.shape != (query.shape[0], len(self.extensions))
+        ):
+            raise ValueError("failed_extensions must have shape [batch, extension_count]")
+        return extension_keys
+
+    def forward(
+        self,
+        query: torch.Tensor,
+        base_keys: torch.Tensor,
+        extension_keys: torch.Tensor | None = None,
+        failed_extensions: torch.Tensor | bool | None = None,
+    ) -> torch.Tensor:
+        """Return base rows plus failure-gated appended candidate rows."""
+
+        base_scores = self.base_screen(query, base_keys)
+        if not self.extensions:
+            if extension_keys is not None:
+                raise ValueError("extension keys require at least one extension")
+            if failed_extensions is not None:
+                raise ValueError("failed extensions require at least one extension")
+            return base_scores
+        if extension_keys is None:
+            raise ValueError("extension keys are required when extensions exist")
+        extension_keys = self._validate_extension_inputs(
+            query, extension_keys, failed_extensions
+        )
+        if failed_extensions is None:
+            failures = torch.zeros(
+                query.shape[0],
+                len(self.extensions),
+                dtype=torch.bool,
+                device=query.device,
+            )
+        elif isinstance(failed_extensions, bool):
+            failures = torch.full(
+                (query.shape[0], len(self.extensions)),
+                failed_extensions,
+                dtype=torch.bool,
+                device=query.device,
+            )
+        else:
+            failures = failed_extensions.to(device=query.device, dtype=torch.bool)
+        scores = base_scores
+        offset = 0
+        for index, (extension, size) in enumerate(
+            zip(self.extensions, self.extension_sizes, strict=True)
+        ):
+            keys = extension_keys[:, offset : offset + size]
+            scores = failure_gated_candidate_scores(
+                scores,
+                extension(query, keys),
+                failures[:, index],
+            )
+            offset += size
+        return scores
 
 
 @dataclass(frozen=True)
