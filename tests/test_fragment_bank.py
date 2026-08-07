@@ -373,3 +373,32 @@ def test_combiner_is_shared_infrastructure_not_per_task_state() -> None:
             assert not torch.allclose(
                 outputs[names[left]], outputs[names[right]], atol=1e-4
             )
+
+
+def test_critic_baseline_is_state_dependent_and_training_only() -> None:
+    from experiments.games_amodal.fragment_bank import ValueHead
+
+    torch.manual_seed(0)
+    critic = ValueHead(intention_width=8, hidden=16)
+    intentions = torch.randn(4, 8)
+    values = critic(intentions)
+    assert values.shape == (4,)
+    # A state-dependent baseline must actually vary with the state, or it
+    # is just the scalar baseline it was meant to improve on.
+    assert float(values.std()) > 0.0
+    agent = _agent()
+    config = FamilyConfig(choice=1, name="x")
+    with_critic = rollout_family(
+        agent, config, None, batch_size=3, steps=5, seed=0,
+        sample=True, gamma=0.9, critic=ValueHead(intention_width=8),
+    )
+    assert with_critic["value"] is not None
+    assert with_critic["value"].shape == with_critic["returns"].shape
+    # Absent at evaluation: the critic is an estimator, never a place for
+    # skill to hide (F30).
+    without = rollout_family(
+        agent, config, None, batch_size=3, steps=5, seed=0,
+        sample=True, gamma=0.9,
+    )
+    assert without["value"] is None
+    assert not torch.allclose(with_critic["advantage"], without["advantage"])

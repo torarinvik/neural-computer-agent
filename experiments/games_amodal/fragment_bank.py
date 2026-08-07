@@ -246,6 +246,7 @@ def rollout_family(
     per_step_baseline: bool = False,
     normalize_advantage: bool = False,
     combiner: FragmentCombiner | None = None,
+    critic: ValueHead | None = None,
 ) -> dict[str, torch.Tensor | None]:
     verifier = FamilyVerifier(config, batch_size=batch_size, seed=seed)
     verifier.reset(seed=seed)
@@ -259,6 +260,7 @@ def rollout_family(
     )
     decoder: KeypressDecoder = agent.runtime.output_bus.decoders["keypress"]
     rewards, log_props, masks, logits_trace = [], [], [], []
+    values: list[torch.Tensor] = []
     alive = torch.ones(batch_size, dtype=torch.bool)
     for _ in range(steps):
         if not bool(alive.any()):
@@ -299,6 +301,8 @@ def rollout_family(
             )
         output, state = agent.runtime.step_events(events, state, feedback)
         logits = output.decoded["keypress"]
+        if critic is not None:
+            values.append(critic(output.intention.payload))
         decision = decoder.decide_from_logits(logits, sample=sample)
         logits_trace.append(logits)
         log_props.append(decision.propensity.clamp_min(1e-8).log())
@@ -319,10 +323,17 @@ def rollout_family(
     for position in range(reward_matrix.shape[1] - 1, -1, -1):
         running = reward_matrix[:, position] + gamma * running
         returns[:, position] = running
+    value_trace = torch.stack(values, dim=1) if values else None
     advantage = None
     props = None
     if sample:
         advantage = returns.detach()
+        if value_trace is not None:
+            # State-dependent baseline: the critic explains away how good
+            # the SITUATION was, leaving the gradient to speak about the
+            # ACTION. This is what a scalar or per-timestep baseline
+            # cannot do (F35).
+            advantage = advantage - value_trace.detach()
         # A single scalar baseline over all timesteps is badly matched to
         # discounted returns, which shrink toward the end of an episode:
         # early steps look good and late steps look bad regardless of the
@@ -358,6 +369,8 @@ def rollout_family(
         "rule_accuracy": (
             torch.tensor(verifier.dual_accuracy()) if config.dual else None
         ),
+        "returns": returns,
+        "value": value_trace,
         "rule_engagement": (
             torch.tensor(verifier.dual_engagement()) / max(batch_size, 1)
             if config.dual
@@ -385,6 +398,36 @@ def sample_selection(
         chosen.append(index)
         available[index] = False
     return chosen, log_prob
+
+
+class ValueHead(torch.nn.Module):
+    """A critic over the controller's intention (F35).
+
+    F35 localised the acquisition constraint to the recurrent
+    policy-gradient landscape: baselines, entropy, normalisation and
+    width all failed. The one variance reduction NOT tried was a proper
+    learned critic — the per-timestep baseline of F35 is a crude
+    state-independent approximation of one, and a state-independent
+    baseline cannot tell "this state is bad" from "that action was bad",
+    which is precisely the credit assignment these games need.
+
+    Reads the opaque intention rather than the observation, so it stays
+    on the amodal side of the boundary and needs no game-specific input.
+    It is shared infrastructure, never per-task state (F30), and it is a
+    TRAINING-time estimator: it emits no actions and is absent at
+    evaluation, so it cannot be a place for skill to hide.
+    """
+
+    def __init__(self, *, intention_width: int, hidden: int = 32) -> None:
+        super().__init__()
+        self.net = torch.nn.Sequential(
+            torch.nn.Linear(intention_width, hidden),
+            torch.nn.Tanh(),
+            torch.nn.Linear(hidden, 1),
+        )
+
+    def forward(self, intention: torch.Tensor) -> torch.Tensor:
+        return self.net(intention).squeeze(-1)
 
 
 class FragmentCombiner(torch.nn.Module):

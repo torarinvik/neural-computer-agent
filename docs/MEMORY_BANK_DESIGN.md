@@ -1158,3 +1158,33 @@ representational or algorithmic (a critic/actor-critic, or supervised
 bootstrapping from a scripted policy), not another variance trick. All
 four options remain in the code behind flags, defaulting off, with this
 table as the reason.
+
+**F36 (probe 58). A learned critic is the first intervention to improve
+motor acquisition on both seeds — partially.** F35 exhausted the
+state-INDEPENDENT levers; the one remaining variance reduction was a
+proper critic, since a scalar or per-timestep baseline cannot separate
+"this state was bad" from "that action was bad". A `ValueHead` over the
+controller's opaque intention (amodal side of the boundary, shared
+infrastructure, training-time only, emits no actions) gives:
+
+| game | baseline | critic 69316 | critic 69317 |
+| --- | ---: | ---: | ---: |
+| collect1 | 0.547 | **0.812** | **0.859** |
+| intercept1 | 0.312 | 0.453 | 0.141 |
+| forageA | 0.453 | 0.469 | 0.281 |
+
+collect improves ~55% on BOTH seeds — the first robust acquisition gain
+in the program, and the first intervention of six that is not uniformly
+negative. forage and intercept stay a seed lottery, so the constraint is
+narrowed rather than removed: credit assignment was genuinely part of
+the problem for the game with the longest reward horizon (collect
+requires reaching a distant object repeatedly), and is not the whole
+problem for games that also demand timing (intercept) or discrimination
+under a moving reward source (forage).
+
+This also retires the F35 reading in one respect: acquisition is not
+wholly beyond standard machinery, it was beyond the *state-independent*
+subset of it. The remaining gap is concentrated in games whose failure
+mode is exploratory rather than credit-assignment-shaped, which points
+at the untried lever — supervised bootstrapping from a scripted policy,
+where exploration is supplied rather than discovered.
