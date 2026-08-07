@@ -1347,3 +1347,46 @@ fatal-error games the admissible easing axis is the one that lengthens
 the time to commit a fatal mistake — slower dynamics, larger margins —
 not more objects. Intercept's curriculum should vary faller SPEED, not
 faller count, and that is the next probe rather than a rebuttal.
+
+**F41 (probe 64). The speed curriculum fails, falsifying F40's
+prediction — and the reason unifies it with F21 into a stronger law.**
+F40 predicted that fatal-error games need an easing axis that lengthens
+the time to commit a fatal mistake, and named faller speed. Built
+(`faller_period`, verified by test to slow descent without adding
+danger) and run on intercept, scored always on the target (period 1):
+
+| seed | after p4 | after p2 | after p1 | cold critic | density curriculum |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 69316 | 0.000 | 0.000 | 0.094 | 0.453 | 0.016 |
+| 69317 | 0.219 | 0.125 | 0.469 | 0.141 | 0.469 |
+
+Worse than cold on one seed, identical on the other. The prediction is
+falsified, and the diagnostic detail is in the intermediate column:
+after training at the SLOWEST setting, target mastery is 0.000 and
+0.219 — the easy stage transfers nothing.
+
+That is the F21 failure in new clothing. Slowing the dynamics does not
+make the same task easier, it makes a DIFFERENT task: at period 4 the
+agent can watch a faller descend and stroll under it; at period 1 it
+must already be positioned when the faller appears. Those are different
+policies, so the curriculum teaches a skill the target does not want,
+exactly as the teleport bridge taught waiting instead of navigating.
+
+Unified law, replacing F40's second clause and subsuming F20/F21:
+**an easing axis must preserve the POLICY the target task requires, not
+merely its reward rate.** Density passes (approach-and-choose is the
+same act at any density; only the encounter rate changes). Speed fails
+(leisurely positioning is not anticipation). Spawn distance failed for
+the same reason, and so did teleport-forcing. The test for a proposed
+curriculum is therefore not "is the easy stage easier?" but "would a
+policy that is optimal at the easy stage still be optimal at the
+target?" — and it can be checked cheaply, before spending a run, by
+asking whether the optimal action at each stage is the same function of
+what the agent can see.
+
+Acquisition final status: credit assignment solved where reward is
+dense (critic, F36); sparse-first-success solved where errors are
+survivable AND a policy-preserving easing axis exists (density, F40);
+unsolved for fatal-error games, where no policy-preserving easing axis
+has been found and the two tried (count, speed) fail for opposite
+reasons.

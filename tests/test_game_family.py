@@ -442,3 +442,29 @@ def test_arity_validation_rejects_impossible_rules() -> None:
         FamilyConfig(dual=1, arity=2, rule0=2).validate()
     with pytest.raises(ValueError, match="arity"):
         FamilyConfig(dual=1, arity=4).validate()
+
+
+def test_faller_period_slows_descent_without_adding_danger() -> None:
+    """F40: the easing axis for fatal-error games is time, not count."""
+
+    slow = FamilyVerifier(
+        FamilyConfig(intercept=1, faller_period=3), batch_size=1, seed=41
+    )
+    slow.reset(seed=41)
+    slow._fallers[0] = [(0, 3)]
+    slow._avatar[0] = (4, 0)
+    rows = []
+    for _ in range(6):
+        slow.step(torch.tensor([1]))
+        rows.append(slow._fallers[0][0][0])
+    # Three steps of hold for every one step of descent.
+    assert rows[0] == rows[1] == rows[2]
+    assert rows[3] > rows[0]
+    fast = FamilyVerifier(FamilyConfig(intercept=1), batch_size=1, seed=41)
+    fast.reset(seed=41)
+    fast._fallers[0] = [(0, 3)]
+    fast._avatar[0] = (4, 0)
+    fast.step(torch.tensor([1]))
+    assert fast._fallers[0][0][0] == 1  # unchanged default: one row a step
+    with pytest.raises(ValueError, match="faller period"):
+        FamilyConfig(intercept=1, faller_period=0).validate()

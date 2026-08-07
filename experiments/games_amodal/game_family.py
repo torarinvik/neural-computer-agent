@@ -169,6 +169,13 @@ class FamilyConfig:
     # strictly pay. Growing spawn_radius is the curriculum; 0 = never
     # (pure forage). The teleporting variant taught waiting, not
     # navigating (F21).
+    faller_period: int = 1  # F40: the easing axis for FATAL-error games.
+    # Fallers advance one row every `faller_period` steps, so a larger
+    # period lengthens the time available to get under one before missing
+    # it is punished. Density cannot ease a fatal-error game (more
+    # objects means more ways to die); slowing the dynamics can, because
+    # it raises the chance of a first success without raising the chance
+    # of a first death.
     view: str = ""  # F28: which egocentric transform this game's screen
     # encoder should apply -- "" (none), "roll" (toroidal), or "crop"
     # (zero fill). The right answer is per-game, not global: games whose
@@ -235,6 +242,8 @@ class FamilyConfig:
         )
         if min(levels) < 0:
             raise ValueError("component levels cannot be negative")
+        if self.faller_period < 1:
+            raise ValueError("faller period must be at least one step")
         if self.dual and not 2 <= self.arity <= 3:
             raise ValueError("dual arity must be 2 or 3")
         if self.dual and max(self.rule0, self.rule1) >= self.arity:
@@ -589,6 +598,27 @@ class FamilyVerifier:
                 )
                 bad.append(self._forage_cell(row, occupied))
 
+            if self._step_index % self.config.faller_period:
+                # Between advances the fallers hold position: the agent
+                # gets extra steps to line up, and no extra chances to die.
+                if not bool(self._alive[row]):
+                    continue
+                next_hazards = []
+                hit = False
+                for hazard in self._hazards[row]:
+                    position = (hazard[0], hazard[1] + hazard[2])
+                    direction = hazard[2]
+                    if position[1] < 0 or position[1] >= self.width:
+                        direction = -direction
+                        position = (hazard[0], hazard[1] + direction)
+                    if position == target:
+                        hit = True
+                    next_hazards.append((position[0], position[1], direction))
+                self._hazards[row] = next_hazards
+                if hit:
+                    reward[row] -= 1.0
+                    self._alive[row] = False
+                continue
             next_fallers = []
             for faller in self._fallers[row]:
                 dropped = (faller[0] + 1, faller[1])
