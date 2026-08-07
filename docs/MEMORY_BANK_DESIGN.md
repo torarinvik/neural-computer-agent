@@ -900,3 +900,31 @@ decision, so it costs the fixed core nothing. Recommended defaults:
 crop for navigate/collect/forage-class games, roll for intercept-class,
 both available behind flags and both settled by calibration rather than
 assumption.
+
+**F29 (probe 49). Per-game encoder views raise the floor but couple
+through the shared plant, so encoder choices cannot be calibrated
+independently.** Giving each battery game the view its solo calibration
+preferred (crop for collect, roll for forage/intercept, none for the
+centred decision games) improved the worst-case ratio on both seeds
+(0.07 -> 0.17 and 0.05 -> 0.10) and lifted collect sharply (0.29 -> 0.66,
+0.43 -> 0.80). It also *cost* games whose own view never changed:
+choiceB 0.88 -> 0.22 and dualAD 1.45 -> 0.69 on seed 69317.
+
+The mechanism matters more than the numbers. Every game trains the same
+plant, so changing how forage and collect are rendered changes the
+representation that choice and dual inherit. A per-game encoder decision
+is therefore NOT a local decision, and solo calibration — the tool this
+program has leaned on since the battery began — measures each view in
+exactly the condition that does not hold when games share a plant. The
+twin cross-feed also drifted off zero (0.000 -> 0.188/0.203), the first
+softening of the specification signature in the battery line.
+
+Consequences. (1) Encoder heterogeneity is real (F28) but must be chosen
+jointly, by battery-level search or by giving each game its own encoder
+*parameters* rather than only its own transform — the latter is what the
+amodal design actually prescribes, and the current shared screen driver
+violates it for convenience. (2) Solo ceilings remain the right yardstick
+for whether a game is learnable at all, and are NOT a reliable predictor
+of a configuration's value inside a shared-plant battery. (3) The
+regression in cross-feeding says the specification property must be
+re-gated after any encoder change, not assumed to carry over.
