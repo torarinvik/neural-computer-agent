@@ -326,3 +326,50 @@ def test_compose_suite_holdouts_are_distinct_from_training_pairings() -> None:
     names = {c.name for c in train} | {c.name for c in holdout}
     assert len(names) == 9
     assert all(c.arity == 3 for c in train + holdout)
+
+
+def test_combiner_is_permutation_invariant_and_fragment_sensitive() -> None:
+    from experiments.games_amodal.fragment_bank import FragmentCombiner
+
+    torch.manual_seed(0)
+    combiner = FragmentCombiner(width=8, hidden=16)
+    fragments = torch.randn(2, 3, 8)
+    out = combiner(fragments)
+    assert out.shape == (3, 8)  # pooled to one fragment's worth of tokens
+    # A fetched set has no intrinsic order, so order must not matter...
+    assert torch.allclose(out, combiner(fragments.flip(0)), atol=1e-6)
+    # ...but WHICH fragments were fetched must still change the context,
+    # or the combiner would have severed the bank from behaviour.
+    assert not torch.allclose(out, combiner(torch.randn(2, 3, 8)), atol=1e-3)
+
+
+def test_combiner_is_shared_infrastructure_not_per_task_state() -> None:
+    """F30: one combiner serves every context, so it cannot become a
+    per-game program."""
+
+    from experiments.games_amodal.fragment_bank import (
+        FragmentCombiner,
+        compose_suite,
+    )
+
+    torch.manual_seed(0)
+    combiner = FragmentCombiner(width=8, hidden=16)
+    train, _ = compose_suite()
+    bank = FragmentBank(
+        fragments=12, tokens_per_fragment=2, width=8,
+        variants=[c.name for c in train],
+    )
+    bank.set_oracle_map(factorial_oracle_map(train))
+    outputs = {
+        c.name: combiner(bank.fetch(bank.oracle_indices(c.name, 2)))
+        for c in train
+    }
+    # Distinct pairings must produce distinct contexts through the SAME
+    # function -- that is what makes a novel pairing merely another
+    # application of it.
+    names = list(outputs)
+    for left in range(len(names)):
+        for right in range(left + 1, len(names)):
+            assert not torch.allclose(
+                outputs[names[left]], outputs[names[right]], atol=1e-4
+            )

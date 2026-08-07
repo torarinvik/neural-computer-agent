@@ -244,6 +244,7 @@ def rollout_family(
     egocentric: bool = False,
     encoder=None,
     per_step_baseline: bool = False,
+    combiner: FragmentCombiner | None = None,
 ) -> dict[str, torch.Tensor | None]:
     verifier = FamilyVerifier(config, batch_size=batch_size, seed=seed)
     verifier.reset(seed=seed)
@@ -287,8 +288,13 @@ def rollout_family(
         screen = encoder or agent.runtime.encoders["screen"]
         events = [screen(observation)]
         if fragments is not None:
+            context = (
+                combiner(fragments) if combiner is not None else fragments
+            )
             events.extend(
-                artifact_events(fragments.reshape(-1, fragments.shape[-1]), batch_size)
+                artifact_events(
+                    context.reshape(-1, context.shape[-1]), batch_size
+                )
             )
         output, state = agent.runtime.step_events(events, state, feedback)
         logits = output.decoded["keypress"]
@@ -369,6 +375,51 @@ def sample_selection(
         chosen.append(index)
         available[index] = False
     return chosen, log_prob
+
+
+class FragmentCombiner(torch.nn.Module):
+    """A trained operation over fetched fragments (F33).
+
+    Three mechanisms failed to produce composition (imposed sharing F16,
+    partner rotation F27, economic pressure F33) and shared one flaw:
+    none made composition the thing being optimised. Concatenating
+    fragments into the event window is not an operation the controller
+    was ever trained to perform, so a novel pairing arrives as an
+    unfamiliar input rather than a familiar operation on familiar parts.
+
+    This module makes the operation explicit and learnable: it maps a SET
+    of fetched fragments to the context tokens the controller reads.
+    Because it is one shared function applied to every pairing, a pairing
+    it has never seen is still just an application of the same function —
+    which is what "composition is a skill" means operationally.
+
+    Pooling is permutation-invariant over fragments (a fetched set has no
+    intrinsic order) and position-preserving over tokens. Role is carried
+    by fragment CONTENT, not by slot, so nothing here privileges a rule.
+
+    It is shared infrastructure, not per-task state: one combiner serves
+    every context, so it cannot become a per-game program (F30). The
+    cross-feed audit still applies and still must invert.
+    """
+
+    def __init__(
+        self, *, width: int, hidden: int = 64, layers: int = 2
+    ) -> None:
+        super().__init__()
+        self.encode = torch.nn.Sequential(
+            torch.nn.Linear(width, hidden), torch.nn.Tanh()
+        )
+        merge: list[torch.nn.Module] = []
+        for _ in range(max(1, layers - 1)):
+            merge += [torch.nn.Linear(hidden, hidden), torch.nn.Tanh()]
+        merge += [torch.nn.Linear(hidden, width), torch.nn.Tanh()]
+        self.merge = torch.nn.Sequential(*merge)
+
+    def forward(self, fragments: torch.Tensor) -> torch.Tensor:
+        """[k, tokens, width] -> [tokens, width]."""
+
+        pooled = self.encode(fragments).sum(dim=0)
+        return self.merge(pooled)
 
 
 class FragmentBank(torch.nn.Module):
@@ -573,12 +624,15 @@ def train_bank(
     train_fragments: bool,
     seed_offset: int = 0,
     conflict_out: dict[frozenset[str], float] | None = None,
+    combiner: FragmentCombiner | None = None,
 ) -> list[dict[str, float]]:
     parameters: list[torch.nn.Parameter] = list(
         bank.selection_logits.parameters()
     )
     if train_fragments:
         parameters.append(bank.tokens)
+        if combiner is not None:
+            parameters.extend(combiner.parameters())
     if train_plant:
         parameters.extend(
             trainable_parameters(
@@ -649,6 +703,7 @@ def train_bank(
             sample=True,
             gamma=args.gamma,
             egocentric=getattr(args, "egocentric", False),
+            combiner=combiner,
         )
         advantage = summary["advantage"]
         assert advantage is not None
@@ -720,6 +775,7 @@ def train_bank(
                 sample=True,
                 gamma=args.gamma,
                 egocentric=getattr(args, "egocentric", False),
+                combiner=combiner,
             )
             decoy = torch.randn_like(fragments)
             decoy = decoy * (
@@ -735,6 +791,7 @@ def train_bank(
                 sample=True,
                 gamma=args.gamma,
                 egocentric=getattr(args, "egocentric", False),
+                combiner=combiner,
             )
             loss = loss + args.ignorance_weight * (
                 ignorance_loss(withheld["logits"], withheld["mask"])
@@ -763,6 +820,7 @@ def evaluate_detail(
     args: argparse.Namespace,
     fragments_override: torch.Tensor | None = None,
     encoder=None,
+    combiner: FragmentCombiner | None = None,
 ) -> dict[str, object]:
     """Mastery plus the graded readouts a factorial suite needs.
 
@@ -803,6 +861,7 @@ def evaluate_detail(
                 gamma=args.gamma,
                 egocentric=getattr(args, "egocentric", False),
                 encoder=encoder,
+                combiner=combiner,
             )
         scores.append(mastery(summary, config))
         returns.append(float(summary["total_reward"].mean()))
@@ -892,14 +951,24 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "compose": compose_suite,
     }
     train_variants, holdout_variants = suites[args.suite]()
+    combiner = (
+        FragmentCombiner(width=args.event_width, hidden=args.combiner_hidden)
+        if getattr(args, "combiner", False)
+        else None
+    )
+    # The combiner pools the fetched set down to one fragment's worth of
+    # tokens, so the window it needs is smaller than raw concatenation.
+    context_tokens = (
+        args.tokens_per_fragment
+        if combiner is not None
+        else args.fragments_per_variant * args.tokens_per_fragment
+    )
     agent = SharedControllerAgent(
         event_width=args.event_width,
         intention_width=args.intent_width,
         feedback_width=args.feedback_width,
         hidden=args.hidden,
-        event_window_capacity=args.fragments_per_variant
-        * args.tokens_per_fragment
-        + 4,
+        event_window_capacity=context_tokens + 4,
         shared_drivers=True,
     )
     bank = FragmentBank(
@@ -984,6 +1053,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         train_fragments=True,
         seed_offset=250_000,
         conflict_out=conflict,
+        combiner=combiner,
     )
     if anchor_tokens is not None:
         after = bank.tokens[
@@ -994,12 +1064,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         )
         anchor_report["token_drift"] = float((after - anchor_tokens).abs().max())
     train_scores = {
-        v.name: evaluate_detail(agent, bank, v, args=args)
+        v.name: evaluate_detail(agent, bank, v, args=args, combiner=combiner)
         for v in train_variants
     }
     withheld_scores = {
         v.name: evaluate_detail(
-            agent, None, v, args=args, fragments_override=None
+            agent, None, v, args=args, fragments_override=None,
+            combiner=combiner,
         )
         for v in train_variants
     }
@@ -1011,7 +1082,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     )
     decoy_scores = {
         v.name: evaluate_detail(
-            agent, None, v, args=args, fragments_override=decoy
+            agent, None, v, args=args, fragments_override=decoy,
+            combiner=combiner,
         )
         for v in train_variants
     }
@@ -1048,6 +1120,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             target,
             args=args,
             fragments_override=fragments_for(source.name),
+            combiner=combiner,
         )
         for target, source in cross_pairs
     }
@@ -1055,7 +1128,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     holdout_report = {}
     for config in holdout_variants:
         bank.register_variant(config.name)
-        zero_shot = evaluate_variant(agent, bank, config, args=args)
+        zero_shot = float(
+            evaluate_detail(
+                agent, bank, config, args=args, combiner=combiner
+            )["mastery"]
+        )
         # Composition splits into two questions the usual holdout conflates:
         # whether existing CONTENT recombines, and whether the selector can
         # ADDRESS the recombination. Hand over the ideal pair of already-
@@ -1074,6 +1151,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 config,
                 args=args,
                 fragments_override=bank.fetch(ideal).detach(),
+                combiner=combiner,
             )
         adapt_history = train_bank(
             agent,
@@ -1243,6 +1321,13 @@ def main() -> None:
     parser.add_argument("--tokens-per-fragment", type=int, default=2)
     parser.add_argument("--fragments-per-variant", type=int, default=2)
     parser.add_argument("--fragment-init-scale", type=float, default=1.0)
+    parser.add_argument(
+        "--combiner",
+        action="store_true",
+        help="learn an explicit operation over fetched fragments "
+        "instead of concatenating them (F33)",
+    )
+    parser.add_argument("--combiner-hidden", type=int, default=64)
     parser.add_argument("--oracle-selection", action="store_true")
     parser.add_argument("--balance-contexts", action="store_true")
     parser.add_argument("--balance-temperature", type=float, default=0.25)
