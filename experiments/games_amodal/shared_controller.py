@@ -38,7 +38,10 @@ from experiments.games_amodal.environments import (
     PongVerifier,
     SnakeVerifier,
 )
-from experiments.games_amodal.train import GridEventEncoder
+from experiments.games_amodal.train import (
+    ConvGridEventEncoder,
+    GridEventEncoder,
+)
 from neural_computer import (
     AmodalCognitiveController,
     AmodalControllerRuntime,
@@ -88,10 +91,12 @@ class SharedControllerAgent(nn.Module):
         event_window_capacity: int = 4,
         games: tuple[str, ...] = GAMES,
         shared_drivers: bool = False,
+        conv_screen: bool = False,
     ) -> None:
         super().__init__()
         self.games = tuple(games)
         self.shared_drivers = bool(shared_drivers)
+        self.conv_screen = bool(conv_screen)
         controller = AmodalCognitiveController(
             width=event_width,
             workspace_slots=4,
@@ -100,8 +105,11 @@ class SharedControllerAgent(nn.Module):
             event_window_capacity=event_window_capacity,
         )
         if self.shared_drivers:
+            screen_encoder = (
+                ConvGridEventEncoder if self.conv_screen else GridEventEncoder
+            )
             encoders = {
-                "screen": GridEventEncoder(
+                "screen": screen_encoder(
                     channels=SHARED_SCREEN_CHANNELS,
                     height=8,
                     width=8,

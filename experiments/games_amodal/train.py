@@ -32,6 +32,44 @@ class GridEventEncoder(nn.Module):
         return AmodalEvent(payload=payload).validate(width=self.event_width)
 
 
+class ConvGridEventEncoder(nn.Module):
+    """Screen frontend with translation-equivariant features.
+
+    The linear frontend maps every pixel through its own weight, so a
+    pattern learned at one avatar position says nothing about the same
+    pattern elsewhere. F22 measured the cost: motor games that need the
+    agent to approach an object sat at 0.03-0.13 of ceiling regardless of
+    budget, while fixed-geometry decision games reached 1.00. Convolution
+    shares weights across positions, which is the structural version of
+    the egocentric-roll fix -- and unlike the roll it survives walls and
+    boundaries, which a toroidal shift distorts.
+    """
+
+    def __init__(
+        self,
+        *,
+        channels: int,
+        height: int,
+        width: int,
+        event_width: int,
+        hidden: int = 16,
+    ) -> None:
+        super().__init__()
+        self.features = nn.Sequential(
+            nn.Conv2d(channels, hidden, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(hidden, hidden, kernel_size=3, padding=1),
+            nn.ReLU(),
+        )
+        self.project = nn.Linear(hidden * height * width, event_width)
+        self.event_width = event_width
+
+    def forward(self, observation: torch.Tensor) -> AmodalEvent:
+        features = self.features(observation)
+        payload = torch.tanh(self.project(features.flatten(start_dim=1)))
+        return AmodalEvent(payload=payload).validate(width=self.event_width)
+
+
 def _rollout(
     verifier: SnakeVerifier | PongVerifier,
     encoder: GridEventEncoder,
