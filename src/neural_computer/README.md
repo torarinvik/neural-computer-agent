@@ -918,6 +918,12 @@ cost to 2,496 optimizer updates and 477,696 verifier bits, versus 3,008 and
 source-competition and sample-efficiency result; page retrieval is still
 physical-order based and general continual learning remains unqualified.
 
+The same source sharding scales to 64 candidates with three normalized source
+pages of ten and 17 raw unseen pages: both seeds pass strict `1.0000/1.0000`
+known and unseen mastery plus permutation, null, reload, page-immutability,
+and zero-replay controls. This is a larger bounded isolation result, not yet
+learned page retrieval or general continual learning.
+
 The external boundary now includes an appendable, independently freezeable
 `LearnedOpaqueCandidateKeyMemory`. Its first outcome-trained update policies
 are rejected: joint base/key updates cause interference, while extension-only

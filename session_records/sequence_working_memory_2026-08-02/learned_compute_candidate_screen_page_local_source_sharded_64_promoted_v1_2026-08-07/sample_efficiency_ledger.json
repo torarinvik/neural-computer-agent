@@ -1,0 +1,49 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "learned_compute_candidate_screen_page_local_source_sharded_64_promoted_v1",
+  "claim": "Three independent normalized source pages preserve strict 64-candidate source and unseen retention under verifier-gated growth.",
+  "candidate_count": 64,
+  "source_candidate_count": 30,
+  "unseen_candidate_count": 34,
+  "source_page_size": 10,
+  "source_page_count": 3,
+  "append_stage_sizes": [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+  "parent_updates": 32,
+  "source_updates_per_page": 512,
+  "raw_template_updates": 512,
+  "reward_shuffled_page_updates": 512,
+  "calibration_updates_per_unseen_page": 32,
+  "batch_size": 12,
+  "key_samples": 12,
+  "replayed_examples": 0,
+  "runs": [
+    {
+      "seed": 69316,
+      "promoted": true,
+      "known_top1_accuracy": 1.0,
+      "known_min_per_target_accuracy": 1.0,
+      "unseen_top1_accuracy": 1.0,
+      "unseen_min_per_target_accuracy": 1.0,
+      "known_candidate_permutation_accuracy": 1.0,
+      "unseen_candidate_permutation_accuracy": 1.0,
+      "optimizer_updates": 3136,
+      "unique_verifier_bits": 652800,
+      "unique_logical_lifetimes": 652416,
+      "replayed_examples": 0
+    },
+    {
+      "seed": 69317,
+      "promoted": true,
+      "known_top1_accuracy": 1.0,
+      "known_min_per_target_accuracy": 1.0,
+      "unseen_top1_accuracy": 1.0,
+      "unseen_min_per_target_accuracy": 1.0,
+      "known_candidate_permutation_accuracy": 1.0,
+      "unseen_candidate_permutation_accuracy": 1.0,
+      "optimizer_updates": 3136,
+      "unique_verifier_bits": 652800,
+      "unique_logical_lifetimes": 652416,
+      "replayed_examples": 0
+    }
+  ]
+}

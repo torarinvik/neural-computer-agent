@@ -3612,3 +3612,12 @@ page-local control. This promotes bounded source-competition isolation and a
 sample-efficiency gain, not learned page retrieval or general continual
 learning. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_page_local_source_sharded_46_promoted_v1_2026-08-07/`.
+
+The same source-page mechanism scales to 64 candidates: three normalized
+source pages protect 30 rows and 17 raw append pages acquire 34 unseen rows.
+Both seeds pass all strict known/unseen per-target, permutation, null, reload,
+page-immutability, and zero-replay gates at `1.0000/1.0000`. Accounting is
+3,136 optimizer updates and 652,800 verifier bits. This extends bounded source
+competition isolation; page order is still physical and learned page retrieval
+remains open. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_page_local_source_sharded_64_promoted_v1_2026-08-07/`.
