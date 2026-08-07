@@ -114,3 +114,5 @@ archived as a rejected diagnostic in
 The production default remains factorized low-rank read/execute. The next
 architecture task is a nonlinear operator with an explicit compositional
 invariant, not more unconstrained depth or blueprint updates.
+A short composition-aware blueprint probe was also rejected: retention was
+`0.7813` and inherited composition was `0.7344` versus fresh `0.9844`.

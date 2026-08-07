@@ -1,0 +1,142 @@
+{
+  "schema": "neural-computer.external-register-four-instruction-report.v1",
+  "claim_boundary": "Four opaque external instructions compose one verifier-private runtime-grammar program through one frozen parent and factorized register; this is not general continual learning.",
+  "seed": 69316,
+  "program": [
+    "reverse",
+    "adjacent_xor",
+    "complement",
+    "prefix_parity"
+  ],
+  "reversed_program": [
+    "prefix_parity",
+    "complement",
+    "adjacent_xor",
+    "reverse"
+  ],
+  "parent": {
+    "updates": 96,
+    "final_heldout_accuracy": 1.0
+  },
+  "primitive_operations": [
+    "reverse",
+    "adjacent_xor",
+    "complement",
+    "prefix_parity"
+  ],
+  "primitive_updates": 96,
+  "composition_updates": 96,
+  "credit_mode": "paired_counterfactual",
+  "execution_mode": "read_execute",
+  "operator_mode": "factorized_hybrid",
+  "interpreter_pretrain_updates": 0,
+  "interpreter_composition_pretrain_updates": 64,
+  "batch_size": 16,
+  "span": 4,
+  "audit_count": 32,
+  "primitive_final_accuracy": {
+    "reverse": 0.96875,
+    "adjacent_xor": 0.8125,
+    "complement": 0.765625,
+    "prefix_parity": 0.7734375
+  },
+  "primitive_retention_by_stage": [
+    {
+      "reverse": 0.9765625
+    },
+    {
+      "reverse": 0.984375,
+      "adjacent_xor": 0.8125
+    },
+    {
+      "reverse": 0.984375,
+      "adjacent_xor": 0.828125,
+      "complement": 0.7734375
+    },
+    {
+      "reverse": 0.96875,
+      "adjacent_xor": 0.8203125,
+      "complement": 0.78125,
+      "prefix_parity": 0.796875
+    }
+  ],
+  "results": {
+    "composition": 0.734375,
+    "reversed_order_composition": 0.7734375,
+    "reward_shuffled_composition": 0.5546875,
+    "fresh_composition": 0.984375,
+    "missing_evidence_composition": 0.625
+  },
+  "learning_curves": {
+    "composition": [
+      {
+        "update": 32,
+        "heldout_accuracy": 0.6796875
+      },
+      {
+        "update": 64,
+        "heldout_accuracy": 0.7265625
+      },
+      {
+        "update": 96,
+        "heldout_accuracy": 0.75
+      }
+    ],
+    "fresh": [
+      {
+        "update": 32,
+        "heldout_accuracy": 0.921875
+      },
+      {
+        "update": 64,
+        "heldout_accuracy": 0.96875
+      },
+      {
+        "update": 96,
+        "heldout_accuracy": 1.0
+      }
+    ]
+  },
+  "persistence": {
+    "machine_digest": "e1e7bc48c21c8df1b07b52a0d9bf5d67864fa91792af38e847374c0a1ffd9ed4",
+    "reloaded_machine_digest": "e1e7bc48c21c8df1b07b52a0d9bf5d67864fa91792af38e847374c0a1ffd9ed4",
+    "decoder_digest": "545520c123eef02eea7a29b4647c2675aa845dad6526c42ef8d705ae9c09cd20",
+    "reloaded_decoder_digest": "545520c123eef02eea7a29b4647c2675aa845dad6526c42ef8d705ae9c09cd20",
+    "reload_exact": true,
+    "reloaded_composition": 0.734375,
+    "machine_store_digest": "9ae7f1743f557266b9eba6b6ec0cc0402c7ddcb21f3f24406a96e605a522618e",
+    "corruption_rejected": true
+  },
+  "frozen_core": {
+    "parent_digest_before": "37f1c46c92316a58c69a5c402fff1ab6305c983b1b0f7222d2f02aa0281928c1",
+    "parent_digest_after": "37f1c46c92316a58c69a5c402fff1ab6305c983b1b0f7222d2f02aa0281928c1",
+    "unchanged": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 75776,
+    "unique_logical_lifetimes": 18944,
+    "optimizer_updates": 1280,
+    "replayed_examples": 0,
+    "wall_seconds": 34.07044816602138,
+    "stable_bits_to_threshold": null,
+    "composition_stable_bits_to_threshold": null,
+    "fresh_stable_bits_to_threshold": 4096,
+    "retention_on_mastered_primitives": 0.78125,
+    "transfer_ratio_against_fresh_learner": null
+  },
+  "promotion": {
+    "accepted": false,
+    "gates": {
+      "composition_stable": false,
+      "fresh_stable": true,
+      "positive_stable_transfer": false,
+      "retained_all_primitives": false,
+      "reward_shuffled_rejected": true,
+      "missing_evidence_rejected": true,
+      "reload_exact": true,
+      "corruption_rejected": true,
+      "frozen_parent": true
+    },
+    "reason": "one_or_more_registered_gates_failed"
+  }
+}

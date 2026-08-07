@@ -45,6 +45,11 @@ retention while destroying the serial algebra that made the two- and
 three-instruction low-rank results transferable. No candidate was promoted,
 and no checkpoint was curated.
 
+A composition-aware 64-update blueprint pretraining probe was also rejected:
+primitive retention was `0.7813`, inherited composition was `0.7344`, and the
+fresh control reached `0.9844`. This did not provide a mechanistic signal for
+scaling the curriculum.
+
 The canonical production path therefore remains the factorized low-rank
 read/execute interpreter. The next architectural target is a nonlinear
 operator with an explicit compositional invariant—likely a typed or gated

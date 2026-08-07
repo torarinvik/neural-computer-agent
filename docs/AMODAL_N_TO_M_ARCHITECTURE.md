@@ -2560,6 +2560,9 @@ primitive retention and nonlinear expressivity are separable from a stable
 serial algebra. The production default remains the promoted factorized
 low-rank read/execute path. Evidence and accounting are archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_four_instruction_rejected_v1_2026-08-07/`.
+A short composition-aware blueprint probe was also rejected: retention was
+`0.7813` and inherited composition was `0.7344` versus fresh `0.9844`, so the
+curriculum was not scaled.
 
 ## Unseen external computation and multi-parent retention (2026-08-06)
 

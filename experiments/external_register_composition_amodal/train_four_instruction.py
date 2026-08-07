@@ -78,6 +78,29 @@ def _pretrain_shared_interpreter(parent, machine, args: argparse.Namespace) -> N
             instruction.code.normal_(mean=0.0, std=0.02)
 
 
+def _pretrain_compositional_interpreter(
+    parent, machine, args: argparse.Namespace
+) -> None:
+    """Expose the shared blueprint to a composition before resetting codes."""
+
+    decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
+    _train_stage(
+        parent,
+        machine,
+        decoder,
+        operation="generated_composition",
+        generated_composition_ids=FOUR_COMPOSITION_IDS,
+        generated_compositions=FOUR_GRAMMAR,
+        instructions=tuple(machine.instructions),
+        updates=args.interpreter_composition_pretrain_updates,
+        batch_size=args.batch_size,
+        span=args.span,
+        seed=args.seed + 60_000,
+        trainable=[*machine.parameters(), *decoder.parameters()],
+        credit_mode=args.credit_mode,
+    )
+
+
 def _primitive_retention(
     parent,
     machine,
@@ -129,6 +152,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     blueprint_state = None
     if args.interpreter_pretrain_updates > 0:
         _pretrain_shared_interpreter(parent, machine, args)
+    if args.interpreter_composition_pretrain_updates > 0:
+        _pretrain_compositional_interpreter(parent, machine, args)
+    if (
+        args.interpreter_pretrain_updates > 0
+        or args.interpreter_composition_pretrain_updates > 0
+    ):
         blueprint_state = {
             name: value.detach().clone()
             for name, value in machine.state_dict().items()
@@ -450,6 +479,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "execution_mode": "read_execute",
         "operator_mode": args.operator_mode,
         "interpreter_pretrain_updates": args.interpreter_pretrain_updates,
+        "interpreter_composition_pretrain_updates": (
+            args.interpreter_composition_pretrain_updates
+        ),
         "batch_size": args.batch_size,
         "span": args.span,
         "audit_count": args.audit_count,
@@ -486,6 +518,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             * args.batch_size
             * args.span
             * len(FOUR_PRIMITIVES)
+            + args.interpreter_composition_pretrain_updates
+            * args.batch_size
+            * args.span
+            * (len(FOUR_PRIMITIVES) + 1)
             + args.primitive_updates
             * args.batch_size
             * args.span
@@ -494,12 +530,17 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "unique_logical_lifetimes": args.interpreter_pretrain_updates
             * args.batch_size
             * len(FOUR_PRIMITIVES)
+            + args.interpreter_composition_pretrain_updates
+            * args.batch_size
+            * (len(FOUR_PRIMITIVES) + 1)
             + args.primitive_updates
             * args.batch_size
             * len(FOUR_PRIMITIVES)
             + args.composition_updates * args.batch_size * (len(FOUR_PRIMITIVES) + 1),
             "optimizer_updates": args.parent_updates
             + args.interpreter_pretrain_updates * len(FOUR_PRIMITIVES)
+            + args.interpreter_composition_pretrain_updates
+            * (len(FOUR_PRIMITIVES) + 1)
             + args.primitive_updates * len(FOUR_PRIMITIVES)
             + args.composition_updates * (len(FOUR_PRIMITIVES) + 1),
             "replayed_examples": 0,
@@ -533,6 +574,9 @@ def main() -> None:
     parser.add_argument("--primitive-updates", type=int, default=128)
     parser.add_argument("--composition-updates", type=int, default=128)
     parser.add_argument("--interpreter-pretrain-updates", type=int, default=0)
+    parser.add_argument(
+        "--interpreter-composition-pretrain-updates", type=int, default=0
+    )
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--span", type=int, default=4)
     parser.add_argument("--audit-count", type=int, default=64)

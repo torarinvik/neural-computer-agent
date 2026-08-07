@@ -71,6 +71,21 @@
       "transfer_ratio_against_fresh_learner": null,
       "retention_on_mastered_primitives": 0.93359375,
       "decision": "reject_composition_collapse_after_pretraining"
+    },
+    {
+      "arm": "factorized_hybrid_composition_pretrained",
+      "rung": "short_blueprint",
+      "seed": 69316,
+      "interpreter_composition_pretrain_updates": 64,
+      "unique_verifier_bits": 75776,
+      "unique_logical_lifetimes": 18944,
+      "optimizer_updates": 1280,
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": null,
+      "fresh_stable_bits_to_threshold": 4096,
+      "transfer_ratio_against_fresh_learner": null,
+      "retention_on_mastered_primitives": 0.78125,
+      "decision": "reject_no_mechanistic_signal_for_scaling"
     }
   ]
 }
