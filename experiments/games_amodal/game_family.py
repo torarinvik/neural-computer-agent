@@ -25,6 +25,31 @@ import torch
 from experiments.games_amodal.environments import GameStep
 
 FAMILY_ACTION_COUNT = 4
+
+
+def egocentric_view(grid: torch.Tensor) -> torch.Tensor:
+    """Roll each row's planes so the avatar sits at the grid centre.
+
+    An encoder-side transform (F22): the avatar position is read from the
+    observation's own avatar plane, not from verifier internals, so
+    verifier privacy is untouched. Rows with no visible avatar (dead)
+    pass through unchanged. Gives the flat screen encoder translation
+    invariance, which F22 measured as the motor-game wall.
+    """
+
+    batch, _, height, width = grid.shape
+    out = grid.clone()
+    for row in range(batch):
+        plane = grid[row, 0]
+        if float(plane.max()) <= 0.0:
+            continue
+        index = int(plane.argmax())
+        out[row] = torch.roll(
+            grid[row],
+            shifts=(height // 2 - index // width, width // 2 - index % width),
+            dims=(1, 2),
+        )
+    return out
 _DELTAS = ((-1, 0), (0, 1), (1, 0), (0, -1))
 
 COMPONENTS = ("collect", "intercept", "avoid", "navigate")

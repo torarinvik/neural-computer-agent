@@ -344,3 +344,19 @@ def test_forage_bridge_charges_idle_and_pure_forage_does_not() -> None:
     plain._forage_b[0] = [(0, 1)]
     plain._avatar[0] = (5, 5)
     assert float(plain.step(torch.tensor([0])).reward[0]) == 0.0
+
+
+def test_egocentric_view_centres_the_avatar_and_passes_dead_rows() -> None:
+    from experiments.games_amodal.game_family import egocentric_view
+
+    grid = torch.zeros(2, 3, 8, 8)
+    grid[0, 0, 1, 2] = 1.0  # avatar off-centre
+    grid[0, 1, 1, 3] = 1.0  # item just right of the avatar
+    # row 1: dead (no avatar) with a stray item; must pass through unchanged
+    grid[1, 2, 6, 6] = 1.0
+    view = egocentric_view(grid)
+    assert float(view[0, 0, 4, 4]) == 1.0  # avatar now centred
+    assert float(view[0, 1, 4, 5]) == 1.0  # relative geometry preserved
+    assert torch.equal(view[1], grid[1])
+    # The transform is a pure roll: content is conserved.
+    assert torch.equal(view.sum(dim=(2, 3)), grid.sum(dim=(2, 3)))

@@ -32,6 +32,7 @@ from torch.nn import functional as F
 from experiments.games_amodal.game_family import (
     FamilyConfig,
     FamilyVerifier,
+    egocentric_view,
 )
 from experiments.games_amodal.shared_controller import (
     SHARED_SCREEN_CHANNELS,
@@ -155,6 +156,7 @@ def rollout_family(
     seed: int,
     sample: bool,
     gamma: float,
+    egocentric: bool = False,
 ) -> dict[str, torch.Tensor | None]:
     verifier = FamilyVerifier(config, batch_size=batch_size, seed=seed)
     verifier.reset(seed=seed)
@@ -173,9 +175,10 @@ def rollout_family(
         if not bool(alive.any()):
             break
         masks.append(alive.float())
-        observation = pad_channels(
-            verifier.observation(), SHARED_SCREEN_CHANNELS
-        )
+        observation = verifier.observation()
+        if egocentric:
+            observation = egocentric_view(observation)
+        observation = pad_channels(observation, SHARED_SCREEN_CHANNELS)
         events = [agent.runtime.encoders["screen"](observation)]
         if fragments is not None:
             events.extend(
@@ -409,6 +412,7 @@ def update_conflict(
             seed=args.seed + 800_000 + update,
             sample=False,
             gamma=args.gamma,
+            egocentric=getattr(args, "egocentric", False),
         )
     own = recent.get(target.name, 0.0)
     drop = own - mastery(swapped, target)
@@ -487,6 +491,7 @@ def train_bank(
             seed=args.seed + seed_offset + update,
             sample=True,
             gamma=args.gamma,
+            egocentric=getattr(args, "egocentric", False),
         )
         advantage = summary["advantage"]
         assert advantage is not None
@@ -557,6 +562,7 @@ def train_bank(
                 seed=args.seed + 500_000 + update,
                 sample=True,
                 gamma=args.gamma,
+                egocentric=getattr(args, "egocentric", False),
             )
             decoy = torch.randn_like(fragments)
             decoy = decoy * (
@@ -571,6 +577,7 @@ def train_bank(
                 seed=args.seed + 700_000 + update,
                 sample=True,
                 gamma=args.gamma,
+                egocentric=getattr(args, "egocentric", False),
             )
             loss = loss + args.ignorance_weight * (
                 ignorance_loss(withheld["logits"], withheld["mask"])
@@ -633,6 +640,7 @@ def evaluate_detail(
                 seed=seed,
                 sample=False,
                 gamma=args.gamma,
+                egocentric=getattr(args, "egocentric", False),
             )
         scores.append(mastery(summary, config))
         returns.append(float(summary["total_reward"].mean()))
@@ -983,6 +991,12 @@ def main() -> None:
         type=str,
         default="micro",
         choices=["micro", "twins", "dual", "battery"],
+    )
+    parser.add_argument(
+        "--egocentric",
+        action="store_true",
+        help="encoder-side egocentric rendering: roll the screen so the "
+        "avatar is always centred (F22 motor-wall fix)",
     )
     parser.add_argument(
         "--cross-pairs",
