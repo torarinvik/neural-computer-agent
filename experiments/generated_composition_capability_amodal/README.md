@@ -460,6 +460,23 @@ compression, unrestricted memory growth, or general continual learning.
 Evidence and accounting are in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_opaque_rule_sequential_slot_growth_three_source_strict_isolated_replicated_promoted_v1_2026-08-07/`.
 
+## Runtime-generated strict growth to four procedures (2026-08-07)
+
+The strict isolated-slot trainer now supports verifier-side runtime grammar
+generation directly. With `--program-seed 4242 --primitive-family opaque_rule`
+and five generated depth-eight procedures, both seeds adopted all three staged
+source additions and admitted the fifth target into a grown physical row.
+Source reload behavior was `1.0000/0.9961/1.0000/0.9766` and
+`1.0000/0.9648/1.0000/0.9844`; target reload behavior was `0.8750` and
+`1.0000`. Frozen-core, exact-reload, reversal/recovery, corruption, and
+zero-replay gates passed.
+
+This removes the manual program-specification gap, but does not change the
+claim boundary: the result is bounded isolated external growth over a finite
+opaque-rule family, not arbitrary program induction or general continual
+learning. Evidence and accounting are archived in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_opaque_rule_sequential_slot_growth_four_source_runtime_generated_replicated_promoted_v1_2026-08-07/`.
+
 ## Strict isolated growth to four opaque procedures (2026-08-07)
 
 The strict slot-binding correction now scales from three to four

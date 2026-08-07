@@ -38,6 +38,7 @@ from experiments.generated_composition_capability_amodal.sequential_consolidatio
 )
 from experiments.generated_composition_capability_amodal.train_artifact_bank import (
     _generated_key,
+    generate_runtime_program_grammar,
 )
 from experiments.generated_composition_capability_amodal.train_distilled_consolidation import (
     DEFAULT_RUNTIME_GRAMMAR,
@@ -140,13 +141,25 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("all update and audit budgets must be positive")
     if args.batch_size % 2 or args.audit_count % 2:
         raise ValueError("batch size and audit count must be even")
+    if args.program_seed is not None and args.program_spec is not None:
+        raise ValueError("program-seed and program-spec are mutually exclusive")
     source_ids = tuple(args.source_ids)
     if len(source_ids) < 2 or len(set(source_ids)) != len(source_ids):
         raise ValueError("source IDs must be distinct and contain at least two IDs")
-    grammar = _parse_program_specs(
-        args.program_spec
-        or [",".join(program) for program in DEFAULT_SEQUENTIAL_GRAMMAR]
-    )
+    if args.program_seed is None:
+        grammar = _parse_program_specs(
+            args.program_spec
+            or [",".join(program) for program in DEFAULT_SEQUENTIAL_GRAMMAR]
+        )
+        program_source = "default" if args.program_spec is None else "explicit"
+    else:
+        grammar = generate_runtime_program_grammar(
+            seed=args.program_seed,
+            count=args.program_count,
+            depth=args.program_depth,
+            primitive_family=args.primitive_family,
+        )
+        program_source = f"runtime_generated_{args.primitive_family}"
     required_ids = (*source_ids, args.target_id)
     if any(program_id < 0 or program_id >= len(grammar) for program_id in required_ids):
         raise ValueError("source or target program is out of range")
@@ -686,6 +699,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "seed": args.seed,
         "source_ids": list(source_ids),
         "target_id": args.target_id,
+        "program_source": program_source,
+        "program_seed": args.program_seed,
+        "primitive_family": args.primitive_family,
+        "program_count": len(grammar),
+        "program_depth": args.program_depth if args.program_seed is not None else None,
         "programs": [list(program) for program in grammar],
         "budgets": {
             "parent_updates": args.parent_updates,
@@ -790,6 +808,25 @@ def main() -> None:
     parser.add_argument("--eval-every", type=int, default=32)
     parser.add_argument("--reversal-patience", type=int, default=4)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
+    parser.add_argument(
+        "--program-seed",
+        type=int,
+        default=None,
+        help="generate a fresh verifier-private grammar instead of using program-spec",
+    )
+    parser.add_argument(
+        "--primitive-family",
+        choices=("registry", "opaque_rule"),
+        default="registry",
+        help="runtime primitive family used with --program-seed",
+    )
+    parser.add_argument("--program-count", type=int, default=5)
+    parser.add_argument(
+        "--program-depth",
+        type=int,
+        default=8,
+        help="primitive depth for runtime generation",
+    )
     parser.add_argument("--source-ids", type=int, nargs="+", default=(0, 2, 3, 4))
     parser.add_argument("--target-id", type=int, default=1)
     parser.add_argument(
