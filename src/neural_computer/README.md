@@ -887,6 +887,19 @@ dual raw-plus-normalized view is worse. Future representation diversity must
 be page-local and verifier-selected, not concatenated into one undifferentiated
 address space.
 
+The page-local ABI now passes the matched bank-26/six-stage pressure test with
+the source page on a frozen affine-normalized view and append pages on raw
+identity views. A local rank-margin gate keeps page score scales independent;
+both seeds reach strict `1.0000/1.0000` known and unseen per-candidate mastery,
+with permutation, reload, null, frozen-base, frozen-core, and zero-replay gates
+passing. The promoted budget is 1,024 normalized source updates, 512 raw-prior
+updates, and 32 fresh updates per append stage. A 512/512 source split fails
+hard-seed known retention at `0.8854`, so this is a structural bounded-growth
+promotion with a measurable source-budget cost, not yet learned representation
+selection or general continual learning. See
+`experiments/compute_candidate_screen_amodal/train_page_local.py` and the
+promoted/rejected session records.
+
 The external boundary now includes an appendable, independently freezeable
 `LearnedOpaqueCandidateKeyMemory`. Its first outcome-trained update policies
 are rejected: joint base/key updates cause interference, while extension-only

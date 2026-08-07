@@ -3560,3 +3560,21 @@ one address space for every capability. Reports are in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_affine_normalizer_rejected_v1_2026-08-07/`
 and
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_dual_signature_rejected_v1_2026-08-07/`.
+
+The page-local memory ABI resolves that boundary without changing the
+controller: the source page uses the frozen affine-normalized view, while six
+append pages use raw identity views and representation-matched copy-on-write
+priors. A local rank-margin activation prevents incompatible page score scales
+from suppressing an extension after its cumulative verifier failure gate opens.
+At the matched bank-26 pressure test, both seeds pass strict known and unseen
+per-candidate mastery (`1.0000/1.0000`), candidate permutation, reload, null,
+frozen-base, and frozen-core controls. The promoted budget is 1,024 normalized
+source updates, 512 raw-prior updates, and 32 fresh calibration updates per
+append stage, with zero replayed examples. This is a structural bounded-growth
+promotion, not learned representation selection or general continual learning.
+The 512/512 source-budget split retains perfect unseen acquisition but fails
+hard-seed known retention at `0.8854` with three target holes, so the normalized
+source page still needs the full source budget. Reports and accounting are in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_page_local_representation_promoted_v1_2026-08-07/`
+and
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_page_local_representation_budget_split_rejected_v1_2026-08-07/`.
