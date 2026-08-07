@@ -13,7 +13,14 @@ rung promotes, rejects, or qualifies. Ordered by severity.
    `skill_externalization_qualified_v1_2026-08-06`. Next: per-game null
    gates scaled to game guessability and richer decoy sets — no further
    global-dial escalation (stopping rule).
-2. **Consolidation of already-acquired skills into artifacts is unbuilt**
+2. **Bank-stored ladder with shared drivers is now the required path** —
+   sequential weight-learning through the architecture-true shared drivers
+   was rejected: the second game stalls at 0.19 through the occupied
+   shared decoder at full budget while first-game acquisition and
+   whole-plant retention work (evidence:
+   `shared_driver_ladder_rejected_v1_2026-08-07`). Skill-as-context
+   artifacts are the mechanism that gives the core a per-game decoder
+   context switch. Also: consolidation of already-acquired skills into artifacts is unbuilt
    — externalized skills were acquired externalized from the start; the
    promoted EWC rung's weight-stored skills cannot yet be migrated into
    the bank. Also: skills still live in weights everywhere except the

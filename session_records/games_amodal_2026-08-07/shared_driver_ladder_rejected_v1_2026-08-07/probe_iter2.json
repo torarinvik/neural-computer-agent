@@ -1,0 +1,154 @@
+{
+  "config": {
+    "arbitration_decay": 0.99,
+    "arbitration_mu": 3.0,
+    "batch_size": 32,
+    "breakout_gate": 0.5,
+    "consolidation_mode": "arbitrated",
+    "eval_seeds": 4,
+    "ewc_lambda": 100.0,
+    "fisher_batches": 8,
+    "forgetting_delta": 0.15,
+    "gamma": 0.95,
+    "learning_rate": 0.001,
+    "retention_epsilon": 0.1,
+    "shared_drivers": true,
+    "steps": 48,
+    "updates": 250
+  },
+  "finals": {
+    "permuted": {
+      "breakout": {
+        "mastery": 0.0,
+        "per_seed_mastery": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "pong": {
+        "mastery": 0.0859375,
+        "per_seed_mastery": [
+          0.125,
+          0.0625,
+          0.125,
+          0.03125
+        ]
+      },
+      "snake": {
+        "mastery": 0.0,
+        "per_seed_mastery": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "protected": {
+      "breakout": {
+        "mastery": 0.0703125,
+        "per_seed_mastery": [
+          0.0625,
+          0.09375,
+          0.125,
+          0.0
+        ]
+      },
+      "pong": {
+        "mastery": 0.2421875,
+        "per_seed_mastery": [
+          0.25,
+          0.1875,
+          0.3125,
+          0.21875
+        ]
+      },
+      "snake": {
+        "mastery": 0.2265625,
+        "per_seed_mastery": [
+          0.15625,
+          0.15625,
+          0.21875,
+          0.375
+        ]
+      }
+    },
+    "shuffled": {
+      "breakout": {
+        "mastery": 0.0,
+        "per_seed_mastery": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "pong": {
+        "mastery": 0.046875,
+        "per_seed_mastery": [
+          0.0,
+          0.03125,
+          0.125,
+          0.03125
+        ]
+      },
+      "snake": {
+        "mastery": 0.109375,
+        "per_seed_mastery": [
+          0.09375,
+          0.09375,
+          0.09375,
+          0.15625
+        ]
+      }
+    },
+    "unprotected": {
+      "breakout": {
+        "mastery": 0.0,
+        "per_seed_mastery": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "pong": {
+        "mastery": 0.0859375,
+        "per_seed_mastery": [
+          0.125,
+          0.0625,
+          0.125,
+          0.03125
+        ]
+      },
+      "snake": {
+        "mastery": 0.0,
+        "per_seed_mastery": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    }
+  },
+  "gates": {
+    "baseline_forgets_both": true,
+    "breakout_acquired": false,
+    "no_replay": true,
+    "permuted_fails": true,
+    "pong_acquired": false,
+    "protected_retains_pong": true,
+    "protected_retains_snake": false,
+    "shuffled_near_chance": true,
+    "snake_acquired": false
+  },
+  "post_acquisition": {
+    "pong": 0.28125,
+    "snake": 0.625
+  },
+  "promoted": false,
+  "seed": 69317
+}
