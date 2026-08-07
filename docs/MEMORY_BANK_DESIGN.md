@@ -968,3 +968,38 @@ Consequence for methodology: every future performance improvement must
 report the cross-feed audit in the same table. This rung improved four
 metrics and destroyed the one that mattered, and only the audit would
 have revealed it.
+
+**F31 (probe 51). Joint view calibration: the shared roll is the best
+admissible configuration, and it is the only one that keeps the
+specification signature intact.** With per-task frontends ruled out
+(F30), the view must be one choice for every game. All four admissible
+configurations, seed 69316, two-speed battery:
+
+| config | mean ratio | worst | worst forgetting | twin cross-feed |
+| --- | ---: | ---: | ---: | ---: |
+| **roll (shared)** | **0.69** | 0.07 | 0.328 | **0.000** |
+| per-game views | 0.71 | 0.17 | 0.203 | 0.188 |
+| crop (shared) | 0.45 | 0.05 | 0.125 | 0.078 |
+| none | 0.53 | 0.00 | 0.078 | 0.188 |
+
+Per-game views edge the shared roll on mean (0.71 vs 0.69) and worst
+(0.17 vs 0.07) but are inadmissible for the F30 reason and, tellingly,
+already show the signature softening (0.188). Among genuinely shared
+views the roll wins on mean by a wide margin (0.69 vs 0.53 and 0.45) and
+is the ONLY configuration in the program's history with a twin cross-feed
+of exactly 0.000.
+
+The apparent trade is instructive: the configurations with the best
+retention (`none` 0.078, `crop` 0.125) are the ones that learned least,
+so their retention is cheap. Forgetting must always be read against how
+much competence existed to lose — a lesson the ledger should apply
+retroactively to any retention claim made without an acquisition column
+beside it.
+
+Note also that solo calibration mispredicted the battery outcome again
+(F29): crop won solo on collect and navigate but is the worst shared
+choice overall, and `none` beats crop despite losing to it on every solo
+motor game. Component-wise calibration does not compose on a shared
+plant. Decision: the shared roll stays the battery default; encoder work
+is closed as a lever until a task-invariant preprocessing (not a
+per-task frontend) is designed.
