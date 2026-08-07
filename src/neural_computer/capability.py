@@ -28,6 +28,9 @@ EXTERNAL_CAPABILITY_SHARED_RESIDUAL_SCHEMA = (
 EXTERNAL_CAPABILITY_RESIDUAL_COMPUTE_SCHEMA = (
     "neural-computer.external-capability-residual-compute.v1"
 )
+EXTERNAL_CAPABILITY_REUSABLE_COMPUTE_SCHEMA = (
+    "neural-computer.external-capability-reusable-compute.v1"
+)
 EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA = (
     "neural-computer.external-capability-slot-binding.v1"
 )
@@ -636,6 +639,340 @@ class ExternalCapabilityResidualComputeBank(nn.Module):
         adapted = slot["intent_adapter"](intention, combined)
         return adapted, ExternalCapabilityState(
             torch.cat((next_shared, next_residual), dim=-1)
+        )
+
+
+class ExternalCapabilityReusableComputeLibrary(nn.Module):
+    """Bind capabilities to reusable compute modules without weight copying.
+
+    A physical compute slot contains only a compact recurrent context encoder.
+    A logical capability binding owns its own intention adapter and external
+    recurrent state, and points to one physical compute slot by an opaque
+    integer chosen by memory-side policy. Adding a binding therefore adds no
+    recurrent compute parameters; adding a compute slot is explicit and can be
+    gated by fresh behavior verification.
+
+    The shared context encoder and physical compute modules are independently
+    replaceable from logical bindings. No controller or raw protocol data is
+    exposed, and aliases that share a compute slot still receive independent
+    recurrent state so simultaneous episodes cannot leak into one another.
+    """
+
+    def __init__(
+        self,
+        event_width: int,
+        action_width: int,
+        intention_width: int,
+        *,
+        compute_slot_count: int = 1,
+        binding_compute_slots: Iterable[int] = (0,),
+        shared_context_hidden: int = 64,
+        shared_context_width: int = 32,
+        residual_context_hidden: int = 32,
+        residual_context_width: int = 16,
+        adapter_hidden: int = 64,
+    ) -> None:
+        super().__init__()
+        dimensions = (
+            event_width,
+            action_width,
+            intention_width,
+            shared_context_hidden,
+            shared_context_width,
+            residual_context_hidden,
+            residual_context_width,
+            adapter_hidden,
+        )
+        if compute_slot_count < 1:
+            raise ValueError("reusable compute library needs one compute slot")
+        bindings = tuple(int(index) for index in binding_compute_slots)
+        if not bindings:
+            raise ValueError("reusable compute library needs one binding")
+        if min(dimensions) < 1:
+            raise ValueError("reusable compute dimensions must be positive")
+        if any(index < 0 or index >= compute_slot_count for index in bindings):
+            raise ValueError("binding points to an invalid compute slot")
+        self.event_width = int(event_width)
+        self.action_width = int(action_width)
+        self.intention_width = int(intention_width)
+        self.shared_context_hidden = int(shared_context_hidden)
+        self.shared_context_width = int(shared_context_width)
+        self.residual_context_hidden = int(residual_context_hidden)
+        self.residual_context_width = int(residual_context_width)
+        self.adapter_hidden = int(adapter_hidden)
+        self.context_hidden = self.shared_context_hidden + self.residual_context_hidden
+        self.context_width = self.shared_context_width + self.residual_context_width
+        self.shared_context_encoder = EpisodicContextEncoder(
+            self.event_width,
+            self.action_width,
+            hidden=self.shared_context_hidden,
+            context_width=self.shared_context_width,
+        )
+        self.compute_slots = nn.ModuleList(
+            self._new_compute_slot() for _ in range(compute_slot_count)
+        )
+        self.binding_adapters = nn.ModuleList(
+            self._new_binding_adapter() for _ in bindings
+        )
+        self._binding_compute_slots = list(bindings)
+
+    def _new_compute_slot(self) -> EpisodicContextEncoder:
+        return EpisodicContextEncoder(
+            self.event_width,
+            self.action_width,
+            hidden=self.residual_context_hidden,
+            context_width=self.residual_context_width,
+        )
+
+    def _new_binding_adapter(self) -> EpisodicIntentAdapter:
+        return EpisodicIntentAdapter(
+            self.context_width,
+            self.intention_width,
+            hidden=self.adapter_hidden,
+        )
+
+    @property
+    def slot_count(self) -> int:
+        """Return the number of logical capability bindings."""
+
+        return len(self._binding_compute_slots)
+
+    @property
+    def compute_slot_count(self) -> int:
+        """Return the number of physical recurrent compute modules."""
+
+        return len(self.compute_slots)
+
+    @property
+    def binding_compute_slots(self) -> tuple[int, ...]:
+        """Return the opaque logical-to-physical binding table."""
+
+        return tuple(self._binding_compute_slots)
+
+    def configuration(self) -> dict[str, object]:
+        """Return the versioned compute-library and binding contract."""
+
+        return {
+            "schema": EXTERNAL_CAPABILITY_REUSABLE_COMPUTE_SCHEMA,
+            "event_width": self.event_width,
+            "action_width": self.action_width,
+            "intention_width": self.intention_width,
+            "shared_context_hidden": self.shared_context_hidden,
+            "shared_context_width": self.shared_context_width,
+            "residual_context_hidden": self.residual_context_hidden,
+            "residual_context_width": self.residual_context_width,
+            "adapter_hidden": self.adapter_hidden,
+            "compute_slot_count": self.compute_slot_count,
+            "binding_count": self.slot_count,
+            "binding_compute_slots": self.binding_compute_slots,
+            "state": "independent_external_state_per_binding_v1",
+            "compute": "shared_context_plus_reusable_local_recurrent_module_v1",
+            "binding": "opaque_binding_specific_intention_adapter_v1",
+        }
+
+    def freeze_shared_base(self) -> None:
+        """Make the shared representation immutable for later growth."""
+
+        for parameter in self.shared_context_encoder.parameters():
+            parameter.requires_grad_(False)
+
+    def freeze_compute_slot(self, compute_slot_index: int) -> None:
+        """Protect one physical compute module from later updates."""
+
+        if compute_slot_index < 0 or compute_slot_index >= self.compute_slot_count:
+            raise IndexError("reusable compute slot is out of range")
+        for parameter in self.compute_slots[compute_slot_index].parameters():
+            parameter.requires_grad_(False)
+
+    def freeze_binding(self, binding_index: int) -> None:
+        """Protect one logical binding adapter from later updates."""
+
+        if binding_index < 0 or binding_index >= self.slot_count:
+            raise IndexError("reusable binding is out of range")
+        for parameter in self.binding_adapters[binding_index].parameters():
+            parameter.requires_grad_(False)
+
+    def freeze_slot(self, binding_index: int) -> None:
+        """Compatibility alias for protecting one logical binding."""
+
+        self.freeze_binding(binding_index)
+
+    def add_compute_slot(self) -> int:
+        """Append one physical recurrent module without changing old modules."""
+
+        compute_slot = self._new_compute_slot()
+        reference = next(self.shared_context_encoder.parameters())
+        compute_slot.to(device=reference.device, dtype=reference.dtype)
+        self.compute_slots.append(compute_slot)
+        return self.compute_slot_count - 1
+
+    def add_binding(self, compute_slot_index: int) -> int:
+        """Append a binding adapter pointing at an existing compute module."""
+
+        if compute_slot_index < 0 or compute_slot_index >= self.compute_slot_count:
+            raise IndexError("reusable compute slot is out of range")
+        adapter = self._new_binding_adapter()
+        reference = next(self.shared_context_encoder.parameters())
+        adapter.to(device=reference.device, dtype=reference.dtype)
+        self.binding_adapters.append(adapter)
+        self._binding_compute_slots.append(int(compute_slot_index))
+        return self.slot_count - 1
+
+    def add_slot(self) -> int:
+        """Append a new compute module and bind one capability to it."""
+
+        return self.add_binding(self.add_compute_slot())
+
+    def binding_modules(
+        self,
+        binding_index: int,
+    ) -> tuple[nn.Module, nn.Module]:
+        """Return the physical compute and logical adapter for one binding."""
+
+        if binding_index < 0 or binding_index >= self.slot_count:
+            raise IndexError("reusable binding is out of range")
+        compute_index = self._binding_compute_slots[binding_index]
+        return self.compute_slots[compute_index], self.binding_adapters[binding_index]
+
+    def initial_state(
+        self,
+        batch_size: int,
+        *,
+        device: torch.device | str,
+        dtype: torch.dtype = torch.float32,
+    ) -> ExternalCapabilityPipelineState:
+        if batch_size < 1:
+            raise ValueError("reusable compute batch size must be positive")
+        return ExternalCapabilityPipelineState(
+            tuple(
+                ExternalCapabilityState(
+                    torch.cat(
+                        (
+                            self.shared_context_encoder.initial_state(
+                                batch_size,
+                                device=device,
+                                dtype=dtype,
+                            ),
+                            self.compute_slots[compute_index].initial_state(
+                                batch_size,
+                                device=device,
+                                dtype=dtype,
+                            ),
+                        ),
+                        dim=-1,
+                    )
+                )
+                for compute_index in self._binding_compute_slots
+            )
+        )
+
+    def step(
+        self,
+        *,
+        binding_index: int,
+        event: torch.Tensor,
+        action: torch.Tensor,
+        outcome: torch.Tensor,
+        intention: IntentEvent,
+        state: ExternalCapabilityPipelineState,
+        present: torch.Tensor | None = None,
+    ) -> tuple[IntentEvent, ExternalCapabilityPipelineState]:
+        """Execute one binding while preserving all binding states."""
+
+        if binding_index < 0 or binding_index >= self.slot_count:
+            raise IndexError("reusable binding is out of range")
+        state.validate(
+            batch_size=event.shape[0],
+            hidden_sizes=(self.context_hidden,) * self.slot_count,
+        )
+        adapted, next_state = self.step_binding(
+            binding_index=binding_index,
+            event=event,
+            action=action,
+            outcome=outcome,
+            intention=intention,
+            state=state.programs[binding_index],
+            present=present,
+        )
+        next_states = list(state.programs)
+        next_states[binding_index] = next_state
+        return adapted, ExternalCapabilityPipelineState(tuple(next_states))
+
+    def step_binding(
+        self,
+        *,
+        binding_index: int,
+        event: torch.Tensor,
+        action: torch.Tensor,
+        outcome: torch.Tensor,
+        intention: IntentEvent,
+        state: ExternalCapabilityState,
+        present: torch.Tensor | None = None,
+    ) -> tuple[IntentEvent, ExternalCapabilityState]:
+        """Execute one binding using its own state and shared compute module."""
+
+        if binding_index < 0 or binding_index >= self.slot_count:
+            raise IndexError("reusable binding is out of range")
+        if event.ndim != 2 or event.shape[1] != self.event_width:
+            raise ValueError("event has the wrong shape for reusable compute library")
+        if action.ndim != 2 or action.shape != (
+            event.shape[0],
+            self.action_width,
+        ):
+            raise ValueError("action has the wrong shape for reusable compute library")
+        if outcome.ndim != 1 or outcome.shape[0] != event.shape[0]:
+            raise ValueError("outcome has the wrong shape for reusable compute library")
+        intention.validate(width=self.intention_width)
+        if intention.payload.shape[0] != event.shape[0]:
+            raise ValueError("intention batch does not match reusable compute event")
+        state.validate(batch_size=event.shape[0], hidden=self.context_hidden)
+        shared_state, residual_state = torch.split(
+            state.context,
+            (self.shared_context_hidden, self.residual_context_hidden),
+            dim=-1,
+        )
+        shared_context, next_shared = self.shared_context_encoder.step(
+            event,
+            action,
+            outcome,
+            shared_state,
+            present,
+        )
+        compute_slot, adapter = self.binding_modules(binding_index)
+        residual_context, next_residual = compute_slot.step(
+            event,
+            action,
+            outcome,
+            residual_state,
+            present,
+        )
+        combined = torch.cat((shared_context.context, residual_context.context), dim=-1)
+        adapted = adapter(intention, combined)
+        return adapted, ExternalCapabilityState(
+            torch.cat((next_shared, next_residual), dim=-1)
+        )
+
+    def step_slot(
+        self,
+        *,
+        slot_index: int,
+        event: torch.Tensor,
+        action: torch.Tensor,
+        outcome: torch.Tensor,
+        intention: IntentEvent,
+        state: ExternalCapabilityState,
+        present: torch.Tensor | None = None,
+    ) -> tuple[IntentEvent, ExternalCapabilityState]:
+        """Compatibility alias for executing one logical binding."""
+
+        return self.step_binding(
+            binding_index=slot_index,
+            event=event,
+            action=action,
+            outcome=outcome,
+            intention=intention,
+            state=state,
+            present=present,
         )
 
 

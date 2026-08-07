@@ -12,6 +12,7 @@ from neural_computer import (
     ExternalCapabilityPipeline,
     ExternalCapabilityProgram,
     ExternalCapabilityResidualComputeBank,
+    ExternalCapabilityReusableComputeLibrary,
     ExternalCapabilitySharedResidualBank,
     IntentEvent,
     OnlineEpisodicRelationReader,
@@ -256,6 +257,73 @@ def test_residual_compute_bank_adds_local_recurrent_capacity() -> None:
     )
     assert bank.configuration()["schema"] == (
         "neural-computer.external-capability-residual-compute.v1"
+    )
+
+
+def test_reusable_compute_library_shares_physical_compute_with_isolated_bindings() -> None:
+    library = ExternalCapabilityReusableComputeLibrary(
+        event_width=4,
+        action_width=2,
+        intention_width=6,
+        compute_slot_count=1,
+        binding_compute_slots=(0,),
+        shared_context_hidden=8,
+        shared_context_width=5,
+        residual_context_hidden=3,
+        residual_context_width=2,
+        adapter_hidden=7,
+    )
+    old_compute = {
+        name: value.detach().clone()
+        for name, value in library.compute_slots[0].state_dict().items()
+    }
+    assert library.add_binding(0) == 1
+    assert library.slot_count == 2
+    assert library.compute_slot_count == 1
+    assert library.binding_compute_slots == (0, 0)
+    assert all(
+        torch.equal(value, library.compute_slots[0].state_dict()[name])
+        for name, value in old_compute.items()
+    )
+    state = library.initial_state(2, device="cpu")
+    kwargs = {
+        "event": torch.randn(2, 4),
+        "action": torch.zeros(2, 2),
+        "outcome": torch.zeros(2),
+        "intention": IntentEvent(torch.randn(2, 6)),
+    }
+    first, first_state = library.step_binding(
+        binding_index=0,
+        state=state.programs[0],
+        **kwargs,
+    )
+    second, second_state = library.step_binding(
+        binding_index=1,
+        state=state.programs[1],
+        **kwargs,
+    )
+    assert torch.equal(first.payload, second.payload)
+    assert not torch.equal(first_state.context, state.programs[0].context)
+    assert not torch.equal(second_state.context, state.programs[1].context)
+    library.freeze_shared_base()
+    library.freeze_compute_slot(0)
+    library.freeze_binding(0)
+    assert all(
+        not parameter.requires_grad
+        for parameter in library.shared_context_encoder.parameters()
+    )
+    assert all(
+        not parameter.requires_grad for parameter in library.compute_slots[0].parameters()
+    )
+    assert all(
+        not parameter.requires_grad
+        for parameter in library.binding_adapters[0].parameters()
+    )
+    assert all(
+        parameter.requires_grad for parameter in library.binding_adapters[1].parameters()
+    )
+    assert library.configuration()["schema"] == (
+        "neural-computer.external-capability-reusable-compute.v1"
     )
 
 

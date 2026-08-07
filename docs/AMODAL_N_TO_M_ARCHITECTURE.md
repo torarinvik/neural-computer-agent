@@ -3255,3 +3255,20 @@ four-slot payload is `0.5999` of independent full programs. This is bounded
 external compute growth; reuse/compression of local compute and unrestricted
 continual learning remain open. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_shared_residual_compute_opaque_four_replicated_promoted_v1_2026-08-07/`.
+
+## Reusable physical compute and logical bindings (2026-08-07)
+
+`ExternalCapabilityReusableComputeLibrary` separates a physical compact
+recurrent compute module from logical capability bindings. Each binding owns
+its intention adapter and external recurrent state, while an opaque
+memory-side table points it at a physical compute slot. A new binding can
+reuse a module without copying or updating its weights; a new physical module
+is added only when fresh verification rejects reuse.
+
+The replicated registry audit binds two related procedures to one physical
+module, retains both after reload, and passes independent-state, checksum,
+frozen-core, and zero-replay gates. The matched opaque reuse control rejects
+at `0.6367`. This is verified selective compute reuse, not arbitrary program
+compression: incompatible procedures still require new local compute. Evidence
+is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_reusable_compute_registry_replicated_promoted_boundary_v1_2026-08-07/`.

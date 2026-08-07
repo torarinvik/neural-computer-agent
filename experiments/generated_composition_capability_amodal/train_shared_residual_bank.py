@@ -37,6 +37,7 @@ from experiments.working_memory_continuous.canonical_growth_pressure_test import
 from neural_computer import (
     ExternalCapabilityProgram,
     ExternalCapabilityResidualComputeBank,
+    ExternalCapabilityReusableComputeLibrary,
     ExternalCapabilitySharedResidualBank,
     OpaqueProtocolDecoder,
 )
@@ -50,7 +51,11 @@ ADAPTER_HIDDEN = 64
 DECODER_HIDDEN = 16
 SPAN = 4
 THRESHOLD = 0.75
-CapabilityBank = ExternalCapabilitySharedResidualBank | ExternalCapabilityResidualComputeBank
+CapabilityBank = (
+    ExternalCapabilityReusableComputeLibrary
+    | ExternalCapabilitySharedResidualBank
+    | ExternalCapabilityResidualComputeBank
+)
 
 
 def _digest_module(module: torch.nn.Module) -> str:
@@ -79,6 +84,23 @@ def _digest_memory(
 
 def _parameter_count(module: torch.nn.Module) -> int:
     return sum(parameter.numel() for parameter in module.parameters())
+
+
+def _binding_digest(bank: CapabilityBank, binding_index: int) -> str:
+    if isinstance(bank, ExternalCapabilityReusableComputeLibrary):
+        compute, adapter = bank.binding_modules(binding_index)
+        return f"{_digest_module(compute)}:{_digest_module(adapter)}"
+    return _digest_module(bank.residual_slots[binding_index])
+
+
+def _binding_modules(
+    bank: CapabilityBank,
+    binding_index: int,
+) -> tuple[torch.nn.Module, ...]:
+    if isinstance(bank, ExternalCapabilityReusableComputeLibrary):
+        compute, adapter = bank.binding_modules(binding_index)
+        return compute, adapter
+    return (bank.residual_slots[binding_index],)
 
 
 def _rollout_slot(
@@ -372,7 +394,20 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     parent.eval()
     parent_digest_before = _digest_core(parent, ())
 
-    if args.residual_compute:
+    if args.reuse_compute:
+        bank: CapabilityBank = ExternalCapabilityReusableComputeLibrary(
+            EVENT_WIDTH,
+            ACTION_WIDTH,
+            INTENTION_WIDTH,
+            compute_slot_count=1,
+            binding_compute_slots=(0,),
+            shared_context_hidden=CONTEXT_HIDDEN,
+            shared_context_width=CONTEXT_WIDTH,
+            residual_context_hidden=args.residual_context_hidden,
+            residual_context_width=args.residual_context_width,
+            adapter_hidden=ADAPTER_HIDDEN,
+        )
+    elif args.residual_compute:
         bank: CapabilityBank = ExternalCapabilityResidualComputeBank(
             EVENT_WIDTH,
             ACTION_WIDTH,
@@ -405,14 +440,25 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         if stage_index:
             old_slot_digests.append(
                 {
-                    old_slot: _digest_module(bank.residual_slots[old_slot])
+                    old_slot: _binding_digest(bank, old_slot)
                     for old_slot in range(bank.slot_count)
                 }
             )
             bank.freeze_shared_base()
-            for old_slot in range(bank.slot_count):
-                bank.freeze_slot(old_slot)
-            slot_index = bank.add_slot()
+            if isinstance(bank, ExternalCapabilityReusableComputeLibrary):
+                for compute_slot in range(bank.compute_slot_count):
+                    bank.freeze_compute_slot(compute_slot)
+                for old_binding in range(bank.slot_count):
+                    bank.freeze_binding(old_binding)
+                slot_index = (
+                    bank.add_binding(0)
+                    if args.reuse_compute
+                    else bank.add_slot()
+                )
+            else:
+                for old_slot in range(bank.slot_count):
+                    bank.freeze_slot(old_slot)
+                slot_index = bank.add_slot()
             decoders.append(_new_decoder(args.seed + 10_000 + stage_index))
         else:
             slot_index = 0
@@ -486,7 +532,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         )
 
     old_slot_digests_unchanged = all(
-        digest == _digest_module(bank.residual_slots[slot_index])
+        digest == _binding_digest(bank, slot_index)
         for stage_digests in old_slot_digests
         for slot_index, digest in stage_digests.items()
     )
@@ -516,7 +562,20 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         {name: value.detach().clone() for name, value in decoder.state_dict().items()}
         for decoder in decoders
     ]
-    if args.residual_compute:
+    if args.reuse_compute:
+        reload_bank: CapabilityBank = ExternalCapabilityReusableComputeLibrary(
+            EVENT_WIDTH,
+            ACTION_WIDTH,
+            INTENTION_WIDTH,
+            compute_slot_count=bank.compute_slot_count,
+            binding_compute_slots=bank.binding_compute_slots,
+            shared_context_hidden=CONTEXT_HIDDEN,
+            shared_context_width=CONTEXT_WIDTH,
+            residual_context_hidden=args.residual_context_hidden,
+            residual_context_width=args.residual_context_width,
+            adapter_hidden=ADAPTER_HIDDEN,
+        )
+    elif args.residual_compute:
         reload_bank: CapabilityBank = ExternalCapabilityResidualComputeBank(
             EVENT_WIDTH,
             ACTION_WIDTH,
@@ -569,10 +628,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         reload_probe_outcomes.append(probe_outcomes)
     clean_memory_digest = _digest_memory(bank, decoders)
     corruption_slot = len(source_ids) - 1
-    for parameter in bank.residual_slots[corruption_slot].parameters():
-        with torch.no_grad():
-            parameter.zero_()
-            parameter.reshape(-1)[0] = 100.0
+    for module in _binding_modules(bank, corruption_slot):
+        for parameter in module.parameters():
+            with torch.no_grad():
+                parameter.zero_()
+                parameter.reshape(-1)[0] = 100.0
     for parameter in decoders[corruption_slot].parameters():
         with torch.no_grad():
             parameter.zero_()
@@ -630,7 +690,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "seed": args.seed,
         "source_ids": list(source_ids),
         "bank_mode": (
-            "shared_base_plus_residual_compute"
+            "reusable_compute_library"
+            if args.reuse_compute
+            else "shared_base_plus_residual_compute"
             if args.residual_compute
             else "shared_base_plus_intention_adapter"
         ),
@@ -668,7 +730,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "ratio_to_independent_slots": shared_payload
             / (len(source_ids) * full_payload),
             "shared_context_encoder": _parameter_count(bank.shared_context_encoder),
-            "residual_per_slot": _parameter_count(bank.residual_slots[0]),
+            "residual_per_slot": sum(
+                _parameter_count(module)
+                for module in _binding_modules(bank, 0)
+            ),
+            "physical_compute_slots": getattr(bank, "compute_slot_count", len(source_ids)),
+            "logical_bindings": bank.slot_count,
             "decoder_per_slot": _parameter_count(decoders[0]),
         },
         "frozen_core": {
@@ -764,6 +831,11 @@ def main() -> None:
         action="store_true",
         help="give each appended slot a compact recurrent compute encoder",
     )
+    parser.add_argument(
+        "--reuse-compute",
+        action="store_true",
+        help="reuse the first physical compute module with new binding adapters",
+    )
     parser.add_argument("--residual-context-hidden", type=int, default=16)
     parser.add_argument("--residual-context-width", type=int, default=8)
     parser.add_argument(
@@ -773,6 +845,8 @@ def main() -> None:
         help="set PyTorch intra-op threads for this tiny audit workload",
     )
     args = parser.parse_args()
+    if args.reuse_compute:
+        args.residual_compute = True
     if args.torch_threads is not None:
         if args.torch_threads < 1:
             raise ValueError("torch-threads must be positive")

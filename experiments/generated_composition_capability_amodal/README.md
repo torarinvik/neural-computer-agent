@@ -599,3 +599,14 @@ restoration, frozen-core, exact-reload, and zero-replay gates pass. The
 four-slot payload is `0.5999` of independent full programs. This remains
 bounded external compute growth. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_shared_residual_compute_opaque_four_replicated_promoted_v1_2026-08-07/`.
+
+## Reusable physical compute with isolated bindings (2026-08-07)
+
+The reusable-library variant separates physical recurrent compute from logical
+capability bindings. Two related registry procedures share one physical
+compute module while retaining separate binding adapters and external states;
+both seeds promote at reloaded behavior `1.0000/0.8906` and `1.0000`. The
+matched opaque reuse control rejects at `0.6367`, so incompatible procedures
+must allocate new compute instead of silently sharing an insufficient module.
+Evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_reusable_compute_registry_replicated_promoted_boundary_v1_2026-08-07/`.
