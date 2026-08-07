@@ -25,6 +25,9 @@ EXTERNAL_CAPABILITY_COMPOSITION_SCHEMA = (
 EXTERNAL_CAPABILITY_SHARED_RESIDUAL_SCHEMA = (
     "neural-computer.external-capability-shared-residual.v1"
 )
+EXTERNAL_CAPABILITY_RESIDUAL_COMPUTE_SCHEMA = (
+    "neural-computer.external-capability-residual-compute.v1"
+)
 EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA = (
     "neural-computer.external-capability-slot-binding.v1"
 )
@@ -391,6 +394,249 @@ class ExternalCapabilitySharedResidualBank(nn.Module):
         )
         adapted = self.residual_slots[slot_index](intention, context.context)
         return adapted, ExternalCapabilityState(next_context)
+
+
+class ExternalCapabilityResidualComputeBank(nn.Module):
+    """Grow small local recurrent programs behind a frozen shared basis.
+
+    The shared context encoder is trained once and can then be frozen.  Each
+    appended slot receives a compact recurrent context encoder and an intention
+    adapter that can learn new sequential computation without changing the
+    shared basis or any protected slot.  The per-slot state is still external
+    and opaque to the controller.  This is an append-only compute candidate;
+    it does not claim compression when a procedure needs unique computation.
+    """
+
+    def __init__(
+        self,
+        event_width: int,
+        action_width: int,
+        intention_width: int,
+        *,
+        slot_count: int = 1,
+        shared_context_hidden: int = 64,
+        shared_context_width: int = 32,
+        residual_context_hidden: int = 16,
+        residual_context_width: int = 8,
+        adapter_hidden: int = 64,
+    ) -> None:
+        super().__init__()
+        dimensions = (
+            event_width,
+            action_width,
+            intention_width,
+            shared_context_hidden,
+            shared_context_width,
+            residual_context_hidden,
+            residual_context_width,
+            adapter_hidden,
+        )
+        if slot_count < 1:
+            raise ValueError("residual compute bank needs at least one slot")
+        if min(dimensions) < 1:
+            raise ValueError("residual compute dimensions must be positive")
+        self.event_width = int(event_width)
+        self.action_width = int(action_width)
+        self.intention_width = int(intention_width)
+        self.shared_context_hidden = int(shared_context_hidden)
+        self.shared_context_width = int(shared_context_width)
+        self.residual_context_hidden = int(residual_context_hidden)
+        self.residual_context_width = int(residual_context_width)
+        self.adapter_hidden = int(adapter_hidden)
+        self.context_hidden = self.shared_context_hidden + self.residual_context_hidden
+        self.context_width = self.shared_context_width + self.residual_context_width
+        self.shared_context_encoder = EpisodicContextEncoder(
+            self.event_width,
+            self.action_width,
+            hidden=self.shared_context_hidden,
+            context_width=self.shared_context_width,
+        )
+        self.residual_slots = nn.ModuleList(
+            self._new_slot() for _ in range(slot_count)
+        )
+
+    def _new_slot(self) -> nn.ModuleDict:
+        return nn.ModuleDict(
+            {
+                "context_encoder": EpisodicContextEncoder(
+                    self.event_width,
+                    self.action_width,
+                    hidden=self.residual_context_hidden,
+                    context_width=self.residual_context_width,
+                ),
+                "intent_adapter": EpisodicIntentAdapter(
+                    self.context_width,
+                    self.intention_width,
+                    hidden=self.adapter_hidden,
+                ),
+            }
+        )
+
+    @property
+    def slot_count(self) -> int:
+        return len(self.residual_slots)
+
+    def configuration(self) -> dict[str, int | str]:
+        """Return the versioned append-only compute contract."""
+
+        return {
+            "schema": EXTERNAL_CAPABILITY_RESIDUAL_COMPUTE_SCHEMA,
+            "event_width": self.event_width,
+            "action_width": self.action_width,
+            "intention_width": self.intention_width,
+            "shared_context_hidden": self.shared_context_hidden,
+            "shared_context_width": self.shared_context_width,
+            "residual_context_hidden": self.residual_context_hidden,
+            "residual_context_width": self.residual_context_width,
+            "adapter_hidden": self.adapter_hidden,
+            "slot_count": self.slot_count,
+            "state": "independent_external_shared_and_residual_contexts_v1",
+            "base": "one_shared_context_encoder_v1",
+            "residual": "one_compact_recurrent_compute_encoder_per_slot_v1",
+        }
+
+    def freeze_shared_base(self) -> None:
+        """Make the shared representation immutable for later slot growth."""
+
+        for parameter in self.shared_context_encoder.parameters():
+            parameter.requires_grad_(False)
+
+    def freeze_slot(self, slot_index: int) -> None:
+        """Protect one local compute slot from later updates."""
+
+        if slot_index < 0 or slot_index >= self.slot_count:
+            raise IndexError("residual compute slot is out of range")
+        for parameter in self.residual_slots[slot_index].parameters():
+            parameter.requires_grad_(False)
+
+    def add_slot(self) -> int:
+        """Append compact local compute without changing old parameters."""
+
+        slot = self._new_slot()
+        reference = next(self.shared_context_encoder.parameters())
+        slot.to(device=reference.device, dtype=reference.dtype)
+        self.residual_slots.append(slot)
+        return self.slot_count - 1
+
+    def initial_state(
+        self,
+        batch_size: int,
+        *,
+        device: torch.device | str,
+        dtype: torch.dtype = torch.float32,
+    ) -> ExternalCapabilityPipelineState:
+        if batch_size < 1:
+            raise ValueError("residual compute batch size must be positive")
+        return ExternalCapabilityPipelineState(
+            tuple(
+                ExternalCapabilityState(
+                    torch.cat(
+                        (
+                            self.shared_context_encoder.initial_state(
+                                batch_size,
+                                device=device,
+                                dtype=dtype,
+                            ),
+                            self.residual_slots[slot_index][
+                                "context_encoder"
+                            ].initial_state(
+                                batch_size,
+                                device=device,
+                                dtype=dtype,
+                            ),
+                        ),
+                        dim=-1,
+                    )
+                )
+                for slot_index in range(self.slot_count)
+            )
+        )
+
+    def step(
+        self,
+        *,
+        slot_index: int,
+        event: torch.Tensor,
+        action: torch.Tensor,
+        outcome: torch.Tensor,
+        intention: IntentEvent,
+        state: ExternalCapabilityPipelineState,
+        present: torch.Tensor | None = None,
+    ) -> tuple[IntentEvent, ExternalCapabilityPipelineState]:
+        """Execute one slot while preserving every other external state."""
+
+        if slot_index < 0 or slot_index >= self.slot_count:
+            raise IndexError("residual compute slot is out of range")
+        state.validate(
+            batch_size=event.shape[0],
+            hidden_sizes=(self.context_hidden,) * self.slot_count,
+        )
+        adapted, next_state = self.step_slot(
+            slot_index=slot_index,
+            event=event,
+            action=action,
+            outcome=outcome,
+            intention=intention,
+            state=state.programs[slot_index],
+            present=present,
+        )
+        next_states = list(state.programs)
+        next_states[slot_index] = next_state
+        return adapted, ExternalCapabilityPipelineState(tuple(next_states))
+
+    def step_slot(
+        self,
+        *,
+        slot_index: int,
+        event: torch.Tensor,
+        action: torch.Tensor,
+        outcome: torch.Tensor,
+        intention: IntentEvent,
+        state: ExternalCapabilityState,
+        present: torch.Tensor | None = None,
+    ) -> tuple[IntentEvent, ExternalCapabilityState]:
+        """Execute one slot using only its shared/local external state."""
+
+        if slot_index < 0 or slot_index >= self.slot_count:
+            raise IndexError("residual compute slot is out of range")
+        if event.ndim != 2 or event.shape[1] != self.event_width:
+            raise ValueError("event has the wrong shape for residual compute bank")
+        if action.ndim != 2 or action.shape != (
+            event.shape[0],
+            self.action_width,
+        ):
+            raise ValueError("action has the wrong shape for residual compute bank")
+        if outcome.ndim != 1 or outcome.shape[0] != event.shape[0]:
+            raise ValueError("outcome has the wrong shape for residual compute bank")
+        intention.validate(width=self.intention_width)
+        if intention.payload.shape[0] != event.shape[0]:
+            raise ValueError("intention batch does not match residual compute event")
+        state.validate(batch_size=event.shape[0], hidden=self.context_hidden)
+        shared_state, residual_state = torch.split(
+            state.context,
+            (self.shared_context_hidden, self.residual_context_hidden),
+            dim=-1,
+        )
+        shared_context, next_shared = self.shared_context_encoder.step(
+            event,
+            action,
+            outcome,
+            shared_state,
+            present,
+        )
+        slot = self.residual_slots[slot_index]
+        residual_context, next_residual = slot["context_encoder"].step(
+            event,
+            action,
+            outcome,
+            residual_state,
+            present,
+        )
+        combined = torch.cat((shared_context.context, residual_context.context), dim=-1)
+        adapted = slot["intent_adapter"](intention, combined)
+        return adapted, ExternalCapabilityState(
+            torch.cat((next_shared, next_residual), dim=-1)
+        )
 
 
 class ExternalCapabilityPipeline(nn.Module):

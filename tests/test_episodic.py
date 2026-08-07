@@ -11,6 +11,7 @@ from neural_computer import (
     ExternalCapabilityComposition,
     ExternalCapabilityPipeline,
     ExternalCapabilityProgram,
+    ExternalCapabilityResidualComputeBank,
     ExternalCapabilitySharedResidualBank,
     IntentEvent,
     OnlineEpisodicRelationReader,
@@ -196,6 +197,65 @@ def test_shared_residual_bank_grows_without_changing_old_slot_or_state() -> None
     bank.freeze_slot(0)
     assert all(
         not parameter.requires_grad for parameter in bank.residual_slots[0].parameters()
+    )
+
+
+def test_residual_compute_bank_adds_local_recurrent_capacity() -> None:
+    bank = ExternalCapabilityResidualComputeBank(
+        event_width=4,
+        action_width=2,
+        intention_width=6,
+        slot_count=1,
+        shared_context_hidden=8,
+        shared_context_width=5,
+        residual_context_hidden=3,
+        residual_context_width=2,
+        adapter_hidden=7,
+    )
+    old_shared = {
+        name: value.detach().clone()
+        for name, value in bank.shared_context_encoder.state_dict().items()
+    }
+    old_slot = {
+        name: value.detach().clone()
+        for name, value in bank.residual_slots[0].state_dict().items()
+    }
+    assert bank.add_slot() == 1
+    assert all(
+        torch.equal(value, bank.shared_context_encoder.state_dict()[name])
+        for name, value in old_shared.items()
+    )
+    assert all(
+        torch.equal(value, bank.residual_slots[0].state_dict()[name])
+        for name, value in old_slot.items()
+    )
+    state = bank.initial_state(2, device="cpu")
+    event = torch.randn(2, 4)
+    action = torch.zeros(2, 2)
+    outcome = torch.zeros(2)
+    intention = IntentEvent(torch.randn(2, 6))
+    adapted, next_state = bank.step_slot(
+        slot_index=0,
+        event=event,
+        action=action,
+        outcome=outcome,
+        intention=intention,
+        state=state.programs[0],
+    )
+    assert adapted.payload.shape == (2, 6)
+    assert next_state.context.shape == (2, 11)
+    assert not torch.equal(next_state.context, state.programs[0].context)
+    bank.freeze_shared_base()
+    bank.freeze_slot(0)
+    assert all(
+        not parameter.requires_grad
+        for parameter in bank.shared_context_encoder.parameters()
+    )
+    assert all(
+        not parameter.requires_grad for parameter in bank.residual_slots[0].parameters()
+    )
+    assert bank.configuration()["schema"] == (
+        "neural-computer.external-capability-residual-compute.v1"
     )
 
 

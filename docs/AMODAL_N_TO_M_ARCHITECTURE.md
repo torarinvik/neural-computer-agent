@@ -3216,3 +3216,23 @@ arbitrary new sequential computation once the shared basis is frozen. The next
 growth mechanism must add append-only compute capacity or verified compressed
 behavioral summaries without mutating protected capabilities. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_shared_residual_bank_registry_replicated_boundary_v1_2026-08-07/`.
+
+## Append-only residual compute for opaque acquisition (2026-08-07)
+
+`ExternalCapabilityResidualComputeBank` extends the shared-base boundary with
+a compact recurrent context encoder per appended slot. The shared encoder and
+protected slots remain immutable, while the new slot gets enough local
+sequential computation to learn a procedure that is not represented by the
+frozen basis. Its state is still an external, versioned capability state and
+the controller sees only the standardized event/action/outcome/intention
+boundary.
+
+At local hidden/width `32/16`, a two-seed opaque-rule audit reaches reloaded
+behavior `0.8906` and `0.9023` for the new procedure while retaining the old
+procedure at `1.0000`. Exact reload, deliberate corruption recovery,
+shared-base/old-slot immutability, frozen-core, and zero-replay gates pass.
+This is a capability gain, not general continual learning: unique procedures
+still consume local compute slots and the two-slot payload remains `0.8221` of
+independent full programs. The next bottleneck is verified reuse or
+compression of local compute across later procedures. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_shared_residual_compute_opaque_replicated_promoted_v1_2026-08-07/`.

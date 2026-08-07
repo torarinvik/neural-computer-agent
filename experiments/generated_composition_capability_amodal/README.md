@@ -571,3 +571,15 @@ opaque procedures at `0.6250`, and a third heterogeneous registry procedure
 at `0.5430`. This is verified shared computation over a common learned basis,
 not arbitrary new computation or general continual learning. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_shared_residual_bank_registry_replicated_boundary_v1_2026-08-07/`.
+
+## Append-only residual compute for opaque rules (2026-08-07)
+
+The `--residual-compute` variant gives each appended slot a compact local
+recurrent compute encoder in addition to its intention adapter. With local
+hidden/width `32/16` and 256 updates, the same opaque pair that rejected the
+adapter-only bank now promotes at both seeds: the new slot reloads at
+`0.8906/0.9023`, the old slot remains at `1.0000`, and corruption recovery,
+exact reload, frozen-base, frozen-old-slot, frozen-core, and zero-replay gates
+pass. This is bounded append-only compute growth, not arbitrary open-ended
+computation. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_shared_residual_compute_opaque_replicated_promoted_v1_2026-08-07/`.

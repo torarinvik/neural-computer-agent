@@ -802,3 +802,13 @@ opaque and third-procedure controls reject. This makes the boundary explicit:
 shared computation works for related procedures, but the residual path still
 needs additional compute capacity for arbitrary new procedures. See
 `session_records/sequence_working_memory_2026-08-02/generated_composition_shared_residual_bank_registry_replicated_boundary_v1_2026-08-07/`.
+
+`ExternalCapabilityResidualComputeBank` is the append-only compute extension:
+each new slot gets a compact recurrent context encoder plus an intention
+adapter, while the shared context basis and protected slots remain frozen.
+It promotes two opaque procedures at two seeds with exact reload and
+corruption recovery (`0.8906/0.9023` new-slot behavior, `1.0000` old-slot
+behavior). This closes the adapter-only capacity failure but remains bounded;
+the next challenge is verified reuse or compression of the local compute
+slots. See
+`session_records/sequence_working_memory_2026-08-02/generated_composition_shared_residual_compute_opaque_replicated_promoted_v1_2026-08-07/`.

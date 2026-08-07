@@ -36,6 +36,7 @@ from experiments.working_memory_continuous.canonical_growth_pressure_test import
 )
 from neural_computer import (
     ExternalCapabilityProgram,
+    ExternalCapabilityResidualComputeBank,
     ExternalCapabilitySharedResidualBank,
     OpaqueProtocolDecoder,
 )
@@ -49,6 +50,7 @@ ADAPTER_HIDDEN = 64
 DECODER_HIDDEN = 16
 SPAN = 4
 THRESHOLD = 0.75
+CapabilityBank = ExternalCapabilitySharedResidualBank | ExternalCapabilityResidualComputeBank
 
 
 def _digest_module(module: torch.nn.Module) -> str:
@@ -65,7 +67,7 @@ def _parameter_count(module: torch.nn.Module) -> int:
 
 def _rollout_slot(
     parent,
-    bank: ExternalCapabilitySharedResidualBank,
+    bank: CapabilityBank,
     slot_index: int,
     decoder: OpaqueProtocolDecoder,
     batch,
@@ -99,10 +101,10 @@ def _rollout_slot(
                 {"vision": frame}, controller_state, feedback
             )
         adapted, capability_state = bank.step_slot(
-            slot_index,
-            event,
-            previous_action,
-            previous_reward,
+            slot_index=slot_index,
+            event=event,
+            action=previous_action,
+            outcome=previous_reward,
             intention=output.intention,
             state=capability_state,
             present=present,
@@ -170,7 +172,7 @@ def _batch(
 
 def _train_slot(
     parent,
-    bank: ExternalCapabilitySharedResidualBank,
+    bank: CapabilityBank,
     slot_index: int,
     decoder: OpaqueProtocolDecoder,
     program_id: int,
@@ -246,7 +248,7 @@ def _train_slot(
 @torch.no_grad()
 def _accuracy(
     parent,
-    bank: ExternalCapabilitySharedResidualBank,
+    bank: CapabilityBank,
     slot_index: int,
     decoder: OpaqueProtocolDecoder,
     program_id: int,
@@ -354,15 +356,28 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     parent.eval()
     parent_digest_before = _digest_core(parent, ())
 
-    bank = ExternalCapabilitySharedResidualBank(
-        EVENT_WIDTH,
-        ACTION_WIDTH,
-        INTENTION_WIDTH,
-        slot_count=1,
-        context_hidden=CONTEXT_HIDDEN,
-        context_width=CONTEXT_WIDTH,
-        adapter_hidden=ADAPTER_HIDDEN,
-    )
+    if args.residual_compute:
+        bank: CapabilityBank = ExternalCapabilityResidualComputeBank(
+            EVENT_WIDTH,
+            ACTION_WIDTH,
+            INTENTION_WIDTH,
+            slot_count=1,
+            shared_context_hidden=CONTEXT_HIDDEN,
+            shared_context_width=CONTEXT_WIDTH,
+            residual_context_hidden=args.residual_context_hidden,
+            residual_context_width=args.residual_context_width,
+            adapter_hidden=ADAPTER_HIDDEN,
+        )
+    else:
+        bank = ExternalCapabilitySharedResidualBank(
+            EVENT_WIDTH,
+            ACTION_WIDTH,
+            INTENTION_WIDTH,
+            slot_count=1,
+            context_hidden=CONTEXT_HIDDEN,
+            context_width=CONTEXT_WIDTH,
+            adapter_hidden=ADAPTER_HIDDEN,
+        )
     decoders = [_new_decoder(args.seed + 10_000)]
     stage_records: list[dict[str, object]] = []
     progress_by_slot: list[list[dict[str, float | int]]] = []
@@ -485,15 +500,28 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         {name: value.detach().clone() for name, value in decoder.state_dict().items()}
         for decoder in decoders
     ]
-    reload_bank = ExternalCapabilitySharedResidualBank(
-        EVENT_WIDTH,
-        ACTION_WIDTH,
-        INTENTION_WIDTH,
-        slot_count=len(source_ids),
-        context_hidden=CONTEXT_HIDDEN,
-        context_width=CONTEXT_WIDTH,
-        adapter_hidden=ADAPTER_HIDDEN,
-    )
+    if args.residual_compute:
+        reload_bank: CapabilityBank = ExternalCapabilityResidualComputeBank(
+            EVENT_WIDTH,
+            ACTION_WIDTH,
+            INTENTION_WIDTH,
+            slot_count=len(source_ids),
+            shared_context_hidden=CONTEXT_HIDDEN,
+            shared_context_width=CONTEXT_WIDTH,
+            residual_context_hidden=args.residual_context_hidden,
+            residual_context_width=args.residual_context_width,
+            adapter_hidden=ADAPTER_HIDDEN,
+        )
+    else:
+        reload_bank = ExternalCapabilitySharedResidualBank(
+            EVENT_WIDTH,
+            ACTION_WIDTH,
+            INTENTION_WIDTH,
+            slot_count=len(source_ids),
+            context_hidden=CONTEXT_HIDDEN,
+            context_width=CONTEXT_WIDTH,
+            adapter_hidden=ADAPTER_HIDDEN,
+        )
     reload_bank.load_state_dict(bank_state, strict=True)
     reload_decoders = [_new_decoder(args.seed + 10_000 + index) for index in range(len(source_ids))]
     for decoder, state in zip(reload_decoders, decoder_states, strict=True):
@@ -523,6 +551,33 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         )
         reload_behaviors.append(reload_behavior)
         reload_probe_outcomes.append(probe_outcomes)
+    corruption_slot = len(source_ids) - 1
+    for parameter in bank.residual_slots[corruption_slot].parameters():
+        with torch.no_grad():
+            parameter.zero_()
+    corrupted_behavior, corrupted_probe_outcomes = _probe_accuracy(
+        parent,
+        bank,
+        corruption_slot,
+        decoders[corruption_slot],
+        source_ids[corruption_slot],
+        grammar,
+        count=args.audit_count,
+        probes=args.retention_probes,
+        seed=args.seed + 70_000 + corruption_slot,
+    )
+    bank.load_state_dict(bank_state, strict=True)
+    recovered_behavior, recovered_probe_outcomes = _probe_accuracy(
+        parent,
+        bank,
+        corruption_slot,
+        decoders[corruption_slot],
+        source_ids[corruption_slot],
+        grammar,
+        count=args.audit_count,
+        probes=args.retention_probes,
+        seed=args.seed + 70_000 + corruption_slot,
+    )
     parent_digest_after = _digest_core(parent, ())
     full_program = ExternalCapabilityProgram(
         EVENT_WIDTH,
@@ -547,6 +602,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         ),
         "seed": args.seed,
         "source_ids": list(source_ids),
+        "bank_mode": (
+            "shared_base_plus_residual_compute"
+            if args.residual_compute
+            else "shared_base_plus_intention_adapter"
+        ),
         "programs": [list(grammar[program_id]) for program_id in source_ids],
         "budgets": {
             "parent_updates": args.parent_updates,
@@ -562,6 +622,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "final_probe_outcomes": final_probe_outcomes,
         "reload_behavior": reload_behaviors,
         "reload_probe_outcomes": reload_probe_outcomes,
+        "memory_corruption": {
+            "slot": corruption_slot,
+            "corrupted_behavior": corrupted_behavior,
+            "corrupted_probe_outcomes": corrupted_probe_outcomes,
+            "recovered_behavior": recovered_behavior,
+            "recovered_probe_outcomes": recovered_probe_outcomes,
+        },
         "parameter_accounting": {
             "full_program_plus_decoder_per_slot": full_payload,
             "shared_bank_plus_decoder_total": shared_payload,
@@ -597,6 +664,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             ),
             "shared_base_digest_stable_after_growth": shared_base_stable_after_growth,
             "final_reload_exact": reload_exact,
+            "memory_corruption_detected_and_recovered": corrupted_behavior < THRESHOLD
+            and recovered_behavior >= THRESHOLD,
             "parent_unchanged": parent_digest_before == parent_digest_after,
             "no_replayed_examples": True,
         },
@@ -621,6 +690,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "shared_base_digest_stable_after_growth": shared_base_stable_after_growth,
             "shared_payload_reduced": shared_payload < len(source_ids) * full_payload,
             "final_reload_exact": reload_exact,
+            "memory_corruption_detected_and_recovered": corrupted_behavior < THRESHOLD
+            and recovered_behavior >= THRESHOLD,
             "core_unchanged": parent_digest_before == parent_digest_after,
             "no_replayed_examples": True,
         },
@@ -649,6 +720,13 @@ def main() -> None:
     parser.add_argument("--retention-probes", type=int, default=4)
     parser.add_argument("--eval-every", type=int, default=32)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
+    parser.add_argument(
+        "--residual-compute",
+        action="store_true",
+        help="give each appended slot a compact recurrent compute encoder",
+    )
+    parser.add_argument("--residual-context-hidden", type=int, default=16)
+    parser.add_argument("--residual-context-width", type=int, default=8)
     parser.add_argument(
         "--torch-threads",
         type=int,

@@ -28,6 +28,7 @@ from .artifact_memory import (
 from .capability import (
     EXTERNAL_CAPABILITY_COMPOSITION_SCHEMA,
     EXTERNAL_CAPABILITY_PIPELINE_SCHEMA,
+    EXTERNAL_CAPABILITY_RESIDUAL_COMPUTE_SCHEMA,
     EXTERNAL_CAPABILITY_SCHEMA,
     EXTERNAL_CAPABILITY_SHARED_RESIDUAL_SCHEMA,
     EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA,
@@ -35,6 +36,7 @@ from .capability import (
     ExternalCapabilityPipeline,
     ExternalCapabilityPipelineState,
     ExternalCapabilityProgram,
+    ExternalCapabilityResidualComputeBank,
     ExternalCapabilitySharedResidualBank,
     ExternalCapabilityState,
 )
@@ -212,6 +214,7 @@ __all__ = [
     "EXECUTION_STATES",
     "EXTERNAL_CAPABILITY_COMPOSITION_SCHEMA",
     "EXTERNAL_CAPABILITY_PIPELINE_SCHEMA",
+    "EXTERNAL_CAPABILITY_RESIDUAL_COMPUTE_SCHEMA",
     "EXTERNAL_CAPABILITY_SCHEMA",
     "EXTERNAL_CAPABILITY_SHARED_RESIDUAL_SCHEMA",
     "EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA",
@@ -277,6 +280,7 @@ __all__ = [
     "ExternalCapabilityPipelineState",
     "ExternalCapabilityProgram",
     "ExternalCapabilityRegisterMachine",
+    "ExternalCapabilityResidualComputeBank",
     "ExternalCapabilitySharedResidualBank",
     "ExternalCapabilityState",
     "ExternalGrowthPrior",
