@@ -183,6 +183,10 @@ def test_shared_residual_bank_grows_without_changing_old_slot_or_state() -> None
         for parameter in bank.shared_context_encoder.parameters()
     )
     assert all(parameter.requires_grad for parameter in bank.residual_slots[1].parameters())
+    bank.freeze_slot(0)
+    assert all(
+        not parameter.requires_grad for parameter in bank.residual_slots[0].parameters()
+    )
 
 
 def test_external_capability_pipeline_keeps_program_states_independent() -> None:

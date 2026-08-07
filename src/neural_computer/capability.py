@@ -280,6 +280,14 @@ class ExternalCapabilitySharedResidualBank(nn.Module):
         self.residual_slots.append(residual)
         return self.slot_count - 1
 
+    def freeze_slot(self, slot_index: int) -> None:
+        """Protect one residual from later capability-specific updates."""
+
+        if slot_index < 0 or slot_index >= self.slot_count:
+            raise IndexError("shared residual slot is out of range")
+        for parameter in self.residual_slots[slot_index].parameters():
+            parameter.requires_grad_(False)
+
     def initial_state(
         self,
         batch_size: int,
@@ -333,17 +341,56 @@ class ExternalCapabilitySharedResidualBank(nn.Module):
             batch_size=event.shape[0],
             hidden_sizes=(self.context_hidden,) * self.slot_count,
         )
+        adapted, next_context = self.step_slot(
+            slot_index=slot_index,
+            event=event,
+            action=action,
+            outcome=outcome,
+            intention=intention,
+            state=state.programs[slot_index],
+            present=present,
+        )
+        next_states = list(state.programs)
+        next_states[slot_index] = ExternalCapabilityState(next_context)
+        return adapted, ExternalCapabilityPipelineState(tuple(next_states))
+
+    def step_slot(
+        self,
+        slot_index: int,
+        event: torch.Tensor,
+        action: torch.Tensor,
+        outcome: torch.Tensor,
+        *,
+        intention: IntentEvent,
+        state: ExternalCapabilityState,
+        present: torch.Tensor | None = None,
+    ) -> tuple[IntentEvent, torch.Tensor]:
+        """Execute one slot using only that slot's externally owned state."""
+
+        if slot_index < 0 or slot_index >= self.slot_count:
+            raise IndexError("shared residual slot is out of range")
+        if event.ndim != 2 or event.shape[1] != self.event_width:
+            raise ValueError("event has the wrong shape for shared residual bank")
+        if action.ndim != 2 or action.shape != (
+            event.shape[0],
+            self.action_width,
+        ):
+            raise ValueError("action has the wrong shape for shared residual bank")
+        if outcome.ndim != 1 or outcome.shape[0] != event.shape[0]:
+            raise ValueError("outcome has the wrong shape for shared residual bank")
+        intention.validate(width=self.intention_width)
+        if intention.payload.shape[0] != event.shape[0]:
+            raise ValueError("intention batch does not match shared residual event")
+        state.validate(batch_size=event.shape[0], hidden=self.context_hidden)
         context, next_context = self.shared_context_encoder.step(
             event,
             action,
             outcome,
-            state.programs[slot_index].context,
+            state.context,
             present,
         )
         adapted = self.residual_slots[slot_index](intention, context.context)
-        next_states = list(state.programs)
-        next_states[slot_index] = ExternalCapabilityState(next_context)
-        return adapted, ExternalCapabilityPipelineState(tuple(next_states))
+        return adapted, next_context
 
 
 class ExternalCapabilityPipeline(nn.Module):
