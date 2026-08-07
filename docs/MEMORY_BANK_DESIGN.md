@@ -694,3 +694,27 @@ approaching strictly pays (the F15 economics applied to distance).
 Curriculum design law: each stage must make the learner produce the
 target behaviour, not merely reward states that the scaffold reaches on
 the learner's behalf.
+
+**F22 (probes 32-33). The motor wall is translation invariance, not
+curriculum — egocentric rendering breaks it in one move.** The honest
+no-teleport bridge (items re-dealt near the avatar, idle cost, staged
+radius) failed at its FIRST stage (0.08 both seeds): even adjacent items
+are not learned when the avatar sits at arbitrary screen positions. The
+comparison that closes the case: the same decision at fixed geometry
+(choice) is 1.00; at arbitrary position, 0.08. The flat screen encoder
+gives the plant no translation equivariance, so every avatar position is
+a separate policy to be learned from +-1 rewards — THAT is why every
+motor game (forage 0.03, intercept 0.03, navigate 0.13 at 5x budget)
+has been stuck while every fixed-geometry decision game promotes.
+Egocentric rendering — the observation rolled so the avatar is always
+centred, an encoder-side choice that touches neither the verifier's
+privacy nor the amodal core — takes solo forage from 0.03 to 0.48/0.30
+(seeds 69316/69317) with no curriculum at all. Consequences: (1) the
+complexity ladder runs through the ENCODER, not the trainer — an
+egocentric (or convolutional) screen driver is the next architectural
+step, and the F20/F21 curriculum knobs become refinements on top of it;
+(2) three probes spent on curricula located a representational failure —
+the ablation discipline (change one property, compare to a mastered
+anchor) is what caught it; (3) peripheral upgrades being decisive while
+the fixed core stays untouched is exactly the division of labour the
+architecture prescribes.
