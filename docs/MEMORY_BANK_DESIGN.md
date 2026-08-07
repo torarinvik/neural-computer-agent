@@ -355,3 +355,16 @@ selector collapsing to identical picks for both variants, which is the
 literature's predicted failure mode and now ours to fix; (3) all future
 bank claims must report the cross-fed condition, since withheld-only
 audits cannot distinguish "context enables" from "context specifies".
+
+**F10 (probe 9 replication). Joint acquisition of contradictory contexts
+is winner-take-all unstable.** The same configuration that mastered both
+twins on seed 69316 (1.000/1.000) left one twin at 0.227 on seed 69317
+while the other took the plant (1.000). The read mechanism is not at
+fault — cross-feeding still collapsed the competent twin to 0.000 — but
+two contexts competing for one plastic plant can end with one dominating.
+Consequence: the bank training loop needs per-context progress balancing
+(e.g. sample the lagging context more often, or normalise each context's
+gradient contribution) rather than uniform interleaving. This is the same
+interference tax seen at the consolidation level (F3, and the EWC ladder's
+acquisition-headroom finding), now appearing at the context level — the
+recurring structural theme of this program.

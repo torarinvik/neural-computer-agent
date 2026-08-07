@@ -71,6 +71,17 @@ rung promotes, rejects, or qualifies. Ordered by severity.
     remain two-seed. Next: widen the ladder and externalization claims
     before any external write-up.
 
+11. **Fragment selection collapses (learned routing)** — the
+    outcome-REINFORCE selector chose identical fragments for both
+    contradictory variants (probe 8), leaving the bank uninformative even
+    though the read path works with an oracle selector. Evidence:
+    `fragment_read_path_qualified_v1_2026-08-07`. Next: diversity/entropy
+    penalty, geometric prototype routing, or staged handover from oracle
+    to learned selection.
+12. **Joint acquisition of contradictory contexts is winner-take-all** —
+    one context can dominate the shared plant (F10). Next: per-context
+    progress balancing in the interleave schedule.
+
 ## Retired
 
 - **One-step truncated BPTT as suspected acquisition bottleneck** —

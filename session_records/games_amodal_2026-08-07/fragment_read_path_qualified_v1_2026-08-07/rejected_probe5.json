@@ -1,0 +1,60 @@
+{
+  "config": {
+    "adapt_updates": 60,
+    "batch_size": 32,
+    "eval_seeds": 4,
+    "event_width": 64,
+    "feedback_width": 16,
+    "fragments": 6,
+    "fragments_per_variant": 2,
+    "gamma": 0.95,
+    "hidden": 32,
+    "ignorance_every": 6,
+    "ignorance_weight": 0.5,
+    "intent_width": 32,
+    "learning_rate": 0.001,
+    "seed": 69316,
+    "steps": 48,
+    "suite": "twins",
+    "tokens_per_fragment": 2,
+    "updates": 1400,
+    "warm_updates": 0
+  },
+  "cross_fragment_mastery": {
+    "forageA": 0.03125,
+    "forageB": 0.046875
+  },
+  "decoy_bank_mastery": {
+    "forageA": 0.03125,
+    "forageB": 0.046875
+  },
+  "holdout": {},
+  "no_replay": true,
+  "overlap": {
+    "pairs": {
+      "forageA|forageB": {
+        "fragment_jaccard": 0.0,
+        "shared_components": 1
+      }
+    },
+    "selections": {
+      "forageA": [
+        0,
+        4
+      ],
+      "forageB": [
+        2,
+        5
+      ]
+    }
+  },
+  "seed": 69316,
+  "train_mastery": {
+    "forageA": 0.03125,
+    "forageB": 0.046875
+  },
+  "withheld_bank_mastery": {
+    "forageA": 0.03125,
+    "forageB": 0.046875
+  }
+}
