@@ -39,6 +39,7 @@ from neural_computer import (
     ExternalCapabilityResidualComputeBank,
     ExternalCapabilityReusableComputeLibrary,
     ExternalCapabilitySharedResidualBank,
+    ExternalComputeCandidateScreen,
     OpaqueProtocolDecoder,
     select_reusable_compute_slot,
 )
@@ -353,6 +354,34 @@ def _new_decoder(seed: int) -> OpaqueProtocolDecoder:
     return OpaqueProtocolDecoder(INTENTION_WIDTH, ACTION_WIDTH, hidden=DECODER_HIDDEN)
 
 
+@torch.no_grad()
+def _candidate_screen_query(
+    parent,
+    program_id: int,
+    grammar,
+    *,
+    seed: int,
+    count: int,
+) -> torch.Tensor:
+    """Summarize a fresh learned-event stream for external candidate ordering."""
+
+    batch = _batch(
+        count,
+        span=SPAN,
+        seed=seed,
+        program_id=program_id,
+        grammar=grammar,
+    )
+    frames = torch.cat(
+        (batch.input_frames, batch.distractor_frames, batch.query_frames), dim=1
+    )
+    encoder = parent.encoders["vision"]
+    events = torch.stack(
+        [encoder(frame) for frame in frames.transpose(0, 1)], dim=1
+    )
+    return F.normalize(events.mean(dim=(0, 1)), dim=0).cpu()
+
+
 def run(args: argparse.Namespace) -> dict[str, object]:
     started = perf_counter()
     if min(
@@ -430,6 +459,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             context_width=CONTEXT_WIDTH,
             adapter_hidden=ADAPTER_HIDDEN,
         )
+    candidate_screen: ExternalComputeCandidateScreen | None = None
+    if args.screen_candidates:
+        candidate_screen = ExternalComputeCandidateScreen(
+            EVENT_WIDTH,
+            mastery_threshold=THRESHOLD,
+            min_mastery_observations=1,
+        )
+        if candidate_screen.add_candidate() != 0:
+            raise RuntimeError("initial compute screen candidate must be slot zero")
     decoders = [_new_decoder(args.seed + 10_000)]
     stage_records: list[dict[str, object]] = []
     progress_by_slot: list[list[dict[str, float | int]]] = []
@@ -437,6 +475,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     old_slot_digests: list[dict[int, str]] = []
     shared_base_digest_after_first: str | None = None
     slot_training_attempts = 0
+    candidate_screen_observations = 0
 
     for stage_index, program_id in enumerate(source_ids):
         reuse_trial: dict[str, object] | None = None
@@ -457,13 +496,36 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 for old_binding in range(bank.slot_count):
                     bank.freeze_binding(old_binding)
                 if args.candidate_reuse:
+                    screen_context = (
+                        _candidate_screen_query(
+                            parent,
+                            program_id,
+                            grammar,
+                            seed=args.seed + 80_000 + stage_index * 10_003,
+                            count=args.audit_count,
+                        )
+                        if candidate_screen is not None
+                        else None
+                    )
+                    candidate_order = (
+                        candidate_screen.order(screen_context)
+                        if candidate_screen is not None and screen_context is not None
+                        else tuple(range(bank.compute_slot_count))
+                    )
+                    if (
+                        candidate_screen is not None
+                        and candidate_screen.candidate_count != bank.compute_slot_count
+                    ):
+                        raise RuntimeError(
+                            "compute screen and bank candidate counts diverged"
+                        )
                     trial_records: list[dict[str, object]] = []
                     trial_progresses: dict[int, list[dict[str, float | int]]] = {}
                     trial_behaviors: dict[int, float] = {}
                     trial_probes_by_candidate: dict[int, list[float]] = {}
                     trial_adapter_states: dict[int, dict[str, torch.Tensor]] = {}
                     trial_decoder_states: dict[int, dict[str, torch.Tensor]] = {}
-                    for candidate_slot in range(bank.compute_slot_count):
+                    for trial_rank, candidate_slot in enumerate(candidate_order):
                         trial_slot = bank.add_binding(candidate_slot)
                         trial_decoder = _new_decoder(
                             args.seed
@@ -521,6 +583,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                         trial_records.append(
                             {
                                 "compute_slot": candidate_slot,
+                                "screen_rank": trial_rank,
                                 "behavior": candidate_behavior,
                                 "probe_outcomes": candidate_probes,
                                 "stable_bits_to_threshold": _stable_bits(
@@ -531,12 +594,45 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                             }
                         )
                         bank.remove_binding(trial_slot)
+                        if candidate_screen is not None and screen_context is not None:
+                            for outcome in candidate_probes:
+                                candidate_screen.observe(
+                                    screen_context,
+                                    candidate_slot,
+                                    outcome,
+                                )
+                                candidate_screen_observations += 1
+                            if min(candidate_probes) >= THRESHOLD:
+                                break
+                    admitted_candidate = (
+                        candidate_slot
+                        if candidate_screen is not None
+                        and trial_records
+                        and min(
+                            trial_probes_by_candidate[trial_records[-1]["compute_slot"]]
+                        )
+                        >= THRESHOLD
+                        else None
+                    )
+                    decision_candidates = (
+                        {admitted_candidate: trial_probes_by_candidate[admitted_candidate]}
+                        if admitted_candidate is not None
+                        else trial_probes_by_candidate
+                    )
                     reuse_decision = select_reusable_compute_slot(
-                        trial_probes_by_candidate,
+                        decision_candidates,
                         threshold=THRESHOLD,
                     )
                     reuse_trial = {
                         "candidates": trial_records,
+                        "screen_enabled": candidate_screen is not None,
+                        "screen_order": list(candidate_order)
+                        if candidate_screen is not None
+                        else None,
+                        "screen_trials_attempted": len(trial_records),
+                        "stopped_after_first_fresh_pass": (
+                            candidate_screen is not None and admitted_candidate is not None
+                        ),
                         "decision": reuse_decision.action,
                         "selected_compute_slot": reuse_decision.compute_slot_index,
                         "candidate_scores": reuse_decision.candidate_scores,
@@ -565,6 +661,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                         behavior_probes = trial_probes_by_candidate[selected_compute_slot]
                     else:
                         compute_slot = bank.add_compute_slot()
+                        if (
+                            candidate_screen is not None
+                            and candidate_screen.add_candidate() != compute_slot
+                        ):
+                            raise RuntimeError(
+                                "new compute slot did not append to candidate screen"
+                            )
                         slot_index = bank.add_binding(compute_slot)
                         decoders.append(
                             _new_decoder(args.seed + 50_000 + stage_index)
@@ -864,6 +967,17 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     shared_payload = _parameter_count(bank) + sum(
         _parameter_count(decoder) for decoder in decoders
     )
+    candidate_screen_payload = (
+        candidate_screen.payload() if candidate_screen is not None else None
+    )
+    candidate_screen_reload_exact = False
+    if candidate_screen_payload is not None:
+        restored_screen = ExternalComputeCandidateScreen.from_payload(
+            candidate_screen_payload
+        )
+        candidate_screen_reload_exact = (
+            restored_screen.payload() == candidate_screen_payload
+        )
     report = {
         "schema": "neural-computer.generated-composition-shared-residual-bank-report.v1",
         "claim_boundary": (
@@ -883,7 +997,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             else "shared_base_plus_intention_adapter"
         ),
         "admission_policy": (
-            "all_candidate_trials_best_fresh_probe"
+                "screened_first_fresh_pass"
+                if args.screen_candidates
+                else "all_candidate_trials_best_fresh_probe"
             if args.candidate_reuse
             else "reuse_first_grow_on_fresh_failure"
             if args.auto_reuse
@@ -898,12 +1014,22 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "retention_probes": args.retention_probes,
             "eval_every": args.eval_every,
             "torch_threads": args.torch_threads,
+            "screen_candidates": args.screen_candidates,
         },
         "stages": stage_records,
         "final_behavior": final_behaviors,
         "final_probe_outcomes": final_probe_outcomes,
         "reload_behavior": reload_behaviors,
         "reload_probe_outcomes": reload_probe_outcomes,
+        "candidate_screen": {
+            "enabled": candidate_screen is not None,
+            "configuration": (
+                candidate_screen.configuration() if candidate_screen is not None else None
+            ),
+            "payload": candidate_screen_payload,
+            "observations": candidate_screen_observations,
+            "reload_exact": candidate_screen_reload_exact,
+        },
         "memory_corruption": {
             "slot": corruption_slot,
             "corrupted_behavior": corrupted_behavior,
@@ -951,6 +1077,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 sum(range(1, len(source_ids) + 1)) * args.retention_probes
                 + 2 * len(source_ids) * args.retention_probes
             ),
+            "candidate_screen_observations": candidate_screen_observations,
         },
         "controls": {
             "old_slot_weights_unchanged": old_slot_digests_unchanged,
@@ -967,6 +1094,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             ),
             "parent_unchanged": parent_digest_before == parent_digest_after,
             "no_replayed_examples": True,
+            "candidate_screen_reload_exact": (
+                candidate_screen_reload_exact if candidate_screen is not None else True
+            ),
         },
         "gates": {
             "parent_stable": _stable_bits(parent_progress, batch_size=args.batch_size)
@@ -996,6 +1126,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             ),
             "core_unchanged": parent_digest_before == parent_digest_after,
             "no_replayed_examples": True,
+            "candidate_screen_reload_exact": (
+                candidate_screen_reload_exact if candidate_screen is not None else True
+            ),
         },
         "wall_seconds": perf_counter() - started,
     }
@@ -1042,6 +1175,14 @@ def main() -> None:
         action="store_true",
         help="fresh-train every existing compute candidate before reuse/growth",
     )
+    parser.add_argument(
+        "--screen-candidates",
+        action="store_true",
+        help=(
+            "order candidates from external learned-event evidence and stop "
+            "after the first fresh-verified pass"
+        ),
+    )
     parser.add_argument("--residual-context-hidden", type=int, default=16)
     parser.add_argument("--residual-context-width", type=int, default=8)
     parser.add_argument(
@@ -1051,7 +1192,11 @@ def main() -> None:
         help="set PyTorch intra-op threads for this tiny audit workload",
     )
     args = parser.parse_args()
-    if args.candidate_reuse:
+    if args.screen_candidates:
+        args.candidate_reuse = True
+        args.reuse_compute = True
+        args.auto_reuse = False
+    elif args.candidate_reuse:
         args.reuse_compute = True
         args.auto_reuse = False
     elif args.auto_reuse:

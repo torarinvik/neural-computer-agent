@@ -357,6 +357,11 @@ def test_compute_candidate_screen_orders_from_learned_event_outcomes_only() -> N
     screen.observe(query, 2, 1.0)
 
     assert screen.order(query) == (2, 1, 0)
+    unseen_query = torch.tensor([0.0, 1.0, 0.0, 0.0])
+    assert screen.order(unseen_query) == (2, 1, 0)
+    screen.observe(unseen_query, 1, 1.0)
+    assert screen.order(query) == (2, 1, 0)
+    assert screen.order(unseen_query) == (1, 2, 0)
     assert screen.configuration()["role"] == "order_only_fresh_admission_required"
 
 

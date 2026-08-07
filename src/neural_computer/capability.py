@@ -16,7 +16,10 @@ from typing import Literal
 import torch
 from torch import nn
 
-from .addressing import PersistentOpaqueContextRouteEvidence
+from .addressing import (
+    PersistentOpaqueContextRouteEvidence,
+    PersistentOpaqueRouteEvidence,
+)
 from .episodic import EpisodicContextEncoder, EpisodicIntentAdapter
 from .interface import IntentEvent
 
@@ -124,9 +127,19 @@ class ExternalComputeCandidateScreen:
         if width < 1:
             raise ValueError("compute screen width must be positive")
         self.width = int(width)
+        self._evidence_parameters = {
+            "matching_tolerance": matching_tolerance,
+            "prior_strength": prior_strength,
+            "mastery_threshold": mastery_threshold,
+            "min_mastery_observations": min_mastery_observations,
+            "reversal_threshold": reversal_threshold,
+            "reversal_patience": reversal_patience,
+        }
         self._evidence = PersistentOpaqueContextRouteEvidence(
             self.width,
-            matching_tolerance=matching_tolerance,
+            **self._evidence_parameters,
+        )
+        self._global_evidence = PersistentOpaqueRouteEvidence(
             prior_strength=prior_strength,
             mastery_threshold=mastery_threshold,
             min_mastery_observations=min_mastery_observations,
@@ -138,7 +151,7 @@ class ExternalComputeCandidateScreen:
     def candidate_count(self) -> int:
         """Return the number of opaque physical candidates in the screen."""
 
-        return self._evidence.slot_count
+        return self._global_evidence.slot_count
 
     @property
     def context_count(self) -> int:
@@ -156,13 +169,18 @@ class ExternalComputeCandidateScreen:
             "context_count": self.context_count,
             "query": "learned_event_context_v1",
             "evidence": "opaque_scalar_verifier_outcomes_v1",
+            "fallback": "global_opaque_candidate_prior_v1",
             "role": "order_only_fresh_admission_required",
         }
 
     def add_candidate(self) -> int:
         """Append one opaque candidate address without changing old evidence."""
 
-        return self._evidence.append_slot()
+        context_slot = self._evidence.append_slot()
+        global_slot = self._global_evidence.append_slot()
+        if context_slot != global_slot:
+            raise RuntimeError("compute screen evidence slot counts diverged")
+        return global_slot
 
     def order(self, query: torch.Tensor) -> tuple[int, ...]:
         """Return the learned-first trial order for one event/context query."""
@@ -173,7 +191,9 @@ class ExternalComputeCandidateScreen:
             raise ValueError(f"compute screen query must have shape [{self.width}]")
         if self.candidate_count < 1:
             raise ValueError("compute screen has no candidates")
-        return self._evidence.preferred_order(query)
+        if self._evidence.has_context(query):
+            return self._evidence.preferred_order(query)
+        return self._global_evidence.preferred_order(slot_count=self.candidate_count)
 
     def observe(
         self,
@@ -188,6 +208,7 @@ class ExternalComputeCandidateScreen:
         if query.ndim != 1 or query.shape[0] != self.width:
             raise ValueError(f"compute screen query must have shape [{self.width}]")
         self._evidence.observe(query, candidate_index, outcome)
+        self._global_evidence.observe(candidate_index, outcome)
 
     def payload(self) -> dict[str, object]:
         """Serialize only versioned opaque screen state for external memory."""
@@ -196,6 +217,7 @@ class ExternalComputeCandidateScreen:
             "schema": self.schema,
             "width": self.width,
             "evidence": self._evidence.payload(),
+            "global_evidence": self._global_evidence.payload(),
         }
 
     @classmethod
@@ -205,13 +227,22 @@ class ExternalComputeCandidateScreen:
         if payload.get("schema") != cls.schema:
             raise ValueError("compute screen schema is incompatible")
         evidence_payload = payload.get("evidence")
+        global_evidence_payload = payload.get("global_evidence")
         if not isinstance(evidence_payload, dict):
             raise TypeError("compute screen evidence must be a dictionary")
+        if not isinstance(global_evidence_payload, dict):
+            raise TypeError("compute screen global evidence must be a dictionary")
         evidence = PersistentOpaqueContextRouteEvidence.from_payload(evidence_payload)
+        global_evidence = PersistentOpaqueRouteEvidence.from_payload(
+            global_evidence_payload
+        )
         screen = cls(int(payload["width"]))
         if evidence.width != screen.width:
             raise ValueError("compute screen evidence width is incompatible")
+        if evidence.slot_count != global_evidence.slot_count:
+            raise ValueError("compute screen evidence slot counts are incompatible")
         screen._evidence = evidence
+        screen._global_evidence = global_evidence
         return screen
 
 

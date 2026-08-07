@@ -856,3 +856,11 @@ best fresh-verified binding, and grows only when all candidates fail. This
 supports mixed reuse/growth across three opaque procedures while retaining
 old states. See
 `session_records/sequence_working_memory_2026-08-02/generated_composition_candidate_reuse_opaque_three_replicated_promoted_v1_2026-08-07/`.
+
+The candidate screen now orders those fresh trials from learned-event evidence
+and stops at the first independently verified pass. The paired opaque audit
+passes two seeds: one ambiguous two-module run saves 19.0% of optimizer
+updates and verifier bits with identical behavior and retention, while the
+one-module run is correctly neutral. This promotes conditional trial-cost
+reduction, not verifier-free admission or general continual learning. See
+`session_records/sequence_working_memory_2026-08-02/generated_composition_candidate_screen_opaque_three_replicated_promoted_v1_2026-08-07/`.

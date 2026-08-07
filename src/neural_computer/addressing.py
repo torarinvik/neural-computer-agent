@@ -439,6 +439,11 @@ class PersistentOpaqueContextRouteEvidence:
             return tuple(range(self.slot_count))
         return record.evidence.preferred_order(slot_count=self.slot_count)
 
+    def has_context(self, context: torch.Tensor) -> bool:
+        """Return whether an opaque learned context has an evidence row."""
+
+        return self._find_record(context, create=False) is not None
+
     def preferred_slots(self, contexts: torch.Tensor) -> torch.Tensor:
         """Return one preferred opaque slot for each context row."""
 
