@@ -1,0 +1,205 @@
+{
+  "acquisition_mastery": {
+    "avoid1": 0.921875,
+    "choiceA": 0.71875,
+    "choiceB": 0.265625,
+    "collect1": 0.5625,
+    "dualAC": 1.0,
+    "dualAD": 0.6816799640655518,
+    "dualBC": 0.8371762633323669,
+    "forageA": 0.171875,
+    "forageB": 0.078125,
+    "intercept1": 0.203125
+  },
+  "config": {
+    "arbitration_decay": 0.99,
+    "arbitration_mu": 3.0,
+    "batch_size": 16,
+    "egocentric": false,
+    "eval_seeds": 4,
+    "event_width": 64,
+    "ewc_lambda": 1.0,
+    "feedback_width": 16,
+    "fisher_batches": 8,
+    "fragments": 24,
+    "fragments_per_variant": 2,
+    "games": "",
+    "gamma": 0.95,
+    "hidden": 32,
+    "ignorance_every": 3,
+    "ignorance_weight": 0.5,
+    "intent_width": 32,
+    "learning_rate": 0.001,
+    "oracle_selection": true,
+    "seed": 69316,
+    "steps": 24,
+    "tokens_per_fragment": 2,
+    "updates_per_game": 600
+  },
+  "conflict_groups": [
+    [
+      "choiceA",
+      "choiceB"
+    ],
+    [
+      "dualAC",
+      "dualAD",
+      "dualBC"
+    ],
+    [
+      "avoid1"
+    ],
+    [
+      "forageA",
+      "forageB"
+    ],
+    [
+      "collect1"
+    ],
+    [
+      "intercept1"
+    ]
+  ],
+  "cross_fragment_mastery": {
+    "avoid1<-forageA": 0.890625,
+    "choiceA<-choiceB": 0.1875,
+    "choiceB<-dualAC": 0.0,
+    "collect1<-intercept1": 0.4375,
+    "dualAC<-dualAD": 0.8151354789733887,
+    "dualAD<-dualBC": 0.19597089290618896,
+    "dualBC<-avoid1": 0.4066152572631836,
+    "forageA<-forageB": 0.03125,
+    "forageB<-collect1": 0.046875,
+    "intercept1<-choiceA": 0.09375
+  },
+  "final_mastery": {
+    "avoid1": {
+      "mastery": 0.921875,
+      "mean_return": -0.078125
+    },
+    "choiceA": {
+      "mastery": 0.71875,
+      "mean_return": 2.109375
+    },
+    "choiceB": {
+      "mastery": 0.3125,
+      "mean_return": 0.25
+    },
+    "collect1": {
+      "mastery": 0.359375,
+      "mean_return": 0.71875
+    },
+    "dualAC": {
+      "mastery": 1.0,
+      "mean_return": 24.0,
+      "rule_accuracy": [
+        1.0,
+        1.0
+      ],
+      "rule_engagement": [
+        11.75,
+        12.25
+      ],
+      "rules": [
+        "takeA",
+        "takeC"
+      ]
+    },
+    "dualAD": {
+      "mastery": 0.6843814849853516,
+      "mean_return": 13.96718692779541,
+      "rule_accuracy": [
+        1.0,
+        0.3688
+      ],
+      "rule_engagement": [
+        11.25,
+        11.6406
+      ],
+      "rules": [
+        "takeA",
+        "takeD"
+      ]
+    },
+    "dualBC": {
+      "mastery": 0.8187116384506226,
+      "mean_return": 13.075000762939453,
+      "rule_accuracy": [
+        0.641,
+        0.9964
+      ],
+      "rule_engagement": [
+        8.3594,
+        9.0156
+      ],
+      "rules": [
+        "takeB",
+        "takeC"
+      ]
+    },
+    "forageA": {
+      "mastery": 0.1875,
+      "mean_return": 0.234375
+    },
+    "forageB": {
+      "mastery": 0.078125,
+      "mean_return": 0.046875
+    },
+    "intercept1": {
+      "mastery": 0.203125,
+      "mean_return": -0.109375
+    }
+  },
+  "forgetting": {
+    "avoid1": 0.0,
+    "choiceA": 0.0,
+    "choiceB": -0.046875,
+    "collect1": 0.203125,
+    "dualAC": 0.0,
+    "dualAD": -0.0027015209197998047,
+    "dualBC": 0.018464624881744385,
+    "forageA": -0.015625,
+    "forageB": 0.0,
+    "intercept1": 0.0
+  },
+  "no_replay": true,
+  "order": [
+    "choiceA",
+    "choiceB",
+    "dualAC",
+    "dualAD",
+    "dualBC",
+    "avoid1",
+    "forageA",
+    "forageB",
+    "collect1",
+    "intercept1"
+  ],
+  "seed": 69316,
+  "solo_ratio": {
+    "avoid1": 0.9998644251626898,
+    "choiceA": 0.71875,
+    "choiceB": 0.3125,
+    "collect1": 0.6569926873857403,
+    "dualAC": 1.0,
+    "dualAD": 0.9976406486666931,
+    "dualBC": 1.1370994978480868,
+    "forageA": 0.4139072847682119,
+    "forageB": 0.17246136865342163,
+    "intercept1": 0.6489616613418531
+  },
+  "withheld_bank_mastery": {
+    "avoid1": 0.890625,
+    "choiceA": 0.109375,
+    "choiceB": 0.40625,
+    "collect1": 0.0625,
+    "dualAC": 0.5142539143562317,
+    "dualAD": 0.47109678387641907,
+    "dualBC": 0.5392789244651794,
+    "forageA": 0.0625,
+    "forageB": 0.09375,
+    "intercept1": 0.015625
+  },
+  "worst_forgetting": 0.203125,
+  "worst_ratio": 0.17246136865342163
+}
