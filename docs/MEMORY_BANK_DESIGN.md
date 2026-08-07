@@ -1077,3 +1077,46 @@ remaining admissible design is an explicit combiner — a trained
 operation over fetched fragments, optimised on held-out pairings — which
 is a change to what the controller DOES with the bank, not to what the
 bank stores. That is the next architectural rung, and it is a large one.
+
+**F34 (probe 54). The trained combiner does not compose either — and it
+costs acquisition. The composition line is exhausted at this scale.**
+The remaining admissible design from F33: one shared learned function
+from a fetched fragment SET to the controller's context tokens, so a
+novel pairing is merely another application of a familiar operation.
+Measured against concatenation on the compose suite, both seeds:
+
+| | training mean | c02 | c11 | c20 |
+| --- | ---: | --- | --- | --- |
+| concat 69316 | 0.42 | 0.316 v 0.350 | 0.378 v 0.332 | 0.340 v 0.333 |
+| concat 69317 | 0.57 | 0.357 v 0.350 | 0.351 v 0.364 | 0.410 v 0.337 |
+| combiner 69316 | 0.33 | 0.340 v 0.348 | 0.327 v 0.332 | 0.332 v 0.337 |
+| combiner 69317 | 0.41 | 0.341 v 0.323 | 0.393 v 0.366 | 0.322 v 0.338 |
+
+(composed vs random-bank control; chance 0.333.) Twelve held-out
+measurements across two mechanisms and two seeds, every one at chance
+and every one matching its control. The combiner additionally LOWERS
+training (0.42 -> 0.33, 0.57 -> 0.41): pooling the fetched set through a
+bottleneck discards information the raw concatenation preserved, and
+buys nothing back.
+
+Four mechanisms have now failed — imposed sharing (F16), partner
+rotation (F27), economic pressure (F33), trained combiner (F34) — and
+the honest conclusion is structural rather than a fifth mechanism.
+Composition requires the composed pairing to be *supervised* somewhere:
+every design here trained only on seen pairings and hoped an unseen one
+would fall out, including the combiner, which learned a function fitted
+to six pairings with no term rewarding generalisation to a seventh. The
+literature's protocol (MLC) supplies exactly that missing term through
+in-context study examples and query episodes, and this architecture has
+no study-phase mechanism: the event window holds fetched fragments, not
+worked examples.
+
+Standing conclusion for the roadmap. Compounding through composition is
+NOT available from the current architecture, and no amount of bank-side
+engineering will supply it. It requires either (a) a study-phase channel
+so query episodes can be posed and scored during training, or (b)
+abandoning compositional transfer as the compounding mechanism in favour
+of the one the program HAS demonstrated: super-solo transfer under
+staggered admission (F18, 3/3 seeds), where earlier games measurably
+speed later ones without any fragment recombination. (b) is the honest
+current claim; (a) is the next architecture, not the next probe.
