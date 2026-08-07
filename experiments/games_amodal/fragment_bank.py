@@ -234,8 +234,17 @@ def rollout_family(
         observation = verifier.observation()
         # F28: the game's own declared view wins; the run-level flag is
         # only the default for games that declare none.
-        view = config.view or ("crop" if egocentric == "crop" else
-                               "roll" if egocentric else "")
+        # A forced view (F30: chosen jointly for ALL games, never per
+        # game) overrides the game's declared preference.
+        forced = egocentric if isinstance(egocentric, str) else None
+        if forced == "force-none":
+            view = ""
+        elif forced in ("force-roll", "force-crop"):
+            view = forced.split("-")[1]
+        else:
+            view = config.view or (
+                "crop" if egocentric == "crop" else "roll" if egocentric else ""
+            )
         if view == "crop":
             observation = egocentric_crop(observation)
         elif view == "roll":

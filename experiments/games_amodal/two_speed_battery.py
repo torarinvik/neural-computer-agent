@@ -468,7 +468,15 @@ def main() -> None:
     parser.add_argument("--per-game-encoders", action="store_true")
     parser.add_argument("--ignorance-weight", type=float, default=0.5)
     parser.add_argument("--ignorance-every", type=int, default=3)
-    parser.add_argument("--egocentric", action="store_true")
+    parser.add_argument(
+        "--view",
+        dest="egocentric",
+        type=str,
+        default=False,
+        choices=["force-none", "force-roll", "force-crop"],
+        help="force ONE shared view for every game (F30: views must be "
+        "chosen jointly; per-game frontends absorb the skill)",
+    )
     parser.add_argument("--eval-seeds", type=int, default=4)
     parser.add_argument("--report-out", type=Path, default=None)
     args = parser.parse_args()
