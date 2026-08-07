@@ -704,17 +704,57 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         train_plant=True,
         train_fragments=True,
     )
+    # Did the anchor phase leave a plant that DEPENDS on the bank? If the
+    # anchor is masterable with the bank withheld, the plant kept the skill
+    # in its weights and phase two has an incumbent to fight (F8's blind
+    # warm-up failure). Measured before phase two so the answer cannot be
+    # confused with what phase two does.
+    anchor_report: dict[str, object] = {}
+    anchor_tokens = None
+    later_variants = train_variants
+    if args.warm_updates > 0:
+        anchor_report = {
+            "with_bank": evaluate_detail(agent, bank, singles[0], args=args),
+            "withheld": evaluate_detail(
+                agent, None, singles[0], args=args, fragments_override=None
+            ),
+        }
+        anchor_indices = bank.oracle_indices(
+            singles[0].name, args.fragments_per_variant
+        )
+        anchor_tokens = bank.tokens[anchor_indices].detach().clone()
+        if getattr(args, "exclude_anchor", False):
+            # The strict continual setting: the anchor context becomes
+            # unreachable. No rollouts, no gradients, no replay -- if it
+            # survives, it survives because nothing holding it moved.
+            later_variants = [
+                v for v in train_variants if v.name != singles[0].name
+            ]
     conflict: dict[frozenset[str], float] = {}
+    # F14 consequence: the read path is not the bottleneck -- writing a
+    # second program against an incumbent is. Freezing the plant after the
+    # anchor phase removes the incumbent problem entirely: later contexts
+    # can only enter the bank, and nothing that holds the anchor's
+    # competence is allowed to move. This is the architecture's storage
+    # rule run as an experiment rather than assumed.
     history = warm_history + train_bank(
         agent,
         bank,
-        train_variants,
+        later_variants,
         args=args,
-        train_plant=True,
+        train_plant=not getattr(args, "freeze_plant", False),
         train_fragments=True,
         seed_offset=250_000,
         conflict_out=conflict,
     )
+    if anchor_tokens is not None:
+        after = bank.tokens[
+            bank.oracle_indices(singles[0].name, args.fragments_per_variant)
+        ].detach()
+        anchor_report["tokens_unchanged"] = bool(
+            torch.equal(anchor_tokens, after)
+        )
+        anchor_report["token_drift"] = float((after - anchor_tokens).abs().max())
     train_scores = {
         v.name: evaluate_detail(agent, bank, v, args=args)
         for v in train_variants
@@ -841,6 +881,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             for key, value in vars(args).items()
             if key != "report_out"
         },
+        "anchor": anchor_report,
         "train_mastery": train_scores,
         "withheld_bank_mastery": withheld_scores,
         "decoy_bank_mastery": decoy_scores,
@@ -909,6 +950,19 @@ def main() -> None:
         action="store_true",
         help="weight the diversity penalty per pair by measured swap harm, "
         "so contexts that can share a fragment are not repelled",
+    )
+    parser.add_argument(
+        "--freeze-plant",
+        action="store_true",
+        help="after the anchor phase (--warm-updates), train ONLY the bank: "
+        "later contexts must enter as fragments, and the anchor's "
+        "competence cannot be overwritten because nothing holding it moves",
+    )
+    parser.add_argument(
+        "--exclude-anchor",
+        action="store_true",
+        help="make the anchor context unreachable after its phase (strict "
+        "continual setting: no rollouts, no gradients, no replay)",
     )
     parser.add_argument(
         "--stagger-updates",
