@@ -368,3 +368,21 @@ gradient contribution) rather than uniform interleaving. This is the same
 interference tax seen at the consolidation level (F3, and the EWC ladder's
 acquisition-headroom finding), now appearing at the context level — the
 recurring structural theme of this program.
+
+**F11 (probe 10, 2000-update replication). Budget resolves winner-take-all,
+but the plant keeps one context as a free default.** At 2000 updates seed
+69317 reached 1.000/1.000 with cross-fed collapse to 0.000/0.000 — the
+full signature on a second seed, so F10's instability was largely a
+budget artifact of joint contradictory acquisition. However the withheld
+condition was asymmetric: 0.805 for choiceA versus 0.055 for choiceB. The
+plant adopted A's policy as its default and used the fragment only to
+*override* into B. Consequence: with a shared plant and contradictory
+contexts, externalization is asymmetric by default — the first/easier
+context's knowledge stays in the weights and only the deviation is truly
+banked. Symmetric externalization requires the ignorance objective to
+actually bite (higher weight or every-update application), and the
+withheld-per-context spread is the metric that detects the asymmetry.
+This does not weaken F9's specification claim (cross-feeding is 0.000 in
+both directions on both seeds) but it bounds the storage claim: a bank
+over a plastic plant stores *differences from default*, not whole skills,
+unless ignorance pressure is strong enough to erase the default.
