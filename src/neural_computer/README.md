@@ -857,6 +857,12 @@ the twenty-key representation has nearest-neighbor cosine `0.9982` and
 effective rank `3.59`. The next implementation target is therefore a richer,
 behaviorally grounded candidate signature, not another router variant.
 
+A spatial-binding frontend control shows that separation alone is not enough:
+it raises key effective rank from `3.59` to `6.16` on the weaker seed, but
+unseen routing falls from `0.8958` to `0.8021`. The next experiment must train
+the event/key alignment or its behavioral trace jointly; simply preserving
+more frontend geometry is not a sufficient fix.
+
 The next 46-capability fourth-shift pressure test is intentionally rejected:
 late length-14 rows fail stable protection at hidden 256/8,192 updates,
 hidden 512, and an adaptive late-budget control. This is evidence for

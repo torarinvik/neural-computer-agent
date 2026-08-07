@@ -458,7 +458,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         primitive_family=args.primitive_family,
     )
     args.report_out.parent.mkdir(parents=True, exist_ok=True)
-    parent = _runtime(seed=args.seed, growth=False)
+    parent = _runtime(
+        seed=args.seed,
+        growth=False,
+        spatial_binding=args.spatial_binding_encoder,
+    )
     parent_history, parent_progress = _train_with_progress(
         parent,
         operation="forward",
@@ -826,6 +830,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         ),
         "seed": args.seed,
         "primitive_family": args.primitive_family,
+        "spatial_binding_encoder": args.spatial_binding_encoder,
         "candidate_count": args.candidate_count,
         "train_candidate_count": train_count,
         "known_candidate_count": len(known_families),
@@ -1000,6 +1005,11 @@ def main() -> None:
     parser.add_argument("--key-samples", type=int, default=16)
     parser.add_argument("--screen-hidden", type=int, default=64)
     parser.add_argument("--latent-width", type=int, default=32)
+    parser.add_argument(
+        "--spatial-binding-encoder",
+        action="store_true",
+        help="preserve coarse spatial cue binding in the frozen parent frontend",
+    )
     parser.add_argument("--learning-rate", type=float, default=3e-3)
     parser.add_argument("--torch-threads", type=int, default=None)
     args = parser.parse_args()

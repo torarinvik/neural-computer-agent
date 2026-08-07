@@ -3489,3 +3489,11 @@ effective rank is only `4.47/3.59` for twenty keys. The replicated boundary is
 therefore not promoted until upstream signatures and source mastery are fixed;
 aggregate routing is no longer accepted as sufficient evidence. See
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_per_candidate_mastery_audit_v1_2026-08-07/`.
+
+A spatial-binding frontend control improves key separation without improving
+acquisition: effective rank rises to `7.01/6.16` and worst nearest-neighbor
+cosine falls to `0.9881/0.9860`, but unseen routing falls to `0.8958/0.8021`
+and both seeds fail strict per-target mastery. The blueprint is retained as a
+diagnostic lead, while the promoted path remains unchanged until query/key
+alignment and downstream generalization improve together. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_spatial_binding_frontend_rejected_v1_2026-08-07/`.

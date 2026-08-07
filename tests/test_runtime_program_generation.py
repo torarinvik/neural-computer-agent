@@ -29,6 +29,7 @@ from experiments.parent_conditioned_artifact_bank_amodal.train import (
     _new_capability,
 )
 from experiments.working_memory_continuous.canonical_growth_pressure_test import (
+    SpatialBindingFrameEventEncoder,
     _runtime,
 )
 
@@ -99,6 +100,16 @@ def test_runtime_generated_program_renderer_supports_eight_steps() -> None:
     assert len(grammar[0]) == 8
     assert batch.query_frames.shape == (4, 4, 3, 32, 32)
     assert torch.isfinite(batch.query_frames).all()
+
+
+def test_spatial_binding_frontend_preserves_event_shape() -> None:
+    encoder = SpatialBindingFrameEventEncoder(32)
+    frames = torch.rand(4, 3, 32, 32)
+
+    events = encoder(frames)
+
+    assert events.shape == (4, 32)
+    assert torch.isfinite(events).all()
 
 
 def test_batched_retention_probes_preserve_separate_outcomes() -> None:
