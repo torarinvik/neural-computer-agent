@@ -40,10 +40,12 @@ from experiments.games_amodal.fragment_bank import (
 )
 from experiments.games_amodal.game_family import FamilyConfig
 from experiments.games_amodal.shared_controller import (
+    SHARED_SCREEN_CHANNELS,
     SharedControllerAgent,
     trainable_parameters,
 )
 from experiments.games_amodal.skill_externalization import ignorance_loss
+from experiments.games_amodal.train import GridEventEncoder
 
 # Calibrated solo ceilings (F22/F23 calibration, seed 69316). A bank claim
 # is judged against what the plant achieves with the whole model to
@@ -89,18 +91,28 @@ def conflict_groups(
     return list(groups.values())
 
 
-def plant_named_parameters(agent: SharedControllerAgent):
-    """The persistent computing plant: controller plus the shared drivers."""
+def plant_named_parameters(
+    agent: SharedControllerAgent, *, include_screen: bool = True
+):
+    """The persistent computing plant: controller plus the shared drivers.
+
+    With per-game screen encoders (F29) the screen frontend is no longer
+    cross-game infrastructure, so it leaves the protected set: a per-game
+    encoder cannot be forgotten by another game because no other game
+    ever touches it.
+    """
 
     named = [
         (f"controller.{name}", parameter)
         for name, parameter in agent.controller.named_parameters()
     ]
-    for prefix, module in (
-        ("encoder", agent.runtime.encoders["screen"]),
+    modules = [
         ("decoder", agent.runtime.output_bus.decoders["keypress"]),
         ("feedback", agent.feedback_encoders["keypress"]),
-    ):
+    ]
+    if include_screen:
+        modules.insert(0, ("encoder", agent.runtime.encoders["screen"]))
+    for prefix, module in modules:
         named.extend(
             (f"{prefix}.{name}", parameter)
             for name, parameter in module.named_parameters()
@@ -116,6 +128,7 @@ def family_fisher(
     *,
     args: argparse.Namespace,
     seed: int,
+    encoder=None,
 ) -> dict[str, torch.Tensor]:
     """Unit-mean diagonal Fisher over the plant, for one banked game.
 
@@ -137,6 +150,7 @@ def family_fisher(
             sample=True,
             gamma=args.gamma,
             egocentric=args.egocentric,
+            encoder=encoder,
         )
         log_likelihood = (
             summary["log_propensity"] * summary["mask"]
@@ -161,6 +175,7 @@ def acquire_group(
     *,
     args: argparse.Namespace,
     seed_offset: int,
+    screens: dict | None = None,
 ) -> list[dict[str, float]]:
     """One protected acquisition phase: plant + this game's fragments.
 
@@ -171,7 +186,7 @@ def acquire_group(
     demand estimate never sees penalty pressure.
     """
 
-    named = plant_named_parameters(agent)
+    named = plant_named_parameters(agent, include_screen=screens is None)
     indices = {
         c.name: bank.oracle_indices(c.name, args.fragments_per_variant)
         for c in group
@@ -181,6 +196,9 @@ def acquire_group(
         trainable_parameters([agent.controller, *agent.game_modules(agent.games[0])])
     )
     trainable.append(bank.tokens)
+    if screens is not None:
+        for config in group:
+            trainable.extend(screens[config.name].parameters())
     optimizer = torch.optim.Adam(trainable, lr=args.learning_rate)
     demand = {name: torch.zeros_like(parameter) for name, parameter in named}
     history: list[dict[str, float]] = []
@@ -205,6 +223,7 @@ def acquire_group(
             sample=True,
             gamma=args.gamma,
             egocentric=args.egocentric,
+            encoder=None if screens is None else screens[config.name],
         )
         advantage = summary["advantage"]
         assert advantage is not None
@@ -228,6 +247,7 @@ def acquire_group(
                 sample=True,
                 gamma=args.gamma,
                 egocentric=args.egocentric,
+                encoder=None if screens is None else screens[config.name],
             )
             loss = loss + args.ignorance_weight * ignorance_loss(
                 withheld["logits"], withheld["mask"]
@@ -304,6 +324,19 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         + 4,
         shared_drivers=True,
     )
+    screens = None
+    if getattr(args, "per_game_encoders", False):
+        # N encoders, one per game (the amodal design). Nothing crosses
+        # games at the frontend, so encoder choices stop coupling (F29).
+        screens = {
+            v.name: GridEventEncoder(
+                channels=SHARED_SCREEN_CHANNELS,
+                height=8,
+                width=8,
+                event_width=args.event_width,
+            )
+            for v in train_variants
+        }
     bank = FragmentBank(
         fragments=max(args.fragments, 2 * len(train_variants)),
         tokens_per_fragment=args.tokens_per_fragment,
@@ -324,6 +357,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             penalties,
             args=args,
             seed_offset=position * 100_000,
+            screens=screens,
         )
         # Score immediately after acquisition, before any later group can
         # disturb it: the difference against the final audit IS forgetting.
@@ -334,7 +368,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         }
         for member, config in enumerate(group):
             acquisition[config.name] = evaluate_detail(
-                agent, bank, config, args=args
+                agent, bank, config, args=args,
+                encoder=None if screens is None else screens[config.name],
             )["mastery"]
             fisher = family_fisher(
                 agent,
@@ -347,15 +382,23 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 named,
                 args=args,
                 seed=args.seed + 900_000 + position * 1_000 + member * 100,
+                encoder=None if screens is None else screens[config.name],
             )
             penalties.append((fisher, anchor))
 
+    def screen_for(name):
+        return None if screens is None else screens[name]
+
     final = {
-        v.name: evaluate_detail(agent, bank, v, args=args)
+        v.name: evaluate_detail(
+            agent, bank, v, args=args, encoder=screen_for(v.name)
+        )
         for v in train_variants
     }
     withheld = {
-        v.name: evaluate_detail(agent, None, v, args=args)["mastery"]
+        v.name: evaluate_detail(
+            agent, None, v, args=args, encoder=screen_for(v.name)
+        )["mastery"]
         for v in train_variants
     }
     cross = {}
@@ -368,6 +411,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             target,
             args=args,
             fragments_override=bank.fetch(chosen).detach(),
+            encoder=screen_for(target.name),
         )["mastery"]
 
     ratios = {
@@ -421,6 +465,7 @@ def main() -> None:
     parser.add_argument("--arbitration-mu", type=float, default=3.0)
     parser.add_argument("--arbitration-decay", type=float, default=0.99)
     parser.add_argument("--fisher-batches", type=int, default=8)
+    parser.add_argument("--per-game-encoders", action="store_true")
     parser.add_argument("--ignorance-weight", type=float, default=0.5)
     parser.add_argument("--ignorance-every", type=int, default=3)
     parser.add_argument("--egocentric", action="store_true")

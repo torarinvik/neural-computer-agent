@@ -212,6 +212,7 @@ def rollout_family(
     sample: bool,
     gamma: float,
     egocentric: bool = False,
+    encoder=None,
 ) -> dict[str, torch.Tensor | None]:
     verifier = FamilyVerifier(config, batch_size=batch_size, seed=seed)
     verifier.reset(seed=seed)
@@ -240,7 +241,11 @@ def rollout_family(
         elif view == "roll":
             observation = egocentric_view(observation)
         observation = pad_channels(observation, SHARED_SCREEN_CHANNELS)
-        events = [agent.runtime.encoders["screen"](observation)]
+        # F29: games sharing one screen encoder couple through it, so a
+        # per-game encoder may be supplied. The amodal design calls for N
+        # encoders; the shared driver was a convenience.
+        screen = encoder or agent.runtime.encoders["screen"]
+        events = [screen(observation)]
         if fragments is not None:
             events.extend(
                 artifact_events(fragments.reshape(-1, fragments.shape[-1]), batch_size)
@@ -706,6 +711,7 @@ def evaluate_detail(
     *,
     args: argparse.Namespace,
     fragments_override: torch.Tensor | None = None,
+    encoder=None,
 ) -> dict[str, object]:
     """Mastery plus the graded readouts a factorial suite needs.
 
@@ -745,6 +751,7 @@ def evaluate_detail(
                 sample=False,
                 gamma=args.gamma,
                 egocentric=getattr(args, "egocentric", False),
+                encoder=encoder,
             )
         scores.append(mastery(summary, config))
         returns.append(float(summary["total_reward"].mean()))

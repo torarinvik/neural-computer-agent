@@ -176,3 +176,40 @@ def test_conflict_groups_bundle_twins_and_separate_families() -> None:
     # Partition, no losses or duplicates.
     assert sum(len(g) for g in groups) == len(train)
     assert {c.name for g in groups for c in g} == {c.name for c in train}
+
+
+def test_per_game_encoders_leave_the_screen_out_of_the_protected_set() -> None:
+    """With N encoders the frontend is no longer cross-game infrastructure.
+
+    A per-game encoder cannot be forgotten by another game, because no
+    other game ever touches it, so protecting it would only cost
+    plasticity.
+    """
+
+    agent = _agent()
+    shared = dict(plant_named_parameters(agent, include_screen=True))
+    private = dict(plant_named_parameters(agent, include_screen=False))
+    assert any(name.startswith("encoder.") for name in shared)
+    assert not any(name.startswith("encoder.") for name in private)
+    # The genuinely shared infrastructure stays protected either way.
+    for prefix in ("controller.", "decoder.", "feedback."):
+        assert any(n.startswith(prefix) for n in private), prefix
+
+
+def test_per_game_encoders_are_distinct_and_used_per_game() -> None:
+    report = run(
+        _args(
+            games="choiceA,choiceB",
+            updates_per_game=2,
+            event_width=16,
+            intent_width=8,
+            feedback_width=8,
+            hidden=8,
+            fragments=8,
+            tokens_per_fragment=2,
+            per_game_encoders=True,
+            report_out=None,
+        )
+    )
+    assert report["no_replay"] is True
+    assert set(report["final_mastery"]) == {"choiceA", "choiceB"}
