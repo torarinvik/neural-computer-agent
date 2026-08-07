@@ -50,8 +50,8 @@ def twins_suite() -> tuple[list[FamilyConfig], list[FamilyConfig]]:
     """The minimal decisive bank test: two ambiguous twins, nothing else."""
 
     train = [
-        FamilyConfig(forage=1, name="forageA"),
-        FamilyConfig(forage=1, inverted=True, name="forageB"),
+        FamilyConfig(choice=1, name="choiceA"),
+        FamilyConfig(choice=1, inverted=True, name="choiceB"),
     ]
     holdout: list[FamilyConfig] = []
     return train, holdout
@@ -203,7 +203,7 @@ class FragmentBank(torch.nn.Module):
 
 
 def has_positive_source(config: FamilyConfig) -> bool:
-    if config.forage:
+    if config.forage or config.choice:
         return True
     if config.inverted:
         return False

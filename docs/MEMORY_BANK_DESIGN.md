@@ -297,3 +297,18 @@ ending the episode, so the disambiguating gradient can accumulate across
 many within-lifetime trials. Restated as a rule: for a memory bank to
 gain content, the agent must be able to *afford to be wrong* often enough
 to discover that context predicts which choice is right.
+
+**F7 (800-update budget/ignorance diagnostics). Motor difficulty drowns
+the disambiguation signal; the bank test must isolate the choice.**
+Survivable-error forage stayed flat at ~0.20 for 800 updates both with
+ignorance weight 0.5 and with it disabled (the latter *declined* to 0.11,
+the signature of policy collapse under a weak gradient) — so the failure
+was neither budget nor mechanism interference. Forage asks the plant to
+learn navigation, approach, and avoidance *before* the which-type-is-good
+bit can pay anything, and the navigation gradient dominates. Consequence:
+bank-forcing tasks must isolate the disambiguation decision from motor
+difficulty — the `choice` component places one item of each type adjacent
+to the avatar so navigation costs one step and the only learnable content
+is which type to take. General rule: when testing whether context can
+carry a bit, make everything except that bit trivial; add motor
+complexity back only after the bit is demonstrably carried.

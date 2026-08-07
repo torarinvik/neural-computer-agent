@@ -43,6 +43,11 @@ class FamilyConfig:
     # `inverted` swaps which is which, so twins render identically and only
     # context can say which to eat. Passivity scores zero, so mastery
     # requires net-positive eating; survivable mistakes keep a gradient.
+    choice: int = 0  # minimal disambiguation trial: the avatar sits at the
+    # centre with one type-A item and one type-B item on adjacent cells.
+    # Stepping onto one resolves the trial (+1 / -1 by type, `inverted`
+    # swaps which), then a fresh pair appears. Navigation is one step, so
+    # the only thing to learn is WHICH TYPE to eat — the pure bank test.
     inverted: bool = False  # SAME rendering, opposite meaning: touching a
     # positive-plane object (food/goal) is -1 and fatal. Observation alone
     # cannot reveal the objective; only fetched context can.
@@ -57,6 +62,7 @@ class FamilyConfig:
                 ("avoid", self.avoid),
                 ("navigate", int(self.navigate)),
                 ("forage", self.forage),
+                ("choice", self.choice),
             )
             if level
         )
@@ -64,9 +70,13 @@ class FamilyConfig:
     def validate(self) -> FamilyConfig:
         if not self.active():
             raise ValueError("a variant needs at least one active component")
-        if min(self.collect, self.intercept, self.avoid, self.forage) < 0:
+        if min(
+            self.collect, self.intercept, self.avoid, self.forage, self.choice
+        ) < 0:
             raise ValueError("component levels cannot be negative")
-        if max(self.collect, self.intercept, self.avoid, self.forage) > 3:
+        if max(
+            self.collect, self.intercept, self.avoid, self.forage, self.choice
+        ) > 3:
             raise ValueError("component levels above 3 are not supported")
         return self
 
@@ -178,6 +188,22 @@ class FamilyVerifier:
                 type_b.append(cell)
             self._forage_a.append(type_a)
             self._forage_b.append(type_b)
+            if config.choice:
+                self._avatar[row] = (self.height // 2, self.width // 2)
+                self._deal_choice(row)
+
+    def _deal_choice(self, row: int) -> None:
+        """Place one type-A and one type-B item adjacent to the avatar."""
+
+        centre = (self.height // 2, self.width // 2)
+        self._avatar[row] = centre
+        neighbours = [
+            (centre[0] + delta[0], centre[1] + delta[1]) for delta in _DELTAS
+        ]
+        first = self._rand(len(neighbours))
+        second = (first + 1 + self._rand(len(neighbours) - 1)) % len(neighbours)
+        self._forage_a[row] = [neighbours[first]]
+        self._forage_b[row] = [neighbours[second]]
 
     def observation(self) -> torch.Tensor:
         """Render [batch, 3, h, w]: avatar, positive objects, negatives."""
@@ -249,6 +275,14 @@ class FamilyVerifier:
             good, bad = self._forage_a[row], self._forage_b[row]
             if self.config.inverted:
                 good, bad = bad, good
+            if self.config.choice:
+                if target in good:
+                    reward[row] += 1.0
+                    self._deal_choice(row)
+                elif target in bad:
+                    reward[row] -= 1.0
+                    self._deal_choice(row)
+                continue
             if target in good:
                 good.remove(target)
                 reward[row] += 1.0
