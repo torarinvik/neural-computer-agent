@@ -221,3 +221,50 @@ def test_battery_oracle_assignments_stay_disjoint_with_enough_fragments() -> Non
         indices = set(bank.oracle_indices(name, 2))
         assert not (indices & seen)
         seen |= indices
+
+
+def test_practice_map_gives_each_rule_interchangeable_fragments() -> None:
+    from experiments.games_amodal.fragment_bank import dual_suite, practice_map
+
+    train, holdout = dual_suite()
+    mapping = practice_map(train + holdout, partners=3)
+    by_name = {c.name: c for c in train + holdout}
+    for name, rows in mapping.items():
+        assert len(rows) == len(by_name[name].rules())
+        assert all(len(row) == 3 for row in rows)
+        # Alternatives for one rule must be disjoint from another rule's.
+        assert len(set(rows[0]) & set(rows[1])) == 0
+    # Contexts sharing a rule share that rule's whole candidate set.
+    assert mapping["dualAC"][0] == mapping["dualAD"][0]  # both takeA
+    assert mapping["dualAC"][1] == mapping["dualBC"][1]  # both takeC
+    assert mapping["dualBD"][0] == mapping["dualBC"][0]  # both takeB
+
+
+def test_practice_draw_varies_partners_but_stays_in_the_rule_set() -> None:
+    from experiments.games_amodal.fragment_bank import (
+        draw_practice,
+        dual_suite,
+        practice_map,
+    )
+
+    train, _ = dual_suite()
+    rows = practice_map(train, partners=4)["dualAC"]
+    torch.manual_seed(0)
+    draws = {tuple(draw_practice(rows)) for _ in range(60)}
+    assert len(draws) > 1  # partners actually change
+    for draw in draws:
+        assert draw[0] in rows[0] and draw[1] in rows[1]
+
+
+def test_bank_practice_indices_and_canonical_first() -> None:
+    from experiments.games_amodal.fragment_bank import dual_suite, practice_map
+
+    train, _ = dual_suite()
+    bank = _bank([c.name for c in train], fragments=16)
+    assert bank.practice_indices("dualAC") is None  # unset by default
+    bank.set_practice_map(practice_map(train, partners=2))
+    assert bank.practice_first("dualAC") == [
+        row[0] for row in practice_map(train, partners=2)["dualAC"]
+    ]
+    drawn = bank.practice_indices("dualAC")
+    assert drawn is not None and len(drawn) == 2

@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from itertools import combinations, permutations
+from itertools import combinations, permutations, product
 from pathlib import Path
 
 import torch
@@ -96,6 +96,52 @@ def factorial_oracle_map(
             indices.append(rule_index[rule])
         mapping[config.name] = indices
     return mapping
+
+
+def practice_map(
+    variants: list[FamilyConfig], *, partners: int
+) -> dict[str, list[list[int]]]:
+    """Several interchangeable fragments per sub-rule (compositional practice).
+
+    F16 measured the composition failure: a fragment trained inside two
+    contexts still would not carry its rule into a novel pairing. The
+    literature's diagnosis (convergent finding 2) is co-adaptation — a
+    fragment always seen beside the same partner never has to encode its
+    rule independently, because the pair jointly encodes the context.
+
+    Minting `partners` interchangeable fragments per rule and drawing a
+    fresh combination every rollout removes the habitual partner: each
+    fragment meets many partners, so the only thing it can reliably
+    contribute is its own rule. This is the MLC lever (constantly pose
+    novel recombinations) applied to an opaque bank.
+
+    Returns, per variant, one candidate list per rule.
+    """
+
+    if partners < 1:
+        raise ValueError("compositional practice needs at least one partner")
+    slots: dict[str, list[int]] = {}
+    mapping: dict[str, list[list[int]]] = {}
+    for config in variants:
+        rows = []
+        for rule in config.rules():
+            if rule not in slots:
+                start = len(slots) * partners
+                slots[rule] = list(range(start, start + partners))
+            rows.append(list(slots[rule]))
+        mapping[config.name] = rows
+    return mapping
+
+
+def draw_practice(
+    candidates: list[list[int]], *, generator: torch.Generator | None = None
+) -> list[int]:
+    """One fragment per rule, sampled fresh so partners keep changing."""
+
+    return [
+        row[int(torch.randint(len(row), (1,), generator=generator))]
+        for row in candidates
+    ]
 
 
 def battery_suite() -> tuple[list[FamilyConfig], list[FamilyConfig]]:
@@ -288,6 +334,7 @@ class FragmentBank(torch.nn.Module):
         # room for outcome-driven reassignment.
         self.selection_init_scale = float(selection_init_scale)
         self._oracle_map: dict[str, list[int]] = {}
+        self._practice_map: dict[str, list[list[int]]] = {}
         self.selection_logits = torch.nn.ParameterDict(
             {
                 name: torch.nn.Parameter(
@@ -307,6 +354,29 @@ class FragmentBank(torch.nn.Module):
         """
 
         self._oracle_map = {name: list(v) for name, v in mapping.items()}
+
+    def set_practice_map(self, mapping: dict[str, list[list[int]]]) -> None:
+        """Install interchangeable per-rule candidates (see `practice_map`)."""
+
+        self._practice_map = {
+            name: [list(row) for row in rows] for name, rows in mapping.items()
+        }
+
+    def practice_indices(
+        self, name: str, *, generator: torch.Generator | None = None
+    ) -> list[int] | None:
+        """A fresh partner combination for this variant, or None if unset."""
+
+        rows = self._practice_map.get(name)
+        if rows is None:
+            return None
+        return draw_practice(rows, generator=generator)
+
+    def practice_first(self, name: str) -> list[int] | None:
+        """The canonical combination — deterministic, for evaluation."""
+
+        rows = self._practice_map.get(name)
+        return None if rows is None else [row[0] for row in rows]
 
     def oracle_indices(self, name: str, k: int) -> list[int]:
         """Fixed fragments per variant (no selection learning).
@@ -486,7 +556,13 @@ def train_bank(
         else:
             config = active[update % len(active)]
         oracle_phase = update < getattr(args, "oracle_updates", 0)
-        if getattr(args, "oracle_selection", False) or oracle_phase:
+        practice = bank.practice_indices(config.name)
+        if practice is not None:
+            # Compositional practice: a fresh partner combination every
+            # update, so no fragment can lean on a habitual partner.
+            chosen = practice
+            selection_log_prob = torch.zeros(())
+        elif getattr(args, "oracle_selection", False) or oracle_phase:
             chosen = bank.oracle_indices(
                 config.name, args.fragments_per_variant
             )
@@ -634,7 +710,10 @@ def evaluate_detail(
         seed = args.seed + 10_000 + index
         fragments = fragments_override
         if fragments is None and bank is not None:
-            if getattr(args, "oracle_selection", False):
+            practice = bank.practice_first(config.name)
+            if practice is not None:
+                chosen = practice
+            elif getattr(args, "oracle_selection", False):
                 chosen = bank.oracle_indices(
                     config.name, args.fragments_per_variant
                 )
@@ -768,6 +847,17 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             raise ValueError("factorial oracle needs variants that declare rules")
         bank.set_oracle_map(
             {v.name: rule_map[v.name] for v in train_variants}
+        )
+    practice_partners = int(getattr(args, "practice_partners", 0) or 0)
+    practice_all = {}
+    if practice_partners > 0:
+        if not all(v.rules() for v in train_variants):
+            raise ValueError("compositional practice needs declared rules")
+        practice_all = practice_map(
+            train_variants + holdout_variants, partners=practice_partners
+        )
+        bank.set_practice_map(
+            {v.name: practice_all[v.name] for v in train_variants}
         )
     if args.suite == "micro":
         singles = [v for v in train_variants if len(v.active()) == 1]
@@ -953,9 +1043,34 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         random_adapted = evaluate_variant(
             agent, random_bank, config, args=args
         )
+        # Compositional practice makes a stronger claim testable: if each
+        # fragment carries its rule independently, then EVERY combination
+        # of the held-out rules' fragments should work, not just one. The
+        # spread across combinations is the co-adaptation measurement.
+        practice_combinations = None
+        if practice_all and config.name in practice_all:
+            rows = practice_all[config.name]
+            if max(max(row) for row in rows) < bank.tokens.shape[0]:
+                scores = {}
+                for combo in product(*rows):
+                    scores["+".join(map(str, combo))] = evaluate_variant(
+                        agent,
+                        None,
+                        config,
+                        args=args,
+                        fragments_override=bank.fetch(list(combo)).detach(),
+                    )
+                values = list(scores.values())
+                practice_combinations = {
+                    "per_combination": scores,
+                    "mean": sum(values) / len(values),
+                    "worst": min(values),
+                    "spread": max(values) - min(values),
+                }
         holdout_report[config.name] = {
             "zero_shot": zero_shot,
             "composed_from_trained_fragments": composed,
+            "composed_all_partner_combinations": practice_combinations,
             "ideal_fragments": ideal,
             "adapted_selector_only": adapted,
             "adapted_over_random_bank": random_adapted,
@@ -1006,6 +1121,14 @@ def main() -> None:
         type=str,
         default="micro",
         choices=["micro", "twins", "dual", "battery"],
+    )
+    parser.add_argument(
+        "--practice-partners",
+        type=int,
+        default=0,
+        help="mint N interchangeable fragments per sub-rule and draw a "
+        "fresh combination each update, so fragments cannot co-adapt with "
+        "a habitual partner (the F16 composition failure)",
     )
     parser.add_argument(
         "--egocentric",
