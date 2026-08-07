@@ -40,6 +40,8 @@ def _args(**overrides) -> argparse.Namespace:
         "arbitration_mu": 3.0,
         "arbitration_decay": 0.99,
         "fisher_batches": 2,
+        "ignorance_weight": 0.5,
+        "ignorance_every": 3,
         "egocentric": False,
         "eval_seeds": 1,
     }

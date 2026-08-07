@@ -43,6 +43,7 @@ from experiments.games_amodal.shared_controller import (
     SharedControllerAgent,
     trainable_parameters,
 )
+from experiments.games_amodal.skill_externalization import ignorance_loss
 
 # Calibrated solo ceilings (F22/F23 calibration, seed 69316). A bank claim
 # is judged against what the plant achieves with the whole model to
@@ -168,6 +169,28 @@ def acquire_game(
         assert advantage is not None
         terms = advantage * summary["log_propensity"] * summary["mask"]
         loss = -terms.sum() / terms.shape[0]
+        # F9/F11: without ignorance pressure the plant keeps the FIRST
+        # context's rule as a weight-level default. Consolidation then
+        # locks that default in, and a later contradictory twin cannot
+        # acquire at all -- measured as choiceA 1.00 / choiceB 0.06. Push
+        # the bank-free policy toward uniform so the rule has to live in
+        # the fragments, which is the architecture's storage rule stated
+        # as a training objective.
+        if args.ignorance_weight > 0.0 and update % args.ignorance_every == 0:
+            withheld = rollout_family(
+                agent,
+                config,
+                None,
+                batch_size=args.batch_size,
+                steps=max(8, args.steps // 4),
+                seed=args.seed + seed_offset + 500_000 + update,
+                sample=True,
+                gamma=args.gamma,
+                egocentric=args.egocentric,
+            )
+            loss = loss + args.ignorance_weight * ignorance_loss(
+                withheld["logits"], withheld["mask"]
+            )
         release = torch.zeros(())
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
@@ -348,6 +371,8 @@ def main() -> None:
     parser.add_argument("--arbitration-mu", type=float, default=3.0)
     parser.add_argument("--arbitration-decay", type=float, default=0.99)
     parser.add_argument("--fisher-batches", type=int, default=8)
+    parser.add_argument("--ignorance-weight", type=float, default=0.5)
+    parser.add_argument("--ignorance-every", type=int, default=3)
     parser.add_argument("--egocentric", action="store_true")
     parser.add_argument("--eval-seeds", type=int, default=4)
     parser.add_argument("--report-out", type=Path, default=None)
