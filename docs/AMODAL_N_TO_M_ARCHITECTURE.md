@@ -3461,3 +3461,13 @@ screen is immutable, logical candidate count is preserved, and only an
 accepted candidate compacts physical extension modules. This establishes the
 safe compaction contract, not behavioral consolidation itself: a learned
 replacement still needs a fresh-outcome audit before adoption.
+
+The first behavior-level consolidation audit is rejected. A four-candidate
+replacement for two two-candidate stages was trained from fresh scalar
+outcomes plus source-route distillation, but it failed strict repeated
+per-candidate retention on both seeds. One seed also showed that the source
+bank itself had two logical candidates at `0.0000` per-target retention, so
+compaction cannot repair upstream mastery. A naïve copied-stage replacement
+was rejected on both seeds. This keeps the compaction contract while rejecting
+the current learned replacement path; evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_consolidation_rejected_v1_2026-08-07/`.
