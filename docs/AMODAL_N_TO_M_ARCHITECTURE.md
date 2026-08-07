@@ -3666,3 +3666,17 @@ verifier bits, and 1,469,568 logical lifetimes per seed. This supersedes the
 prior cost boundary but remains bounded external page addressing. Evidence is
 in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_append_token_overlay_64_promoted_v2_2026-08-07/`.
+
+Repeated growth now passes a two-generation audit. Thirty source candidates
+remain in three normalized pages; two independent append generations add 18
+candidates each in nine raw pages, for 66 candidates and 21 pages total. Each
+generation has its own token-preserving router trained only on its own scalar
+verifier outcomes, and inference cascades source → generation 1 → generation 2
+on failure. Both seeds pass strict `1.0000` candidate/page and per-target/
+per-page mastery, full permutation, generation-local shuffled nulls, frozen
+source state, unchanged controller, no unresolved rows, and zero replay. Each
+run uses 14,944 optimizer updates, 1,544,448 verifier bits, and 1,544,064
+logical lifetimes. This promotes bounded repeated external growth, not
+unrestricted memory growth, consolidation/compression, or general continual
+learning. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_two_generations_66_promoted_v1_2026-08-07/`.

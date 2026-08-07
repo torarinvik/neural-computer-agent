@@ -959,6 +959,14 @@ verifier-fallback, and zero-replay controls. This costs 8,768 optimizer updates
 and 1,469,952 verifier bits per seed. See the superseding record:
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_append_token_overlay_64_promoted_v2_2026-08-07/`.
 
+The overlay also survives two append generations: 30 source candidates plus
+two independent 18-candidate generations reach strict `1.0000` across 66
+candidates and 21 pages on both seeds. Each generation uses its own scalar-
+outcome-trained token router; verifier failure cascades from source to the
+later generation. The audit passes permutation, generation-local shuffled
+nulls, frozen source/controller, no unresolved rows, and zero replay. See
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_two_generations_66_promoted_v1_2026-08-07/`.
+
 The external boundary now includes an appendable, independently freezeable
 `LearnedOpaqueCandidateKeyMemory`. Its first outcome-trained update policies
 are rejected: joint base/key updates cause interference, while extension-only
