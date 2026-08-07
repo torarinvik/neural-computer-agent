@@ -26,7 +26,7 @@ def test_external_register_machine_has_one_shared_interpreter_and_variable_progr
     machine = _machine()
 
     assert machine.configuration()["schema"] == (
-        "neural-computer.external-register.v1"
+        "neural-computer.external-register.v2"
     )
     assert machine.configuration()["instruction_count"] == 2
     assert machine.configuration()["execution"] == (

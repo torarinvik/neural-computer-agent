@@ -2463,12 +2463,19 @@ serial composition, exposing a whole-function latent-code shortcut. The
 default is now an explicitly factorized transition. In a fixed-codebook
 mechanistic follow-up, separate external decoders retained both primitives at
 `1.0000` and a fresh decoder reached `1.0000` on the serial composition. This
-is a signal, not a promotion: the next required audit uses valid rendered
-amodal events against the current whole-program capability bank with fresh,
-reward-shuffled, missing-evidence, exact-reload, corruption, and frozen-core
-controls. The rejected and positive diagnostics are archived in
+was a signal, not a promotion. The subsequent rendered-event audit added a
+recurrent external context so every active event is ingested before
+register-only execution. Across two seeds, reverse retention was
+`0.9844/0.9688`, composition was `0.9844/0.9805`, reward-shuffled composition
+was `0.4336/0.2891`, and matched fresh composition was `0.9492/0.8750`; exact
+reload and frozen-parent controls passed. This remains a signal, not a
+promotion: stable-prefix bits, missing-evidence, corruption, and a full
+fresh-control learning curve are still required. The rejected and positive
+diagnostics are archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_interpreter_composition_rejected_v1_2026-08-07/` and
 `session_records/sequence_working_memory_2026-08-02/external_register_interpreter_factorized_composition_signal_v1_2026-08-07/`.
+The rendered replication is archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_rendered_factorized_composition_replicated_signal_v1_2026-08-07/`.
 
 ## Unseen external computation and multi-parent retention (2026-08-06)
 

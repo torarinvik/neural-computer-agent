@@ -21,7 +21,7 @@ from torch import nn
 
 from .interface import IntentEvent
 
-EXTERNAL_REGISTER_SCHEMA = "neural-computer.external-register.v1"
+EXTERNAL_REGISTER_SCHEMA = "neural-computer.external-register.v2"
 EXTERNAL_REGISTER_INSTRUCTION_SCHEMA = (
     "neural-computer.external-register-instruction.v1"
 )
@@ -32,6 +32,7 @@ class ExternalRegisterState:
     """External working state owned by the register interpreter."""
 
     register: torch.Tensor
+    context: torch.Tensor
     initialized: torch.Tensor
 
     def validate(
@@ -39,19 +40,29 @@ class ExternalRegisterState:
         *,
         batch_size: int,
         register_width: int,
+        context_width: int,
     ) -> ExternalRegisterState:
         if self.register.ndim != 2 or self.register.shape != (
             batch_size,
             register_width,
         ):
             raise ValueError("external register has the wrong shape")
+        if self.context.ndim != 2 or self.context.shape != (
+            batch_size,
+            context_width,
+        ):
+            raise ValueError("external register context has the wrong shape")
         if self.initialized.shape != (batch_size,):
             raise ValueError("external register initialization mask has the wrong shape")
         if self.initialized.dtype is not torch.bool:
             raise ValueError("external register initialization mask must be boolean")
         if self.initialized.device != self.register.device:
             raise ValueError("external register state must share a device")
-        if not bool(torch.isfinite(self.register).all()):
+        if self.context.device != self.register.device:
+            raise ValueError("external register context must share a device")
+        if not bool(torch.isfinite(self.register).all()) or not bool(
+            torch.isfinite(self.context).all()
+        ):
             raise ValueError("external register must contain only finite values")
         return self
 
@@ -93,11 +104,11 @@ class ExternalRegisterInstruction(nn.Module):
 class ExternalCapabilityRegisterMachine(nn.Module):
     """Execute variable-length external instruction data on one register.
 
-    The input encoder is the machine's learned read boundary from the opaque
-    controller intention and standardized event/feedback record. Once a
-    register has been initialized, instructions operate only on the register
-    and their opaque code vectors. Consequently a downstream instruction
-    cannot bypass composition by rereading a raw event.
+    The recurrent context encoder reads every standardized event,
+    feedback record, and opaque controller intention. It writes that context
+    into the external working register once per active tick. Instructions
+    then operate only on the register and their opaque code vectors, so a
+    downstream instruction cannot bypass composition by rereading a raw event.
     """
 
     def __init__(
@@ -109,6 +120,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         instruction_width: int,
         *,
         interpreter_hidden: int = 64,
+        context_width: int | None = None,
         operator_mode: str = "factorized_low_rank",
         operator_rank: int = 8,
         instructions: Iterable[ExternalRegisterInstruction] = (),
@@ -126,6 +138,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             raise ValueError("external register dimensions must be positive")
         if operator_mode not in ("factorized_low_rank", "unconstrained_mlp"):
             raise ValueError("unsupported external register operator mode")
+        if context_width is not None and context_width < 1:
+            raise ValueError("context width must be positive")
         members = tuple(instructions)
         if any(
             instruction.instruction_width != instruction_width
@@ -138,14 +152,24 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         self.register_width = int(register_width)
         self.instruction_width = int(instruction_width)
         self.interpreter_hidden = int(interpreter_hidden)
+        self.context_width = int(
+            interpreter_hidden if context_width is None else context_width
+        )
         self.operator_mode = operator_mode
         self.operator_rank = int(operator_rank)
         seed_width = self.event_width + self.action_width + 2 + self.intention_width
         self.input_encoder = nn.Sequential(
             nn.Linear(seed_width, interpreter_hidden),
             nn.GELU(),
+        )
+        self.context_recurrent = nn.GRUCell(interpreter_hidden, self.context_width)
+        write_width = self.context_width + register_width
+        self.register_writer = nn.Sequential(
+            nn.Linear(write_width, interpreter_hidden),
+            nn.GELU(),
             nn.Linear(interpreter_hidden, register_width),
         )
+        self.register_write_gate = nn.Linear(write_width, 1)
         if operator_mode == "factorized_low_rank":
             self.operator_left = nn.Linear(
                 instruction_width,
@@ -189,10 +213,11 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "register_width": self.register_width,
             "instruction_width": self.instruction_width,
             "interpreter_hidden": self.interpreter_hidden,
+            "context_width": self.context_width,
             "operator_mode": self.operator_mode,
             "operator_rank": self.operator_rank,
             "instruction_count": len(self.instructions),
-            "state": "external_working_register_v1",
+            "state": "external_working_register_with_recurrent_context_v2",
             "execution": "shared_interpreter_serial_instruction_chain_v1",
             "downstream_input": "preceding_register_only_v1",
         }
@@ -218,6 +243,12 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             register=torch.zeros(
                 batch_size,
                 self.register_width,
+                device=device,
+                dtype=dtype,
+            ),
+            context=torch.zeros(
+                batch_size,
+                self.context_width,
                 device=device,
                 dtype=dtype,
             ),
@@ -253,6 +284,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         state.validate(
             batch_size=event.shape[0],
             register_width=self.register_width,
+            context_width=self.context_width,
         )
         for name, value in (
             ("event", event),
@@ -263,7 +295,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             if not bool(torch.isfinite(value).all()):
                 raise ValueError(f"{name} must contain only finite values")
 
-    def _seed_register(
+    def _advance_context(
         self,
         *,
         event: torch.Tensor,
@@ -271,6 +303,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         outcome: torch.Tensor,
         intention: IntentEvent,
         present: torch.Tensor,
+        state: ExternalRegisterState,
     ) -> torch.Tensor:
         token = torch.cat(
             (
@@ -282,7 +315,25 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             ),
             dim=-1,
         )
-        return self.input_encoder(token)
+        encoded = self.input_encoder(token)
+        context = self.context_recurrent(encoded, state.context)
+        return torch.where(present.unsqueeze(-1), context, state.context)
+
+    def _write_context_to_register(
+        self,
+        *,
+        register: torch.Tensor,
+        context: torch.Tensor,
+        present: torch.Tensor,
+    ) -> torch.Tensor:
+        features = torch.cat((context, register), dim=-1)
+        proposal = self.register_writer(features)
+        gate = torch.sigmoid(self.register_write_gate(features))
+        return torch.where(
+            present.unsqueeze(-1),
+            register + gate * proposal,
+            register,
+        )
 
     def execute(
         self,
@@ -367,25 +418,36 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             state=state,
             present=present,
         )
-        active = present.unsqueeze(-1)
-        seed = self._seed_register(
+        context = self._advance_context(
             event=event,
             action=action,
             outcome=outcome,
             intention=intention,
             present=present,
+            state=state,
         )
         register = torch.where(
             state.initialized.unsqueeze(-1),
-            state.register,
-            torch.where(active, seed, state.register),
+            self._write_context_to_register(
+                register=state.register,
+                context=context,
+                present=present,
+            ),
+            torch.where(
+                present.unsqueeze(-1),
+                self.register_writer(
+                    torch.cat((context, state.register), dim=-1)
+                ),
+                state.register,
+            ),
         )
         selected = self.instructions if instructions is None else tuple(instructions)
         for instruction in selected:
             updated = self.execute(register, instruction)
-            register = torch.where(active, updated, register)
+            register = torch.where(present.unsqueeze(-1), updated, register)
         return register, ExternalRegisterState(
             register=register,
+            context=context,
             initialized=state.initialized | present,
         )
 
@@ -400,7 +462,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         present: torch.Tensor | None = None,
         instructions: Iterable[ExternalRegisterInstruction] | None = None,
     ) -> tuple[IntentEvent, ExternalRegisterState]:
-        """Seed, execute memory-side instructions, and return an intention."""
+        """Read context, write the register, execute, and return an intention."""
 
         register, next_state = self.step_register(
             event=event,
