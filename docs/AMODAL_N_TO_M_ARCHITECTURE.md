@@ -3409,3 +3409,16 @@ control fails seed `69317` at `0.6667` and needed 128 updates per stage for a
 two-seed promotion. This promotes a 50% acquisition-cost reduction without
 retaining blind inherited weights. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_selective_query_prior_promoted_v1_2026-08-07/`.
+
+The same selective-prior boundary was then extended to three sequential
+singleton stages. At 64 calibration updates per stage, both seeds fail the
+strict unseen-acquisition gate (`0.3333/0.6667`); at 128, one seed passes and
+one fails (`0.8125/0.7396`). At 256, both seeds pass all gates with `1.0000`
+unseen routing, known-context retention, stage-local permutation, reload,
+frozen-core, reward-shuffled, and zero-replay controls. The matched fresh
+three-stage control also passes both seeds at 256, so this promotes replicated
+three-stage bounded append growth but does not extend the selective prior's
+positive efficiency claim to three stages. Stage-wise calibration/sample
+efficiency is now the bottleneck as sequential depth increases. Evidence and
+the rejected lower-budget controls are in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_append_only_three_stage_boundary_v1_2026-08-07/`.

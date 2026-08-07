@@ -801,6 +801,14 @@ updates per stage, while fresh initialization fails one matched seed at that
 budget. Candidate-key and matching state remain fresh. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_selective_query_prior_promoted_v1_2026-08-07/`.
 
+Three sequential singleton append stages now pass both seeds at 256
+calibration updates per stage with the selective prior, while 64 fails both
+seeds and 128 fails one. A matched fresh control also passes at 256, so this
+is replicated bounded three-stage growth rather than a new three-stage prior
+efficiency claim. The immediate bottleneck is stage-wise calibration cost as
+depth grows. Evidence, accounting, and lower-budget controls are in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_append_only_three_stage_boundary_v1_2026-08-07/`.
+
 The next 46-capability fourth-shift pressure test is intentionally rejected:
 late length-14 rows fail stable protection at hidden 256/8,192 updates,
 hidden 512, and an adaptive late-budget control. This is evidence for
