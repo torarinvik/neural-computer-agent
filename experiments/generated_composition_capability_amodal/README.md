@@ -477,6 +477,23 @@ opaque-rule family, not arbitrary program induction or general continual
 learning. Evidence and accounting are archived in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_opaque_rule_sequential_slot_growth_four_source_runtime_generated_replicated_promoted_v1_2026-08-07/`.
 
+## Runtime-generated strict growth to five procedures (2026-08-07)
+
+The same runtime-generated opaque family now passes four sequential staged
+additions. With six generated depth-eight procedures, both seeds retained all
+five source aliases after reload and admitted the sixth target into a new
+physical row at `1.0000`. Source reload behavior was
+`1.0000/0.9961/1.0000/0.9844/0.9375` and
+`1.0000/0.9844/1.0000/0.9883/0.9375`; frozen-core, reversal/recovery,
+corruption, exact-reload, and zero-replay gates passed.
+
+The final isolated payload was `1,677,280` bytes, confirming linear external
+growth rather than unverified weight sharing. This is a bounded capacity
+result; routing under an unbounded bank, learned compression, arbitrary new
+computation, and general continual learning remain open. Evidence and
+accounting are archived in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_opaque_rule_sequential_slot_growth_five_source_runtime_generated_replicated_promoted_v1_2026-08-07/`.
+
 ## Strict isolated growth to four opaque procedures (2026-08-07)
 
 The strict slot-binding correction now scales from three to four
