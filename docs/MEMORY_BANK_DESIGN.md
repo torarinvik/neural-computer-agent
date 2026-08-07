@@ -406,3 +406,22 @@ nothing to learn from. Generalised: in a bank with both learned content
 and learned addressing, one side must be held still long enough for the
 other to become informative; simultaneous free optimisation of content,
 addressing, and policy is a three-way deadlock (cf. F5).
+
+**F13 (probe 13). Oracle-to-learned handover closes the loop: a
+self-organizing bank.** Distinct peaked selection init (F12) broke
+fragment-blindness but not the winner-take-all (0.242/0.781). Staging the
+*addressing* did: 1200 updates with oracle-driven selection — during
+which the learned selector is trained by KL divergence to imitate the
+oracle's assignment — followed by 1200 updates with the selector in full
+control. Result: choiceA 1.000 and choiceB 1.000, withheld 0.188/0.445,
+noise decoy 0.219/0.219, cross-fed **0.000/0.000**, and the learned
+selector held a disjoint assignment ([1,2] vs [4,5]) on its own. The F11
+default-context asymmetry also largely resolved (withheld A: 0.805 ->
+0.188). The imitation term is essential: without it, releasing control
+hands the plant a fresh random assignment and destroys what the oracle
+phase built. Consequence: the working recipe for a bank with learned
+content AND learned addressing is *scaffolded addressing* — hold the
+assignment fixed while the read path forms, transfer it into the selector
+by imitation, then release. Nothing in the deployed system depends on
+privileged information; the oracle is a training schedule, not a runtime
+component.
