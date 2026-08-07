@@ -3534,3 +3534,10 @@ in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_naive_key_adaptation_rejected_v1_2026-08-07/`
 and
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_extension_key_memory_rejected_v1_2026-08-07/`.
+
+The next capacity rung—26 candidates with 12 unseen rows across six append
+stages—still acquires every unseen candidate at `1.0000/1.0000`, but source
+known routing falls to `0.9271/0.7500` and strict per-target mastery fails on
+both seeds. The 26-candidate boundary is therefore source-screen capacity and
+interference limited, not append-limited. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_bank26_six_stage_1024_rejected_v1_2026-08-07/`.

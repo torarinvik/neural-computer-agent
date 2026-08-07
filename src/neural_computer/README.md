@@ -887,6 +887,11 @@ are rejected: joint base/key updates cause interference, while extension-only
 updates preserve behavior but do not beat static keys. The contract is useful
 for future behavioral memory, but no address-update policy is promoted yet.
 
+At the next capacity rung, 26 candidates across six append stages still acquire
+all unseen rows, but the source screen loses strict mastery (`0.9271/0.7500`
+known routing). This is the current capacity boundary: source interference
+must be solved before claiming scalable continual growth.
+
 The next 46-capability fourth-shift pressure test is intentionally rejected:
 late length-14 rows fail stable protection at hidden 256/8,192 updates,
 hidden 512, and an adaptive late-budget control. This is evidence for
