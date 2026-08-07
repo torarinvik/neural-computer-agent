@@ -97,6 +97,37 @@ def factorial_oracle_map(
     return mapping
 
 
+def battery_suite() -> tuple[list[FamilyConfig], list[FamilyConfig]]:
+    """Quantity first: every fast-learnable simple context at once.
+
+    The generalization question changes character with scale — many
+    contexts on one plant is a different regime from three. Each game is
+    deliberately tiny (one component, level 1) so iteration stays fast;
+    complexity is added only after the architecture survives quantity.
+    `dualBD` is held out as the standing novel-recombination probe.
+
+    Membership is calibrated, not aspirational: solo ceilings at the fast
+    budget (300 updates, batch 16, steps 24, seed 69316) are choice 1.00,
+    dualAC 1.00, dualAD 0.69, dualBC 0.72, avoid 0.92 — but forage
+    0.05-0.08 and collect 0.02. The latter test motor acquisition, not
+    memory, and a transfer ratio over a near-zero denominator is noise;
+    they rejoin when budgets grow.
+    """
+
+    train = [
+        FamilyConfig(choice=1, name="choiceA"),
+        FamilyConfig(choice=1, inverted=True, name="choiceB"),
+        FamilyConfig(dual=1, name="dualAC"),
+        FamilyConfig(dual=1, inverted2=True, name="dualAD"),
+        FamilyConfig(dual=1, inverted=True, name="dualBC"),
+        FamilyConfig(avoid=1, name="avoid1"),
+    ]
+    holdout = [
+        FamilyConfig(dual=1, inverted=True, inverted2=True, name="dualBD"),
+    ]
+    return train, holdout
+
+
 def micro_suite() -> tuple[list[FamilyConfig], list[FamilyConfig]]:
     """Tiny crude mini-games: four singles, two training pairs, one holdout."""
 
@@ -683,7 +714,12 @@ def overlap_report(
 
 def run(args: argparse.Namespace) -> dict[str, object]:
     torch.manual_seed(args.seed)
-    suites = {"micro": micro_suite, "twins": twins_suite, "dual": dual_suite}
+    suites = {
+        "micro": micro_suite,
+        "twins": twins_suite,
+        "dual": dual_suite,
+        "battery": battery_suite,
+    }
     train_variants, holdout_variants = suites[args.suite]()
     agent = SharedControllerAgent(
         event_width=args.event_width,
@@ -811,7 +847,18 @@ def run(args: argparse.Namespace) -> dict[str, object]:
 
     # Every ordered pair, not just the twins: with factorial contexts the
     # informative signal is GRADED. A source sharing one rule with the
-    # target should leave that rule intact and break the other.
+    # target should leave that rule intact and break the other. Large
+    # batteries cap the audit (--cross-pairs sources per target, rotating
+    # neighbours) so iteration speed survives quantity.
+    cross_pairs = list(permutations(train_variants, 2))
+    limit = int(getattr(args, "cross_pairs", 0) or 0)
+    if limit > 0:
+        count = len(train_variants)
+        cross_pairs = [
+            (train_variants[i], train_variants[(i + offset) % count])
+            for i in range(count)
+            for offset in range(1, min(limit, count - 1) + 1)
+        ]
     cross_scores = {
         f"{target.name}<-{source.name}": evaluate_detail(
             agent,
@@ -820,7 +867,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             args=args,
             fragments_override=fragments_for(source.name),
         )
-        for target, source in permutations(train_variants, 2)
+        for target, source in cross_pairs
     }
 
     holdout_report = {}
@@ -935,7 +982,14 @@ def main() -> None:
         "--suite",
         type=str,
         default="micro",
-        choices=["micro", "twins", "dual"],
+        choices=["micro", "twins", "dual", "battery"],
+    )
+    parser.add_argument(
+        "--cross-pairs",
+        type=int,
+        default=0,
+        help="cap the cross-feed audit at N rotating sources per target "
+        "(0 = every ordered pair)",
     )
     parser.add_argument(
         "--oracle-map",

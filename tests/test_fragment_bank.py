@@ -187,3 +187,37 @@ def test_conflict_estimate_stays_low_when_swapping_is_harmless() -> None:
             agent, bank, train[:2], conflict, recent, args=args, update=update
         )
     assert conflict[frozenset((train[0].name, train[1].name))] < 0.2
+
+
+def test_battery_suite_is_many_simple_contexts_with_a_recombination_holdout() -> None:
+    from experiments.games_amodal.fragment_bank import battery_suite
+
+    train, holdout = battery_suite()
+    assert len(train) >= 6
+    names = [config.name for config in train]
+    assert len(names) == len(set(names))
+    # Quantity comes from simplicity: every training game is one component
+    # at level 1, so iteration budgets stay small.
+    assert all(len(config.active()) == 1 for config in train)
+    assert holdout[0].name == "dualBD"
+    assert set(holdout[0].rules()) <= {
+        rule for config in train for rule in config.rules()
+    }
+
+
+def test_battery_oracle_assignments_stay_disjoint_with_enough_fragments() -> None:
+    from experiments.games_amodal.fragment_bank import battery_suite
+
+    train, holdout = battery_suite()
+    names = [config.name for config in train + holdout]
+    bank = FragmentBank(
+        fragments=2 * len(names),
+        tokens_per_fragment=2,
+        width=16,
+        variants=names,
+    )
+    seen: set[int] = set()
+    for name in names:
+        indices = set(bank.oracle_indices(name, 2))
+        assert not (indices & seen)
+        seen |= indices
