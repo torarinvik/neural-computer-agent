@@ -335,3 +335,23 @@ that earns reward in both is one that routes through the bank. F5's
 staging law is hereby narrowed: staging helps when the *task* is
 unlearnable, but hurts when it lets the plant reach competence without
 consulting context.
+
+**F9 (probe 9). The read path works: fragment content causally specifies
+which policy runs.** With the selector replaced by an oracle (each twin
+always receives its own distinct, salience-matched fragments) and no
+warm-up, one plant mastered BOTH contradictory twins simultaneously —
+choiceA 1.000 and choiceB 1.000 in visually identical worlds with
+opposite rules. Withholding the bank collapsed both to chance
+(0.297/0.313); noise decoys collapsed them (0.164/0.430); and feeding
+each twin the OTHER twin's fragments drove mastery to exactly 0.000 —
+far below chance, i.e. the agent systematically takes the wrong item.
+Below-chance cross-feeding is the decisive signature: the fragment does
+not merely enable competence, it *specifies which competence runs*.
+Consequences: (1) skill-as-context in the event window is a sufficient
+read mechanism for a fixed plant — no FiLM/weight-patching needed at this
+scale, so the storage rule survives intact; (2) the remaining bottleneck
+is isolated to the WRITE/SELECT path — probe 8 showed the outcome-REINFORCE
+selector collapsing to identical picks for both variants, which is the
+literature's predicted failure mode and now ours to fix; (3) all future
+bank claims must report the cross-fed condition, since withheld-only
+audits cannot distinguish "context enables" from "context specifies".
