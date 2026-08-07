@@ -32,6 +32,7 @@ from torch.nn import functional as F
 from experiments.games_amodal.game_family import (
     FamilyConfig,
     FamilyVerifier,
+    egocentric_crop,
     egocentric_view,
 )
 from experiments.games_amodal.shared_controller import (
@@ -228,7 +229,11 @@ def rollout_family(
         masks.append(alive.float())
         observation = verifier.observation()
         if egocentric:
-            observation = egocentric_view(observation)
+            observation = (
+                egocentric_crop(observation)
+                if egocentric == "crop"
+                else egocentric_view(observation)
+            )
         observation = pad_channels(observation, SHARED_SCREEN_CHANNELS)
         events = [agent.runtime.encoders["screen"](observation)]
         if fragments is not None:
@@ -1129,6 +1134,14 @@ def main() -> None:
         help="mint N interchangeable fragments per sub-rule and draw a "
         "fresh combination each update, so fragments cannot co-adapt with "
         "a habitual partner (the F16 composition failure)",
+    )
+    parser.add_argument(
+        "--egocentric-crop",
+        dest="egocentric",
+        action="store_const",
+        const="crop",
+        help="egocentric with zero fill instead of wraparound: same "
+        "invariance without inventing geometry at the boundaries",
     )
     parser.add_argument(
         "--egocentric",

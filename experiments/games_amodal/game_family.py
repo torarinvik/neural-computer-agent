@@ -27,6 +27,38 @@ from experiments.games_amodal.environments import GameStep
 FAMILY_ACTION_COUNT = 4
 
 
+def egocentric_crop(grid: torch.Tensor) -> torch.Tensor:
+    """Egocentric view with zero fill instead of wraparound.
+
+    `egocentric_view` rolls the planes, so content leaving one edge
+    reappears on the opposite one. For games whose meaning depends on
+    boundaries — walls, the goal behind them — that manufactures walls
+    where none exist and is a plausible reason `navigate` stayed at 0.14
+    even egocentrically (F22). Shifting into zeros keeps the same
+    translation invariance without inventing geometry.
+    """
+
+    batch, _, height, width = grid.shape
+    out = torch.zeros_like(grid)
+    for row in range(batch):
+        plane = grid[row, 0]
+        if float(plane.max()) <= 0.0:
+            out[row] = grid[row]
+            continue
+        index = int(plane.argmax())
+        shift_r = height // 2 - index // width
+        shift_c = width // 2 - index % width
+        src_r0, src_r1 = max(0, -shift_r), min(height, height - shift_r)
+        src_c0, src_c1 = max(0, -shift_c), min(width, width - shift_c)
+        out[
+            row,
+            :,
+            src_r0 + shift_r : src_r1 + shift_r,
+            src_c0 + shift_c : src_c1 + shift_c,
+        ] = grid[row, :, src_r0:src_r1, src_c0:src_c1]
+    return out
+
+
 def egocentric_view(grid: torch.Tensor) -> torch.Tensor:
     """Roll each row's planes so the avatar sits at the grid centre.
 
@@ -50,6 +82,8 @@ def egocentric_view(grid: torch.Tensor) -> torch.Tensor:
             dims=(1, 2),
         )
     return out
+
+
 _DELTAS = ((-1, 0), (0, 1), (1, 0), (0, -1))
 
 COMPONENTS = ("collect", "intercept", "avoid", "navigate")

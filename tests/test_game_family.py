@@ -360,3 +360,35 @@ def test_egocentric_view_centres_the_avatar_and_passes_dead_rows() -> None:
     assert torch.equal(view[1], grid[1])
     # The transform is a pure roll: content is conserved.
     assert torch.equal(view.sum(dim=(2, 3)), grid.sum(dim=(2, 3)))
+
+
+def test_egocentric_crop_centres_without_inventing_geometry() -> None:
+    from experiments.games_amodal.game_family import (
+        egocentric_crop,
+        egocentric_view,
+    )
+
+    grid = torch.zeros(1, 3, 8, 8)
+    grid[0, 0, 1, 1] = 1.0  # avatar near a corner
+    grid[0, 2, 0, 0] = 1.0  # a wall diagonally behind it
+    cropped = egocentric_crop(grid)
+    rolled = egocentric_view(grid)
+    assert float(cropped[0, 0, 4, 4]) == 1.0  # avatar centred
+    assert float(cropped[0, 2, 3, 3]) == 1.0  # wall keeps its offset
+    # The roll wraps far content back into view; the crop must not.
+    assert float(cropped.sum()) <= float(rolled.sum())
+    far = torch.zeros(1, 3, 8, 8)
+    far[0, 0, 0, 0] = 1.0
+    far[0, 2, 7, 7] = 1.0  # opposite corner
+    assert float(egocentric_crop(far)[0, 2].sum()) == 0.0  # dropped, not wrapped
+    assert float(egocentric_view(far)[0, 2].sum()) == 1.0  # wrapped into view
+
+
+def test_egocentric_crop_passes_rows_without_an_avatar() -> None:
+    from experiments.games_amodal.game_family import egocentric_crop
+
+    grid = torch.zeros(2, 3, 8, 8)
+    grid[0, 0, 4, 4] = 1.0
+    grid[1, 1, 2, 2] = 1.0  # dead row: no avatar plane
+    view = egocentric_crop(grid)
+    assert torch.equal(view[1], grid[1])

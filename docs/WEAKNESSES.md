@@ -119,10 +119,13 @@ rung promotes, rejects, or qualifies. Ordered by severity.
     seeds), but hard motor games acquire on one seed and not the other
     (forageA 0.90/0.07; intercept1 1.65/0.05 across seeds). Evidence:
     F25. This gates further memory work: a bank cannot be evaluated on
-    games the plant cannot reliably learn. Next: wider seed pools on
-    acquisition alone, a convolutional screen driver (F22 showed encoder
-    structure moves motor acquisition more than any trainer change), and
-    optimizer work on the recurrent controller.
+    games the plant cannot reliably learn. Progress: the conv driver was
+    rejected at the fast budget (F26), but the egocentric CROP lifted
+    navigate 0.14 -> 0.33 and collect 0.55 -> 0.78 while costing
+    intercept (F28) — encoder choice is per-game, and no single screen
+    driver suits every game. Next: per-game encoder selection by
+    calibration, wider seed pools on acquisition alone, and optimizer
+    work on the recurrent controller.
 
 ## Retired
 

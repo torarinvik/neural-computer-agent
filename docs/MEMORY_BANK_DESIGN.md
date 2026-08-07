@@ -867,3 +867,36 @@ exactly meta-learning for compositionality, and is a curriculum change
 mechanism. Three attempts (imposed sharing F16, partner rotation F27,
 and the never-run additive route) now converge on the same answer:
 composition must be a training objective, never an emergent hope.
+
+**F28 (probe 48). Egocentric CROP beats egocentric ROLL where geometry
+is real, and loses where it is not — the encoder must respect what the
+game means by an edge.** Replacing the toroidal roll with a zero-filled
+shift (same centring, no wraparound) at matched budget, seed 69316:
+
+| game | linear | egocentric roll | egocentric crop |
+| --- | ---: | ---: | ---: |
+| navigate1 | 0.125 | 0.141 | **0.328** |
+| collect1 | 0.469 | 0.547 | **0.781** |
+| forageA | 0.031 | **0.453** | 0.312 |
+| intercept1 | 0.031 | **0.313** | 0.016 |
+
+navigate more than doubles and collect gains 43%: both are games whose
+meaning depends on boundaries — walls, and a goal that may sit behind
+them — and the roll was manufacturing walls by wrapping distant content
+into view. intercept collapses under the crop, which is equally
+sensible: a faller's meaning is its distance to the FLOOR, so cropping
+the boundary away destroys the signal the game is about, while the roll
+keeps the floor visible (wrapped, but present).
+
+Design law: an egocentric transform trades absolute position for
+relative position, and that trade is only free when the game's rules are
+translation-invariant. Games anchored to a boundary (interception) want
+the boundary; games anchored to local geometry (navigation, collection)
+want the crop. Consequence for the architecture: the screen driver is
+not one choice but a per-game encoder decision — exactly what the N
+encoders of the amodal design are FOR. This is the first empirical
+demand for encoder heterogeneity in the program, and it is a peripheral
+decision, so it costs the fixed core nothing. Recommended defaults:
+crop for navigate/collect/forage-class games, roll for intercept-class,
+both available behind flags and both settled by calibration rather than
+assumption.
