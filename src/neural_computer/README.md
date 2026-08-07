@@ -781,6 +781,14 @@ controls pass. This remains bounded external growth, not general continual
 learning. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_append_only_two_stage_promoted_v1_2026-08-07/`.
 
+The boundary is now cardinality-independent: multi-candidate stages retain
+pairwise ranking, while singleton stages use attempted-outcome calibration
+from fresh positive and negative verifier attempts. A mixed `[1, 2]` two-stage
+audit reaches `1.0000` unseen routing from `0.0000` pre-activation across both
+seeds with retention, permutation, reload, null, and zero-replay controls
+passing. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_cardinality_independent_mixed_promoted_v1_2026-08-07/`.
+
 The next 46-capability fourth-shift pressure test is intentionally rejected:
 late length-14 rows fail stable protection at hidden 256/8,192 updates,
 hidden 512, and an adaptive late-budget control. This is evidence for

@@ -3370,8 +3370,24 @@ growth, not unbounded memory, arbitrary new computation, or general
 continual learning. Evidence and accounting are in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_append_only_two_stage_promoted_v1_2026-08-07/`.
 
-A singleton-stage control is rejected: two stages with one candidate each
-remain at `0.5000` post-failure routing even after 256 updates per stage,
-because the current pairwise ranking objective receives no informative
-within-stage comparison. Evidence is retained in
+A pairwise-only singleton-stage control is rejected: two stages with one
+candidate each remain at `0.5000` post-failure routing even after 256 updates
+per stage, because pairwise ranking receives no informative within-stage
+comparison. The later attempted-outcome calibration objective repairs this
+boundary; the control is retained in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_append_only_singleton_stage_rejected_v1_2026-08-07/`.
+
+## Cardinality-independent append calibration promoted (2026-08-07)
+
+The learned append boundary now uses pairwise ranking when a stage has
+multiple candidates and attempted-outcome calibration when it has one. In a
+mixed ten-candidate audit, the first extension has one candidate and the
+second has two; the unary stage receives fresh positive and negative scalar
+verifier attempts, with no unattempted-candidate labels. Across seeds `69316`
+and `69317`, pre-activation unseen routing is `0.0000`, post-failure routing
+is `1.0000`, known routing is `1.0000`, and base/stage-local permutation,
+reload, frozen-core, reward-shuffled, and zero-replay gates pass. This
+promotes a cardinality-independent bounded append mechanism, not arbitrary
+program induction or general continual learning. Evidence and accounting are
+in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_cardinality_independent_mixed_promoted_v1_2026-08-07/`.

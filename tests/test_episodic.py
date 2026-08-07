@@ -422,6 +422,32 @@ def test_learned_compute_screen_ranking_loss_uses_only_scalar_outcomes() -> None
     assert any(parameter.grad is not None for parameter in screen.parameters())
 
 
+def test_learned_compute_screen_calibrates_a_single_attempted_candidate() -> None:
+    screen = LearnedComputeCandidateScreen(
+        query_width=4,
+        key_width=3,
+        latent_width=5,
+        hidden=8,
+    )
+    query = torch.randn(4, 4)
+    keys = torch.randn(1, 3)
+    attempted = torch.zeros(4, dtype=torch.long)
+    outcomes = torch.tensor([1.0, 0.0, 1.0, 0.0])
+
+    screen.enable()
+    loss, informative = screen.outcome_calibration_loss(
+        query,
+        keys,
+        attempted,
+        outcomes,
+    )
+    loss.backward()
+
+    assert loss.ndim == 0
+    assert informative == 4
+    assert any(parameter.grad is not None for parameter in screen.parameters())
+
+
 def test_learned_compute_screen_state_round_trips() -> None:
     torch.manual_seed(11)
     screen = LearnedComputeCandidateScreen(

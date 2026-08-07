@@ -404,6 +404,48 @@ class LearnedComputeCandidateScreen(nn.Module):
         ).mean()
         return loss, informative_count
 
+    def outcome_calibration_loss(
+        self,
+        query: torch.Tensor,
+        keys: torch.Tensor,
+        attempted_indices: torch.Tensor,
+        outcomes: torch.Tensor,
+    ) -> tuple[torch.Tensor, int]:
+        """Calibrate one attempted candidate from its scalar outcome.
+
+        Unlike pairwise ranking, this objective remains informative when an
+        extension contains one candidate.  The attempted candidate index and
+        verifier outcome are the only supervision; candidates that were not
+        attempted are not included in the loss.
+        """
+
+        scores = self(query, keys)
+        if attempted_indices.ndim != 1 or attempted_indices.shape[0] != scores.shape[0]:
+            raise ValueError("attempted candidate indices must align with queries")
+        if attempted_indices.dtype not in (
+            torch.int8,
+            torch.int16,
+            torch.int32,
+            torch.int64,
+            torch.uint8,
+        ):
+            raise ValueError("attempted candidate indices must be integer tensors")
+        if outcomes.ndim != 1 or outcomes.shape[0] != scores.shape[0]:
+            raise ValueError("attempted candidate outcomes must align with queries")
+        if not bool(torch.isfinite(outcomes).all()) or not bool(
+            ((outcomes >= 0.0) & (outcomes <= 1.0)).all()
+        ):
+            raise ValueError("attempted candidate outcomes must lie in [0, 1]")
+        indices = attempted_indices.to(device=scores.device, dtype=torch.long)
+        if bool((indices < 0).any()) or bool((indices >= scores.shape[1]).any()):
+            raise ValueError("attempted candidate indices are out of range")
+        logits = scores.gather(1, indices.unsqueeze(1)).squeeze(1)
+        loss = F.binary_cross_entropy_with_logits(
+            logits,
+            outcomes.to(device=logits.device, dtype=logits.dtype),
+        )
+        return loss, int(outcomes.shape[0])
+
 
 class AppendOnlyLearnedComputeCandidateScreen(nn.Module):
     """Grow candidate-screen state without mutating the mastered base.

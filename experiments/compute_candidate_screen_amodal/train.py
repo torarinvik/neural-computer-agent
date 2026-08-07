@@ -281,6 +281,7 @@ def _train_append_only_extension(
     batch_size: int,
     seed: int,
     learning_rate: float,
+    probe_families: list[int] | None = None,
 ) -> dict[str, int | float]:
     """Train only one appended screen from fresh outcomes for its candidates."""
 
@@ -289,12 +290,18 @@ def _train_append_only_extension(
         extension.parameters(), lr=learning_rate, weight_decay=1e-5
     )
     screen.enable_extension(extension_index)
+    if len(families) == 1 and probe_families is None:
+        raise ValueError("singleton extension training requires probe families")
+    training_families = probe_families if len(families) == 1 else families
+    if not training_families:
+        raise ValueError("extension training requires probe families")
     local_family = {family: index for index, family in enumerate(families)}
     informative_pairs = 0
+    informative_outcomes = 0
     last_loss = 0.0
     for update in range(updates):
         batch_families = [
-            families[(update * batch_size + row) % len(families)]
+            training_families[(update * batch_size + row) % len(training_families)]
             for row in range(batch_size)
         ]
         query = _event_query(
@@ -303,17 +310,33 @@ def _train_append_only_extension(
             batch_families,
             seed=seed + update * 10_007,
         )
-        outcomes = torch.zeros(batch_size, len(families))
-        outcomes[
-            torch.arange(batch_size),
-            torch.tensor([local_family[family] for family in batch_families]),
-        ] = 1.0
-        loss, pairs = extension.outcome_ranking_loss(query, extension_keys, outcomes)
+        if len(families) == 1:
+            outcomes = torch.tensor(
+                [float(family == families[0]) for family in batch_families]
+            )
+            loss, signals = extension.outcome_calibration_loss(
+                query,
+                extension_keys,
+                torch.zeros(batch_size, dtype=torch.long),
+                outcomes,
+            )
+            informative_outcomes += signals
+        else:
+            outcomes = torch.zeros(batch_size, len(families))
+            outcomes[
+                torch.arange(batch_size),
+                torch.tensor([local_family[family] for family in batch_families]),
+            ] = 1.0
+            loss, signals = extension.outcome_ranking_loss(
+                query,
+                extension_keys,
+                outcomes,
+            )
+            informative_pairs += signals
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(extension.parameters(), 1.0)
         optimizer.step()
-        informative_pairs += pairs
         last_loss = float(loss.detach())
     extension.eval()
     return {
@@ -321,6 +344,7 @@ def _train_append_only_extension(
         "unique_verifier_bits": updates * batch_size * extension_keys.shape[0],
         "unique_logical_lifetimes": updates * batch_size * extension_keys.shape[0],
         "informative_candidate_pairs": informative_pairs,
+        "informative_outcomes": informative_outcomes,
         "replayed_examples": 0,
         "final_loss": last_loss,
     }
@@ -363,8 +387,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     train_count = args.candidate_count - args.unseen_candidates
     known_families = list(range(train_count))
     unseen_families = list(range(train_count, args.candidate_count))
-    if len(unseen_families) % args.append_only_stages:
-        raise ValueError("unseen candidates must divide evenly across append stages")
+    if args.append_only_stages > len(unseen_families):
+        raise ValueError("append-only-stages cannot exceed unseen candidates")
+    base_stage_size, remainder = divmod(
+        len(unseen_families), args.append_only_stages
+    )
+    append_stage_sizes = [base_stage_size] * args.append_only_stages
+    for index in range(remainder):
+        append_stage_sizes[-(index + 1)] += 1
     grammar = generate_runtime_program_grammar(
         seed=args.program_seed,
         count=args.candidate_count,
@@ -482,6 +512,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "unique_verifier_bits": 0,
         "unique_logical_lifetimes": 0,
         "informative_candidate_pairs": 0,
+        "informative_outcomes": 0,
         "replayed_examples": 0,
         "final_loss": 0.0,
     }
@@ -492,19 +523,18 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     if args.append_only_calibration:
         known_keys = keys[:train_count]
         extension_keys = keys[train_count:]
-        extension_size = len(unseen_families) // args.append_only_stages
         append_only_screen = AppendOnlyLearnedComputeCandidateScreen(
             EVENT_WIDTH,
             EVENT_WIDTH,
             latent_width=args.latent_width,
             hidden=args.screen_hidden,
-            extension_sizes=(extension_size,) * args.append_only_stages,
+            extension_sizes=tuple(append_stage_sizes),
         )
         append_only_screen.base_screen.load_state_dict(screen.state_dict(), strict=True)
         append_only_screen.freeze_base()
         stage_accounting = []
-        for stage_index in range(args.append_only_stages):
-            start = stage_index * extension_size
+        start = 0
+        for stage_index, extension_size in enumerate(append_stage_sizes):
             stage_accounting.append(
                 _train_append_only_extension(
                     append_only_screen,
@@ -517,8 +547,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                     batch_size=args.batch_size,
                     seed=args.seed + 81_000 + stage_index * 10_000,
                     learning_rate=args.learning_rate,
+                    probe_families=known_families + unseen_families,
                 )
             )
+            start += extension_size
         calibration_accounting = _merge_training_accounting(stage_accounting)
         failure_schedule = torch.zeros(
             unseen_candidate_targets.shape[0],
@@ -526,7 +558,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             dtype=torch.bool,
         )
         for row, target in enumerate(unseen_candidate_targets.tolist()):
-            stage_index = (target - train_count) // extension_size
+            stage_offset = target - train_count
+            stage_index = 0
+            cumulative = append_stage_sizes[0]
+            while stage_offset >= cumulative:
+                stage_index += 1
+                cumulative += append_stage_sizes[stage_index]
             failure_schedule[row, : stage_index + 1] = True
         novel_context_metrics = _append_only_route_metrics(
             append_only_screen,
@@ -643,10 +680,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             EVENT_WIDTH,
             latent_width=args.latent_width,
             hidden=args.screen_hidden,
-            extension_sizes=(
-                len(unseen_families) // args.append_only_stages,
-            )
-            * args.append_only_stages,
+            extension_sizes=tuple(append_stage_sizes),
         )
     reloaded.load_state_dict(screen_state, strict=True)
     reload_exact = all(
@@ -725,12 +759,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "calibration_enabled": calibration_enabled,
         "append_only_enabled": append_only_screen is not None,
         "append_only_stages": args.append_only_stages,
+        "append_only_stage_sizes": append_stage_sizes,
         "configuration": evaluated_screen.configuration(),
         "budgets": {
             "parent_updates": args.parent_updates,
             "screen_updates": args.screen_updates,
             "calibration_updates": args.calibration_updates,
             "append_only_stages": args.append_only_stages,
+            "append_only_stage_sizes": append_stage_sizes,
             "batch_size": args.batch_size,
             "audit_count": args.audit_count,
             "key_samples": args.key_samples,
@@ -809,6 +845,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "calibration_unique_logical_lifetimes": calibration_accounting[
                 "unique_logical_lifetimes"
             ],
+            "calibration_informative_outcomes": calibration_accounting.get(
+                "informative_outcomes", 0
+            ),
             "calibration_replayed_examples": calibration_accounting[
                 "replayed_examples"
             ],
