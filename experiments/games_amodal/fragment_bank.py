@@ -180,10 +180,15 @@ class FragmentBank(torch.nn.Module):
         tokens_per_fragment: int,
         width: int,
         variants: list[str],
+        init_scale: float = 1.0,
     ) -> None:
         super().__init__()
+        # Fragment tokens share the event window with screen events, whose
+        # tanh payloads have norm ~sqrt(width)/2. Tokens initialised much
+        # smaller are invisible to the controller and the plant learns to
+        # ignore the bank entirely (probe 7). Match the scale.
         self.tokens = torch.nn.Parameter(
-            torch.randn(fragments, tokens_per_fragment, width) * 0.1
+            torch.randn(fragments, tokens_per_fragment, width) * init_scale
         )
         self.selection_logits = torch.nn.ParameterDict(
             {
@@ -399,6 +404,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         tokens_per_fragment=args.tokens_per_fragment,
         width=args.event_width,
         variants=[v.name for v in train_variants],
+        init_scale=args.fragment_init_scale,
     )
     if args.suite == "twins":
         singles = [train_variants[0]]
@@ -551,6 +557,7 @@ def main() -> None:
     parser.add_argument("--fragments", type=int, default=6)
     parser.add_argument("--tokens-per-fragment", type=int, default=2)
     parser.add_argument("--fragments-per-variant", type=int, default=2)
+    parser.add_argument("--fragment-init-scale", type=float, default=1.0)
     parser.add_argument("--ignorance-every", type=int, default=4)
     parser.add_argument("--ignorance-weight", type=float, default=1.0)
     parser.add_argument("--eval-seeds", type=int, default=4)

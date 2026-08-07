@@ -312,3 +312,26 @@ to the avatar so navigation costs one step and the only learnable content
 is which type to take. General rule: when testing whether context can
 carry a bit, make everything except that bit trivial; add motor
 complexity back only after the bit is demonstrably carried.
+
+**F8 (probe 7). Fragment-blindness: context must be audible, and warm-up
+on a single context teaches the plant to ignore context.** With the
+choice task learnable (0.31 -> 1.00 in 300 updates), staged twins still
+failed — but the diagnosis was not the conflict: `choiceA` scored 1.00
+with its fragments, 1.00 with pure-noise decoys, and 1.00 with the *other
+twin's* fragments, while `choiceB` never left the floor. Identical scores
+across every context condition mean the plant ignored the bank entirely
+and simply learned "always take the plane-1 item". Two causes:
+(a) **salience** — fragment tokens were initialised at 0.1 scale (norm
+~0.8) while screen events are tanh payloads (norm ~4.7), so the bank was
+an order of magnitude quieter than the observation and effectively
+invisible; (b) **blind warm-up** — anchoring one context with
+uninformative fragments trains a fragment-blind policy, after which the
+tokens are dead inputs with vanishing gradient.
+Consequences: (1) fragment tokens must be initialised at the same scale
+as the events they share a window with — a memory bank whose entries are
+quieter than perception will never be read; (2) contexts that must be
+distinguished should be present from the first update, so the only policy
+that earns reward in both is one that routes through the bank. F5's
+staging law is hereby narrowed: staging helps when the *task* is
+unlearnable, but hurts when it lets the plant reach competence without
+consulting context.
