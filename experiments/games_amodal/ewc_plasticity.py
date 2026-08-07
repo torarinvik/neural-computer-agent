@@ -56,15 +56,21 @@ def estimate_diagonal_fisher(
     steps: int,
     seed: int,
     gamma: float,
+    named_parameters=None,
 ) -> dict[str, torch.Tensor]:
     """Squared on-policy log-propensity gradients from fresh lifetimes.
 
     Estimated while the game environment is still reachable; afterwards only
     this parameter-shaped map is carried.  Normalized to unit mean so the
-    consolidation strength is comparable across runs.
+    consolidation strength is comparable across runs.  ``named_parameters``
+    overrides the protected set (default: controller parameters).
     """
 
-    named = controller_named_parameters(agent)
+    named = (
+        controller_named_parameters(agent)
+        if named_parameters is None
+        else named_parameters
+    )
     fisher = {name: torch.zeros_like(parameter) for name, parameter in named}
     for batch in range(batches):
         summary = rollout(

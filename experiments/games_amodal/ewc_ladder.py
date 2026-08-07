@@ -34,7 +34,6 @@ from pathlib import Path
 import torch
 
 from experiments.games_amodal.ewc_plasticity import (
-    controller_named_parameters,
     estimate_diagonal_fisher,
     permuted_fisher_like,
 )
@@ -47,6 +46,32 @@ from experiments.games_amodal.shared_controller import (
 )
 
 LADDER = ("snake", "pong", "breakout")
+
+
+def protected_named_parameters(agent: SharedControllerAgent):
+    """The persistent computing plant: controller plus any shared drivers.
+
+    With per-game drivers only the controller is cross-game infrastructure.
+    With shared drivers the single screen encoder, keypress decoder, and
+    feedback encoder persist across games too, so they join the protected
+    set under the same consolidation rule.
+    """
+
+    named = [
+        (f"controller.{name}", parameter)
+        for name, parameter in agent.controller.named_parameters()
+    ]
+    if agent.shared_drivers:
+        for prefix, module in (
+            ("encoder", agent.runtime.encoders["screen"]),
+            ("decoder", agent.runtime.output_bus.decoders["keypress"]),
+            ("feedback", agent.feedback_encoders["keypress"]),
+        ):
+            named.extend(
+                (f"{prefix}.{name}", parameter)
+                for name, parameter in module.named_parameters()
+            )
+    return named
 
 
 def train_phase_with_penalties(
@@ -76,7 +101,7 @@ def train_phase_with_penalties(
     for other in LADDER:
         set_trainable(agent.game_modules(other), False)
     set_trainable(agent.game_modules(game), True)
-    named = controller_named_parameters(agent)
+    named = protected_named_parameters(agent)
     trainable = trainable_parameters(
         [agent.controller, *agent.game_modules(game)]
     )
@@ -181,10 +206,11 @@ def capture_consolidation(
         steps=args.steps,
         seed=args.seed + 30_000 + LADDER.index(game) * 1_000,
         gamma=args.gamma,
+        named_parameters=protected_named_parameters(agent),
     )
     anchor = {
         name: parameter.detach().clone()
-        for name, parameter in controller_named_parameters(agent)
+        for name, parameter in protected_named_parameters(agent)
     }
     return fisher, anchor
 
@@ -250,7 +276,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     )
     permuted_pong_anchor = {
         name: parameter.detach().clone()
-        for name, parameter in controller_named_parameters(forks["permuted"])
+        for name, parameter in protected_named_parameters(forks["permuted"])
     }
 
     train_phase_with_penalties(
