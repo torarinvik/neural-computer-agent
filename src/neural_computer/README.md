@@ -881,6 +881,12 @@ seed: it remains `0.8125` with two per-target holes. More extension updates
 are therefore not the next move; the alignment must adapt the candidate key to
 the observed behavioral evidence or use a better learned event signature.
 
+The external boundary now includes an appendable, independently freezeable
+`LearnedOpaqueCandidateKeyMemory`. Its first outcome-trained update policies
+are rejected: joint base/key updates cause interference, while extension-only
+updates preserve behavior but do not beat static keys. The contract is useful
+for future behavioral memory, but no address-update policy is promoted yet.
+
 The next 46-capability fourth-shift pressure test is intentionally rejected:
 late length-14 rows fail stable protection at hidden 256/8,192 updates,
 hidden 512, and an adaptive late-budget control. This is evidence for

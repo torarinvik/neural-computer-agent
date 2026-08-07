@@ -52,6 +52,9 @@ EXTERNAL_CAPABILITY_LEARNED_COMPUTE_SCREEN_SCHEMA = (
 EXTERNAL_CAPABILITY_APPEND_ONLY_LEARNED_COMPUTE_SCREEN_SCHEMA = (
     "neural-computer.external-capability-append-only-learned-compute-screen.v1"
 )
+EXTERNAL_CAPABILITY_LEARNED_CANDIDATE_KEY_MEMORY_SCHEMA = (
+    "neural-computer.external-capability-learned-candidate-key-memory.v1"
+)
 EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA = (
     "neural-computer.external-capability-slot-binding.v1"
 )
@@ -267,6 +270,104 @@ class ExternalComputeCandidateScreen:
         screen._evidence = evidence
         screen._global_evidence = global_evidence
         return screen
+
+
+class LearnedOpaqueCandidateKeyMemory(nn.Module):
+    """Appendable opaque address state trained outside the controller.
+
+    Candidate keys are external memory, not semantic labels. A caller may
+    include this module's parameters in an outcome-only optimizer so scalar
+    verifier evidence can refine addresses while the controller and its
+    mastered route remain frozen. New extensions are separate parameter
+    groups and can be frozen independently after promotion.
+    """
+
+    schema = EXTERNAL_CAPABILITY_LEARNED_CANDIDATE_KEY_MEMORY_SCHEMA
+
+    def __init__(self, key_width: int, initial_keys: torch.Tensor) -> None:
+        super().__init__()
+        if key_width < 1:
+            raise ValueError("candidate key width must be positive")
+        if (
+            initial_keys.ndim != 2
+            or initial_keys.shape[0] < 1
+            or initial_keys.shape[1] != key_width
+        ):
+            raise ValueError(
+                "candidate key memory requires [candidates, key_width] keys"
+            )
+        if not bool(torch.isfinite(initial_keys).all()):
+            raise ValueError("candidate key memory keys must be finite")
+        self.key_width = int(key_width)
+        self.base_keys = nn.Parameter(
+            F.normalize(initial_keys.detach().clone(), dim=-1)
+        )
+        self.extensions = nn.ParameterList()
+        self.extension_sizes: list[int] = []
+
+    @property
+    def base_count(self) -> int:
+        """Return the number of stable base addresses."""
+
+        return int(self.base_keys.shape[0])
+
+    @property
+    def candidate_count(self) -> int:
+        """Return the logical address count including appended groups."""
+
+        return self.base_count + sum(self.extension_sizes)
+
+    def append_extension(self, initial_keys: torch.Tensor) -> int:
+        """Append an isolated address group and return its stage index."""
+
+        if (
+            initial_keys.ndim != 2
+            or initial_keys.shape[0] < 1
+            or initial_keys.shape[1] != self.key_width
+        ):
+            raise ValueError(
+                "candidate extension keys require [candidates, key_width] keys"
+            )
+        if not bool(torch.isfinite(initial_keys).all()):
+            raise ValueError("candidate extension keys must be finite")
+        self.extensions.append(
+            nn.Parameter(F.normalize(initial_keys.detach().clone(), dim=-1))
+        )
+        self.extension_sizes.append(int(initial_keys.shape[0]))
+        return len(self.extensions) - 1
+
+    def forward(self) -> torch.Tensor:
+        """Return normalized base and extension addresses in append order."""
+
+        values = [self.base_keys, *self.extensions]
+        return F.normalize(torch.cat(values, dim=0), dim=-1)
+
+    def freeze_base(self) -> None:
+        """Protect base addresses while appended groups remain trainable."""
+
+        self.base_keys.requires_grad_(False)
+
+    def freeze_extension(self, index: int) -> None:
+        """Protect one promoted extension address group."""
+
+        self.extensions[index].requires_grad_(False)
+
+    def configuration(self) -> dict[str, object]:
+        """Return the versioned external address-memory contract."""
+
+        return {
+            "schema": self.schema,
+            "key_width": self.key_width,
+            "base_count": self.base_count,
+            "candidate_count": self.candidate_count,
+            "extension_sizes": tuple(self.extension_sizes),
+            "base_trainable": self.base_keys.requires_grad,
+            "extension_trainable": tuple(
+                parameter.requires_grad for parameter in self.extensions
+            ),
+            "learning_signal": "attempted_scalar_verifier_outcome_v1",
+            "role": "opaque_address_memory_not_controller_reasoning",
+        }
 
 
 class LearnedComputeCandidateScreen(nn.Module):

@@ -3521,3 +3521,16 @@ unseen targets at `0.0000`; the easy seed remains `1.0000`. Extra local
 calibration is therefore rejected as a remedy, further localizing the failure
 to static query/key alignment. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_spatial_binding_calibration_rejected_v1_2026-08-07/`.
+
+The memory boundary now exposes `LearnedOpaqueCandidateKeyMemory`: an
+appendable, independently freezeable address store whose parameters can be
+trained from attempted scalar outcomes outside the controller. The first
+joint-update control is rejected because it destabilizes the mastered base and
+falls to `0.5/0.5` unseen routing. The safer extension-only update preserves
+the base and passes the strict floor, but slightly regresses the easy seed
+(`0.9792` versus `1.0000`) and is not accepted as an improvement. The API is
+retained as a contract; its behavioral update rule remains open. Evidence is
+in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_naive_key_adaptation_rejected_v1_2026-08-07/`
+and
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_extension_key_memory_rejected_v1_2026-08-07/`.

@@ -21,6 +21,7 @@ from neural_computer import (
     ExternalComputeCandidateScreen,
     IntentEvent,
     LearnedComputeCandidateScreen,
+    LearnedOpaqueCandidateKeyMemory,
     OnlineEpisodicRelationReader,
     episodic_context_contrastive_loss,
     paired_event_credit_loss,
@@ -413,6 +414,22 @@ def test_candidate_key_diagnostics_detects_collapsed_signatures() -> None:
     assert separated["effective_rank"] == pytest.approx(3.0)
     assert collapsed["max_off_diagonal_cosine"] == pytest.approx(1.0)
     assert collapsed["effective_rank"] == pytest.approx(1.0)
+
+
+def test_learned_candidate_key_memory_appends_and_freezes_base() -> None:
+    memory = LearnedOpaqueCandidateKeyMemory(3, torch.eye(3))
+    memory.append_extension(torch.ones(2, 3))
+
+    assert memory.candidate_count == 5
+    assert memory().shape == (5, 3)
+    memory.freeze_base()
+    memory.freeze_extension(0)
+
+    assert not memory.base_keys.requires_grad
+    assert not memory.extensions[0].requires_grad
+    assert memory.configuration()["role"] == (
+        "opaque_address_memory_not_controller_reasoning"
+    )
 
 
 def test_learned_compute_screen_ranking_loss_uses_only_scalar_outcomes() -> None:

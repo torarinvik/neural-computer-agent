@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+from collections.abc import Callable
 from pathlib import Path
 from time import perf_counter
 
@@ -32,6 +33,7 @@ from experiments.working_memory_continuous.canonical_growth_pressure_test import
 from neural_computer import (
     AppendOnlyLearnedComputeCandidateScreen,
     LearnedComputeCandidateScreen,
+    LearnedOpaqueCandidateKeyMemory,
 )
 
 EVENT_WIDTH = 32
@@ -39,6 +41,7 @@ SPAN = 4
 DEFAULT_CANDIDATES = 6
 UNSEEN_CANDIDATES = 2
 MASTERY_THRESHOLD = 0.75
+KeySource = torch.Tensor | Callable[[], torch.Tensor]
 
 
 def _digest_module(module: torch.nn.Module) -> str:
@@ -153,6 +156,10 @@ def _all_targets_clear(metrics: dict[str, object]) -> bool:
     return isinstance(values, list) and bool(values) and min(values) >= MASTERY_THRESHOLD
 
 
+def _resolve_key_source(keys: KeySource) -> torch.Tensor:
+    return keys() if callable(keys) else keys
+
+
 @torch.no_grad()
 def _route_metrics(
     screen: LearnedComputeCandidateScreen,
@@ -261,7 +268,7 @@ def _train_screen(
     screen: LearnedComputeCandidateScreen,
     parent,
     grammar,
-    keys: torch.Tensor,
+    keys: KeySource,
     *,
     families: list[int],
     updates: int,
@@ -269,8 +276,10 @@ def _train_screen(
     seed: int,
     learning_rate: float,
     shuffle_outcomes: bool = False,
+    extra_parameters: tuple[torch.nn.Parameter, ...] = (),
 ) -> dict[str, int | float]:
-    optimizer = torch.optim.AdamW(screen.parameters(), lr=learning_rate, weight_decay=1e-5)
+    parameters = [*screen.parameters(), *extra_parameters]
+    optimizer = torch.optim.AdamW(parameters, lr=learning_rate, weight_decay=1e-5)
     informative_pairs = 0
     last_loss = 0.0
     for update in range(updates):
@@ -284,12 +293,13 @@ def _train_screen(
             batch_families,
             seed=seed + update * 10_007,
         )
-        outcomes = _outcomes(batch_families, keys.shape[0])
+        candidate_keys = _resolve_key_source(keys)
+        outcomes = _outcomes(batch_families, candidate_keys.shape[0])
         if shuffle_outcomes:
             shuffled = []
             for row in range(batch_size):
                 permutation = torch.randperm(
-                    keys.shape[0],
+                    candidate_keys.shape[0],
                     generator=torch.Generator().manual_seed(
                         seed + update * 101 + row
                     ),
@@ -298,7 +308,7 @@ def _train_screen(
             outcomes = torch.stack(shuffled)
         if not bool(screen.enabled.item()):
             screen.enable()
-        loss, pairs = screen.outcome_ranking_loss(query, keys, outcomes)
+        loss, pairs = screen.outcome_ranking_loss(query, candidate_keys, outcomes)
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(screen.parameters(), 1.0)
@@ -308,8 +318,8 @@ def _train_screen(
     screen.eval()
     return {
         "optimizer_updates": updates,
-        "unique_verifier_bits": updates * batch_size * keys.shape[0],
-        "unique_logical_lifetimes": updates * batch_size * keys.shape[0],
+        "unique_verifier_bits": updates * batch_size * candidate_keys.shape[0],
+        "unique_logical_lifetimes": updates * batch_size * candidate_keys.shape[0],
         "informative_candidate_pairs": informative_pairs,
         "replayed_examples": 0,
         "final_loss": last_loss,
@@ -320,7 +330,7 @@ def _train_append_only_extension(
     screen: AppendOnlyLearnedComputeCandidateScreen,
     parent,
     grammar,
-    extension_keys: torch.Tensor,
+    extension_keys: KeySource,
     *,
     extension_index: int,
     families: list[int],
@@ -329,13 +339,13 @@ def _train_append_only_extension(
     seed: int,
     learning_rate: float,
     probe_families: list[int] | None = None,
+    extra_parameters: tuple[torch.nn.Parameter, ...] = (),
 ) -> dict[str, int | float]:
     """Train only one appended screen from fresh outcomes for its candidates."""
 
     extension = screen.extensions[extension_index]
-    optimizer = torch.optim.AdamW(
-        extension.parameters(), lr=learning_rate, weight_decay=1e-5
-    )
+    parameters = [*extension.parameters(), *extra_parameters]
+    optimizer = torch.optim.AdamW(parameters, lr=learning_rate, weight_decay=1e-5)
     screen.enable_extension(extension_index)
     if len(families) == 1 and probe_families is None:
         raise ValueError("singleton extension training requires probe families")
@@ -357,13 +367,14 @@ def _train_append_only_extension(
             batch_families,
             seed=seed + update * 10_007,
         )
+        candidate_keys = _resolve_key_source(extension_keys)
         if len(families) == 1:
             outcomes = torch.tensor(
                 [float(family == families[0]) for family in batch_families]
             )
             loss, signals = extension.outcome_calibration_loss(
                 query,
-                extension_keys,
+                candidate_keys,
                 torch.zeros(batch_size, dtype=torch.long),
                 outcomes,
             )
@@ -376,7 +387,7 @@ def _train_append_only_extension(
             ] = 1.0
             loss, signals = extension.outcome_ranking_loss(
                 query,
-                extension_keys,
+                candidate_keys,
                 outcomes,
             )
             informative_pairs += signals
@@ -388,8 +399,8 @@ def _train_append_only_extension(
     extension.eval()
     return {
         "optimizer_updates": updates,
-        "unique_verifier_bits": updates * batch_size * extension_keys.shape[0],
-        "unique_logical_lifetimes": updates * batch_size * extension_keys.shape[0],
+        "unique_verifier_bits": updates * batch_size * candidate_keys.shape[0],
+        "unique_logical_lifetimes": updates * batch_size * candidate_keys.shape[0],
         "informative_candidate_pairs": informative_pairs,
         "informative_outcomes": informative_outcomes,
         "replayed_examples": 0,
@@ -484,6 +495,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         seed=args.seed + 20_000,
         samples_per_candidate=args.key_samples,
     )
+    key_source: KeySource = keys
+    key_parameters: tuple[torch.nn.Parameter, ...] = ()
     screen = LearnedComputeCandidateScreen(
         EVENT_WIDTH,
         EVENT_WIDTH,
@@ -494,31 +507,37 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         screen,
         parent,
         grammar,
-        keys,
+        key_source,
         families=known_families,
         updates=args.screen_updates,
         batch_size=args.batch_size,
         seed=args.seed + 30_000,
         learning_rate=args.learning_rate,
+        extra_parameters=key_parameters,
     )
+    keys = _resolve_key_source(key_source).detach()
     shuffled_screen = LearnedComputeCandidateScreen(
         EVENT_WIDTH,
         EVENT_WIDTH,
         latent_width=args.latent_width,
         hidden=args.screen_hidden,
     )
+    shuffled_key_source: KeySource = keys
+    shuffled_key_parameters: tuple[torch.nn.Parameter, ...] = ()
     shuffled_accounting = _train_screen(
         shuffled_screen,
         parent,
         grammar,
-        keys,
+        shuffled_key_source,
         families=known_families,
         updates=args.screen_updates,
         batch_size=args.batch_size,
         seed=args.seed + 40_000,
         learning_rate=args.learning_rate,
         shuffle_outcomes=True,
+        extra_parameters=shuffled_key_parameters,
     )
+    shuffled_keys = _resolve_key_source(shuffled_key_source).detach()
     train_query_families = [
         known_families[index % len(known_families)]
         for index in range(args.audit_count)
@@ -583,6 +602,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     if args.append_only_calibration:
         known_keys = keys[:train_count]
         extension_keys = keys[train_count:]
+        initial_extension_keys = extension_keys
         append_only_screen = AppendOnlyLearnedComputeCandidateScreen(
             EVENT_WIDTH,
             EVENT_WIDTH,
@@ -600,14 +620,25 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 )
         append_only_screen.freeze_base()
         stage_accounting = []
+        stage_key_memories: list[LearnedOpaqueCandidateKeyMemory] = []
         start = 0
         for stage_index, extension_size in enumerate(append_stage_sizes):
+            stage_key_memory = LearnedOpaqueCandidateKeyMemory(
+                EVENT_WIDTH,
+                initial_extension_keys[start : start + extension_size],
+            )
+            stage_key_memories.append(stage_key_memory)
+            stage_key_source: KeySource = (
+                stage_key_memory
+                if args.adaptive_key_memory
+                else initial_extension_keys[start : start + extension_size]
+            )
             stage_accounting.append(
                 _train_append_only_extension(
                     append_only_screen,
                     parent,
                     grammar,
-                    extension_keys[start : start + extension_size],
+                    stage_key_source,
                     extension_index=stage_index,
                     families=unseen_families[start : start + extension_size],
                     updates=args.calibration_updates,
@@ -615,10 +646,23 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                     seed=args.seed + 81_000 + stage_index * 10_000,
                     learning_rate=args.learning_rate,
                     probe_families=known_families + unseen_families,
+                    extra_parameters=(
+                        tuple(stage_key_memory.parameters())
+                        if args.adaptive_key_memory
+                        else ()
+                    ),
                 )
             )
+            if args.adaptive_key_memory:
+                extension_keys = torch.cat(
+                    [
+                        memory().detach()
+                        for memory in stage_key_memories
+                    ]
+                )
             start += extension_size
         calibration_accounting = _merge_training_accounting(stage_accounting)
+        keys = torch.cat((known_keys, extension_keys), dim=0)
         failure_schedule = torch.zeros(
             unseen_candidate_targets.shape[0],
             args.append_only_stages,
@@ -670,12 +714,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             screen,
             parent,
             grammar,
-            keys,
+            key_source,
             families=unseen_families,
             updates=args.calibration_updates,
             batch_size=args.batch_size,
             seed=args.seed + 80_000,
             learning_rate=args.learning_rate,
+            extra_parameters=key_parameters,
         )
         novel_context_metrics = _route_metrics(
             screen,
@@ -695,7 +740,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         shuffled_screen,
         novel_context_queries,
         novel_context_targets,
-        keys,
+        shuffled_keys,
     )
     if append_only_screen is None:
         permuted_accuracy = _permuted_accuracy(
@@ -842,6 +887,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "append_only_prior_strength": args.append_only_prior_strength,
         "append_only_stages": args.append_only_stages,
         "append_only_stage_sizes": append_stage_sizes,
+        "adaptive_key_memory": args.adaptive_key_memory,
         "configuration": evaluated_screen.configuration(),
         "budgets": {
             "parent_updates": args.parent_updates,
@@ -857,6 +903,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "key_samples": args.key_samples,
             "screen_hidden": args.screen_hidden,
             "latent_width": args.latent_width,
+            "adaptive_key_memory": args.adaptive_key_memory,
         },
         "candidate_key_digest": hashlib.sha256(
             keys.detach().cpu().contiguous().numpy().tobytes()
@@ -1009,6 +1056,11 @@ def main() -> None:
         "--spatial-binding-encoder",
         action="store_true",
         help="preserve coarse spatial cue binding in the frozen parent frontend",
+    )
+    parser.add_argument(
+        "--adaptive-key-memory",
+        action="store_true",
+        help="train opaque candidate addresses from outcome-only screen losses",
     )
     parser.add_argument("--learning-rate", type=float, default=3e-3)
     parser.add_argument("--torch-threads", type=int, default=None)
