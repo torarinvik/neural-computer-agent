@@ -46,6 +46,17 @@ from experiments.games_amodal.skill_externalization import (
 from neural_computer import ControllerFeedback, KeypressDecoder
 
 
+def twins_suite() -> tuple[list[FamilyConfig], list[FamilyConfig]]:
+    """The minimal decisive bank test: two ambiguous twins, nothing else."""
+
+    train = [
+        FamilyConfig(forage=1, name="forageA"),
+        FamilyConfig(forage=1, inverted=True, name="forageB"),
+    ]
+    holdout: list[FamilyConfig] = []
+    return train, holdout
+
+
 def micro_suite() -> tuple[list[FamilyConfig], list[FamilyConfig]]:
     """Tiny crude mini-games: four singles, two training pairs, one holdout."""
 
@@ -371,7 +382,8 @@ def overlap_report(
 
 def run(args: argparse.Namespace) -> dict[str, object]:
     torch.manual_seed(args.seed)
-    train_variants, holdout_variants = micro_suite()
+    suites = {"micro": micro_suite, "twins": twins_suite}
+    train_variants, holdout_variants = suites[args.suite]()
     agent = SharedControllerAgent(
         event_width=args.event_width,
         intention_width=args.intent_width,
@@ -416,8 +428,36 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         v.name: evaluate_variant(
             agent, None, v, args=args, fragments_override=None
         )
-        for v in train_variants[: 2]
+        for v in train_variants[:2]
     }
+    decoy = torch.randn_like(bank.tokens[:2].detach())
+    decoy = decoy * (
+        bank.tokens.detach().norm() / decoy.norm().clamp_min(1e-12)
+    )
+    decoy_scores = {
+        v.name: evaluate_variant(
+            agent, None, v, args=args, fragments_override=decoy
+        )
+        for v in train_variants[:2]
+    }
+    cross_scores = {}
+    if len(train_variants) >= 2:
+        for v, other in (
+            (train_variants[0], train_variants[1]),
+            (train_variants[1], train_variants[0]),
+        ):
+            chosen, _ = sample_selection(
+                bank.selection_logits[other.name].detach(),
+                args.fragments_per_variant,
+                greedy=True,
+            )
+            cross_scores[v.name] = evaluate_variant(
+                agent,
+                None,
+                v,
+                args=args,
+                fragments_override=bank.fetch(chosen).detach(),
+            )
 
     holdout_report = {}
     for config in holdout_variants:
@@ -478,6 +518,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         },
         "train_mastery": train_scores,
         "withheld_bank_mastery": withheld_scores,
+        "decoy_bank_mastery": decoy_scores,
+        "cross_fragment_mastery": cross_scores,
         "overlap": overlap_report(
             bank, train_variants, args.fragments_per_variant
         ),
@@ -491,6 +533,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--suite", type=str, default="micro", choices=["micro", "twins"])
     parser.add_argument("--updates", type=int, default=900)
     parser.add_argument("--warm-updates", type=int, default=600)
     parser.add_argument("--adapt-updates", type=int, default=60)
