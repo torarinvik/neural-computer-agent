@@ -78,17 +78,19 @@ def _load_or_fresh(
     *,
     stack_seed: int,
     decoder_seed: int,
-    program_count: int,
+    program_count: int | None,
 ) -> tuple[torch.nn.Module, torch.nn.Module]:
     if artifact is not None:
         stack, decoder = _load_stack_artifact(artifact)
+        if program_count is None:
+            return stack, decoder
         while len(stack.programs) < program_count:
             stack = expand_routed_stack(stack, seed=stack_seed + len(stack.programs))
         if len(stack.programs) != program_count:
             raise ValueError("artifact has more routed slots than requested")
         return stack, decoder
     return (
-        _new_stack(stack_seed, program_count=program_count, stack="routed"),
+        _new_stack(stack_seed, program_count=program_count or 2, stack="routed"),
         _new_capability(decoder_seed)[1],
     )
 
@@ -105,7 +107,7 @@ def _train_program(
     eval_every: int,
     seed: int,
     learning_rate: float,
-    program_count: int = 2,
+    program_count: int | None = None,
 ) -> tuple[dict[str, torch.Tensor], list[dict[str, float | int]]]:
     stack, decoder = _load_or_fresh(
         artifact,

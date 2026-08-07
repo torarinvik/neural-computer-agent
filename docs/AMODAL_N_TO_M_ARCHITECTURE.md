@@ -2993,3 +2993,24 @@ The result does not establish arbitrary program induction, unrestricted memory
 growth, or general continual learning. Reports, rejected controls, and the
 full accounting ledger are archived in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_depth8_fresh_rebuild_consolidation_replicated_promoted_v1_2026-08-07/`.
+
+## Replay-free staged growth for three depth-eight procedures (2026-08-07)
+
+The staged external-growth path now scales the isolated-slot strategy to
+three runtime-generated eight-step procedures. Each new procedure is trained
+only in a newly appended slot; old slots, old route slices, and the frozen
+controller are not updated. The memory transaction adopts a stage only after
+fresh probes verify both the new alias and every previously retained alias.
+
+Across seeds `69316` and `69317`, both sequential stages were adopted. The
+final source aliases survived reload at `1.0000/1.0000/0.8789` and
+`1.0000/1.0000/0.8047`; the target was learned from the retained artifact and
+reloaded at `1.0000` in both seeds. Reversal/recovery, corruption, exact
+reload, frozen-core, and zero-replay gates all passed.
+
+This is the strongest current bounded continual-memory result: new mutable
+external state is added without updating old capability weights, and old
+capabilities remain protected by behavior verification. It is not yet general
+continual learning. The primitive registry, eight-step renderer, slot
+blueprint, and tested horizon remain finite. Reports and accounting are in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_depth8_sequential_slot_growth_three_source_replicated_promoted_v1_2026-08-07/`.

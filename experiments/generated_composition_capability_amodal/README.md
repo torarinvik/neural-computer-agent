@@ -410,3 +410,20 @@ storage.
 
 Evidence and rejected controls are archived in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_depth8_fresh_rebuild_consolidation_replicated_promoted_v1_2026-08-07/`.
+
+## Replay-free staged growth for three depth-eight procedures (2026-08-07)
+
+The staged external-growth path now handles three runtime-generated
+eight-step procedures. Each new procedure is trained only in a newly appended
+slot while old slots, old routing, and the controller remain frozen. Every
+stage requires fresh retention probes for the new and earlier aliases before
+the transaction is adopted.
+
+Across seeds `69316` and `69317`, both stages were adopted. All reload,
+reversal/recovery, corruption, frozen-core, and zero-replay controls passed;
+the target reloaded at `1.0000` in both seeds. This is the current strongest
+bounded continual-memory result, but it does not establish arbitrary new
+computation, unrestricted growth, or general continual learning.
+
+Evidence and accounting are archived in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_depth8_sequential_slot_growth_three_source_replicated_promoted_v1_2026-08-07/`.

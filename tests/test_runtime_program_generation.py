@@ -6,12 +6,17 @@ from experiments.archive.unified_cognitive_controller.train_sequence_working_mem
     generate_sequence_memory_batch,
 )
 from experiments.generated_composition_capability_amodal.train_artifact_bank import (
+    _stack_artifact,
     generate_runtime_program_grammar,
+)
+from experiments.generated_composition_capability_amodal.train_distilled_consolidation import (
+    _load_or_fresh,
 )
 from experiments.generated_composition_capability_amodal.train_pipeline import (
     _new_stack,
     expand_routed_stack,
 )
+from experiments.parent_conditioned_artifact_bank_amodal.train import _new_capability
 
 
 def test_runtime_program_generation_is_deterministic_and_distinct() -> None:
@@ -73,3 +78,18 @@ def test_routed_stack_expansion_preserves_existing_external_state() -> None:
             expanded.router[2].bias[new_slice], base.router[2].bias[old_slice]
         )
         assert torch.all(expanded.router[2].bias[step * 3 + 2] == -8.0)
+
+
+def test_artifact_reload_preserves_unspecified_expanded_slot_count() -> None:
+    stack = _new_stack(seed=23, program_count=4, stack="routed")
+    _, decoder = _new_capability(seed=29)
+    artifact = _stack_artifact(stack, decoder)
+
+    loaded, _ = _load_or_fresh(
+        artifact,
+        stack_seed=31,
+        decoder_seed=37,
+        program_count=None,
+    )
+
+    assert len(loaded.programs) == 4
