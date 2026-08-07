@@ -213,6 +213,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "feedback_width": args.feedback_width,
         "hidden": args.hidden,
         "games": LADDER,
+        "shared_drivers": args.shared_drivers,
     }
     agent = SharedControllerAgent(**build)
 
@@ -323,6 +324,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "learning_rate": args.learning_rate,
             "ewc_lambda": args.ewc_lambda,
             "consolidation_mode": args.consolidation_mode,
+            "shared_drivers": args.shared_drivers,
             "arbitration_mu": args.arbitration_mu,
             "arbitration_decay": args.arbitration_decay,
             "fisher_batches": args.fisher_batches,
@@ -364,6 +366,7 @@ def main() -> None:
     )
     parser.add_argument("--arbitration-mu", type=float, default=1.0)
     parser.add_argument("--arbitration-decay", type=float, default=0.99)
+    parser.add_argument("--shared-drivers", action="store_true")
     parser.add_argument("--mastery-gate", type=float, default=0.8)
     parser.add_argument("--breakout-gate", type=float, default=0.5)
     parser.add_argument("--retention-epsilon", type=float, default=0.1)

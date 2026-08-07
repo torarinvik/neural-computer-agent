@@ -49,6 +49,23 @@ from neural_computer import (
 )
 
 GAMES = ("snake", "pong")
+SHARED_SCREEN_CHANNELS = 3
+SHARED_KEY_COUNT = 4
+
+
+def pad_channels(observation: torch.Tensor, channels: int) -> torch.Tensor:
+    """Pad an observation with zero planes up to the shared screen depth."""
+
+    missing = channels - observation.shape[1]
+    if missing < 0:
+        raise ValueError("observation exceeds the shared channel count")
+    if missing == 0:
+        return observation
+    filler = torch.zeros(
+        observation.shape[0], missing, *observation.shape[2:],
+        device=observation.device,
+    )
+    return torch.cat([observation, filler], dim=1)
 GAME_CHANNELS = {"snake": 3, "pong": 2, "breakout": 3}
 GAME_ACTIONS = {"snake": 4, "pong": 3, "breakout": 3}
 GAME_VERIFIERS = {
@@ -70,9 +87,11 @@ class SharedControllerAgent(nn.Module):
         hidden: int,
         event_window_capacity: int = 4,
         games: tuple[str, ...] = GAMES,
+        shared_drivers: bool = False,
     ) -> None:
         super().__init__()
         self.games = tuple(games)
+        self.shared_drivers = bool(shared_drivers)
         controller = AmodalCognitiveController(
             width=event_width,
             workspace_slots=4,
@@ -80,9 +99,25 @@ class SharedControllerAgent(nn.Module):
             feedback_width=feedback_width,
             event_window_capacity=event_window_capacity,
         )
-        self.runtime = AmodalControllerRuntime(
-            controller,
-            encoders={
+        if self.shared_drivers:
+            encoders = {
+                "screen": GridEventEncoder(
+                    channels=SHARED_SCREEN_CHANNELS,
+                    height=8,
+                    width=8,
+                    event_width=event_width,
+                )
+            }
+            decoders = {
+                "keypress": KeypressDecoder(
+                    intention_width, SHARED_KEY_COUNT, hidden=hidden
+                )
+            }
+            feedback = {
+                "keypress": KeypressEncoder(SHARED_KEY_COUNT, feedback_width)
+            }
+        else:
+            encoders = {
                 game: GridEventEncoder(
                     channels=GAME_CHANNELS[game],
                     height=8,
@@ -90,32 +125,41 @@ class SharedControllerAgent(nn.Module):
                     event_width=event_width,
                 )
                 for game in self.games
-            },
-            output_bus=AmodalOutputBus(
-                {
-                    game: KeypressDecoder(
-                        intention_width, GAME_ACTIONS[game], hidden=hidden
-                    )
-                    for game in self.games
-                }
-            ),
-        )
-        self.feedback_encoders = nn.ModuleDict(
-            {
+            }
+            decoders = {
+                game: KeypressDecoder(
+                    intention_width, GAME_ACTIONS[game], hidden=hidden
+                )
+                for game in self.games
+            }
+            feedback = {
                 game: KeypressEncoder(GAME_ACTIONS[game], feedback_width)
                 for game in self.games
             }
+        self.runtime = AmodalControllerRuntime(
+            controller,
+            encoders=encoders,
+            output_bus=AmodalOutputBus(decoders),
         )
+        self.feedback_encoders = nn.ModuleDict(feedback)
 
     @property
     def controller(self) -> AmodalCognitiveController:
         return self.runtime.controller
 
+    def driver_names(self, game: str) -> tuple[str, str]:
+        """Resolve the encoder and decoder names serving one game."""
+
+        if self.shared_drivers:
+            return "screen", "keypress"
+        return game, game
+
     def game_modules(self, game: str) -> list[nn.Module]:
+        encoder_name, decoder_name = self.driver_names(game)
         return [
-            self.runtime.encoders[game],
-            self.runtime.output_bus.decoders[game],
-            self.feedback_encoders[game],
+            self.runtime.encoders[encoder_name],
+            self.runtime.output_bus.decoders[decoder_name],
+            self.feedback_encoders[decoder_name],
         ]
 
 
@@ -143,6 +187,7 @@ def rollout(
 
     verifier = GAME_VERIFIERS[game](batch_size=batch_size, seed=seed)
     verifier.reset(seed=seed)
+    encoder_name, decoder_name = agent.driver_names(game)
     controller = agent.controller
     state = controller.initial_state(batch_size, device="cpu")
     feedback = ControllerFeedback(
@@ -151,7 +196,7 @@ def rollout(
         propensity=torch.ones(batch_size),
         has_feedback=torch.zeros(batch_size),
     )
-    decoder: KeypressDecoder = agent.runtime.output_bus.decoders[game]
+    decoder: KeypressDecoder = agent.runtime.output_bus.decoders[decoder_name]
     rewards: list[torch.Tensor] = []
     log_propensities: list[torch.Tensor] = []
     masks: list[torch.Tensor] = []
@@ -160,17 +205,22 @@ def rollout(
         if not bool(alive.any()):
             break
         masks.append(alive.float())
-        event = agent.runtime.encoders[game](verifier.observation())
+        observation = verifier.observation()
+        if agent.shared_drivers:
+            observation = pad_channels(observation, SHARED_SCREEN_CHANNELS)
+        event = agent.runtime.encoders[encoder_name](observation)
         output, state = agent.runtime.step_events([event], state, feedback)
         decision = decoder.decide_from_logits(
-            output.decoded[game], sample=sample
+            output.decoded[decoder_name], sample=sample
         )
         log_propensities.append(decision.propensity.clamp_min(1e-8).log())
-        outcome = verifier.step(decision.key_index)
+        outcome = verifier.step(
+            decision.key_index.clamp(max=verifier.action_count - 1)
+        )
         rewards.append(outcome.reward)
         alive = outcome.alive
         feedback = ControllerFeedback(
-            action=agent.feedback_encoders[game](decision.key_index),
+            action=agent.feedback_encoders[decoder_name](decision.key_index),
             reward=outcome.reward,
             propensity=decision.propensity.detach(),
             has_feedback=torch.ones(batch_size),

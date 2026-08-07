@@ -100,3 +100,23 @@ def test_detach_interval_backward_succeeds_across_windows() -> None:
         assert grads
         assert all(bool(torch.isfinite(g).all()) for g in grads)
     agent.zero_grad(set_to_none=True)
+
+
+def test_shared_drivers_unify_encoder_decoder_across_games() -> None:
+    torch.manual_seed(0)
+    agent = SharedControllerAgent(
+        event_width=32, intention_width=16, feedback_width=8, hidden=16,
+        games=("snake", "pong", "breakout"), shared_drivers=True,
+    )
+    assert set(agent.runtime.encoders.keys()) == {"screen"}
+    assert set(agent.runtime.output_bus.decoders.keys()) == {"keypress"}
+    assert agent.runtime.output_bus.decoders["keypress"].key_count == 4
+    modules_snake = agent.game_modules("snake")
+    modules_pong = agent.game_modules("pong")
+    for a, b in zip(modules_snake, modules_pong, strict=True):
+        assert a is b
+    for game in ("snake", "pong", "breakout"):
+        summary = rollout(
+            agent, game, batch_size=2, steps=6, seed=3, sample=True, gamma=0.9
+        )
+        assert summary["total_reward"].shape == (2,)
