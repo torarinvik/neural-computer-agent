@@ -1,0 +1,49 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "learned_compute_candidate_screen_selective_query_prior_promoted_v1",
+  "claim": "Copying only the learned query-side address representation improves two-seed append acquisition at 64 updates per stage while fresh key and matching state remain isolated.",
+  "replayed_examples": 0,
+  "fresh_two_seed_threshold_updates_per_stage": 128,
+  "runs": [
+    {
+      "seed": 69316,
+      "promoted": true,
+      "prior_mode": "query_path",
+      "candidate_count": 10,
+      "known_candidates": 7,
+      "outcome_unseen_candidates": 3,
+      "append_stage_sizes": [1, 2],
+      "calibration_updates_per_stage": 64,
+      "known_novel_context_top1_accuracy": 1.0,
+      "unseen_pre_failure_top1_accuracy": 0.0,
+      "unseen_post_failure_top1_accuracy": 1.0,
+      "fresh_control_post_failure_top1_accuracy": 1.0,
+      "extension_candidate_permutation_accuracy": 1.0,
+      "optimizer_updates": 672,
+      "calibration_optimizer_updates": 128,
+      "unique_verifier_bits": 64512,
+      "unique_logical_lifetimes": 64128,
+      "replayed_examples": 0
+    },
+    {
+      "seed": 69317,
+      "promoted": true,
+      "prior_mode": "query_path",
+      "candidate_count": 10,
+      "known_candidates": 7,
+      "outcome_unseen_candidates": 3,
+      "append_stage_sizes": [1, 2],
+      "calibration_updates_per_stage": 64,
+      "known_novel_context_top1_accuracy": 1.0,
+      "unseen_pre_failure_top1_accuracy": 0.0,
+      "unseen_post_failure_top1_accuracy": 1.0,
+      "fresh_control_post_failure_top1_accuracy": 0.6666666865348816,
+      "extension_candidate_permutation_accuracy": 1.0,
+      "optimizer_updates": 672,
+      "calibration_optimizer_updates": 128,
+      "unique_verifier_bits": 64512,
+      "unique_logical_lifetimes": 64128,
+      "replayed_examples": 0
+    }
+  ]
+}

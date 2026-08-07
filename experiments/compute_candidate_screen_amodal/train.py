@@ -380,8 +380,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         )
     if args.append_only_stages < 1:
         raise ValueError("append-only-stages must be positive")
-    if args.append_only_inherit_base and not args.append_only_calibration:
-        raise ValueError("append-only-inherit-base requires append-only-calibration")
+    if args.append_only_inherit_base and args.append_only_prior_mode != "none":
+        raise ValueError("choose one append-only prior mode")
+    append_only_prior_mode = (
+        "full" if args.append_only_inherit_base else args.append_only_prior_mode
+    )
+    if append_only_prior_mode != "none" and not args.append_only_calibration:
+        raise ValueError("append-only prior mode requires append-only-calibration")
     if args.batch_size % 2 or args.audit_count % 2:
         raise ValueError("batch-size and audit-count must be even")
     if args.unseen_candidates < 1 or args.unseen_candidates >= args.candidate_count:
@@ -533,9 +538,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             extension_sizes=tuple(append_stage_sizes),
         )
         append_only_screen.base_screen.load_state_dict(screen.state_dict(), strict=True)
-        if args.append_only_inherit_base:
+        if append_only_prior_mode != "none":
             for stage_index in range(args.append_only_stages):
-                append_only_screen.initialize_extension_from_base(stage_index)
+                append_only_screen.initialize_extension_from_base(
+                    stage_index,
+                    mode=append_only_prior_mode,
+                )
         append_only_screen.freeze_base()
         stage_accounting = []
         start = 0
@@ -764,6 +772,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "calibration_enabled": calibration_enabled,
         "append_only_enabled": append_only_screen is not None,
         "append_only_inherit_base": args.append_only_inherit_base,
+        "append_only_prior_mode": append_only_prior_mode,
         "append_only_stages": args.append_only_stages,
         "append_only_stage_sizes": append_stage_sizes,
         "configuration": evaluated_screen.configuration(),
@@ -773,6 +782,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "calibration_updates": args.calibration_updates,
             "append_only_stages": args.append_only_stages,
             "append_only_inherit_base": args.append_only_inherit_base,
+            "append_only_prior_mode": append_only_prior_mode,
             "append_only_stage_sizes": append_stage_sizes,
             "batch_size": args.batch_size,
             "audit_count": args.audit_count,
@@ -908,6 +918,12 @@ def main() -> None:
         "--append-only-inherit-base",
         action="store_true",
         help="copy the frozen base address blueprint into each extension",
+    )
+    parser.add_argument(
+        "--append-only-prior-mode",
+        choices=("none", "full", "query_path"),
+        default="none",
+        help="selective copy-on-write prior for new extensions",
     )
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--audit-count", type=int, default=96)

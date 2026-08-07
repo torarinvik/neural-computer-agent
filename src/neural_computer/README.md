@@ -795,6 +795,12 @@ is retained only as a rejected control because it harms new-stage acquisition;
 fresh extension initialization remains canonical. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_cardinality_independent_mixed_128_promoted_v1_2026-08-07/`.
 
+Selective query-side transfer improves the same mixed audit again: copying
+only query projections and router query encoders passes both seeds at 64
+updates per stage, while fresh initialization fails one matched seed at that
+budget. Candidate-key and matching state remain fresh. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_selective_query_prior_promoted_v1_2026-08-07/`.
+
 The next 46-capability fourth-shift pressure test is intentionally rejected:
 late length-14 rows fail stable protection at hidden 256/8,192 updates,
 hidden 512, and an adaptive late-budget control. This is evidence for

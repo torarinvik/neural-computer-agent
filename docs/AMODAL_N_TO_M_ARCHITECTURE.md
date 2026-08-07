@@ -3401,3 +3401,11 @@ causal evidence. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_cardinality_independent_mixed_128_promoted_v1_2026-08-07/`
 and
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_inherited_prior_rejected_v1_2026-08-07/`.
+
+Selective query-side transfer then passes the same mixed `[1, 2]` audit at
+64 updates per stage across both seeds: only query projections are copied,
+while candidate-key and matching state remain fresh. The matched fresh
+control fails seed `69317` at `0.6667` and needed 128 updates per stage for a
+two-seed promotion. This promotes a 50% acquisition-cost reduction without
+retaining blind inherited weights. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_selective_query_prior_promoted_v1_2026-08-07/`.

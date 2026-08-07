@@ -502,16 +502,34 @@ class AppendOnlyLearnedComputeCandidateScreen(nn.Module):
         self.extension_sizes.append(int(candidate_count))
         return len(self.extensions) - 1
 
-    def initialize_extension_from_base(self, index: int) -> None:
-        """Copy the frozen address blueprint into one extension.
+    def initialize_extension_from_base(
+        self,
+        index: int,
+        *,
+        mode: Literal["full", "query_path"] = "full",
+    ) -> None:
+        """Copy selected frozen address structure into one extension.
 
         The copy is independent copy-on-write state: subsequent extension
         updates cannot mutate the base.  The extension remains disabled until
-        fresh verifier evidence explicitly enables it.
+        fresh verifier evidence explicitly enables it.  ``query_path`` copies
+        only the learned event-query projections and keeps candidate-key and
+        matching state at fresh initialization.
         """
 
+        if mode not in ("full", "query_path"):
+            raise ValueError("extension prior mode must be full or query_path")
         extension = self.extensions[index]
-        extension.load_state_dict(self.base_screen.state_dict(), strict=True)
+        if mode == "full":
+            extension.load_state_dict(self.base_screen.state_dict(), strict=True)
+        else:
+            extension_state = extension.state_dict()
+            base_state = self.base_screen.state_dict()
+            for prefix in ("query_projection.", "router.query_encoder."):
+                for name in extension_state:
+                    if name.startswith(prefix):
+                        extension_state[name] = base_state[name].detach().clone()
+            extension.load_state_dict(extension_state, strict=True)
         extension.enabled.fill_(False)
 
     def enable_base(self) -> None:
