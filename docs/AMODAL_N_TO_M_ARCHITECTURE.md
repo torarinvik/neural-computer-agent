@@ -3471,3 +3471,11 @@ compaction cannot repair upstream mastery. A naïve copied-stage replacement
 was rejected on both seeds. This keeps the compaction contract while rejecting
 the current learned replacement path; evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_consolidation_rejected_v1_2026-08-07/`.
+
+A more expressive pairwise candidate router is also rejected at the same
+twenty-candidate/five-stage/32-update boundary: unseen routing is
+`0.9063/0.7083`, below the factorized baseline's `1.0000/0.8958`, and one seed
+fails promotion. The extra branch is removed from the canonical screen; the
+remaining bottleneck is candidate-signature separation and per-candidate
+mastery, not scorer expressiveness. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_pairwise_router_rejected_v1_2026-08-07/`.

@@ -1,0 +1,27 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "learned_compute_candidate_screen_pairwise_router_rejected_v1",
+  "claim": "A more expressive pairwise screen router did not improve five-stage bank-20 acquisition and is rejected from the canonical branch.",
+  "candidate_count": 20,
+  "append_stage_sizes": [2, 2, 2, 2, 2],
+  "calibration_updates_per_stage": 32,
+  "replayed_examples": 0,
+  "runs": [
+    {
+      "seed": 69316,
+      "promoted": true,
+      "unseen_top1_accuracy": 0.90625,
+      "candidate_permutation_accuracy": 0.9375,
+      "optimizer_updates": 640,
+      "replayed_examples": 0
+    },
+    {
+      "seed": 69317,
+      "promoted": false,
+      "unseen_top1_accuracy": 0.7083333134651184,
+      "candidate_permutation_accuracy": 0.8958333134651184,
+      "optimizer_updates": 640,
+      "replayed_examples": 0
+    }
+  ]
+}

@@ -843,6 +843,11 @@ intentionally rejected: strict per-candidate retention failed on both seeds,
 and a naïve copied-stage replacement was rejected. The next task is repairing
 source mastery and replacement training before any compression claim.
 
+The pairwise router control is likewise rejected: it underperforms the
+factorized router at the five-stage bank-20 rung and is not part of the
+canonical API. The active bottleneck is upstream candidate-signature
+separation and per-candidate mastery.
+
 The next 46-capability fourth-shift pressure test is intentionally rejected:
 late length-14 rows fail stable protection at hidden 256/8,192 updates,
 hidden 512, and an adaptive late-budget control. This is evidence for
