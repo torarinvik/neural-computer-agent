@@ -2457,10 +2457,15 @@ fabricating evidence.
 
 This is the CPU/filesystem foundation needed for compositional capability
 growth, but it is not yet a universal interpreter or a promoted learned
-capability gain. The next required audit is a held-out composition trained
-from scalar outcomes, with the current whole-program capability bank as the
-baseline and fresh, reward-shuffled, instruction-ablation, reload, corruption,
-and frozen-core controls.
+capability gain. The first causal microdiagnostic reached `1.0000` on both
+primitive instructions but only `0.5000` on their frozen serial composition,
+so it is rejected: the unconstrained nonlinear transition still permits
+whole-function latent codes. The next implementation target is an explicitly
+factorized transition, followed by a held-out rendered-event audit against
+the current whole-program capability bank with fresh, reward-shuffled,
+instruction-ablation, reload, corruption, and frozen-core controls. The
+rejected diagnostic is archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_interpreter_composition_rejected_v1_2026-08-07/`.
 
 ## Unseen external computation and multi-parent retention (2026-08-06)
 

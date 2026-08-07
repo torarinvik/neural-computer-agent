@@ -1,0 +1,44 @@
+{
+  "schema": "neural-computer.external-register-composition-diagnostic.v1",
+  "status": "rejected",
+  "claim_boundary": "A shared external register machine can store opaque instruction vectors, but this diagnostic does not establish compositional learned capability, arbitrary program induction, or general continual learning.",
+  "seed": 1208,
+  "event_source": "fixed_random_opaque_event_codebook",
+  "register_machine": {
+    "schema": "neural-computer.external-register.v1",
+    "event_width": 16,
+    "action_width": 2,
+    "intention_width": 12,
+    "register_width": 16,
+    "instruction_width": 8,
+    "interpreter_hidden": 64,
+    "instruction_count": 2
+  },
+  "training": {
+    "primitive_updates": 4000,
+    "batch_size": 256,
+    "primitive_schedule": "alternating_instruction_zero_and_one",
+    "unique_verifier_bits": 2048000,
+    "unique_logical_lifetimes": 1024000,
+    "optimizer_updates": 4000,
+    "replayed_examples": 0,
+    "wall_seconds": 2.8
+  },
+  "results": {
+    "primitive_instruction_zero_accuracy": 1.0,
+    "primitive_instruction_one_accuracy": 1.0,
+    "heldout_serial_composition_accuracy": 0.5,
+    "chance_accuracy": 0.5,
+    "stable_bits_to_threshold": null,
+    "retention_on_mastered_primitives": null,
+    "transfer_ratio_against_fresh_learner": null
+  },
+  "gates": {
+    "primitives_mastered": true,
+    "composition_mastered": false,
+    "promotion_accepted": false,
+    "core_unchanged": true,
+    "no_replayed_examples": true
+  },
+  "interpretation": "The register and instruction isolation boundary is mechanically valid, but the unconstrained nonlinear transition learns whole-function latent codes instead of a reusable compositional operator language."
+}
