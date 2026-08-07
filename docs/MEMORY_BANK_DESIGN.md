@@ -524,3 +524,38 @@ contexts are still failing, those gradients conflict. Sharing may
 therefore have to be *earned after* acquisition — consolidated into the
 bank by a later merge pass (R3) rather than imposed as the initial
 allocation.
+
+**F15 (probes 17-19). A multi-rule world is only as good as its escape
+audit: engagement is a mandatory readout, and blind guessing must pay.**
+Redesigning the dual world for the sharing rung surfaced three coupled
+design failures, each invisible to the metrics that preceded it:
+
+1. *Rule encoding.* Marking the trial kind as item intensity (A/B at 1.0,
+   C/D at 0.5) makes each rule a plane-x-intensity conjunction. A single
+   unambiguous context, with the whole plant to itself, could not learn
+   it (0.88/0.51). Trial kind must be a separate observable — a cue —
+   orthogonal to the choice.
+2. *Selective refusal.* With a free recentring step, agents mastered one
+   trial kind and *declined the other forever* (engagement 1.6-3.6 of ~24
+   trials), leaving per-rule accuracy meaningless on the refused kind.
+   Scalar mastery could not see this; the new `rule_engagement` readout
+   could. This is F2's passive escape resurfacing per-rule in any world
+   with more than one reward source.
+3. *Variance-aware idling.* Charging idling (-0.1) while a guess stayed a
+   symmetric +1/-1 did NOT restore engagement. Under policy gradient a
+   zero-mean high-variance action loses to a low-variance idle even when
+   idling is worse in expectation. Engagement returned only when blind
+   guessing became profitable (+1 right, -0.2 wrong: +0.4 expected).
+   Reward asymmetry, not punishment, is what buys exploration — and
+   mastery must then be scored on per-rule accuracy, since raw reward
+   no longer distinguishes knowing from playing.
+
+With all three fixed: uniform contexts (`dualAC`, `dualBD`) reach
+1.000/1.000; conditional contexts engage fully but plateau at one rule
+~0.9-1.0 and the other ~0.6 (mean ~0.78, three runs, two seeds, 3x
+budget). The residual is not a world flaw — the cue is read (both rules
+beat chance under full engagement) — but the plant's known recurrent-
+acquisition limit applied to cue-conditional branching. Consequence for
+the sharing rung: solo ceilings measured per context are the denominator
+for every gate; demanding 1.0 of a conditional context would test the
+plant, not the bank.

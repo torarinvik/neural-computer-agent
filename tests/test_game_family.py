@@ -171,9 +171,11 @@ def test_dual_choices_render_identically_in_both_trial_kinds() -> None:
     assert not torch.equal(frames[0], frames[1])  # the cue differs
     # ...but the object planes, which carry the choice, are identical.
     assert torch.equal(frames[0][:, 1:], frames[1][:, 1:])
-    cue_left, cue_right = (0, 0), (0, verifier.width - 1)
-    assert float(frames[0][0, 0, cue_left[0], cue_left[1]]) == 1.0
-    assert float(frames[1][0, 0, cue_right[0], cue_right[1]]) == 1.0
+    half = verifier.width // 2
+    assert bool((frames[0][0, 0, 0, :half] == 1.0).all())
+    assert bool((frames[0][0, 0, 0, half:] == 0.0).all())
+    assert bool((frames[1][0, 0, 0, half:] == 1.0).all())
+    assert bool((frames[1][0, 0, 0, :half] == 0.0).all())
 
 
 def test_dual_twins_render_identically_and_never_kill() -> None:

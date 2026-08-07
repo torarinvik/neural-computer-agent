@@ -31,12 +31,13 @@ COMPONENTS = ("collect", "intercept", "avoid", "navigate")
 
 # `dual` renders the two choices identically in both trial kinds (one on
 # each object plane) and signals WHICH RULE IS IN FORCE with a separate
-# cue cell on the avatar plane. Encoding the trial kind into the items
-# themselves instead -- as a second intensity level -- makes each rule a
-# conjunction of plane and intensity, which this plant cannot learn even
-# with a single unambiguous context to itself (probe 17). Keep the cue
-# orthogonal to the choice.
-_DUAL_CUE_CORNERS = ((0, 0), (0, -1))
+# cue on the avatar plane: the top row's left half (kind 0) or right half
+# (kind 1). Encoding the trial kind into the items themselves instead --
+# as a second intensity level -- makes each rule a plane-x-intensity
+# conjunction this plant cannot learn even with a single unambiguous
+# context to itself (probe 17). A single cue *pixel* is legible but too
+# faint against the two-item choice: conditional contexts plateau at 0.75
+# (probe 18). The cue must carry salience comparable to the choice.
 
 # F2, strengthened for multi-rule worlds. An agent that has mastered one
 # trial kind SELECTIVELY refuses the kind it has not mastered, and its
@@ -341,8 +342,11 @@ class FamilyVerifier:
             for cell in self._forage_b[row]:
                 grid[row, 2, cell[0], cell[1]] = 1.0
             if self.config.dual and self._dual_items[row]:
-                cue = _DUAL_CUE_CORNERS[self._dual_kind[row]]
-                grid[row, 0, cue[0], cue[1]] = 1.0
+                half = self.width // 2
+                if self._dual_kind[row] == 0:
+                    grid[row, 0, 0, :half] = 1.0
+                else:
+                    grid[row, 0, 0, half:] = 1.0
                 for item in self._dual_items[row]:
                     grid[row, 1 + item[2], item[0], item[1]] = 1.0
         return grid
