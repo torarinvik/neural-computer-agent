@@ -400,7 +400,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         width=args.event_width,
         variants=[v.name for v in train_variants],
     )
-    singles = [v for v in train_variants if len(v.active()) == 1]
+    if args.suite == "twins":
+        singles = [train_variants[0]]
+    else:
+        singles = [v for v in train_variants if len(v.active()) == 1]
     warm_history = train_bank(
         agent,
         bank,
