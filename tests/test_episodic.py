@@ -3,6 +3,9 @@ from __future__ import annotations
 import pytest
 import torch
 
+from experiments.compute_candidate_screen_amodal.train import (
+    _candidate_key_diagnostics,
+)
 from neural_computer import (
     AdaptiveOnlineEpisodicRelationReader,
     AppendOnlyLearnedComputeCandidateScreen,
@@ -400,6 +403,16 @@ def test_learned_compute_screen_is_neutral_and_permutation_equivariant() -> None
     assert torch.allclose(permuted_scores, scores[:, permutation])
     assert screen.order(query[0], keys) == (0, 1, 2)
     assert screen.configuration()["role"] == "order_only_fresh_admission_required"
+
+
+def test_candidate_key_diagnostics_detects_collapsed_signatures() -> None:
+    separated = _candidate_key_diagnostics(torch.eye(3))
+    collapsed = _candidate_key_diagnostics(torch.ones(3, 3))
+
+    assert separated["max_off_diagonal_cosine"] == 0.0
+    assert separated["effective_rank"] == pytest.approx(3.0)
+    assert collapsed["max_off_diagonal_cosine"] == pytest.approx(1.0)
+    assert collapsed["effective_rank"] == pytest.approx(1.0)
 
 
 def test_learned_compute_screen_ranking_loss_uses_only_scalar_outcomes() -> None:

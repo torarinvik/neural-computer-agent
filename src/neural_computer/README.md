@@ -848,6 +848,15 @@ factorized router at the five-stage bank-20 rung and is not part of the
 canonical API. The active bottleneck is upstream candidate-signature
 separation and per-candidate mastery.
 
+The candidate-screen harness now records per-target top-1 mastery and
+candidate-key separation diagnostics. Aggregate routing no longer promotes an
+append boundary when one target is hidden by the mean: the strict gate requires
+every audited target to clear the mastery floor. The bank-20 audit shows why:
+one seed has aggregate unseen accuracy `0.8958` but a target at `0.0`, while
+the twenty-key representation has nearest-neighbor cosine `0.9982` and
+effective rank `3.59`. The next implementation target is therefore a richer,
+behaviorally grounded candidate signature, not another router variant.
+
 The next 46-capability fourth-shift pressure test is intentionally rejected:
 late length-14 rows fail stable protection at hidden 256/8,192 updates,
 hidden 512, and an adaptive late-budget control. This is evidence for

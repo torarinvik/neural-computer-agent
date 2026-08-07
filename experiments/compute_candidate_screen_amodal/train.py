@@ -108,13 +108,58 @@ def _outcomes(families: list[int], candidate_count: int) -> torch.Tensor:
     return result
 
 
+def _per_target_top1_accuracy(
+    predictions: torch.Tensor,
+    targets: torch.Tensor,
+) -> list[float]:
+    """Return mastery for every target represented in an audit batch."""
+
+    return [
+        float((predictions[targets == target] == target).float().mean())
+        for target in sorted(set(targets.tolist()))
+    ]
+
+
+@torch.no_grad()
+def _candidate_key_diagnostics(keys: torch.Tensor) -> dict[str, object]:
+    """Measure whether external candidate signatures are actually separable."""
+
+    if keys.ndim != 2 or keys.shape[0] < 2:
+        raise ValueError("key diagnostics require at least two 2-D candidate keys")
+    normalized = F.normalize(keys, dim=-1)
+    similarity = normalized @ normalized.transpose(0, 1)
+    off_diagonal = ~torch.eye(
+        similarity.shape[0], dtype=torch.bool, device=similarity.device
+    )
+    off_diagonal_values = similarity[off_diagonal]
+    nearest = similarity.masked_fill(~off_diagonal, float("-inf")).max(dim=1).values
+    singular_values = torch.linalg.svdvals(normalized)
+    probabilities = singular_values / singular_values.sum().clamp_min(1e-12)
+    effective_rank = torch.exp(
+        -(probabilities * probabilities.clamp_min(1e-12).log()).sum()
+    )
+    return {
+        "candidate_count": int(keys.shape[0]),
+        "mean_off_diagonal_cosine": float(off_diagonal_values.mean()),
+        "max_off_diagonal_cosine": float(off_diagonal_values.max()),
+        "min_off_diagonal_cosine": float(off_diagonal_values.min()),
+        "nearest_neighbor_cosine": [float(value) for value in nearest],
+        "effective_rank": float(effective_rank),
+    }
+
+
+def _all_targets_clear(metrics: dict[str, object]) -> bool:
+    values = metrics["per_target_top1_accuracy"]
+    return isinstance(values, list) and bool(values) and min(values) >= MASTERY_THRESHOLD
+
+
 @torch.no_grad()
 def _route_metrics(
     screen: LearnedComputeCandidateScreen,
     queries: torch.Tensor,
     targets: torch.Tensor,
     keys: torch.Tensor,
-) -> dict[str, float]:
+) -> dict[str, object]:
     scores = screen(queries, keys)
     order = torch.argsort(scores, dim=-1, descending=True, stable=True)
     top = order[:, 0]
@@ -123,6 +168,7 @@ def _route_metrics(
         "top1_accuracy": float((top == targets).float().mean()),
         "mean_fresh_attempts": float(rank.float().mean()),
         "fresh_verifier_authorized_rate": float((top == targets).float().mean()),
+        "per_target_top1_accuracy": _per_target_top1_accuracy(top, targets),
     }
 
 
@@ -135,7 +181,7 @@ def _append_only_route_metrics(
     extension_keys: torch.Tensor,
     *,
     failed_extensions: torch.Tensor | bool,
-) -> dict[str, float]:
+) -> dict[str, object]:
     """Measure an append-only screen after an explicit old-route outcome."""
 
     scores = screen(
@@ -154,6 +200,7 @@ def _append_only_route_metrics(
         "failed_extension_gate": float(
             torch.as_tensor(failed_extensions, dtype=torch.float32).mean()
         ),
+        "per_target_top1_accuracy": _per_target_top1_accuracy(top, targets),
     }
 
 
@@ -527,7 +574,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     }
     append_only_screen: AppendOnlyLearnedComputeCandidateScreen | None = None
     append_only_training: dict[str, int | float] | None = None
-    append_only_unseen_pre_failure_metrics: dict[str, float] | None = None
+    append_only_unseen_pre_failure_metrics: dict[str, object] | None = None
     append_only_unseen_permuted_accuracy: float | None = None
     if args.append_only_calibration:
         known_keys = keys[:train_count]
@@ -720,6 +767,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             failed_extensions=False,
         )
     parent_digest_after = _digest_core(parent, ())
+    candidate_key_diagnostics = _candidate_key_diagnostics(keys)
     chance = 1.0 / args.candidate_count
     calibration_enabled = args.calibration_updates > 0
     gates = {
@@ -744,6 +792,16 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             if calibration_enabled
             else True
         ),
+        "known_context_per_candidate_mastery": (
+            _all_targets_clear(calibrated_novel_context_metrics)
+            if calibration_enabled
+            else True
+        ),
+        "unseen_candidate_per_candidate_mastery": (
+            _all_targets_clear(calibrated_unseen_candidate_metrics)
+            if calibration_enabled
+            else True
+        ),
         "candidate_permutation": permuted_accuracy >= MASTERY_THRESHOLD,
         "append_only_unseen_candidate_permutation": (
             append_only_unseen_permuted_accuracy is None
@@ -758,7 +816,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "no_replayed_examples": training_accounting["replayed_examples"] == 0,
     }
     report = {
-        "schema": "neural-computer.learned-compute-candidate-screen-report.v1",
+        "schema": "neural-computer.learned-compute-candidate-screen-report.v2",
         "claim_boundary": (
             "A replaceable memory-side screen learned an opaque query/key "
             "compatibility relation from attempted scalar outcomes. The "
@@ -798,6 +856,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "candidate_key_digest": hashlib.sha256(
             keys.detach().cpu().contiguous().numpy().tobytes()
         ).hexdigest(),
+        "candidate_key_diagnostics": candidate_key_diagnostics,
         "training": training_accounting,
         "append_only_training": append_only_training,
         "train_metrics": train_metrics,

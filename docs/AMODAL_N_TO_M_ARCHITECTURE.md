@@ -3479,3 +3479,13 @@ fails promotion. The extra branch is removed from the canonical screen; the
 remaining bottleneck is candidate-signature separation and per-candidate
 mastery, not scorer expressiveness. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_pairwise_router_rejected_v1_2026-08-07/`.
+
+The factorized boundary was then rerun with strict per-candidate promotion.
+Seed `69316` clears all ten unseen targets, but seed `69317` has aggregate
+unseen accuracy `0.8958` with one target at `0.0000`, and known-target holes at
+`0.7000` and `0.0000`. Candidate-key diagnostics expose the representation
+failure directly: nearest-neighbor cosine reaches `0.9956/0.9982` and
+effective rank is only `4.47/3.59` for twenty keys. The replicated boundary is
+therefore not promoted until upstream signatures and source mastery are fixed;
+aggregate routing is no longer accepted as sufficient evidence. See
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_per_candidate_mastery_audit_v1_2026-08-07/`.
