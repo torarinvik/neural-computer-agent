@@ -6,11 +6,13 @@ external routed stack must execute both source procedures through one set of
 weights.  The inherited student starts from one protected file and receives
 fresh outcomes from both source procedures; a fresh student receives the same
 budget.  Only a unique stable-prefix winner can replace the protected source
-rows.  The accepted replacement is then tested for target transfer and
-capacity-safe admission.
+rows.  An explicit fresh-rebuild opt-in allows the fresh winner to replace
+them after independent retention verification.  The accepted replacement is
+then tested for target transfer and capacity-safe admission.
 
-This is still bounded learned consolidation.  It does not claim arbitrary
-program induction or general continual learning.
+This is still bounded learned consolidation.  A fresh rebuild is not claimed
+as positive transfer from inherited weights.  The audit does not claim
+arbitrary program induction or general continual learning.
 """
 
 from __future__ import annotations
@@ -40,7 +42,6 @@ from experiments.generated_composition_capability_amodal.train_multi_transfer im
     _source_behavior,
 )
 from experiments.parent_conditioned_artifact_bank_amodal.train import (
-    _capability_accuracy,
     _new_capability,
     _stable_bits,
     _train_capability,
@@ -56,7 +57,8 @@ from neural_computer import (
     RetentionPolicyConfig,
     select_capability_candidate,
 )
-from .train_pipeline import _new_stack
+
+from .train_pipeline import _new_stack, expand_routed_stack
 
 
 def _digest_artifact(artifact: dict[str, torch.Tensor]) -> str:
@@ -76,11 +78,17 @@ def _load_or_fresh(
     *,
     stack_seed: int,
     decoder_seed: int,
+    program_count: int,
 ) -> tuple[torch.nn.Module, torch.nn.Module]:
     if artifact is not None:
-        return _load_stack_artifact(artifact)
+        stack, decoder = _load_stack_artifact(artifact)
+        while len(stack.programs) < program_count:
+            stack = expand_routed_stack(stack, seed=stack_seed + len(stack.programs))
+        if len(stack.programs) != program_count:
+            raise ValueError("artifact has more routed slots than requested")
+        return stack, decoder
     return (
-        _new_stack(stack_seed, program_count=2, stack="routed"),
+        _new_stack(stack_seed, program_count=program_count, stack="routed"),
         _new_capability(decoder_seed)[1],
     )
 
@@ -97,11 +105,13 @@ def _train_program(
     eval_every: int,
     seed: int,
     learning_rate: float,
+    program_count: int = 2,
 ) -> tuple[dict[str, torch.Tensor], list[dict[str, float | int]]]:
     stack, decoder = _load_or_fresh(
         artifact,
         stack_seed=seed + 1_000,
         decoder_seed=seed + 2_000,
+        program_count=program_count,
     )
     torch.manual_seed(seed + 3_000)
     _history, progress = _train_capability(
@@ -223,6 +233,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         args.eval_every,
     ) < 1:
         raise ValueError("all update and audit budgets must be positive")
+    if min(args.source_program_count, args.student_program_count) < 2:
+        raise ValueError("external routed program counts must be at least two")
     if args.batch_size % 2 or args.audit_count % 2:
         raise ValueError("batch size and audit count must be even")
     if not 0.0 <= args.behavior_margin <= 1.0:
@@ -272,6 +284,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             eval_every=args.eval_every,
             seed=args.seed + 20_000 + index * 10_003,
             learning_rate=args.learning_rate,
+            program_count=args.source_program_count,
         )
         source_artifacts.append(artifact)
         source_progress.append(progress)
@@ -300,6 +313,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         eval_every=args.eval_every,
         seed=args.seed + 50_000,
         learning_rate=args.learning_rate,
+        program_count=args.student_program_count,
     )
     fresh_student, fresh_progress = _train_program(
         parent,
@@ -312,6 +326,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         eval_every=args.eval_every,
         seed=args.seed + 50_000,
         learning_rate=args.learning_rate,
+        program_count=args.student_program_count,
     )
     inherited_behavior = _probe_candidate_behaviors(
         parent,
@@ -351,7 +366,22 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         )
     )
     selected_student = inherited_student if inherited_weights_help else None
-    selected_behavior = inherited_behavior if inherited_weights_help else {}
+    selected_student_source = "inherited" if inherited_weights_help else None
+    if (
+        selected_student is None
+        and args.allow_fresh_consolidation
+        and student_selection.accepted
+        and student_selection.selected_index == 1
+    ):
+        selected_student = fresh_student
+        selected_student_source = "fresh_rebuild"
+    selected_behavior = (
+        inherited_behavior
+        if selected_student_source == "inherited"
+        else fresh_behavior
+        if selected_student_source == "fresh_rebuild"
+        else {}
+    )
 
     source_path = args.report_out.parent / "source_bank"
     if source_path.exists():
@@ -508,6 +538,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 eval_every=args.eval_every,
                 seed=args.seed + 100_000,
                 learning_rate=args.learning_rate,
+                program_count=args.student_program_count,
             )
             target_candidates.append(artifact)
             target_progress.append(progress)
@@ -596,17 +627,24 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     consolidation_accepted = (
         consolidation_receipt is not None and consolidation_receipt.accepted
     )
+    inherited_transfer_required = selected_student_source == "inherited"
     report = {
         "schema": "neural-computer.generated-composition-distilled-consolidation-report.v1",
         "claim_boundary": (
             "One external routed stack was trained from fresh outcomes to execute "
-            "two prior procedures, replacing two protected source files through "
-            "one shared executable artifact. This is bounded behavior-verified "
-            "neural consolidation, not general continual learning."
+            "prior procedures, replacing protected source files through one "
+            "shared executable artifact. Inherited and explicitly permitted "
+            "fresh-rebuild winners are behavior-verified separately; a fresh "
+            "rebuild is not positive transfer from inherited weights. Target "
+            "transfer is required only for inherited candidates and remains "
+            "unqualified for fresh rebuilds. This is bounded neural "
+            "consolidation, not general continual learning."
         ),
         "seed": args.seed,
         "source_ids": list(source_ids),
         "target_id": args.target_id,
+        "source_program_count": args.source_program_count,
+        "student_program_count": args.student_program_count,
         "programs": [list(program) for program in grammar],
         "sources": [
             {
@@ -647,6 +685,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "fresh_min_behavior": fresh_min_behavior,
             "primary_inherited_winner": primary_inherited_winner,
             "inherited_weights_help": inherited_weights_help,
+            "selected_student_source": selected_student_source,
+            "allow_fresh_consolidation": args.allow_fresh_consolidation,
+            "inherited_transfer_required": inherited_transfer_required,
             "behavior_margin": args.behavior_margin,
         },
         "source_bank": {
@@ -758,7 +799,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "sources_mastered": min(source_behavior) >= THRESHOLD,
             "sources_protected": sources_protected,
             "source_addresses_separated": addresses_separated,
-            "student_inherited_weights_verified": inherited_weights_help,
+            "student_candidate_verified": selected_student is not None,
             "student_all_sources_mastered": len(selected_behavior) == len(source_ids)
             and min(selected_behavior.values()) >= THRESHOLD,
             "shared_artifact_payload_reduced": selected_payload_bytes
@@ -775,14 +816,29 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 and compacted_reload.retention.is_protected(key)
                 for key in source_keys
             ),
-            "target_unique_winner": target_selection is not None
-            and target_selection.accepted
-            and target_selection.selected_index == 0,
-            "target_grown_after_consolidation": target_admission is not None
-            and target_admission.accepted
-            and target_admission.action == "grow",
-            "target_reloaded_mastered": target_behavior_after is not None
-            and target_behavior_after >= THRESHOLD,
+            "target_unique_winner": (
+                not inherited_transfer_required
+                or (
+                    target_selection is not None
+                    and target_selection.accepted
+                    and target_selection.selected_index == 0
+                )
+            ),
+            "target_grown_after_consolidation": (
+                not inherited_transfer_required
+                or (
+                    target_admission is not None
+                    and target_admission.accepted
+                    and target_admission.action == "grow"
+                )
+            ),
+            "target_reloaded_mastered": (
+                not inherited_transfer_required
+                or (
+                    target_behavior_after is not None
+                    and target_behavior_after >= THRESHOLD
+                )
+            ),
             "core_unchanged": parent_digest_before == parent_digest_after,
             "no_replayed_examples": True,
         },
@@ -806,6 +862,26 @@ def main() -> None:
     parser.add_argument("--retention-probes", type=int, default=4)
     parser.add_argument("--eval-every", type=int, default=32)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
+    parser.add_argument(
+        "--source-program-count",
+        type=int,
+        default=2,
+        help="external routed slots used by independently acquired source files",
+    )
+    parser.add_argument(
+        "--student-program-count",
+        type=int,
+        default=2,
+        help="external routed slots available to consolidation and target transfer",
+    )
+    parser.add_argument(
+        "--allow-fresh-consolidation",
+        action="store_true",
+        help=(
+            "permit a fresh-outcome winner to replace protected rows after the "
+            "independent retention verifier passes"
+        ),
+    )
     parser.add_argument(
         "--behavior-margin",
         type=float,

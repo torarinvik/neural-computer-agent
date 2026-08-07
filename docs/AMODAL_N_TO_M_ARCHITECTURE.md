@@ -2955,3 +2955,41 @@ ran `7.0%` slower end to end, so the change is a correctness/write-scope
 improvement rather than a promoted throughput claim. The timing record is
 archived in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_sequential_route_bound_dense_four_source_replicated_promoted_v1_2026-08-06/report_retention_only_persistence_seed69316.json`.
+
+## Fresh-rebuild neural consolidation of depth-eight procedures (2026-08-07)
+
+The external consolidation boundary now has an explicit capacity-expansion
+operation. `expand_routed_stack` copies existing program weights and router
+slices exactly, initializes one additional slot with a disabled route, and
+keeps the operation outside the frozen controller. The same primitive is used
+by sequential growth and distilled consolidation.
+
+The matched depth-eight audit trained two source procedures, compared an
+inherited three-slot student with a fresh three-slot student, and enabled the
+fresh-rebuild admission path only for this audit. The fresh student won the
+stable-prefix selector in both seeds. After independent fresh retention
+verification, both source rows were replaced by one shared artifact:
+
+| metric | seed 69316 | seed 69317 |
+| --- | ---: | ---: |
+| source behavior | `1.0000/1.0000` | `1.0000/1.0000` |
+| consolidated reload behavior | `1.0000/1.0000` | `1.0000/1.0000` |
+| retention probes | all `1.0000` | all `1.0000` |
+| physical rows | `2 -> 1` | `2 -> 1` |
+| payload ratio | `0.7392` | `0.7392` |
+| controller digest | unchanged | unchanged |
+| replayed examples | `0` | `0` |
+
+This promotes replicated bounded fresh-outcome neural consolidation and
+behavior-verified external compression for two depth-eight procedures. It is
+not inherited positive transfer: both selected students were fresh rebuilds.
+Target transfer is unqualified for this promotion, although the seed-69316
+diagnostic target reloaded at `0.9961`. Three-source depth-eight controls failed
+retention at both 256 and 512 consolidation updates even after slot expansion,
+which identifies the next bottleneck as multi-procedure credit assignment and
+capacity selection rather than storage plumbing.
+
+The result does not establish arbitrary program induction, unrestricted memory
+growth, or general continual learning. Reports, rejected controls, and the
+full accounting ledger are archived in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_depth8_fresh_rebuild_consolidation_replicated_promoted_v1_2026-08-07/`.

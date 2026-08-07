@@ -53,7 +53,7 @@ from experiments.generated_composition_capability_amodal.train_distilled_consoli
     _train_program,
 )
 from experiments.generated_composition_capability_amodal.train_pipeline import (
-    _new_stack,
+    expand_routed_stack as _expand_routed_stack,
 )
 from experiments.parent_conditioned_artifact_bank_amodal.train import (
     _capability_accuracy,
@@ -78,40 +78,6 @@ DEFAULT_SEQUENTIAL_GRAMMAR = (
     ("complement", "prefix_parity", "reverse", "global_parity"),
     ("rotate", "global_parity", "complement", "adjacent_xor"),
 )
-
-
-def _expand_routed_stack(
-    stack: torch.nn.Module,
-    *,
-    seed: int,
-) -> torch.nn.Module:
-    """Add one isolated routed slot while preserving every old slot exactly."""
-
-    old_count = len(stack.programs)
-    expanded = _new_stack(seed, program_count=old_count + 1, stack="routed")
-    if expanded.composition_steps != stack.composition_steps:
-        raise ValueError("expanded stack changed composition step count")
-    with torch.no_grad():
-        for old_program, new_program in zip(
-            stack.programs,
-            expanded.programs[:old_count],
-            strict=True,
-        ):
-            new_program.load_state_dict(old_program.state_dict(), strict=True)
-        expanded.router[0].load_state_dict(stack.router[0].state_dict(), strict=True)
-        old_router = stack.router[2]
-        new_router = expanded.router[2]
-        old_width = old_count
-        new_width = old_count + 1
-        for step in range(stack.composition_steps):
-            old_slice = slice(step * old_width, (step + 1) * old_width)
-            new_slice = slice(step * new_width, step * new_width + old_width)
-            new_router.weight[new_slice].copy_(old_router.weight[old_slice])
-            new_router.bias[new_slice].copy_(old_router.bias[old_slice])
-            new_router.weight[step * new_width + old_count].zero_()
-            new_router.bias[step * new_width + old_count].fill_(-8.0)
-    expanded.eval()
-    return expanded
 
 
 def _train_expanded_new_only(

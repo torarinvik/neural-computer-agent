@@ -45,6 +45,42 @@ def _new_stack(
     raise ValueError("stack must be serial or routed")
 
 
+def expand_routed_stack(
+    stack: ExternalCapabilityComposition,
+    *,
+    seed: int,
+) -> ExternalCapabilityComposition:
+    """Add one external routed slot while preserving existing slot state."""
+
+    if not isinstance(stack, ExternalCapabilityComposition):
+        raise TypeError("only routed compositions can be expanded")
+    old_count = len(stack.programs)
+    expanded = _new_stack(seed, program_count=old_count + 1, stack="routed")
+    if expanded.composition_steps != stack.composition_steps:
+        raise ValueError("expanded stack changed composition step count")
+    with torch.no_grad():
+        for old_program, new_program in zip(
+            stack.programs,
+            expanded.programs[:old_count],
+            strict=True,
+        ):
+            new_program.load_state_dict(old_program.state_dict(), strict=True)
+        expanded.router[0].load_state_dict(stack.router[0].state_dict(), strict=True)
+        old_router = stack.router[2]
+        new_router = expanded.router[2]
+        for step in range(stack.composition_steps):
+            old_slice = slice(step * old_count, (step + 1) * old_count)
+            new_slice = slice(
+                step * (old_count + 1), step * (old_count + 1) + old_count
+            )
+            new_router.weight[new_slice].copy_(old_router.weight[old_slice])
+            new_router.bias[new_slice].copy_(old_router.bias[old_slice])
+            new_router.weight[step * (old_count + 1) + old_count].zero_()
+            new_router.bias[step * (old_count + 1) + old_count].fill_(-8.0)
+    expanded.eval()
+    return expanded
+
+
 def run(args: argparse.Namespace) -> dict[str, object]:
     started = perf_counter()
     if min(

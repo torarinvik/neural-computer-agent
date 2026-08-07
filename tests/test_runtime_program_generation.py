@@ -8,6 +8,10 @@ from experiments.archive.unified_cognitive_controller.train_sequence_working_mem
 from experiments.generated_composition_capability_amodal.train_artifact_bank import (
     generate_runtime_program_grammar,
 )
+from experiments.generated_composition_capability_amodal.train_pipeline import (
+    _new_stack,
+    expand_routed_stack,
+)
 
 
 def test_runtime_program_generation_is_deterministic_and_distinct() -> None:
@@ -43,3 +47,29 @@ def test_runtime_generated_program_renderer_supports_eight_steps() -> None:
     assert len(grammar[0]) == 8
     assert batch.query_frames.shape == (4, 4, 3, 32, 32)
     assert torch.isfinite(batch.query_frames).all()
+
+
+def test_routed_stack_expansion_preserves_existing_external_state() -> None:
+    base = _new_stack(seed=17, program_count=2, stack="routed")
+    expanded = expand_routed_stack(base, seed=19)
+
+    assert len(expanded.programs) == 3
+    for old, new in zip(base.programs, expanded.programs[:2], strict=True):
+        assert all(
+            torch.equal(left, right)
+            for left, right in zip(
+                old.state_dict().values(), new.state_dict().values(), strict=True
+            )
+        )
+    assert torch.equal(expanded.router[0].weight, base.router[0].weight)
+    assert torch.equal(expanded.router[0].bias, base.router[0].bias)
+    for step in range(base.composition_steps):
+        old_slice = slice(step * 2, (step + 1) * 2)
+        new_slice = slice(step * 3, step * 3 + 2)
+        assert torch.equal(
+            expanded.router[2].weight[new_slice], base.router[2].weight[old_slice]
+        )
+        assert torch.equal(
+            expanded.router[2].bias[new_slice], base.router[2].bias[old_slice]
+        )
+        assert torch.all(expanded.router[2].bias[step * 3 + 2] == -8.0)

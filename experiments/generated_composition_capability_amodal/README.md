@@ -381,3 +381,32 @@ failed only acquisition depth and remain archived as rejected controls. This
 promotes a deeper bounded computational interface, not open-ended program
 induction or general continual learning. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_artifact_bank_runtime_generated_depth8_replicated_promoted_v1_2026-08-07/`.
+
+## Fresh-rebuild neural consolidation of depth-eight procedures (2026-08-07)
+
+The external routed artifact can now expand by one slot while preserving all
+existing slot weights and route slices exactly. A disabled new route keeps the
+operation behavior-preserving until fresh outcomes train the added capacity.
+
+With two runtime-generated eight-step source procedures, a fresh three-slot
+student won the stable-prefix selector in both seeds. The opt-in fresh-rebuild
+policy then required independent retention verification before replacing two
+protected rows with one shared artifact:
+
+- source and consolidated reload behavior: `1.0000/1.0000` in both seeds;
+- every retention probe: `1.0000`;
+- physical rows: `2 -> 1`;
+- payload ratio: `0.7392`;
+- frozen controller: unchanged;
+- replayed examples: `0`.
+
+The fresh rebuild is not counted as inherited positive transfer. Target
+transfer is unqualified for this result; the seed-69316 diagnostic target
+reloaded at `0.9961`, while seed `69317` did not require a target arm for the
+fresh-rebuild promotion. Three-source depth-eight controls failed retention at
+both 256 and 512 consolidation updates, so the next bottleneck is
+multi-procedure credit assignment/capacity selection, not basic artifact
+storage.
+
+Evidence and rejected controls are archived in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_depth8_fresh_rebuild_consolidation_replicated_promoted_v1_2026-08-07/`.
