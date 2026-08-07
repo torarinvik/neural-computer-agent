@@ -81,10 +81,14 @@ rung promotes, rejects, or qualifies. Ordered by severity.
     but imposed fragment sharing composes nothing — the held-out
     recombination gets one rule inverted and one at chance from its
     ideal fragments. The open problem is now specifically
-    **compositional practice**: a curriculum that re-pairs fragments
-    across contexts during training so they detach from their birth
-    context, plus R3 consolidation merges. Sharing by allocation alone
-    is measured and insufficient.
+    **compositional practice**. *Updated by F27:* partner rotation is
+    now built and measured — it makes fragments interchangeable (combo
+    spread 0.042 on one seed) but NOT composable (held-out pairing
+    0.27-0.57 vs 0.47 random-bank control, i.e. at chance). Rotating
+    fragments is not practicing composition, because the agent never has
+    to succeed on an unseen pairing. Next: rotate held-out PAIRINGS
+    inside training (train/holdout rotation over rule pairs), which is
+    the actual MLC protocol.
 13. **The anti-collapse penalty is also an anti-sharing penalty** — the
     diversity term that closed selector collapse (F12/F13) repels every
     pair of contexts equally, so it forbids the fragment reuse that

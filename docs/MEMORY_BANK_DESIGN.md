@@ -829,3 +829,41 @@ budget the program actually runs at, not at the budget where the theory
 is prettiest. The conv driver stays in the codebase behind
 `conv_screen=False` for a future test at larger budgets; the egocentric
 roll remains the promoted motor fix.
+
+**F27 (probe 47). Compositional practice makes fragments interchangeable
+without making them composable — partner-swapping is necessary but not
+sufficient.** The MLC lever, implemented as `practice_map`: two
+interchangeable fragments per sub-rule with a fresh partner combination
+drawn every update, so no fragment can co-adapt with a habitual partner.
+Training held (dualAC 0.96/1.00, dualAD 0.79/0.84, dualBC 0.83/0.76 on
+seeds 69316/69317), which is itself the first result: fragments trained
+against *rotating* partners still support their contexts, so the bank
+tolerates interchangeability.
+
+But the held-out recombination did not compose. Every combination of
+`dualBD`'s two rule-fragments scored 0.27-0.57 (seed means 0.55 and
+0.40) against a random-bank control of 0.47 — at chance, indeed
+indistinguishable from feeding the plant a randomly initialised bank.
+The one thing practice did buy is visible on seed 69316: the spread
+across partner combinations fell to 0.042, i.e. the four combinations
+became genuinely interchangeable. Seed 69317 kept a 0.298 spread, so
+even that is not seed-robust.
+
+Reading. Interchangeability and composability are different properties,
+and only the first is bought by partner rotation. A fragment can be
+robust to *which* partner it appears with while still encoding "the rule
+that applies in the contexts I was trained in" rather than a portable
+"take type B". Under the taxonomy of convergent finding 2, rotating
+partners within the training set is not the same as practicing
+composition, because the model never once had to *succeed* on a pairing
+it had not seen — practice varied the fragments, not the tasks.
+
+Consequence, and the strongest architectural statement the composition
+line has produced: the missing ingredient is held-out pairings inside
+TRAINING. The curriculum must repeatedly withhold a combination, require
+the agent to solve it from existing fragments, and score it — which is
+exactly meta-learning for compositionality, and is a curriculum change
+(a train/holdout rotation over rule pairings) rather than a bank
+mechanism. Three attempts (imposed sharing F16, partner rotation F27,
+and the never-run additive route) now converge on the same answer:
+composition must be a training objective, never an emergent hope.
