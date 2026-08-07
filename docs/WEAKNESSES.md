@@ -75,10 +75,16 @@ rung promotes, rejects, or qualifies. Ordered by severity.
     self-organizing bank is promoted for contradictory context selection
     but has never been asked to *share* a fragment between related
     contexts, which is the compounding claim. Evidence:
-    `self_organizing_fragment_bank_v1_2026-08-07`. *In progress:* the
-    factorial `dual` suite (three training contexts built from two
-    independent binary rules, plus a held-out recombination) and
-    conflict-gated diversity are built and under probe.
+    `self_organizing_fragment_bank_v1_2026-08-07`. *Updated by F16:*
+    three factorial contexts now hold simultaneously at or above solo
+    ceilings under a disjoint oracle (seed 69316; second seed running),
+    but imposed fragment sharing composes nothing — the held-out
+    recombination gets one rule inverted and one at chance from its
+    ideal fragments. The open problem is now specifically
+    **compositional practice**: a curriculum that re-pairs fragments
+    across contexts during training so they detach from their birth
+    context, plus R3 consolidation merges. Sharing by allocation alone
+    is measured and insufficient.
 13. **The anti-collapse penalty is also an anti-sharing penalty** — the
     diversity term that closed selector collapse (F12/F13) repels every
     pair of contexts equally, so it forbids the fragment reuse that
