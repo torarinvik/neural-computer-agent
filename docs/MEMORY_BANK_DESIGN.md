@@ -647,3 +647,16 @@ pathology, arrival order is the cure, and — conveniently — one-at-a-time
 arrival is the natural continual-learning setting the architecture
 targets anyway. Consequence: the battery's default protocol is staggered
 admission; simultaneous introduction is demoted to a stress test.
+
+**F19 (probe 29). The complexity ladder is blocked by plant acquisition,
+not by the bank.** Grown-budget solo calibration (5x updates, steps 32,
+seed 69316): collect1 0.47, navigate1 0.13, forageA 0.03, intercept1
+0.03. Only collect responds to budget at all; the rest are flat — the
+motor games are acquisition-limited, not budget-limited, which is the
+shared controller's known recurrent-optimization weakness now measured
+as the binding constraint on game complexity. Consequence: the next
+complexity step is not "more updates" but either (a) motor curriculum
+bridges (e.g. forage items spawning adjacent first — the choice trial —
+then progressively farther, so the mastered decision skill seeds the
+navigation skill), or (b) plant acquisition work directly. The bank
+itself is not the bottleneck anywhere on the current map.
