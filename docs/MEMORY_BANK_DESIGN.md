@@ -928,3 +928,43 @@ for whether a game is learnable at all, and are NOT a reliable predictor
 of a configuration's value inside a shared-plant battery. (3) The
 regression in cross-feeding says the specification property must be
 re-gated after any encoder change, not assumed to carry over.
+
+**F30 (probe 50). Per-game encoders are REJECTED: they buy their gains by
+absorbing the skill, and the cross-feed audit catches it.** Giving each
+game its own screen encoder — which the amodal design's "N encoders"
+appears to license, and which F29 motivated as the fix for cross-game
+coupling — produced the best battery numbers the program has recorded:
+
+| readout | shared encoder | N encoders |
+| --- | ---: | ---: |
+| choiceA / choiceB (69316) | 0.72 / 0.31 | **1.00 / 1.00** |
+| choiceA / choiceB (69317) | 0.78 / 0.22 | **1.00 / 1.00** |
+| worst forgetting | 0.203 / 0.219 | **0.048 / 0.062** |
+| mean solo ratio (69317) | 0.61 | **0.84** |
+| **twin cross-feed** | 0.19 / 0.20 | **1.000 / 1.000** |
+
+The last row voids the rest. Cross-feeding `choiceB`'s fragments into
+`choiceA` should inverte behaviour toward 0.000 (the specification
+signature, held on every promoted rung). It scores 1.000: the fragments
+no longer matter at all, because each game's ENCODER now carries its
+rule. The twins were "solved" by giving each twin a private program —
+precisely the per-game-model failure this program exists to avoid, and
+precisely what was ruled out at the outset ("let the frozen core carry
+small trainable side-state per game" — rejected as defeating the
+research focus). The measurement now confirms that instinct with
+evidence rather than principle.
+
+Standing law, the sharpest the program has: **any per-game trainable
+component will absorb the skill if allowed to, and performance gains are
+not evidence of architectural progress — cross-feeding is.** The N
+encoders of the amodal design mean one encoder per MODALITY (a screen, a
+sound, a text stream), never one per task; a per-task encoder is
+weight-stored skill wearing the architecture's vocabulary. F29's
+coupling problem is therefore real but must be solved without per-task
+frontends: joint calibration of a shared view, or a single encoder with
+a task-invariant preprocessing, are the admissible routes.
+
+Consequence for methodology: every future performance improvement must
+report the cross-feed audit in the same table. This rung improved four
+metrics and destroyed the one that mattered, and only the audit would
+have revealed it.

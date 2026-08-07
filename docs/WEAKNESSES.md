@@ -127,6 +127,14 @@ rung promotes, rejects, or qualifies. Ordered by severity.
     calibration, wider seed pools on acquisition alone, and optimizer
     work on the recurrent controller.
 
+16. **Cross-game encoder coupling has no admissible fix yet** — F29
+    showed a shared screen encoder couples every game's representation;
+    F30 showed the obvious fix (one encoder per game) is inadmissible
+    because the encoder then absorbs the skill (twin cross-feed 1.000,
+    i.e. fragment-blind). Admissible routes: joint calibration of one
+    shared view, or task-invariant preprocessing. Next: battery-level
+    search over a single shared view, gated on cross-feeding.
+
 ## Retired
 
 - **Fragment selection collapse and winner-take-all context competition**
