@@ -226,6 +226,58 @@ minimum for promotion; every rung keeps the null/permutation/zero-replay
 gate culture; rejected sub-architectures are archived with evidence like
 everything else.
 
+## The sharing rung: factorial contexts (R2b, 2026-08-07)
+
+The twins rung proved the bank can *distinguish* two contexts. It could
+never prove reuse, because contradictory twins share nothing to reuse.
+A bank that only distinguishes is a bank of whole programs — the
+"Snake program / Pong program" outcome the architecture exists to avoid.
+
+The `dual` world makes reuse the only economical solution. One world runs
+two independent binary rules: trials alternate between an A/B pair and a
+C/D pair (four marks inside the same three planes), `inverted` says which
+of A/B is edible, `inverted2` says which of C/D is edible. The trial kind
+is visible; the rule for each kind is not. A context is therefore a
+*product of two bits*, and contexts sharing a bit share a sub-rule.
+
+Three contexts train (`dualAC`, `dualAD`, `dualBC`); the fourth,
+`dualBD`, is held out — a novel recombination whose every rule was
+learned elsewhere but never in this pairing. This yields three graded
+predictions no two-context suite can make:
+
+* **Allocation.** Pairs sharing a rule should share a fragment; the pair
+  sharing none (`dualAD|dualBC`) should share nothing.
+* **Cross-feeding.** A source sharing one rule with the target should
+  leave that rule intact and break the other — *partial*, per-rule
+  damage, where twins could only show total damage.
+* **Composition.** `dualBD` should be servable by two already-trained
+  fragments with no new content minted.
+
+Per-rule accuracy (verifier-side scoring, never shown to the learner)
+makes the middle prediction measurable: binary mastery cannot separate
+"obeys one rule of two" from "obeys neither", since both sit near zero
+net reward.
+
+### Conflict-gated diversity (mechanism, this rung)
+
+The anti-collapse diversity penalty of F12/F13 repels *every* pair of
+contexts equally. That is correct when contexts contradict and actively
+harmful when they overlap: it drives the bank toward one private program
+per context, which is the failure this rung exists to detect. The
+penalty and the compounding goal are in direct opposition.
+
+The fix keeps the penalty and replaces its blanket constant with
+evidence. A **swap test** periodically runs one context on another's
+fragments and watches the scalar outcome. Harmless swap ⇒ the pair can
+share, so the repulsion between them relaxes toward zero. Costly swap ⇒
+they encode incompatible rules, so the repulsion holds. Per-pair weight
+is an EMA of the normalized mastery drop.
+
+This uses no privileged rule knowledge — only the reward the verifier
+already returns — so it is deployable, not a training-time oracle. It
+also doubles as the R3 swap-test instrument: the same estimates say which
+fragments are redundant enough to merge.
+
 ## Empirical findings log (probe-driven design laws)
 
 Each entry: probe evidence -> design law -> architectural consequence.

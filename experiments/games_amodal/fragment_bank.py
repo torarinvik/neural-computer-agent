@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from itertools import combinations
+from itertools import combinations, permutations
 from pathlib import Path
 
 import torch
@@ -55,6 +55,46 @@ def twins_suite() -> tuple[list[FamilyConfig], list[FamilyConfig]]:
     ]
     holdout: list[FamilyConfig] = []
     return train, holdout
+
+
+def dual_suite() -> tuple[list[FamilyConfig], list[FamilyConfig]]:
+    """Factorial contexts: two independent binary rules, genuine sharing.
+
+    Weakness 11: the twins rung proved the bank can DISTINGUISH contexts,
+    never that it can REUSE structure across them, because contradictory
+    twins share nothing by construction. Here a context is a product of
+    two bits, so `dualAC` and `dualAD` share the A/B rule while differing
+    on C/D. Three contexts train; the fourth is a novel recombination of
+    rules that were each learned elsewhere, so a factorized bank should
+    compose it from existing fragments without new content.
+    """
+
+    train = [
+        FamilyConfig(dual=1, name="dualAC"),
+        FamilyConfig(dual=1, inverted2=True, name="dualAD"),
+        FamilyConfig(dual=1, inverted=True, name="dualBC"),
+    ]
+    holdout = [
+        FamilyConfig(dual=1, inverted=True, inverted2=True, name="dualBD"),
+    ]
+    return train, holdout
+
+
+def factorial_oracle_map(
+    variants: list[FamilyConfig],
+) -> dict[str, list[int]]:
+    """One fragment per sub-rule, shared by every context that obeys it."""
+
+    rule_index: dict[str, int] = {}
+    mapping: dict[str, list[int]] = {}
+    for config in variants:
+        indices = []
+        for rule in config.rules():
+            if rule not in rule_index:
+                rule_index[rule] = len(rule_index)
+            indices.append(rule_index[rule])
+        mapping[config.name] = indices
+    return mapping
 
 
 def micro_suite() -> tuple[list[FamilyConfig], list[FamilyConfig]]:
@@ -146,6 +186,11 @@ def rollout_family(
         "log_propensity": props,
         "mask": mask_matrix,
         "logits": torch.stack(logits_trace, dim=1),
+        # Verifier-side scoring, reported to the harness only: which of the
+        # two sub-rules the run actually obeyed. Never reaches the learner.
+        "rule_accuracy": (
+            torch.tensor(verifier.dual_accuracy()) if config.dual else None
+        ),
     }
 
 
@@ -198,6 +243,7 @@ class FragmentBank(torch.nn.Module):
         # context's assignment stable from the first update while leaving
         # room for outcome-driven reassignment.
         self.selection_init_scale = float(selection_init_scale)
+        self._oracle_map: dict[str, list[int]] = {}
         self.selection_logits = torch.nn.ParameterDict(
             {
                 name: torch.nn.Parameter(
@@ -207,14 +253,33 @@ class FragmentBank(torch.nn.Module):
             }
         )
 
+    def set_oracle_map(self, mapping: dict[str, list[int]]) -> None:
+        """Override the default disjoint oracle with an explicit map.
+
+        A disjoint oracle forces every context to own private fragments,
+        which makes sharing impossible by construction. A factorial map
+        hands overlapping contexts a common fragment, so the read path is
+        asked whether one fragment can serve several contexts at once.
+        """
+
+        self._oracle_map = {name: list(v) for name, v in mapping.items()}
+
     def oracle_indices(self, name: str, k: int) -> list[int]:
-        """Fixed, distinct fragments per variant (no selection learning).
+        """Fixed fragments per variant (no selection learning).
 
         Isolates the READ path: the plant receives genuinely different
         context in different variants, so the only question under test is
         whether it can learn context-conditional behaviour.
         """
 
+        override = self._oracle_map.get(name)
+        if override is not None:
+            if len(override) != k:
+                raise ValueError(
+                    f"oracle map for {name} has {len(override)} fragments, "
+                    f"but {k} are requested per variant"
+                )
+            return list(override)
         order = sorted(self.selection_logits.keys())
         position = order.index(name)
         total = self.tokens.shape[0]
@@ -231,7 +296,7 @@ class FragmentBank(torch.nn.Module):
 
 
 def has_positive_source(config: FamilyConfig) -> bool:
-    if config.forage or config.choice:
+    if config.forage or config.choice or config.dual:
         return True
     if config.inverted:
         return False
@@ -253,6 +318,60 @@ def mastery(
     return float(survived.mean())
 
 
+def update_conflict(
+    agent: SharedControllerAgent,
+    bank: FragmentBank,
+    variants: list[FamilyConfig],
+    conflict: dict[frozenset[str], float],
+    recent: dict[str, float],
+    *,
+    args: argparse.Namespace,
+    update: int,
+) -> None:
+    """Estimate, from outcomes alone, which context pairs actually clash.
+
+    A blanket diversity penalty is anti-collapse but also anti-sharing: it
+    repels every pair equally, so contexts that ought to reuse a fragment
+    are driven apart and the bank degenerates into one private program per
+    context -- exactly the "Snake program / Pong program" failure the
+    memory bank exists to avoid.
+
+    The swap test replaces the blanket rule with evidence. Run a context on
+    another context's fragments and watch what happens to the scalar
+    outcome. Harmless swap => the two can share, so release the repulsion.
+    Costly swap => they encode incompatible rules, so keep them apart. No
+    privileged knowledge of the rules is used: only the reward the verifier
+    already returns.
+    """
+
+    if len(variants) < 2:
+        return
+    index = update % (len(variants) * (len(variants) - 1))
+    target, source = list(permutations(variants, 2))[index]
+    with torch.no_grad():
+        chosen, _ = sample_selection(
+            bank.selection_logits[source.name].detach(),
+            args.fragments_per_variant,
+            greedy=True,
+        )
+        swapped = rollout_family(
+            agent,
+            target,
+            bank.fetch(chosen).detach(),
+            batch_size=args.batch_size,
+            steps=max(8, args.steps // 2),
+            seed=args.seed + 800_000 + update,
+            sample=False,
+            gamma=args.gamma,
+        )
+    own = recent.get(target.name, 0.0)
+    drop = own - mastery(swapped, target)
+    signal = float(min(1.0, max(0.0, drop / max(own, 1e-3))))
+    key = frozenset((target.name, source.name))
+    rate = float(getattr(args, "conflict_decay", 0.8))
+    conflict[key] = rate * conflict[key] + (1.0 - rate) * signal
+
+
 def train_bank(
     agent: SharedControllerAgent,
     bank: FragmentBank,
@@ -262,6 +381,7 @@ def train_bank(
     train_plant: bool,
     train_fragments: bool,
     seed_offset: int = 0,
+    conflict_out: dict[frozenset[str], float] | None = None,
 ) -> list[dict[str, float]]:
     parameters: list[torch.nn.Parameter] = list(
         bank.selection_logits.parameters()
@@ -277,6 +397,10 @@ def train_bank(
     optimizer = torch.optim.Adam(parameters, lr=args.learning_rate)
     baseline: dict[str, float] = {}
     recent: dict[str, float] = {v.name: 0.0 for v in variants}
+    # Neutral prior: half repulsion until the swap test says otherwise.
+    conflict = conflict_out if conflict_out is not None else {}
+    for left, right in combinations(variants, 2):
+        conflict.setdefault(frozenset((left.name, right.name)), 0.5)
     history: list[dict[str, float]] = []
     for update in range(args.updates):
         if getattr(args, "balance_contexts", False) and len(variants) > 1:
@@ -331,12 +455,26 @@ def train_bank(
                 target,
                 reduction="sum",
             )
+        if getattr(args, "conflict_gated", False) and (
+            update % max(1, getattr(args, "conflict_every", 10)) == 0
+        ):
+            update_conflict(
+                agent,
+                bank,
+                variants,
+                conflict,
+                recent,
+                args=args,
+                update=update,
+            )
         if not getattr(args, "oracle_selection", False) and getattr(
             args, "selection_diversity", 0.0
         ) > 0.0:
             # Weakness 11: outcome-REINFORCE selectors collapse to the same
             # picks for every context. Penalise overlap between the
-            # selection distributions of different contexts.
+            # selection distributions of different contexts -- but weight
+            # each pair by measured CONFLICT when gating is on, so contexts
+            # that can share are left free to share (see `update_conflict`).
             probs = {
                 v.name: F.softmax(bank.selection_logits[v.name], dim=-1)
                 for v in variants
@@ -344,7 +482,12 @@ def train_bank(
             overlap = torch.zeros(())
             pairs = 0
             for left, right in combinations(variants, 2):
-                overlap = overlap + (probs[left.name] * probs[right.name]).sum()
+                weight = 1.0
+                if getattr(args, "conflict_gated", False):
+                    weight = conflict[frozenset((left.name, right.name))]
+                overlap = overlap + weight * (
+                    probs[left.name] * probs[right.name]
+                ).sum()
                 pairs += 1
             if pairs:
                 selection_loss = selection_loss + (
@@ -395,15 +538,23 @@ def train_bank(
     return history
 
 
-def evaluate_variant(
+def evaluate_detail(
     agent: SharedControllerAgent,
     bank: FragmentBank | None,
     config: FamilyConfig,
     *,
     args: argparse.Namespace,
     fragments_override: torch.Tensor | None = None,
-) -> float:
-    scores = []
+) -> dict[str, object]:
+    """Mastery plus the graded readouts a factorial suite needs.
+
+    Binary mastery cannot separate "obeys one of two rules" from "obeys
+    neither": both land near zero net reward. Mean return and per-rule
+    accuracy make partial competence visible, which is precisely what a
+    cross-fed fragment is expected to produce when it carries one rule.
+    """
+
+    scores, returns, accuracies = [], [], []
     for index in range(args.eval_seeds):
         seed = args.seed + 10_000 + index
         fragments = fragments_override
@@ -431,17 +582,58 @@ def evaluate_variant(
                 gamma=args.gamma,
             )
         scores.append(mastery(summary, config))
-    return float(torch.tensor(scores).mean())
+        returns.append(float(summary["total_reward"].mean()))
+        if summary["rule_accuracy"] is not None:
+            accuracies.append(summary["rule_accuracy"])
+    detail: dict[str, object] = {
+        "mastery": float(torch.tensor(scores).mean()),
+        "mean_return": float(torch.tensor(returns).mean()),
+    }
+    if accuracies:
+        detail["rule_accuracy"] = [
+            round(value, 4)
+            for value in torch.stack(accuracies).mean(dim=0).tolist()
+        ]
+        detail["rules"] = list(config.rules())
+    return detail
+
+
+def evaluate_variant(
+    agent: SharedControllerAgent,
+    bank: FragmentBank | None,
+    config: FamilyConfig,
+    *,
+    args: argparse.Namespace,
+    fragments_override: torch.Tensor | None = None,
+) -> float:
+    detail = evaluate_detail(
+        agent, bank, config, args=args, fragments_override=fragments_override
+    )
+    return float(detail["mastery"])
 
 
 def overlap_report(
-    bank: FragmentBank, variants: list[FamilyConfig], k: int
+    bank: FragmentBank,
+    variants: list[FamilyConfig],
+    k: int,
+    *,
+    oracle: bool = False,
 ) -> dict[str, object]:
+    """Allocation overlap against structural overlap.
+
+    The compounding claim is a correlation: pairs that share a rule should
+    share fragments, pairs that share none should share nothing. Reporting
+    both columns per pair makes that testable instead of anecdotal.
+    """
+
     selections = {}
     for config in variants:
-        chosen, _ = sample_selection(
-            bank.selection_logits[config.name].detach(), k, greedy=True
-        )
+        if oracle:
+            chosen = bank.oracle_indices(config.name, k)
+        else:
+            chosen, _ = sample_selection(
+                bank.selection_logits[config.name].detach(), k, greedy=True
+            )
         selections[config.name] = set(chosen)
     pairs = {}
     for left, right in combinations(variants, 2):
@@ -453,6 +645,7 @@ def overlap_report(
         ) / len(selections[left.name] | selections[right.name])
         pairs[f"{left.name}|{right.name}"] = {
             "shared_components": shared_components,
+            "shared_rules": len(set(left.rules()) & set(right.rules())),
             "fragment_jaccard": jaccard,
         }
     return {
@@ -463,7 +656,7 @@ def overlap_report(
 
 def run(args: argparse.Namespace) -> dict[str, object]:
     torch.manual_seed(args.seed)
-    suites = {"micro": micro_suite, "twins": twins_suite}
+    suites = {"micro": micro_suite, "twins": twins_suite, "dual": dual_suite}
     train_variants, holdout_variants = suites[args.suite]()
     agent = SharedControllerAgent(
         event_width=args.event_width,
@@ -483,10 +676,17 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         init_scale=args.fragment_init_scale,
         selection_init_scale=args.selection_init_scale,
     )
-    if args.suite == "twins":
-        singles = [train_variants[0]]
-    else:
+    rule_map = factorial_oracle_map(train_variants + holdout_variants)
+    if getattr(args, "oracle_map", "disjoint") == "factorial":
+        if not all(v.rules() for v in train_variants):
+            raise ValueError("factorial oracle needs variants that declare rules")
+        bank.set_oracle_map(
+            {v.name: rule_map[v.name] for v in train_variants}
+        )
+    if args.suite == "micro":
         singles = [v for v in train_variants if len(v.active()) == 1]
+    else:
+        singles = [train_variants[0]]
     warm_history = train_bank(
         agent,
         bank,
@@ -497,6 +697,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         train_plant=True,
         train_fragments=True,
     )
+    conflict: dict[frozenset[str], float] = {}
     history = warm_history + train_bank(
         agent,
         bank,
@@ -505,55 +706,79 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         train_plant=True,
         train_fragments=True,
         seed_offset=250_000,
+        conflict_out=conflict,
     )
     train_scores = {
-        v.name: evaluate_variant(agent, bank, v, args=args)
+        v.name: evaluate_detail(agent, bank, v, args=args)
         for v in train_variants
     }
     withheld_scores = {
-        v.name: evaluate_variant(
+        v.name: evaluate_detail(
             agent, None, v, args=args, fragments_override=None
         )
-        for v in train_variants[:2]
+        for v in train_variants
     }
-    decoy = torch.randn_like(bank.tokens[:2].detach())
+    decoy = torch.randn_like(
+        bank.tokens[: args.fragments_per_variant].detach()
+    )
     decoy = decoy * (
         bank.tokens.detach().norm() / decoy.norm().clamp_min(1e-12)
     )
     decoy_scores = {
-        v.name: evaluate_variant(
+        v.name: evaluate_detail(
             agent, None, v, args=args, fragments_override=decoy
         )
-        for v in train_variants[:2]
+        for v in train_variants
     }
-    cross_scores = {}
-    if len(train_variants) >= 2:
-        for v, other in (
-            (train_variants[0], train_variants[1]),
-            (train_variants[1], train_variants[0]),
-        ):
-            if args.oracle_selection:
-                chosen = bank.oracle_indices(
-                    other.name, args.fragments_per_variant
-                )
-            else:
-                chosen, _ = sample_selection(
-                    bank.selection_logits[other.name].detach(),
-                    args.fragments_per_variant,
-                    greedy=True,
-                )
-            cross_scores[v.name] = evaluate_variant(
-                agent,
-                None,
-                v,
-                args=args,
-                fragments_override=bank.fetch(chosen).detach(),
+
+    def fragments_for(name: str) -> torch.Tensor:
+        if args.oracle_selection:
+            chosen = bank.oracle_indices(name, args.fragments_per_variant)
+        else:
+            chosen, _ = sample_selection(
+                bank.selection_logits[name].detach(),
+                args.fragments_per_variant,
+                greedy=True,
             )
+        return bank.fetch(chosen).detach()
+
+    # Every ordered pair, not just the twins: with factorial contexts the
+    # informative signal is GRADED. A source sharing one rule with the
+    # target should leave that rule intact and break the other.
+    cross_scores = {
+        f"{target.name}<-{source.name}": evaluate_detail(
+            agent,
+            None,
+            target,
+            args=args,
+            fragments_override=fragments_for(source.name),
+        )
+        for target, source in permutations(train_variants, 2)
+    }
 
     holdout_report = {}
     for config in holdout_variants:
         bank.register_variant(config.name)
         zero_shot = evaluate_variant(agent, bank, config, args=args)
+        # Composition splits into two questions the usual holdout conflates:
+        # whether existing CONTENT recombines, and whether the selector can
+        # ADDRESS the recombination. Hand over the ideal pair of already-
+        # trained fragments to answer the first in isolation.
+        composed = None
+        ideal = rule_map.get(config.name)
+        composable = (
+            ideal is not None
+            and len(ideal) == args.fragments_per_variant
+            and max(ideal) < bank.tokens.shape[0]
+        )
+        if composable:
+            composed = evaluate_detail(
+                agent,
+                None,
+                config,
+                args=args,
+                fragments_override=bank.fetch(ideal).detach(),
+            )
         adapt_history = train_bank(
             agent,
             bank,
@@ -593,6 +818,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         )
         holdout_report[config.name] = {
             "zero_shot": zero_shot,
+            "composed_from_trained_fragments": composed,
+            "ideal_fragments": ideal,
             "adapted_selector_only": adapted,
             "adapted_over_random_bank": random_adapted,
             "adaptation_curve_tail": [
@@ -612,9 +839,21 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "decoy_bank_mastery": decoy_scores,
         "cross_fragment_mastery": cross_scores,
         "overlap": overlap_report(
-            bank, train_variants, args.fragments_per_variant
+            bank,
+            train_variants,
+            args.fragments_per_variant,
+            oracle=bool(args.oracle_selection),
         ),
         "holdout": holdout_report,
+        # What the swap test believes about each pair. Contexts sharing a
+        # rule should end up measurably less in conflict than contexts
+        # sharing none -- an outcome-only estimate of structural overlap.
+        "measured_conflict": {
+            "|".join(sorted(pair)): round(value, 4)
+            for pair, value in sorted(
+                conflict.items(), key=lambda item: sorted(item[0])
+            )
+        },
         "no_replay": all(
             entry["replayed_examples"] == 0.0 for entry in history
         ),
@@ -624,7 +863,20 @@ def run(args: argparse.Namespace) -> dict[str, object]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--suite", type=str, default="micro", choices=["micro", "twins"])
+    parser.add_argument(
+        "--suite",
+        type=str,
+        default="micro",
+        choices=["micro", "twins", "dual"],
+    )
+    parser.add_argument(
+        "--oracle-map",
+        type=str,
+        default="disjoint",
+        choices=["disjoint", "factorial"],
+        help="disjoint: private fragments per context; factorial: one "
+        "fragment per sub-rule, shared by every context that obeys it",
+    )
     parser.add_argument("--updates", type=int, default=900)
     parser.add_argument("--warm-updates", type=int, default=600)
     parser.add_argument("--adapt-updates", type=int, default=60)
@@ -645,6 +897,14 @@ def main() -> None:
     parser.add_argument("--balance-temperature", type=float, default=0.25)
     parser.add_argument("--selection-diversity", type=float, default=0.0)
     parser.add_argument("--selection-init-scale", type=float, default=2.0)
+    parser.add_argument(
+        "--conflict-gated",
+        action="store_true",
+        help="weight the diversity penalty per pair by measured swap harm, "
+        "so contexts that can share a fragment are not repelled",
+    )
+    parser.add_argument("--conflict-every", type=int, default=10)
+    parser.add_argument("--conflict-decay", type=float, default=0.8)
     parser.add_argument("--oracle-updates", type=int, default=0)
     parser.add_argument("--ignorance-every", type=int, default=4)
     parser.add_argument("--ignorance-weight", type=float, default=1.0)
