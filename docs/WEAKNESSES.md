@@ -59,9 +59,11 @@ rung promotes, rejects, or qualifies. Ordered by severity.
    compute ceiling (see the no-theoretical-ceiling doc section). Next:
    think-budget control on the externalization harness, where artifact
    interpretation plausibly needs iterated thought.
-10. **Two-seed replication only** — all promotions rest on seeds
-    69316/69317. Next: widen the seed pool on the flagship claims before
-    any external write-up.
+10. **Seed pool widened on the flagship only** — the EWC consolidation
+    rung now holds on 5/5 seeds (69316-69320; evidence:
+    `ewc_consolidation_seed_widening_v1_2026-08-06`). Other promotions
+    remain two-seed. Next: widen the ladder and externalization claims
+    before any external write-up.
 
 ## Retired
 

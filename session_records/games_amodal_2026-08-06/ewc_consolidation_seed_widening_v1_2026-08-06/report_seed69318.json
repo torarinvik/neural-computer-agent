@@ -1,0 +1,176 @@
+{
+  "conditions": {
+    "ewc_protected": {
+      "curves": {
+        "final_penalty": 0.0030671008862555027,
+        "final_training_mastery": 0.953125,
+        "mean_training_mastery": 0.5357291666666667
+      },
+      "pong": {
+        "mastery": 0.939453125,
+        "per_seed_mastery": [
+          0.921875,
+          0.921875,
+          0.96875,
+          0.9375,
+          0.953125,
+          0.9375,
+          0.9375,
+          0.9375
+        ]
+      },
+      "snake_after": {
+        "mastery": 0.93359375,
+        "per_seed_mastery": [
+          0.921875,
+          0.921875,
+          0.953125,
+          0.90625,
+          0.953125,
+          0.9375,
+          0.921875,
+          0.953125
+        ]
+      }
+    },
+    "permuted_fisher": {
+      "curves": {
+        "final_penalty": 0.0010320261353626847,
+        "final_training_mastery": 0.84375,
+        "mean_training_mastery": 0.6354166666666666
+      },
+      "pong": {
+        "mastery": 0.912109375,
+        "per_seed_mastery": [
+          0.875,
+          0.90625,
+          0.875,
+          0.890625,
+          0.9375,
+          0.9375,
+          0.9375,
+          0.9375
+        ]
+      },
+      "snake_after": {
+        "mastery": 0.005859375,
+        "per_seed_mastery": [
+          0.0,
+          0.015625,
+          0.0,
+          0.0,
+          0.015625,
+          0.0,
+          0.0,
+          0.015625
+        ]
+      }
+    },
+    "shuffled": {
+      "curves": {
+        "final_penalty": 0.0,
+        "final_training_mastery": 0.0625,
+        "mean_training_mastery": 0.075859375
+      },
+      "pong": {
+        "mastery": 0.06640625,
+        "per_seed_mastery": [
+          0.09375,
+          0.0625,
+          0.09375,
+          0.046875,
+          0.0625,
+          0.078125,
+          0.0625,
+          0.03125
+        ]
+      },
+      "snake_after": {
+        "mastery": 0.0,
+        "per_seed_mastery": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "unprotected": {
+      "curves": {
+        "final_penalty": 0.0,
+        "final_training_mastery": 0.53125,
+        "mean_training_mastery": 0.3697916666666667
+      },
+      "pong": {
+        "mastery": 0.70703125,
+        "per_seed_mastery": [
+          0.734375,
+          0.75,
+          0.71875,
+          0.65625,
+          0.671875,
+          0.796875,
+          0.640625,
+          0.6875
+        ]
+      },
+      "snake_after": {
+        "mastery": 0.017578125,
+        "per_seed_mastery": [
+          0.046875,
+          0.015625,
+          0.0,
+          0.0,
+          0.0,
+          0.0625,
+          0.0,
+          0.015625
+        ]
+      }
+    }
+  },
+  "config": {
+    "batch_size": 64,
+    "eval_seeds": 8,
+    "event_width": 64,
+    "ewc_lambda": 100.0,
+    "feedback_width": 16,
+    "fisher_batches": 32,
+    "forgetting_delta": 0.15,
+    "gamma": 0.95,
+    "hidden": 32,
+    "intent_width": 32,
+    "learning_rate": 0.001,
+    "retention_epsilon": 0.05,
+    "steps": 64,
+    "updates": 600
+  },
+  "gates": {
+    "baseline_forgets": true,
+    "no_replay": true,
+    "permuted_fisher_fails": true,
+    "pong_acquired": true,
+    "protected_retention": true,
+    "shuffled_near_chance": true,
+    "snake_acquired": true
+  },
+  "promoted": true,
+  "seed": 69318,
+  "snake_before": {
+    "mastery": 0.953125,
+    "per_seed_mastery": [
+      0.953125,
+      0.953125,
+      1.0,
+      0.9375,
+      0.953125,
+      0.9375,
+      0.9375,
+      0.953125
+    ]
+  }
+}
