@@ -386,3 +386,23 @@ This does not weaken F9's specification claim (cross-feeding is 0.000 in
 both directions on both seeds) but it bounds the storage claim: a bank
 over a plastic plant stores *differences from default*, not whole skills,
 unless ignorance pressure is strong enough to erase the default.
+
+**F12 (probe 11). Context assignment must be stable before the plant can
+learn to read it — the diversity penalty fixes collapse but not
+inconsistency.** With learned selection, the anti-collapse penalty worked
+exactly as intended (choiceA -> fragments [0,2], choiceB -> [3,4], fully
+disjoint), yet neither twin learned and all four audit conditions were
+identical: fragment-blind again. Cause: selection logits initialised to
+zero give a uniform distribution, so the same context drew a *different*
+fragment set almost every update. The plant saw inconsistent context and
+correctly learned to ignore it; the selector, receiving no reward signal
+in return, settled into disjoint-but-arbitrary sets driven only by the
+(task-independent) diversity term. The oracle succeeded precisely because
+its assignment was fixed from update one. Consequence: a learned selector
+needs *early assignment stability* — distinct peaked logit initialisation,
+temperature annealing, or a staged handover from oracle to learned
+selection — otherwise the read path never forms and the write path has
+nothing to learn from. Generalised: in a bank with both learned content
+and learned addressing, one side must be held still long enough for the
+other to become informative; simultaneous free optimisation of content,
+addressing, and policy is a three-way deadlock (cf. F5).

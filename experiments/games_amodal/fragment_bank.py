@@ -181,6 +181,7 @@ class FragmentBank(torch.nn.Module):
         width: int,
         variants: list[str],
         init_scale: float = 1.0,
+        selection_init_scale: float = 2.0,
     ) -> None:
         super().__init__()
         # Fragment tokens share the event window with screen events, whose
@@ -190,9 +191,18 @@ class FragmentBank(torch.nn.Module):
         self.tokens = torch.nn.Parameter(
             torch.randn(fragments, tokens_per_fragment, width) * init_scale
         )
+        # Zero-initialised logits give a uniform distribution, so every
+        # update draws a different fragment set for the same context. The
+        # plant then sees inconsistent context and learns to ignore the
+        # bank (probe 11). Distinct peaked initialisation makes each
+        # context's assignment stable from the first update while leaving
+        # room for outcome-driven reassignment.
+        self.selection_init_scale = float(selection_init_scale)
         self.selection_logits = torch.nn.ParameterDict(
             {
-                name: torch.nn.Parameter(torch.zeros(fragments))
+                name: torch.nn.Parameter(
+                    torch.randn(fragments) * self.selection_init_scale
+                )
                 for name in variants
             }
         )
@@ -213,7 +223,7 @@ class FragmentBank(torch.nn.Module):
     def register_variant(self, name: str) -> None:
         if name not in self.selection_logits:
             self.selection_logits[name] = torch.nn.Parameter(
-                torch.zeros(self.tokens.shape[0])
+                torch.randn(self.tokens.shape[0]) * self.selection_init_scale
             )
 
     def fetch(self, indices: list[int]) -> torch.Tensor:
@@ -459,6 +469,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         width=args.event_width,
         variants=[v.name for v in train_variants],
         init_scale=args.fragment_init_scale,
+        selection_init_scale=args.selection_init_scale,
     )
     if args.suite == "twins":
         singles = [train_variants[0]]
@@ -621,6 +632,7 @@ def main() -> None:
     parser.add_argument("--balance-contexts", action="store_true")
     parser.add_argument("--balance-temperature", type=float, default=0.25)
     parser.add_argument("--selection-diversity", type=float, default=0.0)
+    parser.add_argument("--selection-init-scale", type=float, default=2.0)
     parser.add_argument("--ignorance-every", type=int, default=4)
     parser.add_argument("--ignorance-weight", type=float, default=1.0)
     parser.add_argument("--eval-seeds", type=int, default=4)
