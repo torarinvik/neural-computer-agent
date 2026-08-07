@@ -675,3 +675,22 @@ bridge must relax the *forcing structure* gradually (recentre every
 step -> every k steps -> never), not the spawn distance. Curricula must
 preserve the property that made the anchor learnable, and that property
 must be identified by ablation (F15's probes), not assumed.
+
+**F21 (probe 31). Forcing transfers only if the learner performs the act
+being taught — a teleport bridge teaches waiting, not navigating.** The
+recentre-relaxation curriculum (forced trial every k steps, k=1 -> 3 ->
+6 -> 12 -> never, two seeds) mastered every forced stage (0.94-1.00 at
+k=12) and collapsed at k=0 (0.09-0.13, indistinguishable from cold).
+Cause: recentring TELEPORTS the avatar to the decision point, so forced
+trials alone pay positive reward and the skill under test — returning to
+the decision — is never exercised; between forcings, idling is free (F2
+in yet another costume). Together with F20 this closes the diagnosis
+from both sides: F20 removed the forcing and lost the *decision*
+engagement; F21 kept the forcing and lost the *navigation*. The bridge
+that remains untested is the one where the AGENT does the returning:
+no teleport — items re-dealt at Chebyshev radius r of the avatar's
+current position, r growing with mastery, plus a per-step idle cost so
+approaching strictly pays (the F15 economics applied to distance).
+Curriculum design law: each stage must make the learner produce the
+target behaviour, not merely reward states that the scaffold reaches on
+the learner's behalf.
