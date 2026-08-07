@@ -863,6 +863,12 @@ unseen routing falls from `0.8958` to `0.8021`. The next experiment must train
 the event/key alignment or its behavioral trace jointly; simply preserving
 more frontend geometry is not a sufficient fix.
 
+Full append-prior transfer is also insufficient as a general remedy: it brings
+the unseen extension to `1.0000/1.0000`, but the weaker seed retains source
+known-target holes at `0.7` and `0.0`. The next high-ROI intervention is source
+screen mastery and query/key alignment, with append initialization treated as
+solved at this bounded rung.
+
 The next 46-capability fourth-shift pressure test is intentionally rejected:
 late length-14 rows fail stable protection at hidden 256/8,192 updates,
 hidden 512, and an adaptive late-budget control. This is evidence for

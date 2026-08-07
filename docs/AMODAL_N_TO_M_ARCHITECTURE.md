@@ -3497,3 +3497,10 @@ and both seeds fail strict per-target mastery. The blueprint is retained as a
 diagnostic lead, while the promoted path remains unchanged until query/key
 alignment and downstream generalization improve together. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_spatial_binding_frontend_rejected_v1_2026-08-07/`.
+
+The matched full-prior control repairs unseen routing at this rung
+(`1.0000/1.0000`) but leaves the seed-`69317` source bank at `0.8542` known
+routing with per-target holes at `0.7000` and `0.0000`. It is therefore not a
+replicated promotion: append initialization is no longer the immediate
+blocker; source-screen mastery and query/key alignment are. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_full_prior_strict_rejected_v1_2026-08-07/`.
