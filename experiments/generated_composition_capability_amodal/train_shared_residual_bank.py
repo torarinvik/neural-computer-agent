@@ -555,6 +555,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     for parameter in bank.residual_slots[corruption_slot].parameters():
         with torch.no_grad():
             parameter.zero_()
+            parameter.reshape(-1)[0] = 100.0
+    for parameter in decoders[corruption_slot].parameters():
+        with torch.no_grad():
+            parameter.zero_()
+            parameter.reshape(-1)[0] = 100.0
     corrupted_behavior, corrupted_probe_outcomes = _probe_accuracy(
         parent,
         bank,
@@ -567,6 +572,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         seed=args.seed + 70_000 + corruption_slot,
     )
     bank.load_state_dict(bank_state, strict=True)
+    decoders[corruption_slot].load_state_dict(
+        decoder_states[corruption_slot], strict=True
+    )
     recovered_behavior, recovered_probe_outcomes = _probe_accuracy(
         parent,
         bank,
