@@ -266,9 +266,19 @@ def train_bank(
         )
     optimizer = torch.optim.Adam(parameters, lr=args.learning_rate)
     baseline: dict[str, float] = {}
+    recent: dict[str, float] = {v.name: 0.0 for v in variants}
     history: list[dict[str, float]] = []
     for update in range(args.updates):
-        config = variants[update % len(variants)]
+        if getattr(args, "balance_contexts", False) and len(variants) > 1:
+            # F10: uniform interleaving lets one context take the plant.
+            # Sample the laggard more often, softmax over -progress.
+            weights = torch.tensor(
+                [-recent[v.name] for v in variants]
+            ) / max(args.balance_temperature, 1e-6)
+            index = int(torch.multinomial(F.softmax(weights, dim=-1), 1))
+            config = variants[index]
+        else:
+            config = variants[update % len(variants)]
         if getattr(args, "oracle_selection", False):
             chosen = bank.oracle_indices(
                 config.name, args.fragments_per_variant
@@ -297,7 +307,27 @@ def train_bank(
         outcome_score = mastery(summary, config)
         previous = baseline.get(config.name, 0.0)
         baseline[config.name] = 0.9 * previous + 0.1 * outcome_score
+        recent[config.name] = 0.9 * recent[config.name] + 0.1 * outcome_score
         selection_loss = -(outcome_score - previous) * selection_log_prob
+        if not getattr(args, "oracle_selection", False) and getattr(
+            args, "selection_diversity", 0.0
+        ) > 0.0:
+            # Weakness 11: outcome-REINFORCE selectors collapse to the same
+            # picks for every context. Penalise overlap between the
+            # selection distributions of different contexts.
+            probs = {
+                v.name: F.softmax(bank.selection_logits[v.name], dim=-1)
+                for v in variants
+            }
+            overlap = torch.zeros(())
+            pairs = 0
+            for left, right in combinations(variants, 2):
+                overlap = overlap + (probs[left.name] * probs[right.name]).sum()
+                pairs += 1
+            if pairs:
+                selection_loss = selection_loss + (
+                    args.selection_diversity * overlap / pairs
+                )
         loss = policy_loss + selection_loss
         if train_plant and update % args.ignorance_every == 0:
             withheld = rollout_family(
@@ -588,6 +618,9 @@ def main() -> None:
     parser.add_argument("--fragments-per-variant", type=int, default=2)
     parser.add_argument("--fragment-init-scale", type=float, default=1.0)
     parser.add_argument("--oracle-selection", action="store_true")
+    parser.add_argument("--balance-contexts", action="store_true")
+    parser.add_argument("--balance-temperature", type=float, default=0.25)
+    parser.add_argument("--selection-diversity", type=float, default=0.0)
     parser.add_argument("--ignorance-every", type=int, default=4)
     parser.add_argument("--ignorance-weight", type=float, default=1.0)
     parser.add_argument("--eval-seeds", type=int, default=4)
