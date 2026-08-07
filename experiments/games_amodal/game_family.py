@@ -152,6 +152,15 @@ class FamilyConfig:
     # bits, so contexts sharing a bit share a sub-rule -- the structure a
     # fragment bank must reuse rather than re-learn.
     inverted2: bool = False  # second axis of `dual` (rule for cue-1 trials)
+    arity: int = 2  # F27/F31: how many choices each `dual` trial offers.
+    # With arity 2 there are only 4 rule pairings, and memorising four
+    # whole programs is cheaper than factorising into two rules. Raising
+    # arity to 3 gives 9 pairings from 6 rules, so a bank that factorises
+    # stores 6 fragments where a memoriser needs 9 programs -- the first
+    # setting where factorisation is the ECONOMICAL solution rather than
+    # merely the elegant one. `rule0`/`rule1` name the edible side per cue.
+    rule0: int = -1  # -1 = derive from `inverted` (arity-2 compatibility)
+    rule1: int = -1  # -1 = derive from `inverted2`
     recentre_every: int = 0  # F21 motor bridge: k>0 re-deals forage items
     # every k steps at `spawn_radius` of the avatar's CURRENT position —
     # the avatar is never moved, so the agent itself must close the
@@ -200,9 +209,18 @@ class FamilyConfig:
         if not self.dual:
             return ()
         return (
-            "takeB" if self.inverted else "takeA",
-            "takeD" if self.inverted2 else "takeC",
+            f"cue0take{self.edible(0)}",
+            f"cue1take{self.edible(1)}",
         )
+
+    def edible(self, cue: int) -> int:
+        """Which side is edible under this variant's rule for `cue`."""
+
+        explicit = self.rule1 if cue else self.rule0
+        if explicit >= 0:
+            return explicit
+        flipped = self.inverted2 if cue else self.inverted
+        return 1 if flipped else 0
 
     def validate(self) -> FamilyConfig:
         if not self.active():
@@ -217,6 +235,10 @@ class FamilyConfig:
         )
         if min(levels) < 0:
             raise ValueError("component levels cannot be negative")
+        if self.dual and not 2 <= self.arity <= 3:
+            raise ValueError("dual arity must be 2 or 3")
+        if self.dual and max(self.rule0, self.rule1) >= self.arity:
+            raise ValueError("a dual rule names a side that is not dealt")
         if self.view not in ("", "roll", "crop"):
             raise ValueError(f"unknown screen view: {self.view!r}")
         if self.spawn_radius < 0:
@@ -386,16 +408,22 @@ class FamilyVerifier:
     def _deal_dual(self, row: int) -> None:
         """Deal one trial of a randomly chosen kind, cue and choices apart."""
 
-        left, right = self._neighbour_pair(row)
+        centre = (self.height // 2, self.width // 2)
+        self._avatar[row] = centre
+        neighbours = [
+            (centre[0] + d[0], centre[1] + d[1]) for d in _DELTAS
+        ]
+        order = torch.randperm(
+            len(neighbours), generator=self._generator, device=self.device
+        ).tolist()
         self._dual_kind[row] = self._rand(2)
         self._dual_items[row] = [
-            (left[0], left[1], 0),
-            (right[0], right[1], 1),
+            (neighbours[order[side]][0], neighbours[order[side]][1], side)
+            for side in range(self.config.arity)
         ]
 
     def dual_edible_side(self, kind: int) -> int:
-        flipped = self.config.inverted2 if kind else self.config.inverted
-        return 1 if flipped else 0
+        return self.config.edible(kind)
 
     def dual_accuracy(self) -> list[float]:
         """Per-axis fraction of trials resolved correctly (harness only)."""
@@ -461,7 +489,11 @@ class FamilyVerifier:
                 else:
                     grid[row, 0, 0, half:] = 1.0
                 for item in self._dual_items[row]:
-                    grid[row, 1 + item[2], item[0], item[1]] = 1.0
+                    if item[2] < 2:
+                        grid[row, 1 + item[2], item[0], item[1]] = 1.0
+                    else:  # third choice: both object planes at one cell
+                        grid[row, 1, item[0], item[1]] = 1.0
+                        grid[row, 2, item[0], item[1]] = 1.0
         return grid
 
     def step(self, actions: torch.Tensor) -> GameStep:

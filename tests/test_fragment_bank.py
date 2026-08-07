@@ -297,3 +297,32 @@ def test_declared_view_overrides_the_run_default() -> None:
             seed=0, sample=False, gamma=0.9, egocentric=flag,
         )
         assert summary["total_reward"].shape == (2,)
+
+
+def test_compose_suite_makes_factorisation_the_cheaper_option() -> None:
+    from experiments.games_amodal.fragment_bank import compose_suite
+
+    train, holdout = compose_suite()
+    assert len(train) == 6 and len(holdout) == 3
+    train_rules = {r for c in train for r in c.rules()}
+    # Six rules cover nine pairings: a factoriser stores 6, a memoriser 9.
+    assert len(train_rules) == 6
+    assert len(train) + len(holdout) == 9
+    for held in holdout:
+        # Every held-out rule was learned...
+        assert set(held.rules()) <= train_rules
+        # ...but this PAIRING never appeared.
+        assert all(set(held.rules()) != set(c.rules()) for c in train)
+    # Each training rule appears in at least two pairings, so no fragment
+    # can be identified with a single context.
+    for rule in train_rules:
+        assert sum(rule in c.rules() for c in train) >= 2
+
+
+def test_compose_suite_holdouts_are_distinct_from_training_pairings() -> None:
+    from experiments.games_amodal.fragment_bank import compose_suite
+
+    train, holdout = compose_suite()
+    names = {c.name for c in train} | {c.name for c in holdout}
+    assert len(names) == 9
+    assert all(c.arity == 3 for c in train + holdout)

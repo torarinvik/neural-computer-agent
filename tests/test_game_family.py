@@ -392,3 +392,53 @@ def test_egocentric_crop_passes_rows_without_an_avatar() -> None:
     grid[1, 1, 2, 2] = 1.0  # dead row: no avatar plane
     view = egocentric_crop(grid)
     assert torch.equal(view[1], grid[1])
+
+
+def test_arity_three_deals_three_distinguishable_choices() -> None:
+    config = FamilyConfig(dual=1, arity=3, rule0=2, rule1=1)
+    verifier = FamilyVerifier(config, batch_size=1, seed=31)
+    verifier.reset(seed=31)
+    assert len(verifier._dual_items[0]) == 3
+    assert {item[2] for item in verifier._dual_items[0]} == {0, 1, 2}
+    grid = verifier.observation()
+    marks = set()
+    for item in verifier._dual_items[0]:
+        marks.add((
+            float(grid[0, 1, item[0], item[1]]),
+            float(grid[0, 2, item[0], item[1]]),
+        ))
+    assert marks == {(1.0, 0.0), (0.0, 1.0), (1.0, 1.0)}  # all distinct
+
+
+def test_explicit_rules_name_the_edible_side_per_cue() -> None:
+    config = FamilyConfig(dual=1, arity=3, rule0=2, rule1=0)
+    verifier = FamilyVerifier(config, batch_size=1, seed=33)
+    assert verifier.dual_edible_side(0) == 2
+    assert verifier.dual_edible_side(1) == 0
+    assert config.rules() == ("cue0take2", "cue1take0")
+    for cue, edible in ((0, 2), (1, 0)):
+        for side in range(3):
+            verifier.reset(seed=33)
+            verifier._dual_kind[0] = cue
+            reward = _step_onto(verifier, _side_cell(verifier, 0, side))
+            expected = 1.0 if side == edible else -DUAL_WRONG_COST
+            assert float(reward[0]) == pytest.approx(expected)
+
+
+def test_arity_two_behaviour_is_unchanged_by_the_generalization() -> None:
+    """Existing arity-2 variants must keep their exact old semantics."""
+
+    for inverted, inverted2 in ((False, False), (True, False), (True, True)):
+        config = FamilyConfig(dual=1, inverted=inverted, inverted2=inverted2)
+        verifier = FamilyVerifier(config, batch_size=1, seed=35)
+        assert verifier.dual_edible_side(0) == (1 if inverted else 0)
+        assert verifier.dual_edible_side(1) == (1 if inverted2 else 0)
+        verifier.reset(seed=35)
+        assert len(verifier._dual_items[0]) == 2
+
+
+def test_arity_validation_rejects_impossible_rules() -> None:
+    with pytest.raises(ValueError, match="not dealt"):
+        FamilyConfig(dual=1, arity=2, rule0=2).validate()
+    with pytest.raises(ValueError, match="arity"):
+        FamilyConfig(dual=1, arity=4).validate()

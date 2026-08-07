@@ -82,6 +82,36 @@ def dual_suite() -> tuple[list[FamilyConfig], list[FamilyConfig]]:
     return train, holdout
 
 
+def compose_suite() -> tuple[list[FamilyConfig], list[FamilyConfig]]:
+    """Nine rule pairings from six rules: factorising becomes economical.
+
+    F27 diagnosed the composition failure as a lack of pressure, not a
+    lack of mechanism: with two binary axes there are only four pairings,
+    and memorising four whole programs is no more expensive than
+    factorising into two rules. At arity 3 there are 3x3 = 9 pairings
+    built from 6 rules, so a bank that factorises stores 6 fragments
+    where a memoriser needs 9 programs.
+
+    Six pairings train; three are held out. Every held-out pairing uses
+    two rules that appear in training — but never together — and each
+    training rule appears in at least two different pairings, so no
+    fragment can be identified with a single context.
+    """
+
+    def variant(first: int, second: int) -> FamilyConfig:
+        return FamilyConfig(
+            dual=1, arity=3, rule0=first, rule1=second,
+            name=f"c{first}{second}",
+        )
+
+    train_pairs = [(0, 0), (0, 1), (1, 0), (1, 2), (2, 1), (2, 2)]
+    holdout_pairs = [(0, 2), (1, 1), (2, 0)]
+    return (
+        [variant(a, b) for a, b in train_pairs],
+        [variant(a, b) for a, b in holdout_pairs],
+    )
+
+
 def factorial_oracle_map(
     variants: list[FamilyConfig],
 ) -> dict[str, list[int]]:
@@ -847,6 +877,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "twins": twins_suite,
         "dual": dual_suite,
         "battery": battery_suite,
+        "compose": compose_suite,
     }
     train_variants, holdout_variants = suites[args.suite]()
     agent = SharedControllerAgent(
@@ -1146,7 +1177,7 @@ def main() -> None:
         "--suite",
         type=str,
         default="micro",
-        choices=["micro", "twins", "dual", "battery"],
+        choices=["micro", "twins", "dual", "battery", "compose"],
     )
     parser.add_argument(
         "--practice-partners",
