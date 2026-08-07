@@ -718,3 +718,24 @@ the ablation discipline (change one property, compare to a mastered
 anchor) is what caught it; (3) peripheral upgrades being decisive while
 the fixed core stays untouched is exactly the division of labour the
 architecture prescribes.
+
+**F23 (probes 34-35). Laggard-preferential scheduling is catastrophic in
+mixed-difficulty batteries: hopeless laggards capture the schedule.** Ten
+games (six decision + four motor, egocentric, staggered, 6000 updates)
+collapsed on both seeds: every motor game flat (0.03-0.17 of ceiling)
+AND the early-admitted choice twins decayed after mastery (choiceA 1.00
+-> 0.19 on seed 69316) — a retention failure the six-game battery never
+showed. Cause: balancing samples contexts by softmax(-mastery/T), so
+contexts stuck near zero receive ~e^4 times the sampling of mastered
+ones. When laggards are merely slow this is the correct triage (F10);
+when they are hard, they monopolize the schedule, the shared plant
+thrashes on barely-learnable gradients, and mastered contexts starve
+and drift. Difficulty diversity converts the cure for winner-take-all
+into a new pathology. Consequence: the scheduler needs a bounded-share
+guarantee — mix the laggard softmax with a uniform floor so every
+mastered context retains a maintenance ration and no context's share
+can exceed a cap. Deeper consequence for the architecture: retention
+under a plastic plant currently depends on continued rehearsal through
+the scheduler; the freeze-plant/consolidation path (F14, EWC line) is
+what removes that dependence, and mixed-difficulty batteries are where
+it becomes mandatory rather than optional.

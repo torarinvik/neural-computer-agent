@@ -1036,6 +1036,7 @@ def main() -> None:
     parser.add_argument("--oracle-selection", action="store_true")
     parser.add_argument("--balance-contexts", action="store_true")
     parser.add_argument("--balance-temperature", type=float, default=0.25)
+    parser.add_argument("--balance-uniform-mix", type=float, default=0.0)
     parser.add_argument("--selection-diversity", type=float, default=0.0)
     parser.add_argument("--selection-init-scale", type=float, default=2.0)
     parser.add_argument(
