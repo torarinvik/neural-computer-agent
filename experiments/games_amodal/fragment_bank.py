@@ -191,8 +191,23 @@ class FragmentBank(torch.nn.Module):
         return self.tokens[indices]
 
 
-def mastery(summary: dict[str, torch.Tensor | None]) -> float:
-    return float((summary["total_reward"] > 0).float().mean())
+def has_positive_source(config: FamilyConfig) -> bool:
+    return bool(config.collect or config.intercept or config.navigate)
+
+
+def mastery(
+    summary: dict[str, torch.Tensor | None], config: FamilyConfig
+) -> float:
+    """Positive-source variants: earned reward. Avoid-only: survival.
+
+    A purely negative variant has no achievable positive total, so mastery
+    is surviving the full lifetime with zero loss.
+    """
+
+    if has_positive_source(config):
+        return float((summary["total_reward"] > 0).float().mean())
+    survived = summary["mask"][:, -1] * (summary["total_reward"] >= 0).float()
+    return float(survived.mean())
 
 
 def train_bank(
@@ -240,7 +255,7 @@ def train_bank(
         assert advantage is not None
         policy_terms = advantage * summary["log_propensity"] * summary["mask"]
         policy_loss = -policy_terms.sum() / policy_terms.shape[0]
-        outcome_score = mastery(summary)
+        outcome_score = mastery(summary, config)
         previous = baseline.get(config.name, 0.0)
         baseline[config.name] = 0.9 * previous + 0.1 * outcome_score
         selection_loss = -(outcome_score - previous) * selection_log_prob
@@ -319,7 +334,7 @@ def evaluate_variant(
                 sample=False,
                 gamma=args.gamma,
             )
-        scores.append(mastery(summary))
+        scores.append(mastery(summary, config))
     return float(torch.tensor(scores).mean())
 
 
@@ -369,13 +384,25 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         width=args.event_width,
         variants=[v.name for v in train_variants],
     )
-    history = train_bank(
+    singles = [v for v in train_variants if len(v.active()) == 1]
+    warm_history = train_bank(
+        agent,
+        bank,
+        singles,
+        args=argparse.Namespace(
+            **{**vars(args), "updates": args.warm_updates}
+        ),
+        train_plant=True,
+        train_fragments=True,
+    )
+    history = warm_history + train_bank(
         agent,
         bank,
         train_variants,
         args=args,
         train_plant=True,
         train_fragments=True,
+        seed_offset=250_000,
     )
     train_scores = {
         v.name: evaluate_variant(agent, bank, v, args=args)
@@ -460,7 +487,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--updates", type=int, default=600)
+    parser.add_argument("--updates", type=int, default=900)
+    parser.add_argument("--warm-updates", type=int, default=600)
     parser.add_argument("--adapt-updates", type=int, default=60)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--steps", type=int, default=32)
