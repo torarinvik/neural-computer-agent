@@ -1,0 +1,59 @@
+{
+  "experiment": "generated_composition_opaque_rule_sequential_slot_growth_ten_source_runtime_generated_replicated_promoted_v1_2026-08-07",
+  "status": "promoted_replicated_ten_procedure_strict_isolated_growth",
+  "claim": "A frozen controller acquires nine runtime-generated opaque procedures in fresh isolated external slots without replay, retains every prior alias through reload and reversal, and admits a tenth target into a separate grown row.",
+  "seeds": [69316, 69317],
+  "configuration": {
+    "program_seed": 4242,
+    "primitive_family": "opaque_rule",
+    "program_count": 10,
+    "program_depth": 8,
+    "source_ids": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+    "target_id": 9,
+    "parent_updates": 128,
+    "source_updates": 256,
+    "target_updates": 256,
+    "batch_size": 16,
+    "audit_count": 64,
+    "retention_probes": 4,
+    "torch_threads": 1
+  },
+  "accounting_by_seed": {
+    "69316": {
+      "unique_verifier_bits": 274432,
+      "unique_logical_lifetimes": 92160,
+      "optimizer_updates": 2944,
+      "retention_observations": 124,
+      "replayed_examples": 0,
+      "wall_seconds": 536.6379274170031
+    },
+    "69317": {
+      "unique_verifier_bits": 274432,
+      "unique_logical_lifetimes": 92160,
+      "optimizer_updates": 2944,
+      "retention_observations": 124,
+      "replayed_examples": 0,
+      "wall_seconds": 279.2511888339941
+    }
+  },
+  "retention": {
+    "source_payload_bytes": 3019104,
+    "physical_source_rows": 1,
+    "target_physical_rows": 1,
+    "minimum_final_source_behavior": {
+      "69316": 0.9140625,
+      "69317": 0.83203125
+    },
+    "target_reload_behavior": {
+      "69316": 1.0,
+      "69317": 1.0
+    }
+  },
+  "controls": {
+    "short_control": "report_short_rejected_seed69316.json",
+    "short_control_rejected_first_append_behavior": 0.625,
+    "replay": 0,
+    "fresh_target_positive_transfer": false
+  },
+  "next_bottleneck": "Each acquired capability still receives an isolated slot with linear payload growth; shared computation, learned compression, mechanism transfer to arbitrary procedures, and unrestricted growth remain unverified."
+}

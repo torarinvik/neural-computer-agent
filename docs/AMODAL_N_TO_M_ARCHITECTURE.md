@@ -3176,3 +3176,23 @@ but old outputs were not excluded during acquisition. It is not yet general
 continual learning. The primitive registry, eight-step renderer, slot
 blueprint, and tested horizon remain finite. Reports and accounting are in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_depth8_sequential_slot_growth_three_source_replicated_promoted_v1_2026-08-07/`.
+
+## Ten-procedure strict isolated growth over opaque runtime rules (2026-08-07)
+
+The strict external slot boundary now acquires nine verifier-private,
+runtime-generated eight-step opaque procedures sequentially, then admits a
+tenth target into a separate grown row. Across seeds `69316` and `69317`, all
+nine fresh slot transactions adopted; every retained alias survived fresh
+reload verification; target reload was `1.0000`; reversal/recovery,
+corruption rejection, exact bank reload, frozen-core equality, and zero replay
+all passed. The weakest final source behaviors were `0.9141` and `0.8320`.
+
+This is a real scale gain for frozen-core external memory: the deployed
+controller still receives only learned events, opaque feedback, and scalar
+outcomes, while slot identity and rule semantics remain in external memory.
+It is not yet general continual learning. The representation is still one
+fresh neural slot per procedure with linear payload growth; inherited target
+transfer did not beat fresh learning, and shared computation, learned
+compression, arbitrary open-ended program induction, and unrestricted growth
+remain unverified. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_opaque_rule_sequential_slot_growth_ten_source_runtime_generated_replicated_promoted_v1_2026-08-07/`.

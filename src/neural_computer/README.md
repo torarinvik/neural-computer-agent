@@ -784,3 +784,11 @@ continual learning: the family generator remains finite and arbitrary new
 computation, open-ended compression, and positive transfer against a fresh
 learner remain unverified. See
 `session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14to16to18to20_remediated_v1_2026-08-07/`.
+
+The generated-composition pressure test separately reaches nine sequential
+fresh opaque slots plus a tenth target procedure. Both replicated runs pass
+strict slot isolation, retention/reversal, reload, corruption, frozen-core,
+and zero-replay gates, but the payload remains linear and inherited target
+transfer is not positive. This is bounded external capacity growth, not
+general continual learning or arbitrary program induction. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_opaque_rule_sequential_slot_growth_ten_source_runtime_generated_replicated_promoted_v1_2026-08-07/`.

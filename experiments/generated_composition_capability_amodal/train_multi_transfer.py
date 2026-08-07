@@ -25,6 +25,10 @@ from time import perf_counter
 import torch
 import torch.nn.functional as F
 
+from experiments.archive.unified_cognitive_controller.train_sequence_working_memory import (
+    SequenceMemoryBatch,
+    generate_sequence_memory_batch,
+)
 from experiments.frozen_core_transfer_amodal.train import _train_with_progress
 from experiments.generated_composition_capability_amodal.train_artifact_bank import (
     SPAN,
@@ -37,6 +41,7 @@ from experiments.generated_composition_capability_amodal.train_artifact_bank imp
 from experiments.parent_conditioned_artifact_bank_amodal.train import (
     _capability_accuracy,
     _new_capability,
+    _rollout_capability,
     _stable_bits,
     _train_capability,
 )
@@ -51,8 +56,8 @@ from neural_computer import (
     RetentionPolicyConfig,
     select_capability_candidate,
 )
-from .train_pipeline import _new_stack
 
+from .train_pipeline import _new_stack
 
 DEFAULT_RUNTIME_GRAMMAR = (
     ("reverse", "adjacent_xor", "complement", "prefix_parity"),
@@ -127,6 +132,49 @@ def _source_behavior(
     )
 
 
+@torch.no_grad()
+def _loaded_source_probe_outcomes(
+    parent,
+    stack,
+    decoder,
+    program_id: int,
+    grammar,
+    *,
+    count: int,
+    probes: int,
+    seed: int,
+) -> list[float]:
+    """Run independent retention probes in one batched visual rollout."""
+
+    batches = tuple(
+        generate_sequence_memory_batch(
+            count,
+            span=SPAN,
+            distractors=1,
+            seed=seed + probe * 101,
+            operation="generated_composition",
+            generated_composition_ids=(program_id,),
+            generated_compositions=grammar,
+        )
+        for probe in range(probes)
+    )
+    combined = SequenceMemoryBatch(
+        *(torch.cat(tuple(getattr(batch, field) for batch in batches), dim=0)
+          for field in SequenceMemoryBatch.__dataclass_fields__)
+    )
+    rewards = _rollout_capability(
+        parent,
+        stack,
+        decoder,
+        combined,
+        train=False,
+    )["rewards"]
+    return [
+        float(rewards[offset : offset + count].mean())
+        for offset in range(0, count * probes, count)
+    ]
+
+
 def _probe_raw_artifact(
     parent,
     artifact: dict[str, torch.Tensor],
@@ -163,30 +211,31 @@ def _probe_views(
     seed: int,
 ) -> tuple[CapabilityRetentionProbe, ...]:
     probes_by_view: list[list[float]] = [[] for _ in views]
-    for probe in range(probes):
-        for index, (key, view, source_id) in enumerate(
-            zip(source_keys, views, source_ids, strict=True)
-        ):
-            try:
-                handle, packed = candidate.promote(key)
-                valid_view = handle.view == view
-                artifact = _view_artifact(packed, view)
-            except (LookupError, ValueError):
-                valid_view = False
-                artifact = {}
-            score = (
-                _source_behavior(
-                    parent,
-                    artifact,
-                    source_id,
-                    grammar,
-                    count=count,
-                    seed=seed + probe * 101 + index,
-                )
-                if valid_view
-                else 0.0
+    loaded_by_view: list[tuple[object, object] | None] = []
+    for key, view in zip(source_keys, views, strict=True):
+        try:
+            handle, packed = candidate.promote(key)
+            if handle.view != view:
+                raise ValueError("opaque alias resolved to the wrong neural slot")
+            loaded_by_view.append(_load_stack_artifact(_view_artifact(packed, view)))
+        except (LookupError, ValueError):
+            loaded_by_view.append(None)
+    for index, loaded in enumerate(loaded_by_view):
+        if loaded is None:
+            probes_by_view[index].extend([0.0] * probes)
+            continue
+        probes_by_view[index].extend(
+            _loaded_source_probe_outcomes(
+                parent,
+                loaded[0],
+                loaded[1],
+                source_ids[index],
+                grammar,
+                count=count,
+                probes=probes,
+                seed=seed + index,
             )
-            probes_by_view[index].append(score)
+        )
     return tuple(
         CapabilityRetentionProbe(key, outcomes)
         for key, outcomes in zip(source_keys, probes_by_view, strict=True)

@@ -6,11 +6,15 @@ from experiments.archive.unified_cognitive_controller.train_sequence_working_mem
     generate_sequence_memory_batch,
 )
 from experiments.generated_composition_capability_amodal.train_artifact_bank import (
+    _load_stack_artifact,
     _stack_artifact,
     generate_runtime_program_grammar,
 )
 from experiments.generated_composition_capability_amodal.train_distilled_consolidation import (
     _load_or_fresh,
+)
+from experiments.generated_composition_capability_amodal.train_multi_transfer import (
+    _loaded_source_probe_outcomes,
 )
 from experiments.generated_composition_capability_amodal.train_pipeline import (
     _new_stack,
@@ -20,7 +24,13 @@ from experiments.generated_composition_capability_amodal.train_sequential_distil
     _fresh_slot_mask,
     _train_expanded_new_only,
 )
-from experiments.parent_conditioned_artifact_bank_amodal.train import _new_capability
+from experiments.parent_conditioned_artifact_bank_amodal.train import (
+    _capability_accuracy,
+    _new_capability,
+)
+from experiments.working_memory_continuous.canonical_growth_pressure_test import (
+    _runtime,
+)
 
 
 def test_runtime_program_generation_is_deterministic_and_distinct() -> None:
@@ -89,6 +99,48 @@ def test_runtime_generated_program_renderer_supports_eight_steps() -> None:
     assert len(grammar[0]) == 8
     assert batch.query_frames.shape == (4, 4, 3, 32, 32)
     assert torch.isfinite(batch.query_frames).all()
+
+
+def test_batched_retention_probes_preserve_separate_outcomes() -> None:
+    grammar = generate_runtime_program_grammar(
+        seed=4242,
+        count=3,
+        depth=8,
+        primitive_family="opaque_rule",
+    )
+    parent = _runtime(seed=69316, growth=False)
+    stack = _new_stack(seed=69317, program_count=2, stack="routed")
+    decoder = _new_capability(seed=69318)[1]
+    loaded_stack, loaded_decoder = _load_stack_artifact(
+        _stack_artifact(stack, decoder)
+    )
+
+    batched = _loaded_source_probe_outcomes(
+        parent,
+        loaded_stack,
+        loaded_decoder,
+        0,
+        grammar,
+        count=8,
+        probes=3,
+        seed=70_000,
+    )
+    separate = [
+        _capability_accuracy(
+            parent,
+            loaded_stack,
+            loaded_decoder,
+            operation="generated_composition",
+            span=4,
+            count=8,
+            seed=70_000 + probe * 101,
+            generated_composition_ids=(0,),
+            generated_compositions=grammar,
+        )
+        for probe in range(3)
+    ]
+
+    assert torch.allclose(torch.tensor(batched), torch.tensor(separate))
 
 
 def test_routed_stack_expansion_preserves_existing_external_state() -> None:

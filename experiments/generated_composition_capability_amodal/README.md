@@ -528,3 +528,21 @@ failure and its accounting instead of crashing. This is the next verified
 address-discovery boundary, not unbounded routing or general continual
 learning. Evidence and accounting are archived in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_opaque_rule_append_only_route_six_runtime_generated_replicated_promoted_v1_2026-08-07/`.
+
+## Strict isolated growth to ten opaque procedures (2026-08-07)
+
+The slot-isolated trainer now scales the runtime-generated opaque-rule family
+to nine sequential fresh source additions plus a tenth target procedure.
+Across seeds `69316` and `69317`, every append adopted, all nine source aliases
+remained protected after reload, the target grew into a separate row at
+`1.0000`, and reversal/recovery, checksum corruption, frozen-core, exact
+reload, and zero-replay gates passed. The weakest final source behaviors were
+`0.9141` and `0.8320`.
+
+This is the largest strict isolated opaque-procedure result so far, but its
+payload grows linearly with one slot per procedure. Inherited target transfer
+was not promoted: it tied fresh on one seed and lost on the other. Shared
+computation, learned compression, arbitrary program induction, and general
+continual learning remain open. Evidence, including the hard-gate short
+control, is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_opaque_rule_sequential_slot_growth_ten_source_runtime_generated_replicated_promoted_v1_2026-08-07/`.

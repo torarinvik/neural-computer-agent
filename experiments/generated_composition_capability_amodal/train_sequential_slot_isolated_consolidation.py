@@ -714,6 +714,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "retention_probes": args.retention_probes,
             "eval_every": args.eval_every,
             "reversal_patience": args.reversal_patience,
+            "torch_threads": args.torch_threads,
         },
         "sources": [
             {
@@ -809,6 +810,12 @@ def main() -> None:
     parser.add_argument("--reversal-patience", type=int, default=4)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument(
+        "--torch-threads",
+        type=int,
+        default=None,
+        help="set PyTorch intra-op threads for this tiny audit workload",
+    )
+    parser.add_argument(
         "--program-seed",
         type=int,
         default=None,
@@ -836,6 +843,10 @@ def main() -> None:
         help="verifier-private runtime program as comma-separated primitives",
     )
     args = parser.parse_args()
+    if args.torch_threads is not None:
+        if args.torch_threads < 1:
+            raise ValueError("torch-threads must be positive")
+        torch.set_num_threads(args.torch_threads)
     report = run(args)
     print(
         json.dumps(
