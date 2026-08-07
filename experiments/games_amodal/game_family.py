@@ -29,9 +29,32 @@ _DELTAS = ((-1, 0), (0, 1), (1, 0), (0, -1))
 
 COMPONENTS = ("collect", "intercept", "avoid", "navigate")
 
-# `dual` item classes A, B, C, D -> (plane, intensity). Four marks inside
-# the three shared planes, so no new screen channel is needed.
-_DUAL_MARKS = ((1, 1.0), (2, 1.0), (1, 0.5), (2, 0.5))
+# `dual` renders the two choices identically in both trial kinds (one on
+# each object plane) and signals WHICH RULE IS IN FORCE with a separate
+# cue cell on the avatar plane. Encoding the trial kind into the items
+# themselves instead -- as a second intensity level -- makes each rule a
+# conjunction of plane and intensity, which this plant cannot learn even
+# with a single unambiguous context to itself (probe 17). Keep the cue
+# orthogonal to the choice.
+_DUAL_CUE_CORNERS = ((0, 0), (0, -1))
+
+# F2, strengthened for multi-rule worlds. An agent that has mastered one
+# trial kind SELECTIVELY refuses the kind it has not mastered, and its
+# per-rule accuracy on the refused kind then measures nothing. Two things
+# are needed to close the escape, and the first alone is not enough:
+#
+#   1. Idling must cost something (a uniform per-step cost does not work;
+#      it is paid whether or not the agent engages).
+#   2. Guessing must PAY. Under policy gradient a symmetric +1/-1 coin
+#      flip is a zero-mean, high-variance action, and the low-variance
+#      idle action wins even though it is worse in expectation. The agent
+#      then never gathers the trials it needs to learn the rule at all.
+#
+# So engaging under ignorance earns +0.4 in expectation, idling earns
+# -0.1, and knowing the rule earns +1.0. Each step of competence strictly
+# pays for itself.
+DUAL_IDLE_COST = 0.1
+DUAL_WRONG_COST = 0.2
 
 
 @dataclass(frozen=True)
@@ -55,14 +78,15 @@ class FamilyConfig:
     inverted: bool = False  # SAME rendering, opposite meaning: touching a
     # positive-plane object (food/goal) is -1 and fatal. Observation alone
     # cannot reveal the objective; only fetched context can.
-    dual: int = 0  # TWO independent binary rules in one world. Trials
-    # alternate between an A/B pair and a C/D pair (four visually distinct
-    # item classes, see `observation`). `inverted` says which of A/B is
-    # food; `inverted2` says which of C/D is food. The trial KIND is
-    # visible, the RULE for each kind is not. Contexts are therefore a
-    # product of two bits, so contexts sharing a bit share a sub-rule --
-    # the structure a fragment bank must reuse rather than re-learn.
-    inverted2: bool = False  # second axis of `dual` (which of C/D is food)
+    dual: int = 0  # TWO independent binary rules in one world. Each trial
+    # offers the same two choices — one item on each object plane — and a
+    # separate cue cell says which of two rules is in force. `inverted`
+    # sets the rule for cue-0 trials (take side 0 = A, or side 1 = B);
+    # `inverted2` sets it for cue-1 trials (C or D). The cue is visible,
+    # the rule it selects is not. Contexts are therefore a product of two
+    # bits, so contexts sharing a bit share a sub-rule -- the structure a
+    # fragment bank must reuse rather than re-learn.
+    inverted2: bool = False  # second axis of `dual` (rule for cue-1 trials)
     name: str = field(default="", compare=False)
 
     def active(self) -> tuple[str, ...]:
@@ -151,6 +175,7 @@ class FamilyVerifier:
         self._forage_a: list[list[tuple[int, int]]] = []
         self._forage_b: list[list[tuple[int, int]]] = []
         self._dual_items: list[list[tuple[int, int, int]]] = []
+        self._dual_kind: list[int] = []
         self._dual_stats = torch.zeros(2, 2, device=self.device)
         self._alive = torch.zeros(self.batch_size, dtype=torch.bool, device=self.device)
 
@@ -228,6 +253,7 @@ class FamilyVerifier:
                 self._avatar[row] = (self.height // 2, self.width // 2)
                 self._deal_choice(row)
         self._dual_items = [[] for _ in range(self.batch_size)]
+        self._dual_kind = [0 for _ in range(self.batch_size)]
         self._dual_stats = torch.zeros(2, 2, device=self.device)
         if config.dual:
             for row in range(self.batch_size):
@@ -244,21 +270,36 @@ class FamilyVerifier:
         return neighbours[first], neighbours[second]
 
     def _deal_dual(self, row: int) -> None:
-        """Deal one trial of a randomly chosen kind (A/B or C/D)."""
+        """Deal one trial of a randomly chosen kind, cue and choices apart."""
 
         left, right = self._neighbour_pair(row)
-        kind = self._rand(2)
-        classes = (0, 1) if kind == 0 else (2, 3)
+        self._dual_kind[row] = self._rand(2)
         self._dual_items[row] = [
-            (left[0], left[1], classes[0]),
-            (right[0], right[1], classes[1]),
+            (left[0], left[1], 0),
+            (right[0], right[1], 1),
         ]
+
+    def dual_edible_side(self, kind: int) -> int:
+        flipped = self.config.inverted2 if kind else self.config.inverted
+        return 1 if flipped else 0
 
     def dual_accuracy(self) -> list[float]:
         """Per-axis fraction of trials resolved correctly (harness only)."""
 
         totals = self._dual_stats[:, 1].clamp_min(1.0)
         return (self._dual_stats[:, 0] / totals).tolist()
+
+    def dual_engagement(self) -> list[float]:
+        """Trials resolved per axis (harness only).
+
+        Accuracy alone cannot distinguish "has not learned this rule" from
+        "declines to play this trial kind": both read ~0.5. An agent that
+        knows one rule can leave the other trial kind unresolved, paying
+        only an opportunity cost instead of the -1 it would earn by
+        guessing. Engagement is how that evasion becomes visible.
+        """
+
+        return self._dual_stats[:, 1].tolist()
 
     def _deal_choice(self, row: int) -> None:
         """Place one type-A and one type-B item adjacent to the avatar."""
@@ -299,9 +340,11 @@ class FamilyVerifier:
                 grid[row, 1, cell[0], cell[1]] = 1.0
             for cell in self._forage_b[row]:
                 grid[row, 2, cell[0], cell[1]] = 1.0
-            for item in self._dual_items[row]:
-                plane, level = _DUAL_MARKS[item[2]]
-                grid[row, plane, item[0], item[1]] = level
+            if self.config.dual and self._dual_items[row]:
+                cue = _DUAL_CUE_CORNERS[self._dual_kind[row]]
+                grid[row, 0, cue[0], cue[1]] = 1.0
+                for item in self._dual_items[row]:
+                    grid[row, 1 + item[2], item[0], item[1]] = 1.0
         return grid
 
     def step(self, actions: torch.Tensor) -> GameStep:
@@ -344,18 +387,24 @@ class FamilyVerifier:
                 self._goal[row] = self._free_cell(row, occupied)
 
             if self.config.dual:
+                kind = self._dual_kind[row]
+                resolved = False
                 for item in self._dual_items[row]:
                     if (item[0], item[1]) != target:
                         continue
-                    axis = 0 if item[2] < 2 else 1
-                    flipped = self.config.inverted2 if axis else self.config.inverted
-                    edible = (2 * axis + 1) if flipped else (2 * axis)
-                    correct = item[2] == edible
-                    reward[row] += 1.0 if correct else -1.0
-                    self._dual_stats[axis, 0] += float(correct)
-                    self._dual_stats[axis, 1] += 1.0
+                    correct = item[2] == self.dual_edible_side(kind)
+                    reward[row] += 1.0 if correct else -DUAL_WRONG_COST
+                    self._dual_stats[kind, 0] += float(correct)
+                    self._dual_stats[kind, 1] += 1.0
                     self._deal_dual(row)
+                    resolved = True
                     break
+                if not resolved:
+                    reward[row] -= DUAL_IDLE_COST
+                # Always recentre: the avatar can never wander off the
+                # decision, so the trial is a pure repeated two-alternative
+                # choice (F7) and the cue corners stay unoccupied.
+                self._avatar[row] = (self.height // 2, self.width // 2)
                 continue
 
             good, bad = self._forage_a[row], self._forage_b[row]

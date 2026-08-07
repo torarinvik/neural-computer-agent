@@ -90,14 +90,23 @@ def test_sample_selection_returns_distinct_fragments() -> None:
     assert greedy == torch.topk(logits, 3).indices.tolist()
 
 
-def test_dual_variants_are_scored_by_earned_reward() -> None:
+def test_dual_variants_are_scored_by_rule_knowledge_not_reward() -> None:
     config = FamilyConfig(dual=1, name="dualAC")
     assert has_positive_source(config)
     summary = {
-        "total_reward": torch.tensor([2.0, -1.0, 0.0, 3.0]),
-        "mask": torch.ones(4, 3),
+        "total_reward": torch.tensor([9.0, 9.0]),  # plenty of reward...
+        "mask": torch.ones(2, 3),
+        "rule_accuracy": torch.tensor([1.0, 0.5]),  # ...but one rule unknown
+        "rule_engagement": torch.tensor([4.0, 4.0]),
     }
-    assert mastery(summary, config) == pytest.approx(0.5)
+    assert mastery(summary, config) == pytest.approx(0.75)
+    # An agent that refuses a trial kind gets no credit for it.
+    refused = {
+        **summary,
+        "rule_accuracy": torch.tensor([1.0, 0.0]),
+        "rule_engagement": torch.tensor([4.0, 0.0]),
+    }
+    assert mastery(refused, config) == pytest.approx(0.5)
 
 
 def test_rollout_reports_per_rule_accuracy_only_for_dual() -> None:

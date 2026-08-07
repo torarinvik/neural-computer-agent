@@ -191,6 +191,11 @@ def rollout_family(
         "rule_accuracy": (
             torch.tensor(verifier.dual_accuracy()) if config.dual else None
         ),
+        "rule_engagement": (
+            torch.tensor(verifier.dual_engagement()) / max(batch_size, 1)
+            if config.dual
+            else None
+        ),
     }
 
 
@@ -306,12 +311,22 @@ def has_positive_source(config: FamilyConfig) -> bool:
 def mastery(
     summary: dict[str, torch.Tensor | None], config: FamilyConfig
 ) -> float:
-    """Positive-source variants: earned reward. Avoid-only: survival.
+    """Dual: rule knowledge. Positive-source: earned reward. Avoid: survival.
 
     A purely negative variant has no achievable positive total, so mastery
     is surviving the full lifetime with zero loss.
+
+    `dual` is scored by per-rule accuracy rather than by reward, because
+    engaging now pays even under ignorance (see `DUAL_WRONG_COST`), so a
+    reward threshold would credit an agent that plays every trial and
+    knows neither rule. Accuracy over resolved trials answers the question
+    actually under test, and it is zero for an agent that resolves none.
     """
 
+    if config.dual and summary.get("rule_accuracy") is not None:
+        engaged = summary["rule_engagement"]
+        accuracy = summary["rule_accuracy"]
+        return float((accuracy * (engaged > 0).float()).mean())
     if has_positive_source(config):
         return float((summary["total_reward"] > 0).float().mean())
     survived = summary["mask"][:, -1] * (summary["total_reward"] >= 0).float()
@@ -561,7 +576,7 @@ def evaluate_detail(
     cross-fed fragment is expected to produce when it carries one rule.
     """
 
-    scores, returns, accuracies = [], [], []
+    scores, returns, accuracies, engagements = [], [], [], []
     for index in range(args.eval_seeds):
         seed = args.seed + 10_000 + index
         fragments = fragments_override
@@ -592,6 +607,7 @@ def evaluate_detail(
         returns.append(float(summary["total_reward"].mean()))
         if summary["rule_accuracy"] is not None:
             accuracies.append(summary["rule_accuracy"])
+            engagements.append(summary["rule_engagement"])
     detail: dict[str, object] = {
         "mastery": float(torch.tensor(scores).mean()),
         "mean_return": float(torch.tensor(returns).mean()),
@@ -602,6 +618,10 @@ def evaluate_detail(
             for value in torch.stack(accuracies).mean(dim=0).tolist()
         ]
         detail["rules"] = list(config.rules())
+        detail["rule_engagement"] = [
+            round(value, 4)
+            for value in torch.stack(engagements).mean(dim=0).tolist()
+        ]
     return detail
 
 
