@@ -88,6 +88,12 @@ class FamilyConfig:
     # bits, so contexts sharing a bit share a sub-rule -- the structure a
     # fragment bank must reuse rather than re-learn.
     inverted2: bool = False  # second axis of `dual` (rule for cue-1 trials)
+    spawn_radius: int = 0  # F19 motor bridge: 0 = items spawn anywhere;
+    # r>0 = forage items spawn within Chebyshev radius r of the avatar.
+    # Radius 1 makes forage the already-mastered choice trial; growing r
+    # is a curriculum that lets the decision skill seed the navigation
+    # skill the plant cannot bootstrap cold (F5 staging, applied inside
+    # one game).
     name: str = field(default="", compare=False)
 
     def active(self) -> tuple[str, ...]:
@@ -133,6 +139,10 @@ class FamilyConfig:
         )
         if min(levels) < 0:
             raise ValueError("component levels cannot be negative")
+        if self.spawn_radius < 0:
+            raise ValueError("spawn radius cannot be negative")
+        if self.spawn_radius and not self.forage:
+            raise ValueError("spawn radius is a forage curriculum knob")
         if max(levels) > 3:
             raise ValueError("component levels above 3 are not supported")
         if self.dual and self.choice:
@@ -193,6 +203,21 @@ class FamilyVerifier:
             if cell not in occupied:
                 return cell
 
+    def _forage_cell(self, row: int, occupied: set[tuple[int, int]]) -> tuple[int, int]:
+        radius = self.config.spawn_radius
+        if radius <= 0:
+            return self._free_cell(row, occupied)
+        centre = self._avatar[row]
+        candidates = [
+            (r, c)
+            for r in range(max(0, centre[0] - radius), min(self.height, centre[0] + radius + 1))
+            for c in range(max(0, centre[1] - radius), min(self.width, centre[1] + radius + 1))
+            if (r, c) != centre and (r, c) not in occupied
+        ]
+        if not candidates:
+            return self._free_cell(row, occupied)
+        return candidates[self._rand(len(candidates))]
+
     def reset(self, *, seed: int | None = None) -> None:
         if seed is not None:
             self._generator.manual_seed(int(seed))
@@ -203,6 +228,8 @@ class FamilyVerifier:
         self._hazards = []
         self._walls = []
         self._goal = []
+        self._forage_a = []
+        self._forage_b = []
         self._alive = torch.ones(self.batch_size, dtype=torch.bool, device=self.device)
         for row in range(self.batch_size):
             occupied: set[tuple[int, int]] = set()
@@ -242,10 +269,10 @@ class FamilyVerifier:
                 self._goal.append(None)
             type_a, type_b = [], []
             for _ in range(config.forage):
-                cell = self._free_cell(row, occupied)
+                cell = self._forage_cell(row, occupied)
                 occupied.add(cell)
                 type_a.append(cell)
-                cell = self._free_cell(row, occupied)
+                cell = self._forage_cell(row, occupied)
                 occupied.add(cell)
                 type_b.append(cell)
             self._forage_a.append(type_a)
@@ -428,14 +455,14 @@ class FamilyVerifier:
                 occupied = (
                     set(good) | set(bad) | self._walls[row] | {target}
                 )
-                good.append(self._free_cell(row, occupied))
+                good.append(self._forage_cell(row, occupied))
             elif target in bad:
                 bad.remove(target)
                 reward[row] -= 1.0
                 occupied = (
                     set(good) | set(bad) | self._walls[row] | {target}
                 )
-                bad.append(self._free_cell(row, occupied))
+                bad.append(self._forage_cell(row, occupied))
 
             next_fallers = []
             for faller in self._fallers[row]:

@@ -278,3 +278,27 @@ def test_dual_guessing_beats_stalling() -> None:
         if cell not in taken
     )
     assert float(_step_onto(verifier, empty)[0]) < sum(guesses) / len(guesses)
+
+
+def test_forage_spawn_radius_keeps_items_near_the_avatar() -> None:
+    config = FamilyConfig(forage=1, spawn_radius=1)
+    verifier = FamilyVerifier(config, batch_size=8, seed=21)
+    # Radius bounds distance AT SPAWN TIME (reset and respawn); the avatar
+    # may then walk away, so only spawn-time positions are checked.
+    for reset_seed in range(5):
+        verifier.reset(seed=reset_seed)
+        for row in range(8):
+            avatar = verifier._avatar[row]
+            for cell in verifier._forage_a[row] + verifier._forage_b[row]:
+                assert max(abs(cell[0] - avatar[0]), abs(cell[1] - avatar[1])) <= 1
+    # Respawn-on-eat also lands within radius of the avatar's new cell.
+    verifier.reset(seed=9)
+    item = verifier._forage_a[0][0]
+    verifier._avatar[0] = (item[0] - 1, item[1]) if item[0] > 0 else (item[0] + 1, item[1])
+    action = 2 if verifier._avatar[0][0] < item[0] else 0
+    verifier.step(torch.tensor([action] * 8))
+    avatar = verifier._avatar[0]
+    fresh = verifier._forage_a[0][0]
+    assert max(abs(fresh[0] - avatar[0]), abs(fresh[1] - avatar[1])) <= 1
+    with pytest.raises(ValueError, match="curriculum knob"):
+        FamilyConfig(choice=1, spawn_radius=1).validate()
