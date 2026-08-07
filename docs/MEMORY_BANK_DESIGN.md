@@ -1390,3 +1390,48 @@ survivable AND a policy-preserving easing axis exists (density, F40);
 unsolved for fatal-error games, where no policy-preserving easing axis
 has been found and the two tried (count, speed) fail for opposite
 reasons.
+
+**F42 (probe 65). The spread curriculum fails too — and it passed F41's
+pre-flight test, so the test itself was too weak.** F41 required an
+easing axis to preserve the policy the target needs. Faller spawn spread
+was designed to pass exactly that: "move toward the faller's column" is
+the same function of the same observation at every spread, differing
+only in the distance it must be applied. It fails:
+
+| axis | seed 69316 | seed 69317 |
+| --- | ---: | ---: |
+| cold (critic, no curriculum) | **0.453** | 0.141 |
+| count (density) | 0.016 | **0.469** |
+| speed (period) | 0.094 | **0.469** |
+| spread (distance) | 0.188 | 0.219 |
+
+Three axes, none better than cold on both seeds. The diagnosis for
+spread is specific and it corrects F41: at spread 1 the faller lands
+within one column of the avatar, so the optimal action is almost always
+"stay". The POLICY is unchanged in form — move toward the column — but
+its typical OUTPUT is constant, so what the learner actually fits is the
+constant. The easy stage was solvable without ever exercising the
+behaviour the target needs.
+
+Strengthened law (final form): **an easing axis must preserve the target
+policy AND exercise the full range of its outputs.** Checking the first
+alone admits degenerate stages where the policy is technically the same
+function but is only ever evaluated at one point. All four curriculum
+successes and failures in this program now follow:
+
+* density on forage — same act, full range of approach distances still
+  required. WORKS (F40, seed lottery removed).
+* spawn radius on forage — collapses the approach distance to ~0. FAILS
+  (F20).
+* teleport forcing — supplies the return the agent should perform.
+  FAILS (F21).
+* faller speed — leisurely positioning is a different policy. FAILS (F41).
+* faller spread — same policy, degenerate output range. FAILS (F42).
+
+Intercept remains unsolved, and honestly so: no axis is known that eases
+a fatal-error, timing-critical task while exercising the full range of
+the anticipatory policy it requires. The two properties are in tension
+here — anything that gives the agent more slack removes the need to
+anticipate, which is the skill. That tension may be intrinsic to
+timing-critical tasks rather than a gap in the search, and saying so is
+more useful than a sixth axis.

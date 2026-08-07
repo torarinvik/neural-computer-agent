@@ -468,3 +468,29 @@ def test_faller_period_slows_descent_without_adding_danger() -> None:
     assert fast._fallers[0][0][0] == 1  # unchanged default: one row a step
     with pytest.raises(ValueError, match="faller period"):
         FamilyConfig(intercept=1, faller_period=0).validate()
+
+
+def test_faller_spread_keeps_the_policy_and_only_shortens_the_distance() -> None:
+    """F41's test: the optimal action must stay the same function of the
+    observation at every stage -- move toward the faller's column."""
+
+    near = FamilyVerifier(
+        FamilyConfig(intercept=1, faller_spread=1), batch_size=6, seed=43
+    )
+    near.reset(seed=43)
+    for row in range(6):
+        gap = abs(near._fallers[row][0][1] - near._avatar[row][1])
+        assert gap <= 1
+    # Respawn after a catch must also honour the spread.
+    near._fallers[0] = [(near.height - 1, near._avatar[0][1])]
+    near.step(torch.tensor([1] * 6))
+    fresh = near._fallers[0][0]
+    assert fresh[0] == 0
+    assert abs(fresh[1] - near._avatar[0][1]) <= 1
+    # Spread 0 is the unchanged target task: anywhere on the width.
+    wide = FamilyVerifier(FamilyConfig(intercept=1), batch_size=24, seed=44)
+    wide.reset(seed=44)
+    gaps = {abs(wide._fallers[r][0][1] - wide._avatar[r][1]) for r in range(24)}
+    assert max(gaps) > 1
+    with pytest.raises(ValueError, match="faller spread"):
+        FamilyConfig(intercept=1, faller_spread=-1).validate()

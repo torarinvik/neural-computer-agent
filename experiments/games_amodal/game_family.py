@@ -169,6 +169,12 @@ class FamilyConfig:
     # strictly pay. Growing spawn_radius is the curriculum; 0 = never
     # (pure forage). The teleporting variant taught waiting, not
     # navigating (F21).
+    faller_spread: int = 0  # F41: a POLICY-PRESERVING easing axis for
+    # fatal-error games. 0 = fallers spawn anywhere (target); n>0 = they
+    # spawn within n columns of the avatar. The optimal policy is "move
+    # toward the faller's column" at EVERY spread -- the same function of
+    # the same observation, differing only in how far it must be applied
+    # -- which is what F41 requires and what speed and count both fail.
     faller_period: int = 1  # F40: the easing axis for FATAL-error games.
     # Fallers advance one row every `faller_period` steps, so a larger
     # period lengthens the time available to get under one before missing
@@ -242,6 +248,8 @@ class FamilyConfig:
         )
         if min(levels) < 0:
             raise ValueError("component levels cannot be negative")
+        if self.faller_spread < 0:
+            raise ValueError("faller spread cannot be negative")
         if self.faller_period < 1:
             raise ValueError("faller period must be at least one step")
         if self.dual and not 2 <= self.arity <= 3:
@@ -370,7 +378,7 @@ class FamilyVerifier:
             self._food.append(food)
             fallers = []
             for _ in range(config.intercept):
-                fallers.append((0, self._rand(self.width)))
+                fallers.append((0, self._faller_column(row)))
             self._fallers.append(fallers)
             hazards = []
             for _ in range(config.avoid):
@@ -403,6 +411,15 @@ class FamilyVerifier:
         if config.dual:
             for row in range(self.batch_size):
                 self._deal_dual(row)
+
+    def _faller_column(self, row: int) -> int:
+        spread = self.config.faller_spread
+        if spread <= 0:
+            return self._rand(self.width)
+        centre = self._avatar[row][1]
+        low = max(0, centre - spread)
+        high = min(self.width - 1, centre + spread)
+        return low + self._rand(high - low + 1)
 
     def _neighbour_pair(self, row: int) -> tuple[tuple[int, int], tuple[int, int]]:
         centre = (self.height // 2, self.width // 2)
@@ -628,10 +645,10 @@ class FamilyVerifier:
                     else:
                         reward[row] -= 1.0
                         self._alive[row] = False
-                    next_fallers.append((0, self._rand(self.width)))
+                    next_fallers.append((0, self._faller_column(row)))
                 elif dropped == target:
                     reward[row] += 1.0
-                    next_fallers.append((0, self._rand(self.width)))
+                    next_fallers.append((0, self._faller_column(row)))
                 else:
                     next_fallers.append(dropped)
             self._fallers[row] = next_fallers
