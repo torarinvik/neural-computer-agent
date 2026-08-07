@@ -906,7 +906,9 @@ rank is materially higher (`11.90/12.87`), so the next bottleneck is source
 screen capacity/interference rather than another global signature transform.
 Increasing scorer latent width from 32 to 64 is also rejected: known floors
 are `0.0000/0.4000` while unseen remains perfect. The next capacity test is
-router hidden width or source competition isolation.
+router hidden width or source competition isolation. Hidden width 128 is also
+rejected (`0.8542/0.8021` known, zero per-target floor), so source competition
+isolation is now the preferred intervention.
 
 The external boundary now includes an appendable, independently freezeable
 `LearnedOpaqueCandidateKeyMemory`. Its first outcome-trained update policies

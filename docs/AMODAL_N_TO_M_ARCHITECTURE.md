@@ -3593,3 +3593,10 @@ while unseen acquisition remains perfect. The extra latent coordinates are
 therefore not the next lever; router hidden capacity or isolation of mutable
 source competition is. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_page_local_46_latent64_rejected_v1_2026-08-07/`.
+
+Increasing router hidden width from 64 to 128 also worsens the 46-candidate
+source route (`0.8542/0.8021` aggregate known accuracy, `0.0000/0.0000`
+per-target floors) while unseen acquisition remains perfect. Capacity scaling
+alone is rejected; the next intervention isolates source competition into
+independent pages behind verifier-gated activation. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_page_local_46_hidden128_rejected_v1_2026-08-07/`.
