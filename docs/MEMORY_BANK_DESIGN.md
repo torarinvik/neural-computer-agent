@@ -1039,3 +1039,41 @@ Either acquisition gets reliable enough to carry nine pairings, or the
 composition test needs a design where pressure rises without the
 workload rising — e.g. holding the context count fixed while increasing
 how many pairings each fragment must serve.
+
+**F33 (probe 53). Composition tested properly and it does not happen:
+held-out pairings sit at chance, indistinguishable from a random bank.**
+F32's "blocked" verdict was premature — the compose suite had been run
+without a screen view, and with the roll view both seeds acquire (mean
+0.42 and 0.57 against solo ceilings of ~0.44-1.00, all six pairings
+above chance on seed 69317). With training working, the composition
+readout is finally meaningful, and it is negative:
+
+| held-out pairing | composed (69316 / 69317) | random-bank control |
+| --- | --- | --- |
+| c02 | 0.316 / 0.357 | 0.350 / 0.350 |
+| c11 | 0.378 / 0.351 | 0.332 / 0.364 |
+| c20 | 0.340 / 0.410 | 0.333 / 0.337 |
+
+Chance is 0.333. Every composed score lands between 0.32 and 0.41, and
+the random-bank control lands in the same band: handing the plant the
+two ideal already-trained fragments is worth no more than handing it
+noise. Six seed-pairing measurements, no separation.
+
+This is the cleanest negative the composition line has produced, and it
+retires the pressure hypothesis (F27/F32): making factorisation the
+economical solution — nine pairings over six rules, each rule exercised
+in at least two contexts, all six training pairings acquired — does not
+make it the learned solution. Together with F16 (imposed sharing does
+not compose) and F27 (partner rotation buys interchangeability, not
+composability), three independent mechanisms have now failed, and the
+common factor is that none of them ever made composition itself the
+thing being optimised.
+
+What remains, stated as the sharpest form of the open problem:
+concatenating two fragments into the event window is not an operation
+the plant was ever trained to perform. Convergent finding 2 said trained
+combiners beat hoped-for arithmetic; every attempt so far has hoped. The
+remaining admissible design is an explicit combiner — a trained
+operation over fetched fragments, optimised on held-out pairings — which
+is a change to what the controller DOES with the bank, not to what the
+bank stores. That is the next architectural rung, and it is a large one.
