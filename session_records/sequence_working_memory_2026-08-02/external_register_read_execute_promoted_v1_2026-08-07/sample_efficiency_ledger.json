@@ -1,0 +1,59 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "status": "promoted_read_execute_composition_frontier",
+  "experiment": "external_register_read_execute_promoted_v1_2026-08-07",
+  "entries": [
+    {
+      "seed": 69316,
+      "program_depth": 2,
+      "unique_verifier_bits": 114688,
+      "unique_logical_lifetimes": 14336,
+      "optimizer_updates": 1024,
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": 4096,
+      "fresh_stable_bits_to_threshold": 8192,
+      "transfer_ratio_against_fresh_learner": 2.0,
+      "retention_on_mastered_primitives": 0.96484375,
+      "decision": "promote_read_execute_two_instruction_regression"
+    },
+    {
+      "seed": 69317,
+      "program_depth": 2,
+      "unique_verifier_bits": 114688,
+      "unique_logical_lifetimes": 14336,
+      "optimizer_updates": 1024,
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": 4096,
+      "fresh_stable_bits_to_threshold": 8192,
+      "transfer_ratio_against_fresh_learner": 2.0,
+      "retention_on_mastered_primitives": 1.0,
+      "decision": "promote_read_execute_two_instruction_regression"
+    },
+    {
+      "seed": 69316,
+      "program_depth": 3,
+      "unique_verifier_bits": 114688,
+      "unique_logical_lifetimes": 28672,
+      "optimizer_updates": 1920,
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": 8192,
+      "fresh_stable_bits_to_threshold": 16384,
+      "transfer_ratio_against_fresh_learner": 2.0,
+      "retention_on_mastered_primitives": 0.8359375,
+      "decision": "promote_read_execute_three_instruction_growth"
+    },
+    {
+      "seed": 69317,
+      "program_depth": 3,
+      "unique_verifier_bits": 114688,
+      "unique_logical_lifetimes": 28672,
+      "optimizer_updates": 1920,
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": 4096,
+      "fresh_stable_bits_to_threshold": 12288,
+      "transfer_ratio_against_fresh_learner": 3.0,
+      "retention_on_mastered_primitives": 0.90625,
+      "decision": "promote_read_execute_three_instruction_growth"
+    }
+  ]
+}

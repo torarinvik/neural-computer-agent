@@ -70,3 +70,27 @@ three: the frozen external interpreter preserves the learned instructions,
 but a newly trained decoder cannot reliably route the resulting triple-chain
 state. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_three_instruction_rejected_v1_2026-08-07/`.
+
+## Promoted read/execute snapshot frontier (2026-08-07)
+
+The depth-three failure isolated a mutable-state problem, so the register now
+exposes `observe_register()` and `read_execute_register()`. Observation state
+persists learned events and feedback; instruction execution runs on a
+transient register snapshot and cannot write its result back into the evidence
+store. The legacy in-place `step_register()` remains available for explicit
+compatibility, while `step()` and this harness use the snapshot path.
+
+The original two-instruction regression passes on both seeds with stable
+inherited composition at `4,096` verifier bits versus `8,192` for fresh
+(`2.0x` fresh-over-inherited). The three-instruction reverse -> complement ->
+rotate rung also passes on both seeds: inherited mastery is `8,192` versus
+`16,384` fresh on seed 69316 (`2.0x`) and `4,096` versus `12,288` on seed
+69317 (`3.0x`). All primitive-retention, order-sensitivity, reward-shuffled,
+missing-evidence, exact-reload, checksum-corruption, frozen-parent, and
+zero-replay gates pass.
+
+This promotes the read/execute state boundary and a bounded three-instruction
+compositional growth result. It does not establish arbitrary program
+induction, unrestricted memory growth, or general continual learning. The
+curated reports and accounting ledger are in
+`session_records/sequence_working_memory_2026-08-02/external_register_read_execute_promoted_v1_2026-08-07/`.

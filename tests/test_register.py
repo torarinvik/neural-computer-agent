@@ -34,6 +34,9 @@ def test_external_register_machine_has_one_shared_interpreter_and_variable_progr
     )
     assert machine.configuration()["operator_mode"] == "factorized_low_rank"
     assert machine.configuration()["operator_rank"] == 8
+    assert machine.configuration()["read_execute"] == (
+        "neural-computer.external-register-read-execute.v1"
+    )
 
     index = machine.add_instruction(ExternalRegisterInstruction(5))
 
@@ -98,6 +101,45 @@ def test_downstream_instruction_executes_on_register_only() -> None:
     assert machine.instructions[1].configuration()["storage"] == (
         "one_opaque_learned_vector_v1"
     )
+
+
+def test_read_execute_uses_a_transient_snapshot_without_mutating_observed_state() -> None:
+    torch.manual_seed(906)
+    machine = _machine()
+    state = machine.initial_state(2, device="cpu")
+    kwargs = {
+        "event": torch.randn(2, 4),
+        "action": torch.zeros(2, 2),
+        "outcome": torch.zeros(2),
+        "intention": IntentEvent(torch.randn(2, 6)),
+        "state": state,
+    }
+
+    observed, observed_state = machine.observe_register(**kwargs)
+    expected = machine.execute_chain(observed, tuple(machine.instructions))
+    snapshot, snapshot_state = machine.read_execute_register(**kwargs)
+
+    assert torch.equal(snapshot, expected)
+    assert torch.equal(snapshot_state.register, observed_state.register)
+    assert torch.equal(snapshot_state.context, observed_state.context)
+    assert not torch.equal(snapshot, snapshot_state.register)
+
+
+def test_in_place_step_preserves_legacy_mutating_execution_contract() -> None:
+    torch.manual_seed(907)
+    machine = _machine()
+    state = machine.initial_state(2, device="cpu")
+    kwargs = {
+        "event": torch.randn(2, 4),
+        "action": torch.zeros(2, 2),
+        "outcome": torch.zeros(2),
+        "intention": IntentEvent(torch.randn(2, 6)),
+        "state": state,
+    }
+
+    register, next_state = machine.step_register(**kwargs)
+
+    assert torch.equal(register, next_state.register)
 
 
 def test_external_decoder_can_consume_a_memory_selected_register_chain() -> None:

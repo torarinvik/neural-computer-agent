@@ -99,7 +99,10 @@ def _rollout(
     shuffle_outcomes: bool = False,
     credit_mode: str = "paired_counterfactual",
     evidence_present: bool = True,
+    execution_mode: str = "read_execute",
 ) -> tuple[torch.Tensor, torch.Tensor]:
+    if execution_mode not in ("in_place", "read_execute"):
+        raise ValueError(f"unknown execution mode: {execution_mode!r}")
     device = batch.input_frames.device
     batch_size = batch.batch_size
     parent_state = parent.initial_state(batch_size, device=device)
@@ -126,7 +129,12 @@ def _rollout(
                 parent_state,
                 feedback,
             )
-        register, register_state = machine.step_register(
+        step = (
+            machine.step_register
+            if execution_mode == "in_place"
+            else machine.read_execute_register
+        )
+        register, register_state = step(
             event=event,
             action=previous_action,
             outcome=previous_reward,
@@ -221,6 +229,7 @@ def _train_stage(
     audit_count: int = 0,
     audit_seed: int = 0,
     generated_composition_ids: tuple[int, ...] | None = None,
+    execution_mode: str = "read_execute",
 ) -> list[dict[str, float | int]]:
     optimizer = torch.optim.AdamW(trainable, lr=3e-3, weight_decay=1e-5)
     progress: list[dict[str, float | int]] = []
@@ -263,6 +272,7 @@ def _train_stage(
                         seed=audit_seed + update,
                         credit_mode=credit_mode,
                         generated_composition_ids=generated_composition_ids,
+                        execution_mode=execution_mode,
                     ),
                 }
             )
@@ -299,6 +309,7 @@ def _accuracy(
     credit_mode: str = "paired_counterfactual",
     evidence_present: bool = True,
     generated_composition_ids: tuple[int, ...] | None = None,
+    execution_mode: str = "read_execute",
 ) -> float:
     batch = _batch(
         operation,
@@ -318,6 +329,7 @@ def _accuracy(
             shuffle_outcomes=shuffle_outcomes,
             credit_mode=credit_mode,
             evidence_present=evidence_present,
+            execution_mode=execution_mode,
         )[1].mean()
     )
 
@@ -593,6 +605,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "primitive_updates": args.primitive_updates,
         "composition_updates": args.composition_updates,
         "credit_mode": args.credit_mode,
+        "execution_mode": "read_execute",
         "batch_size": args.batch_size,
         "span": args.span,
         "audit_count": args.audit_count,

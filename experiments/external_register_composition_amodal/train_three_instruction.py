@@ -420,6 +420,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "primitive_updates": args.primitive_updates,
         "composition_updates": args.composition_updates,
         "credit_mode": args.credit_mode,
+        "execution_mode": "read_execute",
         "batch_size": args.batch_size,
         "span": args.span,
         "audit_count": args.audit_count,

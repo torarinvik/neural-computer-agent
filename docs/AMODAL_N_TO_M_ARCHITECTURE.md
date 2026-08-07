@@ -2512,6 +2512,33 @@ versioned read/execute boundary or an execution snapshot, then re-run the
 promoted two-instruction regression before attempting longer programs. This is
 not yet arbitrary program induction or general continual learning.
 
+## Promoted read/execute snapshot boundary and depth-three growth (2026-08-07)
+
+The in-place depth-three rejection above isolated the missing state boundary:
+the same mutable register held both durable learned observations and repeated
+instruction execution results. The production register now exposes
+`observe_register()` and `read_execute_register()`. The first persists the
+standardized event, opaque feedback, and controller intention. The second
+executes the selected opaque instruction chain on a transient snapshot, while
+the durable observation state remains free of execution results. The legacy
+`step_register()` in-place route remains explicit compatibility; `step()` and
+the rendered composition harness use read/execute snapshots.
+
+The original two-instruction regression passed on seeds 69316 and 69317 with
+stable inherited composition at `4,096` verifier bits versus `8,192` for fresh
+(`2.0x` fresh-over-inherited) on both seeds. The three-instruction
+reverse -> complement -> rotate rung then passed on both seeds without replay:
+seed 69316 reached stable inherited mastery at `8,192` versus `16,384` fresh
+(`2.0x`), and seed 69317 reached `4,096` versus `12,288` fresh (`3.0x`).
+Primitive retention, reversed-order composition, reward-shuffled,
+missing-evidence, exact-reload, checksum-corruption, frozen-parent, and
+zero-replay gates all passed. The archived reports and accounting ledger are
+in `session_records/sequence_working_memory_2026-08-02/external_register_read_execute_promoted_v1_2026-08-07/`.
+
+This promotes a bounded read/execute state boundary and three-instruction
+compositional growth. It is not arbitrary program induction, unrestricted
+memory growth, or general continual learning without catastrophic forgetting.
+
 ## Unseen external computation and multi-parent retention (2026-08-06)
 
 The frozen-core transfer harness tested `prefix_parity`, a temporal procedure

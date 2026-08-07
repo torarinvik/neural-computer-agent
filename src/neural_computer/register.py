@@ -25,6 +25,9 @@ EXTERNAL_REGISTER_SCHEMA = "neural-computer.external-register.v2"
 EXTERNAL_REGISTER_INSTRUCTION_SCHEMA = (
     "neural-computer.external-register-instruction.v1"
 )
+EXTERNAL_REGISTER_READ_EXECUTE_SCHEMA = (
+    "neural-computer.external-register-read-execute.v1"
+)
 
 
 @dataclass(frozen=True)
@@ -219,6 +222,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "instruction_count": len(self.instructions),
             "state": "external_working_register_with_recurrent_context_v2",
             "execution": "shared_interpreter_serial_instruction_chain_v1",
+            "read_execute": EXTERNAL_REGISTER_READ_EXECUTE_SCHEMA,
             "downstream_input": "preceding_register_only_v1",
         }
 
@@ -381,14 +385,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             register = self.execute(register, instruction)
         return register
 
-    def to_intention(self, register: torch.Tensor) -> IntentEvent:
-        """Project a register to the opaque intention transport boundary."""
-
-        if register.ndim != 2 or register.shape[1] != self.register_width:
-            raise ValueError("register has the wrong shape for intention projection")
-        return IntentEvent(self.output_adapter(register))
-
-    def step_register(
+    def observe_register(
         self,
         *,
         event: torch.Tensor,
@@ -397,13 +394,12 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         intention: IntentEvent,
         state: ExternalRegisterState,
         present: torch.Tensor | None = None,
-        instructions: Iterable[ExternalRegisterInstruction] | None = None,
     ) -> tuple[torch.Tensor, ExternalRegisterState]:
-        """Advance state and return the register for an external decoder.
+        """Ingest one event into durable external working state.
 
-        ``instructions`` is memory-side program data. It is intentionally a
-        sequence of module objects rather than a task or protocol identifier.
-        The default uses the machine's complete registered chain.
+        This phase never executes program data.  The returned register is the
+        persistent observation store and the returned state is safe to carry
+        across later execution snapshots.
         """
 
         if present is None:
@@ -441,14 +437,98 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 state.register,
             ),
         )
-        selected = self.instructions if instructions is None else tuple(instructions)
-        for instruction in selected:
-            updated = self.execute(register, instruction)
-            register = torch.where(present.unsqueeze(-1), updated, register)
-        return register, ExternalRegisterState(
+        next_state = ExternalRegisterState(
             register=register,
             context=context,
             initialized=state.initialized | present,
+        )
+        return register, next_state
+
+    def read_execute_register(
+        self,
+        *,
+        event: torch.Tensor,
+        action: torch.Tensor,
+        outcome: torch.Tensor,
+        intention: IntentEvent,
+        state: ExternalRegisterState,
+        present: torch.Tensor | None = None,
+        instructions: Iterable[ExternalRegisterInstruction] | None = None,
+    ) -> tuple[torch.Tensor, ExternalRegisterState]:
+        """Observe once, then execute a transient program snapshot.
+
+        Program execution starts from the newly observed persistent register,
+        but the execution result is not written back into ``next_state``.
+        Therefore a later instruction or later tick cannot accidentally see
+        an earlier execution result as if it were new sensory evidence.
+        """
+
+        if present is None:
+            present = torch.ones(
+                event.shape[0], dtype=torch.bool, device=event.device
+            )
+        register, next_state = self.observe_register(
+            event=event,
+            action=action,
+            outcome=outcome,
+            intention=intention,
+            state=state,
+            present=present,
+        )
+        selected = self.instructions if instructions is None else tuple(instructions)
+        executed = self.execute_chain(register, selected)
+        return torch.where(
+            present.unsqueeze(-1), executed, register
+        ), next_state
+
+    def to_intention(self, register: torch.Tensor) -> IntentEvent:
+        """Project a register to the opaque intention transport boundary."""
+
+        if register.ndim != 2 or register.shape[1] != self.register_width:
+            raise ValueError("register has the wrong shape for intention projection")
+        return IntentEvent(self.output_adapter(register))
+
+    def step_register(
+        self,
+        *,
+        event: torch.Tensor,
+        action: torch.Tensor,
+        outcome: torch.Tensor,
+        intention: IntentEvent,
+        state: ExternalRegisterState,
+        present: torch.Tensor | None = None,
+        instructions: Iterable[ExternalRegisterInstruction] | None = None,
+    ) -> tuple[torch.Tensor, ExternalRegisterState]:
+        """Run the compatibility in-place execution path.
+
+        ``instructions`` is memory-side program data. It is intentionally a
+        sequence of module objects rather than a task or protocol identifier.
+        The default uses the machine's complete registered chain. Unlike
+        :meth:`read_execute_register`, its execution result is written back
+        into the returned external state.
+        """
+
+        if present is None:
+            present = torch.ones(
+                event.shape[0], dtype=torch.bool, device=event.device
+            )
+        register, observed_state = self.observe_register(
+            event=event,
+            action=action,
+            outcome=outcome,
+            intention=intention,
+            present=present,
+            state=state,
+        )
+        selected = self.instructions if instructions is None else tuple(instructions)
+        executed = self.execute_chain(register, selected)
+        register = torch.where(
+            present.unsqueeze(-1), executed, observed_state.register
+        )
+        return register, ExternalRegisterState(
+            register=register,
+            context=observed_state.context,
+            initialized=observed_state.initialized,
         )
 
     def step(
@@ -464,7 +544,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
     ) -> tuple[IntentEvent, ExternalRegisterState]:
         """Read context, write the register, execute, and return an intention."""
 
-        register, next_state = self.step_register(
+        register, next_state = self.read_execute_register(
             event=event,
             action=action,
             outcome=outcome,
