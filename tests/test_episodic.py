@@ -648,6 +648,70 @@ def test_append_only_learned_screen_state_round_trips() -> None:
     )
 
 
+def test_append_only_screen_verified_consolidation_compacts_consecutive_stages() -> None:
+    torch.manual_seed(24)
+    screen = AppendOnlyLearnedComputeCandidateScreen(
+        query_width=4,
+        key_width=3,
+        latent_width=5,
+        hidden=8,
+        extension_sizes=(1, 1, 2),
+    )
+    screen.enable_base()
+    screen.enable_extension(0)
+    screen.enable_extension(1)
+    screen.enable_extension(2)
+    source_state = {
+        name: value.detach().clone() for name, value in screen.state_dict().items()
+    }
+    replacement = LearnedComputeCandidateScreen(4, 3, latent_width=5, hidden=8)
+    replacement.enable()
+
+    compacted, receipt = screen.consolidate_verified(
+        (0, 1),
+        replacement,
+        verifier=lambda candidate: candidate.extension_sizes == [2, 2],
+    )
+
+    assert compacted is not None
+    assert receipt.accepted
+    assert receipt.extensions_saved == 1
+    assert compacted.extension_sizes == [2, 2]
+    assert bool(compacted.extensions[0].enabled.item())
+    assert all(
+        torch.equal(value, screen.state_dict()[name])
+        for name, value in source_state.items()
+    )
+
+
+def test_append_only_screen_rejected_consolidation_does_not_mutate_source() -> None:
+    screen = AppendOnlyLearnedComputeCandidateScreen(
+        query_width=4,
+        key_width=3,
+        latent_width=5,
+        hidden=8,
+        extension_sizes=(1, 1),
+    )
+    source_state = {
+        name: value.detach().clone() for name, value in screen.state_dict().items()
+    }
+    replacement = LearnedComputeCandidateScreen(4, 3, latent_width=5, hidden=8)
+
+    compacted, receipt = screen.consolidate_verified(
+        (0, 1),
+        replacement,
+        verifier=lambda _candidate: False,
+    )
+
+    assert compacted is None
+    assert not receipt.accepted
+    assert receipt.extensions_saved == 0
+    assert all(
+        torch.equal(value, screen.state_dict()[name])
+        for name, value in source_state.items()
+    )
+
+
 def test_append_only_learned_screen_cannot_skip_an_unfailed_prior_stage() -> None:
     torch.manual_seed(23)
     screen = AppendOnlyLearnedComputeCandidateScreen(

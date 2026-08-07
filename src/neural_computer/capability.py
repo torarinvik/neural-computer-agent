@@ -9,7 +9,7 @@ decoder on the intention bus.
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Literal
 
@@ -65,6 +65,20 @@ class ComputeReuseDecision:
     compute_slot_index: int | None
     candidate_scores: tuple[tuple[int, float], ...]
     reason: str
+
+
+@dataclass(frozen=True)
+class AppendOnlyScreenConsolidationReceipt:
+    """Auditable result of a verifier-gated screen-extension compaction."""
+
+    accepted: bool
+    source_indices: tuple[int, ...]
+    extension_count_before: int
+    extension_count_after: int
+    logical_candidates_before: int
+    logical_candidates_after: int
+    extensions_saved: int
+    reason: str = ""
 
 
 def select_reusable_compute_slot(
@@ -558,6 +572,109 @@ class AppendOnlyLearnedComputeCandidateScreen(nn.Module):
 
         for parameter in self.base_screen.parameters():
             parameter.requires_grad_(False)
+
+    def consolidate_verified(
+        self,
+        source_indices: Sequence[int],
+        replacement: LearnedComputeCandidateScreen,
+        *,
+        verifier: Callable[[AppendOnlyLearnedComputeCandidateScreen], bool],
+    ) -> tuple[
+        AppendOnlyLearnedComputeCandidateScreen | None,
+        AppendOnlyScreenConsolidationReceipt,
+    ]:
+        """Compact multiple physical extensions behind a behavior verifier.
+
+        ``replacement`` is caller-trained external state for the same logical
+        candidate rows as ``source_indices``.  The method never mutates the
+        source screen and never decides semantic equivalence itself; the
+        caller's fresh-probe verifier must establish retention before adopting
+        the returned candidate.  Consolidation keeps the stage order and
+        cumulative failure schedule, replacing consecutive source stages with
+        one physical extension that has the combined logical candidate count.
+        """
+
+        selected = tuple(int(index) for index in source_indices)
+        before_extensions = len(self.extensions)
+        logical_before = sum(self.extension_sizes)
+        if len(selected) < 2 or len(set(selected)) != len(selected):
+            raise ValueError("screen consolidation requires distinct stages")
+        if selected != tuple(range(selected[0], selected[0] + len(selected))):
+            raise ValueError("screen consolidation stages must be consecutive")
+        if selected[0] < 0 or selected[-1] >= before_extensions:
+            raise ValueError("screen consolidation stage is outside the screen")
+        if not isinstance(replacement, LearnedComputeCandidateScreen):
+            raise TypeError("screen consolidation replacement has the wrong type")
+        if (
+            replacement.query_width != self.query_width
+            or replacement.key_width != self.key_width
+            or replacement.latent_width != self.latent_width
+            or replacement.hidden != self.hidden
+        ):
+            raise ValueError("screen consolidation replacement dimensions mismatch")
+        if not callable(verifier):
+            raise TypeError("screen consolidation verifier must be callable")
+
+        replacement_size = sum(self.extension_sizes[index] for index in selected)
+        new_sizes: list[int] = []
+        new_states: list[dict[str, torch.Tensor]] = []
+        replacement_state = {
+            name: value.detach().clone()
+            for name, value in replacement.state_dict().items()
+        }
+        for index, extension in enumerate(self.extensions):
+            if index == selected[0]:
+                new_sizes.append(replacement_size)
+                new_states.append(replacement_state)
+            elif index in selected:
+                continue
+            else:
+                new_sizes.append(self.extension_sizes[index])
+                new_states.append(
+                    {
+                        name: value.detach().clone()
+                        for name, value in extension.state_dict().items()
+                    }
+                )
+
+        candidate = AppendOnlyLearnedComputeCandidateScreen(
+            self.query_width,
+            self.key_width,
+            latent_width=self.latent_width,
+            hidden=self.hidden,
+            extension_sizes=tuple(new_sizes),
+        )
+        candidate.base_screen.load_state_dict(
+            {
+                name: value.detach().clone()
+                for name, value in self.base_screen.state_dict().items()
+            },
+            strict=True,
+        )
+        for extension, state in zip(candidate.extensions, new_states, strict=True):
+            extension.load_state_dict(state, strict=True)
+        candidate.freeze_base()
+        logical_after = sum(candidate.extension_sizes)
+        if logical_after != logical_before:
+            raise RuntimeError("screen consolidation changed logical candidate count")
+        accepted = bool(verifier(candidate))
+        return (
+            candidate if accepted else None,
+            AppendOnlyScreenConsolidationReceipt(
+                accepted=accepted,
+                source_indices=selected,
+                extension_count_before=before_extensions,
+                extension_count_after=len(candidate.extensions) if accepted else before_extensions,
+                logical_candidates_before=logical_before,
+                logical_candidates_after=logical_after if accepted else logical_before,
+                extensions_saved=(len(selected) - 1) if accepted else 0,
+                reason=(
+                    "behavior verifier passed"
+                    if accepted
+                    else "behavior verifier rejected candidate screen"
+                ),
+            ),
+        )
 
     def configuration(self) -> dict[str, object]:
         """Return the versioned append-only screen contract."""

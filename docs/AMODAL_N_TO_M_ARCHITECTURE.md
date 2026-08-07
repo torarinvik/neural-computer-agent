@@ -3443,3 +3443,21 @@ gates pass. Because fresh initialization also passes, this promotes bounded
 cardinality scaling rather than prior efficiency or unrestricted continual
 learning. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_append_only_bank14_three_stage_32_promoted_v1_2026-08-07/`.
+
+Sequential capacity then reaches five isolated two-candidate stages in a
+twenty-candidate bank: ten mastered base rows plus ten outcome-unseen rows.
+At 32 updates per stage, both fresh and full query-prior controls pass both
+seeds with unseen routing `1.0000/0.8958`; all retention, permutation,
+reload, frozen-core, reward-shuffled, and zero-replay gates pass. This
+promotes repeated bounded append growth, but external state still grows
+linearly and no prior-efficiency, learned-consolidation, unrestricted-growth,
+or general-continual-learning claim follows. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_append_only_bank20_five_stage_32_promoted_v1_2026-08-07/`.
+
+The append screen now exposes `consolidate_verified` as a transactional
+memory-side boundary. A caller supplies independently trained replacement
+state for consecutive extensions and a fresh behavior verifier; the source
+screen is immutable, logical candidate count is preserved, and only an
+accepted candidate compacts physical extension modules. This establishes the
+safe compaction contract, not behavioral consolidation itself: a learned
+replacement still needs a fresh-outcome audit before adoption.

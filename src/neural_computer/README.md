@@ -824,6 +824,20 @@ sequential growth, where calibration cost and retention must compound without
 replay. See
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_append_only_bank14_three_stage_32_promoted_v1_2026-08-07/`.
 
+The same two-candidate stage contract now reaches five isolated stages in a
+twenty-candidate bank at 32 updates per stage. Fresh and query-prior controls
+both pass, so the result is repeated bounded growth, not prior efficiency.
+The next architectural boundary is safe compaction of these external screen
+extensions. See
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_append_only_bank20_five_stage_32_promoted_v1_2026-08-07/`.
+
+`AppendOnlyLearnedComputeCandidateScreen.consolidate_verified` now provides
+that compaction transaction: it accepts a caller-trained replacement for
+consecutive stages, preserves logical candidate count, never mutates the
+source, and adopts the smaller physical extension set only when a fresh
+behavior verifier passes. It is a boundary contract, not evidence that
+learned consolidation already works.
+
 The next 46-capability fourth-shift pressure test is intentionally rejected:
 late length-14 rows fail stable protection at hidden 256/8,192 updates,
 hidden 512, and an adaptive late-budget control. This is evidence for
