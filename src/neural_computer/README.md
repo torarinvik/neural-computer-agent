@@ -750,6 +750,15 @@ and latency savings without allowing a stale screen to create a capability
 claim. Its state is versioned and reloadable through
 `neural-computer.external-capability-compute-screen.v1`.
 
+`LearnedComputeCandidateScreen` adds a factorized query/key scorer for novel
+contexts. It is explicitly disabled until external fresh evidence enables it,
+then learns pairwise compatibility from attempted scalar outcomes. A paired
+six-candidate audit routes novel contexts over known candidates at `1.0000`
+across two seeds versus `0.2500` cold-start, with exact candidate permutation,
+reload, frozen-core, and reward-shuffled null controls. Outcome-unseen
+candidates remain a deliberate cold-start failure. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_opaque_novel_context_replicated_promoted_v1_2026-08-07/`.
+
 The next 46-capability fourth-shift pressure test is intentionally rejected:
 late length-14 rows fail stable protection at hidden 256/8,192 updates,
 hidden 512, and an adaptive late-budget control. This is evidence for

@@ -15,8 +15,10 @@ from typing import Literal
 
 import torch
 from torch import nn
+from torch.nn import functional as F
 
 from .addressing import (
+    FactorizedOpaqueAddressRouter,
     PersistentOpaqueContextRouteEvidence,
     PersistentOpaqueRouteEvidence,
 )
@@ -42,6 +44,9 @@ EXTERNAL_CAPABILITY_COMPUTE_ADMISSION_SCHEMA = (
 )
 EXTERNAL_CAPABILITY_COMPUTE_SCREEN_SCHEMA = (
     "neural-computer.external-capability-compute-screen.v1"
+)
+EXTERNAL_CAPABILITY_LEARNED_COMPUTE_SCREEN_SCHEMA = (
+    "neural-computer.external-capability-learned-compute-screen.v1"
 )
 EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA = (
     "neural-computer.external-capability-slot-binding.v1"
@@ -244,6 +249,156 @@ class ExternalComputeCandidateScreen:
         screen._evidence = evidence
         screen._global_evidence = global_evidence
         return screen
+
+
+class LearnedComputeCandidateScreen(nn.Module):
+    """Generalize opaque compute-candidate ordering across novel queries.
+
+    This is a replaceable memory-side scorer.  It receives learned event
+    queries and opaque candidate keys, and learns only from scalar outcomes
+    of attempted candidates.  The score is an ordering aid; fresh verifier
+    admission remains a separate authority.  The factorized query/key scorer
+    is disabled at construction, so a cold screen returns exact append-order
+    ties until an external caller enables it after observing evidence.
+    """
+
+    schema = EXTERNAL_CAPABILITY_LEARNED_COMPUTE_SCREEN_SCHEMA
+
+    def __init__(
+        self,
+        query_width: int,
+        key_width: int,
+        *,
+        latent_width: int = 32,
+        hidden: int = 64,
+    ) -> None:
+        if min(query_width, key_width, latent_width, hidden) < 1:
+            raise ValueError("learned compute screen dimensions must be positive")
+        super().__init__()
+        self.query_width = int(query_width)
+        self.key_width = int(key_width)
+        self.latent_width = int(latent_width)
+        self.hidden = int(hidden)
+        self.query_projection = nn.Sequential(
+            nn.Linear(self.query_width, self.latent_width),
+            nn.GELU(),
+        )
+        self.key_projection = nn.Sequential(
+            nn.Linear(self.key_width, self.latent_width),
+            nn.GELU(),
+        )
+        self.router = FactorizedOpaqueAddressRouter(
+            self.latent_width,
+            hidden=self.hidden,
+        )
+        self.register_buffer("enabled", torch.tensor(False, dtype=torch.bool))
+
+    def configuration(self) -> dict[str, bool | int | str]:
+        """Return the versioned generalizing screen contract."""
+
+        return {
+            "schema": self.schema,
+            "query_width": self.query_width,
+            "key_width": self.key_width,
+            "latent_width": self.latent_width,
+            "hidden": self.hidden,
+            "query": "learned_event_tensor_v1",
+            "candidate_key": "opaque_external_compute_signature_v1",
+            "outcome": "attempted_scalar_verifier_v1",
+            "cold_start": "zero_until_explicit_evidence_enable_v1",
+            "enabled": bool(self.enabled.item()),
+            "role": "order_only_fresh_admission_required",
+        }
+
+    def enable(self) -> None:
+        """Enable learned scores after fresh evidence has been observed."""
+
+        self.enabled.fill_(True)
+
+    def _validate_inputs(
+        self,
+        query: torch.Tensor,
+        keys: torch.Tensor,
+    ) -> torch.Tensor:
+        if query.ndim != 2 or query.shape[1] != self.query_width:
+            raise ValueError(
+                f"learned compute screen query must have shape [batch, {self.query_width}]"
+            )
+        if keys.ndim == 2:
+            keys = keys.unsqueeze(0).expand(query.shape[0], -1, -1)
+        if (
+            keys.ndim != 3
+            or keys.shape[0] != query.shape[0]
+            or keys.shape[1] < 1
+            or keys.shape[2] != self.key_width
+        ):
+            raise ValueError(
+                "learned compute screen keys must have shape "
+                f"[batch, candidates, {self.key_width}] or "
+                f"[candidates, {self.key_width}]"
+            )
+        if not bool(torch.isfinite(query).all()) or not bool(torch.isfinite(keys).all()):
+            raise ValueError("learned compute screen inputs must be finite")
+        return keys
+
+    def forward(self, query: torch.Tensor, keys: torch.Tensor) -> torch.Tensor:
+        """Return one learned score per opaque candidate row."""
+
+        keys = self._validate_inputs(query, keys)
+        if not bool(self.enabled.item()):
+            return torch.zeros(
+                query.shape[0],
+                keys.shape[1],
+                dtype=query.dtype,
+                device=query.device,
+            )
+        query_latent = self.query_projection(query)
+        key_latent = self.key_projection(keys)
+        return self.router(query_latent, key_latent)
+
+    @torch.no_grad()
+    def order(self, query: torch.Tensor, keys: torch.Tensor) -> tuple[int, ...]:
+        """Return candidate indices in descending learned-screen order."""
+
+        if query.ndim != 1 or query.shape[0] != self.query_width:
+            raise ValueError(
+                f"learned compute screen query must have shape [{self.query_width}]"
+            )
+        scores = self(query.unsqueeze(0), keys)[0]
+        return tuple(torch.argsort(scores, descending=True, stable=True).tolist())
+
+    def outcome_ranking_loss(
+        self,
+        query: torch.Tensor,
+        keys: torch.Tensor,
+        outcomes: torch.Tensor,
+    ) -> tuple[torch.Tensor, int]:
+        """Train compatibility from attempted scalar outcomes only.
+
+        Every informative pair compares two candidates attempted for the same
+        learned query.  The outcome difference is detached from the model and
+        no correct or unattempted-action label is required.
+        """
+
+        scores = self(query, keys)
+        if outcomes.ndim == 1:
+            outcomes = outcomes.unsqueeze(0)
+        if outcomes.shape != scores.shape:
+            raise ValueError("candidate outcomes must align with screen scores")
+        if not bool(torch.isfinite(outcomes).all()) or not bool(
+            ((outcomes >= 0.0) & (outcomes <= 1.0)).all()
+        ):
+            raise ValueError("candidate outcomes must lie in [0, 1]")
+        outcome_delta = outcomes.unsqueeze(2) - outcomes.unsqueeze(1)
+        score_delta = scores.unsqueeze(2) - scores.unsqueeze(1)
+        informative = outcome_delta > 0.0
+        informative_count = int(informative.sum().detach().cpu().item())
+        if informative_count == 0:
+            return scores.sum() * 0.0, 0
+        loss = F.softplus(
+            -outcome_delta[informative].detach() * score_delta[informative]
+        ).mean()
+        return loss, informative_count
 
 
 @dataclass(frozen=True)

@@ -1,0 +1,107 @@
+{
+  "schema": "neural-computer.learned-compute-candidate-screen-report.v1",
+  "claim_boundary": "A replaceable memory-side screen learned an opaque query/key compatibility relation from attempted scalar outcomes. The screen only orders candidates; fresh verifier admission remains required. This is a bounded generalization audit, not general continual learning.",
+  "seed": 69317,
+  "primitive_family": "opaque_rule",
+  "candidate_count": 6,
+  "train_candidate_count": 4,
+  "known_candidate_count": 4,
+  "unseen_candidate_count": 2,
+  "configuration": {
+    "schema": "neural-computer.external-capability-learned-compute-screen.v1",
+    "query_width": 32,
+    "key_width": 32,
+    "latent_width": 32,
+    "hidden": 64,
+    "query": "learned_event_tensor_v1",
+    "candidate_key": "opaque_external_compute_signature_v1",
+    "outcome": "attempted_scalar_verifier_v1",
+    "cold_start": "zero_until_explicit_evidence_enable_v1",
+    "enabled": true,
+    "role": "order_only_fresh_admission_required"
+  },
+  "budgets": {
+    "parent_updates": 32,
+    "screen_updates": 256,
+    "batch_size": 12,
+    "audit_count": 96,
+    "key_samples": 12,
+    "screen_hidden": 64,
+    "latent_width": 32
+  },
+  "candidate_key_digest": "6f5fd00eebd290cdb71472d02c96e57c5d12a88eece821250d2f869a31dada1b",
+  "training": {
+    "optimizer_updates": 256,
+    "unique_verifier_bits": 18432,
+    "unique_logical_lifetimes": 18432,
+    "informative_candidate_pairs": 15360,
+    "replayed_examples": 0,
+    "final_loss": 0.009736857376992702
+  },
+  "train_metrics": {
+    "top1_accuracy": 1.0,
+    "mean_fresh_attempts": 1.0,
+    "fresh_verifier_authorized_rate": 1.0
+  },
+  "novel_context_metrics": {
+    "top1_accuracy": 1.0,
+    "mean_fresh_attempts": 1.0,
+    "fresh_verifier_authorized_rate": 1.0
+  },
+  "unseen_candidate_metrics": {
+    "top1_accuracy": 0.0,
+    "mean_fresh_attempts": 4.5,
+    "fresh_verifier_authorized_rate": 0.0
+  },
+  "cold_metrics": {
+    "top1_accuracy": 0.25,
+    "mean_fresh_attempts": 2.5,
+    "fresh_verifier_authorized_rate": 0.25
+  },
+  "reward_shuffled_training": {
+    "optimizer_updates": 256,
+    "unique_verifier_bits": 18432,
+    "unique_logical_lifetimes": 18432,
+    "informative_candidate_pairs": 15360,
+    "replayed_examples": 0,
+    "final_loss": 0.6931224465370178
+  },
+  "reward_shuffled_novel_context_metrics": {
+    "top1_accuracy": 0.25,
+    "mean_fresh_attempts": 3.5,
+    "fresh_verifier_authorized_rate": 0.25
+  },
+  "candidate_permutation_accuracy": 1.0,
+  "reload_metrics": {
+    "top1_accuracy": 1.0,
+    "mean_fresh_attempts": 1.0,
+    "fresh_verifier_authorized_rate": 1.0
+  },
+  "accounting": {
+    "unique_verifier_bits": 19200,
+    "unique_logical_lifetimes": 18816,
+    "optimizer_updates": 288,
+    "replayed_examples": 0,
+    "screen_informative_pairs": 15360
+  },
+  "controls": {
+    "parent_digest_before": "424560ece86c4614815c04c432a7def982c231aab86bba48a03e6f46a3138824",
+    "parent_digest_after": "424560ece86c4614815c04c432a7def982c231aab86bba48a03e6f46a3138824",
+    "parent_unchanged": true,
+    "screen_reload_exact": true,
+    "fresh_admission_required": true
+  },
+  "gates": {
+    "parent_stable": true,
+    "novel_context_generalization": true,
+    "novel_context_beats_cold_start": true,
+    "candidate_permutation": true,
+    "reward_shuffled_null": true,
+    "reload_exact": true,
+    "reload_behavior_exact": true,
+    "core_unchanged": true,
+    "no_replayed_examples": true
+  },
+  "promoted": true,
+  "wall_seconds": 8.3547811669996
+}

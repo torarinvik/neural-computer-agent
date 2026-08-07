@@ -29,6 +29,7 @@ from .capability import (
     EXTERNAL_CAPABILITY_COMPOSITION_SCHEMA,
     EXTERNAL_CAPABILITY_COMPUTE_ADMISSION_SCHEMA,
     EXTERNAL_CAPABILITY_COMPUTE_SCREEN_SCHEMA,
+    EXTERNAL_CAPABILITY_LEARNED_COMPUTE_SCREEN_SCHEMA,
     EXTERNAL_CAPABILITY_PIPELINE_SCHEMA,
     EXTERNAL_CAPABILITY_RESIDUAL_COMPUTE_SCHEMA,
     EXTERNAL_CAPABILITY_REUSABLE_COMPUTE_SCHEMA,
@@ -45,6 +46,7 @@ from .capability import (
     ExternalCapabilitySharedResidualBank,
     ExternalCapabilityState,
     ExternalComputeCandidateScreen,
+    LearnedComputeCandidateScreen,
     select_reusable_compute_slot,
 )
 from .capacity import (
@@ -222,6 +224,7 @@ __all__ = [
     "EXTERNAL_CAPABILITY_COMPOSITION_SCHEMA",
     "EXTERNAL_CAPABILITY_COMPUTE_ADMISSION_SCHEMA",
     "EXTERNAL_CAPABILITY_COMPUTE_SCREEN_SCHEMA",
+    "EXTERNAL_CAPABILITY_LEARNED_COMPUTE_SCREEN_SCHEMA",
     "EXTERNAL_CAPABILITY_PIPELINE_SCHEMA",
     "EXTERNAL_CAPABILITY_RESIDUAL_COMPUTE_SCHEMA",
     "EXTERNAL_CAPABILITY_REUSABLE_COMPUTE_SCHEMA",
@@ -308,6 +311,7 @@ __all__ = [
     "KeypressDecision",
     "KeypressDecoder",
     "KeypressEncoder",
+    "LearnedComputeCandidateScreen",
     "MemoryBackend",
     "MemoryCandidates",
     "MemoryConsolidationReceipt",

@@ -16,6 +16,7 @@ from neural_computer import (
     ExternalCapabilitySharedResidualBank,
     ExternalComputeCandidateScreen,
     IntentEvent,
+    LearnedComputeCandidateScreen,
     OnlineEpisodicRelationReader,
     episodic_context_contrastive_loss,
     paired_event_credit_loss,
@@ -378,6 +379,68 @@ def test_compute_candidate_screen_reloads_without_semantic_metadata() -> None:
     assert restored.order(query) == (1, 0)
     assert "task" not in restored.payload()
     assert "label" not in restored.payload()
+
+
+def test_learned_compute_screen_is_neutral_and_permutation_equivariant() -> None:
+    screen = LearnedComputeCandidateScreen(
+        query_width=4,
+        key_width=3,
+        latent_width=5,
+        hidden=8,
+    )
+    query = torch.randn(2, 4)
+    keys = torch.randn(3, 3)
+    permutation = torch.tensor([2, 0, 1])
+
+    scores = screen(query, keys)
+    permuted_scores = screen(query, keys[permutation])
+
+    assert torch.equal(scores, torch.zeros_like(scores))
+    assert torch.allclose(permuted_scores, scores[:, permutation])
+    assert screen.order(query[0], keys) == (0, 1, 2)
+    assert screen.configuration()["role"] == "order_only_fresh_admission_required"
+
+
+def test_learned_compute_screen_ranking_loss_uses_only_scalar_outcomes() -> None:
+    screen = LearnedComputeCandidateScreen(
+        query_width=4,
+        key_width=3,
+        latent_width=5,
+        hidden=8,
+    )
+    query = torch.randn(2, 4)
+    keys = torch.randn(3, 3)
+    outcomes = torch.tensor([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+
+    screen.enable()
+    loss, informative = screen.outcome_ranking_loss(query, keys, outcomes)
+    loss.backward()
+
+    assert loss.ndim == 0
+    assert informative == 4
+    assert any(parameter.grad is not None for parameter in screen.parameters())
+
+
+def test_learned_compute_screen_state_round_trips() -> None:
+    torch.manual_seed(11)
+    screen = LearnedComputeCandidateScreen(
+        query_width=4,
+        key_width=3,
+        latent_width=5,
+        hidden=8,
+    )
+    restored = LearnedComputeCandidateScreen(
+        query_width=4,
+        key_width=3,
+        latent_width=5,
+        hidden=8,
+    )
+    restored.load_state_dict(screen.state_dict(), strict=True)
+    query = torch.randn(2, 4)
+    keys = torch.randn(3, 3)
+
+    assert torch.equal(screen(query, keys), restored(query, keys))
+    assert screen.configuration() == restored.configuration()
 
 
 def test_external_capability_pipeline_keeps_program_states_independent() -> None:

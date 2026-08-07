@@ -3302,3 +3302,28 @@ retain after reload, checksum restoration and frozen-core gates pass, and
 replay is zero. This is adaptive bounded compute reuse, not open-ended
 compression or general continual learning. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_candidate_reuse_opaque_three_replicated_promoted_v1_2026-08-07/`.
+
+## Generalizing learned compute-candidate screening (2026-08-07)
+
+`LearnedComputeCandidateScreen` is the parametric counterpart to the
+exact-context/global-prior screen. It uses a factorized opaque query/key
+scorer, receives learned event tensors and opaque external compute keys, and
+learns from attempted scalar outcomes using pairwise candidate ranking. It is
+disabled at cold start and must be explicitly enabled only after evidence;
+it remains an ordering aid and cannot authorize reuse without the fresh
+verifier admission policy.
+
+In a two-seed six-candidate pressure test, four known candidates are trained
+from scalar outcomes and two candidates remain outcome-unseen. Fresh novel
+contexts over the known candidates route at `1.0000` for both seeds versus
+`0.2500` cold-start; candidate permutation, exact reload, frozen-core, and
+reward-shuffled null gates pass. The outcome-unseen candidates route at
+`0.0000`, which is retained as the explicit cold-start control rather than
+overclaimed as generalization. This promotes learned query generalization for
+known external candidates, not acquisition of arbitrary unseen computation or
+general continual learning. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_opaque_novel_context_replicated_promoted_v1_2026-08-07/`.
+
+A matched registry-family control fails the novel-context and candidate
+permutation gates at `0.2500`; representation transfer across family
+distributions remains open.
