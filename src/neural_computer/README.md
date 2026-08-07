@@ -738,6 +738,18 @@ the fixed trajectory query and random opaque-key association remain open.
 See
 `session_records/sequence_working_memory_2026-08-02/shared_growth_router_6to8to10to12_trajectory_stats_8192_v1_2026-08-06/`.
 
+## External compute-candidate screening
+
+`ExternalComputeCandidateScreen` packages the persistent opaque route ledger
+as a compute-library admission aid. It indexes learned event/context queries,
+records only attempted opaque candidate indices and deterministic scalar
+outcomes, and returns a learned-first trial order. The screen is deliberately
+not an admission policy: a fresh verifier floor must still be passed by the
+candidate that is actually tried. This lets a later experiment measure trial
+and latency savings without allowing a stale screen to create a capability
+claim. Its state is versioned and reloadable through
+`neural-computer.external-capability-compute-screen.v1`.
+
 The next 46-capability fourth-shift pressure test is intentionally rejected:
 late length-14 rows fail stable protection at hidden 256/8,192 updates,
 hidden 512, and an adaptive late-budget control. This is evidence for

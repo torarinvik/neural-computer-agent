@@ -16,6 +16,7 @@ from typing import Literal
 import torch
 from torch import nn
 
+from .addressing import PersistentOpaqueContextRouteEvidence
 from .episodic import EpisodicContextEncoder, EpisodicIntentAdapter
 from .interface import IntentEvent
 
@@ -35,6 +36,9 @@ EXTERNAL_CAPABILITY_REUSABLE_COMPUTE_SCHEMA = (
 )
 EXTERNAL_CAPABILITY_COMPUTE_ADMISSION_SCHEMA = (
     "neural-computer.external-capability-compute-admission.v1"
+)
+EXTERNAL_CAPABILITY_COMPUTE_SCREEN_SCHEMA = (
+    "neural-computer.external-capability-compute-screen.v1"
 )
 EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA = (
     "neural-computer.external-capability-slot-binding.v1"
@@ -92,6 +96,123 @@ def select_reusable_compute_slot(
             else "no_compute_candidates"
         ),
     )
+
+
+class ExternalComputeCandidateScreen:
+    """Order opaque compute candidates using learned-event evidence only.
+
+    The screen is external mutable memory, not a controller branch.  It
+    receives a learned event/context query, an opaque candidate index, and a
+    deterministic scalar verifier outcome.  It may change trial order, but it
+    never authorizes reuse; callers must still apply a fresh admission gate to
+    the candidate that was actually tried.
+    """
+
+    schema = EXTERNAL_CAPABILITY_COMPUTE_SCREEN_SCHEMA
+
+    def __init__(
+        self,
+        width: int,
+        *,
+        matching_tolerance: float = 1e-4,
+        prior_strength: float = 1.0,
+        mastery_threshold: float = 0.75,
+        min_mastery_observations: int = 1,
+        reversal_threshold: float = 0.5,
+        reversal_patience: int = 4,
+    ) -> None:
+        if width < 1:
+            raise ValueError("compute screen width must be positive")
+        self.width = int(width)
+        self._evidence = PersistentOpaqueContextRouteEvidence(
+            self.width,
+            matching_tolerance=matching_tolerance,
+            prior_strength=prior_strength,
+            mastery_threshold=mastery_threshold,
+            min_mastery_observations=min_mastery_observations,
+            reversal_threshold=reversal_threshold,
+            reversal_patience=reversal_patience,
+        )
+
+    @property
+    def candidate_count(self) -> int:
+        """Return the number of opaque physical candidates in the screen."""
+
+        return self._evidence.slot_count
+
+    @property
+    def context_count(self) -> int:
+        """Return the number of learned event-query rows retained externally."""
+
+        return self._evidence.context_count
+
+    def configuration(self) -> dict[str, int | float | str]:
+        """Return the versioned screen contract and its safety boundary."""
+
+        return {
+            "schema": self.schema,
+            "width": self.width,
+            "candidate_count": self.candidate_count,
+            "context_count": self.context_count,
+            "query": "learned_event_context_v1",
+            "evidence": "opaque_scalar_verifier_outcomes_v1",
+            "role": "order_only_fresh_admission_required",
+        }
+
+    def add_candidate(self) -> int:
+        """Append one opaque candidate address without changing old evidence."""
+
+        return self._evidence.append_slot()
+
+    def order(self, query: torch.Tensor) -> tuple[int, ...]:
+        """Return the learned-first trial order for one event/context query."""
+
+        if not isinstance(query, torch.Tensor):
+            raise TypeError("compute screen query must be a tensor")
+        if query.ndim != 1 or query.shape[0] != self.width:
+            raise ValueError(f"compute screen query must have shape [{self.width}]")
+        if self.candidate_count < 1:
+            raise ValueError("compute screen has no candidates")
+        return self._evidence.preferred_order(query)
+
+    def observe(
+        self,
+        query: torch.Tensor,
+        candidate_index: int,
+        outcome: float | torch.Tensor,
+    ) -> None:
+        """Record one attempted opaque candidate and its scalar outcome."""
+
+        if not isinstance(query, torch.Tensor):
+            raise TypeError("compute screen query must be a tensor")
+        if query.ndim != 1 or query.shape[0] != self.width:
+            raise ValueError(f"compute screen query must have shape [{self.width}]")
+        self._evidence.observe(query, candidate_index, outcome)
+
+    def payload(self) -> dict[str, object]:
+        """Serialize only versioned opaque screen state for external memory."""
+
+        return {
+            "schema": self.schema,
+            "width": self.width,
+            "evidence": self._evidence.payload(),
+        }
+
+    @classmethod
+    def from_payload(cls, payload: dict[str, object]) -> ExternalComputeCandidateScreen:
+        """Restore a validated candidate screen without semantic fields."""
+
+        if payload.get("schema") != cls.schema:
+            raise ValueError("compute screen schema is incompatible")
+        evidence_payload = payload.get("evidence")
+        if not isinstance(evidence_payload, dict):
+            raise TypeError("compute screen evidence must be a dictionary")
+        evidence = PersistentOpaqueContextRouteEvidence.from_payload(evidence_payload)
+        screen = cls(int(payload["width"]))
+        if evidence.width != screen.width:
+            raise ValueError("compute screen evidence width is incompatible")
+        screen._evidence = evidence
+        return screen
 
 
 @dataclass(frozen=True)

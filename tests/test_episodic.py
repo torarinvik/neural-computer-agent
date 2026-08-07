@@ -14,6 +14,7 @@ from neural_computer import (
     ExternalCapabilityResidualComputeBank,
     ExternalCapabilityReusableComputeLibrary,
     ExternalCapabilitySharedResidualBank,
+    ExternalComputeCandidateScreen,
     IntentEvent,
     OnlineEpisodicRelationReader,
     episodic_context_contrastive_loss,
@@ -343,6 +344,35 @@ def test_reusable_compute_admission_requires_every_fresh_probe() -> None:
     empty = select_reusable_compute_slot({}, threshold=0.8)
     assert empty.action == "grow"
     assert empty.reason == "no_compute_candidates"
+
+
+def test_compute_candidate_screen_orders_from_learned_event_outcomes_only() -> None:
+    screen = ExternalComputeCandidateScreen(width=4)
+    assert screen.add_candidate() == 0
+    assert screen.add_candidate() == 1
+    assert screen.add_candidate() == 2
+    query = torch.tensor([1.0, 0.0, 0.0, 0.0])
+
+    assert screen.order(query) == (0, 1, 2)
+    screen.observe(query, 2, 1.0)
+
+    assert screen.order(query) == (2, 1, 0)
+    assert screen.configuration()["role"] == "order_only_fresh_admission_required"
+
+
+def test_compute_candidate_screen_reloads_without_semantic_metadata() -> None:
+    screen = ExternalComputeCandidateScreen(width=3, matching_tolerance=1e-3)
+    screen.add_candidate()
+    screen.add_candidate()
+    query = torch.tensor([0.0, 1.0, 0.0])
+    screen.observe(query, 1, 1.0)
+
+    restored = ExternalComputeCandidateScreen.from_payload(screen.payload())
+
+    assert restored.payload() == screen.payload()
+    assert restored.order(query) == (1, 0)
+    assert "task" not in restored.payload()
+    assert "label" not in restored.payload()
 
 
 def test_external_capability_pipeline_keeps_program_states_independent() -> None:
