@@ -5,6 +5,7 @@ from experiments.games_amodal.game_family import (
     COMPONENTS,
     DUAL_IDLE_COST,
     DUAL_WRONG_COST,
+    FORAGE_IDLE_COST,
     FamilyConfig,
     FamilyVerifier,
     compositional_split,
@@ -304,19 +305,42 @@ def test_forage_spawn_radius_keeps_items_near_the_avatar() -> None:
         FamilyConfig(choice=1, spawn_radius=1).validate()
 
 
-def test_forage_recentre_interval_forces_periodic_trials() -> None:
-    config = FamilyConfig(forage=1, recentre_every=3)
+def test_forage_bridge_redeals_near_avatar_without_teleporting() -> None:
+    config = FamilyConfig(forage=1, recentre_every=3, spawn_radius=2)
     verifier = FamilyVerifier(config, batch_size=2, seed=23)
     verifier.reset(seed=23)
-    centre = (verifier.height // 2, verifier.width // 2)
     for step in range(1, 10):
+        before = list(verifier._avatar)
         verifier.step(torch.zeros(2, dtype=torch.long))
+        for row in range(2):
+            # The avatar is never moved by the bridge (only by its action).
+            expected = (max(before[row][0] - 1, 0), before[row][1])
+            if expected in verifier._walls[row]:
+                expected = before[row]
+            assert verifier._avatar[row] == expected
         if step % 3 == 0:
             for row in range(2):
-                items = verifier._forage_a[row] + verifier._forage_b[row]
-                assert all(
-                    abs(c[0] - centre[0]) + abs(c[1] - centre[1]) == 1
-                    for c in items
-                )
+                avatar = verifier._avatar[row]
+                for cell in verifier._forage_a[row] + verifier._forage_b[row]:
+                    assert max(abs(cell[0] - avatar[0]), abs(cell[1] - avatar[1])) <= 2
     with pytest.raises(ValueError, match="curriculum knob"):
         FamilyConfig(collect=1, recentre_every=2).validate()
+
+
+def test_forage_bridge_charges_idle_and_pure_forage_does_not() -> None:
+    bridge = FamilyVerifier(
+        FamilyConfig(forage=1, recentre_every=4, spawn_radius=2),
+        batch_size=1, seed=29,
+    )
+    bridge.reset(seed=29)
+    bridge._forage_a[0] = [(0, 0)]
+    bridge._forage_b[0] = [(0, 1)]
+    bridge._avatar[0] = (5, 5)
+    reward = bridge.step(torch.tensor([0])).reward
+    assert float(reward[0]) == pytest.approx(-FORAGE_IDLE_COST)
+    plain = FamilyVerifier(FamilyConfig(forage=1), batch_size=1, seed=29)
+    plain.reset(seed=29)
+    plain._forage_a[0] = [(0, 0)]
+    plain._forage_b[0] = [(0, 1)]
+    plain._avatar[0] = (5, 5)
+    assert float(plain.step(torch.tensor([0])).reward[0]) == 0.0

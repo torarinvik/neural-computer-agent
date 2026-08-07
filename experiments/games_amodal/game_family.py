@@ -57,6 +57,11 @@ COMPONENTS = ("collect", "intercept", "avoid", "navigate")
 DUAL_IDLE_COST = 0.1
 DUAL_WRONG_COST = 0.2
 
+# F21 bridge economics: in bridge mode (recentre_every > 0) a forage step
+# that resolves nothing costs a little, so approaching a distant item
+# strictly beats loitering — the F15 lesson applied to distance.
+FORAGE_IDLE_COST = 0.05
+
 
 @dataclass(frozen=True)
 class FamilyConfig:
@@ -88,13 +93,14 @@ class FamilyConfig:
     # bits, so contexts sharing a bit share a sub-rule -- the structure a
     # fragment bank must reuse rather than re-learn.
     inverted2: bool = False  # second axis of `dual` (rule for cue-1 trials)
-    recentre_every: int = 0  # F20 motor bridge: k>0 recentres the avatar
-    # and re-deals forage items adjacent every k steps. k=1 approximates
-    # the choice trial (a forced decision each step); growing k hands the
-    # agent responsibility for RETURNING to the decision point — which is
-    # the navigation skill itself; 0 = never (pure forage). Relaxes the
-    # forcing structure, which F20 showed is the learnability-bearing
-    # property, where spawn distance is not.
+    recentre_every: int = 0  # F21 motor bridge: k>0 re-deals forage items
+    # every k steps at `spawn_radius` of the avatar's CURRENT position —
+    # the avatar is never moved, so the agent itself must close the
+    # distance (the navigation act), while the periodic re-deal keeps a
+    # reachable trial alive and a per-step idle cost makes approaching
+    # strictly pay. Growing spawn_radius is the curriculum; 0 = never
+    # (pure forage). The teleporting variant taught waiting, not
+    # navigating (F21).
     spawn_radius: int = 0  # F19 motor bridge: 0 = items spawn anywhere;
     # r>0 = forage items spawn within Chebyshev radius r of the avatar.
     # Radius 1 makes forage the already-mastered choice trial; growing r
@@ -454,6 +460,13 @@ class FamilyVerifier:
             good, bad = self._forage_a[row], self._forage_b[row]
             if self.config.inverted:
                 good, bad = bad, good
+            if (
+                self.config.forage
+                and self.config.recentre_every > 0
+                and target not in good
+                and target not in bad
+            ):
+                reward[row] -= FORAGE_IDLE_COST
             if self.config.choice:
                 if target in good:
                     reward[row] += 1.0
@@ -522,9 +535,11 @@ class FamilyVerifier:
         ):
             for row in range(self.batch_size):
                 if bool(self._alive[row]):
-                    left, right = self._neighbour_pair(row)
-                    self._forage_a[row] = [left]
-                    self._forage_b[row] = [right]
+                    occupied = set(self._walls[row]) | {self._avatar[row]}
+                    cell = self._forage_cell(row, occupied)
+                    occupied.add(cell)
+                    self._forage_a[row] = [cell]
+                    self._forage_b[row] = [self._forage_cell(row, occupied)]
         return GameStep(reward=reward, alive=self._alive.clone())
 
 
