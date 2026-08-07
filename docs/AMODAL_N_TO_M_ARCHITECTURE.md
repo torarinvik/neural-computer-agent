@@ -3287,3 +3287,18 @@ reload with frozen-base, old-binding, checksum, frozen-core, and zero-replay
 gates. This is adaptive bounded compute admission, not a semantic classifier
 or general continual learning. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_reuse_first_grow_policy_replicated_boundary_v1_2026-08-07/`.
+
+## Multi-candidate fresh-verified compute reuse (2026-08-07)
+
+The reusable library now supports content-addressed candidate admission. A
+new binding is trained in an isolated trial against every physical compute
+slot; `select_reusable_compute_slot` chooses the best worst-case fresh score,
+or all trials are discarded and a new compute slot is grown. The logical
+binding table remains external and versioned.
+
+The replicated three-opaque-procedure audit passes with a `2:3` physical to
+logical ratio at seed `69316` and `1:3` at seed `69317`. All prior bindings
+retain after reload, checksum restoration and frozen-core gates pass, and
+replay is zero. This is adaptive bounded compute reuse, not open-ended
+compression or general continual learning. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_candidate_reuse_opaque_three_replicated_promoted_v1_2026-08-07/`.

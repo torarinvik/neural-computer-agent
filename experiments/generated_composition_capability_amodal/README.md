@@ -617,3 +617,10 @@ registry seeds reuse one module; opaque seed `69316` grows after a `0.6172`
 trial, while opaque seed `69317` safely reuses at `0.7813`. All four runs pass
 retention, reload, checksum, frozen-core, and zero-replay gates. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_reuse_first_grow_policy_replicated_boundary_v1_2026-08-07/`.
+
+The `--candidate-reuse` variant now trials every physical compute module
+before growing. Across three opaque procedures, seed `69316` grows one module
+then reuses the best candidate; seed `69317` reuses one module for all three.
+All retention, reload, checksum, frozen-core, and zero-replay gates pass.
+Evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_candidate_reuse_opaque_three_replicated_promoted_v1_2026-08-07/`.

@@ -395,7 +395,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     parent.eval()
     parent_digest_before = _digest_core(parent, ())
 
-    if args.reuse_compute:
+    if args.candidate_reuse or args.reuse_compute:
         bank: CapabilityBank = ExternalCapabilityReusableComputeLibrary(
             EVENT_WIDTH,
             ACTION_WIDTH,
@@ -456,7 +456,120 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                     bank.freeze_compute_slot(compute_slot)
                 for old_binding in range(bank.slot_count):
                     bank.freeze_binding(old_binding)
-                if args.auto_reuse:
+                if args.candidate_reuse:
+                    trial_records: list[dict[str, object]] = []
+                    trial_progresses: dict[int, list[dict[str, float | int]]] = {}
+                    trial_behaviors: dict[int, float] = {}
+                    trial_probes_by_candidate: dict[int, list[float]] = {}
+                    trial_adapter_states: dict[int, dict[str, torch.Tensor]] = {}
+                    trial_decoder_states: dict[int, dict[str, torch.Tensor]] = {}
+                    for candidate_slot in range(bank.compute_slot_count):
+                        trial_slot = bank.add_binding(candidate_slot)
+                        trial_decoder = _new_decoder(
+                            args.seed
+                            + 10_000
+                            + stage_index * 1_003
+                            + candidate_slot
+                        )
+                        slot_training_attempts += 1
+                        candidate_progress = _train_slot(
+                            parent,
+                            bank,
+                            trial_slot,
+                            trial_decoder,
+                            program_id,
+                            grammar,
+                            updates=args.slot_updates,
+                            batch_size=args.batch_size,
+                            audit_count=args.audit_count,
+                            eval_every=args.eval_every,
+                            seed=(
+                                args.seed
+                                + 30_000
+                                + stage_index * 10_003
+                                + candidate_slot * 1_009
+                            ),
+                            learning_rate=args.learning_rate,
+                        )
+                        candidate_behavior, candidate_probes = _probe_accuracy(
+                            parent,
+                            bank,
+                            trial_slot,
+                            trial_decoder,
+                            program_id,
+                            grammar,
+                            count=args.audit_count,
+                            probes=args.retention_probes,
+                            seed=(
+                                args.seed
+                                + 35_000
+                                + stage_index * 10_003
+                                + candidate_slot * 1_009
+                            ),
+                        )
+                        trial_progresses[candidate_slot] = candidate_progress
+                        trial_behaviors[candidate_slot] = candidate_behavior
+                        trial_probes_by_candidate[candidate_slot] = candidate_probes
+                        trial_adapter_states[candidate_slot] = {
+                            name: value.detach().clone()
+                            for name, value in bank.binding_adapters[-1].state_dict().items()
+                        }
+                        trial_decoder_states[candidate_slot] = {
+                            name: value.detach().clone()
+                            for name, value in trial_decoder.state_dict().items()
+                        }
+                        trial_records.append(
+                            {
+                                "compute_slot": candidate_slot,
+                                "behavior": candidate_behavior,
+                                "probe_outcomes": candidate_probes,
+                                "stable_bits_to_threshold": _stable_bits(
+                                    candidate_progress,
+                                    batch_size=args.batch_size,
+                                ),
+                                "fresh_outcomes_only": True,
+                            }
+                        )
+                        bank.remove_binding(trial_slot)
+                    reuse_decision = select_reusable_compute_slot(
+                        trial_probes_by_candidate,
+                        threshold=THRESHOLD,
+                    )
+                    reuse_trial = {
+                        "candidates": trial_records,
+                        "decision": reuse_decision.action,
+                        "selected_compute_slot": reuse_decision.compute_slot_index,
+                        "candidate_scores": reuse_decision.candidate_scores,
+                        "decision_reason": reuse_decision.reason,
+                        "fresh_outcomes_only": True,
+                    }
+                    if reuse_decision.action == "reuse":
+                        selected_compute_slot = reuse_decision.compute_slot_index
+                        if selected_compute_slot is None:
+                            raise RuntimeError("reuse decision omitted its compute slot")
+                        slot_index = bank.add_binding(selected_compute_slot)
+                        bank.binding_adapters[-1].load_state_dict(
+                            trial_adapter_states[selected_compute_slot],
+                            strict=True,
+                        )
+                        selected_decoder = _new_decoder(
+                            args.seed + 50_000 + stage_index
+                        )
+                        selected_decoder.load_state_dict(
+                            trial_decoder_states[selected_compute_slot],
+                            strict=True,
+                        )
+                        decoders.append(selected_decoder)
+                        progress = trial_progresses[selected_compute_slot]
+                        behavior = trial_behaviors[selected_compute_slot]
+                        behavior_probes = trial_probes_by_candidate[selected_compute_slot]
+                    else:
+                        compute_slot = bank.add_compute_slot()
+                        slot_index = bank.add_binding(compute_slot)
+                        decoders.append(
+                            _new_decoder(args.seed + 50_000 + stage_index)
+                        )
+                elif args.auto_reuse:
                     trial_slot = bank.add_binding(0)
                     trial_decoder = _new_decoder(
                         args.seed + 10_000 + stage_index
@@ -635,7 +748,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         {name: value.detach().clone() for name, value in decoder.state_dict().items()}
         for decoder in decoders
     ]
-    if args.reuse_compute:
+    if args.candidate_reuse or args.reuse_compute:
         reload_bank: CapabilityBank = ExternalCapabilityReusableComputeLibrary(
             EVENT_WIDTH,
             ACTION_WIDTH,
@@ -764,13 +877,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "source_ids": list(source_ids),
         "bank_mode": (
             "reusable_compute_library"
-            if args.reuse_compute
+            if args.candidate_reuse or args.reuse_compute
             else "shared_base_plus_residual_compute"
             if args.residual_compute
             else "shared_base_plus_intention_adapter"
         ),
         "admission_policy": (
-            "reuse_first_grow_on_fresh_failure"
+            "all_candidate_trials_best_fresh_probe"
+            if args.candidate_reuse
+            else "reuse_first_grow_on_fresh_failure"
             if args.auto_reuse
             else "explicit_binding"
         ),
@@ -922,6 +1037,11 @@ def main() -> None:
         action="store_true",
         help="try fresh-verified reuse first, then grow compute on failure",
     )
+    parser.add_argument(
+        "--candidate-reuse",
+        action="store_true",
+        help="fresh-train every existing compute candidate before reuse/growth",
+    )
     parser.add_argument("--residual-context-hidden", type=int, default=16)
     parser.add_argument("--residual-context-width", type=int, default=8)
     parser.add_argument(
@@ -931,7 +1051,10 @@ def main() -> None:
         help="set PyTorch intra-op threads for this tiny audit workload",
     )
     args = parser.parse_args()
-    if args.auto_reuse:
+    if args.candidate_reuse:
+        args.reuse_compute = True
+        args.auto_reuse = False
+    elif args.auto_reuse:
         args.reuse_compute = True
     if args.reuse_compute:
         args.residual_compute = True

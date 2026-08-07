@@ -838,3 +838,9 @@ physical compute module only when all fresh probes clear the floor, otherwise
 grow. This enables compression for compatible procedures without blocking
 arbitrary new compute. See
 `session_records/sequence_working_memory_2026-08-02/generated_composition_reuse_first_grow_policy_replicated_boundary_v1_2026-08-07/`.
+
+The candidate-reuse path now probes every physical compute module, selects the
+best fresh-verified binding, and grows only when all candidates fail. This
+supports mixed reuse/growth across three opaque procedures while retaining
+old states. See
+`session_records/sequence_working_memory_2026-08-02/generated_composition_candidate_reuse_opaque_three_replicated_promoted_v1_2026-08-07/`.
