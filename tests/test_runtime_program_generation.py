@@ -37,6 +37,39 @@ def test_runtime_program_generation_rejects_invalid_budget() -> None:
         raise AssertionError("depth nine should be rejected")
 
 
+def test_runtime_opaque_rule_generation_is_deterministic_and_renders() -> None:
+    first = generate_runtime_program_grammar(
+        seed=4242,
+        count=3,
+        depth=8,
+        primitive_family="opaque_rule",
+    )
+    second = generate_runtime_program_grammar(
+        seed=4242,
+        count=3,
+        depth=8,
+        primitive_family="opaque_rule",
+    )
+
+    assert first == second
+    assert all(
+        primitive.startswith("rule:")
+        for program in first
+        for primitive in program
+    )
+    batch = generate_sequence_memory_batch(
+        4,
+        span=4,
+        distractors=1,
+        seed=101,
+        operation="generated_composition",
+        generated_composition_ids=(0,),
+        generated_compositions=first,
+    )
+    assert batch.query_frames.shape == (4, 4, 3, 32, 32)
+    assert torch.isfinite(batch.correct_actions.float()).all()
+
+
 def test_runtime_generated_program_renderer_supports_eight_steps() -> None:
     grammar = generate_runtime_program_grammar(seed=2718, count=1, depth=8)
     batch = generate_sequence_memory_batch(

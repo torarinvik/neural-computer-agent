@@ -427,3 +427,30 @@ computation, unrestricted growth, or general continual learning.
 
 Evidence and accounting are archived in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_depth8_sequential_slot_growth_three_source_replicated_promoted_v1_2026-08-07/`.
+
+## Runtime-generated opaque operators (2026-08-07)
+
+The next audit removes the fixed named-primitive registry from the generated
+family. With `--primitive-family opaque_rule`, the verifier samples from all
+256 eight-bit functions over a three-cell binary neighborhood and renders each
+rule as a generic barcode in its ordinal event band. The controller receives
+only the rendered event sequence and verifier outcome; rule tokens, rule
+tables, and composition IDs remain outside the deployed learner.
+
+```bash
+PYTHONPATH=src uv run python -m experiments.generated_composition_capability_amodal.train_sequential_distilled_consolidation \
+  --program-seed 4242 --primitive-family opaque_rule \
+  --program-count 4 --program-depth 8 --source-ids 0 1 2 --target-id 3 \
+  --parent-updates 128 --source-updates 256 --consolidation-updates 512 \
+  --target-updates 256 --batch-size 16 --audit-count 64 \
+  --retention-probes 4 --eval-every 32 \
+  --report-out /tmp/generated-composition-opaque-rule/report.json
+```
+
+Across seeds `69316` and `69317`, both staged acquisitions adopted, all
+reload, reversal/recovery, corruption, frozen-core, and zero-replay gates
+passed, and the target reloaded at `1.0000`. This promotes replay-free staged
+growth over a verifier-private 256-member operator family. It does not yet
+establish arbitrary program induction, learned compression, unrestricted
+memory growth, or general continual learning. Evidence and accounting are in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_opaque_rule_sequential_slot_growth_three_source_replicated_promoted_v1_2026-08-07/`.

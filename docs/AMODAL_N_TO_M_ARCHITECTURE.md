@@ -2994,6 +2994,25 @@ growth, or general continual learning. Reports, rejected controls, and the
 full accounting ledger are archived in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_depth8_fresh_rebuild_consolidation_replicated_promoted_v1_2026-08-07/`.
 
+## Staged growth with runtime-generated opaque operators (2026-08-07)
+
+The generated-composition pressure test now includes a verifier-private
+operator family independent of the named primitive registry. Each `rule:xx`
+token denotes one of the 256 eight-bit functions over the previous, current,
+and following binary sequence values. The renderer exposes only a generic
+barcode plus ordinal event band; the controller never receives the token,
+operator truth table, composition ID, or correct action.
+
+Across seeds `69316` and `69317`, three source procedures were acquired in
+isolated append-only external slots and a fourth target was learned from the
+retained artifact. Both stages adopted, and reload, reversal/recovery,
+corruption, frozen-core, and zero-replay gates passed. The target reloaded at
+`1.0000` in both seeds. This is evidence for bounded continual-memory growth
+over a newly generated 256-member local-rule family, not arbitrary Turing
+complete computation, unrestricted memory growth, or general continual
+learning. Reports and the accounting ledger are archived in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_opaque_rule_sequential_slot_growth_three_source_replicated_promoted_v1_2026-08-07/`.
+
 ## Replay-free staged growth for three depth-eight procedures (2026-08-07)
 
 The staged external-growth path now scales the isolated-slot strategy to

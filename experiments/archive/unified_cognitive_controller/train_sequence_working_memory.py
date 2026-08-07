@@ -81,6 +81,7 @@ _GENERATED_PRIMITIVE_COLUMNS = {
     "prefix_parity": 20,
     "global_parity": 24,
 }
+_OPAQUE_RULE_PREFIX = "rule:"
 _GENERATED_COMPOSITIONS = (
     ("reverse", "complement"),
     ("complement", "reverse"),
@@ -115,7 +116,11 @@ def _resolve_generated_compositions(
     for program in grammar:
         if not program:
             raise ValueError("generated composition programs must not be empty")
-        if any(primitive not in known_primitives for primitive in program):
+        if any(
+            primitive not in known_primitives
+            and _parse_opaque_rule(primitive) is None
+            for primitive in program
+        ):
             raise ValueError("generated composition contains an unknown primitive")
         if len(program) > MAX_GENERATED_PROGRAM_DEPTH:
             raise ValueError(
@@ -125,11 +130,38 @@ def _resolve_generated_compositions(
     return grammar
 
 
+def _parse_opaque_rule(primitive: str) -> int | None:
+    """Parse a verifier-private 8-bit local rule token."""
+
+    if not isinstance(primitive, str) or not primitive.startswith(_OPAQUE_RULE_PREFIX):
+        return None
+    code = primitive.removeprefix(_OPAQUE_RULE_PREFIX)
+    if len(code) != 2:
+        raise ValueError("opaque rule tokens must contain exactly two hex digits")
+    try:
+        value = int(code, 16)
+    except ValueError as error:
+        raise ValueError("opaque rule tokens must contain hexadecimal digits") from error
+    return value
+
+
 def _apply_generated_primitive(
     sequence: torch.Tensor,
     primitive: str,
 ) -> torch.Tensor:
     """Apply one verifier-private primitive to binary sequence rows."""
+
+    opaque_rule = _parse_opaque_rule(primitive)
+    if opaque_rule is not None:
+        previous = sequence.roll(shifts=1, dims=1).long()
+        current = sequence.long()
+        following = sequence.roll(shifts=-1, dims=1).long()
+        neighborhood = previous * 4 + current * 2 + following
+        rule = torch.tensor(opaque_rule, dtype=torch.long, device=sequence.device)
+        return torch.bitwise_and(
+            torch.bitwise_right_shift(rule, neighborhood),
+            torch.ones_like(neighborhood),
+        ).to(dtype=sequence.dtype)
 
     if primitive == "forward":
         return sequence
@@ -395,15 +427,28 @@ def generate_sequence_memory_batch(
             for primitive_index, primitive in enumerate(
                 composition_grammar[int(composition_ids[row])]
             ):
-                operation_column = _GENERATED_PRIMITIVE_COLUMNS[primitive]
                 cue_start = 1 + primitive_index * 3
-                query_frames[
-                    row,
-                    :,
-                    :,
-                    cue_start:cue_start + 3,
-                    operation_column:operation_column + 3,
-                ] = 0.95
+                if primitive in _GENERATED_PRIMITIVE_COLUMNS:
+                    operation_column = _GENERATED_PRIMITIVE_COLUMNS[primitive]
+                    query_frames[
+                        row,
+                        :,
+                        :,
+                        cue_start:cue_start + 3,
+                        operation_column:operation_column + 3,
+                    ] = 0.95
+                else:
+                    opaque_rule = _parse_opaque_rule(primitive)
+                    assert opaque_rule is not None
+                    for bit in range(8):
+                        if opaque_rule & (1 << bit):
+                            query_frames[
+                                row,
+                                :,
+                                :,
+                                cue_start:cue_start + 3,
+                                bit * 3:bit * 3 + 2,
+                            ] = 0.95
                 query_frames[
                     row, :, :, cue_start:cue_start + 3, 28:31
                 ] = 0.85

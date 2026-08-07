@@ -1,0 +1,42 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "generated-composition-opaque-rule-sequential-slot-growth-three-source-replicated-promoted-v1-2026-08-07",
+  "status": "replicated_promoted_opaque_operator_family_staged_growth",
+  "seeds": [69316, 69317],
+  "primitive_family": "opaque_rule",
+  "primitive_family_cardinality": 256,
+  "source_ids": [0, 1, 2],
+  "target_id": 3,
+  "programs": [
+    ["rule:d4", "rule:43", "rule:0e", "rule:c7", "rule:c2", "rule:a4", "rule:8c", "rule:5e"],
+    ["rule:fc", "rule:0c", "rule:f0", "rule:50", "rule:4f", "rule:f3", "rule:3d", "rule:0d"],
+    ["rule:40", "rule:48", "rule:5c", "rule:ac", "rule:3e", "rule:57", "rule:79", "rule:77"],
+    ["rule:e4", "rule:1f", "rule:8c", "rule:ac", "rule:02", "rule:a3", "rule:56", "rule:ac"]
+  ],
+  "parent_updates": 128,
+  "source_updates": 256,
+  "consolidation_updates": 512,
+  "target_updates": 256,
+  "batch_size": 16,
+  "audit_count": 64,
+  "retention_probes": 4,
+  "eval_every": 32,
+  "source_behavior_after_reload_per_seed": [
+    {"0": 1.0, "1": 0.88671875, "2": 1.0},
+    {"0": 1.0, "1": 0.89453125, "2": 0.8984375}
+  ],
+  "stage_candidate_stable_bits_per_seed": [[18432, 8192], [16384, 8192]],
+  "target_inherited_stable_bits_per_seed": [2048, 2048],
+  "target_fresh_stable_bits_per_seed": [4096, 2048],
+  "target_reload_behavior_per_seed": [1.0, 1.0],
+  "unique_verifier_bits_per_seed": [323584, 323584],
+  "unique_logical_lifetimes_per_seed": [108544, 108544],
+  "optimizer_updates_per_seed": [3456, 3456],
+  "retention_observations_per_seed": [52, 52],
+  "wall_seconds_per_seed": [389.72557929198956, 397.49541120801587],
+  "replayed_examples": 0,
+  "core_unchanged": [true, true],
+  "staged_rewrites_adopted_per_seed": [2, 2],
+  "promotion_gate_passed": true,
+  "claim_boundary": "Replicated replay-free staged acquisition of depth-eight procedures built from a 256-member opaque local-rule family; arbitrary program synthesis, unrestricted memory growth, and general continual learning remain unqualified."
+}

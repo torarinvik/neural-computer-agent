@@ -65,6 +65,7 @@ _RUNTIME_PRIMITIVES = (
     "prefix_parity",
     "global_parity",
 )
+_OPAQUE_RULE_PRIMITIVES = tuple(f"rule:{code:02x}" for code in range(256))
 
 
 def _parse_program_specs(
@@ -86,15 +87,18 @@ def generate_runtime_program_grammar(
     seed: int,
     count: int,
     depth: int = 4,
+    primitive_family: str = "registry",
 ) -> GeneratedCompositionGrammar:
     """Generate distinct verifier-private programs at audit time.
 
     The generated programs are deliberately not selected from the fixed
     default grammar.  Functional duplicates are rejected on every binary
     length-four sequence, so a fresh schedule represents genuinely distinct
-    procedures rather than new spellings of an old one.  The resulting
-    grammar is used only by the verifier-side renderer and scorer; no program
-    tuple or semantic operation name enters the controller.
+    procedures rather than new spellings of an old one.  ``registry`` samples
+    the existing named primitive family; ``opaque_rule`` samples the 256
+    verifier-private three-cell local rules.  The resulting grammar is used
+    only by the verifier-side renderer and scorer; no program tuple or
+    semantic operation name enters the controller.
     """
 
     if count < 1 or depth < 1 or depth > MAX_GENERATED_PROGRAM_DEPTH:
@@ -102,6 +106,8 @@ def generate_runtime_program_grammar(
             "runtime program count and depth must be positive; depth <= "
             f"{MAX_GENERATED_PROGRAM_DEPTH}"
         )
+    if primitive_family not in ("registry", "opaque_rule"):
+        raise ValueError("primitive_family must be registry or opaque_rule")
     sequences = torch.tensor(
         list(itertools.product((0.0, 1.0), repeat=SPAN)),
         dtype=torch.float32,
@@ -113,7 +119,16 @@ def generate_runtime_program_grammar(
             values = _apply_generated_primitive(values, primitive)
         return tuple(float(value) for value in values.reshape(-1).tolist())
 
-    occupied = {tuple(program) for program in _GENERATED_COMPOSITIONS}
+    primitive_pool = (
+        _RUNTIME_PRIMITIVES
+        if primitive_family == "registry"
+        else _OPAQUE_RULE_PRIMITIVES
+    )
+    occupied = (
+        {tuple(program) for program in _GENERATED_COMPOSITIONS}
+        if primitive_family == "registry"
+        else set()
+    )
     occupied_signatures = {signature(program) for program in occupied}
     generator = random.Random(seed)
     generated: list[tuple[str, ...]] = []
@@ -123,7 +138,7 @@ def generate_runtime_program_grammar(
         if attempts > 100_000:
             raise RuntimeError("could not generate enough distinct runtime programs")
         candidate = tuple(
-            generator.choice(_RUNTIME_PRIMITIVES) for _ in range(depth)
+            generator.choice(primitive_pool) for _ in range(depth)
         )
         candidate_signature = signature(candidate)
         if candidate in occupied or candidate_signature in occupied_signatures:
@@ -727,8 +742,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             seed=args.program_seed,
             count=args.program_count,
             depth=args.program_depth,
+            primitive_family=args.primitive_family,
         )
-        program_source = "runtime_generated"
+        program_source = f"runtime_generated_{args.primitive_family}"
     composition_ids = tuple(
         range(len(generated_compositions))
         if args.composition_ids is None
@@ -1030,6 +1046,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "composition_ids": list(composition_ids),
         "program_source": program_source,
         "program_seed": args.program_seed,
+        "primitive_family": args.primitive_family,
         "program_count": len(generated_compositions),
         "program_depth": args.program_depth if args.program_seed is not None else None,
         "composition_programs": [
@@ -1152,6 +1169,12 @@ def main() -> None:
         type=int,
         default=None,
         help="generate a fresh verifier-private grammar instead of using program-spec",
+    )
+    parser.add_argument(
+        "--primitive-family",
+        choices=("registry", "opaque_rule"),
+        default="registry",
+        help="runtime primitive family used with --program-seed",
     )
     parser.add_argument("--program-count", type=int, default=3)
     parser.add_argument(
