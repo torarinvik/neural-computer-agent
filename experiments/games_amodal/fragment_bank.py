@@ -197,6 +197,19 @@ class FragmentBank(torch.nn.Module):
             }
         )
 
+    def oracle_indices(self, name: str, k: int) -> list[int]:
+        """Fixed, distinct fragments per variant (no selection learning).
+
+        Isolates the READ path: the plant receives genuinely different
+        context in different variants, so the only question under test is
+        whether it can learn context-conditional behaviour.
+        """
+
+        order = sorted(self.selection_logits.keys())
+        position = order.index(name)
+        total = self.tokens.shape[0]
+        return [(position * k + offset) % total for offset in range(k)]
+
     def register_variant(self, name: str) -> None:
         if name not in self.selection_logits:
             self.selection_logits[name] = torch.nn.Parameter(
@@ -256,10 +269,16 @@ def train_bank(
     history: list[dict[str, float]] = []
     for update in range(args.updates):
         config = variants[update % len(variants)]
-        logits = bank.selection_logits[config.name]
-        chosen, selection_log_prob = sample_selection(
-            logits, args.fragments_per_variant, greedy=False
-        )
+        if getattr(args, "oracle_selection", False):
+            chosen = bank.oracle_indices(
+                config.name, args.fragments_per_variant
+            )
+            selection_log_prob = torch.zeros(())
+        else:
+            logits = bank.selection_logits[config.name]
+            chosen, selection_log_prob = sample_selection(
+                logits, args.fragments_per_variant, greedy=False
+            )
         fragments = bank.fetch(chosen)
         summary = rollout_family(
             agent,
@@ -337,11 +356,16 @@ def evaluate_variant(
         seed = args.seed + 10_000 + index
         fragments = fragments_override
         if fragments is None and bank is not None:
-            chosen, _ = sample_selection(
-                bank.selection_logits[config.name].detach(),
-                args.fragments_per_variant,
-                greedy=True,
-            )
+            if getattr(args, "oracle_selection", False):
+                chosen = bank.oracle_indices(
+                    config.name, args.fragments_per_variant
+                )
+            else:
+                chosen, _ = sample_selection(
+                    bank.selection_logits[config.name].detach(),
+                    args.fragments_per_variant,
+                    greedy=True,
+                )
             fragments = bank.fetch(chosen).detach()
         with torch.no_grad():
             summary = rollout_family(
@@ -455,11 +479,16 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             (train_variants[0], train_variants[1]),
             (train_variants[1], train_variants[0]),
         ):
-            chosen, _ = sample_selection(
-                bank.selection_logits[other.name].detach(),
-                args.fragments_per_variant,
-                greedy=True,
-            )
+            if args.oracle_selection:
+                chosen = bank.oracle_indices(
+                    other.name, args.fragments_per_variant
+                )
+            else:
+                chosen, _ = sample_selection(
+                    bank.selection_logits[other.name].detach(),
+                    args.fragments_per_variant,
+                    greedy=True,
+                )
             cross_scores[v.name] = evaluate_variant(
                 agent,
                 None,
@@ -558,6 +587,7 @@ def main() -> None:
     parser.add_argument("--tokens-per-fragment", type=int, default=2)
     parser.add_argument("--fragments-per-variant", type=int, default=2)
     parser.add_argument("--fragment-init-scale", type=float, default=1.0)
+    parser.add_argument("--oracle-selection", action="store_true")
     parser.add_argument("--ignorance-every", type=int, default=4)
     parser.add_argument("--ignorance-weight", type=float, default=1.0)
     parser.add_argument("--eval-seeds", type=int, default=4)
