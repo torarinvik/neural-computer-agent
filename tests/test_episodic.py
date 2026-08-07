@@ -23,7 +23,9 @@ from neural_computer import (
     LearnedComputeCandidateScreen,
     LearnedOpaqueCandidateKeyMemory,
     OnlineEpisodicRelationReader,
+    OpaqueCandidateIdentityView,
     OpaqueCandidateSignatureNormalizer,
+    PageLocalLearnedComputeCandidateScreen,
     episodic_context_contrastive_loss,
     paired_event_credit_loss,
     select_reusable_compute_slot,
@@ -448,6 +450,82 @@ def test_signature_normalizer_is_fitted_once_and_permutation_invariant() -> None
     )
     with pytest.raises(RuntimeError, match="already fitted"):
         normalizer.fit(keys)
+
+
+def test_page_local_screen_uses_local_rank_after_verifier_failure() -> None:
+    torch.manual_seed(25)
+    base_view = OpaqueCandidateSignatureNormalizer(4)
+    base_keys_for_fit = torch.randn(4, 4)
+    base_view.fit(base_keys_for_fit)
+    screen = PageLocalLearnedComputeCandidateScreen(
+        query_width=4,
+        key_width=4,
+        latent_width=5,
+        hidden=8,
+        base_query_view=base_view,
+        base_key_view=base_view,
+        activation_margin=1.0,
+    )
+    assert screen.append_extension(2, query_view=OpaqueCandidateIdentityView(4)) == 0
+    screen.enable_base()
+    screen.enable_extension(0)
+    query = torch.randn(3, 4)
+    base_keys = torch.randn(3, 4)
+    extension_keys = torch.randn(2, 4)
+    base_scores = screen.base_screen(base_view(query), base_view(base_keys))
+
+    cold = screen(query, base_keys, extension_keys, failed_extensions=False)
+    assert torch.equal(cold[:, :3], base_scores)
+    assert torch.equal(cold.argmax(dim=-1), base_scores.argmax(dim=-1))
+
+    failed = screen(
+        query,
+        base_keys,
+        extension_keys,
+        failed_extensions=torch.ones(3, 1, dtype=torch.bool),
+    )
+    local_scores = screen.extensions[0](query, extension_keys)
+    assert torch.equal(failed[:, 3:].argmax(dim=-1), local_scores.argmax(dim=-1))
+    assert bool((failed[:, 3:].max(dim=-1).values > base_scores.max(dim=-1).values).all())
+    assert screen.configuration()["activation"] == "page_local_rank_margin_v1"
+
+
+def test_page_local_screen_state_round_trips_with_independent_views() -> None:
+    torch.manual_seed(26)
+    normalizer = OpaqueCandidateSignatureNormalizer(4)
+    normalizer.fit(torch.randn(4, 4))
+    screen = PageLocalLearnedComputeCandidateScreen(
+        query_width=4,
+        key_width=4,
+        latent_width=5,
+        hidden=8,
+        base_query_view=normalizer,
+        base_key_view=normalizer,
+    )
+    screen.append_extension(1)
+    screen.enable_base()
+    screen.enable_extension(0)
+    restored_normalizer = OpaqueCandidateSignatureNormalizer(4)
+    restored_normalizer.fit(torch.randn(4, 4))
+    restored = PageLocalLearnedComputeCandidateScreen(
+        query_width=4,
+        key_width=4,
+        latent_width=5,
+        hidden=8,
+        base_query_view=restored_normalizer,
+        base_key_view=restored_normalizer,
+    )
+    restored.append_extension(1)
+    restored.load_state_dict(screen.state_dict(), strict=True)
+    assert screen.configuration() == restored.configuration()
+    query = torch.randn(2, 4)
+    base_keys = torch.randn(2, 4)
+    extension_keys = torch.randn(1, 4)
+    failures = torch.ones(2, 1, dtype=torch.bool)
+    assert torch.equal(
+        screen(query, base_keys, extension_keys, failures),
+        restored(query, base_keys, extension_keys, failures),
+    )
 
 
 def test_learned_compute_screen_ranking_loss_uses_only_scalar_outcomes() -> None:

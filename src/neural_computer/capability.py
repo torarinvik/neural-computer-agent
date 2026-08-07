@@ -58,6 +58,12 @@ EXTERNAL_CAPABILITY_LEARNED_CANDIDATE_KEY_MEMORY_SCHEMA = (
 EXTERNAL_CAPABILITY_OPAQUE_SIGNATURE_NORMALIZER_SCHEMA = (
     "neural-computer.external-capability-opaque-signature-normalizer.v1"
 )
+EXTERNAL_CAPABILITY_OPAQUE_SIGNATURE_IDENTITY_SCHEMA = (
+    "neural-computer.external-capability-opaque-signature-identity.v1"
+)
+EXTERNAL_CAPABILITY_PAGE_LOCAL_LEARNED_COMPUTE_SCREEN_SCHEMA = (
+    "neural-computer.external-capability-page-local-learned-compute-screen.v1"
+)
 EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA = (
     "neural-computer.external-capability-slot-binding.v1"
 )
@@ -447,6 +453,32 @@ class OpaqueCandidateSignatureNormalizer(nn.Module):
         }
 
 
+class OpaqueCandidateIdentityView(nn.Module):
+    """Keep an opaque signature unchanged at one page boundary."""
+
+    schema = EXTERNAL_CAPABILITY_OPAQUE_SIGNATURE_IDENTITY_SCHEMA
+
+    def __init__(self, width: int) -> None:
+        super().__init__()
+        if width < 1:
+            raise ValueError("identity signature view width must be positive")
+        self.width = int(width)
+
+    def forward(self, signatures: torch.Tensor) -> torch.Tensor:
+        if signatures.ndim < 1 or signatures.shape[-1] != self.width:
+            raise ValueError("identity signature rows have the wrong width")
+        if not bool(torch.isfinite(signatures).all()):
+            raise ValueError("identity signature rows must be finite")
+        return signatures
+
+    def configuration(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "width": self.width,
+            "transform": "identity_v1",
+        }
+
+
 class LearnedComputeCandidateScreen(nn.Module):
     """Generalize opaque compute-candidate ordering across novel queries.
 
@@ -637,6 +669,330 @@ class LearnedComputeCandidateScreen(nn.Module):
             outcomes.to(device=logits.device, dtype=logits.dtype),
         )
         return loss, int(outcomes.shape[0])
+
+
+class PageLocalLearnedComputeCandidateScreen(nn.Module):
+    """Route independently represented append-only memory pages.
+
+    Every page owns a learned screen and a symmetric opaque signature view for
+    its query and candidate keys.  A page is exposed only after cumulative
+    scalar-verifier failure opens its gate.  Once open, local rank is converted
+    into a bounded positive margin before appending it to the established
+    route; arbitrary logit scale from one page therefore cannot suppress a
+    later page that has already been authorized.
+
+    The class is memory-side state.  It does not inspect raw modalities,
+    protocol labels, or task identifiers, and it does not decide whether a
+    page is semantically valid.  The caller remains responsible for selecting
+    and activating a representation only after fresh verifier evidence.
+    """
+
+    schema = EXTERNAL_CAPABILITY_PAGE_LOCAL_LEARNED_COMPUTE_SCREEN_SCHEMA
+
+    def __init__(
+        self,
+        query_width: int,
+        key_width: int,
+        *,
+        latent_width: int = 32,
+        hidden: int = 64,
+        base_screen: LearnedComputeCandidateScreen | None = None,
+        base_query_view: nn.Module | None = None,
+        base_key_view: nn.Module | None = None,
+        activation_margin: float = 1.0,
+    ) -> None:
+        super().__init__()
+        if min(query_width, key_width, latent_width, hidden) < 1:
+            raise ValueError("page-local screen dimensions must be positive")
+        if not math.isfinite(activation_margin) or activation_margin <= 0.0:
+            raise ValueError("page-local activation margin must be positive")
+        self.query_width = int(query_width)
+        self.key_width = int(key_width)
+        self.latent_width = int(latent_width)
+        self.hidden = int(hidden)
+        self.activation_margin = float(activation_margin)
+        self.base_screen = base_screen or LearnedComputeCandidateScreen(
+            self.query_width,
+            self.key_width,
+            latent_width=self.latent_width,
+            hidden=self.hidden,
+        )
+        self._validate_screen(self.base_screen, "base screen")
+        self.base_query_view = self._coerce_view(base_query_view, self.query_width)
+        self.base_key_view = self._coerce_view(base_key_view, self.key_width)
+        self.extensions = nn.ModuleList()
+        self.extension_sizes: list[int] = []
+        self.extension_query_views = nn.ModuleList()
+        self.extension_key_views = nn.ModuleList()
+
+    def _validate_screen(
+        self,
+        screen: LearnedComputeCandidateScreen,
+        label: str,
+    ) -> None:
+        if not isinstance(screen, LearnedComputeCandidateScreen):
+            raise TypeError(f"{label} must be a learned compute screen")
+        if (
+            screen.query_width != self.query_width
+            or screen.key_width != self.key_width
+            or screen.latent_width != self.latent_width
+            or screen.hidden != self.hidden
+        ):
+            raise ValueError(f"{label} dimensions do not match page-local screen")
+
+    @staticmethod
+    def _coerce_view(view: nn.Module | None, width: int) -> nn.Module:
+        if view is None:
+            return OpaqueCandidateIdentityView(width)
+        if not isinstance(view, nn.Module):
+            raise TypeError("page-local signature views must be modules")
+        view_width = getattr(view, "width", None)
+        if view_width != width:
+            raise ValueError("page-local signature view width does not match input")
+        return view
+
+    @staticmethod
+    def _view_configuration(view: nn.Module) -> dict[str, object]:
+        configuration = getattr(view, "configuration", None)
+        if callable(configuration):
+            return configuration()
+        return {"transform": view.__class__.__name__}
+
+    @staticmethod
+    def _apply_view(
+        view: nn.Module,
+        values: torch.Tensor,
+        width: int,
+        label: str,
+    ) -> torch.Tensor:
+        if values.ndim < 1 or values.shape[-1] != width:
+            raise ValueError(f"{label} has the wrong raw signature width")
+        viewed = view(values)
+        if viewed.shape != values.shape:
+            raise ValueError(f"{label} must preserve signature shape")
+        if not bool(torch.isfinite(viewed).all()):
+            raise ValueError(f"{label} produced non-finite signatures")
+        return viewed
+
+    def append_extension(
+        self,
+        candidate_count: int,
+        *,
+        screen: LearnedComputeCandidateScreen | None = None,
+        query_view: nn.Module | None = None,
+        key_view: nn.Module | None = None,
+    ) -> int:
+        """Append one independently represented page.
+
+        A caller may provide a representation-matched prior screen.  The
+        screen is copied by the caller before this method if copy-on-write
+        semantics are desired; this method only registers the page boundary.
+        """
+
+        if candidate_count < 1:
+            raise ValueError("page-local extension candidate count must be positive")
+        page_screen = screen or LearnedComputeCandidateScreen(
+            self.query_width,
+            self.key_width,
+            latent_width=self.latent_width,
+            hidden=self.hidden,
+        )
+        self._validate_screen(page_screen, "extension screen")
+        self.extensions.append(page_screen)
+        self.extension_sizes.append(int(candidate_count))
+        self.extension_query_views.append(
+            self._coerce_view(query_view, self.query_width)
+        )
+        self.extension_key_views.append(self._coerce_view(key_view, self.key_width))
+        return len(self.extensions) - 1
+
+    def enable_base(self) -> None:
+        self.base_screen.enable()
+
+    def enable_extension(self, index: int) -> None:
+        self.extensions[index].enable()
+
+    def freeze_base(self) -> None:
+        for parameter in self.base_screen.parameters():
+            parameter.requires_grad_(False)
+
+    def initialize_extension_from_template(
+        self,
+        index: int,
+        template: LearnedComputeCandidateScreen,
+        *,
+        mode: Literal["full", "query_path"] = "full",
+        prior_strength: float = 1.0,
+    ) -> None:
+        """Copy a representation-matched template into one page."""
+
+        if mode not in ("full", "query_path"):
+            raise ValueError("page-local prior mode must be full or query_path")
+        if not math.isfinite(prior_strength) or not 0.0 <= prior_strength <= 1.0:
+            raise ValueError("page-local prior strength must lie in [0, 1]")
+        self._validate_screen(template, "page-local prior template")
+        extension = self.extensions[index]
+        extension_state = extension.state_dict()
+        template_state = template.state_dict()
+        prefixes: tuple[str, ...] | None = (
+            "query_projection.",
+            "router.query_encoder.",
+        ) if mode == "query_path" else None
+        for name, fresh_value in extension_state.items():
+            if name == "enabled" or (
+                prefixes is not None and not name.startswith(prefixes)
+            ):
+                continue
+            inherited = template_state[name].detach().to(device=fresh_value.device)
+            if prior_strength == 1.0:
+                extension_state[name] = inherited.clone()
+            elif prior_strength > 0.0:
+                extension_state[name] = torch.lerp(
+                    fresh_value,
+                    inherited,
+                    prior_strength,
+                )
+        extension.load_state_dict(extension_state, strict=True)
+        extension.enabled.fill_(False)
+
+    def _validate_extension_inputs(
+        self,
+        query: torch.Tensor,
+        extension_keys: torch.Tensor,
+        failed_extensions: torch.Tensor | bool | None,
+    ) -> torch.Tensor:
+        if extension_keys.ndim == 2:
+            extension_keys = extension_keys.unsqueeze(0).expand(query.shape[0], -1, -1)
+        expected = sum(self.extension_sizes)
+        if (
+            extension_keys.ndim != 3
+            or extension_keys.shape[0] != query.shape[0]
+            or extension_keys.shape[1] != expected
+            or extension_keys.shape[2] != self.key_width
+        ):
+            raise ValueError(
+                "page-local extension keys must have shape "
+                f"[batch, {expected}, {self.key_width}] or "
+                f"[{expected}, {self.key_width}]"
+            )
+        if (
+            failed_extensions is not None
+            and not isinstance(failed_extensions, bool)
+            and failed_extensions.shape != (query.shape[0], len(self.extensions))
+        ):
+            raise ValueError("failed_extensions must have page-local gate shape")
+        return extension_keys
+
+    def forward(
+        self,
+        query: torch.Tensor,
+        base_keys: torch.Tensor,
+        extension_keys: torch.Tensor | None = None,
+        failed_extensions: torch.Tensor | bool | None = None,
+    ) -> torch.Tensor:
+        """Return base and page-local extension scores."""
+
+        base_query = self._apply_view(
+            self.base_query_view,
+            query,
+            self.query_width,
+            "base query view",
+        )
+        base_keys = self._apply_view(
+            self.base_key_view,
+            base_keys,
+            self.key_width,
+            "base key view",
+        )
+        scores = self.base_screen(base_query, base_keys)
+        if not self.extensions:
+            if extension_keys is not None or failed_extensions is not None:
+                raise ValueError("page gates require at least one extension")
+            return scores
+        if extension_keys is None:
+            raise ValueError("page-local extension keys are required")
+        extension_keys = self._validate_extension_inputs(
+            query,
+            extension_keys,
+            failed_extensions,
+        )
+        if failed_extensions is None:
+            failures = torch.zeros(
+                query.shape[0],
+                len(self.extensions),
+                dtype=torch.bool,
+                device=query.device,
+            )
+        elif isinstance(failed_extensions, bool):
+            failures = torch.full(
+                (query.shape[0], len(self.extensions)),
+                failed_extensions,
+                dtype=torch.bool,
+                device=query.device,
+            )
+        else:
+            failures = failed_extensions.to(device=query.device, dtype=torch.bool)
+        offset = 0
+        for index, (extension, size, query_view, key_view) in enumerate(
+            zip(
+                self.extensions,
+                self.extension_sizes,
+                self.extension_query_views,
+                self.extension_key_views,
+                strict=True,
+            )
+        ):
+            page_query = self._apply_view(
+                query_view,
+                query,
+                self.query_width,
+                f"extension {index} query view",
+            )
+            page_keys = self._apply_view(
+                key_view,
+                extension_keys[:, offset : offset + size],
+                self.key_width,
+                f"extension {index} key view",
+            )
+            local_scores = extension(page_query, page_keys)
+            local_scores = self.activation_margin + F.log_softmax(
+                local_scores,
+                dim=-1,
+            )
+            stage_failed = failures[:, : index + 1].all(dim=-1)
+            scores = failure_gated_candidate_scores(
+                scores,
+                local_scores,
+                stage_failed,
+            )
+            offset += size
+        return scores
+
+    def configuration(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "query_width": self.query_width,
+            "key_width": self.key_width,
+            "latent_width": self.latent_width,
+            "hidden": self.hidden,
+            "activation_margin": self.activation_margin,
+            "base_screen": self.base_screen.configuration(),
+            "base_query_view": self._view_configuration(self.base_query_view),
+            "base_key_view": self._view_configuration(self.base_key_view),
+            "extension_sizes": tuple(self.extension_sizes),
+            "extension_screens": tuple(
+                extension.configuration() for extension in self.extensions
+            ),
+            "extension_query_views": tuple(
+                self._view_configuration(view) for view in self.extension_query_views
+            ),
+            "extension_key_views": tuple(
+                self._view_configuration(view) for view in self.extension_key_views
+            ),
+            "failure_signal": "cumulative_stage_scalar_verifier_failure_v1",
+            "activation": "page_local_rank_margin_v1",
+            "role": "order_only_fresh_admission_required",
+        }
 
 
 class AppendOnlyLearnedComputeCandidateScreen(nn.Module):
