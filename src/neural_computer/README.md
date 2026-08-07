@@ -892,6 +892,11 @@ all unseen rows, but the source screen loses strict mastery (`0.9271/0.7500`
 known routing). This is the current capacity boundary: source interference
 must be solved before claiming scalable continual growth.
 
+Doubling the bank-26 source budget again to 2048 does not repair replication:
+one seed still has known-target holes despite perfect unseen acquisition. More
+updates are therefore not the current lever; representation and source-router
+interference are.
+
 The next 46-capability fourth-shift pressure test is intentionally rejected:
 late length-14 rows fail stable protection at hidden 256/8,192 updates,
 hidden 512, and an adaptive late-budget control. This is evidence for

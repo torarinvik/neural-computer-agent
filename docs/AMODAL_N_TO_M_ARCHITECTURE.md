@@ -3541,3 +3541,10 @@ known routing falls to `0.9271/0.7500` and strict per-target mastery fails on
 both seeds. The 26-candidate boundary is therefore source-screen capacity and
 interference limited, not append-limited. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_bank26_six_stage_1024_rejected_v1_2026-08-07/`.
+
+Doubling the bank-26 source budget again to 2048 updates still leaves seed
+`69316` with known-target holes at `0.7143`, `0.2857`, and `0.5714`, while
+unseen acquisition remains `1.0000/1.0000`. Seed `69317` passes, so this is
+not a replicated promotion. The result rejects budget scaling as the next
+remedy and points back to representation/interference. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_bank26_six_stage_2048_rejected_v1_2026-08-07/`.
