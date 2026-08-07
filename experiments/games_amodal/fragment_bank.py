@@ -243,6 +243,7 @@ def rollout_family(
     gamma: float,
     egocentric: bool = False,
     encoder=None,
+    per_step_baseline: bool = False,
 ) -> dict[str, torch.Tensor | None]:
     verifier = FamilyVerifier(config, batch_size=batch_size, seed=seed)
     verifier.reset(seed=seed)
@@ -315,9 +316,20 @@ def rollout_family(
     props = None
     if sample:
         advantage = returns.detach()
-        advantage = advantage - (
-            (advantage * mask_matrix).sum() / mask_matrix.sum().clamp_min(1.0)
-        )
+        # A single scalar baseline over all timesteps is badly matched to
+        # discounted returns, which shrink toward the end of an episode:
+        # early steps look good and late steps look bad regardless of the
+        # action taken. Centring PER TIMESTEP removes that bias and is the
+        # cheapest variance reduction available (F33).
+        if per_step_baseline:
+            counts = mask_matrix.sum(dim=0).clamp_min(1.0)
+            baseline = (advantage * mask_matrix).sum(dim=0) / counts
+            advantage = advantage - baseline.unsqueeze(0)
+        else:
+            advantage = advantage - (
+                (advantage * mask_matrix).sum()
+                / mask_matrix.sum().clamp_min(1.0)
+            )
         props = torch.stack(log_props, dim=1)
     return {
         "total_reward": reward_matrix.sum(dim=1),
