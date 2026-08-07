@@ -1307,3 +1307,43 @@ not rare (a curriculum, which F20/F21 showed must preserve the property
 that makes the anchor learnable). The honest recommendation is the
 second: build the curriculum, and stop paying for probes on the
 estimator side.
+
+**F40 (probe 63). A density curriculum solves sparse-first-success where
+errors are survivable — and the game it fails on completes the design
+law.** F39 established that exploration is unreachable from the
+estimator side and that the remedy must be an environment whose first
+success is common, subject to F20/F21 (the learner must perform the
+target act; nothing may be granted on its behalf). Item density is that
+knob: three pairs on the grid make blundering into one likely, one pair
+is the target task, and every stage requires the identical act.
+Scored always on the TARGET task (level 1), never on the easy stage:
+
+| game | cold (critic) | after L3 | after L2 | after L1 |
+| --- | --- | ---: | ---: | ---: |
+| forage 69316 | 0.469 | 0.422 | 0.406 | **0.562** |
+| forage 69317 | 0.281 | 0.469 | 0.516 | **0.594** |
+| intercept 69316 | 0.453 | 0.016 | 0.031 | 0.016 |
+| intercept 69317 | 0.141 | 0.000 | 0.219 | 0.469 |
+
+Forage improves on both seeds and — the part that matters — the SEED
+SPREAD COLLAPSES, from 0.469/0.281 to 0.562/0.594. The seed lottery that
+has gated this program since F25 is, for this game, gone: the
+curriculum does not merely raise the mean, it removes the dependence on
+getting lucky early. This is the first solution to sparse-first-success
+in the program.
+
+Intercept gets worse, and the reason completes the law. Three
+simultaneous fallers give three chances to catch AND three chances to
+miss — and a miss is fatal (-1 and episode end), while a wrong forage
+item is survivable (-1, keep playing). Density therefore raises success
+opportunity and failure opportunity together wherever errors are fatal,
+and the easy stage is harder than the target.
+
+Design law, joining F6 (survivable error) to F20/F21 (curricula must
+preserve what makes the anchor learnable): **a curriculum stage may
+multiply opportunities only where errors are survivable; where failure
+is terminal, density is not an easing knob but a difficulty knob.** For
+fatal-error games the admissible easing axis is the one that lengthens
+the time to commit a fatal mistake — slower dynamics, larger margins —
+not more objects. Intercept's curriculum should vary faller SPEED, not
+faller count, and that is the next probe rather than a rebuttal.
