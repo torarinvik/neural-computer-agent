@@ -204,6 +204,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("candidate-count must be an even number of at least four")
     if min(args.parent_updates, args.screen_updates, args.batch_size, args.audit_count) < 1:
         raise ValueError("all training and audit budgets must be positive")
+    if args.calibration_updates < 0:
+        raise ValueError("calibration-updates must be non-negative")
     if args.batch_size % 2 or args.audit_count % 2:
         raise ValueError("batch-size and audit-count must be even")
     train_count = args.candidate_count - UNSEEN_CANDIDATES
@@ -319,6 +321,42 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         unseen_candidate_targets,
         keys,
     )
+    initial_novel_context_metrics = novel_context_metrics
+    initial_unseen_candidate_metrics = unseen_candidate_metrics
+    calibration_accounting: dict[str, int | float] = {
+        "optimizer_updates": 0,
+        "unique_verifier_bits": 0,
+        "unique_logical_lifetimes": 0,
+        "informative_candidate_pairs": 0,
+        "replayed_examples": 0,
+        "final_loss": 0.0,
+    }
+    if args.calibration_updates:
+        calibration_accounting = _train_screen(
+            screen,
+            parent,
+            grammar,
+            keys,
+            families=unseen_families,
+            updates=args.calibration_updates,
+            batch_size=args.batch_size,
+            seed=args.seed + 80_000,
+            learning_rate=args.learning_rate,
+        )
+        novel_context_metrics = _route_metrics(
+            screen,
+            novel_context_queries,
+            novel_context_targets,
+            keys,
+        )
+        unseen_candidate_metrics = _route_metrics(
+            screen,
+            unseen_candidate_queries,
+            unseen_candidate_targets,
+            keys,
+        )
+    calibrated_novel_context_metrics = novel_context_metrics
+    calibrated_unseen_candidate_metrics = unseen_candidate_metrics
     shuffled_novel_context_metrics = _route_metrics(
         shuffled_screen,
         novel_context_queries,
@@ -366,6 +404,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     )
     parent_digest_after = _digest_core(parent, ())
     chance = 1.0 / args.candidate_count
+    calibration_enabled = args.calibration_updates > 0
     gates = {
         "parent_stable": any(
             float(row["heldout_accuracy"]) >= MASTERY_THRESHOLD
@@ -377,6 +416,16 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "novel_context_beats_cold_start": (
             novel_context_metrics["top1_accuracy"]
             > cold_metrics["top1_accuracy"] + 0.15
+        ),
+        "unseen_candidate_acquired": (
+            calibrated_unseen_candidate_metrics["top1_accuracy"] >= MASTERY_THRESHOLD
+            if calibration_enabled
+            else True
+        ),
+        "known_context_retained_after_calibration": (
+            calibrated_novel_context_metrics["top1_accuracy"] >= MASTERY_THRESHOLD
+            if calibration_enabled
+            else True
         ),
         "candidate_permutation": permuted_accuracy >= MASTERY_THRESHOLD,
         "reward_shuffled_null": (
@@ -402,10 +451,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "train_candidate_count": train_count,
         "known_candidate_count": len(known_families),
         "unseen_candidate_count": len(unseen_families),
+        "calibration_enabled": calibration_enabled,
         "configuration": screen.configuration(),
         "budgets": {
             "parent_updates": args.parent_updates,
             "screen_updates": args.screen_updates,
+            "calibration_updates": args.calibration_updates,
             "batch_size": args.batch_size,
             "audit_count": args.audit_count,
             "key_samples": args.key_samples,
@@ -419,6 +470,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "train_metrics": train_metrics,
         "novel_context_metrics": novel_context_metrics,
         "unseen_candidate_metrics": unseen_candidate_metrics,
+        "initial_novel_context_metrics": initial_novel_context_metrics,
+        "initial_unseen_candidate_metrics": initial_unseen_candidate_metrics,
+        "calibrated_novel_context_metrics": calibrated_novel_context_metrics,
+        "calibrated_unseen_candidate_metrics": calibrated_unseen_candidate_metrics,
         "cold_metrics": cold_metrics,
         "reward_shuffled_training": shuffled_accounting,
         "reward_shuffled_novel_context_metrics": shuffled_novel_context_metrics,
@@ -441,6 +496,18 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "replayed_examples": 0,
             "screen_informative_pairs": training_accounting[
                 "informative_candidate_pairs"
+            ],
+            "calibration_optimizer_updates": calibration_accounting[
+                "optimizer_updates"
+            ],
+            "calibration_unique_verifier_bits": calibration_accounting[
+                "unique_verifier_bits"
+            ],
+            "calibration_unique_logical_lifetimes": calibration_accounting[
+                "unique_logical_lifetimes"
+            ],
+            "calibration_replayed_examples": calibration_accounting[
+                "replayed_examples"
             ],
         },
         "controls": {
@@ -470,6 +537,12 @@ def main() -> None:
     parser.add_argument("--candidate-count", type=int, default=DEFAULT_CANDIDATES)
     parser.add_argument("--parent-updates", type=int, default=64)
     parser.add_argument("--screen-updates", type=int, default=512)
+    parser.add_argument(
+        "--calibration-updates",
+        type=int,
+        default=0,
+        help="fresh-outcome updates for candidates that had no positive evidence",
+    )
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--audit-count", type=int, default=96)
     parser.add_argument("--key-samples", type=int, default=16)
@@ -489,6 +562,9 @@ def main() -> None:
                 "promoted": report["promoted"],
                 "novel_context_metrics": report["novel_context_metrics"],
                 "unseen_candidate_metrics": report["unseen_candidate_metrics"],
+                "calibrated_unseen_candidate_metrics": report[
+                    "calibrated_unseen_candidate_metrics"
+                ],
                 "cold_metrics": report["cold_metrics"],
                 "candidate_permutation_accuracy": report[
                     "candidate_permutation_accuracy"

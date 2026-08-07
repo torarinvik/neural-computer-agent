@@ -759,6 +759,11 @@ reload, frozen-core, and reward-shuffled null controls. Outcome-unseen
 candidates remain a deliberate cold-start failure. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_opaque_novel_context_replicated_promoted_v1_2026-08-07/`.
 
+A direct fresh-outcome calibration of two unseen candidates acquires them at
+`1.0000` but collapses known-candidate routing to `0.2083/0.2500`; this is a
+rejected shared-screen mutation. The next design must append isolated screen
+state and preserve the frozen prior screen.
+
 The next 46-capability fourth-shift pressure test is intentionally rejected:
 late length-14 rows fail stable protection at hidden 256/8,192 updates,
 hidden 512, and an adaptive late-budget control. This is evidence for

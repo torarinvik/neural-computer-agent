@@ -3327,3 +3327,14 @@ general continual learning. Evidence is in
 A matched registry-family control fails the novel-context and candidate
 permutation gates at `0.2500`; representation transfer across family
 distributions remains open.
+
+## Shared-screen unseen-candidate calibration rejected (2026-08-07)
+
+Applying fresh outcomes for two previously unseen candidates directly to the
+shared learned screen acquires them at `1.0000` across both seeds, but known
+candidate routing falls from `1.0000` to `0.2083/0.2500` and candidate
+permutation fails. The frozen controller is unaffected, but the external
+screen itself catastrophically forgets. This rejects shared screen mutation
+as the acquisition mechanism; the next boundary must append isolated screen
+state and gate its activation. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_calibration_rejected_v1_2026-08-07/`.
