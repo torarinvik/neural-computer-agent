@@ -3432,3 +3432,14 @@ boundary. No universal strength is promoted: the result establishes a safe
 escape mechanism for harmful inherited basins and leaves prior selection as
 an external evidence-driven policy problem. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_prior_strength_boundary_v1_2026-08-07/`.
+
+The same append boundary then scales the opaque bank from ten to fourteen
+candidates: eight mastered base rows and six outcome-unseen rows split across
+three isolated two-candidate stages. At 32 calibration updates per stage,
+both fresh and full query-prior initialization pass both seeds with unseen
+routing of `1.0000/0.8333` and `1.0000/0.9063`, respectively. Retention,
+stage-local permutation, reload, frozen-core, reward-shuffled, and zero-replay
+gates pass. Because fresh initialization also passes, this promotes bounded
+cardinality scaling rather than prior efficiency or unrestricted continual
+learning. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_append_only_bank14_three_stage_32_promoted_v1_2026-08-07/`.

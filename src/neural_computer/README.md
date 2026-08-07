@@ -816,6 +816,14 @@ is not a universal default: it loses one seed on the earlier two-stage
 and makes negative transfer measurable rather than silently baked in. See
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_prior_strength_boundary_v1_2026-08-07/`.
 
+The append screen now also passes a fourteen-candidate, three-stage bank at
+32 updates per stage, with six new candidates split two per isolated stage.
+Both fresh and query-prior controls pass, so this is evidence of bounded bank
+scaling rather than a transfer advantage. The next pressure test is deeper
+sequential growth, where calibration cost and retention must compound without
+replay. See
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_append_only_bank14_three_stage_32_promoted_v1_2026-08-07/`.
+
 The next 46-capability fourth-shift pressure test is intentionally rejected:
 late length-14 rows fail stable protection at hidden 256/8,192 updates,
 hidden 512, and an adaptive late-budget control. This is evidence for
