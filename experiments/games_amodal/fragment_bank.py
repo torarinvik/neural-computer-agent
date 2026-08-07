@@ -107,12 +107,13 @@ def battery_suite() -> tuple[list[FamilyConfig], list[FamilyConfig]]:
     complexity is added only after the architecture survives quantity.
     `dualBD` is held out as the standing novel-recombination probe.
 
-    Membership is calibrated, not aspirational: solo ceilings at the fast
-    budget (300 updates, batch 16, steps 24, seed 69316) are choice 1.00,
-    dualAC 1.00, dualAD 0.69, dualBC 0.72, avoid 0.92 — but forage
-    0.05-0.08 and collect 0.02. The latter test motor acquisition, not
-    memory, and a transfer ratio over a near-zero denominator is noise;
-    they rejoin when budgets grow.
+    Membership is calibrated, not aspirational: decision games clear
+    their fast-budget solo ceilings directly (choice 1.00, dualAC 1.00,
+    dualAD 0.69, dualBC 0.72, avoid 0.92); the motor games join under
+    egocentric rendering, which broke the translation-invariance wall
+    (F22: forage 0.03 -> 0.45, collect -> 0.55, intercept -> 0.31 at 500
+    updates). navigate stays out: 0.14 even egocentrically (wall
+    geometry suffers under the toroidal roll).
     """
 
     train = [
@@ -122,6 +123,10 @@ def battery_suite() -> tuple[list[FamilyConfig], list[FamilyConfig]]:
         FamilyConfig(dual=1, inverted2=True, name="dualAD"),
         FamilyConfig(dual=1, inverted=True, name="dualBC"),
         FamilyConfig(avoid=1, name="avoid1"),
+        FamilyConfig(forage=1, name="forageA"),
+        FamilyConfig(forage=1, inverted=True, name="forageB"),
+        FamilyConfig(collect=1, name="collect1"),
+        FamilyConfig(intercept=1, name="intercept1"),
     ]
     holdout = [
         FamilyConfig(dual=1, inverted=True, inverted2=True, name="dualBD"),
