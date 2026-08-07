@@ -251,6 +251,7 @@ def rollout_family(
     novelty_weight: float = 0.0,
     outcome_novelty: OutcomeNovelty | None = None,
     outcome_weight: float = 0.0,
+    gae_lambda: float = -1.0,
 ) -> dict[str, torch.Tensor | None]:
     verifier = FamilyVerifier(config, batch_size=batch_size, seed=seed)
     verifier.reset(seed=seed)
@@ -353,7 +354,27 @@ def rollout_family(
     props = None
     if sample:
         advantage = returns.detach()
-        if value_trace is not None:
+        if value_trace is not None and gae_lambda >= 0.0:
+            # Generalised advantage estimation (F38): the Monte-Carlo
+            # return is unbiased but carries the variance of the whole
+            # remaining episode. Bootstrapping through the critic and
+            # decaying by lambda trades a little bias for a large
+            # variance reduction -- the direction F38 identified after
+            # every variance-INCREASING intervention failed.
+            detached = value_trace.detach()
+            next_value = torch.cat(
+                [detached[:, 1:], torch.zeros_like(detached[:, :1])], dim=1
+            )
+            deltas = shaped + gamma * next_value - detached
+            advantage = torch.zeros_like(deltas)
+            running_advantage = torch.zeros_like(deltas[:, 0])
+            for position in range(deltas.shape[1] - 1, -1, -1):
+                running_advantage = (
+                    deltas[:, position]
+                    + gamma * gae_lambda * running_advantage
+                )
+                advantage[:, position] = running_advantage
+        elif value_trace is not None:
             # State-dependent baseline: the critic explains away how good
             # the SITUATION was, leaving the gradient to speak about the
             # ACTION. This is what a scalar or per-timestep baseline

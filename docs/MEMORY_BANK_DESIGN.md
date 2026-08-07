@@ -1264,3 +1264,46 @@ estimator: the critic generalised (per-action baselines, advantage
 estimation over multiple steps), or off-policy reuse of the rare
 successes once they occur, which extracts more signal per success
 instead of shouting louder about it.
+
+**F39 (probes 61-62). Generalised advantage estimation does not rescue
+the exploration-limited games, and the variance account needs
+qualifying: the critic's win is a CREDIT-ASSIGNMENT win, not a variance
+win.** F38 predicted that lower-variance estimators were the admissible
+direction. GAE is the standard one, and a lambda sweep with the critic
+in place gives:
+
+| game | critic (MC) | GAE .95 | GAE .5 | GAE 0 |
+| --- | --- | --- | --- | --- |
+| forageA | 0.47 / 0.28 | 0.41 / 0.05 | 0.45 / 0.31 | 0.12 / 0.17 |
+| intercept1 | 0.45 / 0.14 | 0.02 / 0.16 | 0.08 / 0.12 | 0.02 / 0.39 |
+| collect1 | 0.81 / 0.86 | 0.70 / 0.88 | — | — |
+
+Lowering lambda monotonically reduces estimator variance, so F38's law
+predicts monotone improvement. It does not appear: lambda 0.5 roughly
+matches Monte Carlo, and lambda 0 (maximum variance reduction, maximum
+bias) is the worst setting on both games. The bias introduced by
+bootstrapping through a critic that is itself poorly fit on a task the
+policy cannot yet perform costs more than the variance it removes —
+a critic can only explain away states it has seen succeed.
+
+This qualifies F38 rather than overturning it. The correct statement is
+narrower: the critic helped `collect` because collect's failure was
+long-horizon CREDIT ASSIGNMENT, and a state-dependent baseline addresses
+that directly. It was never a general variance result, and the eight-way
+sort by variance was an over-generalisation from one win. Variance
+reduction per se buys nothing on forage and intercept, whose failure is
+that the policy rarely produces a success at all — and no estimator,
+however well conditioned, can lower the variance of a signal that has
+not occurred.
+
+Standing conclusion for acquisition, after ten interventions. There are
+two distinct failures wearing one name. Credit assignment is solved
+where the reward is dense enough to fit a critic (collect: 0.55 ->
+0.81/0.86, both seeds, shipped). Sparse-first-success exploration is
+unsolved and is not reachable from the estimator side at all; it needs
+either a source of successful trajectories the agent did not have to
+discover (inadmissible here) or an environment whose first success is
+not rare (a curriculum, which F20/F21 showed must preserve the property
+that makes the anchor learnable). The honest recommendation is the
+second: build the curriculum, and stop paying for probes on the
+estimator side.
