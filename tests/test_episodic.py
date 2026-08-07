@@ -169,8 +169,18 @@ def test_shared_residual_bank_grows_without_changing_old_slot_or_state() -> None
         "intention": IntentEvent(torch.randn(2, 6)),
         "state": state,
     }
+    slot_adapted, slot_next = bank.step_slot(
+        0,
+        kwargs["event"],
+        kwargs["action"],
+        kwargs["outcome"],
+        intention=kwargs["intention"],
+        state=state.programs[0],
+    )
     adapted, next_state = bank.step(slot_index=0, **kwargs)
 
+    assert torch.equal(slot_adapted.payload, adapted.payload)
+    assert torch.equal(slot_next.context, next_state.programs[0].context)
     assert torch.equal(adapted.payload, kwargs["intention"].payload)
     assert not torch.equal(next_state.programs[0].context, state.programs[0].context)
     assert torch.equal(next_state.programs[1].context, state.programs[1].context)

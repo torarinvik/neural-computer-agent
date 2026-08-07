@@ -792,3 +792,13 @@ and zero-replay gates, but the payload remains linear and inherited target
 transfer is not positive. This is bounded external capacity growth, not
 general continual learning or arbitrary program induction. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_opaque_rule_sequential_slot_growth_ten_source_runtime_generated_replicated_promoted_v1_2026-08-07/`.
+
+`ExternalCapabilitySharedResidualBank` is the compact shared-computation
+candidate. It keeps one frozen context basis and appends isolated residual
+adapters with external recurrent state; old slots and the shared base can be
+protected independently. The registry pair passes replicated fresh-outcome
+retention and exact reload at `0.5556` of independent-slot payload, while
+opaque and third-procedure controls reject. This makes the boundary explicit:
+shared computation works for related procedures, but the residual path still
+needs additional compute capacity for arbitrary new procedures. See
+`session_records/sequence_working_memory_2026-08-02/generated_composition_shared_residual_bank_registry_replicated_boundary_v1_2026-08-07/`.

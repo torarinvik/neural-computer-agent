@@ -341,7 +341,7 @@ class ExternalCapabilitySharedResidualBank(nn.Module):
             batch_size=event.shape[0],
             hidden_sizes=(self.context_hidden,) * self.slot_count,
         )
-        adapted, next_context = self.step_slot(
+        adapted, next_state = self.step_slot(
             slot_index=slot_index,
             event=event,
             action=action,
@@ -351,7 +351,7 @@ class ExternalCapabilitySharedResidualBank(nn.Module):
             present=present,
         )
         next_states = list(state.programs)
-        next_states[slot_index] = ExternalCapabilityState(next_context)
+        next_states[slot_index] = next_state
         return adapted, ExternalCapabilityPipelineState(tuple(next_states))
 
     def step_slot(
@@ -364,7 +364,7 @@ class ExternalCapabilitySharedResidualBank(nn.Module):
         intention: IntentEvent,
         state: ExternalCapabilityState,
         present: torch.Tensor | None = None,
-    ) -> tuple[IntentEvent, torch.Tensor]:
+    ) -> tuple[IntentEvent, ExternalCapabilityState]:
         """Execute one slot using only that slot's externally owned state."""
 
         if slot_index < 0 or slot_index >= self.slot_count:
@@ -390,7 +390,7 @@ class ExternalCapabilitySharedResidualBank(nn.Module):
             present,
         )
         adapted = self.residual_slots[slot_index](intention, context.context)
-        return adapted, next_context
+        return adapted, ExternalCapabilityState(next_context)
 
 
 class ExternalCapabilityPipeline(nn.Module):

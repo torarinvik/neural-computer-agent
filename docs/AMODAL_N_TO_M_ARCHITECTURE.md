@@ -3196,3 +3196,23 @@ transfer did not beat fresh learning, and shared computation, learned
 compression, arbitrary open-ended program induction, and unrestricted growth
 remain unverified. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_opaque_rule_sequential_slot_growth_ten_source_runtime_generated_replicated_promoted_v1_2026-08-07/`.
+
+## Shared-base residual growth boundary (2026-08-07)
+
+`ExternalCapabilitySharedResidualBank` provides a replaceable memory-side
+contract with one shared `EpisodicContextEncoder` and independently frozen
+residual intention adapters. `step_slot` executes one opaque binding using
+only that slot's external recurrent state; `step` preserves all slot states
+in a versioned pipeline state. The shared base can be frozen explicitly before
+adding a slot, and protected residuals can be frozen independently.
+
+The replicated registry audit promotes two related procedures with a `0.5556`
+payload ratio versus independent full programs, exact reload, old-slot
+retention, frozen-core equality, and zero replay. Matched controls reject two
+genuinely opaque random procedures and a third heterogeneous registry
+procedure. Therefore the contract verifies reusable shared computation, but
+also identifies its current limit: an adapter-only residual cannot supply
+arbitrary new sequential computation once the shared basis is frozen. The next
+growth mechanism must add append-only compute capacity or verified compressed
+behavioral summaries without mutating protected capabilities. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_shared_residual_bank_registry_replicated_boundary_v1_2026-08-07/`.

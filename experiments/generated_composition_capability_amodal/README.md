@@ -546,3 +546,28 @@ computation, learned compression, arbitrary program induction, and general
 continual learning remain open. Evidence, including the hard-gate short
 control, is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_opaque_rule_sequential_slot_growth_ten_source_runtime_generated_replicated_promoted_v1_2026-08-07/`.
+
+## Shared-base plus isolated residual growth (2026-08-07)
+
+`train_shared_residual_bank` tests a smaller external memory contract: one
+shared context encoder, one isolated residual slot per acquired procedure, and
+one opaque decoder per slot. The first slot trains the shared basis; later
+slots train only their own residual and decoder after the shared basis and old
+slots are frozen.
+
+```bash
+PYTHONPATH=src uv run python -m experiments.generated_composition_capability_amodal.train_shared_residual_bank \
+  --program-seed 4242 --program-count 3 --primitive-family registry \
+  --source-ids 0 1 --parent-updates 64 --slot-updates 128 \
+  --batch-size 16 --audit-count 64 --retention-probes 4 \
+  --eval-every 32 --torch-threads 1 \
+  --report-out /tmp/shared-residual/report.json
+```
+
+Two seeds promote the related registry pair with exact reload, old-slot
+retention, frozen-core equality, zero replay, and a `0.5556` parameter ratio
+versus independent full programs. The same budget rejects two genuinely
+opaque procedures at `0.6250`, and a third heterogeneous registry procedure
+at `0.5430`. This is verified shared computation over a common learned basis,
+not arbitrary new computation or general continual learning. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_shared_residual_bank_registry_replicated_boundary_v1_2026-08-07/`.
