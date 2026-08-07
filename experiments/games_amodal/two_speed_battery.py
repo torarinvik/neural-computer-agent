@@ -218,6 +218,12 @@ def acquire_game(
 
 def run(args: argparse.Namespace) -> dict[str, object]:
     torch.manual_seed(args.seed)
+    # Acquisition fetches each game's fragments by `oracle_indices`, so the
+    # audit must fetch the same way. Without this, `evaluate_detail` falls
+    # back to the untrained selection logits and scores every game against
+    # fragments it never trained with -- which reads exactly like a failure
+    # to learn, and cost one full battery run to diagnose.
+    args.oracle_selection = True
     train_variants, _ = battery_suite()
     if args.games:
         wanted = set(args.games.split(","))

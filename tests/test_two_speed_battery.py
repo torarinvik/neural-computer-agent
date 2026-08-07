@@ -132,3 +132,26 @@ def test_run_reports_forgetting_against_post_acquisition_scores() -> None:
         )
         assert report["forgetting"][name] == expected
     assert report["worst_forgetting"] == max(report["forgetting"].values())
+
+
+def test_audit_fetches_the_same_fragments_acquisition_trained_with() -> None:
+    """A game must be scored with the fragments it actually learned with.
+
+    Without this the audit silently falls back to untrained selection
+    logits and every game reads as a failure to learn.
+    """
+
+    args = _args(
+        games="choiceA",
+        updates_per_game=1,
+        event_width=16,
+        intent_width=8,
+        feedback_width=8,
+        hidden=8,
+        fragments=8,
+        tokens_per_fragment=2,
+        report_out=None,
+    )
+    assert not hasattr(args, "oracle_selection")
+    run(args)
+    assert args.oracle_selection is True
