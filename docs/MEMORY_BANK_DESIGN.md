@@ -798,3 +798,34 @@ now blocked behind plant acquisition reliability, which is the honest
 next front (wider seeds, optimizer/architecture work on the controller,
 or a convolutional screen driver — F22 showed encoder structure moves
 motor acquisition more than any trainer change).
+
+**F26 (probe 46). The convolutional screen driver is rejected at the
+fast budget: equivariance does not pay for its own optimization cost.**
+Predicted from F22 (the motor wall is translation invariance) and F25
+(encoder structure moves motor acquisition more than trainer changes), a
+two-layer conv frontend should have beaten both the linear driver and
+the egocentric roll. Measured at matched budget (500 updates, seed
+69316), solo ceilings:
+
+| game | linear | egocentric linear | conv |
+| --- | ---: | ---: | ---: |
+| forageA | 0.031 | **0.453** | 0.031 |
+| collect1 | 0.469 | **0.547** | 0.031 |
+| intercept1 | 0.031 | **0.313** | 0.016 |
+| navigate1 | 0.125 | **0.141** | 0.016 |
+
+Conv is worst everywhere — below even the plain linear driver it was
+meant to replace. The mechanism is plausible: the conv stack multiplies
+the frontend's parameter count (16 channels x 64 cells -> event width,
+versus 3 x 64 -> event width) and adds depth, and REINFORCE from scalar
+outcomes is a weak enough signal that the extra optimization burden
+outweighs the structural prior at this budget. The egocentric roll gets
+the same invariance for free because it moves no parameters at all.
+
+Standing lesson, consistent with F20/F21: a structural prior that is
+CORRECT can still lose to a cheaper trick when the learning signal is
+too weak to pay for it. Architecture claims must be settled at the
+budget the program actually runs at, not at the budget where the theory
+is prettiest. The conv driver stays in the codebase behind
+`conv_screen=False` for a future test at larger budgets; the egocentric
+roll remains the promoted motor fix.
