@@ -99,6 +99,14 @@ rung promotes, rejects, or qualifies. Ordered by severity.
     the two have never been composed. Next: replace selection logits with
     the candidate router over event-derived queries.
 
+14. **Battery scale is six games; motor games are excluded** — the
+    staggered battery (`staggered_battery_v1_2026-08-07`) holds six
+    decision games at 0.72-1.38x solo ceilings, but forage/collect sit
+    out (solo ceilings 0.02-0.08 at the fast budget) and seed 69317 is
+    softer than 69316 (choiceB 0.72, dualBC 0.84). Next: grow budgets to
+    re-admit the motor games, widen the battery past six, and gate on
+    three seeds.
+
 ## Retired
 
 - **Fragment selection collapse and winner-take-all context competition**
