@@ -225,3 +225,46 @@ Standing rules: fast-iteration probes before full budgets; two seeds
 minimum for promotion; every rung keeps the null/permutation/zero-replay
 gate culture; rejected sub-architectures are archived with evidence like
 everything else.
+
+## Empirical findings log (probe-driven design laws)
+
+Each entry: probe evidence -> design law -> architectural consequence.
+This log is the steering record; the roadmap bends to it.
+
+**F1 (probes 1-2, 2026-08-07). Fragments acquire content exactly where
+observation underdetermines the objective.** With fully observable
+variants (food visible, hazards visible), withheld-bank mastery equaled
+with-bank mastery: the bank was redundant *by construction* and stayed
+empty regardless of ignorance-objective pressure. Consequence: the memory
+bank's value concentrates on hidden objective structure (which twin am I
+in, what am I trying to do, what did the instruction say) — the task
+suite for bank development must contain ambiguity, and any future claim
+that a fragment "stores a skill" must show the withheld-bank collapse.
+
+**F2 (probe 3). Ambiguity is not enough — there must be no passive
+escape.** With ambiguous twins where a risk-free policy (avoid
+everything) satisfied half the suite, the plant converged to that
+attractor and the disambiguation gradient never paid: fragments stayed
+empty while inverted twins hit 0.90 via passivity. Consequence:
+bank-forcing tasks must make ignorance *costly in every variant*
+(passivity scores zero; wrong guesses fatal) — the forage-twin pattern.
+More generally: fragment content forms only when the expected value of
+disambiguation is materially positive under the current policy, which is
+a cold-start condition to design for, not hope for.
+
+**F3 (probe 1 + single-variant diagnostic). The stack works; interleaving
+dilutes.** A single crude variant trains to 0.62 in 300 updates through
+the full stack (shared plant, fragment context, discrete Plackett-Luce
+selection), but six-way interleaving at the same per-variant budget
+produced near-zero acquisition, and staged warm-up only partially
+recovered it. Consequence: bank training needs either larger budgets than
+single-task intuition suggests, curriculum staging, or per-variant
+interference control; and metric design must respect heterogeneous reward
+structures (survival-mastery for purely negative variants).
+
+**F4 (standing, from the externalization line). Ignorance objectives are
+the content-forcing mechanism, but they act on the plant, not the bank.**
+They shape the core to be incompetent without context; they cannot create
+a *reason* for context when the environment already reveals everything
+(F1) or when passivity suffices (F2). All three mechanisms — ignorance
+training, ambiguity, and no-passive-escape — are jointly necessary.
