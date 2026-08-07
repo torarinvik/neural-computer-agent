@@ -3600,3 +3600,15 @@ per-target floors) while unseen acquisition remains perfect. Capacity scaling
 alone is rejected; the next intervention isolates source competition into
 independent pages behind verifier-gated activation. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_page_local_46_hidden128_rejected_v1_2026-08-07/`.
+
+Source competition is now isolated into physical memory pages. Splitting the
+20 protected source rows into two independently trained normalized pages of
+ten, with the second page opened by scalar failure, restores strict 46-
+candidate retention: both seeds pass all 20 known and 26 unseen targets at
+`1.0000/1.0000`, including permutation, null, reload, source-page immutability,
+and zero-replay controls. The run uses 2,496 optimizer updates and 477,696
+verifier bits, versus 3,008 updates and 1,423,872 bits for the unsharded
+page-local control. This promotes bounded source-competition isolation and a
+sample-efficiency gain, not learned page retrieval or general continual
+learning. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_page_local_source_sharded_46_promoted_v1_2026-08-07/`.

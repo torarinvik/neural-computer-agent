@@ -910,6 +910,14 @@ router hidden width or source competition isolation. Hidden width 128 is also
 rejected (`0.8542/0.8021` known, zero per-target floor), so source competition
 isolation is now the preferred intervention.
 
+The source-sharding intervention passes the 46-candidate rung: two normalized
+source pages of ten candidates each plus raw unseen append pages reach strict
+`1.0000/1.0000` known and unseen mastery on both seeds. It reduces the audited
+cost to 2,496 optimizer updates and 477,696 verifier bits, versus 3,008 and
+1,423,872 for the unsharded page-local control. This is a promoted bounded
+source-competition and sample-efficiency result; page retrieval is still
+physical-order based and general continual learning remains unqualified.
+
 The external boundary now includes an appendable, independently freezeable
 `LearnedOpaqueCandidateKeyMemory`. Its first outcome-trained update policies
 are rejected: joint base/key updates cause interference, while extension-only
