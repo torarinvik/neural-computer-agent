@@ -459,3 +459,22 @@ gates passed. It does not yet establish arbitrary program induction, learned
 compression, unrestricted memory growth, or general continual learning.
 Evidence and accounting are in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_opaque_rule_sequential_slot_growth_three_source_strict_isolated_replicated_promoted_v1_2026-08-07/`.
+
+## Strict isolated growth to four opaque procedures (2026-08-07)
+
+The strict slot-binding correction now scales from three to four
+verifier-private eight-step procedures. Across seeds `69316` and `69317`, all
+three staged additions adopted, every source alias retained after reload, and
+the fifth target procedure was admitted into a newly grown physical row and
+reloaded at `1.0000`. Source reload behavior was
+`1.0000/0.9961/1.0000/0.9766` and `1.0000/0.9648/1.0000/0.9844`.
+
+The frozen controller digest, corruption, reversal/recovery, exact-reload,
+and zero-replay gates all passed. The short curriculum control failed
+mastery, while a 1,024-update shared consolidation control still lost the
+third procedure. This confirms that isolated append-only capacity is currently
+the reliable retention mechanism; shared consolidation remains an open
+credit-assignment problem.
+
+Evidence and accounting are archived in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_opaque_rule_sequential_slot_growth_four_source_strict_isolated_replicated_promoted_v1_2026-08-07/`.
