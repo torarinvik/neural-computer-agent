@@ -3548,3 +3548,15 @@ unseen acquisition remains `1.0000/1.0000`. Seed `69317` passes, so this is
 not a replicated promotion. The result rejects budget scaling as the next
 remedy and points back to representation/interference. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_bank26_six_stage_2048_rejected_v1_2026-08-07/`.
+
+A frozen permutation-invariant affine signature normalizer was then tested as
+an upstream representation repair. It restores bank-26 source mastery on both
+seeds, but unseen acquisition falls to `1.0000/0.8854` on the hard seed. A
+dual raw-plus-normalized signature view is worse at `0.9167/0.7396` unseen
+accuracy and also loses known-target mastery. Neither global representation
+change is promoted. The evidence points to page-local representation
+selection with verifier-gated routing, rather than concatenating or replacing
+one address space for every capability. Reports are in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_affine_normalizer_rejected_v1_2026-08-07/`
+and
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_dual_signature_rejected_v1_2026-08-07/`.

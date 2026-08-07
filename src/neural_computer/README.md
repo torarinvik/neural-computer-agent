@@ -881,6 +881,12 @@ seed: it remains `0.8125` with two per-target holes. More extension updates
 are therefore not the next move; the alignment must adapt the candidate key to
 the observed behavioral evidence or use a better learned event signature.
 
+The frozen signature-normalizer contract was tested and rejected as a global
+replacement: it repairs source mastery but harms unseen acquisition, and a
+dual raw-plus-normalized view is worse. Future representation diversity must
+be page-local and verifier-selected, not concatenated into one undifferentiated
+address space.
+
 The external boundary now includes an appendable, independently freezeable
 `LearnedOpaqueCandidateKeyMemory`. Its first outcome-trained update policies
 are rejected: joint base/key updates cause interference, while extension-only

@@ -55,6 +55,9 @@ EXTERNAL_CAPABILITY_APPEND_ONLY_LEARNED_COMPUTE_SCREEN_SCHEMA = (
 EXTERNAL_CAPABILITY_LEARNED_CANDIDATE_KEY_MEMORY_SCHEMA = (
     "neural-computer.external-capability-learned-candidate-key-memory.v1"
 )
+EXTERNAL_CAPABILITY_OPAQUE_SIGNATURE_NORMALIZER_SCHEMA = (
+    "neural-computer.external-capability-opaque-signature-normalizer.v1"
+)
 EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA = (
     "neural-computer.external-capability-slot-binding.v1"
 )
@@ -367,6 +370,80 @@ class LearnedOpaqueCandidateKeyMemory(nn.Module):
             ),
             "learning_signal": "attempted_scalar_verifier_outcome_v1",
             "role": "opaque_address_memory_not_controller_reasoning",
+        }
+
+
+class OpaqueCandidateSignatureNormalizer(nn.Module):
+    """Freeze a permutation-invariant affine transform for opaque signatures.
+
+    The transform is fitted from the current external key set and then applied
+    identically to queries and keys. It changes coordinate scale without
+    assigning semantic meaning to any dimension or candidate row. Fitting is a
+    one-time memory-side operation; appending candidates does not refit or
+    mutate the established address space.
+    """
+
+    schema = EXTERNAL_CAPABILITY_OPAQUE_SIGNATURE_NORMALIZER_SCHEMA
+
+    def __init__(self, width: int, *, epsilon: float = 1e-4) -> None:
+        super().__init__()
+        if width < 1:
+            raise ValueError("signature normalizer width must be positive")
+        if not math.isfinite(epsilon) or epsilon <= 0.0:
+            raise ValueError("signature normalizer epsilon must be positive")
+        self.width = int(width)
+        self.epsilon = float(epsilon)
+        self.register_buffer("mean", torch.zeros(width))
+        self.register_buffer("scale", torch.ones(width))
+        self.register_buffer("fitted", torch.tensor(False, dtype=torch.bool))
+
+    @torch.no_grad()
+    def fit(self, signatures: torch.Tensor) -> None:
+        """Fit once from a finite opaque key set and freeze the statistics."""
+
+        if bool(self.fitted.item()):
+            raise RuntimeError("signature normalizer is already fitted")
+        if (
+            signatures.ndim != 2
+            or signatures.shape[0] < 2
+            or signatures.shape[1] != self.width
+        ):
+            raise ValueError(
+                "signature normalizer fit requires [rows, width] with two rows"
+            )
+        if not bool(torch.isfinite(signatures).all()):
+            raise ValueError("signature normalizer inputs must be finite")
+        mean = signatures.detach().mean(dim=0)
+        centered = signatures.detach() - mean
+        variance = centered.square().mean(dim=0)
+        scale = variance.add(self.epsilon**2).sqrt()
+        self.mean.copy_(mean.to(device=self.mean.device, dtype=self.mean.dtype))
+        self.scale.copy_(scale.to(device=self.scale.device, dtype=self.scale.dtype))
+        self.fitted.fill_(True)
+
+    def forward(self, signatures: torch.Tensor) -> torch.Tensor:
+        """Normalize learned signature rows using frozen set statistics."""
+
+        if not bool(self.fitted.item()):
+            raise RuntimeError("signature normalizer must be fitted before use")
+        if signatures.ndim < 1 or signatures.shape[-1] != self.width:
+            raise ValueError("signature rows have the wrong width")
+        if not bool(torch.isfinite(signatures).all()):
+            raise ValueError("signature rows must be finite")
+        mean = self.mean.to(device=signatures.device, dtype=signatures.dtype)
+        scale = self.scale.to(device=signatures.device, dtype=signatures.dtype)
+        return F.normalize((signatures - mean) / scale, dim=-1)
+
+    def configuration(self) -> dict[str, object]:
+        """Return the versioned frozen-normalization contract."""
+
+        return {
+            "schema": self.schema,
+            "width": self.width,
+            "epsilon": self.epsilon,
+            "fitted": bool(self.fitted.item()),
+            "statistics": "permutation_invariant_key_set_affine_v1",
+            "append_policy": "never_refit_existing_address_space_v1",
         }
 
 

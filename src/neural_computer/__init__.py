@@ -32,6 +32,7 @@ from .capability import (
     EXTERNAL_CAPABILITY_COMPUTE_SCREEN_SCHEMA,
     EXTERNAL_CAPABILITY_LEARNED_CANDIDATE_KEY_MEMORY_SCHEMA,
     EXTERNAL_CAPABILITY_LEARNED_COMPUTE_SCREEN_SCHEMA,
+    EXTERNAL_CAPABILITY_OPAQUE_SIGNATURE_NORMALIZER_SCHEMA,
     EXTERNAL_CAPABILITY_PIPELINE_SCHEMA,
     EXTERNAL_CAPABILITY_RESIDUAL_COMPUTE_SCHEMA,
     EXTERNAL_CAPABILITY_REUSABLE_COMPUTE_SCHEMA,
@@ -52,6 +53,7 @@ from .capability import (
     ExternalComputeCandidateScreen,
     LearnedComputeCandidateScreen,
     LearnedOpaqueCandidateKeyMemory,
+    OpaqueCandidateSignatureNormalizer,
     select_reusable_compute_slot,
 )
 from .capacity import (
@@ -232,6 +234,7 @@ __all__ = [
     "EXTERNAL_CAPABILITY_COMPUTE_SCREEN_SCHEMA",
     "EXTERNAL_CAPABILITY_LEARNED_CANDIDATE_KEY_MEMORY_SCHEMA",
     "EXTERNAL_CAPABILITY_LEARNED_COMPUTE_SCREEN_SCHEMA",
+    "EXTERNAL_CAPABILITY_OPAQUE_SIGNATURE_NORMALIZER_SCHEMA",
     "EXTERNAL_CAPABILITY_PIPELINE_SCHEMA",
     "EXTERNAL_CAPABILITY_RESIDUAL_COMPUTE_SCHEMA",
     "EXTERNAL_CAPABILITY_REUSABLE_COMPUTE_SCHEMA",
@@ -336,6 +339,7 @@ __all__ = [
     "OpaqueAddressRouter",
     "OpaqueAppendOnlyRouteChain",
     "OpaqueCandidateGrowthRouter",
+    "OpaqueCandidateSignatureNormalizer",
     "OpaqueCapacityPlanner",
     "OpaqueConsolidationPolicy",
     "OpaqueProtocolDecoder",

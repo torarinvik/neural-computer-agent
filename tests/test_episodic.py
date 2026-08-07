@@ -23,6 +23,7 @@ from neural_computer import (
     LearnedComputeCandidateScreen,
     LearnedOpaqueCandidateKeyMemory,
     OnlineEpisodicRelationReader,
+    OpaqueCandidateSignatureNormalizer,
     episodic_context_contrastive_loss,
     paired_event_credit_loss,
     select_reusable_compute_slot,
@@ -430,6 +431,23 @@ def test_learned_candidate_key_memory_appends_and_freezes_base() -> None:
     assert memory.configuration()["role"] == (
         "opaque_address_memory_not_controller_reasoning"
     )
+
+
+def test_signature_normalizer_is_fitted_once_and_permutation_invariant() -> None:
+    normalizer = OpaqueCandidateSignatureNormalizer(3)
+    keys = torch.tensor(
+        [[1.0, 0.0, 0.0], [2.0, 0.0, 1.0], [3.0, 1.0, 2.0]]
+    )
+    normalizer.fit(keys)
+    original = normalizer(keys)
+    permuted = normalizer(keys[torch.tensor([2, 0, 1])])
+
+    assert torch.allclose(permuted[torch.tensor([1, 2, 0])], original)
+    assert normalizer.configuration()["append_policy"] == (
+        "never_refit_existing_address_space_v1"
+    )
+    with pytest.raises(RuntimeError, match="already fitted"):
+        normalizer.fit(keys)
 
 
 def test_learned_compute_screen_ranking_loss_uses_only_scalar_outcomes() -> None:

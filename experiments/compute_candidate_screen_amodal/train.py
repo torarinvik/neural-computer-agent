@@ -34,6 +34,7 @@ from neural_computer import (
     AppendOnlyLearnedComputeCandidateScreen,
     LearnedComputeCandidateScreen,
     LearnedOpaqueCandidateKeyMemory,
+    OpaqueCandidateSignatureNormalizer,
 )
 
 EVENT_WIDTH = 32
@@ -42,6 +43,7 @@ DEFAULT_CANDIDATES = 6
 UNSEEN_CANDIDATES = 2
 MASTERY_THRESHOLD = 0.75
 KeySource = torch.Tensor | Callable[[], torch.Tensor]
+QueryTransform = Callable[[torch.Tensor], torch.Tensor]
 
 
 def _digest_module(module: torch.nn.Module) -> str:
@@ -277,6 +279,7 @@ def _train_screen(
     learning_rate: float,
     shuffle_outcomes: bool = False,
     extra_parameters: tuple[torch.nn.Parameter, ...] = (),
+    query_transform: QueryTransform | None = None,
 ) -> dict[str, int | float]:
     parameters = [*screen.parameters(), *extra_parameters]
     optimizer = torch.optim.AdamW(parameters, lr=learning_rate, weight_decay=1e-5)
@@ -293,6 +296,8 @@ def _train_screen(
             batch_families,
             seed=seed + update * 10_007,
         )
+        if query_transform is not None:
+            query = query_transform(query)
         candidate_keys = _resolve_key_source(keys)
         outcomes = _outcomes(batch_families, candidate_keys.shape[0])
         if shuffle_outcomes:
@@ -340,6 +345,7 @@ def _train_append_only_extension(
     learning_rate: float,
     probe_families: list[int] | None = None,
     extra_parameters: tuple[torch.nn.Parameter, ...] = (),
+    query_transform: QueryTransform | None = None,
 ) -> dict[str, int | float]:
     """Train only one appended screen from fresh outcomes for its candidates."""
 
@@ -367,6 +373,8 @@ def _train_append_only_extension(
             batch_families,
             seed=seed + update * 10_007,
         )
+        if query_transform is not None:
+            query = query_transform(query)
         candidate_keys = _resolve_key_source(extension_keys)
         if len(families) == 1:
             outcomes = torch.tensor(
@@ -440,6 +448,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("append-only-stages must be positive")
     if args.append_only_inherit_base and args.append_only_prior_mode != "none":
         raise ValueError("choose one append-only prior mode")
+    if args.normalize_candidate_signatures and args.dual_candidate_signatures:
+        raise ValueError("choose normalized or dual candidate signatures")
     if not 0.0 <= args.append_only_prior_strength <= 1.0:
         raise ValueError("append-only-prior-strength must lie in [0, 1]")
     append_only_prior_mode = (
@@ -495,11 +505,28 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         seed=args.seed + 20_000,
         samples_per_candidate=args.key_samples,
     )
+    raw_keys = keys.detach().clone()
+    signature_normalizer = None
+    query_transform: QueryTransform | None = None
+    if args.normalize_candidate_signatures:
+        signature_normalizer = OpaqueCandidateSignatureNormalizer(EVENT_WIDTH)
+        signature_normalizer.fit(keys)
+        keys = signature_normalizer(keys).detach()
+        query_transform = signature_normalizer
+    elif args.dual_candidate_signatures:
+        signature_normalizer = OpaqueCandidateSignatureNormalizer(EVENT_WIDTH)
+        signature_normalizer.fit(keys)
+        keys = torch.cat((keys, signature_normalizer(keys)), dim=-1).detach()
+
+        def query_transform(query: torch.Tensor) -> torch.Tensor:
+            return torch.cat((query, signature_normalizer(query)), dim=-1)
+
+    screen_width = int(keys.shape[-1])
     key_source: KeySource = keys
     key_parameters: tuple[torch.nn.Parameter, ...] = ()
     screen = LearnedComputeCandidateScreen(
-        EVENT_WIDTH,
-        EVENT_WIDTH,
+        screen_width,
+        screen_width,
         latent_width=args.latent_width,
         hidden=args.screen_hidden,
     )
@@ -514,11 +541,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         seed=args.seed + 30_000,
         learning_rate=args.learning_rate,
         extra_parameters=key_parameters,
+        query_transform=query_transform,
     )
     keys = _resolve_key_source(key_source).detach()
     shuffled_screen = LearnedComputeCandidateScreen(
-        EVENT_WIDTH,
-        EVENT_WIDTH,
+        screen_width,
+        screen_width,
         latent_width=args.latent_width,
         hidden=args.screen_hidden,
     )
@@ -536,6 +564,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         learning_rate=args.learning_rate,
         shuffle_outcomes=True,
         extra_parameters=shuffled_key_parameters,
+        query_transform=query_transform,
     )
     shuffled_keys = _resolve_key_source(shuffled_key_source).detach()
     train_query_families = [
@@ -571,6 +600,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     train_targets = torch.tensor(train_query_families)
     novel_context_targets = torch.tensor(novel_context_query_families)
     unseen_candidate_targets = torch.tensor(unseen_candidate_query_families)
+    if query_transform is not None:
+        train_queries = query_transform(train_queries)
+        novel_context_queries = query_transform(novel_context_queries)
+        unseen_candidate_queries = query_transform(unseen_candidate_queries)
     train_metrics = _route_metrics(screen, train_queries, train_targets, keys)
     novel_context_metrics = _route_metrics(
         screen,
@@ -604,8 +637,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         extension_keys = keys[train_count:]
         initial_extension_keys = extension_keys
         append_only_screen = AppendOnlyLearnedComputeCandidateScreen(
-            EVENT_WIDTH,
-            EVENT_WIDTH,
+            screen_width,
+            screen_width,
             latent_width=args.latent_width,
             hidden=args.screen_hidden,
             extension_sizes=tuple(append_stage_sizes),
@@ -624,7 +657,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         start = 0
         for stage_index, extension_size in enumerate(append_stage_sizes):
             stage_key_memory = LearnedOpaqueCandidateKeyMemory(
-                EVENT_WIDTH,
+                screen_width,
                 initial_extension_keys[start : start + extension_size],
             )
             stage_key_memories.append(stage_key_memory)
@@ -651,6 +684,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                         if args.adaptive_key_memory
                         else ()
                     ),
+                    query_transform=query_transform,
                 )
             )
             if args.adaptive_key_memory:
@@ -721,6 +755,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             seed=args.seed + 80_000,
             learning_rate=args.learning_rate,
             extra_parameters=key_parameters,
+            query_transform=query_transform,
         )
         novel_context_metrics = _route_metrics(
             screen,
@@ -761,8 +796,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             failed_extensions=False,
         )
     cold_screen = LearnedComputeCandidateScreen(
-        EVENT_WIDTH,
-        EVENT_WIDTH,
+        screen_width,
+        screen_width,
         latent_width=args.latent_width,
         hidden=args.screen_hidden,
     )
@@ -781,15 +816,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     }
     if append_only_screen is None:
         reloaded = LearnedComputeCandidateScreen(
-            EVENT_WIDTH,
-            EVENT_WIDTH,
+            screen_width,
+            screen_width,
             latent_width=args.latent_width,
             hidden=args.screen_hidden,
         )
     else:
         reloaded = AppendOnlyLearnedComputeCandidateScreen(
-            EVENT_WIDTH,
-            EVENT_WIDTH,
+            screen_width,
+            screen_width,
             latent_width=args.latent_width,
             hidden=args.screen_hidden,
             extension_sizes=tuple(append_stage_sizes),
@@ -888,6 +923,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "append_only_stages": args.append_only_stages,
         "append_only_stage_sizes": append_stage_sizes,
         "adaptive_key_memory": args.adaptive_key_memory,
+        "dual_candidate_signatures": args.dual_candidate_signatures,
+        "candidate_signature_width": screen_width,
         "configuration": evaluated_screen.configuration(),
         "budgets": {
             "parent_updates": args.parent_updates,
@@ -904,11 +941,19 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "screen_hidden": args.screen_hidden,
             "latent_width": args.latent_width,
             "adaptive_key_memory": args.adaptive_key_memory,
+            "dual_candidate_signatures": args.dual_candidate_signatures,
+            "candidate_signature_width": screen_width,
         },
         "candidate_key_digest": hashlib.sha256(
             keys.detach().cpu().contiguous().numpy().tobytes()
         ).hexdigest(),
         "candidate_key_diagnostics": candidate_key_diagnostics,
+        "raw_candidate_key_diagnostics": _candidate_key_diagnostics(raw_keys),
+        "candidate_key_normalizer": (
+            signature_normalizer.configuration()
+            if signature_normalizer is not None
+            else None
+        ),
         "training": training_accounting,
         "append_only_training": append_only_training,
         "train_metrics": train_metrics,
@@ -1061,6 +1106,16 @@ def main() -> None:
         "--adaptive-key-memory",
         action="store_true",
         help="train opaque candidate addresses from outcome-only screen losses",
+    )
+    parser.add_argument(
+        "--normalize-candidate-signatures",
+        action="store_true",
+        help="fit a frozen permutation-invariant affine key/query transform",
+    )
+    parser.add_argument(
+        "--dual-candidate-signatures",
+        action="store_true",
+        help="retain raw and normalized opaque key/query views together",
     )
     parser.add_argument("--learning-rate", type=float, default=3e-3)
     parser.add_argument("--torch-threads", type=int, default=None)
