@@ -3236,3 +3236,13 @@ still consume local compute slots and the two-slot payload remains `0.8221` of
 independent full programs. The next bottleneck is verified reuse or
 compression of local compute across later procedures. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_shared_residual_compute_opaque_replicated_promoted_v1_2026-08-07/`.
+
+The residual-compute bank now survives a third opaque procedure. Across seeds
+`69316` and `69317`, all three aliases reload at
+`1.0000/0.8906/1.0000` and `1.0000/0.9023/1.0000`; every prior slot remains
+protected, the shared base remains unchanged, and corruption recovery,
+frozen-core, exact-reload, and zero-replay gates pass. The three-slot payload
+is `0.6740` of independent full programs. This advances the bounded external
+compute boundary but leaves open-ended growth and learned cross-slot
+compression unverified. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_shared_residual_compute_opaque_three_replicated_promoted_v1_2026-08-07/`.

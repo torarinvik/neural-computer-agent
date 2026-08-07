@@ -583,3 +583,11 @@ exact reload, frozen-base, frozen-old-slot, frozen-core, and zero-replay gates
 pass. This is bounded append-only compute growth, not arbitrary open-ended
 computation. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_shared_residual_compute_opaque_replicated_promoted_v1_2026-08-07/`.
+
+The same append-only residual-compute bank then acquires a third opaque
+procedure. Both seeds retain all three after reload at
+`1.0000/0.8906/1.0000` and `1.0000/0.9023/1.0000`; all-slot immutability,
+corruption recovery, frozen-core, and zero-replay gates pass. The three-slot
+payload is `0.6740` of independent full programs. This remains bounded
+external compute growth, not unrestricted continual learning. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_shared_residual_compute_opaque_three_replicated_promoted_v1_2026-08-07/`.

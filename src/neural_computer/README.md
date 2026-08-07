@@ -812,3 +812,10 @@ behavior). This closes the adapter-only capacity failure but remains bounded;
 the next challenge is verified reuse or compression of the local compute
 slots. See
 `session_records/sequence_working_memory_2026-08-02/generated_composition_shared_residual_compute_opaque_replicated_promoted_v1_2026-08-07/`.
+
+The same residual-compute contract now retains three opaque procedures across
+two seeds with reloaded floors `0.8906` and `0.9023` on the middle slot and
+`1.0000` on both outer slots. The append-only local compute slots remain
+isolated; the next challenge is reuse/compression across them rather than
+continued linear growth. See
+`session_records/sequence_working_memory_2026-08-02/generated_composition_shared_residual_compute_opaque_three_replicated_promoted_v1_2026-08-07/`.
