@@ -109,6 +109,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         instruction_width: int,
         *,
         interpreter_hidden: int = 64,
+        operator_mode: str = "factorized_low_rank",
+        operator_rank: int = 8,
         instructions: Iterable[ExternalRegisterInstruction] = (),
     ) -> None:
         super().__init__()
@@ -119,8 +121,11 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             register_width,
             instruction_width,
             interpreter_hidden,
+            operator_rank,
         ) < 1:
             raise ValueError("external register dimensions must be positive")
+        if operator_mode not in ("factorized_low_rank", "unconstrained_mlp"):
+            raise ValueError("unsupported external register operator mode")
         members = tuple(instructions)
         if any(
             instruction.instruction_width != instruction_width
@@ -133,23 +138,43 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         self.register_width = int(register_width)
         self.instruction_width = int(instruction_width)
         self.interpreter_hidden = int(interpreter_hidden)
+        self.operator_mode = operator_mode
+        self.operator_rank = int(operator_rank)
         seed_width = self.event_width + self.action_width + 2 + self.intention_width
         self.input_encoder = nn.Sequential(
             nn.Linear(seed_width, interpreter_hidden),
             nn.GELU(),
             nn.Linear(interpreter_hidden, register_width),
         )
-        transition_width = register_width + instruction_width
-        self.transition = nn.Sequential(
-            nn.Linear(transition_width, interpreter_hidden),
-            nn.GELU(),
-            nn.Linear(interpreter_hidden, register_width),
-        )
-        self.update_gate = nn.Sequential(
-            nn.Linear(transition_width, interpreter_hidden),
-            nn.GELU(),
-            nn.Linear(interpreter_hidden, 1),
-        )
+        if operator_mode == "factorized_low_rank":
+            self.operator_left = nn.Linear(
+                instruction_width,
+                register_width * operator_rank,
+            )
+            self.operator_right = nn.Linear(
+                instruction_width,
+                operator_rank * register_width,
+            )
+            self.operator_bias = nn.Linear(instruction_width, register_width)
+            for module in (
+                self.operator_left,
+                self.operator_right,
+                self.operator_bias,
+            ):
+                nn.init.normal_(module.weight, mean=0.0, std=0.02)
+                nn.init.zeros_(module.bias)
+        else:
+            transition_width = register_width + instruction_width
+            self.transition = nn.Sequential(
+                nn.Linear(transition_width, interpreter_hidden),
+                nn.GELU(),
+                nn.Linear(interpreter_hidden, register_width),
+            )
+            self.update_gate = nn.Sequential(
+                nn.Linear(transition_width, interpreter_hidden),
+                nn.GELU(),
+                nn.Linear(interpreter_hidden, 1),
+            )
         self.output_adapter = nn.Linear(register_width, intention_width)
         nn.init.zeros_(self.output_adapter.weight)
         nn.init.zeros_(self.output_adapter.bias)
@@ -164,6 +189,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "register_width": self.register_width,
             "instruction_width": self.instruction_width,
             "interpreter_hidden": self.interpreter_hidden,
+            "operator_mode": self.operator_mode,
+            "operator_rank": self.operator_rank,
             "instruction_count": len(self.instructions),
             "state": "external_working_register_v1",
             "execution": "shared_interpreter_serial_instruction_chain_v1",
@@ -273,12 +300,44 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             device=register.device,
             dtype=register.dtype,
         )
+        if self.operator_mode == "factorized_low_rank":
+            left = torch.tanh(self.operator_left(code)).reshape(
+                register.shape[0],
+                self.register_width,
+                self.operator_rank,
+            )
+            right = torch.tanh(self.operator_right(code)).reshape(
+                register.shape[0],
+                self.operator_rank,
+                self.register_width,
+            )
+            projected = torch.einsum("br,bkr->bk", register, right)
+            proposal = torch.einsum("bk,brk->br", projected, left)
+            return register + proposal + self.operator_bias(code)
         features = torch.cat((register, code), dim=-1)
         proposal = self.transition(features)
         gate = torch.sigmoid(self.update_gate(features))
         return register + gate * proposal
 
-    def step(
+    def execute_chain(
+        self,
+        register: torch.Tensor,
+        instructions: Iterable[ExternalRegisterInstruction],
+    ) -> torch.Tensor:
+        """Apply a memory-selected instruction chain to a working register."""
+
+        for instruction in instructions:
+            register = self.execute(register, instruction)
+        return register
+
+    def to_intention(self, register: torch.Tensor) -> IntentEvent:
+        """Project a register to the opaque intention transport boundary."""
+
+        if register.ndim != 2 or register.shape[1] != self.register_width:
+            raise ValueError("register has the wrong shape for intention projection")
+        return IntentEvent(self.output_adapter(register))
+
+    def step_register(
         self,
         *,
         event: torch.Tensor,
@@ -287,8 +346,14 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         intention: IntentEvent,
         state: ExternalRegisterState,
         present: torch.Tensor | None = None,
-    ) -> tuple[IntentEvent, ExternalRegisterState]:
-        """Seed once, execute all stored instructions, and return an intention."""
+        instructions: Iterable[ExternalRegisterInstruction] | None = None,
+    ) -> tuple[torch.Tensor, ExternalRegisterState]:
+        """Advance state and return the register for an external decoder.
+
+        ``instructions`` is memory-side program data. It is intentionally a
+        sequence of module objects rather than a task or protocol identifier.
+        The default uses the machine's complete registered chain.
+        """
 
         if present is None:
             present = torch.ones(
@@ -315,11 +380,35 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             state.register,
             torch.where(active, seed, state.register),
         )
-        for instruction in self.instructions:
+        selected = self.instructions if instructions is None else tuple(instructions)
+        for instruction in selected:
             updated = self.execute(register, instruction)
             register = torch.where(active, updated, register)
-        output = IntentEvent(self.output_adapter(register))
-        return output, ExternalRegisterState(
+        return register, ExternalRegisterState(
             register=register,
             initialized=state.initialized | present,
         )
+
+    def step(
+        self,
+        *,
+        event: torch.Tensor,
+        action: torch.Tensor,
+        outcome: torch.Tensor,
+        intention: IntentEvent,
+        state: ExternalRegisterState,
+        present: torch.Tensor | None = None,
+        instructions: Iterable[ExternalRegisterInstruction] | None = None,
+    ) -> tuple[IntentEvent, ExternalRegisterState]:
+        """Seed, execute memory-side instructions, and return an intention."""
+
+        register, next_state = self.step_register(
+            event=event,
+            action=action,
+            outcome=outcome,
+            intention=intention,
+            state=state,
+            present=present,
+            instructions=instructions,
+        )
+        return self.to_intention(register), next_state

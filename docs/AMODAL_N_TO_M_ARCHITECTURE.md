@@ -2457,15 +2457,18 @@ fabricating evidence.
 
 This is the CPU/filesystem foundation needed for compositional capability
 growth, but it is not yet a universal interpreter or a promoted learned
-capability gain. The first causal microdiagnostic reached `1.0000` on both
-primitive instructions but only `0.5000` on their frozen serial composition,
-so it is rejected: the unconstrained nonlinear transition still permits
-whole-function latent codes. The next implementation target is an explicitly
-factorized transition, followed by a held-out rendered-event audit against
-the current whole-program capability bank with fresh, reward-shuffled,
-instruction-ablation, reload, corruption, and frozen-core controls. The
-rejected diagnostic is archived in
-`session_records/sequence_working_memory_2026-08-02/external_register_interpreter_composition_rejected_v1_2026-08-07/`.
+capability gain. The initial unconstrained nonlinear transition reached
+`1.0000` on both primitive instructions but only `0.5000` on their frozen
+serial composition, exposing a whole-function latent-code shortcut. The
+default is now an explicitly factorized transition. In a fixed-codebook
+mechanistic follow-up, separate external decoders retained both primitives at
+`1.0000` and a fresh decoder reached `1.0000` on the serial composition. This
+is a signal, not a promotion: the next required audit uses valid rendered
+amodal events against the current whole-program capability bank with fresh,
+reward-shuffled, missing-evidence, exact-reload, corruption, and frozen-core
+controls. The rejected and positive diagnostics are archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_interpreter_composition_rejected_v1_2026-08-07/` and
+`session_records/sequence_working_memory_2026-08-02/external_register_interpreter_factorized_composition_signal_v1_2026-08-07/`.
 
 ## Unseen external computation and multi-parent retention (2026-08-06)
 

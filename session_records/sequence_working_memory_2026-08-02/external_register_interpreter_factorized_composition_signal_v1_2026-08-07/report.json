@@ -1,0 +1,55 @@
+{
+  "schema": "neural-computer.external-register-factorized-composition.v1",
+  "status": "positive_mechanistic_signal_not_promoted",
+  "claim_boundary": "A factorized shared register interpreter preserved an intermediate across two opaque instructions in a fixed-codebook microdiagnostic; this does not establish rendered-event capability transfer, general program induction, or general continual learning.",
+  "seed": 1214,
+  "event_source": "fixed_random_opaque_event_codebook",
+  "register_machine": {
+    "schema": "neural-computer.external-register.v1",
+    "operator_mode": "factorized_low_rank",
+    "event_width": 16,
+    "action_width": 2,
+    "intention_width": 12,
+    "register_width": 16,
+    "instruction_width": 8,
+    "interpreter_hidden": 64,
+    "instruction_count": 2
+  },
+  "training": {
+    "primitive_zero_updates": 3000,
+    "primitive_one_updates": 3000,
+    "composition_decoder_updates": 1000,
+    "batch_size": 256,
+    "unique_verifier_bits": 3584000,
+    "unique_logical_lifetimes": 1792000,
+    "optimizer_updates": 7000,
+    "replayed_examples": 0,
+    "wall_seconds": 4.1
+  },
+  "results": {
+    "primitive_zero_accuracy": 1.0,
+    "primitive_one_accuracy": 1.0,
+    "old_decoder_retention_after_second_instruction": 1.0,
+    "fresh_composition_decoder_accuracy": 1.0,
+    "stable_bits_to_threshold": null,
+    "retention_on_mastered_primitives": 1.0,
+    "transfer_ratio_against_fresh_learner": null
+  },
+  "gates": {
+    "primitives_mastered": true,
+    "composition_mastered": true,
+    "old_decoder_retained": true,
+    "interpreter_frozen_during_composition_decoder_training": true,
+    "no_replayed_examples": true,
+    "promotion_accepted": false
+  },
+  "missing_controls": [
+    "valid_rendered_amodal_events",
+    "fresh_matched_learner",
+    "reward_shuffled",
+    "missing_evidence",
+    "exact_reload",
+    "memory_corruption"
+  ],
+  "interpretation": "Factorizing the register update and keeping output decoders external removes the specific whole-function shortcut exposed by the preceding rejected diagnostic. The result is a mechanistic signal only until it survives the production control ladder."
+}
