@@ -583,6 +583,42 @@ def test_append_only_learned_screen_can_copy_only_query_prior() -> None:
     assert not bool(screen.extensions[0].enabled.item())
 
 
+def test_append_only_learned_screen_can_blend_query_prior() -> None:
+    torch.manual_seed(23)
+    screen = AppendOnlyLearnedComputeCandidateScreen(
+        query_width=4,
+        key_width=3,
+        latent_width=5,
+        hidden=8,
+        extension_sizes=(1,),
+    )
+    base_state = {
+        name: value.detach().clone()
+        for name, value in screen.base_screen.state_dict().items()
+    }
+    fresh_state = {
+        name: value.detach().clone()
+        for name, value in screen.extensions[0].state_dict().items()
+    }
+
+    screen.initialize_extension_from_base(
+        0,
+        mode="query_path",
+        prior_strength=0.5,
+    )
+    extension_state = screen.extensions[0].state_dict()
+    for prefix in ("query_projection.", "router.query_encoder."):
+        for name in extension_state:
+            if name.startswith(prefix):
+                expected = torch.lerp(fresh_state[name], base_state[name], 0.5)
+                assert torch.equal(extension_state[name], expected)
+    assert all(
+        torch.equal(extension_state[name], fresh_state[name])
+        for name in extension_state
+        if name.startswith(("key_projection.", "router.key_encoder."))
+    )
+
+
 def test_append_only_learned_screen_state_round_trips() -> None:
     screen = AppendOnlyLearnedComputeCandidateScreen(
         query_width=4,

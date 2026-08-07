@@ -3422,3 +3422,13 @@ positive efficiency claim to three stages. Stage-wise calibration/sample
 efficiency is now the bottleneck as sequential depth increases. Evidence and
 the rejected lower-budget controls are in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_append_only_three_stage_boundary_v1_2026-08-07/`.
+
+The inherited query path is now tunable through a copy-on-write prior
+strength. Half-strength transfer repairs the one-seed three-stage failure at
+128 updates (`0.8542/0.9063`), while quarter strength remains unstable
+(`1.0000/0.6667`). However, half strength fails the three-stage 64-update
+boundary and also loses one seed on the earlier mixed two-stage 64-update
+boundary. No universal strength is promoted: the result establishes a safe
+escape mechanism for harmful inherited basins and leaves prior selection as
+an external evidence-driven policy problem. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_prior_strength_boundary_v1_2026-08-07/`.

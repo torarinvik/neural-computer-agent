@@ -382,6 +382,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("append-only-stages must be positive")
     if args.append_only_inherit_base and args.append_only_prior_mode != "none":
         raise ValueError("choose one append-only prior mode")
+    if not 0.0 <= args.append_only_prior_strength <= 1.0:
+        raise ValueError("append-only-prior-strength must lie in [0, 1]")
     append_only_prior_mode = (
         "full" if args.append_only_inherit_base else args.append_only_prior_mode
     )
@@ -543,6 +545,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 append_only_screen.initialize_extension_from_base(
                     stage_index,
                     mode=append_only_prior_mode,
+                    prior_strength=args.append_only_prior_strength,
                 )
         append_only_screen.freeze_base()
         stage_accounting = []
@@ -773,6 +776,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "append_only_enabled": append_only_screen is not None,
         "append_only_inherit_base": args.append_only_inherit_base,
         "append_only_prior_mode": append_only_prior_mode,
+        "append_only_prior_strength": args.append_only_prior_strength,
         "append_only_stages": args.append_only_stages,
         "append_only_stage_sizes": append_stage_sizes,
         "configuration": evaluated_screen.configuration(),
@@ -783,6 +787,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "append_only_stages": args.append_only_stages,
             "append_only_inherit_base": args.append_only_inherit_base,
             "append_only_prior_mode": append_only_prior_mode,
+            "append_only_prior_strength": args.append_only_prior_strength,
             "append_only_stage_sizes": append_stage_sizes,
             "batch_size": args.batch_size,
             "audit_count": args.audit_count,
@@ -924,6 +929,12 @@ def main() -> None:
         choices=("none", "full", "query_path"),
         default="none",
         help="selective copy-on-write prior for new extensions",
+    )
+    parser.add_argument(
+        "--append-only-prior-strength",
+        type=float,
+        default=1.0,
+        help="blend strength for copied append-only prior state",
     )
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--audit-count", type=int, default=96)

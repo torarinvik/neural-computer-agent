@@ -809,6 +809,13 @@ efficiency claim. The immediate bottleneck is stage-wise calibration cost as
 depth grows. Evidence, accounting, and lower-budget controls are in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_append_only_three_stage_boundary_v1_2026-08-07/`.
 
+Append-only prior initialization now accepts a validated strength in `[0, 1]`.
+Half-strength query transfer repairs the three-stage 128-update failure but
+is not a universal default: it loses one seed on the earlier two-stage
+64-update boundary. This keeps prior selection outside the frozen controller
+and makes negative transfer measurable rather than silently baked in. See
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_prior_strength_boundary_v1_2026-08-07/`.
+
 The next 46-capability fourth-shift pressure test is intentionally rejected:
 late length-14 rows fail stable protection at hidden 256/8,192 updates,
 hidden 512, and an adaptive late-budget control. This is evidence for

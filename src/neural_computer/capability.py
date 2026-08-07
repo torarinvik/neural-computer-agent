@@ -507,6 +507,7 @@ class AppendOnlyLearnedComputeCandidateScreen(nn.Module):
         index: int,
         *,
         mode: Literal["full", "query_path"] = "full",
+        prior_strength: float = 1.0,
     ) -> None:
         """Copy selected frozen address structure into one extension.
 
@@ -514,22 +515,32 @@ class AppendOnlyLearnedComputeCandidateScreen(nn.Module):
         updates cannot mutate the base.  The extension remains disabled until
         fresh verifier evidence explicitly enables it.  ``query_path`` copies
         only the learned event-query projections and keeps candidate-key and
-        matching state at fresh initialization.
+        matching state at fresh initialization.  ``prior_strength`` blends
+        copied floating-point state with the extension's fresh initialization,
+        allowing a new extension to escape a harmful inherited basin without
+        mutating the mastered base.
         """
 
         if mode not in ("full", "query_path"):
             raise ValueError("extension prior mode must be full or query_path")
+        if not math.isfinite(prior_strength) or not 0.0 <= prior_strength <= 1.0:
+            raise ValueError("extension prior strength must lie in [0, 1]")
         extension = self.extensions[index]
+        extension_state = extension.state_dict()
+        base_state = self.base_screen.state_dict()
         if mode == "full":
-            extension.load_state_dict(self.base_screen.state_dict(), strict=True)
+            prefixes: tuple[str, ...] | None = None
         else:
-            extension_state = extension.state_dict()
-            base_state = self.base_screen.state_dict()
-            for prefix in ("query_projection.", "router.query_encoder."):
-                for name in extension_state:
-                    if name.startswith(prefix):
-                        extension_state[name] = base_state[name].detach().clone()
-            extension.load_state_dict(extension_state, strict=True)
+            prefixes = ("query_projection.", "router.query_encoder.")
+        for name, fresh_value in extension_state.items():
+            if name == "enabled" or (prefixes is not None and not name.startswith(prefixes)):
+                continue
+            inherited = base_state[name].detach().to(device=fresh_value.device)
+            if prior_strength == 1.0:
+                extension_state[name] = inherited.clone()
+            elif prior_strength > 0.0:
+                extension_state[name] = torch.lerp(fresh_value, inherited, prior_strength)
+        extension.load_state_dict(extension_state, strict=True)
         extension.enabled.fill_(False)
 
     def enable_base(self) -> None:
