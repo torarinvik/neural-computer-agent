@@ -1225,3 +1225,42 @@ routes left are both out of reach without new machinery — outcome-space
 novelty needs verifier structure the learner is denied, and scripted
 bootstrapping injects the rules the discipline withholds. This is a
 genuine architectural limit, not a tuning gap.
+
+**F38 (probe 60). Outcome novelty WAS computable — F37 was wrong about
+that — and it fails too, completing a unifying account of acquisition.**
+F37 claimed novelty over outcomes needed verifier structure the learner
+is denied. That was an error: the reward scalar is already the learner's
+legitimate input, so scarcity over the reward stream is computable from
+it alone. `OutcomeNovelty` does exactly that — count-based bonus over
+reward buckets, signed by the reward so a rare SUCCESS is amplified and
+a rare failure is not, counts persisting across training so scarcity is
+measured over the run. It behaves as designed (63x weight on a rare +1
+versus a common 0) and it does not work:
+
+| game | baseline | critic | critic + outcome novelty |
+| --- | ---: | ---: | ---: |
+| forageA | 0.453 | 0.469 / 0.281 | 0.375 / 0.031 |
+| intercept1 | 0.312 | 0.453 / 0.141 | 0.031 / 0.203 |
+
+Eight interventions now have a single consistent explanation. Sort them
+by their effect on gradient VARIANCE:
+
+* variance-reducing: learned critic — the only win (collect 0.55 ->
+  0.81/0.86, both seeds).
+* variance-neutral: per-timestep baseline, entropy — no effect.
+* variance-increasing: advantage normalisation (amplifies noise while
+  the policy is random), RND (amplifies a signal anti-correlated with
+  engagement), outcome novelty (amplifies rare events into gradient
+  spikes), extra width (a harder landscape) — all harmful, and the more
+  aggressively they amplify, the worse.
+
+The law: on this plant, acquisition is variance-limited, and any
+intervention that adds gradient variance loses more than its signal
+gains — including interventions whose signal is exactly the right one.
+Outcome novelty pays the correct event and still fails, because paying
+it as a large rare bonus is itself the problem. The admissible direction
+is therefore not a better exploration BONUS but a lower-variance
+estimator: the critic generalised (per-action baselines, advantage
+estimation over multiple steps), or off-policy reuse of the rare
+successes once they occur, which extracts more signal per success
+instead of shouting louder about it.

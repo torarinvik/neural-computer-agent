@@ -249,6 +249,8 @@ def rollout_family(
     critic: ValueHead | None = None,
     novelty: NoveltyBonus | None = None,
     novelty_weight: float = 0.0,
+    outcome_novelty: OutcomeNovelty | None = None,
+    outcome_weight: float = 0.0,
 ) -> dict[str, torch.Tensor | None]:
     verifier = FamilyVerifier(config, batch_size=batch_size, seed=seed)
     verifier.reset(seed=seed)
@@ -329,6 +331,18 @@ def rollout_family(
     shaped = reward_matrix
     if bonus_matrix is not None and novelty_weight > 0.0:
         shaped = reward_matrix + novelty_weight * bonus_matrix.detach()
+    outcome_matrix = None
+    if outcome_novelty is not None and outcome_weight > 0.0:
+        # Amplify the scarce outcome. Signed by the reward so a rare
+        # SUCCESS is encouraged and a rare failure is not: the bonus
+        # magnifies what the outcome already says, it does not invent a
+        # direction.
+        outcome_matrix = outcome_novelty(reward_matrix).reshape(
+            reward_matrix.shape
+        )
+        shaped = shaped + outcome_weight * (
+            outcome_matrix * reward_matrix.sign()
+        ).detach()
     returns = torch.zeros_like(reward_matrix)
     running = torch.zeros(batch_size)
     for position in range(shaped.shape[1] - 1, -1, -1):
@@ -382,6 +396,7 @@ def rollout_family(
         ),
         "returns": returns,
         "novelty": bonus_matrix,
+        "outcome_novelty": outcome_matrix,
         "value": value_trace,
         "rule_engagement": (
             torch.tensor(verifier.dual_engagement()) / max(batch_size, 1)
@@ -453,6 +468,53 @@ class NoveltyBonus(torch.nn.Module):
         with torch.no_grad():
             target = self.target(flat)
         return (self.predictor(flat) - target).square().mean(dim=-1)
+
+
+class OutcomeNovelty(torch.nn.Module):
+    """Count-based novelty over OUTCOMES, not observations (F37).
+
+    F37 concluded that trial-structured tasks need novelty over outcomes
+    and that this architecture could not compute it. That was wrong, and
+    the error is worth naming: it assumed outcome novelty needs the
+    verifier's trial structure. It does not. The reward scalar is already
+    the learner's legitimate input, and novelty over the reward stream is
+    computable from it alone -- no rules, no trial identities, nothing
+    the verifier-private discipline withholds.
+
+    The mechanism inverts RND's failure. RND bonused rare OBSERVATIONS,
+    which in these worlds means motion, which is the engagement-collapse
+    pathology. This bonuses rare OUTCOMES, so the first accidental
+    success -- the scarce event the policy must find before it can learn
+    anything -- is amplified precisely while it is rare, and the bonus
+    decays as it becomes routine. It pays the event we want, not the
+    behaviour that avoids it.
+
+    Counts persist across updates, so scarcity is measured over training
+    rather than within one batch. As with RND, the bonus shapes learning
+    only; mastery is scored on the verifier's true reward.
+    """
+
+    def __init__(self, *, buckets: int = 5, span: float = 1.0) -> None:
+        super().__init__()
+        self.span = float(span)
+        self.register_buffer("counts", torch.ones(buckets))
+
+    def bucket(self, reward: torch.Tensor) -> torch.Tensor:
+        slots = self.counts.shape[0]
+        scaled = (reward.clamp(-self.span, self.span) + self.span) / (
+            2 * self.span
+        )
+        return (scaled * (slots - 1)).round().long()
+
+    def forward(self, reward: torch.Tensor) -> torch.Tensor:
+        index = self.bucket(reward)
+        bonus = 1.0 / self.counts[index].sqrt()
+        with torch.no_grad():
+            flat = index.flatten()
+            self.counts.index_add_(
+                0, flat, torch.ones(flat.shape[0], device=self.counts.device)
+            )
+        return bonus
 
 
 class ValueHead(torch.nn.Module):
