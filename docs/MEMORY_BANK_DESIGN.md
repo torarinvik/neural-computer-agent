@@ -660,3 +660,18 @@ bridges (e.g. forage items spawning adjacent first — the choice trial —
 then progressively farther, so the mastered decision skill seeds the
 navigation skill), or (b) plant acquisition work directly. The bank
 itself is not the bottleneck anywhere on the current map.
+
+**F20 (probe 30). Spawn distance is not the bridge — trial structure is.**
+The staged spawn-radius curriculum (r=1 -> 2 -> 4 -> unrestricted, two
+seeds) failed at its FIRST stage: radius-1 forage reaches 0.125, nowhere
+near the choice trial's 1.0, and later stages inherit the rubble (final
+unrestricted 0.02-0.125, vs 0.03 cold). Radius-1 forage is not the
+choice trial: choice FORCES a decision every step (avatar recentred,
+both options adjacent), while forage merely starts items nearby — the
+avatar wanders, the items stay behind, and the engagement collapse of
+F15 returns in motor form. What made choice learnable was never
+proximity; it was that every step is a trial. Consequence: the motor
+bridge must relax the *forcing structure* gradually (recentre every
+step -> every k steps -> never), not the spawn distance. Curricula must
+preserve the property that made the anchor learnable, and that property
+must be identified by ablation (F15's probes), not assumed.
