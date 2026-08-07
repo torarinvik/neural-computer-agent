@@ -3621,3 +3621,16 @@ page-immutability, and zero-replay gates at `1.0000/1.0000`. Accounting is
 competition isolation; page order is still physical and learned page retrieval
 remains open. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_page_local_source_sharded_64_promoted_v1_2026-08-07/`.
+
+The next boundary is now learned page addressing. A router trained only from
+the scalar verifier outcomes of attempted local pages retrieves three
+independently trained normalized source pages at 64 candidates. Both seeds
+reach strict `1.0000` candidate and page retrieval, every target/page is
+mastered, page order can be permuted without loss, reward-shuffled outcomes
+produce the null, reload is exact, the controller is unchanged, and replay is
+zero. Each run uses 2,592 optimizer updates, 221,952 verifier bits, and
+221,568 logical lifetimes. This promotes bounded learned external page
+addressing; arbitrary memory growth, learned representation selection, unseen
+append integration, and general continual learning remain open. Evidence is
+in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_64_promoted_v1_2026-08-07/`.

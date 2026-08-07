@@ -924,6 +924,16 @@ known and unseen mastery plus permutation, null, reload, page-immutability,
 and zero-replay controls. This is a larger bounded isolation result, not yet
 learned page retrieval or general continual learning.
 
+The learned page-router audit closes the next sub-boundary. A frozen external
+router receives a learned query and opaque page summaries, then learns from
+scalar verifier outcomes produced by attempting each local page. At 64
+candidates, both seeds retrieve all three source pages and all 30 source
+candidates at `1.0000`, survive page-order permutation and exact reload, fail
+the reward-shuffled null, and leave the controller byte-identical with zero
+replay. This promotes bounded learned page addressing, not arbitrary memory
+growth or general continual learning. See
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_64_promoted_v1_2026-08-07/`.
+
 The external boundary now includes an appendable, independently freezeable
 `LearnedOpaqueCandidateKeyMemory`. Its first outcome-trained update policies
 are rejected: joint base/key updates cause interference, while extension-only
