@@ -268,3 +268,17 @@ They shape the core to be incompetent without context; they cannot create
 a *reason* for context when the environment already reveals everything
 (F1) or when passivity suffices (F2). All three mechanisms — ignorance
 training, ambiguity, and no-passive-escape — are jointly necessary.
+
+**F5 (probe 5). Simultaneous acquisition of contradictory twins deadlocks
+— the cold-start theorem of context-dependent skill.** Two variants with
+identical observations and opposite required mappings, trained jointly
+from scratch, produced flat-zero learning (0.03-0.05 with 700
+updates/twin, no competing variants): with uninformative fragments the
+conflicting gradients cancel, so competence never forms, so
+disambiguation never pays, so fragments never gain content — a fixed
+point of nothing. Consequence: contradictory contexts must be acquired
+*in stages* — anchor one context to competence with its fragment present,
+then introduce the contradiction so the conflicting gradient has a
+context difference to route through. Curriculum is not an optimization
+nicety for a memory bank; for maximal-conflict content it is the
+bootstrap mechanism itself.
