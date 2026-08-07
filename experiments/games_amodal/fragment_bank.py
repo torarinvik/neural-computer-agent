@@ -471,7 +471,17 @@ def train_bank(
             weights = torch.tensor(
                 [-recent[v.name] for v in active]
             ) / max(args.balance_temperature, 1e-6)
-            index = int(torch.multinomial(F.softmax(weights, dim=-1), 1))
+            probs = F.softmax(weights, dim=-1)
+            # F23: a pure laggard softmax lets hopeless contexts capture
+            # the schedule and starve mastered ones. A uniform floor
+            # guarantees every context a maintenance ration and caps any
+            # single context's share.
+            mix = float(getattr(args, "balance_uniform_mix", 0.0))
+            if mix > 0.0:
+                probs = (1.0 - mix) * probs + mix * torch.full_like(
+                    probs, 1.0 / len(active)
+                )
+            index = int(torch.multinomial(probs, 1))
             config = active[index]
         else:
             config = active[update % len(active)]
