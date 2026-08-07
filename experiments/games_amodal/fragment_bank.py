@@ -247,6 +247,8 @@ def rollout_family(
     normalize_advantage: bool = False,
     combiner: FragmentCombiner | None = None,
     critic: ValueHead | None = None,
+    novelty: NoveltyBonus | None = None,
+    novelty_weight: float = 0.0,
 ) -> dict[str, torch.Tensor | None]:
     verifier = FamilyVerifier(config, batch_size=batch_size, seed=seed)
     verifier.reset(seed=seed)
@@ -261,6 +263,7 @@ def rollout_family(
     decoder: KeypressDecoder = agent.runtime.output_bus.decoders["keypress"]
     rewards, log_props, masks, logits_trace = [], [], [], []
     values: list[torch.Tensor] = []
+    bonuses: list[torch.Tensor] = []
     alive = torch.ones(batch_size, dtype=torch.bool)
     for _ in range(steps):
         if not bool(alive.any()):
@@ -306,6 +309,8 @@ def rollout_family(
         decision = decoder.decide_from_logits(logits, sample=sample)
         logits_trace.append(logits)
         log_props.append(decision.propensity.clamp_min(1e-8).log())
+        if novelty is not None:
+            bonuses.append(novelty(observation))
         outcome = verifier.step(decision.key_index)
         rewards.append(outcome.reward)
         alive = outcome.alive
@@ -318,10 +323,16 @@ def rollout_family(
         state = state.detached() if sample else state
     reward_matrix = torch.stack(rewards, dim=1)
     mask_matrix = torch.stack(masks, dim=1)
+    bonus_matrix = torch.stack(bonuses, dim=1) if bonuses else None
+    # Intrinsic reward shapes the RETURN the policy is trained on; the
+    # verifier's reward alone is what mastery is scored from, below.
+    shaped = reward_matrix
+    if bonus_matrix is not None and novelty_weight > 0.0:
+        shaped = reward_matrix + novelty_weight * bonus_matrix.detach()
     returns = torch.zeros_like(reward_matrix)
     running = torch.zeros(batch_size)
-    for position in range(reward_matrix.shape[1] - 1, -1, -1):
-        running = reward_matrix[:, position] + gamma * running
+    for position in range(shaped.shape[1] - 1, -1, -1):
+        running = shaped[:, position] + gamma * running
         returns[:, position] = running
     value_trace = torch.stack(values, dim=1) if values else None
     advantage = None
@@ -370,6 +381,7 @@ def rollout_family(
             torch.tensor(verifier.dual_accuracy()) if config.dual else None
         ),
         "returns": returns,
+        "novelty": bonus_matrix,
         "value": value_trace,
         "rule_engagement": (
             torch.tensor(verifier.dual_engagement()) / max(batch_size, 1)
@@ -398,6 +410,49 @@ def sample_selection(
         chosen.append(index)
         available[index] = False
     return chosen, log_prob
+
+
+class NoveltyBonus(torch.nn.Module):
+    """Intrinsic reward from observation novelty (F36 residual).
+
+    The critic fixed credit assignment and left the games whose failure
+    is EXPLORATORY: forage and intercept need a rare first success before
+    any learning signal exists, and no variance reduction manufactures a
+    signal that is not there. The admissible fix must not tell the agent
+    the rules -- scripted-expert bootstrapping would inject exactly what
+    the verifier-private discipline withholds.
+
+    Random network distillation supplies exploration from the agent's own
+    stream instead: a frozen random target and a learned predictor, with
+    the prediction error as the bonus. Error is high on observations the
+    agent has rarely seen and falls as it revisits them, so the pressure
+    is to reach new states and then move on. Nothing about the game's
+    rules, objects, or rewards enters -- only how surprising its own
+    screen is.
+
+    The bonus shapes LEARNING only. Mastery is always scored on the
+    verifier's true reward, so an agent cannot score by being surprised.
+    """
+
+    def __init__(self, *, channels: int, height: int, width: int,
+                 features: int = 32) -> None:
+        super().__init__()
+        size = channels * height * width
+        self.target = torch.nn.Sequential(
+            torch.nn.Linear(size, features), torch.nn.Tanh()
+        )
+        for parameter in self.target.parameters():
+            parameter.requires_grad_(False)
+        self.predictor = torch.nn.Sequential(
+            torch.nn.Linear(size, features), torch.nn.Tanh(),
+            torch.nn.Linear(features, features),
+        )
+
+    def forward(self, observation: torch.Tensor) -> torch.Tensor:
+        flat = observation.flatten(start_dim=1)
+        with torch.no_grad():
+            target = self.target(flat)
+        return (self.predictor(flat) - target).square().mean(dim=-1)
 
 
 class ValueHead(torch.nn.Module):

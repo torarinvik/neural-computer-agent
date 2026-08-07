@@ -1188,3 +1188,40 @@ subset of it. The remaining gap is concentrated in games whose failure
 mode is exploratory rather than credit-assignment-shaped, which points
 at the untried lever — supervised bootstrapping from a scripted policy,
 where exploration is supplied rather than discovered.
+
+**F37 (probe 59). Novelty-driven exploration fails here because novelty
+and engagement are in direct conflict.** Random network distillation was
+the admissible exploration lever for the games the critic did not fix
+(F36): intrinsic reward from the agent's own observation stream, no game
+rules injected, bonus shaping learning only while mastery stays scored
+on the verifier's reward. Measured with the critic already in place:
+
+| game | baseline | critic | critic + RND |
+| --- | ---: | ---: | ---: |
+| forageA | 0.453 | 0.469 / 0.281 | 0.500 / 0.109 |
+| intercept1 | 0.312 | 0.453 / 0.141 | **0.000** / 0.141 |
+
+No gain, and intercept collapses to zero on one seed. The mechanism is
+specific and was foreseeable from this program's own findings: in these
+worlds the most novel observations are produced by MOVING — the avatar
+plane changes every step — while reward requires COMMITTING to an item
+and resolving a trial. Novelty therefore pays exactly the wandering that
+F15 and F20 identified as the engagement-collapse failure mode. The
+bonus does not supply the missing first success; it subsidises the
+behaviour that prevents it.
+
+General law: an intrinsic objective must be checked against the task's
+known failure mode, because a generic curiosity signal can be
+anti-correlated with engagement in worlds where the agent's own motion
+dominates observation change. Undirected novelty is the wrong exploration
+prior for trial-structured tasks; what they need is novelty over
+OUTCOMES (which trials have been resolved, and how) rather than over
+observations — a bonus this architecture cannot currently compute,
+because the learner never sees trial structure.
+
+Acquisition status after seven interventions: credit assignment is
+partly solved (critic, F36), exploration is not, and the two admissible
+routes left are both out of reach without new machinery — outcome-space
+novelty needs verifier structure the learner is denied, and scripted
+bootstrapping injects the rules the discipline withholds. This is a
+genuine architectural limit, not a tuning gap.
