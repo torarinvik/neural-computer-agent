@@ -68,6 +68,27 @@ _RUNTIME_PRIMITIVES = (
 _OPAQUE_RULE_PRIMITIVES = tuple(f"rule:{code:02x}" for code in range(256))
 
 
+class _UnsafeArtifactAppend(RuntimeError):
+    """Internal signal for a verifier-rejected append-only growth attempt."""
+
+    def __init__(
+        self,
+        *,
+        phase: int,
+        composition_id: int,
+        action: str,
+        protection_mask: list[bool],
+    ) -> None:
+        super().__init__(
+            "protected append did not select transactional growth: "
+            f"phase={phase}, action={action}, protection_mask={protection_mask}"
+        )
+        self.phase = phase
+        self.composition_id = composition_id
+        self.action = action
+        self.protection_mask = protection_mask
+
+
 def _parse_program_specs(
     specs: list[str] | None,
 ) -> GeneratedCompositionGrammar:
@@ -712,6 +733,133 @@ def _probe_artifact(
     return outcomes
 
 
+def _rejected_append_report(
+    args: argparse.Namespace,
+    failure: _UnsafeArtifactAppend,
+    *,
+    generated_compositions: GeneratedCompositionGrammar,
+    program_source: str,
+    composition_ids: tuple[int, ...],
+    parent,
+    parent_digest_before: str,
+    parent_progress: list[dict[str, float | int]],
+    bank: ExecutableArtifactMemory,
+    artifact_stable: dict[str, int | None],
+    artifact_behavior: dict[str, float],
+    retention: dict[str, list[float]],
+    histories: dict[str, object],
+    started: float,
+) -> dict[str, object]:
+    """Persist a safe rejection when append-only growth lacks protected rows."""
+
+    attempted_artifacts = failure.phase + 1
+    retained_artifacts = failure.phase
+    route_audit_count = max(args.audit_count, args.route_audit_count)
+    parent_digest_after = _digest_core(parent, ())
+    report = {
+        "schema": "neural-computer.generated-composition-artifact-bank-rejection-report.v1",
+        "claim_boundary": (
+            "The verifier rejected append-only artifact growth before route "
+            "training because an unsafe eviction would have been required. "
+            "This is a failed bounded-growth attempt, not a capability result."
+        ),
+        "seed": args.seed,
+        "composition_ids": list(composition_ids),
+        "program_source": program_source,
+        "program_seed": args.program_seed,
+        "primitive_family": args.primitive_family,
+        "program_count": len(generated_compositions),
+        "program_depth": args.program_depth if args.program_seed is not None else None,
+        "composition_programs": [
+            list(generated_compositions[composition_id])
+            for composition_id in composition_ids
+        ],
+        "route_mode": args.route_mode,
+        "base_route_count": args.base_route_count,
+        "parent_updates": args.parent_updates,
+        "artifact_updates": args.artifact_updates,
+        "route_updates": args.route_updates,
+        "batch_size": args.batch_size,
+        "route_batch_size": args.route_batch_size,
+        "audit_count": args.audit_count,
+        "route_audit_count": route_audit_count,
+        "retention_probes": args.retention_probes,
+        "artifact_stable_bits_to_threshold": artifact_stable,
+        "artifact_behavior": artifact_behavior,
+        "retention_outcomes": retention,
+        "route_accuracy": None,
+        "permuted_route_accuracy": None,
+        "cold_start_old_accuracy": None,
+        "shuffled_route_accuracy": None,
+        "shuffled_route_accuracy_samples": [],
+        "reloaded_route_accuracy": None,
+        "physical_rows": len(bank.occupied),
+        "protected_rows": int(bank.protection_mask().sum()),
+        "corruption_rejected": None,
+        "parent_core_digest_before": parent_digest_before,
+        "parent_core_digest_after": parent_digest_after,
+        "core_unchanged": parent_digest_before == parent_digest_after,
+        "histories": histories,
+        "rejection": {
+            "kind": "unsafe_append",
+            "phase": failure.phase,
+            "composition_id": failure.composition_id,
+            "candidate_was_trained": True,
+            "accepted_artifact_count": retained_artifacts,
+            "attempted_artifact_count": attempted_artifacts,
+            "planner_action": failure.action,
+            "protection_mask": failure.protection_mask,
+            "route_training_started": False,
+        },
+        "accounting": {
+            "unique_verifier_bits": (
+                args.parent_updates * args.batch_size * 2
+                + attempted_artifacts
+                * args.artifact_updates
+                * args.batch_size
+                * (SPAN + 6)
+                + retained_artifacts
+                * args.retention_probes
+                * args.audit_count
+                * SPAN
+            ),
+            "unique_logical_lifetimes": (
+                args.parent_updates * args.batch_size
+                + attempted_artifacts * args.artifact_updates * args.batch_size * 2
+                + retained_artifacts * args.retention_probes * args.audit_count
+            ),
+            "optimizer_updates": args.parent_updates
+            + attempted_artifacts * args.artifact_updates,
+            "route_optimizer_updates": 0,
+            "replayed_examples": 0,
+            "replayed_route_examples": 0,
+            "wall_seconds": perf_counter() - started,
+        },
+        "gates": {
+            "parent_stable": _stable_bits(
+                parent_progress,
+                threshold=THRESHOLD,
+                bits_per_update=args.batch_size * 2,
+            )
+            is not None,
+            "all_artifacts_stable": all(
+                value is not None for value in artifact_stable.values()
+            ),
+            "all_artifacts_mastered": bool(artifact_behavior)
+            and min(artifact_behavior.values()) >= THRESHOLD,
+            "all_rows_present": False,
+            "all_rows_protected": False,
+            "append_admission_safe": False,
+            "route_training_started": False,
+            "core_unchanged": parent_digest_before == parent_digest_after,
+            "no_replayed_examples": True,
+        },
+        "promoted": False,
+    }
+    args.report_out.write_text(json.dumps(report, indent=2) + "\n")
+    return report
+
+
 def run(args: argparse.Namespace) -> dict[str, object]:
     started = perf_counter()
     if min(
@@ -838,11 +986,28 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             receipt = lifecycle.admit(key, artifact)
         else:
             plan = lifecycle.plan_admission(key, artifact)
-            if plan.action != "grow" or not all(lifecycle.protection_mask().tolist()):
-                raise RuntimeError(
-                    "protected append did not select transactional growth: "
-                    f"phase={phase_index}, action={plan.action}, "
-                    f"protection_mask={lifecycle.protection_mask().tolist()}"
+            protection_mask = lifecycle.protection_mask().tolist()
+            if plan.action != "grow" or not all(protection_mask):
+                return _rejected_append_report(
+                    args,
+                    _UnsafeArtifactAppend(
+                        phase=phase_index,
+                        composition_id=composition_id,
+                        action=plan.action,
+                        protection_mask=protection_mask,
+                    ),
+                    generated_compositions=generated_compositions,
+                    program_source=program_source,
+                    composition_ids=composition_ids,
+                    parent=parent,
+                    parent_digest_before=parent_digest_before,
+                    parent_progress=parent_progress,
+                    bank=bank,
+                    artifact_stable=artifact_stable,
+                    artifact_behavior=artifact_behavior,
+                    retention=retention,
+                    histories=histories,
+                    started=started,
                 )
             receipt = lifecycle.admit(
                 key,

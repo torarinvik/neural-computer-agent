@@ -512,3 +512,19 @@ credit-assignment problem.
 
 Evidence and accounting are archived in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_opaque_rule_sequential_slot_growth_four_source_strict_isolated_replicated_promoted_v1_2026-08-07/`.
+
+## Learned routing across six growing physical rows (2026-08-07)
+
+The append-only route chain now addresses six runtime-generated opaque
+artifacts stored in six independently protected rows. Across seeds `69316`
+and `69317`, route accuracy, key-permutation accuracy, and reloaded route
+accuracy were all `1.0000`; reward-shuffled routing was `0.0000`, and every
+artifact remained mastered. The controller stayed frozen and replay remained
+zero.
+
+The short control was safely rejected when the capacity planner would have
+needed to evict an unprotected row. The trainer now records this partial
+failure and its accounting instead of crashing. This is the next verified
+address-discovery boundary, not unbounded routing or general continual
+learning. Evidence and accounting are archived in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_opaque_rule_append_only_route_six_runtime_generated_replicated_promoted_v1_2026-08-07/`.
