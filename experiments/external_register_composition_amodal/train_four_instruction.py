@@ -584,7 +584,11 @@ def main() -> None:
     parser.add_argument("--mastery-threshold", type=float, default=0.8)
     parser.add_argument(
         "--operator-mode",
-        choices=("factorized_low_rank", "factorized_film", "factorized_hybrid"),
+        choices=(
+            "factorized_low_rank",
+            "factorized_film",
+            "factorized_hybrid",
+        ),
         default="factorized_low_rank",
     )
     parser.add_argument(

@@ -178,7 +178,10 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             nn.Linear(interpreter_hidden, register_width),
         )
         self.register_write_gate = nn.Linear(write_width, 1)
-        if operator_mode in ("factorized_low_rank", "factorized_hybrid"):
+        if operator_mode in (
+            "factorized_low_rank",
+            "factorized_hybrid",
+        ):
             self.operator_left = nn.Linear(
                 instruction_width,
                 register_width * operator_rank,
@@ -378,7 +381,10 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             device=register.device,
             dtype=register.dtype,
         )
-        if self.operator_mode in ("factorized_low_rank", "factorized_hybrid"):
+        if self.operator_mode in (
+            "factorized_low_rank",
+            "factorized_hybrid",
+        ):
             left = torch.tanh(self.operator_left(code)).reshape(
                 register.shape[0],
                 self.register_width,
