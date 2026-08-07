@@ -3578,3 +3578,11 @@ source page still needs the full source budget. Reports and accounting are in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_page_local_representation_promoted_v1_2026-08-07/`
 and
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_page_local_representation_budget_split_rejected_v1_2026-08-07/`.
+
+Pushing the same page-local budget to 46 candidates—20 protected source rows
+and 26 unseen rows across 13 append stages—replicates a new source boundary:
+both seeds retain `1.0000/1.0000` unseen acquisition but known routing is
+`0.9271` with a `0.4000` per-target floor. Normalized key effective rank rises
+to `11.90/12.87`, so the next remedy is source-router capacity/interference,
+not another global signature transform. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_page_local_46_source_boundary_rejected_v1_2026-08-07/`.

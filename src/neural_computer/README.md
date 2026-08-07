@@ -900,6 +900,11 @@ selection or general continual learning. See
 `experiments/compute_candidate_screen_amodal/train_page_local.py` and the
 promoted/rejected session records.
 
+At 46 candidates, the same page-local boundary retains all 26 unseen rows but
+fails strict source retention at `0.9271/0.4000` on both seeds. Normalized key
+rank is materially higher (`11.90/12.87`), so the next bottleneck is source
+screen capacity/interference rather than another global signature transform.
+
 The external boundary now includes an appendable, independently freezeable
 `LearnedOpaqueCandidateKeyMemory`. Its first outcome-trained update policies
 are rejected: joint base/key updates cause interference, while extension-only
