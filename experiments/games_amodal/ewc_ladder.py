@@ -74,7 +74,8 @@ def train_phase_with_penalties(
 
     set_trainable([agent.controller], True)
     for other in LADDER:
-        set_trainable(agent.game_modules(other), other == game)
+        set_trainable(agent.game_modules(other), False)
+    set_trainable(agent.game_modules(game), True)
     named = controller_named_parameters(agent)
     trainable = trainable_parameters(
         [agent.controller, *agent.game_modules(game)]
