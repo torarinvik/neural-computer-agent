@@ -739,3 +739,21 @@ under a plastic plant currently depends on continued rehearsal through
 the scheduler; the freeze-plant/consolidation path (F14, EWC line) is
 what removes that dependence, and mixed-difficulty batteries are where
 it becomes mandatory rather than optional.
+
+**F24 (probe 37). The uniform floor cures retention; acquisition and
+scheduling are separate axes.** With the floor genuinely wired in (the
+probe-36 no-op is documented in the git log), the F23 decay pathology
+vanished: choiceA 0.19 -> 1.00, dualAC 0.82 -> 0.97, avoid 1.00 — every
+mastered context held under ten-game load. What the floor did not do:
+motor games stayed flat (0.05-0.17 of ceiling) and choiceB was squeezed
+(0.38). Scheduling and acquisition factorize exactly as the ledger
+predicted. The motor residual is not a scheduler problem: ~600 shared
+updates cannot do what 500 dedicated updates barely did (F22
+calibration), and convergent finding #6 says fragments cannot install
+the new computation navigation requires — only the plastic core can.
+Consequence: mixed-difficulty batteries need the architecture's full
+two-speed design — acquire hard games in a protected/solo phase through
+the consolidating core (the promoted EWC/arbitrated line), then bank
+their context — rather than asking joint bank training to do both jobs.
+The battery harness as written co-trains everything; wiring the
+consolidation line into it is the next build.
