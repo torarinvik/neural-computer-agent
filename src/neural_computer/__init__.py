@@ -162,6 +162,13 @@ from .promotion import (
     sha256_files,
     write_promotion_record,
 )
+from .register import (
+    EXTERNAL_REGISTER_INSTRUCTION_SCHEMA,
+    EXTERNAL_REGISTER_SCHEMA,
+    ExternalCapabilityRegisterMachine,
+    ExternalRegisterInstruction,
+    ExternalRegisterState,
+)
 from .retention import (
     RETENTION_LEDGER_SCHEMA,
     CapabilityRetentionLedger,
@@ -204,6 +211,8 @@ __all__ = [
     "EXTERNAL_CAPABILITY_PIPELINE_SCHEMA",
     "EXTERNAL_CAPABILITY_SCHEMA",
     "EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA",
+    "EXTERNAL_REGISTER_INSTRUCTION_SCHEMA",
+    "EXTERNAL_REGISTER_SCHEMA",
     "GROWTH_PRIOR_SCHEMA",
     "HOLDOUT_LEDGER_SCHEMA",
     "INTENTION_SCHEMA",
@@ -262,10 +271,13 @@ __all__ = [
     "ExternalCapabilityPipeline",
     "ExternalCapabilityPipelineState",
     "ExternalCapabilityProgram",
+    "ExternalCapabilityRegisterMachine",
     "ExternalCapabilityState",
     "ExternalGrowthPrior",
     "ExternalMemoryEvictionPolicy",
     "ExternalMemoryWritePolicy",
+    "ExternalRegisterInstruction",
+    "ExternalRegisterState",
     "FactorizedOpaqueAddressRouter",
     "GrowthLoadReceipt",
     "HoldoutLedger",

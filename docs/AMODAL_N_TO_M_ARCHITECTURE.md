@@ -2443,6 +2443,25 @@ policy semantically general, provide distributed transactions, or establish
 general continual learning; route behavior still requires held-out verifier
 and corruption controls.
 
+## Shared external register interpreter (2026-08-07)
+
+The next execution boundary is now explicit in the production package as
+`ExternalCapabilityRegisterMachine`. It separates a fixed learned
+register-to-register interpreter from variable external instruction data:
+each instruction is one opaque persisted vector, and a serial chain applies
+those vectors to an external working register. The first read may use the
+standardized learned event, opaque feedback, and controller intention; later
+instructions receive only the preceding register. The controller and output
+protocol remain unchanged, and quiet ticks preserve register state without
+fabricating evidence.
+
+This is the CPU/filesystem foundation needed for compositional capability
+growth, but it is not yet a universal interpreter or a promoted learned
+capability gain. The next required audit is a held-out composition trained
+from scalar outcomes, with the current whole-program capability bank as the
+baseline and fresh, reward-shuffled, instruction-ablation, reload, corruption,
+and frozen-core controls.
+
 ## Unseen external computation and multi-parent retention (2026-08-06)
 
 The frozen-core transfer harness tested `prefix_parity`, a temporal procedure

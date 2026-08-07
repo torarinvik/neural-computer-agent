@@ -420,6 +420,15 @@ parent-conditioned recurrent boundary across two seeds (`1.333x--1.667x`
 fresh-over-inherited stable-bit transfer) while retaining the parent. This is
 still a narrow transfer result, not general continual learning.
 
+The package also exposes `ExternalCapabilityRegisterMachine`. It is a
+shared learned interpreter over an external working register: capabilities
+are opaque instruction vectors in a variable-length serial chain, not new
+controller branches. Only the initial seed reads standardized learned event
+and feedback tensors plus the opaque controller intention; downstream
+instructions receive the preceding register. This is the implementation
+foundation for future held-out composition audits, not evidence by itself of
+arbitrary program induction or universal computation.
+
 Memory is a replaceable `MemoryBackend` v1 contract. The default
 `ContentAddressedMemory` keeps a bounded content-addressed index in the
 runtime, while `PersistentContentAddressedMemory` atomically snapshots and
