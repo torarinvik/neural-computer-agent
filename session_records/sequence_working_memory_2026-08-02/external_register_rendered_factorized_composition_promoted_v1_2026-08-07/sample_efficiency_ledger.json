@@ -1,0 +1,35 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "status": "promoted_narrow_composition_transfer",
+  "experiment": "external_register_rendered_factorized_composition_promoted_v1_2026-08-07",
+  "entries": [
+    {
+      "seed": 69316,
+      "unique_verifier_bits": 81920,
+      "unique_logical_lifetimes": 10240,
+      "optimizer_updates": 768,
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": 4096,
+      "fresh_stable_bits_to_threshold": 8192,
+      "transfer_ratio_against_fresh_learner": 2.0,
+      "retention_on_mastered_primitives": 0.984375,
+      "reward_shuffled_composition": 0.43359375,
+      "missing_evidence_composition": 0.5,
+      "decision": "promote_bounded_factorized_register_composition_transfer"
+    },
+    {
+      "seed": 69317,
+      "unique_verifier_bits": 81920,
+      "unique_logical_lifetimes": 10240,
+      "optimizer_updates": 768,
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": 4096,
+      "fresh_stable_bits_to_threshold": 8192,
+      "transfer_ratio_against_fresh_learner": 2.0,
+      "retention_on_mastered_primitives": 0.96875,
+      "reward_shuffled_composition": 0.2890625,
+      "missing_evidence_composition": 0.5,
+      "decision": "promote_bounded_factorized_register_composition_transfer"
+    }
+  ]
+}

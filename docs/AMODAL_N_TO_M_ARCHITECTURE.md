@@ -2468,14 +2468,20 @@ recurrent external context so every active event is ingested before
 register-only execution. Across two seeds, reverse retention was
 `0.9844/0.9688`, composition was `0.9844/0.9805`, reward-shuffled composition
 was `0.4336/0.2891`, and matched fresh composition was `0.9492/0.8750`; exact
-reload and frozen-parent controls passed. This remains a signal, not a
-promotion: stable-prefix bits, missing-evidence, corruption, and a full
-fresh-control learning curve are still required. The rejected and positive
-diagnostics are archived in
+reload and frozen-parent controls passed. This was the composition signal;
+the promotion-quality rerun then added stable-prefix bits, missing-evidence,
+and checksum-corruption gates. Both seeds reached stable composition mastery
+at `4,096` bits versus `8,192` for fresh (`2.0x` fresh-over-inherited), so
+the narrow factorized-register composition-transfer claim is promoted. It
+still does not establish unrestricted growth, arbitrary program induction, or
+general continual learning. The rejected and positive diagnostics are archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_interpreter_composition_rejected_v1_2026-08-07/` and
 `session_records/sequence_working_memory_2026-08-02/external_register_interpreter_factorized_composition_signal_v1_2026-08-07/`.
 The rendered replication is archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_rendered_factorized_composition_replicated_signal_v1_2026-08-07/`.
+
+The promoted evidence is in
+`session_records/sequence_working_memory_2026-08-02/external_register_rendered_factorized_composition_promoted_v1_2026-08-07/`.
 
 ## Unseen external computation and multi-parent retention (2026-08-06)
 

@@ -423,11 +423,13 @@ still a narrow transfer result, not general continual learning.
 The package also exposes `ExternalCapabilityRegisterMachine`. It is a
 shared learned interpreter over an external working register: capabilities
 are opaque instruction vectors in a variable-length serial chain, not new
-controller branches. Only the initial seed reads standardized learned event
-and feedback tensors plus the opaque controller intention; downstream
-instructions receive the preceding register. This is the implementation
-foundation for future held-out composition audits, not evidence by itself of
-arbitrary program induction or universal computation.
+controller branches. A recurrent external context reads each standardized
+learned event, opaque feedback record, and controller intention; downstream
+instructions receive only the preceding register. The rendered reverse→
+complement audit promotes a narrow `2.0x` fresh-over-inherited stable-bit
+composition transfer across two seeds with retention, shuffled, missing,
+reload, corruption, frozen-core, and zero-replay controls. It remains a
+bounded result, not arbitrary program induction or general continual learning.
 
 Memory is a replaceable `MemoryBackend` v1 contract. The default
 `ContentAddressedMemory` keeps a bounded content-addressed index in the

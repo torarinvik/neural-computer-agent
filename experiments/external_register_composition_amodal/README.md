@@ -34,3 +34,14 @@ This is retained as a replicated composition signal, not a promotion: stable
 prefix bits, missing-evidence, corruption, and the full fresh control ladder
 remain outstanding. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/external_register_rendered_factorized_composition_replicated_signal_v1_2026-08-07/`.
+
+## Promoted narrow rung (2026-08-07)
+
+The full promotion ladder now passes on seeds 69316 and 69317. Stable
+composition mastery is `4,096` verifier bits for the inherited register path
+versus `8,192` for the matched fresh learner on both seeds (`2.0x`
+fresh-over-inherited). Reverse retention, reward-shuffled, missing-evidence,
+exact reload, checksum-corruption, frozen-parent, and zero-replay gates all
+pass. This promotes bounded factorized register composition and positive
+transfer, not general continual learning. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/external_register_rendered_factorized_composition_promoted_v1_2026-08-07/`.
