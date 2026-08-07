@@ -289,7 +289,8 @@ def train_bank(
             config = variants[index]
         else:
             config = variants[update % len(variants)]
-        if getattr(args, "oracle_selection", False):
+        oracle_phase = update < getattr(args, "oracle_updates", 0)
+        if getattr(args, "oracle_selection", False) or oracle_phase:
             chosen = bank.oracle_indices(
                 config.name, args.fragments_per_variant
             )
@@ -319,6 +320,17 @@ def train_bank(
         baseline[config.name] = 0.9 * previous + 0.1 * outcome_score
         recent[config.name] = 0.9 * recent[config.name] + 0.1 * outcome_score
         selection_loss = -(outcome_score - previous) * selection_log_prob
+        if oracle_phase:
+            # Handover: while the oracle drives selection, train the
+            # learned selector to imitate it, so releasing control does
+            # not discard the assignment the read path formed around.
+            target = torch.zeros_like(bank.selection_logits[config.name])
+            target[chosen] = 1.0 / len(chosen)
+            selection_loss = selection_loss + F.kl_div(
+                F.log_softmax(bank.selection_logits[config.name], dim=-1),
+                target,
+                reduction="sum",
+            )
         if not getattr(args, "oracle_selection", False) and getattr(
             args, "selection_diversity", 0.0
         ) > 0.0:
@@ -633,6 +645,7 @@ def main() -> None:
     parser.add_argument("--balance-temperature", type=float, default=0.25)
     parser.add_argument("--selection-diversity", type=float, default=0.0)
     parser.add_argument("--selection-init-scale", type=float, default=2.0)
+    parser.add_argument("--oracle-updates", type=int, default=0)
     parser.add_argument("--ignorance-every", type=int, default=4)
     parser.add_argument("--ignorance-weight", type=float, default=1.0)
     parser.add_argument("--eval-seeds", type=int, default=4)
