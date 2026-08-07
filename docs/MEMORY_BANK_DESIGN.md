@@ -1120,3 +1120,41 @@ of the one the program HAS demonstrated: super-solo transfer under
 staggered admission (F18, 3/3 seeds), where earlier games measurably
 speed later ones without any fragment recombination. (b) is the honest
 current claim; (a) is the next architecture, not the next probe.
+
+**F35 (probes 55-57). Acquisition does not respond to standard RL
+tuning, and it gets WORSE with capacity — the bottleneck is the
+optimization landscape, not variance or expressiveness.** Four
+independent interventions on the motor games that gate the program
+(F25), all at matched budget, seed 69316 unless noted:
+
+| intervention | forageA | intercept1 | collect1 | c01 |
+| --- | ---: | ---: | ---: | ---: |
+| baseline (h=32) | **0.453** | **0.312** | **0.547** | **1.000** |
+| per-timestep baseline | 0.484 | 0.062 | — | 1.000 |
+| + entropy bonus 0.01 | 0.406 | 0.188 | — | 1.000 |
+| normalized advantage | 0.047 / 0.203 | 0.109 / 0.172 | 0.719 / 0.078 | 0.990 |
+| hidden 64 | 0.031 | 0.078 | — | — |
+| hidden 128 | 0.031 | 0.031 | — | — |
+
+Nothing helps and most things hurt. Advantage normalisation is the
+clearest failure (forage 0.45 -> 0.05): dividing by the deviation
+amplifies pure noise into full-size gradients while the policy is still
+near-random, which is exactly when these games have no signal yet.
+Capacity is the most informative failure: quadrupling the controller
+collapses both motor games, so the constraint is not expressiveness. A
+bigger recurrent policy trained by REINFORCE from scalar outcomes simply
+has a harder landscape to descend.
+
+Taken with the earlier BPTT diagnostic (truncation is not the cause) and
+F22/F28 (encoder structure moves these games more than any trainer
+change), the acquisition constraint is now localised: it is the
+recurrent policy-gradient landscape itself, and it is not reachable by
+the standard levers — baselines, entropy, normalisation, or width. The
+levers that HAVE moved it are all representational (egocentric roll
++0.42 on forage, crop +0.19 on navigate).
+
+Consequence for the roadmap: further acquisition work should be
+representational or algorithmic (a critic/actor-critic, or supervised
+bootstrapping from a scripted policy), not another variance trick. All
+four options remain in the code behind flags, defaulting off, with this
+table as the reason.

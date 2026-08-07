@@ -244,6 +244,7 @@ def rollout_family(
     egocentric: bool = False,
     encoder=None,
     per_step_baseline: bool = False,
+    normalize_advantage: bool = False,
     combiner: FragmentCombiner | None = None,
 ) -> dict[str, torch.Tensor | None]:
     verifier = FamilyVerifier(config, batch_size=batch_size, seed=seed)
@@ -336,6 +337,15 @@ def rollout_family(
                 (advantage * mask_matrix).sum()
                 / mask_matrix.sum().clamp_min(1.0)
             )
+        if normalize_advantage:
+            # A shared plant sees games whose returns differ by an order of
+            # magnitude (a fatal -1, a +1/-0.2 trial, a 48-step forage
+            # total), so per-game gradient magnitudes differ for reasons
+            # that have nothing to do with how much there is to learn.
+            # Scaling to unit deviation equalises them.
+            count = mask_matrix.sum().clamp_min(1.0)
+            variance = (advantage.square() * mask_matrix).sum() / count
+            advantage = advantage / variance.sqrt().clamp_min(1e-6)
         props = torch.stack(log_props, dim=1)
     return {
         "total_reward": reward_matrix.sum(dim=1),
