@@ -139,7 +139,12 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             operator_rank,
         ) < 1:
             raise ValueError("external register dimensions must be positive")
-        if operator_mode not in ("factorized_low_rank", "unconstrained_mlp"):
+        if operator_mode not in (
+            "factorized_low_rank",
+            "factorized_film",
+            "factorized_hybrid",
+            "unconstrained_mlp",
+        ):
             raise ValueError("unsupported external register operator mode")
         if context_width is not None and context_width < 1:
             raise ValueError("context width must be positive")
@@ -173,7 +178,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             nn.Linear(interpreter_hidden, register_width),
         )
         self.register_write_gate = nn.Linear(write_width, 1)
-        if operator_mode == "factorized_low_rank":
+        if operator_mode in ("factorized_low_rank", "factorized_hybrid"):
             self.operator_left = nn.Linear(
                 instruction_width,
                 register_width * operator_rank,
@@ -190,7 +195,25 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             ):
                 nn.init.normal_(module.weight, mean=0.0, std=0.02)
                 nn.init.zeros_(module.bias)
-        else:
+        if operator_mode in ("factorized_film", "factorized_hybrid"):
+            self.operator_feature = nn.Linear(register_width, interpreter_hidden)
+            self.operator_modulation = nn.Linear(
+                instruction_width, interpreter_hidden
+            )
+            self.operator_output = nn.Linear(interpreter_hidden, register_width)
+            self.operator_gate = nn.Linear(interpreter_hidden * 2, 1)
+            if operator_mode == "factorized_film":
+                self.operator_bias = nn.Linear(instruction_width, register_width)
+                nn.init.zeros_(self.operator_bias.bias)
+            else:
+                self.operator_film_bias = nn.Linear(
+                    instruction_width, register_width
+                )
+                nn.init.zeros_(self.operator_output.weight)
+                nn.init.zeros_(self.operator_output.bias)
+                nn.init.zeros_(self.operator_film_bias.weight)
+                nn.init.zeros_(self.operator_film_bias.bias)
+        if operator_mode == "unconstrained_mlp":
             transition_width = register_width + instruction_width
             self.transition = nn.Sequential(
                 nn.Linear(transition_width, interpreter_hidden),
@@ -355,7 +378,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             device=register.device,
             dtype=register.dtype,
         )
-        if self.operator_mode == "factorized_low_rank":
+        if self.operator_mode in ("factorized_low_rank", "factorized_hybrid"):
             left = torch.tanh(self.operator_left(code)).reshape(
                 register.shape[0],
                 self.register_width,
@@ -367,8 +390,25 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 self.register_width,
             )
             projected = torch.einsum("br,bkr->bk", register, right)
-            proposal = torch.einsum("bk,brk->br", projected, left)
-            return register + proposal + self.operator_bias(code)
+            base_proposal = torch.einsum("bk,brk->br", projected, left)
+            if self.operator_mode == "factorized_low_rank":
+                return register + base_proposal + self.operator_bias(code)
+        if self.operator_mode in ("factorized_film", "factorized_hybrid"):
+            features = torch.tanh(self.operator_feature(register))
+            modulation = torch.tanh(self.operator_modulation(code))
+            hidden = features * (1.0 + modulation)
+            bias = (
+                self.operator_bias
+                if self.operator_mode == "factorized_film"
+                else self.operator_film_bias
+            )
+            proposal = self.operator_output(hidden) + bias(code)
+            gate = torch.sigmoid(
+                self.operator_gate(torch.cat((features, modulation), dim=-1))
+            )
+            if self.operator_mode == "factorized_hybrid":
+                return register + base_proposal + gate * proposal
+            return register + gate * proposal
         features = torch.cat((register, code), dim=-1)
         proposal = self.transition(features)
         gate = torch.sigmoid(self.update_gate(features))

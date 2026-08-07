@@ -2539,6 +2539,28 @@ This promotes a bounded read/execute state boundary and three-instruction
 compositional growth. It is not arbitrary program induction, unrestricted
 memory growth, or general continual learning without catastrophic forgetting.
 
+## Four-instruction nonlinear boundary (2026-08-07)
+
+The next runtime-supplied program was
+`reverse -> adjacent_xor -> complement -> prefix_parity`. The canonical
+factorized low-rank interpreter retained reverse, complement, and prefix
+parity, but adjacent-XOR remained at `0.7734` after the registered acquisition
+rung; inherited composition did not beat fresh. A structured factorized FiLM
+operator raised minimum primitive retention to `0.8125`, but inherited and
+fresh composition tied at `12,288` stable bits. A low-rank-plus-zero-initialized
+FiLM hybrid retained all four primitives at `0.9414`, while its serial
+composition remained unstable. A deeper 256-update shared blueprint
+pretraining phase retained primitives at `0.9336` but collapsed inherited
+composition to `0.4805` against fresh `1.0000`.
+
+The controls passed, but no arm passed the positive stable-transfer and
+composition gates. This rejects the four-instruction frontier and the tested
+nonlinear operator variants. It also gives a useful architectural lesson:
+primitive retention and nonlinear expressivity are separable from a stable
+serial algebra. The production default remains the promoted factorized
+low-rank read/execute path. Evidence and accounting are archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_four_instruction_rejected_v1_2026-08-07/`.
+
 ## Unseen external computation and multi-parent retention (2026-08-06)
 
 The frozen-core transfer harness tested `prefix_parity`, a temporal procedure

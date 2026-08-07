@@ -38,6 +38,7 @@ EVENT_WIDTH = 32
 INTENTION_WIDTH = 16
 REGISTER_WIDTH = 32
 INSTRUCTION_WIDTH = 16
+GeneratedCompositionGrammar = tuple[tuple[str, ...], ...]
 
 
 def _batch(
@@ -47,6 +48,7 @@ def _batch(
     span: int,
     seed: int,
     generated_composition_ids: tuple[int, ...] | None = None,
+    generated_compositions: GeneratedCompositionGrammar | None = None,
 ):
     return generate_sequence_memory_batch(
         count,
@@ -55,11 +57,14 @@ def _batch(
         seed=seed,
         operation=operation,
         generated_composition_ids=generated_composition_ids,
+        generated_compositions=generated_compositions,
     )
 
 
 def _new_machine(
     instruction_count: int = 2,
+    *,
+    operator_mode: str = "factorized_low_rank",
 ) -> ExternalCapabilityRegisterMachine:
     if instruction_count < 1:
         raise ValueError("instruction count must be positive")
@@ -71,6 +76,7 @@ def _new_machine(
         INSTRUCTION_WIDTH,
         interpreter_hidden=64,
         operator_rank=8,
+        operator_mode=operator_mode,
         instructions=tuple(
             ExternalRegisterInstruction(INSTRUCTION_WIDTH)
             for _ in range(instruction_count)
@@ -229,6 +235,7 @@ def _train_stage(
     audit_count: int = 0,
     audit_seed: int = 0,
     generated_composition_ids: tuple[int, ...] | None = None,
+    generated_compositions: GeneratedCompositionGrammar | None = None,
     execution_mode: str = "read_execute",
 ) -> list[dict[str, float | int]]:
     optimizer = torch.optim.AdamW(trainable, lr=3e-3, weight_decay=1e-5)
@@ -240,6 +247,7 @@ def _train_stage(
             span=span,
             seed=seed + update * 10_007,
             generated_composition_ids=generated_composition_ids,
+            generated_compositions=generated_compositions,
         )
         loss, _ = _rollout(
             parent,
@@ -250,6 +258,7 @@ def _train_stage(
             train_decoder=True,
             shuffle_outcomes=shuffle_outcomes,
             credit_mode=credit_mode,
+            execution_mode=execution_mode,
         )
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
@@ -272,6 +281,7 @@ def _train_stage(
                         seed=audit_seed + update,
                         credit_mode=credit_mode,
                         generated_composition_ids=generated_composition_ids,
+                        generated_compositions=generated_compositions,
                         execution_mode=execution_mode,
                     ),
                 }
@@ -309,6 +319,7 @@ def _accuracy(
     credit_mode: str = "paired_counterfactual",
     evidence_present: bool = True,
     generated_composition_ids: tuple[int, ...] | None = None,
+    generated_compositions: GeneratedCompositionGrammar | None = None,
     execution_mode: str = "read_execute",
 ) -> float:
     batch = _batch(
@@ -317,6 +328,7 @@ def _accuracy(
         span=span,
         seed=seed,
         generated_composition_ids=generated_composition_ids,
+        generated_compositions=generated_compositions,
     )
     return float(
         _rollout(

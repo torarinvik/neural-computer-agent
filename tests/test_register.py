@@ -45,6 +45,47 @@ def test_external_register_machine_has_one_shared_interpreter_and_variable_progr
     assert len(machine.instructions) == 3
 
 
+def test_factorized_film_operator_is_shared_and_instruction_conditioned() -> None:
+    machine = ExternalCapabilityRegisterMachine(
+        event_width=4,
+        action_width=2,
+        intention_width=6,
+        register_width=8,
+        instruction_width=5,
+        interpreter_hidden=12,
+        operator_mode="factorized_film",
+        instructions=(ExternalRegisterInstruction(5),),
+    )
+
+    assert machine.configuration()["operator_mode"] == "factorized_film"
+    register = torch.randn(3, 8)
+    result = machine.execute(register, machine.instructions[0])
+
+    assert result.shape == register.shape
+    assert torch.isfinite(result).all()
+
+
+def test_factorized_hybrid_operator_starts_with_the_composable_base_path() -> None:
+    torch.manual_seed(909)
+    machine = ExternalCapabilityRegisterMachine(
+        event_width=4,
+        action_width=2,
+        intention_width=6,
+        register_width=8,
+        instruction_width=5,
+        interpreter_hidden=12,
+        operator_mode="factorized_hybrid",
+        instructions=(ExternalRegisterInstruction(5),),
+    )
+
+    assert machine.configuration()["operator_mode"] == "factorized_hybrid"
+    register = torch.randn(3, 8)
+    result = machine.execute(register, machine.instructions[0])
+
+    assert result.shape == register.shape
+    assert torch.isfinite(result).all()
+
+
 def test_external_register_state_is_external_and_quiet_ticks_do_not_mutate_it() -> None:
     torch.manual_seed(903)
     machine = _machine()

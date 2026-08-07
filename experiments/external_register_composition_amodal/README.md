@@ -94,3 +94,23 @@ compositional growth result. It does not establish arbitrary program
 induction, unrestricted memory growth, or general continual learning. The
 curated reports and accounting ledger are in
 `session_records/sequence_working_memory_2026-08-02/external_register_read_execute_promoted_v1_2026-08-07/`.
+
+## Four-instruction nonlinear boundary (2026-08-07)
+
+The next runtime-grammar program was
+`reverse -> adjacent_xor -> complement -> prefix_parity`. The canonical
+factorized low-rank interpreter retained the simpler primitives but plateaued
+at adjacent-XOR `0.7734`, and its inherited four-step composition did not beat
+fresh. A factorized FiLM candidate raised primitive retention to `0.8125` but
+tied fresh composition. A low-rank-plus-zero-initialized-FiLM hybrid retained
+all four primitives at `0.9414`, yet its serial composition remained unstable.
+Deeper shared blueprint pretraining made primitive retention `0.9336` while
+collapsing inherited composition to `0.4805`.
+
+All runs passed persistence, causal, frozen-parent, and zero-replay controls,
+but none passed the positive stable-transfer and composition gates. This is
+archived as a rejected diagnostic in
+`session_records/sequence_working_memory_2026-08-02/external_register_four_instruction_rejected_v1_2026-08-07/`.
+The production default remains factorized low-rank read/execute. The next
+architecture task is a nonlinear operator with an explicit compositional
+invariant, not more unconstrained depth or blueprint updates.
