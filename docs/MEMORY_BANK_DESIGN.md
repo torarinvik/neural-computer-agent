@@ -601,3 +601,29 @@ composition, strengthening F14's corollary: reuse should be
 in* (recombination curriculum), never merely declared in the allocation.
 (3) The rung's remaining promotion blocker is seed replication of the
 disjoint result, not any new mechanism.
+
+**F17 (probes 23-24). Quantity holds except where ambiguity is total —
+and acquisition cost does not amortize yet.** Six calibrated games on one
+plant at the fast budget (1800 updates total, ~300 per context vs the
+~800 per context the promoted trio enjoyed): avoid1, dualAC, dualAD,
+dualBC all hold at 0.90-1.00 of their solo ceilings on both seeds. The
+casualties are the pure contradictory twins (choiceA/choiceB): 0.47/0.16
+on seed 69316, 1.00/0.44 on 69317, a different loser each seed. The
+twins are exactly the contexts with zero observational evidence and full
+rule conflict, and they lose first when per-context budget shrinks —
+winner-take-all returns at scale precisely where it was hardest to cure
+at small scale (F10, F13). Note the choice games also overlap
+observationally with the dual family (centre-adjacent pairs, no cue), so
+the plant's bank-free default is contested by three families at once;
+the withheld audit shows that default flipping between seeds.
+
+Consequences. (1) The battery's per-context budget was ~2.5x below what
+the trio needed; quantity-first exposes that the bank currently makes
+storage cheap but not *acquisition* — each new ambiguous context still
+pays nearly full price. The compounding claim predicts later contexts
+get cheaper; measured: not yet. (2) Scheduling by recent mastery is not
+enough at scale; the laggard signal dilutes across six contexts. The
+next levers, in evidence order: budget accounting per context (equalize
+effective updates, not sampling probability), the F13 oracle-anchored
+staging applied to the twins inside the battery, and freeze-plant entry
+for late ambiguous contexts so incumbents cannot contest them.
