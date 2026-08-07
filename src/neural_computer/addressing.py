@@ -883,7 +883,7 @@ class OpaqueAppendOnlyRouteChain(nn.Module):
             "schema": self.schema,
             "width": self.width,
             "extension_count": len(self.extensions),
-            "failure_signal": "per_stage_scalar_verifier_failure_v1",
+            "failure_signal": "cumulative_stage_scalar_verifier_failure_v1",
             "cold_start": "base_routes_preserved_until_failure",
         }
 
@@ -896,9 +896,9 @@ class OpaqueAppendOnlyRouteChain(nn.Module):
         """Return base rows plus all append rows for the current route state.
 
         ``failed_stages`` is either a scalar applied to every extension or a
-        boolean tensor of shape ``[batch, extension_count]``.  A ``False``
-        stage is forced below the best established route, while a ``True``
-        stage may compete by adding its learned residual score.
+        boolean tensor of shape ``[batch, extension_count]``.  A stage may
+        compete only when it and every earlier stage have failed; otherwise
+        it is forced below the best established route.
         """
 
         if query.ndim != 2 or query.shape[1] != self.width:
@@ -928,10 +928,11 @@ class OpaqueAppendOnlyRouteChain(nn.Module):
 
         scores = self.base_router(query, keys)
         for index, extension in enumerate(self.extensions):
+            stage_failed = failures[:, : index + 1].all(dim=-1)
             scores = failure_gated_view_scores(
                 scores,
                 extension(query),
-                failures[:, index],
+                stage_failed,
             )
         return scores
 

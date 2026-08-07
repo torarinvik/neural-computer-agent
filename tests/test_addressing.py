@@ -151,6 +151,30 @@ def test_append_only_route_chain_activates_only_the_failed_stage() -> None:
     assert second_failed.argmax(dim=-1).tolist() == [3, 3]
 
 
+def test_append_only_route_chain_cannot_skip_an_unfailed_prior_stage() -> None:
+    base = OpaqueAddressRouter(width=4, hidden=8)
+    first = OpaqueViewRouteExtension(width=4, hidden=8)
+    second = OpaqueViewRouteExtension(width=4, hidden=8)
+    with torch.no_grad():
+        first.score.bias.fill_(1.0)
+        second.score.bias.fill_(3.0)
+    chain = OpaqueAppendOnlyRouteChain(
+        base,
+        width=4,
+        extensions=(first, second),
+    )
+    query = torch.randn(2, 4)
+    keys = torch.randn(2, 4)
+
+    skipped = chain(
+        query,
+        keys,
+        torch.tensor([[False, True], [False, True]]),
+    )
+
+    assert bool((skipped.argmax(dim=-1) < 2).all())
+
+
 def test_append_only_route_chain_rejects_misaligned_failure_state() -> None:
     chain = OpaqueAppendOnlyRouteChain(
         OpaqueAddressRouter(width=4, hidden=8),

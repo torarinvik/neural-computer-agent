@@ -772,6 +772,15 @@ safe external screen growth only; it is not a claim of unrestricted memory
 growth or general continual learning. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_append_only_promoted_v1_2026-08-07/`.
 
+The append boundary also passes a two-stage audit: four unseen candidates are
+split across two isolated extensions, later activation requires cumulative
+failure of the base and earlier stage, and both seeds reach `1.0000` unseen
+routing from `0.0000` pre-activation while known routing remains `1.0000`.
+Stage-local permutation, reload, frozen-core, reward-shuffled, and zero-replay
+controls pass. This remains bounded external growth, not general continual
+learning. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_append_only_two_stage_promoted_v1_2026-08-07/`.
+
 The next 46-capability fourth-shift pressure test is intentionally rejected:
 late length-14 rows fail stable protection at hidden 256/8,192 updates,
 hidden 512, and an adaptive late-budget control. This is evidence for

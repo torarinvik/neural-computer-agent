@@ -410,10 +410,10 @@ class AppendOnlyLearnedComputeCandidateScreen(nn.Module):
 
     The base screen and each appended extension are independent memory-side
     modules.  An extension can compete only after the caller supplies scalar
-    verifier failure for that stage; before then, the base scores and argmax
-    are preserved exactly.  New evidence is therefore isolated to an
-    append-only state boundary rather than fine-tuning the route that already
-    works.
+    verifier failure for it and every earlier stage; before then, the base
+    scores and argmax are preserved exactly.  New evidence is therefore
+    isolated to an append-only state boundary rather than fine-tuning the
+    route that already works.
     """
 
     schema = EXTERNAL_CAPABILITY_APPEND_ONLY_LEARNED_COMPUTE_SCREEN_SCHEMA
@@ -490,7 +490,7 @@ class AppendOnlyLearnedComputeCandidateScreen(nn.Module):
             "extension_enabled": tuple(
                 bool(extension.enabled.item()) for extension in self.extensions
             ),
-            "failure_signal": "per_extension_scalar_verifier_failure_v1",
+            "failure_signal": "cumulative_stage_scalar_verifier_failure_v1",
             "growth": "isolated_append_only_memory_state_v1",
             "role": "order_only_fresh_admission_required",
         }
@@ -566,10 +566,11 @@ class AppendOnlyLearnedComputeCandidateScreen(nn.Module):
             zip(self.extensions, self.extension_sizes, strict=True)
         ):
             keys = extension_keys[:, offset : offset + size]
+            stage_failed = failures[:, : index + 1].all(dim=-1)
             scores = failure_gated_candidate_scores(
                 scores,
                 extension(query, keys),
-                failures[:, index],
+                stage_failed,
             )
             offset += size
         return scores

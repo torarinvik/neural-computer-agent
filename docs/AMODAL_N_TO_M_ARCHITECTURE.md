@@ -3354,3 +3354,24 @@ verifier admission remains authoritative. This promotes safe append-only
 screen growth, not unrestricted memory growth or general continual learning.
 Evidence and accounting are in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_append_only_promoted_v1_2026-08-07/`.
+
+## Multi-stage append-only learned screen growth promoted (2026-08-07)
+
+The learned append boundary now scales to two sequential isolated stages. In
+a ten-candidate pressure test, six mastered candidates remain in the frozen
+base and four outcome-unseen candidates are split across two two-candidate
+extensions. Each later stage can activate only after the base and all earlier
+stages have produced scalar verifier failure. Across seeds `69316` and
+`69317`, unseen routing is `0.0000` before activation and `1.0000` after the
+cumulative failure schedule; known routing is `1.0000`, both stage-local
+candidate permutations are exact, and reload, frozen-core, reward-shuffled,
+and zero-replay gates pass. This promotes replicated multi-stage bounded
+growth, not unbounded memory, arbitrary new computation, or general
+continual learning. Evidence and accounting are in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_append_only_two_stage_promoted_v1_2026-08-07/`.
+
+A singleton-stage control is rejected: two stages with one candidate each
+remain at `0.5000` post-failure routing even after 256 updates per stage,
+because the current pairwise ranking objective receives no informative
+within-stage comparison. Evidence is retained in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_append_only_singleton_stage_rejected_v1_2026-08-07/`.

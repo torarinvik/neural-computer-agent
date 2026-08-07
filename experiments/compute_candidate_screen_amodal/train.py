@@ -134,7 +134,7 @@ def _append_only_route_metrics(
     base_keys: torch.Tensor,
     extension_keys: torch.Tensor,
     *,
-    failed_extensions: bool,
+    failed_extensions: torch.Tensor | bool,
 ) -> dict[str, float]:
     """Measure an append-only screen after an explicit old-route outcome."""
 
@@ -151,7 +151,9 @@ def _append_only_route_metrics(
         "top1_accuracy": float((top == targets).float().mean()),
         "mean_fresh_attempts": float(rank.float().mean()),
         "fresh_verifier_authorized_rate": float((top == targets).float().mean()),
-        "failed_extension_gate": float(failed_extensions),
+        "failed_extension_gate": float(
+            torch.as_tensor(failed_extensions, dtype=torch.float32).mean()
+        ),
     }
 
 
@@ -180,13 +182,17 @@ def _append_only_permuted_accuracy(
     extension_keys: torch.Tensor,
     *,
     seed: int,
-    failed_extensions: bool,
+    failed_extensions: torch.Tensor | bool,
 ) -> float:
     generator = torch.Generator().manual_seed(seed)
     base_permutation = torch.randperm(base_keys.shape[0], generator=generator)
-    extension_permutation = torch.randperm(
-        extension_keys.shape[0], generator=generator
-    )
+    extension_permutation_parts = []
+    offset = 0
+    for size in screen.extension_sizes:
+        local = torch.randperm(size, generator=generator) + offset
+        extension_permutation_parts.append(local)
+        offset += size
+    extension_permutation = torch.cat(extension_permutation_parts)
     scores = screen(
         queries,
         base_keys[base_permutation],
@@ -320,6 +326,22 @@ def _train_append_only_extension(
     }
 
 
+def _merge_training_accounting(
+    runs: list[dict[str, int | float]],
+) -> dict[str, int | float]:
+    """Combine independent append-stage accounting without hiding any cost."""
+
+    if not runs:
+        raise ValueError("at least one accounting run is required")
+    merged: dict[str, int | float] = {}
+    for key in runs[0]:
+        if key == "final_loss":
+            merged[key] = runs[-1][key]
+        else:
+            merged[key] = sum(run[key] for run in runs)
+    return merged
+
+
 def run(args: argparse.Namespace) -> dict[str, object]:
     started = perf_counter()
     if args.candidate_count < 4 or args.candidate_count % 2:
@@ -332,11 +354,17 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError(
             "append-only-calibration requires positive calibration-updates"
         )
+    if args.append_only_stages < 1:
+        raise ValueError("append-only-stages must be positive")
     if args.batch_size % 2 or args.audit_count % 2:
         raise ValueError("batch-size and audit-count must be even")
-    train_count = args.candidate_count - UNSEEN_CANDIDATES
+    if args.unseen_candidates < 1 or args.unseen_candidates >= args.candidate_count:
+        raise ValueError("unseen-candidates must be between one and candidate-count")
+    train_count = args.candidate_count - args.unseen_candidates
     known_families = list(range(train_count))
     unseen_families = list(range(train_count, args.candidate_count))
+    if len(unseen_families) % args.append_only_stages:
+        raise ValueError("unseen candidates must divide evenly across append stages")
     grammar = generate_runtime_program_grammar(
         seed=args.program_seed,
         count=args.candidate_count,
@@ -464,27 +492,42 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     if args.append_only_calibration:
         known_keys = keys[:train_count]
         extension_keys = keys[train_count:]
+        extension_size = len(unseen_families) // args.append_only_stages
         append_only_screen = AppendOnlyLearnedComputeCandidateScreen(
             EVENT_WIDTH,
             EVENT_WIDTH,
             latent_width=args.latent_width,
             hidden=args.screen_hidden,
-            extension_sizes=(len(unseen_families),),
+            extension_sizes=(extension_size,) * args.append_only_stages,
         )
         append_only_screen.base_screen.load_state_dict(screen.state_dict(), strict=True)
         append_only_screen.freeze_base()
-        calibration_accounting = _train_append_only_extension(
-            append_only_screen,
-            parent,
-            grammar,
-            extension_keys,
-            extension_index=0,
-            families=unseen_families,
-            updates=args.calibration_updates,
-            batch_size=args.batch_size,
-            seed=args.seed + 81_000,
-            learning_rate=args.learning_rate,
+        stage_accounting = []
+        for stage_index in range(args.append_only_stages):
+            start = stage_index * extension_size
+            stage_accounting.append(
+                _train_append_only_extension(
+                    append_only_screen,
+                    parent,
+                    grammar,
+                    extension_keys[start : start + extension_size],
+                    extension_index=stage_index,
+                    families=unseen_families[start : start + extension_size],
+                    updates=args.calibration_updates,
+                    batch_size=args.batch_size,
+                    seed=args.seed + 81_000 + stage_index * 10_000,
+                    learning_rate=args.learning_rate,
+                )
+            )
+        calibration_accounting = _merge_training_accounting(stage_accounting)
+        failure_schedule = torch.zeros(
+            unseen_candidate_targets.shape[0],
+            args.append_only_stages,
+            dtype=torch.bool,
         )
+        for row, target in enumerate(unseen_candidate_targets.tolist()):
+            stage_index = (target - train_count) // extension_size
+            failure_schedule[row, : stage_index + 1] = True
         novel_context_metrics = _append_only_route_metrics(
             append_only_screen,
             novel_context_queries,
@@ -507,7 +550,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             unseen_candidate_targets,
             known_keys,
             extension_keys,
-            failed_extensions=True,
+            failed_extensions=failure_schedule,
         )
         append_only_unseen_permuted_accuracy = _append_only_permuted_accuracy(
             append_only_screen,
@@ -516,7 +559,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             known_keys,
             extension_keys,
             seed=args.seed + 71_000,
-            failed_extensions=True,
+            failed_extensions=failure_schedule,
         )
     elif args.calibration_updates:
         calibration_accounting = _train_screen(
@@ -600,7 +643,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             EVENT_WIDTH,
             latent_width=args.latent_width,
             hidden=args.screen_hidden,
-            extension_sizes=(len(unseen_families),),
+            extension_sizes=(
+                len(unseen_families) // args.append_only_stages,
+            )
+            * args.append_only_stages,
         )
     reloaded.load_state_dict(screen_state, strict=True)
     reload_exact = all(
@@ -678,11 +724,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "unseen_candidate_count": len(unseen_families),
         "calibration_enabled": calibration_enabled,
         "append_only_enabled": append_only_screen is not None,
+        "append_only_stages": args.append_only_stages,
         "configuration": evaluated_screen.configuration(),
         "budgets": {
             "parent_updates": args.parent_updates,
             "screen_updates": args.screen_updates,
             "calibration_updates": args.calibration_updates,
+            "append_only_stages": args.append_only_stages,
             "batch_size": args.batch_size,
             "audit_count": args.audit_count,
             "key_samples": args.key_samples,
@@ -790,6 +838,7 @@ def main() -> None:
         "--primitive-family", choices=("registry", "opaque_rule"), default="opaque_rule"
     )
     parser.add_argument("--candidate-count", type=int, default=DEFAULT_CANDIDATES)
+    parser.add_argument("--unseen-candidates", type=int, default=UNSEEN_CANDIDATES)
     parser.add_argument("--parent-updates", type=int, default=64)
     parser.add_argument("--screen-updates", type=int, default=512)
     parser.add_argument(
@@ -802,6 +851,12 @@ def main() -> None:
         "--append-only-calibration",
         action="store_true",
         help="calibrate an isolated extension after the frozen base route fails",
+    )
+    parser.add_argument(
+        "--append-only-stages",
+        type=int,
+        default=1,
+        help="number of sequential isolated extension stages",
     )
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--audit-count", type=int, default=96)

@@ -514,6 +514,37 @@ def test_append_only_learned_screen_state_round_trips() -> None:
     )
 
 
+def test_append_only_learned_screen_cannot_skip_an_unfailed_prior_stage() -> None:
+    torch.manual_seed(23)
+    screen = AppendOnlyLearnedComputeCandidateScreen(
+        query_width=4,
+        key_width=3,
+        latent_width=5,
+        hidden=8,
+        extension_sizes=(1, 1),
+    )
+    screen.enable_base()
+    screen.enable_extension(0)
+    screen.enable_extension(1)
+    with torch.no_grad():
+        screen.extensions[0].router.query_encoder[-1].bias.zero_()
+        screen.extensions[0].router.key_encoder[-1].bias.zero_()
+        screen.extensions[1].router.query_encoder[-1].bias.fill_(3.0)
+        screen.extensions[1].router.key_encoder[-1].bias.fill_(3.0)
+    query = torch.randn(2, 4)
+    base_keys = torch.randn(2, 3)
+    extension_keys = torch.randn(2, 3)
+
+    skipped = screen(
+        query,
+        base_keys,
+        extension_keys,
+        failed_extensions=torch.tensor([[False, True], [False, True]]),
+    )
+
+    assert bool((skipped.argmax(dim=-1) < 2).all())
+
+
 def test_external_capability_pipeline_keeps_program_states_independent() -> None:
     first = ExternalCapabilityProgram(
         event_width=4,
