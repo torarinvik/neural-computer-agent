@@ -1,0 +1,64 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "learned_compute_candidate_screen_source_mastery_full_prior_1024_promoted_v1",
+  "claim": "Doubling source-screen training and retaining a full append prior yields replicated strict bank-20/five-stage acquisition; the matched fresh control fails one hard seed.",
+  "candidate_count": 20,
+  "append_stage_sizes": [2, 2, 2, 2, 2],
+  "screen_updates": 1024,
+  "calibration_updates_per_stage": 32,
+  "replayed_examples": 0,
+  "runs": [
+    {
+      "seed": 69316,
+      "configuration": "full_prior",
+      "promoted": true,
+      "known_top1_accuracy": 1.0,
+      "known_min_per_target_accuracy": 1.0,
+      "unseen_top1_accuracy": 1.0,
+      "unseen_min_per_target_accuracy": 1.0,
+      "optimizer_updates": 1216,
+      "unique_verifier_bits": 250368,
+      "unique_logical_lifetimes": 249984,
+      "replayed_examples": 0
+    },
+    {
+      "seed": 69317,
+      "configuration": "full_prior",
+      "promoted": true,
+      "known_top1_accuracy": 1.0,
+      "known_min_per_target_accuracy": 1.0,
+      "unseen_top1_accuracy": 1.0,
+      "unseen_min_per_target_accuracy": 1.0,
+      "optimizer_updates": 1216,
+      "unique_verifier_bits": 250368,
+      "unique_logical_lifetimes": 249984,
+      "replayed_examples": 0
+    },
+    {
+      "seed": 69316,
+      "configuration": "fresh_control",
+      "promoted": true,
+      "known_top1_accuracy": 1.0,
+      "known_min_per_target_accuracy": 1.0,
+      "unseen_top1_accuracy": 1.0,
+      "unseen_min_per_target_accuracy": 1.0,
+      "optimizer_updates": 1216,
+      "unique_verifier_bits": 250368,
+      "unique_logical_lifetimes": 249984,
+      "replayed_examples": 0
+    },
+    {
+      "seed": 69317,
+      "configuration": "fresh_control",
+      "promoted": false,
+      "known_top1_accuracy": 1.0,
+      "known_min_per_target_accuracy": 1.0,
+      "unseen_top1_accuracy": 0.8958333135,
+      "unseen_min_per_target_accuracy": 0.0,
+      "optimizer_updates": 1216,
+      "unique_verifier_bits": 250368,
+      "unique_logical_lifetimes": 249984,
+      "replayed_examples": 0
+    }
+  ]
+}

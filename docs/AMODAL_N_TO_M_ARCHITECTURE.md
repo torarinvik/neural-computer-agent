@@ -3504,3 +3504,13 @@ routing with per-target holes at `0.7000` and `0.0000`. It is therefore not a
 replicated promotion: append initialization is no longer the immediate
 blocker; source-screen mastery and query/key alignment are. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_full_prior_strict_rejected_v1_2026-08-07/`.
+
+Doubling only the source-screen budget to 1024 updates and retaining the full
+append prior now passes the strict bank-20/five-stage boundary across both
+seeds: known and unseen routing are `1.0000/1.0000` with every audited target
+above the mastery floor. The matched fresh-extension control passes one seed
+but fails the other with one unseen target at `0.0000`, so full prior transfer
+is retained as a bounded robustness mechanism. This remains finite external
+growth, not unrestricted continual learning; effective key rank on the hard
+seed is still only `3.59`. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_source_mastery_full_prior_1024_promoted_v1_2026-08-07/`.
