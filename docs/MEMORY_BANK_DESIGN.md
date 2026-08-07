@@ -627,3 +627,23 @@ next levers, in evidence order: budget accounting per context (equalize
 effective updates, not sampling probability), the F13 oracle-anchored
 staging applied to the twins inside the battery, and freeze-plant entry
 for late ambiguous contexts so incumbents cannot contest them.
+
+**F18 (probes 25-26). Sequential admission, not compute, is what scales
+quantity — and staged contexts show the first super-solo transfer.** The
+two levers for the F17 twin collapse, at matched total budget (3600
+updates, seed 69316): doubling budget under laggard-balancing recovered
+choiceA (1.00) but left choiceB at 0.42 — more compute does not resolve
+a six-way contest for the plant's default. Staggered admission (one new
+context every 300 updates, each contradiction arriving against an
+already-anchored read path) put EVERY game at or above its solo ceiling:
+choiceA 1.00, choiceB 1.00, dualAC 1.00, dualAD 0.80 (1.16x solo),
+dualBC 0.76 (1.05x solo), avoid1 1.00, with the twin cross-feed still
+0.0 both ways. The conditional dual contexts ending ABOVE their solo
+ceilings is the first measured super-solo transfer: earlier contexts
+made later ones easier, the compounding direction, visible only under
+staging. F5's cold-start law is therefore not a small-scale artifact but
+the scaling law for ambiguous contexts: simultaneous introduction is the
+pathology, arrival order is the cure, and — conveniently — one-at-a-time
+arrival is the natural continual-learning setting the architecture
+targets anyway. Consequence: the battery's default protocol is staggered
+admission; simultaneous introduction is demoted to a stress test.
