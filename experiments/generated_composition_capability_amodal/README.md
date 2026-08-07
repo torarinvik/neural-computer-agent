@@ -355,3 +355,29 @@ predeclared append schedule; arbitrary open-ended program induction, learned
 compression, and general continual learning remain unqualified. Evidence is
 archived in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_artifact_bank_runtime_generated_random_replicated_promoted_v1_2026-08-07/`.
+
+## Runtime-generated eight-step programs (2026-08-07)
+
+The same runtime generator now supports eight ordered primitives. Each
+primitive is rendered in an ordinal event band, so execution order remains
+learnable without a program ID or semantic field:
+
+```bash
+PYTHONPATH=src uv run python -m experiments.generated_composition_capability_amodal.train_artifact_bank \
+  --route-mode append_only --base-route-count 1 \
+  --program-seed 2718 --program-count 3 --program-depth 8 \
+  --composition-ids 0 1 2 --parent-updates 128 \
+  --artifact-updates 256 --route-updates 256 --batch-size 16 \
+  --route-batch-size 16 --audit-count 64 --route-audit-count 256 \
+  --retention-probes 4 --eval-every 32 \
+  --report-out /tmp/generated-composition-runtime-depth8/report.json
+```
+
+Both seeds mastered and protected all three runtime-generated eight-step
+programs. Route and permutation accuracy were `1.0000`; the weakest held-out
+artifact behavior was `0.8711`/`0.9805`; reload, corruption, frozen-core,
+shuffled-outcome, and zero-replay gates passed. The short and medium controls
+failed only acquisition depth and remain archived as rejected controls. This
+promotes a deeper bounded computational interface, not open-ended program
+induction or general continual learning. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_artifact_bank_runtime_generated_depth8_replicated_promoted_v1_2026-08-07/`.

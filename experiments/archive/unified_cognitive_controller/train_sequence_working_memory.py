@@ -95,6 +95,7 @@ _GENERATED_COMPOSITIONS = (
     ("complement", "reverse", "rotate"),
     ("rotate", "reverse", "complement"),
 )
+MAX_GENERATED_PROGRAM_DEPTH = 8
 GeneratedCompositionGrammar = tuple[tuple[str, ...], ...]
 
 
@@ -116,8 +117,11 @@ def _resolve_generated_compositions(
             raise ValueError("generated composition programs must not be empty")
         if any(primitive not in known_primitives for primitive in program):
             raise ValueError("generated composition contains an unknown primitive")
-        if len(program) > 4:
-            raise ValueError("generated composition programs support at most four primitives")
+        if len(program) > MAX_GENERATED_PROGRAM_DEPTH:
+            raise ValueError(
+                "generated composition programs support at most "
+                f"{MAX_GENERATED_PROGRAM_DEPTH} primitives"
+            )
     return grammar
 
 
@@ -383,15 +387,16 @@ def generate_sequence_memory_batch(
             # A global aggregation cue; it carries no answer or task label.
             operation_column = 28
         elif operation == "generated_composition":
-            # The sampled grammar emits two generic primitive cues. The
-            # verifier-private composition ID never enters the learner. A
-            # generic ordinal marker makes execution order observable without
-            # naming the composition or exposing its answer.
+            # The sampled grammar emits one generic primitive cue per ordered
+            # band. The verifier-private composition ID never enters the
+            # learner. Each band binds a primitive column to an ordinal marker
+            # without naming the composition or exposing its answer. Eight
+            # bands fit in the rendered 32x32 event.
             for primitive_index, primitive in enumerate(
                 composition_grammar[int(composition_ids[row])]
             ):
                 operation_column = _GENERATED_PRIMITIVE_COLUMNS[primitive]
-                cue_start = 2 + primitive_index * 5
+                cue_start = 1 + primitive_index * 3
                 query_frames[
                     row,
                     :,
@@ -399,9 +404,8 @@ def generate_sequence_memory_batch(
                     cue_start:cue_start + 3,
                     operation_column:operation_column + 3,
                 ] = 0.95
-                marker_start = 24 + primitive_index * 2
                 query_frames[
-                    row, :, :, 27:30, marker_start:marker_start + 2
+                    row, :, :, cue_start:cue_start + 3, 28:31
                 ] = 0.85
             operation_column = None
         else:

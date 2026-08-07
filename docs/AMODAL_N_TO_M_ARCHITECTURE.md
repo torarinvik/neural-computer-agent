@@ -2726,6 +2726,30 @@ unrestricted memory growth, and general continual learning remain
 unqualified. Evidence and accounting are archived in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_artifact_bank_runtime_generated_random_replicated_promoted_v1_2026-08-07/`.
 
+## Runtime-generated eight-step program transfer (2026-08-07)
+
+The runtime-generated procedure boundary was widened from four to eight
+ordered primitives. The renderer now places each primitive cue and its opaque
+ordinal marker in one of eight event bands, preserving order information
+without exposing a composition ID, primitive name, or verifier answer to the
+controller.
+
+With runtime seed `2718`, three distinct eight-step programs were acquired
+through the same isolated artifact and append-only route path. Across seeds
+`69316` and `69317`, all rows were stable and protected, route and candidate
+permutation accuracy were `1.0000`, and the weakest artifact behavior was
+`0.8711` and `0.9805`. Reward-shuffled selection, reload, corruption
+rejection, frozen-core equality, and zero replay all passed. Under-budget
+short and medium controls failed artifact mastery, preserving acquisition-depth
+evidence rather than weakening the threshold.
+
+This promotes a deeper bounded computational interface, not open-ended
+program induction. The primitive registry, eight-step renderer, artifact
+blueprint, and append-only capacity remain finite; learned compression,
+unrestricted memory growth, and general continual learning remain
+unqualified. Evidence and accounting are archived in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_artifact_bank_runtime_generated_depth8_replicated_promoted_v1_2026-08-07/`.
+
 ## Replicated replay-free positive transfer from external memory (2026-08-06)
 
 The generated-composition harness now compares an inherited external artifact

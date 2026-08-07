@@ -21,6 +21,7 @@ import torch.nn.functional as F
 
 from experiments.archive.unified_cognitive_controller.train_sequence_working_memory import (
     _GENERATED_COMPOSITIONS,
+    MAX_GENERATED_PROGRAM_DEPTH,
     GeneratedCompositionGrammar,
     _apply_generated_primitive,
     _resolve_generated_compositions,
@@ -96,8 +97,11 @@ def generate_runtime_program_grammar(
     tuple or semantic operation name enters the controller.
     """
 
-    if count < 1 or depth < 1 or depth > 4:
-        raise ValueError("runtime program count and depth must be positive; depth <= 4")
+    if count < 1 or depth < 1 or depth > MAX_GENERATED_PROGRAM_DEPTH:
+        raise ValueError(
+            "runtime program count and depth must be positive; depth <= "
+            f"{MAX_GENERATED_PROGRAM_DEPTH}"
+        )
     sequences = torch.tensor(
         list(itertools.product((0.0, 1.0), repeat=SPAN)),
         dtype=torch.float32,
@@ -1150,7 +1154,12 @@ def main() -> None:
         help="generate a fresh verifier-private grammar instead of using program-spec",
     )
     parser.add_argument("--program-count", type=int, default=3)
-    parser.add_argument("--program-depth", type=int, default=4)
+    parser.add_argument(
+        "--program-depth",
+        type=int,
+        default=4,
+        help=f"primitive depth for runtime generation (1-{MAX_GENERATED_PROGRAM_DEPTH})",
+    )
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--route-batch-size", type=int, default=8)
     parser.add_argument("--audit-count", type=int, default=16)
