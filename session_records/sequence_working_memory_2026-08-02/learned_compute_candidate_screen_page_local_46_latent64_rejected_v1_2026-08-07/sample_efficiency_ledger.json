@@ -1,0 +1,38 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "learned_compute_candidate_screen_page_local_46_latent64_rejected_v1",
+  "claim": "Increasing learned screen latent width from 32 to 64 does not repair replicated 46-candidate source retention.",
+  "candidate_count": 46,
+  "source_candidate_count": 20,
+  "unseen_candidate_count": 26,
+  "append_stage_sizes": [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+  "latent_width": 64,
+  "screen_hidden": 64,
+  "replayed_examples": 0,
+  "runs": [
+    {
+      "seed": 69316,
+      "promoted": false,
+      "known_top1_accuracy": 0.875,
+      "known_min_per_target_accuracy": 0.0,
+      "unseen_top1_accuracy": 1.0,
+      "unseen_min_per_target_accuracy": 1.0,
+      "optimizer_updates": 3008,
+      "unique_verifier_bits": 1423872,
+      "unique_logical_lifetimes": 1423488,
+      "replayed_examples": 0
+    },
+    {
+      "seed": 69317,
+      "promoted": false,
+      "known_top1_accuracy": 0.9375,
+      "known_min_per_target_accuracy": 0.4000000060,
+      "unseen_top1_accuracy": 1.0,
+      "unseen_min_per_target_accuracy": 1.0,
+      "optimizer_updates": 3008,
+      "unique_verifier_bits": 1423872,
+      "unique_logical_lifetimes": 1423488,
+      "replayed_examples": 0
+    }
+  ]
+}

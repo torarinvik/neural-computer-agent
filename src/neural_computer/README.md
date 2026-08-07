@@ -904,6 +904,9 @@ At 46 candidates, the same page-local boundary retains all 26 unseen rows but
 fails strict source retention at `0.9271/0.4000` on both seeds. Normalized key
 rank is materially higher (`11.90/12.87`), so the next bottleneck is source
 screen capacity/interference rather than another global signature transform.
+Increasing scorer latent width from 32 to 64 is also rejected: known floors
+are `0.0000/0.4000` while unseen remains perfect. The next capacity test is
+router hidden width or source competition isolation.
 
 The external boundary now includes an appendable, independently freezeable
 `LearnedOpaqueCandidateKeyMemory`. Its first outcome-trained update policies

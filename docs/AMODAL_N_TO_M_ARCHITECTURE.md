@@ -3586,3 +3586,10 @@ both seeds retain `1.0000/1.0000` unseen acquisition but known routing is
 to `11.90/12.87`, so the next remedy is source-router capacity/interference,
 not another global signature transform. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_page_local_46_source_boundary_rejected_v1_2026-08-07/`.
+
+Increasing the page-local source scorer latent width from 32 to 64 does not
+repair this boundary: known floors are `0.0000/0.4000` across the two seeds,
+while unseen acquisition remains perfect. The extra latent coordinates are
+therefore not the next lever; router hidden capacity or isolation of mutable
+source competition is. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_page_local_46_latent64_rejected_v1_2026-08-07/`.
