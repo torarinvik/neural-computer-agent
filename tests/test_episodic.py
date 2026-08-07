@@ -511,6 +511,37 @@ def test_append_only_learned_screen_preserves_base_until_failure() -> None:
     )
 
 
+def test_append_only_learned_screen_can_copy_base_as_independent_prior() -> None:
+    torch.manual_seed(21)
+    screen = AppendOnlyLearnedComputeCandidateScreen(
+        query_width=4,
+        key_width=3,
+        latent_width=5,
+        hidden=8,
+        extension_sizes=(1,),
+    )
+    screen.enable_base()
+    base_before = {
+        name: value.detach().clone()
+        for name, value in screen.base_screen.state_dict().items()
+    }
+
+    screen.initialize_extension_from_base(0)
+
+    assert not bool(screen.extensions[0].enabled.item())
+    assert all(
+        torch.equal(value, screen.extensions[0].state_dict()[name])
+        for name, value in base_before.items()
+        if name != "enabled"
+    )
+    with torch.no_grad():
+        screen.extensions[0].query_projection[0].bias.add_(1.0)
+    assert all(
+        torch.equal(value, screen.base_screen.state_dict()[name])
+        for name, value in base_before.items()
+    )
+
+
 def test_append_only_learned_screen_state_round_trips() -> None:
     screen = AppendOnlyLearnedComputeCandidateScreen(
         query_width=4,

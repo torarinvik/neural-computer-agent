@@ -3391,3 +3391,13 @@ promotes a cardinality-independent bounded append mechanism, not arbitrary
 program induction or general continual learning. Evidence and accounting are
 in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_cardinality_independent_mixed_promoted_v1_2026-08-07/`.
+
+The same mixed `[1, 2]` boundary then passes at 128 fresh calibration updates
+per stage across both seeds, halving append calibration optimizer updates
+while preserving every gate. A blind copy of the base address weights into
+new extensions is rejected at the same budget (`0.3333/0.6667` acquisition),
+so fresh extension state remains canonical until a selective prior earns
+causal evidence. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_cardinality_independent_mixed_128_promoted_v1_2026-08-07/`
+and
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_inherited_prior_rejected_v1_2026-08-07/`.

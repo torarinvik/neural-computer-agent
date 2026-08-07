@@ -789,6 +789,12 @@ seeds with retention, permutation, reload, null, and zero-replay controls
 passing. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_cardinality_independent_mixed_promoted_v1_2026-08-07/`.
 
+The same mixed audit passes at 128 fresh calibration updates per stage,
+halving append calibration cost. Blindly inheriting the base screen weights
+is retained only as a rejected control because it harms new-stage acquisition;
+fresh extension initialization remains canonical. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_screen_cardinality_independent_mixed_128_promoted_v1_2026-08-07/`.
+
 The next 46-capability fourth-shift pressure test is intentionally rejected:
 late length-14 rows fail stable protection at hidden 256/8,192 updates,
 hidden 512, and an adaptive late-budget control. This is evidence for

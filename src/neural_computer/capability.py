@@ -502,6 +502,18 @@ class AppendOnlyLearnedComputeCandidateScreen(nn.Module):
         self.extension_sizes.append(int(candidate_count))
         return len(self.extensions) - 1
 
+    def initialize_extension_from_base(self, index: int) -> None:
+        """Copy the frozen address blueprint into one extension.
+
+        The copy is independent copy-on-write state: subsequent extension
+        updates cannot mutate the base.  The extension remains disabled until
+        fresh verifier evidence explicitly enables it.
+        """
+
+        extension = self.extensions[index]
+        extension.load_state_dict(self.base_screen.state_dict(), strict=True)
+        extension.enabled.fill_(False)
+
     def enable_base(self) -> None:
         """Enable the learned base screen after its evidence gate passes."""
 
