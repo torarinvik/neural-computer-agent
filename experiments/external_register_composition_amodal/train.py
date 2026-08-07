@@ -40,17 +40,29 @@ REGISTER_WIDTH = 32
 INSTRUCTION_WIDTH = 16
 
 
-def _batch(operation: str, *, count: int, span: int, seed: int):
+def _batch(
+    operation: str,
+    *,
+    count: int,
+    span: int,
+    seed: int,
+    generated_composition_ids: tuple[int, ...] | None = None,
+):
     return generate_sequence_memory_batch(
         count,
         span=span,
         distractors=1,
         seed=seed,
         operation=operation,
+        generated_composition_ids=generated_composition_ids,
     )
 
 
-def _new_machine() -> ExternalCapabilityRegisterMachine:
+def _new_machine(
+    instruction_count: int = 2,
+) -> ExternalCapabilityRegisterMachine:
+    if instruction_count < 1:
+        raise ValueError("instruction count must be positive")
     return ExternalCapabilityRegisterMachine(
         EVENT_WIDTH,
         ACTION_WIDTH,
@@ -59,9 +71,9 @@ def _new_machine() -> ExternalCapabilityRegisterMachine:
         INSTRUCTION_WIDTH,
         interpreter_hidden=64,
         operator_rank=8,
-        instructions=(
-            ExternalRegisterInstruction(INSTRUCTION_WIDTH),
-            ExternalRegisterInstruction(INSTRUCTION_WIDTH),
+        instructions=tuple(
+            ExternalRegisterInstruction(INSTRUCTION_WIDTH)
+            for _ in range(instruction_count)
         ),
     )
 
@@ -208,6 +220,7 @@ def _train_stage(
     eval_every: int = 0,
     audit_count: int = 0,
     audit_seed: int = 0,
+    generated_composition_ids: tuple[int, ...] | None = None,
 ) -> list[dict[str, float | int]]:
     optimizer = torch.optim.AdamW(trainable, lr=3e-3, weight_decay=1e-5)
     progress: list[dict[str, float | int]] = []
@@ -217,6 +230,7 @@ def _train_stage(
             count=batch_size,
             span=span,
             seed=seed + update * 10_007,
+            generated_composition_ids=generated_composition_ids,
         )
         loss, _ = _rollout(
             parent,
@@ -248,6 +262,7 @@ def _train_stage(
                         span=span,
                         seed=audit_seed + update,
                         credit_mode=credit_mode,
+                        generated_composition_ids=generated_composition_ids,
                     ),
                 }
             )
@@ -283,8 +298,15 @@ def _accuracy(
     shuffle_outcomes: bool = False,
     credit_mode: str = "paired_counterfactual",
     evidence_present: bool = True,
+    generated_composition_ids: tuple[int, ...] | None = None,
 ) -> float:
-    batch = _batch(operation, count=count, span=span, seed=seed)
+    batch = _batch(
+        operation,
+        count=count,
+        span=span,
+        seed=seed,
+        generated_composition_ids=generated_composition_ids,
+    )
     return float(
         _rollout(
             parent,

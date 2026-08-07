@@ -45,3 +45,28 @@ exact reload, checksum-corruption, frozen-parent, and zero-replay gates all
 pass. This promotes bounded factorized register composition and positive
 transfer, not general continual learning. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/external_register_rendered_factorized_composition_promoted_v1_2026-08-07/`.
+
+## Three-instruction pressure test
+
+`train_three_instruction.py` extends the same frozen-parent protocol to an
+opaque reverse -> complement -> rotate program and its reversed-order control.
+The first short rung was correctly rejected as undertrained: reverse retained
+at `0.9219`, but complement and rotate were below the `0.8` mastery gate and
+triple composition reached only `0.6172`. The next rung acquired all three
+primitives without replay and retained them after the third instruction:
+reverse `0.9961`, complement `0.9648`, and rotate `0.9180`.
+
+The triple composition decoder nevertheless reached only `0.6758`, while a
+fresh three-instruction learner reached `1.0000` and the reversed-order control
+reached `0.6836`. Stable composition mastery was not reached in `114,688`
+unique verifier bits; the fresh learner crossed the same threshold at
+`16,384` bits. Reward shuffling (`0.4531`), missing evidence (`0.5000`),
+exact reload, checksum corruption rejection, frozen-parent equality, and
+zero replay controls behaved as expected.
+
+This is a decisive diagnostic, not a promotion. The bottleneck has moved from
+primitive acquisition and retention to reusable serial execution at depth
+three: the frozen external interpreter preserves the learned instructions,
+but a newly trained decoder cannot reliably route the resulting triple-chain
+state. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_three_instruction_rejected_v1_2026-08-07/`.

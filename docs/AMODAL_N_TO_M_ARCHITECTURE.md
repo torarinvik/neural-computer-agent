@@ -2483,6 +2483,35 @@ The rendered replication is archived in
 The promoted evidence is in
 `session_records/sequence_working_memory_2026-08-02/external_register_rendered_factorized_composition_promoted_v1_2026-08-07/`.
 
+## Three-instruction serial-composition boundary (2026-08-07)
+
+The next pressure test extended the promoted rendered-event register result
+to three opaque instructions acquired sequentially without replay. The
+primitive-retention gates passed on the acquisition rung: reverse `0.9961`,
+complement `0.9648`, and rotate `0.9180` after the third instruction. The
+frozen parent digest, exact reload, checksum-corruption rejection, missing-
+evidence control, reward-shuffled control, and zero-replay accounting also
+passed.
+
+The triple composition itself did not pass. The frozen inherited machine plus
+a fresh decoder reached `0.6758`, never crossed the `0.8` stable-prefix gate
+in `114,688` unique verifier bits, and its reversed-order control reached
+`0.6836`. A matched fresh three-instruction machine reached `1.0000` with a
+stable prefix at `16,384` bits. This rejects promotion of depth-three serial
+composition while confirming that the failure is downstream of primitive
+acquisition and catastrophic-forgetting retention. The short undertrained
+rung is archived alongside the acquisition rung in
+`session_records/sequence_working_memory_2026-08-02/external_register_three_instruction_rejected_v1_2026-08-07/`.
+
+The implementation bottleneck is now explicit: the external interpreter
+combines observation ingestion and repeated program execution in one mutable
+register path. A fresh decoder can solve the resulting state when the whole
+machine is trained jointly, but a decoder added after three instructions are
+learned cannot reliably route it. The next experiment should introduce a
+versioned read/execute boundary or an execution snapshot, then re-run the
+promoted two-instruction regression before attempting longer programs. This is
+not yet arbitrary program induction or general continual learning.
+
 ## Unseen external computation and multi-parent retention (2026-08-06)
 
 The frozen-core transfer harness tested `prefix_parity`, a temporal procedure
