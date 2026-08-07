@@ -268,3 +268,32 @@ def test_bank_practice_indices_and_canonical_first() -> None:
     ]
     drawn = bank.practice_indices("dualAC")
     assert drawn is not None and len(drawn) == 2
+
+
+def test_battery_games_declare_calibrated_views() -> None:
+    """F28: no single screen view suits every game, so each declares one."""
+
+    from experiments.games_amodal.fragment_bank import battery_suite
+
+    train, _ = battery_suite()
+    views = {c.name: c.view for c in train}
+    assert views["collect1"] == "crop"  # local geometry: walls and food
+    assert views["intercept1"] == "roll"  # boundary-anchored: the floor
+    assert views["forageA"] == views["forageB"] == "roll"
+    # Twins must share a view, or they stop being observationally identical.
+    assert views["choiceA"] == views["choiceB"]
+    assert all(v in ("", "roll", "crop") for v in views.values())
+
+
+def test_declared_view_overrides_the_run_default() -> None:
+    from experiments.games_amodal.fragment_bank import rollout_family
+
+    agent = _agent()
+    crop_game = FamilyConfig(collect=1, view="crop", name="c")
+    # A declared view must be honoured even when the run flag says otherwise.
+    for flag in (False, True, "crop"):
+        summary = rollout_family(
+            agent, crop_game, None, batch_size=2, steps=4,
+            seed=0, sample=False, gamma=0.9, egocentric=flag,
+        )
+        assert summary["total_reward"].shape == (2,)

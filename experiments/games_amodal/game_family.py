@@ -160,6 +160,12 @@ class FamilyConfig:
     # strictly pay. Growing spawn_radius is the curriculum; 0 = never
     # (pure forage). The teleporting variant taught waiting, not
     # navigating (F21).
+    view: str = ""  # F28: which egocentric transform this game's screen
+    # encoder should apply -- "" (none), "roll" (toroidal), or "crop"
+    # (zero fill). The right answer is per-game, not global: games whose
+    # meaning is local geometry want the crop, games anchored to a
+    # boundary want the roll, and games already centred need neither.
+    # Set by calibration, never by assumption.
     spawn_radius: int = 0  # F19 motor bridge: 0 = items spawn anywhere;
     # r>0 = forage items spawn within Chebyshev radius r of the avatar.
     # Radius 1 makes forage the already-mastered choice trial; growing r
@@ -211,6 +217,8 @@ class FamilyConfig:
         )
         if min(levels) < 0:
             raise ValueError("component levels cannot be negative")
+        if self.view not in ("", "roll", "crop"):
+            raise ValueError(f"unknown screen view: {self.view!r}")
         if self.spawn_radius < 0:
             raise ValueError("spawn radius cannot be negative")
         if self.spawn_radius and not self.forage:

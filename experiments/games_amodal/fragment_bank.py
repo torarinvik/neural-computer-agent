@@ -170,10 +170,13 @@ def battery_suite() -> tuple[list[FamilyConfig], list[FamilyConfig]]:
         FamilyConfig(dual=1, inverted2=True, name="dualAD"),
         FamilyConfig(dual=1, inverted=True, name="dualBC"),
         FamilyConfig(avoid=1, name="avoid1"),
-        FamilyConfig(forage=1, name="forageA"),
-        FamilyConfig(forage=1, inverted=True, name="forageB"),
-        FamilyConfig(collect=1, name="collect1"),
-        FamilyConfig(intercept=1, name="intercept1"),
+        # Views set by calibration (F28), not by assumption: crop for
+        # local-geometry games, roll for boundary-anchored ones, none for
+        # games whose avatar is already centred.
+        FamilyConfig(forage=1, view="roll", name="forageA"),
+        FamilyConfig(forage=1, inverted=True, view="roll", name="forageB"),
+        FamilyConfig(collect=1, view="crop", name="collect1"),
+        FamilyConfig(intercept=1, view="roll", name="intercept1"),
     ]
     holdout = [
         FamilyConfig(dual=1, inverted=True, inverted2=True, name="dualBD"),
@@ -228,12 +231,14 @@ def rollout_family(
             break
         masks.append(alive.float())
         observation = verifier.observation()
-        if egocentric:
-            observation = (
-                egocentric_crop(observation)
-                if egocentric == "crop"
-                else egocentric_view(observation)
-            )
+        # F28: the game's own declared view wins; the run-level flag is
+        # only the default for games that declare none.
+        view = config.view or ("crop" if egocentric == "crop" else
+                               "roll" if egocentric else "")
+        if view == "crop":
+            observation = egocentric_crop(observation)
+        elif view == "roll":
+            observation = egocentric_view(observation)
         observation = pad_channels(observation, SHARED_SCREEN_CHANNELS)
         events = [agent.runtime.encoders["screen"](observation)]
         if fragments is not None:
