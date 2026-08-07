@@ -51,14 +51,14 @@ def micro_suite() -> tuple[list[FamilyConfig], list[FamilyConfig]]:
 
     train = [
         FamilyConfig(collect=1, name="collect1"),
-        FamilyConfig(avoid=1, name="avoid1"),
-        FamilyConfig(intercept=1, name="intercept1"),
+        FamilyConfig(collect=1, inverted=True, name="poison1"),
         FamilyConfig(navigate=True, name="navigate1"),
+        FamilyConfig(navigate=True, inverted=True, name="forbid1"),
         FamilyConfig(collect=1, avoid=1, name="collect1+avoid1"),
-        FamilyConfig(collect=1, navigate=True, name="collect1+navigate1"),
+        FamilyConfig(collect=1, avoid=1, inverted=True, name="poison1+avoid1"),
     ]
     holdout = [
-        FamilyConfig(avoid=1, navigate=True, name="avoid1+navigate1"),
+        FamilyConfig(navigate=True, avoid=1, name="navigate1+avoid1"),
     ]
     return train, holdout
 
@@ -192,6 +192,8 @@ class FragmentBank(torch.nn.Module):
 
 
 def has_positive_source(config: FamilyConfig) -> bool:
+    if config.inverted:
+        return False
     return bool(config.collect or config.intercept or config.navigate)
 
 

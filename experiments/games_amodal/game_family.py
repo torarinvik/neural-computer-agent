@@ -38,6 +38,9 @@ class FamilyConfig:
     intercept: int = 0  # number of simultaneous falling objects
     avoid: int = 0  # number of moving hazards
     navigate: bool = False  # goal tile behind wall segments
+    inverted: bool = False  # SAME rendering, opposite meaning: touching a
+    # positive-plane object (food/goal) is -1 and fatal. Observation alone
+    # cannot reveal the objective; only fetched context can.
     name: str = field(default="", compare=False)
 
     def active(self) -> tuple[str, ...]:
@@ -203,12 +206,20 @@ class FamilyVerifier:
 
             if target in self._food[row]:
                 self._food[row].remove(target)
+                if self.config.inverted:
+                    reward[row] -= 1.0
+                    self._alive[row] = False
+                    continue
                 reward[row] += 1.0
                 occupied = set(self._food[row]) | self._walls[row] | {target}
                 self._food[row].append(self._free_cell(row, occupied))
 
             goal = self._goal[row]
             if goal is not None and target == goal:
+                if self.config.inverted:
+                    reward[row] -= 1.0
+                    self._alive[row] = False
+                    continue
                 reward[row] += 1.0
                 occupied = set(self._food[row]) | self._walls[row] | {target}
                 self._goal[row] = self._free_cell(row, occupied)
