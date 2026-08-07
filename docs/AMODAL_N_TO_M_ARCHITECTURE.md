@@ -3272,3 +3272,18 @@ at `0.6367`. This is verified selective compute reuse, not arbitrary program
 compression: incompatible procedures still require new local compute. Evidence
 is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_reusable_compute_registry_replicated_promoted_boundary_v1_2026-08-07/`.
+
+## Fresh-verified reuse-first, grow-on-failure admission (2026-08-07)
+
+`select_reusable_compute_slot` is the versioned memory-side admission policy.
+It scores opaque physical candidates by their worst fresh retention probe and
+reuses only candidates whose every probe clears the mastery floor. If none
+passes, the binding is discarded and a new physical compute module is grown.
+
+The replicated audit reuses one module for both registry procedures. For the
+opaque pair, one seed rejects reuse and grows a second module, while the other
+accepts reuse because its fresh probes pass. All four outcomes retain after
+reload with frozen-base, old-binding, checksum, frozen-core, and zero-replay
+gates. This is adaptive bounded compute admission, not a semantic classifier
+or general continual learning. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_reuse_first_grow_policy_replicated_boundary_v1_2026-08-07/`.

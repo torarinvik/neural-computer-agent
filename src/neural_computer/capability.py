@@ -8,8 +8,10 @@ decoder on the intention bus.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+import math
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from typing import Literal
 
 import torch
 from torch import nn
@@ -31,9 +33,65 @@ EXTERNAL_CAPABILITY_RESIDUAL_COMPUTE_SCHEMA = (
 EXTERNAL_CAPABILITY_REUSABLE_COMPUTE_SCHEMA = (
     "neural-computer.external-capability-reusable-compute.v1"
 )
+EXTERNAL_CAPABILITY_COMPUTE_ADMISSION_SCHEMA = (
+    "neural-computer.external-capability-compute-admission.v1"
+)
 EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA = (
     "neural-computer.external-capability-slot-binding.v1"
 )
+
+
+@dataclass(frozen=True)
+class ComputeReuseDecision:
+    """Fresh-outcome decision to reuse a compute slot or append one."""
+
+    action: Literal["reuse", "grow"]
+    compute_slot_index: int | None
+    candidate_scores: tuple[tuple[int, float], ...]
+    reason: str
+
+
+def select_reusable_compute_slot(
+    candidate_outcomes: Mapping[int, Sequence[float]],
+    *,
+    threshold: float,
+) -> ComputeReuseDecision:
+    """Select the strongest candidate only when every fresh probe passes.
+
+    Candidate identities are opaque physical-slot indices. The policy never
+    infers semantic compatibility; it uses only fresh verifier outcomes and
+    grows capacity when no candidate reaches the mastery floor.
+    """
+
+    if not 0.0 <= threshold <= 1.0:
+        raise ValueError("compute admission threshold must lie in [0, 1]")
+    scores: list[tuple[int, float]] = []
+    for slot_index, outcomes in sorted(candidate_outcomes.items()):
+        if slot_index < 0:
+            raise ValueError("compute candidate indices must be nonnegative")
+        values = tuple(float(value) for value in outcomes)
+        if not values or not all(math.isfinite(value) for value in values):
+            raise ValueError("compute candidates need finite fresh outcomes")
+        scores.append((slot_index, min(values)))
+    eligible = [item for item in scores if item[1] >= threshold]
+    if eligible:
+        selected_index, selected_score = max(eligible, key=lambda item: (item[1], -item[0]))
+        return ComputeReuseDecision(
+            action="reuse",
+            compute_slot_index=selected_index,
+            candidate_scores=tuple(scores),
+            reason=f"fresh_probe_floor_passed:{selected_score:.6f}",
+        )
+    return ComputeReuseDecision(
+        action="grow",
+        compute_slot_index=None,
+        candidate_scores=tuple(scores),
+        reason=(
+            "no_compute_candidate_passed_fresh_probe_floor"
+            if scores
+            else "no_compute_candidates"
+        ),
+    )
 
 
 @dataclass(frozen=True)
@@ -822,6 +880,16 @@ class ExternalCapabilityReusableComputeLibrary(nn.Module):
         """Append a new compute module and bind one capability to it."""
 
         return self.add_binding(self.add_compute_slot())
+
+    def remove_binding(self, binding_index: int) -> None:
+        """Discard the newest unpromoted binding without touching compute."""
+
+        if binding_index != self.slot_count - 1:
+            raise ValueError("only the newest reusable binding can be discarded")
+        if self.slot_count < 2:
+            raise ValueError("reusable compute library must retain one binding")
+        self.binding_adapters.pop(binding_index)
+        self._binding_compute_slots.pop()
 
     def binding_modules(
         self,

@@ -40,6 +40,7 @@ from neural_computer import (
     ExternalCapabilityReusableComputeLibrary,
     ExternalCapabilitySharedResidualBank,
     OpaqueProtocolDecoder,
+    select_reusable_compute_slot,
 )
 
 EVENT_WIDTH = 32
@@ -435,8 +436,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     behavior_by_slot: list[float] = []
     old_slot_digests: list[dict[int, str]] = []
     shared_base_digest_after_first: str | None = None
+    slot_training_attempts = 0
 
     for stage_index, program_id in enumerate(source_ids):
+        reuse_trial: dict[str, object] | None = None
+        progress: list[dict[str, float | int]] | None = None
+        behavior: float | None = None
+        behavior_probes: list[float] = []
         if stage_index:
             old_slot_digests.append(
                 {
@@ -450,48 +456,114 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                     bank.freeze_compute_slot(compute_slot)
                 for old_binding in range(bank.slot_count):
                     bank.freeze_binding(old_binding)
-                slot_index = (
-                    bank.add_binding(0)
-                    if args.reuse_compute
-                    else bank.add_slot()
-                )
+                if args.auto_reuse:
+                    trial_slot = bank.add_binding(0)
+                    trial_decoder = _new_decoder(
+                        args.seed + 10_000 + stage_index
+                    )
+                    slot_training_attempts += 1
+                    trial_progress = _train_slot(
+                        parent,
+                        bank,
+                        trial_slot,
+                        trial_decoder,
+                        program_id,
+                        grammar,
+                        updates=args.slot_updates,
+                        batch_size=args.batch_size,
+                        audit_count=args.audit_count,
+                        eval_every=args.eval_every,
+                        seed=args.seed + 30_000 + stage_index * 10_003,
+                        learning_rate=args.learning_rate,
+                    )
+                    trial_behavior, trial_probes = _probe_accuracy(
+                        parent,
+                        bank,
+                        trial_slot,
+                        trial_decoder,
+                        program_id,
+                        grammar,
+                        count=args.audit_count,
+                        probes=args.retention_probes,
+                        seed=args.seed + 35_000 + stage_index * 10_003,
+                    )
+                    reuse_decision = select_reusable_compute_slot(
+                        {0: trial_probes}, threshold=THRESHOLD
+                    )
+                    reuse_trial = {
+                        "compute_slot": 0,
+                        "behavior": trial_behavior,
+                        "probe_outcomes": trial_probes,
+                        "stable_bits_to_threshold": _stable_bits(
+                            trial_progress, batch_size=args.batch_size
+                        ),
+                        "accepted": reuse_decision.action == "reuse",
+                        "decision": reuse_decision.action,
+                        "decision_reason": reuse_decision.reason,
+                        "fresh_outcomes_only": True,
+                    }
+                    if reuse_decision.action == "reuse":
+                        slot_index = trial_slot
+                        decoders.append(trial_decoder)
+                        progress = trial_progress
+                        behavior = trial_behavior
+                        behavior_probes = trial_probes
+                    else:
+                        bank.remove_binding(trial_slot)
+                        compute_slot = bank.add_compute_slot()
+                        slot_index = bank.add_binding(compute_slot)
+                        decoders.append(
+                            _new_decoder(args.seed + 40_000 + stage_index)
+                        )
+                elif args.reuse_compute:
+                    slot_index = bank.add_binding(0)
+                    decoders.append(
+                        _new_decoder(args.seed + 10_000 + stage_index)
+                    )
+                else:
+                    slot_index = bank.add_slot()
+                    decoders.append(
+                        _new_decoder(args.seed + 10_000 + stage_index)
+                    )
             else:
                 for old_slot in range(bank.slot_count):
                     bank.freeze_slot(old_slot)
                 slot_index = bank.add_slot()
-            decoders.append(_new_decoder(args.seed + 10_000 + stage_index))
+                decoders.append(_new_decoder(args.seed + 10_000 + stage_index))
         else:
             slot_index = 0
-        progress = _train_slot(
-            parent,
-            bank,
-            slot_index,
-            decoders[slot_index],
-            program_id,
-            grammar,
-            updates=args.slot_updates,
-            batch_size=args.batch_size,
-            audit_count=args.audit_count,
-            eval_every=args.eval_every,
-            seed=args.seed + 20_000 + stage_index * 10_003,
-            learning_rate=args.learning_rate,
-        )
+        if progress is None or behavior is None:
+            slot_training_attempts += 1
+            progress = _train_slot(
+                parent,
+                bank,
+                slot_index,
+                decoders[slot_index],
+                program_id,
+                grammar,
+                updates=args.slot_updates,
+                batch_size=args.batch_size,
+                audit_count=args.audit_count,
+                eval_every=args.eval_every,
+                seed=args.seed + 20_000 + stage_index * 10_003,
+                learning_rate=args.learning_rate,
+            )
+            behavior, behavior_probes = _probe_accuracy(
+                parent,
+                bank,
+                slot_index,
+                decoders[slot_index],
+                program_id,
+                grammar,
+                count=args.audit_count,
+                probes=args.retention_probes,
+                seed=args.seed + 40_000 + stage_index * 10_003,
+            )
         progress_by_slot.append(progress)
         if stage_index == 0:
             shared_base_digest_after_first = _digest_module(
                 bank.shared_context_encoder
             )
-        behavior, behavior_probes = _probe_accuracy(
-            parent,
-            bank,
-            slot_index,
-            decoders[slot_index],
-            program_id,
-            grammar,
-            count=args.audit_count,
-            probes=args.retention_probes,
-            seed=args.seed + 40_000 + stage_index * 10_003,
-        )
         behavior_by_slot.append(behavior)
         retained: list[float] = []
         retained_probes: list[list[float]] = []
@@ -527,6 +599,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 "new_slot_probe_outcomes": behavior_probes,
                 "retained_old_slot_behavior": retained,
                 "retained_old_slot_probe_outcomes": retained_probes,
+                "reuse_trial": reuse_trial,
                 "fresh_outcomes_only": True,
             }
         )
@@ -696,6 +769,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             if args.residual_compute
             else "shared_base_plus_intention_adapter"
         ),
+        "admission_policy": (
+            "reuse_first_grow_on_fresh_failure"
+            if args.auto_reuse
+            else "explicit_binding"
+        ),
         "programs": [list(grammar[program_id]) for program_id in source_ids],
         "budgets": {
             "parent_updates": args.parent_updates,
@@ -745,11 +823,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         },
         "accounting": {
             "unique_verifier_bits": args.parent_updates * args.batch_size * 2
-            + len(source_ids) * args.slot_updates * args.batch_size * (SPAN + 2),
+            + slot_training_attempts
+            * args.slot_updates
+            * args.batch_size
+            * (SPAN + 2),
             "unique_logical_lifetimes": args.parent_updates * args.batch_size
-            + len(source_ids) * args.slot_updates * args.batch_size * 2,
+            + slot_training_attempts * args.slot_updates * args.batch_size * 2,
             "optimizer_updates": args.parent_updates
-            + len(source_ids) * args.slot_updates,
+            + slot_training_attempts * args.slot_updates,
             "replayed_examples": 0,
             "retention_observations": (
                 sum(range(1, len(source_ids) + 1)) * args.retention_probes
@@ -836,6 +917,11 @@ def main() -> None:
         action="store_true",
         help="reuse the first physical compute module with new binding adapters",
     )
+    parser.add_argument(
+        "--auto-reuse",
+        action="store_true",
+        help="try fresh-verified reuse first, then grow compute on failure",
+    )
     parser.add_argument("--residual-context-hidden", type=int, default=16)
     parser.add_argument("--residual-context-width", type=int, default=8)
     parser.add_argument(
@@ -845,6 +931,8 @@ def main() -> None:
         help="set PyTorch intra-op threads for this tiny audit workload",
     )
     args = parser.parse_args()
+    if args.auto_reuse:
+        args.reuse_compute = True
     if args.reuse_compute:
         args.residual_compute = True
     if args.torch_threads is not None:

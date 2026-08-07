@@ -18,6 +18,7 @@ from neural_computer import (
     OnlineEpisodicRelationReader,
     episodic_context_contrastive_loss,
     paired_event_credit_loss,
+    select_reusable_compute_slot,
 )
 
 
@@ -325,6 +326,23 @@ def test_reusable_compute_library_shares_physical_compute_with_isolated_bindings
     assert library.configuration()["schema"] == (
         "neural-computer.external-capability-reusable-compute.v1"
     )
+    library.remove_binding(1)
+    assert library.slot_count == 1
+    assert library.compute_slot_count == 1
+
+
+def test_reusable_compute_admission_requires_every_fresh_probe() -> None:
+    reuse = select_reusable_compute_slot(
+        {3: (0.82, 0.91), 1: (0.84, 0.84)}, threshold=0.8
+    )
+    assert reuse.action == "reuse"
+    assert reuse.compute_slot_index == 1
+    reject = select_reusable_compute_slot({0: (0.8, 0.74)}, threshold=0.8)
+    assert reject.action == "grow"
+    assert reject.compute_slot_index is None
+    empty = select_reusable_compute_slot({}, threshold=0.8)
+    assert empty.action == "grow"
+    assert empty.reason == "no_compute_candidates"
 
 
 def test_external_capability_pipeline_keeps_program_states_independent() -> None:

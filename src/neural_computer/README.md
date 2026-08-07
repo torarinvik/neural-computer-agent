@@ -832,3 +832,9 @@ compute from logical binding adapters and states. Related procedures can share
 one verified compute module; opaque incompatibility is rejected and must grow
 new compute. See
 `session_records/sequence_working_memory_2026-08-02/generated_composition_reusable_compute_registry_replicated_promoted_boundary_v1_2026-08-07/`.
+
+`select_reusable_compute_slot` now provides the safe admission rule: reuse a
+physical compute module only when all fresh probes clear the floor, otherwise
+grow. This enables compression for compatible procedures without blocking
+arbitrary new compute. See
+`session_records/sequence_working_memory_2026-08-02/generated_composition_reuse_first_grow_policy_replicated_boundary_v1_2026-08-07/`.

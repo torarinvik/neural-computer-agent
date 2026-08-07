@@ -610,3 +610,10 @@ matched opaque reuse control rejects at `0.6367`, so incompatible procedures
 must allocate new compute instead of silently sharing an insufficient module.
 Evidence is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_reusable_compute_registry_replicated_promoted_boundary_v1_2026-08-07/`.
+
+The canonical admission policy now tries reuse from fresh outcomes first and
+grows a new physical compute module only when the candidate fails. Both
+registry seeds reuse one module; opaque seed `69316` grows after a `0.6172`
+trial, while opaque seed `69317` safely reuses at `0.7813`. All four runs pass
+retention, reload, checksum, frozen-core, and zero-replay gates. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_reuse_first_grow_policy_replicated_boundary_v1_2026-08-07/`.

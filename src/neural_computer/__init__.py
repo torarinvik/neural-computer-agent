@@ -27,12 +27,14 @@ from .artifact_memory import (
 )
 from .capability import (
     EXTERNAL_CAPABILITY_COMPOSITION_SCHEMA,
+    EXTERNAL_CAPABILITY_COMPUTE_ADMISSION_SCHEMA,
     EXTERNAL_CAPABILITY_PIPELINE_SCHEMA,
     EXTERNAL_CAPABILITY_RESIDUAL_COMPUTE_SCHEMA,
     EXTERNAL_CAPABILITY_REUSABLE_COMPUTE_SCHEMA,
     EXTERNAL_CAPABILITY_SCHEMA,
     EXTERNAL_CAPABILITY_SHARED_RESIDUAL_SCHEMA,
     EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA,
+    ComputeReuseDecision,
     ExternalCapabilityComposition,
     ExternalCapabilityPipeline,
     ExternalCapabilityPipelineState,
@@ -41,6 +43,7 @@ from .capability import (
     ExternalCapabilityReusableComputeLibrary,
     ExternalCapabilitySharedResidualBank,
     ExternalCapabilityState,
+    select_reusable_compute_slot,
 )
 from .capacity import (
     ADMISSION_ACTIONS,
@@ -215,6 +218,7 @@ __all__ = [
     "EVENT_WINDOW_SCHEMA",
     "EXECUTION_STATES",
     "EXTERNAL_CAPABILITY_COMPOSITION_SCHEMA",
+    "EXTERNAL_CAPABILITY_COMPUTE_ADMISSION_SCHEMA",
     "EXTERNAL_CAPABILITY_PIPELINE_SCHEMA",
     "EXTERNAL_CAPABILITY_RESIDUAL_COMPUTE_SCHEMA",
     "EXTERNAL_CAPABILITY_REUSABLE_COMPUTE_SCHEMA",
@@ -261,6 +265,7 @@ __all__ = [
     "CapabilityRetentionStatus",
     "CapacityPlan",
     "CapacityPlannerOutput",
+    "ComputeReuseDecision",
     "ConfidenceAwareCapabilityStaging",
     "ConsolidationPolicyOutput",
     "ConsolidationProposal",
@@ -357,6 +362,7 @@ __all__ = [
     "save_runtime",
     "select_capability_candidate",
     "select_growth_artifact_view",
+    "select_reusable_compute_slot",
     "selector_distillation_loss",
     "sha256_file",
     "sha256_files",
