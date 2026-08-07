@@ -934,6 +934,14 @@ replay. This promotes bounded learned page addressing, not arbitrary memory
 growth or general continual learning. See
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_64_promoted_v1_2026-08-07/`.
 
+The append-only control rejects simply freezing that router and concatenating
+new page keys: 34 new candidates in 17 pages fall to `0.3958` and `0.1250`
+candidate accuracy across the two seeds. This is the current memory-growth
+blocker. The next mechanism is a separately trainable append-router overlay,
+with verifier-gated fallback from the frozen source router; see the rejected
+control at
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_append_frozen_rejected_v1_2026-08-07/`.
+
 The external boundary now includes an appendable, independently freezeable
 `LearnedOpaqueCandidateKeyMemory`. Its first outcome-trained update policies
 are rejected: joint base/key updates cause interference, while extension-only

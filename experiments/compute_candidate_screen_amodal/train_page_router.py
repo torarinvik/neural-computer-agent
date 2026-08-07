@@ -54,6 +54,7 @@ def _page_outcomes(
     candidate_keys: torch.Tensor,
     *,
     page_size: int,
+    family_offset: int = 0,
 ) -> torch.Tensor:
     """Attempt each opaque page and retain only its scalar verifier result."""
 
@@ -66,7 +67,10 @@ def _page_outcomes(
             ],
         ).argmax(dim=-1)
         targets = torch.tensor(
-            [family - page_index * page_size for family in families],
+            [
+                family - family_offset - page_index * page_size
+                for family in families
+            ],
             dtype=torch.long,
         )
         outcomes[:, page_index] = (local_predictions == targets).float()
@@ -89,6 +93,7 @@ def _train_page_router(
     learning_rate: float,
     normalizer: OpaqueCandidateSignatureNormalizer,
     shuffle_outcomes: bool = False,
+    family_offset: int = 0,
 ) -> dict[str, int | float]:
     optimizer = torch.optim.AdamW(
         router.parameters(),
@@ -99,7 +104,7 @@ def _train_page_router(
     last_loss = 0.0
     for update in range(updates):
         families = [
-            (update * batch_size + row) % source_count
+            family_offset + (update * batch_size + row) % source_count
             for row in range(batch_size)
         ]
         query = normalizer(
@@ -117,6 +122,7 @@ def _train_page_router(
                 source_pages,
                 candidate_keys,
                 page_size=page_size,
+                family_offset=family_offset,
             )
         if shuffle_outcomes:
             shuffled = []

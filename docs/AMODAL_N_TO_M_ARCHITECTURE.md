@@ -3634,3 +3634,11 @@ addressing; arbitrary memory growth, learned representation selection, unseen
 append integration, and general continual learning remain open. Evidence is
 in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_64_promoted_v1_2026-08-07/`.
+
+The direct append-only control rejects freezing that router and merely adding
+new page keys. With 34 new candidates in 17 external pages, accuracy falls to
+`0.3958` and `0.1250` across the two seeds, with zero mastery on most append
+pages, despite frozen source state, unchanged controller, and zero replay. The
+failure shows that external growth needs a learned address-update mechanism;
+the rejected evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_append_frozen_rejected_v1_2026-08-07/`.
