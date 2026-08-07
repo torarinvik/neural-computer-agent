@@ -75,9 +75,17 @@ rung promotes, rejects, or qualifies. Ordered by severity.
     self-organizing bank is promoted for contradictory context selection
     but has never been asked to *share* a fragment between related
     contexts, which is the compounding claim. Evidence:
-    `self_organizing_fragment_bank_v1_2026-08-07`. Next: three or more
-    contexts with genuine overlap, measuring whether related contexts
-    converge on shared fragments.
+    `self_organizing_fragment_bank_v1_2026-08-07`. *In progress:* the
+    factorial `dual` suite (three training contexts built from two
+    independent binary rules, plus a held-out recombination) and
+    conflict-gated diversity are built and under probe.
+13. **The anti-collapse penalty is also an anti-sharing penalty** — the
+    diversity term that closed selector collapse (F12/F13) repels every
+    pair of contexts equally, so it forbids the fragment reuse that
+    weakness 11 exists to test. Mechanism proposed and implemented:
+    swap-test conflict gating (`--conflict-gated`), which weights each
+    pair's repulsion by measured cross-feed harm. Unproven until the
+    factorial rung reports.
 12. **Addressing is per-context logits, not content-addressed** — the
     selector maps a known context label to fragments; it does not
     retrieve from observations. The promoted routing rung

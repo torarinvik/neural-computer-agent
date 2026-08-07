@@ -402,17 +402,24 @@ def train_bank(
     for left, right in combinations(variants, 2):
         conflict.setdefault(frozenset((left.name, right.name)), 0.5)
     history: list[dict[str, float]] = []
+    stagger = int(getattr(args, "stagger_updates", 0))
     for update in range(args.updates):
-        if getattr(args, "balance_contexts", False) and len(variants) > 1:
+        # F5: contradictory contexts introduced simultaneously deadlock.
+        # Staggering admits one context at a time, so each new contradiction
+        # arrives against an already-anchored read path.
+        active = variants
+        if stagger > 0:
+            active = variants[: 1 + update // stagger] or variants[:1]
+        if getattr(args, "balance_contexts", False) and len(active) > 1:
             # F10: uniform interleaving lets one context take the plant.
             # Sample the laggard more often, softmax over -progress.
             weights = torch.tensor(
-                [-recent[v.name] for v in variants]
+                [-recent[v.name] for v in active]
             ) / max(args.balance_temperature, 1e-6)
             index = int(torch.multinomial(F.softmax(weights, dim=-1), 1))
-            config = variants[index]
+            config = active[index]
         else:
-            config = variants[update % len(variants)]
+            config = active[update % len(active)]
         oracle_phase = update < getattr(args, "oracle_updates", 0)
         if getattr(args, "oracle_selection", False) or oracle_phase:
             chosen = bank.oracle_indices(
@@ -902,6 +909,13 @@ def main() -> None:
         action="store_true",
         help="weight the diversity penalty per pair by measured swap harm, "
         "so contexts that can share a fragment are not repelled",
+    )
+    parser.add_argument(
+        "--stagger-updates",
+        type=int,
+        default=0,
+        help="admit one further context every N updates (F5 curriculum); "
+        "0 trains every context from the first update",
     )
     parser.add_argument("--conflict-every", type=int, default=10)
     parser.add_argument("--conflict-decay", type=float, default=0.8)

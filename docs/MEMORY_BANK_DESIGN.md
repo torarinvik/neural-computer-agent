@@ -477,3 +477,50 @@ assignment fixed while the read path forms, transfer it into the selector
 by imitation, then release. Nothing in the deployed system depends on
 privileged information; the oracle is a training schedule, not a runtime
 component.
+
+**F14 (probes 14-15). Per-rule cross-feeding reads out a fragment's
+content, and it shows the read path is not the bottleneck — acquisition
+is.** Three factorial contexts under an oracle selector, once with
+private fragments per context and once with one fragment per shared
+sub-rule, both failed to acquire: `dualAC` reached 0.930 (per-rule
+accuracy 0.96/0.89) while `dualAD` and `dualBC` sat at chance. But the
+graded audit says the failure is not a read-path ceiling. Feeding
+`dualAC`'s fragments into the other contexts decomposes exactly along
+the shared rule:
+
+| fed into | shared rule | per-rule accuracy |
+| --- | --- | --- |
+| `dualAD` <- `dualAC` | axis 0 (`takeA`) | **0.956** / 0.105 |
+| `dualBC` <- `dualAC` | axis 1 (`takeC`) | 0.037 / **0.901** |
+| withheld (no bank) | -- | 0.598 / 0.717 |
+
+The rule the source and target agree on is executed near-perfectly; the
+rule they disagree on is executed near-perfectly *backwards* (0.037 and
+0.105 are far below the 0.5 chance line). Withholding the bank leaves
+only a weak residual lean (0.60/0.72), so the sharpening is caused by the
+fragment, not by a default. Two consequences:
+
+*Measurement.* Cross-feeding plus per-rule scoring is an instrument that
+reads out **what a fragment set encodes, rule by rule**, rather than
+merely whether it helps. The F9 below-chance specification signature now
+resolves per rule. Every future bank claim should report it; a scalar
+mastery column cannot distinguish "obeys one rule of two" from "obeys
+neither", and those have opposite architectural implications.
+
+*Diagnosis.* The plant can execute a two-rule program delivered through
+the event window, so capacity to *read* is not what fails at three
+contexts. What fails is *writing*: the first context to acquire gets a
+complete program written into its fragments, and every later context must
+both author its own program and overcome the incumbent. This is F5's
+cold-start deadlock and F11's default-context asymmetry compounding as
+context count grows. Corollary for the roadmap: sharing cannot be tested
+until three contexts can be held at all, so the disjoint read path is the
+gating rung, not the factorial one.
+
+Secondary observation (one seed, not a law): the factorial allocation was
+*worse* than the disjoint one (winner 0.633 vs 0.930). A shared fragment
+receives gradients from several contexts at once, and while those
+contexts are still failing, those gradients conflict. Sharing may
+therefore have to be *earned after* acquisition — consolidated into the
+bank by a later merge pass (R3) rather than imposed as the initial
+allocation.
