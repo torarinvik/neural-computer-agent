@@ -1,0 +1,505 @@
+{
+  "anchor": {},
+  "config": {
+    "adapt_updates": 150,
+    "balance_contexts": true,
+    "balance_temperature": 0.25,
+    "batch_size": 16,
+    "conflict_decay": 0.8,
+    "conflict_every": 10,
+    "conflict_gated": false,
+    "cross_pairs": 2,
+    "eval_seeds": 4,
+    "event_width": 64,
+    "exclude_anchor": false,
+    "feedback_width": 16,
+    "fragment_init_scale": 1.0,
+    "fragments": 16,
+    "fragments_per_variant": 2,
+    "freeze_plant": false,
+    "gamma": 0.95,
+    "hidden": 32,
+    "ignorance_every": 3,
+    "ignorance_weight": 0.5,
+    "intent_width": 32,
+    "learning_rate": 0.001,
+    "oracle_map": "disjoint",
+    "oracle_selection": true,
+    "oracle_updates": 0,
+    "seed": 69316,
+    "selection_diversity": 0.0,
+    "selection_init_scale": 2.0,
+    "stagger_updates": 0,
+    "steps": 24,
+    "suite": "battery",
+    "tokens_per_fragment": 2,
+    "updates": 3600,
+    "warm_updates": 0
+  },
+  "cross_fragment_mastery": {
+    "avoid1<-choiceA": {
+      "mastery": 0.8125,
+      "mean_return": -0.1875
+    },
+    "avoid1<-choiceB": {
+      "mastery": 0.84375,
+      "mean_return": -0.15625
+    },
+    "choiceA<-choiceB": {
+      "mastery": 0.0,
+      "mean_return": -0.640625
+    },
+    "choiceA<-dualAC": {
+      "mastery": 1.0,
+      "mean_return": 23.96875
+    },
+    "choiceB<-dualAC": {
+      "mastery": 0.0,
+      "mean_return": -23.96875
+    },
+    "choiceB<-dualAD": {
+      "mastery": 0.125,
+      "mean_return": -1.734375
+    },
+    "dualAC<-dualAD": {
+      "mastery": 0.8232696652412415,
+      "mean_return": 8.895312309265137,
+      "rule_accuracy": [
+        0.9957,
+        0.6508
+      ],
+      "rule_engagement": [
+        6.4062,
+        6.2656
+      ],
+      "rules": [
+        "takeA",
+        "takeC"
+      ]
+    },
+    "dualAC<-dualBC": {
+      "mastery": 0.7025154829025269,
+      "mean_return": 8.139062881469727,
+      "rule_accuracy": [
+        0.5129,
+        0.8922
+      ],
+      "rule_engagement": [
+        7.2656,
+        6.9688
+      ],
+      "rules": [
+        "takeA",
+        "takeC"
+      ]
+    },
+    "dualAD<-avoid1": {
+      "mastery": 0.5197802186012268,
+      "mean_return": -1.7046877145767212,
+      "rule_accuracy": [
+        0.4679,
+        0.5717
+      ],
+      "rule_engagement": [
+        0.5938,
+        0.7031
+      ],
+      "rules": [
+        "takeA",
+        "takeD"
+      ]
+    },
+    "dualAD<-dualBC": {
+      "mastery": 0.3015204071998596,
+      "mean_return": 1.2671873569488525,
+      "rule_accuracy": [
+        0.5122,
+        0.0909
+      ],
+      "rule_engagement": [
+        7.0156,
+        6.9375
+      ],
+      "rules": [
+        "takeA",
+        "takeD"
+      ]
+    },
+    "dualBC<-avoid1": {
+      "mastery": 0.4802197813987732,
+      "mean_return": -1.798437476158142,
+      "rule_accuracy": [
+        0.5321,
+        0.4283
+      ],
+      "rule_engagement": [
+        0.5938,
+        0.7031
+      ],
+      "rules": [
+        "takeB",
+        "takeC"
+      ]
+    },
+    "dualBC<-choiceA": {
+      "mastery": 0.5,
+      "mean_return": 3.8328123092651367,
+      "rule_accuracy": [
+        0.0,
+        1.0
+      ],
+      "rule_engagement": [
+        4.7031,
+        6.0938
+      ],
+      "rules": [
+        "takeB",
+        "takeC"
+      ]
+    }
+  },
+  "decoy_bank_mastery": {
+    "avoid1": {
+      "mastery": 0.921875,
+      "mean_return": -0.078125
+    },
+    "choiceA": {
+      "mastery": 0.1875,
+      "mean_return": -0.046875
+    },
+    "choiceB": {
+      "mastery": 0.21875,
+      "mean_return": 0.125
+    },
+    "dualAC": {
+      "mastery": 0.47813308238983154,
+      "mean_return": -0.47031259536743164,
+      "rule_accuracy": [
+        0.5086,
+        0.4477
+      ],
+      "rule_engagement": [
+        2.1406,
+        2.0
+      ],
+      "rules": [
+        "takeA",
+        "takeC"
+      ]
+    },
+    "dualAD": {
+      "mastery": 0.542837917804718,
+      "mean_return": -0.17500007152557373,
+      "rule_accuracy": [
+        0.5237,
+        0.5619
+      ],
+      "rule_engagement": [
+        2.0625,
+        1.9375
+      ],
+      "rules": [
+        "takeA",
+        "takeD"
+      ]
+    },
+    "dualBC": {
+      "mastery": 0.45272600650787354,
+      "mean_return": -0.6937501430511475,
+      "rule_accuracy": [
+        0.4916,
+        0.4138
+      ],
+      "rule_engagement": [
+        1.9844,
+        1.9531
+      ],
+      "rules": [
+        "takeB",
+        "takeC"
+      ]
+    }
+  },
+  "holdout": {
+    "dualBD": {
+      "adaptation_curve_tail": [
+        0.5217183232307434,
+        0.4925742745399475,
+        0.5141233205795288,
+        0.4895545244216919,
+        0.44212526082992554
+      ],
+      "adapted_over_random_bank": 0.5641896724700928,
+      "adapted_selector_only": 0.5111555457115173,
+      "composed_from_trained_fragments": {
+        "mastery": 0.003275016788393259,
+        "mean_return": -3.4437503814697266,
+        "rule_accuracy": [
+          0.0066,
+          0.0
+        ],
+        "rule_engagement": [
+          4.7188,
+          6.0938
+        ],
+        "rules": [
+          "takeB",
+          "takeD"
+        ]
+      },
+      "ideal_fragments": [
+        3,
+        2
+      ],
+      "zero_shot": 0.5111555457115173
+    }
+  },
+  "measured_conflict": {
+    "avoid1|choiceA": 0.5,
+    "avoid1|choiceB": 0.5,
+    "avoid1|dualAC": 0.5,
+    "avoid1|dualAD": 0.5,
+    "avoid1|dualBC": 0.5,
+    "choiceA|choiceB": 0.5,
+    "choiceA|dualAC": 0.5,
+    "choiceA|dualAD": 0.5,
+    "choiceA|dualBC": 0.5,
+    "choiceB|dualAC": 0.5,
+    "choiceB|dualAD": 0.5,
+    "choiceB|dualBC": 0.5,
+    "dualAC|dualAD": 0.5,
+    "dualAC|dualBC": 0.5,
+    "dualAD|dualBC": 0.5
+  },
+  "no_replay": true,
+  "overlap": {
+    "pairs": {
+      "choiceA|avoid1": {
+        "fragment_jaccard": 0.0,
+        "shared_components": 0,
+        "shared_rules": 0
+      },
+      "choiceA|choiceB": {
+        "fragment_jaccard": 0.0,
+        "shared_components": 1,
+        "shared_rules": 0
+      },
+      "choiceA|dualAC": {
+        "fragment_jaccard": 0.0,
+        "shared_components": 0,
+        "shared_rules": 0
+      },
+      "choiceA|dualAD": {
+        "fragment_jaccard": 0.0,
+        "shared_components": 0,
+        "shared_rules": 0
+      },
+      "choiceA|dualBC": {
+        "fragment_jaccard": 0.0,
+        "shared_components": 0,
+        "shared_rules": 0
+      },
+      "choiceB|avoid1": {
+        "fragment_jaccard": 0.0,
+        "shared_components": 0,
+        "shared_rules": 0
+      },
+      "choiceB|dualAC": {
+        "fragment_jaccard": 0.0,
+        "shared_components": 0,
+        "shared_rules": 0
+      },
+      "choiceB|dualAD": {
+        "fragment_jaccard": 0.0,
+        "shared_components": 0,
+        "shared_rules": 0
+      },
+      "choiceB|dualBC": {
+        "fragment_jaccard": 0.0,
+        "shared_components": 0,
+        "shared_rules": 0
+      },
+      "dualAC|avoid1": {
+        "fragment_jaccard": 0.0,
+        "shared_components": 0,
+        "shared_rules": 0
+      },
+      "dualAC|dualAD": {
+        "fragment_jaccard": 0.0,
+        "shared_components": 1,
+        "shared_rules": 1
+      },
+      "dualAC|dualBC": {
+        "fragment_jaccard": 0.0,
+        "shared_components": 1,
+        "shared_rules": 1
+      },
+      "dualAD|avoid1": {
+        "fragment_jaccard": 0.0,
+        "shared_components": 0,
+        "shared_rules": 0
+      },
+      "dualAD|dualBC": {
+        "fragment_jaccard": 0.0,
+        "shared_components": 1,
+        "shared_rules": 0
+      },
+      "dualBC|avoid1": {
+        "fragment_jaccard": 0.0,
+        "shared_components": 0,
+        "shared_rules": 0
+      }
+    },
+    "selections": {
+      "avoid1": [
+        0,
+        1
+      ],
+      "choiceA": [
+        2,
+        3
+      ],
+      "choiceB": [
+        4,
+        5
+      ],
+      "dualAC": [
+        6,
+        7
+      ],
+      "dualAD": [
+        8,
+        9
+      ],
+      "dualBC": [
+        10,
+        11
+      ]
+    }
+  },
+  "seed": 69316,
+  "train_mastery": {
+    "avoid1": {
+      "mastery": 0.921875,
+      "mean_return": -0.078125
+    },
+    "choiceA": {
+      "mastery": 1.0,
+      "mean_return": 22.359375
+    },
+    "choiceB": {
+      "mastery": 0.421875,
+      "mean_return": 0.640625
+    },
+    "dualAC": {
+      "mastery": 0.9980895519256592,
+      "mean_return": 23.943748474121094,
+      "rule_accuracy": [
+        0.9974,
+        0.9987
+      ],
+      "rule_engagement": [
+        11.75,
+        12.25
+      ],
+      "rules": [
+        "takeA",
+        "takeC"
+      ]
+    },
+    "dualAD": {
+      "mastery": 0.6759609580039978,
+      "mean_return": 6.6953125,
+      "rule_accuracy": [
+        0.9935,
+        0.3585
+      ],
+      "rule_engagement": [
+        6.4375,
+        6.2969
+      ],
+      "rules": [
+        "takeA",
+        "takeD"
+      ]
+    },
+    "dualBC": {
+      "mastery": 0.6998539566993713,
+      "mean_return": 8.03593635559082,
+      "rule_accuracy": [
+        0.4873,
+        0.9124
+      ],
+      "rule_engagement": [
+        7.1406,
+        7.0
+      ],
+      "rules": [
+        "takeB",
+        "takeC"
+      ]
+    }
+  },
+  "withheld_bank_mastery": {
+    "avoid1": {
+      "mastery": 0.921875,
+      "mean_return": -0.078125
+    },
+    "choiceA": {
+      "mastery": 0.28125,
+      "mean_return": -0.203125
+    },
+    "choiceB": {
+      "mastery": 0.390625,
+      "mean_return": 0.15625
+    },
+    "dualAC": {
+      "mastery": 0.5188527703285217,
+      "mean_return": -0.1593751460313797,
+      "rule_accuracy": [
+        0.613,
+        0.4247
+      ],
+      "rule_engagement": [
+        2.3125,
+        2.0938
+      ],
+      "rules": [
+        "takeA",
+        "takeC"
+      ]
+    },
+    "dualAD": {
+      "mastery": 0.5831155180931091,
+      "mean_return": 0.23281234502792358,
+      "rule_accuracy": [
+        0.5948,
+        0.5714
+      ],
+      "rule_engagement": [
+        2.3125,
+        2.1094
+      ],
+      "rules": [
+        "takeA",
+        "takeD"
+      ]
+    },
+    "dualBC": {
+      "mastery": 0.4308834373950958,
+      "mean_return": -0.43125012516975403,
+      "rule_accuracy": [
+        0.4154,
+        0.4464
+      ],
+      "rule_engagement": [
+        2.4375,
+        2.25
+      ],
+      "rules": [
+        "takeB",
+        "takeC"
+      ]
+    }
+  }
+}
