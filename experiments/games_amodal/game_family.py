@@ -88,6 +88,13 @@ class FamilyConfig:
     # bits, so contexts sharing a bit share a sub-rule -- the structure a
     # fragment bank must reuse rather than re-learn.
     inverted2: bool = False  # second axis of `dual` (rule for cue-1 trials)
+    recentre_every: int = 0  # F20 motor bridge: k>0 recentres the avatar
+    # and re-deals forage items adjacent every k steps. k=1 approximates
+    # the choice trial (a forced decision each step); growing k hands the
+    # agent responsibility for RETURNING to the decision point — which is
+    # the navigation skill itself; 0 = never (pure forage). Relaxes the
+    # forcing structure, which F20 showed is the learnability-bearing
+    # property, where spawn distance is not.
     spawn_radius: int = 0  # F19 motor bridge: 0 = items spawn anywhere;
     # r>0 = forage items spawn within Chebyshev radius r of the avatar.
     # Radius 1 makes forage the already-mastered choice trial; growing r
@@ -143,6 +150,10 @@ class FamilyConfig:
             raise ValueError("spawn radius cannot be negative")
         if self.spawn_radius and not self.forage:
             raise ValueError("spawn radius is a forage curriculum knob")
+        if self.recentre_every < 0:
+            raise ValueError("recentre interval cannot be negative")
+        if self.recentre_every and not self.forage:
+            raise ValueError("recentre is a forage curriculum knob")
         if max(levels) > 3:
             raise ValueError("component levels above 3 are not supported")
         if self.dual and self.choice:
@@ -188,6 +199,7 @@ class FamilyVerifier:
         self._dual_items: list[list[tuple[int, int, int]]] = []
         self._dual_kind: list[int] = []
         self._dual_stats = torch.zeros(2, 2, device=self.device)
+        self._step_index = 0
         self._alive = torch.zeros(self.batch_size, dtype=torch.bool, device=self.device)
 
     def _rand(self, high: int) -> int:
@@ -230,6 +242,7 @@ class FamilyVerifier:
         self._goal = []
         self._forage_a = []
         self._forage_b = []
+        self._step_index = 0
         self._alive = torch.ones(self.batch_size, dtype=torch.bool, device=self.device)
         for row in range(self.batch_size):
             occupied: set[tuple[int, int]] = set()
@@ -498,6 +511,20 @@ class FamilyVerifier:
             if hit:
                 reward[row] -= 1.0
                 self._alive[row] = False
+        # F20 forcing bridge: present a fresh forced trial AFTER movement,
+        # so the next observation is the recentred decision — the same
+        # semantics as `choice`, at a controllable cadence.
+        self._step_index += 1
+        if (
+            self.config.forage
+            and self.config.recentre_every > 0
+            and self._step_index % self.config.recentre_every == 0
+        ):
+            for row in range(self.batch_size):
+                if bool(self._alive[row]):
+                    left, right = self._neighbour_pair(row)
+                    self._forage_a[row] = [left]
+                    self._forage_b[row] = [right]
         return GameStep(reward=reward, alive=self._alive.clone())
 
 

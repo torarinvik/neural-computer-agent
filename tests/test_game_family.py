@@ -302,3 +302,21 @@ def test_forage_spawn_radius_keeps_items_near_the_avatar() -> None:
     assert max(abs(fresh[0] - avatar[0]), abs(fresh[1] - avatar[1])) <= 1
     with pytest.raises(ValueError, match="curriculum knob"):
         FamilyConfig(choice=1, spawn_radius=1).validate()
+
+
+def test_forage_recentre_interval_forces_periodic_trials() -> None:
+    config = FamilyConfig(forage=1, recentre_every=3)
+    verifier = FamilyVerifier(config, batch_size=2, seed=23)
+    verifier.reset(seed=23)
+    centre = (verifier.height // 2, verifier.width // 2)
+    for step in range(1, 10):
+        verifier.step(torch.zeros(2, dtype=torch.long))
+        if step % 3 == 0:
+            for row in range(2):
+                items = verifier._forage_a[row] + verifier._forage_b[row]
+                assert all(
+                    abs(c[0] - centre[0]) + abs(c[1] - centre[1]) == 1
+                    for c in items
+                )
+    with pytest.raises(ValueError, match="curriculum knob"):
+        FamilyConfig(collect=1, recentre_every=2).validate()
