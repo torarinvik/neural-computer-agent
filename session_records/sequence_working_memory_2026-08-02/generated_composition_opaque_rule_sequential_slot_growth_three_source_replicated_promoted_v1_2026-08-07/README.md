@@ -1,13 +1,15 @@
 # Staged growth with runtime-generated opaque operators (2026-08-07)
 
-Status: replicated promoted primitive-family expansion.
+Status: audit-history artifact superseded by the strict isolated-slot rerun.
 
-The generated-composition interface now accepts verifier-private `rule:xx`
+The generated-composition interface accepts verifier-private `rule:xx`
 tokens. Each token denotes an 8-bit local neighborhood rule selected from a
 256-member family. The event renderer exposes only a generic binary barcode
 and ordinal band; the controller never receives the rule token, truth table,
-task ID, or verifier answer. The staged external-memory protocol then learns
-three eight-step procedures one new slot at a time.
+task ID, or verifier answer. This predecessor used an all-slot acquisition
+mask, so its results do not prove that a new procedure learned in fresh
+capacity. The authoritative strict rerun is in
+`generated_composition_opaque_rule_sequential_slot_growth_three_source_strict_isolated_replicated_promoted_v1_2026-08-07/`.
 
 | metric | seed 69316 | seed 69317 |
 | --- | ---: | ---: |
@@ -20,12 +22,12 @@ three eight-step procedures one new slot at a time.
 | corruption/reload/frozen-core | passed | passed |
 | replayed examples | `0` | `0` |
 
-Every promotion gate passed in both seeds. Each replica consumed `323,584`
+Every original promotion gate passed in both seeds, but the predecessor did
+not include the fresh-slot-only causal gate. Each replica consumed `323,584`
 unique verifier bits, `108,544` logical lifetimes, `3,456` optimizer updates,
 and `52` retention observations. Wall time was `389.7s` and `397.5s`.
 
-This is evidence that the external memory boundary can acquire and retain
-procedures built from an unseen parameterized operator family, rather than
-only recombining the seven named primitives. It is still not arbitrary
-Turing-complete program synthesis: the local-rule family, eight-step
-renderer, slot blueprint, and tested horizon remain bounded.
+It is evidence for the historical permissive route path, not an isolated-slot
+continual-learning promotion. It is still not arbitrary Turing-complete
+program synthesis: the local-rule family, eight-step renderer, slot blueprint,
+and tested horizon remain bounded.

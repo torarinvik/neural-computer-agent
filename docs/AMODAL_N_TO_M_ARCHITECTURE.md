@@ -3003,23 +3003,27 @@ and following binary sequence values. The renderer exposes only a generic
 barcode plus ordinal event band; the controller never receives the token,
 operator truth table, composition ID, or correct action.
 
-Across seeds `69316` and `69317`, three source procedures were acquired in
-isolated append-only external slots and a fourth target was learned from the
-retained artifact. Both stages adopted, and reload, reversal/recovery,
-corruption, frozen-core, and zero-replay gates passed. The target reloaded at
-`1.0000` in both seeds. This is evidence for bounded continual-memory growth
+The first run of this audit used an all-slot acquisition mask and therefore
+did not prove that a new procedure learned in fresh capacity. The corrected
+rerun binds each new source to its newly appended slot while old aliases keep
+their prior bindings. Across seeds `69316` and `69317`, both stages adopted;
+source reload behavior was `1.0000/1.0000/1.0000` and
+`1.0000/0.9844/1.0000`, target reload was `1.0000` in both, and all
+reversal/recovery, corruption, frozen-core, exact-reload, and zero-replay
+gates passed. This is evidence for strict bounded continual-memory growth
 over a newly generated 256-member local-rule family, not arbitrary Turing
 complete computation, unrestricted memory growth, or general continual
-learning. Reports and the accounting ledger are archived in
-`session_records/sequence_working_memory_2026-08-02/generated_composition_opaque_rule_sequential_slot_growth_three_source_replicated_promoted_v1_2026-08-07/`.
+learning. The authoritative reports and accounting ledger are archived in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_opaque_rule_sequential_slot_growth_three_source_strict_isolated_replicated_promoted_v1_2026-08-07/`; the permissive predecessor remains audit history.
 
 ## Replay-free staged growth for three depth-eight procedures (2026-08-07)
 
-The staged external-growth path now scales the isolated-slot strategy to
-three runtime-generated eight-step procedures. Each new procedure is trained
-only in a newly appended slot; old slots, old route slices, and the frozen
-controller are not updated. The memory transaction adopts a stage only after
-fresh probes verify both the new alias and every previously retained alias.
+The historical staged external-growth path scaled the procedure family to
+three runtime-generated eight-step procedures. It froze old slot parameters
+and route slices, but its all-slot masks allowed a new source to use old
+outputs; it therefore does not prove isolated fresh-capacity acquisition. The
+memory transaction still adopted a stage only after fresh probes verified
+both the new alias and every previously retained alias.
 
 Across seeds `69316` and `69317`, both sequential stages were adopted. The
 final source aliases survived reload at `1.0000/1.0000/0.8789` and
@@ -3027,9 +3031,9 @@ final source aliases survived reload at `1.0000/1.0000/0.8789` and
 reloaded at `1.0000` in both seeds. Reversal/recovery, corruption, exact
 reload, frozen-core, and zero-replay gates all passed.
 
-This is the strongest current bounded continual-memory result: new mutable
-external state is added without updating old capability weights, and old
-capabilities remain protected by behavior verification. It is not yet general
+This is a historical bounded retention result, not the strict isolated-slot
+claim: new mutable state was added without updating old capability weights,
+but old outputs were not excluded during acquisition. It is not yet general
 continual learning. The primitive registry, eight-step renderer, slot
 blueprint, and tested horizon remain finite. Reports and accounting are in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_depth8_sequential_slot_growth_three_source_replicated_promoted_v1_2026-08-07/`.

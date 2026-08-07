@@ -413,17 +413,18 @@ Evidence and rejected controls are archived in
 
 ## Replay-free staged growth for three depth-eight procedures (2026-08-07)
 
-The staged external-growth path now handles three runtime-generated
-eight-step procedures. Each new procedure is trained only in a newly appended
-slot while old slots, old routing, and the controller remain frozen. Every
-stage requires fresh retention probes for the new and earlier aliases before
-the transaction is adopted.
+The historical staged external-growth path handles three runtime-generated
+eight-step procedures. It froze old slot parameters and routing state, but
+its all-slot masks allowed a new source to use old outputs; therefore it is
+not the authoritative isolated-slot result. Every stage still required fresh
+retention probes for the new and earlier aliases before adoption.
 
 Across seeds `69316` and `69317`, both stages were adopted. All reload,
 reversal/recovery, corruption, frozen-core, and zero-replay controls passed;
-the target reloaded at `1.0000` in both seeds. This is the current strongest
-bounded continual-memory result, but it does not establish arbitrary new
-computation, unrestricted growth, or general continual learning.
+the target reloaded at `1.0000` in both seeds. This remains a bounded
+retention result, but it does not establish isolated fresh-capacity
+acquisition, arbitrary new computation, unrestricted growth, or general
+continual learning. The strict correction is documented below.
 
 Evidence and accounting are archived in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_depth8_sequential_slot_growth_three_source_replicated_promoted_v1_2026-08-07/`.
@@ -447,10 +448,14 @@ PYTHONPATH=src uv run python -m experiments.generated_composition_capability_amo
   --report-out /tmp/generated-composition-opaque-rule/report.json
 ```
 
-Across seeds `69316` and `69317`, both staged acquisitions adopted, all
-reload, reversal/recovery, corruption, frozen-core, and zero-replay gates
-passed, and the target reloaded at `1.0000`. This promotes replay-free staged
-growth over a verifier-private 256-member operator family. It does not yet
-establish arbitrary program induction, learned compression, unrestricted
-memory growth, or general continual learning. Evidence and accounting are in
-`session_records/sequence_working_memory_2026-08-02/generated_composition_opaque_rule_sequential_slot_growth_three_source_replicated_promoted_v1_2026-08-07/`.
+The first run used an all-slot acquisition mask, so it did not prove that a
+new procedure learned in fresh capacity. The corrected rerun binds each new
+source to its newly appended slot while old aliases retain their previous
+bindings. Across seeds `69316` and `69317`, both strict staged acquisitions
+adopted; source reload behavior was `1.0000/1.0000/1.0000` and
+`1.0000/0.9844/1.0000`, target reload was `1.0000` in both, and all
+reversal/recovery, corruption, frozen-core, exact-reload, and zero-replay
+gates passed. It does not yet establish arbitrary program induction, learned
+compression, unrestricted memory growth, or general continual learning.
+Evidence and accounting are in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_opaque_rule_sequential_slot_growth_three_source_strict_isolated_replicated_promoted_v1_2026-08-07/`.

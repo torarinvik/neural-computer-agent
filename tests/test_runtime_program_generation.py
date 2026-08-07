@@ -16,6 +16,10 @@ from experiments.generated_composition_capability_amodal.train_pipeline import (
     _new_stack,
     expand_routed_stack,
 )
+from experiments.generated_composition_capability_amodal.train_sequential_distilled_consolidation import (
+    _fresh_slot_mask,
+    _train_expanded_new_only,
+)
 from experiments.parent_conditioned_artifact_bank_amodal.train import _new_capability
 
 
@@ -126,3 +130,13 @@ def test_artifact_reload_preserves_unspecified_expanded_slot_count() -> None:
     )
 
     assert len(loaded.programs) == 4
+
+
+def test_expanded_acquisition_helper_has_a_fresh_slot_isolation_contract() -> None:
+    mask = _fresh_slot_mask(batch_size=3, slot_count=4, slot_index=2)
+    assert mask.shape == (3, 4)
+    assert torch.equal(mask.sum(dim=1), torch.ones(3, dtype=torch.long))
+    assert torch.all(mask[:, 2])
+    assert not torch.any(mask[:, :2])
+    assert not torch.any(mask[:, 3:])
+    assert _train_expanded_new_only.__doc__ is not None

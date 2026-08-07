@@ -81,6 +81,22 @@ DEFAULT_SEQUENTIAL_GRAMMAR = (
 )
 
 
+def _fresh_slot_mask(
+    batch_size: int,
+    slot_count: int,
+    slot_index: int,
+) -> torch.Tensor:
+    """Bind every row to one newly provisioned external slot."""
+
+    if min(batch_size, slot_count) < 1:
+        raise ValueError("slot-mask dimensions must be positive")
+    if slot_index < 0 or slot_index >= slot_count:
+        raise ValueError("fresh slot index is outside the slot count")
+    mask = torch.zeros(batch_size, slot_count, dtype=torch.bool)
+    mask[:, slot_index] = True
+    return mask
+
+
 def _train_expanded_new_only(
     parent,
     artifact: dict[str, torch.Tensor],
@@ -136,16 +152,11 @@ def _train_expanded_new_only(
     torch.manual_seed(seed + 2_000)
     stack.train()
     decoder.eval()
-    train_slot_mask = torch.ones(
-        batch_size,
-        len(stack.programs),
-        dtype=torch.bool,
-    )
-    audit_slot_mask = torch.ones(
-        audit_count,
-        len(stack.programs),
-        dtype=torch.bool,
-    )
+    # Acquisition must exercise the appended file itself.  Allowing the new
+    # source to route through every old slot would make a positive result a
+    # frozen-artifact lookup, not replay-free learning in fresh state.
+    train_slot_mask = _fresh_slot_mask(batch_size, len(stack.programs), old_count)
+    audit_slot_mask = _fresh_slot_mask(audit_count, len(stack.programs), old_count)
     for update in range(1, updates + 1):
         target = generate_sequence_memory_batch(
             batch_size,
@@ -603,7 +614,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         old_stack, _ = _load_stack_artifact(shared_artifact)
         old_slot_count = len(old_stack.programs)
         candidate_slot_masks = dict(active_slot_masks)
-        candidate_slot_masks[new_id] = tuple(range(old_slot_count + 1))
+        # The new alias is bound to its newly appended slot only.  Earlier
+        # aliases keep their pre-existing binding and remain independently
+        # executable during the retention gate.
+        candidate_slot_masks[new_id] = (old_slot_count,)
         candidate, candidate_progress = _train_expanded_new_only(
             parent,
             shared_artifact,
