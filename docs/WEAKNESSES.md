@@ -29,14 +29,13 @@ rung promotes, rejects, or qualifies. Ordered by severity.
    frozen-core rung's seed-negative result. Cross-run comparison only.
    Next: same-run randomized transfer harness with nulls and more seeds,
    then transfer through fetched bank artifacts (Phase 3).
-4. **Consolidation rigidity taxes later acquisition** — the three-game
-   ladder qualified: retention composes essentially exactly across two
-   consolidation steps on both seeds (no anchor staleness at this depth),
-   but Pong under the Snake penalty fell short of its acquisition gate on
-   one seed (0.7656 vs 0.8). Evidence:
-   `ewc_ladder_three_game_qualified_v1_2026-08-06`. Next: the enhanced
-   consolidation rule should target acquisition headroom (adaptive
-   per-parameter release), not stronger anchoring.
+4. **Arbitrated consolidation promoted; depth and mu-robustness open** —
+   the demand-proportional release rule (`a = F/(F + mu*G)`, mu=3) closed
+   vanilla's failed acquisition gate and passed all nine ladder gates on
+   both seeds while matching retention. Evidence:
+   `arbitrated_consolidation_promoted_v1_2026-08-07` (dial probes
+   included). Next: deeper ladders, wider seeds, and a genuine
+   parameter-conflict task pair.
 6. **Peripheral skill leakage quantified: real but bounded** — fresh
    peripherals recover 0.94/0.83 mastery through the trained frozen core
    at half budget (core-resident strategy), while a random-core control
