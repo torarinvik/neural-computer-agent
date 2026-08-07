@@ -129,3 +129,99 @@ covers exactly the fixed components.
    result is confounded.
 2. The shared-driver plant (done) and the externalization objectives
    (done) — this design composes them rather than replacing them.
+
+## Sub-architecture catalog and empirical roadmap (2026-08-07)
+
+Status tags: [proven] literature-backed; [novel] our proposal; [ours]
+already validated in this repository. Each numbered strategy below maps to
+the ranked list in the session record; sub-items are the candidate
+implementations to be tested empirically, with adoption triggers.
+
+### 1. Joint fragment inventory with reuse pressure
+- 1a [proven] Learned task-fragment allocation matrix (Polytropon-style);
+  task identity used verifier-side during induction only.
+- 1b [novel] Attention-allocated inventory: the core's event-window
+  attention over all fragments plus a sparsity penalty replaces the
+  allocation matrix. Label-free; gate with collapse metrics.
+- 1c [proven] Mint-cost nonparametric prior: reuse-or-mint, growth
+  penalized; mint only on persistent outcome failure.
+- 1d [novel] Ignorance-anchored inventory: decoy/cross ignorance
+  objectives at fragment level force each fragment to carry distinct,
+  causal content. Our distinctive contribution.
+
+### 2. Compositional practice curriculum
+- 2a [proven] Procedural variant generator: games = shared components x
+  settings; dense training subset, held-out combinations for probes.
+- 2b [novel] Adversarial recombination sampling: choose next variant to
+  maximize fragment-reuse under uncertainty.
+- 2c [proven] Interleaved schedule via fresh self-play on old variants
+  (zero stored data; replay-free in our strict sense).
+
+### 3. MDL consolidation pass
+- 3a [proven-adjacent] Co-activation chunk compiler; keep chunk and
+  decomposition (multi-grain).
+- 3b [novel] Swap-test deduplication: merge fragments iff interchange
+  costs nothing on held-out variants.
+- 3c [proven] Compression-gated promotion; mint-rate curve is the audit.
+- 3d [proven-adjacent] Sleep-phase consolidation on self-generated
+  lifetimes.
+
+### 4. Skill-as-context fragments
+- 4a [ours] Flat token concatenation (default).
+- 4b [novel] Typed slots: role-partitioned sketchpad positions.
+- 4c [proven, conditional] Additive fragment arithmetic; adopt only after
+  a task-linearity probe passes.
+- 4d [proven] Layered injection (workspace as well as event window) if
+  the small core under-conditions.
+
+### 5. Discrete fetch, selector apart from repertoire
+- 5a [ours] Candidate router extended to top-k fragment-set fetch.
+- 5b [novel] Mid-lifetime sequential fetch conditioned on unfolding
+  events.
+- 5c [proven-adjacent] Deliberative fetch: WAIT/THINK over candidate
+  fragment-sets before COMMIT (first deliberation-loop customer).
+
+### 6. Two-tier CLS memory
+- 6a [proven, parent repo] ContentAddressedMemory as episodic tier with
+  ledger protection.
+- 6b [proven] Regularity-gated promotion: only the predictable
+  cross-episode core becomes a fragment.
+- 6c [proven] Reward-weighted write strength via the controller's
+  existing write-strength head.
+
+### 7. Prediction-error segmentation
+- 7a [novel-for-us] Self-supervised next-event surprise head proposes
+  fragment boundaries.
+- 7b [proven] Bottleneck-state detection (defer; heavy).
+
+### Flagged novel combinations
+- 1d + 3b: causally verified fragment identity (every fragment provably
+  necessary, distinct, content-bearing) — our niche.
+- 5c + 3a: reward-only consolidation loop over compiled chunks — the
+  open gap named by the skill-library literature.
+
+### Roadmap (empirical order, with decision points)
+
+R1. **Game-family generator (2a).** Parameterized variants of
+    snake/pong/breakout over shared components (interception, navigation,
+    collection, avoidance) with compositional support. Everything
+    upstream depends on task density. Deliverable: generator + holdout
+    split + tests.
+R2. **Fragment bank v1** = 1a + 1c + 1d + 2a + 2c + 4a + 5a on the
+    shared-driver plant. Gates: fragment-overlap structure matches
+    component sharing; per-fragment necessity/identity (1d nulls);
+    novel-recombination speedup with causal withholding; falling mint
+    rate. Decision point: if allocation fails to share, try 1b; if the
+    core under-conditions, add 4d.
+R3. **First consolidation pass** = 3b + 3c (+ 3a when co-activation
+    data exists). Decision point: compounding signature (mint rate falls,
+    later variants acquire faster) or diagnose with swap-test data.
+R4. **Composition upgrades as earned**: 4c after a task-linearity probe;
+    5b when within-episode demand shifts exist; 5c when fetch ambiguity
+    is the measured bottleneck.
+R5. **Two-tier memory (6a-6c)** once fragments stabilize; then
+    declarative/recall games.
+Standing rules: fast-iteration probes before full budgets; two seeds
+minimum for promotion; every rung keeps the null/permutation/zero-replay
+gate culture; rejected sub-architectures are archived with evidence like
+everything else.
