@@ -38,6 +38,10 @@ class FamilyConfig:
     intercept: int = 0  # number of simultaneous falling objects
     avoid: int = 0  # number of moving hazards
     navigate: bool = False  # goal tile behind wall segments
+    forage: int = 0  # pairs of two visually distinct item types; one type
+    # is food (+1), the other fatal (-1). `inverted` swaps which is which,
+    # so twins render identically and only context can say which to eat.
+    # Passivity scores zero: mastery requires eating the right type.
     inverted: bool = False  # SAME rendering, opposite meaning: touching a
     # positive-plane object (food/goal) is -1 and fatal. Observation alone
     # cannot reveal the objective; only fetched context can.
@@ -51,6 +55,7 @@ class FamilyConfig:
                 ("intercept", self.intercept),
                 ("avoid", self.avoid),
                 ("navigate", int(self.navigate)),
+                ("forage", self.forage),
             )
             if level
         )
@@ -58,9 +63,9 @@ class FamilyConfig:
     def validate(self) -> FamilyConfig:
         if not self.active():
             raise ValueError("a variant needs at least one active component")
-        if min(self.collect, self.intercept, self.avoid) < 0:
+        if min(self.collect, self.intercept, self.avoid, self.forage) < 0:
             raise ValueError("component levels cannot be negative")
-        if max(self.collect, self.intercept, self.avoid) > 3:
+        if max(self.collect, self.intercept, self.avoid, self.forage) > 3:
             raise ValueError("component levels above 3 are not supported")
         return self
 
@@ -98,6 +103,8 @@ class FamilyVerifier:
         self._hazards: list[list[tuple[int, int, int]]] = []
         self._walls: list[set[tuple[int, int]]] = []
         self._goal: list[tuple[int, int] | None] = []
+        self._forage_a: list[list[tuple[int, int]]] = []
+        self._forage_b: list[list[tuple[int, int]]] = []
         self._alive = torch.zeros(self.batch_size, dtype=torch.bool, device=self.device)
 
     def _rand(self, high: int) -> int:
@@ -160,6 +167,16 @@ class FamilyVerifier:
                 self._goal.append(goal)
             else:
                 self._goal.append(None)
+            type_a, type_b = [], []
+            for _ in range(config.forage):
+                cell = self._free_cell(row, occupied)
+                occupied.add(cell)
+                type_a.append(cell)
+                cell = self._free_cell(row, occupied)
+                occupied.add(cell)
+                type_b.append(cell)
+            self._forage_a.append(type_a)
+            self._forage_b.append(type_b)
 
     def observation(self) -> torch.Tensor:
         """Render [batch, 3, h, w]: avatar, positive objects, negatives."""
@@ -182,6 +199,10 @@ class FamilyVerifier:
             for hazard in self._hazards[row]:
                 grid[row, 2, hazard[0], hazard[1]] = 1.0
             for cell in self._walls[row]:
+                grid[row, 2, cell[0], cell[1]] = 1.0
+            for cell in self._forage_a[row]:
+                grid[row, 1, cell[0], cell[1]] = 1.0
+            for cell in self._forage_b[row]:
                 grid[row, 2, cell[0], cell[1]] = 1.0
         return grid
 
@@ -223,6 +244,21 @@ class FamilyVerifier:
                 reward[row] += 1.0
                 occupied = set(self._food[row]) | self._walls[row] | {target}
                 self._goal[row] = self._free_cell(row, occupied)
+
+            good, bad = self._forage_a[row], self._forage_b[row]
+            if self.config.inverted:
+                good, bad = bad, good
+            if target in good:
+                good.remove(target)
+                reward[row] += 1.0
+                occupied = (
+                    set(good) | set(bad) | self._walls[row] | {target}
+                )
+                good.append(self._free_cell(row, occupied))
+            elif target in bad:
+                reward[row] -= 1.0
+                self._alive[row] = False
+                continue
 
             next_fallers = []
             for faller in self._fallers[row]:

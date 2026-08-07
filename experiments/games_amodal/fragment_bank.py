@@ -50,15 +50,15 @@ def micro_suite() -> tuple[list[FamilyConfig], list[FamilyConfig]]:
     """Tiny crude mini-games: four singles, two training pairs, one holdout."""
 
     train = [
+        FamilyConfig(forage=1, name="forageA"),
+        FamilyConfig(forage=1, inverted=True, name="forageB"),
         FamilyConfig(collect=1, name="collect1"),
-        FamilyConfig(collect=1, inverted=True, name="poison1"),
-        FamilyConfig(navigate=True, name="navigate1"),
-        FamilyConfig(navigate=True, inverted=True, name="forbid1"),
+        FamilyConfig(avoid=1, name="avoid1"),
+        FamilyConfig(forage=1, avoid=1, name="forageA+avoid1"),
         FamilyConfig(collect=1, avoid=1, name="collect1+avoid1"),
-        FamilyConfig(collect=1, avoid=1, inverted=True, name="poison1+avoid1"),
     ]
     holdout = [
-        FamilyConfig(navigate=True, avoid=1, name="navigate1+avoid1"),
+        FamilyConfig(forage=1, avoid=1, inverted=True, name="forageB+avoid1"),
     ]
     return train, holdout
 
@@ -192,6 +192,8 @@ class FragmentBank(torch.nn.Module):
 
 
 def has_positive_source(config: FamilyConfig) -> bool:
+    if config.forage:
+        return True
     if config.inverted:
         return False
     return bool(config.collect or config.intercept or config.navigate)
