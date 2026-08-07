@@ -757,3 +757,44 @@ the consolidating core (the promoted EWC/arbitrated line), then bank
 their context — rather than asking joint bank training to do both jobs.
 The battery harness as written co-trains everything; wiring the
 consolidation line into it is the next build.
+
+**F25 (probes 40-45). The two-speed assembly works, and the binding
+constraint is now plant acquisition reliability, not memory.** Running
+the program's two promoted lines as one system — protected acquisition
+through the consolidating core, context stored in the bank, no replay —
+produced, across three iterations on the same harness:
+
+1. *Audit-path bug.* Acquisition fetched fragments by oracle index while
+   the audit fell back to untrained selection logits, scoring every game
+   against fragments it never trained with. Caught because the FIRST
+   game, alone on a fully plastic plant, scored 0.23 against a 1.00 solo
+   ceiling — an impossible number, not a disappointing one.
+2. *Ignorance pressure is required in a consolidating loop.* Without it
+   the plant keeps the first context's rule as a weight-level default
+   (F11); consolidation then locks the default in and later contexts
+   inherit it. Adding it moved forageA 0.07 -> 0.90 and intercept1 0.05
+   -> 1.65 (seed-dependent), and lowered worst-case forgetting.
+3. *A phase must be a conflict GROUP, not a game.* Sequencing suits
+   contexts that differ in what they SHOW (F18) and fails for contexts
+   that differ only in what they MEAN: consolidating twin A asks twin B
+   to invert a rule the penalty is holding still. Measured with twins
+   sequential: choiceA 1.00 / choiceB 0.17-0.20, forageA 0.90 /
+   forageB 0.00. Grouping twins into one joint phase (balanced sampling,
+   uniform floor, one consolidation per member against the shared
+   anchor): choiceB 0.39 and 0.88, with `choiceA<-choiceB` cross-feed at
+   **0.000 on both seeds** — the specification signature survives the
+   assembly, and seed 69317 held choiceA 1.00 *and* choiceB 1.00 at
+   acquisition.
+
+What remains is not a memory failure. Retention is good (worst
+forgetting 0.20-0.33, usually 0.00-0.10), the decision games sit at
+0.77-1.45 of solo ceilings, and cross-feeding still inverts behaviour.
+The residual is that hard motor games acquire on one seed and not the
+other (forageA 0.90 on 69317 / 0.07 on 69316; intercept1 1.65 on one
+run / 0.05 on the next) — a per-seed acquisition lottery in the plant,
+the same recurrent-optimization weakness the ledger has tracked since
+the BPTT diagnostic. Consequence: further memory-architecture work is
+now blocked behind plant acquisition reliability, which is the honest
+next front (wider seeds, optimizer/architecture work on the controller,
+or a convolutional screen driver — F22 showed encoder structure moves
+motor acquisition more than any trainer change).

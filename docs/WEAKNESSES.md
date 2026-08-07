@@ -109,6 +109,17 @@ rung promotes, rejects, or qualifies. Ordered by severity.
     decision games to widen the fast battery, and grown budgets to admit
     the motor games as the complexity ladder.
 
+15. **Plant acquisition reliability is the binding constraint** — the
+    two-speed assembly (`two_speed_battery`) retains well and keeps the
+    fragment specification signature (twin cross-feed 0.000, both
+    seeds), but hard motor games acquire on one seed and not the other
+    (forageA 0.90/0.07; intercept1 1.65/0.05 across seeds). Evidence:
+    F25. This gates further memory work: a bank cannot be evaluated on
+    games the plant cannot reliably learn. Next: wider seed pools on
+    acquisition alone, a convolutional screen driver (F22 showed encoder
+    structure moves motor acquisition more than any trainer change), and
+    optimizer work on the recurrent controller.
+
 ## Retired
 
 - **Fragment selection collapse and winner-take-all context competition**
