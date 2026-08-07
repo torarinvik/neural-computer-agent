@@ -3642,3 +3642,17 @@ pages, despite frozen source state, unchanged controller, and zero replay. The
 failure shows that external growth needs a learned address-update mechanism;
 the rejected evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_append_frozen_rejected_v1_2026-08-07/`.
+
+The token-preserving append-router overlay closes that bounded growth
+boundary. The source router and source pages remain frozen; a separate
+append-router retains every normalized opaque candidate token instead of
+collapsing each page to a mean. Scalar verifier failure gates fallback from
+the source router to the append router. With 34 new candidates in 17 pages,
+both matched seeds pass strict `1.0000` candidate/page and per-target/per-page
+mastery, full page permutation, reward-shuffled null, frozen-source, unchanged
+controller, and zero-replay gates. Each run uses 10,816 optimizer updates,
+1,887,744 verifier bits, and 1,887,360 logical lifetimes. This promotes
+bounded no-replay external page addressing, not arbitrary memory growth,
+compression, learned representation selection, or general continual learning.
+Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_append_token_overlay_64_promoted_v1_2026-08-07/`.

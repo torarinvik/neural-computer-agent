@@ -942,6 +942,16 @@ with verifier-gated fallback from the frozen source router; see the rejected
 control at
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_append_frozen_rejected_v1_2026-08-07/`.
 
+The token-preserving append-router overlay now passes the growth rung. The
+frozen source router handles the original pages; scalar verifier failure gates
+an append router that keeps every normalized opaque candidate token rather than
+using a lossy page mean. At 64 candidates, both seeds reach strict `1.0000`
+candidate/page and per-target/per-page mastery with permutation, shuffled-null,
+frozen-source, unchanged-controller, and zero-replay controls. The cost is
+10,816 optimizer updates and 1,887,744 verifier bits per seed. This is bounded
+no-replay external page addressing, not general continual learning. Evidence:
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_append_token_overlay_64_promoted_v1_2026-08-07/`.
+
 The external boundary now includes an appendable, independently freezeable
 `LearnedOpaqueCandidateKeyMemory`. Its first outcome-trained update policies
 are rejected: joint base/key updates cause interference, while extension-only
