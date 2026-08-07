@@ -8,7 +8,8 @@ from experiments.games_amodal.game_family import FamilyConfig
 from experiments.games_amodal.shared_controller import SharedControllerAgent
 from experiments.games_amodal.two_speed_battery import (
     SOLO_CEILINGS,
-    acquire_game,
+    acquire_group,
+    conflict_groups,
     family_fisher,
     plant_named_parameters,
     run,
@@ -95,7 +96,7 @@ def test_acquisition_reports_release_only_once_penalties_exist() -> None:
         fragments=4, tokens_per_fragment=2, width=16, variants=["choiceA"]
     )
     config = FamilyConfig(choice=1, name="choiceA")
-    first = acquire_game(agent, bank, config, [], args=_args(), seed_offset=0)
+    first = acquire_group(agent, bank, [config], [], args=_args(), seed_offset=0)
     # The first game has nothing to protect, so nothing is released.
     assert all(entry["release_fraction"] == 0.0 for entry in first)
     named = plant_named_parameters(agent)
@@ -103,8 +104,8 @@ def test_acquisition_reports_release_only_once_penalties_exist() -> None:
         agent, config, bank.fetch([0, 1]).detach(), named, args=_args(), seed=1
     )
     anchor = {name: p.detach().clone() for name, p in named}
-    second = acquire_game(
-        agent, bank, config, [(fisher, anchor)], args=_args(), seed_offset=99
+    second = acquire_group(
+        agent, bank, [config], [(fisher, anchor)], args=_args(), seed_offset=99
     )
     assert any(entry["release_fraction"] > 0.0 for entry in second)
     assert all(0.0 <= entry["release_fraction"] <= 1.0 for entry in second)
@@ -157,3 +158,21 @@ def test_audit_fetches_the_same_fragments_acquisition_trained_with() -> None:
     assert not hasattr(args, "oracle_selection")
     run(args)
     assert args.oracle_selection is True
+
+
+def test_conflict_groups_bundle_twins_and_separate_families() -> None:
+    """Twins must acquire together; different families acquire in sequence."""
+
+    train, _ = battery_suite()
+    groups = conflict_groups(train)
+    by_name = {c.name: g for g in groups for c in g}
+    # Contradictory twins share an observation distribution -> same group.
+    assert by_name["choiceA"] is by_name["choiceB"]
+    assert by_name["forageA"] is by_name["forageB"]
+    assert by_name["dualAC"] is by_name["dualBC"]
+    # Different components differ in what they SHOW -> sequenced apart.
+    assert by_name["avoid1"] is not by_name["collect1"]
+    assert by_name["choiceA"] is not by_name["dualAC"]
+    # Partition, no losses or duplicates.
+    assert sum(len(g) for g in groups) == len(train)
+    assert {c.name for g in groups for c in g} == {c.name for c in train}

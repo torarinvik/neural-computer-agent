@@ -62,6 +62,33 @@ SOLO_CEILINGS = {
 }
 
 
+def conflict_groups(
+    variants: list[FamilyConfig],
+) -> list[list[FamilyConfig]]:
+    """Group contexts that contradict each other on identical observations.
+
+    Sequential admission is right for contexts that differ in what they
+    SHOW (F18), and wrong for contexts that differ only in what they MEAN.
+    Twins render identically and demand opposite actions, so admitting the
+    second after the first has been consolidated asks the plant to invert
+    a rule its penalty is holding still: measured as choiceA 1.00 beside
+    choiceB 0.17, forageA 0.90 beside forageB 0.00, on both seeds and with
+    or without ignorance pressure. The promoted twins rung never hit this
+    because it trained twins JOINTLY, letting the bank carry the
+    difference from the start.
+
+    So a phase is a conflict group, not a game: contexts sharing a
+    component signature acquire together (bank carries the difference),
+    and consolidation protects BETWEEN groups (where sequencing works).
+    """
+
+    groups: dict[tuple, list[FamilyConfig]] = {}
+    for config in variants:
+        signature = config.active()
+        groups.setdefault(signature, []).append(config)
+    return list(groups.values())
+
+
 def plant_named_parameters(agent: SharedControllerAgent):
     """The persistent computing plant: controller plus the shared drivers."""
 
@@ -126,10 +153,10 @@ def family_fisher(
     return {name: tensor / mean for name, tensor in fisher.items()}
 
 
-def acquire_game(
+def acquire_group(
     agent: SharedControllerAgent,
     bank: FragmentBank,
-    config: FamilyConfig,
+    group: list[FamilyConfig],
     penalties: list[tuple[dict[str, torch.Tensor], dict[str, torch.Tensor]]],
     *,
     args: argparse.Namespace,
@@ -145,7 +172,11 @@ def acquire_game(
     """
 
     named = plant_named_parameters(agent)
-    indices = bank.oracle_indices(config.name, args.fragments_per_variant)
+    indices = {
+        c.name: bank.oracle_indices(c.name, args.fragments_per_variant)
+        for c in group
+    }
+    recent = {c.name: 0.0 for c in group}
     trainable = list(
         trainable_parameters([agent.controller, *agent.game_modules(agent.games[0])])
     )
@@ -153,11 +184,21 @@ def acquire_game(
     optimizer = torch.optim.Adam(trainable, lr=args.learning_rate)
     demand = {name: torch.zeros_like(parameter) for name, parameter in named}
     history: list[dict[str, float]] = []
-    for update in range(args.updates_per_game):
+    for update in range(args.updates_per_game * len(group)):
+        # Laggard-preferential sampling with a uniform floor (F10 + F23):
+        # inside a conflict group no context may capture the plant, and
+        # every context keeps a maintenance ration.
+        if len(group) > 1:
+            weights = torch.tensor([-recent[c.name] for c in group]) / 0.25
+            probs = torch.softmax(weights, dim=-1)
+            probs = 0.5 * probs + 0.5 / len(group)
+            config = group[int(torch.multinomial(probs, 1))]
+        else:
+            config = group[0]
         summary = rollout_family(
             agent,
             config,
-            bank.fetch(indices),
+            bank.fetch(indices[config.name]),
             batch_size=args.batch_size,
             steps=args.steps,
             seed=args.seed + seed_offset + update,
@@ -227,11 +268,13 @@ def acquire_game(
                 release = release / max(len(penalties) * len(named), 1)
         torch.nn.utils.clip_grad_norm_(trainable, max_norm=1.0)
         optimizer.step()
+        score = mastery(summary, config)
+        recent[config.name] = 0.9 * recent[config.name] + 0.1 * score
         history.append(
             {
                 "update": float(update + 1),
                 "game": config.name,
-                "mastery": mastery(summary, config),
+                "mastery": score,
                 "release_fraction": float(release),
                 "replayed_examples": 0.0,
             }
@@ -272,34 +315,40 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     history: list[dict[str, float]] = []
     acquisition: dict[str, float] = {}
     named = plant_named_parameters(agent)
-    for position, config in enumerate(train_variants):
-        history += acquire_game(
+    groups = conflict_groups(train_variants)
+    for position, group in enumerate(groups):
+        history += acquire_group(
             agent,
             bank,
-            config,
+            group,
             penalties,
             args=args,
             seed_offset=position * 100_000,
         )
-        # Score immediately after acquisition, before any later game can
+        # Score immediately after acquisition, before any later group can
         # disturb it: the difference against the final audit IS forgetting.
-        acquisition[config.name] = evaluate_detail(
-            agent, bank, config, args=args
-        )["mastery"]
-        fisher = family_fisher(
-            agent,
-            config,
-            bank.fetch(
-                bank.oracle_indices(config.name, args.fragments_per_variant)
-            ).detach(),
-            named,
-            args=args,
-            seed=args.seed + 900_000 + position * 1_000,
-        )
+        # One consolidation per member, so a group of contradictory twins
+        # protects both policies rather than an average of them.
         anchor = {
             name: parameter.detach().clone() for name, parameter in named
         }
-        penalties.append((fisher, anchor))
+        for member, config in enumerate(group):
+            acquisition[config.name] = evaluate_detail(
+                agent, bank, config, args=args
+            )["mastery"]
+            fisher = family_fisher(
+                agent,
+                config,
+                bank.fetch(
+                    bank.oracle_indices(
+                        config.name, args.fragments_per_variant
+                    )
+                ).detach(),
+                named,
+                args=args,
+                seed=args.seed + 900_000 + position * 1_000 + member * 100,
+            )
+            penalties.append((fisher, anchor))
 
     final = {
         v.name: evaluate_detail(agent, bank, v, args=args)
@@ -337,6 +386,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             if key != "report_out"
         },
         "order": [v.name for v in train_variants],
+        "conflict_groups": [[c.name for c in g] for g in groups],
         "acquisition_mastery": acquisition,
         "final_mastery": final,
         "solo_ratio": ratios,
