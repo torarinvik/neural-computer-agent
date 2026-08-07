@@ -1,0 +1,42 @@
+{
+  "experiment": "repeated_shift_growth_6to8to10to12to14to16to18to20_remediated_v1_2026-08-07",
+  "status": "promoted_replicated_100_capability_seven_shift_growth",
+  "claim": "A frozen episodic context and route boundary grows from two length-six capabilities to 100 capabilities across seven temporal shifts using isolated external state, selective fresh-outcome remediation, persistence, reversal-safe retention, and zero replay.",
+  "seeds": [69316, 69317],
+  "schedule": {
+    "base_episode_length": 6,
+    "shift_episode_lengths": [8, 10, 12, 14, 16, 18, 20],
+    "families_per_shift": [8, 10, 12, 14, 16, 18, 20],
+    "total_capabilities": 100
+  },
+  "accounting_by_seed": {
+    "69316": {
+      "unique_verifier_bits": 8072280,
+      "unique_logical_lifetimes": 1195560,
+      "optimizer_updates": 73216,
+      "remediation_optimizer_updates": 768,
+      "remediation_diagnostic_verifier_bits": 2352,
+      "replayed_examples": 0,
+      "wall_seconds": 197.6584434590186
+    },
+    "69317": {
+      "unique_verifier_bits": 8121432,
+      "unique_logical_lifetimes": 1220136,
+      "optimizer_updates": 74752,
+      "remediation_optimizer_updates": 2304,
+      "remediation_diagnostic_verifier_bits": 2352,
+      "replayed_examples": 0,
+      "wall_seconds": 149.81197166698985
+    }
+  },
+  "retention_on_mastered_primitives": "All 100 rows were protected before reversal; full-bank eviction was refused, only the target row was released after four failures, and that row re-protected after fresh recovery outcomes. The frozen context/router state and earlier route/credit state were unchanged.",
+  "transfer_ratio_against_fresh_learner": null,
+  "controls": {
+    "threshold": 0.8,
+    "growth_initialization": "fresh",
+    "no_replay_after_shifts": true,
+    "persistent_state_corruption_rejected": true,
+    "reward_shuffled_not_selected": true
+  },
+  "next_bottleneck": "The boundary remains a bounded generated family bank; the next challenge is open-ended capability acquisition with learned blueprint/compression or genuine new computation, while preserving the same retention and no-replay guarantees."
+}

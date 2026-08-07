@@ -2604,11 +2604,29 @@ available; the threshold is not lowered and protected rows are not replayed or
 updated. The full bank refuses eviction, then releases and recovers only the
 deliberately reversed target.
 
-This is the strongest current bounded growth result, not general continual
+This was the strongest six-shift bounded growth result, not general continual
 learning: the family generator remains finite, each new route still uses an
 externally trained blueprint, and arbitrary new computation/open-ended
 compression remain unverified. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14to16to18_remediated_v1_2026-08-06/`.
+
+## Remediated seven-shift external growth to 100 capabilities (2026-08-07)
+
+The same isolated external boundary now survives a seventh temporal shift:
+length six → eight → ten → twelve → fourteen → sixteen → eighteen → twenty.
+Across seeds 69316 and 69317, the bank grows from two base capabilities to
+100. Old-route retention, candidate permutation, causal new-route selection,
+reward-shuffled null, selective fresh remediation, full-bank
+protection/reversal/recovery, persistent route/credit reload, corruption
+rejection, and zero replay all pass. The weakest shift floors are `0.8125`
+and `0.8594`.
+
+This is a meaningful scale and stability gain for isolated external state, not
+a claim of general continual learning. The capability family is still
+generated and finite; the controller remains frozen; no positive transfer
+against a fresh learner, open-ended compression, or arbitrary new computation
+has been established. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14to16to18to20_remediated_v1_2026-08-07/`.
 
 ## Generic append-only route isolation (2026-08-06)
 

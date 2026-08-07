@@ -774,3 +774,13 @@ no-remediation control remains rejected on the retention gate. This promotes
 confidence-triggered external acquisition depth, not unbounded growth,
 arbitrary program induction, or general continual learning. See
 `session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14to16_remediated_v1_2026-08-06/`.
+
+The same boundary then survives a seventh temporal shift through length 20,
+reaching 100 total capabilities. Both replicated seeds pass full-bank
+protection, isolated reversal/recovery, persistence, corruption, causal,
+shuffled, and zero-replay gates; minimum route floors are `0.8125` and
+`0.8594`. This is the current bounded external-growth result, not general
+continual learning: the family generator remains finite and arbitrary new
+computation, open-ended compression, and positive transfer against a fresh
+learner remain unverified. See
+`session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14to16to18to20_remediated_v1_2026-08-07/`.

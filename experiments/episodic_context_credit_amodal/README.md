@@ -271,3 +271,11 @@ promotes bounded 80-capability growth, not open-ended memory or general
 continual learning. Evidence, including failed pre-remediation controls, is
 in
 `session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14to16to18_remediated_v1_2026-08-06/`.
+
+The seventh-shift follow-up extends the same boundary through length 20 and
+100 total capabilities. Both replicated seeds pass full-bank protection,
+isolated reversal/recovery, persistence, corruption, causal, shuffled, and
+zero-replay gates, with minimum route floors of `0.8125` and `0.8594`.
+This is still bounded generated-family growth rather than open-ended memory,
+arbitrary new computation, or general continual learning. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14to16to18to20_remediated_v1_2026-08-07/`.
