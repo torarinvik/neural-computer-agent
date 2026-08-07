@@ -39,9 +39,10 @@ class FamilyConfig:
     avoid: int = 0  # number of moving hazards
     navigate: bool = False  # goal tile behind wall segments
     forage: int = 0  # pairs of two visually distinct item types; one type
-    # is food (+1), the other fatal (-1). `inverted` swaps which is which,
-    # so twins render identically and only context can say which to eat.
-    # Passivity scores zero: mastery requires eating the right type.
+    # is food (+1), the other costly (-1) but NOT fatal — both respawn.
+    # `inverted` swaps which is which, so twins render identically and only
+    # context can say which to eat. Passivity scores zero, so mastery
+    # requires net-positive eating; survivable mistakes keep a gradient.
     inverted: bool = False  # SAME rendering, opposite meaning: touching a
     # positive-plane object (food/goal) is -1 and fatal. Observation alone
     # cannot reveal the objective; only fetched context can.
@@ -256,9 +257,12 @@ class FamilyVerifier:
                 )
                 good.append(self._free_cell(row, occupied))
             elif target in bad:
+                bad.remove(target)
                 reward[row] -= 1.0
-                self._alive[row] = False
-                continue
+                occupied = (
+                    set(good) | set(bad) | self._walls[row] | {target}
+                )
+                bad.append(self._free_cell(row, occupied))
 
             next_fallers = []
             for faller in self._fallers[row]:

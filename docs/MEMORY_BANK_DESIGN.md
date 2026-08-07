@@ -282,3 +282,18 @@ then introduce the contradiction so the conflicting gradient has a
 context difference to route through. Curriculum is not an optimization
 nicety for a memory bank; for maximal-conflict content it is the
 bootstrap mechanism itself.
+
+**F6 (probe 6 + single-variant diagnostic). Lethal ambiguity has no
+gradient: bank-forcing tasks must make wrong choices costly but
+survivable.** Staged acquisition did not rescue the twins — and the
+diagnosis was that stage A *alone* failed (0.031 after 500 dedicated
+updates) while the unambiguous `collect1` reached 0.62 in 300. The
+difference: in forage the wrong item was fatal, so random exploration had
+negative expected value and the policy's best early strategy was to touch
+nothing. Scoring passivity at zero (F2) is not enough when exploring is
+worse than zero. Consequence: the third condition on bank-forcing task
+design is *survivable error* — wrong choices must cost reward without
+ending the episode, so the disambiguating gradient can accumulate across
+many within-lifetime trials. Restated as a rule: for a memory bank to
+gain content, the agent must be able to *afford to be wrong* often enough
+to discover that context predicts which choice is right.
