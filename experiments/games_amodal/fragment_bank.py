@@ -252,6 +252,7 @@ def rollout_family(
     outcome_novelty: OutcomeNovelty | None = None,
     outcome_weight: float = 0.0,
     gae_lambda: float = -1.0,
+    return_intention: bool = False,
 ) -> dict[str, torch.Tensor | None]:
     verifier = FamilyVerifier(config, batch_size=batch_size, seed=seed)
     verifier.reset(seed=seed)
@@ -306,6 +307,7 @@ def rollout_family(
                 )
             )
         output, state = agent.runtime.step_events(events, state, feedback)
+        last_intention = output.intention.payload
         logits = output.decoded["keypress"]
         if critic is not None:
             values.append(critic(output.intention.payload))
@@ -415,6 +417,7 @@ def rollout_family(
         "rule_accuracy": (
             torch.tensor(verifier.dual_accuracy()) if config.dual else None
         ),
+        "final_intention": last_intention if return_intention else None,
         "returns": returns,
         "novelty": bonus_matrix,
         "outcome_novelty": outcome_matrix,
@@ -489,6 +492,47 @@ class NoveltyBonus(torch.nn.Module):
         with torch.no_grad():
             target = self.target(flat)
         return (self.predictor(flat) - target).square().mean(dim=-1)
+
+
+class ContentRouter(torch.nn.Module):
+    """Self-addressing fetch: the query comes from the agent, not a label.
+
+    Weakness 12: every bank rung so far addressed fragments by a
+    per-context label — an oracle, or logits indexed by a context name
+    the deployed system would not have. This closes that, and the design
+    turns on one observation.
+
+    For contradictory twins the context is NOT in the screen: the worlds
+    render identically, which is the whole point of the twins suite. So a
+    router that queries from the observation cannot work in principle.
+    What distinguishes the twins is the FEEDBACK — take a type-A item and
+    the reward says which world this is. The controller's recurrent state
+    already integrates that feedback stream, so the query is read from
+    the controller's own intention: the agent identifies its world from
+    the consequences of its actions and fetches accordingly.
+
+    Keys are learned per fragment and scored against the query; the top-k
+    fragments are fetched. Selection stays discrete (convergent finding
+    3): gradients flow through the fetched CONTENT, and the keys learn
+    from outcomes through the same REINFORCE signal as the old selector.
+    """
+
+    def __init__(self, *, intention_width: int, fragments: int,
+                 key_width: int = 16) -> None:
+        super().__init__()
+        self.query = torch.nn.Linear(intention_width, key_width)
+        self.keys = torch.nn.Parameter(torch.randn(fragments, key_width))
+
+    def scores(self, intention: torch.Tensor) -> torch.Tensor:
+        """Mean-pooled over the batch: one fetch serves the rollout."""
+
+        query = torch.tanh(self.query(intention)).mean(dim=0)
+        return self.keys @ query
+
+    def select(
+        self, intention: torch.Tensor, k: int, *, greedy: bool
+    ) -> tuple[list[int], torch.Tensor]:
+        return sample_selection(self.scores(intention), k, greedy=greedy)
 
 
 class OutcomeNovelty(torch.nn.Module):

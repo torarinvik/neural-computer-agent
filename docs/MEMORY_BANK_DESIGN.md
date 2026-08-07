@@ -1435,3 +1435,46 @@ here — anything that gives the agent more slack removes the need to
 anticipate, which is the skill. That tension may be intrinsic to
 timing-critical tasks rather than a gap in the search, and saying so is
 more useful than a sixth axis.
+
+**F43 (probe 66). Self-addressing from feedback fails by router collapse
+— and the failure is F12's, recurring at the level the oracle was
+hiding.** Weakness 12: every bank rung addressed fragments by a
+per-context label the deployed system would not have. `ContentRouter`
+closes that in the only way the twins permit — the worlds render
+identically, so the context is knowable only from the CONSEQUENCES of
+acting. Protocol: probe the world briefly with no fragments, read the
+controller's own intention (which has integrated the reward feedback),
+query the router, fetch discretely, then commit. Nothing outside the
+agent names the context at any point.
+
+| seed | selection A / B | mastery A / B | cross-fed |
+| --- | --- | ---: | ---: |
+| 69316 | [5,0] / **[5,0]** | 0.164 / 0.250 | 0.281 / 0.094 |
+| 69317 | [1,5] / **[1,5]** | 0.203 / 0.133 | 0.281 / 0.156 |
+
+The router selects the SAME fragments for both twins on both seeds. It
+has collapsed, so the bank is fragment-blind, so neither twin learns and
+cross-feeding is meaningless. This is exactly F12 — the selector
+collapse that the oracle-to-learned handover (F13) was built to cure —
+returning once the oracle is removed at the addressing level rather than
+the assignment level.
+
+The cure does not transfer, and the reason is instructive. F13 worked by
+holding the ASSIGNMENT fixed while the read path formed, then imitating
+it. Here there is no assignment to hold: the query is computed from a
+recurrent state that is itself still learning what the feedback means.
+Two things must be true before a feedback-derived query can be
+informative — the controller must encode "which world am I in" in its
+intention, and the router must map that encoding to fragments — and
+neither has a gradient until the other works. It is F5's cold-start
+deadlock at one remove, with the plant's own representation as the thing
+that must be scaffolded.
+
+Consequence: self-addressing needs its own staging, and the staged
+quantity is not the fragment assignment but the CONTEXT ENCODING. The
+admissible design is a probe phase trained to predict something the
+agent already receives — the sign of its own next reward under a fixed
+test action — which supplies a dense supervised signal for "which world
+is this" without naming the world. That is buildable within the
+discipline and is the concrete next rung; the router itself is sound and
+stays in the code.

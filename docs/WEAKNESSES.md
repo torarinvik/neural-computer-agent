@@ -100,8 +100,16 @@ rung promotes, rejects, or qualifies. Ordered by severity.
     selector maps a known context label to fragments; it does not
     retrieve from observations. The promoted routing rung
     (`game_routing_native_actions_v1`) does fetch from opaque events, but
-    the two have never been composed. Next: replace selection logits with
-    the candidate router over event-derived queries.
+    the two have never been composed. *Addressed and failed by F43:*
+    `ContentRouter` queries from the controller's own intention after a
+    feedback-gathering probe (the only admissible source, since twins
+    render identically). It collapses to identical selections for both
+    twins on both seeds -- F12's failure recurring at the addressing
+    level once the oracle is removed. Cause: the query is read from a
+    representation that is itself still learning, so neither the encoding
+    nor the router has a gradient until the other works. Next: stage the
+    CONTEXT ENCODING, not the assignment -- a probe phase supervised by
+    the sign of the agent's own next reward under a fixed test action.
 
 14. **Battery scale is six games; motor games are excluded** — the
     staggered battery (`staggered_battery_v1_2026-08-07`) holds six
