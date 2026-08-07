@@ -42,3 +42,15 @@ and at least one context shows super-solo transfer, both seeds. Not
 promoted: seed-2 softness (choiceB 0.72, dualBC 0.84 — above the 0.7
 gate but below seed 1's sweep), learned selection at this scale, and
 composition (dualBD holdout remains unsolved by imposed allocation, F16).
+
+## Seed widening (addendum)
+
+Seed 69318: choiceA 1.00, choiceB 0.88, dualAC 1.00, dualAD 0.95
+(1.39x solo), dualBC 0.63 (0.88x), avoid1 0.95x; twin cross-feeds 0.0.
+Three seeds now pass the no-collapse gate and the dualAD super-solo
+transfer replicates on all three (1.16x / 1.38x / 1.39x). Widening
+calibration: navigate1 (0.047) and intercept1 (0.031) are motor-class
+at the fast budget like forage/collect — every remaining family
+component is. Widening the fast battery therefore requires new decision
+games; the motor components ARE the complexity ladder and join as
+budgets grow.
