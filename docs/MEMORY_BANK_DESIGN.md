@@ -1003,3 +1003,39 @@ motor game. Component-wise calibration does not compose on a shared
 plant. Decision: the shared roll stays the battery default; encoder work
 is closed as a lever until a task-invariant preprocessing (not a
 per-task frontend) is designed.
+
+**F32 (probe 52). The pressure hypothesis is untested, because six
+arity-3 contexts do not reliably acquire — acquisition gates every
+memory question downstream of it.** The compose suite put nine rule
+pairings over six rules on one plant, the first setting where
+factorising is cheaper than memorising. Result:
+
+| | seed 69316 | seed 69317 |
+| --- | --- | --- |
+| training pairings | 0.43-0.72 | **0.32-0.35 (all at chance)** |
+| held-out `c02` / `c11` / `c20` composed | 0.52 / 0.36 / 0.47 | 0.33 / 0.35 / 0.34 |
+| random-bank control | 0.40 / 0.34 / 0.28 | 0.33 / 0.31 / 0.32 |
+
+Seed 69317 failed to acquire anything (chance is 0.333 at arity 3), so
+its composition numbers measure nothing. Seed 69316 acquired partially
+and shows composed scores above the random-bank control on two of three
+held-out pairings (0.52 vs 0.40, 0.47 vs 0.28) — a weak signal, one
+seed, inside noise. No claim is available either way.
+
+The methodological error is worth more than the result: solo ceilings
+were calibrated for individual arity-3 games (1.00 uniform, 0.44-0.50
+conditional) and that was treated as evidence the SUITE was trainable.
+It is not the same measurement. F29 already recorded that per-component
+calibration does not compose on a shared plant; this rung shows the same
+mistake made in the other direction, and the standing rule is now:
+calibrate the workload that will actually run, not its parts.
+
+Architectural consequence, and the honest summary of the program's
+current state: the binding constraint is plant acquisition reliability
+(F25), and it now blocks the composition question specifically. Adding
+contexts to force factorisation adds acquisition load at the same time,
+so pressure and difficulty cannot be varied independently on this plant.
+Either acquisition gets reliable enough to carry nine pairings, or the
+composition test needs a design where pressure rises without the
+workload rising — e.g. holding the context count fixed while increasing
+how many pairings each fragment must serve.
