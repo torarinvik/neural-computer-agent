@@ -3246,3 +3246,12 @@ is `0.6740` of independent full programs. This advances the bounded external
 compute boundary but leaves open-ended growth and learned cross-slot
 compression unverified. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_shared_residual_compute_opaque_three_replicated_promoted_v1_2026-08-07/`.
+
+The residual-compute bank now survives a fourth opaque procedure. Across two
+seeds, all four reload at `1.0000/0.8906/1.0000/0.9766` and
+`1.0000/0.9023/1.0000/0.9453`; every earlier slot remains protected and the
+external-memory checksum detects and restores deliberate corruption. The
+four-slot payload is `0.5999` of independent full programs. This is bounded
+external compute growth; reuse/compression of local compute and unrestricted
+continual learning remain open. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_shared_residual_compute_opaque_four_replicated_promoted_v1_2026-08-07/`.

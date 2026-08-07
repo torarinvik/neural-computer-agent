@@ -819,3 +819,10 @@ two seeds with reloaded floors `0.8906` and `0.9023` on the middle slot and
 isolated; the next challenge is reuse/compression across them rather than
 continued linear growth. See
 `session_records/sequence_working_memory_2026-08-02/generated_composition_shared_residual_compute_opaque_three_replicated_promoted_v1_2026-08-07/`.
+
+The residual-compute bank also retains four opaque procedures across two seeds;
+reloaded floors are `0.8906` and `0.9453` on the weaker local slots, with all
+other slots at `1.0000`. The next challenge is replacing linear local-slot
+growth with verified reuse or compression without sacrificing acquisition.
+See
+`session_records/sequence_working_memory_2026-08-02/generated_composition_shared_residual_compute_opaque_four_replicated_promoted_v1_2026-08-07/`.

@@ -61,6 +61,22 @@ def _digest_module(module: torch.nn.Module) -> str:
     return digest.hexdigest()
 
 
+def _digest_memory(
+    bank: CapabilityBank,
+    decoders: list[OpaqueProtocolDecoder],
+) -> str:
+    digest = hashlib.sha256()
+    for prefix, module in (("bank", bank),):
+        for name, value in sorted(module.state_dict().items()):
+            digest.update(f"{prefix}.{name}".encode())
+            digest.update(value.detach().cpu().contiguous().numpy().tobytes())
+    for decoder_index, decoder in enumerate(decoders):
+        for name, value in sorted(decoder.state_dict().items()):
+            digest.update(f"decoder.{decoder_index}.{name}".encode())
+            digest.update(value.detach().cpu().contiguous().numpy().tobytes())
+    return digest.hexdigest()
+
+
 def _parameter_count(module: torch.nn.Module) -> int:
     return sum(parameter.numel() for parameter in module.parameters())
 
@@ -551,6 +567,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         )
         reload_behaviors.append(reload_behavior)
         reload_probe_outcomes.append(probe_outcomes)
+    clean_memory_digest = _digest_memory(bank, decoders)
     corruption_slot = len(source_ids) - 1
     for parameter in bank.residual_slots[corruption_slot].parameters():
         with torch.no_grad():
@@ -571,6 +588,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         probes=args.retention_probes,
         seed=args.seed + 70_000 + corruption_slot,
     )
+    corrupted_memory_digest = _digest_memory(bank, decoders)
     bank.load_state_dict(bank_state, strict=True)
     decoders[corruption_slot].load_state_dict(
         decoder_states[corruption_slot], strict=True
@@ -586,6 +604,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         probes=args.retention_probes,
         seed=args.seed + 70_000 + corruption_slot,
     )
+    recovered_memory_digest = _digest_memory(bank, decoders)
     parent_digest_after = _digest_core(parent, ())
     full_program = ExternalCapabilityProgram(
         EVENT_WIDTH,
@@ -636,6 +655,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "corrupted_probe_outcomes": corrupted_probe_outcomes,
             "recovered_behavior": recovered_behavior,
             "recovered_probe_outcomes": recovered_probe_outcomes,
+            "clean_digest": clean_memory_digest,
+            "corrupted_digest": corrupted_memory_digest,
+            "recovered_digest": recovered_memory_digest,
+            "checksum_mismatch_detected": (
+                corrupted_memory_digest != clean_memory_digest
+            ),
         },
         "parameter_accounting": {
             "full_program_plus_decoder_per_slot": full_payload,
@@ -672,8 +697,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             ),
             "shared_base_digest_stable_after_growth": shared_base_stable_after_growth,
             "final_reload_exact": reload_exact,
-            "memory_corruption_detected_and_recovered": corrupted_behavior < THRESHOLD
-            and recovered_behavior >= THRESHOLD,
+            "memory_corruption_detected_and_recovered": (
+                corrupted_memory_digest != clean_memory_digest
+                and recovered_memory_digest == clean_memory_digest
+                and recovered_behavior >= THRESHOLD
+            ),
             "parent_unchanged": parent_digest_before == parent_digest_after,
             "no_replayed_examples": True,
         },
@@ -698,8 +726,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "shared_base_digest_stable_after_growth": shared_base_stable_after_growth,
             "shared_payload_reduced": shared_payload < len(source_ids) * full_payload,
             "final_reload_exact": reload_exact,
-            "memory_corruption_detected_and_recovered": corrupted_behavior < THRESHOLD
-            and recovered_behavior >= THRESHOLD,
+            "memory_corruption_detected_and_recovered": (
+                corrupted_memory_digest != clean_memory_digest
+                and recovered_memory_digest == clean_memory_digest
+                and recovered_behavior >= THRESHOLD
+            ),
             "core_unchanged": parent_digest_before == parent_digest_after,
             "no_replayed_examples": True,
         },
