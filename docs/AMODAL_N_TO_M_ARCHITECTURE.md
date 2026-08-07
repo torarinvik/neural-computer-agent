@@ -3656,3 +3656,13 @@ bounded no-replay external page addressing, not arbitrary memory growth,
 compression, learned representation selection, or general continual learning.
 Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_append_token_overlay_64_promoted_v1_2026-08-07/`.
+
+The same overlay now passes with a reduced append budget: 3,072 updates for
+each append router rather than 4,096. Both seeds still pass strict
+`1.0000` candidate/page and per-target/per-page mastery plus permutation,
+shuffled-null, frozen-source, unchanged-controller, verifier-fallback, and
+zero-replay gates. The new accounting is 8,768 optimizer updates, 1,469,952
+verifier bits, and 1,469,568 logical lifetimes per seed. This supersedes the
+prior cost boundary but remains bounded external page addressing. Evidence is
+in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_append_token_overlay_64_promoted_v2_2026-08-07/`.

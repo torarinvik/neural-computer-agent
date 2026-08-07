@@ -952,6 +952,13 @@ frozen-source, unchanged-controller, and zero-replay controls. The cost is
 no-replay external page addressing, not general continual learning. Evidence:
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_append_token_overlay_64_promoted_v1_2026-08-07/`.
 
+The cost boundary has since dropped to 3,072 updates per append router. Both
+seeds retain strict `1.0000` candidate/page and per-target/per-page mastery with
+all permutation, shuffled-null, frozen-source, unchanged-controller,
+verifier-fallback, and zero-replay controls. This costs 8,768 optimizer updates
+and 1,469,952 verifier bits per seed. See the superseding record:
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_append_token_overlay_64_promoted_v2_2026-08-07/`.
+
 The external boundary now includes an appendable, independently freezeable
 `LearnedOpaqueCandidateKeyMemory`. Its first outcome-trained update policies
 are rejected: joint base/key updates cause interference, while extension-only
