@@ -71,18 +71,27 @@ rung promotes, rejects, or qualifies. Ordered by severity.
     remain two-seed. Next: widen the ladder and externalization claims
     before any external write-up.
 
-11. **Fragment selection collapses (learned routing)** — the
-    outcome-REINFORCE selector chose identical fragments for both
-    contradictory variants (probe 8), leaving the bank uninformative even
-    though the read path works with an oracle selector. Evidence:
-    `fragment_read_path_qualified_v1_2026-08-07`. Next: diversity/entropy
-    penalty, geometric prototype routing, or staged handover from oracle
-    to learned selection.
-12. **Joint acquisition of contradictory contexts is winner-take-all** —
-    one context can dominate the shared plant (F10). Next: per-context
-    progress balancing in the interleave schedule.
+11. **Bank tested on two contexts only, with no shared structure** — the
+    self-organizing bank is promoted for contradictory context selection
+    but has never been asked to *share* a fragment between related
+    contexts, which is the compounding claim. Evidence:
+    `self_organizing_fragment_bank_v1_2026-08-07`. Next: three or more
+    contexts with genuine overlap, measuring whether related contexts
+    converge on shared fragments.
+12. **Addressing is per-context logits, not content-addressed** — the
+    selector maps a known context label to fragments; it does not
+    retrieve from observations. The promoted routing rung
+    (`game_routing_native_actions_v1`) does fetch from opaque events, but
+    the two have never been composed. Next: replace selection logits with
+    the candidate router over event-derived queries.
 
 ## Retired
+
+- **Fragment selection collapse and winner-take-all context competition**
+  — retired 2026-08-07 by the self-organizing bank rung: diversity
+  penalty plus laggard-preferential balancing plus oracle-to-learned
+  handover, both seeds at 1.000/1.000 with cross-fed 0.000
+  (`self_organizing_fragment_bank_v1_2026-08-07`).
 
 - **One-step truncated BPTT as suspected acquisition bottleneck** —
   retired 2026-08-06 by measurement: detach interval 8 matches interval 1

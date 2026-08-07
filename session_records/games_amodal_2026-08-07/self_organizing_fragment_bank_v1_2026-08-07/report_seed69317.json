@@ -1,0 +1,67 @@
+{
+  "config": {
+    "adapt_updates": 60,
+    "balance_contexts": true,
+    "balance_temperature": 0.25,
+    "batch_size": 32,
+    "eval_seeds": 4,
+    "event_width": 64,
+    "feedback_width": 16,
+    "fragment_init_scale": 1.0,
+    "fragments": 6,
+    "fragments_per_variant": 2,
+    "gamma": 0.95,
+    "hidden": 32,
+    "ignorance_every": 3,
+    "ignorance_weight": 0.5,
+    "intent_width": 32,
+    "learning_rate": 0.001,
+    "oracle_selection": false,
+    "oracle_updates": 1200,
+    "seed": 69317,
+    "selection_diversity": 2.0,
+    "selection_init_scale": 3.0,
+    "steps": 48,
+    "suite": "twins",
+    "tokens_per_fragment": 2,
+    "updates": 2400,
+    "warm_updates": 0
+  },
+  "cross_fragment_mastery": {
+    "choiceA": 0.0,
+    "choiceB": 0.0
+  },
+  "decoy_bank_mastery": {
+    "choiceA": 0.203125,
+    "choiceB": 0.2109375
+  },
+  "holdout": {},
+  "no_replay": true,
+  "overlap": {
+    "pairs": {
+      "choiceA|choiceB": {
+        "fragment_jaccard": 0.0,
+        "shared_components": 1
+      }
+    },
+    "selections": {
+      "choiceA": [
+        0,
+        2
+      ],
+      "choiceB": [
+        4,
+        5
+      ]
+    }
+  },
+  "seed": 69317,
+  "train_mastery": {
+    "choiceA": 1.0,
+    "choiceB": 1.0
+  },
+  "withheld_bank_mastery": {
+    "choiceA": 0.3828125,
+    "choiceB": 0.125
+  }
+}
