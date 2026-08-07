@@ -2697,6 +2697,35 @@ growth: the artifact blueprint and append-only capacity are finite, and
 arbitrary open-ended program induction is still unverified. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_artifact_bank_runtime_nonlocal_replicated_promoted_v1_2026-08-06/`.
 
+## Runtime-generated program mechanism transfer (2026-08-07)
+
+The predeclared append-schedule limitation was then removed from the
+generated-composition audit. A deterministic verifier-private generator now
+samples distinct four-primitive programs at runtime and rejects functional
+duplicates of the fixed grammar before training. The generated tuples are
+used only to render ordinary learned event cues and score scalar outcomes;
+program tuples, primitive names, and composition IDs never enter the
+controller.
+
+With program seed `1739`, the three generated programs were
+`reverse -> complement -> rotate -> global_parity`,
+`reverse -> global_parity -> reverse -> adjacent_xor`, and
+`prefix_parity -> prefix_parity -> rotate -> complement`. Across independent
+seeds `69316` and `69317`, all three artifacts were stably mastered and
+protected, route and candidate-permutation accuracy were `1.0000`, and the
+weakest held-out artifact behavior was `0.8828` and `0.8906`. Reward-shuffled
+selection, reload, corruption rejection, frozen-core equality, and zero replay
+all passed. The under-budget short and medium controls correctly refused their
+first unprotected append.
+
+This promotes runtime-generated mechanism transfer beyond a predeclared
+schedule. It remains bounded external growth: the primitive registry,
+four-step program depth, artifact blueprint, and append-only capacity remain
+finite. Arbitrary open-ended program induction, learned compression,
+unrestricted memory growth, and general continual learning remain
+unqualified. Evidence and accounting are archived in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_artifact_bank_runtime_generated_random_replicated_promoted_v1_2026-08-07/`.
+
 ## Replicated replay-free positive transfer from external memory (2026-08-06)
 
 The generated-composition harness now compares an inherited external artifact

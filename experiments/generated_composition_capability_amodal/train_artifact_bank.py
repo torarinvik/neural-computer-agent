@@ -10,7 +10,9 @@ artifact weights are never updated while a new artifact is acquired.
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
+import random
 from pathlib import Path
 from time import perf_counter
 
@@ -20,6 +22,7 @@ import torch.nn.functional as F
 from experiments.archive.unified_cognitive_controller.train_sequence_working_memory import (
     _GENERATED_COMPOSITIONS,
     GeneratedCompositionGrammar,
+    _apply_generated_primitive,
     _resolve_generated_compositions,
 )
 from experiments.frozen_core_transfer_amodal.train import _train_with_progress
@@ -52,6 +55,15 @@ SPAN = 4
 ROUTE_WIDTH = 48
 THRESHOLD = 0.75
 SHUFFLE_REPLICATES = 3
+_RUNTIME_PRIMITIVES = (
+    "forward",
+    "reverse",
+    "complement",
+    "rotate",
+    "adjacent_xor",
+    "prefix_parity",
+    "global_parity",
+)
 
 
 def _parse_program_specs(
@@ -66,6 +78,56 @@ def _parse_program_specs(
         for spec in specs
     )
     return _resolve_generated_compositions(grammar)
+
+
+def generate_runtime_program_grammar(
+    *,
+    seed: int,
+    count: int,
+    depth: int = 4,
+) -> GeneratedCompositionGrammar:
+    """Generate distinct verifier-private programs at audit time.
+
+    The generated programs are deliberately not selected from the fixed
+    default grammar.  Functional duplicates are rejected on every binary
+    length-four sequence, so a fresh schedule represents genuinely distinct
+    procedures rather than new spellings of an old one.  The resulting
+    grammar is used only by the verifier-side renderer and scorer; no program
+    tuple or semantic operation name enters the controller.
+    """
+
+    if count < 1 or depth < 1 or depth > 4:
+        raise ValueError("runtime program count and depth must be positive; depth <= 4")
+    sequences = torch.tensor(
+        list(itertools.product((0.0, 1.0), repeat=SPAN)),
+        dtype=torch.float32,
+    )
+
+    def signature(program: tuple[str, ...]) -> tuple[float, ...]:
+        values = sequences
+        for primitive in program:
+            values = _apply_generated_primitive(values, primitive)
+        return tuple(float(value) for value in values.reshape(-1).tolist())
+
+    occupied = {tuple(program) for program in _GENERATED_COMPOSITIONS}
+    occupied_signatures = {signature(program) for program in occupied}
+    generator = random.Random(seed)
+    generated: list[tuple[str, ...]] = []
+    attempts = 0
+    while len(generated) < count:
+        attempts += 1
+        if attempts > 100_000:
+            raise RuntimeError("could not generate enough distinct runtime programs")
+        candidate = tuple(
+            generator.choice(_RUNTIME_PRIMITIVES) for _ in range(depth)
+        )
+        candidate_signature = signature(candidate)
+        if candidate in occupied or candidate_signature in occupied_signatures:
+            continue
+        generated.append(candidate)
+        occupied.add(candidate)
+        occupied_signatures.add(candidate_signature)
+    return _resolve_generated_compositions(tuple(generated))
 
 
 def _stack_artifact(stack, decoder) -> dict[str, torch.Tensor]:
@@ -651,7 +713,18 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         or args.route_audit_count % 2
     ):
         raise ValueError("batch sizes and audit count must be even")
-    generated_compositions = _parse_program_specs(args.program_spec)
+    if args.program_seed is not None and args.program_spec is not None:
+        raise ValueError("program-seed and program-spec are mutually exclusive")
+    if args.program_seed is None:
+        generated_compositions = _parse_program_specs(args.program_spec)
+        program_source = "default" if args.program_spec is None else "explicit"
+    else:
+        generated_compositions = generate_runtime_program_grammar(
+            seed=args.program_seed,
+            count=args.program_count,
+            depth=args.program_depth,
+        )
+        program_source = "runtime_generated"
     composition_ids = tuple(
         range(len(generated_compositions))
         if args.composition_ids is None
@@ -951,6 +1024,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         ),
         "seed": args.seed,
         "composition_ids": list(composition_ids),
+        "program_source": program_source,
+        "program_seed": args.program_seed,
+        "program_count": len(generated_compositions),
+        "program_depth": args.program_depth if args.program_seed is not None else None,
         "composition_programs": [
             list(generated_compositions[composition_id])
             for composition_id in composition_ids
@@ -1066,6 +1143,14 @@ def main() -> None:
             "repeat for a custom grammar"
         ),
     )
+    parser.add_argument(
+        "--program-seed",
+        type=int,
+        default=None,
+        help="generate a fresh verifier-private grammar instead of using program-spec",
+    )
+    parser.add_argument("--program-count", type=int, default=3)
+    parser.add_argument("--program-depth", type=int, default=4)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--route-batch-size", type=int, default=8)
     parser.add_argument("--audit-count", type=int, default=16)

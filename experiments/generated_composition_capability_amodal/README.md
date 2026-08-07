@@ -325,3 +325,33 @@ This nonlocal runtime-grammar result is replicated for seeds `69316` and
 It promotes a shared compositional interface for temporal and aggregation
 procedures, while unrestricted capacity and arbitrary open-ended program
 induction remain unqualified.
+
+## Runtime-generated program mechanism transfer (2026-08-07)
+
+The next audit removes the remaining predeclared schedule assumption. A
+verifier-private generator samples distinct four-primitive programs at runtime
+from the existing primitive registry, rejects functional duplicates of the
+fixed grammar, and passes only rendered event streams and scalar outcomes to
+the learner. The same frozen controller, isolated artifact blueprint, and
+append-only route chain are used for every generated schedule.
+
+```bash
+PYTHONPATH=src uv run python -m experiments.generated_composition_capability_amodal.train_artifact_bank \
+  --route-mode append_only --base-route-count 1 \
+  --program-seed 1739 --program-count 3 --program-depth 4 \
+  --composition-ids 0 1 2 --parent-updates 128 \
+  --artifact-updates 256 --route-updates 256 --batch-size 16 \
+  --route-batch-size 16 --audit-count 64 --route-audit-count 256 \
+  --retention-probes 4 --eval-every 32 \
+  --report-out /tmp/generated-composition-runtime-generated/report.json
+```
+
+Across seeds `69316` and `69317`, all three runtime-generated artifacts were
+stable and protected, route and permutation accuracy were `1.0000`, the
+reward-shuffled controls failed as intended, and reload, corruption,
+frozen-core, and zero-replay gates passed. The weakest held-out artifact
+behavior was `0.8828`/`0.8906`. This is replicated mechanism transfer beyond a
+predeclared append schedule; arbitrary open-ended program induction, learned
+compression, and general continual learning remain unqualified. Evidence is
+archived in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_artifact_bank_runtime_generated_random_replicated_promoted_v1_2026-08-07/`.
