@@ -22,6 +22,9 @@ EXTERNAL_CAPABILITY_PIPELINE_SCHEMA = "neural-computer.external-capability-pipel
 EXTERNAL_CAPABILITY_COMPOSITION_SCHEMA = (
     "neural-computer.external-capability-composition.v1"
 )
+EXTERNAL_CAPABILITY_SHARED_RESIDUAL_SCHEMA = (
+    "neural-computer.external-capability-shared-residual.v1"
+)
 EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA = (
     "neural-computer.external-capability-slot-binding.v1"
 )
@@ -179,6 +182,168 @@ class ExternalCapabilityProgram(nn.Module):
         )
         adapted = self.intent_adapter(intention, context.context)
         return adapted, ExternalCapabilityState(next_context)
+
+
+class ExternalCapabilitySharedResidualBank(nn.Module):
+    """Share a frozen context basis while growing isolated residual slots.
+
+    The context encoder is one replaceable memory-side base.  Each residual
+    adapter has its own externally owned recurrent state and can be trained or
+    replaced independently, so adding a capability never updates an earlier
+    residual.  The bank is deliberately unaware of task names, raw protocols,
+    and correct actions; an external opaque binding chooses ``slot_index``.
+
+    This is a compression candidate, not an unconditional consolidation
+    operation.  Callers must freeze ``shared_context_encoder`` before adding
+    new slots and retain each alias only after fresh behavior verification.
+    """
+
+    def __init__(
+        self,
+        event_width: int,
+        action_width: int,
+        intention_width: int,
+        *,
+        slot_count: int = 1,
+        context_hidden: int = 64,
+        context_width: int = 32,
+        adapter_hidden: int = 64,
+    ) -> None:
+        super().__init__()
+        if slot_count < 1:
+            raise ValueError("shared residual bank needs at least one slot")
+        if min(
+            event_width,
+            action_width,
+            intention_width,
+            context_hidden,
+            context_width,
+            adapter_hidden,
+        ) < 1:
+            raise ValueError("shared residual dimensions must be positive")
+        self.event_width = int(event_width)
+        self.action_width = int(action_width)
+        self.intention_width = int(intention_width)
+        self.context_hidden = int(context_hidden)
+        self.context_width = int(context_width)
+        self.adapter_hidden = int(adapter_hidden)
+        self.shared_context_encoder = EpisodicContextEncoder(
+            self.event_width,
+            self.action_width,
+            hidden=self.context_hidden,
+            context_width=self.context_width,
+        )
+        self.residual_slots = nn.ModuleList(
+            self._new_residual() for _ in range(slot_count)
+        )
+
+    def _new_residual(self) -> EpisodicIntentAdapter:
+        return EpisodicIntentAdapter(
+            self.context_width,
+            self.intention_width,
+            hidden=self.adapter_hidden,
+        )
+
+    @property
+    def slot_count(self) -> int:
+        return len(self.residual_slots)
+
+    def configuration(self) -> dict[str, int | str]:
+        """Return the versioned shared-base/residual contract."""
+
+        return {
+            "schema": EXTERNAL_CAPABILITY_SHARED_RESIDUAL_SCHEMA,
+            "event_width": self.event_width,
+            "action_width": self.action_width,
+            "intention_width": self.intention_width,
+            "context_hidden": self.context_hidden,
+            "context_width": self.context_width,
+            "adapter_hidden": self.adapter_hidden,
+            "slot_count": self.slot_count,
+            "state": "independent_external_recurrent_contexts_v1",
+            "base": "one_shared_context_encoder_v1",
+            "residual": "independent_intention_adapters_v1",
+        }
+
+    def freeze_shared_base(self) -> None:
+        """Make the shared representation immutable for later slot growth."""
+
+        for parameter in self.shared_context_encoder.parameters():
+            parameter.requires_grad_(False)
+
+    def add_slot(self) -> int:
+        """Append a zero-initialized residual without changing old weights."""
+
+        residual = self._new_residual()
+        reference = next(self.shared_context_encoder.parameters())
+        residual.to(device=reference.device, dtype=reference.dtype)
+        self.residual_slots.append(residual)
+        return self.slot_count - 1
+
+    def initial_state(
+        self,
+        batch_size: int,
+        *,
+        device: torch.device | str,
+        dtype: torch.dtype = torch.float32,
+    ) -> ExternalCapabilityPipelineState:
+        if batch_size < 1:
+            raise ValueError("shared residual batch size must be positive")
+        return ExternalCapabilityPipelineState(
+            tuple(
+                ExternalCapabilityState(
+                    self.shared_context_encoder.initial_state(
+                        batch_size,
+                        device=device,
+                        dtype=dtype,
+                    )
+                )
+                for _ in self.residual_slots
+            )
+        )
+
+    def step(
+        self,
+        *,
+        slot_index: int,
+        event: torch.Tensor,
+        action: torch.Tensor,
+        outcome: torch.Tensor,
+        intention: IntentEvent,
+        state: ExternalCapabilityPipelineState,
+        present: torch.Tensor | None = None,
+    ) -> tuple[IntentEvent, ExternalCapabilityPipelineState]:
+        """Execute one opaque residual binding and advance only its state."""
+
+        if slot_index < 0 or slot_index >= self.slot_count:
+            raise IndexError("shared residual slot is out of range")
+        if event.ndim != 2 or event.shape[1] != self.event_width:
+            raise ValueError("event has the wrong shape for shared residual bank")
+        if action.ndim != 2 or action.shape != (
+            event.shape[0],
+            self.action_width,
+        ):
+            raise ValueError("action has the wrong shape for shared residual bank")
+        if outcome.ndim != 1 or outcome.shape[0] != event.shape[0]:
+            raise ValueError("outcome has the wrong shape for shared residual bank")
+        intention.validate(width=self.intention_width)
+        if intention.payload.shape[0] != event.shape[0]:
+            raise ValueError("intention batch does not match shared residual event")
+        state.validate(
+            batch_size=event.shape[0],
+            hidden_sizes=(self.context_hidden,) * self.slot_count,
+        )
+        context, next_context = self.shared_context_encoder.step(
+            event,
+            action,
+            outcome,
+            state.programs[slot_index].context,
+            present,
+        )
+        adapted = self.residual_slots[slot_index](intention, context.context)
+        next_states = list(state.programs)
+        next_states[slot_index] = ExternalCapabilityState(next_context)
+        return adapted, ExternalCapabilityPipelineState(tuple(next_states))
 
 
 class ExternalCapabilityPipeline(nn.Module):
