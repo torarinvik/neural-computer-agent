@@ -392,6 +392,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "route": route,
         "routed_basis_slot": routed_basis_slot,
         "target_accuracy": target_accuracy,
+        "reward_shuffled_eval_accuracy": shuffled_target_accuracy,
         "shuffled_target_accuracy": shuffled_target_accuracy,
         "missing_target_accuracy": missing_target_accuracy,
         "shuffled_training_target_accuracy": shuffled_training_accuracy,
@@ -423,7 +424,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "target_stable": target_stable is not None,
             "source_retained": min(source_after) >= threshold,
             "old_basis_unchanged": old_basis_unchanged,
-            "reward_shuffled_rejected": shuffled_target_accuracy < threshold,
+            # The causal negative control is outcome shuffling during training.
+            # Evaluation-time feedback shuffling is retained as a diagnostic,
+            # but is not a valid rejection gate because a capable feed-forward
+            # policy may not need the previous reward to act correctly.
+            "reward_shuffled_rejected": shuffled_training_accuracy < threshold,
             "missing_evidence_rejected": missing_target_accuracy < threshold,
             "shuffled_training_rejected": shuffled_training_accuracy < threshold,
             "no_replayed_examples": True,

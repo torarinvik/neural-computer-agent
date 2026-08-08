@@ -49,3 +49,11 @@ sensitivity on the full target distribution.
 The audit also corrected propensity accounting: sampled actions use an
 epsilon-smoothed behavior policy, and the exact smoothed propensity is now
 carried in the opaque action record and used by policy-gradient credit.
+
+## Exact-propensity REINFORCE follow-up — rejected
+
+Replacing attempted-outcome BCE with exact-propensity REINFORCE did not
+produce stable full-span acquisition in either seed (`69316`: `0.8281`,
+`69317`: `0.7969` final accuracy; both had no stable prefix). Source
+retention and shuffled-training rejection remained intact. This path is
+therefore retained as a valid baseline, not promoted as the solution.
