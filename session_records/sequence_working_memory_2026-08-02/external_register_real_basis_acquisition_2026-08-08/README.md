@@ -192,6 +192,38 @@ for a newly acquired computation, not scalar credit or basis-focus scheduling.
 Each run used `61,440` verifier bits, `7,680` logical lifetimes, `513`
 optimizer updates, and zero replayed examples.
 
+## Lower-plasticity and span-3 warmup screens — rejected
+
+Reducing growth learning rate to `3e-4` made acquisition slower (`0.6719`/
+`0.8203` final target accuracy) and still produced no stable prefix. Changing
+warmup from span 2 to span 3 was also worse, ending at `0.8047`/`0.9219` with
+unstable full-span checkpoints. The remaining issue is not simple optimizer
+overshoot or the two-to-four span curriculum jump.
+
+## Diverse frozen-parent pretraining — useful foundation, not promoted
+
+The parent was pretrained on held-out `reverse`, `complement`, and
+`adjacent_xor` auxiliaries while `rotate` remained unseen. With 128 parent
+updates, source mastery and final target accuracy improved (`0.9063`/`0.9219`),
+and fixed-suite retention was exact, but stable-prefix target mastery still
+failed (`0.6875`/`0.6250` minima). This is a promising foundation direction,
+but not yet a continual-growth capability.
+
+## Controller-state event boundary screens — rejected
+
+Two optional standardized event modes were tested. Appending the frozen
+controller state to the frontend event did not produce stable acquisition
+(`0.6641`/`0.6563` final checkpoints). Delivering controller state alone was
+worse (`0.6250`/`0.5625` minima) and damaged source mastery. A raw state dump is
+not the correct bridge; the next design needs a learned task-agnostic adapter
+that preserves recoverable information without exposing an unstructured
+controller implementation detail.
+
+The corrected runs include parent pretraining and growth accounting. The
+ordinary state-only runs used `70,656` verifier bits and `9,216` logical
+lifetimes per seed; the diverse-parent runs used `86,016` verifier bits and
+`16,896` logical lifetimes, with zero replayed examples.
+
 ## Wider fresh-slot capacity follow-up — rejected
 
 Increasing the fresh compute-slot hidden width from `64` to `128` did not

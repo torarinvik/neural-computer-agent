@@ -20,6 +20,7 @@ from neural_computer import (
 
 from .train import (
     ACTION_WIDTH,
+    EVENT_WIDTH,
     INSTRUCTION_WIDTH,
     REGISTER_WIDTH,
     _accuracy,
@@ -110,14 +111,28 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         learning_rate=3e-3,
         audit_count=args.audit_count,
         eval_every=args.eval_every,
+        additional_auxiliary_operations=tuple(
+            (operation, 2) for operation in args.parent_auxiliary_operations
+        ),
     )
     parent.eval()
+    external_event_width = (
+        parent.controller.width
+        if args.event_input_mode == "controller_state"
+        else EVENT_WIDTH + (
+            parent.controller.width
+            if args.event_input_mode == "append_controller_state"
+            else 0
+        )
+    )
     machine = _new_machine(
         len(SOURCE_OPERATIONS) + 1,
         operator_mode=args.operator_mode,
         basis_hidden=args.basis_hidden,
         basis_microsteps=args.basis_microsteps,
         basis_event_read_mode=args.basis_event_read_mode,
+        event_width=external_event_width,
+        event_input_mode=args.event_input_mode,
     )
     for _ in SOURCE_OPERATIONS:
         machine.add_basis_slot()
@@ -437,6 +452,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         basis_hidden=args.basis_hidden,
         basis_microsteps=args.basis_microsteps,
         basis_event_read_mode=args.basis_event_read_mode,
+        event_width=external_event_width,
+        event_input_mode=args.event_input_mode,
     )
     for _ in SOURCE_OPERATIONS:
         shuffled_training_machine.add_basis_slot()
@@ -509,6 +526,33 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         value_head=shuffled_training_value_head,
         q_head=shuffled_training_q_head,
     )
+    parent_streams = 1 + len(args.parent_auxiliary_operations)
+    parent_unique_verifier_bits = (
+        args.parent_updates * args.batch_size * 2 * parent_streams
+    )
+    parent_unique_logical_lifetimes = (
+        args.parent_updates * args.batch_size * parent_streams
+    )
+    growth_unique_verifier_bits = (
+        (
+            args.source_updates * len(SOURCE_OPERATIONS)
+            + args.growth_warmup_updates
+            + args.growth_basis_focus_updates
+            + args.target_updates
+        )
+        * args.batch_size
+        * args.span
+        * 2
+    )
+    growth_unique_logical_lifetimes = (
+        (
+            args.source_updates * len(SOURCE_OPERATIONS)
+            + args.growth_warmup_updates
+            + args.growth_basis_focus_updates
+            + args.target_updates
+        )
+        * args.batch_size
+    )
     report = {
         "schema": "neural-computer.external-register-real-basis-acquisition-audit.v1",
         "claim_boundary": (
@@ -520,6 +564,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "seed": args.seed,
         "source_operations": list(SOURCE_OPERATIONS),
         "target_operation": TARGET_OPERATION,
+        "parent_auxiliary_operations": list(args.parent_auxiliary_operations),
+        "event_input_mode": args.event_input_mode,
+        "external_event_width": external_event_width,
         "growth_credit_mode": args.growth_credit_mode,
         "basis_hidden": args.basis_hidden,
         "basis_microsteps": args.basis_microsteps,
@@ -568,25 +615,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         },
         "accounting": {
             "unique_verifier_bits": (
-                (
-                    args.source_updates * len(SOURCE_OPERATIONS)
-                    + args.growth_warmup_updates
-                    + args.growth_basis_focus_updates
-                    + args.target_updates
-                )
-                * args.batch_size
-                * args.span
-                * 2
+                parent_unique_verifier_bits + growth_unique_verifier_bits
             ),
+            "parent_unique_verifier_bits": parent_unique_verifier_bits,
+            "growth_unique_verifier_bits": growth_unique_verifier_bits,
             "unique_logical_lifetimes": (
-                (
-                    args.source_updates * len(SOURCE_OPERATIONS)
-                    + args.growth_warmup_updates
-                    + args.growth_basis_focus_updates
-                    + args.target_updates
-                )
-                * args.batch_size
+                parent_unique_logical_lifetimes + growth_unique_logical_lifetimes
             ),
+            "parent_unique_logical_lifetimes": parent_unique_logical_lifetimes,
+            "growth_unique_logical_lifetimes": growth_unique_logical_lifetimes,
             "replayed_examples": 0,
             "optimizer_updates": (
                 args.parent_updates
@@ -599,6 +636,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "growth_verifier_bits_per_query": (
                 2 if args.growth_credit_mode == "paired_scalar_probe" else 1
             ),
+            "parent_auxiliary_streams": len(args.parent_auxiliary_operations),
         },
         "gates": {
             "source_rows_have_distinct_outcomes": bool(
@@ -662,6 +700,17 @@ def main() -> None:
     parser.add_argument("--audit-count", type=int, default=32)
     parser.add_argument("--eval-every", type=int, default=32)
     parser.add_argument("--operator-mode", default="factorized_bounded_residual")
+    parser.add_argument(
+        "--parent-auxiliary-operations",
+        nargs="*",
+        choices=("reverse", "complement", "adjacent_xor", "prefix_parity"),
+        default=(),
+    )
+    parser.add_argument(
+        "--event-input-mode",
+        choices=("frontend", "append_controller_state", "controller_state"),
+        default="frontend",
+    )
     parser.add_argument("--basis-hidden", type=int, default=64)
     parser.add_argument("--basis-microsteps", type=int, default=1)
     parser.add_argument(

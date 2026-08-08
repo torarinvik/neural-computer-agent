@@ -1,0 +1,39 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_basis_learning_interface_screens",
+  "date": "2026-08-09",
+  "seeds": [69316, 69317],
+  "replayed_examples": 0,
+  "screens": [
+    {
+      "name": "lower_growth_learning_rate",
+      "decision": "reject",
+      "verifier_bits_per_run": 69632,
+      "logical_lifetimes_per_run": 8704,
+      "stable_prefix": "failed"
+    },
+    {
+      "name": "span_3_warmup",
+      "decision": "reject",
+      "verifier_bits_per_run": 69632,
+      "logical_lifetimes_per_run": 8704,
+      "stable_prefix": "failed"
+    },
+    {
+      "name": "diverse_parent_pretraining_128",
+      "decision": "retain_foundation_direction",
+      "verifier_bits_per_run": 86016,
+      "logical_lifetimes_per_run": 16896,
+      "stable_prefix": "failed",
+      "source_retention": "passed"
+    },
+    {
+      "name": "controller_state_event_boundary",
+      "decision": "reject_raw_state_bridge",
+      "verifier_bits_per_run": 70656,
+      "logical_lifetimes_per_run": 9216,
+      "stable_prefix": "failed"
+    }
+  ],
+  "next_frontier": "learned_task_agnostic_parent_to_memory_adapter"
+}

@@ -390,6 +390,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         basis_hidden: int = 64,
         basis_microsteps: int = 1,
         basis_event_read_mode: str = "flattened_window",
+        event_input_mode: str = "frontend",
         event_window_size: int = 0,
     ) -> None:
         super().__init__()
@@ -409,6 +410,12 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             raise ValueError("unsupported basis event read mode")
         if basis_event_read_mode == "attention_pool" and not event_window_size:
             raise ValueError("attention basis reading requires an event window")
+        if event_input_mode not in (
+            "frontend",
+            "append_controller_state",
+            "controller_state",
+        ):
+            raise ValueError("unsupported external event input mode")
         if event_window_size < 0:
             raise ValueError("event window size must be non-negative")
         if operator_mode not in (
@@ -453,6 +460,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         self.basis_hidden = int(basis_hidden)
         self.basis_microsteps = int(basis_microsteps)
         self.basis_event_read_mode = basis_event_read_mode
+        self.event_input_mode = event_input_mode
         self.event_window_size = int(event_window_size)
         seed_width = self.event_width + self.action_width + 2 + self.intention_width
         self.input_encoder = nn.Sequential(
@@ -577,6 +585,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "basis_hidden": self.basis_hidden,
             "basis_microsteps": self.basis_microsteps,
             "basis_event_read_mode": self.basis_event_read_mode,
+            "event_input_mode": self.event_input_mode,
             "event_window_size": self.event_window_size,
             "state": "external_working_register_with_recurrent_context_v2",
             "execution": "shared_interpreter_serial_instruction_chain_v1",

@@ -1,0 +1,161 @@
+{
+  "schema": "neural-computer.external-register-real-basis-acquisition-audit.v1",
+  "claim_boundary": "A learned opaque prior orders real primitive basis trials; fresh verifier outcomes still determine admission. Paired scalar probing is trainer-only and doubles verifier bits, so it is not a single-trial continual-learning claim.",
+  "seed": 69316,
+  "source_operations": [
+    "reverse",
+    "adjacent_xor",
+    "complement"
+  ],
+  "target_operation": "rotate",
+  "parent_auxiliary_operations": [],
+  "event_input_mode": "controller_state",
+  "external_event_width": 32,
+  "growth_credit_mode": "attempted_bce",
+  "basis_hidden": 64,
+  "basis_microsteps": 1,
+  "basis_event_read_mode": "flattened_window",
+  "verifier_bits_per_growth_query": 1,
+  "source_outcomes": [
+    [
+      0.65625,
+      0.65625,
+      0.6484375
+    ],
+    [
+      0.5625,
+      0.59375,
+      0.5546875
+    ],
+    [
+      0.6328125,
+      0.453125,
+      0.7109375
+    ]
+  ],
+  "target_candidate_order": [
+    2,
+    0,
+    1
+  ],
+  "target_candidate_outcomes": [
+    0.4140625,
+    0.3515625,
+    0.421875
+  ],
+  "pair_count": 8,
+  "selected_candidate_position": null,
+  "cold_candidate_position": null,
+  "route": "grow",
+  "routed_basis_slot": 3,
+  "target_accuracy": 0.703125,
+  "reward_shuffled_eval_accuracy": 0.6796875,
+  "shuffled_target_accuracy": 0.6796875,
+  "missing_target_accuracy": 0.5,
+  "shuffled_training_target_accuracy": 0.578125,
+  "target_stable_bits": null,
+  "target_warmup_progress": [
+    {
+      "update": 32,
+      "heldout_accuracy": 0.75,
+      "stage": "warmup"
+    },
+    {
+      "update": 64,
+      "heldout_accuracy": 0.75,
+      "stage": "warmup"
+    }
+  ],
+  "warmup_source_accuracy": [
+    0.65625,
+    0.59375,
+    0.7109375
+  ],
+  "basis_focus_progress": [
+    {
+      "update": 32,
+      "heldout_accuracy": 0.625
+    },
+    {
+      "update": 64,
+      "heldout_accuracy": 0.625
+    }
+  ],
+  "target_progress": [
+    {
+      "update": 32,
+      "heldout_accuracy": 0.625,
+      "stage": "full_span"
+    },
+    {
+      "update": 64,
+      "heldout_accuracy": 0.6328125,
+      "stage": "full_span"
+    },
+    {
+      "update": 96,
+      "heldout_accuracy": 0.6328125,
+      "stage": "full_span"
+    },
+    {
+      "update": 128,
+      "heldout_accuracy": 0.625,
+      "stage": "full_span"
+    }
+  ],
+  "source_accuracy_after": [
+    0.65625,
+    0.59375,
+    0.7109375
+  ],
+  "source_baseline": [
+    0.65625,
+    0.59375,
+    0.7109375
+  ],
+  "retention_deltas": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "retention_regression_tolerance": 0.02,
+  "retention_regression_passed": true,
+  "old_basis_unchanged": true,
+  "consolidation": {
+    "accepted": false,
+    "candidate_stable": false,
+    "retained": false,
+    "candidate_prefix_minimum": 0.625,
+    "retained_minimum": 0.59375,
+    "reason": "candidate mastery is not stable across measured prefixes",
+    "rollback_applied": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 70656,
+    "parent_unique_verifier_bits": 1024,
+    "growth_unique_verifier_bits": 69632,
+    "unique_logical_lifetimes": 9216,
+    "parent_unique_logical_lifetimes": 512,
+    "growth_unique_logical_lifetimes": 8704,
+    "replayed_examples": 0,
+    "optimizer_updates": 577,
+    "growth_verifier_bits_per_query": 1,
+    "parent_auxiliary_streams": 0
+  },
+  "gates": {
+    "source_rows_have_distinct_outcomes": false,
+    "fresh_verifier_controls_admission": true,
+    "unseen_target_requests_growth": true,
+    "target_mastered": false,
+    "target_stable": false,
+    "source_retained": false,
+    "retention_regression_passed": true,
+    "old_basis_unchanged": true,
+    "reward_shuffled_rejected": true,
+    "missing_evidence_rejected": true,
+    "shuffled_training_rejected": true,
+    "no_replayed_examples": true,
+    "unstable_growth_rolled_back": true
+  },
+  "promoted": false
+}

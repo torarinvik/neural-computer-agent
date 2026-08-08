@@ -102,11 +102,13 @@ def _new_machine(
     basis_hidden: int = 64,
     basis_microsteps: int = 1,
     basis_event_read_mode: str = "flattened_window",
+    event_width: int = EVENT_WIDTH,
+    event_input_mode: str = "frontend",
 ) -> ExternalCapabilityRegisterMachine:
     if instruction_count < 1:
         raise ValueError("instruction count must be positive")
     return ExternalCapabilityRegisterMachine(
-        EVENT_WIDTH,
+        event_width,
         ACTION_WIDTH,
         INTENTION_WIDTH,
         REGISTER_WIDTH,
@@ -117,6 +119,7 @@ def _new_machine(
         basis_hidden=basis_hidden,
         basis_microsteps=basis_microsteps,
         basis_event_read_mode=basis_event_read_mode,
+        event_input_mode=event_input_mode,
         event_window_size=4,
         instructions=tuple(
             ExternalRegisterInstruction(INSTRUCTION_WIDTH)
@@ -179,6 +182,15 @@ def _rollout(
                 parent_state,
                 feedback,
             )
+            if machine.event_input_mode == "append_controller_state":
+                # Optional versioned boundary: external memory may receive a
+                # standardized learned controller-state event in addition to
+                # the frontend event. It never receives raw modality data.
+                event = torch.cat((event, parent_state.hidden), dim=-1)
+            elif machine.event_input_mode == "controller_state":
+                event = parent_state.hidden
+            if machine.event_width != event.shape[1]:
+                raise ValueError("machine event width is incompatible with parent event")
         step = (
             machine.step_register
             if execution_mode == "in_place"
