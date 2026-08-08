@@ -74,12 +74,32 @@ decoder = agent.runtime.output_bus.decoders["keypress"]
 # cotrained.py's test_action).
 DELTAS = torch.tensor([[-1, 0], [0, 1], [1, 0], [0, -1]])
 
-# Frozen command vocabulary: two random directions in event space. Not
-# trained — the plant must learn to READ them, which is what makes the
-# later game-phase fragments interpretable as commands too.
+# Command vocabulary: TRAINABLE in phase 1, frozen after. Frozen random
+# vectors were measured unreadable (competence stuck at chance with a
+# fixed-plane bias on both seeds): every rung where event-channel
+# conditioning worked had tokens that co-adapted with the plant into a
+# readable vocabulary. The vocabulary is game-invariant, so training it
+# is storage-legal; norm projection keeps it salient without letting a
+# collapse to zero erase the channel.
 generator = torch.Generator().manual_seed(args.seed + 999)
-COMMANDS = torch.randn(2, args.width, generator=generator)
-COMMANDS = COMMANDS / COMMANDS.norm(dim=-1, keepdim=True) * 4.0
+COMMANDS = torch.nn.Parameter(torch.randn(2, args.width, generator=generator))
+
+
+def project_commands() -> None:
+    """Norm 4, and ORTHOGONAL: the smoke curve rose to 0.643 then fell to
+    0.385 -- conditioning was learned and then lost, the signature of the
+    two command vectors drifting together until their difference carried
+    nothing. Orthogonality on content is the MOORE-style constraint the
+    literature map recommends; norm projection alone cannot provide it."""
+    with torch.no_grad():
+        first = COMMANDS[0] / COMMANDS[0].norm().clamp_min(1e-6)
+        second = COMMANDS[1] - (COMMANDS[1] @ first) * first
+        second = second / second.norm().clamp_min(1e-6)
+        COMMANDS[0].copy_(first * 4.0)
+        COMMANDS[1].copy_(second * 4.0)
+
+
+project_commands()
 
 # Bank: one destination fragment per game, trained in phase 2 only.
 fragments = torch.nn.Parameter(torch.randn(2, args.width, generator=generator))
@@ -200,17 +220,38 @@ def episode(*, game: int | None, command: torch.Tensor | None,
 report: dict = {"seed": args.seed}
 
 # ---- Phase 1: edge-competence, verifier-free -------------------------------
-optimizer = torch.optim.Adam(plant, lr=1e-3)
+phase1_params = plant + [COMMANDS]
+optimizer = torch.optim.Adam(phase1_params, lr=1e-3)
+competence_curve = []
 for update in range(args.competence_updates):
     command = torch.randint(0, 2, (args.batch_size,))
     out = episode(game=None, command=command, goal_event=None,
                   seed=args.seed + update, sample=True)
     terms = out["advantage"] * out["logp"] * out["mask"]
     loss = -terms.sum() / terms.shape[0]
+    # Entropy bonus: a policy that goes deterministic on one plane stops
+    # sampling the commanded-vs-other contrast that teaches conditioning.
+    entropy = -(out["logp"] * out["mask"]).sum() / out["mask"].sum().clamp_min(1)
+    loss = loss - 0.01 * entropy
     optimizer.zero_grad(set_to_none=True)
     loss.backward()
-    torch.nn.utils.clip_grad_norm_(plant, 1.0)
+    torch.nn.utils.clip_grad_norm_(phase1_params, 1.0)
     optimizer.step()
+    project_commands()
+    if (update + 1) % 250 == 0:
+        with torch.no_grad():
+            probe = episode(
+                game=None,
+                command=torch.randint(
+                    0, 2, (args.batch_size,),
+                    generator=torch.Generator().manual_seed(update)),
+                goal_event=None, seed=args.seed + 300_000 + update,
+                sample=False)
+        correct = (probe["self_reward"] > 0).float().sum()
+        wrong = (probe["self_reward"] < 0).float().sum()
+        competence_curve.append(
+            round(float(correct / (correct + wrong).clamp_min(1.0)), 3))
+COMMANDS.requires_grad_(False)
 
 
 def competence_score(command_value: int) -> float:
@@ -226,6 +267,11 @@ def competence_score(command_value: int) -> float:
 report["competence"] = {
     "cmd0": round(competence_score(0), 4), "cmd1": round(competence_score(1), 4)
 }
+report["competence_curve"] = competence_curve
+with torch.no_grad():
+    report["command_cosine"] = round(float(
+        (COMMANDS[0] @ COMMANDS[1])
+        / (COMMANDS[0].norm() * COMMANDS[1].norm()).clamp_min(1e-6)), 4)
 
 # ---- Phase 2: cued game phase — gradients into fragments + cue-reader only -
 for parameter in plant:
