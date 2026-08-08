@@ -3920,3 +3920,17 @@ composition assembled from already learned opaque instruction data, which
 tests reusable computation without asking one new code to encode an entire
 unseen program. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_heldout_new_procedure_transfer_rejected_v1_2026-08-08/`.
+
+The held-out composition intervention now produces the first replicated
+positive transfer beyond whole-procedure storage. Four opaque instructions
+are acquired sequentially, frozen, and reused in a new held-out order
+`prefix_parity → complement → reverse → adjacent_xor`. Across seeds 69316 and
+69317, inherited composition reaches stable mastery in `8,192` verifier bits
+versus `12,288` for matched fresh learners (`1.5x` fresh-over-inherited).
+Source retention, composition mastery, shuffled-outcome, missing-evidence,
+reload, corruption, frozen-core, and zero-replay gates all pass. This promotes
+bounded reusable compositional computation, not arbitrary program induction,
+unrestricted memory growth, or general continual learning. The next bottleneck
+is scaling the positive composition transfer across multiple held-out orders
+and genuinely new primitive/operator combinations. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_heldout_composition_transfer_promoted_v1_2026-08-08/`.

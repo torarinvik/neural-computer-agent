@@ -157,3 +157,26 @@ not a reusable blueprint for an entire unseen procedure. New composition from
 already learned instruction data is the next higher-ROI test. Evidence is
 archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_heldout_new_procedure_transfer_rejected_v1_2026-08-08/`.
+
+## Promoted held-out composition transfer (2026-08-08)
+
+The composition formulation succeeds. Four opaque instructions are acquired
+sequentially for `reverse`, `adjacent_xor`, `complement`, and `prefix_parity`.
+After the interpreter is frozen, a new held-out order
+`prefix_parity -> complement -> reverse -> adjacent_xor` is acquired using
+the existing instruction vectors and a fresh decoder; no new instruction code
+is added. A matched fresh interpreter learns the same composition directly.
+
+With the registered 384-update source rung, both seeds promote. Inherited
+composition reaches stable mastery in `8,192` verifier bits on both seeds,
+while fresh learners require `12,288`, a replicated `1.5x`
+fresh-over-inherited transfer ratio. Final inherited accuracies are `0.8867`
+and `0.8750`. Source retention, composition mastery, reward-shuffled null,
+missing-evidence, exact reload, corruption rejection, frozen-parent, and
+zero-replay gates all pass. The matched 256-update source control is retained:
+it ties or fails the transfer gate, and one seed fails source mastery.
+
+This promotes reusable compositional computation for one held-out order, not
+arbitrary program induction or general continual learning. Evidence is
+archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_heldout_composition_transfer_promoted_v1_2026-08-08/`.
