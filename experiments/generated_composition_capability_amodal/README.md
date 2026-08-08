@@ -624,3 +624,10 @@ then reuses the best candidate; seed `69317` reuses one module for all three.
 All retention, reload, checksum, frozen-core, and zero-replay gates pass.
 Evidence is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_candidate_reuse_opaque_three_replicated_promoted_v1_2026-08-07/`.
+
+The `--adapter-reuse` mode audits the converse sharing direction: a fresh
+recurrent compute module trains against a frozen existing intention adapter.
+Rejected candidates are rolled back, including their stochastic stream, and
+the least-growth fresh-adapter fallback is used. This mode is intentionally
+not promoted yet; see the archived two-seed rejection under
+`session_records/sequence_working_memory_2026-08-02/`.

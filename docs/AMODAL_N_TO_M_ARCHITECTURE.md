@@ -3745,3 +3745,11 @@ outcome and reuses the best candidate only when every probe clears the verifier
 floor; otherwise it returns `grow`. This keeps adapter sharing memory-side and
 verifier-gated, without claiming behavioral compression before the compatible
 sharing audit is promoted.
+
+The first two-seed adapter-sharing audit is retained as negative evidence in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_adapter_sharing_rejected_v1_2026-08-08/`.
+It found a verifier-passing shared adapter for one later capability in both
+runs, but the incompatible middle capability failed strict mastery in both.
+Adapter sharing is therefore an available ABI mechanism, not a promoted
+continual-growth result; the next audit must improve incompatible-capability
+growth and include a matched source-order permutation control.
