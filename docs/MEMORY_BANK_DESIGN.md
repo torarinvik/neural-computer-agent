@@ -2087,3 +2087,49 @@ mis-calibrated low and should be re-run.
 
 Probe 91 is a re-analysis of `staggered_battery_v1_2026-08-07`; no new
 training.
+
+**F55 (probes 91-92, 16 seeds). Corrected self-addressing passes the full
+gate set at a 5/16 rate; acquisition, not addressing, is the binding
+constraint. The symmetric-plant variant is rejected.** First use of the
+remote 192-core lab: the corrected co-trained loop (post-probe scoring,
+F53) on seeds 69316-69331 simultaneously, judged against the
+pre-registered bar (both twins >=0.9 vs floors 0.383/0.289, cross-feed
+<=0.1, sampled decoy at floor).
+
+| gate | rate |
+| --- | ---: |
+| full bar | **5/16** |
+| both twins mastered | 8/16 |
+| cross-feed inverts | 10/16 |
+| decoy at floor | 11/16 |
+
+Read conditionally, the story is sharp: **among the 8 seeds that master
+both twins, 7 invert under cross-feed and 5 clear everything.** When the
+plant acquires both contexts, the addressing machinery — probe, sign
+encoding, fetch, and the bank's necessity — works most of the time. The
+failures are dominated by acquisition (winner-take-all or double
+failure: 0.47/0.91, 0.26/1.00, 0.21/0.27...), which is weakness 15's
+constraint surfacing in the twin setting, not an addressing defect.
+Self-addressing WORKS at some rate; making it reliable is now an
+acquisition-stability problem, which is where the literature's levers
+(small policy-head init, return normalisation, larger batches, TSCL-style
+learning-progress sampling — LITERATURE_MAP S4/S5) point next.
+
+The symmetric-plant variant (mixture gradient only, Galashov-style) is
+**rejected**: local seeds fail twice in two different ways (69316
+acquisition 0.281; 69317 decoy 0.500), remote partials split 1/2, and
+its mechanism removes the balancing that F50 showed is load-bearing.
+Four runs, three failures, no configuration in which it beats the
+baseline. The remaining 14 remote symmetric runs were abandoned with the
+instance — confirming a refutation at n=16 was not worth the rental.
+
+**Platform nondeterminism, recorded as a rule.** The same seed does not
+reproduce across torch 2.12/Linux and local torch/macOS: local 69316
+passed the full bar, remote 69316 failed cross-feed outright. Per-seed
+identities are platform-bound; **only rates transfer across machines.**
+Seed-widening claims must therefore be stated as rates with the platform
+named, and a promotion that leans on a specific seed's pass is evidence
+about one platform only.
+
+Evidence: `cotrained_seed_widening_v1_2026-08-08` (16 remote + 4 local
+runs, README, SHA256SUMS).
