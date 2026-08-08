@@ -56,6 +56,10 @@ parser.add_argument("--batch-size", type=int, default=32)
 parser.add_argument("--steps", type=int, default=48)
 parser.add_argument("--gamma", type=float, default=0.95)
 parser.add_argument("--width", type=int, default=64)
+parser.add_argument(
+    "--only-command", type=int, default=-1,
+    help="phase-1 isolation: train on a single command (0 or 1) instead "
+         "of mixing; separates per-command learnability from interference")
 args = parser.parse_args()
 
 torch.manual_seed(args.seed)
@@ -168,6 +172,7 @@ def episode(*, game: int | None, command: torch.Tensor | None,
         outcome = verifier.step(acts)
         actions_trace.append(acts)
         rewards.append(outcome.reward)
+        step_self_reward = None
         # Self-reward for phase 1, DIRECTIONAL: in the choice trial the
         # avatar is stationary and the action's direction consumes the
         # adjacent item, so the agent can check its own micro goal from
@@ -193,13 +198,34 @@ def episode(*, game: int | None, command: torch.Tensor | None,
             planes = torch.stack([on_a, on_b], dim=-1)
             commanded = planes.gather(1, command.unsqueeze(-1)).squeeze(-1)
             other = planes.sum(dim=-1) - commanded
-            selfr.append((commanded - other).clamp(-1.0, 1.0))
+            # Idle cost, the family's own DUAL_IDLE_COST lesson in phase-1
+            # form: measured, the mixed-trained plant satisfied cmd1 by
+            # INHIBITION -- 1493/1536 steps idle, consuming nothing --
+            # because idleness earned exactly 0 and generated no learning
+            # contrast. Engagement must pay even under ignorance, so a
+            # step that consumes neither plane now costs a little.
+            engaged = planes.sum(dim=-1).clamp(0.0, 1.0)
+            step_self_reward = (
+                commanded - other - 0.1 * (1.0 - engaged)
+            ).clamp(-1.0, 1.0)
+            selfr.append(step_self_reward)
         else:
             selfr.append(torch.zeros(args.batch_size))
         alive = outcome.alive
+        # Phase 1 is verifier-free: its feedback channel must carry the
+        # SELF-reward, not the verifier's. Piping choiceA's reward into
+        # the controller input meant a cmd1-compliant agent received -1
+        # feedback on every correct consumption while cmd0 rows received
+        # +1 -- the two command groups lived in systematically different
+        # input worlds, and per-command advantage centering measurably
+        # did not remove the resulting execution asymmetry (cmd0 1.0,
+        # cmd1 0.375-0.667).
+        feedback_reward = (
+            step_self_reward if step_self_reward is not None
+            else outcome.reward)
         feedback = ControllerFeedback(
             action=agent.feedback_encoders["keypress"](acts),
-            reward=outcome.reward, propensity=propensity,
+            reward=feedback_reward, propensity=propensity,
             has_feedback=torch.ones(args.batch_size))
         state = state.detached() if sample else state
     def returns_of(reward_list):
@@ -214,11 +240,25 @@ def episode(*, game: int | None, command: torch.Tensor | None,
     reward, _ = returns_of(rewards)
     self_reward, self_returns = returns_of(selfr)
     advantage = self_returns.detach()
-    advantage = advantage - (advantage * mask).sum() / mask.sum().clamp_min(1)
+    if command is not None:
+        # Centre advantage WITHIN each command group. A shared baseline
+        # lets the better-learned command's returns push the other
+        # command's correct actions into negative advantage -- measured
+        # as cmd0 followed perfectly while cmd1 stalls at 0.18-0.29 on
+        # both seeds, invisible in a pooled curve that cmd0 rows dominate.
+        for value in (0, 1):
+            rows = command == value
+            if bool(rows.any()):
+                group_mask = mask[rows]
+                mean = (advantage[rows] * group_mask).sum() / group_mask.sum().clamp_min(1)
+                advantage[rows] = advantage[rows] - mean
+    else:
+        advantage = advantage - (advantage * mask).sum() / mask.sum().clamp_min(1)
     return {
         "reward": reward, "self_reward": self_reward, "mask": mask,
         "advantage": advantage, "logp": torch.stack(logps, dim=1),
         "actions": torch.stack(actions_trace, dim=1),
+        "command_used": command,
     }
 
 
@@ -228,10 +268,32 @@ report: dict = {"seed": args.seed}
 phase1_params = plant + [COMMANDS]
 optimizer = torch.optim.Adam(phase1_params, lr=1e-3)
 competence_curve = []
+command_score = [0.5, 0.5]
 for update in range(args.competence_updates):
-    command = torch.randint(0, 2, (args.batch_size,))
+    if args.only_command >= 0:
+        command = torch.full((args.batch_size,), args.only_command)
+    else:
+        # F10/F23 laggard-preferential balancing, third scale: games in
+        # the battery, twins in the co-trained loop, now COMMANDS within
+        # one plant. Isolation probes show either command trains to 1.0
+        # alone while mixed 50/50 sampling lets cmd0 take the plant
+        # (1.0 vs 0.5). Same winner-take-all, same promoted remedy:
+        # weight rows toward the weaker command, floor for the leader.
+        weights = torch.tensor(
+            [-command_score[0], -command_score[1]]) / 0.25
+        probs = torch.softmax(weights, dim=-1) * 0.5 + 0.25
+        command = (torch.rand(args.batch_size) < probs[1]).long()
     out = episode(game=None, command=command, goal_event=None,
                   seed=args.seed + update, sample=True)
+    with torch.no_grad():
+        for value in (0, 1):
+            rows = out["command_used"] == value
+            if bool(rows.any()):
+                correct = (out["self_reward"][rows] > 0).float().sum()
+                wrong = (out["self_reward"][rows] < 0).float().sum()
+                ratio = float(correct / (correct + wrong).clamp_min(1.0))
+                command_score[value] = (
+                    0.9 * command_score[value] + 0.1 * ratio)
     terms = out["advantage"] * out["logp"] * out["mask"]
     loss = -terms.sum() / terms.shape[0]
     # Entropy bonus: a policy that goes deterministic on one plane stops
@@ -252,10 +314,16 @@ for update in range(args.competence_updates):
                     generator=torch.Generator().manual_seed(update)),
                 goal_event=None, seed=args.seed + 300_000 + update,
                 sample=False)
-        correct = (probe["self_reward"] > 0).float().sum()
-        wrong = (probe["self_reward"] < 0).float().sum()
-        competence_curve.append(
-            round(float(correct / (correct + wrong).clamp_min(1.0)), 3))
+        # Per-command ratios: the pooled ratio is dominated by whichever
+        # command consumes more and hid a 0.2-vs-1.0 execution asymmetry.
+        pair = []
+        for value in (0, 1):
+            rows = probe["command_used"] == value
+            correct = (probe["self_reward"][rows] > 0).float().sum()
+            wrong = (probe["self_reward"][rows] < 0).float().sum()
+            pair.append(round(float(
+                correct / (correct + wrong).clamp_min(1.0)), 3))
+        competence_curve.append(pair)
 COMMANDS.requires_grad_(False)
 
 
