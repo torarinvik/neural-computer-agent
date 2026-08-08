@@ -238,3 +238,23 @@ The next design must add an explicit expandable computation basis rather than
 expecting a new vector to elicit an unseen primitive from a fixed operator.
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_protected_meta_code_prior_rejected_v1_2026-08-08/`.
+
+## Expandable external computation basis (2026-08-08)
+
+The register now exposes an append-only `ExternalRegisterComputeBasis` slot
+interface. A slot is independently addressable external computation capacity:
+it receives only the persistent register and an opaque instruction vector,
+and adding one does not resize the controller or alter existing instruction
+codes. The read/execute and in-place APIs accept memory-side slot bindings,
+and the configuration schema is versioned as external-register v3.
+
+The first unseen-`rotate` pressure test added one fresh slot only for the new
+primitive. At the established 384/256 rung, all four source primitives were
+retained and the target reached 0.9922 accuracy; shuffled outcomes, missing
+evidence, reload, corruption, frozen-parent, and zero-replay controls passed.
+However, stable-prefix promotion failed while the matched fresh learner
+reached 8,192 stable verifier bits. This promotes the architecture’s ability
+to add isolated computation safely, not positive transfer or general
+continual learning. The short curriculum probe is also retained as a
+non-promotion diagnostic. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_expandable_basis_probe_2026-08-08/`.

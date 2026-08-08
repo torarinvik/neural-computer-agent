@@ -3973,3 +3973,19 @@ architecture requirement is therefore an explicit expandable computation
 basis, not another fixed operator or code-space prior. Evidence is archived
 in
 `session_records/sequence_working_memory_2026-08-02/external_register_protected_meta_code_prior_rejected_v1_2026-08-08/`.
+
+The first expandable-basis implementation adds an append-only
+`ExternalRegisterComputeBasis` interface to the external register. Each slot
+is independently addressable and versioned, consumes only the register plus
+an opaque instruction vector, and can be trained or replaced without resizing
+the controller or modifying earlier instruction data. The first unseen-
+`rotate` audit added one fresh slot after the four source primitives were
+mastered. It retained all sources, reached `0.9922` target accuracy, and
+passed shuffled-outcome, missing-evidence, reload, corruption, frozen-parent,
+and zero-replay controls. Stable-prefix promotion nevertheless failed against
+the matched fresh learner (`8,192` stable bits), so this is an architectural
+capacity/safety result rather than positive transfer. The remaining bottleneck
+is learning when and how to reuse or compose expandable slots efficiently;
+isolated growth alone does not yet make new computation cheaper than a fresh
+learner. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_expandable_basis_probe_2026-08-08/`.

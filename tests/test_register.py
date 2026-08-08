@@ -2,6 +2,7 @@ import torch
 
 from neural_computer import (
     ExternalCapabilityRegisterMachine,
+    ExternalRegisterComputeBasis,
     ExternalRegisterInstruction,
     IntentEvent,
 )
@@ -26,7 +27,7 @@ def test_external_register_machine_has_one_shared_interpreter_and_variable_progr
     machine = _machine()
 
     assert machine.configuration()["schema"] == (
-        "neural-computer.external-register.v2"
+        "neural-computer.external-register.v3"
     )
     assert machine.configuration()["instruction_count"] == 2
     assert machine.configuration()["execution"] == (
@@ -43,6 +44,36 @@ def test_external_register_machine_has_one_shared_interpreter_and_variable_progr
     assert index == 2
     assert machine.configuration()["instruction_count"] == 3
     assert len(machine.instructions) == 3
+
+
+def test_external_compute_basis_is_append_only_and_memory_addressable() -> None:
+    machine = _machine()
+    index = machine.add_basis_slot()
+
+    assert index == 0
+    assert machine.configuration()["basis_slot_count"] == 1
+    assert machine.basis_slots[0].configuration()["storage"] == (
+        "append_only_external_compute_slot_v1"
+    )
+    register = torch.randn(2, 8)
+    default = machine.execute(register, machine.instructions[0])
+    extended = machine.execute(
+        register, machine.instructions[0], basis_slot=index
+    )
+    assert default.shape == extended.shape == register.shape
+    assert torch.isfinite(extended).all()
+    assert not torch.equal(default, extended)
+
+
+def test_new_basis_slot_does_not_resize_controller_or_existing_instruction_data() -> None:
+    machine = _machine()
+    old_instruction = machine.instructions[0].code.detach().clone()
+    old_parameter_count = sum(parameter.numel() for parameter in machine.parameters())
+    machine.add_basis_slot(ExternalRegisterComputeBasis(8, 5, hidden=10))
+
+    assert machine.instructions[0].code.shape == old_instruction.shape
+    assert torch.equal(machine.instructions[0].code, old_instruction)
+    assert sum(parameter.numel() for parameter in machine.parameters()) > old_parameter_count
 
 
 def test_factorized_film_operator_is_shared_and_instruction_conditioned() -> None:

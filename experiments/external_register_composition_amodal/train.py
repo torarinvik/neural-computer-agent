@@ -100,6 +100,7 @@ def _rollout(
     decoder: OpaqueProtocolDecoder,
     batch,
     instructions: tuple[ExternalRegisterInstruction, ...],
+    basis_slots: tuple[int | None, ...] | None = None,
     *,
     train_decoder: bool,
     shuffle_outcomes: bool = False,
@@ -148,6 +149,7 @@ def _rollout(
             state=register_state,
             present=present,
             instructions=instructions,
+            basis_slots=basis_slots,
         )
         return decoder(register)
 
@@ -224,6 +226,7 @@ def _train_stage(
     *,
     operation: str,
     instructions: tuple[ExternalRegisterInstruction, ...],
+    basis_slots: tuple[int | None, ...] | None = None,
     updates: int,
     batch_size: int,
     span: int,
@@ -259,6 +262,7 @@ def _train_stage(
             decoder,
             batch,
             instructions,
+            basis_slots=basis_slots,
             train_decoder=True,
             shuffle_outcomes=shuffle_outcomes,
             credit_mode=credit_mode,
@@ -324,6 +328,7 @@ def _accuracy(
     *,
     operation: str,
     instructions: tuple[ExternalRegisterInstruction, ...],
+    basis_slots: tuple[int | None, ...] | None = None,
     count: int,
     span: int,
     seed: int,
@@ -349,6 +354,7 @@ def _accuracy(
             decoder,
             batch,
             instructions,
+            basis_slots=basis_slots,
             train_decoder=False,
             shuffle_outcomes=shuffle_outcomes,
             credit_mode=credit_mode,

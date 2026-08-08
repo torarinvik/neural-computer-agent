@@ -21,13 +21,14 @@ from torch import nn
 
 from .interface import IntentEvent
 
-EXTERNAL_REGISTER_SCHEMA = "neural-computer.external-register.v2"
+EXTERNAL_REGISTER_SCHEMA = "neural-computer.external-register.v3"
 EXTERNAL_REGISTER_INSTRUCTION_SCHEMA = (
     "neural-computer.external-register-instruction.v1"
 )
 EXTERNAL_REGISTER_READ_EXECUTE_SCHEMA = (
     "neural-computer.external-register-read-execute.v1"
 )
+EXTERNAL_REGISTER_BASIS_SCHEMA = "neural-computer.external-register-compute-basis.v1"
 
 
 @dataclass(frozen=True)
@@ -104,6 +105,60 @@ class ExternalRegisterInstruction(nn.Module):
         return self.code.to(device=device, dtype=dtype).expand(batch_size, -1)
 
 
+class ExternalRegisterComputeBasis(nn.Module):
+    """One append-only external computation slot.
+
+    A slot is fresh computation capacity, not a semantic label. It sees only
+    the current register and an opaque instruction vector and returns a bounded
+    register update. New slots can be trained without changing the controller
+    or parameters of previously mastered slots.
+    """
+
+    def __init__(
+        self,
+        register_width: int,
+        instruction_width: int,
+        *,
+        hidden: int = 64,
+    ) -> None:
+        super().__init__()
+        if min(register_width, instruction_width, hidden) < 1:
+            raise ValueError("compute basis dimensions must be positive")
+        self.register_width = int(register_width)
+        self.instruction_width = int(instruction_width)
+        self.hidden = int(hidden)
+        width = self.register_width + self.instruction_width
+        self.network = nn.Sequential(
+            nn.Linear(width, self.hidden),
+            nn.GELU(),
+            nn.Linear(self.hidden, self.register_width),
+        )
+        self.gate = nn.Sequential(
+            nn.Linear(width, self.hidden),
+            nn.GELU(),
+            nn.Linear(self.hidden, 1),
+        )
+
+    def configuration(self) -> dict[str, int | str]:
+        return {
+            "schema": EXTERNAL_REGISTER_BASIS_SCHEMA,
+            "register_width": self.register_width,
+            "instruction_width": self.instruction_width,
+            "hidden": self.hidden,
+            "storage": "append_only_external_compute_slot_v1",
+        }
+
+    def forward(self, register: torch.Tensor, code: torch.Tensor) -> torch.Tensor:
+        if register.ndim != 2 or register.shape[1] != self.register_width:
+            raise ValueError("register has the wrong shape for compute basis")
+        if code.shape != (register.shape[0], self.instruction_width):
+            raise ValueError("instruction code has the wrong shape for compute basis")
+        features = torch.cat((register, code), dim=-1)
+        return register + torch.sigmoid(self.gate(features)) * torch.tanh(
+            self.network(features)
+        )
+
+
 class ExternalCapabilityRegisterMachine(nn.Module):
     """Execute variable-length external instruction data on one register.
 
@@ -127,6 +182,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         operator_mode: str = "factorized_low_rank",
         operator_rank: int = 8,
         instructions: Iterable[ExternalRegisterInstruction] = (),
+        basis_slots: Iterable[ExternalRegisterComputeBasis] = (),
+        basis_hidden: int = 64,
     ) -> None:
         super().__init__()
         if min(
@@ -137,6 +194,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             instruction_width,
             interpreter_hidden,
             operator_rank,
+            basis_hidden,
         ) < 1:
             raise ValueError("external register dimensions must be positive")
         if operator_mode not in (
@@ -151,11 +209,18 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         if context_width is not None and context_width < 1:
             raise ValueError("context width must be positive")
         members = tuple(instructions)
+        basis_members = tuple(basis_slots)
         if any(
             instruction.instruction_width != instruction_width
             for instruction in members
         ):
             raise ValueError("instructions must share the machine code width")
+        if any(
+            basis.register_width != register_width
+            or basis.instruction_width != instruction_width
+            for basis in basis_members
+        ):
+            raise ValueError("basis slots must share machine register and code widths")
         self.event_width = int(event_width)
         self.action_width = int(action_width)
         self.intention_width = int(intention_width)
@@ -167,6 +232,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         )
         self.operator_mode = operator_mode
         self.operator_rank = int(operator_rank)
+        self.basis_hidden = int(basis_hidden)
         seed_width = self.event_width + self.action_width + 2 + self.intention_width
         self.input_encoder = nn.Sequential(
             nn.Linear(seed_width, interpreter_hidden),
@@ -271,6 +337,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         nn.init.zeros_(self.output_adapter.weight)
         nn.init.zeros_(self.output_adapter.bias)
         self.instructions = nn.ModuleList(members)
+        self.basis_slots = nn.ModuleList(basis_members)
 
     def configuration(self) -> dict[str, object]:
         return {
@@ -285,8 +352,11 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "operator_mode": self.operator_mode,
             "operator_rank": self.operator_rank,
             "instruction_count": len(self.instructions),
+            "basis_slot_count": len(self.basis_slots),
+            "basis_hidden": self.basis_hidden,
             "state": "external_working_register_with_recurrent_context_v2",
             "execution": "shared_interpreter_serial_instruction_chain_v1",
+            "compute_basis": EXTERNAL_REGISTER_BASIS_SCHEMA,
             "read_execute": EXTERNAL_REGISTER_READ_EXECUTE_SCHEMA,
             "downstream_input": "preceding_register_only_v1",
         }
@@ -298,6 +368,25 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             raise ValueError("instruction width does not match the machine")
         self.instructions.append(instruction)
         return len(self.instructions) - 1
+
+    def add_basis_slot(
+        self, basis: ExternalRegisterComputeBasis | None = None
+    ) -> int:
+        """Append fresh external computation capacity and return its address."""
+
+        if basis is None:
+            basis = ExternalRegisterComputeBasis(
+                self.register_width,
+                self.instruction_width,
+                hidden=self.basis_hidden,
+            )
+        if (
+            basis.register_width != self.register_width
+            or basis.instruction_width != self.instruction_width
+        ):
+            raise ValueError("basis slot dimensions do not match the machine")
+        self.basis_slots.append(basis)
+        return len(self.basis_slots) - 1
 
     def initial_state(
         self,
@@ -408,6 +497,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         self,
         register: torch.Tensor,
         instruction: ExternalRegisterInstruction,
+        *,
+        basis_slot: int | None = None,
     ) -> torch.Tensor:
         """Apply one instruction without access to raw events or feedback."""
 
@@ -420,6 +511,10 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             device=register.device,
             dtype=register.dtype,
         )
+        if basis_slot is not None:
+            if not 0 <= basis_slot < len(self.basis_slots):
+                raise ValueError("basis slot index is out of range")
+            return self.basis_slots[basis_slot](register, code)
         if self.operator_mode in (
             "factorized_low_rank",
             "factorized_hybrid",
@@ -491,11 +586,21 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         self,
         register: torch.Tensor,
         instructions: Iterable[ExternalRegisterInstruction],
+        *,
+        basis_slots: Iterable[int | None] | None = None,
     ) -> torch.Tensor:
         """Apply a memory-selected instruction chain to a working register."""
 
-        for instruction in instructions:
-            register = self.execute(register, instruction)
+        selected = tuple(instructions)
+        selected_basis = (
+            (None,) * len(selected)
+            if basis_slots is None
+            else tuple(basis_slots)
+        )
+        if len(selected_basis) != len(selected):
+            raise ValueError("basis slot bindings must match instruction count")
+        for instruction, basis_slot in zip(selected, selected_basis):
+            register = self.execute(register, instruction, basis_slot=basis_slot)
         return register
 
     def observe_register(
@@ -567,6 +672,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         state: ExternalRegisterState,
         present: torch.Tensor | None = None,
         instructions: Iterable[ExternalRegisterInstruction] | None = None,
+        basis_slots: Iterable[int | None] | None = None,
     ) -> tuple[torch.Tensor, ExternalRegisterState]:
         """Observe once, then execute a transient program snapshot.
 
@@ -589,7 +695,9 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             present=present,
         )
         selected = self.instructions if instructions is None else tuple(instructions)
-        executed = self.execute_chain(register, selected)
+        executed = self.execute_chain(
+            register, selected, basis_slots=basis_slots
+        )
         return torch.where(
             present.unsqueeze(-1), executed, register
         ), next_state
@@ -611,6 +719,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         state: ExternalRegisterState,
         present: torch.Tensor | None = None,
         instructions: Iterable[ExternalRegisterInstruction] | None = None,
+        basis_slots: Iterable[int | None] | None = None,
     ) -> tuple[torch.Tensor, ExternalRegisterState]:
         """Run the compatibility in-place execution path.
 
@@ -634,7 +743,9 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             state=state,
         )
         selected = self.instructions if instructions is None else tuple(instructions)
-        executed = self.execute_chain(register, selected)
+        executed = self.execute_chain(
+            register, selected, basis_slots=basis_slots
+        )
         register = torch.where(
             present.unsqueeze(-1), executed, observed_state.register
         )
@@ -654,6 +765,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         state: ExternalRegisterState,
         present: torch.Tensor | None = None,
         instructions: Iterable[ExternalRegisterInstruction] | None = None,
+        basis_slots: Iterable[int | None] | None = None,
     ) -> tuple[IntentEvent, ExternalRegisterState]:
         """Read context, write the register, execute, and return an intention."""
 
@@ -665,5 +777,6 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             state=state,
             present=present,
             instructions=instructions,
+            basis_slots=basis_slots,
         )
         return self.to_intention(register), next_state

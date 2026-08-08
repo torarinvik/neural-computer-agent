@@ -76,13 +76,29 @@ def _train_source(parent, machine, decoder, index, args, anchor_parameters=()):
     )
 
 
-def _train_target(parent, machine, decoder, args, *, seed, fresh=False, shuffled=False):
+def _train_target(
+    parent,
+    machine,
+    decoder,
+    args,
+    *,
+    seed,
+    fresh=False,
+    shuffled=False,
+    basis_slot: int | None = None,
+):
     if fresh:
         trainable = [*machine.parameters(), *decoder.parameters()]
     else:
         _freeze(machine)
         machine.instructions[-1].code.requires_grad_(True)
-        trainable = [machine.instructions[-1].code, *decoder.parameters()]
+        trainable = [machine.instructions[-1].code]
+        if basis_slot is not None:
+            basis_parameters = list(machine.basis_slots[basis_slot].parameters())
+            for parameter in basis_parameters:
+                parameter.requires_grad_(True)
+            trainable.extend(basis_parameters)
+        trainable.extend(decoder.parameters())
     return _train_stage(
         parent,
         machine,
@@ -94,6 +110,7 @@ def _train_target(parent, machine, decoder, args, *, seed, fresh=False, shuffled
         span=args.span,
         seed=seed,
         trainable=trainable,
+        basis_slots=(basis_slot,),
         credit_mode=args.credit_mode,
         shuffle_outcomes=shuffled,
         eval_every=args.eval_every,
@@ -102,13 +119,16 @@ def _train_target(parent, machine, decoder, args, *, seed, fresh=False, shuffled
     )
 
 
-def _target_accuracy(parent, machine, decoder, args, seed, **kwargs):
+def _target_accuracy(
+    parent, machine, decoder, args, seed, *, basis_slot: int | None = None, **kwargs
+):
     return _accuracy(
         parent,
         machine,
         decoder,
         operation=TARGET_PROGRAM,
         instructions=(machine.instructions[-1],),
+        basis_slots=(basis_slot,),
         count=args.audit_count,
         span=args.span,
         seed=seed,
@@ -196,11 +216,22 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     ]
     target_decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
     _initialize_target_code(inherited, args)
+    basis_slot = inherited.add_basis_slot() if args.expandable_basis else None
     target_progress = _train_target(
-        parent, inherited, target_decoder, args, seed=args.seed + 100_000
+        parent,
+        inherited,
+        target_decoder,
+        args,
+        seed=args.seed + 100_000,
+        basis_slot=basis_slot,
     )
     inherited_target = _target_accuracy(
-        parent, inherited, target_decoder, args, args.seed + 101_000
+        parent,
+        inherited,
+        target_decoder,
+        args,
+        args.seed + 101_000,
+        basis_slot=basis_slot,
     )
     source_after = [
         _accuracy(
@@ -220,6 +251,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         name: value.detach().clone() for name, value in inherited.state_dict().items()
     }
     shuffled = _new_machine(5, operator_mode=args.operator_mode)
+    if args.expandable_basis:
+        shuffled.add_basis_slot()
     shuffled.load_state_dict(source_state, strict=True)
     shuffled_decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
     _train_target(
@@ -229,30 +262,59 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         args,
         seed=args.seed + 110_000,
         shuffled=True,
+        basis_slot=basis_slot,
     )
     shuffled_target = _target_accuracy(
-        parent, shuffled, shuffled_decoder, args, args.seed + 111_000, shuffle_outcomes=True
+        parent,
+        shuffled,
+        shuffled_decoder,
+        args,
+        args.seed + 111_000,
+        basis_slot=basis_slot,
+        shuffle_outcomes=True,
     )
     fresh = _new_machine(5, operator_mode=args.operator_mode)
+    fresh_basis_slot = fresh.add_basis_slot() if args.expandable_basis else None
     fresh_decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
     fresh_progress = _train_target(
-        parent, fresh, fresh_decoder, args, seed=args.seed + 120_000, fresh=True
+        parent,
+        fresh,
+        fresh_decoder,
+        args,
+        seed=args.seed + 120_000,
+        fresh=True,
+        basis_slot=fresh_basis_slot,
     )
-    fresh_target = _target_accuracy(parent, fresh, fresh_decoder, args, args.seed + 121_000)
+    fresh_target = _target_accuracy(
+        parent,
+        fresh,
+        fresh_decoder,
+        args,
+        args.seed + 121_000,
+        basis_slot=fresh_basis_slot,
+    )
     missing = _target_accuracy(
         parent,
         inherited,
         target_decoder,
         args,
         args.seed + 122_000,
+        basis_slot=basis_slot,
         evidence_present=False,
     )
     reloaded = _new_machine(5, operator_mode=args.operator_mode)
+    if args.expandable_basis:
+        reloaded.add_basis_slot()
     reloaded.load_state_dict(inherited.state_dict(), strict=True)
     reload_decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
     reload_decoder.load_state_dict(target_decoder.state_dict(), strict=True)
     reload_target = _target_accuracy(
-        parent, reloaded, reload_decoder, args, args.seed + 101_000
+        parent,
+        reloaded,
+        reload_decoder,
+        args,
+        args.seed + 101_000,
+        basis_slot=basis_slot,
     )
     persistence_dir = args.report_out.parent / "persistence"
     if persistence_dir.exists():
@@ -321,6 +383,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "target_program": TARGET_PROGRAM,
         "operator_mode": args.operator_mode,
         "target_code_init": args.target_code_init,
+        "expandable_basis": args.expandable_basis,
         "primitive_updates": args.primitive_updates,
         "target_updates": args.target_updates,
         "batch_size": args.batch_size,
@@ -371,6 +434,11 @@ def main() -> None:
     parser.add_argument("--target-updates", type=int, default=256)
     parser.add_argument(
         "--target-code-init", choices=("random", "mean"), default="random"
+    )
+    parser.add_argument(
+        "--expandable-basis",
+        action="store_true",
+        help="add and train one isolated external compute slot for the unseen primitive",
     )
     parser.add_argument(
         "--update-shared-blueprint",
