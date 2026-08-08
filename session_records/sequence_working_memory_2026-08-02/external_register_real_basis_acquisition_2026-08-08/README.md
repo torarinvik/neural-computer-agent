@@ -205,6 +205,16 @@ increasing width.
 Each run used `69,632` verifier bits, `8,704` logical lifetimes, `577`
 optimizer updates, and zero replayed examples.
 
+## Attention-pooled event reader follow-up — rejected
+
+Fresh slots were given a generic attention reader over the bounded event
+window: the opaque register/instruction state formed a query, and event tokens
+formed masked keys and values. This is a more structured interface than
+flattening the window, but it reduced acquisition: stable-prefix checkpoint
+minima were `0.6484`/`0.6250`, with final target accuracy `0.7656`/`0.7969`.
+Fixed-suite source retention remained unchanged. The optional attention mode
+is retained as an architectural probe, not promoted as the default path.
+
 ## Bounded microstep fresh-slot follow-up — rejected
 
 Each new external slot was allowed two bounded residual microsteps over its

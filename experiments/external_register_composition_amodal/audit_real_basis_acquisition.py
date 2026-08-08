@@ -117,6 +117,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         operator_mode=args.operator_mode,
         basis_hidden=args.basis_hidden,
         basis_microsteps=args.basis_microsteps,
+        basis_event_read_mode=args.basis_event_read_mode,
     )
     for _ in SOURCE_OPERATIONS:
         machine.add_basis_slot()
@@ -435,6 +436,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         operator_mode=args.operator_mode,
         basis_hidden=args.basis_hidden,
         basis_microsteps=args.basis_microsteps,
+        basis_event_read_mode=args.basis_event_read_mode,
     )
     for _ in SOURCE_OPERATIONS:
         shuffled_training_machine.add_basis_slot()
@@ -521,6 +523,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "growth_credit_mode": args.growth_credit_mode,
         "basis_hidden": args.basis_hidden,
         "basis_microsteps": args.basis_microsteps,
+        "basis_event_read_mode": args.basis_event_read_mode,
         "verifier_bits_per_growth_query": (
             2 if args.growth_credit_mode == "paired_scalar_probe" else 1
         ),
@@ -661,6 +664,11 @@ def main() -> None:
     parser.add_argument("--operator-mode", default="factorized_bounded_residual")
     parser.add_argument("--basis-hidden", type=int, default=64)
     parser.add_argument("--basis-microsteps", type=int, default=1)
+    parser.add_argument(
+        "--basis-event-read-mode",
+        choices=("flattened_window", "attention_pool"),
+        default="flattened_window",
+    )
     parser.add_argument("--retention-regression-tolerance", type=float, default=0.02)
     args = parser.parse_args()
     print(json.dumps(run(args), indent=2))
