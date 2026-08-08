@@ -116,6 +116,7 @@ def test_opaque_basis_compatibility_prior_only_orders_and_never_admits() -> None
     assert torch.equal(cold_scores, torch.zeros_like(cold_scores))
 
     prior.enable()
+    assert sorted(prior.order(query[0], keys)) == [0, 1]
     outcomes = torch.tensor([[0.9, 0.4], [0.2, 0.8]])
     loss, pair_count = prior.outcome_ranking_loss(query, keys, outcomes)
     assert torch.isfinite(loss)

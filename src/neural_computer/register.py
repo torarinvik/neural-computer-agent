@@ -230,6 +230,16 @@ class ExternalRegisterBasisCompatibilityPrior(nn.Module):
             outcomes,
         )
 
+    @torch.no_grad()
+    def order(
+        self,
+        instruction_query: torch.Tensor,
+        basis_keys: torch.Tensor,
+    ) -> tuple[int, ...]:
+        """Order opaque basis candidates for staged trial scheduling."""
+
+        return self.screen.order(instruction_query, basis_keys)
+
     @staticmethod
     def basis_keys(
         basis_slots: Iterable[ExternalRegisterComputeBasis],
