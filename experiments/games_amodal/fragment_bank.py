@@ -535,6 +535,41 @@ class ContentRouter(torch.nn.Module):
         return sample_selection(self.scores(intention), k, greedy=greedy)
 
 
+class ContextProbe(torch.nn.Module):
+    """Stages the CONTEXT ENCODING that F43 found had no gradient.
+
+    F43's deadlock: a feedback-derived query needs the controller's
+    intention to encode "which world is this", and that encoding has no
+    gradient until the router already works. The fix is to supervise the
+    encoding directly with something the agent already receives — the
+    reward its own probing action produces.
+
+    The probe predicts, from the intention BEFORE acting, what reward a
+    fixed test action will return. In worlds that render identically but
+    reward oppositely, that prediction IS the context, so training it
+    forces the intention to carry the distinction the router needs.
+
+    Claim boundary, stated plainly: the test action is hand-specified
+    (step onto the positive-plane item, which is computable from the
+    observation alone, so no rule is revealed). What the agent learns is
+    the mapping from probe OUTCOME to fragment. This is weaker than
+    discovering the probe itself and stronger than the oracle it
+    replaces, which named the context outright. Like the F13 oracle it is
+    a training schedule, not a runtime component.
+    """
+
+    def __init__(self, *, intention_width: int, hidden: int = 32) -> None:
+        super().__init__()
+        self.net = torch.nn.Sequential(
+            torch.nn.Linear(intention_width, hidden),
+            torch.nn.Tanh(),
+            torch.nn.Linear(hidden, 1),
+        )
+
+    def forward(self, intention: torch.Tensor) -> torch.Tensor:
+        return self.net(intention).squeeze(-1)
+
+
 class OutcomeNovelty(torch.nn.Module):
     """Count-based novelty over OUTCOMES, not observations (F37).
 
