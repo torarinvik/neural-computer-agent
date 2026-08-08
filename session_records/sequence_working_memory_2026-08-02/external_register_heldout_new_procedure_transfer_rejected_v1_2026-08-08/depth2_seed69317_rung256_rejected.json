@@ -1,0 +1,98 @@
+{
+  "schema": "neural-computer.external-register-heldout-transfer-report.v1",
+  "claim_boundary": "Four verifier-private procedures were acquired sequentially. A frozen shared register interpreter then acquired a fifth unseen procedure using only a new opaque instruction code and fresh outcomes. Positive transfer is required against a matched fresh interpreter; this is not assumed from target mastery alone.",
+  "seed": 69317,
+  "program_seed": 77031,
+  "primitive_family": "registry",
+  "program_depth": 2,
+  "programs": [
+    [
+      "rotate",
+      "prefix_parity"
+    ],
+    [
+      "prefix_parity",
+      "reverse"
+    ],
+    [
+      "reverse",
+      "global_parity"
+    ],
+    [
+      "reverse",
+      "prefix_parity"
+    ],
+    [
+      "forward",
+      "reverse"
+    ]
+  ],
+  "source_ids": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "target_id": 4,
+  "operator_mode": "factorized_bounded_residual",
+  "primitive_updates": 256,
+  "target_updates": 256,
+  "batch_size": 16,
+  "span": 4,
+  "audit_count": 64,
+  "source_retention_before_target": [
+    0.84375,
+    0.81640625,
+    0.79296875,
+    0.76171875
+  ],
+  "source_retention_after_target": [
+    0.83984375,
+    0.8125,
+    0.80078125,
+    0.76171875
+  ],
+  "target": {
+    "inherited_accuracy": 0.828125,
+    "fresh_accuracy": 1.0,
+    "reward_shuffled_accuracy": 0.4296875,
+    "missing_evidence_accuracy": 0.5,
+    "inherited_stable_bits": 12288,
+    "fresh_stable_bits": 8192,
+    "reload_accuracy": 0.828125
+  },
+  "parent": {
+    "final_accuracy": 1.0
+  },
+  "frozen_core": {
+    "before": "33d7e9a20541e6546ae96041accc3ea2226335fff07e565db80e45e89143115b",
+    "after": "33d7e9a20541e6546ae96041accc3ea2226335fff07e565db80e45e89143115b",
+    "unchanged": true
+  },
+  "persistence": {
+    "corruption_rejected": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 167936,
+    "optimizer_updates": 1920,
+    "replayed_examples": 0,
+    "stable_bits_to_threshold": 12288,
+    "transfer_ratio_against_fresh_learner": 0.6666666666666666,
+    "wall_seconds": 169.5515144999954
+  },
+  "gates": {
+    "sources_mastered_before_target": false,
+    "sources_retained_after_target": false,
+    "target_stable": true,
+    "fresh_target_stable": true,
+    "positive_heldout_transfer": false,
+    "target_mastered": true,
+    "reward_shuffled_rejected": true,
+    "missing_evidence_rejected": true,
+    "reload_exact": true,
+    "corruption_rejected": true,
+    "frozen_parent": true,
+    "no_replayed_examples": true
+  },
+  "promoted": false
+}

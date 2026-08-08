@@ -1,0 +1,108 @@
+{
+  "schema": "neural-computer.external-register-heldout-transfer-report.v1",
+  "claim_boundary": "Four verifier-private procedures were acquired sequentially. A frozen shared register interpreter then acquired a fifth unseen procedure using only a new opaque instruction code and fresh outcomes. Positive transfer is required against a matched fresh interpreter; this is not assumed from target mastery alone.",
+  "seed": 69316,
+  "program_seed": 77031,
+  "primitive_family": "registry",
+  "program_depth": 4,
+  "programs": [
+    [
+      "rotate",
+      "prefix_parity",
+      "rotate",
+      "prefix_parity"
+    ],
+    [
+      "prefix_parity",
+      "reverse",
+      "reverse",
+      "complement"
+    ],
+    [
+      "reverse",
+      "rotate",
+      "reverse",
+      "global_parity"
+    ],
+    [
+      "reverse",
+      "prefix_parity",
+      "forward",
+      "reverse"
+    ],
+    [
+      "prefix_parity",
+      "rotate",
+      "rotate",
+      "global_parity"
+    ]
+  ],
+  "source_ids": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "target_id": 4,
+  "operator_mode": "factorized_bounded_residual",
+  "primitive_updates": 256,
+  "target_updates": 256,
+  "batch_size": 16,
+  "span": 4,
+  "audit_count": 64,
+  "source_retention_before_target": [
+    0.8125,
+    0.66015625,
+    0.625,
+    0.7109375
+  ],
+  "source_retention_after_target": [
+    0.8125,
+    0.6640625,
+    0.625,
+    0.71484375
+  ],
+  "target": {
+    "inherited_accuracy": 0.68359375,
+    "fresh_accuracy": 1.0,
+    "reward_shuffled_accuracy": 0.4765625,
+    "missing_evidence_accuracy": 0.5,
+    "inherited_stable_bits": null,
+    "fresh_stable_bits": 8192,
+    "reload_accuracy": 0.68359375
+  },
+  "parent": {
+    "final_accuracy": 1.0
+  },
+  "frozen_core": {
+    "before": "06562d446344c900a3f8accb6d26df0dd5b8d410147aacdd8064c34915c4620c",
+    "after": "06562d446344c900a3f8accb6d26df0dd5b8d410147aacdd8064c34915c4620c",
+    "unchanged": true
+  },
+  "persistence": {
+    "corruption_rejected": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 167936,
+    "optimizer_updates": 1920,
+    "replayed_examples": 0,
+    "stable_bits_to_threshold": null,
+    "transfer_ratio_against_fresh_learner": null,
+    "wall_seconds": 249.53086391702527
+  },
+  "gates": {
+    "sources_mastered_before_target": false,
+    "sources_retained_after_target": false,
+    "target_stable": false,
+    "fresh_target_stable": true,
+    "positive_heldout_transfer": false,
+    "target_mastered": false,
+    "reward_shuffled_rejected": true,
+    "missing_evidence_rejected": true,
+    "reload_exact": true,
+    "corruption_rejected": true,
+    "frozen_parent": true,
+    "no_replayed_examples": true
+  },
+  "promoted": false
+}

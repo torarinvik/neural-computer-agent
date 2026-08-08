@@ -1,0 +1,12 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_register_heldout_new_procedure_transfer_rejected_v1",
+  "claim": "A frozen shared interpreter plus one new opaque instruction code does not yet yield positive transfer to an unseen whole procedure.",
+  "replayed_examples": 0,
+  "runs": [
+    {"variant": "depth4", "seed": 69316, "promoted": false, "source_mastery": false, "inherited_stable_bits": null, "fresh_stable_bits": 8192, "replayed_examples": 0},
+    {"variant": "depth2_rung256", "seed": 69316, "promoted": false, "source_mastery": true, "inherited_stable_bits": 12288, "fresh_stable_bits": 12288, "positive_transfer": false, "replayed_examples": 0},
+    {"variant": "depth2_rung256", "seed": 69317, "promoted": false, "source_mastery": false, "inherited_stable_bits": 12288, "fresh_stable_bits": 8192, "positive_transfer": false, "replayed_examples": 0},
+    {"variant": "depth2_source384", "seed": 69317, "promoted": false, "source_mastery": true, "inherited_stable_bits": 12288, "fresh_stable_bits": 8192, "positive_transfer": false, "replayed_examples": 0}
+  ]
+}

@@ -136,3 +136,24 @@ inherited path required `8,192`. It is therefore rejected as a transfer
 mechanism. The result supports bounded execution stability, not learned
 blueprint reuse or genuine new computation. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_four_instruction_bounded_residual_rejected_v1_2026-08-08/`.
+
+## Held-out new-procedure transfer (2026-08-08)
+
+The next audit acquired four verifier-private source procedures, froze the
+shared interpreter, and trained only a new opaque instruction code and decoder
+for a fifth unseen procedure. A matched fresh interpreter received the same
+target outcomes. The depth-four rung was rejected because source acquisition
+was under the mastery floor. Reducing only program depth to two made the
+source gate valid on seed `69316`: inherited target accuracy was `0.9531`,
+fresh was `0.9844`, and stable cost tied at `12,288` bits. Seed `69317` left
+one source at `0.7617`; increasing only source updates to `384` repaired that
+gate, but inherited target still required `12,288` bits versus `8,192` fresh.
+
+All valid controls passed: source retention, target mastery, reward-shuffled
+rejection, missing-evidence rejection, exact reload, corruption rejection,
+frozen parent, and zero replay. The strict held-out-transfer gate therefore
+remains rejected. This localizes the next bottleneck: one new opaque code is
+not a reusable blueprint for an entire unseen procedure. New composition from
+already learned instruction data is the next higher-ROI test. Evidence is
+archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_heldout_new_procedure_transfer_rejected_v1_2026-08-08/`.

@@ -3908,3 +3908,15 @@ new-route floors to `0.859375`. This is a promoted bounded scalability result,
 not unrestricted memory growth, arbitrary new computation, or general
 continual learning. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14to16to18to20to22to24_prefix_bank_v1_2026-08-08/`.
+
+The held-out procedure audit then froze four acquired opaque instruction
+procedures and trained a fifth new code against fresh outcomes, compared with
+a matched fresh interpreter. The valid depth-two rung passed all source,
+target, retention, null, missing-evidence, reload, corruption, frozen-core,
+and zero-replay controls, but inherited target acquisition required
+`12,288` verifier bits versus `8,192` fresh on the repaired seed. This rejects
+whole-procedure learning as blueprint reuse. The next higher-ROI test is a new
+composition assembled from already learned opaque instruction data, which
+tests reusable computation without asking one new code to encode an entire
+unseen program. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_heldout_new_procedure_transfer_rejected_v1_2026-08-08/`.
