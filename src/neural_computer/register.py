@@ -144,6 +144,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "factorized_film",
             "factorized_hybrid",
             "factorized_bounded_residual",
+            "factorized_protected_meta",
             "unconstrained_mlp",
         ):
             raise ValueError("unsupported external register operator mode")
@@ -183,6 +184,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "factorized_low_rank",
             "factorized_hybrid",
             "factorized_bounded_residual",
+            "factorized_protected_meta",
         ):
             self.operator_left = nn.Linear(
                 instruction_width,
@@ -210,6 +212,31 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 instruction_width, register_width
             )
             nn.init.zeros_(self.operator_composition_gate.bias)
+        if operator_mode == "factorized_protected_meta":
+            # This branch is an isolated, initially inert operator-family
+            # prior.  The base low-rank operator can be protected while this
+            # residual family learns across later fresh procedures.
+            self.operator_meta_left = nn.Linear(
+                instruction_width, register_width * operator_rank
+            )
+            self.operator_meta_right = nn.Linear(
+                instruction_width, operator_rank * register_width
+            )
+            self.operator_meta_bias = nn.Linear(
+                instruction_width, register_width
+            )
+            self.operator_meta_gate = nn.Linear(
+                instruction_width, register_width
+            )
+            for module in (
+                self.operator_meta_left,
+                self.operator_meta_right,
+                self.operator_meta_bias,
+                self.operator_meta_gate,
+            ):
+                nn.init.zeros_(module.weight)
+                nn.init.zeros_(module.bias)
+            nn.init.constant_(self.operator_meta_gate.bias, -4.0)
         if operator_mode in ("factorized_film", "factorized_hybrid"):
             self.operator_feature = nn.Linear(register_width, interpreter_hidden)
             self.operator_modulation = nn.Linear(
@@ -397,6 +424,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "factorized_low_rank",
             "factorized_hybrid",
             "factorized_bounded_residual",
+            "factorized_protected_meta",
         ):
             operator_register = (
                 self.operator_normalizer(register)
@@ -421,6 +449,23 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 proposal = torch.tanh(base_proposal + self.operator_bias(code))
                 gate = torch.sigmoid(self.operator_composition_gate(code))
                 return register + gate * proposal
+            if self.operator_mode == "factorized_protected_meta":
+                meta_left = torch.tanh(self.operator_meta_left(code)).reshape(
+                    register.shape[0], self.register_width, self.operator_rank
+                )
+                meta_right = torch.tanh(self.operator_meta_right(code)).reshape(
+                    register.shape[0], self.operator_rank, self.register_width
+                )
+                meta_projected = torch.einsum(
+                    "br,bkr->bk", register, meta_right
+                )
+                meta_proposal = torch.einsum(
+                    "bk,brk->br", meta_projected, meta_left
+                ) + self.operator_meta_bias(code)
+                meta_gate = torch.sigmoid(self.operator_meta_gate(code))
+                return register + base_proposal + self.operator_bias(code) + (
+                    0.5 * meta_gate * torch.tanh(meta_proposal)
+                )
         if self.operator_mode in ("factorized_film", "factorized_hybrid"):
             features = torch.tanh(self.operator_feature(register))
             modulation = torch.tanh(self.operator_modulation(code))

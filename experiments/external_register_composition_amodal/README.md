@@ -224,3 +224,17 @@ whole-blueprint online updates; future operator-family learning needs isolated
 meta-state or protected subspaces rather than a scalar anchor. Evidence is
 archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_continual_blueprint_anchor_rejected_v1_2026-08-08/`.
+
+## Protected operator-family and code-prior control (2026-08-08)
+
+The `factorized_protected_meta` operator isolates a zero-initialized,
+code-conditioned residual family while freezing the mastered base operator.
+It preserves all four source primitives across both seeds, but new `rotate`
+transfer ties or loses to fresh. Initializing the new code from the mean of
+the mastered instruction vectors does not improve the result: seed `69316`
+ties at `8,192` bits and seed `69317` needs `12,288` versus `4,096` fresh.
+This rejects the simplest protected operator-family and code-geometry repairs.
+The next design must add an explicit expandable computation basis rather than
+expecting a new vector to elicit an unseen primitive from a fixed operator.
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_protected_meta_code_prior_rejected_v1_2026-08-08/`.

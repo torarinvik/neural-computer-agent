@@ -45,7 +45,10 @@ def _train_source(parent, machine, decoder, index, args, anchor_parameters=()):
         if args.update_shared_blueprint:
             shared_trainable = []
             for name, parameter in machine.named_parameters():
-                if not name.startswith("instructions."):
+                eligible = not name.startswith("instructions.")
+                if args.operator_mode == "factorized_protected_meta":
+                    eligible = name.startswith("operator_meta_")
+                if eligible:
                     parameter.requires_grad_(True)
                     shared_trainable.append(parameter)
             trainable = [
@@ -114,6 +117,22 @@ def _target_accuracy(parent, machine, decoder, args, seed, **kwargs):
     )
 
 
+def _initialize_target_code(machine, args: argparse.Namespace) -> None:
+    if args.target_code_init == "random":
+        return
+    if args.target_code_init != "mean":
+        raise ValueError("unsupported target code initialization")
+    with torch.no_grad():
+        machine.instructions[-1].code.copy_(
+            torch.stack(
+                tuple(
+                    instruction.code.squeeze(0)
+                    for instruction in machine.instructions[:-1]
+                )
+            ).mean(dim=0, keepdim=True)
+        )
+
+
 def run(args: argparse.Namespace) -> dict[str, object]:
     started = perf_counter()
     if min(
@@ -176,6 +195,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         for index, decoder in enumerate(source_decoders)
     ]
     target_decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
+    _initialize_target_code(inherited, args)
     target_progress = _train_target(
         parent, inherited, target_decoder, args, seed=args.seed + 100_000
     )
@@ -300,6 +320,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "source_programs": list(SOURCE_PROGRAMS),
         "target_program": TARGET_PROGRAM,
         "operator_mode": args.operator_mode,
+        "target_code_init": args.target_code_init,
         "primitive_updates": args.primitive_updates,
         "target_updates": args.target_updates,
         "batch_size": args.batch_size,
@@ -349,6 +370,9 @@ def main() -> None:
     parser.add_argument("--primitive-updates", type=int, default=384)
     parser.add_argument("--target-updates", type=int, default=256)
     parser.add_argument(
+        "--target-code-init", choices=("random", "mean"), default="random"
+    )
+    parser.add_argument(
         "--update-shared-blueprint",
         action="store_true",
         help="update shared operator weights on later source primitives with an anchor",
@@ -370,6 +394,7 @@ def main() -> None:
             "factorized_film",
             "factorized_hybrid",
             "factorized_bounded_residual",
+            "factorized_protected_meta",
         ),
         default="factorized_bounded_residual",
     )

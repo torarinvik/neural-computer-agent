@@ -1,0 +1,13 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_register_protected_meta_code_prior_rejected_v1",
+  "claim": "A protected code-conditioned residual family and mean code prior do not yet transfer to an unseen primitive.",
+  "target": "rotate",
+  "replayed_examples": 0,
+  "runs": [
+    {"variant": "protected_meta_random", "seed": 69316, "promoted": false, "source_retained": true, "inherited_stable_bits": 8192, "fresh_stable_bits": 8192, "replayed_examples": 0},
+    {"variant": "protected_meta_random", "seed": 69317, "promoted": false, "source_retained": true, "inherited_stable_bits": 12288, "fresh_stable_bits": 4096, "replayed_examples": 0},
+    {"variant": "protected_meta_mean_code", "seed": 69316, "promoted": false, "source_retained": true, "inherited_stable_bits": 8192, "fresh_stable_bits": 8192, "replayed_examples": 0},
+    {"variant": "protected_meta_mean_code", "seed": 69317, "promoted": false, "source_retained": true, "inherited_stable_bits": 12288, "fresh_stable_bits": 4096, "replayed_examples": 0}
+  ]
+}

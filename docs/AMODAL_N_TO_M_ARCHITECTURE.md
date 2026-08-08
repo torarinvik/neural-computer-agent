@@ -3964,3 +3964,12 @@ requirement: isolated meta-state or protected subspaces that can learn an
 operator family without modifying mastered computation. Evidence is archived
 in
 `session_records/sequence_working_memory_2026-08-02/external_register_continual_blueprint_anchor_rejected_v1_2026-08-08/`.
+
+The protected operator-family follow-up isolates a zero-initialized
+code-conditioned residual while freezing the mastered base operator. It
+preserves all source primitives but does not improve unseen `rotate` transfer;
+mean initialization of the new code also ties or loses to fresh. The next
+architecture requirement is therefore an explicit expandable computation
+basis, not another fixed operator or code-space prior. Evidence is archived
+in
+`session_records/sequence_working_memory_2026-08-02/external_register_protected_meta_code_prior_rejected_v1_2026-08-08/`.
