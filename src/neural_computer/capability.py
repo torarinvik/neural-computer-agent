@@ -2163,6 +2163,17 @@ class ExternalCapabilityReusableComputeLibrary(nn.Module):
         self.compute_slots.append(compute_slot)
         return self.compute_slot_count - 1
 
+    def remove_compute_slot(self, compute_slot_index: int) -> None:
+        """Discard the newest unpromoted compute module when it is unbound."""
+
+        if compute_slot_index != self.compute_slot_count - 1:
+            raise ValueError("only the newest reusable compute slot can be discarded")
+        if self.compute_slot_count < 2:
+            raise ValueError("reusable compute library must retain one compute slot")
+        if compute_slot_index in self._binding_compute_slots:
+            raise ValueError("cannot discard a compute slot with active bindings")
+        del self.compute_slots[compute_slot_index]
+
     def add_binding(
         self,
         compute_slot_index: int,

@@ -41,6 +41,7 @@ from neural_computer import (
     ExternalCapabilitySharedResidualBank,
     ExternalComputeCandidateScreen,
     OpaqueProtocolDecoder,
+    select_reusable_binding,
     select_reusable_compute_slot,
 )
 
@@ -424,7 +425,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     parent.eval()
     parent_digest_before = _digest_core(parent, ())
 
-    if args.candidate_reuse or args.reuse_compute:
+    if args.adapter_reuse or args.candidate_reuse or args.reuse_compute:
         bank: CapabilityBank = ExternalCapabilityReusableComputeLibrary(
             EVENT_WIDTH,
             ACTION_WIDTH,
@@ -495,7 +496,147 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                     bank.freeze_compute_slot(compute_slot)
                 for old_binding in range(bank.slot_count):
                     bank.freeze_binding(old_binding)
-                if args.candidate_reuse:
+                if args.adapter_reuse:
+                    adapter_candidates = tuple(range(bank.adapter_slot_count))
+                    trial_records: list[dict[str, object]] = []
+                    trial_progresses: dict[tuple[int, int], list[dict[str, float | int]]] = {}
+                    trial_behaviors: dict[tuple[int, int], float] = {}
+                    trial_probes_by_candidate: dict[tuple[int, int], list[float]] = {}
+                    trial_compute_states: dict[tuple[int, int], dict[str, torch.Tensor]] = {}
+                    trial_decoder_states: dict[tuple[int, int], dict[str, torch.Tensor]] = {}
+                    admitted_candidate: tuple[int, int] | None = None
+                    for trial_rank, adapter_slot in enumerate(adapter_candidates):
+                        trial_compute = bank.add_compute_slot()
+                        trial_binding = bank.add_binding(
+                            trial_compute,
+                            adapter_slot_index=adapter_slot,
+                        )
+                        trial_decoder = _new_decoder(
+                            args.seed
+                            + 10_000
+                            + stage_index * 1_003
+                            + adapter_slot
+                        )
+                        slot_training_attempts += 1
+                        candidate_progress = _train_slot(
+                            parent,
+                            bank,
+                            trial_binding,
+                            trial_decoder,
+                            program_id,
+                            grammar,
+                            updates=args.slot_updates,
+                            batch_size=args.batch_size,
+                            audit_count=args.audit_count,
+                            eval_every=args.eval_every,
+                            seed=(
+                                args.seed
+                                + 30_000
+                                + stage_index * 10_003
+                                + adapter_slot * 1_009
+                            ),
+                            learning_rate=args.learning_rate,
+                        )
+                        candidate_behavior, candidate_probes = _probe_accuracy(
+                            parent,
+                            bank,
+                            trial_binding,
+                            trial_decoder,
+                            program_id,
+                            grammar,
+                            count=args.audit_count,
+                            probes=args.retention_probes,
+                            seed=(
+                                args.seed
+                                + 35_000
+                                + stage_index * 10_003
+                                + adapter_slot * 1_009
+                            ),
+                        )
+                        candidate_key = (trial_compute, adapter_slot)
+                        trial_progresses[candidate_key] = candidate_progress
+                        trial_behaviors[candidate_key] = candidate_behavior
+                        trial_probes_by_candidate[candidate_key] = candidate_probes
+                        trial_compute_states[candidate_key] = {
+                            name: value.detach().clone()
+                            for name, value in bank.compute_slots[trial_compute]
+                            .state_dict()
+                            .items()
+                        }
+                        trial_decoder_states[candidate_key] = {
+                            name: value.detach().clone()
+                            for name, value in trial_decoder.state_dict().items()
+                        }
+                        trial_records.append(
+                            {
+                                "compute_slot": trial_compute,
+                                "adapter_slot": adapter_slot,
+                                "screen_rank": trial_rank,
+                                "behavior": candidate_behavior,
+                                "probe_outcomes": candidate_probes,
+                                "stable_bits_to_threshold": _stable_bits(
+                                    candidate_progress,
+                                    batch_size=args.batch_size,
+                                ),
+                                "adapter_frozen_during_training": True,
+                                "fresh_outcomes_only": True,
+                            }
+                        )
+                        if min(candidate_probes) >= THRESHOLD:
+                            admitted_candidate = candidate_key
+                            break
+                        bank.remove_binding(trial_binding)
+                        bank.remove_compute_slot(trial_compute)
+                    decision_candidates = (
+                        {
+                            admitted_candidate: trial_probes_by_candidate[admitted_candidate]
+                        }
+                        if admitted_candidate is not None
+                        else trial_probes_by_candidate
+                    )
+                    reuse_decision = select_reusable_binding(
+                        decision_candidates,
+                        threshold=THRESHOLD,
+                    )
+                    reuse_trial = {
+                        "candidates": trial_records,
+                        "adapter_candidates": list(adapter_candidates),
+                        "stopped_after_first_fresh_pass": admitted_candidate is not None,
+                        "decision": reuse_decision.action,
+                        "selected_compute_slot": reuse_decision.compute_slot_index,
+                        "selected_adapter_slot": reuse_decision.adapter_slot_index,
+                        "candidate_scores": reuse_decision.candidate_scores,
+                        "decision_reason": reuse_decision.reason,
+                        "adapter_frozen_during_training": True,
+                        "fresh_outcomes_only": True,
+                    }
+                    if reuse_decision.action == "reuse":
+                        selected_key = (
+                            reuse_decision.compute_slot_index,
+                            reuse_decision.adapter_slot_index,
+                        )
+                        if selected_key not in trial_compute_states:
+                            raise RuntimeError("reuse decision selected an untracked binding")
+                        if admitted_candidate != selected_key:
+                            raise RuntimeError("binding admission selected an untracked trial")
+                        slot_index = trial_binding
+                        selected_decoder = _new_decoder(
+                            args.seed + 50_000 + stage_index
+                        )
+                        selected_decoder.load_state_dict(
+                            trial_decoder_states[selected_key], strict=True
+                        )
+                        decoders.append(selected_decoder)
+                        progress = trial_progresses[selected_key]
+                        behavior = trial_behaviors[selected_key]
+                        behavior_probes = trial_probes_by_candidate[selected_key]
+                    else:
+                        compute_slot = bank.add_compute_slot()
+                        slot_index = bank.add_binding(compute_slot)
+                        decoders.append(
+                            _new_decoder(args.seed + 50_000 + stage_index)
+                        )
+                elif args.candidate_reuse:
                     screen_context = (
                         _candidate_screen_query(
                             parent,
@@ -851,13 +992,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         {name: value.detach().clone() for name, value in decoder.state_dict().items()}
         for decoder in decoders
     ]
-    if args.candidate_reuse or args.reuse_compute:
+    if args.adapter_reuse or args.candidate_reuse or args.reuse_compute:
         reload_bank: CapabilityBank = ExternalCapabilityReusableComputeLibrary(
             EVENT_WIDTH,
             ACTION_WIDTH,
             INTENTION_WIDTH,
             compute_slot_count=bank.compute_slot_count,
             binding_compute_slots=bank.binding_compute_slots,
+            binding_adapter_slots=bank.binding_adapter_slots,
             shared_context_hidden=CONTEXT_HIDDEN,
             shared_context_width=CONTEXT_WIDTH,
             residual_context_hidden=args.residual_context_hidden,
@@ -990,14 +1132,18 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "seed": args.seed,
         "source_ids": list(source_ids),
         "bank_mode": (
-            "reusable_compute_library"
+            "reusable_compute_library_adapter_sharing_audit"
+            if args.adapter_reuse
+            else "reusable_compute_library"
             if args.candidate_reuse or args.reuse_compute
             else "shared_base_plus_residual_compute"
             if args.residual_compute
             else "shared_base_plus_intention_adapter"
         ),
         "admission_policy": (
-                "screened_first_fresh_pass"
+                "verifier_gated_adapter_sharing"
+                if args.adapter_reuse
+                else "screened_first_fresh_pass"
                 if args.screen_candidates
                 else "all_candidate_trials_best_fresh_probe"
             if args.candidate_reuse
@@ -1054,7 +1200,16 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 for module in _binding_modules(bank, 0)
             ),
             "physical_compute_slots": getattr(bank, "compute_slot_count", len(source_ids)),
+            "physical_adapter_slots": getattr(
+                bank, "adapter_slot_count", len(source_ids)
+            ),
             "logical_bindings": bank.slot_count,
+            "binding_compute_slots": list(
+                getattr(bank, "binding_compute_slots", tuple(range(bank.slot_count)))
+            ),
+            "binding_adapter_slots": list(
+                getattr(bank, "binding_adapter_slots", tuple(range(bank.slot_count)))
+            ),
             "decoder_per_slot": _parameter_count(decoders[0]),
         },
         "frozen_core": {
@@ -1118,6 +1273,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             ),
             "shared_base_digest_stable_after_growth": shared_base_stable_after_growth,
             "shared_payload_reduced": shared_payload < len(source_ids) * full_payload,
+            "adapter_sharing_observed": (
+                not args.adapter_reuse
+                or getattr(bank, "adapter_slot_count", len(source_ids)) < bank.slot_count
+            ),
             "final_reload_exact": reload_exact,
             "memory_corruption_detected_and_recovered": (
                 corrupted_memory_digest != clean_memory_digest
@@ -1176,6 +1335,11 @@ def main() -> None:
         help="fresh-train every existing compute candidate before reuse/growth",
     )
     parser.add_argument(
+        "--adapter-reuse",
+        action="store_true",
+        help="audit fresh compute candidates bound to frozen existing adapters",
+    )
+    parser.add_argument(
         "--screen-candidates",
         action="store_true",
         help=(
@@ -1192,7 +1356,12 @@ def main() -> None:
         help="set PyTorch intra-op threads for this tiny audit workload",
     )
     args = parser.parse_args()
-    if args.screen_candidates:
+    if args.adapter_reuse:
+        args.candidate_reuse = False
+        args.reuse_compute = True
+        args.auto_reuse = False
+        args.screen_candidates = False
+    elif args.screen_candidates:
         args.candidate_reuse = True
         args.reuse_compute = True
         args.auto_reuse = False

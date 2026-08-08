@@ -363,7 +363,14 @@ def test_reusable_compute_library_can_share_adapter_with_isolated_bindings() -> 
     assert library.binding_modules(0)[1] is library.binding_modules(1)[1]
     assert library.add_binding(0, adapter_slot_index=0) == 2
     assert library.binding_adapter_slots == (0, 0, 0)
-    library.freeze_binding(2)
+    library.remove_binding(2)
+    trial_compute = library.add_compute_slot()
+    trial_binding = library.add_binding(trial_compute, adapter_slot_index=0)
+    library.remove_binding(trial_binding)
+    library.remove_compute_slot(trial_compute)
+    assert library.compute_slot_count == 1
+    assert library.binding_compute_slots == (0, 0)
+    library.freeze_binding(1)
     assert all(
         not parameter.requires_grad
         for parameter in library.binding_adapters[0].parameters()
