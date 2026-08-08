@@ -1647,3 +1647,48 @@ staged design in this program worked when the stages shared a policy
 (F13, F18, F40) and failed when they did not (F20, F21, F41, F47). That
 is now a five-times-confirmed law and it predicts the co-training
 requirement rather than merely permitting it.
+
+**F48 (probes 74-76). Co-trained self-addressing masters both twins,
+inverts under cross-feed, and FAILS the decoy gate: the skill is in the
+recurrent state, not the bank.** The co-trained loop (probe, fetch,
+execute under one objective from update zero) was F47's prediction and it
+does close on mastery. The full gate set, seed 69317:
+
+| gate | choiceA | choiceB | verdict |
+| --- | ---: | ---: | --- |
+| own fragments | 1.000 | 1.000 | pass |
+| cross-fed (other twin's) | 0.094 | 0.000 | pass — inverts |
+| **norm-matched decoy** | **0.812** | **0.781** | **FAIL** |
+
+Cross-feeding inverts behaviour, so a fragment can still override the
+policy. But replacing the fetched fragment with noise of matched norm
+costs almost nothing: the agent scores 0.78-0.81 without any real
+content. The bank is therefore SUFFICIENT to override and NOT NECESSARY
+to perform — and the two together identify the mechanism exactly. The
+co-trained agent probes, holds the outcome of its own probing action in
+the controller's recurrent state, and plays the rest of the episode from
+that. The fetched fragment is decorative; a contradictory one still
+misleads, which is why cross-feed inverts and decoy does not.
+
+This is the architecture's storage rule violated in a new place. F30
+caught skill migrating into per-game ENCODER weights; here it migrates
+into WORKING MEMORY within an episode. Both were found by an audit that
+mastery alone could not have distinguished, and both produced the
+program's best numbers on the way to being rejected.
+
+Two consequences. (1) The gate set is incomplete without the decoy: for
+several rungs the cross-feed signature alone was treated as sufficient
+evidence of specification, and this shows it is not — a cue that
+overrides can coexist with content that is unnecessary. Every prior
+promotion resting on cross-feed alone should be re-audited with a
+norm-matched decoy. (2) The co-trained loop omits the ignorance
+objective (withheld and decoy rollouts pushed toward uniform) that the
+promoted externalization line uses precisely to make the bank necessary.
+Adding it is the obvious next run, and its absence — not the addressing
+design — is what this failure is about.
+
+Standing correction to the addressing claim: the loop demonstrates that
+an agent can identify which of two identical-looking worlds it is in
+from its own actions and fetch accordingly (signs split, selections
+distinct, both seeds). It does NOT yet demonstrate that the fetched
+content carries the skill, which is the whole point of a memory bank.
