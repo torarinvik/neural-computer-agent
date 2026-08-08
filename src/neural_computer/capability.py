@@ -1920,11 +1920,12 @@ class ExternalCapabilityReusableComputeLibrary(nn.Module):
     """Bind capabilities to reusable compute modules without weight copying.
 
     A physical compute slot contains only a compact recurrent context encoder.
-    A logical capability binding owns its own intention adapter and external
-    recurrent state, and points to one physical compute slot by an opaque
-    integer chosen by memory-side policy. Adding a binding therefore adds no
-    recurrent compute parameters; adding a compute slot is explicit and can be
-    gated by fresh behavior verification.
+    A logical capability binding points to physical compute and adapter slots
+    by opaque integers chosen by memory-side policy and owns independent
+    recurrent state. Compatible bindings may share both modules after fresh
+    behavior verification; incompatible bindings add a new adapter or compute
+    slot. Adding a binding therefore need not add parameters, while capacity
+    growth remains explicit and verifier-gated.
 
     The shared context encoder and physical compute modules are independently
     replaceable from logical bindings. No controller or raw protocol data is
@@ -1940,6 +1941,7 @@ class ExternalCapabilityReusableComputeLibrary(nn.Module):
         *,
         compute_slot_count: int = 1,
         binding_compute_slots: Iterable[int] = (0,),
+        binding_adapter_slots: Iterable[int] | None = None,
         shared_context_hidden: int = 64,
         shared_context_width: int = 32,
         residual_context_hidden: int = 32,
@@ -1966,6 +1968,17 @@ class ExternalCapabilityReusableComputeLibrary(nn.Module):
             raise ValueError("reusable compute dimensions must be positive")
         if any(index < 0 or index >= compute_slot_count for index in bindings):
             raise ValueError("binding points to an invalid compute slot")
+        if binding_adapter_slots is None:
+            adapter_bindings = tuple(range(len(bindings)))
+        else:
+            adapter_bindings = tuple(int(index) for index in binding_adapter_slots)
+            if len(adapter_bindings) != len(bindings):
+                raise ValueError(
+                    "binding adapter slots must align with compute bindings"
+                )
+            if any(index < 0 for index in adapter_bindings):
+                raise ValueError("binding points to an invalid adapter slot")
+        adapter_count = max(adapter_bindings) + 1
         self.event_width = int(event_width)
         self.action_width = int(action_width)
         self.intention_width = int(intention_width)
@@ -1986,9 +1999,10 @@ class ExternalCapabilityReusableComputeLibrary(nn.Module):
             self._new_compute_slot() for _ in range(compute_slot_count)
         )
         self.binding_adapters = nn.ModuleList(
-            self._new_binding_adapter() for _ in bindings
+            self._new_binding_adapter() for _ in range(adapter_count)
         )
         self._binding_compute_slots = list(bindings)
+        self._binding_adapter_slots = list(adapter_bindings)
 
     def _new_compute_slot(self) -> EpisodicContextEncoder:
         return EpisodicContextEncoder(
@@ -2023,6 +2037,18 @@ class ExternalCapabilityReusableComputeLibrary(nn.Module):
 
         return tuple(self._binding_compute_slots)
 
+    @property
+    def adapter_slot_count(self) -> int:
+        """Return the number of physical intention-adapter modules."""
+
+        return len(self.binding_adapters)
+
+    @property
+    def binding_adapter_slots(self) -> tuple[int, ...]:
+        """Return the opaque logical-to-physical adapter binding table."""
+
+        return tuple(self._binding_adapter_slots)
+
     def configuration(self) -> dict[str, object]:
         """Return the versioned compute-library and binding contract."""
 
@@ -2039,6 +2065,8 @@ class ExternalCapabilityReusableComputeLibrary(nn.Module):
             "compute_slot_count": self.compute_slot_count,
             "binding_count": self.slot_count,
             "binding_compute_slots": self.binding_compute_slots,
+            "adapter_slot_count": self.adapter_slot_count,
+            "binding_adapter_slots": self.binding_adapter_slots,
             "state": "independent_external_state_per_binding_v1",
             "compute": "shared_context_plus_reusable_local_recurrent_module_v1",
             "binding": "opaque_binding_specific_intention_adapter_v1",
@@ -2063,7 +2091,8 @@ class ExternalCapabilityReusableComputeLibrary(nn.Module):
 
         if binding_index < 0 or binding_index >= self.slot_count:
             raise IndexError("reusable binding is out of range")
-        for parameter in self.binding_adapters[binding_index].parameters():
+        adapter_index = self._binding_adapter_slots[binding_index]
+        for parameter in self.binding_adapters[adapter_index].parameters():
             parameter.requires_grad_(False)
 
     def freeze_slot(self, binding_index: int) -> None:
@@ -2080,16 +2109,25 @@ class ExternalCapabilityReusableComputeLibrary(nn.Module):
         self.compute_slots.append(compute_slot)
         return self.compute_slot_count - 1
 
-    def add_binding(self, compute_slot_index: int) -> int:
-        """Append a binding adapter pointing at an existing compute module."""
+    def add_binding(
+        self,
+        compute_slot_index: int,
+        adapter_slot_index: int | None = None,
+    ) -> int:
+        """Append a binding, optionally sharing an existing adapter module."""
 
         if compute_slot_index < 0 or compute_slot_index >= self.compute_slot_count:
             raise IndexError("reusable compute slot is out of range")
-        adapter = self._new_binding_adapter()
-        reference = next(self.shared_context_encoder.parameters())
-        adapter.to(device=reference.device, dtype=reference.dtype)
-        self.binding_adapters.append(adapter)
+        if adapter_slot_index is None:
+            adapter = self._new_binding_adapter()
+            reference = next(self.shared_context_encoder.parameters())
+            adapter.to(device=reference.device, dtype=reference.dtype)
+            self.binding_adapters.append(adapter)
+            adapter_slot_index = self.adapter_slot_count - 1
+        elif adapter_slot_index < 0 or adapter_slot_index >= self.adapter_slot_count:
+            raise IndexError("reusable adapter slot is out of range")
         self._binding_compute_slots.append(int(compute_slot_index))
+        self._binding_adapter_slots.append(int(adapter_slot_index))
         return self.slot_count - 1
 
     def add_slot(self) -> int:
@@ -2104,8 +2142,8 @@ class ExternalCapabilityReusableComputeLibrary(nn.Module):
             raise ValueError("only the newest reusable binding can be discarded")
         if self.slot_count < 2:
             raise ValueError("reusable compute library must retain one binding")
-        self.binding_adapters.pop(binding_index)
         self._binding_compute_slots.pop()
+        self._binding_adapter_slots.pop()
 
     def binding_modules(
         self,
@@ -2116,7 +2154,8 @@ class ExternalCapabilityReusableComputeLibrary(nn.Module):
         if binding_index < 0 or binding_index >= self.slot_count:
             raise IndexError("reusable binding is out of range")
         compute_index = self._binding_compute_slots[binding_index]
-        return self.compute_slots[compute_index], self.binding_adapters[binding_index]
+        adapter_index = self._binding_adapter_slots[binding_index]
+        return self.compute_slots[compute_index], self.binding_adapters[adapter_index]
 
     def initial_state(
         self,

@@ -3731,3 +3731,10 @@ Page-router consolidation is therefore not promoted; the next compression
 intervention should target the verified artifact-level reusable-compute
 library instead. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_factorized_consolidation_rejected_v1_2026-08-08/`.
+
+The reusable compute ABI now also permits multiple opaque bindings to point at
+one physical intention adapter, while each binding retains isolated recurrent
+state. This is a memory-side capability for verifier-approved compatible
+bindings, not a semantic classifier or an unconditional merge; incompatible
+bindings can still allocate a fresh adapter or compute slot. Behavioral
+verification must precede any sharing decision.

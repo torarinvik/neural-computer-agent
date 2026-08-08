@@ -338,6 +338,35 @@ def test_reusable_compute_library_shares_physical_compute_with_isolated_bindings
     )
     library.remove_binding(1)
     assert library.slot_count == 1
+
+
+def test_reusable_compute_library_can_share_adapter_with_isolated_bindings() -> None:
+    library = ExternalCapabilityReusableComputeLibrary(
+        event_width=4,
+        action_width=2,
+        intention_width=6,
+        compute_slot_count=1,
+        binding_compute_slots=(0, 0),
+        binding_adapter_slots=(0, 0),
+        shared_context_hidden=8,
+        shared_context_width=5,
+        residual_context_hidden=3,
+        residual_context_width=2,
+        adapter_hidden=7,
+    )
+    assert library.slot_count == 2
+    assert library.compute_slot_count == 1
+    assert library.adapter_slot_count == 1
+    assert library.binding_compute_slots == (0, 0)
+    assert library.binding_adapter_slots == (0, 0)
+    assert library.binding_modules(0)[1] is library.binding_modules(1)[1]
+    assert library.add_binding(0, adapter_slot_index=0) == 2
+    assert library.binding_adapter_slots == (0, 0, 0)
+    library.freeze_binding(2)
+    assert all(
+        not parameter.requires_grad
+        for parameter in library.binding_adapters[0].parameters()
+    )
     assert library.compute_slot_count == 1
 
 

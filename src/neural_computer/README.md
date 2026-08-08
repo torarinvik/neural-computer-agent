@@ -1113,3 +1113,9 @@ mastery, permutation, shuffled-null, immutability, reload, and zero-replay
 controls. The retained capability is bounded; routing and verifier work still
 grow linearly, so consolidation/compression remains the next frontier. See
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_three_generations_84_source_normalizer_promoted_v1_2026-08-08/`.
+
+The reusable compute library now separates physical adapter slots from logical
+bindings as well as physical recurrent compute. A compatible binding may
+share both modules after fresh verifier approval while retaining independent
+external recurrent state; no unconditional compression or general continual
+learning claim follows.
