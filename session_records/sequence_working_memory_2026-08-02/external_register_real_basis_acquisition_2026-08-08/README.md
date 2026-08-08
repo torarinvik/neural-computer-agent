@@ -86,3 +86,12 @@ was `0.8477` and `0.8086`, with no stable prefix. Source retention and causal
 shuffle controls passed. Isolating basis updates does not solve acquisition;
 the next bottleneck is the representational interface between the frozen
 controller/register and a freshly added computation slot.
+
+## Near-identity fresh-slot initialization — rejected
+
+A fresh basis slot was initialized as a gated near-identity residual to avoid
+perturbing the established register before learning. It did not improve the
+causal growth rung (`69316`: `0.7578`; `69317`: `0.8164`), and one seed lost
+source retention. The production initialization remains unchanged; the
+interface problem requires a learned representation path, not only safer
+initialization.
