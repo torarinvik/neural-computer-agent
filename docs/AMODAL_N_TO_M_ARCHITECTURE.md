@@ -3815,3 +3815,20 @@ protected procedures into one routed neural artifact. It is rejected: seed
 after doubling consolidation updates. The shared dense stack is therefore not
 yet a reliable four-source consolidation mechanism. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_distilled_consolidation_four_source_rejected_v1_2026-08-08/`.
+
+The stronger sequential consolidation path then passed the same four-source
+pressure test on seed `69316`. It adopted three successive shared rewrites,
+each trained only on the newly arrived procedure and retention-gated against
+all earlier aliases. After reload, all four opaque procedures resolve to one
+shared artifact, source behaviors are `0.9336 / 1.0000 / 1.0000 / 1.0000`,
+reversal isolation and corruption rejection pass, and a held-out target reaches
+mastery after `4,096` inherited stable-prefix bits versus `12,288` for a fresh
+control. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_sequential_neural_consolidation_four_source_seed69316_promoted_v1_2026-08-08/`.
+
+This promotes bounded replay-free sequential neural consolidation with
+external capacity growth. It does not establish unrestricted memory growth,
+arbitrary program induction, or general continual learning. The current
+implementation is also too expensive for an always-on learning loop; reducing
+verifier and optimization cost while preserving this retention contract is the
+next high-ROI bottleneck.

@@ -682,3 +682,12 @@ The four-source shared routed neural-consolidation attempt is retained as a
 rejection: one seed passed, but the other failed even after 1024 consolidation
 updates. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_distilled_consolidation_four_source_rejected_v1_2026-08-08/`.
+
+The sequential neural-consolidation path then passed a four-source rung on
+seed `69316`: three new-source-only rewrites were adopted, all four aliases
+resolved to one shared artifact after reload, a held-out target learned faster
+from the inherited artifact than fresh, and reversal/corruption/frozen-core/
+zero-replay controls passed. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_sequential_neural_consolidation_four_source_seed69316_promoted_v1_2026-08-08/`.
+This is bounded replay-free consolidation, not general continual learning; its
+runtime cost remains the next implementation bottleneck.
