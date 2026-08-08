@@ -253,6 +253,7 @@ def rollout_family(
     outcome_weight: float = 0.0,
     gae_lambda: float = -1.0,
     return_intention: bool = False,
+    temperature: float = 1.0,
 ) -> dict[str, torch.Tensor | None]:
     verifier = FamilyVerifier(config, batch_size=batch_size, seed=seed)
     verifier.reset(seed=seed)
@@ -311,6 +312,15 @@ def rollout_family(
         logits = output.decoded["keypress"]
         if critic is not None:
             values.append(critic(output.intention.payload))
+        if temperature != 1.0:
+            # F49: a Fisher estimated from a saturated policy's own samples
+            # inherits that policy's degeneracy -- the score function
+            # vanishes and the estimate becomes noise that unit-mean
+            # normalisation then rescales to look confident. Sampling
+            # through a tempered policy puts a floor under the entropy so
+            # the estimator stays well-conditioned. Training paths leave
+            # this at 1.0; only the Fisher pass raises it.
+            logits = logits / temperature
         decision = decoder.decide_from_logits(logits, sample=sample)
         logits_trace.append(logits)
         log_props.append(decision.propensity.clamp_min(1e-8).log())

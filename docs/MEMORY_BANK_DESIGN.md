@@ -1703,3 +1703,65 @@ an agent can identify which of two identical-looking worlds it is in
 from its own actions and fetch accordingly (signs split, selections
 distinct, both seeds). It does NOT yet demonstrate that the fetched
 content carries the skill, which is the whole point of a memory bank.
+
+**F49 (probes 77-78). The consolidation anchor survives mastery, but its
+reliability is gated on policy entropy, not on mastery.** A literature
+sweep (`docs/LITERATURE_MAP.md`) surfaced a predicted failure in shipped
+promoted code: our diagonal Fisher is built from score-function gradients
+of sampled actions, which vanish as a policy saturates. Recent EWC
+analyses report that this under-estimates importance for exactly the
+best-learned skills. We normalise each game's Fisher to unit mean, which
+divides out the magnitude collapse — but normalisation cannot restore
+signal-to-noise, so the sharper worry is that a mastered game's anchor is
+noise rescaled to look confident, protecting arbitrary directions.
+
+Tested directly: train choiceA, and at checkpoints estimate the Fisher
+TWICE from independent rollout seeds, then ask whether the two agree.
+Pearson over the full per-parameter vector, plus overlap of the top 1%
+(the parameters the penalty actually acts on), against an entropy
+estimate from the same policy.
+
+| pooled, both seeds | n | correlation min/mean/max |
+| --- | ---: | --- |
+| pre-mastery | 4 | 0.671 / 0.793 / 0.913 |
+| mastered | 14 | 0.091 / 0.796 / 0.990 |
+| mastered, entropy < 0.01 | 4 | 0.091 / 0.612 / 0.920 |
+| mastered, entropy >= 0.01 | 10 | 0.489 / 0.870 / 0.990 |
+
+**The simple prediction is false.** Mean agreement after mastery (0.796)
+is identical to before it (0.793); mastery per se does not degrade the
+estimator. What changes is the VARIANCE: the pre-mastery range spans
+0.24, the mastered range spans 0.90. The estimator does not decay, it
+becomes unreliable — sometimes excellent (0.990), occasionally
+near-worthless (0.091).
+
+The controlling variable is entropy, not mastery. Every bad checkpoint
+sits at entropy < 0.01, and the two seeds separate on exactly this:
+69316 collapses to entropy 0.001 at three checkpoints and produces the
+0.091, 0.489 and 0.647 correlations; 69317 never falls below 0.003, sits
+mostly at 0.02-0.10, and returns 0.798-0.985 throughout. Whether the
+anchor is trustworthy is therefore a seed-dependent property of how far
+the policy saturates, which no check on the penalty's magnitude could
+detect.
+
+**But the anchor is not noise, and the promoted rule stands.** The top-1%
+overlap never falls below 0.393 against a chance baseline of 0.01 — even
+at the worst checkpoint the most-protected parameters agree ~39x better
+than chance. Full-vector Pearson is the harsher measure here because it
+is dominated by the near-zero bulk; the penalty is carried by the head of
+the distribution, which holds up. F47's encoding-anchored consolidation
+and the arbitrated rule are not invalidated by this.
+
+Two consequences. (1) A cheap safeguard is available and untested:
+estimate the Fisher under a small entropy floor (temper the policy while
+sampling for the Fisher pass only), so the score-function estimate stays
+well-conditioned regardless of how far the trained policy has saturated.
+This costs nothing at training time and removes the seed dependence. (2)
+Methodological: this is the second time a quantity we relied on was
+measured in a regime where it was not valid (F46 was the first —
+re-measure any signal at the point of use). The rule generalises: a
+statistic estimated from a policy's own samples inherits that policy's
+degeneracy, so estimator health must be reported alongside the estimate.
+
+Recorded as a qualification, not a rejection. Probes 77-78 are
+`fisher_stability.py`, both seeds, choiceA, 600 updates.

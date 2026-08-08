@@ -402,3 +402,39 @@ def test_critic_baseline_is_state_dependent_and_training_only() -> None:
     )
     assert without["value"] is None
     assert not torch.allclose(with_critic["advantage"], without["advantage"])
+
+
+def test_fisher_temperature_raises_entropy_and_is_off_by_default() -> None:
+    """F49: the entropy floor must actually reach the sampling policy.
+
+    A saturated policy's score-function gradients vanish, so a Fisher
+    estimated from its own samples is noise that unit-mean normalisation
+    rescales into a confident-looking anchor. The tempering knob is the
+    safeguard; this pins that it is wired through and inert by default.
+    """
+
+    agent = _agent()
+    config = FamilyConfig(choice=1, name="c")
+    # Saturate the policy so the untempered entropy is genuinely small.
+    decoder = agent.runtime.output_bus.decoders["keypress"]
+    with torch.no_grad():
+        for parameter in agent.runtime.output_bus.parameters():
+            parameter.mul_(50.0)
+
+    def entropy(temperature: float) -> float:
+        summary = rollout_family(
+            agent, config, None, batch_size=8, steps=8, seed=3,
+            sample=True, gamma=0.9, temperature=temperature,
+        )
+        mask = summary["mask"]
+        return float(
+            (-summary["log_propensity"] * mask).sum()
+            / mask.sum().clamp_min(1.0)
+        )
+
+    assert decoder.key_count > 1
+    plain = entropy(1.0)
+    tempered = entropy(4.0)
+    assert tempered > plain, (plain, tempered)
+    # Default path must be bit-for-bit the untempered one.
+    assert entropy(1.0) == plain

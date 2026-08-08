@@ -136,6 +136,14 @@ def family_fisher(
     directions are the ones that matter *when this context is fetched* —
     the quantity the bank will later re-create by handing the plant those
     same fragments.
+
+    `args.fisher_temperature` puts an entropy floor under the sampling
+    policy for this pass only (F49): a mastered game's score-function
+    gradients vanish, and the resulting estimate is noise that the
+    unit-mean normalisation below rescales into a confident-looking
+    protection pattern. Measured agreement between two independent
+    estimates falls to 0.091 at entropy 0.001, against 0.87 mean above
+    entropy 0.01.
     """
 
     fisher = {name: torch.zeros_like(parameter) for name, parameter in named}
@@ -151,6 +159,7 @@ def family_fisher(
             gamma=args.gamma,
             egocentric=args.egocentric,
             encoder=encoder,
+            temperature=getattr(args, "fisher_temperature", 1.0),
         )
         log_likelihood = (
             summary["log_propensity"] * summary["mask"]
@@ -465,6 +474,10 @@ def main() -> None:
     parser.add_argument("--arbitration-mu", type=float, default=3.0)
     parser.add_argument("--arbitration-decay", type=float, default=0.99)
     parser.add_argument("--fisher-batches", type=int, default=8)
+    parser.add_argument(
+        "--fisher-temperature", type=float, default=1.0,
+        help="entropy floor for the Fisher pass only (F49); 1.0 = off",
+    )
     parser.add_argument("--per-game-encoders", action="store_true")
     parser.add_argument("--ignorance-weight", type=float, default=0.5)
     parser.add_argument("--ignorance-every", type=int, default=3)
