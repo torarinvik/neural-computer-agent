@@ -2036,3 +2036,54 @@ all and check that it fails — the no-agent control would have caught all
 four.
 
 Probes 89-90 are `probe_earns_it.py`.
+
+**F54 (probe 91, re-analysis). The battery's bank IS necessary — both
+necessity gates pass against measured floors on three seeds.** F48 left a
+standing action: re-audit every promotion that rested on cross-feed alone
+with a norm-matched decoy. The audit turns out to be cheap, because the
+staggered battery archive already recorded BOTH necessity gates. What it
+lacked was a floor to read them against. With F52's measured floors:
+
+| game | trained | bank withheld | norm-matched decoy | floor |
+| --- | ---: | ---: | ---: | ---: |
+| choiceA | 1.000 / 1.000 / 1.000 | 0.141 / 0.156 / 0.391 | 0.328 / 0.234 / 0.266 | 0.371 |
+| choiceB | 1.000 / 0.719 / 0.875 | 0.406 / 0.281 / 0.188 | 0.047 / 0.219 / 0.172 | 0.336 |
+| dualAC | 1.000 / 0.860 / 1.000 | 0.434 / 0.403 / 0.526 | 0.609 / 0.505 / 0.530 | 0.609 |
+| dualAD | 0.799 / 0.947 / 0.953 | 0.458 / 0.648 / 0.462 | 0.567 / 0.501 / 0.460 | 0.588 |
+| dualBC | 0.757 / 0.607 / 0.630 | 0.542 / 0.353 / 0.531 | 0.439 / 0.499 / 0.540 | 0.626 |
+
+(seeds 69316 / 69317 / 69318.)
+
+**Every discriminating game clears both gates on all three seeds.** Remove
+the bank and performance falls to or below the measured floor; replace
+the fetched fragments with norm-matched noise and it does the same. The
+one game that fails is avoid1, whose decoy sits at 0.922 — but F52 showed
+avoid1 has 0.020 of headroom and cannot discriminate a learner from a
+constant action, so it is uninformative in both directions.
+
+This is the necessity evidence weakness 12 has wanted, and it was sitting
+in the archive unreadable for want of a floor. The bank is not merely
+sufficient to override: with the fragments gone or replaced, the plant
+cannot perform.
+
+**It also corroborates F53 from the opposite direction.** The battery
+harness has no probe phase, and there the decoy collapses correctly. The
+co-trained addressing harness has one, and there choiceA's decoy sat at
+0.97. Same architecture, same decoy construction, opposite outcomes — the
+difference is the probe, exactly as F53 diagnosed. Two independent routes
+now say the addressing failure was the harness rather than the bank.
+
+**Scope, stated precisely.** This closes necessity for the battery, where
+fragments are fetched by oracle or learned per-context selection. It says
+nothing about SELF-addressing, where the agent must infer the context
+from its own actions — that remains open and is what the corrected re-runs
+are testing. The claim is "the bank carries the skill", not "the agent can
+find the right page unaided".
+
+**Noted in passing:** dualAD scores 0.95 against a calibrated solo ceiling
+of 0.686 (normalised 3.7). Partly F18's super-solo transfer, but a
+normalised score that far above 1.0 suggests the dualAD ceiling is
+mis-calibrated low and should be re-run.
+
+Probe 91 is a re-analysis of `staggered_battery_v1_2026-08-07`; no new
+training.
