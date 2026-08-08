@@ -58,6 +58,10 @@ parser.add_argument("--gamma", type=float, default=0.95)
 parser.add_argument("--width", type=int, default=64)
 parser.add_argument("--max-restarts", type=int, default=4)
 parser.add_argument(
+    "--reward-feedback", action="store_true",
+    help="feed reward back into the controller (default OFF: it is a "
+         "second context channel and a measured necessity leak)")
+parser.add_argument(
     "--only-command", type=int, default=-1,
     help="phase-1 isolation: train on a single command (0 or 1) instead "
          "of mixing; separates per-command learnability from interference")
@@ -224,8 +228,19 @@ def episode(*, game: int | None, command: torch.Tensor | None,
         # input worlds, and per-command advantage centering measurably
         # did not remove the resulting execution asymmetry (cmd0 1.0,
         # cmd1 0.375-0.667).
+        # Reward feedback is a SECOND context channel, and measurably a
+        # leak. Phase 1 fed self-reward back, which taught the plant to
+        # self-correct ("felt -1, switch planes"); at gate time the
+        # verifier's reward plays the same role, so under a noise
+        # fragment the agent recovers the twin from its own consequences
+        # -- decoy choiceB 1.000 and action-agreement 0.29 on seed 69317,
+        # F48's working-memory leak in the frozen-plant setting. In a
+        # CUED rung the banner is the context channel by design, so the
+        # honest configuration carries no reward feedback at all: with
+        # `--reward-feedback` off the bank is the only route to the twin.
         feedback_reward = (
-            step_self_reward if step_self_reward is not None
+            torch.zeros(args.batch_size) if not args.reward_feedback
+            else step_self_reward if step_self_reward is not None
             else outcome.reward)
         feedback = ControllerFeedback(
             action=agent.feedback_encoders["keypress"](acts),
