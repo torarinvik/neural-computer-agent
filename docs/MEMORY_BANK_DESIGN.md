@@ -1954,3 +1954,85 @@ that caught it was a floor exceeding a ceiling.
 
 Probes 87-88 are `chance_floors.py` over the battery, twins, composition
 suite and extras.
+
+**F53 (probes 89-90). The co-trained loop's choiceA mastery is the PROBE,
+not the agent. F48 and F51's readings of the decoy gate are withdrawn.**
+Chasing the contradiction F51 left — a decoy policy at entropy 1.3852
+against a maximum of 1.3863 (numerically almost uniform) that still
+scored 0.9375 when *sampled*, where uniform random scores 0.371 — the
+first explanation (averaging over post-death steps) was wrong:
+`decoy_live_fraction` is 1.000, nothing dies, and the masked and unmasked
+entropies are identical.
+
+The real cause is the harness. Every episode opens with `probe_steps`
+steps of a fixed, hand-coded `test_action` that deliberately steps onto
+the positive-plane item so the agent can read the reward sign and infer
+which twin it is in. But **choiceA's rule *is* "take the positive-plane
+item"** — the probe action performs choiceA's task — and mastery for a
+choice game is `(total_reward > 0)`, which the probe alone can satisfy.
+On choiceB the identical probe action is exactly wrong, which is why that
+twin scored below chance.
+
+Measured with **no agent at all** — probe prefix, then random or frozen
+actions:
+
+| scoring | choiceA | choiceB |
+| --- | ---: | ---: |
+| no probe + random | 0.356 | 0.344 |
+| probe + random | 0.832 | 0.090 |
+| probe + frozen | **0.961** | **0.004** |
+
+Against the co-trained loop's own numbers (seed 69316):
+
+| gate | loop | no-agent probe artifact |
+| --- | ---: | ---: |
+| choiceA train | 0.961 | 0.961 |
+| choiceA decoy (greedy) | 0.969 | 0.961 |
+| choiceA decoy (sampled) | 0.938 | 0.832 |
+| choiceB decoy (greedy) | 0.000 | 0.004 |
+| choiceB decoy (sampled) | 0.094 | 0.090 |
+
+**choiceA's entire mastery is what the probe delivers for free.** There is
+no evidence the agent learned anything on that twin. choiceB's 1.000
+against a 0.004 floor is real learning; choiceA's 0.961 is the harness
+scoring itself.
+
+Withdrawn as a result:
+- **F48's "both twins mastered"** — only choiceB was.
+- **F48/F51's "the decoy gate fails on choiceA"** — you cannot fail a gate
+  the harness passes for you. The decoy number never measured the bank.
+- **F51's attribution of the asymmetry to F11's default context** — the
+  asymmetry is manufactured by a probe action that performs one twin's
+  task and anti-performs the other's. F11 may still hold elsewhere; it is
+  not what these numbers showed.
+- **The entire ignorance escalation (0.5 -> 2.0, every-3 -> every-1)** was
+  chasing an artifact. That the 4x increase "moved nothing" is exactly
+  what an artifact predicts.
+
+Not affected: F49, F50 and F52 are separate experiments, and the probe
+harness exists only in the addressing scripts — the committed battery,
+bank and consolidation code call `rollout_family`, which has no probe
+phase. The promoted rungs do not inherit this.
+
+Still real: cross-feeding drives choiceA to 0.000, far *below* its 0.961
+probe floor, so a wrong fragment actively destroys reward the harness
+would otherwise hand over. That is a genuine effect, but it is
+"cross-feed is worse than doing nothing", not "cross-feed inverts a
+learned skill".
+
+**Fix, verified.** Score only what happens after the probe. With
+post-probe-only scoring the artifact disappears and the twins become
+symmetric again: probe+frozen falls to 0.238 / 0.180 and probe+random to
+0.383 / 0.289, both back at the no-probe floor. The addressing line must
+be re-run under this scoring before any of its claims are restated.
+
+**Methodological, fourth instance.** F46 (a signal measured before the
+phase that destroys it), F49 (a statistic inheriting its policy's
+degeneracy), F52 (a metric silently taking its wrong branch), and now a
+score collecting reward the agent did not earn. Each was a plausible
+number, not an error. The generalisation worth keeping: **an experiment
+must be able to fail.** Before trusting any gate, run it with no agent at
+all and check that it fails — the no-agent control would have caught all
+four.
+
+Probes 89-90 are `probe_earns_it.py`.
