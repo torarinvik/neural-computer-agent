@@ -211,10 +211,402 @@ def _global_generation_metrics(
     }
 
 
+def _page_metrics_from_selected_pages(
+    predictions: torch.Tensor,
+    selected_pages: torch.Tensor,
+    targets: torch.Tensor,
+    generation_candidate_start: int,
+    generation_page_start: int,
+    generation_page_size: int,
+    generation_page_order: list[int],
+) -> dict[str, object]:
+    """Measure predictions when the caller already resolved physical pages."""
+
+    target_pages = generation_page_start + (
+        (targets - generation_candidate_start) // generation_page_size
+    )
+    return {
+        "top1_accuracy": float((predictions == targets).float().mean()),
+        "per_target_top1_accuracy": _per_target_top1_accuracy(
+            predictions, targets
+        ),
+        "page_top1_accuracy": float((selected_pages == target_pages).float().mean()),
+        "per_page_top1_accuracy": [
+            float(
+                (selected_pages[target_pages == page] == page)
+                .float()
+                .mean()
+            )
+            for page in generation_page_order
+        ],
+    }
+
+
+def _train_shared_local_router(
+    router: LearnedComputeCandidateScreen,
+    parent,
+    grammar,
+    normalized_generation_keys: list[torch.Tensor],
+    raw_generation_keys: list[torch.Tensor],
+    generation_pages: list[list[LearnedComputeCandidateScreen]],
+    generation_candidate_starts: list[int],
+    *,
+    page_size: int,
+    updates: int,
+    batch_size: int,
+    seed: int,
+    learning_rate: float,
+    normalizer: OpaqueCandidateSignatureNormalizer,
+    query_offsets: torch.Tensor | None = None,
+    query_adapters: torch.nn.ModuleList | None = None,
+    shuffle_outcomes: bool = False,
+) -> dict[str, int | float]:
+    """Train one local-page router across generations without flat interference."""
+
+    if not normalized_generation_keys or len(normalized_generation_keys) != len(
+        generation_pages
+    ):
+        raise ValueError("shared local router generations must align")
+    page_count = len(generation_pages[0])
+    if page_count < 1 or any(len(pages) != page_count for pages in generation_pages):
+        raise ValueError("shared local router needs equal page counts")
+    if any(
+        keys.shape[0] != page_count * page_size
+        for keys in normalized_generation_keys
+    ):
+        raise ValueError("shared local router keys must align with pages")
+    if query_offsets is not None and query_offsets.shape != (
+        len(generation_pages),
+        EVENT_WIDTH,
+    ):
+        raise ValueError("shared local router query offsets have the wrong shape")
+    if query_adapters is not None and len(query_adapters) != len(generation_pages):
+        raise ValueError("shared local router adapters must align with generations")
+    trainable = list(router.parameters())
+    if query_offsets is not None:
+        trainable.append(query_offsets)
+    if query_adapters is not None:
+        trainable.extend(query_adapters.parameters())
+    optimizer = torch.optim.AdamW(
+        trainable, lr=learning_rate, weight_decay=1e-5
+    )
+    informative_pairs = 0
+    last_loss = 0.0
+    generation_count = len(generation_pages)
+    for update in range(updates):
+        generation_index = update % generation_count
+        candidate_start = generation_candidate_starts[generation_index]
+        families = [
+            candidate_start
+            + (update * batch_size + row) % (page_count * page_size)
+            for row in range(batch_size)
+        ]
+        raw_query = _event_query(
+            parent,
+            grammar,
+            families,
+            seed=seed + update * 10_007,
+        )
+        page_outcomes = torch.zeros(batch_size, page_count)
+        with torch.no_grad():
+            for page_index, page in enumerate(generation_pages[generation_index]):
+                start = page_index * page_size
+                end = start + page_size
+                local_predictions = page(
+                    raw_query,
+                    raw_generation_keys[generation_index][start:end],
+                ).argmax(dim=-1)
+                local_targets = torch.tensor(
+                    [family - candidate_start - start for family in families],
+                    dtype=torch.long,
+                )
+                page_outcomes[:, page_index] = (
+                    local_predictions == local_targets
+                ).float()
+        if shuffle_outcomes:
+            shuffled = []
+            for row in range(batch_size):
+                permutation = torch.randperm(
+                    page_count,
+                    generator=torch.Generator().manual_seed(
+                        seed + update * 101 + row
+                    ),
+                )
+                shuffled.append(page_outcomes[row][permutation])
+            page_outcomes = torch.stack(shuffled)
+        candidate_outcomes = page_outcomes.repeat_interleave(page_size, dim=1)
+        query = normalizer(raw_query)
+        if query_adapters is not None:
+            query = query_adapters[generation_index](query)
+        if query_offsets is not None:
+            query = query + query_offsets[generation_index]
+        if not bool(router.enabled.item()):
+            router.enable()
+        loss, pairs = router.outcome_ranking_loss(
+            query,
+            normalized_generation_keys[generation_index],
+            candidate_outcomes,
+        )
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(trainable, 1.0)
+        optimizer.step()
+        informative_pairs += pairs
+        last_loss = float(loss.detach())
+    router.eval()
+    return {
+        "optimizer_updates": updates,
+        "unique_verifier_bits": updates * batch_size * page_count,
+        "unique_logical_lifetimes": updates * batch_size * page_count,
+        "informative_candidate_pairs": informative_pairs,
+        "informative_outcomes": updates * batch_size * page_count,
+        "replayed_examples": 0,
+        "final_loss": last_loss,
+    }
+
+
+def _train_generation_selector(
+    selector: LearnedComputeCandidateScreen,
+    parent,
+    grammar,
+    generation_selector_keys: torch.Tensor,
+    generation_candidate_starts: list[int],
+    generation_candidate_count: int,
+    *,
+    updates: int,
+    batch_size: int,
+    seed: int,
+    learning_rate: float,
+    normalizer: OpaqueCandidateSignatureNormalizer,
+    shuffle_outcomes: bool = False,
+) -> dict[str, int | float]:
+    """Learn generation addressing separately from local page addressing."""
+
+    optimizer = torch.optim.AdamW(
+        selector.parameters(), lr=learning_rate, weight_decay=1e-5
+    )
+    generation_count = len(generation_candidate_starts)
+    informative_pairs = 0
+    last_loss = 0.0
+    for update in range(updates):
+        generation_index = update % generation_count
+        families = [
+            generation_candidate_starts[generation_index]
+            + (update * batch_size + row) % generation_candidate_count
+            for row in range(batch_size)
+        ]
+        raw_query = _event_query(
+            parent,
+            grammar,
+            families,
+            seed=seed + update * 10_007,
+        )
+        outcomes = torch.zeros(
+            batch_size, generation_count * generation_candidate_count
+        )
+        start = generation_index * generation_candidate_count
+        outcomes[:, start : start + generation_candidate_count] = 1.0
+        if shuffle_outcomes:
+            for row in range(batch_size):
+                permutation = torch.randperm(
+                    generation_count,
+                    generator=torch.Generator().manual_seed(
+                        seed + update * 101 + row
+                    ),
+                )
+                blocks = outcomes[row].reshape(
+                    generation_count, generation_candidate_count
+                )
+                outcomes[row] = blocks[permutation].reshape(-1)
+        if not bool(selector.enabled.item()):
+            selector.enable()
+        loss, pairs = selector.outcome_ranking_loss(
+            normalizer(raw_query), generation_selector_keys, outcomes
+        )
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(selector.parameters(), 1.0)
+        optimizer.step()
+        informative_pairs += pairs
+        last_loss = float(loss.detach())
+    selector.eval()
+    return {
+        "optimizer_updates": updates,
+        "unique_verifier_bits": updates * batch_size * generation_count,
+        "unique_logical_lifetimes": updates * batch_size * generation_count,
+        "informative_candidate_pairs": informative_pairs,
+        "informative_outcomes": updates * batch_size * generation_count,
+        "replayed_examples": 0,
+        "final_loss": last_loss,
+    }
+
+
+def _factorized_route(
+    selector: LearnedComputeCandidateScreen,
+    local_router: LearnedComputeCandidateScreen,
+    generation_selector_keys: torch.Tensor,
+    normalized_generation_keys: list[torch.Tensor],
+    raw_generation_keys: list[torch.Tensor],
+    generation_pages: list[list[LearnedComputeCandidateScreen]],
+    generation_candidate_starts: list[int],
+    generation_page_starts: list[int],
+    generation_page_ids: list[list[int]],
+    query: torch.Tensor,
+    normalizer: OpaqueCandidateSignatureNormalizer,
+    page_size: int,
+    query_offsets: torch.Tensor | None = None,
+    query_adapters: torch.nn.ModuleList | None = None,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Route through a generation selector and one shared local router."""
+
+    generation_scores = selector(
+        normalizer(query), generation_selector_keys
+    ).reshape(query.shape[0], len(generation_pages), -1)
+    generation_slots = generation_scores.amax(dim=-1).argmax(dim=-1)
+    predictions = torch.empty(query.shape[0], dtype=torch.long)
+    selected_pages = torch.empty(query.shape[0], dtype=torch.long)
+    for generation_index in range(len(generation_pages)):
+        rows = generation_slots == generation_index
+        if not rows.any():
+            continue
+        local_query = normalizer(query[rows])
+        if query_adapters is not None:
+            local_query = query_adapters[generation_index](local_query)
+        if query_offsets is not None:
+            local_query = local_query + query_offsets[generation_index]
+        candidate_scores = local_router(
+            local_query,
+            normalized_generation_keys[generation_index],
+        )
+        local_page_scores = candidate_scores.reshape(
+            query[rows].shape[0], len(generation_pages[generation_index]), page_size
+        ).amax(dim=-1)
+        local_slots = local_page_scores.argmax(dim=-1)
+        for local_page in range(len(generation_pages[generation_index])):
+            local_rows = local_slots == local_page
+            if not local_rows.any():
+                continue
+            page = generation_pages[generation_index][local_page]
+            start = local_page * page_size
+            end = start + page_size
+            local_predictions = page(
+                query[rows][local_rows], raw_generation_keys[generation_index][start:end]
+            ).argmax(dim=-1)
+            physical_page = generation_page_ids[generation_index][local_page]
+            predictions[rows.nonzero().flatten()[local_rows]] = (
+                generation_candidate_starts[generation_index]
+                + (physical_page - generation_page_starts[generation_index])
+                * page_size
+                + local_predictions
+            )
+            selected_pages[rows.nonzero().flatten()[local_rows]] = physical_page
+    return predictions, selected_pages
+
+
+def _shared_local_generation_route(
+    local_router: LearnedComputeCandidateScreen,
+    normalized_keys: torch.Tensor,
+    raw_keys: torch.Tensor,
+    pages: list[LearnedComputeCandidateScreen],
+    candidate_start: int,
+    page_start: int,
+    page_ids: list[int],
+    query: torch.Tensor,
+    normalizer: OpaqueCandidateSignatureNormalizer,
+    page_size: int,
+    query_offsets: torch.Tensor | None = None,
+    query_adapter: torch.nn.Module | None = None,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Use the shared local router for one external generation binding."""
+
+    local_query = normalizer(query)
+    if query_adapter is not None:
+        local_query = query_adapter(local_query)
+    if query_offsets is not None:
+        local_query = local_query + query_offsets
+    scores = local_router(local_query, normalized_keys)
+    page_scores = scores.reshape(query.shape[0], len(pages), page_size).amax(dim=-1)
+    local_slots = page_scores.argmax(dim=-1)
+    predictions = torch.empty(query.shape[0], dtype=torch.long)
+    selected_pages = torch.empty(query.shape[0], dtype=torch.long)
+    for local_page in range(len(pages)):
+        rows = local_slots == local_page
+        if not rows.any():
+            continue
+        start = local_page * page_size
+        end = start + page_size
+        local_predictions = pages[local_page](
+            query[rows], raw_keys[start:end]
+        ).argmax(dim=-1)
+        physical_page = page_ids[local_page]
+        predictions[rows] = (
+            candidate_start
+            + (physical_page - page_start) * page_size
+            + local_predictions
+        )
+        selected_pages[rows] = physical_page
+    return predictions, selected_pages
+
+
+def _shared_local_cascade_route(
+    local_router: LearnedComputeCandidateScreen,
+    normalized_generation_keys: list[torch.Tensor],
+    raw_generation_keys: list[torch.Tensor],
+    generation_pages: list[list[LearnedComputeCandidateScreen]],
+    generation_candidate_starts: list[int],
+    generation_page_starts: list[int],
+    generation_page_ids: list[list[int]],
+    query: torch.Tensor,
+    targets: torch.Tensor,
+    normalizer: OpaqueCandidateSignatureNormalizer,
+    page_size: int,
+    query_offsets: torch.Tensor | None = None,
+    query_adapters: torch.nn.ModuleList | None = None,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Cascade one shared compute core through generation-local bindings."""
+
+    predictions = torch.empty(query.shape[0], dtype=torch.long)
+    selected_pages = torch.empty(query.shape[0], dtype=torch.long)
+    attempts = torch.zeros(query.shape[0])
+    remaining = torch.ones(query.shape[0], dtype=torch.bool)
+    for generation_index in range(len(generation_pages)):
+        rows = remaining.clone()
+        if not rows.any():
+            break
+        generation_predictions, generation_pages_selected = (
+            _shared_local_generation_route(
+                local_router,
+                normalized_generation_keys[generation_index],
+                raw_generation_keys[generation_index],
+                generation_pages[generation_index],
+                generation_candidate_starts[generation_index],
+                generation_page_starts[generation_index],
+                generation_page_ids[generation_index],
+                query[rows],
+                normalizer,
+                page_size,
+                None
+                if query_offsets is None
+                else query_offsets[generation_index],
+                None
+                if query_adapters is None
+                else query_adapters[generation_index],
+            )
+        )
+        indices = rows.nonzero().flatten()
+        predictions[indices] = generation_predictions
+        selected_pages[indices] = generation_pages_selected
+        attempts[indices] += 1.0
+        remaining[indices] = generation_predictions != targets[indices]
+    return predictions, selected_pages, attempts, remaining
+
+
 def run(args: argparse.Namespace) -> dict[str, object]:
     started = perf_counter()
     if args.generations < 2:
         raise ValueError("this audit requires at least two append generations")
+    if args.consolidate_generations and args.factorized_consolidation:
+        raise ValueError("choose flat or factorized consolidation, not both")
     if args.source_candidates % args.source_page_size:
         raise ValueError("source candidates must form equal pages")
     if args.generation_candidates % args.generation_page_size:
@@ -226,6 +618,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         args.source_router_updates,
         args.generation_router_updates,
         args.consolidation_router_updates,
+        args.factorized_local_router_updates,
+        args.factorized_selector_updates,
         args.batch_size,
         args.audit_count,
         args.key_samples,
@@ -471,6 +865,147 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             shuffle_outcomes=True,
         )
 
+    factorized_selector = None
+    factorized_local_router = None
+    shuffled_factorized_selector = None
+    shuffled_factorized_local_router = None
+    factorized_selector_training = None
+    factorized_local_training = None
+    shuffled_factorized_selector_training = None
+    factorized_query_offsets = None
+    shuffled_factorized_query_offsets = None
+    factorized_query_adapters = None
+    shuffled_factorized_query_adapters = None
+    shuffled_factorized_local_training = None
+    factorized_generation_keys = generation_keys
+    factorized_raw_keys = [
+        raw_keys[start : start + args.generation_candidates]
+        for start in generation_candidate_starts
+    ]
+    factorized_pages = [
+        pages[start : start + generation_page_count]
+        for start in generation_page_starts
+    ]
+    factorized_page_ids = [
+        list(range(start, start + generation_page_count))
+        for start in generation_page_starts
+    ]
+    if args.factorized_consolidation:
+        if args.factorized_query_offset:
+            factorized_query_offsets = torch.nn.Parameter(
+                torch.zeros(args.generations, EVENT_WIDTH)
+            )
+            shuffled_factorized_query_offsets = torch.nn.Parameter(
+                torch.zeros(args.generations, EVENT_WIDTH)
+            )
+        if args.factorized_query_adapter:
+            factorized_query_adapters = torch.nn.ModuleList(
+                [
+                    torch.nn.Linear(EVENT_WIDTH, EVENT_WIDTH)
+                    for _ in range(args.generations)
+                ]
+            )
+            shuffled_factorized_query_adapters = torch.nn.ModuleList(
+                [
+                    torch.nn.Linear(EVENT_WIDTH, EVENT_WIDTH)
+                    for _ in range(args.generations)
+                ]
+            )
+            for adapters in (
+                factorized_query_adapters,
+                shuffled_factorized_query_adapters,
+            ):
+                for adapter in adapters:
+                    torch.nn.init.eye_(adapter.weight)
+                    torch.nn.init.zeros_(adapter.bias)
+        generation_selector_keys = torch.cat(factorized_generation_keys, dim=0)
+        factorized_local_router = LearnedComputeCandidateScreen(
+            EVENT_WIDTH,
+            EVENT_WIDTH,
+            latent_width=args.factorized_latent_width,
+            hidden=args.factorized_hidden,
+        )
+        factorized_local_training = _train_shared_local_router(
+            factorized_local_router,
+            parent,
+            grammar,
+            factorized_generation_keys,
+            factorized_raw_keys,
+            factorized_pages,
+            generation_candidate_starts,
+            page_size=args.generation_page_size,
+            updates=args.factorized_local_router_updates,
+            batch_size=args.batch_size,
+            seed=args.seed + 200_000,
+            learning_rate=args.learning_rate,
+            normalizer=normalizer,
+            query_offsets=factorized_query_offsets,
+            query_adapters=factorized_query_adapters,
+        )
+        factorized_selector = LearnedComputeCandidateScreen(
+            EVENT_WIDTH,
+            EVENT_WIDTH,
+            latent_width=args.factorized_selector_latent_width,
+            hidden=args.factorized_selector_hidden,
+        )
+        factorized_selector_training = _train_generation_selector(
+            factorized_selector,
+            parent,
+            grammar,
+            generation_selector_keys,
+            generation_candidate_starts,
+            args.generation_candidates,
+            updates=args.factorized_selector_updates,
+            batch_size=args.batch_size,
+            seed=args.seed + 210_000,
+            learning_rate=args.learning_rate,
+            normalizer=normalizer,
+        )
+        shuffled_factorized_local_router = LearnedComputeCandidateScreen(
+            EVENT_WIDTH,
+            EVENT_WIDTH,
+            latent_width=args.factorized_latent_width,
+            hidden=args.factorized_hidden,
+        )
+        shuffled_factorized_local_training = _train_shared_local_router(
+            shuffled_factorized_local_router,
+            parent,
+            grammar,
+            factorized_generation_keys,
+            factorized_raw_keys,
+            factorized_pages,
+            generation_candidate_starts,
+            page_size=args.generation_page_size,
+            updates=args.factorized_local_router_updates,
+            batch_size=args.batch_size,
+            seed=args.seed + 220_000,
+            learning_rate=args.learning_rate,
+            normalizer=normalizer,
+            query_offsets=shuffled_factorized_query_offsets,
+            query_adapters=shuffled_factorized_query_adapters,
+            shuffle_outcomes=True,
+        )
+        shuffled_factorized_selector = LearnedComputeCandidateScreen(
+            EVENT_WIDTH,
+            EVENT_WIDTH,
+            latent_width=args.factorized_selector_latent_width,
+            hidden=args.factorized_selector_hidden,
+        )
+        shuffled_factorized_selector_training = _train_generation_selector(
+            shuffled_factorized_selector,
+            parent,
+            grammar,
+            generation_selector_keys,
+            generation_candidate_starts,
+            args.generation_candidates,
+            updates=args.factorized_selector_updates,
+            batch_size=args.batch_size,
+            seed=args.seed + 230_000,
+            learning_rate=args.learning_rate,
+            normalizer=normalizer,
+            shuffle_outcomes=True,
+        )
+
     audit_families = [index % total_candidates for index in range(args.audit_count)]
     queries = _event_query(parent, grammar, audit_families, seed=args.seed + 80_000)
     targets = torch.tensor(audit_families)
@@ -665,6 +1200,332 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             permuted_consolidated_order,
         )
 
+    factorized_metrics = []
+    shuffled_factorized_metrics = []
+    factorized_permuted_metrics = None
+    factorized_local_metrics = []
+    shuffled_factorized_local_metrics = []
+    factorized_local_permuted_metrics = None
+    factorized_cascade_metrics = None
+    shuffled_factorized_cascade_metrics = None
+    if (
+        factorized_selector is not None
+        and factorized_local_router is not None
+        and shuffled_factorized_selector is not None
+        and shuffled_factorized_local_router is not None
+    ):
+        generation_selector_keys = torch.cat(factorized_generation_keys, dim=0)
+        for generation_index, (generation_queries, generation_targets) in enumerate(
+            generation_audit_batches
+        ):
+            factorized_predictions, factorized_pages_selected = _factorized_route(
+                factorized_selector,
+                factorized_local_router,
+                generation_selector_keys,
+                factorized_generation_keys,
+                factorized_raw_keys,
+                factorized_pages,
+                generation_candidate_starts,
+                generation_page_starts,
+                factorized_page_ids,
+                generation_queries,
+                normalizer,
+                args.generation_page_size,
+                factorized_query_offsets,
+                factorized_query_adapters,
+            )
+            factorized_metrics.append(
+                _page_metrics_from_selected_pages(
+                    factorized_predictions,
+                    factorized_pages_selected,
+                    generation_targets,
+                    generation_candidate_starts[generation_index],
+                    generation_page_starts[generation_index],
+                    args.generation_page_size,
+                    factorized_page_ids[generation_index],
+                )
+            )
+            shuffled_predictions, shuffled_pages_selected = _factorized_route(
+                shuffled_factorized_selector,
+                shuffled_factorized_local_router,
+                generation_selector_keys,
+                factorized_generation_keys,
+                factorized_raw_keys,
+                factorized_pages,
+                generation_candidate_starts,
+                generation_page_starts,
+                factorized_page_ids,
+                generation_queries,
+                normalizer,
+                args.generation_page_size,
+                shuffled_factorized_query_offsets,
+                shuffled_factorized_query_adapters,
+            )
+            shuffled_factorized_metrics.append(
+                _page_metrics_from_selected_pages(
+                    shuffled_predictions,
+                    shuffled_pages_selected,
+                    generation_targets,
+                    generation_candidate_starts[generation_index],
+                    generation_page_starts[generation_index],
+                    args.generation_page_size,
+                    factorized_page_ids[generation_index],
+                )
+            )
+        generation_permutation = torch.randperm(
+            args.generations,
+            generator=torch.Generator().manual_seed(args.seed + 240_000),
+        ).tolist()
+        permuted_generation_keys = [
+            factorized_generation_keys[index] for index in generation_permutation
+        ]
+        permuted_factorized_raw_keys = [
+            factorized_raw_keys[index] for index in generation_permutation
+        ]
+        permuted_factorized_pages = [
+            factorized_pages[index] for index in generation_permutation
+        ]
+        permuted_generation_starts = [
+            generation_candidate_starts[index] for index in generation_permutation
+        ]
+        permuted_page_starts = [
+            generation_page_starts[index] for index in generation_permutation
+        ]
+        permuted_page_ids = [
+            factorized_page_ids[index] for index in generation_permutation
+        ]
+        permuted_selector_keys = torch.cat(permuted_generation_keys, dim=0)
+        all_generation_queries = torch.cat(
+            [batch[0] for batch in generation_audit_batches], dim=0
+        )
+        all_generation_targets = torch.cat(
+            [batch[1] for batch in generation_audit_batches], dim=0
+        )
+        factorized_predictions, factorized_pages_selected = _factorized_route(
+            factorized_selector,
+            factorized_local_router,
+            permuted_selector_keys,
+            permuted_generation_keys,
+            permuted_factorized_raw_keys,
+            permuted_factorized_pages,
+            permuted_generation_starts,
+            permuted_page_starts,
+            permuted_page_ids,
+            all_generation_queries,
+            normalizer,
+            args.generation_page_size,
+            factorized_query_offsets,
+            factorized_query_adapters,
+        )
+        factorized_permuted_metrics = _page_metrics_from_selected_pages(
+            factorized_predictions,
+            factorized_pages_selected,
+            all_generation_targets,
+            args.source_candidates,
+            source_page_count,
+            args.generation_page_size,
+            consolidated_page_order,
+        )
+
+        if args.factorized_verifier_cascade:
+            for generation_index, (generation_queries, generation_targets) in enumerate(
+                generation_audit_batches
+            ):
+                local_predictions, local_pages_selected = (
+                    _shared_local_generation_route(
+                        factorized_local_router,
+                        factorized_generation_keys[generation_index],
+                        factorized_raw_keys[generation_index],
+                        factorized_pages[generation_index],
+                        generation_candidate_starts[generation_index],
+                        generation_page_starts[generation_index],
+                        factorized_page_ids[generation_index],
+                        generation_queries,
+                        normalizer,
+                        args.generation_page_size,
+                        None
+                        if factorized_query_offsets is None
+                        else factorized_query_offsets[generation_index],
+                        None
+                        if factorized_query_adapters is None
+                        else factorized_query_adapters[generation_index],
+                    )
+                )
+                factorized_local_metrics.append(
+                    _page_metrics_from_selected_pages(
+                        local_predictions,
+                        local_pages_selected,
+                        generation_targets,
+                        generation_candidate_starts[generation_index],
+                        generation_page_starts[generation_index],
+                        args.generation_page_size,
+                        factorized_page_ids[generation_index],
+                    )
+                )
+                shuffled_predictions, shuffled_pages_selected = (
+                    _shared_local_generation_route(
+                        shuffled_factorized_local_router,
+                        factorized_generation_keys[generation_index],
+                        factorized_raw_keys[generation_index],
+                        factorized_pages[generation_index],
+                        generation_candidate_starts[generation_index],
+                        generation_page_starts[generation_index],
+                        factorized_page_ids[generation_index],
+                        generation_queries,
+                        normalizer,
+                        args.generation_page_size,
+                        None
+                        if shuffled_factorized_query_offsets is None
+                        else shuffled_factorized_query_offsets[generation_index],
+                        None
+                        if shuffled_factorized_query_adapters is None
+                        else shuffled_factorized_query_adapters[generation_index],
+                    )
+                )
+                shuffled_factorized_local_metrics.append(
+                    _page_metrics_from_selected_pages(
+                        shuffled_predictions,
+                        shuffled_pages_selected,
+                        generation_targets,
+                        generation_candidate_starts[generation_index],
+                        generation_page_starts[generation_index],
+                        args.generation_page_size,
+                        factorized_page_ids[generation_index],
+                    )
+                )
+            page_permutations = [
+                torch.randperm(
+                    generation_page_count,
+                    generator=torch.Generator().manual_seed(
+                        args.seed + 250_000 + generation_index
+                    ),
+                ).tolist()
+                for generation_index in range(args.generations)
+            ]
+            all_local_predictions = []
+            all_local_pages = []
+            all_local_targets = []
+            for generation_index, (generation_queries, generation_targets) in enumerate(
+                generation_audit_batches
+            ):
+                permutation = page_permutations[generation_index]
+                permuted_keys = factorized_generation_keys[generation_index].reshape(
+                    generation_page_count,
+                    args.generation_page_size,
+                    EVENT_WIDTH,
+                )[permutation].reshape_as(factorized_generation_keys[generation_index])
+                permuted_raw_keys = factorized_raw_keys[generation_index].reshape(
+                    generation_page_count,
+                    args.generation_page_size,
+                    EVENT_WIDTH,
+                )[permutation].reshape_as(factorized_raw_keys[generation_index])
+                permuted_pages = [
+                    factorized_pages[generation_index][index] for index in permutation
+                ]
+                permuted_page_ids = [
+                    factorized_page_ids[generation_index][index]
+                    for index in permutation
+                ]
+                local_predictions, local_pages_selected = (
+                    _shared_local_generation_route(
+                        factorized_local_router,
+                        permuted_keys,
+                        permuted_raw_keys,
+                        permuted_pages,
+                        generation_candidate_starts[generation_index],
+                        generation_page_starts[generation_index],
+                        permuted_page_ids,
+                        generation_queries,
+                        normalizer,
+                        args.generation_page_size,
+                        None
+                        if factorized_query_offsets is None
+                        else factorized_query_offsets[generation_index],
+                        None
+                        if factorized_query_adapters is None
+                        else factorized_query_adapters[generation_index],
+                    )
+                )
+                all_local_predictions.append(local_predictions)
+                all_local_pages.append(local_pages_selected)
+                all_local_targets.append(generation_targets)
+            factorized_local_permuted_metrics = _page_metrics_from_selected_pages(
+                torch.cat(all_local_predictions),
+                torch.cat(all_local_pages),
+                torch.cat(all_local_targets),
+                args.source_candidates,
+                source_page_count,
+                args.generation_page_size,
+                consolidated_page_order,
+            )
+            all_generation_queries = torch.cat(
+                [batch[0] for batch in generation_audit_batches], dim=0
+            )
+            all_generation_targets = torch.cat(
+                [batch[1] for batch in generation_audit_batches], dim=0
+            )
+            cascade_predictions, cascade_pages, cascade_attempts, cascade_unresolved = (
+                _shared_local_cascade_route(
+                    factorized_local_router,
+                    factorized_generation_keys,
+                    factorized_raw_keys,
+                    factorized_pages,
+                    generation_candidate_starts,
+                    generation_page_starts,
+                    factorized_page_ids,
+                    all_generation_queries,
+                    all_generation_targets,
+                    normalizer,
+                    args.generation_page_size,
+                    factorized_query_offsets,
+                    factorized_query_adapters,
+                )
+            )
+            factorized_cascade_metrics = _page_metrics_from_selected_pages(
+                cascade_predictions,
+                cascade_pages,
+                all_generation_targets,
+                args.source_candidates,
+                source_page_count,
+                args.generation_page_size,
+                consolidated_page_order,
+            )
+            factorized_cascade_metrics["mean_fresh_attempts"] = float(
+                cascade_attempts.mean()
+            )
+            factorized_cascade_metrics["no_unresolved_rows"] = not bool(
+                cascade_unresolved.any()
+            )
+            shuffled_cascade_predictions, shuffled_cascade_pages, _, shuffled_unresolved = (
+                _shared_local_cascade_route(
+                    shuffled_factorized_local_router,
+                    factorized_generation_keys,
+                    factorized_raw_keys,
+                    factorized_pages,
+                    generation_candidate_starts,
+                    generation_page_starts,
+                    factorized_page_ids,
+                    all_generation_queries,
+                    all_generation_targets,
+                    normalizer,
+                    args.generation_page_size,
+                    shuffled_factorized_query_offsets,
+                    shuffled_factorized_query_adapters,
+                )
+            )
+            shuffled_factorized_cascade_metrics = _page_metrics_from_selected_pages(
+                shuffled_cascade_predictions,
+                shuffled_cascade_pages,
+                all_generation_targets,
+                args.source_candidates,
+                source_page_count,
+                args.generation_page_size,
+                consolidated_page_order,
+            )
+            shuffled_factorized_cascade_metrics["no_unresolved_rows"] = not bool(
+                shuffled_unresolved.any()
+            )
+
     source_permutation = torch.randperm(
         source_page_count,
         generator=torch.Generator().manual_seed(args.seed + 100_000),
@@ -734,6 +1595,16 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             *(
                 [consolidated_training, shuffled_consolidated_training]
                 if args.consolidate_generations
+                else []
+            ),
+            *(
+                [
+                    factorized_local_training,
+                    factorized_selector_training,
+                    shuffled_factorized_local_training,
+                    shuffled_factorized_selector_training,
+                ]
+                if args.factorized_consolidation
                 else []
             ),
         ]
@@ -818,6 +1689,70 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 ),
             }
         )
+    if args.factorized_consolidation:
+        factorized_eval_metrics = (
+            factorized_local_metrics
+            if args.factorized_verifier_cascade
+            else factorized_metrics
+        )
+        factorized_eval_shuffled_metrics = (
+            shuffled_factorized_local_metrics
+            if args.factorized_verifier_cascade
+            else shuffled_factorized_metrics
+        )
+        factorized_eval_permuted_metrics = (
+            factorized_local_permuted_metrics
+            if args.factorized_verifier_cascade
+            else factorized_permuted_metrics
+        )
+        gates.update(
+            {
+                "factorized_generation_mastery": all(
+                    row["top1_accuracy"] >= MASTERY_THRESHOLD
+                    and min(row["per_target_top1_accuracy"])
+                    >= MASTERY_THRESHOLD
+                    and row["page_top1_accuracy"] >= MASTERY_THRESHOLD
+                    and min(row["per_page_top1_accuracy"])
+                    >= MASTERY_THRESHOLD
+                    for row in factorized_eval_metrics
+                ),
+                "factorized_reward_shuffled_null": all(
+                    row["page_top1_accuracy"]
+                    <= (1.0 / generation_page_count) + 0.15
+                    for row in factorized_eval_shuffled_metrics
+                ),
+                "factorized_permutation": (
+                    factorized_eval_permuted_metrics is not None
+                    and factorized_eval_permuted_metrics["top1_accuracy"]
+                    >= MASTERY_THRESHOLD
+                    and factorized_eval_permuted_metrics["page_top1_accuracy"]
+                    >= MASTERY_THRESHOLD
+                ),
+                "factorized_router_count_reduced": (
+                    2 < len(generation_routers)
+                ),
+                "factorized_no_replayed_examples": all(
+                    training is not None
+                    and training["replayed_examples"] == 0
+                    for training in (
+                        factorized_local_training,
+                        factorized_selector_training,
+                        shuffled_factorized_local_training,
+                        shuffled_factorized_selector_training,
+                    )
+                ),
+                "factorized_cascade_retention": (
+                    not args.factorized_verifier_cascade
+                    or (
+                        factorized_cascade_metrics is not None
+                        and factorized_cascade_metrics["top1_accuracy"]
+                        >= MASTERY_THRESHOLD
+                        and factorized_cascade_metrics["no_unresolved_rows"]
+                        and shuffled_factorized_cascade_metrics is not None
+                    )
+                ),
+            }
+        )
     report = {
         "schema": "neural-computer.opaque-page-router-generations-report.v1",
         "claim_boundary": (
@@ -854,6 +1789,34 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "metrics": consolidated_metrics,
             "reward_shuffled_metrics": shuffled_consolidated_metrics,
             "permuted_metrics": consolidated_permuted_metrics,
+        },
+        "factorized_consolidation": {
+            "enabled": args.factorized_consolidation,
+            "router_count_before": len(generation_routers),
+            "router_count_after": 2 if args.factorized_consolidation else None,
+            "local_router_updates": args.factorized_local_router_updates
+            if args.factorized_consolidation
+            else None,
+            "selector_updates": args.factorized_selector_updates
+            if args.factorized_consolidation
+            else None,
+            "query_offset": args.factorized_query_offset,
+            "query_adapter": args.factorized_query_adapter,
+            "local_training": factorized_local_training,
+            "selector_training": factorized_selector_training,
+            "reward_shuffled_local_training": shuffled_factorized_local_training,
+            "reward_shuffled_selector_training": shuffled_factorized_selector_training,
+            "metrics": factorized_metrics,
+            "reward_shuffled_metrics": shuffled_factorized_metrics,
+            "permuted_metrics": factorized_permuted_metrics,
+            "local_metrics": factorized_local_metrics,
+            "local_reward_shuffled_metrics": shuffled_factorized_local_metrics,
+            "local_permuted_metrics": factorized_local_permuted_metrics,
+            "verifier_cascade_enabled": args.factorized_verifier_cascade,
+            "verifier_cascade_metrics": factorized_cascade_metrics,
+            "verifier_cascade_reward_shuffled_metrics": (
+                shuffled_factorized_cascade_metrics
+            ),
         },
         "learning_signal": "scalar_verifier_outcome_of_attempted_generation_page_v1",
         "growth_policy": "independent_generation_overlay_without_prior_replay_v1",
@@ -923,6 +1886,16 @@ def main() -> None:
     parser.add_argument("--consolidation-router-updates", type=int, default=3072)
     parser.add_argument("--consolidation-latent-width", type=int, default=64)
     parser.add_argument("--consolidation-hidden", type=int, default=128)
+    parser.add_argument("--factorized-consolidation", action="store_true")
+    parser.add_argument("--factorized-local-router-updates", type=int, default=3072)
+    parser.add_argument("--factorized-selector-updates", type=int, default=512)
+    parser.add_argument("--factorized-latent-width", type=int, default=32)
+    parser.add_argument("--factorized-hidden", type=int, default=64)
+    parser.add_argument("--factorized-selector-latent-width", type=int, default=16)
+    parser.add_argument("--factorized-selector-hidden", type=int, default=32)
+    parser.add_argument("--factorized-query-offset", action="store_true")
+    parser.add_argument("--factorized-query-adapter", action="store_true")
+    parser.add_argument("--factorized-verifier-cascade", action="store_true")
     parser.add_argument(
         "--normalizer-fit",
         choices=("all", "source"),

@@ -3719,3 +3719,15 @@ The rejected evidence is in
 The next consolidation design is factorized: a shared local-page router plus
 a small generation selector, preserving generation separation without one
 full router per generation.
+
+The factorized design is also rejected at the 84-candidate/three-generation
+boundary. One shared local-page router with identity-initialized generation
+adapters reaches only `0.679/0.679/0.643` on the three generations; its
+verifier-gated cascade reaches `0.6667` overall with unresolved rows and
+`0.6667` page-permutation accuracy. A full-token generation selector with
+4,096 updates does not repair the result. The reward-shuffled cascade remains
+a valid null, so this is retention failure rather than verifier leakage.
+Page-router consolidation is therefore not promoted; the next compression
+intervention should target the verified artifact-level reusable-compute
+library instead. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_factorized_consolidation_rejected_v1_2026-08-08/`.
