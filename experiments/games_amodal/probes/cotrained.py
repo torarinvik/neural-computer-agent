@@ -54,6 +54,16 @@ parser.add_argument("--ignorance", type=float, default=0.0,
                     help="push the bank-free and decoy policies toward uniform, so the bank must be NECESSARY (F48)")
 parser.add_argument("--handover", type=int, default=1200)
 parser.add_argument(
+    "--head-init", type=float, default=1.0,
+    help="scale the keypress head's final layer at init; <1 keeps early "
+         "entropy high (Andrychowicz et al.: the strongest single "
+         "variance reducer for on-policy acquisition)")
+parser.add_argument(
+    "--normalize-advantage", action="store_true",
+    help="divide each episode's advantage by its own std (PopArt-lite: "
+         "scale-invariant updates so neither twin's reward scale "
+         "dominates the shared plant)")
+parser.add_argument(
     "--symmetric-plant", action="store_true",
     help="roll out both contexts each update and step once on the sum, so "
          "the plant only ever receives the mixture gradient")
@@ -77,6 +87,13 @@ plant = list(trainable_parameters([agent.controller, *agent.game_modules(agent.g
 params = plant + [bank.tokens] + list(slots.parameters()) + list(probe.parameters())
 optimizer = torch.optim.Adam(params, lr=1e-3)
 decoder = agent.runtime.output_bus.decoders["keypress"]
+if args.head_init != 1.0:
+    with torch.no_grad():
+        final = [m for m in decoder.network.modules()
+                 if isinstance(m, torch.nn.Linear)][-1]
+        final.weight.mul_(args.head_init)
+        if final.bias is not None:
+            final.bias.mul_(args.head_init)
 DELTAS = ((-1, 0), (0, 1), (1, 0), (0, -1))
 
 
@@ -164,6 +181,10 @@ def episode(config, seed, *, staging, sample=True, force=None, decoy=False,
         returns[:, pos] = running
     advantage = returns.detach()
     advantage = advantage - (advantage * mask_matrix).sum() / mask_matrix.sum().clamp_min(1)
+    if args.normalize_advantage:
+        count = mask_matrix.sum().clamp_min(1.0)
+        variance = (advantage.square() * mask_matrix).sum() / count
+        advantage = advantage / variance.sqrt().clamp_min(1e-6)
     return {"logits": torch.stack(logits_trace, dim=1) if logits_trace else None,
             "reward": reward_matrix, "mask": mask_matrix, "advantage": advantage,
             "logp": torch.stack(logps, dim=1), "probe_pred": probe_pred,

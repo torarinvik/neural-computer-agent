@@ -2133,3 +2133,32 @@ about one platform only.
 
 Evidence: `cotrained_seed_widening_v1_2026-08-08` (16 remote + 4 local
 runs, README, SHA256SUMS).
+
+**F56 (probes 93-96). The generic on-policy reliability levers do not fix
+twin acquisition; the pre-registered consequence is a pivot to the
+goal-factored design.** Mastery-only screen, 4 fresh seeds x 4 configs:
+control 0/4 both-mastered, small policy-head init 0/4 (several total
+failures — with early entropy that high, 3000 updates is too few to
+converge), advantage normalisation 1/4, combined 0/4. The bar stated
+before the run — beat control's rate or the levers are the wrong tool —
+was not met by any lever.
+
+This is the second time a mechanism transplanted from the literature
+without its ecosystem has failed here (the symmetric plant was the
+first), and it sharpens F55: the twins' acquisition instability is not
+generic policy-gradient variance, it is the specific difficulty of
+holding two anti-correlated policies in one small plant while a third
+process learns to route between them. The literature levers treat the
+symptom class, not this cause. Per the pre-registration in the screen
+README, the goal-factored redesign (`docs/GOAL_FACTORED_DESIGN.md`) —
+which shrinks the game-specific surface from a whole policy to a
+destination vector — is now the MAIN path for the self-addressing line.
+
+Confound recorded rather than hidden: this cohort differs from F55's in
+platform, seeds, AND ignorance-off simultaneously, so the screen's 0/4
+control against F55's 8/16 is not evidence that ignorance helps
+acquisition — but that hypothesis is now live and cheap to test (one
+matched pair), and F32 forbids treating the cross-cohort comparison as
+an answer.
+
+Evidence: `acquisition_levers_screen_2026-08-08`.
