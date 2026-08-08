@@ -138,6 +138,21 @@ rung promotes, rejects, or qualifies. Ordered by severity.
     past battery reports on the floor-to-ceiling scale, and state every
     future gate against its measured floor.
 
+18. **Every gate needs a no-agent control, and the addressing line must be
+    re-run** — F53 found the co-trained loop's choiceA mastery (0.961) is
+    exactly what the harness delivers with NO agent at all: the fixed
+    probe action steps onto the positive-plane item, which IS choiceA's
+    task, and `(total_reward > 0)` counts it. F48's "both twins mastered"
+    and F48/F51's "the decoy gate fails on choiceA" are withdrawn; the
+    whole ignorance escalation was chasing an artifact. Fix verified
+    (score post-probe steps only; the twin asymmetry vanishes) and the
+    re-run is in flight. Four measurement failures this session (F46,
+    F49, F52, F53), each a plausible number rather than an exception.
+    Next: make the no-agent control mandatory before any gate is
+    reported — run the gate with no agent and confirm it FAILS — and
+    re-state the addressing line's claims only after the corrected runs
+    report on both seeds.
+
 14. **Battery scale is six games; motor games are excluded** — the
     staggered battery (`staggered_battery_v1_2026-08-07`) holds six
     decision games at 0.72-1.38x solo ceilings, but forage/collect sit
