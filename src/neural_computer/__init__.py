@@ -43,6 +43,7 @@ from .capability import (
     EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA,
     AppendOnlyLearnedComputeCandidateScreen,
     AppendOnlyScreenConsolidationReceipt,
+    BindingReuseDecision,
     ComputeReuseDecision,
     ExternalCapabilityComposition,
     ExternalCapabilityPipeline,
@@ -58,6 +59,7 @@ from .capability import (
     OpaqueCandidateIdentityView,
     OpaqueCandidateSignatureNormalizer,
     PageLocalLearnedComputeCandidateScreen,
+    select_reusable_binding,
     select_reusable_compute_slot,
 )
 from .capacity import (
@@ -281,6 +283,7 @@ __all__ = [
     "ArtifactBinding",
     "ArtifactConsolidationReceipt",
     "ArtifactHandle",
+    "BindingReuseDecision",
     "CapabilityAdmissionReceipt",
     "CapabilityCandidateSelection",
     "CapabilityEvictionObservation",
@@ -392,6 +395,7 @@ __all__ = [
     "save_runtime",
     "select_capability_candidate",
     "select_growth_artifact_view",
+    "select_reusable_binding",
     "select_reusable_compute_slot",
     "selector_distillation_loss",
     "sha256_file",

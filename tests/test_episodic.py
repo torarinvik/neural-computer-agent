@@ -28,6 +28,7 @@ from neural_computer import (
     PageLocalLearnedComputeCandidateScreen,
     episodic_context_contrastive_loss,
     paired_event_credit_loss,
+    select_reusable_binding,
     select_reusable_compute_slot,
 )
 
@@ -382,6 +383,22 @@ def test_reusable_compute_admission_requires_every_fresh_probe() -> None:
     empty = select_reusable_compute_slot({}, threshold=0.8)
     assert empty.action == "grow"
     assert empty.reason == "no_compute_candidates"
+
+
+def test_reusable_binding_admission_scores_compute_and_adapter_pairs() -> None:
+    reuse = select_reusable_binding(
+        {(2, 7): (0.82, 0.91), (1, 4): (0.84, 0.84)}, threshold=0.8
+    )
+    assert reuse.action == "reuse"
+    assert reuse.compute_slot_index == 1
+    assert reuse.adapter_slot_index == 4
+    reject = select_reusable_binding({(0, 0): (0.8, 0.74)}, threshold=0.8)
+    assert reject.action == "grow"
+    assert reject.compute_slot_index is None
+    assert reject.adapter_slot_index is None
+    empty = select_reusable_binding({}, threshold=0.8)
+    assert empty.action == "grow"
+    assert empty.reason == "no_binding_candidates"
 
 
 def test_compute_candidate_screen_orders_from_learned_event_outcomes_only() -> None:

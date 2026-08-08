@@ -80,6 +80,17 @@ class ComputeReuseDecision:
 
 
 @dataclass(frozen=True)
+class BindingReuseDecision:
+    """Fresh-outcome decision for reusing a compute/adapter binding pair."""
+
+    action: Literal["reuse", "grow"]
+    compute_slot_index: int | None
+    adapter_slot_index: int | None
+    candidate_scores: tuple[tuple[int, int, float], ...]
+    reason: str
+
+
+@dataclass(frozen=True)
 class AppendOnlyScreenConsolidationReceipt:
     """Auditable result of a verifier-gated screen-extension compaction."""
 
@@ -132,6 +143,49 @@ def select_reusable_compute_slot(
             "no_compute_candidate_passed_fresh_probe_floor"
             if scores
             else "no_compute_candidates"
+        ),
+    )
+
+
+def select_reusable_binding(
+    candidate_outcomes: Mapping[tuple[int, int], Sequence[float]],
+    *,
+    threshold: float,
+) -> BindingReuseDecision:
+    """Select a compute/adapter pair only when every fresh probe passes."""
+
+    if not 0.0 <= threshold <= 1.0:
+        raise ValueError("binding admission threshold must lie in [0, 1]")
+    scores: list[tuple[int, int, float]] = []
+    for (compute_slot, adapter_slot), outcomes in sorted(candidate_outcomes.items()):
+        if compute_slot < 0 or adapter_slot < 0:
+            raise ValueError("binding candidate indices must be nonnegative")
+        values = tuple(float(value) for value in outcomes)
+        if not values or not all(math.isfinite(value) for value in values):
+            raise ValueError("binding candidates need finite fresh outcomes")
+        scores.append((compute_slot, adapter_slot, min(values)))
+    eligible = [item for item in scores if item[2] >= threshold]
+    if eligible:
+        compute_slot, adapter_slot, score = max(
+            eligible,
+            key=lambda item: (item[2], -item[0], -item[1]),
+        )
+        return BindingReuseDecision(
+            action="reuse",
+            compute_slot_index=compute_slot,
+            adapter_slot_index=adapter_slot,
+            candidate_scores=tuple(scores),
+            reason=f"fresh_probe_floor_passed:{score:.6f}",
+        )
+    return BindingReuseDecision(
+        action="grow",
+        compute_slot_index=None,
+        adapter_slot_index=None,
+        candidate_scores=tuple(scores),
+        reason=(
+            "no_binding_candidate_passed_fresh_probe_floor"
+            if scores
+            else "no_binding_candidates"
         ),
     )
 

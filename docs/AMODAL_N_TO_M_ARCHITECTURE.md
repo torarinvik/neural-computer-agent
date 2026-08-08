@@ -3738,3 +3738,10 @@ state. This is a memory-side capability for verifier-approved compatible
 bindings, not a semantic classifier or an unconditional merge; incompatible
 bindings can still allocate a fresh adapter or compute slot. Behavioral
 verification must precede any sharing decision.
+
+The admission policy is explicit in `select_reusable_binding`: it scores each
+opaque `(compute_slot, adapter_slot)` candidate using the minimum fresh-probe
+outcome and reuses the best candidate only when every probe clears the verifier
+floor; otherwise it returns `grow`. This keeps adapter sharing memory-side and
+verifier-gated, without claiming behavioral compression before the compatible
+sharing audit is promoted.
