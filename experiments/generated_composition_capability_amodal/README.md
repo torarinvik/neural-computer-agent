@@ -651,3 +651,8 @@ The same protocol promotes four opaque capabilities across seeds `69316` and
 `69317`, with two physical adapters serving four logical bindings and all
 retention, reload, and no-replay gates passing. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_adapter_sharing_four_promoted_v1_2026-08-08/`.
+
+The five-capability extension also promotes across both seeds, with fixed
+held-out retention probes and two physical adapters for five logical bindings.
+Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_adapter_sharing_five_promoted_v1_2026-08-08/`.

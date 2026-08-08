@@ -3775,3 +3775,11 @@ logical bindings. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_adapter_sharing_four_promoted_v1_2026-08-08/`.
 This remains a bounded four-capability result; unrestricted memory growth and
 general lifelong learning are unproven.
+
+The protocol then promotes five opaque capabilities across seeds `69316` and
+`69317`, using two physical adapters for five logical bindings. Retention is
+measured on a fixed held-out suite per mastered capability at every later
+prefix. Reports are archived in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_adapter_sharing_five_promoted_v1_2026-08-08/`.
+This strengthens bounded continual growth; it does not establish unrestricted
+lifelong learning.

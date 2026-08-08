@@ -1173,7 +1173,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 grammar,
                 count=args.audit_count,
                 probes=args.retention_probes,
-                seed=args.seed + 50_000 + stage_index * 10_003 + old_slot,
+                # Reuse one held-out probe suite per mastered capability at
+                # every later prefix. Otherwise a new random batch can look
+                # like forgetting even when every protected weight is exact.
+                seed=args.seed + 50_000 + old_slot,
             )
             retained.append(retained_behavior)
             retained_probes.append(old_probe_outcomes)
