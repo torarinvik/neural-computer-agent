@@ -3803,3 +3803,8 @@ with two physical adapters serving eight logical bindings. Reports and
 accounting are archived in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_adapter_sharing_eight_promoted_v1_2026-08-08/`.
 This remains bounded reusable growth rather than general lifelong learning.
+
+Growth admission now also tests fresh adapters against every protected compute
+slot before allocating a new compute module. The matched audit preserved all
+gates but selected fresh compute for the hard middle capability in both seeds,
+so compute growth remains the next compression bottleneck.

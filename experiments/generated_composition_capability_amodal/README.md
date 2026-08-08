@@ -671,3 +671,9 @@ The eight-capability extension also promotes across both seeds, with fixed
 retention probes, zero replay, and two physical adapters for eight logical
 bindings. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_adapter_sharing_eight_promoted_v1_2026-08-08/`.
+
+The adapter-reuse growth admission now fresh-probes a new adapter against
+every protected compute slot before allocating fresh compute. The matched
+five-capability audit passed all gates, but both seeds still selected fresh
+compute for the hard middle capability; this is an ABI improvement without a
+new compute-compression claim.
