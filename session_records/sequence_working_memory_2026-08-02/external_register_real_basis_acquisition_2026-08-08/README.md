@@ -76,3 +76,13 @@ the one-step estimators (`69316`: `0.7930`; `69317`: `0.7656` final accuracy;
 neither had a stable prefix). Retention and shuffled-training rejection still
 passed. Temporal credit accumulation is therefore not promoted as the default
 new-slot learner.
+
+## Basis-focused acquisition follow-up — rejected
+
+The new slot was given a dedicated scalar-credit phase with the decoder
+frozen between warmup and final joint training. The focus phase remained near
+chance-plus (`69316`: `0.6563`, `69317`: `0.6563`), and final target accuracy
+was `0.8477` and `0.8086`, with no stable prefix. Source retention and causal
+shuffle controls passed. Isolating basis updates does not solve acquisition;
+the next bottleneck is the representational interface between the frozen
+controller/register and a freshly added computation slot.

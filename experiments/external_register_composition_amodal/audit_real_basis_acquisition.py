@@ -231,6 +231,31 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             zip(SOURCE_OPERATIONS, decoders, strict=True)
         )
     ]
+    for parameter in target_decoder.parameters():
+        parameter.requires_grad_(False)
+    basis_focus_trainable = [target_instruction.code]
+    if route == "grow":
+        basis_focus_trainable.extend(routed_basis.parameters())
+    basis_focus_progress = _train_stage(
+        parent,
+        machine,
+        target_decoder,
+        operation=TARGET_OPERATION,
+        instructions=(target_instruction,),
+        basis_slots=(routed_basis_slot,),
+        updates=args.growth_basis_focus_updates,
+        batch_size=args.batch_size,
+        span=args.span,
+        seed=args.seed + 105_000,
+        trainable=basis_focus_trainable,
+        credit_mode=args.growth_credit_mode,
+        learning_rate=args.growth_learning_rate,
+        eval_every=args.eval_every,
+        audit_count=args.audit_count,
+        audit_seed=args.seed + 215_000,
+    )
+    for parameter in target_decoder.parameters():
+        parameter.requires_grad_(True)
     target_progress = _train_stage(
         parent,
         machine,
@@ -399,6 +424,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "target_stable_bits": target_stable,
         "target_warmup_progress": target_warmup_progress,
         "warmup_source_accuracy": warmup_source_after,
+        "basis_focus_progress": basis_focus_progress,
         "target_progress": target_progress,
         "source_accuracy_after": source_after,
         "old_basis_unchanged": old_basis_unchanged,
@@ -409,6 +435,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 + args.source_updates * 3
                 + 1
                 + args.growth_warmup_updates
+                + args.growth_basis_focus_updates
                 + args.target_updates
             ),
         },
@@ -448,6 +475,7 @@ def main() -> None:
     parser.add_argument("--source-updates", type=int, default=96)
     parser.add_argument("--target-updates", type=int, default=128)
     parser.add_argument("--growth-warmup-updates", type=int, default=64)
+    parser.add_argument("--growth-basis-focus-updates", type=int, default=64)
     parser.add_argument(
         "--growth-credit-mode",
         choices=(
