@@ -1478,3 +1478,44 @@ test action — which supplies a dense supervised signal for "which world
 is this" without naming the world. That is buildable within the
 discipline and is the concrete next rung; the router itself is sound and
 stays in the code.
+
+**F44 (probes 67-69). Self-addressing splits cleanly into two problems:
+the ENCODING is solved, the ROUTING is not — and the split is the
+result.** F43 left both entangled. Three probes separate them.
+
+*The encoding was absent, then solved.* A probe reading the controller's
+state at step ZERO predicts identically for both twins (0.39/0.39,
+0.70/0.70): the worlds render alike and no feedback has arrived, so the
+context is not hard to encode there, it is ABSENT, and the probe can
+only learn the mean. Reading the state after one test action and its
+outcome fixes it completely — the probe then predicts **+1.00 for
+choiceA and -1.00 for choiceB on both seeds**. The agent's own state
+carries the context exactly, obtained from nothing but acting and
+observing the consequence.
+
+Standing architectural statement: **addressing for observationally
+identical contexts is necessarily ACT-THEN-FETCH.** A memory system that
+must fetch before acting cannot serve contexts that look alike, however
+good its router. The event window fetch must therefore be permitted to
+happen mid-episode, which the architecture already allows and no rung
+had previously required.
+
+*The routing did not follow.* With a demonstrably perfect encoding
+available, the router still collapses to the same fragments for both
+twins (seed 69316 [4,3]/[4,3], seed 69317 [0,5]/[0,5]), and adding the
+F13 diversity pressure only partially separates it (69316 [4,3]/[1,3] —
+one fragment differs; 69317 still identical), with mastery at chance in
+every condition. So the residual failure is isolated: not the plant, not
+the encoding, not the bank, but the discrete selector's own learning
+signal, which is a single scalar per rollout arriving through REINFORCE
+while the read path has not yet formed.
+
+That is exactly the F5/F12 deadlock, and F13's cure applies but cannot
+be run here as written: it staged the ASSIGNMENT with an oracle. The
+equivalent for a content router is to stage the MAPPING — supervise the
+router to reproduce a known-good assignment while the read path forms,
+then release it, exactly as F13 did one level down. Since the encoding
+is now solved and readable at +-1.00, that supervision is available
+without an oracle over contexts: the probe's own prediction sign is a
+legitimate training target for which fragment to fetch. That is the next
+rung, and unlike the previous three it has no missing ingredient.
