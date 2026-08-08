@@ -31,6 +31,7 @@ from .train import (
     OpaqueVerifierValue,
     OpaqueVerifierQ,
 )
+from neural_computer import AmodalEventBridge
 
 SOURCE_OPERATIONS = ("reverse", "adjacent_xor", "complement")
 TARGET_OPERATION = "rotate"
@@ -100,6 +101,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     torch.set_num_threads(1)
     if args.retention_regression_tolerance < 0.0:
         raise ValueError("retention regression tolerance cannot be negative")
+    if args.event_bridge and args.event_input_mode != "frontend":
+        raise ValueError("event bridge requires frontend event input mode")
     parent = _runtime(seed=args.seed, growth=False)
     _train_with_progress(
         parent,
@@ -165,6 +168,16 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     loss.backward()
     optimizer.step()
     target_decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
+    target_event_bridge = (
+        AmodalEventBridge(
+            EVENT_WIDTH,
+            parent.controller.width,
+            EVENT_WIDTH,
+            hidden=64,
+        )
+        if args.event_bridge
+        else None
+    )
     target_value_head = (
         OpaqueVerifierValue(REGISTER_WIDTH)
         if args.growth_credit_mode == "actor_critic"
@@ -252,11 +265,17 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             *target_decoder.parameters(),
             *value_trainable,
             *q_trainable,
+            *(
+                target_event_bridge.parameters()
+                if target_event_bridge is not None
+                else ()
+            ),
         ],
         credit_mode=args.growth_credit_mode,
         learning_rate=args.growth_learning_rate,
         value_head=target_value_head,
         q_head=target_q_head,
+        event_bridge=target_event_bridge,
         eval_every=args.eval_every,
         audit_count=args.audit_count,
         audit_seed=args.seed + 200_000,
@@ -284,6 +303,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     for parameter in target_decoder.parameters():
         parameter.requires_grad_(False)
     basis_focus_trainable = [target_instruction.code, *value_trainable, *q_trainable]
+    if target_event_bridge is not None:
+        basis_focus_trainable.extend(target_event_bridge.parameters())
     if route == "grow":
         basis_focus_trainable.extend(routed_basis.parameters())
     basis_focus_progress = _train_stage(
@@ -302,6 +323,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         learning_rate=args.growth_learning_rate,
         value_head=target_value_head,
         q_head=target_q_head,
+        event_bridge=target_event_bridge,
         eval_every=args.eval_every,
         audit_count=args.audit_count,
         audit_seed=args.seed + 215_000,
@@ -325,11 +347,17 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             *target_decoder.parameters(),
             *value_trainable,
             *q_trainable,
+            *(
+                target_event_bridge.parameters()
+                if target_event_bridge is not None
+                else ()
+            ),
         ],
         credit_mode=args.growth_credit_mode,
         learning_rate=args.growth_learning_rate,
         value_head=target_value_head,
         q_head=target_q_head,
+        event_bridge=target_event_bridge,
         eval_every=args.eval_every,
         audit_count=args.audit_count,
         audit_seed=args.seed + 220_000,
@@ -355,6 +383,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         credit_mode=args.growth_credit_mode,
         value_head=target_value_head,
         q_head=target_q_head,
+        event_bridge=target_event_bridge,
     )
     shuffled_target_accuracy = _accuracy(
         parent,
@@ -369,6 +398,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         credit_mode=args.growth_credit_mode,
         value_head=target_value_head,
         q_head=target_q_head,
+        event_bridge=target_event_bridge,
         shuffle_outcomes=True,
     )
     missing_target_accuracy = _accuracy(
@@ -384,6 +414,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         credit_mode=args.growth_credit_mode,
         value_head=target_value_head,
         q_head=target_q_head,
+        event_bridge=target_event_bridge,
         evidence_present=False,
     )
     target_stable = _stable_bits(
@@ -473,6 +504,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         if args.growth_credit_mode == "q_actor_critic"
         else None
     )
+    shuffled_training_event_bridge = (
+        AmodalEventBridge(EVENT_WIDTH, parent.controller.width, EVENT_WIDTH, hidden=64)
+        if args.event_bridge
+        else None
+    )
     _freeze(shuffled_training_machine)
     shuffled_training_instruction.code.requires_grad_(True)
     shuffled_training_basis = shuffled_training_machine.basis_slots[
@@ -505,11 +541,17 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 if shuffled_training_q_head is not None
                 else ()
             ),
+            *(
+                shuffled_training_event_bridge.parameters()
+                if shuffled_training_event_bridge is not None
+                else ()
+            ),
         ],
         credit_mode=args.growth_credit_mode,
         learning_rate=args.growth_learning_rate,
         value_head=shuffled_training_value_head,
         q_head=shuffled_training_q_head,
+        event_bridge=shuffled_training_event_bridge,
         shuffle_outcomes=True,
     )
     shuffled_training_accuracy = _accuracy(
@@ -525,6 +567,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         credit_mode=args.growth_credit_mode,
         value_head=shuffled_training_value_head,
         q_head=shuffled_training_q_head,
+        event_bridge=shuffled_training_event_bridge,
     )
     parent_streams = 1 + len(args.parent_auxiliary_operations)
     parent_unique_verifier_bits = (
@@ -566,6 +609,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "target_operation": TARGET_OPERATION,
         "parent_auxiliary_operations": list(args.parent_auxiliary_operations),
         "event_input_mode": args.event_input_mode,
+        "event_bridge": args.event_bridge,
         "external_event_width": external_event_width,
         "growth_credit_mode": args.growth_credit_mode,
         "basis_hidden": args.basis_hidden,
@@ -711,6 +755,7 @@ def main() -> None:
         choices=("frontend", "append_controller_state", "controller_state"),
         default="frontend",
     )
+    parser.add_argument("--event-bridge", action="store_true")
     parser.add_argument("--basis-hidden", type=int, default=64)
     parser.add_argument("--basis-microsteps", type=int, default=1)
     parser.add_argument(

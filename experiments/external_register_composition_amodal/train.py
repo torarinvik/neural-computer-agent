@@ -28,6 +28,7 @@ from experiments.working_memory_continuous.canonical_growth_pressure_test import
 )
 from neural_computer import (
     ExternalCapabilityRegisterMachine,
+    AmodalEventBridge,
     ExternalRegisterInstruction,
     OpaqueProtocolDecoder,
     PersistentOpaqueStateStore,
@@ -153,6 +154,7 @@ def _rollout(
     execution_mode: str = "read_execute",
     value_head: OpaqueVerifierValue | None = None,
     q_head: OpaqueVerifierQ | None = None,
+    event_bridge: AmodalEventBridge | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     if execution_mode not in ("in_place", "read_execute"):
         raise ValueError(f"unknown execution mode: {execution_mode!r}")
@@ -182,7 +184,9 @@ def _rollout(
                 parent_state,
                 feedback,
             )
-            if machine.event_input_mode == "append_controller_state":
+            if event_bridge is not None:
+                event = event_bridge(event, parent_state.hidden)
+            elif machine.event_input_mode == "append_controller_state":
                 # Optional versioned boundary: external memory may receive a
                 # standardized learned controller-state event in addition to
                 # the frontend event. It never receives raw modality data.
@@ -415,6 +419,7 @@ def _train_stage(
     learning_rate: float = 3e-3,
     value_head: OpaqueVerifierValue | None = None,
     q_head: OpaqueVerifierQ | None = None,
+    event_bridge: AmodalEventBridge | None = None,
 ) -> list[dict[str, float | int]]:
     if anchor_weight < 0.0:
         raise ValueError("anchor weight cannot be negative")
@@ -444,6 +449,7 @@ def _train_stage(
             execution_mode=execution_mode,
             value_head=value_head,
             q_head=q_head,
+            event_bridge=event_bridge,
         )
         if anchor_parameters and anchor_weight:
             anchor_penalty = torch.stack(
@@ -478,6 +484,7 @@ def _train_stage(
                         execution_mode=execution_mode,
                         value_head=value_head,
                         q_head=q_head,
+                        event_bridge=event_bridge,
                     ),
                 }
             )
@@ -519,6 +526,7 @@ def _accuracy(
     execution_mode: str = "read_execute",
     value_head: OpaqueVerifierValue | None = None,
     q_head: OpaqueVerifierQ | None = None,
+    event_bridge: AmodalEventBridge | None = None,
 ) -> float:
     batch = _batch(
         operation,
@@ -543,6 +551,7 @@ def _accuracy(
             execution_mode=execution_mode,
             value_head=value_head,
             q_head=q_head,
+            event_bridge=event_bridge,
         )[1].mean()
     )
 

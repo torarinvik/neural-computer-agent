@@ -224,6 +224,18 @@ ordinary state-only runs used `70,656` verifier bits and `9,216` logical
 lifetimes per seed; the diverse-parent runs used `86,016` verifier bits and
 `16,896` logical lifetimes, with zero replayed examples.
 
+## Candidate learned event bridge — promising, not promoted
+
+A zero-initialized external adapter was trained only with the new target
+candidate. It maps the frontend event plus controller latent state back into
+the existing standardized event width, so the frozen controller and inherited
+slots remain untouched and rollback discards the adapter. One seed improved
+through checkpoint `0.7656` before drifting; the other remained near `0.66`.
+Final target accuracy was `0.8125`/`0.8594`, but neither seed passed stable
+prefix mastery. This validates the isolation and behavior-preserving design,
+but the adapter needs a more stable learning/consolidation objective before
+it can become the canonical bridge.
+
 ## Wider fresh-slot capacity follow-up — rejected
 
 Increasing the fresh compute-slot hidden width from `64` to `128` did not

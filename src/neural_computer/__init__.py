@@ -106,6 +106,7 @@ from .episodic import (
     episodic_context_contrastive_loss,
     paired_event_credit_loss,
 )
+from .event_bridge import EVENT_BRIDGE_SCHEMA, AmodalEventBridge
 from .growth import (
     GrowthLoadReceipt,
     compose_growth_artifacts,
@@ -313,6 +314,8 @@ __all__ = [
     "EpisodicContextOutput",
     "EpisodicCreditHead",
     "EpisodicIntentAdapter",
+    "EVENT_BRIDGE_SCHEMA",
+    "AmodalEventBridge",
     "EventReliabilityPolicy",
     "EventTokenWindow",
     "EventWaitPolicy",

@@ -35,5 +35,12 @@
       "stable_prefix": "failed"
     }
   ],
-  "next_frontier": "learned_task_agnostic_parent_to_memory_adapter"
+  "next_frontier": "stable_consolidation_objective_for_candidate_event_bridge",
+  "candidate_event_bridge": {
+    "decision": "retain_architecture_reject_current_learning_rung",
+    "verifier_bits_per_run": 70656,
+    "logical_lifetimes_per_run": 9216,
+    "stable_prefix": "failed",
+    "source_retention": "mixed"
+  }
 }
