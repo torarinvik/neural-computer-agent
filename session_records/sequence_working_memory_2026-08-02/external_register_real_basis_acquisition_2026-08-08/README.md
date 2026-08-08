@@ -177,3 +177,17 @@ The corrected rerun measured zero regression in both seeds. This confirms that
 the failed consolidation is not caused by old-slot forgetting; it is caused by
 the new candidate failing stable-prefix mastery. The absolute source floor
 still remains a separate promotion gate.
+
+## No-basis-focus curriculum follow-up — rejected
+
+Removing the dedicated basis-focus phase and going directly from short-span
+warmup to joint full-span acquisition did not solve the bottleneck. Final
+target accuracy was `0.7578`/`0.8438`, but neither seed achieved a stable
+full-span prefix. The full-span checkpoint minima were `0.6484`/`0.6563`, and
+the first seed also failed the absolute source floor. Source scores were
+unchanged on the fixed retention suite. This rejects phase ordering as the
+primary cause: the remaining blocker is the representational/capacity path
+for a newly acquired computation, not scalar credit or basis-focus scheduling.
+
+Each run used `61,440` verifier bits, `7,680` logical lifetimes, `513`
+optimizer updates, and zero replayed examples.
