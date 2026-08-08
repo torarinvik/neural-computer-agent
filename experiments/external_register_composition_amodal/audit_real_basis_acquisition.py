@@ -450,7 +450,12 @@ def main() -> None:
     parser.add_argument("--growth-warmup-updates", type=int, default=64)
     parser.add_argument(
         "--growth-credit-mode",
-        choices=("attempted_bce", "reinforce", "paired_counterfactual"),
+        choices=(
+            "attempted_bce",
+            "reinforce",
+            "reinforce_baseline",
+            "paired_counterfactual",
+        ),
         default="attempted_bce",
     )
     parser.add_argument("--growth-learning-rate", type=float, default=1e-3)

@@ -213,6 +213,19 @@ def _rollout(
             ).squeeze(1)
             advantage = delivered.detach() - delivered.detach().mean()
             loss = -(advantage * selected_log_probability).mean()
+        elif credit_mode == "reinforce_baseline":
+            selected_log_probability = behavior_probabilities.log().gather(
+                1, action.unsqueeze(1)
+            ).squeeze(1)
+            # A fixed 0.5 baseline is action-independent and therefore keeps
+            # the scalar-only policy-gradient estimator unbiased.  The small
+            # entropy term prevents a jointly new basis and decoder from
+            # collapsing onto one action before verifier credit arrives.
+            advantage = delivered.detach() - 0.5
+            entropy = -(behavior_probabilities * behavior_probabilities.log()).sum(
+                dim=-1
+            )
+            loss = -(advantage * selected_log_probability).mean() - 0.01 * entropy.mean()
         else:
             raise ValueError(f"unknown credit mode: {credit_mode!r}")
         losses.append(loss)

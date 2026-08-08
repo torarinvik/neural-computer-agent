@@ -57,3 +57,13 @@ produce stable full-span acquisition in either seed (`69316`: `0.8281`,
 `69317`: `0.7969` final accuracy; both had no stable prefix). Source
 retention and shuffled-training rejection remained intact. This path is
 therefore retained as a valid baseline, not promoted as the solution.
+
+## Fixed-baseline policy-gradient follow-up — rejected
+
+A second scalar-only policy-gradient path used an action-independent `0.5`
+verifier baseline and a small entropy floor, avoiding the batch-centered
+advantage used by the earlier REINFORCE path. It still failed stable full-span
+acquisition (`69316`: `0.8164`; `69317`: `0.7813`) while retaining source
+skills and rejecting shuffled training. The estimator is retained as a valid
+option, but the bottleneck is now localized to routing credit through the
+new basis and decoder representation.
