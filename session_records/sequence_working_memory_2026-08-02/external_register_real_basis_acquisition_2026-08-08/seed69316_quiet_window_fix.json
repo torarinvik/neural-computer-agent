@@ -1,0 +1,124 @@
+{
+  "schema": "neural-computer.external-register-real-basis-acquisition-audit.v1",
+  "claim_boundary": "A learned opaque prior orders real primitive basis trials; fresh verifier outcomes still determine admission.",
+  "seed": 69316,
+  "source_operations": [
+    "reverse",
+    "adjacent_xor",
+    "complement"
+  ],
+  "target_operation": "rotate",
+  "growth_credit_mode": "attempted_bce",
+  "source_outcomes": [
+    [
+      0.9921875,
+      0.71875,
+      0.68359375
+    ],
+    [
+      0.54296875,
+      0.95703125,
+      0.61328125
+    ],
+    [
+      0.69140625,
+      0.734375,
+      0.97265625
+    ]
+  ],
+  "target_candidate_order": [
+    1,
+    0,
+    2
+  ],
+  "target_candidate_outcomes": [
+    0.46484375,
+    0.46875,
+    0.46484375
+  ],
+  "pair_count": 9,
+  "selected_candidate_position": null,
+  "cold_candidate_position": null,
+  "route": "grow",
+  "routed_basis_slot": 3,
+  "target_accuracy": 0.91796875,
+  "reward_shuffled_eval_accuracy": 0.921875,
+  "shuffled_target_accuracy": 0.921875,
+  "missing_target_accuracy": 0.5,
+  "shuffled_training_target_accuracy": 0.484375,
+  "target_stable_bits": null,
+  "target_warmup_progress": [
+    {
+      "update": 32,
+      "heldout_accuracy": 0.75,
+      "stage": "warmup"
+    },
+    {
+      "update": 64,
+      "heldout_accuracy": 0.75,
+      "stage": "warmup"
+    }
+  ],
+  "warmup_source_accuracy": [
+    0.98828125,
+    0.95703125,
+    0.9765625
+  ],
+  "basis_focus_progress": [],
+  "target_progress": [
+    {
+      "update": 32,
+      "heldout_accuracy": 0.68359375,
+      "stage": "full_span"
+    },
+    {
+      "update": 64,
+      "heldout_accuracy": 0.734375,
+      "stage": "full_span"
+    },
+    {
+      "update": 96,
+      "heldout_accuracy": 0.71484375,
+      "stage": "full_span"
+    },
+    {
+      "update": 128,
+      "heldout_accuracy": 0.734375,
+      "stage": "full_span"
+    }
+  ],
+  "source_accuracy_after": [
+    0.984375,
+    0.95703125,
+    0.95703125
+  ],
+  "old_basis_unchanged": true,
+  "consolidation": {
+    "accepted": false,
+    "candidate_stable": false,
+    "retained": true,
+    "candidate_prefix_minimum": 0.68359375,
+    "retained_minimum": 0.95703125,
+    "reason": "candidate mastery is not stable across measured prefixes",
+    "rollback_applied": true
+  },
+  "accounting": {
+    "replayed_examples": 0,
+    "optimizer_updates": 641
+  },
+  "gates": {
+    "source_rows_have_distinct_outcomes": true,
+    "fresh_verifier_controls_admission": true,
+    "unseen_target_requests_growth": true,
+    "target_mastered": true,
+    "target_stable": false,
+    "source_retained": true,
+    "old_basis_unchanged": true,
+    "reward_shuffled_rejected": true,
+    "missing_evidence_rejected": true,
+    "shuffled_training_rejected": true,
+    "no_replayed_examples": true,
+    "unstable_growth_rolled_back": true
+  },
+  "promoted": false
+}

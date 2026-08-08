@@ -385,3 +385,34 @@ def test_event_window_is_persistent_and_available_to_new_basis_slots() -> None:
     assert state.event_window_mask.equal(torch.ones(2, 3, dtype=torch.bool))
     assert torch.equal(state.event_window[:, -1], events[-1])
     assert register.shape == (2, 8)
+
+
+def test_quiet_ticks_preserve_the_entire_event_window() -> None:
+    torch.manual_seed(909)
+    machine = ExternalCapabilityRegisterMachine(
+        event_width=4,
+        action_width=2,
+        intention_width=6,
+        register_width=8,
+        instruction_width=5,
+        event_window_size=3,
+        instructions=(ExternalRegisterInstruction(5),),
+    )
+    state = machine.initial_state(2, device="cpu")
+    kwargs = {
+        "action": torch.zeros(2, 2),
+        "outcome": torch.zeros(2),
+        "intention": IntentEvent(torch.zeros(2, 6)),
+    }
+    for event in (torch.randn(2, 4), torch.randn(2, 4), torch.randn(2, 4)):
+        _, state = machine.observe_register(event=event, state=state, **kwargs)
+    before = state.event_window.clone()
+    before_mask = state.event_window_mask.clone()
+    _, after = machine.observe_register(
+        event=torch.randn(2, 4),
+        state=state,
+        present=torch.zeros(2, dtype=torch.bool),
+        **kwargs,
+    )
+    assert torch.equal(after.event_window, before)
+    assert torch.equal(after.event_window_mask, before_mask)

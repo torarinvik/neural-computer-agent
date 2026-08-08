@@ -787,9 +787,10 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         shifted_mask = torch.cat(
             (state.event_window_mask[:, 1:], present.unsqueeze(1)), dim=1
         )
+        active = present.unsqueeze(-1)
         return (
-            torch.where(shifted_mask.unsqueeze(-1), shifted, state.event_window),
-            shifted_mask,
+            torch.where(active.unsqueeze(-1), shifted, state.event_window),
+            torch.where(active, shifted_mask, state.event_window_mask),
         )
 
     def execute(

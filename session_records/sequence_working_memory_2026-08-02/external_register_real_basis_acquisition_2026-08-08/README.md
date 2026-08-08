@@ -114,6 +114,12 @@ the event window improves access to task information without solving protected
 continual acquisition; final-sample accuracy must not be used as the mastery
 criterion.
 
+The event-window state also now preserves the entire prior window on quiet
+ticks instead of shifting and duplicating its final token. The corrected
+two-seed audit produced the same all-active scores (`0.9180`/`0.9063`) and
+rolled both unstable candidates back, confirming that this was a state
+correctness repair rather than an unverified capability gain.
+
 ## Verifier-gated consolidation/rollback
 
 External growth now uses the shared retention gate transactionally. An
