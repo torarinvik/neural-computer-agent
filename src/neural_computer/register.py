@@ -13,7 +13,7 @@ interpreter, rather than adding another whole neural reasoning branch.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 
 import torch
@@ -357,6 +357,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "state": "external_working_register_with_recurrent_context_v2",
             "execution": "shared_interpreter_serial_instruction_chain_v1",
             "compute_basis": EXTERNAL_REGISTER_BASIS_SCHEMA,
+            "basis_binding": "opaque_memory_side_slot_index_v1",
             "read_execute": EXTERNAL_REGISTER_READ_EXECUTE_SCHEMA,
             "downstream_input": "preceding_register_only_v1",
         }
@@ -387,6 +388,46 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             raise ValueError("basis slot dimensions do not match the machine")
         self.basis_slots.append(basis)
         return len(self.basis_slots) - 1
+
+    def select_basis_slot(
+        self,
+        candidate_outcomes: Mapping[int, Sequence[float]],
+        *,
+        threshold: float,
+    ):
+        """Apply the verifier-gated memory policy to existing basis slots.
+
+        This is deliberately pure: it never edits weights or chooses based on
+        a semantic/task identifier. The caller supplies fresh verifier probes;
+        the shared admission policy returns either an opaque existing slot to
+        reuse or an instruction to grow capacity with :meth:`add_basis_slot`.
+        """
+
+        from .capability import select_reusable_compute_slot
+
+        if any(index < 0 or index >= len(self.basis_slots) for index in candidate_outcomes):
+            raise ValueError("basis candidate index is out of range")
+        return select_reusable_compute_slot(
+            candidate_outcomes,
+            threshold=threshold,
+        )
+
+    def freeze_basis_slot(self, basis_slot: int) -> None:
+        """Protect one mastered external computation slot from later updates."""
+
+        if not 0 <= basis_slot < len(self.basis_slots):
+            raise IndexError("basis slot index is out of range")
+        for parameter in self.basis_slots[basis_slot].parameters():
+            parameter.requires_grad_(False)
+
+    def remove_basis_slot(self, basis_slot: int) -> None:
+        """Discard only the newest unpromoted external computation slot."""
+
+        if basis_slot != len(self.basis_slots) - 1:
+            raise ValueError("only the newest basis slot can be discarded")
+        if not self.basis_slots:
+            raise ValueError("no basis slots are registered")
+        del self.basis_slots[basis_slot]
 
     def initial_state(
         self,

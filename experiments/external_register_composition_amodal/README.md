@@ -258,3 +258,8 @@ to add isolated computation safely, not positive transfer or general
 continual learning. The short curriculum probe is also retained as a
 non-promotion diagnostic. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_expandable_basis_probe_2026-08-08/`.
+
+The basis boundary also exposes verifier-gated memory-side selection: fresh
+candidate probes may select an opaque existing slot, while a failed probe
+requests growth. Mastered slots can be frozen, and an unpromoted newest slot
+can be rolled back without touching earlier slots.

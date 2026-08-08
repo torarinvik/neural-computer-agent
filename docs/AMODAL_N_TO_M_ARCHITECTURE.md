@@ -3989,3 +3989,10 @@ is learning when and how to reuse or compose expandable slots efficiently;
 isolated growth alone does not yet make new computation cheaper than a fresh
 learner. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_expandable_basis_probe_2026-08-08/`.
+
+The register boundary now reuses the repository’s verifier-gated opaque
+compute admission policy. Fresh probe outcomes can select an existing basis
+slot only when every probe clears the mastery floor; otherwise memory-side
+policy grows a slot. Mastered slots are independently frozen, and the newest
+unpromoted slot can be rolled back. This keeps capacity growth reversible and
+prevents an unverified candidate from silently becoming shared computation.

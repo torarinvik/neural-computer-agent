@@ -76,6 +76,32 @@ def test_new_basis_slot_does_not_resize_controller_or_existing_instruction_data(
     assert sum(parameter.numel() for parameter in machine.parameters()) > old_parameter_count
 
 
+def test_basis_selection_reuses_only_fresh_verified_slots_or_requests_growth() -> None:
+    machine = _machine()
+    machine.add_basis_slot()
+
+    reuse = machine.select_basis_slot({0: (0.91, 0.88)}, threshold=0.8)
+    grow = machine.select_basis_slot({0: (0.91, 0.79)}, threshold=0.8)
+
+    assert reuse.action == "reuse"
+    assert reuse.compute_slot_index == 0
+    assert grow.action == "grow"
+    assert grow.compute_slot_index is None
+
+
+def test_basis_slots_can_be_frozen_and_unpromoted_growth_can_be_rolled_back() -> None:
+    machine = _machine()
+    first = machine.add_basis_slot()
+    second = machine.add_basis_slot()
+
+    machine.freeze_basis_slot(first)
+    assert all(
+        not parameter.requires_grad for parameter in machine.basis_slots[first].parameters()
+    )
+    machine.remove_basis_slot(second)
+    assert len(machine.basis_slots) == 1
+
+
 def test_factorized_film_operator_is_shared_and_instruction_conditioned() -> None:
     machine = ExternalCapabilityRegisterMachine(
         event_width=4,
