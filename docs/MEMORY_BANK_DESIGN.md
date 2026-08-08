@@ -1752,16 +1752,44 @@ is dominated by the near-zero bulk; the penalty is carried by the head of
 the distribution, which holds up. F47's encoding-anchored consolidation
 and the arbitrated rule are not invalidated by this.
 
-Two consequences. (1) A cheap safeguard is available and untested:
-estimate the Fisher under a small entropy floor (temper the policy while
-sampling for the Fisher pass only), so the score-function estimate stays
-well-conditioned regardless of how far the trained policy has saturated.
-This costs nothing at training time and removes the seed dependence. (2)
-Methodological: this is the second time a quantity we relied on was
-measured in a regime where it was not valid (F46 was the first —
-re-measure any signal at the point of use). The rule generalises: a
-statistic estimated from a policy's own samples inherits that policy's
+**The entropy floor works, but as a variance reducer, not an improver
+(probes 79-80).** `--fisher-temperature 2.0` tempers the sampling policy
+for the Fisher pass only. Control first: entropy and mastery trajectories
+are bit-for-bit identical to the untempered runs on both seeds, so the
+knob provably did not leak into training.
+
+| mastered checkpoints, both seeds | n | correlation min/mean/max | top-1% min/mean |
+| --- | ---: | --- | --- |
+| untempered | 14 | 0.091 / 0.796 / 0.990 | 0.393 / 0.718 |
+| tempered (T=2.0) | 14 | 0.652 / 0.790 / 0.964 | 0.615 / 0.700 |
+
+**The mean is unchanged (0.796 -> 0.790). What collapses is the spread:
+[0.091, 0.990] becomes [0.652, 0.964].** It buys a floor by giving up the
+ceiling, and the two seeds show each side of that trade separately. On
+69316, the seed whose entropy collapsed, every bad checkpoint is repaired
+(worst 0.091 -> 0.652, mean 0.671 -> 0.814). On 69317, which was already
+healthy, agreement *falls* at nearly every checkpoint (0.985 -> 0.730,
+0.977 -> 0.855, 0.945 -> 0.662). Tempering costs real precision when the
+untempered estimate was fine — it is smoothing, and smoothing a good
+estimate makes it worse.
+
+So the honest reading is: this removes the catastrophic tail, does not
+improve the typical case, and is a net win only if the low-correlation
+events actually cause retention failures. **That is not yet measured, so
+the flag stays off by default.** The promotion bar is a matched battery
+comparison — retention with and without tempering, two seeds — and until
+that runs, turning it on would be trading a measured cost for a
+hypothesised benefit.
+
+Two further consequences. (1) The variance itself is the finding worth
+carrying: our anchor's reliability is a seed-dependent property of how
+far the policy saturates, and no check on the penalty's magnitude can
+see it. Estimator health belongs in the battery report alongside the
+retention numbers. (2) Methodological: this is the second time a quantity
+we relied on was measured in a regime where it was not valid (F46 was the
+first — re-measure any signal at the point of use). The rule generalises:
+a statistic estimated from a policy's own samples inherits that policy's
 degeneracy, so estimator health must be reported alongside the estimate.
 
-Recorded as a qualification, not a rejection. Probes 77-78 are
+Recorded as a qualification, not a rejection. Probes 77-80 are
 `fisher_stability.py`, both seeds, choiceA, 600 updates.
