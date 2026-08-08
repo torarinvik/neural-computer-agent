@@ -167,3 +167,13 @@ consolidate a stable capability while the old basis remains protected.
 Each run used `69,632` verifier bits, `8,704` logical lifetimes, `577`
 optimizer updates, and zero replayed examples. Paired probing is retained as a
 valid trainer-only diagnostic, not as the default learner.
+
+### Fixed-suite retention measurement repair
+
+The first paired-probe reports compared source retention on different random
+held-out batches. The audit now evaluates the exact same source suite before
+and after growth and applies an explicit `0.02` maximum regression tolerance.
+The corrected rerun measured zero regression in both seeds. This confirms that
+the failed consolidation is not caused by old-slot forgetting; it is caused by
+the new candidate failing stable-prefix mastery. The absolute source floor
+still remains a separate promotion gate.

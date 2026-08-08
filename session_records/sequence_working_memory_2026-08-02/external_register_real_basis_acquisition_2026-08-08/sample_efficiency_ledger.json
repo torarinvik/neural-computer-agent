@@ -9,7 +9,11 @@
   "unique_logical_lifetimes_per_run": 8704,
   "optimizer_updates_per_run": 577,
   "replayed_examples": 0,
-  "retention_on_mastered_primitives": "mixed",
+  "retention_on_mastered_primitives": "fixed-suite regression passed; absolute floor mixed",
+  "fixed_suite_retention_deltas": {
+    "69316": [0.0, 0.0, 0.0],
+    "69317": [0.0, 0.0, 0.0]
+  },
   "stable_bits_to_threshold": "failed",
   "transfer_ratio_against_fresh_learner": "not measured",
   "decision": "reject as capability learner; retain as trainer-only credit diagnostic"

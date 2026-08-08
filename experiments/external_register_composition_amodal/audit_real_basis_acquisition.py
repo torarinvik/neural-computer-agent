@@ -97,6 +97,8 @@ def _accuracy_matrix(parent, machine, decoders, *, count: int, span: int, seed: 
 
 def run(args: argparse.Namespace) -> dict[str, object]:
     torch.set_num_threads(1)
+    if args.retention_regression_tolerance < 0.0:
+        raise ValueError("retention regression tolerance cannot be negative")
     parent = _runtime(seed=args.seed, growth=False)
     _train_with_progress(
         parent,
@@ -248,7 +250,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             basis_slots=(index,),
             count=args.audit_count,
             span=args.span,
-            seed=args.seed + 205_000 + index * 101,
+            # Use the same fixed retention suite as the pre-growth baseline.
+            # Comparing different random batches confounds forgetting with
+            # measurement noise.
+            seed=args.seed + 70_000 + index * 101 + index * 1009,
             credit_mode="paired_counterfactual",
         )
         for index, (operation, decoder) in enumerate(
@@ -375,7 +380,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             basis_slots=(index,),
             count=args.audit_count,
             span=args.span,
-            seed=args.seed + 220_000 + index * 101,
+            # Retention must be measured on exactly the pre-growth suite.
+            seed=args.seed + 70_000 + index * 101 + index * 1009,
             credit_mode="paired_counterfactual",
         )
         for index, (operation, decoder) in enumerate(
@@ -386,6 +392,18 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         digest == _module_digest(machine.basis_slots[index])
         for index, digest in enumerate(old_basis_digests)
     )
+    source_baseline = [
+        float(source_outcomes[index, index])
+        for index in range(len(SOURCE_OPERATIONS))
+    ]
+    retention_deltas = [
+        after - before
+        for before, after in zip(source_baseline, source_after, strict=True)
+    ]
+    retention_regression_tolerance = args.retention_regression_tolerance
+    retention_regression_passed = min(retention_deltas) >= (
+        -retention_regression_tolerance
+    )
     consolidation_gate = evaluate_retention_gate(
         [row["heldout_accuracy"] for row in target_progress],
         source_after,
@@ -393,8 +411,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         retention_floor=threshold,
         min_candidate_observations=1,
     )
+    consolidation_accepted = (
+        consolidation_gate.accepted and retention_regression_passed
+    )
     rollback_applied = False
-    if consolidation_gate.accepted:
+    if consolidation_accepted:
         machine.freeze_basis_slot(routed_basis_slot)
     elif route == "grow":
         # An unstable candidate must not remain as latent mutable capacity.
@@ -513,14 +534,24 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "basis_focus_progress": basis_focus_progress,
         "target_progress": target_progress,
         "source_accuracy_after": source_after,
+        "source_baseline": source_baseline,
+        "retention_deltas": retention_deltas,
+        "retention_regression_tolerance": retention_regression_tolerance,
+        "retention_regression_passed": retention_regression_passed,
         "old_basis_unchanged": old_basis_unchanged,
         "consolidation": {
-            "accepted": consolidation_gate.accepted,
+            "accepted": consolidation_accepted,
             "candidate_stable": consolidation_gate.candidate_stable,
             "retained": consolidation_gate.retained,
             "candidate_prefix_minimum": consolidation_gate.candidate_prefix_minimum,
             "retained_minimum": consolidation_gate.retained_minimum,
-            "reason": consolidation_gate.reason,
+            "reason": (
+                consolidation_gate.reason
+                if consolidation_gate.accepted
+                else consolidation_gate.reason
+            )
+            if retention_regression_passed
+            else "a retained capability regressed beyond the fixed-suite tolerance",
             "rollback_applied": rollback_applied,
         },
         "accounting": {
@@ -568,6 +599,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "target_mastered": target_accuracy >= threshold,
             "target_stable": target_stable is not None,
             "source_retained": min(source_after) >= threshold,
+            "retention_regression_passed": retention_regression_passed,
             "old_basis_unchanged": old_basis_unchanged,
             # The causal negative control is outcome shuffling during training.
             # Evaluation-time feedback shuffling is retained as a diagnostic,
@@ -578,7 +610,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "shuffled_training_rejected": shuffled_training_accuracy < threshold,
             "no_replayed_examples": True,
             "unstable_growth_rolled_back": (
-                not consolidation_gate.accepted and rollback_applied
+                not consolidation_accepted and rollback_applied
             ),
         },
     }
@@ -618,6 +650,7 @@ def main() -> None:
     parser.add_argument("--audit-count", type=int, default=32)
     parser.add_argument("--eval-every", type=int, default=32)
     parser.add_argument("--operator-mode", default="factorized_bounded_residual")
+    parser.add_argument("--retention-regression-tolerance", type=float, default=0.02)
     args = parser.parse_args()
     print(json.dumps(run(args), indent=2))
 
