@@ -49,7 +49,8 @@
     "retention_probes": 4,
     "eval_every": 32,
     "torch_threads": 1,
-    "screen_candidates": false
+    "screen_candidates": false,
+    "growth_recovery_updates": 128
   },
   "stages": [
     {
@@ -75,13 +76,13 @@
       "program_id": 1,
       "slot_index": 1,
       "trainable_parameters": 7803,
-      "stable_bits_to_threshold": null,
-      "new_slot_behavior": 0.703125,
+      "stable_bits_to_threshold": 20480,
+      "new_slot_behavior": 0.8203125,
       "new_slot_probe_outcomes": [
-        0.7265625,
-        0.71484375,
-        0.70703125,
-        0.703125
+        0.828125,
+        0.84375,
+        0.86328125,
+        0.8203125
       ],
       "retained_old_slot_behavior": [
         1.0
@@ -159,7 +160,18 @@
             "fresh_outcomes_only": true
           }
         ],
-        "growth_decision": "fresh_compute_and_adapter"
+        "growth_decision": "fresh_compute_and_adapter",
+        "growth_recovery": {
+          "updates": 128,
+          "final_behavior": 0.8203125,
+          "probe_outcomes": [
+            0.828125,
+            0.84375,
+            0.86328125,
+            0.8203125
+          ],
+          "fresh_outcomes_only": true
+        }
       },
       "fresh_outcomes_only": true
     },
@@ -178,7 +190,7 @@
       ],
       "retained_old_slot_behavior": [
         1.0,
-        0.69140625
+        0.83203125
       ],
       "retained_old_slot_probe_outcomes": [
         [
@@ -188,10 +200,10 @@
           1.0
         ],
         [
-          0.69140625,
-          0.71484375,
-          0.71484375,
-          0.69921875
+          0.83203125,
+          0.85546875,
+          0.8515625,
+          0.8515625
         ]
       ],
       "reuse_trial": {
@@ -236,7 +248,7 @@
   ],
   "final_behavior": [
     1.0,
-    0.69921875,
+    0.83984375,
     1.0
   ],
   "final_probe_outcomes": [
@@ -247,10 +259,10 @@
       1.0
     ],
     [
-      0.69921875,
-      0.71484375,
-      0.7109375,
-      0.72265625
+      0.8515625,
+      0.84375,
+      0.85546875,
+      0.83984375
     ],
     [
       1.0,
@@ -261,7 +273,7 @@
   ],
   "reload_behavior": [
     1.0,
-    0.69921875,
+    0.83984375,
     1.0
   ],
   "reload_probe_outcomes": [
@@ -272,10 +284,10 @@
       1.0
     ],
     [
-      0.69921875,
-      0.71484375,
-      0.7109375,
-      0.72265625
+      0.8515625,
+      0.84375,
+      0.85546875,
+      0.83984375
     ],
     [
       1.0,
@@ -307,9 +319,9 @@
       1.0,
       1.0
     ],
-    "clean_digest": "f0439b72ad82e102c6a9a74dd9cc2cd94c68cfd179a6ebd52d6158462758785c",
-    "corrupted_digest": "8d8f75f49562945eada95b8117c345837e8c42444abacb0c205ebeefd763d069",
-    "recovered_digest": "f0439b72ad82e102c6a9a74dd9cc2cd94c68cfd179a6ebd52d6158462758785c",
+    "clean_digest": "793e3a001df385fb51c8982899031dc036bc8143530aed56bc52d30e1cbe73de",
+    "corrupted_digest": "b9cfe81b92382a24073c2a359b9143e2d32ecf9ca5efa6a891945bcabf93a188",
+    "recovered_digest": "793e3a001df385fb51c8982899031dc036bc8143530aed56bc52d30e1cbe73de",
     "checksum_mismatch_detected": true
   },
   "parameter_accounting": {
@@ -339,9 +351,10 @@
     "unchanged": true
   },
   "accounting": {
-    "unique_verifier_bits": 124928,
-    "unique_logical_lifetimes": 41984,
-    "optimizer_updates": 1344,
+    "unique_verifier_bits": 137216,
+    "growth_recovery_verifier_bits": 12288,
+    "unique_logical_lifetimes": 46080,
+    "optimizer_updates": 1472,
     "replayed_examples": 0,
     "retention_observations": 48,
     "candidate_screen_observations": 0
@@ -358,10 +371,10 @@
   },
   "gates": {
     "parent_stable": true,
-    "all_slots_stable": false,
-    "all_slots_mastered": false,
-    "retained_during_growth": false,
-    "retained_after_reload": false,
+    "all_slots_stable": true,
+    "all_slots_mastered": true,
+    "retained_during_growth": true,
+    "retained_after_reload": true,
     "old_slot_weights_unchanged": true,
     "shared_base_frozen_after_first_slot": true,
     "shared_base_digest_stable_after_growth": true,
@@ -373,6 +386,6 @@
     "no_replayed_examples": true,
     "candidate_screen_reload_exact": true
   },
-  "wall_seconds": 207.31906125001842,
-  "promoted": false
+  "wall_seconds": 96.1179137500003,
+  "promoted": true
 }

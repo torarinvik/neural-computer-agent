@@ -3762,3 +3762,9 @@ reports are in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_adapter_sharing_promoted_v1_2026-08-08/`.
 The permutation control is mixed, so this does not establish order-invariant or
 general continual learning.
+
+Verifier-triggered local recovery then closed the tested permutation gap: the
+same two seeds and source order `[2, 1, 0]` both passed after up to 128 extra
+updates applied only to the newly grown capability. The strengthened bounded
+promotion is archived in the same record; it demonstrates order robustness for
+this control, while remaining short of general continual learning.

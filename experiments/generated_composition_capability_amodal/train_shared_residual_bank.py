@@ -394,6 +394,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         args.retention_probes,
     ) < 1:
         raise ValueError("all update and audit budgets must be positive")
+    if args.growth_recovery_updates < 0:
+        raise ValueError("growth-recovery-updates cannot be negative")
     if args.batch_size % 2 or args.audit_count % 2:
         raise ValueError("batch size and audit count must be even")
     source_ids = tuple(args.source_ids)
@@ -476,6 +478,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     old_slot_digests: list[dict[int, str]] = []
     shared_base_digest_after_first: str | None = None
     slot_training_attempts = 0
+    growth_recovery_updates = 0
     candidate_screen_observations = 0
 
     for stage_index, program_id in enumerate(source_ids):
@@ -822,6 +825,56 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                         behavior_probes = selected_state["probes"]
                         reuse_trial["growth_candidates"] = growth_candidates
                         reuse_trial["growth_decision"] = selected_kind
+                        if (
+                            args.growth_recovery_updates > 0
+                            and min(behavior_probes) < THRESHOLD
+                        ):
+                            recovery_progress_local = _train_slot(
+                                parent,
+                                bank,
+                                slot_index,
+                                selected_decoder,
+                                program_id,
+                                grammar,
+                                updates=args.growth_recovery_updates,
+                                batch_size=args.batch_size,
+                                audit_count=args.audit_count,
+                                eval_every=args.eval_every,
+                                seed=args.seed + 90_000 + stage_index * 10_003,
+                                learning_rate=args.learning_rate,
+                            )
+                            recovery_progress = [
+                                {
+                                    **row,
+                                    "update": int(row["update"]) + args.slot_updates,
+                                    "unique_verifier_bits": int(
+                                        row["unique_verifier_bits"]
+                                    )
+                                    + args.slot_updates * args.batch_size * SPAN,
+                                }
+                                for row in recovery_progress_local
+                            ]
+                            recovery_behavior, recovery_probes = _probe_accuracy(
+                                parent,
+                                bank,
+                                slot_index,
+                                selected_decoder,
+                                program_id,
+                                grammar,
+                                count=args.audit_count,
+                                probes=args.retention_probes,
+                                seed=args.seed + 95_000 + stage_index * 10_003,
+                            )
+                            progress = [*progress, *recovery_progress]
+                            behavior = recovery_behavior
+                            behavior_probes = recovery_probes
+                            growth_recovery_updates += args.growth_recovery_updates
+                            reuse_trial["growth_recovery"] = {
+                                "updates": args.growth_recovery_updates,
+                                "final_behavior": recovery_behavior,
+                                "probe_outcomes": recovery_probes,
+                                "fresh_outcomes_only": True,
+                            }
                 elif args.candidate_reuse:
                     screen_context = (
                         _candidate_screen_query(
@@ -1347,6 +1400,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "eval_every": args.eval_every,
             "torch_threads": args.torch_threads,
             "screen_candidates": args.screen_candidates,
+            "growth_recovery_updates": args.growth_recovery_updates,
         },
         "stages": stage_records,
         "final_behavior": final_behaviors,
@@ -1408,11 +1462,17 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             + slot_training_attempts
             * args.slot_updates
             * args.batch_size
+            * (SPAN + 2)
+            + growth_recovery_updates * args.batch_size * (SPAN + 2),
+            "growth_recovery_verifier_bits": growth_recovery_updates
+            * args.batch_size
             * (SPAN + 2),
             "unique_logical_lifetimes": args.parent_updates * args.batch_size
-            + slot_training_attempts * args.slot_updates * args.batch_size * 2,
+            + slot_training_attempts * args.slot_updates * args.batch_size * 2
+            + growth_recovery_updates * args.batch_size * 2,
             "optimizer_updates": args.parent_updates
-            + slot_training_attempts * args.slot_updates,
+            + slot_training_attempts * args.slot_updates
+            + growth_recovery_updates,
             "replayed_examples": 0,
             "retention_observations": (
                 sum(range(1, len(source_ids) + 1)) * args.retention_probes
@@ -1495,6 +1555,12 @@ def main() -> None:
     parser.add_argument("--source-ids", type=int, nargs="+", default=(0, 1, 2))
     parser.add_argument("--parent-updates", type=int, default=64)
     parser.add_argument("--slot-updates", type=int, default=128)
+    parser.add_argument(
+        "--growth-recovery-updates",
+        type=int,
+        default=0,
+        help="extra fresh-outcome updates for a grown capability below threshold",
+    )
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--audit-count", type=int, default=64)
     parser.add_argument("--retention-probes", type=int, default=4)

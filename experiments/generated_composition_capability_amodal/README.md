@@ -639,3 +639,10 @@ then retains the verifier-best option. The permutation control remains mixed,
 so this is bounded canonical growth rather than order-invariant continual
 learning. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_adapter_sharing_promoted_v1_2026-08-08/`.
+
+The promoted protocol also supports `--growth-recovery-updates`: when the
+selected new capability remains below the verifier floor, it receives bounded
+extra updates with fresh outcomes while the controller and old capabilities
+remain frozen. With 128 recovery updates, both source-order permutation seeds
+pass the same retention and reload gates. This is still bounded continual
+growth, not unrestricted lifelong learning.

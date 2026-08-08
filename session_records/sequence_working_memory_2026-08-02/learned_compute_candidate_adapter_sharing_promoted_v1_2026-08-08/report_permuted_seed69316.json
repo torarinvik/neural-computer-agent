@@ -49,7 +49,8 @@
     "retention_probes": 4,
     "eval_every": 32,
     "torch_threads": 1,
-    "screen_candidates": false
+    "screen_candidates": false,
+    "growth_recovery_updates": 128
   },
   "stages": [
     {
@@ -308,6 +309,7 @@
   },
   "accounting": {
     "unique_verifier_bits": 75776,
+    "growth_recovery_verifier_bits": 0,
     "unique_logical_lifetimes": 25600,
     "optimizer_updates": 832,
     "replayed_examples": 0,
@@ -341,6 +343,6 @@
     "no_replayed_examples": true,
     "candidate_screen_reload_exact": true
   },
-  "wall_seconds": 147.88247287500417,
+  "wall_seconds": 55.75584445899585,
   "promoted": true
 }
