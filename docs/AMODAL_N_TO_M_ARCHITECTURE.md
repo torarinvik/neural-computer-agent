@@ -3883,3 +3883,15 @@ This promotes bounded 122-capability growth, not unbounded memory or general
 continual learning. The next bottleneck is open-ended capability acquisition
 with learned blueprint/compression or genuine new computation while retaining
 the same no-replay and reversal guarantees.
+
+The repeated-shift pressure test now reaches 144 capabilities through length
+24. Large generated pattern banks use deterministic addressed-prefix
+materialization rather than constructing the full combinatorial bank, so the
+family namespace remains stable without a memory blow-up. Across seeds 69316
+and 69317, all causal-credit, retention/reversal, persistence, corruption,
+reward-shuffled, and zero-replay gates pass. Raw length-24 route floors were
+`0.828125` and `0.796875`; targeted fresh remediation restored both final
+new-route floors to `0.859375`. This is a promoted bounded scalability result,
+not unrestricted memory growth, arbitrary new computation, or general
+continual learning. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14to16to18to20to22to24_prefix_bank_v1_2026-08-08/`.

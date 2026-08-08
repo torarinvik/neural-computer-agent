@@ -31,6 +31,17 @@ def test_generated_pattern_bank_scales_without_duplicate_same_statistics_rows() 
     assert torch.unique(patterns, dim=0).shape[0] == 20
 
 
+def test_large_generated_pattern_bank_materializes_only_addressed_prefix() -> None:
+    patterns = _pattern_bank(100, episode_length=24)
+
+    assert patterns.shape == (101, 24)
+    assert torch.equal(
+        patterns.sum(dim=1),
+        torch.full((101,), 12, dtype=torch.long),
+    )
+    assert torch.unique(patterns, dim=0).shape[0] == 101
+
+
 def test_permuted_physical_target_does_not_activate_later_growth_router() -> None:
     query = torch.zeros(4, 1)
     old_keys = torch.zeros(2, 1)

@@ -285,3 +285,15 @@ capabilities across both seeds. Final remedied route floors are `0.859375` on
 both seeds; one raw length-22 phase fell to `0.640625` before targeted fresh
 remediation, making the confidence bottleneck explicit. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14to16to18to20to22_remediated_v1_2026-08-08/`.
+
+The generated-bank implementation now scales the same repeated-shift protocol
+through length 24 without materializing the full `C(24,12)` bank. It
+deterministically materializes only the addressed prefix, preserving the
+historical family namespace while keeping memory bounded. The 6→8→10→12→14→
+16→18→20→22→24 schedule reaches 144 capabilities. Both seeds pass every
+causal-credit, retention/reversal, persistence, corruption, null, and
+zero-replay gate. The raw length-24 floors are `0.828125` and `0.796875`;
+targeted fresh remediation restores both final new-route floors to `0.859375`.
+This promotes scalable bounded growth, not open-ended memory growth or
+general continual learning. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14to16to18to20to22to24_prefix_bank_v1_2026-08-08/`.
