@@ -27,6 +27,7 @@ from .train import (
     _new_machine,
     _stable_bits,
     _train_stage,
+    OpaqueVerifierValue,
 )
 
 SOURCE_OPERATIONS = ("reverse", "adjacent_xor", "complement")
@@ -140,6 +141,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     loss.backward()
     optimizer.step()
     target_decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
+    target_value_head = (
+        OpaqueVerifierValue(REGISTER_WIDTH)
+        if args.growth_credit_mode == "actor_critic"
+        else None
+    )
+    value_trainable = (
+        list(target_value_head.parameters()) if target_value_head is not None else []
+    )
     target_instruction = machine.instructions[-1]
     target_query = target_instruction.code.detach().squeeze(0)
     candidate_order = machine.order_basis_candidates(prior, target_query)
@@ -209,9 +218,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             target_instruction.code,
             *(routed_basis.parameters() if route == "grow" else ()),
             *target_decoder.parameters(),
+            *value_trainable,
         ],
         credit_mode=args.growth_credit_mode,
         learning_rate=args.growth_learning_rate,
+        value_head=target_value_head,
         eval_every=args.eval_every,
         audit_count=args.audit_count,
         audit_seed=args.seed + 200_000,
@@ -235,7 +246,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     ]
     for parameter in target_decoder.parameters():
         parameter.requires_grad_(False)
-    basis_focus_trainable = [target_instruction.code]
+    basis_focus_trainable = [target_instruction.code, *value_trainable]
     if route == "grow":
         basis_focus_trainable.extend(routed_basis.parameters())
     basis_focus_progress = _train_stage(
@@ -252,6 +263,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         trainable=basis_focus_trainable,
         credit_mode=args.growth_credit_mode,
         learning_rate=args.growth_learning_rate,
+        value_head=target_value_head,
         eval_every=args.eval_every,
         audit_count=args.audit_count,
         audit_seed=args.seed + 215_000,
@@ -273,9 +285,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             target_instruction.code,
             *(routed_basis.parameters() if route == "grow" else ()),
             *target_decoder.parameters(),
+            *value_trainable,
         ],
         credit_mode=args.growth_credit_mode,
         learning_rate=args.growth_learning_rate,
+        value_head=target_value_head,
         eval_every=args.eval_every,
         audit_count=args.audit_count,
         audit_seed=args.seed + 220_000,
@@ -299,6 +313,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         span=args.span,
         seed=args.seed + 210_000,
         credit_mode=args.growth_credit_mode,
+        value_head=target_value_head,
     )
     shuffled_target_accuracy = _accuracy(
         parent,
@@ -311,6 +326,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         span=args.span,
         seed=args.seed + 211_000,
         credit_mode=args.growth_credit_mode,
+        value_head=target_value_head,
         shuffle_outcomes=True,
     )
     missing_target_accuracy = _accuracy(
@@ -324,6 +340,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         span=args.span,
         seed=args.seed + 212_000,
         credit_mode=args.growth_credit_mode,
+        value_head=target_value_head,
         evidence_present=False,
     )
     target_stable = _stable_bits(
@@ -382,6 +399,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     shuffled_training_decoder = OpaqueProtocolDecoder(
         REGISTER_WIDTH, ACTION_WIDTH, hidden=16
     )
+    shuffled_training_value_head = (
+        OpaqueVerifierValue(REGISTER_WIDTH)
+        if args.growth_credit_mode == "actor_critic"
+        else None
+    )
     _freeze(shuffled_training_machine)
     shuffled_training_instruction.code.requires_grad_(True)
     shuffled_training_basis = shuffled_training_machine.basis_slots[
@@ -404,9 +426,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             shuffled_training_instruction.code,
             *shuffled_training_basis.parameters(),
             *shuffled_training_decoder.parameters(),
+            *(
+                shuffled_training_value_head.parameters()
+                if shuffled_training_value_head is not None
+                else ()
+            ),
         ],
         credit_mode=args.growth_credit_mode,
         learning_rate=args.growth_learning_rate,
+        value_head=shuffled_training_value_head,
         shuffle_outcomes=True,
     )
     shuffled_training_accuracy = _accuracy(
@@ -420,6 +448,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         span=args.span,
         seed=args.seed + 310_000,
         credit_mode=args.growth_credit_mode,
+        value_head=shuffled_training_value_head,
     )
     report = {
         "schema": "neural-computer.external-register-real-basis-acquisition-audit.v1",
@@ -515,6 +544,7 @@ def main() -> None:
             "reinforce",
             "reinforce_baseline",
             "reinforce_trace",
+            "actor_critic",
             "paired_counterfactual",
         ),
         default="attempted_bce",

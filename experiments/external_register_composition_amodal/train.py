@@ -16,6 +16,7 @@ from time import perf_counter
 
 import torch
 import torch.nn.functional as F
+from torch import nn
 
 from experiments.archive.unified_cognitive_controller.train_sequence_working_memory import (
     generate_sequence_memory_batch,
@@ -39,6 +40,21 @@ INTENTION_WIDTH = 16
 REGISTER_WIDTH = 32
 INSTRUCTION_WIDTH = 16
 GeneratedCompositionGrammar = tuple[tuple[str, ...], ...]
+
+
+class OpaqueVerifierValue(nn.Module):
+    """Trainer-only action-independent scalar value estimate."""
+
+    def __init__(self, register_width: int, hidden: int = 32) -> None:
+        super().__init__()
+        self.network = nn.Sequential(
+            nn.Linear(register_width, hidden),
+            nn.GELU(),
+            nn.Linear(hidden, 1),
+        )
+
+    def forward(self, register: torch.Tensor) -> torch.Tensor:
+        return self.network(register).squeeze(-1)
 
 
 def _batch(
@@ -108,6 +124,7 @@ def _rollout(
     credit_mode: str = "paired_counterfactual",
     evidence_present: bool = True,
     execution_mode: str = "read_execute",
+    value_head: OpaqueVerifierValue | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     if execution_mode not in ("in_place", "read_execute"):
         raise ValueError(f"unknown execution mode: {execution_mode!r}")
@@ -152,7 +169,7 @@ def _rollout(
             instructions=instructions,
             basis_slots=basis_slots,
         )
-        return decoder(register)
+        return decoder(register), register
 
     quiet = _feedback(
         previous_action,
@@ -181,7 +198,7 @@ def _rollout(
             previous_propensity,
             previous_has_feedback,
         )
-        logits = tick(frame, feedback)
+        logits, value_state = tick(frame, feedback)
         probabilities = logits.softmax(dim=-1)
         # Actions are sampled from this epsilon-smoothed behavior policy.  The
         # exact propensity must travel with the opaque action record; using the
@@ -234,6 +251,20 @@ def _rollout(
             # Assemble the return-to-go objective after the full sequence so
             # each delivered scalar can credit earlier selected actions.
             loss = logits.sum() * 0.0
+        elif credit_mode == "actor_critic":
+            if value_head is None:
+                raise ValueError("actor_critic credit requires a value head")
+            selected_log_probability = behavior_probabilities.log().gather(
+                1, action.unsqueeze(1)
+            ).squeeze(1)
+            value = value_head(value_state)
+            advantage = delivered.detach() - value.detach()
+            policy_loss = -(advantage * selected_log_probability).mean()
+            value_loss = F.mse_loss(value, delivered.detach())
+            entropy = -(behavior_probabilities * behavior_probabilities.log()).sum(
+                dim=-1
+            )
+            loss = policy_loss + value_loss - 0.01 * entropy.mean()
         else:
             raise ValueError(f"unknown credit mode: {credit_mode!r}")
         losses.append(loss)
@@ -314,6 +345,7 @@ def _train_stage(
     anchor_parameters: tuple[tuple[torch.nn.Parameter, torch.Tensor], ...] = (),
     anchor_weight: float = 0.0,
     learning_rate: float = 3e-3,
+    value_head: OpaqueVerifierValue | None = None,
 ) -> list[dict[str, float | int]]:
     if anchor_weight < 0.0:
         raise ValueError("anchor weight cannot be negative")
@@ -341,6 +373,7 @@ def _train_stage(
             shuffle_outcomes=shuffle_outcomes,
             credit_mode=credit_mode,
             execution_mode=execution_mode,
+            value_head=value_head,
         )
         if anchor_parameters and anchor_weight:
             anchor_penalty = torch.stack(
@@ -373,6 +406,7 @@ def _train_stage(
                         generated_composition_ids=generated_composition_ids,
                         generated_compositions=generated_compositions,
                         execution_mode=execution_mode,
+                        value_head=value_head,
                     ),
                 }
             )
@@ -412,6 +446,7 @@ def _accuracy(
     generated_composition_ids: tuple[int, ...] | None = None,
     generated_compositions: GeneratedCompositionGrammar | None = None,
     execution_mode: str = "read_execute",
+    value_head: OpaqueVerifierValue | None = None,
 ) -> float:
     batch = _batch(
         operation,
@@ -434,6 +469,7 @@ def _accuracy(
             credit_mode=credit_mode,
             evidence_present=evidence_present,
             execution_mode=execution_mode,
+            value_head=value_head,
         )[1].mean()
     )
 

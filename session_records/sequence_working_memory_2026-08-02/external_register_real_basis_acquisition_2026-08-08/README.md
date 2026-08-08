@@ -133,3 +133,12 @@ restored, and previously mastered slots remain untouched; only a candidate
 that passes stable-prefix mastery and the retained-capability floor is frozen
 as consolidated. A rollback smoke audit rejected an unstable candidate with
 candidate prefix minimum `0.5` and confirmed `rollback_applied: true`.
+
+## Action-independent actor–critic follow-up — rejected
+
+A trainer-only value head was added to estimate expected scalar verifier
+success from the learned register, reducing policy-gradient variance without
+correct-action labels. Across two seeds it reached `0.8320`/`0.8281` with no
+stable prefix. Source retention and causal controls passed, but it did not
+beat attempted-outcome BCE; the value head remains an optional experiment,
+not the default learner.
