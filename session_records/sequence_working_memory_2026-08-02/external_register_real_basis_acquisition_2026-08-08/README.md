@@ -191,3 +191,16 @@ for a newly acquired computation, not scalar credit or basis-focus scheduling.
 
 Each run used `61,440` verifier bits, `7,680` logical lifetimes, `513`
 optimizer updates, and zero replayed examples.
+
+## Wider fresh-slot capacity follow-up — rejected
+
+Increasing the fresh compute-slot hidden width from `64` to `128` did not
+solve acquisition. Full-span progress remained below stable mastery in both
+seeds, with final checkpoint scores of `0.6719`/`0.7109`; source retention on
+the fixed suite remained unchanged. More parameters in the same one-step
+residual MLP are therefore insufficient. The next representation test should
+add structured iterative state or microsteps to the new slot rather than only
+increasing width.
+
+Each run used `69,632` verifier bits, `8,704` logical lifetimes, `577`
+optimizer updates, and zero replayed examples.

@@ -99,6 +99,7 @@ def _new_machine(
     instruction_count: int = 2,
     *,
     operator_mode: str = "factorized_low_rank",
+    basis_hidden: int = 64,
 ) -> ExternalCapabilityRegisterMachine:
     if instruction_count < 1:
         raise ValueError("instruction count must be positive")
@@ -111,6 +112,7 @@ def _new_machine(
         interpreter_hidden=64,
         operator_rank=8,
         operator_mode=operator_mode,
+        basis_hidden=basis_hidden,
         event_window_size=4,
         instructions=tuple(
             ExternalRegisterInstruction(INSTRUCTION_WIDTH)
