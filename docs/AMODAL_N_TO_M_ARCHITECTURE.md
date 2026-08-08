@@ -4060,3 +4060,10 @@ control. The growth result is rejected. This localizes the next bottleneck to
 causal credit/verification dependence during new-slot acquisition, not
 append-only capacity or retention. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_real_basis_acquisition_2026-08-08/`.
+
+The causal repair changes only new-slot optimization to attempted-outcome BCE,
+which exposes delivered scalar verifier outcomes instead of verifier-private
+correct-action utilities. Shuffled-training controls collapse to `0.4766` and
+`0.5000`; normal target accuracy remains `0.9375` and `0.9063` with source
+retention intact. Stable-prefix promotion still fails, so growth remains
+rejected while the credit-path repair is retained.

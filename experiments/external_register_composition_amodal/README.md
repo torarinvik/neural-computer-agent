@@ -320,3 +320,9 @@ source capability, but both seeds failed stable-prefix promotion and failed
 the shuffled-outcome rejection control. This growth result is rejected; the
 next bottleneck is causal credit/verification dependence during new-slot
 acquisition.
+
+The causal repair uses `attempted_bce` for new-slot training, exposing only
+delivered scalar outcomes. Shuffled-training controls then collapse to `0.4766`
+and `0.5000`, while normal target accuracy remains `0.9375` and `0.9063` with
+source retention intact. Stable-prefix promotion still fails, so growth is
+not promoted; the credit-path repair is retained.

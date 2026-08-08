@@ -177,6 +177,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         _module_digest(machine.basis_slots[index])
         for index in range(len(SOURCE_OPERATIONS))
     )
+    pre_growth_state = {
+        name: value.detach().clone() for name, value in machine.state_dict().items()
+    }
     if selected is None:
         route = "grow"
         routed_basis_slot = machine.add_basis_slot()
@@ -205,7 +208,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             *(routed_basis.parameters() if route == "grow" else ()),
             *target_decoder.parameters(),
         ],
-        credit_mode="paired_counterfactual",
+        credit_mode=args.growth_credit_mode,
         eval_every=args.eval_every,
         audit_count=args.audit_count,
         audit_seed=args.seed + 200_000,
@@ -220,7 +223,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         count=args.audit_count,
         span=args.span,
         seed=args.seed + 210_000,
-        credit_mode="paired_counterfactual",
+        credit_mode=args.growth_credit_mode,
     )
     shuffled_target_accuracy = _accuracy(
         parent,
@@ -232,7 +235,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         count=args.audit_count,
         span=args.span,
         seed=args.seed + 211_000,
-        credit_mode="paired_counterfactual",
+        credit_mode=args.growth_credit_mode,
         shuffle_outcomes=True,
     )
     missing_target_accuracy = _accuracy(
@@ -245,7 +248,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         count=args.audit_count,
         span=args.span,
         seed=args.seed + 212_000,
-        credit_mode="paired_counterfactual",
+        credit_mode=args.growth_credit_mode,
         evidence_present=False,
     )
     target_stable = _stable_bits(
@@ -274,12 +277,63 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         digest == _module_digest(machine.basis_slots[index])
         for index, digest in enumerate(old_basis_digests)
     )
+    shuffled_training_machine = _new_machine(
+        len(SOURCE_OPERATIONS) + 1,
+        operator_mode=args.operator_mode,
+    )
+    for _ in SOURCE_OPERATIONS:
+        shuffled_training_machine.add_basis_slot()
+    shuffled_training_machine.load_state_dict(pre_growth_state, strict=True)
+    shuffled_training_basis_slot = shuffled_training_machine.add_basis_slot()
+    shuffled_training_instruction = shuffled_training_machine.instructions[-1]
+    shuffled_training_decoder = OpaqueProtocolDecoder(
+        REGISTER_WIDTH, ACTION_WIDTH, hidden=16
+    )
+    _freeze(shuffled_training_machine)
+    shuffled_training_instruction.code.requires_grad_(True)
+    shuffled_training_basis = shuffled_training_machine.basis_slots[
+        shuffled_training_basis_slot
+    ]
+    for parameter in shuffled_training_basis.parameters():
+        parameter.requires_grad_(True)
+    _train_stage(
+        parent,
+        shuffled_training_machine,
+        shuffled_training_decoder,
+        operation=TARGET_OPERATION,
+        instructions=(shuffled_training_instruction,),
+        basis_slots=(shuffled_training_basis_slot,),
+        updates=args.target_updates,
+        batch_size=args.batch_size,
+        span=args.span,
+        seed=args.seed + 300_000,
+        trainable=[
+            shuffled_training_instruction.code,
+            *shuffled_training_basis.parameters(),
+            *shuffled_training_decoder.parameters(),
+        ],
+        credit_mode=args.growth_credit_mode,
+        shuffle_outcomes=True,
+    )
+    shuffled_training_accuracy = _accuracy(
+        parent,
+        shuffled_training_machine,
+        shuffled_training_decoder,
+        operation=TARGET_OPERATION,
+        instructions=(shuffled_training_instruction,),
+        basis_slots=(shuffled_training_basis_slot,),
+        count=args.audit_count,
+        span=args.span,
+        seed=args.seed + 310_000,
+        credit_mode=args.growth_credit_mode,
+    )
     report = {
         "schema": "neural-computer.external-register-real-basis-acquisition-audit.v1",
         "claim_boundary": "A learned opaque prior orders real primitive basis trials; fresh verifier outcomes still determine admission.",
         "seed": args.seed,
         "source_operations": list(SOURCE_OPERATIONS),
         "target_operation": TARGET_OPERATION,
+        "growth_credit_mode": args.growth_credit_mode,
         "source_outcomes": source_outcomes.tolist(),
         "target_candidate_order": list(candidate_order),
         "target_candidate_outcomes": target_outcomes.tolist(),
@@ -291,6 +345,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "target_accuracy": target_accuracy,
         "shuffled_target_accuracy": shuffled_target_accuracy,
         "missing_target_accuracy": missing_target_accuracy,
+        "shuffled_training_target_accuracy": shuffled_training_accuracy,
         "target_stable_bits": target_stable,
         "source_accuracy_after": source_after,
         "old_basis_unchanged": old_basis_unchanged,
@@ -314,6 +369,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "old_basis_unchanged": old_basis_unchanged,
             "reward_shuffled_rejected": shuffled_target_accuracy < threshold,
             "missing_evidence_rejected": missing_target_accuracy < threshold,
+            "shuffled_training_rejected": shuffled_training_accuracy < threshold,
             "no_replayed_examples": True,
         },
     }
@@ -330,6 +386,11 @@ def main() -> None:
     parser.add_argument("--parent-updates", type=int, default=32)
     parser.add_argument("--source-updates", type=int, default=96)
     parser.add_argument("--target-updates", type=int, default=128)
+    parser.add_argument(
+        "--growth-credit-mode",
+        choices=("attempted_bce", "paired_counterfactual"),
+        default="attempted_bce",
+    )
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--span", type=int, default=4)
     parser.add_argument("--audit-count", type=int, default=32)

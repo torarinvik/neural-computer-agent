@@ -24,3 +24,11 @@ controls remained above the rejection floor (`0.9922` and `0.9531`). The
 growth result is therefore rejected for promotion. The next bottleneck is
 causal credit/verification dependence in new-slot acquisition, not retention
 or append-only capacity.
+
+The causal follow-up switched only new-slot training to `attempted_bce`, so
+the optimizer received delivered scalar outcomes rather than verifier-private
+correct-action utilities. Shuffled-training controls then collapsed to
+`0.4766` and `0.5000`, confirming causal dependence. Normal target accuracy
+remained `0.9375` and `0.9063`, with source retention intact, but stable-prefix
+promotion still failed. The corrected result remains rejected for stability,
+while the credit-path repair itself is retained.
