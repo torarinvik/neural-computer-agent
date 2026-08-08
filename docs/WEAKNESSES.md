@@ -123,6 +123,21 @@ rung promotes, rejects, or qualifies. Ordered by severity.
     CONTEXT ENCODING, not the assignment -- a probe phase supervised by
     the sign of the agent's own next reward under a fixed test action.
 
+17. **Two battery gates cannot discriminate, and every gate lacked a
+    measured floor until now** — avoid1 has 0.020 of headroom between its
+    measured chance floor (0.902, a constant action) and its calibrated
+    ceiling (0.922); dualAD and dualBC have under 0.10. Results reporting
+    avoid1 near 0.9 were reporting a degenerate policy as a pass.
+    Evidence: F52 (`chance_floors.py`). The load-bearing games
+    (choiceA/choiceB, dualAC, forageA, collect1, intercept1) discriminate
+    properly, so the battery's claims stand, but raw mastery against a
+    ceiling flatters any high-floor game. `CHANCE_FLOORS`, `headroom()`
+    and `normalised()` now ship beside `SOLO_CEILINGS`. Next: replace
+    avoid1 with an avoidance game whose degenerate policy is not
+    near-optimal (e.g. one that requires movement to survive), re-read
+    past battery reports on the floor-to-ceiling scale, and state every
+    future gate against its measured floor.
+
 14. **Battery scale is six games; motor games are excluded** — the
     staggered battery (`staggered_battery_v1_2026-08-07`) holds six
     decision games at 0.72-1.38x solo ceilings, but forage/collect sit
