@@ -29,6 +29,9 @@ EXTERNAL_REGISTER_READ_EXECUTE_SCHEMA = (
     "neural-computer.external-register-read-execute.v1"
 )
 EXTERNAL_REGISTER_BASIS_SCHEMA = "neural-computer.external-register-compute-basis.v1"
+EXTERNAL_REGISTER_COMPATIBILITY_SCHEMA = (
+    "neural-computer.external-register-compatibility-prior.v1"
+)
 
 
 @dataclass(frozen=True)
@@ -138,6 +141,7 @@ class ExternalRegisterComputeBasis(nn.Module):
             nn.GELU(),
             nn.Linear(self.hidden, 1),
         )
+        self.signature = nn.Parameter(torch.randn(self.instruction_width) * 0.02)
 
     def configuration(self) -> dict[str, int | str]:
         return {
@@ -146,6 +150,7 @@ class ExternalRegisterComputeBasis(nn.Module):
             "instruction_width": self.instruction_width,
             "hidden": self.hidden,
             "storage": "append_only_external_compute_slot_v1",
+            "signature": "one_opaque_learned_slot_key_v1",
         }
 
     def forward(self, register: torch.Tensor, code: torch.Tensor) -> torch.Tensor:
@@ -157,6 +162,88 @@ class ExternalRegisterComputeBasis(nn.Module):
         return register + torch.sigmoid(self.gate(features)) * torch.tanh(
             self.network(features)
         )
+
+
+class ExternalRegisterBasisCompatibilityPrior(nn.Module):
+    """Learn an opaque ordering over external basis slots from outcomes.
+
+    This is memory-side screening only. It sees an opaque instruction query
+    and opaque learned slot signatures; it can order candidates using scalar
+    attempted outcomes, but it cannot admit a slot. Fresh stable-prefix
+    verifier evidence remains the authority for reuse versus growth.
+    """
+
+    def __init__(
+        self,
+        instruction_width: int,
+        *,
+        latent_width: int = 32,
+        hidden: int = 64,
+    ) -> None:
+        super().__init__()
+        if min(instruction_width, latent_width, hidden) < 1:
+            raise ValueError("compatibility prior dimensions must be positive")
+        from .capability import LearnedComputeCandidateScreen
+
+        self.instruction_width = int(instruction_width)
+        self.latent_width = int(latent_width)
+        self.hidden = int(hidden)
+        self.screen = LearnedComputeCandidateScreen(
+            instruction_width,
+            instruction_width,
+            latent_width=latent_width,
+            hidden=hidden,
+        )
+
+    def configuration(self) -> dict[str, int | str | bool]:
+        return {
+            "schema": EXTERNAL_REGISTER_COMPATIBILITY_SCHEMA,
+            "instruction_width": self.instruction_width,
+            "latent_width": self.latent_width,
+            "hidden": self.hidden,
+            "query": "opaque_instruction_vector_v1",
+            "candidate_key": "opaque_basis_signature_v1",
+            "training": "attempted_scalar_outcome_pairwise_ranking_v1",
+            "role": "screening_only_fresh_admission_required",
+            "enabled": bool(self.screen.enabled.item()),
+        }
+
+    def enable(self) -> None:
+        self.screen.enable()
+
+    def forward(
+        self,
+        instruction_query: torch.Tensor,
+        basis_keys: torch.Tensor,
+    ) -> torch.Tensor:
+        return self.screen(instruction_query, basis_keys)
+
+    def outcome_ranking_loss(
+        self,
+        instruction_query: torch.Tensor,
+        basis_keys: torch.Tensor,
+        outcomes: torch.Tensor,
+    ) -> tuple[torch.Tensor, int]:
+        return self.screen.outcome_ranking_loss(
+            instruction_query,
+            basis_keys,
+            outcomes,
+        )
+
+    @staticmethod
+    def basis_keys(
+        basis_slots: Iterable[ExternalRegisterComputeBasis],
+        *,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ) -> torch.Tensor:
+        slots = tuple(basis_slots)
+        if not slots:
+            raise ValueError("compatibility prior needs at least one basis slot")
+        keys = torch.stack(tuple(slot.signature for slot in slots))
+        if device is not None or dtype is not None:
+            keys = keys.to(device=device, dtype=dtype)
+        return keys
 
 
 class ExternalCapabilityRegisterMachine(nn.Module):

@@ -295,3 +295,8 @@ requests growth when reuse costs `16,384` versus `8,192` fresh bits, while
 seed `69317` reuses at `4,096` versus `8,192`. This closes the correctness-only
 admission gap; the append-and-retrain grow branch is covered by the executable
 route-vs-grow result above.
+
+The next implementation adds `ExternalRegisterBasisCompatibilityPrior`, a
+replaceable opaque candidate screen that learns slot ordering from attempted
+scalar outcomes. It remains screening-only; fresh stable verifier evidence
+still controls reuse versus growth.

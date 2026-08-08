@@ -192,10 +192,12 @@ from .promotion import (
 )
 from .register import (
     EXTERNAL_REGISTER_BASIS_SCHEMA,
+    EXTERNAL_REGISTER_COMPATIBILITY_SCHEMA,
     EXTERNAL_REGISTER_INSTRUCTION_SCHEMA,
     EXTERNAL_REGISTER_READ_EXECUTE_SCHEMA,
     EXTERNAL_REGISTER_SCHEMA,
     ExternalCapabilityRegisterMachine,
+    ExternalRegisterBasisCompatibilityPrior,
     ExternalRegisterComputeBasis,
     ExternalRegisterInstruction,
     ExternalRegisterState,
@@ -254,6 +256,7 @@ __all__ = [
     "EXTERNAL_CAPABILITY_SHARED_RESIDUAL_SCHEMA",
     "EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA",
     "EXTERNAL_REGISTER_BASIS_SCHEMA",
+    "EXTERNAL_REGISTER_COMPATIBILITY_SCHEMA",
     "EXTERNAL_REGISTER_INSTRUCTION_SCHEMA",
     "EXTERNAL_REGISTER_READ_EXECUTE_SCHEMA",
     "EXTERNAL_REGISTER_SCHEMA",
@@ -329,6 +332,7 @@ __all__ = [
     "ExternalGrowthPrior",
     "ExternalMemoryEvictionPolicy",
     "ExternalMemoryWritePolicy",
+    "ExternalRegisterBasisCompatibilityPrior",
     "ExternalRegisterComputeBasis",
     "ExternalRegisterInstruction",
     "ExternalRegisterState",

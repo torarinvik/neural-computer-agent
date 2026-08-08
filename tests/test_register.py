@@ -2,6 +2,7 @@ import torch
 
 from neural_computer import (
     ExternalCapabilityRegisterMachine,
+    ExternalRegisterBasisCompatibilityPrior,
     ExternalRegisterComputeBasis,
     ExternalRegisterInstruction,
     IntentEvent,
@@ -101,6 +102,27 @@ def test_basis_efficiency_selection_rejects_asymmetric_cross_operator_transfer()
 
     assert decision.action == "grow"
     assert decision.compute_slot_index is None
+
+
+def test_opaque_basis_compatibility_prior_only_orders_and_never_admits() -> None:
+    torch.manual_seed(912)
+    machine = _machine()
+    machine.add_basis_slot()
+    machine.add_basis_slot()
+    prior = ExternalRegisterBasisCompatibilityPrior(5, latent_width=6, hidden=8)
+    keys = prior.basis_keys(machine.basis_slots)
+    query = torch.randn(2, 5)
+    cold_scores = prior(query, keys)
+    assert torch.equal(cold_scores, torch.zeros_like(cold_scores))
+
+    prior.enable()
+    outcomes = torch.tensor([[0.9, 0.4], [0.2, 0.8]])
+    loss, pair_count = prior.outcome_ranking_loss(query, keys, outcomes)
+    assert torch.isfinite(loss)
+    assert pair_count == 2
+    assert prior.configuration()["role"] == (
+        "screening_only_fresh_admission_required"
+    )
 
 
 def test_basis_slots_can_be_frozen_and_unpromoted_growth_can_be_rolled_back() -> None:

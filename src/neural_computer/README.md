@@ -1084,6 +1084,12 @@ grow. This enables compression for compatible procedures without blocking
 arbitrary new compute. See
 `session_records/sequence_working_memory_2026-08-02/generated_composition_reuse_first_grow_policy_replicated_boundary_v1_2026-08-07/`.
 
+`ExternalRegisterBasisCompatibilityPrior` adapts the learned opaque candidate
+screen to register-basis signatures. It can learn candidate ordering from
+attempted scalar outcomes, but is explicitly screening-only: fresh stable
+verifier evidence still decides reuse versus growth. This separates a future
+sample-saving prior from the safety-critical admission gate.
+
 The candidate-reuse path now probes every physical compute module, selects the
 best fresh-verified binding, and grows only when all candidates fail. This
 supports mixed reuse/growth across three opaque procedures while retaining

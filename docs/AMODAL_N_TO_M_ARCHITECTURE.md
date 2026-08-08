@@ -4030,3 +4030,9 @@ and reused the basis for the faster seed (`4,096` versus `8,192`). This closes
 the correctness-only admission gap while preserving opaque memory-side
 selection. The executable grow branch then recovered the slower case without
 affecting the mastered slot, completing this route-vs-grow boundary.
+
+The register now also exposes an `ExternalRegisterBasisCompatibilityPrior`.
+It reuses the existing learned opaque candidate-screen mechanism over learned
+slot signatures and instruction-vector queries, training only from attempted
+scalar outcomes. It is deliberately a screening prior rather than an
+admission authority: fresh stable-prefix verification remains mandatory.
