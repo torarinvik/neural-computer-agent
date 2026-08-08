@@ -197,3 +197,16 @@ strict replicated all-target promotion gate is rejected. The remaining
 bottleneck is order-robust transfer efficiency, not basic composition
 execution. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_multi_heldout_composition_rejected_v1_2026-08-08/`.
+
+## Held-out primitive transfer (2026-08-08)
+
+The strict new-computation test acquired four source primitives, froze the
+interpreter, and trained a fifth unseen `rotate` instruction from fresh
+outcomes. Both seeds mastered all sources and the new target and passed every
+retention, shuffled-null, missing-evidence, reload, corruption, frozen-parent,
+and zero-replay control. Transfer nevertheless failed: seed `69316` tied
+fresh at `8,192` stable bits, while seed `69317` required `24,576` versus
+`4,096` fresh. This is a clean boundary result: learned instruction
+composition transfers, but the current shared operator does not yet invent a
+new primitive computation. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_heldout_primitive_transfer_rejected_v1_2026-08-08/`.

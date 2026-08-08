@@ -3943,3 +3943,14 @@ all-target gate is not promoted. This establishes order-robust partial
 compositional reuse and localizes the next bottleneck to transfer calibration
 across order distributions. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_multi_heldout_composition_rejected_v1_2026-08-08/`.
+
+The strict held-out primitive test then froze the learned four-primitive
+interpreter and acquired a fifth unseen `rotate` instruction. Both seeds pass
+source mastery, target mastery, retention, null, missing-evidence, reload,
+corruption, frozen-core, and zero-replay gates, but neither shows positive
+transfer: one ties fresh and the other is slower. This cleanly separates the
+current capability: reusable composition is promoted, while genuine new
+primitive computation remains the largest architectural bottleneck. The next
+intervention must learn a transferable operator family or code-to-computation
+prior rather than add more instruction slots. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_heldout_primitive_transfer_rejected_v1_2026-08-08/`.

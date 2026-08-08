@@ -1,0 +1,11 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_register_heldout_primitive_transfer_rejected_v1",
+  "claim": "The learned register operator does not yet transfer positively to a genuinely unseen primitive.",
+  "target": "rotate",
+  "replayed_examples": 0,
+  "runs": [
+    {"seed": 69316, "promoted": false, "source_mastery": true, "target_mastered": true, "inherited_stable_bits": 8192, "fresh_stable_bits": 8192, "positive_transfer": false, "replayed_examples": 0},
+    {"seed": 69317, "promoted": false, "source_mastery": true, "target_mastered": true, "inherited_stable_bits": 24576, "fresh_stable_bits": 4096, "positive_transfer": false, "replayed_examples": 0}
+  ]
+}
