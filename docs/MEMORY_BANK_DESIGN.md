@@ -1670,6 +1670,17 @@ the controller's recurrent state, and plays the rest of the episode from
 that. The fetched fragment is decorative; a contradictory one still
 misleads, which is why cross-feed inverts and decoy does not.
 
+Seed 69316 is the same finding without the ambiguity. There the loop
+hits winner-take-all (0.961 / 0.008), and for the twin that DID learn,
+neither audit bites: `choiceA` scores 0.906 on the other twin's
+fragments and 0.969 on pure noise. It is not merely that the content is
+unnecessary — the bank is ignored outright, and the cross-feed signature
+that looked decisive on seed 69317 does not even appear here. Across
+both seeds the decoy gate fails; the cross-feed gate passes on one and
+fails on the other, which is exactly the pattern expected when a
+recurrent state is doing the work and a fetched vector sometimes
+happens to perturb it.
+
 This is the architecture's storage rule violated in a new place. F30
 caught skill migrating into per-game ENCODER weights; here it migrates
 into WORKING MEMORY within an episode. Both were found by an audit that
