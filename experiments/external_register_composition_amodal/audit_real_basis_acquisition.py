@@ -28,6 +28,7 @@ from .train import (
     _stable_bits,
     _train_stage,
     OpaqueVerifierValue,
+    OpaqueVerifierQ,
 )
 
 SOURCE_OPERATIONS = ("reverse", "adjacent_xor", "complement")
@@ -149,6 +150,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     value_trainable = (
         list(target_value_head.parameters()) if target_value_head is not None else []
     )
+    target_q_head = (
+        OpaqueVerifierQ(REGISTER_WIDTH, ACTION_WIDTH)
+        if args.growth_credit_mode == "q_actor_critic"
+        else None
+    )
+    q_trainable = (
+        list(target_q_head.parameters()) if target_q_head is not None else []
+    )
     target_instruction = machine.instructions[-1]
     target_query = target_instruction.code.detach().squeeze(0)
     candidate_order = machine.order_basis_candidates(prior, target_query)
@@ -219,10 +228,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             *(routed_basis.parameters() if route == "grow" else ()),
             *target_decoder.parameters(),
             *value_trainable,
+            *q_trainable,
         ],
         credit_mode=args.growth_credit_mode,
         learning_rate=args.growth_learning_rate,
         value_head=target_value_head,
+        q_head=target_q_head,
         eval_every=args.eval_every,
         audit_count=args.audit_count,
         audit_seed=args.seed + 200_000,
@@ -246,7 +257,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     ]
     for parameter in target_decoder.parameters():
         parameter.requires_grad_(False)
-    basis_focus_trainable = [target_instruction.code, *value_trainable]
+    basis_focus_trainable = [target_instruction.code, *value_trainable, *q_trainable]
     if route == "grow":
         basis_focus_trainable.extend(routed_basis.parameters())
     basis_focus_progress = _train_stage(
@@ -264,6 +275,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         credit_mode=args.growth_credit_mode,
         learning_rate=args.growth_learning_rate,
         value_head=target_value_head,
+        q_head=target_q_head,
         eval_every=args.eval_every,
         audit_count=args.audit_count,
         audit_seed=args.seed + 215_000,
@@ -286,10 +298,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             *(routed_basis.parameters() if route == "grow" else ()),
             *target_decoder.parameters(),
             *value_trainable,
+            *q_trainable,
         ],
         credit_mode=args.growth_credit_mode,
         learning_rate=args.growth_learning_rate,
         value_head=target_value_head,
+        q_head=target_q_head,
         eval_every=args.eval_every,
         audit_count=args.audit_count,
         audit_seed=args.seed + 220_000,
@@ -314,6 +328,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         seed=args.seed + 210_000,
         credit_mode=args.growth_credit_mode,
         value_head=target_value_head,
+        q_head=target_q_head,
     )
     shuffled_target_accuracy = _accuracy(
         parent,
@@ -327,6 +342,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         seed=args.seed + 211_000,
         credit_mode=args.growth_credit_mode,
         value_head=target_value_head,
+        q_head=target_q_head,
         shuffle_outcomes=True,
     )
     missing_target_accuracy = _accuracy(
@@ -341,6 +357,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         seed=args.seed + 212_000,
         credit_mode=args.growth_credit_mode,
         value_head=target_value_head,
+        q_head=target_q_head,
         evidence_present=False,
     )
     target_stable = _stable_bits(
@@ -404,6 +421,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         if args.growth_credit_mode == "actor_critic"
         else None
     )
+    shuffled_training_q_head = (
+        OpaqueVerifierQ(REGISTER_WIDTH, ACTION_WIDTH)
+        if args.growth_credit_mode == "q_actor_critic"
+        else None
+    )
     _freeze(shuffled_training_machine)
     shuffled_training_instruction.code.requires_grad_(True)
     shuffled_training_basis = shuffled_training_machine.basis_slots[
@@ -431,10 +453,16 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 if shuffled_training_value_head is not None
                 else ()
             ),
+            *(
+                shuffled_training_q_head.parameters()
+                if shuffled_training_q_head is not None
+                else ()
+            ),
         ],
         credit_mode=args.growth_credit_mode,
         learning_rate=args.growth_learning_rate,
         value_head=shuffled_training_value_head,
+        q_head=shuffled_training_q_head,
         shuffle_outcomes=True,
     )
     shuffled_training_accuracy = _accuracy(
@@ -449,6 +477,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         seed=args.seed + 310_000,
         credit_mode=args.growth_credit_mode,
         value_head=shuffled_training_value_head,
+        q_head=shuffled_training_q_head,
     )
     report = {
         "schema": "neural-computer.external-register-real-basis-acquisition-audit.v1",
@@ -545,6 +574,7 @@ def main() -> None:
             "reinforce_baseline",
             "reinforce_trace",
             "actor_critic",
+            "q_actor_critic",
             "paired_counterfactual",
         ),
         default="attempted_bce",

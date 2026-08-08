@@ -142,3 +142,11 @@ correct-action labels. Across two seeds it reached `0.8320`/`0.8281` with no
 stable prefix. Source retention and causal controls passed, but it did not
 beat attempted-outcome BCE; the value head remains an optional experiment,
 not the default learner.
+
+## Action-conditioned Q-credit follow-up — rejected
+
+A trainer-only action-conditioned verifier model learned scalar outcomes for
+the actually attempted opaque action and supplied a learned advantage to the
+policy. Checkpoint progress improved modestly to `0.7500`/`0.7539`, but final
+accuracy was only `0.8555`/`0.8750`, with no stable prefix. This remains an
+optional outcome-only baseline; attempted-outcome BCE is still stronger.

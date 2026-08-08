@@ -57,6 +57,24 @@ class OpaqueVerifierValue(nn.Module):
         return self.network(register).squeeze(-1)
 
 
+class OpaqueVerifierQ(nn.Module):
+    """Trainer-only action-conditioned scalar verifier model."""
+
+    def __init__(self, register_width: int, action_width: int, hidden: int = 32) -> None:
+        super().__init__()
+        self.action_width = action_width
+        self.network = nn.Sequential(
+            nn.Linear(register_width + action_width, hidden),
+            nn.GELU(),
+            nn.Linear(hidden, 1),
+        )
+
+    def forward(self, register: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
+        if action.ndim != 2 or action.shape[0] != register.shape[0]:
+            raise ValueError("verifier Q action has the wrong shape")
+        return self.network(torch.cat((register, action), dim=-1)).squeeze(-1)
+
+
 def _batch(
     operation: str,
     *,
@@ -125,6 +143,7 @@ def _rollout(
     evidence_present: bool = True,
     execution_mode: str = "read_execute",
     value_head: OpaqueVerifierValue | None = None,
+    q_head: OpaqueVerifierQ | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     if execution_mode not in ("in_place", "read_execute"):
         raise ValueError(f"unknown execution mode: {execution_mode!r}")
@@ -265,6 +284,24 @@ def _rollout(
                 dim=-1
             )
             loss = policy_loss + value_loss - 0.01 * entropy.mean()
+        elif credit_mode == "q_actor_critic":
+            if q_head is None:
+                raise ValueError("q_actor_critic credit requires a Q head")
+            selected_log_probability = behavior_probabilities.log().gather(
+                1, action.unsqueeze(1)
+            ).squeeze(1)
+            selected_action = F.one_hot(action, ACTION_WIDTH).to(logits.dtype)
+            q_logit = q_head(value_state, selected_action)
+            q_prediction_loss = F.binary_cross_entropy_with_logits(
+                q_logit, delivered.detach()
+            )
+            q_probability = q_logit.sigmoid().detach()
+            advantage = delivered.detach() - q_probability
+            policy_loss = -(advantage * selected_log_probability).mean()
+            entropy = -(behavior_probabilities * behavior_probabilities.log()).sum(
+                dim=-1
+            )
+            loss = policy_loss + q_prediction_loss - 0.01 * entropy.mean()
         else:
             raise ValueError(f"unknown credit mode: {credit_mode!r}")
         losses.append(loss)
@@ -346,6 +383,7 @@ def _train_stage(
     anchor_weight: float = 0.0,
     learning_rate: float = 3e-3,
     value_head: OpaqueVerifierValue | None = None,
+    q_head: OpaqueVerifierQ | None = None,
 ) -> list[dict[str, float | int]]:
     if anchor_weight < 0.0:
         raise ValueError("anchor weight cannot be negative")
@@ -374,6 +412,7 @@ def _train_stage(
             credit_mode=credit_mode,
             execution_mode=execution_mode,
             value_head=value_head,
+            q_head=q_head,
         )
         if anchor_parameters and anchor_weight:
             anchor_penalty = torch.stack(
@@ -407,6 +446,7 @@ def _train_stage(
                         generated_compositions=generated_compositions,
                         execution_mode=execution_mode,
                         value_head=value_head,
+                        q_head=q_head,
                     ),
                 }
             )
@@ -447,6 +487,7 @@ def _accuracy(
     generated_compositions: GeneratedCompositionGrammar | None = None,
     execution_mode: str = "read_execute",
     value_head: OpaqueVerifierValue | None = None,
+    q_head: OpaqueVerifierQ | None = None,
 ) -> float:
     batch = _batch(
         operation,
@@ -470,6 +511,7 @@ def _accuracy(
             evidence_present=evidence_present,
             execution_mode=execution_mode,
             value_head=value_head,
+            q_head=q_head,
         )[1].mean()
     )
 
