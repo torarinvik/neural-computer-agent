@@ -353,8 +353,14 @@ for attempt in range(args.max_restarts):
                 pair.append(round(float(
                     correct / (correct + wrong).clamp_min(1.0)), 3))
             competence_curve.append(pair)
-        if (update + 1) == max(250, args.competence_updates // 4):
-            if min(command_score) < 0.2:
+        if (update + 1) == max(500, args.competence_updates // 2):
+            # Calibrated on measured curves: at update 500 a converging
+            # draw reads ~1.0 per command and a dead branch ~0.01. The
+            # first version checked at 250 with threshold 0.2 and killed
+            # the WINNING seed-1 draw (0.087 at 250 under the strict
+            # meter) -- both promotion seeds then burned all four draws
+            # on a detector that culled healthy basins.
+            if min(command_score) < 0.3:
                 collapsed = True
                 break
     final_scores = [competence_score(0), competence_score(1)]
