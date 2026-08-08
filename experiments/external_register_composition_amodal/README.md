@@ -180,3 +180,20 @@ This promotes reusable compositional computation for one held-out order, not
 arbitrary program induction or general continual learning. Evidence is
 archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_heldout_composition_transfer_promoted_v1_2026-08-08/`.
+
+## Multi-order composition pressure test (2026-08-08)
+
+The same four frozen instructions were reused across three held-out orders.
+Seed `69316` transferred all three orders at the 128-update composition rung,
+with inherited stable costs of `8,192`, `4,096`, and `4,096` bits versus fresh
+costs of `12,288`, `12,288`, and `16,384`. Seed `69317` transferred two of
+three; the first order tied fresh at `8,192` bits. Doubling only composition
+updates for that seed preserved the tie while the other two orders transferred.
+All mastery, source retention, shuffled-null, missing-evidence, reload,
+corruption, frozen-parent, and zero-replay controls passed.
+
+This is strong partial evidence for reusable multi-order composition, but the
+strict replicated all-target promotion gate is rejected. The remaining
+bottleneck is order-robust transfer efficiency, not basic composition
+execution. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_multi_heldout_composition_rejected_v1_2026-08-08/`.

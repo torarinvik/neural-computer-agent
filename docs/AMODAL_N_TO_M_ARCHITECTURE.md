@@ -3934,3 +3934,12 @@ unrestricted memory growth, or general continual learning. The next bottleneck
 is scaling the positive composition transfer across multiple held-out orders
 and genuinely new primitive/operator combinations. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_heldout_composition_transfer_promoted_v1_2026-08-08/`.
+
+The multi-order follow-up reuses the same four frozen opaque instructions in
+three held-out orders. One seed transfers all three orders; the second
+transfers two and ties fresh on the first even after doubling only composition
+updates. All safety and retention controls pass, but the strict replicated
+all-target gate is not promoted. This establishes order-robust partial
+compositional reuse and localizes the next bottleneck to transfer calibration
+across order distributions. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_multi_heldout_composition_rejected_v1_2026-08-08/`.
