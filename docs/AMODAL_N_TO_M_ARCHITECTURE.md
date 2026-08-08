@@ -3753,3 +3753,12 @@ runs, but the incompatible middle capability failed strict mastery in both.
 Adapter sharing is therefore an available ABI mechanism, not a promoted
 continual-growth result; the next audit must improve incompatible-capability
 growth and include a matched source-order permutation control.
+
+The follow-up growth-choice protocol is promoted for the bounded canonical
+three-capability sequence across seeds `69316` and `69317`. After a failed
+adapter-sharing probe it verifier-scores both fresh-adapter growth and fresh
+compute-plus-adapter growth, retaining only the best candidate. The canonical
+reports are in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_adapter_sharing_promoted_v1_2026-08-08/`.
+The permutation control is mixed, so this does not establish order-invariant or
+general continual learning.

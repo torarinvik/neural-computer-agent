@@ -368,6 +368,10 @@ def test_reusable_compute_library_can_share_adapter_with_isolated_bindings() -> 
     trial_binding = library.add_binding(trial_compute, adapter_slot_index=0)
     library.remove_binding(trial_binding)
     library.remove_compute_slot(trial_compute)
+    trial_adapter_binding = library.add_binding(0)
+    trial_adapter = library.binding_adapter_slots[trial_adapter_binding]
+    library.remove_binding(trial_adapter_binding)
+    library.remove_adapter_slot(trial_adapter)
     assert library.compute_slot_count == 1
     assert library.binding_compute_slots == (0, 0)
     library.freeze_binding(1)

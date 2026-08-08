@@ -483,6 +483,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         progress: list[dict[str, float | int]] | None = None
         behavior: float | None = None
         behavior_probes: list[float] = []
+        training_seed = args.seed + 20_000 + stage_index * 10_003
+        probe_seed = args.seed + 40_000 + stage_index * 10_003
         if stage_index:
             old_slot_digests.append(
                 {
@@ -636,14 +638,190 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                         behavior = trial_behaviors[selected_key]
                         behavior_probes = trial_probes_by_candidate[selected_key]
                     else:
-                        # Sharing failure means grow the smallest compatible
-                        # boundary first: a fresh adapter on protected compute.
-                        # A fresh compute module remains available to a later
-                        # independently admitted growth decision.
-                        slot_index = bank.add_binding(0)
-                        decoders.append(
-                            _new_decoder(args.seed + 50_000 + stage_index)
+                        # Sharing failure does not determine the growth shape.
+                        # Score the two bounded growth operators on fresh
+                        # outcomes: fresh adapter on protected compute, and
+                        # fresh compute plus fresh adapter. Keep only the
+                        # verifier-best candidate, preferring the smaller
+                        # boundary on ties.
+                        growth_candidates: list[dict[str, object]] = []
+                        growth_states: dict[str, dict[str, object]] = {}
+
+                        growth_rng_state = torch.get_rng_state()
+                        adapter_trial = bank.add_binding(0)
+                        adapter_slot = bank.binding_adapter_slots[adapter_trial]
+                        adapter_decoder = _new_decoder(
+                            args.seed + 10_000 + stage_index * 1_003
                         )
+                        slot_training_attempts += 1
+                        adapter_progress = _train_slot(
+                            parent,
+                            bank,
+                            adapter_trial,
+                            adapter_decoder,
+                            program_id,
+                            grammar,
+                            updates=args.slot_updates,
+                            batch_size=args.batch_size,
+                            audit_count=args.audit_count,
+                            eval_every=args.eval_every,
+                            seed=args.seed + 30_000 + stage_index * 10_003,
+                            learning_rate=args.learning_rate,
+                        )
+                        adapter_behavior, adapter_probes = _probe_accuracy(
+                            parent,
+                            bank,
+                            adapter_trial,
+                            adapter_decoder,
+                            program_id,
+                            grammar,
+                            count=args.audit_count,
+                            probes=args.retention_probes,
+                            seed=args.seed + 35_000 + stage_index * 10_003,
+                        )
+                        growth_candidates.append(
+                            {
+                                "kind": "fresh_adapter",
+                                "compute_slot": 0,
+                                "adapter_slot": adapter_slot,
+                                "behavior": adapter_behavior,
+                                "probe_outcomes": adapter_probes,
+                                "stable_bits_to_threshold": _stable_bits(
+                                    adapter_progress,
+                                    batch_size=args.batch_size,
+                                ),
+                                "fresh_outcomes_only": True,
+                            }
+                        )
+                        growth_states["fresh_adapter"] = {
+                            "adapter_state": {
+                                name: value.detach().clone()
+                                for name, value in bank.binding_adapters[adapter_slot]
+                                .state_dict()
+                                .items()
+                            },
+                            "decoder_state": {
+                                name: value.detach().clone()
+                                for name, value in adapter_decoder.state_dict().items()
+                            },
+                            "progress": adapter_progress,
+                            "behavior": adapter_behavior,
+                            "probes": adapter_probes,
+                        }
+                        bank.remove_binding(adapter_trial)
+                        bank.remove_adapter_slot(adapter_slot)
+                        torch.set_rng_state(growth_rng_state)
+
+                        growth_rng_state = torch.get_rng_state()
+                        compute_trial = bank.add_compute_slot()
+                        compute_binding = bank.add_binding(compute_trial)
+                        compute_adapter_slot = bank.binding_adapter_slots[compute_binding]
+                        compute_decoder = _new_decoder(
+                            args.seed + 50_000 + stage_index
+                        )
+                        slot_training_attempts += 1
+                        compute_progress = _train_slot(
+                            parent,
+                            bank,
+                            compute_binding,
+                            compute_decoder,
+                            program_id,
+                            grammar,
+                            updates=args.slot_updates,
+                            batch_size=args.batch_size,
+                            audit_count=args.audit_count,
+                            eval_every=args.eval_every,
+                            seed=args.seed + 20_000 + stage_index * 10_003,
+                            learning_rate=args.learning_rate,
+                        )
+                        compute_behavior, compute_probes = _probe_accuracy(
+                            parent,
+                            bank,
+                            compute_binding,
+                            compute_decoder,
+                            program_id,
+                            grammar,
+                            count=args.audit_count,
+                            probes=args.retention_probes,
+                            seed=args.seed + 40_000 + stage_index * 10_003,
+                        )
+                        growth_candidates.append(
+                            {
+                                "kind": "fresh_compute_and_adapter",
+                                "compute_slot": compute_trial,
+                                "adapter_slot": compute_adapter_slot,
+                                "behavior": compute_behavior,
+                                "probe_outcomes": compute_probes,
+                                "stable_bits_to_threshold": _stable_bits(
+                                    compute_progress,
+                                    batch_size=args.batch_size,
+                                ),
+                                "fresh_outcomes_only": True,
+                            }
+                        )
+                        growth_states["fresh_compute_and_adapter"] = {
+                            "compute_state": {
+                                name: value.detach().clone()
+                                for name, value in bank.compute_slots[compute_trial]
+                                .state_dict()
+                                .items()
+                            },
+                            "adapter_state": {
+                                name: value.detach().clone()
+                                for name, value in bank.binding_adapters[
+                                    compute_adapter_slot
+                                ].state_dict().items()
+                            },
+                            "decoder_state": {
+                                name: value.detach().clone()
+                                for name, value in compute_decoder.state_dict().items()
+                            },
+                            "progress": compute_progress,
+                            "behavior": compute_behavior,
+                            "probes": compute_probes,
+                        }
+                        bank.remove_binding(compute_binding)
+                        bank.remove_adapter_slot(compute_adapter_slot)
+                        bank.remove_compute_slot(compute_trial)
+                        torch.set_rng_state(growth_rng_state)
+
+                        selected_growth = max(
+                            growth_candidates,
+                            key=lambda candidate: (
+                                min(candidate["probe_outcomes"]),
+                                candidate["kind"] == "fresh_adapter",
+                            ),
+                        )
+                        selected_kind = str(selected_growth["kind"])
+                        selected_state = growth_states[selected_kind]
+                        if selected_kind == "fresh_adapter":
+                            slot_index = bank.add_binding(0)
+                            selected_adapter = bank.binding_adapter_slots[slot_index]
+                            bank.binding_adapters[selected_adapter].load_state_dict(
+                                selected_state["adapter_state"], strict=True
+                            )
+                        else:
+                            selected_compute = bank.add_compute_slot()
+                            slot_index = bank.add_binding(selected_compute)
+                            selected_adapter = bank.binding_adapter_slots[slot_index]
+                            bank.compute_slots[selected_compute].load_state_dict(
+                                selected_state["compute_state"], strict=True
+                            )
+                            bank.binding_adapters[selected_adapter].load_state_dict(
+                                selected_state["adapter_state"], strict=True
+                            )
+                        selected_decoder = _new_decoder(
+                            args.seed + 50_000 + stage_index
+                        )
+                        selected_decoder.load_state_dict(
+                            selected_state["decoder_state"], strict=True
+                        )
+                        decoders.append(selected_decoder)
+                        progress = selected_state["progress"]
+                        behavior = selected_state["behavior"]
+                        behavior_probes = selected_state["probes"]
+                        reuse_trial["growth_candidates"] = growth_candidates
+                        reuse_trial["growth_decision"] = selected_kind
                 elif args.candidate_reuse:
                     screen_context = (
                         _candidate_screen_query(
@@ -910,7 +1088,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 batch_size=args.batch_size,
                 audit_count=args.audit_count,
                 eval_every=args.eval_every,
-                seed=args.seed + 20_000 + stage_index * 10_003,
+                seed=training_seed,
                 learning_rate=args.learning_rate,
             )
             behavior, behavior_probes = _probe_accuracy(
@@ -922,7 +1100,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 grammar,
                 count=args.audit_count,
                 probes=args.retention_probes,
-                seed=args.seed + 40_000 + stage_index * 10_003,
+                seed=probe_seed,
             )
         progress_by_slot.append(progress)
         if stage_index == 0:

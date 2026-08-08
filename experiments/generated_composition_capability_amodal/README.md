@@ -631,3 +631,11 @@ Rejected candidates are rolled back, including their stochastic stream, and
 the least-growth fresh-adapter fallback is used. This mode is intentionally
 not promoted yet; see the archived two-seed rejection under
 `session_records/sequence_working_memory_2026-08-02/`.
+
+The follow-up growth-choice protocol is promoted for the canonical three-source
+sequence across seeds `69316` and `69317`: after sharing fails, it fresh-probes
+both a fresh adapter on protected compute and fresh compute plus fresh adapter,
+then retains the verifier-best option. The permutation control remains mixed,
+so this is bounded canonical growth rather than order-invariant continual
+learning. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_adapter_sharing_promoted_v1_2026-08-08/`.

@@ -2174,6 +2174,17 @@ class ExternalCapabilityReusableComputeLibrary(nn.Module):
             raise ValueError("cannot discard a compute slot with active bindings")
         del self.compute_slots[compute_slot_index]
 
+    def remove_adapter_slot(self, adapter_slot_index: int) -> None:
+        """Discard the newest unpromoted adapter module when it is unbound."""
+
+        if adapter_slot_index != self.adapter_slot_count - 1:
+            raise ValueError("only the newest reusable adapter slot can be discarded")
+        if self.adapter_slot_count < 2:
+            raise ValueError("reusable compute library must retain one adapter slot")
+        if adapter_slot_index in self._binding_adapter_slots:
+            raise ValueError("cannot discard an adapter slot with active bindings")
+        del self.binding_adapters[adapter_slot_index]
+
     def add_binding(
         self,
         compute_slot_index: int,

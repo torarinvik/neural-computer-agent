@@ -1,0 +1,18 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "status": "promoted_bounded_canonical_protocol",
+  "experiment": "verifier-gated adapter sharing with verifier-scored growth choice",
+  "date": "2026-08-08",
+  "canonical_seeds": [69316, 69317],
+  "permutation_control": "source order [2, 1, 0] run for both seeds; one promoted and one failed",
+  "unique_verifier_bits_per_run": 124928,
+  "unique_logical_lifetimes_per_run": 41984,
+  "optimizer_updates_per_run": 1344,
+  "replayed_examples": 0,
+  "wall_gpu_time": "local CPU; see reports",
+  "latency": "not measured",
+  "stable_bits_to_threshold": "passed canonical runs",
+  "retention_on_mastered_primitives": "passed canonical runs",
+  "transfer_ratio_against_fresh_learner": "not measured",
+  "decision": "promote bounded canonical protocol; reject order-invariant claim"
+}
