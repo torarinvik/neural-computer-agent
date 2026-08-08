@@ -300,3 +300,10 @@ The next implementation adds `ExternalRegisterBasisCompatibilityPrior`, a
 replaceable opaque candidate screen that learns slot ordering from attempted
 scalar outcomes. It remains screening-only; fresh stable verifier evidence
 still controls reuse versus growth.
+
+The two-seed held-out opaque screening audit reduced mean trials on admissible
+queries from `1.869` to `1.034` and from `1.979` to `1.037`, while preserving
+the exact verifier-admissibility rate. This promotes bounded screening
+efficiency, not verifier-free admission or general cross-operator transfer.
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_compatibility_prior_audit_2026-08-08/`.

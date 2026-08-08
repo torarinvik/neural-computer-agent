@@ -1,0 +1,32 @@
+{
+  "schema": "neural-computer.external-register-compatibility-prior-audit.v1",
+  "claim_boundary": "A memory-side opaque screen may reduce candidate trial count on a held-out scalar-verifier distribution; it never replaces fresh admission.",
+  "seed": 69316,
+  "basis_count": 5,
+  "train_queries": 8192,
+  "audit_queries": 256,
+  "updates": 256,
+  "threshold": 0.55,
+  "learned": {
+    "mean_trials": 1.328125,
+    "pass_rate": 0.92578125,
+    "mean_trials_on_admissible": 1.0337552742616034
+  },
+  "cold_append_order": {
+    "mean_trials": 2.1015625,
+    "pass_rate": 0.92578125,
+    "mean_trials_on_admissible": 1.869198312236287
+  },
+  "admissible_queries": 237,
+  "accounting": {
+    "replayed_examples": 0,
+    "optimizer_updates": 256,
+    "unique_verifier_outcomes": 42240
+  },
+  "gates": {
+    "learned_screen_preserves_verifier_admissibility": true,
+    "learned_reduces_trials_on_admissible": true,
+    "no_replayed_examples": true
+  },
+  "promoted": true
+}

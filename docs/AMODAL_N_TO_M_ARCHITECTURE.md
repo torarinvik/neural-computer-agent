@@ -4036,3 +4036,11 @@ It reuses the existing learned opaque candidate-screen mechanism over learned
 slot signatures and instruction-vector queries, training only from attempted
 scalar outcomes. It is deliberately a screening prior rather than an
 admission authority: fresh stable-prefix verification remains mandatory.
+
+The opaque compatibility prior now has a two-seed held-out screening audit.
+It reduced mean candidate trials on admissible queries from `1.869` to `1.034`
+and from `1.979` to `1.037`, while preserving exact verifier admissibility and
+using zero replay. This promotes trial-order efficiency only; fresh stable
+verification remains mandatory for reuse or growth decisions. Evidence is
+archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_compatibility_prior_audit_2026-08-08/`.
