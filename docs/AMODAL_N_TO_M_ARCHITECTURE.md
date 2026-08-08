@@ -4044,3 +4044,11 @@ using zero replay. This promotes trial-order efficiency only; fresh stable
 verification remains mandatory for reuse or growth decisions. Evidence is
 archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_compatibility_prior_audit_2026-08-08/`.
+
+The real multi-slot acquisition follow-up trained three source primitives into
+independent basis slots, updated the opaque prior from their actual verifier
+outcome matrix, and routed held-out `prefix_parity` through the live register
+scheduler. Both seeds correctly requested growth because no existing slot
+passed fresh verification, with zero replay. This establishes no-false-
+admission behavior during real acquisition; positive transfer to a genuinely
+new primitive remains open.

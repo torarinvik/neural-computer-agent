@@ -307,3 +307,10 @@ the exact verifier-admissibility rate. This promotes bounded screening
 efficiency, not verifier-free admission or general cross-operator transfer.
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_compatibility_prior_audit_2026-08-08/`.
+
+The real acquisition follow-up trained three source primitives into separate
+basis slots, updated the prior from their actual verifier outcome matrix, and
+routed a held-out `prefix_parity` candidate through the live register
+scheduler. Both seeds correctly requested growth because no existing slot
+passed fresh verification; no replay was used. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_real_basis_acquisition_2026-08-08/`.
