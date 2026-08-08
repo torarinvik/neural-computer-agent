@@ -58,6 +58,11 @@ parser.add_argument("--gamma", type=float, default=0.95)
 parser.add_argument("--width", type=int, default=64)
 parser.add_argument("--max-restarts", type=int, default=4)
 parser.add_argument("--decoy-draws", type=int, default=8)
+parser.add_argument("--cue-entropy", type=float, default=0.05)
+parser.add_argument(
+    "--ignorance", type=float, default=0.5,
+    help="phase-1 pressure toward uniform action under OFF-VOCABULARY "
+         "goals, so a noise fragment yields uninformative behaviour")
 parser.add_argument(
     "--reward-feedback", action="store_true",
     help="feed reward back into the controller (default OFF: it is a "
@@ -147,6 +152,7 @@ def episode(*, game: int | None, command: torch.Tensor | None,
         has_feedback=torch.zeros(args.batch_size))
     rng = torch.Generator().manual_seed(seed + 5)
     rewards, selfr, logps, masks, actions_trace = [], [], [], [], []
+    logits_trace = []
     alive = torch.ones(args.batch_size, dtype=torch.bool)
     for _step in range(args.steps):
         masks.append(alive.float())
@@ -173,6 +179,7 @@ def episode(*, game: int | None, command: torch.Tensor | None,
             logps.append(torch.zeros(args.batch_size))
             propensity = torch.ones(args.batch_size)
         else:
+            logits_trace.append(output.decoded["keypress"])
             decision = decoder.decide_from_logits(
                 output.decoded["keypress"], sample=sample)
             acts = decision.key_index
@@ -279,6 +286,7 @@ def episode(*, game: int | None, command: torch.Tensor | None,
         "advantage": advantage, "logp": torch.stack(logps, dim=1),
         "actions": torch.stack(actions_trace, dim=1),
         "command_used": command,
+        "logits": torch.stack(logits_trace, dim=1) if logits_trace else None,
     }
 
 
@@ -339,8 +347,34 @@ for attempt in range(args.max_restarts):
                     ratio = float(correct / (correct + wrong).clamp_min(1.0))
                     command_score[value] = (
                         0.9 * command_score[value] + 0.1 * ratio)
+        loss_ignorance = torch.zeros(())
+        if args.ignorance > 0.0 and update % 3 == 0:
+            # Ignorance under OFF-VOCABULARY goals. The decoy gate asks
+            # that a noise fragment produce uninformative behaviour, but
+            # nothing in phase 1 ever taught that: measured, a random
+            # goal makes the plant favour one plane (decoy 0.72 on
+            # choiceB, seed 69316), so an uninformative goal produced
+            # very informative behaviour. Teach it directly -- goals
+            # drawn OFF the vocabulary (orthogonalised against both
+            # commands) must yield near-uniform action logits.
+            with torch.no_grad():
+                probe_goal = torch.randn(args.width)
+                for direction in COMMANDS:
+                    unit = direction / direction.norm().clamp_min(1e-6)
+                    probe_goal = probe_goal - (probe_goal @ unit) * unit
+                probe_goal = (probe_goal
+                              / probe_goal.norm().clamp_min(1e-6) * 4.0)
+            blind = episode(game=None, command=None,
+                            goal_event=probe_goal.reshape(1, -1),
+                            seed=args.seed + 900_000 + update, sample=True)
+            if blind["logits"] is not None:
+                log_probs = torch.log_softmax(blind["logits"], dim=-1)
+                uniform = -torch.tensor(
+                    float(decoder.key_count)).log()
+                loss_ignorance = args.ignorance * (
+                    log_probs - uniform).square().mean()
         terms = out["advantage"] * out["logp"] * out["mask"]
-        loss = -terms.sum() / terms.shape[0]
+        loss = -terms.sum() / terms.shape[0] + loss_ignorance
         # Entropy bonus: a policy that goes deterministic on one plane stops
         # sampling the commanded-vs-other contrast that teaches conditioning.
         entropy = -(out["logp"] * out["mask"]).sum() / out["mask"].sum().clamp_min(1)
@@ -455,6 +489,18 @@ for update in range(args.game_updates):
     advantage = advantage - (advantage * out["mask"]).sum() / out["mask"].sum().clamp_min(1)
     terms = advantage * out["logp"] * out["mask"]
     loss = -terms.sum() / terms.shape[0]
+    # The cue -> fragment map is a 2x2 ASSIGNMENT, and a softmax blend
+    # that commits early gets stuck: seed 69319 reached competence
+    # 1.0/1.0 and then scored 0.19/0.22 on BOTH twins -- below their
+    # floors, the signature of a swapped assignment that REINFORCE could
+    # not climb out of. Keep the map soft while it is still cheap to
+    # change, annealed to zero over the first half of the phase.
+    anneal = max(0.0, 1.0 - 2.0 * update / max(args.game_updates, 1))
+    if anneal > 0.0:
+        corners = torch.eye(2)
+        weights = torch.softmax(cue_reader(corners), dim=-1)
+        cue_entropy = -(weights * weights.clamp_min(1e-8).log()).sum(dim=-1)
+        loss = loss - args.cue_entropy * anneal * cue_entropy.mean()
     optimizer.zero_grad(set_to_none=True)
     loss.backward()
     torch.nn.utils.clip_grad_norm_(bank_params, 1.0)
