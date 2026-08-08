@@ -677,3 +677,8 @@ every protected compute slot before allocating fresh compute. The matched
 five-capability audit passed all gates, but both seeds still selected fresh
 compute for the hard middle capability; this is an ABI improvement without a
 new compute-compression claim.
+
+The four-source shared routed neural-consolidation attempt is retained as a
+rejection: one seed passed, but the other failed even after 1024 consolidation
+updates. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_distilled_consolidation_four_source_rejected_v1_2026-08-08/`.

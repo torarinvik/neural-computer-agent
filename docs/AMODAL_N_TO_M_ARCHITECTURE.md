@@ -3808,3 +3808,10 @@ Growth admission now also tests fresh adapters against every protected compute
 slot before allocating a new compute module. The matched audit preserved all
 gates but selected fresh compute for the hard middle capability in both seeds,
 so compute growth remains the next compression bottleneck.
+
+The next shared-computation intervention attempted to consolidate four
+protected procedures into one routed neural artifact. It is rejected: seed
+`69317` passed, but seed `69316` failed at `0.699` and still failed at `0.738`
+after doubling consolidation updates. The shared dense stack is therefore not
+yet a reliable four-source consolidation mechanism. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_distilled_consolidation_four_source_rejected_v1_2026-08-08/`.
