@@ -454,6 +454,7 @@ def main() -> None:
             "attempted_bce",
             "reinforce",
             "reinforce_baseline",
+            "reinforce_trace",
             "paired_counterfactual",
         ),
         default="attempted_bce",

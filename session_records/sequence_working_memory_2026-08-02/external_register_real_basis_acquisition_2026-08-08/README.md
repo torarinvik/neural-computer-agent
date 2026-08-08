@@ -67,3 +67,12 @@ acquisition (`69316`: `0.8164`; `69317`: `0.7813`) while retaining source
 skills and rejecting shuffled training. The estimator is retained as a valid
 option, but the bottleneck is now localized to routing credit through the
 new basis and decoder representation.
+
+## Eligibility-trace scalar credit follow-up — rejected
+
+Discounted return-to-go credit was added so each delivered outcome could
+credit earlier selected actions through the sequence. It performed worse than
+the one-step estimators (`69316`: `0.7930`; `69317`: `0.7656` final accuracy;
+neither had a stable prefix). Retention and shuffled-training rejection still
+passed. Temporal credit accumulation is therefore not promoted as the default
+new-slot learner.

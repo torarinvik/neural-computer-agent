@@ -166,6 +166,9 @@ def _rollout(
 
     losses: list[torch.Tensor] = []
     rewards: list[torch.Tensor] = []
+    delivered_rewards: list[torch.Tensor] = []
+    trace_log_probabilities: list[torch.Tensor] = []
+    trace_entropies: list[torch.Tensor] = []
     for frame, correct in zip(
         batch.query_frames.transpose(0, 1),
         batch.correct_actions.transpose(0, 1),
@@ -226,10 +229,26 @@ def _rollout(
                 dim=-1
             )
             loss = -(advantage * selected_log_probability).mean() - 0.01 * entropy.mean()
+        elif credit_mode == "reinforce_trace":
+            # Assemble the return-to-go objective after the full sequence so
+            # each delivered scalar can credit earlier selected actions.
+            loss = logits.sum() * 0.0
         else:
             raise ValueError(f"unknown credit mode: {credit_mode!r}")
         losses.append(loss)
         rewards.append(reward)
+        delivered_rewards.append(delivered)
+        if credit_mode == "reinforce_trace":
+            trace_log_probabilities.append(
+                behavior_probabilities.log().gather(
+                    1, action.unsqueeze(1)
+                ).squeeze(1)
+            )
+            trace_entropies.append(
+                -(behavior_probabilities * behavior_probabilities.log()).sum(
+                    dim=-1
+                )
+            )
         previous_action = F.one_hot(action, ACTION_WIDTH).to(logits.dtype)
         previous_reward = delivered
         previous_propensity = behavior_probabilities.gather(
@@ -239,6 +258,34 @@ def _rollout(
             torch.finfo(probabilities.dtype).tiny
         )
         previous_has_feedback = torch.ones_like(previous_reward)
+    if credit_mode == "reinforce_trace":
+        gamma = 0.9
+        delivered_matrix = torch.stack(delivered_rewards, dim=1)
+        returns = torch.zeros_like(delivered_matrix)
+        running = torch.zeros(
+            batch_size, device=device, dtype=delivered_matrix.dtype
+        )
+        for index in range(delivered_matrix.shape[1] - 1, -1, -1):
+            running = delivered_matrix[:, index] + gamma * running
+            returns[:, index] = running
+        horizon = delivered_matrix.shape[1]
+        baselines = torch.tensor(
+            [
+                sum(gamma**offset for offset in range(horizon - index)) * 0.5
+                for index in range(horizon)
+            ],
+            device=device,
+            dtype=delivered_matrix.dtype,
+        )
+        advantages = returns - baselines.unsqueeze(0)
+        trace_loss = torch.stack(
+            tuple(
+                -(advantages[:, index].detach() * log_probability).mean()
+                - 0.01 * trace_entropies[index].mean()
+                for index, log_probability in enumerate(trace_log_probabilities)
+            )
+        ).mean()
+        return trace_loss, torch.stack(rewards, dim=1)
     return torch.stack(losses).mean(), torch.stack(rewards, dim=1)
 
 
