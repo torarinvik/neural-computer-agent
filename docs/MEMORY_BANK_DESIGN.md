@@ -1606,3 +1606,44 @@ Standing methodological rule, learned the hard way twice (cf. F31):
 a quantity measured before a training phase is not evidence about its
 value after that phase. Any claim resting on a measured signal must
 re-measure it at the point of use.
+
+**F47 (probe 73). Encoding-anchored consolidation preserves the
+addressing and does not restore mastery: the self-addressing loop has
+three working parts and one that will not transfer.** Running the
+addressing phase with the plant plastic under an arbitrated penalty
+anchored on the encoding's own Fisher, both seeds:
+
+| seed | probe signs A/B | fragments A/B | mastery A/B | frozen-plant control |
+| --- | --- | --- | --- | --- |
+| 69316 | 1 / 0 | [3,2] / [1,5] | 0.211 / 0.547 | 0.211 / 0.242 |
+| 69317 | 1 / 0 | [5,2] / [3,0] | 0.172 / 0.250 | 0.172 / 0.305 |
+
+The consolidation does its job: the encoding survives a plastic phase
+(+-1.00 retained, signs still split) where an unprotected phase destroyed
+it (F46). That is the promoted EWC line generalising to a competence it
+was never built for — protecting a context ENCODING rather than a game
+skill — and it is the fourth setting in which that mechanism has held.
+
+Mastery does not follow. One cell moved (choiceB 0.242 -> 0.547 on seed
+69316) and nothing else did; seed 69317 is flat or slightly worse. With
+addressing correct and the encoding intact, the residue is isolated to
+the last place it can be: the read path was formed under ORACLE
+addressing, where the fetched fragments are fixed per context from
+update one, and it does not transfer to probe addressing, where the
+fetch depends on a measurement the agent makes afresh each episode.
+
+That is a real and specific finding, not a tuning gap. Under oracle
+addressing the plant may condition on a constant; under probe addressing
+it must condition on the CONSEQUENCES of its own probing action, which
+is a different computation over a different input. Staging cannot bridge
+them because each stage teaches the wrong one: this is F41's law —
+an easing stage must exercise the policy the target requires — applied
+to addressing rather than to a game.
+
+Consequence, and the honest end state of this line: the three parts must
+be CO-TRAINED from the start (probe, fetch, and execute in one loop with
+one objective), not assembled from separately validated stages. Every
+staged design in this program worked when the stages shared a policy
+(F13, F18, F40) and failed when they did not (F20, F21, F41, F47). That
+is now a five-times-confirmed law and it predicts the co-training
+requirement rather than merely permitting it.
