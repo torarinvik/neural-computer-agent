@@ -9,6 +9,7 @@ from pathlib import Path
 import torch
 
 from neural_computer import (
+    ExternalCapabilityRegisterMachine,
     ExternalRegisterBasisCompatibilityPrior,
     ExternalRegisterComputeBasis,
 )
@@ -46,7 +47,16 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     with torch.no_grad():
         for slot in basis_slots:
             slot.signature.copy_(torch.randn(args.width))
-    keys = ExternalRegisterBasisCompatibilityPrior.basis_keys(basis_slots)
+    machine = ExternalCapabilityRegisterMachine(
+        event_width=1,
+        action_width=1,
+        intention_width=1,
+        register_width=args.width,
+        instruction_width=args.width,
+        interpreter_hidden=args.hidden,
+        basis_slots=basis_slots,
+    )
+    keys = ExternalRegisterBasisCompatibilityPrior.basis_keys(machine.basis_slots)
     prior = ExternalRegisterBasisCompatibilityPrior(
         args.width,
         latent_width=args.latent_width,
@@ -72,13 +82,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     cold_passes = 0
     for query_index in range(args.audit_queries):
         permutation = torch.randperm(args.basis_count)
-        permuted_keys = keys[permutation]
-        learned_order_in_permutation = prior(
-            query_batch[query_index : query_index + 1],
-            permuted_keys,
-        )[0].argsort(descending=True, stable=True)
-        learned_order = tuple(
-            int(permutation[index]) for index in learned_order_in_permutation
+        learned_order = machine.order_basis_candidates(
+            prior,
+            query_batch[query_index],
+            candidate_indices=permutation.tolist(),
         )
         cold_order = tuple(int(index) for index in permutation)
         learned_count, learned_pass = _trial_count(

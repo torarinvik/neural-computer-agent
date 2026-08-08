@@ -8,16 +8,16 @@
   "updates": 256,
   "threshold": 0.55,
   "learned": {
-    "mean_trials": 1.26953125,
-    "pass_rate": 0.94140625,
-    "mean_trials_on_admissible": 1.037344398340249
+    "mean_trials": 1.21484375,
+    "pass_rate": 0.953125,
+    "mean_trials_on_admissible": 1.028688524590164
   },
   "cold_append_order": {
-    "mean_trials": 2.15625,
-    "pass_rate": 0.94140625,
-    "mean_trials_on_admissible": 1.979253112033195
+    "mean_trials": 2.27734375,
+    "pass_rate": 0.953125,
+    "mean_trials_on_admissible": 2.1434426229508197
   },
-  "admissible_queries": 241,
+  "admissible_queries": 244,
   "accounting": {
     "replayed_examples": 0,
     "optimizer_updates": 256,

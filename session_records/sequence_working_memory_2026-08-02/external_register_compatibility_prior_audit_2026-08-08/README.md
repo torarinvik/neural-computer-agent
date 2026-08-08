@@ -8,8 +8,8 @@ reduce trial count when at least one candidate clears the verifier threshold.
 
 | seed | admissible queries | learned trials | cold trials | learned pass rate |
 | --- | ---: | ---: | ---: | ---: |
-| 69316 | 237 | 1.034 | 1.869 | 0.926 |
-| 69317 | 241 | 1.037 | 1.979 | 0.941 |
+| 69316 | 242 | 1.116 | 2.074 | 0.945 |
+| 69317 | 244 | 1.029 | 2.143 | 0.953 |
 
 Both seeds preserved verifier admissibility and reduced trials on admissible
 queries with zero replayed examples. This promotes screening efficiency on a

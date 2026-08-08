@@ -117,6 +117,9 @@ def test_opaque_basis_compatibility_prior_only_orders_and_never_admits() -> None
 
     prior.enable()
     assert sorted(prior.order(query[0], keys)) == [0, 1]
+    scheduled = machine.order_basis_candidates(prior, query[0], (1, 0))
+    assert set(scheduled) == {0, 1}
+    assert machine.configuration()["basis_slot_count"] == len(machine.basis_slots)
     outcomes = torch.tensor([[0.9, 0.4], [0.2, 0.8]])
     loss, pair_count = prior.outcome_ranking_loss(query, keys, outcomes)
     assert torch.isfinite(loss)

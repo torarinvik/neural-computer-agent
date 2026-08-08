@@ -534,6 +534,29 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             threshold=threshold,
         )
 
+    def order_basis_candidates(
+        self,
+        prior: ExternalRegisterBasisCompatibilityPrior,
+        instruction_query: torch.Tensor,
+        candidate_indices: Iterable[int] | None = None,
+    ) -> tuple[int, ...]:
+        """Order memory-selected basis candidates without admitting one."""
+
+        if not self.basis_slots:
+            raise ValueError("cannot order an empty basis slot set")
+        selected = (
+            tuple(range(len(self.basis_slots)))
+            if candidate_indices is None
+            else tuple(candidate_indices)
+        )
+        if not selected:
+            raise ValueError("basis candidate set cannot be empty")
+        if any(index < 0 or index >= len(self.basis_slots) for index in selected):
+            raise ValueError("basis candidate index is out of range")
+        keys = prior.basis_keys(self.basis_slots)
+        local_order = prior.order(instruction_query, keys[list(selected)])
+        return tuple(selected[index] for index in local_order)
+
     def freeze_basis_slot(self, basis_slot: int) -> None:
         """Protect one mastered external computation slot from later updates."""
 

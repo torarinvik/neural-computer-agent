@@ -4038,8 +4038,8 @@ scalar outcomes. It is deliberately a screening prior rather than an
 admission authority: fresh stable-prefix verification remains mandatory.
 
 The opaque compatibility prior now has a two-seed held-out screening audit.
-It reduced mean candidate trials on admissible queries from `1.869` to `1.034`
-and from `1.979` to `1.037`, while preserving exact verifier admissibility and
+It reduced mean candidate trials on admissible queries from `2.074` to `1.116`
+and from `2.143` to `1.029`, while preserving exact verifier admissibility and
 using zero replay. This promotes trial-order efficiency only; fresh stable
 verification remains mandatory for reuse or growth decisions. Evidence is
 archived in
