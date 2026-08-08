@@ -283,7 +283,15 @@ passed all safety controls, but only one transferred faster than fresh
 reuse is therefore rejected as a strict promotion and remains the next
 bottleneck.
 
+The executable route-vs-grow follow-up now passes both seeds: the slower case
+appended and trained slot 1, recovering 8,192 stable bits while retaining the
+old capability at 1.0000; the faster case reused slot 0 at 4,096 stable bits,
+also retaining the old capability at 1.0000. This promotes efficiency-aware
+capacity routing for this pressure test, while general cross-operator priors
+remain open.
+
 Efficiency-aware admission now separates the two cases: seed `69316`
 requests growth when reuse costs `16,384` versus `8,192` fresh bits, while
 seed `69317` reuses at `4,096` versus `8,192`. This closes the correctness-only
-admission gap. The actual append-and-retrain grow branch remains to be audited.
+admission gap; the append-and-retrain grow branch is covered by the executable
+route-vs-grow result above.

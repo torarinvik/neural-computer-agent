@@ -118,6 +118,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     if admission.action != "reuse":
         raise RuntimeError("mastered basis was not admitted for reuse")
 
+    source_state = {
+        name: value.detach().clone() for name, value in inherited.state_dict().items()
+    }
+    source_basis_digest = _module_digest(inherited.basis_slots[basis_slot])
     inherited.freeze_basis_slot(basis_slot)
     _freeze_machine(inherited)
     inherited.add_instruction(type(inherited.instructions[0])(inherited.instruction_width))
@@ -270,6 +274,69 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         fresh_stable_bits=fresh_stable,
         threshold=THRESHOLD,
     )
+    if efficiency_admission.action == "reuse":
+        routed = inherited
+        routed_decoder = second_decoder
+        routed_basis_slot = basis_slot
+        routed_accuracy = second_accuracy
+        routed_stable = inherited_stable
+    else:
+        routed = _new_machine(1, operator_mode=args.operator_mode)
+        routed.add_basis_slot()
+        routed.load_state_dict(source_state, strict=True)
+        routed.add_instruction(type(routed.instructions[0])(routed.instruction_width))
+        routed_basis_slot = routed.add_basis_slot()
+        routed_decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
+        _freeze_machine(routed)
+        routed_basis = routed.basis_slots[routed_basis_slot]
+        routed_progress = _train_rotate(
+            parent,
+            routed,
+            routed_decoder,
+            updates=args.reuse_updates,
+            batch_size=args.batch_size,
+            span=args.span,
+            seed=args.seed + 60_000,
+            trainable=[
+                routed.instructions[-1].code,
+                *routed_basis.parameters(),
+                *routed_decoder.parameters(),
+            ],
+            basis_slot=routed_basis_slot,
+            operation=args.second_operation,
+        )
+        routed_accuracy = _accuracy(
+            parent,
+            routed,
+            routed_decoder,
+            operation=args.second_operation,
+            instructions=(routed.instructions[-1],),
+            basis_slots=(routed_basis_slot,),
+            count=args.audit_count,
+            span=args.span,
+            seed=args.seed + 61_000,
+            credit_mode="paired_counterfactual",
+        )
+        routed_stable = _stable_bits(
+            routed_progress,
+            threshold=THRESHOLD,
+            bits_per_update=args.batch_size * args.span * 2,
+        )
+    routed_first_accuracy = _accuracy(
+        parent,
+        routed,
+        first_decoder,
+        operation=TARGET_OPERATION,
+        instructions=(routed.instructions[0],),
+        basis_slots=(basis_slot,),
+        count=args.audit_count,
+        span=args.span,
+        seed=args.seed + 62_000,
+        credit_mode="paired_counterfactual",
+    )
+    routed_old_basis_unchanged = (
+        source_basis_digest == _module_digest(routed.basis_slots[basis_slot])
+    )
     gates = {
         "basis_admitted_by_fresh_probe": admission.action == "reuse",
         "first_mastered": first_accuracy >= THRESHOLD,
@@ -281,6 +348,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             and fresh_stable is not None
             and fresh_stable > inherited_stable
         ),
+        "routed_mastered": routed_accuracy >= THRESHOLD,
+        "routed_stable": routed_stable is not None,
+        "routed_first_retained": routed_first_accuracy >= THRESHOLD,
+        "routed_old_basis_unchanged": routed_old_basis_unchanged,
         "first_retained": first_after >= THRESHOLD,
         "frozen_basis": basis_digest == _module_digest(inherited.basis_slots[basis_slot]),
         "reward_shuffled_rejected": shuffled_accuracy < THRESHOLD,
@@ -313,6 +384,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "efficiency_action": efficiency_admission.action,
             "efficiency_slot": efficiency_admission.compute_slot_index,
             "efficiency_reason": efficiency_admission.reason,
+        },
+        "routed": {
+            "action": efficiency_admission.action,
+            "basis_slot": routed_basis_slot,
+            "accuracy": routed_accuracy,
+            "stable_bits": routed_stable,
+            "first_capability_accuracy": routed_first_accuracy,
+            "old_basis_unchanged": routed_old_basis_unchanged,
         },
         "accounting": {
             "unique_verifier_bits": (

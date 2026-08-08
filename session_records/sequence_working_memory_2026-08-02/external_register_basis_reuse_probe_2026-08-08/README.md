@@ -41,3 +41,14 @@ The efficiency-aware admission rerun makes the correct route explicit:
 
 This is a policy result, not yet a full grow-and-retrain experiment: the next
 audit must actually append and train the new slot on the `grow` branch.
+
+That grow branch is now executed and passes:
+
+| seed | selected route | routed stable bits | old capability | old slot |
+| --- | --- | ---: | ---: | --- |
+| 69316 | grow slot 1 | 8,192 | 1.0000 | unchanged |
+| 69317 | reuse slot 0 | 4,096 | 1.0000 | unchanged |
+
+The appended slot was trained from fresh outcomes only. This promotes
+efficiency-aware route-vs-grow preservation for this two-seed pressure test;
+it does not yet establish a general cross-operator transfer prior.
