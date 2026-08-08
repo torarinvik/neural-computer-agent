@@ -4005,3 +4005,11 @@ slot digest, source capability, shuffled-outcome, missing-evidence, reload,
 frozen-parent, and zero-replay gates all passed. This is bounded sample-
 efficient reuse of mastered external computation; general new-primitive
 induction and unrestricted continual learning remain open.
+
+The distinct-operator follow-up reused the frozen `rotate` basis for a fresh
+`global_parity` instruction. It passed safety and retention on both seeds, but
+stable transfer was asymmetric: one seed improved (`4,096` versus `8,192`
+fresh bits), while the other regressed (`16,384` versus `8,192`). Strict
+cross-operator promotion is rejected. The next bottleneck is learned
+compatibility/routing across primitive families, not external-slot growth or
+same-family reuse.

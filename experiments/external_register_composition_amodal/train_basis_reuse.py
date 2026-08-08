@@ -45,13 +45,14 @@ def _train_rotate(
     seed: int,
     trainable,
     basis_slot: int,
+    operation: str = TARGET_OPERATION,
     shuffled: bool = False,
 ):
     return _train_stage(
         parent,
         machine,
         decoder,
-        operation=TARGET_OPERATION,
+        operation=operation,
         instructions=(machine.instructions[-1],),
         basis_slots=(basis_slot,),
         updates=updates,
@@ -132,12 +133,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         seed=args.seed + 30_000,
         trainable=[second_instruction.code, *second_decoder.parameters()],
         basis_slot=basis_slot,
+        operation=args.second_operation,
     )
     second_accuracy = _accuracy(
         parent,
         inherited,
         second_decoder,
-        operation=TARGET_OPERATION,
+        operation=args.second_operation,
         instructions=(second_instruction,),
         basis_slots=(basis_slot,),
         count=args.audit_count,
@@ -176,13 +178,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         seed=args.seed + 40_000,
         trainable=[shuffled.instructions[-1].code, *shuffled_decoder.parameters()],
         basis_slot=basis_slot,
+        operation=args.second_operation,
         shuffled=True,
     )
     shuffled_accuracy = _accuracy(
         parent,
         shuffled,
         shuffled_decoder,
-        operation=TARGET_OPERATION,
+        operation=args.second_operation,
         instructions=(shuffled.instructions[-1],),
         basis_slots=(basis_slot,),
         count=args.audit_count,
@@ -195,7 +198,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         parent,
         inherited,
         second_decoder,
-        operation=TARGET_OPERATION,
+        operation=args.second_operation,
         instructions=(second_instruction,),
         basis_slots=(basis_slot,),
         count=args.audit_count,
@@ -214,7 +217,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         parent,
         reloaded,
         reload_decoder,
-        operation=TARGET_OPERATION,
+        operation=args.second_operation,
         instructions=(reloaded.instructions[-1],),
         basis_slots=(basis_slot,),
         count=args.audit_count,
@@ -240,12 +243,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         seed=args.seed + 50_000,
         trainable=[*fresh.parameters(), *fresh_decoder.parameters()],
         basis_slot=fresh_basis,
+        operation=args.second_operation,
     )
     fresh_accuracy = _accuracy(
         parent,
         fresh,
         fresh_decoder,
-        operation=TARGET_OPERATION,
+        operation=args.second_operation,
         instructions=(fresh.instructions[-1],),
         basis_slots=(fresh_basis,),
         count=args.audit_count,
@@ -254,10 +258,23 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         credit_mode="paired_counterfactual",
     )
     parent_digest_after = _module_digest(parent.controller)
+    reused_stable = inherited_stable is not None
+    fresh_stable = _stable_bits(
+        fresh_progress,
+        threshold=THRESHOLD,
+        bits_per_update=args.batch_size * args.span * 2,
+    )
     gates = {
         "basis_admitted_by_fresh_probe": admission.action == "reuse",
         "first_mastered": first_accuracy >= THRESHOLD,
         "reused_mastered": second_accuracy >= THRESHOLD,
+        "reused_stable": reused_stable,
+        "fresh_stable": fresh_stable is not None,
+        "positive_transfer": (
+            reused_stable
+            and fresh_stable is not None
+            and fresh_stable > inherited_stable
+        ),
         "first_retained": first_after >= THRESHOLD,
         "frozen_basis": basis_digest == _module_digest(inherited.basis_slots[basis_slot]),
         "reward_shuffled_rejected": shuffled_accuracy < THRESHOLD,
@@ -271,6 +288,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "claim_boundary": "A mastered external basis slot is reused by a fresh opaque instruction without replaying prior examples or updating the slot.",
         "seed": args.seed,
         "operator_mode": args.operator_mode,
+        "first_operation": TARGET_OPERATION,
+        "second_operation": args.second_operation,
         "first_accuracy": first_accuracy,
         "reused_accuracy": second_accuracy,
         "fresh_accuracy": fresh_accuracy,
@@ -279,11 +298,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "reload_accuracy": reload_accuracy,
         "stable_bits": {
             "reused": inherited_stable,
-            "fresh": _stable_bits(
-                fresh_progress,
-                threshold=THRESHOLD,
-                bits_per_update=args.batch_size * args.span * 2,
-            ),
+            "fresh": fresh_stable,
         },
         "admission": {
             "action": admission.action,
@@ -320,6 +335,7 @@ def main() -> None:
     parser.add_argument("--span", type=int, default=4)
     parser.add_argument("--audit-count", type=int, default=64)
     parser.add_argument("--eval-every", type=int, default=32)
+    parser.add_argument("--second-operation", default=TARGET_OPERATION)
     parser.add_argument(
         "--operator-mode",
         choices=("factorized_bounded_residual", "factorized_protected_meta"),

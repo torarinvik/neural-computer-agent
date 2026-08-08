@@ -275,3 +275,10 @@ missing-evidence, reload, frozen-parent, and zero-replay gates passed. This
 promotes bounded reuse of mastered computation, not arbitrary new computation
 or general continual learning. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_basis_reuse_probe_2026-08-08/`.
+
+The distinct-operation follow-up reused the frozen `rotate` slot for a fresh
+`global_parity` instruction. Both seeds retained the old capability and
+passed all safety controls, but only one transferred faster than fresh
+(4,096 vs 8,192 bits); the other was slower (16,384 vs 8,192). Cross-operator
+reuse is therefore rejected as a strict promotion and remains the next
+bottleneck.

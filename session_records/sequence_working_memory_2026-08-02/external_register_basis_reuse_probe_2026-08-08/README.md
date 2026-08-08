@@ -16,3 +16,18 @@ retention, frozen-slot digest, shuffled-outcome, missing-evidence, exact
 reload, frozen-parent, and zero-replay gates. This promotes bounded reuse of
 mastered external computation, not general continual learning or unrestricted
 new computation.
+
+## Distinct-operation follow-up
+
+The same frozen `rotate` basis was reused for a fresh `global_parity`
+instruction. All safety and retention controls passed, but strict positive
+transfer did not replicate:
+
+| seed | reused stable bits | fresh stable bits | result |
+| --- | ---: | ---: | --- |
+| 69316 | 16,384 | 8,192 | rejected: slower than fresh |
+| 69317 | 4,096 | 8,192 | positive transfer |
+
+The longer rung therefore rejects the cross-operator promotion gate. The
+remaining bottleneck is learned compatibility/routing across distinct
+primitive families, not slot persistence or same-family reuse.
