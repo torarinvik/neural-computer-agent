@@ -177,6 +177,40 @@ def _generation_metrics(
     }
 
 
+def _global_generation_metrics(
+    predictions: torch.Tensor,
+    slots: torch.Tensor,
+    targets: torch.Tensor,
+    generation_candidate_start: int,
+    generation_page_start: int,
+    generation_page_size: int,
+    generation_page_order: list[int],
+) -> dict[str, object]:
+    """Measure one router whose page slots span every append generation."""
+
+    target_pages = generation_page_start + (
+        (targets - generation_candidate_start) // generation_page_size
+    )
+    selected_pages = torch.tensor(
+        [generation_page_order[slot] for slot in slots.tolist()]
+    )
+    return {
+        "top1_accuracy": float((predictions == targets).float().mean()),
+        "per_target_top1_accuracy": _per_target_top1_accuracy(
+            predictions, targets
+        ),
+        "page_top1_accuracy": float((selected_pages == target_pages).float().mean()),
+        "per_page_top1_accuracy": [
+            float(
+                (selected_pages[target_pages == page] == page)
+                .float()
+                .mean()
+            )
+            for page in generation_page_order
+        ],
+    }
+
+
 def run(args: argparse.Namespace) -> dict[str, object]:
     started = perf_counter()
     if args.generations < 2:
@@ -191,6 +225,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         args.generation_updates_per_page,
         args.source_router_updates,
         args.generation_router_updates,
+        args.consolidation_router_updates,
         args.batch_size,
         args.audit_count,
         args.key_samples,
@@ -386,6 +421,56 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             )
         )
 
+    consolidated_router = None
+    shuffled_consolidated_router = None
+    consolidated_training = None
+    shuffled_consolidated_training = None
+    consolidated_page_order = list(range(source_page_count, len(pages)))
+    if args.consolidate_generations:
+        consolidated_router = LearnedComputeCandidateScreen(
+            EVENT_WIDTH,
+            EVENT_WIDTH,
+            latent_width=args.consolidation_latent_width,
+            hidden=args.consolidation_hidden,
+        )
+        consolidated_training = _train_token_page_router(
+            consolidated_router,
+            parent,
+            grammar,
+            normalized_keys[args.source_candidates :],
+            raw_keys[args.source_candidates :],
+            pages[source_page_count:],
+            page_size=args.generation_page_size,
+            family_offset=args.source_candidates,
+            updates=args.consolidation_router_updates,
+            batch_size=args.batch_size,
+            seed=args.seed + 160_000,
+            learning_rate=args.learning_rate,
+            normalizer=normalizer,
+        )
+        shuffled_consolidated_router = LearnedComputeCandidateScreen(
+            EVENT_WIDTH,
+            EVENT_WIDTH,
+            latent_width=args.consolidation_latent_width,
+            hidden=args.consolidation_hidden,
+        )
+        shuffled_consolidated_training = _train_token_page_router(
+            shuffled_consolidated_router,
+            parent,
+            grammar,
+            normalized_keys[args.source_candidates :],
+            raw_keys[args.source_candidates :],
+            pages[source_page_count:],
+            page_size=args.generation_page_size,
+            family_offset=args.source_candidates,
+            updates=args.consolidation_router_updates,
+            batch_size=args.batch_size,
+            seed=args.seed + 170_000,
+            learning_rate=args.learning_rate,
+            normalizer=normalizer,
+            shuffle_outcomes=True,
+        )
+
     audit_families = [index % total_candidates for index in range(args.audit_count)]
     queries = _event_query(parent, grammar, audit_families, seed=args.seed + 80_000)
     targets = torch.tensor(audit_families)
@@ -422,6 +507,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
 
     generation_metrics = []
     shuffled_generation_metrics = []
+    generation_audit_batches = []
     for generation_index in range(args.generations):
         candidate_start = generation_candidate_starts[generation_index]
         candidate_families = [
@@ -435,6 +521,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             seed=args.seed + 90_000 + generation_index * 10_000,
         )
         generation_targets = torch.tensor(candidate_families)
+        generation_audit_batches.append((generation_queries, generation_targets))
         generation_predictions, generation_slots = _token_append_route(
             generation_routers[generation_index],
             pages,
@@ -480,6 +567,102 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 args.generation_page_size,
                 generation_orders[generation_index],
             )
+        )
+
+    consolidated_metrics = []
+    shuffled_consolidated_metrics = []
+    consolidated_permuted_metrics = None
+    if consolidated_router is not None and shuffled_consolidated_router is not None:
+        for generation_index, (generation_queries, generation_targets) in enumerate(
+            generation_audit_batches
+        ):
+            candidate_start = generation_candidate_starts[generation_index]
+            consolidated_predictions, consolidated_slots = _token_append_route(
+                consolidated_router,
+                pages,
+                generation_queries,
+                normalized_keys[args.source_candidates :],
+                raw_keys[args.source_candidates :],
+                normalizer,
+                args.source_candidates,
+                source_page_count,
+                args.generation_page_size,
+                consolidated_page_order,
+            )
+            consolidated_metrics.append(
+                _global_generation_metrics(
+                    consolidated_predictions,
+                    consolidated_slots,
+                    generation_targets,
+                    candidate_start,
+                    source_page_count,
+                    args.generation_page_size,
+                    consolidated_page_order,
+                )
+            )
+            shuffled_predictions, shuffled_slots = _token_append_route(
+                shuffled_consolidated_router,
+                pages,
+                generation_queries,
+                normalized_keys[args.source_candidates :],
+                raw_keys[args.source_candidates :],
+                normalizer,
+                args.source_candidates,
+                source_page_count,
+                args.generation_page_size,
+                consolidated_page_order,
+            )
+            shuffled_consolidated_metrics.append(
+                _global_generation_metrics(
+                    shuffled_predictions,
+                    shuffled_slots,
+                    generation_targets,
+                    candidate_start,
+                    source_page_count,
+                    args.generation_page_size,
+                    consolidated_page_order,
+                )
+            )
+
+        all_generation_queries = torch.cat(
+            [batch[0] for batch in generation_audit_batches], dim=0
+        )
+        all_generation_targets = torch.cat(
+            [batch[1] for batch in generation_audit_batches], dim=0
+        )
+        consolidation_permutation = torch.randperm(
+            len(consolidated_page_order),
+            generator=torch.Generator().manual_seed(args.seed + 180_000),
+        )
+        permuted_consolidated_keys = normalized_keys[args.source_candidates :].reshape(
+            len(consolidated_page_order), args.generation_page_size, EVENT_WIDTH
+        )[consolidation_permutation].reshape_as(
+            normalized_keys[args.source_candidates :]
+        )
+        permuted_consolidated_order = [
+            consolidated_page_order[index]
+            for index in consolidation_permutation.tolist()
+        ]
+        consolidated_predictions, consolidated_slots = _token_append_route(
+            consolidated_router,
+            pages,
+            all_generation_queries,
+            permuted_consolidated_keys,
+            raw_keys[args.source_candidates :],
+            normalizer,
+            args.source_candidates,
+            source_page_count,
+            args.generation_page_size,
+            permuted_consolidated_order,
+        )
+        consolidated_permuted_metrics = _global_generation_metrics(
+            consolidated_predictions,
+            consolidated_slots,
+            all_generation_targets,
+            args.source_candidates,
+            source_page_count,
+            args.generation_page_size,
+            permuted_consolidated_order,
         )
 
     source_permutation = torch.randperm(
@@ -548,6 +731,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             source_router_training,
             *generation_training,
             *shuffled_generation_training,
+            *(
+                [consolidated_training, shuffled_consolidated_training]
+                if args.consolidate_generations
+                else []
+            ),
         ]
     )
     accounting = {
@@ -597,6 +785,39 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "core_unchanged": parent_digest_before == _digest_core(parent, ()),
         "no_replayed_examples": accounting["replayed_examples"] == 0,
     }
+    if args.consolidate_generations:
+        gates.update(
+            {
+                "consolidated_generation_mastery": all(
+                    row["top1_accuracy"] >= MASTERY_THRESHOLD
+                    and min(row["per_target_top1_accuracy"])
+                    >= MASTERY_THRESHOLD
+                    and row["page_top1_accuracy"] >= MASTERY_THRESHOLD
+                    and min(row["per_page_top1_accuracy"])
+                    >= MASTERY_THRESHOLD
+                    for row in consolidated_metrics
+                ),
+                "consolidated_reward_shuffled_null": all(
+                    row["page_top1_accuracy"]
+                    <= (1.0 / len(consolidated_page_order)) + 0.15
+                    for row in shuffled_consolidated_metrics
+                ),
+                "consolidated_permutation": (
+                    consolidated_permuted_metrics is not None
+                    and consolidated_permuted_metrics["top1_accuracy"]
+                    >= MASTERY_THRESHOLD
+                    and consolidated_permuted_metrics["page_top1_accuracy"]
+                    >= MASTERY_THRESHOLD
+                ),
+                "router_count_reduced": 1 < len(generation_routers),
+                "consolidated_no_replayed_examples": (
+                    consolidated_training is not None
+                    and shuffled_consolidated_training is not None
+                    and consolidated_training["replayed_examples"] == 0
+                    and shuffled_consolidated_training["replayed_examples"] == 0
+                ),
+            }
+        )
     report = {
         "schema": "neural-computer.opaque-page-router-generations-report.v1",
         "claim_boundary": (
@@ -615,6 +836,25 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "page_sizes": page_sizes,
         "representation": "normalized_opaque_candidate_tokens_v1",
         "normalizer_fit": args.normalizer_fit,
+        "consolidation": {
+            "enabled": args.consolidate_generations,
+            "router_count_before": len(generation_routers),
+            "router_count_after": 1 if args.consolidate_generations else None,
+            "updates": args.consolidation_router_updates
+            if args.consolidate_generations
+            else None,
+            "latent_width": args.consolidation_latent_width
+            if args.consolidate_generations
+            else None,
+            "hidden": args.consolidation_hidden
+            if args.consolidate_generations
+            else None,
+            "training": consolidated_training,
+            "reward_shuffled_training": shuffled_consolidated_training,
+            "metrics": consolidated_metrics,
+            "reward_shuffled_metrics": shuffled_consolidated_metrics,
+            "permuted_metrics": consolidated_permuted_metrics,
+        },
         "learning_signal": "scalar_verifier_outcome_of_attempted_generation_page_v1",
         "growth_policy": "independent_generation_overlay_without_prior_replay_v1",
         "candidate_key_diagnostics": {
@@ -679,6 +919,10 @@ def main() -> None:
     parser.add_argument("--generation-updates-per-page", type=int, default=32)
     parser.add_argument("--source-router-updates", type=int, default=512)
     parser.add_argument("--generation-router-updates", type=int, default=3072)
+    parser.add_argument("--consolidate-generations", action="store_true")
+    parser.add_argument("--consolidation-router-updates", type=int, default=3072)
+    parser.add_argument("--consolidation-latent-width", type=int, default=64)
+    parser.add_argument("--consolidation-hidden", type=int, default=128)
     parser.add_argument(
         "--normalizer-fit",
         choices=("all", "source"),

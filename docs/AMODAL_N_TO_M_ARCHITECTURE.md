@@ -3706,3 +3706,16 @@ cost boundary: routing state and verifier work remain linear. Consolidation,
 compression, unrestricted growth, arbitrary new computation, and general
 continual learning remain open. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_three_generations_84_source_normalizer_promoted_v1_2026-08-08/`.
+
+A direct consolidation attempt is rejected. Replacing two generation-specific
+routers with one flat router over all 18 append pages reaches only `0.50/0.50`
+generation accuracy at latent 32/hidden 64; increasing it to latent 64/hidden
+128 reaches `0.50/0.5682`, with permutation only `0.50/0.5341`. Both fail
+per-target and per-page retention despite near-zero training loss, while the
+original cascade remains perfect and the reward-shuffled null remains valid.
+This identifies shared-page interference rather than a simple width deficit.
+The rejected evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_flat_consolidation_rejected_v1_2026-08-08/`.
+The next consolidation design is factorized: a shared local-page router plus
+a small generation selector, preserving generation separation without one
+full router per generation.
