@@ -56,6 +56,7 @@ parser.add_argument("--batch-size", type=int, default=32)
 parser.add_argument("--steps", type=int, default=48)
 parser.add_argument("--gamma", type=float, default=0.95)
 parser.add_argument("--width", type=int, default=64)
+parser.add_argument("--max-restarts", type=int, default=4)
 parser.add_argument(
     "--only-command", type=int, default=-1,
     help="phase-1 isolation: train on a single command (0 or 1) instead "
@@ -66,27 +67,33 @@ torch.manual_seed(args.seed)
 train, _ = twins_suite()
 NAMES = [c.name for c in train]
 
-agent = SharedControllerAgent(
-    event_width=args.width, intention_width=32, feedback_width=16, hidden=32,
-    event_window_capacity=8, shared_drivers=True,
-)
-plant = list(trainable_parameters(
-    [agent.controller, *agent.game_modules(agent.games[0])]
-))
-decoder = agent.runtime.output_bus.decoders["keypress"]
+
+def build_plant(attempt: int):
+    """(Re)draw the plant and command vocabulary for one phase-1 attempt."""
+    global agent, plant, decoder, COMMANDS
+    torch.manual_seed(args.seed + 7000 * attempt)
+    agent = SharedControllerAgent(
+        event_width=args.width, intention_width=32, feedback_width=16,
+        hidden=32, event_window_capacity=8, shared_drivers=True,
+    )
+    plant = list(trainable_parameters(
+        [agent.controller, *agent.game_modules(agent.games[0])]
+    ))
+    decoder = agent.runtime.output_bus.decoders["keypress"]
+    vocab_generator = torch.Generator().manual_seed(
+        args.seed + 999 + 7000 * attempt)
+    COMMANDS = torch.nn.Parameter(
+        torch.randn(2, args.width, generator=vocab_generator))
+    project_commands()
+    return plant
 # Action index -> grid delta, matching the decoder's key order (as in
 # cotrained.py's test_action).
 DELTAS = torch.tensor([[-1, 0], [0, 1], [1, 0], [0, -1]])
 
-# Command vocabulary: TRAINABLE in phase 1, frozen after. Frozen random
-# vectors were measured unreadable (competence stuck at chance with a
-# fixed-plane bias on both seeds): every rung where event-channel
-# conditioning worked had tokens that co-adapted with the plant into a
-# readable vocabulary. The vocabulary is game-invariant, so training it
-# is storage-legal; norm projection keeps it salient without letting a
-# collapse to zero erase the channel.
+# Command vocabulary: TRAINABLE in phase 1, frozen after (created inside
+# build_plant so each restart redraws it). Frozen random vectors were
+# measured unreadable; orthogonal projection keeps the pair separated.
 generator = torch.Generator().manual_seed(args.seed + 999)
-COMMANDS = torch.nn.Parameter(torch.randn(2, args.width, generator=generator))
 
 
 def project_commands() -> None:
@@ -101,9 +108,6 @@ def project_commands() -> None:
         second = second / second.norm().clamp_min(1e-6)
         COMMANDS[0].copy_(first * 4.0)
         COMMANDS[1].copy_(second * 4.0)
-
-
-project_commands()
 
 # Bank: one destination fragment per game, trained in phase 2 only.
 fragments = torch.nn.Parameter(torch.randn(2, args.width, generator=generator))
@@ -264,69 +268,6 @@ def episode(*, game: int | None, command: torch.Tensor | None,
 
 report: dict = {"seed": args.seed}
 
-# ---- Phase 1: edge-competence, verifier-free -------------------------------
-phase1_params = plant + [COMMANDS]
-optimizer = torch.optim.Adam(phase1_params, lr=1e-3)
-competence_curve = []
-command_score = [0.5, 0.5]
-for update in range(args.competence_updates):
-    if args.only_command >= 0:
-        command = torch.full((args.batch_size,), args.only_command)
-    else:
-        # F10/F23 laggard-preferential balancing, third scale: games in
-        # the battery, twins in the co-trained loop, now COMMANDS within
-        # one plant. Isolation probes show either command trains to 1.0
-        # alone while mixed 50/50 sampling lets cmd0 take the plant
-        # (1.0 vs 0.5). Same winner-take-all, same promoted remedy:
-        # weight rows toward the weaker command, floor for the leader.
-        weights = torch.tensor(
-            [-command_score[0], -command_score[1]]) / 0.25
-        probs = torch.softmax(weights, dim=-1) * 0.5 + 0.25
-        command = (torch.rand(args.batch_size) < probs[1]).long()
-    out = episode(game=None, command=command, goal_event=None,
-                  seed=args.seed + update, sample=True)
-    with torch.no_grad():
-        for value in (0, 1):
-            rows = out["command_used"] == value
-            if bool(rows.any()):
-                correct = (out["self_reward"][rows] > 0).float().sum()
-                wrong = (out["self_reward"][rows] < 0).float().sum()
-                ratio = float(correct / (correct + wrong).clamp_min(1.0))
-                command_score[value] = (
-                    0.9 * command_score[value] + 0.1 * ratio)
-    terms = out["advantage"] * out["logp"] * out["mask"]
-    loss = -terms.sum() / terms.shape[0]
-    # Entropy bonus: a policy that goes deterministic on one plane stops
-    # sampling the commanded-vs-other contrast that teaches conditioning.
-    entropy = -(out["logp"] * out["mask"]).sum() / out["mask"].sum().clamp_min(1)
-    loss = loss - 0.01 * entropy
-    optimizer.zero_grad(set_to_none=True)
-    loss.backward()
-    torch.nn.utils.clip_grad_norm_(phase1_params, 1.0)
-    optimizer.step()
-    project_commands()
-    if (update + 1) % 250 == 0:
-        with torch.no_grad():
-            probe = episode(
-                game=None,
-                command=torch.randint(
-                    0, 2, (args.batch_size,),
-                    generator=torch.Generator().manual_seed(update)),
-                goal_event=None, seed=args.seed + 300_000 + update,
-                sample=False)
-        # Per-command ratios: the pooled ratio is dominated by whichever
-        # command consumes more and hid a 0.2-vs-1.0 execution asymmetry.
-        pair = []
-        for value in (0, 1):
-            rows = probe["command_used"] == value
-            correct = (probe["self_reward"][rows] > 0).float().sum()
-            wrong = (probe["self_reward"][rows] < 0).float().sum()
-            pair.append(round(float(
-                correct / (correct + wrong).clamp_min(1.0)), 3))
-        competence_curve.append(pair)
-COMMANDS.requires_grad_(False)
-
-
 def competence_score(command_value: int) -> float:
     with torch.no_grad():
         out = episode(game=None,
@@ -337,10 +278,99 @@ def competence_score(command_value: int) -> float:
     return float(correct / (correct + wrong).clamp_min(1.0))
 
 
+# ---- Phase 1: edge-competence, verifier-free -------------------------------
+# Restart on measured collapse. On some seeds every JOINT sampling
+# scheme fails (per-row 50/50, per-row laggard, alternation, whole-batch
+# laggard all measured failing on 69316) while single-command isolation
+# converges 3/3 -- the basin drawn at init decides, so the honest
+# mechanism is to detect the dead branch early, redraw, and REPORT the
+# number of draws. Not hidden: `phase1_attempts` is in the output.
+for attempt in range(args.max_restarts):
+    build_plant(attempt)
+    phase1_params = plant + [COMMANDS]
+    optimizer = torch.optim.Adam(phase1_params, lr=1e-3)
+    competence_curve = []
+    command_score = [0.5, 0.5]
+    collapsed = False
+    for update in range(args.competence_updates):
+        if args.only_command >= 0:
+            command = torch.full((args.batch_size,), args.only_command)
+        else:
+            # WHOLE-BATCH laggard-sampled episodes -- the promoted twin
+            # recipe (F10/F23) transplanted exactly, after everything else
+            # was measured and failed on seed 69316: per-row 50/50 collapses
+            # to an unconditional A-machine (cmd1 0.010); per-row laggard
+            # weighting does not rescue it; deterministic whole-batch
+            # alternation does not either, which F18/F25 predicts (commands
+            # are a conflict group, and fixed rotation is sequencing at
+            # period 2). What the promoted rung actually does is adaptive
+            # dwell: each episode commits the whole batch to one member,
+            # sampled toward the laggard with a floor for the leader.
+            weights = torch.tensor(
+                [-command_score[0], -command_score[1]]) / 0.25
+            probs = torch.softmax(weights, dim=-1) * 0.5 + 0.25
+            command = torch.full(
+                (args.batch_size,),
+                int(torch.multinomial(probs, 1)))
+        out = episode(game=None, command=command, goal_event=None,
+                      seed=args.seed + update, sample=True)
+        with torch.no_grad():
+            for value in (0, 1):
+                rows = out["command_used"] == value
+                if bool(rows.any()):
+                    correct = (out["self_reward"][rows] > 0).float().sum()
+                    wrong = (out["self_reward"][rows] < 0).float().sum()
+                    ratio = float(correct / (correct + wrong).clamp_min(1.0))
+                    command_score[value] = (
+                        0.9 * command_score[value] + 0.1 * ratio)
+        terms = out["advantage"] * out["logp"] * out["mask"]
+        loss = -terms.sum() / terms.shape[0]
+        # Entropy bonus: a policy that goes deterministic on one plane stops
+        # sampling the commanded-vs-other contrast that teaches conditioning.
+        entropy = -(out["logp"] * out["mask"]).sum() / out["mask"].sum().clamp_min(1)
+        loss = loss - 0.01 * entropy
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(phase1_params, 1.0)
+        optimizer.step()
+        project_commands()
+        if (update + 1) % 250 == 0:
+            with torch.no_grad():
+                probe = episode(
+                    game=None,
+                    command=torch.randint(
+                        0, 2, (args.batch_size,),
+                        generator=torch.Generator().manual_seed(update)),
+                    goal_event=None, seed=args.seed + 300_000 + update,
+                    sample=False)
+            # Per-command ratios: the pooled ratio is dominated by whichever
+            # command consumes more and hid a 0.2-vs-1.0 execution asymmetry.
+            pair = []
+            for value in (0, 1):
+                rows = probe["command_used"] == value
+                correct = (probe["self_reward"][rows] > 0).float().sum()
+                wrong = (probe["self_reward"][rows] < 0).float().sum()
+                pair.append(round(float(
+                    correct / (correct + wrong).clamp_min(1.0)), 3))
+            competence_curve.append(pair)
+        if (update + 1) == max(250, args.competence_updates // 4):
+            if min(command_score) < 0.2:
+                collapsed = True
+                break
+    final_scores = [competence_score(0), competence_score(1)]
+    if not collapsed and min(final_scores) >= 0.8:
+        break
+
+report_attempts = attempt + 1
+COMMANDS.requires_grad_(False)
+
+
+
 report["competence"] = {
     "cmd0": round(competence_score(0), 4), "cmd1": round(competence_score(1), 4)
 }
 report["competence_curve"] = competence_curve
+report["phase1_attempts"] = report_attempts
 with torch.no_grad():
     report["command_cosine"] = round(float(
         (COMMANDS[0] @ COMMANDS[1])
