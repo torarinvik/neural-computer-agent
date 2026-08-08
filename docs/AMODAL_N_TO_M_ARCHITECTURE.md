@@ -3996,3 +3996,12 @@ slot only when every probe clears the mastery floor; otherwise memory-side
 policy grows a slot. Mastered slots are independently frozen, and the newest
 unpromoted slot can be rolled back. This keeps capacity growth reversible and
 prevents an unverified candidate from silently becoming shared computation.
+
+The first two-seed basis-reuse audit now promotes the next boundary. After a
+`rotate` basis slot was mastered and frozen, a fresh opaque instruction reused
+that slot from fresh outcomes only. Reuse reached `4,096` stable verifier bits
+on both seeds, versus `12,288` and `8,192` for matched fresh learners. The
+slot digest, source capability, shuffled-outcome, missing-evidence, reload,
+frozen-parent, and zero-replay gates all passed. This is bounded sample-
+efficient reuse of mastered external computation; general new-primitive
+induction and unrestricted continual learning remain open.

@@ -263,3 +263,15 @@ The basis boundary also exposes verifier-gated memory-side selection: fresh
 candidate probes may select an opaque existing slot, while a failed probe
 requests growth. Mastered slots can be frozen, and an unpromoted newest slot
 can be rolled back without touching earlier slots.
+
+## Promoted basis reuse (2026-08-08)
+
+The two-seed reuse probe promoted the next boundary. A first `rotate`
+instruction learned one external basis slot; a second fresh opaque
+instruction reused that frozen slot without replay. Reused stable costs were
+`4,096` verifier bits on both seeds, versus `12,288` and `8,192` for matched
+fresh learners. All admission, mastery, retention, frozen-slot, shuffled-null,
+missing-evidence, reload, frozen-parent, and zero-replay gates passed. This
+promotes bounded reuse of mastered computation, not arbitrary new computation
+or general continual learning. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_basis_reuse_probe_2026-08-08/`.

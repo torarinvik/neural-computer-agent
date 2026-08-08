@@ -1,0 +1,18 @@
+# External basis reuse probe — 2026-08-08
+
+This probe tests whether a mastered external computation slot can be reused
+by a fresh opaque instruction without replaying prior examples or updating the
+slot. The first `rotate` instruction is learned with one appended basis slot;
+the second instruction is trained from fresh outcomes while that slot is
+frozen. A matched fresh learner is trained for the same reuse budget.
+
+| seed | reused stable bits | fresh stable bits | reused accuracy | fresh accuracy |
+| --- | ---: | ---: | ---: | ---: |
+| 69316 | 4,096 | 12,288 | 0.9531 | 0.8555 |
+| 69317 | 4,096 | 8,192 | 0.9805 | 0.9375 |
+
+Both seeds passed basis admission, first and reused mastery, first-capability
+retention, frozen-slot digest, shuffled-outcome, missing-evidence, exact
+reload, frozen-parent, and zero-replay gates. This promotes bounded reuse of
+mastered external computation, not general continual learning or unrestricted
+new computation.
