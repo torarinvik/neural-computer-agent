@@ -264,6 +264,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         threshold=THRESHOLD,
         bits_per_update=args.batch_size * args.span * 2,
     )
+    efficiency_admission = inherited.select_basis_slot_by_efficiency(
+        {basis_slot: (second_accuracy, second_accuracy)},
+        {basis_slot: inherited_stable},
+        fresh_stable_bits=fresh_stable,
+        threshold=THRESHOLD,
+    )
     gates = {
         "basis_admitted_by_fresh_probe": admission.action == "reuse",
         "first_mastered": first_accuracy >= THRESHOLD,
@@ -304,6 +310,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "action": admission.action,
             "slot": admission.compute_slot_index,
             "candidate_scores": admission.candidate_scores,
+            "efficiency_action": efficiency_admission.action,
+            "efficiency_slot": efficiency_admission.compute_slot_index,
+            "efficiency_reason": efficiency_admission.reason,
         },
         "accounting": {
             "unique_verifier_bits": (

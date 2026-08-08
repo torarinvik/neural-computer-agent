@@ -80,6 +80,16 @@ class ComputeReuseDecision:
 
 
 @dataclass(frozen=True)
+class EfficientComputeReuseDecision:
+    """Admission decision that also accounts for stable sample cost."""
+
+    action: Literal["reuse", "grow"]
+    compute_slot_index: int | None
+    candidate_scores: tuple[tuple[int, float, int | None], ...]
+    reason: str
+
+
+@dataclass(frozen=True)
 class BindingReuseDecision:
     """Fresh-outcome decision for reusing a compute/adapter binding pair."""
 
@@ -144,6 +154,73 @@ def select_reusable_compute_slot(
             if scores
             else "no_compute_candidates"
         ),
+    )
+
+
+def select_reusable_compute_slot_by_efficiency(
+    candidate_outcomes: Mapping[int, Sequence[float]],
+    candidate_stable_bits: Mapping[int, int | None],
+    *,
+    fresh_stable_bits: int | None,
+    threshold: float,
+) -> EfficientComputeReuseDecision:
+    """Reuse only when fresh probes pass and stable cost is not worse than fresh.
+
+    Stable cost is measured only after a matched fresh control has itself
+    reached a stable threshold. If either side lacks a stable prefix, the
+    policy grows rather than making an efficiency claim from incomplete
+    evidence. Candidate identities remain opaque physical-slot indices.
+    """
+
+    if not 0.0 <= threshold <= 1.0:
+        raise ValueError("compute admission threshold must lie in [0, 1]")
+    if fresh_stable_bits is not None and fresh_stable_bits < 1:
+        raise ValueError("fresh stable bits must be positive when present")
+    if set(candidate_outcomes) != set(candidate_stable_bits):
+        raise ValueError("candidate outcomes and stable bits must have equal keys")
+    scores: list[tuple[int, float, int | None]] = []
+    for slot_index, outcomes in sorted(candidate_outcomes.items()):
+        if slot_index < 0:
+            raise ValueError("compute candidate indices must be nonnegative")
+        values = tuple(float(value) for value in outcomes)
+        if not values or not all(math.isfinite(value) for value in values):
+            raise ValueError("compute candidates need finite fresh outcomes")
+        stable_bits = candidate_stable_bits[slot_index]
+        if stable_bits is not None and stable_bits < 1:
+            raise ValueError("candidate stable bits must be positive when present")
+        scores.append((slot_index, min(values), stable_bits))
+    eligible = [
+        item
+        for item in scores
+        if item[1] >= threshold
+        and fresh_stable_bits is not None
+        and item[2] is not None
+        and item[2] <= fresh_stable_bits
+    ]
+    if eligible:
+        selected_index, selected_score, selected_bits = min(
+            eligible,
+            key=lambda item: (item[2], -item[1], item[0]),
+        )
+        return EfficientComputeReuseDecision(
+            action="reuse",
+            compute_slot_index=selected_index,
+            candidate_scores=tuple(scores),
+            reason=(
+                f"fresh_probe_and_efficiency_floor_passed:"
+                f"{selected_score:.6f}:{selected_bits}"
+            ),
+        )
+    reason = "no_candidate_passed_fresh_probe_and_efficiency_floor"
+    if fresh_stable_bits is None:
+        reason = "fresh_control_has_no_stable_prefix"
+    elif not scores:
+        reason = "no_compute_candidates"
+    return EfficientComputeReuseDecision(
+        action="grow",
+        compute_slot_index=None,
+        candidate_scores=tuple(scores),
+        reason=reason,
     )
 
 

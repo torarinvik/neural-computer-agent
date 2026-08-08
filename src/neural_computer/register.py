@@ -412,6 +412,31 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             threshold=threshold,
         )
 
+    def select_basis_slot_by_efficiency(
+        self,
+        candidate_outcomes: Mapping[int, Sequence[float]],
+        candidate_stable_bits: Mapping[int, int | None],
+        *,
+        fresh_stable_bits: int | None,
+        threshold: float,
+    ):
+        """Require both fresh mastery and no worse stable cost than fresh."""
+
+        from .capability import select_reusable_compute_slot_by_efficiency
+
+        candidate_indices = set(candidate_outcomes) | set(candidate_stable_bits)
+        if any(
+            index < 0 or index >= len(self.basis_slots)
+            for index in candidate_indices
+        ):
+            raise ValueError("basis candidate index is out of range")
+        return select_reusable_compute_slot_by_efficiency(
+            candidate_outcomes,
+            candidate_stable_bits,
+            fresh_stable_bits=fresh_stable_bits,
+            threshold=threshold,
+        )
+
     def freeze_basis_slot(self, basis_slot: int) -> None:
         """Protect one mastered external computation slot from later updates."""
 

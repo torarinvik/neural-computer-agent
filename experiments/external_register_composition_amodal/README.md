@@ -282,3 +282,8 @@ passed all safety controls, but only one transferred faster than fresh
 (4,096 vs 8,192 bits); the other was slower (16,384 vs 8,192). Cross-operator
 reuse is therefore rejected as a strict promotion and remains the next
 bottleneck.
+
+Efficiency-aware admission now separates the two cases: seed `69316`
+requests growth when reuse costs `16,384` versus `8,192` fresh bits, while
+seed `69317` reuses at `4,096` versus `8,192`. This closes the correctness-only
+admission gap. The actual append-and-retrain grow branch remains to be audited.

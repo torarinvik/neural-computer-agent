@@ -30,6 +30,7 @@ from neural_computer import (
     paired_event_credit_loss,
     select_reusable_binding,
     select_reusable_compute_slot,
+    select_reusable_compute_slot_by_efficiency,
 )
 
 
@@ -394,6 +395,32 @@ def test_reusable_compute_admission_requires_every_fresh_probe() -> None:
     empty = select_reusable_compute_slot({}, threshold=0.8)
     assert empty.action == "grow"
     assert empty.reason == "no_compute_candidates"
+
+
+def test_efficiency_aware_compute_admission_rejects_slower_or_unstable_reuse() -> None:
+    reuse = select_reusable_compute_slot_by_efficiency(
+        {0: (0.91, 0.88), 1: (0.92, 0.9)},
+        {0: 8_192, 1: 16_384},
+        fresh_stable_bits=12_288,
+        threshold=0.8,
+    )
+    slower = select_reusable_compute_slot_by_efficiency(
+        {0: (0.91, 0.88)},
+        {0: 16_384},
+        fresh_stable_bits=12_288,
+        threshold=0.8,
+    )
+    incomplete = select_reusable_compute_slot_by_efficiency(
+        {0: (0.91, 0.88)},
+        {0: 8_192},
+        fresh_stable_bits=None,
+        threshold=0.8,
+    )
+
+    assert reuse.action == "reuse"
+    assert reuse.compute_slot_index == 0
+    assert slower.action == "grow"
+    assert incomplete.action == "grow"
 
 
 def test_reusable_binding_admission_scores_compute_and_adapter_pairs() -> None:

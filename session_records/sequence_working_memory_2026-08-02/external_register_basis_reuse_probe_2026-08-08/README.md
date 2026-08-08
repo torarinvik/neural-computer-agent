@@ -31,3 +31,13 @@ transfer did not replicate:
 The longer rung therefore rejects the cross-operator promotion gate. The
 remaining bottleneck is learned compatibility/routing across distinct
 primitive families, not slot persistence or same-family reuse.
+
+The efficiency-aware admission rerun makes the correct route explicit:
+
+| seed | correctness decision | efficiency decision | reason |
+| --- | --- | --- | --- |
+| 69316 | reuse | grow | reused cost 16,384 exceeded fresh 8,192 |
+| 69317 | reuse | reuse | reused cost 4,096 beat fresh 8,192 |
+
+This is a policy result, not yet a full grow-and-retrain experiment: the next
+audit must actually append and train the new slot on the `grow` branch.

@@ -45,6 +45,7 @@ from .capability import (
     AppendOnlyScreenConsolidationReceipt,
     BindingReuseDecision,
     ComputeReuseDecision,
+    EfficientComputeReuseDecision,
     ExternalCapabilityComposition,
     ExternalCapabilityPipeline,
     ExternalCapabilityPipelineState,
@@ -61,6 +62,7 @@ from .capability import (
     PageLocalLearnedComputeCandidateScreen,
     select_reusable_binding,
     select_reusable_compute_slot,
+    select_reusable_compute_slot_by_efficiency,
 )
 from .capacity import (
     ADMISSION_ACTIONS,
@@ -303,6 +305,7 @@ __all__ = [
     "ControllerFeedback",
     "ControllerOutput",
     "ControllerState",
+    "EfficientComputeReuseDecision",
     "EpisodicContextEncoder",
     "EpisodicContextOutput",
     "EpisodicCreditHead",
@@ -401,6 +404,7 @@ __all__ = [
     "select_growth_artifact_view",
     "select_reusable_binding",
     "select_reusable_compute_slot",
+    "select_reusable_compute_slot_by_efficiency",
     "selector_distillation_loss",
     "sha256_file",
     "sha256_files",

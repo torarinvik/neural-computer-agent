@@ -4013,3 +4013,12 @@ fresh bits), while the other regressed (`16,384` versus `8,192`). Strict
 cross-operator promotion is rejected. The next bottleneck is learned
 compatibility/routing across primitive families, not external-slot growth or
 same-family reuse.
+
+Efficiency-aware basis admission now requires both fresh mastery and a stable
+cost no worse than the matched fresh learner. In the cross-operator rerun it
+correctly requested growth for the slower seed (`16,384` versus `8,192` fresh)
+and reused the basis for the faster seed (`4,096` versus `8,192`). This closes
+the correctness-only admission gap while preserving opaque memory-side
+selection. The remaining verification is to execute the grow branch and show
+that the appended slot actually recovers the slower case without affecting
+the mastered slot.

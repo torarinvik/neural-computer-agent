@@ -89,6 +89,20 @@ def test_basis_selection_reuses_only_fresh_verified_slots_or_requests_growth() -
     assert grow.compute_slot_index is None
 
 
+def test_basis_efficiency_selection_rejects_asymmetric_cross_operator_transfer() -> None:
+    machine = _machine()
+    machine.add_basis_slot()
+    decision = machine.select_basis_slot_by_efficiency(
+        {0: (0.98, 0.91)},
+        {0: 16_384},
+        fresh_stable_bits=8_192,
+        threshold=0.8,
+    )
+
+    assert decision.action == "grow"
+    assert decision.compute_slot_index is None
+
+
 def test_basis_slots_can_be_frozen_and_unpromoted_growth_can_be_rolled_back() -> None:
     machine = _machine()
     first = machine.add_basis_slot()
