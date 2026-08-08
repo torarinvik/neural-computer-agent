@@ -57,6 +57,7 @@ parser.add_argument("--steps", type=int, default=48)
 parser.add_argument("--gamma", type=float, default=0.95)
 parser.add_argument("--width", type=int, default=64)
 parser.add_argument("--max-restarts", type=int, default=4)
+parser.add_argument("--decoy-draws", type=int, default=8)
 parser.add_argument(
     "--reward-feedback", action="store_true",
     help="feed reward back into the controller (default OFF: it is a "
@@ -416,7 +417,8 @@ optimizer = torch.optim.Adam(bank_params, lr=3e-3)
 
 
 def fetch(observation_free_game: int, *, decoy: bool = False,
-          force: int | None = None, wrong_banner: bool = False):
+          force: int | None = None, wrong_banner: bool = False,
+          decoy_draw: int = 0):
     """The cue-reader's fragment choice for a game's banner, as a goal event."""
     corners = torch.zeros(1, 2)
     shown = (1 - observation_free_game) if wrong_banner else observation_free_game
@@ -427,8 +429,13 @@ def fetch(observation_free_game: int, *, decoy: bool = False,
     else:
         chosen = weights @ fragments
     if decoy:
-        noise = torch.randn(1, args.width,
-                            generator=torch.Generator().manual_seed(7))
+        # `decoy_draw` selects WHICH noise vector. A single fixed draw is
+        # a sample size of one: a lucky direction that happens to point
+        # plane-B-ward scores 0.758 on choiceB and reads as a failed
+        # necessity gate. The gate averages over draws instead.
+        noise = torch.randn(
+            1, args.width,
+            generator=torch.Generator().manual_seed(7 + 100 * decoy_draw))
         chosen = noise * (chosen.detach().norm() / noise.norm().clamp_min(1e-12))
     return chosen, int(weights.argmax())
 
@@ -458,16 +465,21 @@ def score(game: int, **kwargs) -> float:
     goal_kwargs = {k: kwargs.pop(k) for k in ("decoy", "force") if k in kwargs}
     wrong = kwargs.pop("wrong_banner", False)
     rand = kwargs.pop("random_actions", False)
-    goal, _ = fetch(game, wrong_banner=wrong, **goal_kwargs)
+    # A decoy is an expectation over noise directions, not one draw.
+    draws = args.decoy_draws if goal_kwargs.get("decoy") else 1
     scores = []
-    for index in range(4):
-        with torch.no_grad():
-            out = episode(game=game, command=None, goal_event=goal.detach(),
-                          seed=args.seed + 700_000 + index, sample=False,
-                          wrong_banner=wrong, random_actions=rand)
-        scores.append(mastery(
-            {"total_reward": out["reward"].sum(dim=1), "mask": out["mask"]},
-            train[game]))
+    for draw in range(draws):
+        goal, _ = fetch(game, wrong_banner=wrong, decoy_draw=draw,
+                        **goal_kwargs)
+        for index in range(4):
+            with torch.no_grad():
+                out = episode(game=game, command=None,
+                              goal_event=goal.detach(),
+                              seed=args.seed + 700_000 + index, sample=False,
+                              wrong_banner=wrong, random_actions=rand)
+            scores.append(mastery(
+                {"total_reward": out["reward"].sum(dim=1), "mask": out["mask"]},
+                train[game]))
     return round(float(torch.tensor(scores).mean()), 4)
 
 
@@ -500,14 +512,17 @@ report["label_swap"] = {n: score(g, wrong_banner=True) for g, n in enumerate(NAM
 
 # Decoy behaviour-difference: with identical noise fragments, do the twins
 # behave identically (up to the banner pixels)? Same seed, both games.
-with torch.no_grad():
-    goal, _ = fetch(0, decoy=True)
-    a = episode(game=0, command=None, goal_event=goal, seed=args.seed + 800_000,
-                sample=False)
-    b = episode(game=1, command=None, goal_event=goal, seed=args.seed + 800_000,
-                sample=False)
-agreement = float((a["actions"] == b["actions"]).float().mean())
-report["decoy_action_agreement"] = round(agreement, 4)
+agreements = []
+for draw in range(args.decoy_draws):
+    with torch.no_grad():
+        goal, _ = fetch(0, decoy=True, decoy_draw=draw)
+        a = episode(game=0, command=None, goal_event=goal,
+                    seed=args.seed + 800_000, sample=False)
+        b = episode(game=1, command=None, goal_event=goal,
+                    seed=args.seed + 800_000, sample=False)
+    agreements.append(float((a["actions"] == b["actions"]).float().mean()))
+report["decoy_action_agreement"] = round(
+    float(torch.tensor(agreements).mean()), 4)
 
 report["cue_choice"] = {n: fetch(g)[1] for g, n in enumerate(NAMES)}
 checkpoint = {
