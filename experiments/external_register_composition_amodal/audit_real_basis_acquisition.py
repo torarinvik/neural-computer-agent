@@ -28,8 +28,8 @@ from .train import (
     _train_stage,
 )
 
-SOURCE_OPERATIONS = ("rotate", "global_parity", "complement")
-TARGET_OPERATION = "prefix_parity"
+SOURCE_OPERATIONS = ("reverse", "adjacent_xor", "complement")
+TARGET_OPERATION = "rotate"
 
 
 def _freeze(machine) -> None:
@@ -201,7 +201,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         basis_slots=(routed_basis_slot,),
         updates=args.target_updates,
         batch_size=args.batch_size,
-        span=args.span,
+        span=args.growth_span,
         seed=args.seed + 100_000,
         trainable=[
             target_instruction.code,
@@ -209,6 +209,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             *target_decoder.parameters(),
         ],
         credit_mode=args.growth_credit_mode,
+        learning_rate=args.growth_learning_rate,
         eval_every=args.eval_every,
         audit_count=args.audit_count,
         audit_seed=args.seed + 200_000,
@@ -221,7 +222,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         instructions=(target_instruction,),
         basis_slots=(routed_basis_slot,),
         count=args.audit_count,
-        span=args.span,
+        span=args.growth_span,
         seed=args.seed + 210_000,
         credit_mode=args.growth_credit_mode,
     )
@@ -233,7 +234,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         instructions=(target_instruction,),
         basis_slots=(routed_basis_slot,),
         count=args.audit_count,
-        span=args.span,
+        span=args.growth_span,
         seed=args.seed + 211_000,
         credit_mode=args.growth_credit_mode,
         shuffle_outcomes=True,
@@ -246,7 +247,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         instructions=(target_instruction,),
         basis_slots=(routed_basis_slot,),
         count=args.audit_count,
-        span=args.span,
+        span=args.growth_span,
         seed=args.seed + 212_000,
         credit_mode=args.growth_credit_mode,
         evidence_present=False,
@@ -254,7 +255,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     target_stable = _stable_bits(
         target_progress,
         threshold=threshold,
-        bits_per_update=args.batch_size * args.span * 2,
+        bits_per_update=args.batch_size * args.growth_span * 2,
     )
     source_after = [
         _accuracy(
@@ -305,7 +306,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         basis_slots=(shuffled_training_basis_slot,),
         updates=args.target_updates,
         batch_size=args.batch_size,
-        span=args.span,
+        span=args.growth_span,
         seed=args.seed + 300_000,
         trainable=[
             shuffled_training_instruction.code,
@@ -313,6 +314,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             *shuffled_training_decoder.parameters(),
         ],
         credit_mode=args.growth_credit_mode,
+        learning_rate=args.growth_learning_rate,
         shuffle_outcomes=True,
     )
     shuffled_training_accuracy = _accuracy(
@@ -323,7 +325,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         instructions=(shuffled_training_instruction,),
         basis_slots=(shuffled_training_basis_slot,),
         count=args.audit_count,
-        span=args.span,
+        span=args.growth_span,
         seed=args.seed + 310_000,
         credit_mode=args.growth_credit_mode,
     )
@@ -347,6 +349,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "missing_target_accuracy": missing_target_accuracy,
         "shuffled_training_target_accuracy": shuffled_training_accuracy,
         "target_stable_bits": target_stable,
+        "target_progress": target_progress,
         "source_accuracy_after": source_after,
         "old_basis_unchanged": old_basis_unchanged,
         "accounting": {
@@ -388,11 +391,13 @@ def main() -> None:
     parser.add_argument("--target-updates", type=int, default=128)
     parser.add_argument(
         "--growth-credit-mode",
-        choices=("attempted_bce", "paired_counterfactual"),
+        choices=("attempted_bce", "reinforce", "paired_counterfactual"),
         default="attempted_bce",
     )
+    parser.add_argument("--growth-learning-rate", type=float, default=1e-3)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--span", type=int, default=4)
+    parser.add_argument("--growth-span", type=int, default=2)
     parser.add_argument("--audit-count", type=int, default=32)
     parser.add_argument("--eval-every", type=int, default=32)
     parser.add_argument("--operator-mode", default="factorized_bounded_residual")

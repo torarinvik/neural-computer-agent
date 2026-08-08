@@ -179,8 +179,12 @@ def _rollout(
         )
         logits = tick(frame, feedback)
         probabilities = logits.softmax(dim=-1)
+        # Actions are sampled from this epsilon-smoothed behavior policy.  The
+        # exact propensity must travel with the opaque action record; using the
+        # unsmoothed model probability would make off-policy credit incorrect.
+        behavior_probabilities = probabilities * 0.9 + 0.05
         action = (
-            torch.multinomial(probabilities * 0.9 + 0.05, 1).squeeze(1)
+            torch.multinomial(behavior_probabilities, 1).squeeze(1)
             if train_decoder
             else logits.argmax(dim=-1)
         )
@@ -203,13 +207,19 @@ def _rollout(
         elif credit_mode == "attempted_bce":
             selected = logits.gather(1, action.unsqueeze(1)).squeeze(1)
             loss = F.binary_cross_entropy_with_logits(selected, delivered)
+        elif credit_mode == "reinforce":
+            selected_log_probability = behavior_probabilities.log().gather(
+                1, action.unsqueeze(1)
+            ).squeeze(1)
+            advantage = delivered.detach() - delivered.detach().mean()
+            loss = -(advantage * selected_log_probability).mean()
         else:
             raise ValueError(f"unknown credit mode: {credit_mode!r}")
         losses.append(loss)
         rewards.append(reward)
         previous_action = F.one_hot(action, ACTION_WIDTH).to(logits.dtype)
         previous_reward = delivered
-        previous_propensity = probabilities.gather(
+        previous_propensity = behavior_probabilities.gather(
             1,
             action.unsqueeze(1),
         ).squeeze(1).detach().clamp_min(
@@ -242,10 +252,13 @@ def _train_stage(
     execution_mode: str = "read_execute",
     anchor_parameters: tuple[tuple[torch.nn.Parameter, torch.Tensor], ...] = (),
     anchor_weight: float = 0.0,
+    learning_rate: float = 3e-3,
 ) -> list[dict[str, float | int]]:
     if anchor_weight < 0.0:
         raise ValueError("anchor weight cannot be negative")
-    optimizer = torch.optim.AdamW(trainable, lr=3e-3, weight_decay=1e-5)
+    if learning_rate <= 0.0:
+        raise ValueError("learning rate must be positive")
+    optimizer = torch.optim.AdamW(trainable, lr=learning_rate, weight_decay=1e-5)
     progress: list[dict[str, float | int]] = []
     for update in range(1, updates + 1):
         batch = _batch(
