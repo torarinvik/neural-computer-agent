@@ -3817,13 +3817,13 @@ yet a reliable four-source consolidation mechanism. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_distilled_consolidation_four_source_rejected_v1_2026-08-08/`.
 
 The stronger sequential consolidation path then passed the same four-source
-pressure test on seed `69316`. It adopted three successive shared rewrites,
-each trained only on the newly arrived procedure and retention-gated against
-all earlier aliases. After reload, all four opaque procedures resolve to one
-shared artifact, source behaviors are `0.9336 / 1.0000 / 1.0000 / 1.0000`,
+pressure test on both seeds `69316` and `69317`. It adopted three successive
+shared rewrites at each seed, each trained only on the newly arrived procedure
+and retention-gated against all earlier aliases. After reload, all four opaque
+procedures resolve to one shared artifact, source behaviors are
+`0.9336 / 1.0000 / 1.0000 / 1.0000` and `0.9648 / 1.0000 / 1.0000 / 1.0000`,
 reversal isolation and corruption rejection pass, and a held-out target reaches
-mastery after `4,096` inherited stable-prefix bits versus `12,288` for a fresh
-control. Evidence is archived in
+mastery faster from the inherited artifact at both seeds. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_sequential_neural_consolidation_four_source_seed69316_promoted_v1_2026-08-08/`.
 
 This promotes bounded replay-free sequential neural consolidation with
