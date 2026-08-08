@@ -3693,3 +3693,16 @@ for bounded repeated growth; unrestricted memory growth, consolidation/
 compression, arbitrary new computation, and general continual learning
 remain open. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_two_generations_66_source_normalizer_promoted_v1_2026-08-08/`.
+
+The source-only contract then survives a third independent append generation:
+30 source candidates plus three 18-candidate generations reach 84 candidates
+across 30 pages. Both seeds pass the same strict per-target/per-page,
+permutation, generation-local shuffled-null, source-immutability,
+controller-invariance, reload, and zero-replay gates. Each run uses 21,376
+optimizer updates, 2,214,912 unique verifier bits, and 2,214,528 unique
+logical lifetimes; mean fresh attempts rise to `2.2857` with a `0.6429`
+fallback rate. This confirms bounded repeated growth while exposing the next
+cost boundary: routing state and verifier work remain linear. Consolidation,
+compression, unrestricted growth, arbitrary new computation, and general
+continual learning remain open. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_three_generations_84_source_normalizer_promoted_v1_2026-08-08/`.

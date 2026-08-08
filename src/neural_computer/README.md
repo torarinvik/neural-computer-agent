@@ -1106,3 +1106,10 @@ permutation, shuffled-null, immutability, reload, and zero-replay controls.
 This is bounded external growth, not unrestricted memory growth or general
 continual learning. See
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_two_generations_66_source_normalizer_promoted_v1_2026-08-08/`.
+
+The same source-only page-router contract survives three independent append
+generations: 84 opaque candidates across 30 pages, with replicated strict
+mastery, permutation, shuffled-null, immutability, reload, and zero-replay
+controls. The retained capability is bounded; routing and verifier work still
+grow linearly, so consolidation/compression remains the next frontier. See
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_three_generations_84_source_normalizer_promoted_v1_2026-08-08/`.
