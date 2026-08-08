@@ -383,6 +383,17 @@ with torch.no_grad():
         / (COMMANDS[0].norm() * COMMANDS[1].norm()).clamp_min(1e-6)), 4)
 
 # ---- Phase 2: cued game phase — gradients into fragments + cue-reader only -
+# Destinations are expressed in the plant's goal vocabulary (the design
+# doc's contract), so the fragments START from the learned command
+# vectors plus noise. Measured need: from random init, REINFORCE through
+# the frozen plant finds one twin's target and half-finds the other
+# (mastery 1.0 / 0.43-0.51 on both seeds) even though the bridge proves
+# a perfect fragment exists for both. Phase 2's real job is the
+# cue -> destination ASSIGNMENT, which stays fully learned.
+with torch.no_grad():
+    fragments.copy_(
+        COMMANDS.detach() + 0.5 * torch.randn(
+            2, args.width, generator=generator))
 for parameter in plant:
     parameter.requires_grad_(False)
 bank_params = [fragments] + list(cue_reader.parameters())
