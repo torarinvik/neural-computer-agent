@@ -2162,3 +2162,63 @@ matched pair), and F32 forbids treating the cross-cohort comparison as
 an answer.
 
 Evidence: `acquisition_levers_screen_2026-08-08`.
+
+**F57 (probes 97-108). The goal-factored cued rung: skill in the bank,
+executor in the weights, 3/6 seeds through every gate.** The design
+(`docs/GOAL_FACTORED_DESIGN.md`) splits the plant into a game-INVARIANT
+goal-following executor (trained verifier-free on self-checkable micro
+goals, then frozen) and a bank of per-game destination fragments, with
+the game's name rendered in the world as the cue. Per-game gradients
+touch only the fragments and a 2->2 cue-reader, so the information
+asymmetry F55/F56 showed penalties cannot enforce is enforced by
+construction.
+
+| seed | draws | mastery A/B | cross-feed | decoy | label-swap |
+| ---: | ---: | --- | --- | --- | --- |
+| 69316 | 1 | 1.00 / 1.00 | 0.05 / 0.00 | 0.29 / **0.49** | 0.00 / 0.00 |
+| 69317 | 1 | 1.00 / 1.00 | 0.00 / 0.00 | 0.31 / 0.33 | 0.00 / 0.00 |
+| 69318 | 1 | 0.82 / 0.77 | 0.06 / 0.00 | 0.18 / **0.43** | 0.01 / 0.00 |
+| 69319 | 1 | 0.28 / 0.48 | 0.20 / 0.01 | 0.30 / 0.35 | 0.13 / 0.18 |
+| 69320 | 1 | 1.00 / 1.00 | 0.00 / 0.00 | 0.31 / 0.30 | 0.00 / 0.00 |
+| 69321 | 1 | 1.00 / 1.00 | 0.02 / 0.00 | 0.24 / 0.25 | 0.00 / 0.00 |
+
+Floors 0.344 / 0.320. **Full bar 3/6; both twins mastered 4/6;
+cross-feed inverts below floor 6/6; label-swap collapses 5/6.** Every
+full-pass run masters at exactly 1.00/1.00 — this architecture does not
+half-work.
+
+**What the causal gates establish.** Swapping the two fragments inverts
+behaviour to below chance on essentially every run; rendering the wrong
+game's NAME carries behaviour with it, wholesale. So the banner drives
+fetch and the fragment drives behaviour, with a plant that never saw a
+verifier reward. That is the program's core claim demonstrated end to
+end: an amodal executor of fixed size, and skill that lives outside it.
+
+**Comparison to the line it replaces.** The monolithic co-trained loop
+measured 5/16 on its bar with acquisition binding (F55), and generic
+reliability levers did nothing (F56). Here the causal gates almost never
+fail; what varies is acquisition. Removing the shared-policy competition
+by construction changed the failure profile, which is what the design
+predicted.
+
+**Eleven measured iterations produced three mechanisms**, each from a
+failure the previous fix exposed: engagement economics in phase 1 (the
+plant satisfied "consume plane B" by IDLING on 1493 of 1536 steps until
+idleness was priced -- the family's own DUAL_IDLE_COST lesson in
+self-supervised form); destinations expressed in the plant's own goal
+vocabulary; and no reward feedback into the controller, because a plant
+taught to self-correct from reward re-derives the twin from consequences
+and makes the bank decorative (F48's leak, fourth setting).
+
+**Two harness bugs are worth remembering more than the mechanisms.**
+`artifact_events` broadcasts dim 0 as tokens, so per-row commands became
+32 events flooding a capacity-8 window and NO agent ever saw its own
+command -- three "findings" about vocabulary readability were readings of
+severed-channel noise, all retracted. And the decoy gate used a single
+fixed noise vector: a sample size of one, where a direction that happens
+to point plane-B-ward reads as a failed necessity gate. Both produced
+plausible numbers rather than errors.
+
+Open: decoy on ONE twin at 0.43-0.49 on two seeds (the default-response
+residue), and phase-2 acquisition on two seeds. Evidence:
+`goal_factored_cued_v1_2026-08-09`.
