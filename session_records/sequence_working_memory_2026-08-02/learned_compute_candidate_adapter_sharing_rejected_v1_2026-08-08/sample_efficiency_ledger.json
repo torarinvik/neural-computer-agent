@@ -4,6 +4,7 @@
   "experiment": "verifier-gated adapter sharing",
   "date": "2026-08-08",
   "seeds": [69316, 69317],
+  "permutation_control": "source order [2, 1, 0] run for both seeds; one promoted and one failed",
   "unique_verifier_bits_per_run": 100352,
   "unique_logical_lifetimes_per_run": 33792,
   "optimizer_updates_per_run": 1088,
