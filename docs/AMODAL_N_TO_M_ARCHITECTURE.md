@@ -4052,3 +4052,11 @@ scheduler. Both seeds correctly requested growth because no existing slot
 passed fresh verification, with zero replay. This establishes no-false-
 admission behavior during real acquisition; positive transfer to a genuinely
 new primitive remains open.
+
+Executing the selected growth slot reached high final target accuracy and
+retained all source capabilities with unchanged old basis digests, but both
+seeds failed stable-prefix promotion and failed the shuffled-outcome rejection
+control. The growth result is rejected. This localizes the next bottleneck to
+causal credit/verification dependence during new-slot acquisition, not
+append-only capacity or retention. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_real_basis_acquisition_2026-08-08/`.

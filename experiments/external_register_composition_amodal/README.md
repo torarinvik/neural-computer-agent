@@ -314,3 +314,9 @@ routed a held-out `prefix_parity` candidate through the live register
 scheduler. Both seeds correctly requested growth because no existing slot
 passed fresh verification; no replay was used. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_real_basis_acquisition_2026-08-08/`.
+
+Executing the growth slot reached high final accuracy and preserved every
+source capability, but both seeds failed stable-prefix promotion and failed
+the shuffled-outcome rejection control. This growth result is rejected; the
+next bottleneck is causal credit/verification dependence during new-slot
+acquisition.

@@ -22,7 +22,9 @@ from .train import (
     INSTRUCTION_WIDTH,
     REGISTER_WIDTH,
     _accuracy,
+    _module_digest,
     _new_machine,
+    _stable_bits,
     _train_stage,
 )
 
@@ -171,6 +173,107 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         ),
         None,
     )
+    old_basis_digests = tuple(
+        _module_digest(machine.basis_slots[index])
+        for index in range(len(SOURCE_OPERATIONS))
+    )
+    if selected is None:
+        route = "grow"
+        routed_basis_slot = machine.add_basis_slot()
+    else:
+        route = "reuse"
+        routed_basis_slot = candidate_order[selected]
+    _freeze(machine)
+    target_instruction.code.requires_grad_(True)
+    routed_basis = machine.basis_slots[routed_basis_slot]
+    if route == "grow":
+        for parameter in routed_basis.parameters():
+            parameter.requires_grad_(True)
+    target_progress = _train_stage(
+        parent,
+        machine,
+        target_decoder,
+        operation=TARGET_OPERATION,
+        instructions=(target_instruction,),
+        basis_slots=(routed_basis_slot,),
+        updates=args.target_updates,
+        batch_size=args.batch_size,
+        span=args.span,
+        seed=args.seed + 100_000,
+        trainable=[
+            target_instruction.code,
+            *(routed_basis.parameters() if route == "grow" else ()),
+            *target_decoder.parameters(),
+        ],
+        credit_mode="paired_counterfactual",
+        eval_every=args.eval_every,
+        audit_count=args.audit_count,
+        audit_seed=args.seed + 200_000,
+    )
+    target_accuracy = _accuracy(
+        parent,
+        machine,
+        target_decoder,
+        operation=TARGET_OPERATION,
+        instructions=(target_instruction,),
+        basis_slots=(routed_basis_slot,),
+        count=args.audit_count,
+        span=args.span,
+        seed=args.seed + 210_000,
+        credit_mode="paired_counterfactual",
+    )
+    shuffled_target_accuracy = _accuracy(
+        parent,
+        machine,
+        target_decoder,
+        operation=TARGET_OPERATION,
+        instructions=(target_instruction,),
+        basis_slots=(routed_basis_slot,),
+        count=args.audit_count,
+        span=args.span,
+        seed=args.seed + 211_000,
+        credit_mode="paired_counterfactual",
+        shuffle_outcomes=True,
+    )
+    missing_target_accuracy = _accuracy(
+        parent,
+        machine,
+        target_decoder,
+        operation=TARGET_OPERATION,
+        instructions=(target_instruction,),
+        basis_slots=(routed_basis_slot,),
+        count=args.audit_count,
+        span=args.span,
+        seed=args.seed + 212_000,
+        credit_mode="paired_counterfactual",
+        evidence_present=False,
+    )
+    target_stable = _stable_bits(
+        target_progress,
+        threshold=threshold,
+        bits_per_update=args.batch_size * args.span * 2,
+    )
+    source_after = [
+        _accuracy(
+            parent,
+            machine,
+            decoder,
+            operation=operation,
+            instructions=(machine.instructions[index],),
+            basis_slots=(index,),
+            count=args.audit_count,
+            span=args.span,
+            seed=args.seed + 220_000 + index * 101,
+            credit_mode="paired_counterfactual",
+        )
+        for index, (operation, decoder) in enumerate(
+            zip(SOURCE_OPERATIONS, decoders, strict=True)
+        )
+    ]
+    old_basis_unchanged = all(
+        digest == _module_digest(machine.basis_slots[index])
+        for index, digest in enumerate(old_basis_digests)
+    )
     report = {
         "schema": "neural-computer.external-register-real-basis-acquisition-audit.v1",
         "claim_boundary": "A learned opaque prior orders real primitive basis trials; fresh verifier outcomes still determine admission.",
@@ -183,9 +286,19 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "pair_count": pair_count,
         "selected_candidate_position": selected,
         "cold_candidate_position": cold_selected,
+        "route": route,
+        "routed_basis_slot": routed_basis_slot,
+        "target_accuracy": target_accuracy,
+        "shuffled_target_accuracy": shuffled_target_accuracy,
+        "missing_target_accuracy": missing_target_accuracy,
+        "target_stable_bits": target_stable,
+        "source_accuracy_after": source_after,
+        "old_basis_unchanged": old_basis_unchanged,
         "accounting": {
             "replayed_examples": 0,
-            "optimizer_updates": args.parent_updates + args.source_updates * 3 + 1,
+            "optimizer_updates": (
+                args.parent_updates + args.source_updates * 3 + 1 + args.target_updates
+            ),
         },
         "gates": {
             "source_rows_have_distinct_outcomes": bool(
@@ -195,6 +308,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "unseen_target_requests_growth": (
                 selected is None and cold_selected is None
             ),
+            "target_mastered": target_accuracy >= threshold,
+            "target_stable": target_stable is not None,
+            "source_retained": min(source_after) >= threshold,
+            "old_basis_unchanged": old_basis_unchanged,
+            "reward_shuffled_rejected": shuffled_target_accuracy < threshold,
+            "missing_evidence_rejected": missing_target_accuracy < threshold,
             "no_replayed_examples": True,
         },
     }
@@ -210,6 +329,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=69316)
     parser.add_argument("--parent-updates", type=int, default=32)
     parser.add_argument("--source-updates", type=int, default=96)
+    parser.add_argument("--target-updates", type=int, default=128)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--span", type=int, default=4)
     parser.add_argument("--audit-count", type=int, default=32)

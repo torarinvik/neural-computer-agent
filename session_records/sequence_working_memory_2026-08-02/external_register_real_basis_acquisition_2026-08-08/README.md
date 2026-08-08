@@ -13,3 +13,14 @@ incorrectly reused. No replayed examples were used.
 This promotes real multi-slot opaque acquisition and no-false-admission
 behavior. It does not yet demonstrate positive transfer to a genuinely new
 primitive; the correct result here is verified growth.
+
+## Growth execution follow-up — rejected
+
+The selected slot-3 growth branch was then trained on held-out `prefix_parity`.
+Both seeds reached high final target accuracy (`0.9766` and `0.9453`) and
+retained all source capabilities, with the old basis digests unchanged.
+However, neither reached a stable-prefix threshold, and shuffled-outcome
+controls remained above the rejection floor (`0.9922` and `0.9531`). The
+growth result is therefore rejected for promotion. The next bottleneck is
+causal credit/verification dependence in new-slot acquisition, not retention
+or append-only capacity.

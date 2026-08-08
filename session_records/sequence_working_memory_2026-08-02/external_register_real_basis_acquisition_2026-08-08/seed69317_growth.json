@@ -1,0 +1,70 @@
+{
+  "schema": "neural-computer.external-register-real-basis-acquisition-audit.v1",
+  "claim_boundary": "A learned opaque prior orders real primitive basis trials; fresh verifier outcomes still determine admission.",
+  "seed": 69317,
+  "source_operations": [
+    "rotate",
+    "global_parity",
+    "complement"
+  ],
+  "target_operation": "prefix_parity",
+  "source_outcomes": [
+    [
+      0.9765625,
+      0.796875,
+      0.8359375
+    ],
+    [
+      0.6328125,
+      0.9453125,
+      0.5859375
+    ],
+    [
+      0.8203125,
+      0.8203125,
+      1.0
+    ]
+  ],
+  "target_candidate_order": [
+    1,
+    2,
+    0
+  ],
+  "target_candidate_outcomes": [
+    0.453125,
+    0.4375,
+    0.4375
+  ],
+  "pair_count": 8,
+  "selected_candidate_position": null,
+  "cold_candidate_position": null,
+  "route": "grow",
+  "routed_basis_slot": 3,
+  "target_accuracy": 0.9453125,
+  "shuffled_target_accuracy": 0.953125,
+  "missing_target_accuracy": 0.5,
+  "target_stable_bits": null,
+  "source_accuracy_after": [
+    0.9609375,
+    0.9375,
+    1.0
+  ],
+  "old_basis_unchanged": true,
+  "accounting": {
+    "replayed_examples": 0,
+    "optimizer_updates": 577
+  },
+  "gates": {
+    "source_rows_have_distinct_outcomes": true,
+    "fresh_verifier_controls_admission": true,
+    "unseen_target_requests_growth": true,
+    "target_mastered": true,
+    "target_stable": false,
+    "source_retained": true,
+    "old_basis_unchanged": true,
+    "reward_shuffled_rejected": false,
+    "missing_evidence_rejected": true,
+    "no_replayed_examples": true
+  },
+  "promoted": false
+}
