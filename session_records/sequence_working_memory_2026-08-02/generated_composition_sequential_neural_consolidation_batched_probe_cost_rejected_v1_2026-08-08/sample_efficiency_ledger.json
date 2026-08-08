@@ -1,0 +1,14 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "generated-composition-sequential-neural-consolidation-batched-probe-cost-rejected-v1-2026-08-08",
+  "status": "rejected_batched_retention_probe_optimization",
+  "seed": 69316,
+  "semantic_gates_passed": true,
+  "unbatched_wall_seconds": 944.1039026249782,
+  "batched_wall_seconds": 1129.765419000003,
+  "wall_time_ratio": 1.196651,
+  "replayed_examples": 0,
+  "rejection_reason": "concatenated recurrent verifier batches were slower on the target CPU",
+  "implementation_reverted": true,
+  "claim_boundary": "No architectural or continual-learning claim; negative runtime optimization evidence only."
+}

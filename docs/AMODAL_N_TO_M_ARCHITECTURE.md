@@ -3855,3 +3855,9 @@ despite parent stability, frozen-core, reload, corruption, and zero-replay
 controls passing. Larger batches therefore cannot simply replace optimizer
 updates in the current acquisition learner. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_sequential_neural_consolidation_batch32_same_bits_rejected_v1_2026-08-08/`.
+
+A second cost intervention grouped independent retention probes into larger
+recurrent batches. It preserved every semantic gate and produced identical
+behavior, but increased wall time by `19.7%` (`1,129.8s` versus `944.1s`) on
+the matched canonical audit. The implementation was reverted; evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_sequential_neural_consolidation_batched_probe_cost_rejected_v1_2026-08-08/`.

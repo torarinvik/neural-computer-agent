@@ -705,3 +705,8 @@ optimizer updates) was rejected at the first growth stage: the new source
 reached only `0.6953`. This confirms that optimizer updates, not only unique
 verifier bits, are currently necessary for acquisition. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_sequential_neural_consolidation_batch32_same_bits_rejected_v1_2026-08-08/`.
+
+Grouping independent retention probes into concatenated recurrent batches also
+passed semantic gates but was `19.7%` slower on the matched canonical audit, so
+the optimization was reverted. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_sequential_neural_consolidation_batched_probe_cost_rejected_v1_2026-08-08/`.
