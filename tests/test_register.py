@@ -86,6 +86,29 @@ def test_factorized_hybrid_operator_starts_with_the_composable_base_path() -> No
     assert torch.isfinite(result).all()
 
 
+def test_bounded_residual_operator_is_finite_and_configuration_is_explicit() -> None:
+    torch.manual_seed(910)
+    machine = ExternalCapabilityRegisterMachine(
+        event_width=4,
+        action_width=2,
+        intention_width=6,
+        register_width=8,
+        instruction_width=5,
+        interpreter_hidden=12,
+        operator_mode="factorized_bounded_residual",
+        instructions=(ExternalRegisterInstruction(5),),
+    )
+
+    register = torch.randn(3, 8)
+    result = machine.execute(register, machine.instructions[0])
+
+    assert machine.configuration()["operator_mode"] == (
+        "factorized_bounded_residual"
+    )
+    assert result.shape == register.shape
+    assert torch.isfinite(result).all()
+
+
 def test_external_register_state_is_external_and_quiet_ticks_do_not_mutate_it() -> None:
     torch.manual_seed(903)
     machine = _machine()

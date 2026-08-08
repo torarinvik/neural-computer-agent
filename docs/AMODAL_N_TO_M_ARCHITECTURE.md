@@ -3884,6 +3884,19 @@ continual learning. The next bottleneck is open-ended capability acquisition
 with learned blueprint/compression or genuine new computation while retaining
 the same no-replay and reversal guarantees.
 
+The four-instruction register pressure test added a bounded residual operator:
+normalized register state, bounded proposal, and opaque feature-wise gating.
+It preserved all primitive-retention, null, missing-evidence, persistence,
+corruption, frozen-core, and zero-replay controls across both seeds, and
+improved serial execution stability. It did not improve transfer: inherited
+composition required `20,480/24,576` bits versus fresh `16,384/8,192`; a
+fresh-outcome blueprint-pretraining variant reached `0.9883/0.9688` final
+composition but still required `8,192` bits versus fresh `4,096` on both
+seeds. This rejects bounded normalization as a blueprint-reuse solution and
+keeps held-out new-computation transfer as the next bottleneck. Evidence is
+archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_four_instruction_bounded_residual_rejected_v1_2026-08-08/`.
+
 The repeated-shift pressure test now reaches 144 capabilities through length
 24. Large generated pattern banks use deterministic addressed-prefix
 materialization rather than constructing the full combinatorial bank, so the

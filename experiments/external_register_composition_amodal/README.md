@@ -116,3 +116,23 @@ architecture task is a nonlinear operator with an explicit compositional
 invariant, not more unconstrained depth or blueprint updates.
 A short composition-aware blueprint probe was also rejected: retention was
 `0.7813` and inherited composition was `0.7344` versus fresh `0.9844`.
+
+## Bounded residual operator control (2026-08-08)
+
+The next operator candidate normalizes the register before a low-rank update,
+bounds the proposal with `tanh`, and lets each opaque instruction choose a
+feature-wise residual gate. This directly tests whether bounded state change
+improves serial compositional stability. The matched four-instruction audit
+passed every primitive-retention, shuffled-outcome, missing-evidence,
+reload, corruption, frozen-parent, and zero-replay control on both seeds, but
+failed positive transfer: inherited composition stabilized at `20,480` and
+`24,576` verifier bits versus fresh at `16,384` and `8,192`. Final inherited
+composition was `0.8867` on both seeds.
+
+Fresh-outcome shared-blueprint pretraining raised inherited composition to
+`0.9883` and `0.9688`, with all safety controls still passing, but fresh
+learners reached the same threshold in `4,096` bits on both seeds while the
+inherited path required `8,192`. It is therefore rejected as a transfer
+mechanism. The result supports bounded execution stability, not learned
+blueprint reuse or genuine new computation. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_four_instruction_bounded_residual_rejected_v1_2026-08-08/`.

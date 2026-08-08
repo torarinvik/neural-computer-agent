@@ -1,0 +1,182 @@
+{
+  "schema": "neural-computer.external-register-four-instruction-report.v1",
+  "claim_boundary": "Four opaque external instructions compose one verifier-private runtime-grammar program through one frozen parent and factorized register; this is not general continual learning.",
+  "seed": 69316,
+  "program": [
+    "reverse",
+    "adjacent_xor",
+    "complement",
+    "prefix_parity"
+  ],
+  "reversed_program": [
+    "prefix_parity",
+    "complement",
+    "adjacent_xor",
+    "reverse"
+  ],
+  "parent": {
+    "updates": 128,
+    "final_heldout_accuracy": 1.0
+  },
+  "primitive_operations": [
+    "reverse",
+    "adjacent_xor",
+    "complement",
+    "prefix_parity"
+  ],
+  "primitive_updates": 256,
+  "composition_updates": 256,
+  "credit_mode": "paired_counterfactual",
+  "execution_mode": "read_execute",
+  "operator_mode": "factorized_bounded_residual",
+  "interpreter_pretrain_updates": 64,
+  "interpreter_composition_pretrain_updates": 0,
+  "batch_size": 16,
+  "span": 4,
+  "audit_count": 64,
+  "primitive_final_accuracy": {
+    "reverse": 0.984375,
+    "adjacent_xor": 0.94140625,
+    "complement": 0.97265625,
+    "prefix_parity": 0.94921875
+  },
+  "primitive_retention_by_stage": [
+    {
+      "reverse": 0.984375
+    },
+    {
+      "reverse": 0.984375,
+      "adjacent_xor": 0.9375
+    },
+    {
+      "reverse": 0.984375,
+      "adjacent_xor": 0.92578125,
+      "complement": 0.9609375
+    },
+    {
+      "reverse": 0.984375,
+      "adjacent_xor": 0.94140625,
+      "complement": 0.96875,
+      "prefix_parity": 0.953125
+    }
+  ],
+  "results": {
+    "composition": 0.98828125,
+    "reversed_order_composition": 0.96875,
+    "reward_shuffled_composition": 0.53125,
+    "fresh_composition": 1.0,
+    "missing_evidence_composition": 0.625
+  },
+  "learning_curves": {
+    "composition": [
+      {
+        "update": 32,
+        "heldout_accuracy": 0.71875
+      },
+      {
+        "update": 64,
+        "heldout_accuracy": 0.875
+      },
+      {
+        "update": 96,
+        "heldout_accuracy": 0.90625
+      },
+      {
+        "update": 128,
+        "heldout_accuracy": 0.96875
+      },
+      {
+        "update": 160,
+        "heldout_accuracy": 0.96484375
+      },
+      {
+        "update": 192,
+        "heldout_accuracy": 0.9765625
+      },
+      {
+        "update": 224,
+        "heldout_accuracy": 0.99609375
+      },
+      {
+        "update": 256,
+        "heldout_accuracy": 0.98828125
+      }
+    ],
+    "fresh": [
+      {
+        "update": 32,
+        "heldout_accuracy": 0.80859375
+      },
+      {
+        "update": 64,
+        "heldout_accuracy": 0.90625
+      },
+      {
+        "update": 96,
+        "heldout_accuracy": 0.953125
+      },
+      {
+        "update": 128,
+        "heldout_accuracy": 0.98046875
+      },
+      {
+        "update": 160,
+        "heldout_accuracy": 1.0
+      },
+      {
+        "update": 192,
+        "heldout_accuracy": 1.0
+      },
+      {
+        "update": 224,
+        "heldout_accuracy": 1.0
+      },
+      {
+        "update": 256,
+        "heldout_accuracy": 1.0
+      }
+    ]
+  },
+  "persistence": {
+    "machine_digest": "328756dc3b5f42d0408229a3aef8057d5623854f82c10408a07576a674f97383",
+    "reloaded_machine_digest": "328756dc3b5f42d0408229a3aef8057d5623854f82c10408a07576a674f97383",
+    "decoder_digest": "d8773c674061f3006a0ed74591d94dffa7d6ec611b0943321a0bddbc874355fa",
+    "reloaded_decoder_digest": "d8773c674061f3006a0ed74591d94dffa7d6ec611b0943321a0bddbc874355fa",
+    "reload_exact": true,
+    "reloaded_composition": 0.98828125,
+    "machine_store_digest": "7ba6c41b995bf140e6a960ee65a4a3e790b4c5ab5e280dd6df148b80d3daae31",
+    "corruption_rejected": true
+  },
+  "frozen_core": {
+    "parent_digest_before": "0deb8fcf2769628696558bc23f4977bdfaedf302a0f385c17a6b55efa3828872",
+    "parent_digest_after": "0deb8fcf2769628696558bc23f4977bdfaedf302a0f385c17a6b55efa3828872",
+    "unchanged": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 163840,
+    "unique_logical_lifetimes": 40960,
+    "optimizer_updates": 2688,
+    "replayed_examples": 0,
+    "wall_seconds": 152.68389183300314,
+    "stable_bits_to_threshold": 8192,
+    "composition_stable_bits_to_threshold": 8192,
+    "fresh_stable_bits_to_threshold": 4096,
+    "retention_on_mastered_primitives": 0.94140625,
+    "transfer_ratio_against_fresh_learner": 0.5
+  },
+  "promotion": {
+    "accepted": false,
+    "gates": {
+      "composition_stable": true,
+      "fresh_stable": true,
+      "positive_stable_transfer": false,
+      "retained_all_primitives": true,
+      "reward_shuffled_rejected": true,
+      "missing_evidence_rejected": true,
+      "reload_exact": true,
+      "corruption_rejected": true,
+      "frozen_parent": true
+    },
+    "reason": "one_or_more_registered_gates_failed"
+  }
+}

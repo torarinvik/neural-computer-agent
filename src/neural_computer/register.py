@@ -143,6 +143,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "factorized_low_rank",
             "factorized_film",
             "factorized_hybrid",
+            "factorized_bounded_residual",
             "unconstrained_mlp",
         ):
             raise ValueError("unsupported external register operator mode")
@@ -181,6 +182,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         if operator_mode in (
             "factorized_low_rank",
             "factorized_hybrid",
+            "factorized_bounded_residual",
         ):
             self.operator_left = nn.Linear(
                 instruction_width,
@@ -198,6 +200,16 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             ):
                 nn.init.normal_(module.weight, mean=0.0, std=0.02)
                 nn.init.zeros_(module.bias)
+        if operator_mode == "factorized_bounded_residual":
+            # Serial instruction chains are sensitive to unbounded additive
+            # drift.  Normalize the read state, bound the learned proposal,
+            # and let the opaque instruction choose a feature-wise residual
+            # gate.  The register remains the only downstream input.
+            self.operator_normalizer = nn.LayerNorm(register_width)
+            self.operator_composition_gate = nn.Linear(
+                instruction_width, register_width
+            )
+            nn.init.zeros_(self.operator_composition_gate.bias)
         if operator_mode in ("factorized_film", "factorized_hybrid"):
             self.operator_feature = nn.Linear(register_width, interpreter_hidden)
             self.operator_modulation = nn.Linear(
@@ -384,7 +396,13 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         if self.operator_mode in (
             "factorized_low_rank",
             "factorized_hybrid",
+            "factorized_bounded_residual",
         ):
+            operator_register = (
+                self.operator_normalizer(register)
+                if self.operator_mode == "factorized_bounded_residual"
+                else register
+            )
             left = torch.tanh(self.operator_left(code)).reshape(
                 register.shape[0],
                 self.register_width,
@@ -395,10 +413,14 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 self.operator_rank,
                 self.register_width,
             )
-            projected = torch.einsum("br,bkr->bk", register, right)
+            projected = torch.einsum("br,bkr->bk", operator_register, right)
             base_proposal = torch.einsum("bk,brk->br", projected, left)
             if self.operator_mode == "factorized_low_rank":
                 return register + base_proposal + self.operator_bias(code)
+            if self.operator_mode == "factorized_bounded_residual":
+                proposal = torch.tanh(base_proposal + self.operator_bias(code))
+                gate = torch.sigmoid(self.operator_composition_gate(code))
+                return register + gate * proposal
         if self.operator_mode in ("factorized_film", "factorized_hybrid"):
             features = torch.tanh(self.operator_feature(register))
             modulation = torch.tanh(self.operator_modulation(code))

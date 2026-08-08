@@ -588,6 +588,7 @@ def main() -> None:
             "factorized_low_rank",
             "factorized_film",
             "factorized_hybrid",
+            "factorized_bounded_residual",
         ),
         default="factorized_low_rank",
     )
