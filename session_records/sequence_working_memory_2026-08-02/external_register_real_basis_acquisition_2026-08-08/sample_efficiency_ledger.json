@@ -1,0 +1,16 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "paired_scalar_probe_real_basis_acquisition",
+  "date": "2026-08-09",
+  "seeds": [69316, 69317],
+  "claim": "Active paired scalar verifier probing tests whether single-action credit sparsity blocks stable growth.",
+  "verifier_bits_per_growth_query": 2,
+  "unique_verifier_bits_per_run": 69632,
+  "unique_logical_lifetimes_per_run": 8704,
+  "optimizer_updates_per_run": 577,
+  "replayed_examples": 0,
+  "retention_on_mastered_primitives": "mixed",
+  "stable_bits_to_threshold": "failed",
+  "transfer_ratio_against_fresh_learner": "not measured",
+  "decision": "reject as capability learner; retain as trainer-only credit diagnostic"
+}

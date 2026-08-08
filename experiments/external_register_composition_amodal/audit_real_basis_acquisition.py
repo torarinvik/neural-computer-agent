@@ -481,11 +481,19 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     )
     report = {
         "schema": "neural-computer.external-register-real-basis-acquisition-audit.v1",
-        "claim_boundary": "A learned opaque prior orders real primitive basis trials; fresh verifier outcomes still determine admission.",
+        "claim_boundary": (
+            "A learned opaque prior orders real primitive basis trials; fresh "
+            "verifier outcomes still determine admission. Paired scalar probing "
+            "is trainer-only and doubles verifier bits, so it is not a single-"
+            "trial continual-learning claim."
+        ),
         "seed": args.seed,
         "source_operations": list(SOURCE_OPERATIONS),
         "target_operation": TARGET_OPERATION,
         "growth_credit_mode": args.growth_credit_mode,
+        "verifier_bits_per_growth_query": (
+            2 if args.growth_credit_mode == "paired_scalar_probe" else 1
+        ),
         "source_outcomes": source_outcomes.tolist(),
         "target_candidate_order": list(candidate_order),
         "target_candidate_outcomes": target_outcomes.tolist(),
@@ -516,6 +524,26 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "rollback_applied": rollback_applied,
         },
         "accounting": {
+            "unique_verifier_bits": (
+                (
+                    args.source_updates * len(SOURCE_OPERATIONS)
+                    + args.growth_warmup_updates
+                    + args.growth_basis_focus_updates
+                    + args.target_updates
+                )
+                * args.batch_size
+                * args.span
+                * 2
+            ),
+            "unique_logical_lifetimes": (
+                (
+                    args.source_updates * len(SOURCE_OPERATIONS)
+                    + args.growth_warmup_updates
+                    + args.growth_basis_focus_updates
+                    + args.target_updates
+                )
+                * args.batch_size
+            ),
             "replayed_examples": 0,
             "optimizer_updates": (
                 args.parent_updates
@@ -524,6 +552,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 + args.growth_warmup_updates
                 + args.growth_basis_focus_updates
                 + args.target_updates
+            ),
+            "growth_verifier_bits_per_query": (
+                2 if args.growth_credit_mode == "paired_scalar_probe" else 1
             ),
         },
         "gates": {
@@ -575,6 +606,7 @@ def main() -> None:
             "reinforce_trace",
             "actor_critic",
             "q_actor_critic",
+            "paired_scalar_probe",
             "paired_counterfactual",
         ),
         default="attempted_bce",

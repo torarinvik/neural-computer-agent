@@ -150,3 +150,20 @@ the actually attempted opaque action and supplied a learned advantage to the
 policy. Checkpoint progress improved modestly to `0.7500`/`0.7539`, but final
 accuracy was only `0.8555`/`0.8750`, with no stable prefix. This remains an
 optional outcome-only baseline; attempted-outcome BCE is still stronger.
+
+## Paired scalar-probe credit follow-up — rejected
+
+The trainer actively obtained both opaque action outcomes for each fresh
+rendered query and optimized the two scalar verifier results directly. This
+removed single-action credit sparsity, but doubled verifier bits and therefore
+does not constitute a single-trial continual-learning result. Across seeds
+`69316` and `69317`, final target accuracy was `0.8203`/`0.8750`, while the
+stable full-span checkpoints remained below threshold (`0.6563`/`0.6328` at
+the final checkpoints). Source retention passed in only one seed, and both
+unstable candidates were rolled back. The result localizes the remaining
+bottleneck beyond scalar credit sparsity: the new computation path cannot yet
+consolidate a stable capability while the old basis remains protected.
+
+Each run used `69,632` verifier bits, `8,704` logical lifetimes, `577`
+optimizer updates, and zero replayed examples. Paired probing is retained as a
+valid trainer-only diagnostic, not as the default learner.

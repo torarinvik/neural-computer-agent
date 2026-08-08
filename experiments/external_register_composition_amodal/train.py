@@ -247,6 +247,19 @@ def _rollout(
         elif credit_mode == "attempted_bce":
             selected = logits.gather(1, action.unsqueeze(1)).squeeze(1)
             loss = F.binary_cross_entropy_with_logits(selected, delivered)
+        elif credit_mode == "paired_scalar_probe":
+            # Trainer-only active probing: execute both opaque actions against
+            # fresh rendered queries and train from the two scalar verifier
+            # outcomes.  This is deliberately different from the diagnostic
+            # paired-counterfactual ranking loss: no utility/ranking target is
+            # supplied, and the doubled verifier cost is reported explicitly.
+            attempted = torch.tensor(
+                [[0, 1]], dtype=torch.long, device=device
+            ).expand(batch_size, -1)
+            probe_rewards = (attempted == correct.unsqueeze(1)).to(logits.dtype)
+            if shuffle_outcomes:
+                probe_rewards = probe_rewards.roll(1, dims=0)
+            loss = F.binary_cross_entropy_with_logits(logits, probe_rewards)
         elif credit_mode == "reinforce":
             selected_log_probability = behavior_probabilities.log().gather(
                 1, action.unsqueeze(1)
@@ -787,6 +800,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "primitive_updates": args.primitive_updates,
         "composition_updates": args.composition_updates,
         "credit_mode": args.credit_mode,
+        "verifier_bits_per_query": (
+            2 if args.credit_mode == "paired_scalar_probe" else 1
+        ),
         "execution_mode": "read_execute",
         "batch_size": args.batch_size,
         "span": args.span,
@@ -871,7 +887,7 @@ def main() -> None:
     parser.add_argument("--mastery-threshold", type=float, default=0.8)
     parser.add_argument(
         "--credit-mode",
-        choices=("paired_counterfactual", "attempted_bce"),
+        choices=("paired_counterfactual", "paired_scalar_probe", "attempted_bce"),
         default="paired_counterfactual",
     )
     args = parser.parse_args()
