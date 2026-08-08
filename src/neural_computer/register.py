@@ -148,6 +148,7 @@ class ExternalRegisterComputeBasis(nn.Module):
         hidden: int = 64,
         event_width: int = 0,
         event_window_size: int = 0,
+        microsteps: int = 1,
     ) -> None:
         super().__init__()
         if min(register_width, instruction_width, hidden) < 1:
@@ -156,11 +157,14 @@ class ExternalRegisterComputeBasis(nn.Module):
             raise ValueError("event window dimensions must be non-negative")
         if event_window_size and event_width < 1:
             raise ValueError("event width must be positive for an event window")
+        if microsteps < 1:
+            raise ValueError("compute basis microsteps must be positive")
         self.register_width = int(register_width)
         self.instruction_width = int(instruction_width)
         self.hidden = int(hidden)
         self.event_width = int(event_width)
         self.event_window_size = int(event_window_size)
+        self.microsteps = int(microsteps)
         self.event_window_width = self.event_width * self.event_window_size
         width = self.register_width + self.instruction_width + self.event_window_width
         self.network = nn.Sequential(
@@ -183,6 +187,7 @@ class ExternalRegisterComputeBasis(nn.Module):
             "hidden": self.hidden,
             "event_width": self.event_width,
             "event_window_size": self.event_window_size,
+            "microsteps": self.microsteps,
             "storage": "append_only_external_compute_slot_v1",
             "signature": "one_opaque_learned_slot_key_v1",
         }
@@ -210,14 +215,21 @@ class ExternalRegisterComputeBasis(nn.Module):
             ) or event_window_mask.dtype is not torch.bool:
                 raise ValueError("event window mask has the wrong shape")
             window = event_window * event_window_mask.unsqueeze(-1).to(event_window.dtype)
-            features = torch.cat((register, code, window.flatten(1)), dim=-1)
         else:
             if event_window is not None or event_window_mask is not None:
                 raise ValueError("event window is unsupported by this compute basis")
-            features = torch.cat((register, code), dim=-1)
-        return register + torch.sigmoid(self.gate(features)) * torch.tanh(
-            self.network(features)
-        )
+            window = None
+        for _ in range(self.microsteps):
+            features = torch.cat(
+                (register, code)
+                if window is None
+                else (register, code, window.flatten(1)),
+                dim=-1,
+            )
+            register = register + torch.sigmoid(self.gate(features)) * torch.tanh(
+                self.network(features)
+            )
+        return register
 
 
 class ExternalRegisterBasisCompatibilityPrior(nn.Module):
@@ -337,6 +349,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         instructions: Iterable[ExternalRegisterInstruction] = (),
         basis_slots: Iterable[ExternalRegisterComputeBasis] = (),
         basis_hidden: int = 64,
+        basis_microsteps: int = 1,
         event_window_size: int = 0,
     ) -> None:
         super().__init__()
@@ -349,6 +362,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             interpreter_hidden,
             operator_rank,
             basis_hidden,
+            basis_microsteps,
         ) < 1:
             raise ValueError("external register dimensions must be positive")
         if event_window_size < 0:
@@ -375,6 +389,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             basis.register_width != register_width
             or basis.instruction_width != instruction_width
             or basis.event_window_size != event_window_size
+            or basis.microsteps != basis_microsteps
             or (event_window_size and basis.event_width != event_width)
             for basis in basis_members
         ):
@@ -391,6 +406,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         self.operator_mode = operator_mode
         self.operator_rank = int(operator_rank)
         self.basis_hidden = int(basis_hidden)
+        self.basis_microsteps = int(basis_microsteps)
         self.event_window_size = int(event_window_size)
         seed_width = self.event_width + self.action_width + 2 + self.intention_width
         self.input_encoder = nn.Sequential(
@@ -513,6 +529,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "instruction_count": len(self.instructions),
             "basis_slot_count": len(self.basis_slots),
             "basis_hidden": self.basis_hidden,
+            "basis_microsteps": self.basis_microsteps,
             "event_window_size": self.event_window_size,
             "state": "external_working_register_with_recurrent_context_v2",
             "execution": "shared_interpreter_serial_instruction_chain_v1",
@@ -540,6 +557,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 self.register_width,
                 self.instruction_width,
                 hidden=self.basis_hidden,
+                microsteps=self.basis_microsteps,
                 event_width=self.event_width if self.event_window_size else 0,
                 event_window_size=self.event_window_size,
             )
@@ -547,6 +565,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             basis.register_width != self.register_width
             or basis.instruction_width != self.instruction_width
             or basis.event_window_size != self.event_window_size
+            or basis.microsteps != self.basis_microsteps
             or (
                 self.event_window_size
                 and basis.event_width != self.event_width

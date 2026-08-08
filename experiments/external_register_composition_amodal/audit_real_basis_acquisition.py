@@ -116,6 +116,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         len(SOURCE_OPERATIONS) + 1,
         operator_mode=args.operator_mode,
         basis_hidden=args.basis_hidden,
+        basis_microsteps=args.basis_microsteps,
     )
     for _ in SOURCE_OPERATIONS:
         machine.add_basis_slot()
@@ -433,6 +434,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         len(SOURCE_OPERATIONS) + 1,
         operator_mode=args.operator_mode,
         basis_hidden=args.basis_hidden,
+        basis_microsteps=args.basis_microsteps,
     )
     for _ in SOURCE_OPERATIONS:
         shuffled_training_machine.add_basis_slot()
@@ -518,6 +520,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "target_operation": TARGET_OPERATION,
         "growth_credit_mode": args.growth_credit_mode,
         "basis_hidden": args.basis_hidden,
+        "basis_microsteps": args.basis_microsteps,
         "verifier_bits_per_growth_query": (
             2 if args.growth_credit_mode == "paired_scalar_probe" else 1
         ),
@@ -657,6 +660,7 @@ def main() -> None:
     parser.add_argument("--eval-every", type=int, default=32)
     parser.add_argument("--operator-mode", default="factorized_bounded_residual")
     parser.add_argument("--basis-hidden", type=int, default=64)
+    parser.add_argument("--basis-microsteps", type=int, default=1)
     parser.add_argument("--retention-regression-tolerance", type=float, default=0.02)
     args = parser.parse_args()
     print(json.dumps(run(args), indent=2))

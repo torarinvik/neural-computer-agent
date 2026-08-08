@@ -204,3 +204,16 @@ increasing width.
 
 Each run used `69,632` verifier bits, `8,704` logical lifetimes, `577`
 optimizer updates, and zero replayed examples.
+
+## Bounded microstep fresh-slot follow-up — rejected
+
+Each new external slot was allowed two bounded residual microsteps over its
+register state, while retaining the same opaque instruction and event-window
+interface. This performed worse than the one-step slot: final full-span
+checkpoint scores were `0.5703`/`0.5000`, with no stable prefix. Fixed-suite
+source retention remained unchanged. Iterating the same residual interface is
+therefore not sufficient; the next design must improve what the slot can
+represent and learn from, rather than only repeating its update.
+
+Each run used `69,632` verifier bits, `8,704` logical lifetimes, `577`
+optimizer updates, and zero replayed examples.
