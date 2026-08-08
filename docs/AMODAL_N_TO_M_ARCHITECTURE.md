@@ -3832,3 +3832,18 @@ arbitrary program induction, or general continual learning. The current
 implementation is also too expensive for an always-on learning loop; reducing
 verifier and optimization cost while preserving this retention contract is the
 next high-ROI bottleneck.
+
+The same sequential neural-consolidation boundary was then tested with five
+runtime-generated eight-step opaque-rule procedures rather than hand-listed
+primitive names. Across seeds `69316` and `69317`, all three shared rewrites,
+four-source retention, exact reload, reversal recovery, corruption rejection,
+frozen-core equality, and zero-replay gates passed. The inherited target was
+never worse than fresh (`6,144 / 6,144` stable-prefix bits and `4,096 / 6,144`
+bits respectively). Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_sequential_neural_consolidation_four_source_runtime_opaque_replicated_promoted_v1_2026-08-08/`.
+
+This closes the hand-specified grammar gap for this bounded consolidation
+mechanism, not the universal-computation gap. The exact audit required roughly
+18 and 24 minutes per seed and 4,736 optimizer updates, so runtime-generated
+procedure complexity and verification cost are now explicit implementation
+bottlenecks.

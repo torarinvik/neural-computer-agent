@@ -691,3 +691,11 @@ zero-replay controls passed. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_sequential_neural_consolidation_four_source_seed69316_promoted_v1_2026-08-08/`.
 This is bounded replay-free consolidation, not general continual learning; its
 runtime cost remains the next implementation bottleneck.
+
+The shared-neural path also passes the runtime-generated opaque-rule audit:
+five private eight-step procedures, four sequential sources, and two seeds all
+pass source retention, reload, reversal, corruption, frozen-core, and zero-
+replay gates. The inherited target is never worse than fresh, but the audit
+costs roughly 18--24 minutes per seed, so this is bounded generalized
+consolidation rather than a practical universal learner. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_sequential_neural_consolidation_four_source_runtime_opaque_replicated_promoted_v1_2026-08-08/`.
