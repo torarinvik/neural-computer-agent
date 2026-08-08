@@ -279,3 +279,9 @@ zero-replay gates, with minimum route floors of `0.8125` and `0.8594`.
 This is still bounded generated-family growth rather than open-ended memory,
 arbitrary new computation, or general continual learning. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14to16to18to20_remediated_v1_2026-08-07/`.
+
+The same boundary now passes an eighth shift through length 22, reaching 122
+capabilities across both seeds. Final remedied route floors are `0.859375` on
+both seeds; one raw length-22 phase fell to `0.640625` before targeted fresh
+remediation, making the confidence bottleneck explicit. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14to16to18to20to22_remediated_v1_2026-08-08/`.

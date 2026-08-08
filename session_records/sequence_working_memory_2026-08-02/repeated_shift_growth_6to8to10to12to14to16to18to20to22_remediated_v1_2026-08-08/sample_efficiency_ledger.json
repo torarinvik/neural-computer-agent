@@ -1,0 +1,22 @@
+{
+  "experiment": "repeated-shift-growth-6to8to10to12to14to16to18to20to22-remediated-v1-2026-08-08",
+  "status": "promoted_replicated_122_capability_eight_shift_growth",
+  "seeds": [69316, 69317],
+  "schedule": {
+    "base_episode_length": 6,
+    "shift_episode_lengths": [8, 10, 12, 14, 16, 18, 20, 22],
+    "families_per_shift": [8, 10, 12, 14, 16, 18, 20, 22],
+    "total_capabilities": 122
+  },
+  "route_updates": 8192,
+  "extension_updates": 256,
+  "remediation_updates": 256,
+  "remediation_rounds": 4,
+  "remediation_threshold": 0.8,
+  "remedied_final_route_floor_per_seed": [0.859375, 0.859375],
+  "raw_length22_phase_floor_seed69316": 0.890625,
+  "raw_length22_phase_floor_seed69317": 0.640625,
+  "replayed_examples": 0,
+  "all_gates_passed": true,
+  "claim_boundary": "Bounded 122-capability repeated-shift growth with targeted fresh remediation; unbounded memory, arbitrary new computation, and general continual learning remain unqualified."
+}

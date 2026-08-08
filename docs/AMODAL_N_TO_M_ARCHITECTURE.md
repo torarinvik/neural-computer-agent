@@ -3869,3 +3869,17 @@ recurrent batches. It preserved every semantic gate and produced identical
 behavior, but increased wall time by `19.7%` (`1,129.8s` versus `944.1s`) on
 the matched canonical audit. The implementation was reverted; evidence is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_sequential_neural_consolidation_batched_probe_cost_rejected_v1_2026-08-08/`.
+
+The stronger episodic context/credit boundary now extends the repeated-shift
+schedule from 100 to 122 capabilities by adding a length-22 shift. Both seeds
+pass causal credit, candidate permutation, old-route retention, full-bank
+protection, reversal/recovery, persistence, corruption, reward-shuffled null,
+and zero-replay gates. Targeted fresh remediation restores the final route
+floor to `0.859375` on both seeds; seed `69317` briefly exposed a raw
+length-22 floor of `0.640625` before remediation. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/repeated_shift_growth_6to8to10to12to14to16to18to20to22_remediated_v1_2026-08-08/`.
+
+This promotes bounded 122-capability growth, not unbounded memory or general
+continual learning. The next bottleneck is open-ended capability acquisition
+with learned blueprint/compression or genuine new computation while retaining
+the same no-replay and reversal guarantees.
