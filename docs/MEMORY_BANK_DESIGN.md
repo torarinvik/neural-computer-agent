@@ -1562,3 +1562,47 @@ signal than one scalar per rollout, which means supervising fetch
 decisions directly against measured per-fragment outcomes, i.e. the swap
 test (F23's conflict machinery) repurposed as router supervision. (a) is
 available now and is the smaller claim; (b) is the next real rung.
+
+**F46 (probes 71-72). The addressing phase was destroying the encoding
+it depends on. Freezing the plant fixes the addressing and exposes the
+real residue — the read path was never trained to use a probe-indexed
+fetch.** A bug, and it retroactively weakens F43-F45.
+
+The encoding probe reads +1.00 / -1.00 for the twins BEFORE the
+addressing phase and collapses to one sign AFTER it, on both seeds. The
+controller sat in that phase's optimiser, trained by an RL objective
+with no reason to preserve a context signal, so every router in F43-F45
+was keyed on a quantity decaying to a constant underneath it. A router
+keyed on a constant must collapse; those three collapses are therefore
+not evidence about routers. The claim "the learned router is this
+program's universal failure point" (F45) is withdrawn as unsupported by
+its own experiment — it may still be true, but nothing here shows it.
+
+With the plant frozen for the addressing phase, the encoding survives
+and addressing WORKS: `probe_sign` is 1 for choiceA and 0 for choiceB on
+both seeds, and the table returns genuinely different fragments per
+world ([3,2] vs [1,5]; [5,2] vs [3,0]). The agent identifies which of
+two identical-looking worlds it is in, from nothing but acting and
+observing its own reward, and fetches accordingly. No oracle, no context
+label. That is weakness 12's actual requirement, met.
+
+Mastery does not follow (0.21/0.24 and 0.17/0.31, at chance), and the
+reason is now clean rather than confounded: the read path was formed in
+an earlier regime and the plant is frozen, so nothing ever learned to
+EXECUTE the fetched fragments under probe-indexed addressing. The three
+pieces each work in isolation — encoding (+-1.00), addressing (correct
+per world), read path (F13, 1.000/1.000) — and have never been trained
+together, because freezing to protect the encoding also forbids the read
+path from adapting.
+
+That is precisely what the promoted consolidation line exists for, and
+the next rung is now specific: run the addressing phase with the plant
+PLASTIC but under arbitrated consolidation anchored on the encoding's
+Fisher, so the context signal is protected while the read path adapts.
+Freezing was the diagnostic; consolidation is the architecture-true fix,
+and it is a mechanism this program already promoted on 5/5 seeds.
+
+Standing methodological rule, learned the hard way twice (cf. F31):
+a quantity measured before a training phase is not evidence about its
+value after that phase. Any claim resting on a measured signal must
+re-measure it at the point of use.
