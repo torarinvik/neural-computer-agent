@@ -108,7 +108,8 @@ rung promotes, rejects, or qualifies. Ordered by severity.
     rather than on context selections. Next: swap the repulsion penalty
     for the shared+private partition and re-run the twins and the
     factorial rung against it.
-12. **Addressing is per-context logits, not content-addressed** — the
+12. *Necessity closed for the battery by F54; addressing still open.*
+    **Addressing is per-context logits, not content-addressed** — the
     selector maps a known context label to fragments; it does not
     retrieve from observations. The promoted routing rung
     (`game_routing_native_actions_v1`) does fetch from opaque events, but
@@ -121,7 +122,18 @@ rung promotes, rejects, or qualifies. Ordered by severity.
     representation that is itself still learning, so neither the encoding
     nor the router has a gradient until the other works. Next: stage the
     CONTEXT ENCODING, not the assignment -- a probe phase supervised by
-    the sign of the agent's own next reward under a fixed test action.
+    the sign of the agent's own next reward under a fixed test action. *Updated
+    by F53/F54:* that probe phase turned out to CONTAMINATE the gate --
+    its fixed test action performs choiceA's task, so the harness scored
+    0.961 on that twin with no agent at all, and F48's mastery and decoy
+    readings are withdrawn. Separately, F54 re-read the staggered battery
+    against measured floors and found BOTH necessity gates (bank withheld
+    and norm-matched decoy) passing on every discriminating game across
+    three seeds -- so the bank demonstrably carries the skill when
+    fetched by oracle or per-context selection. What remains open is
+    strictly SELF-addressing: the agent inferring its context unaided.
+    Next: read the corrected post-probe-scored re-runs, and if the probe
+    must stay, score only what follows it.
 
 17. **Two battery gates cannot discriminate, and every gate lacked a
     measured floor until now** — avoid1 has 0.020 of headroom between its
