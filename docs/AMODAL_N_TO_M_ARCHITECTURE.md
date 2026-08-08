@@ -3783,3 +3783,10 @@ prefix. Reports are archived in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_adapter_sharing_five_promoted_v1_2026-08-08/`.
 This strengthens bounded continual growth; it does not establish unrestricted
 lifelong learning.
+
+The same contract now promotes six opaque capabilities across seeds `69316`
+and `69317`, retaining only two physical adapters for six logical bindings.
+Reports and accounting are archived in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_adapter_sharing_six_promoted_v1_2026-08-08/`.
+This is the current bounded scaling result; general lifelong learning remains
+unproven.
