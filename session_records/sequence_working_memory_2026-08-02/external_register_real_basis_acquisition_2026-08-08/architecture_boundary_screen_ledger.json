@@ -33,6 +33,15 @@
       "verifier_bits_per_run": 70656,
       "logical_lifetimes_per_run": 9216,
       "stable_prefix": "failed"
+    },
+    {
+      "name": "candidate_event_bridge_online_ema_0_9",
+      "decision": "reject_ema_stabilizer_retain_bridge_direction",
+      "verifier_bits_per_run": 70656,
+      "logical_lifetimes_per_run": 9216,
+      "stable_prefix": "failed",
+      "source_retention": "passed",
+      "seeds": [69316, 69317]
     }
   ],
   "next_frontier": "stable_consolidation_objective_for_candidate_event_bridge",

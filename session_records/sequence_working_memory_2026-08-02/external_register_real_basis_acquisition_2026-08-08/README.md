@@ -271,3 +271,19 @@ represent and learn from, rather than only repeating its update.
 
 Each run used `69,632` verifier bits, `8,704` logical lifetimes, `577`
 optimizer updates, and zero replayed examples.
+
+## Online EMA stabilization follow-up — rejected
+
+The candidate learned event bridge was trained with online exponential moving
+average parameter updates (`decay=0.9`) across target warmup, basis focus, and
+full-span growth. This preserved the fixed source suite exactly in both seeds,
+but it did not produce stable target mastery: the full-span checkpoint paths
+were `0.625`/`0.6563`/`0.6719`/`0.6484` and
+`0.4219`/`0.4688`/`0.5625`/`0.5938`. Final target accuracy was `0.6641` and
+`0.7266`, and both unstable candidates were rolled back. EMA therefore does
+not repair the bridge's consolidation problem by itself. The bridge remains
+an isolated architectural direction, while this optimizer mechanism is not
+promoted.
+
+Each run used `70,656` verifier bits, `9,216` logical lifetimes, `577`
+optimizer updates, and zero replayed examples.

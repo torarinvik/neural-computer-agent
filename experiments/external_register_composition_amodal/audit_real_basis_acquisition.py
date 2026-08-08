@@ -276,6 +276,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         value_head=target_value_head,
         q_head=target_q_head,
         event_bridge=target_event_bridge,
+        ema_decay=args.growth_ema_decay,
         eval_every=args.eval_every,
         audit_count=args.audit_count,
         audit_seed=args.seed + 200_000,
@@ -324,6 +325,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         value_head=target_value_head,
         q_head=target_q_head,
         event_bridge=target_event_bridge,
+        ema_decay=args.growth_ema_decay,
         eval_every=args.eval_every,
         audit_count=args.audit_count,
         audit_seed=args.seed + 215_000,
@@ -358,6 +360,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         value_head=target_value_head,
         q_head=target_q_head,
         event_bridge=target_event_bridge,
+        ema_decay=args.growth_ema_decay,
         eval_every=args.eval_every,
         audit_count=args.audit_count,
         audit_seed=args.seed + 220_000,
@@ -552,6 +555,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         value_head=shuffled_training_value_head,
         q_head=shuffled_training_q_head,
         event_bridge=shuffled_training_event_bridge,
+        ema_decay=args.growth_ema_decay,
         shuffle_outcomes=True,
     )
     shuffled_training_accuracy = _accuracy(
@@ -612,6 +616,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "event_bridge": args.event_bridge,
         "external_event_width": external_event_width,
         "growth_credit_mode": args.growth_credit_mode,
+        "growth_ema_decay": args.growth_ema_decay,
         "basis_hidden": args.basis_hidden,
         "basis_microsteps": args.basis_microsteps,
         "basis_event_read_mode": args.basis_event_read_mode,
@@ -738,6 +743,12 @@ def main() -> None:
         default="attempted_bce",
     )
     parser.add_argument("--growth-learning-rate", type=float, default=1e-3)
+    parser.add_argument(
+        "--growth-ema-decay",
+        type=float,
+        default=0.0,
+        help="Online parameter averaging for growth stages; zero disables it.",
+    )
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--span", type=int, default=4)
     parser.add_argument("--growth-span", type=int, default=2)

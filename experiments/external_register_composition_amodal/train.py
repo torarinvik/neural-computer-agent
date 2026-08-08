@@ -420,12 +420,20 @@ def _train_stage(
     value_head: OpaqueVerifierValue | None = None,
     q_head: OpaqueVerifierQ | None = None,
     event_bridge: AmodalEventBridge | None = None,
+    ema_decay: float = 0.0,
 ) -> list[dict[str, float | int]]:
     if anchor_weight < 0.0:
         raise ValueError("anchor weight cannot be negative")
     if learning_rate <= 0.0:
         raise ValueError("learning rate must be positive")
+    if not 0.0 <= ema_decay < 1.0:
+        raise ValueError("EMA decay must lie in [0, 1)")
     optimizer = torch.optim.AdamW(trainable, lr=learning_rate, weight_decay=1e-5)
+    ema = (
+        [parameter.detach().clone() for parameter in trainable]
+        if ema_decay
+        else None
+    )
     progress: list[dict[str, float | int]] = []
     for update in range(1, updates + 1):
         batch = _batch(
@@ -463,6 +471,13 @@ def _train_stage(
         loss.backward()
         torch.nn.utils.clip_grad_norm_(trainable, 1.0)
         optimizer.step()
+        if ema is not None:
+            with torch.no_grad():
+                for parameter, average in zip(trainable, ema, strict=True):
+                    average.mul_(ema_decay).add_(
+                        parameter.detach(), alpha=1.0 - ema_decay
+                    )
+                    parameter.copy_(average)
         if eval_every > 0 and (
             update % eval_every == 0 or update == updates
         ):
