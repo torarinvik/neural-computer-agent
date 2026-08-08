@@ -3768,3 +3768,10 @@ same two seeds and source order `[2, 1, 0]` both passed after up to 128 extra
 updates applied only to the newly grown capability. The strengthened bounded
 promotion is archived in the same record; it demonstrates order robustness for
 this control, while remaining short of general continual learning.
+
+The same verifier-scored growth boundary now promotes four opaque capabilities
+across seeds `69316` and `69317`, with two physical adapters serving four
+logical bindings. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_adapter_sharing_four_promoted_v1_2026-08-08/`.
+This remains a bounded four-capability result; unrestricted memory growth and
+general lifelong learning are unproven.
