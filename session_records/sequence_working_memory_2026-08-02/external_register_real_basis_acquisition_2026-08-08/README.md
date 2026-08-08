@@ -113,3 +113,12 @@ but full-span checkpoints later fell to `0.5684`/`0.6133`. This confirms that
 the event window improves access to task information without solving protected
 continual acquisition; final-sample accuracy must not be used as the mastery
 criterion.
+
+## Verifier-gated consolidation/rollback
+
+External growth now uses the shared retention gate transactionally. An
+unstable candidate is removed from the newest slot, its opaque instruction is
+restored, and previously mastered slots remain untouched; only a candidate
+that passes stable-prefix mastery and the retained-capability floor is frozen
+as consolidated. A rollback smoke audit rejected an unstable candidate with
+candidate prefix minimum `0.5` and confirmed `rollback_applied: true`.

@@ -15,6 +15,7 @@ from experiments.working_memory_continuous.canonical_growth_pressure_test import
 from neural_computer import (
     ExternalRegisterBasisCompatibilityPrior,
     OpaqueProtocolDecoder,
+    evaluate_retention_gate,
 )
 
 from .train import (
@@ -189,6 +190,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     _freeze(machine)
     target_instruction.code.requires_grad_(True)
     routed_basis = machine.basis_slots[routed_basis_slot]
+    pre_target_instruction_code = target_instruction.code.detach().clone()
     if route == "grow":
         for parameter in routed_basis.parameters():
             parameter.requires_grad_(True)
@@ -350,6 +352,24 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         digest == _module_digest(machine.basis_slots[index])
         for index, digest in enumerate(old_basis_digests)
     )
+    consolidation_gate = evaluate_retention_gate(
+        [row["heldout_accuracy"] for row in target_progress],
+        source_after,
+        candidate_threshold=threshold,
+        retention_floor=threshold,
+        min_candidate_observations=1,
+    )
+    rollback_applied = False
+    if consolidation_gate.accepted:
+        machine.freeze_basis_slot(routed_basis_slot)
+    elif route == "grow":
+        # An unstable candidate must not remain as latent mutable capacity.
+        # Remove only the newest slot and restore its opaque instruction datum;
+        # previously mastered slots are untouched.
+        machine.remove_basis_slot(routed_basis_slot)
+        with torch.no_grad():
+            target_instruction.code.copy_(pre_target_instruction_code)
+        rollback_applied = True
     shuffled_training_machine = _new_machine(
         len(SOURCE_OPERATIONS) + 1,
         operator_mode=args.operator_mode,
@@ -428,6 +448,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "target_progress": target_progress,
         "source_accuracy_after": source_after,
         "old_basis_unchanged": old_basis_unchanged,
+        "consolidation": {
+            "accepted": consolidation_gate.accepted,
+            "candidate_stable": consolidation_gate.candidate_stable,
+            "retained": consolidation_gate.retained,
+            "candidate_prefix_minimum": consolidation_gate.candidate_prefix_minimum,
+            "retained_minimum": consolidation_gate.retained_minimum,
+            "reason": consolidation_gate.reason,
+            "rollback_applied": rollback_applied,
+        },
         "accounting": {
             "replayed_examples": 0,
             "optimizer_updates": (
@@ -459,6 +488,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "missing_evidence_rejected": missing_target_accuracy < threshold,
             "shuffled_training_rejected": shuffled_training_accuracy < threshold,
             "no_replayed_examples": True,
+            "unstable_growth_rolled_back": (
+                not consolidation_gate.accepted and rollback_applied
+            ),
         },
     }
     report["promoted"] = all(report["gates"].values())
