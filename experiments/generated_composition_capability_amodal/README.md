@@ -699,3 +699,9 @@ replay gates. The inherited target is never worse than fresh, but the audit
 costs roughly 18--24 minutes per seed, so this is bounded generalized
 consolidation rather than a practical universal learner. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_sequential_neural_consolidation_four_source_runtime_opaque_replicated_promoted_v1_2026-08-08/`.
+
+A same-verifier-bits batch-scaling candidate (`batch-size 32`, half the
+optimizer updates) was rejected at the first growth stage: the new source
+reached only `0.6953`. This confirms that optimizer updates, not only unique
+verifier bits, are currently necessary for acquisition. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_sequential_neural_consolidation_batch32_same_bits_rejected_v1_2026-08-08/`.

@@ -3847,3 +3847,11 @@ mechanism, not the universal-computation gap. The exact audit required roughly
 18 and 24 minutes per seed and 4,736 optimizer updates, so runtime-generated
 procedure complexity and verification cost are now explicit implementation
 bottlenecks.
+
+A matched throughput candidate doubled batch size to `32` and halved every
+training budget while preserving nominal verifier-bit exposure. It failed at
+the first growth stage (`0.6953` on the new source versus the `0.9375` gate),
+despite parent stability, frozen-core, reload, corruption, and zero-replay
+controls passing. Larger batches therefore cannot simply replace optimizer
+updates in the current acquisition learner. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_sequential_neural_consolidation_batch32_same_bits_rejected_v1_2026-08-08/`.
