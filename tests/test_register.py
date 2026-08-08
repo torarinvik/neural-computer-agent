@@ -28,7 +28,7 @@ def test_external_register_machine_has_one_shared_interpreter_and_variable_progr
     machine = _machine()
 
     assert machine.configuration()["schema"] == (
-        "neural-computer.external-register.v3"
+        "neural-computer.external-register.v4"
     )
     assert machine.configuration()["instruction_count"] == 2
     assert machine.configuration()["execution"] == (
@@ -352,3 +352,36 @@ def test_external_decoder_can_consume_a_memory_selected_register_chain() -> None
     assert second_register.shape == (2, 8)
     assert decoded.payload.shape == (2, 6)
     assert final_state.initialized.equal(torch.ones(2, dtype=torch.bool))
+
+
+def test_event_window_is_persistent_and_available_to_new_basis_slots() -> None:
+    torch.manual_seed(908)
+    machine = ExternalCapabilityRegisterMachine(
+        event_width=4,
+        action_width=2,
+        intention_width=6,
+        register_width=8,
+        instruction_width=5,
+        event_window_size=3,
+        instructions=(ExternalRegisterInstruction(5),),
+    )
+    basis_slot = machine.add_basis_slot()
+    state = machine.initial_state(2, device="cpu")
+    events = [torch.randn(2, 4) for _ in range(4)]
+    for event in events:
+        register, state = machine.read_execute_register(
+            event=event,
+            action=torch.zeros(2, 2),
+            outcome=torch.zeros(2),
+            intention=IntentEvent(torch.zeros(2, 6)),
+            state=state,
+            instructions=(machine.instructions[0],),
+            basis_slots=(basis_slot,),
+        )
+
+    assert state.event_window is not None
+    assert state.event_window_mask is not None
+    assert state.event_window.shape == (2, 3, 4)
+    assert state.event_window_mask.equal(torch.ones(2, 3, dtype=torch.bool))
+    assert torch.equal(state.event_window[:, -1], events[-1])
+    assert register.shape == (2, 8)

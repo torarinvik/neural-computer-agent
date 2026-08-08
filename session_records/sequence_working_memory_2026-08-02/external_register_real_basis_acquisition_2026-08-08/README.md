@@ -95,3 +95,21 @@ causal growth rung (`69316`: `0.7578`; `69317`: `0.8164`), and one seed lost
 source retention. The production initialization remains unchanged; the
 interface problem requires a learned representation path, not only safer
 initialization.
+
+## Bounded learned-event window follow-up — positive mechanism, not yet promoted
+
+The external register v4 now carries a bounded window of standardized learned
+event tensors and masks it through quiet ticks. New computation slots can read
+that window alongside the register and opaque instruction, while raw modality
+formats remain outside the boundary. In the two-seed causal audit, final
+target accuracy rose to `0.9180`/`0.9063`, source retention was
+`0.9570`/`0.9336`, shuffled-training remained below threshold, and old basis
+digests were unchanged. The full-span progress checkpoints still failed the
+stable-prefix gate, so this is a promoted interface mechanism and a positive
+direction—not yet a promoted continual-learning capability.
+
+The longer 256-update follow-up reached final accuracy `0.9980`/`0.9766`,
+but full-span checkpoints later fell to `0.5684`/`0.6133`. This confirms that
+the event window improves access to task information without solving protected
+continual acquisition; final-sample accuracy must not be used as the mastery
+criterion.

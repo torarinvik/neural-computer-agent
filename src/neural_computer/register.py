@@ -21,7 +21,7 @@ from torch import nn
 
 from .interface import IntentEvent
 
-EXTERNAL_REGISTER_SCHEMA = "neural-computer.external-register.v3"
+EXTERNAL_REGISTER_SCHEMA = "neural-computer.external-register.v4"
 EXTERNAL_REGISTER_INSTRUCTION_SCHEMA = (
     "neural-computer.external-register-instruction.v1"
 )
@@ -41,6 +41,8 @@ class ExternalRegisterState:
     register: torch.Tensor
     context: torch.Tensor
     initialized: torch.Tensor
+    event_window: torch.Tensor | None = None
+    event_window_mask: torch.Tensor | None = None
 
     def validate(
         self,
@@ -48,6 +50,8 @@ class ExternalRegisterState:
         batch_size: int,
         register_width: int,
         context_width: int,
+        event_width: int | None = None,
+        event_window_size: int = 0,
     ) -> ExternalRegisterState:
         if self.register.ndim != 2 or self.register.shape != (
             batch_size,
@@ -71,6 +75,25 @@ class ExternalRegisterState:
             torch.isfinite(self.context).all()
         ):
             raise ValueError("external register must contain only finite values")
+        if event_window_size < 0:
+            raise ValueError("event window size must be non-negative")
+        if self.event_window is not None or self.event_window_mask is not None:
+            if self.event_window is None or self.event_window_mask is None:
+                raise ValueError("event window and mask must be provided together")
+            if event_width is None:
+                raise ValueError("event width is required for an event window")
+            if self.event_window.shape != (
+                batch_size, event_window_size, event_width
+            ):
+                raise ValueError("external event window has the wrong shape")
+            if self.event_window_mask.shape != (batch_size, event_window_size):
+                raise ValueError("external event window mask has the wrong shape")
+            if self.event_window_mask.dtype is not torch.bool:
+                raise ValueError("external event window mask must be boolean")
+            if self.event_window.device != self.register.device:
+                raise ValueError("external event window must share a device")
+            if not bool(torch.isfinite(self.event_window).all()):
+                raise ValueError("external event window must contain finite values")
         return self
 
 
@@ -123,14 +146,23 @@ class ExternalRegisterComputeBasis(nn.Module):
         instruction_width: int,
         *,
         hidden: int = 64,
+        event_width: int = 0,
+        event_window_size: int = 0,
     ) -> None:
         super().__init__()
         if min(register_width, instruction_width, hidden) < 1:
             raise ValueError("compute basis dimensions must be positive")
+        if min(event_width, event_window_size) < 0:
+            raise ValueError("event window dimensions must be non-negative")
+        if event_window_size and event_width < 1:
+            raise ValueError("event width must be positive for an event window")
         self.register_width = int(register_width)
         self.instruction_width = int(instruction_width)
         self.hidden = int(hidden)
-        width = self.register_width + self.instruction_width
+        self.event_width = int(event_width)
+        self.event_window_size = int(event_window_size)
+        self.event_window_width = self.event_width * self.event_window_size
+        width = self.register_width + self.instruction_width + self.event_window_width
         self.network = nn.Sequential(
             nn.Linear(width, self.hidden),
             nn.GELU(),
@@ -149,16 +181,40 @@ class ExternalRegisterComputeBasis(nn.Module):
             "register_width": self.register_width,
             "instruction_width": self.instruction_width,
             "hidden": self.hidden,
+            "event_width": self.event_width,
+            "event_window_size": self.event_window_size,
             "storage": "append_only_external_compute_slot_v1",
             "signature": "one_opaque_learned_slot_key_v1",
         }
 
-    def forward(self, register: torch.Tensor, code: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        register: torch.Tensor,
+        code: torch.Tensor,
+        event_window: torch.Tensor | None = None,
+        event_window_mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
         if register.ndim != 2 or register.shape[1] != self.register_width:
             raise ValueError("register has the wrong shape for compute basis")
         if code.shape != (register.shape[0], self.instruction_width):
             raise ValueError("instruction code has the wrong shape for compute basis")
-        features = torch.cat((register, code), dim=-1)
+        if self.event_window_size:
+            if event_window is None or event_window_mask is None:
+                raise ValueError("event window is required for this compute basis")
+            if event_window.shape != (
+                register.shape[0], self.event_window_size, self.event_width
+            ):
+                raise ValueError("event window has the wrong shape for compute basis")
+            if event_window_mask.shape != (
+                register.shape[0], self.event_window_size
+            ) or event_window_mask.dtype is not torch.bool:
+                raise ValueError("event window mask has the wrong shape")
+            window = event_window * event_window_mask.unsqueeze(-1).to(event_window.dtype)
+            features = torch.cat((register, code, window.flatten(1)), dim=-1)
+        else:
+            if event_window is not None or event_window_mask is not None:
+                raise ValueError("event window is unsupported by this compute basis")
+            features = torch.cat((register, code), dim=-1)
         return register + torch.sigmoid(self.gate(features)) * torch.tanh(
             self.network(features)
         )
@@ -281,6 +337,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         instructions: Iterable[ExternalRegisterInstruction] = (),
         basis_slots: Iterable[ExternalRegisterComputeBasis] = (),
         basis_hidden: int = 64,
+        event_window_size: int = 0,
     ) -> None:
         super().__init__()
         if min(
@@ -294,6 +351,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             basis_hidden,
         ) < 1:
             raise ValueError("external register dimensions must be positive")
+        if event_window_size < 0:
+            raise ValueError("event window size must be non-negative")
         if operator_mode not in (
             "factorized_low_rank",
             "factorized_film",
@@ -315,6 +374,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         if any(
             basis.register_width != register_width
             or basis.instruction_width != instruction_width
+            or basis.event_window_size != event_window_size
+            or (event_window_size and basis.event_width != event_width)
             for basis in basis_members
         ):
             raise ValueError("basis slots must share machine register and code widths")
@@ -330,6 +391,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         self.operator_mode = operator_mode
         self.operator_rank = int(operator_rank)
         self.basis_hidden = int(basis_hidden)
+        self.event_window_size = int(event_window_size)
         seed_width = self.event_width + self.action_width + 2 + self.intention_width
         self.input_encoder = nn.Sequential(
             nn.Linear(seed_width, interpreter_hidden),
@@ -451,12 +513,13 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "instruction_count": len(self.instructions),
             "basis_slot_count": len(self.basis_slots),
             "basis_hidden": self.basis_hidden,
+            "event_window_size": self.event_window_size,
             "state": "external_working_register_with_recurrent_context_v2",
             "execution": "shared_interpreter_serial_instruction_chain_v1",
             "compute_basis": EXTERNAL_REGISTER_BASIS_SCHEMA,
             "basis_binding": "opaque_memory_side_slot_index_v1",
             "read_execute": EXTERNAL_REGISTER_READ_EXECUTE_SCHEMA,
-            "downstream_input": "preceding_register_only_v1",
+            "downstream_input": "preceding_register_plus_bounded_event_window_v1",
         }
 
     def add_instruction(self, instruction: ExternalRegisterInstruction) -> int:
@@ -477,10 +540,17 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 self.register_width,
                 self.instruction_width,
                 hidden=self.basis_hidden,
+                event_width=self.event_width if self.event_window_size else 0,
+                event_window_size=self.event_window_size,
             )
         if (
             basis.register_width != self.register_width
             or basis.instruction_width != self.instruction_width
+            or basis.event_window_size != self.event_window_size
+            or (
+                self.event_window_size
+                and basis.event_width != self.event_width
+            )
         ):
             raise ValueError("basis slot dimensions do not match the machine")
         self.basis_slots.append(basis)
@@ -597,6 +667,16 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 dtype=dtype,
             ),
             initialized=torch.zeros(batch_size, device=device, dtype=torch.bool),
+            event_window=torch.zeros(
+                batch_size,
+                self.event_window_size,
+                self.event_width,
+                device=device,
+                dtype=dtype,
+            ),
+            event_window_mask=torch.zeros(
+                batch_size, self.event_window_size, device=device, dtype=torch.bool
+            ),
         )
 
     def _validate_step_inputs(
@@ -629,6 +709,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             batch_size=event.shape[0],
             register_width=self.register_width,
             context_width=self.context_width,
+            event_width=self.event_width,
+            event_window_size=self.event_window_size,
         )
         for name, value in (
             ("event", event),
@@ -679,12 +761,45 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             register,
         )
 
+    def _advance_event_window(
+        self,
+        *,
+        event: torch.Tensor,
+        present: torch.Tensor,
+        state: ExternalRegisterState,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        if state.event_window is None or state.event_window_mask is None:
+            return (
+                torch.zeros(
+                    event.shape[0], self.event_window_size, self.event_width,
+                    device=event.device, dtype=event.dtype,
+                ),
+                torch.zeros(
+                    event.shape[0], self.event_window_size,
+                    device=event.device, dtype=torch.bool,
+                ),
+            )
+        if not self.event_window_size:
+            return state.event_window, state.event_window_mask
+        shifted = torch.cat(
+            (state.event_window[:, 1:], event.unsqueeze(1)), dim=1
+        )
+        shifted_mask = torch.cat(
+            (state.event_window_mask[:, 1:], present.unsqueeze(1)), dim=1
+        )
+        return (
+            torch.where(shifted_mask.unsqueeze(-1), shifted, state.event_window),
+            shifted_mask,
+        )
+
     def execute(
         self,
         register: torch.Tensor,
         instruction: ExternalRegisterInstruction,
         *,
         basis_slot: int | None = None,
+        event_window: torch.Tensor | None = None,
+        event_window_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Apply one instruction without access to raw events or feedback."""
 
@@ -700,6 +815,10 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         if basis_slot is not None:
             if not 0 <= basis_slot < len(self.basis_slots):
                 raise ValueError("basis slot index is out of range")
+            if self.event_window_size:
+                return self.basis_slots[basis_slot](
+                    register, code, event_window, event_window_mask
+                )
             return self.basis_slots[basis_slot](register, code)
         if self.operator_mode in (
             "factorized_low_rank",
@@ -774,6 +893,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         instructions: Iterable[ExternalRegisterInstruction],
         *,
         basis_slots: Iterable[int | None] | None = None,
+        event_window: torch.Tensor | None = None,
+        event_window_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Apply a memory-selected instruction chain to a working register."""
 
@@ -786,7 +907,13 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         if len(selected_basis) != len(selected):
             raise ValueError("basis slot bindings must match instruction count")
         for instruction, basis_slot in zip(selected, selected_basis):
-            register = self.execute(register, instruction, basis_slot=basis_slot)
+            register = self.execute(
+                register,
+                instruction,
+                basis_slot=basis_slot,
+                event_window=event_window,
+                event_window_mask=event_window_mask,
+            )
         return register
 
     def observe_register(
@@ -826,6 +953,9 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             present=present,
             state=state,
         )
+        event_window, event_window_mask = self._advance_event_window(
+            event=event, present=present, state=state
+        )
         register = torch.where(
             state.initialized.unsqueeze(-1),
             self._write_context_to_register(
@@ -845,6 +975,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             register=register,
             context=context,
             initialized=state.initialized | present,
+            event_window=event_window,
+            event_window_mask=event_window_mask,
         )
         return register, next_state
 
@@ -882,7 +1014,11 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         )
         selected = self.instructions if instructions is None else tuple(instructions)
         executed = self.execute_chain(
-            register, selected, basis_slots=basis_slots
+            register,
+            selected,
+            basis_slots=basis_slots,
+            event_window=next_state.event_window,
+            event_window_mask=next_state.event_window_mask,
         )
         return torch.where(
             present.unsqueeze(-1), executed, register
@@ -930,7 +1066,11 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         )
         selected = self.instructions if instructions is None else tuple(instructions)
         executed = self.execute_chain(
-            register, selected, basis_slots=basis_slots
+            register,
+            selected,
+            basis_slots=basis_slots,
+            event_window=observed_state.event_window,
+            event_window_mask=observed_state.event_window_mask,
         )
         register = torch.where(
             present.unsqueeze(-1), executed, observed_state.register
@@ -939,6 +1079,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             register=register,
             context=observed_state.context,
             initialized=observed_state.initialized,
+            event_window=observed_state.event_window,
+            event_window_mask=observed_state.event_window_mask,
         )
 
     def step(

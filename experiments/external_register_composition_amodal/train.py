@@ -77,6 +77,7 @@ def _new_machine(
         interpreter_hidden=64,
         operator_rank=8,
         operator_mode=operator_mode,
+        event_window_size=4,
         instructions=tuple(
             ExternalRegisterInstruction(INSTRUCTION_WIDTH)
             for _ in range(instruction_count)

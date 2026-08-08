@@ -1,0 +1,134 @@
+{
+  "schema": "neural-computer.external-register-real-basis-acquisition-audit.v1",
+  "claim_boundary": "A learned opaque prior orders real primitive basis trials; fresh verifier outcomes still determine admission.",
+  "seed": 69317,
+  "source_operations": [
+    "reverse",
+    "adjacent_xor",
+    "complement"
+  ],
+  "target_operation": "rotate",
+  "growth_credit_mode": "attempted_bce",
+  "source_outcomes": [
+    [
+      0.970703125,
+      0.689453125,
+      0.728515625
+    ],
+    [
+      0.60546875,
+      0.962890625,
+      0.640625
+    ],
+    [
+      0.654296875,
+      0.568359375,
+      0.9296875
+    ]
+  ],
+  "target_candidate_order": [
+    2,
+    1,
+    0
+  ],
+  "target_candidate_outcomes": [
+    0.484375,
+    0.484375,
+    0.490234375
+  ],
+  "pair_count": 9,
+  "selected_candidate_position": null,
+  "cold_candidate_position": null,
+  "route": "grow",
+  "routed_basis_slot": 3,
+  "target_accuracy": 0.9765625,
+  "reward_shuffled_eval_accuracy": 0.97265625,
+  "shuffled_target_accuracy": 0.97265625,
+  "missing_target_accuracy": 0.5,
+  "shuffled_training_target_accuracy": 0.482421875,
+  "target_stable_bits": null,
+  "target_warmup_progress": [
+    {
+      "update": 32,
+      "heldout_accuracy": 0.75,
+      "stage": "warmup"
+    },
+    {
+      "update": 64,
+      "heldout_accuracy": 0.75,
+      "stage": "warmup"
+    }
+  ],
+  "warmup_source_accuracy": [
+    0.97265625,
+    0.95703125,
+    0.935546875
+  ],
+  "basis_focus_progress": [],
+  "target_progress": [
+    {
+      "update": 32,
+      "heldout_accuracy": 0.640625,
+      "stage": "full_span"
+    },
+    {
+      "update": 64,
+      "heldout_accuracy": 0.671875,
+      "stage": "full_span"
+    },
+    {
+      "update": 96,
+      "heldout_accuracy": 0.685546875,
+      "stage": "full_span"
+    },
+    {
+      "update": 128,
+      "heldout_accuracy": 0.677734375,
+      "stage": "full_span"
+    },
+    {
+      "update": 160,
+      "heldout_accuracy": 0.658203125,
+      "stage": "full_span"
+    },
+    {
+      "update": 192,
+      "heldout_accuracy": 0.6640625,
+      "stage": "full_span"
+    },
+    {
+      "update": 224,
+      "heldout_accuracy": 0.611328125,
+      "stage": "full_span"
+    },
+    {
+      "update": 256,
+      "heldout_accuracy": 0.61328125,
+      "stage": "full_span"
+    }
+  ],
+  "source_accuracy_after": [
+    0.96875,
+    0.95703125,
+    0.931640625
+  ],
+  "old_basis_unchanged": true,
+  "accounting": {
+    "replayed_examples": 0,
+    "optimizer_updates": 769
+  },
+  "gates": {
+    "source_rows_have_distinct_outcomes": true,
+    "fresh_verifier_controls_admission": true,
+    "unseen_target_requests_growth": true,
+    "target_mastered": true,
+    "target_stable": false,
+    "source_retained": true,
+    "old_basis_unchanged": true,
+    "reward_shuffled_rejected": true,
+    "missing_evidence_rejected": true,
+    "shuffled_training_rejected": true,
+    "no_replayed_examples": true
+  },
+  "promoted": false
+}
