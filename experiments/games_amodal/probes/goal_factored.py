@@ -59,6 +59,7 @@ parser.add_argument("--width", type=int, default=64)
 parser.add_argument("--max-restarts", type=int, default=4)
 parser.add_argument("--decoy-draws", type=int, default=8)
 parser.add_argument("--cue-entropy", type=float, default=0.05)
+parser.add_argument("--ignorance-gate", type=float, default=0.7)
 parser.add_argument(
     "--ignorance", type=float, default=0.5,
     help="phase-1 pressure toward uniform action under OFF-VOCABULARY "
@@ -348,7 +349,15 @@ for attempt in range(args.max_restarts):
                     command_score[value] = (
                         0.9 * command_score[value] + 0.1 * ratio)
         loss_ignorance = torch.zeros(())
-        if args.ignorance > 0.0 and update % 3 == 0:
+        # Competence-GATED: ignorance is measured to trade off against
+        # acquisition (8 seeds x 2 arms: worst-decoy 0.551 -> 0.323, but
+        # mastery-both 6/8 -> 4/8). Both are wanted, so acquire first and
+        # add necessity once the executor can already follow both
+        # commands -- the same acquire-then-protect ordering the promoted
+        # consolidation line uses.
+        ignorance_live = (
+            args.ignorance > 0.0 and min(command_score) >= args.ignorance_gate)
+        if ignorance_live and update % 3 == 0:
             # Ignorance under OFF-VOCABULARY goals. The decoy gate asks
             # that a noise fragment produce uninformative behaviour, but
             # nothing in phase 1 ever taught that: measured, a random
@@ -427,6 +436,7 @@ report["competence"] = {
 }
 report["competence_curve"] = competence_curve
 report["phase1_attempts"] = report_attempts
+report["ignorance_gate"] = args.ignorance_gate
 with torch.no_grad():
     report["command_cosine"] = round(float(
         (COMMANDS[0] @ COMMANDS[1])
