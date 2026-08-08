@@ -710,3 +710,9 @@ Grouping independent retention probes into concatenated recurrent batches also
 passed semantic gates but was `19.7%` slower on the matched canonical audit, so
 the optimization was reverted. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/generated_composition_sequential_neural_consolidation_batched_probe_cost_rejected_v1_2026-08-08/`.
+
+The runtime-generated opaque audit also passed in a reversed source order
+`[4, 3, 2, 0]` across both seeds, establishing order-robust retention. Target
+transfer remained order-dependent, so this does not establish general
+continual learning. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_sequential_neural_consolidation_four_source_runtime_opaque_permuted_replicated_promoted_v1_2026-08-08/`.

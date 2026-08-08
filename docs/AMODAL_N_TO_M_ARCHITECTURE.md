@@ -3848,6 +3848,14 @@ mechanism, not the universal-computation gap. The exact audit required roughly
 procedure complexity and verification cost are now explicit implementation
 bottlenecks.
 
+The runtime-opaque four-source audit was repeated in source order `[4, 3, 2,
+0]` across seeds `69316` and `69317`. All rewrites, reload, retention,
+reversal, corruption, frozen-core, and zero-replay gates passed. This promotes
+order-robust retention for the bounded mechanism. Transfer efficiency remains
+order-dependent: inherited/fresh target stable-prefix budgets were
+`8,192 / 6,144` and `4,096 / 6,144` bits. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/generated_composition_sequential_neural_consolidation_four_source_runtime_opaque_permuted_replicated_promoted_v1_2026-08-08/`.
+
 A matched throughput candidate doubled batch size to `32` and halved every
 training budget while preserving nominal verifier-bit exposure. It failed at
 the first growth stage (`0.6953` on the new source versus the `0.9375` gate),
