@@ -506,6 +506,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                     trial_decoder_states: dict[tuple[int, int], dict[str, torch.Tensor]] = {}
                     admitted_candidate: tuple[int, int] | None = None
                     for trial_rank, adapter_slot in enumerate(adapter_candidates):
+                        trial_rng_state = torch.get_rng_state()
                         trial_compute = bank.add_compute_slot()
                         trial_binding = bank.add_binding(
                             trial_compute,
@@ -587,6 +588,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                             break
                         bank.remove_binding(trial_binding)
                         bank.remove_compute_slot(trial_compute)
+                        # A rejected candidate is diagnostic only. Restore the
+                        # stochastic stream so fallback growth remains matched
+                        # to the no-trial control and cannot inherit trial RNG.
+                        torch.set_rng_state(trial_rng_state)
                     decision_candidates = (
                         {
                             admitted_candidate: trial_probes_by_candidate[admitted_candidate]
@@ -631,8 +636,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                         behavior = trial_behaviors[selected_key]
                         behavior_probes = trial_probes_by_candidate[selected_key]
                     else:
-                        compute_slot = bank.add_compute_slot()
-                        slot_index = bank.add_binding(compute_slot)
+                        # Sharing failure means grow the smallest compatible
+                        # boundary first: a fresh adapter on protected compute.
+                        # A fresh compute module remains available to a later
+                        # independently admitted growth decision.
+                        slot_index = bank.add_binding(0)
                         decoders.append(
                             _new_decoder(args.seed + 50_000 + stage_index)
                         )
