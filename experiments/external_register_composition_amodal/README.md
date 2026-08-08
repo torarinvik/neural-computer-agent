@@ -210,3 +210,17 @@ fresh at `8,192` stable bits, while seed `69317` required `24,576` versus
 composition transfers, but the current shared operator does not yet invent a
 new primitive computation. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_heldout_primitive_transfer_rejected_v1_2026-08-08/`.
+
+## Continual shared-blueprint update control (2026-08-08)
+
+The next intervention kept the shared operator trainable on later source
+primitives and added an anchor penalty to its previous weights, while freezing
+all old instruction codes. Anchor weights `1.0` and `10.0` were tested across
+both seeds. The new `rotate` target often transferred quickly (for example,
+`4,096` versus `8,192` bits), but source primitives fell below mastery before
+target acquisition in every run. The safety controls themselves passed, but
+the source-retention gate rejected the intervention. This rules out naïve
+whole-blueprint online updates; future operator-family learning needs isolated
+meta-state or protected subspaces rather than a scalar anchor. Evidence is
+archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_continual_blueprint_anchor_rejected_v1_2026-08-08/`.

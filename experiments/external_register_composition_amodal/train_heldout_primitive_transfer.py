@@ -35,15 +35,27 @@ def _freeze(machine) -> None:
         parameter.requires_grad_(False)
 
 
-def _train_source(parent, machine, decoder, index, args):
+def _train_source(parent, machine, decoder, index, args, anchor_parameters=()):
     if index == 0:
         for parameter in machine.parameters():
             parameter.requires_grad_(True)
         trainable = [*machine.parameters(), *decoder.parameters()]
     else:
         _freeze(machine)
+        if args.update_shared_blueprint:
+            shared_trainable = []
+            for name, parameter in machine.named_parameters():
+                if not name.startswith("instructions."):
+                    parameter.requires_grad_(True)
+                    shared_trainable.append(parameter)
+            trainable = [
+                *shared_trainable,
+                machine.instructions[index].code,
+                *decoder.parameters(),
+            ]
+        else:
+            trainable = [machine.instructions[index].code, *decoder.parameters()]
         machine.instructions[index].code.requires_grad_(True)
-        trainable = [machine.instructions[index].code, *decoder.parameters()]
     return _train_stage(
         parent,
         machine,
@@ -56,6 +68,8 @@ def _train_source(parent, machine, decoder, index, args):
         seed=args.seed + 20_000 + index * 10_003,
         trainable=trainable,
         credit_mode=args.credit_mode,
+        anchor_parameters=anchor_parameters,
+        anchor_weight=args.anchor_weight if args.update_shared_blueprint else 0.0,
     )
 
 
@@ -132,7 +146,21 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     for index in range(4):
         decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
         source_decoders.append(decoder)
-        _train_source(parent, inherited, decoder, index, args)
+        anchor_parameters = ()
+        if index and args.update_shared_blueprint:
+            anchor_parameters = tuple(
+                (parameter, parameter.detach().clone())
+                for name, parameter in inherited.named_parameters()
+                if not name.startswith("instructions.")
+            )
+        _train_source(
+            parent,
+            inherited,
+            decoder,
+            index,
+            args,
+            anchor_parameters=anchor_parameters,
+        )
     source_before = [
         _accuracy(
             parent,
@@ -320,6 +348,12 @@ def main() -> None:
     parser.add_argument("--parent-updates", type=int, default=128)
     parser.add_argument("--primitive-updates", type=int, default=384)
     parser.add_argument("--target-updates", type=int, default=256)
+    parser.add_argument(
+        "--update-shared-blueprint",
+        action="store_true",
+        help="update shared operator weights on later source primitives with an anchor",
+    )
+    parser.add_argument("--anchor-weight", type=float, default=1.0)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--span", type=int, default=4)
     parser.add_argument("--audit-count", type=int, default=64)

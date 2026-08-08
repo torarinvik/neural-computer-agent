@@ -3954,3 +3954,13 @@ primitive computation remains the largest architectural bottleneck. The next
 intervention must learn a transferable operator family or code-to-computation
 prior rather than add more instruction slots. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_heldout_primitive_transfer_rejected_v1_2026-08-08/`.
+
+An anchored continual-blueprint control then allowed shared operator weights
+to update on later source primitives while old instruction codes stayed
+frozen. Anchor weights `1.0` and `10.0` produced fast new-primitive targets in
+some seeds, but source capabilities fell below the hard mastery floor in every
+run. This rejects naïve whole-blueprint updates and points to the next design
+requirement: isolated meta-state or protected subspaces that can learn an
+operator family without modifying mastered computation. Evidence is archived
+in
+`session_records/sequence_working_memory_2026-08-02/external_register_continual_blueprint_anchor_rejected_v1_2026-08-08/`.

@@ -237,7 +237,11 @@ def _train_stage(
     generated_composition_ids: tuple[int, ...] | None = None,
     generated_compositions: GeneratedCompositionGrammar | None = None,
     execution_mode: str = "read_execute",
+    anchor_parameters: tuple[tuple[torch.nn.Parameter, torch.Tensor], ...] = (),
+    anchor_weight: float = 0.0,
 ) -> list[dict[str, float | int]]:
+    if anchor_weight < 0.0:
+        raise ValueError("anchor weight cannot be negative")
     optimizer = torch.optim.AdamW(trainable, lr=3e-3, weight_decay=1e-5)
     progress: list[dict[str, float | int]] = []
     for update in range(1, updates + 1):
@@ -260,6 +264,14 @@ def _train_stage(
             credit_mode=credit_mode,
             execution_mode=execution_mode,
         )
+        if anchor_parameters and anchor_weight:
+            anchor_penalty = torch.stack(
+                tuple(
+                    (parameter - anchor.to(parameter)).square().mean()
+                    for parameter, anchor in anchor_parameters
+                )
+            ).mean()
+            loss = loss + anchor_weight * anchor_penalty
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(trainable, 1.0)
