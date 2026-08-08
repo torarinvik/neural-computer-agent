@@ -1519,3 +1519,46 @@ is now solved and readable at +-1.00, that supervision is available
 without an oracle over contexts: the probe's own prediction sign is a
 legitimate training target for which fragment to fetch. That is the next
 rung, and unlike the previous three it has no missing ingredient.
+
+**F45 (probe 70). Mapping handover does not rescue the content router
+either: three staged designs, three collapses. The learned router is
+this program's confirmed universal failure point.** F44 specified the
+rung with no missing ingredient — stage the MAPPING as F13 staged the
+assignment, supervised by the probe's own sign (positive means "this
+world rewards the positive-plane item"), with two disjoint fragment sets
+and nothing naming which set means which world. Built, run with 900
+staging updates plus diversity pressure, both seeds:
+
+| seed | probe | selection A / B | mastery A / B |
+| --- | --- | --- | ---: |
+| 69316 | +1.00 / -1.00 | [5,0] / **[5,0]** | 0.188 / 0.156 |
+| 69317 | +1.00 / -1.00 | [2,5] / **[2,5]** | 0.234 / 0.258 |
+
+The encoding is perfect, the staging assigns different fragments per
+sign during training, the imitation term is present, diversity pressure
+is on — and after release the router still returns one selection for
+both worlds. Three designs now collapse identically: outcome-REINFORCE
+alone (F43), plus diversity (F44), plus staged mapping and imitation
+(F45).
+
+This confirms, in our own system, the sharpest warning of the opening
+literature review (convergent finding 3): *learned soft routers are the
+universal failure point*. The review's recommended alternative was a
+selector trained apart from the repertoire on outcomes — which is what
+the promoted per-context selector IS, and it works (F13, 1.000/1.000).
+The difference is not the training signal but what the selector is
+indexed BY: a per-context table has one parameter set per context and
+cannot merge them, while a content router computes selections through a
+shared query map that can, and under a single scalar reward per rollout
+it always does.
+
+Consequence, and the honest architectural position: content-addressing
+over a shared query map is not reachable with this learning signal. The
+admissible routes are (a) keep per-context tables and accept that the
+context index must come from somewhere — which the F44 probe now
+supplies from the agent's own measurement rather than an oracle, making
+the table legitimately self-indexed; or (b) give the router a denser
+signal than one scalar per rollout, which means supervising fetch
+decisions directly against measured per-fragment outcomes, i.e. the swap
+test (F23's conflict machinery) repurposed as router supervision. (a) is
+available now and is the smaller claim; (b) is the next real rung.
