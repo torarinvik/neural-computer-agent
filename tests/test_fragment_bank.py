@@ -438,3 +438,40 @@ def test_fisher_temperature_raises_entropy_and_is_off_by_default() -> None:
     assert tempered > plain, (plain, tempered)
     # Default path must be bit-for-bit the untempered one.
     assert entropy(1.0) == plain
+
+
+def test_battery_gates_have_measured_floors_and_real_headroom() -> None:
+    """F52: a ceiling alone is half a scale.
+
+    Every calibrated game needs a measured chance floor beside it, and
+    the two must not be so close that the gate cannot tell a learner from
+    a constant action. avoid1 is the standing counter-example (0.020) and
+    is pinned here so its weakness stays visible rather than silently
+    passing as a battery win.
+    """
+
+    from experiments.games_amodal.two_speed_battery import (
+        CHANCE_FLOORS,
+        SOLO_CEILINGS,
+        headroom,
+        normalised,
+    )
+
+    assert set(CHANCE_FLOORS) == set(SOLO_CEILINGS)
+    for name, floor in CHANCE_FLOORS.items():
+        assert 0.0 <= floor < 1.0, (name, floor)
+        assert floor < SOLO_CEILINGS[name], (name, floor)
+
+    # Known-degenerate gates, recorded so a regression is visible.
+    assert headroom("avoid1") < 0.05
+    assert headroom("dualAD") < 0.15
+    assert headroom("dualBC") < 0.15
+    # Gates that genuinely discriminate.
+    assert headroom("choiceA") > 0.5
+    assert headroom("intercept1") > 0.25
+
+    # A floor-level score normalises to 0, a ceiling score to 1.
+    assert abs(normalised("choiceA", CHANCE_FLOORS["choiceA"])) < 1e-9
+    assert abs(normalised("choiceA", SOLO_CEILINGS["choiceA"]) - 1.0) < 1e-9
+    # Raw 0.90 on avoid1 is below its floor: not a skill.
+    assert normalised("avoid1", 0.90) < 0.0

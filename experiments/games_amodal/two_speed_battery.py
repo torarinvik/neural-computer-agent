@@ -63,6 +63,47 @@ SOLO_CEILINGS = {
     "intercept1": 0.313,
 }
 
+# Measured chance floors (F51/F52, `chance_floors.py`): the score of a
+# policy carrying NO information, taken as the max of uniform-random play
+# and the best single constant action, since a flat-logit argmax
+# collapses to the latter. The ceiling alone is only half a scale — a
+# score must clear the floor to be evidence of anything, and two of these
+# games have almost no room between the two.
+CHANCE_FLOORS = {
+    "choiceA": 0.371,
+    "choiceB": 0.336,
+    "dualAC": 0.609,
+    "dualAD": 0.588,
+    "dualBC": 0.626,
+    "avoid1": 0.902,
+    "forageA": 0.168,
+    "forageB": 0.215,
+    "collect1": 0.324,
+    "intercept1": 0.039,
+}
+
+
+def headroom(name: str) -> float | None:
+    """Ceiling minus floor: how much a game can actually discriminate."""
+
+    ceiling = SOLO_CEILINGS.get(name)
+    floor = CHANCE_FLOORS.get(name)
+    return None if ceiling is None or floor is None else ceiling - floor
+
+
+def normalised(name: str, score: float) -> float | None:
+    """Score on a floor-to-ceiling scale: 0 is uninformed, 1 is the ceiling.
+
+    Reporting raw mastery against the ceiling alone flatters every game
+    with a high floor. avoid1 has 0.020 of headroom, so a raw 0.90 there
+    is a constant action, not a skill.
+    """
+
+    span = headroom(name)
+    if span is None or span <= 0.0:
+        return None
+    return (score - CHANCE_FLOORS[name]) / span
+
 
 def conflict_groups(
     variants: list[FamilyConfig],

@@ -1900,3 +1900,57 @@ the support a statistic was computed over, every time.
 
 Probes 85-86 are `chance_baseline.py`; the entropy re-measurement is
 `cotrained.py` with the masked diagnostic.
+
+**F52 (probes 87-88). Two battery gates cannot tell a learner from a
+constant action.** F51 measured the floor for the twins; this measures it
+for every game. The floor is the max of uniform-random play and the best
+single constant action, since a flat-logit argmax collapses to the
+latter. Headroom is ceiling minus floor — how much a game can actually
+discriminate.
+
+| game | floor | ceiling | headroom |
+| --- | ---: | ---: | ---: |
+| avoid1 | 0.902 | 0.922 | **0.020** |
+| dualBC | 0.626 | 0.720 | **0.094** |
+| dualAD | 0.588 | 0.686 | **0.098** |
+| forageA | 0.168 | 0.453 | 0.285 |
+| dualAC | 0.609 | 1.000 | 0.391 |
+| choiceA | 0.371 | 1.000 | 0.629 |
+| choiceB | 0.336 | 1.000 | 0.664 |
+| intercept1 | 0.039 | 0.313 | 0.274 |
+| collect1 | 0.324 | 0.547 | 0.223 |
+
+**avoid1 is not a gate.** A constant action scores 0.902 against a
+calibrated ceiling of 0.922, so the entire measurable range is 0.020. It
+is an avoidance game, and standing still or pushing into a wall survives
+trivially — the degenerate policy is nearly optimal by construction.
+Every battery result reporting avoid1 near 0.9 has been reporting a
+constant action as a pass. dualAD and dualBC are weak for the same reason
+at under 0.1 of headroom.
+
+This does not overturn the battery — choiceA/choiceB (0.63/0.66),
+dualAC (0.39), forageA (0.29), collect1 (0.22) and intercept1 (0.27) all
+discriminate properly, and they carry the load-bearing claims. But raw
+mastery against the ceiling alone flatters any game with a high floor, so
+`normalised()` (floor-to-ceiling scale) now ships beside `SOLO_CEILINGS`,
+and `CHANCE_FLOORS` is pinned by test.
+
+**Independent confirmation for F27.** The composition games measure
+0.385-0.416. F27 read the held-out pairing (0.27-0.57 against a 0.47
+random-bank control) as at-chance; the floor measured here from an
+entirely different direction agrees with that control. The composition
+negative stands on two independent baselines now.
+
+**Second metric-misuse caught in one session.** The first run of this
+probe reported dual floors of 0.98 and composition floors of 0.96 —
+above dualAD's own solo ceiling, which is what made it obviously wrong.
+Cause: `mastery` scores dual games by per-rule accuracy but only when
+`rule_accuracy` is present, and silently falls through to the reward
+branch otherwise, which credits an agent that engages every trial and
+knows neither rule. The harness had not supplied the verifier-side
+fields. Fixed by supplying them exactly as `rollout_family` does. Note
+the failure mode: not an exception, a plausible number. The only thing
+that caught it was a floor exceeding a ceiling.
+
+Probes 87-88 are `chance_floors.py` over the battery, twins, composition
+suite and extras.
