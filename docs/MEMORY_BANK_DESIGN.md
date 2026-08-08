@@ -1846,3 +1846,57 @@ gradient-space ones.
 
 Probes 81-84 are `gradient_conflict.py`, both seeds, 500 updates,
 with and without `--bank`.
+
+**F51 (probes 85-86). The decoy gate's floor is 0.35, not 0 — and read
+against it, the twins fail in OPPOSITE directions.** Every decoy gate so
+far has been stated as "collapses to chance" and read as though chance
+were 0. Chance was never measured. It is now: drive each twin with
+uniformly random actions and no agent at all.
+
+| twin | uniform random (mean / max) | best fixed action |
+| --- | --- | ---: |
+| choiceA | 0.371 / 0.500 | 0.289 |
+| choiceB | 0.336 / 0.469 | 0.293 |
+
+Chance is **symmetric** across the twins (0.371 vs 0.336), which kills
+the tempting explanation that choiceA is simply the twin random play
+solves by accident. Read against the measured floor, the co-trained
+loop's decoy numbers say something sharper than "one twin fails":
+
+| decoy, seed 69316 / 69317 | score | vs chance 0.35 |
+| --- | --- | --- |
+| choiceA | 0.969 / 0.906 | far ABOVE — plays a real policy on noise |
+| choiceB | 0.031 / 0.062 | far BELOW — actively does the wrong thing |
+
+This is the default-context asymmetry (F11) demonstrated positively
+rather than inferred. Handed noise, the plant does not become ignorant in
+either context: it plays choiceA's policy regardless of which twin it is
+actually in. On choiceA that scores 0.91-0.97; on choiceB the same
+behaviour scores *below random*, because choiceB rewards the opposite
+action. One fixed default explains both numbers at once, and nothing
+else does.
+
+Consequences. (1) The gate must be stated against the measured floor per
+context, not against 0, and "below chance" must be recognised as its own
+failure mode — it is evidence of a wrong policy being executed
+confidently, which a "collapses toward 0" reading would have scored as a
+PASS. choiceB's 0.031 has been reported as passing since F48; it is
+better described as failing in the other direction. (2) The ignorance
+objective's target is wrong in the same way: it pushes the decoy policy
+toward uniform, but uniform is 0.35, and what we actually require is that
+the decoy policy carry no information about which twin is present.
+
+**Methodological, third instance (F46, F49, now this).** The first
+version of this diagnostic reported decoy entropy 1.3859 against
+ln(4) = 1.38629 — numerically exact uniformity — for a policy that scored
+0.875 when sampled, which is impossible when chance is 0.371. The
+measurement was averaging over post-death steps, where the episode keeps
+stepping and the logits drift to uniform. Masked by `alive`, the same
+quantity is being re-measured now. The rule has now failed us three
+times in three different guises: a signal measured before a phase that
+destroys it (F46), a statistic inheriting its policy's degeneracy (F49),
+and an average taken over steps that did not determine behaviour. Report
+the support a statistic was computed over, every time.
+
+Probes 85-86 are `chance_baseline.py`; the entropy re-measurement is
+`cotrained.py` with the masked diagnostic.
