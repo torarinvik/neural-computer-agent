@@ -1097,3 +1097,12 @@ updates and verifier bits with identical behavior and retention, while the
 one-module run is correctly neutral. This promotes conditional trial-cost
 reduction, not verifier-free admission or general continual learning. See
 `session_records/sequence_working_memory_2026-08-02/generated_composition_candidate_screen_opaque_three_replicated_promoted_v1_2026-08-07/`.
+
+The learned page-router growth audit also has a source-only normalization
+boundary: the frozen normalizer is fit only on the original source keys while
+two independently trained append routers acquire later generations. At the
+matched promoted budget, both seeds retain strict candidate/page mastery,
+permutation, shuffled-null, immutability, reload, and zero-replay controls.
+This is bounded external growth, not unrestricted memory growth or general
+continual learning. See
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_two_generations_66_source_normalizer_promoted_v1_2026-08-08/`.

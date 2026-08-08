@@ -3680,3 +3680,16 @@ logical lifetimes. This promotes bounded repeated external growth, not
 unrestricted memory growth, consolidation/compression, or general continual
 learning. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_two_generations_66_promoted_v1_2026-08-07/`.
+
+The same two-generation audit now fits the frozen signature normalizer only
+on the 30 original source keys, keeping future append keys out of the
+representation boundary. At a matched 4,096 updates per generation router,
+both seeds pass all strict gates, including generation-local shuffled nulls
+and zero replay. Each run uses 19,040 optimizer updates, 1,986,816 unique
+verifier bits, and 1,986,432 unique logical lifetimes. The 3,072-update
+source-only attempt is retained as a rejected budget boundary because one
+seed missed one target. This promotes a source-only representation contract
+for bounded repeated growth; unrestricted memory growth, consolidation/
+compression, arbitrary new computation, and general continual learning
+remain open. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_page_router_two_generations_66_source_normalizer_promoted_v1_2026-08-08/`.

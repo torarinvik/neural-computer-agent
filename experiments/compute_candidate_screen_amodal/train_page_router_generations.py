@@ -247,7 +247,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         samples_per_candidate=args.key_samples,
     )
     normalizer = OpaqueCandidateSignatureNormalizer(EVENT_WIDTH)
-    normalizer.fit(raw_keys)
+    normalizer.fit(
+        raw_keys[: args.source_candidates]
+        if args.normalizer_fit == "source"
+        else raw_keys
+    )
     normalized_keys = normalizer(raw_keys).detach()
     identity = OpaqueCandidateIdentityView(EVENT_WIDTH)
 
@@ -610,6 +614,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "generation_page_count": generation_page_count,
         "page_sizes": page_sizes,
         "representation": "normalized_opaque_candidate_tokens_v1",
+        "normalizer_fit": args.normalizer_fit,
         "learning_signal": "scalar_verifier_outcome_of_attempted_generation_page_v1",
         "growth_policy": "independent_generation_overlay_without_prior_replay_v1",
         "candidate_key_diagnostics": {
@@ -674,6 +679,11 @@ def main() -> None:
     parser.add_argument("--generation-updates-per-page", type=int, default=32)
     parser.add_argument("--source-router-updates", type=int, default=512)
     parser.add_argument("--generation-router-updates", type=int, default=3072)
+    parser.add_argument(
+        "--normalizer-fit",
+        choices=("all", "source"),
+        default="all",
+    )
     parser.add_argument("--batch-size", type=int, default=12)
     parser.add_argument("--audit-count", type=int, default=132)
     parser.add_argument("--key-samples", type=int, default=12)
