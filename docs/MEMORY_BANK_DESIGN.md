@@ -1793,3 +1793,56 @@ degeneracy, so estimator health must be reported alongside the estimate.
 
 Recorded as a qualification, not a rejection. Probes 77-80 are
 `fisher_stability.py`, both seeds, choiceA, 600 updates.
+
+**F50 (probes 81-84). Disjoint oracle fragments do NOT resolve the twin
+contradiction. The promoted anti-collapse machinery is what does.** The
+routing literature (`docs/LITERATURE_MAP.md` S4) says to check the
+cheapest thing first: whether twin winner-take-all is genuine gradient
+conflict at all. PCGrad's tragic triad holds that joint training is
+harmed when task gradients CONFLICT (negative cosine) and DOMINATE
+(imbalanced norms); if the cosine is positive, no routing surgery helps
+and the failure is acquisition instead. Measured directly: per
+checkpoint, take each twin's REINFORCE gradient on the shared plant
+separately and report their cosine, under bare alternating training with
+no diversity penalty, no laggard balancing, and no handover.
+
+| pooled, both seeds, 40 checkpoints | cosine mean | negative | best-twin mastery |
+| --- | ---: | ---: | ---: |
+| no bank | -0.113 | 24/40 | 0.341 |
+| each twin's own oracle fragments | -0.134 | 27/40 | 0.478 |
+
+**The conflict is real and fragments do not remove it** — with private
+fragments the cosine is if anything slightly more negative. What
+fragments change is the outcome: bank-free, both seeds end at chance
+(0.250/0.250 and 0.250/0.312), which is correct and not a bug, since
+twins render identically and demand opposite actions, so a plant with no
+context signal cannot beat chance. With fragments, seed 69317 ends at
+**0.062 / 1.000** — textbook winner-take-all, one twin taking the plant
+outright and the other pushed below chance — while 69316 ends at
+0.250/0.375, neither learned.
+
+So private context breaks the symmetry enough for a winner to emerge but
+not enough for both twins to coexist. That is exactly the gap the
+promoted rung fills: the diversity penalty, laggard-preferential
+balancing and oracle-to-learned handover are not incidental tuning, they
+are what converts "one twin wins" into 1.000/1.000 on both seeds. This
+is the first measurement isolating what that machinery buys, because it
+holds the read path fixed (oracle fragments, disjoint by construction)
+and removes every anti-collapse mechanism at once.
+
+Two consequences. (1) The routing/balancing line is on-topic — an
+earlier reading of a truncated 50-update run suggested a positive cosine
+and was wrong; the full runs invert it. Truncated trends are not
+evidence, which is F32's rule (calibrate the workload that will run) in
+a new place. (2) Gradient surgery specifically is still the wrong tool
+here, and the negative cosine does not recommend it: PCGrad and CAGrad
+seek a compromise direction, but for contexts that contradict on
+identical observations no compromise exists — the compromise IS chance,
+which is precisely the bank-free result above. Contradiction is resolved
+by context, not by averaging. The admissible readings of the literature
+for us are therefore the structural ones (shared+private partition,
+orthogonality on fragment CONTENT rather than on selections), not the
+gradient-space ones.
+
+Probes 81-84 are `gradient_conflict.py`, both seeds, 500 updates,
+with and without `--bank`.

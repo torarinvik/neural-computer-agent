@@ -95,7 +95,19 @@ rung promotes, rejects, or qualifies. Ordered by severity.
     weakness 11 exists to test. Mechanism proposed and implemented:
     swap-test conflict gating (`--conflict-gated`), which weights each
     pair's repulsion by measured cross-feed harm. Unproven until the
-    factorial rung reports.
+    factorial rung reports. *Updated by F50:* the penalty is load-bearing
+    and not incidental — with the read path held fixed (disjoint oracle
+    fragments) and every anti-collapse mechanism removed, twin gradients
+    conflict (cosine mean -0.134, negative at 27/40 checkpoints) and one
+    twin takes the plant outright (0.062/1.000, seed 69317). So it cannot
+    simply be deleted to permit sharing; it must be *replaced*. Three
+    published structural replacements that balance usage without
+    forbidding shared fragments are recorded in `docs/LITERATURE_MAP.md`
+    S4 — a bias control loop on selection scores, balanced assignment,
+    and a shared+private partition with orthogonality on fragment CONTENT
+    rather than on context selections. Next: swap the repulsion penalty
+    for the shared+private partition and re-run the twins and the
+    factorial rung against it.
 12. **Addressing is per-context logits, not content-addressed** — the
     selector maps a known context label to fragments; it does not
     retrieve from observations. The promoted routing rung
