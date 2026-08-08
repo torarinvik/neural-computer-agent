@@ -3790,3 +3790,10 @@ Reports and accounting are archived in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_adapter_sharing_six_promoted_v1_2026-08-08/`.
 This is the current bounded scaling result; general lifelong learning remains
 unproven.
+
+The same contract now promotes seven opaque capabilities across both seeds,
+with two physical adapters serving seven logical bindings. Reports and
+accounting are archived in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_adapter_sharing_seven_promoted_v1_2026-08-08/`.
+This demonstrates reusable bounded growth, not unrestricted memory or general
+lifelong learning.

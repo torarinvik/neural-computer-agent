@@ -661,3 +661,8 @@ The six-capability extension also promotes across both seeds, with fixed
 retention probes, zero replay, and two physical adapters for six logical
 bindings. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_adapter_sharing_six_promoted_v1_2026-08-08/`.
+
+The seven-capability extension also promotes across both seeds, with fixed
+retention probes, zero replay, and two physical adapters for seven logical
+bindings. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/learned_compute_candidate_adapter_sharing_seven_promoted_v1_2026-08-08/`.
