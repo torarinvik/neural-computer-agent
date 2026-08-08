@@ -192,14 +192,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     if route == "grow":
         for parameter in routed_basis.parameters():
             parameter.requires_grad_(True)
-    target_progress = _train_stage(
+    target_warmup_progress = _train_stage(
         parent,
         machine,
         target_decoder,
         operation=TARGET_OPERATION,
         instructions=(target_instruction,),
         basis_slots=(routed_basis_slot,),
-        updates=args.target_updates,
+        updates=args.growth_warmup_updates,
         batch_size=args.batch_size,
         span=args.growth_span,
         seed=args.seed + 100_000,
@@ -214,6 +214,53 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         audit_count=args.audit_count,
         audit_seed=args.seed + 200_000,
     )
+    warmup_source_after = [
+        _accuracy(
+            parent,
+            machine,
+            decoder,
+            operation=operation,
+            instructions=(machine.instructions[index],),
+            basis_slots=(index,),
+            count=args.audit_count,
+            span=args.span,
+            seed=args.seed + 205_000 + index * 101,
+            credit_mode="paired_counterfactual",
+        )
+        for index, (operation, decoder) in enumerate(
+            zip(SOURCE_OPERATIONS, decoders, strict=True)
+        )
+    ]
+    target_progress = _train_stage(
+        parent,
+        machine,
+        target_decoder,
+        operation=TARGET_OPERATION,
+        instructions=(target_instruction,),
+        basis_slots=(routed_basis_slot,),
+        updates=args.target_updates,
+        batch_size=args.batch_size,
+        span=args.span,
+        seed=args.seed + 110_000,
+        trainable=[
+            target_instruction.code,
+            *(routed_basis.parameters() if route == "grow" else ()),
+            *target_decoder.parameters(),
+        ],
+        credit_mode=args.growth_credit_mode,
+        learning_rate=args.growth_learning_rate,
+        eval_every=args.eval_every,
+        audit_count=args.audit_count,
+        audit_seed=args.seed + 220_000,
+    )
+    target_progress = [
+        {**row, "stage": "full_span"}
+        for row in target_progress
+    ]
+    target_warmup_progress = [
+        {**row, "stage": "warmup"}
+        for row in target_warmup_progress
+    ]
     target_accuracy = _accuracy(
         parent,
         machine,
@@ -222,7 +269,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         instructions=(target_instruction,),
         basis_slots=(routed_basis_slot,),
         count=args.audit_count,
-        span=args.growth_span,
+        span=args.span,
         seed=args.seed + 210_000,
         credit_mode=args.growth_credit_mode,
     )
@@ -234,7 +281,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         instructions=(target_instruction,),
         basis_slots=(routed_basis_slot,),
         count=args.audit_count,
-        span=args.growth_span,
+        span=args.span,
         seed=args.seed + 211_000,
         credit_mode=args.growth_credit_mode,
         shuffle_outcomes=True,
@@ -247,7 +294,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         instructions=(target_instruction,),
         basis_slots=(routed_basis_slot,),
         count=args.audit_count,
-        span=args.growth_span,
+        span=args.span,
         seed=args.seed + 212_000,
         credit_mode=args.growth_credit_mode,
         evidence_present=False,
@@ -255,7 +302,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     target_stable = _stable_bits(
         target_progress,
         threshold=threshold,
-        bits_per_update=args.batch_size * args.growth_span * 2,
+        bits_per_update=args.batch_size * args.span * 2,
     )
     source_after = [
         _accuracy(
@@ -306,7 +353,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         basis_slots=(shuffled_training_basis_slot,),
         updates=args.target_updates,
         batch_size=args.batch_size,
-        span=args.growth_span,
+        span=args.span,
         seed=args.seed + 300_000,
         trainable=[
             shuffled_training_instruction.code,
@@ -325,7 +372,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         instructions=(shuffled_training_instruction,),
         basis_slots=(shuffled_training_basis_slot,),
         count=args.audit_count,
-        span=args.growth_span,
+        span=args.span,
         seed=args.seed + 310_000,
         credit_mode=args.growth_credit_mode,
     )
@@ -349,13 +396,19 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "missing_target_accuracy": missing_target_accuracy,
         "shuffled_training_target_accuracy": shuffled_training_accuracy,
         "target_stable_bits": target_stable,
+        "target_warmup_progress": target_warmup_progress,
+        "warmup_source_accuracy": warmup_source_after,
         "target_progress": target_progress,
         "source_accuracy_after": source_after,
         "old_basis_unchanged": old_basis_unchanged,
         "accounting": {
             "replayed_examples": 0,
             "optimizer_updates": (
-                args.parent_updates + args.source_updates * 3 + 1 + args.target_updates
+                args.parent_updates
+                + args.source_updates * 3
+                + 1
+                + args.growth_warmup_updates
+                + args.target_updates
             ),
         },
         "gates": {
@@ -389,6 +442,7 @@ def main() -> None:
     parser.add_argument("--parent-updates", type=int, default=32)
     parser.add_argument("--source-updates", type=int, default=96)
     parser.add_argument("--target-updates", type=int, default=128)
+    parser.add_argument("--growth-warmup-updates", type=int, default=64)
     parser.add_argument(
         "--growth-credit-mode",
         choices=("attempted_bce", "reinforce", "paired_counterfactual"),

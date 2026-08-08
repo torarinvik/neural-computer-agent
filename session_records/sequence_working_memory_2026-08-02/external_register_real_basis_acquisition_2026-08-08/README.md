@@ -32,3 +32,20 @@ correct-action utilities. Shuffled-training controls then collapsed to
 remained `0.9375` and `0.9063`, with source retention intact, but stable-prefix
 promotion still failed. The corrected result remains rejected for stability,
 while the credit-path repair itself is retained.
+
+## Staged scalar-credit follow-up — rejected
+
+The next rung used a two-stage curriculum: a short-span warmup followed by
+full-span target training, with source retention checked after warmup and
+again after growth. Seed `69316` reached `0.8125` final target accuracy and
+seed `69317` reached `0.8320`; both retained all source skills, rejected
+shuffled training, and left old basis digests unchanged. Neither produced a
+stable full-span prefix, and the reward-shuffled control remained too strong.
+The staged curriculum therefore does not promote new-skill acquisition yet.
+It establishes that the current failure is not simply catastrophic forgetting:
+the remaining blocker is reliable scalar-credit learning and control
+sensitivity on the full target distribution.
+
+The audit also corrected propensity accounting: sampled actions use an
+epsilon-smoothed behavior policy, and the exact smoothed propensity is now
+carried in the opaque action record and used by policy-gradient credit.
