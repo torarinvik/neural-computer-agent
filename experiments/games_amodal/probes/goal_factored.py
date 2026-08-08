@@ -17,8 +17,9 @@ enforced here by construction.
 
 Phases:
   1  competence: command c per row, injected as a frozen random goal
-     event; self-reward from observation deltas (commanded plane count
-     drops -> +1, other plane -> -1). No verifier reward anywhere.
+     event; self-reward is DIRECTIONAL (which plane held the item at
+     avatar + delta(action), read from the pre-action observation:
+     commanded plane -> +1, other -> -1). No verifier reward anywhere.
   2  cued game: sample twin per episode, overlay its banner, fetch by
      cue, verifier reward trains fragments + cue-reader only.
   3  gates, greedy, no probe phase so no F53 artifact:
@@ -69,6 +70,9 @@ plant = list(trainable_parameters(
     [agent.controller, *agent.game_modules(agent.games[0])]
 ))
 decoder = agent.runtime.output_bus.decoders["keypress"]
+# Action index -> grid delta, matching the decoder's key order (as in
+# cotrained.py's test_action).
+DELTAS = torch.tensor([[-1, 0], [0, 1], [1, 0], [0, -1]])
 
 # Frozen command vocabulary: two random directions in event space. Not
 # trained — the plant must learn to READ them, which is what makes the
@@ -93,13 +97,6 @@ def banner(observation: torch.Tensor, game: int) -> torch.Tensor:
     return out
 
 
-def plane_counts(observation: torch.Tensor) -> torch.Tensor:
-    """[batch, 2]: item counts on the two object planes."""
-    return torch.stack(
-        [observation[:, 1].sum(dim=(-1, -2)),
-         observation[:, 2].sum(dim=(-1, -2))], dim=-1)
-
-
 def episode(*, game: int | None, command: torch.Tensor | None,
             goal_event: torch.Tensor | None, seed: int, sample: bool,
             wrong_banner: bool = False, random_actions: bool = False):
@@ -118,14 +115,12 @@ def episode(*, game: int | None, command: torch.Tensor | None,
     rng = torch.Generator().manual_seed(seed + 5)
     rewards, selfr, logps, masks, actions_trace = [], [], [], [], []
     alive = torch.ones(args.batch_size, dtype=torch.bool)
-    previous_counts = None
     for _step in range(args.steps):
         masks.append(alive.float())
         observation = pad_channels(verifier.observation(), SHARED_SCREEN_CHANNELS)
         if game is not None:
             shown = (1 - game) if wrong_banner else game
             observation = banner(observation, shown)
-        counts = plane_counts(observation)
         events = [agent.runtime.encoders["screen"](observation)]
         if command is not None:
             events.extend(artifact_events(
@@ -148,19 +143,34 @@ def episode(*, game: int | None, command: torch.Tensor | None,
         outcome = verifier.step(acts)
         actions_trace.append(acts)
         rewards.append(outcome.reward)
-        # Self-reward for phase 1: which plane's count dropped?
-        new_counts = plane_counts(
-            pad_channels(verifier.observation(), SHARED_SCREEN_CHANNELS))
-        if previous_counts is None:
-            previous_counts = counts
-        drop = (counts - new_counts).clamp_min(0.0)
+        # Self-reward for phase 1, DIRECTIONAL: in the choice trial the
+        # avatar is stationary and the action's direction consumes the
+        # adjacent item, so the agent can check its own micro goal from
+        # what it saw before acting: which plane held the item at
+        # avatar + delta(action)? Count deltas cannot work (the verifier
+        # re-deals in the same step) and landing-position checks cannot
+        # either (the avatar does not move) -- both measured as
+        # zero-signal before this version.
         if command is not None:
-            commanded = drop.gather(1, command.unsqueeze(-1)).squeeze(-1)
-            other = drop.sum(dim=-1) - commanded
+            height, width = observation.shape[-2:]
+            flat_avatar = observation[:, 0].reshape(args.batch_size, -1)
+            avatar_index = flat_avatar.argmax(dim=-1)
+            row = avatar_index // width
+            col = avatar_index % width
+            delta = DELTAS[acts]                     # [batch, 2]
+            target_row = (row + delta[:, 0]).clamp(0, height - 1)
+            target_col = (col + delta[:, 1]).clamp(0, width - 1)
+            target = target_row * width + target_col
+            on_a = observation[:, 1].reshape(args.batch_size, -1).gather(
+                1, target.unsqueeze(-1)).squeeze(-1)
+            on_b = observation[:, 2].reshape(args.batch_size, -1).gather(
+                1, target.unsqueeze(-1)).squeeze(-1)
+            planes = torch.stack([on_a, on_b], dim=-1)
+            commanded = planes.gather(1, command.unsqueeze(-1)).squeeze(-1)
+            other = planes.sum(dim=-1) - commanded
             selfr.append((commanded - other).clamp(-1.0, 1.0))
         else:
             selfr.append(torch.zeros(args.batch_size))
-        previous_counts = new_counts
         alive = outcome.alive
         feedback = ControllerFeedback(
             action=agent.feedback_encoders["keypress"](acts),
