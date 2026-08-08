@@ -46,7 +46,7 @@ from experiments.games_amodal.shared_controller import (
     trainable_parameters,
 )
 from experiments.games_amodal.skill_externalization import artifact_events
-from neural_computer import ControllerFeedback
+from neural_computer import AmodalEvent, ControllerFeedback
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--seed", type=int, default=69316)
@@ -143,11 +143,16 @@ def episode(*, game: int | None, command: torch.Tensor | None,
             observation = banner(observation, shown)
         events = [agent.runtime.encoders["screen"](observation)]
         if command is not None:
-            events.extend(artifact_events(
-                COMMANDS[command].reshape(-1, args.width), args.batch_size))
+            # PER-ROW event: COMMANDS[command] is [batch, width], one
+            # event whose payload differs by row. artifact_events would
+            # treat dim 0 as TOKEN COUNT and broadcast all rows' commands
+            # to every row -- 32 tokens flooding a capacity-8 window, so
+            # no row could see its own command (measured: competence at
+            # chance through every phase-1 iteration before this fix).
+            events.append(AmodalEvent(payload=COMMANDS[command]))
         if goal_event is not None:
-            events.extend(artifact_events(
-                goal_event.reshape(-1, args.width), args.batch_size))
+            events.append(AmodalEvent(
+                payload=goal_event.reshape(1, -1).expand(args.batch_size, -1)))
         output, state = agent.runtime.step_events(events, state, feedback)
         if random_actions:
             acts = torch.randint(0, decoder.key_count, (args.batch_size,),
