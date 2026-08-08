@@ -341,6 +341,26 @@ def score(game: int, **kwargs) -> float:
     return round(float(torch.tensor(scores).mean()), 4)
 
 
+# Bridge test: verifier mastery with the RAW command vectors injected per
+# game. Separates the layers: if cmd0-on-choiceA is high while
+# cmd1-on-choiceB is low, phase 2's failure is the plane-B execution gap
+# and the fragments are innocent; if both diagonals are high, the failure
+# is fragment/assignment learning.
+report["bridge"] = {}
+for game_index, name in enumerate(NAMES):
+    for cmd in (0, 1):
+        scores = []
+        for index in range(4):
+            with torch.no_grad():
+                out = episode(game=game_index, command=None,
+                              goal_event=COMMANDS[cmd].detach(),
+                              seed=args.seed + 750_000 + index, sample=False)
+            scores.append(mastery(
+                {"total_reward": out["reward"].sum(dim=1),
+                 "mask": out["mask"]}, train[game_index]))
+        report["bridge"][f"{name}<-cmd{cmd}"] = round(
+            float(torch.tensor(scores).mean()), 4)
+
 # No-agent control FIRST (weakness 18): the gate must be able to fail.
 report["no_agent"] = {n: score(g, random_actions=True) for g, n in enumerate(NAMES)}
 report["mastery"] = {n: score(g) for g, n in enumerate(NAMES)}
@@ -360,4 +380,11 @@ agreement = float((a["actions"] == b["actions"]).float().mean())
 report["decoy_action_agreement"] = round(agreement, 4)
 
 report["cue_choice"] = {n: fetch(g)[1] for g, n in enumerate(NAMES)}
+checkpoint = {
+    "plant": {f"p{i}": p.detach().clone() for i, p in enumerate(plant)},
+    "commands": COMMANDS.detach().clone(),
+    "fragments": fragments.detach().clone(),
+    "cue_reader": cue_reader.state_dict(),
+}
+torch.save(checkpoint, f"goal_factored_ckpt_{args.seed}.pt")
 print(json.dumps(report))
