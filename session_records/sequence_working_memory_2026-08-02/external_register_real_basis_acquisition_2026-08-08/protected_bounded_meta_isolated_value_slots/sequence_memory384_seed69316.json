@@ -1,0 +1,245 @@
+{
+  "schema": "neural-computer.external-register-interleaved-basis-acquisition-audit.v1",
+  "seed": 69316,
+  "source_operations": [
+    "reverse",
+    "adjacent_xor",
+    "complement"
+  ],
+  "source_acquisition_mode": "sequential_with_restarts",
+  "joint_source_updates": 0,
+  "sequence_calibration_updates": 384,
+  "sequence_calibration_trainable_surface": "sequence_memory_slots_plus_temporary_decoders",
+  "sequence_calibration_accepted": true,
+  "sequence_calibration_source_before": [
+    0.96875,
+    0.96875,
+    0.9765625
+  ],
+  "sequence_calibration_source_after": [
+    0.96875,
+    0.96875,
+    0.9765625
+  ],
+  "sequence_calibration_progress": [
+    {
+      "update": 64,
+      "sequence_floor": 0.3671875,
+      "source_floor": 0.96875,
+      "sequence_scores": [
+        0.65625,
+        0.6875,
+        0.625,
+        0.5703125,
+        0.3671875,
+        0.5078125
+      ]
+    },
+    {
+      "update": 128,
+      "sequence_floor": 0.3671875,
+      "source_floor": 0.96875,
+      "sequence_scores": [
+        0.6796875,
+        0.7578125,
+        0.75,
+        0.625,
+        0.3671875,
+        0.5546875
+      ]
+    },
+    {
+      "update": 192,
+      "sequence_floor": 0.5703125,
+      "source_floor": 0.96875,
+      "sequence_scores": [
+        0.71875,
+        0.7890625,
+        0.75,
+        0.5703125,
+        0.6015625,
+        0.671875
+      ]
+    },
+    {
+      "update": 256,
+      "sequence_floor": 0.6171875,
+      "source_floor": 0.96875,
+      "sequence_scores": [
+        0.78125,
+        0.796875,
+        0.828125,
+        0.6796875,
+        0.6171875,
+        0.6953125
+      ]
+    },
+    {
+      "update": 320,
+      "sequence_floor": 0.6875,
+      "source_floor": 0.96875,
+      "sequence_scores": [
+        0.796875,
+        0.84375,
+        0.8671875,
+        0.7265625,
+        0.6875,
+        0.75
+      ]
+    },
+    {
+      "update": 384,
+      "sequence_floor": 0.703125,
+      "source_floor": 0.96875,
+      "sequence_scores": [
+        0.796875,
+        0.8359375,
+        0.890625,
+        0.8203125,
+        0.703125,
+        0.78125
+      ]
+    }
+  ],
+  "sequence_memory": {
+    "schema": "neural-computer.external-sequence-memory.v1",
+    "value_width": 32,
+    "slot_count": 6,
+    "growth": "append_only_external_state_v1"
+  },
+  "operator_mode": "factorized_protected_bounded_meta",
+  "operator_rank": 8,
+  "role_binding": null,
+  "preserve_composition_trace": false,
+  "target_operations": [
+    "complement_rotate",
+    "prefix_parity"
+  ],
+  "composition_programs": [],
+  "target_composition_programs": [],
+  "decoder_prior": null,
+  "shared_bridge_prior": null,
+  "source_before": [
+    0.96875,
+    0.96875,
+    0.9765625
+  ],
+  "source_checkpoint_loaded": true,
+  "source_checkpoint_out": null,
+  "source_attempt_scores": [
+    [
+      "loaded_checkpoint"
+    ],
+    [
+      "loaded_checkpoint"
+    ],
+    [
+      "loaded_checkpoint"
+    ]
+  ],
+  "retained_before": [
+    0.96875,
+    0.96875,
+    0.9765625
+  ],
+  "bridge_prior_source_after": [
+    0.96875,
+    0.96875,
+    0.9765625
+  ],
+  "bridge_prior_progress": [],
+  "canonical_readout_prior": null,
+  "canonical_readout_prior_progress": [],
+  "targets": [
+    {
+      "operation": "complement_rotate",
+      "composition_program": null,
+      "candidate_accuracy": 0.75,
+      "consolidation_probe_accuracy": 0.625,
+      "shuffled_training_accuracy": 0.625,
+      "missing_evidence_accuracy": 0.75,
+      "retained_before": [
+        0.96875,
+        0.96875,
+        0.9765625
+      ],
+      "retained_after": [
+        0.96875,
+        0.96875,
+        0.9765625
+      ],
+      "retention_deltas": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "candidate_progress": [
+        {
+          "update": 1,
+          "heldout_accuracy": 0.75
+        }
+      ],
+      "accepted": false
+    },
+    {
+      "operation": "prefix_parity",
+      "composition_program": null,
+      "candidate_accuracy": 0.25,
+      "consolidation_probe_accuracy": 0.375,
+      "shuffled_training_accuracy": 0.75,
+      "missing_evidence_accuracy": 0.25,
+      "retained_before": [
+        0.96875,
+        0.96875,
+        0.9765625
+      ],
+      "retained_after": [
+        0.96875,
+        0.96875,
+        0.9765625
+      ],
+      "retention_deltas": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "candidate_progress": [
+        {
+          "update": 1,
+          "heldout_accuracy": 0.25
+        }
+      ],
+      "accepted": false
+    }
+  ],
+  "fresh_transfer": [],
+  "transfer_promoted": false,
+  "curriculum_fresh_control": false,
+  "interleaving": {
+    "schedule": "round_robin_per_local_update",
+    "candidate_count": 2,
+    "separate_optimizer_state": true,
+    "transactional_admission": true
+  },
+  "accounting": {
+    "replayed_examples": 0,
+    "parent_training_verifier_bits": 256,
+    "source_training_verifier_bits": 73728,
+    "source_selection_verifier_bits": 2304,
+    "joint_source_calibration_verifier_bits": 0,
+    "bridge_prior_training_verifier_bits": 0,
+    "canonical_readout_prior_training_verifier_bits": 0,
+    "normal_target_training_verifier_bits": 640,
+    "shuffled_target_training_verifier_bits": 640,
+    "fresh_transfer_training_verifier_bits": 0,
+    "fresh_curriculum_source_verifier_bits": 0,
+    "sequence_calibration_verifier_bits": 49152,
+    "fresh_sequence_calibration_verifier_bits": 0,
+    "progress_audit_verifier_bits": 320,
+    "suite_and_control_verifier_bits": 2624,
+    "unique_verifier_bits": 129664,
+    "optimizer_updates": 976,
+    "unique_logical_lifetimes": 16280
+  },
+  "promoted": false
+}

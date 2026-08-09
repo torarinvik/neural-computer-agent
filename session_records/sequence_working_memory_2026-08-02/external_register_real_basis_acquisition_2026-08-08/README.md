@@ -972,6 +972,16 @@ the learned meta residual does not yet generalize to unseen orderings and can
 make them harder to learn. The next repair must make the external computation
 memory sequence/order-aware or otherwise prevent seen-order specialization.
 
+## Isolated sequence value slots — insufficient computation
+
+Six append-only external register-width value slots were trained while the
+shared base and meta residual were frozen. The all-order floor remained about
+`0.703`, effectively matching the shared-residual screen. This rejects plain
+value-cell memory as the missing sequence mechanism: it stores a vector but
+does not supply enough operator capacity to transform a new register state.
+The next design must use operator-valued external memory, such as growable
+low-rank transition slots, while keeping the controller frozen.
+
 The rank-16 diagnostic reached only a `0.7422` floor after 384 updates (final
 scores `0.8203, 0.8203, 0.8203, 0.8359, 0.7422, 0.7500`). Rank widening is
 therefore insufficient; the shared residual still interferes across programs.

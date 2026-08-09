@@ -153,6 +153,7 @@ def _rollout(
     batch,
     instructions: tuple[ExternalRegisterInstruction, ...],
     basis_slots: tuple[int | None, ...] | None = None,
+    meta_context: torch.Tensor | None = None,
     *,
     train_decoder: bool,
     shuffle_outcomes: bool = False,
@@ -171,6 +172,11 @@ def _rollout(
         raise ValueError("execution traces require read_execute mode")
     device = batch.input_frames.device
     batch_size = batch.batch_size
+    if meta_context is not None:
+        if meta_context.ndim == 1:
+            meta_context = meta_context.unsqueeze(0).expand(batch_size, -1)
+        elif meta_context.shape[0] != batch_size:
+            raise ValueError("meta context batch size does not match rollout")
     parent_state = parent.initial_state(batch_size, device=device)
     register_state = machine.initial_state(batch_size, device=device)
     zeros = torch.zeros(batch_size, device=device)
@@ -220,6 +226,7 @@ def _rollout(
                 present=present,
                 instructions=instructions,
                 basis_slots=basis_slots,
+                meta_context=meta_context,
             )
             if not role_trace:
                 raise ValueError("role-bound execution requires at least one instruction")
@@ -236,6 +243,7 @@ def _rollout(
                 present=present,
                 instructions=instructions,
                 basis_slots=basis_slots,
+                meta_context=meta_context,
             )
             decoded_register = torch.cat(trace, dim=-1)
         else:
@@ -253,6 +261,7 @@ def _rollout(
                 present=present,
                 instructions=instructions,
                 basis_slots=basis_slots,
+                meta_context=meta_context,
             )
             decoded_register = (
                 register if register_readout is None else register_readout(register)
@@ -591,6 +600,7 @@ def _accuracy(
     operation: str,
     instructions: tuple[ExternalRegisterInstruction, ...],
     basis_slots: tuple[int | None, ...] | None = None,
+    meta_context: torch.Tensor | None = None,
     count: int,
     span: int,
     seed: int,
@@ -626,6 +636,7 @@ def _accuracy(
             batch,
             instructions,
             basis_slots=basis_slots,
+            meta_context=meta_context,
             train_decoder=False,
             shuffle_outcomes=shuffle_outcomes,
             credit_mode=credit_mode,

@@ -47,6 +47,7 @@ EXTERNAL_REGISTER_SHARED_RELATIONAL_MODE = "factorized_shared_relational"
 EXTERNAL_REGISTER_SHARED_STABLE_RELATIONAL_MODE = (
     "factorized_shared_stable_relational"
 )
+EXTERNAL_SEQUENCE_MEMORY_SCHEMA = "neural-computer.external-sequence-memory.v1"
 
 
 EXTERNAL_REGISTER_ROLE_BINDING_SCHEMA = (
@@ -310,6 +311,53 @@ class ExternalRegisterState:
             if not bool(torch.isfinite(self.event_window).all()):
                 raise ValueError("external event window must contain finite values")
         return self
+
+
+class ExternalSequenceMemory(nn.Module):
+    """Append-only opaque state slots for frozen-controller adaptation.
+
+    Slots are external learned state, not controller computation.  A slot is
+    read as a register-width context and can therefore specialize a shared
+    operator without adding a modality- or procedure-specific controller
+    branch.  The slot count grows independently of the controller width.
+    """
+
+    def __init__(self, value_width: int) -> None:
+        super().__init__()
+        if value_width < 1:
+            raise ValueError("sequence memory value width must be positive")
+        self.value_width = int(value_width)
+        self.slots = nn.ParameterList()
+
+    def configuration(self) -> dict[str, int | str]:
+        return {
+            "schema": EXTERNAL_SEQUENCE_MEMORY_SCHEMA,
+            "value_width": self.value_width,
+            "slot_count": len(self.slots),
+            "growth": "append_only_external_state_v1",
+        }
+
+    def add_slot(self, value: torch.Tensor | None = None) -> int:
+        if value is None:
+            value = torch.zeros(self.value_width)
+        if value.shape != (self.value_width,):
+            raise ValueError("sequence memory slot has the wrong shape")
+        self.slots.append(nn.Parameter(value.detach().clone()))
+        return len(self.slots) - 1
+
+    def read(
+        self,
+        slot: int,
+        *,
+        batch_size: int,
+        device: torch.device | str,
+        dtype: torch.dtype = torch.float32,
+    ) -> torch.Tensor:
+        if not 0 <= slot < len(self.slots):
+            raise ValueError("sequence memory slot index is out of range")
+        return self.slots[slot].to(device=device, dtype=dtype).expand(
+            batch_size, -1
+        )
 
 
 class ExternalRegisterInstruction(nn.Module):
@@ -1235,6 +1283,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         event_window: torch.Tensor | None = None,
         event_window_mask: torch.Tensor | None = None,
         state_bank: torch.Tensor | None = None,
+        meta_context: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Apply one instruction without access to raw events or feedback."""
 
@@ -1242,6 +1291,16 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             raise ValueError("register has the wrong shape for execution")
         if instruction.instruction_width != self.instruction_width:
             raise ValueError("instruction width does not match the machine")
+        if meta_context is not None:
+            if meta_context.shape != register.shape:
+                raise ValueError("meta context has the wrong shape")
+            if not bool(torch.isfinite(meta_context).all()):
+                raise ValueError("meta context must contain finite values")
+            if self.operator_mode not in (
+                "factorized_protected_meta",
+                "factorized_protected_bounded_meta",
+            ):
+                raise ValueError("meta context requires a protected-meta mode")
         code = instruction.expanded(
             register.shape[0],
             device=register.device,
@@ -1372,10 +1431,18 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                     base = torch.tanh(base_proposal + self.operator_bias(code))
                     base_gate = torch.sigmoid(self.operator_composition_gate(code))
                     meta_residual = 0.5 * meta_gate * torch.tanh(meta_proposal)
-                    return register + base_gate * (base + meta_residual)
-                return register + base_proposal + self.operator_bias(code) + (
-                    0.5 * meta_gate * torch.tanh(meta_proposal)
-                )
+                    memory_residual = (
+                        0.5 * torch.tanh(meta_context)
+                        if meta_context is not None
+                        else 0.0
+                    )
+                    return register + base_gate * (
+                        base + meta_residual + memory_residual
+                    )
+                residual = 0.5 * meta_gate * torch.tanh(meta_proposal)
+                if meta_context is not None:
+                    residual = residual + 0.5 * torch.tanh(meta_context)
+                return register + base_proposal + self.operator_bias(code) + residual
         if self.operator_mode in ("factorized_film", "factorized_hybrid"):
             features = torch.tanh(self.operator_feature(register))
             modulation = torch.tanh(self.operator_modulation(code))
@@ -1405,6 +1472,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         basis_slots: Iterable[int | None] | None = None,
         event_window: torch.Tensor | None = None,
         event_window_mask: torch.Tensor | None = None,
+        meta_context: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Apply a memory-selected instruction chain to a working register."""
         register, _ = self.execute_chain_trace(
@@ -1413,6 +1481,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             basis_slots=basis_slots,
             event_window=event_window,
             event_window_mask=event_window_mask,
+            meta_context=meta_context,
         )
         return register
 
@@ -1424,6 +1493,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         basis_slots: Iterable[int | None] | None = None,
         event_window: torch.Tensor | None = None,
         event_window_mask: torch.Tensor | None = None,
+        meta_context: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, tuple[torch.Tensor, ...]]:
         """Execute a chain while preserving each intermediate register state.
 
@@ -1447,6 +1517,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 basis_slot=basis_slot,
                 event_window=event_window,
                 event_window_mask=event_window_mask,
+                meta_context=meta_context,
                 state_bank=(
                     torch.stack(states, dim=1)
                     if states and self.operator_mode == EXTERNAL_REGISTER_SHARED_BANKED_MODE
@@ -1558,6 +1629,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         present: torch.Tensor | None = None,
         instructions: Iterable[ExternalRegisterInstruction] | None = None,
         basis_slots: Iterable[int | None] | None = None,
+        meta_context: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, ExternalRegisterState]:
         """Observe once, then execute a transient program snapshot.
 
@@ -1586,6 +1658,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             basis_slots=basis_slots,
             event_window=next_state.event_window,
             event_window_mask=next_state.event_window_mask,
+            meta_context=meta_context,
         )
         return torch.where(
             present.unsqueeze(-1), executed, register
@@ -1602,6 +1675,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         present: torch.Tensor | None = None,
         instructions: Iterable[ExternalRegisterInstruction] | None = None,
         basis_slots: Iterable[int | None] | None = None,
+        meta_context: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, ExternalRegisterState, tuple[torch.Tensor, ...]]:
         """Read context, execute, and return an opaque intermediate-state bank."""
         if present is None:
@@ -1623,6 +1697,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             basis_slots=basis_slots,
             event_window=next_state.event_window,
             event_window_mask=next_state.event_window_mask,
+            meta_context=meta_context,
         )
         trace = tuple(
             torch.where(present.unsqueeze(-1), value, register)
