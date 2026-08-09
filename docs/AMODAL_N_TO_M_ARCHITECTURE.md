@@ -4204,3 +4204,25 @@ must target portable execution-state algebra and genuinely new longer
 programs, with no-replay fresh-learning curves and retention controls. Evidence
 is archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_shared_operator_basis_full_transfer_2026-08-09/`.
+
+## Shared operator-program depth rejection (2026-08-09)
+
+A temporary follow-up gave each opaque instruction a two-step latent program
+over common transition factors. This was intended to make new computation a
+composition of reusable atomic transitions while keeping the controller
+frozen. The matched audit used the same `576` source updates and `512` target
+updates as the shared-basis screen.
+
+The result was negative. Seed `69316` passed target behavior and exact source
+retention, but inherited learning was slower than fresh on both compositions:
+`40,960 > 24,576` and `24,576 > 16,384` stable verifier bits. Seed `69317`
+failed one composition behavior gate (`0.7422`) and had no inherited stable
+prefix for it; the other composition required `40,960 > 16,384` fresh bits.
+
+The branch was removed rather than retained as another public experimental
+option. The evidence shows that extra latent execution depth, without a
+learned adaptation rule, increases optimization burden. The next architectural
+frontier is protected meta-plasticity: an external, independently versioned
+update state trained explicitly for rapid new-capability adaptation while
+mastered computation remains frozen. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_shared_operator_program_rejected_2026-08-09/`.

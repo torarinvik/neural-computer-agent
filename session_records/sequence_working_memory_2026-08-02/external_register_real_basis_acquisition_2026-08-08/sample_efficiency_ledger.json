@@ -1047,6 +1047,25 @@
         "69317": [false, false]
       },
       "decision": "retain as a qualified opt-in shared-computation candidate and promote only the narrow behavior/retention result; do not promote general continual-learning transfer because fresh positive transfer replicated in only 1/4 comparisons"
+    },
+    {
+      "experiment": "external_register_shared_operator_program_rejected",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "A bounded latent program of shared transition factors will make new opaque operations faster to learn while preserving old source capabilities.",
+      "operator_mode": "factorized_shared_operator_program",
+      "operator_rank": 8,
+      "operator_basis_count": 4,
+      "operator_program_steps": 2,
+      "joint_source_updates": 576,
+      "target_updates": 512,
+      "replayed_examples": 0,
+      "unique_verifier_bits_per_seed": 1067008,
+      "optimizer_updates_per_seed": 8160,
+      "source_retention": "exact zero deltas on both seeds",
+      "target_behavior": "seed 69316 accepted 4/4 targets; seed 69317 accepted 3/4",
+      "fresh_transfer": "0/4 positive comparisons; inherited was slower in three comparisons and had no stable prefix in one",
+      "decision": "reject and remove the branch; additional latent execution depth increased optimization burden without improving reusable learning"
     }
   ]
 }
