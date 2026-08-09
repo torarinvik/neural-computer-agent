@@ -120,9 +120,24 @@
       "target_operations": ["rotate", "prefix_parity", "global_parity", "complement_rotate"],
       "replayed_examples": 0,
       "sequence_reversal": "valid_rerender_control; no capability collapse"
+    },
+    {
+      "name": "interleaved_two_target_mutable_growth",
+      "decision": "promote_replicated_interleaved_growth_rung",
+      "verifier_bits_per_run": 406784,
+      "logical_lifetimes_per_run": 52576,
+      "optimizer_updates_per_run": 1888,
+      "frozen_candidate_probe_gate": "passed_for_both_targets_both_seeds",
+      "source_retention": "passed",
+      "causal_controls": "shuffled-training rejected; missing-evidence at 0.5",
+      "promoted_seeds": [69316, 69317],
+      "target_operations": ["complement_rotate", "prefix_parity"],
+      "schedule": "round_robin_per_local_update",
+      "replayed_examples": 0,
+      "event_bridge": "gradient-path repair verified"
     }
   ],
-  "next_frontier": "interleaved_mutable_capabilities_and_unrestricted_composition",
+  "next_frontier": "interleaved_three_plus_capabilities_and_composition_transfer",
   "candidate_event_bridge": {
     "decision": "retain_architecture_reject_current_learning_rung",
     "verifier_bits_per_run": 70656,

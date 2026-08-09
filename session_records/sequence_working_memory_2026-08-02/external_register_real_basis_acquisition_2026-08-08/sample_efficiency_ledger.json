@@ -63,6 +63,20 @@
       "retention_on_mastered_primitives": "all fixed-suite deltas zero; final retained minima 0.8359 and 0.8516",
       "transfer_ratio_against_fresh_learner": "not measured",
       "decision": "promote bounded four-target compositional rung; interleaving remains untested"
+    },
+    {
+      "experiment": "interleaved_two_target_mutable_growth",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "Two unseen external capabilities can learn concurrently with isolated optimizer state and retain prior source capabilities without replay.",
+      "unique_verifier_bits_per_run": 406784,
+      "unique_logical_lifetimes_per_run": 52576,
+      "optimizer_updates_per_run": 1888,
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": "both candidates passed frozen consolidation probe gate",
+      "retention_on_mastered_primitives": "all deltas non-negative; source floor passed",
+      "transfer_ratio_against_fresh_learner": "not measured",
+      "decision": "promote bounded interleaved two-target rung; composition under concurrent plasticity remains untested"
     }
   ]
 }

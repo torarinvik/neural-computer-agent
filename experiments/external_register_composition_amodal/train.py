@@ -188,17 +188,21 @@ def _rollout(
                 parent_state,
                 feedback,
             )
-            if event_bridge is not None:
-                event = event_bridge(event, parent_state.hidden)
-            elif machine.event_input_mode == "append_controller_state":
-                # Optional versioned boundary: external memory may receive a
-                # standardized learned controller-state event in addition to
-                # the frontend event. It never receives raw modality data.
-                event = torch.cat((event, parent_state.hidden), dim=-1)
-            elif machine.event_input_mode == "controller_state":
-                event = parent_state.hidden
-            if machine.event_width != event.shape[1]:
-                raise ValueError("machine event width is incompatible with parent event")
+        # Keep the frozen parent detached while allowing an external learned
+        # event bridge to receive gradients.  Previously this entire boundary
+        # lived inside the no-grad block, so bridge parameters could be listed
+        # as trainable but were silently inert.
+        if event_bridge is not None:
+            event = event_bridge(event, parent_state.hidden.detach())
+        elif machine.event_input_mode == "append_controller_state":
+            # Optional versioned boundary: external memory may receive a
+            # standardized learned controller-state event in addition to
+            # the frontend event. It never receives raw modality data.
+            event = torch.cat((event, parent_state.hidden.detach()), dim=-1)
+        elif machine.event_input_mode == "controller_state":
+            event = parent_state.hidden.detach()
+        if machine.event_width != event.shape[1]:
+            raise ValueError("machine event width is incompatible with parent event")
         step = (
             machine.step_register
             if execution_mode == "in_place"

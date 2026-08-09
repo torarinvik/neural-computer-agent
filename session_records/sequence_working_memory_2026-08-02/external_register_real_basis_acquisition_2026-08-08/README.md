@@ -409,3 +409,25 @@ This is evidence that the isolated external memory can retain four promoted
 capabilities and acquire a novel factor composition. It still does not test
 interleaved learning of multiple mutable capabilities or unrestricted program
 induction; those are the next bottlenecks.
+
+## Interleaved mutable-capability acquisition — promoted replicated rung
+
+The next audit trained two unseen targets, `complement_rotate` and
+`prefix_parity`, in alternating local updates after the three source slots had
+been frozen. Each target kept independent optimizer state and its own
+instruction, basis, decoder, and learned event bridge. A paired transactional
+gate admitted both candidates only if both passed retention and causal controls.
+
+Both seeds promoted both targets. Seed `69316` reached candidate accuracies
+`0.9844`/`0.8984`; seed `69317` reached `0.9688`/`0.9453`. Shuffled-training
+controls were `0.6172`/`0.5938` and `0.5547`/`0.5313`; missing-evidence scores
+were exactly `0.5`; all retention deltas were non-negative. Each run used
+`406,784` verifier bits, `52,576` logical lifetimes, `1,888` optimizer updates,
+and zero replay.
+
+During this work the external event bridge was also repaired: the frozen
+parent remains detached, but bridge parameters now receive gradients. A
+regression test proves both properties. This makes the interleaved result a
+valid learned-boundary measurement rather than a fixed random bridge screen.
+The next frontier is interleaving more than two mutable capabilities and
+testing genuine composition transfer under that concurrent plasticity.
