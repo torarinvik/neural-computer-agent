@@ -87,6 +87,10 @@ def test_router_stages_and_promotes_affine_candidate_without_optimizer() -> None
     assert staged.status == "staged"
     assert router.adaptation_step(staged, None) > 0.0
     assert int(router.provisional_model_at(0).sample_count) == 4
+    restored_router = ExternalOnlineTransitionContextRouter.from_payload(
+        router.state_payload()
+    )
+    assert int(restored_router.provisional_model_at(0).sample_count) == 4
 
     heldout = _affine_observation(4)
     receipt = router.promote_staged_candidate(
@@ -129,6 +133,126 @@ def test_bank_selects_smallest_verified_model_family_without_mutating_candidates
     assert selection.selected_family == "affine_sufficient_statistics_v1"
     assert affine.digest() == affine_digest
     assert nonlinear.digest() == nonlinear_digest
+
+
+def test_mixed_bank_keeps_affine_and_nonlinear_slots_independently() -> None:
+    torch.manual_seed(1304)
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        3,
+        model_family="mixed_verified_v1",
+        capacity=2,
+    )
+    affine_index = bank.ensure_context(
+        torch.tensor([1.0, 0.0, 0.0]),
+        model_family="affine_sufficient_statistics_v1",
+    )
+    nonlinear_index = bank.ensure_context(
+        torch.tensor([0.0, 1.0, 0.0]),
+        model_family="nonlinear_mlp_v1",
+    )
+    affine_observation = _affine_observation(8)
+    nonlinear_observation = ExternalTransitionObservation(
+        state=torch.randn(4, 2),
+        intention=torch.randn(4, 1),
+        next_state=torch.randn(4, 2),
+    )
+    observation = ExternalTransitionObservation(
+        state=torch.cat((affine_observation.state, nonlinear_observation.state)),
+        intention=torch.cat(
+            (affine_observation.intention, nonlinear_observation.intention)
+        ),
+        next_state=torch.cat(
+            (affine_observation.next_state, nonlinear_observation.next_state)
+        ),
+        confidence=torch.ones(12),
+    )
+    contexts = torch.cat(
+        (
+            torch.tensor([1.0, 0.0, 0.0]).expand(8, -1),
+            torch.tensor([0.0, 1.0, 0.0]).expand(4, -1),
+        )
+    )
+    optimizer = torch.optim.Adam(bank.models[nonlinear_index].parameters(), lr=0.01)
+    bank.adaptation_step(observation, contexts, {nonlinear_index: optimizer})
+    assert bank.model_family_at(affine_index) == "affine_sufficient_statistics_v1"
+    assert bank.model_family_at(nonlinear_index) == "nonlinear_mlp_v1"
+    assert int(bank.models[affine_index].sample_count) == 8
+
+    restored = ExternalTransitionModelBank.from_payload(bank.payload())
+    assert restored.model_family == "mixed_verified_v1"
+    assert restored.model_family_at(affine_index) == "affine_sufficient_statistics_v1"
+    assert restored.model_family_at(nonlinear_index) == "nonlinear_mlp_v1"
+    assert restored.content_digest() == bank.content_digest()
+
+
+def test_mixed_router_adapts_both_families_and_promotes_verified_winner() -> None:
+    torch.manual_seed(1305)
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        4,
+        model_family="mixed_verified_v1",
+        affine_ridge=1e-7,
+        capacity=1,
+    )
+    encoder = ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4)
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        encoder,
+        match_tolerance=1e-8,
+        continuation_tolerance=1e9,
+        admission_observations=8,
+        max_contexts=1,
+        defer_admission=True,
+    )
+    observation = _affine_observation(8)
+    rows = [
+        ExternalTransitionObservation(
+            state=observation.state[row : row + 1],
+            intention=observation.intention[row : row + 1],
+            next_state=observation.next_state[row : row + 1],
+            confidence=torch.ones(1),
+        )
+        for row in range(8)
+    ]
+    for row in rows[:-1]:
+        assert router.observe(row).status == "pending"
+    staged = router.observe(rows[-1])
+    assert staged.status == "staged"
+    assert set(router._provisional_candidates[0].models()) == {
+        "nonlinear_mlp_v1",
+        "affine_sufficient_statistics_v1",
+    }
+    nonlinear_optimizer = torch.optim.Adam(
+        router.provisional_model.parameters(), lr=0.03
+    )
+    router.adaptation_step(
+        staged,
+        {"nonlinear_mlp_v1": nonlinear_optimizer},
+    )
+    assert int(
+        router._provisional_candidates[0].alternatives[
+            "affine_sufficient_statistics_v1"
+        ].sample_count
+    ) == 8
+
+    restored = ExternalOnlineTransitionContextRouter.from_payload(
+        router.state_payload()
+    )
+    assert set(restored._provisional_candidates[0].models()) == {
+        "nonlinear_mlp_v1",
+        "affine_sufficient_statistics_v1",
+    }
+    receipt = router.promote_staged_candidate(
+        _affine_observation(4),
+        lambda candidate: candidate.context_count == 1
+        and candidate.model_family_at(0) == "affine_sufficient_statistics_v1",
+        prediction_tolerance=1e-6,
+    )
+    assert receipt.accepted
+    assert router.bank.model_family_at(0) == "affine_sufficient_statistics_v1"
 
 
 def test_affine_transition_statistics_learns_and_persists_one_pass() -> None:

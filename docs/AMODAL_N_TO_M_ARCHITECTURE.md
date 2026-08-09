@@ -4914,3 +4914,22 @@ tail-evict → stage → promote cycle. Eviction invalidates a stale active-slot
 reference before the next candidate is learned, and the original source model
 remains byte-stable throughout. This is the current safe route to reuse finite
 capacity while stable logical addresses remain an open design requirement.
+
+## Mixed-family external slots and automatic candidate selection (2026-08-09)
+
+The external bank now supports a verifier-selected mixed mode. Each committed
+slot carries its own opaque implementation family, so an affine sufficient-
+statistics slot and a nonlinear MLP slot can coexist, transfer only within the
+same family, persist, alias, compress, and evict without changing the
+controller boundary. A mixed router quarantines both families for a novel
+context and adapts them independently: sufficient statistics consume the
+current verified observation once, while nonlinear candidates use caller-owned
+optimizer state.
+
+Promotion evaluates all adapted candidates on held-out factual evidence, then
+commits only the smallest accepted family and runs the existing bank retention
+probe. The focused regression also round-trips both provisional candidates
+before promotion. This removes the remaining hand-assigned family choice from
+the promotion path, but it is still a bounded model-family set: new families,
+automatic optimizer provisioning, and replay-free nonlinear adaptation remain
+open continual-learning bottlenecks.

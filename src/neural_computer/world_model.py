@@ -17,7 +17,7 @@ from __future__ import annotations
 import hashlib
 import math
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 import torch
@@ -88,6 +88,7 @@ EXTERNAL_MODEL_PLANNER_SCHEMA = "neural-computer.external-model-planner.v1"
 
 EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY = "nonlinear_mlp_v1"
 EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY = "affine_sufficient_statistics_v1"
+EXTERNAL_TRANSITION_MIXED_MODEL_FAMILY = "mixed_verified_v1"
 
 
 def _validate_tensor(
@@ -353,9 +354,10 @@ class ExternalTransitionModelBank(nn.Module):
         if model_family not in {
             EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
             EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+            EXTERNAL_TRANSITION_MIXED_MODEL_FAMILY,
         }:
             raise ValueError("unsupported external transition-model family")
-        if model_family == EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY and affine_ridge <= 0.0:
+        if affine_ridge <= 0.0:
             raise ValueError("affine transition ridge must be positive")
         self.state_width = int(state_width)
         self.intention_width = int(intention_width)
@@ -367,6 +369,7 @@ class ExternalTransitionModelBank(nn.Module):
         self.affine_ridge = float(affine_ridge)
         self.models = nn.ModuleList()
         self._contexts: list[torch.Tensor] = []
+        self._model_families: list[str] = []
 
     @property
     def replay_free_updates(self) -> bool:
@@ -376,6 +379,8 @@ class ExternalTransitionModelBank(nn.Module):
 
     def _new_model(self, model_family: str | None = None) -> nn.Module:
         selected_family = self.model_family if model_family is None else model_family
+        if selected_family == EXTERNAL_TRANSITION_MIXED_MODEL_FAMILY:
+            selected_family = EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY
         if selected_family not in {
             EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
             EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
@@ -402,6 +407,13 @@ class ExternalTransitionModelBank(nn.Module):
         """Create an uncommitted candidate for verifier-gated family selection."""
 
         return self._new_model(model_family)
+
+    def model_family_at(self, index: int) -> str:
+        """Return the opaque implementation family assigned to one slot."""
+
+        if not 0 <= index < self.context_count:
+            raise IndexError("transition-model context is out of range")
+        return self._model_families[index]
 
     def select_model_family_verified(
         self,
@@ -480,6 +492,7 @@ class ExternalTransitionModelBank(nn.Module):
         context: torch.Tensor,
         *,
         initialize_from: int | None = None,
+        model_family: str | None = None,
     ) -> int:
         """Return a slot or append one, optionally copying a transfer prior."""
 
@@ -493,11 +506,22 @@ class ExternalTransitionModelBank(nn.Module):
             raise IndexError("transition-model transfer slot is out of range")
         if self.capacity is not None and self.context_count >= self.capacity:
             raise MemoryError("transition-model bank capacity is full")
-        model = self._new_model()
+        selected_family = self.model_family if model_family is None else model_family
+        if selected_family == EXTERNAL_TRANSITION_MIXED_MODEL_FAMILY:
+            selected_family = EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY
+        if selected_family not in {
+            EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
+            EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+        }:
+            raise ValueError("unsupported transition-model slot family")
+        model = self._new_model(selected_family)
         if initialize_from is not None:
+            if self._model_families[initialize_from] != selected_family:
+                raise ValueError("transition-model transfer families differ")
             model.load_state_dict(self.models[initialize_from].state_dict())
         self._contexts.append(normalized.clone())
         self.models.append(model)
+        self._model_families.append(selected_family)
         return self.context_count - 1
 
     def _context_indices(self, context: torch.Tensor) -> list[int]:
@@ -520,6 +544,7 @@ class ExternalTransitionModelBank(nn.Module):
             "context_width": self.context_width,
             "hidden_width": self.hidden_width,
             "model_family": self.model_family,
+            "model_families": list(self._model_families),
             "affine_ridge": self.affine_ridge,
             "matching_tolerance": self.matching_tolerance,
             "growth": "append_only_isolated_model_slots_v1",
@@ -529,6 +554,32 @@ class ExternalTransitionModelBank(nn.Module):
         if self.capacity is not None:
             configuration["capacity"] = self.capacity
         return configuration
+
+    @staticmethod
+    def _payload_model_families(
+        configuration: Mapping[str, Any],
+        count: int,
+    ) -> list[str]:
+        families = configuration.get("model_families")
+        if families is None:
+            family = str(
+                configuration.get(
+                    "model_family", EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY
+                )
+            )
+            if family == EXTERNAL_TRANSITION_MIXED_MODEL_FAMILY:
+                family = EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY
+            families = [family] * count
+        if not isinstance(families, list) or len(families) != count:
+            raise ValueError("transition-model payload family list is invalid")
+        allowed = {
+            EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
+            EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+        }
+        normalized = [str(family) for family in families]
+        if any(family not in allowed for family in normalized):
+            raise ValueError("transition-model payload contains an unknown family")
+        return normalized
 
     def _validate_batch(
         self,
@@ -659,6 +710,7 @@ class ExternalTransitionModelBank(nn.Module):
         candidate = ExternalTransitionModelBank.from_payload(self.payload())
         del candidate._contexts[index]
         del candidate.models[index]
+        del candidate._model_families[index]
         after = candidate.content_digest()
         if not bool(retention_probe(candidate)):
             return ExternalTransitionModelEvictionReceipt(
@@ -675,6 +727,7 @@ class ExternalTransitionModelBank(nn.Module):
 
         self._contexts = candidate._contexts
         self.models = candidate.models
+        self._model_families = candidate._model_families
         return ExternalTransitionModelEvictionReceipt(
             accepted=True,
             evicted_index=index,
@@ -739,43 +792,58 @@ class ExternalTransitionModelBank(nn.Module):
         )
         return (errors * confidence).sum() / confidence.sum().clamp_min(1e-12)
 
+    @staticmethod
+    def _observation_rows(
+        observation: ExternalTransitionObservation,
+        rows: Sequence[int],
+    ) -> ExternalTransitionObservation:
+        row_index = torch.tensor(
+            list(rows),
+            dtype=torch.long,
+            device=observation.state.device,
+        )
+        return ExternalTransitionObservation(
+            state=observation.state.index_select(0, row_index),
+            intention=observation.intention.index_select(0, row_index),
+            next_state=observation.next_state.index_select(0, row_index),
+            confidence=(
+                None
+                if observation.confidence is None
+                else observation.confidence.reshape(-1).index_select(0, row_index)
+            ),
+        )
+
     def adaptation_step(
         self,
         observation: ExternalTransitionObservation,
         context: torch.Tensor,
-        optimizer: torch.optim.Optimizer | None,
+        optimizer: torch.optim.Optimizer | Mapping[int, torch.optim.Optimizer] | None,
     ) -> float:
         """Update only parameters selected by the supplied context batch."""
 
-        if self.replay_free_updates:
-            loss = self.loss(observation, context)
-            indices = self._context_indices(context)
-            for index in sorted(set(indices)):
-                rows = [row for row, selected in enumerate(indices) if selected == index]
-                row_index = torch.tensor(rows, dtype=torch.long, device=observation.state.device)
-                subset = ExternalTransitionObservation(
-                    state=observation.state.index_select(0, row_index),
-                    intention=observation.intention.index_select(0, row_index),
-                    next_state=observation.next_state.index_select(0, row_index),
-                    confidence=(
-                        None
-                        if observation.confidence is None
-                        else observation.confidence.reshape(-1).index_select(0, row_index)
-                    ),
-                )
-                model = self.models[index]
-                if not hasattr(model, "observe"):
-                    raise RuntimeError("replay-free model family lacks observe()")
+        loss = self.loss(observation, context)
+        indices = self._context_indices(context)
+        for index in sorted(set(indices)):
+            rows = [row for row, selected in enumerate(indices) if selected == index]
+            subset = self._observation_rows(observation, rows)
+            model = self.models[index]
+            if hasattr(model, "observe"):
                 with torch.no_grad():
                     model.observe(subset)
-            return float(loss.detach())
-
-        if optimizer is None:
-            raise ValueError("nonlinear transition-model updates require an optimizer")
-        optimizer.zero_grad()
-        loss = self.loss(observation, context)
-        loss.backward()
-        optimizer.step()
+                continue
+            selected_optimizer = (
+                optimizer.get(index)
+                if isinstance(optimizer, Mapping)
+                else optimizer
+            )
+            if selected_optimizer is None:
+                raise ValueError(
+                    "nonlinear transition-model updates require an optimizer"
+                )
+            selected_optimizer.zero_grad()
+            model_loss = model.loss(subset)
+            model_loss.backward()
+            selected_optimizer.step()
         return float(loss.detach())
 
     def consolidate_verified(
@@ -799,6 +867,8 @@ class ExternalTransitionModelBank(nn.Module):
             raise IndexError("transition-model consolidation slot is out of range")
         if first == second:
             raise ValueError("transition-model consolidation slots must differ")
+        if self.model_family_at(first) != self.model_family_at(second):
+            raise ValueError("transition-model consolidation families must match")
         if prediction_tolerance < 0.0:
             raise ValueError("transition-model consolidation tolerance cannot be negative")
         if not heldout:
@@ -991,6 +1061,7 @@ class ExternalTransitionModelBank(nn.Module):
         )
         if bank.capacity is not None and len(contexts) > bank.capacity:
             raise ValueError("compressed transition-model payload exceeds capacity")
+        model_families = bank._payload_model_families(configuration, len(models))
         for index, (values, model_payload) in enumerate(
             zip(contexts, models, strict=True)
         ):
@@ -1011,7 +1082,8 @@ class ExternalTransitionModelBank(nn.Module):
             ):
                 raise ValueError("compressed transition-model context is not normalized")
             bank._contexts.append(context.clone())
-            bank.models.append(bank._new_model())
+            bank.models.append(bank._new_model(model_families[index]))
+            bank._model_families.append(model_families[index])
             state = model_payload.get("state")
             if not isinstance(state, Mapping):
                 raise TypeError("compressed transition-model state is missing")
@@ -1032,7 +1104,10 @@ class ExternalTransitionModelBank(nn.Module):
             raise ValueError("compressed transition-model aliases are invalid")
         for index, alias in enumerate(aliases):
             if alias != index:
+                if model_families[index] != model_families[alias]:
+                    raise ValueError("compressed transition-model aliases cross families")
                 bank.models[index] = bank.models[alias]
+                bank._model_families[index] = bank._model_families[alias]
         if payload.get("sha256") != bank._compressed_payload_digest(payload):
             raise ValueError("compressed transition-model payload checksum mismatch")
         return bank
@@ -1117,6 +1192,7 @@ class ExternalTransitionModelBank(nn.Module):
             digest.update(detached.numpy().tobytes())
         for index, model in enumerate(self.models):
             digest.update(str(index).encode("utf-8"))
+            digest.update(self._model_families[index].encode("utf-8"))
             digest.update(model.digest().encode("utf-8"))
         return digest.hexdigest()
 
@@ -1203,6 +1279,7 @@ class ExternalTransitionModelBank(nn.Module):
         )
         if bank.capacity is not None and len(contexts) > bank.capacity:
             raise ValueError("transition-model bank payload exceeds capacity")
+        model_families = bank._payload_model_families(configuration, len(models))
         for values, model_payload in zip(contexts, models, strict=True):
             context = torch.tensor(values, dtype=torch.float32)
             _validate_tensor(
@@ -1222,7 +1299,9 @@ class ExternalTransitionModelBank(nn.Module):
                 raise ValueError("transition-model payload context is zero")
             index = bank.context_count
             bank._contexts.append(context.clone())
-            bank.models.append(bank._new_model())
+            family = model_families[index]
+            bank.models.append(bank._new_model(family))
+            bank._model_families.append(family)
             if not isinstance(model_payload, Mapping):
                 raise TypeError("transition-model bank slot is invalid")
             state_payload = model_payload.get("state")
@@ -1242,7 +1321,10 @@ class ExternalTransitionModelBank(nn.Module):
                 raise ValueError("transition-model bank slot checksum mismatch")
         for index, alias in enumerate(aliases):
             if alias != index:
+                if model_families[index] != model_families[alias]:
+                    raise ValueError("transition-model aliases cross families")
                 bank.models[index] = bank.models[alias]
+                bank._model_families[index] = bank._model_families[alias]
         if payload.get("sha256") != bank.digest():
             raise ValueError("transition-model bank checksum mismatch")
         return bank
@@ -1758,7 +1840,12 @@ class _ProvisionalTransitionCandidate:
 
     context: torch.Tensor
     model: nn.Module
+    model_family: str
     observations: list[ExternalTransitionObservation]
+    alternatives: dict[str, nn.Module] = field(default_factory=dict)
+
+    def models(self) -> dict[str, nn.Module]:
+        return {self.model_family: self.model, **self.alternatives}
 
 
 class ExternalOnlineTransitionContextRouter:
@@ -1788,6 +1875,7 @@ class ExternalOnlineTransitionContextRouter:
         continuation_tolerance: float | None = None,
         conflict_patience: int = 1,
         defer_admission: bool = False,
+        candidate_model_families: Sequence[str] | None = None,
     ) -> None:
         if (
             bank.state_width != context_encoder.state_width
@@ -1808,6 +1896,27 @@ class ExternalOnlineTransitionContextRouter:
             raise ValueError("online context admission count must be positive")
         if max_contexts is not None and max_contexts < 1:
             raise ValueError("online context maximum must be positive")
+        allowed_families = {
+            EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
+            EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+        }
+        if candidate_model_families is None:
+            families = (
+                (
+                    EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
+                    EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+                )
+                if bank.model_family == EXTERNAL_TRANSITION_MIXED_MODEL_FAMILY
+                else (bank.model_family,)
+            )
+        else:
+            families = tuple(str(family) for family in candidate_model_families)
+        if not families or len(set(families)) != len(families):
+            raise ValueError("candidate model families must be unique and nonempty")
+        if any(family not in allowed_families for family in families):
+            raise ValueError("candidate model family is unsupported")
+        if len(families) > 1 and bank.model_family != EXTERNAL_TRANSITION_MIXED_MODEL_FAMILY:
+            raise ValueError("multiple candidate families require a mixed model bank")
         self.bank = bank
         self.context_encoder = context_encoder
         self.match_tolerance = float(match_tolerance)
@@ -1821,6 +1930,7 @@ class ExternalOnlineTransitionContextRouter:
         )
         self.conflict_patience = int(conflict_patience)
         self.defer_admission = bool(defer_admission)
+        self.candidate_model_families = families
         self._pending: list[ExternalTransitionObservation] = []
         self._active_slot: int | None = None
         self._conflict_windows = 0
@@ -1900,6 +2010,7 @@ class ExternalOnlineTransitionContextRouter:
             "continuation_tolerance": self.continuation_tolerance,
             "conflict_patience": self.conflict_patience,
             "defer_admission": self.defer_admission,
+            "candidate_model_families": list(self.candidate_model_families),
             "routing": "factual_prediction_error_then_bound_continuation_v2",
             "writes": "caller_owned_slot_only_v1",
             "provisional_evidence": "cumulative_verified_window_v1",
@@ -2046,14 +2157,26 @@ class ExternalOnlineTransitionContextRouter:
         *,
         prior_index: int | None,
     ) -> int:
-        model = self.bank._new_model()
+        models = {
+            family: self.bank._new_model(family)
+            for family in self.candidate_model_families
+        }
         if prior_index is not None:
-            model.load_state_dict(self.bank.models[prior_index].state_dict())
+            prior_family = self.bank.model_family_at(prior_index)
+            for family, model in models.items():
+                if family == prior_family:
+                    model.load_state_dict(self.bank.models[prior_index].state_dict())
         self._provisional_candidates.append(
             _ProvisionalTransitionCandidate(
                 context=context.detach().clone(),
-                model=model,
+                model=models[self.candidate_model_families[0]],
+                model_family=self.candidate_model_families[0],
                 observations=[],
+                alternatives={
+                    family: model
+                    for family, model in models.items()
+                    if family != self.candidate_model_families[0]
+                },
             )
         )
         return len(self._provisional_candidates) - 1
@@ -2094,6 +2217,17 @@ class ExternalOnlineTransitionContextRouter:
             (prediction - observation.next_state).square().mean().detach()
         )
 
+    @classmethod
+    def _candidate_error(
+        cls,
+        candidate: _ProvisionalTransitionCandidate,
+        observation: ExternalTransitionObservation,
+    ) -> float:
+        return min(
+            cls._slot_error_from_model(model, observation)
+            for model in candidate.models().values()
+        )
+
     def observe(
         self,
         observation: ExternalTransitionObservation,
@@ -2118,7 +2252,7 @@ class ExternalOnlineTransitionContextRouter:
             self._provisional_candidates = [
                 candidate
                 for candidate in self._provisional_candidates
-                if self._slot_error_from_model(candidate.model, bundle)
+                if self._candidate_error(candidate, bundle)
                 > self.continuation_tolerance
             ]
             self._active_slot = index
@@ -2170,7 +2304,7 @@ class ExternalOnlineTransitionContextRouter:
             if self._provisional_candidates:
                 candidate_errors = [
                     (
-                        self._slot_error_from_model(candidate.model, bundle),
+                        self._candidate_error(candidate, bundle),
                         index,
                     )
                     for index, candidate in enumerate(self._provisional_candidates)
@@ -2243,7 +2377,11 @@ class ExternalOnlineTransitionContextRouter:
     def adaptation_step(
         self,
         result: ExternalOnlineTransitionContextResult,
-        optimizer: torch.optim.Optimizer | None,
+        optimizer: (
+            torch.optim.Optimizer
+            | Mapping[str, torch.optim.Optimizer]
+            | None
+        ),
         *,
         replay_evidence: bool = True,
     ) -> float:
@@ -2268,19 +2406,31 @@ class ExternalOnlineTransitionContextRouter:
             ):
                 return 0.0
             candidate = self._provisional_candidates[candidate_index]
-            if self.bank.replay_free_updates:
-                loss = candidate.model.loss(result.observation)
-                with torch.no_grad():
-                    candidate.model.observe(result.observation)
-                return float(loss.detach())
-            optimizer.zero_grad()
             evidence = self._merge_observations(
                 candidate.observations if replay_evidence else [result.observation]
             )
-            loss = candidate.model.loss(evidence)
-            loss.backward()
-            optimizer.step()
-            return float(loss.detach())
+            primary_loss = candidate.model.loss(evidence)
+            for family, model in candidate.models().items():
+                if hasattr(model, "observe"):
+                    with torch.no_grad():
+                        model.observe(result.observation)
+                    continue
+                selected_optimizer = (
+                    optimizer.get(family)
+                    if isinstance(optimizer, Mapping)
+                    else optimizer
+                    if family == candidate.model_family
+                    else None
+                )
+                if selected_optimizer is None:
+                    raise ValueError(
+                        "each nonlinear provisional family requires an optimizer"
+                    )
+                selected_optimizer.zero_grad()
+                model_loss = model.loss(evidence)
+                model_loss.backward()
+                selected_optimizer.step()
+            return float(primary_loss.detach())
         if result.slot_index is None or result.context is None or result.observation is None:
             return 0.0
         context = result.context.to(result.observation.state)
@@ -2332,14 +2482,13 @@ class ExternalOnlineTransitionContextRouter:
             raise TypeError("candidate retention probe must be callable")
         before = self.bank.content_digest()
         if not 0 <= candidate_index < len(self._provisional_candidates):
-            model = None
+            candidate = None
             context = None
+            candidate_digest = "none"
         else:
             candidate = self._provisional_candidates[candidate_index]
-            model = candidate.model
             context = candidate.context
-        candidate_digest = "none" if model is None else model.digest()
-        if model is None or context is None:
+        if candidate is None or context is None:
             return ExternalTransitionModelCandidateReceipt(
                 accepted=False,
                 slot_index=None,
@@ -2350,6 +2499,30 @@ class ExternalOnlineTransitionContextRouter:
                 content_digest_after=before,
                 reason="no provisional candidate is staged",
             ).validate()
+        candidate_models = candidate.models()
+        selection = self.bank.select_model_family_verified(
+            candidate_models,
+            heldout_observation,
+            prediction_tolerance=prediction_tolerance,
+        )
+        if not selection.accepted or selection.selected_family is None:
+            best_error = min(
+                receipt.heldout_error for receipt in selection.candidates
+            )
+            candidate_digest = candidate.model.digest()
+            return ExternalTransitionModelCandidateReceipt(
+                accepted=False,
+                slot_index=None,
+                context_count=self.bank.context_count,
+                heldout_error=best_error,
+                candidate_digest=candidate_digest,
+                content_digest_before=before,
+                content_digest_after=before,
+                reason="no provisional model family passed held-out verification",
+            ).validate()
+        selected_family = selection.selected_family
+        model = candidate_models[selected_family]
+        candidate_digest = model.digest()
         if (
             destination_capacity is None
             and self.bank.capacity is not None
@@ -2378,7 +2551,10 @@ class ExternalOnlineTransitionContextRouter:
             if candidate_bank.content_digest() != candidate_content_before_growth:
                 raise RuntimeError("candidate capacity growth changed model content")
         candidate_count_before = candidate_bank.context_count
-        bank_candidate_index = candidate_bank.ensure_context(context)
+        bank_candidate_index = candidate_bank.ensure_context(
+            context,
+            model_family=selected_family,
+        )
         if bank_candidate_index != candidate_count_before:
             return ExternalTransitionModelCandidateReceipt(
                 accepted=False,
@@ -2420,10 +2596,11 @@ class ExternalOnlineTransitionContextRouter:
                 reason="candidate retention probe failed",
             ).validate()
 
-        promoted_model = self.bank._new_model()
+        promoted_model = self.bank._new_model(selected_family)
         promoted_model.load_state_dict(model.state_dict())
         self.bank._contexts.append(context.detach().cpu().clone())
         self.bank.models.append(promoted_model)
+        self.bank._model_families.append(selected_family)
         if destination_capacity is not None:
             self.bank.capacity = destination_capacity
             if self.max_contexts is not None:
@@ -2482,11 +2659,27 @@ class ExternalOnlineTransitionContextRouter:
             ),
         )
 
+    @staticmethod
+    def _model_from_payload(payload: Mapping[str, Any]) -> nn.Module:
+        schema = payload.get("schema")
+        if schema == EXTERNAL_TRANSITION_MODEL_SCHEMA:
+            return ExternalTransitionModel.from_payload(payload)
+        from .online_transition import ExternalAffineTransitionStatistics
+
+        if schema != ExternalAffineTransitionStatistics.schema:
+            raise ValueError("unsupported online transition provisional model")
+        return ExternalAffineTransitionStatistics.from_payload(payload)
+
     def state_payload(self) -> dict[str, object]:
         provisional_candidates = [
             {
                 "context": candidate.context.detach().cpu().clone(),
                 "model": candidate.model.state_payload(),
+                "model_family": candidate.model_family,
+                "models": {
+                    family: model.state_payload()
+                    for family, model in candidate.models().items()
+                },
                 "observations": [
                     self._observation_payload(row)
                     for row in candidate.observations
@@ -2517,6 +2710,11 @@ class ExternalOnlineTransitionContextRouter:
                 None
                 if first_candidate is None
                 else first_candidate.model.state_payload()
+            ),
+            "provisional_model_family": (
+                None
+                if first_candidate is None
+                else first_candidate.model_family
             ),
             "provisional_observations": [
                 self._observation_payload(row)
@@ -2575,6 +2773,11 @@ class ExternalOnlineTransitionContextRouter:
             ),
             conflict_patience=int(configuration.get("conflict_patience", 1)),
             defer_admission=bool(configuration.get("defer_admission", False)),
+            candidate_model_families=(
+                None
+                if configuration.get("candidate_model_families") is None
+                else tuple(str(family) for family in configuration["candidate_model_families"])
+            ),
         )
         for row_payload in pending_payload:
             row = cls._observation_from_payload(row_payload)
@@ -2618,11 +2821,17 @@ class ExternalOnlineTransitionContextRouter:
                 raise TypeError("online transition provisional candidate is invalid")
             provisional_context = candidate_payload.get("context")
             provisional_model = candidate_payload.get("model")
+            candidate_models_payload = candidate_payload.get("models")
+            candidate_model_family = candidate_payload.get("model_family")
             observations_payload = candidate_payload.get("observations", [])
             if not isinstance(provisional_context, torch.Tensor):
                 raise TypeError("online transition provisional context is not a tensor")
             if not isinstance(provisional_model, Mapping):
                 raise TypeError("online transition provisional model is invalid")
+            if candidate_models_payload is not None and not isinstance(
+                candidate_models_payload, Mapping
+            ):
+                raise TypeError("online transition provisional model candidates are invalid")
             if not isinstance(observations_payload, list):
                 raise TypeError("online transition provisional evidence is invalid")
             _validate_tensor(
@@ -2631,13 +2840,43 @@ class ExternalOnlineTransitionContextRouter:
                 ndim=1,
                 width=bank.context_width,
             )
-            restored_model = ExternalTransitionModel.from_payload(provisional_model)
-            if (
-                restored_model.state_width != bank.state_width
-                or restored_model.intention_width != bank.intention_width
-                or restored_model.hidden_width != bank.hidden_width
-            ):
-                raise ValueError("online transition provisional model is incompatible")
+            if candidate_models_payload is None:
+                family = str(
+                    candidate_model_family
+                    or (
+                        EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY
+                        if bank.model_family == EXTERNAL_TRANSITION_MIXED_MODEL_FAMILY
+                        else bank.model_family
+                    )
+                )
+                candidate_models_payload = {family: provisional_model}
+            restored_models: dict[str, nn.Module] = {}
+            for family, model_payload in candidate_models_payload.items():
+                if family not in {
+                    EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
+                    EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+                }:
+                    raise ValueError("online transition provisional family is invalid")
+                if not isinstance(model_payload, Mapping):
+                    raise TypeError("online transition provisional model candidate is invalid")
+                restored_model = cls._model_from_payload(model_payload)
+                if (
+                    restored_model.state_width != bank.state_width
+                    or restored_model.intention_width != bank.intention_width
+                ):
+                    raise ValueError("online transition provisional model is incompatible")
+                if (
+                    family == EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY
+                    and not isinstance(restored_model, ExternalTransitionModel)
+                ) or (
+                    family == EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY
+                    and isinstance(restored_model, ExternalTransitionModel)
+                ):
+                    raise ValueError("online transition provisional model family differs")
+                restored_models[str(family)] = restored_model
+            primary_family = str(candidate_model_family or next(iter(restored_models)))
+            if primary_family not in restored_models:
+                raise ValueError("online transition primary family is missing")
             observations: list[ExternalTransitionObservation] = []
             for observation_payload in observations_payload:
                 observation = cls._observation_from_payload(observation_payload)
@@ -2649,8 +2888,14 @@ class ExternalOnlineTransitionContextRouter:
             router._provisional_candidates.append(
                 _ProvisionalTransitionCandidate(
                     context=provisional_context.detach().clone(),
-                    model=restored_model,
+                    model=restored_models[primary_family],
+                    model_family=primary_family,
                     observations=observations,
+                    alternatives={
+                        family: model
+                        for family, model in restored_models.items()
+                        if family != primary_family
+                    },
                 )
             )
         return router
@@ -4133,16 +4378,20 @@ __all__ = [
     "EXTERNAL_MODEL_PLANNER_SCHEMA",
     "EXTERNAL_ONLINE_CONTEXT_RESOLVER_SCHEMA",
     "EXTERNAL_ONLINE_TRANSITION_CONTEXT_ROUTER_SCHEMA",
+    "EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY",
     "EXTERNAL_TRANSITION_CONTEXT_ENCODER_SCHEMA",
     "EXTERNAL_TRANSITION_EVIDENCE_CALIBRATOR_SCHEMA",
     "EXTERNAL_TRANSITION_MEMORY_SCHEMA",
+    "EXTERNAL_TRANSITION_MIXED_MODEL_FAMILY",
     "EXTERNAL_TRANSITION_MODEL_BANK_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_CANDIDATE_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_COMPRESSION_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_COMPRESSION_SELECTION_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_CONSOLIDATION_SCHEMA",
+    "EXTERNAL_TRANSITION_MODEL_FAMILY_SELECTION_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_GROWTH_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_SCHEMA",
+    "EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY",
     "EXTERNAL_TRANSITION_OBSERVATION_SCHEMA",
     "ExternalContextAddressResolver",
     "ExternalContextResolution",
