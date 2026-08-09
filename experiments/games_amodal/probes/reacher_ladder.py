@@ -52,6 +52,14 @@ parser.add_argument("--hidden", type=int, default=32)
 parser.add_argument("--size", type=int, default=8)
 parser.add_argument("--eval-batches", type=int, default=4)
 parser.add_argument(
+    "--targets", default="",
+    help="comma-separated target rungs to learn SEQUENTIALLY after one "
+         "warm-start, e.g. 'r3,r4'. The compounding claim needs k>1: a "
+         "prior is paid for once and reused many times, so the fair cost "
+         "is warm/k + target. Every transfer test in this project used "
+         "k=1, where amortisation is impossible by construction -- the "
+         "measurement could not observe compounding even if it existed.")
+parser.add_argument(
     "--adapt-decoder", action="store_true",
     help="widen the adaptation channel: adapt the OUTPUT HEAD as well as "
          "the goal encoding. F64 measured the frozen prior carrying real "
@@ -322,8 +330,27 @@ if args.warm_mix or args.warm_start:
     # never taken it -- every previous measurement confounded transfer
     # with re-learning.
     report["zero_shot"] = measure(spec)
-train(spec, args.updates, "target", curve, target_optimizer)
-report["final"] = measure(spec)
+if not args.targets:
+    train(spec, args.updates, "target", curve, target_optimizer)
+if args.targets:
+    # Sequential targets after ONE warm-start. Cost per target falls if
+    # the prior is genuinely reusable; stays flat if each is relearned.
+    report["sequence"] = []
+    for name in args.targets.split(","):
+        rung = SPEC[name]
+        before = measure(rung)
+        seq_curve: list = []
+        train(rung, args.updates, f"target:{name}", seq_curve,
+              target_optimizer)
+        after = measure(rung)
+        hit = next((c["update"] for c in seq_curve
+                    if c["reach"] >= args.mastery), None)
+        report["sequence"].append({
+            "rung": name, "zero_shot": before["reach"],
+            "final": after["reach"], "updates_to_mastery": hit})
+    report["final"] = report["sequence"][-1]
+else:
+    report["final"] = measure(spec)
 report["curve"] = curve
 target_curve = [c for c in curve if c["tag"] == "target"]
 mastered = next((c["update"] for c in target_curve
@@ -342,7 +369,11 @@ report["updates_to_mastery"] = mastered
 # benefit undetectable. The multi-target test is the missing rung.
 warm_spent = (args.warm_updates
               if (args.warm_mix or args.warm_start) else 0)
-report["lifetime_updates"] = warm_spent + args.updates
+count = len(args.targets.split(",")) if args.targets else 1
 report["warm_updates_spent"] = warm_spent
-report["amortised_over_targets"] = 1
+report["amortised_over_targets"] = count
+report["lifetime_updates"] = warm_spent + args.updates * count
+# The number the compounding claim lives or dies on: warm-up shared
+# across k targets, plus what each target actually cost.
+report["cost_per_target"] = round(warm_spent / count + args.updates, 1)
 print(json.dumps(report, indent=1))
