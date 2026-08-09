@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections import deque
 
 import torch
 
@@ -113,6 +114,41 @@ params = (plant + list(goal_encoder.parameters())
 optimizer = torch.optim.Adam(params, lr=1e-3)
 
 
+def distance_field(walls: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    """TRUE shortest-path distance to `target`, routing around walls.
+
+    Manhattan distance is WRONG here and it was silently training the
+    agent to fail: the navigate map has a solid column with one gap, so
+    21 of 64 cells need a detour, and a Manhattan progress reward pays
+    NEGATIVE for the only moves that reach them. The agent learned
+    exactly that -- approach the wall, then stall (gap ~2).
+    """
+    field = torch.full((GRID, GRID), float(GRID * GRID))
+    blocked = {(int(r), int(c)) for r, c in walls.nonzero()}
+    start = (int(target[0]), int(target[1]))
+    if start in blocked:
+        return field
+    field[start] = 0.0
+    queue = deque([start])
+    while queue:
+        row, col = queue.popleft()
+        for dr, dc in ((-1, 0), (0, 1), (1, 0), (0, -1)):
+            nr, nc = row + dr, col + dc
+            if not (0 <= nr < GRID and 0 <= nc < GRID):
+                continue
+            if (nr, nc) in blocked or field[nr, nc] < GRID * GRID:
+                continue
+            field[nr, nc] = field[row, col] + 1.0
+            queue.append((nr, nc))
+    return field
+
+
+def true_gaps(raw: torch.Tensor, fields, cells: torch.Tensor) -> torch.Tensor:
+    return torch.stack([
+        fields[row][int(cells[row, 0]), int(cells[row, 1])]
+        for row in range(cells.shape[0])])
+
+
 def viewed(grid: torch.Tensor) -> torch.Tensor:
     if args.view == "roll":
         return egocentric_view(grid)
@@ -168,7 +204,10 @@ def rollout(targets: torch.Tensor, *, seed: int, sample: bool,
     locate_terms = []
     raw = pad_channels(verifier.observation(), SHARED_SCREEN_CHANNELS)
     observation = viewed(raw)
-    gap = (avatar_cells(raw) - targets).abs().sum(dim=-1).float()
+    fields = [distance_field(raw[row, 2], targets[row])
+              for row in range(args.batch_size)]
+    gap = true_gaps(raw, fields, avatar_cells(raw))
+    start_gap = gap.clone()
     for _step in range(args.steps):
         screen_event = agent.runtime.encoders["screen"](observation)
         if args.localise > 0.0:
@@ -193,7 +232,7 @@ def rollout(targets: torch.Tensor, *, seed: int, sample: bool,
         verifier.step(acts)
         raw = pad_channels(verifier.observation(), SHARED_SCREEN_CHANNELS)
         observation = viewed(raw)
-        new_gap = (avatar_cells(raw) - targets).abs().sum(dim=-1).float()
+        new_gap = true_gaps(raw, fields, avatar_cells(raw))
         # Progress reward, self-computed: closer is better, arriving pays.
         step_reward = (gap - new_gap) + 2.0 * (new_gap == 0).float()
         arrived = torch.maximum(arrived, (new_gap == 0).float())
@@ -213,7 +252,7 @@ def rollout(targets: torch.Tensor, *, seed: int, sample: bool,
         returns[:, pos] = running
     return {"returns": returns, "logp": torch.stack(logps, dim=1),
             "actions": torch.stack(actions, dim=1),
-            "arrived": arrived, "final_gap": gap,
+            "arrived": arrived, "final_gap": gap, "start_gap": start_gap,
             "locate": (torch.stack(locate_terms).mean()
                        if locate_terms else torch.zeros(()))}
 
