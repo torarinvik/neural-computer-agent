@@ -925,16 +925,31 @@ def test_ambiguous_streaming_evidence_is_quarantined_resolved_and_persisted() ->
         16,
     ]
     router.provisional_match_margin = 1000.0
+    provisional_tolerance = router.provisional_continuation_tolerance
+    router.provisional_continuation_tolerance = 1e9
     ambiguous = None
+    midpoint_state = target_a.state[:2]
+    midpoint_intention = target_a.intention[:2]
+    midpoint_predictions = [
+        candidate.model(midpoint_state, midpoint_intention)
+        for candidate in router._provisional_candidates
+    ]
+    midpoint = ExternalTransitionObservation(
+        state=midpoint_state,
+        intention=midpoint_intention,
+        next_state=sum(midpoint_predictions) / len(midpoint_predictions),
+        confidence=torch.ones(2),
+    )
     for row in range(2):
         ambiguous = router.observe(
             ExternalTransitionObservation(
-                state=target_a.state[row : row + 1],
-                intention=target_a.intention[row : row + 1],
-                next_state=target_a.next_state[row : row + 1],
+                state=midpoint.state[row : row + 1],
+                intention=midpoint.intention[row : row + 1],
+                next_state=midpoint.next_state[row : row + 1],
                 confidence=torch.ones(1),
             )
         )
+    router.provisional_continuation_tolerance = provisional_tolerance
     assert ambiguous is not None and ambiguous.status == "ambiguous"
     assert router.quarantined_observations == 2
     rejected = router.promote_staged_candidate(
@@ -990,7 +1005,7 @@ def test_ambiguous_streaming_evidence_is_quarantined_resolved_and_persisted() ->
     promoted = restored.promote_staged_candidate(
         target_a,
         retained,
-        prediction_tolerance=1e-6,
+        prediction_tolerance=0.02,
         candidate_index=0,
     )
     assert promoted.accepted

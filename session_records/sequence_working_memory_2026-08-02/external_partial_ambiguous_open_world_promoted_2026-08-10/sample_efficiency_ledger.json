@@ -1,0 +1,38 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_partial_ambiguous_open_world",
+  "decision": "promote",
+  "claim_boundary": "three-seed bounded replay-free nonlinear factual-memory identity under partial and explicitly ambiguous evidence; not unrestricted continual learning",
+  "seeds": [82501, 82502, 82503],
+  "accounting": {
+    "regimes_per_seed": 4,
+    "initial_capacity": 1,
+    "final_capacity": 4,
+    "presented_rows_per_regime": 32,
+    "available_train_rows_per_regime": 64,
+    "heldout_rows_per_regime": 64,
+    "admission_rows": 8,
+    "quarantined_rows_per_seed": 8,
+    "context_encoder_optimizer_updates": 0,
+    "address_adapter_optimizer_updates_per_seed": 60,
+    "model_statistics_updates_per_seed": 16,
+    "replayed_examples": 0,
+    "old_regime_replay": 0,
+    "controller_optimizer_updates": 0
+  },
+  "gates": {
+    "all_three_seeds_promoted": true,
+    "untrained_encoder": true,
+    "partial_evidence": true,
+    "ambiguous_evidence_quarantined": true,
+    "ambiguous_evidence_resolved_once": true,
+    "verified_capacity_growth": true,
+    "all_heldout_factual_checks": true,
+    "all_revisits_matched_existing_slots": true,
+    "all_prior_retention": true,
+    "corruption_rejected_without_write": true,
+    "copy_on_write_isolation": true,
+    "frozen_controller": true,
+    "exact_persistence": true
+  }
+}

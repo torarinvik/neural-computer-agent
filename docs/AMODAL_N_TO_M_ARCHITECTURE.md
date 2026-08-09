@@ -5879,3 +5879,35 @@ immutable. The claim remains bounded: the stream and capacity are finite, the
 factual basis is fixed random features, and this does not establish
 unrestricted general continual learning. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_open_world_address_stream_promoted_2026-08-10/`.
+
+## Partial and ambiguous open-world evidence (2026-08-10)
+
+The next integrated pressure test combines online identity formation with
+partial, concurrently arriving, and explicitly ambiguous evidence in
+`experiments/external_partial_ambiguous_open_world/`. Four nonlinear regimes
+arrive with only `32/64` available training rows. The context encoder starts
+untrained and remains at zero optimizer updates; identity is formed by the
+external copy-on-write address adapter, and factual slots use one-pass
+random-feature sufficient statistics.
+
+Two novel regimes are staged concurrently. An eight-row bundle whose factual
+predictions are indistinguishable is held in bounded quarantine outside every
+candidate. A later opaque factual-routing decision anchors the current stream
+to one candidate; the router then consumes the quarantined bundle exactly once
+in the same adaptation transaction. Promotion is refused while quarantine is
+unresolved, so ambiguous evidence cannot silently become committed memory.
+
+Seeds `82501`, `82502`, and `82503` all passed the partial-evidence,
+quarantine-and-resolution, four-slot growth, held-out factual promotion,
+alternating-revisit, prior-retention, corruption, copy-on-write, frozen
+controller, zero-replay, and exact-persistence gates. Maximum held-out MSE was
+`0.00109`, `0.00107`, and `0.00287`; each seed quarantined and then consumed
+exactly eight rows.
+
+This promotes a bounded replay-free nonlinear factual-memory identity boundary
+under partial and explicitly ambiguous evidence. It does not establish
+unrestricted continual learning: the stream and capacity are finite, the
+factual basis is a fixed random-feature family, the ambiguity control is
+verifier-constructed, and the controller still has no learned multimodal
+context formation or arbitrary new computation. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_partial_ambiguous_open_world_promoted_2026-08-10/`.

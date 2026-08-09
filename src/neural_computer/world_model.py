@@ -4075,16 +4075,32 @@ class ExternalOnlineTransitionContextRouter:
         self._ambiguous_quarantine.append(self._clone_observation(observation))
         return True
 
-    def _resolve_quarantine(self) -> None:
+    def _resolve_quarantine(self, *, anchor_candidate_index: int | None = None) -> None:
         """Assign only clearly resolved bundles to provisional candidates.
 
         Resolution is model-side evidence routing, not a parameter update. The
         candidate's caller-owned ``adaptation_step`` consumes the deferred
         bundle exactly once and clears it after the sufficient-statistics
         update. Bundles that remain ambiguous stay outside every candidate.
+
+        A clearly routed later bundle may also act as an episode anchor.  This
+        is necessary for a deliberately contradictory bundle whose target is
+        exactly halfway between two factual candidates: no amount of scoring
+        that contradictory row can break the tie, but a later unambiguous row
+        can identify which candidate owns the current stream.  Callers cannot
+        provide a semantic label; the anchor index is produced by the same
+        opaque factual routing decision used for ordinary staged evidence.
         """
 
         if not self._ambiguous_quarantine or not self._provisional_candidates:
+            return
+        if anchor_candidate_index is not None:
+            if not 0 <= anchor_candidate_index < len(self._provisional_candidates):
+                raise IndexError("quarantine anchor candidate index is out of range")
+            self._provisional_candidates[
+                anchor_candidate_index
+            ].deferred_observations.extend(self._ambiguous_quarantine)
+            self._ambiguous_quarantine = []
             return
         unresolved: list[ExternalTransitionObservation] = []
         for observation in self._ambiguous_quarantine:
@@ -4222,7 +4238,9 @@ class ExternalOnlineTransitionContextRouter:
                             prediction_error=candidate_error,
                             observation=bundle,
                         )
-                    self._resolve_quarantine()
+                    self._resolve_quarantine(
+                        anchor_candidate_index=candidate_index
+                    )
                     self._pending.clear()
                     return self._staged_result(
                         bundle,
@@ -4358,6 +4376,46 @@ class ExternalOnlineTransitionContextRouter:
             if deferred:
                 candidate.evidence_count += sum(
                     int(observation.state.shape[0]) for observation in deferred
+                )
+                candidate.deferred_observations.clear()
+
+            # A bundle can be exactly ambiguous before the next stream
+            # arrives, then become resolvable only after that stream updates
+            # the candidate's factual model.  Re-run quarantine resolution
+            # after the current evidence has been consumed, and consume any
+            # newly assigned bundles in the same one-pass transaction.  The
+            # previous ordering could leave a resolved bundle stranded until
+            # a later window (or reject promotion at the window boundary).
+            self._resolve_quarantine()
+            resolved_after_update = list(candidate.deferred_observations)
+            if resolved_after_update:
+                for family, model in candidate.models().items():
+                    if hasattr(model, "observe"):
+                        with torch.no_grad():
+                            for deferred_observation in resolved_after_update:
+                                model.observe(deferred_observation)
+                        continue
+                    selected_optimizer = (
+                        optimizer.get(family)
+                        if isinstance(optimizer, Mapping)
+                        else optimizer
+                        if family == candidate.model_family
+                        else None
+                    )
+                    if selected_optimizer is None:
+                        selected_optimizer = torch.optim.SGD(
+                            model.parameters(),
+                            lr=self.bank.adaptation_learning_rate,
+                        )
+                    selected_optimizer.zero_grad()
+                    deferred_evidence = self._merge_observations(
+                        resolved_after_update
+                    )
+                    model.loss(deferred_evidence).backward()
+                    selected_optimizer.step()
+                candidate.evidence_count += sum(
+                    int(observation.state.shape[0])
+                    for observation in resolved_after_update
                 )
                 candidate.deferred_observations.clear()
             return float(primary_loss.detach())
