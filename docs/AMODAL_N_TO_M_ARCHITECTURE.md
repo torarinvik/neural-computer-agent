@@ -4770,3 +4770,23 @@ formation from partial multimodal event streams, model-bank growth under
 unbounded alternation, and compression/consolidation validated over longer
 horizons. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_disjoint_dynamics_online_promoted_2026-08-09/`.
+
+## Variable-prefix online identity rejection (2026-08-09)
+
+The next experiment trained `ExternalTransitionContextEncoder` with a new
+prefix-alignment objective and attempted admission after only `7` of `14`
+transition rows. The online router now maintains an opaque active-slot
+continuation state and conflict patience, so an undertrained current model no
+longer immediately mints a duplicate slot. Protected source slots are
+read-only during target adaptation.
+
+The identity portion worked: both seeds formed short-prefix admissions, later
+reused the target-C slot, and preserved source slots at `1.0` with unchanged
+digests. The capability portion failed: target-D reached only `0.333` mastery
+on both seeds, target-C reached `0.0`/`1.0`, and online updates were not
+consistently cheaper than fresh models. This is rejected evidence, not a
+promotion. The remaining bottleneck is credit assignment and evidence
+accumulation from partial streams—how to turn provisional observations into a
+useful model without either polluting a protected slot or minting duplicates.
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_partial_evidence_identity_rejected_2026-08-09/`.

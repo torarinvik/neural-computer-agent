@@ -1,3 +1,4 @@
+import pytest
 import torch
 
 from neural_computer import (
@@ -50,6 +51,20 @@ def test_transition_context_encoder_is_opaque_normalized_and_persistent() -> Non
     assert restored.configuration() == encoder.configuration()
     assert restored.digest() == encoder.digest()
     assert torch.equal(restored.encode_observation(observation), context)
+
+
+def test_transition_context_prefix_alignment_supports_variable_evidence() -> None:
+    torch.manual_seed(1200)
+    prefixes = torch.randn(3, 4, 5)
+    full = torch.randn(3, 5)
+    loss = ExternalTransitionContextEncoder.prefix_alignment_loss(prefixes, full)
+    assert torch.isfinite(loss)
+    assert loss.ndim == 0
+
+    with pytest.raises(ValueError, match="at least two regimes"):
+        ExternalTransitionContextEncoder.prefix_alignment_loss(
+            torch.randn(1, 2, 5), torch.randn(1, 5)
+        )
 
 
 def test_transition_model_learns_from_opaque_observations_without_controller_state() -> None:
@@ -370,6 +385,8 @@ def test_online_transition_context_router_admits_current_bundle_and_persists() -
         encoder,
         match_tolerance=1e-8,
         admission_observations=2,
+        continuation_tolerance=1e9,
+        conflict_patience=2,
     )
     rows = [
         ExternalTransitionObservation(
@@ -401,12 +418,20 @@ def test_online_transition_context_router_admits_current_bundle_and_persists() -
     )
     assert router.adaptation_step(admitted, optimizer) > 0.0
 
+    router.observe(rows[0])
+    continuation = router.observe(rows[1])
+    assert continuation.status == "continuation"
+    assert continuation.slot_index == admitted.slot_index
+    assert continuation.observation is not None
+
     restored = ExternalOnlineTransitionContextRouter.from_payload(
         router.state_payload()
     )
     assert restored.configuration() == router.configuration()
     assert restored.bank.digest() == router.bank.digest()
     assert restored.context_encoder.digest() == router.context_encoder.digest()
+    assert restored._active_slot == router._active_slot
+    assert restored._conflict_windows == router._conflict_windows
 
 
 def test_online_transition_context_router_capacity_guard_does_not_grow_or_write() -> None:

@@ -1330,6 +1330,60 @@ class ExternalTransitionContextEncoder(nn.Module):
             + nn.functional.cross_entropy(logits.transpose(0, 1), labels)
         )
 
+    @staticmethod
+    def prefix_alignment_loss(
+        prefix_contexts: torch.Tensor,
+        full_contexts: torch.Tensor,
+        *,
+        temperature: float = 0.1,
+    ) -> torch.Tensor:
+        """Align variable-length evidence prefixes with full bundle keys.
+
+        ``prefix_contexts`` has shape ``[regimes, prefixes, width]`` and
+        ``full_contexts`` has shape ``[regimes, width]``. Each prefix is a
+        positive view of its own full key and every other regime is a
+        negative. The multi-positive full-key term keeps all prefixes for one
+        regime together without requiring a particular prefix length at
+        inference time.
+        """
+
+        if prefix_contexts.ndim != 3 or full_contexts.ndim != 2:
+            raise ValueError("prefix and full contexts have invalid rank")
+        if prefix_contexts.shape[0] != full_contexts.shape[0]:
+            raise ValueError("prefix and full context regime counts differ")
+        if prefix_contexts.shape[1] < 1 or prefix_contexts.shape[2] != full_contexts.shape[1]:
+            raise ValueError("prefix and full context widths differ")
+        if prefix_contexts.shape[0] < 2:
+            raise ValueError("prefix alignment needs at least two regimes")
+        if temperature <= 0.0:
+            raise ValueError("prefix alignment temperature must be positive")
+        if not bool(torch.isfinite(prefix_contexts).all()) or not bool(
+            torch.isfinite(full_contexts).all()
+        ):
+            raise ValueError("prefix and full contexts must be finite")
+
+        prefixes = nn.functional.normalize(prefix_contexts, dim=-1)
+        full = nn.functional.normalize(full_contexts, dim=-1)
+        regime_count, prefix_count, _width = prefixes.shape
+        logits = prefixes.reshape(regime_count * prefix_count, -1) @ full.transpose(0, 1)
+        logits = logits / temperature
+        labels = torch.arange(regime_count, device=logits.device).repeat_interleave(
+            prefix_count
+        )
+        prefix_to_full = nn.functional.cross_entropy(logits, labels)
+
+        reverse_logits = full @ prefixes.reshape(regime_count * prefix_count, -1).transpose(0, 1)
+        reverse_logits = reverse_logits / temperature
+        positive_mask = torch.zeros_like(reverse_logits, dtype=torch.bool)
+        for regime in range(regime_count):
+            start = regime * prefix_count
+            positive_mask[regime, start : start + prefix_count] = True
+        positive = torch.logsumexp(
+            reverse_logits.masked_fill(~positive_mask, float("-inf")), dim=-1
+        )
+        reverse = (-positive + torch.logsumexp(reverse_logits, dim=-1)).mean()
+        return 0.5 * (prefix_to_full + reverse)
+
     def state_payload(self) -> dict[str, Any]:
         return {
             "schema": self.schema,
@@ -1411,6 +1465,8 @@ class ExternalOnlineTransitionContextResult:
             raise ValueError("unsupported online transition-context result schema")
         if self.status not in {
             "matched",
+            "continuation",
+            "conflict",
             "pending",
             "admitted",
             "reused",
@@ -1465,6 +1521,8 @@ class ExternalOnlineTransitionContextRouter:
         match_margin: float = 0.01,
         admission_observations: int = 12,
         max_contexts: int | None = None,
+        continuation_tolerance: float | None = None,
+        conflict_patience: int = 1,
     ) -> None:
         if (
             bank.state_width != context_encoder.state_width
@@ -1477,6 +1535,10 @@ class ExternalOnlineTransitionContextRouter:
             raise ValueError("online context match tolerance cannot be negative")
         if match_margin < 0.0:
             raise ValueError("online context match margin cannot be negative")
+        if continuation_tolerance is not None and continuation_tolerance < 0.0:
+            raise ValueError("online context continuation tolerance cannot be negative")
+        if conflict_patience < 1:
+            raise ValueError("online context conflict patience must be positive")
         if admission_observations < 1:
             raise ValueError("online context admission count must be positive")
         if max_contexts is not None and max_contexts < 1:
@@ -1487,7 +1549,15 @@ class ExternalOnlineTransitionContextRouter:
         self.match_margin = float(match_margin)
         self.admission_observations = int(admission_observations)
         self.max_contexts = max_contexts
+        self.continuation_tolerance = float(
+            match_tolerance
+            if continuation_tolerance is None
+            else continuation_tolerance
+        )
+        self.conflict_patience = int(conflict_patience)
         self._pending: list[ExternalTransitionObservation] = []
+        self._active_slot: int | None = None
+        self._conflict_windows = 0
 
     @property
     def pending_observations(self) -> int:
@@ -1503,7 +1573,9 @@ class ExternalOnlineTransitionContextRouter:
             "match_margin": self.match_margin,
             "admission_observations": self.admission_observations,
             "max_contexts": self.max_contexts,
-            "routing": "factual_prediction_error_then_pending_context_admission_v1",
+            "continuation_tolerance": self.continuation_tolerance,
+            "conflict_patience": self.conflict_patience,
+            "routing": "factual_prediction_error_then_bound_continuation_v2",
             "writes": "caller_owned_slot_only_v1",
         }
 
@@ -1587,18 +1659,38 @@ class ExternalOnlineTransitionContextRouter:
             return None
         return index, error, margin, context
 
+    def _slot_error(
+        self,
+        index: int,
+        observation: ExternalTransitionObservation,
+    ) -> float:
+        context = self.bank.context_at(index).to(observation.state)
+        context_batch = context.unsqueeze(0).expand(observation.state.shape[0], -1)
+        prediction = self.bank(
+            observation.state,
+            observation.intention,
+            context_batch,
+        )
+        return float(
+            (prediction - observation.next_state).square().mean().detach()
+        )
+
     def _pending_result(
         self,
         *,
         status: str = "pending",
         prediction_error: float | None = None,
+        slot_index: int | None = None,
+        context: torch.Tensor | None = None,
+        observation: ExternalTransitionObservation | None = None,
     ) -> ExternalOnlineTransitionContextResult:
         return ExternalOnlineTransitionContextResult(
             status=status,
-            slot_index=None,
-            context=None,
+            slot_index=slot_index,
+            context=context,
             pending_observations=self.pending_observations,
             prediction_error=prediction_error,
+            observation=observation,
         ).validate(
             state_width=self.bank.state_width,
             intention_width=self.bank.intention_width,
@@ -1626,6 +1718,8 @@ class ExternalOnlineTransitionContextRouter:
         if match is not None:
             index, error, _margin, context = match
             self._pending.clear()
+            self._active_slot = index
+            self._conflict_windows = 0
             return ExternalOnlineTransitionContextResult(
                 status="matched",
                 slot_index=index,
@@ -1638,6 +1732,36 @@ class ExternalOnlineTransitionContextRouter:
                 intention_width=self.bank.intention_width,
                 context_width=self.bank.context_width,
             )
+
+        if self._active_slot is not None and self._active_slot < self.bank.context_count:
+            active_error = self._slot_error(self._active_slot, bundle)
+            active_context = self.bank.context_at(self._active_slot)
+            if active_error <= self.continuation_tolerance:
+                index = self._active_slot
+                self._pending.clear()
+                self._conflict_windows = 0
+                return ExternalOnlineTransitionContextResult(
+                    status="continuation",
+                    slot_index=index,
+                    context=active_context,
+                    pending_observations=0,
+                    prediction_error=active_error,
+                    observation=bundle,
+                ).validate(
+                    state_width=self.bank.state_width,
+                    intention_width=self.bank.intention_width,
+                    context_width=self.bank.context_width,
+                )
+            self._conflict_windows += 1
+            self._pending.clear()
+            if self._conflict_windows < self.conflict_patience:
+                return self._pending_result(
+                    status="conflict",
+                    prediction_error=active_error,
+                    observation=bundle,
+                )
+            self._active_slot = None
+            self._conflict_windows = 0
 
         if self.max_contexts is not None and self.bank.context_count >= self.max_contexts:
             self._pending.clear()
@@ -1654,6 +1778,8 @@ class ExternalOnlineTransitionContextRouter:
         index = self.bank.ensure_context(context, initialize_from=prior_index)
         status = "admitted" if index == before else "reused"
         self._pending.clear()
+        self._active_slot = index
+        self._conflict_windows = 0
         return ExternalOnlineTransitionContextResult(
             status=status,
             slot_index=index,
@@ -1731,6 +1857,8 @@ class ExternalOnlineTransitionContextRouter:
             "bank": self.bank.payload(),
             "context_encoder": self.context_encoder.state_payload(),
             "pending": [self._observation_payload(row) for row in self._pending],
+            "active_slot": self._active_slot,
+            "conflict_windows": self._conflict_windows,
         }
 
     @classmethod
@@ -1765,6 +1893,12 @@ class ExternalOnlineTransitionContextRouter:
                 if configuration.get("max_contexts") is None
                 else int(configuration["max_contexts"])
             ),
+            continuation_tolerance=float(
+                configuration.get(
+                    "continuation_tolerance", configuration["match_tolerance"]
+                )
+            ),
+            conflict_patience=int(configuration.get("conflict_patience", 1)),
         )
         for row_payload in pending_payload:
             row = cls._observation_from_payload(row_payload)
@@ -1775,6 +1909,16 @@ class ExternalOnlineTransitionContextRouter:
             if row.state.shape[0] != 1:
                 raise ValueError("online transition pending row is not scalar")
             router._pending.append(row)
+        active_slot = payload.get("active_slot")
+        if active_slot is not None and (
+            not isinstance(active_slot, int) or not 0 <= active_slot < bank.context_count
+        ):
+            raise ValueError("online transition active slot is invalid")
+        router._active_slot = active_slot
+        conflict_windows = payload.get("conflict_windows", 0)
+        if not isinstance(conflict_windows, int) or conflict_windows < 0:
+            raise ValueError("online transition conflict count is invalid")
+        router._conflict_windows = conflict_windows
         return router
 
 

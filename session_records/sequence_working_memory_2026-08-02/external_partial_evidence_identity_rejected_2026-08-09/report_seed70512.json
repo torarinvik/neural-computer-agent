@@ -1,0 +1,938 @@
+{
+  "schema": "neural-computer.external-partial-evidence-identity-pressure-test.v1",
+  "seed": 70512,
+  "configuration": {
+    "context_pretraining_updates": 350,
+    "prefix_lengths": [
+      4,
+      7,
+      14
+    ],
+    "admission_observations": 7,
+    "full_observations": 14,
+    "continuation_tolerance": 0.2,
+    "conflict_patience": 2,
+    "sequence": [
+      "source_a",
+      "source_b",
+      "target_c",
+      "source_a",
+      "target_d",
+      "target_c",
+      "target_d",
+      "source_b"
+    ],
+    "regime_labels_used_by_router": false,
+    "policy": "none_external_variable_prefix_online_model_search_v1"
+  },
+  "gates": {
+    "prefix_encoder_converged": true,
+    "prefix_admission_is_short": true,
+    "target_c_admitted_and_reused": true,
+    "target_d_admitted_and_reused": false,
+    "all_regimes_mastered": false,
+    "source_slots_byte_stable": true,
+    "warm_target_updates_below_fresh": false,
+    "wrong_context_factual_control": true,
+    "old_slot_optimizer_updates_zero": true,
+    "controller_unchanged": true,
+    "persistence_exact": true
+  },
+  "promoted": false,
+  "context_encoder": {
+    "optimizer_updates": 350,
+    "prefix_alignment_loss": 1.1821557563962415e-06
+  },
+  "pretraining": {
+    "source_a_optimizer_updates": 30,
+    "source_a_loss": 0.009881220757961273,
+    "source_b_optimizer_updates": 29,
+    "source_b_loss": 0.009116823785007
+  },
+  "routing": {
+    "counts": {
+      "source_a:pending": 24,
+      "source_a:matched": 4,
+      "source_b:pending": 24,
+      "source_b:matched": 4,
+      "target_c:pending": 24,
+      "target_c:conflict": 1,
+      "target_c:admitted": 1,
+      "target_d:pending": 24,
+      "target_d:continuation": 1,
+      "target_d:conflict": 2,
+      "target_c:continuation": 1,
+      "target_c:matched": 1,
+      "target_d:admitted": 1
+    },
+    "assignments": {
+      "source_a": [
+        0
+      ],
+      "source_b": [
+        1
+      ],
+      "target_c": [
+        0,
+        2
+      ],
+      "target_d": [
+        0,
+        3
+      ]
+    },
+    "admissions": {
+      "target_c": 1,
+      "target_d": 1
+    },
+    "reuses": {
+      "target_c": 1
+    },
+    "admission_evidence_rows": {
+      "target_c": [
+        7
+      ],
+      "target_d": [
+        7
+      ]
+    },
+    "trace": [
+      {
+        "diagnostic_regime": "source_a",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 1,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_a",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 2,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_a",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 3,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_a",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 4,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_a",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 5,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_a",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 6,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_a",
+        "status": "matched",
+        "slot_index": 0,
+        "pending_observations": 0,
+        "evidence_rows": 7
+      },
+      {
+        "diagnostic_regime": "source_a",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 1,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_a",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 2,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_a",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 3,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_a",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 4,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_a",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 5,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_a",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 6,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_a",
+        "status": "matched",
+        "slot_index": 0,
+        "pending_observations": 0,
+        "evidence_rows": 7
+      },
+      {
+        "diagnostic_regime": "source_b",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 1,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_b",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 2,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_b",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 3,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_b",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 4,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_b",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 5,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_b",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 6,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_b",
+        "status": "matched",
+        "slot_index": 1,
+        "pending_observations": 0,
+        "evidence_rows": 7
+      },
+      {
+        "diagnostic_regime": "source_b",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 1,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_b",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 2,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_b",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 3,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_b",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 4,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_b",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 5,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_b",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 6,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_b",
+        "status": "matched",
+        "slot_index": 1,
+        "pending_observations": 0,
+        "evidence_rows": 7
+      },
+      {
+        "diagnostic_regime": "target_c",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 1,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_c",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 2,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_c",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 3,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_c",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 4,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_c",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 5,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_c",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 6,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_c",
+        "status": "conflict",
+        "slot_index": null,
+        "pending_observations": 0,
+        "evidence_rows": 7
+      },
+      {
+        "diagnostic_regime": "target_c",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 1,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_c",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 2,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_c",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 3,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_c",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 4,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_c",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 5,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_c",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 6,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_c",
+        "status": "admitted",
+        "slot_index": 2,
+        "pending_observations": 0,
+        "evidence_rows": 7
+      },
+      {
+        "diagnostic_regime": "source_a",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 1,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_a",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 2,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_a",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 3,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_a",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 4,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_a",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 5,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_a",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 6,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_a",
+        "status": "matched",
+        "slot_index": 0,
+        "pending_observations": 0,
+        "evidence_rows": 7
+      },
+      {
+        "diagnostic_regime": "source_a",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 1,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_a",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 2,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_a",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 3,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_a",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 4,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_a",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 5,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_a",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 6,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_a",
+        "status": "matched",
+        "slot_index": 0,
+        "pending_observations": 0,
+        "evidence_rows": 7
+      },
+      {
+        "diagnostic_regime": "target_d",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 1,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_d",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 2,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_d",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 3,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_d",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 4,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_d",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 5,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_d",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 6,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_d",
+        "status": "continuation",
+        "slot_index": 0,
+        "pending_observations": 0,
+        "evidence_rows": 7
+      },
+      {
+        "diagnostic_regime": "target_d",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 1,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_d",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 2,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_d",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 3,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_d",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 4,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_d",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 5,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_d",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 6,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_d",
+        "status": "conflict",
+        "slot_index": null,
+        "pending_observations": 0,
+        "evidence_rows": 7
+      },
+      {
+        "diagnostic_regime": "target_c",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 1,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_c",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 2,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_c",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 3,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_c",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 4,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_c",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 5,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_c",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 6,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_c",
+        "status": "continuation",
+        "slot_index": 0,
+        "pending_observations": 0,
+        "evidence_rows": 7
+      },
+      {
+        "diagnostic_regime": "target_c",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 1,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_c",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 2,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_c",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 3,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_c",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 4,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_c",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 5,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_c",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 6,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_c",
+        "status": "matched",
+        "slot_index": 2,
+        "pending_observations": 0,
+        "evidence_rows": 7
+      },
+      {
+        "diagnostic_regime": "target_d",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 1,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_d",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 2,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_d",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 3,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_d",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 4,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_d",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 5,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_d",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 6,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_d",
+        "status": "conflict",
+        "slot_index": null,
+        "pending_observations": 0,
+        "evidence_rows": 7
+      },
+      {
+        "diagnostic_regime": "target_d",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 1,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_d",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 2,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_d",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 3,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_d",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 4,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_d",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 5,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_d",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 6,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "target_d",
+        "status": "admitted",
+        "slot_index": 3,
+        "pending_observations": 0,
+        "evidence_rows": 7
+      },
+      {
+        "diagnostic_regime": "source_b",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 1,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_b",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 2,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_b",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 3,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_b",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 4,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_b",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 5,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_b",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 6,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_b",
+        "status": "matched",
+        "slot_index": 1,
+        "pending_observations": 0,
+        "evidence_rows": 7
+      },
+      {
+        "diagnostic_regime": "source_b",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 1,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_b",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 2,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_b",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 3,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_b",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 4,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_b",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 5,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_b",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 6,
+        "evidence_rows": null
+      },
+      {
+        "diagnostic_regime": "source_b",
+        "status": "matched",
+        "slot_index": 1,
+        "pending_observations": 0,
+        "evidence_rows": 7
+      }
+    ]
+  },
+  "targets": {
+    "online_current_stream_optimizer_updates": {
+      "target_c": 50,
+      "target_d": 40
+    },
+    "fresh_optimizer_updates": {
+      "target_c": 36,
+      "target_d": 37
+    },
+    "fresh_mastery": {
+      "target_c": 1.0,
+      "target_d": 1.0
+    },
+    "old_slot_optimizer_updates": 0
+  },
+  "retention": {
+    "source_a": {
+      "mastery": 1.0,
+      "byte_stable": true,
+      "expanded_nodes": 42
+    },
+    "source_b": {
+      "mastery": 1.0,
+      "byte_stable": true,
+      "expanded_nodes": 42
+    },
+    "target_c": {
+      "mastery": 1.0,
+      "byte_stable": true,
+      "expanded_nodes": 42
+    },
+    "target_d": {
+      "mastery": 0.3333333333333333,
+      "byte_stable": true,
+      "expanded_nodes": 42
+    }
+  },
+  "controls": {
+    "wrong_context_target_mse": 0.16381238400936127
+  },
+  "accounting": {
+    "controller_parameter_updates": 0,
+    "old_regime_replay_during_target_adaptation": 0,
+    "target_current_stream_rows_used": 630,
+    "planner_expansions_reported_per_regime": true
+  },
+  "digests": {
+    "controller": "435bcfd51e1efb16425724d72af905d7b40f417c967fcc4b5043ffb9af074f82",
+    "bank": "0b2b4e9e382f5898a798bdb5bb3e65f6095e33bb148ad150090bb84c20406010",
+    "context_encoder": "b5d830a189c231ba37152569798e599ee64c4cc8cd63dbb1723f295b0fe0a2f3"
+  },
+  "elapsed_seconds": 6.153500624990556
+}
