@@ -1143,3 +1143,10 @@ gate, and produced one positive-transfer program per seed. It still does not
 meet the stricter all-program positive-transfer criterion. Raw reports:
 `matched_program_memory_transfer_long/report_seed69317.json` and
 `matched_program_memory_transfer_long/report_seed69318.json`.
+
+An opaque-context-conditioned bridge prior was also tested; it preserved
+target mastery but produced no positive fresh learning-curve transfer. This
+rejects another adapter-only route and keeps the research focus on the
+shared interpreter and external memory contract.
+Raw report:
+`matched_program_memory_conditioned_bridge/report_seed69318.json`.
