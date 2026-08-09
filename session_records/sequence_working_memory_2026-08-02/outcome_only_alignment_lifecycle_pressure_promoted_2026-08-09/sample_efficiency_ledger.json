@@ -1,0 +1,17 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "status": "promoted_bounded_outcome_only_alignment_lifecycle_pressure",
+  "experiment": "scalar-reversal eviction and copy-on-write replacement of external alignment cells",
+  "date": "2026-08-09",
+  "seeds": [69316, 69317],
+  "capacity": 4,
+  "unique_verifier_bits_per_run": 189696,
+  "unique_logical_lifetimes_per_run": 44052,
+  "optimizer_updates_per_run": 2752,
+  "replayed_examples": 0,
+  "reversal_threshold": 0.75,
+  "mastery_threshold": 0.8,
+  "retention_on_mastered_primitives": "passed",
+  "transfer_ratio_against_fresh_learner": "not measured",
+  "decision": "promote bounded reversal-safe alignment-cell replacement; retain consolidation and general-learning boundary"
+}

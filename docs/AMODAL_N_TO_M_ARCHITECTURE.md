@@ -5376,3 +5376,26 @@ This closes bounded online admission and no-replay address retention. The
 remaining frontier is now lifecycle management: the key bank must handle
 ambiguous or drifting signatures, capacity pressure, eviction, consolidation,
 and recovery after corrupted or stale cells without replaying old experiences.
+
+## Outcome-only reversal-safe alignment-cell lifecycle (2026-08-09)
+
+The external alignment bank now has a capacity-pressure transaction. Four
+cells are first mastered and protected by the scalar retention ledger. One
+cell is then evaluated under a changed event space; four low verifier
+observations release it, the ledger selects only that stale slot for eviction,
+and a newly trained replacement is admitted under the same logical address.
+The three protected cells and frozen source computation are retained.
+
+Both seeds passed the full lifecycle gates: base mastery and shuffled nulls,
+all-base protection, scalar reversal, exact stale-slot eviction, replacement
+mastery and routing, protected-cell retention, and frozen-core digests. The
+reversal threshold is `0.75` against a mastery threshold of `0.8`; zero
+replayed examples were used. Reports and accounting are archived in
+`session_records/sequence_working_memory_2026-08-02/outcome_only_alignment_lifecycle_pressure_promoted_2026-08-09/`.
+
+An earlier `0.70` reversal threshold safely refused one seed because verifier
+noise produced stale outcomes of `0.703` and `0.734`. That negative result is
+important: reversal hysteresis must be calibrated against outcome noise, and
+the lifecycle must refuse eviction when evidence is ambiguous. The next
+frontier is learned consolidation/compression and genuinely ambiguous
+capacity pressure, not simply adding more cells.

@@ -1,0 +1,360 @@
+{
+  "schema": "neural-computer.outcome-only-alignment-lifecycle-pressure-report.v1",
+  "claim_boundary": "A scalar-outcome retention ledger can release a reversed external alignment cell and replace it transactionally while protected cells remain; this is not general continual learning.",
+  "seed": 69317,
+  "configuration": {
+    "base_transform_seeds": [
+      4271991,
+      98271,
+      193817,
+      710123
+    ],
+    "replacement_transform_seed": 812345,
+    "retention_ledger": {
+      "schema": "neural-computer.capability-retention-ledger.v1",
+      "width": 64,
+      "policy": {
+        "mastery_threshold": 0.8,
+        "min_mastery_observations": 4,
+        "reversal_threshold": 0.75,
+        "reversal_patience": 4,
+        "recent_window": 4
+      }
+    },
+    "capacity": 4,
+    "bridge_updates": 256,
+    "batch_size": 16,
+    "span": 4,
+    "audit_count": 64
+  },
+  "results": {
+    "source_accuracy": 0.9921875,
+    "source_attempts": [
+      0.9453125,
+      0.9921875
+    ],
+    "source_after": 0.984375,
+    "base_cells": [
+      {
+        "logical_id": "cell_0",
+        "transform_seed": 4271991,
+        "target_after": 0.984375,
+        "shuffled_after": 0.59375,
+        "stable_bits_to_threshold": 6144,
+        "shuffled_stable_bits_to_threshold": null
+      },
+      {
+        "logical_id": "cell_1",
+        "transform_seed": 98271,
+        "target_after": 0.984375,
+        "shuffled_after": 0.44140625,
+        "stable_bits_to_threshold": 4096,
+        "shuffled_stable_bits_to_threshold": null
+      },
+      {
+        "logical_id": "cell_2",
+        "transform_seed": 193817,
+        "target_after": 0.98828125,
+        "shuffled_after": 0.515625,
+        "stable_bits_to_threshold": 4096,
+        "shuffled_stable_bits_to_threshold": null
+      },
+      {
+        "logical_id": "cell_3",
+        "transform_seed": 710123,
+        "target_after": 0.98828125,
+        "shuffled_after": 0.41796875,
+        "stable_bits_to_threshold": 6144,
+        "shuffled_stable_bits_to_threshold": null
+      }
+    ],
+    "protected_outcomes": {
+      "cell_0": [
+        0.984375,
+        0.984375,
+        0.984375,
+        0.984375
+      ],
+      "cell_1": [
+        0.984375,
+        0.984375,
+        0.984375,
+        0.984375
+      ],
+      "cell_2": [
+        0.984375,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "cell_3": [
+        0.984375,
+        0.984375,
+        0.984375,
+        0.984375
+      ]
+    },
+    "statuses_protected": [
+      {
+        "key_digest": "44b109854fce8979dcadb14e473f77b5c656ef11e8ce802ea9d83a37febd9194",
+        "observations": 4,
+        "lifetime_observations": 4,
+        "mean_outcome": 0.984375,
+        "stable_prefix_minimum": 0.984375,
+        "recent_mean": 0.984375,
+        "protected": true,
+        "reversal_streak": 0,
+        "reversal_count": 0,
+        "last_step": 4
+      },
+      {
+        "key_digest": "ef59cd2f7f043f97c2fe34562f8f5fe98feb764bf9c12d5bb253694b2fd54d9b",
+        "observations": 4,
+        "lifetime_observations": 4,
+        "mean_outcome": 0.984375,
+        "stable_prefix_minimum": 0.984375,
+        "recent_mean": 0.984375,
+        "protected": true,
+        "reversal_streak": 0,
+        "reversal_count": 0,
+        "last_step": 8
+      },
+      {
+        "key_digest": "b4d35481a0942ad745dd243d27a4f16c59eeaea21c1e064f31ad4b29532e9773",
+        "observations": 4,
+        "lifetime_observations": 4,
+        "mean_outcome": 0.99609375,
+        "stable_prefix_minimum": 0.99609375,
+        "recent_mean": 0.99609375,
+        "protected": true,
+        "reversal_streak": 0,
+        "reversal_count": 0,
+        "last_step": 12
+      },
+      {
+        "key_digest": "25319ba056dc803c69504f181f13fa6818e239517f5a9a2704e5e50ae19543e3",
+        "observations": 4,
+        "lifetime_observations": 4,
+        "mean_outcome": 0.984375,
+        "stable_prefix_minimum": 0.984375,
+        "recent_mean": 0.984375,
+        "protected": true,
+        "reversal_streak": 0,
+        "reversal_count": 0,
+        "last_step": 16
+      }
+    ],
+    "stale_outcomes": [
+      0.734375,
+      0.640625,
+      0.671875,
+      0.703125
+    ],
+    "statuses_reversed": [
+      {
+        "key_digest": "44b109854fce8979dcadb14e473f77b5c656ef11e8ce802ea9d83a37febd9194",
+        "observations": 4,
+        "lifetime_observations": 4,
+        "mean_outcome": 0.984375,
+        "stable_prefix_minimum": 0.984375,
+        "recent_mean": 0.984375,
+        "protected": true,
+        "reversal_streak": 0,
+        "reversal_count": 0,
+        "last_step": 4
+      },
+      {
+        "key_digest": "ef59cd2f7f043f97c2fe34562f8f5fe98feb764bf9c12d5bb253694b2fd54d9b",
+        "observations": 4,
+        "lifetime_observations": 4,
+        "mean_outcome": 0.984375,
+        "stable_prefix_minimum": 0.984375,
+        "recent_mean": 0.984375,
+        "protected": true,
+        "reversal_streak": 0,
+        "reversal_count": 0,
+        "last_step": 8
+      },
+      {
+        "key_digest": "b4d35481a0942ad745dd243d27a4f16c59eeaea21c1e064f31ad4b29532e9773",
+        "observations": 4,
+        "lifetime_observations": 4,
+        "mean_outcome": 0.99609375,
+        "stable_prefix_minimum": 0.99609375,
+        "recent_mean": 0.99609375,
+        "protected": true,
+        "reversal_streak": 0,
+        "reversal_count": 0,
+        "last_step": 12
+      },
+      {
+        "key_digest": "25319ba056dc803c69504f181f13fa6818e239517f5a9a2704e5e50ae19543e3",
+        "observations": 0,
+        "lifetime_observations": 8,
+        "mean_outcome": 0.0,
+        "stable_prefix_minimum": 1.0,
+        "recent_mean": 0.0,
+        "protected": false,
+        "reversal_streak": 0,
+        "reversal_count": 1,
+        "last_step": 20
+      }
+    ],
+    "learned_eviction_scores": [
+      0.015625,
+      0.015625,
+      0.00390625,
+      1.0
+    ],
+    "eviction_index": 3,
+    "evicted_id": "cell_3",
+    "replacement_outcomes": [
+      0.96875,
+      0.984375,
+      0.984375,
+      0.984375
+    ],
+    "replacement_routing": {
+      "rows": [
+        {
+          "target_index": 0,
+          "selected_index": 0,
+          "routing_correct": true,
+          "action_accuracy": 0.984375
+        },
+        {
+          "target_index": 1,
+          "selected_index": 1,
+          "routing_correct": true,
+          "action_accuracy": 0.9765625
+        },
+        {
+          "target_index": 2,
+          "selected_index": 2,
+          "routing_correct": true,
+          "action_accuracy": 0.99609375
+        },
+        {
+          "target_index": 3,
+          "selected_index": 3,
+          "routing_correct": true,
+          "action_accuracy": 0.9921875
+        }
+      ],
+      "routing_accuracy": 1.0,
+      "action_mastery": true
+    },
+    "replacement_progress": [
+      {
+        "update": 32,
+        "heldout_accuracy": 0.75
+      },
+      {
+        "update": 64,
+        "heldout_accuracy": 0.86328125
+      },
+      {
+        "update": 96,
+        "heldout_accuracy": 0.9453125
+      },
+      {
+        "update": 128,
+        "heldout_accuracy": 0.9453125
+      },
+      {
+        "update": 160,
+        "heldout_accuracy": 0.96484375
+      },
+      {
+        "update": 192,
+        "heldout_accuracy": 0.984375
+      },
+      {
+        "update": 224,
+        "heldout_accuracy": 0.984375
+      },
+      {
+        "update": 256,
+        "heldout_accuracy": 0.9921875
+      }
+    ],
+    "shuffled_replacement_progress": [
+      {
+        "update": 32,
+        "heldout_accuracy": 0.546875
+      },
+      {
+        "update": 64,
+        "heldout_accuracy": 0.49609375
+      },
+      {
+        "update": 96,
+        "heldout_accuracy": 0.5390625
+      },
+      {
+        "update": 128,
+        "heldout_accuracy": 0.51953125
+      },
+      {
+        "update": 160,
+        "heldout_accuracy": 0.484375
+      },
+      {
+        "update": 192,
+        "heldout_accuracy": 0.40625
+      },
+      {
+        "update": 224,
+        "heldout_accuracy": 0.4375
+      },
+      {
+        "update": 256,
+        "heldout_accuracy": 0.48046875
+      }
+    ],
+    "key_bank": {
+      "schema": "neural-computer.external-alignment-key-bank.v1",
+      "context_width": 64,
+      "logical_ids": [
+        "cell_0",
+        "cell_1",
+        "cell_2",
+        "cell_3"
+      ]
+    }
+  },
+  "accounting": {
+    "unique_verifier_bits": 189696,
+    "unique_logical_lifetimes": 44052,
+    "optimizer_updates": 2752,
+    "replayed_examples": 0
+  },
+  "digests": {
+    "parent_before": "3ac5691ace6bbe09b18cbbb107371d34af75345f7b00ccf1fc9893349a070557",
+    "parent_after": "3ac5691ace6bbe09b18cbbb107371d34af75345f7b00ccf1fc9893349a070557",
+    "source_machine_before": "d8d562d788c0fcf4b47a6422624eaf534f845e9ae8e428ccfa7b1dc779a71488",
+    "source_machine_after": "d8d562d788c0fcf4b47a6422624eaf534f845e9ae8e428ccfa7b1dc779a71488",
+    "source_decoder_before": "7f2fa54f089ac47d02542ff2c1609ddb3e2f7eb1379e4e2c78abf2dec9901f2e",
+    "source_decoder_after": "7f2fa54f089ac47d02542ff2c1609ddb3e2f7eb1379e4e2c78abf2dec9901f2e",
+    "key_bank": "619a122fd4d435098cba5fc6bcb91f136e7ecf72603680c3fde53552f2bf1a78"
+  },
+  "gates": {
+    "source_mastered": true,
+    "base_cells_mastered": true,
+    "base_shuffled_rejected": true,
+    "all_base_cells_protected": true,
+    "stale_cell_reversed": true,
+    "eviction_selected_stale_cell": true,
+    "replacement_mastered": true,
+    "replacement_shuffled_rejected": true,
+    "replacement_key_routing_mastered": true,
+    "protected_cells_retained": true,
+    "source_retained": true,
+    "frozen_parent": true,
+    "frozen_source_machine": true,
+    "frozen_source_decoder": true,
+    "reversal_has_scalar_evidence": true
+  },
+  "promoted": true,
+  "elapsed_seconds": 266.62469445797615
+}

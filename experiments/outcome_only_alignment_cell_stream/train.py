@@ -77,6 +77,12 @@ class ExternalAlignmentCellBank(nn.Module):
         for parameter in self.cell(logical_id).parameters():
             parameter.requires_grad_(False)
 
+    def remove(self, logical_id: str) -> AmodalEventBridge:
+        key = self._key(logical_id)
+        bridge = self.cell(key)
+        del self.cells[key]
+        return bridge
+
     def configuration(self) -> dict[str, object]:
         return {
             "schema": self.schema,

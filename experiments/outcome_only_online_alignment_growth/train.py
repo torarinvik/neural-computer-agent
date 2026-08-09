@@ -70,6 +70,17 @@ class ExternalAlignmentKeyBank(nn.Module):
             raise ValueError("cannot select from an empty alignment key bank")
         return torch.cdist(context, self.keys).argmin(dim=-1)
 
+    def remove(self, logical_id: str) -> torch.Tensor:
+        if logical_id not in self.logical_ids:
+            raise KeyError(f"unknown alignment key: {logical_id}")
+        index = self.logical_ids.index(logical_id)
+        removed = self.keys[index].detach().clone()
+        keep = torch.ones(len(self.logical_ids), dtype=torch.bool)
+        keep[index] = False
+        self.keys = self.keys[keep].clone()
+        self.logical_ids.pop(index)
+        return removed
+
     def configuration(self) -> dict[str, object]:
         return {
             "schema": self.schema,

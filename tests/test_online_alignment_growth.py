@@ -20,6 +20,9 @@ def test_external_alignment_key_bank_appends_and_selects() -> None:
         bank.add("cell_0", torch.zeros(3))
     with pytest.raises(ValueError, match="wrong shape"):
         bank.add("cell_2", torch.zeros(2))
+    removed = bank.remove("cell_0")
+    torch.testing.assert_close(removed, torch.zeros(3))
+    assert bank.configuration()["logical_ids"] == ("cell_1",)
 
 
 def test_external_alignment_key_bank_rejects_empty_selection() -> None:

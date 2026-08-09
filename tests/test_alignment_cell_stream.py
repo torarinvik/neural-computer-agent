@@ -24,6 +24,8 @@ def test_external_alignment_cell_bank_grows_and_freezes_cells() -> None:
         bank.add("cell.1", AmodalEventBridge(4, 6, 4, hidden=8))
     with pytest.raises(KeyError, match="unknown alignment cell"):
         bank.cell("missing")
+    bank.remove("cell_0")
+    assert bank.configuration()["logical_ids"] == ()
 
 
 def test_alignment_cell_bank_state_is_independent() -> None:
