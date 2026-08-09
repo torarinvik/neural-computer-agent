@@ -713,3 +713,22 @@ as the compositional algebra or continual-learning solution. The remaining
 problem is semantic binding: serial instructions need a state representation
 whose intermediate results remain meaningful to the next instruction, not
 merely numerically bounded.
+
+## Preserved execution trace — useful binding interface, not transfer
+
+The external register now exposes a versioned execution-trace API. A chain
+can preserve every intermediate register state as an opaque positional bank;
+composition decoders can opt into the bank while direct source paths remain
+unchanged. The fresh control receives the same trace path.
+
+With bounded shared transitions and balanced source calibration, both
+composition candidates passed in seed `69317`; seed `69316` also passed both
+composition candidates, though one direct target candidate failed. Strict
+positive transfer appeared in only one of four composition/seed comparisons.
+Source retention remained exact, but the transfer gate was not replicated.
+
+The trace confirms that preserving intermediate states helps binding and
+stability, but a positional bank alone is not a learned state algebra. The
+next step is learned, opaque addressing over the bank so the next instruction
+can select relevant intermediate state without relying only on execution
+position.

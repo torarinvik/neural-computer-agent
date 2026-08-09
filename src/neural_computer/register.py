@@ -28,6 +28,9 @@ EXTERNAL_REGISTER_INSTRUCTION_SCHEMA = (
 EXTERNAL_REGISTER_READ_EXECUTE_SCHEMA = (
     "neural-computer.external-register-read-execute.v1"
 )
+EXTERNAL_REGISTER_EXECUTION_TRACE_SCHEMA = (
+    "neural-computer.external-register-execution-trace.v1"
+)
 EXTERNAL_REGISTER_BASIS_SCHEMA = "neural-computer.external-register-compute-basis.v1"
 EXTERNAL_REGISTER_COMPATIBILITY_SCHEMA = (
     "neural-computer.external-register-compatibility-prior.v1"
@@ -667,6 +670,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 else "opaque_memory_side_slot_index_v1"
             ),
             "read_execute": EXTERNAL_REGISTER_READ_EXECUTE_SCHEMA,
+            "execution_trace": EXTERNAL_REGISTER_EXECUTION_TRACE_SCHEMA,
             "downstream_input": "preceding_register_plus_bounded_event_window_v1",
         }
 
@@ -1084,6 +1088,41 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             )
         return register
 
+    def execute_chain_trace(
+        self,
+        register: torch.Tensor,
+        instructions: Iterable[ExternalRegisterInstruction],
+        *,
+        basis_slots: Iterable[int | None] | None = None,
+        event_window: torch.Tensor | None = None,
+        event_window_mask: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, tuple[torch.Tensor, ...]]:
+        """Execute a chain while preserving each intermediate register state.
+
+        The trace is an opaque positional state bank.  It preserves binding
+        between an instruction's output and the later decoder without
+        assigning semantic meaning to register coordinates.
+        """
+        selected = tuple(instructions)
+        selected_basis = (
+            (None,) * len(selected)
+            if basis_slots is None
+            else tuple(basis_slots)
+        )
+        if len(selected_basis) != len(selected):
+            raise ValueError("basis slot bindings must match instruction count")
+        states: list[torch.Tensor] = []
+        for instruction, basis_slot in zip(selected, selected_basis):
+            register = self.execute(
+                register,
+                instruction,
+                basis_slot=basis_slot,
+                event_window=event_window,
+                event_window_mask=event_window_mask,
+            )
+            states.append(register)
+        return register, tuple(states)
+
     def observe_register(
         self,
         *,
@@ -1191,6 +1230,47 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         return torch.where(
             present.unsqueeze(-1), executed, register
         ), next_state
+
+    def read_execute_register_trace(
+        self,
+        *,
+        event: torch.Tensor,
+        action: torch.Tensor,
+        outcome: torch.Tensor,
+        intention: IntentEvent,
+        state: ExternalRegisterState,
+        present: torch.Tensor | None = None,
+        instructions: Iterable[ExternalRegisterInstruction] | None = None,
+        basis_slots: Iterable[int | None] | None = None,
+    ) -> tuple[torch.Tensor, ExternalRegisterState, tuple[torch.Tensor, ...]]:
+        """Read context, execute, and return an opaque intermediate-state bank."""
+        if present is None:
+            present = torch.ones(
+                event.shape[0], dtype=torch.bool, device=event.device
+            )
+        register, next_state = self.observe_register(
+            event=event,
+            action=action,
+            outcome=outcome,
+            intention=intention,
+            state=state,
+            present=present,
+        )
+        selected = self.instructions if instructions is None else tuple(instructions)
+        executed, trace = self.execute_chain_trace(
+            register,
+            selected,
+            basis_slots=basis_slots,
+            event_window=next_state.event_window,
+            event_window_mask=next_state.event_window_mask,
+        )
+        trace = tuple(
+            torch.where(present.unsqueeze(-1), value, register)
+            for value in trace
+        )
+        return torch.where(
+            present.unsqueeze(-1), executed, register
+        ), next_state, trace
 
     def to_intention(self, register: torch.Tensor) -> IntentEvent:
         """Project a register to the opaque intention transport boundary."""

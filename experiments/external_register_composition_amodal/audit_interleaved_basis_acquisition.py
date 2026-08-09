@@ -85,6 +85,7 @@ def _score(
         generated_composition_ids=candidate.get("generated_composition_ids"),
         generated_compositions=candidate.get("generated_compositions"),
         register_readout=candidate.get("readout"),
+        preserve_execution_trace=candidate.get("preserve_execution_trace", False),
     )
 
 
@@ -168,6 +169,7 @@ def _train_interleaved_phase(
             shuffle_outcomes=shuffle_outcomes,
             event_bridge=candidate["bridge"],
             register_readout=candidate.get("readout"),
+            preserve_execution_trace=candidate.get("preserve_execution_trace", False),
         )
         optimizer = candidate["phase_optimizer"]
         optimizer.zero_grad(set_to_none=True)
@@ -216,6 +218,7 @@ def _prepare_candidates(
     bridge_prior_state: dict[str, torch.Tensor] | None = None,
     conditioned_bridge_prior: bool = False,
     readout_prior_state: dict[str, torch.Tensor] | None = None,
+    preserve_composition_trace: bool = False,
 ) -> list[dict[str, object]]:
     candidates = []
     for index, operation in enumerate(operations):
@@ -247,7 +250,9 @@ def _prepare_candidates(
                 source_operations.index(primitive) for primitive in program
             )
             decoder = OpaqueProtocolDecoder(
-                REGISTER_WIDTH, ACTION_WIDTH, hidden=16
+                REGISTER_WIDTH * (len(program) if preserve_composition_trace else 1),
+                ACTION_WIDTH,
+                hidden=16,
             )
             if decoder_prior_state is not None:
                 decoder.load_state_dict(decoder_prior_state, strict=True)
@@ -296,6 +301,7 @@ def _prepare_candidates(
                     "bridge": bridge,
                     "bridge_frozen": bridge_prior_state is not None,
                     "readout": readout,
+                    "preserve_execution_trace": preserve_composition_trace,
                 }
             )
     return candidates
@@ -910,6 +916,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         composition_programs=composition_programs,
         bridge_prior_state=bridge_prior_state,
         conditioned_bridge_prior=args.reuse_conditioned_bridge_prior,
+        preserve_composition_trace=args.preserve_composition_trace,
         readout_prior_state=readout_prior_state,
     )
     retained_before = [
@@ -978,6 +985,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         composition_programs=composition_programs,
         bridge_prior_state=bridge_prior_state,
         conditioned_bridge_prior=args.reuse_conditioned_bridge_prior,
+        source_operations=args.source_operations,
+        preserve_composition_trace=args.preserve_composition_trace,
     )
     _freeze(shuffled_machine)
     for candidate in shuffled_candidates:
@@ -1074,10 +1083,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "generated_compositions": (program,),
             "composition_program": program,
             "decoder": OpaqueProtocolDecoder(
-                REGISTER_WIDTH, ACTION_WIDTH, hidden=16
+                REGISTER_WIDTH * (
+                    len(program) if args.preserve_composition_trace else 1
+                ),
+                ACTION_WIDTH,
+                hidden=16,
             ),
             "bridge": fresh_bridge,
             "bridge_frozen": bridge_prior_state is not None,
+            "preserve_execution_trace": args.preserve_composition_trace,
         }
         _train_candidate_schedule(
             parent,
@@ -1325,6 +1339,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             else "sequential_with_restarts"
         ),
         "joint_source_updates": args.joint_source_updates,
+        "preserve_composition_trace": args.preserve_composition_trace,
         "target_operations": list(target_operations),
         "composition_programs": [list(program) for program in composition_programs]
         if args.include_composition
@@ -1459,6 +1474,12 @@ def main() -> None:
         action=argparse.BooleanOptionalAction,
         default=True,
         help="interleave a fresh decoder/bridge for a frozen source-program composition",
+    )
+    parser.add_argument(
+        "--preserve-composition-trace",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="feed composition decoders the ordered intermediate register bank",
     )
     parser.add_argument(
         "--reuse-decoder-prior",

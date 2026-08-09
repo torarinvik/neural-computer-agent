@@ -147,6 +147,25 @@ def test_shared_bounded_mode_limits_serial_state_drift() -> None:
     assert float(result.abs().mean().detach()) < 10.0
 
 
+def test_execution_trace_preserves_each_opaque_intermediate_state() -> None:
+    machine = _machine()
+    register = torch.randn(2, 8)
+    trace_final, trace = machine.execute_chain_trace(
+        register,
+        machine.instructions,
+    )
+    final = machine.execute_chain(register, machine.instructions)
+
+    assert machine.configuration()["execution_trace"] == (
+        "neural-computer.external-register-execution-trace.v1"
+    )
+    assert len(trace) == len(machine.instructions)
+    assert all(state.shape == register.shape for state in trace)
+    assert torch.equal(trace_final, trace[-1])
+    assert torch.equal(final, trace[-1])
+    assert not torch.equal(trace[0], trace[1])
+
+
 def test_new_basis_slot_does_not_resize_controller_or_existing_instruction_data() -> None:
     machine = _machine()
     old_instruction = machine.instructions[0].code.detach().clone()

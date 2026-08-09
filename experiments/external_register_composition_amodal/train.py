@@ -162,9 +162,12 @@ def _rollout(
     q_head: OpaqueVerifierQ | None = None,
     event_bridge: AmodalEventBridge | None = None,
     register_readout: CanonicalRegisterReadout | None = None,
+    preserve_execution_trace: bool = False,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     if execution_mode not in ("in_place", "read_execute"):
         raise ValueError(f"unknown execution mode: {execution_mode!r}")
+    if preserve_execution_trace and execution_mode != "read_execute":
+        raise ValueError("execution traces require read_execute mode")
     device = batch.input_frames.device
     batch_size = batch.batch_size
     parent_state = parent.initial_state(batch_size, device=device)
@@ -206,24 +209,37 @@ def _rollout(
             event = parent_state.hidden.detach()
         if machine.event_width != event.shape[1]:
             raise ValueError("machine event width is incompatible with parent event")
-        step = (
-            machine.step_register
-            if execution_mode == "in_place"
-            else machine.read_execute_register
-        )
-        register, register_state = step(
-            event=event,
-            action=previous_action,
-            outcome=previous_reward,
-            intention=output.intention,
-            state=register_state,
-            present=present,
-            instructions=instructions,
-            basis_slots=basis_slots,
-        )
-        decoded_register = (
-            register if register_readout is None else register_readout(register)
-        )
+        if preserve_execution_trace:
+            register, register_state, trace = machine.read_execute_register_trace(
+                event=event,
+                action=previous_action,
+                outcome=previous_reward,
+                intention=output.intention,
+                state=register_state,
+                present=present,
+                instructions=instructions,
+                basis_slots=basis_slots,
+            )
+            decoded_register = torch.cat(trace, dim=-1)
+        else:
+            step = (
+                machine.step_register
+                if execution_mode == "in_place"
+                else machine.read_execute_register
+            )
+            register, register_state = step(
+                event=event,
+                action=previous_action,
+                outcome=previous_reward,
+                intention=output.intention,
+                state=register_state,
+                present=present,
+                instructions=instructions,
+                basis_slots=basis_slots,
+            )
+            decoded_register = (
+                register if register_readout is None else register_readout(register)
+            )
         return decoder(decoded_register), register
 
     quiet = _feedback(
@@ -571,6 +587,7 @@ def _accuracy(
     q_head: OpaqueVerifierQ | None = None,
     event_bridge: AmodalEventBridge | None = None,
     register_readout: CanonicalRegisterReadout | None = None,
+    preserve_execution_trace: bool = False,
     reverse_operations: bool = False,
     reverse_sequence: bool = False,
 ) -> float:
@@ -601,6 +618,7 @@ def _accuracy(
             q_head=q_head,
             event_bridge=event_bridge,
             register_readout=register_readout,
+            preserve_execution_trace=preserve_execution_trace,
         )[1].mean()
     )
 
