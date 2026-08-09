@@ -222,6 +222,10 @@ def test_transition_model_bank_round_trip_preserves_learned_context_bytes() -> N
 
     assert restored.digest() == bank.digest()
     assert torch.equal(restored._contexts[0], bank._contexts[0])
+    legacy_payload = bank.payload()
+    legacy_payload.pop("model_aliases")
+    legacy_restored = ExternalTransitionModelBank.from_payload(legacy_payload)
+    assert legacy_restored.digest() == bank.digest()
 
 
 def test_transition_model_bank_growth_is_verified_and_content_preserving() -> None:
@@ -297,6 +301,41 @@ def test_transition_model_bank_consolidation_shares_only_equivalent_models() -> 
 
     assert not rejected.accepted
     assert rejected_bank.physical_model_count == 2
+
+
+def test_transition_model_bank_compression_requires_retention_and_round_trips() -> None:
+    torch.manual_seed(1213)
+    bank = ExternalTransitionModelBank(2, 1, 2, hidden_width=8, capacity=2)
+    first = bank.ensure_context(torch.tensor([1.0, 0.0]))
+    bank.ensure_context(torch.tensor([0.0, 1.0]), initialize_from=first)
+    observation = ExternalTransitionObservation(
+        state=torch.randn(5, 2),
+        intention=torch.randn(5, 1),
+        next_state=torch.randn(5, 2),
+    )
+
+    accepted = bank.compress_verified(
+        dtype=torch.float16,
+        retention_probe=lambda candidate: torch.isfinite(
+            candidate.loss(
+                observation,
+                torch.tensor([1.0, 0.0]).expand(5, -1),
+            )
+        ),
+    )
+    rejected = bank.compress_verified(
+        dtype="int4",
+        retention_probe=lambda _candidate: False,
+    )
+
+    assert accepted.accepted
+    assert accepted.compressed_bytes < accepted.source_bytes
+    assert not rejected.accepted
+    restored = ExternalTransitionModelBank.from_compressed_payload(
+        bank.compressed_payload(dtype=torch.float16)
+    )
+    assert restored.model_aliases() == bank.model_aliases()
+    assert restored.context_count == bank.context_count
 
 
 def test_online_transition_context_router_admits_current_bundle_and_persists() -> None:

@@ -1432,6 +1432,28 @@
       "persistence_exact": [true, true],
       "controls": "equivalent held-out acceptance, physical parameter sharing, context/index preservation, pre/post retention, distinct-function rejection/no-mutation, frozen controller, zero consolidation updates, wrong-context, and persistence passed",
       "decision": "promote behavior-verified parameter sharing; next test learned compression/shared representations and longer-horizon equivalence probes"
+    },
+    {
+      "experiment": "external_transition_model_compression",
+      "date": "2026-08-09",
+      "seeds": [70211, 70212],
+      "claim": "External transition-model storage candidates can be promoted by held-out retention: float16 and int8 reduce bytes while int4 is rejected when its factual loss drift exceeds tolerance.",
+      "module": "ExternalTransitionModelBank.compress_verified + compressed_payload/from_compressed_payload",
+      "source_bytes_per_seed": 26944,
+      "float16_bytes_per_seed": 13472,
+      "int8_bytes_per_seed": 6784,
+      "int4_bytes_per_seed": 5176,
+      "float16_accepted": [true, true],
+      "int8_accepted": [true, true],
+      "int4_rejected": [true, true],
+      "float16_max_loss_delta": [9.139331066791191e-09, 3.649074642453343e-08],
+      "int8_max_loss_delta": [8.858842720058818e-06, 4.8527292415556644e-06],
+      "int4_loss_delta_range": [[0.0005219232397735111, 0.0005436937204461569], [0.0002735947700784891, 0.0007601280610538552]],
+      "controller_parameter_updates": [0, 0],
+      "compression_optimizer_updates": [0, 0],
+      "persistence_exact": [true, true],
+      "controls": "float16/int8 held-out retention acceptance, int4 rejection, byte accounting, frozen controller, zero compression updates, and compressed payload persistence passed",
+      "decision": "promote verifier-gated external storage codecs; next test adaptive codec selection and longer-horizon alternating validation"
     }
   ]
 }

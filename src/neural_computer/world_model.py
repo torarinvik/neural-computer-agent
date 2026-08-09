@@ -23,6 +23,7 @@ from typing import Any
 import torch
 from torch import nn
 
+from .growth import compress_growth_artifact, decompress_growth_artifact
 from .memory import (
     AppendOnlyContentAddressedMemory,
     MemoryQuery,
@@ -64,6 +65,9 @@ EXTERNAL_TRANSITION_MODEL_GROWTH_SCHEMA = (
 )
 EXTERNAL_TRANSITION_MODEL_CONSOLIDATION_SCHEMA = (
     "neural-computer.external-transition-model-consolidation.v1"
+)
+EXTERNAL_TRANSITION_MODEL_COMPRESSION_SCHEMA = (
+    "neural-computer.external-transition-model-compression.v1"
 )
 EXTERNAL_MODEL_PLANNER_SCHEMA = "neural-computer.external-model-planner.v1"
 
@@ -690,12 +694,200 @@ class ExternalTransitionModelBank(nn.Module):
             reason="equivalent transition models now share parameters",
         ).validate()
 
+    @staticmethod
+    def _tensor_map_digest(artifact: Mapping[str, torch.Tensor]) -> str:
+        digest = hashlib.sha256()
+        for name, value in sorted(artifact.items()):
+            digest.update(name.encode("utf-8"))
+            digest.update(str(value.dtype).encode("utf-8"))
+            digest.update(repr(tuple(value.shape)).encode("utf-8"))
+            digest.update(value.detach().cpu().contiguous().numpy().tobytes())
+        return digest.hexdigest()
+
+    @staticmethod
+    def _tensor_map_bytes(artifact: Mapping[str, torch.Tensor]) -> int:
+        return sum(
+            value.numel() * value.element_size() for value in artifact.values()
+        )
+
+    def _compressed_payload_digest(self, payload: Mapping[str, Any]) -> str:
+        digest = hashlib.sha256()
+        digest.update(EXTERNAL_TRANSITION_MODEL_COMPRESSION_SCHEMA.encode("utf-8"))
+        digest.update(str(payload["codec"]).encode("utf-8"))
+        digest.update(repr(payload["configuration"]).encode("utf-8"))
+        for context in payload["contexts"]:
+            digest.update(
+                torch.tensor(context, dtype=torch.float32).numpy().tobytes()
+            )
+        digest.update(repr(payload["model_aliases"]).encode("utf-8"))
+        for model_payload in payload["models"]:
+            digest.update(
+                self._tensor_map_digest(model_payload["state"]).encode("utf-8")
+            )
+        return digest.hexdigest()
+
+    def compressed_payload(
+        self,
+        *,
+        dtype: torch.dtype | str = torch.float16,
+    ) -> dict[str, object]:
+        """Create a storage-compressed, caller-owned bank checkpoint."""
+
+        models: list[dict[str, object]] = []
+        for model in self.models:
+            state = compress_growth_artifact(model.state_dict(), dtype=dtype)
+            models.append(
+                {
+                    "state": state,
+                    "sha256": self._tensor_map_digest(state),
+                }
+            )
+        payload: dict[str, object] = {
+            "schema": EXTERNAL_TRANSITION_MODEL_COMPRESSION_SCHEMA,
+            "configuration": self.configuration(),
+            "codec": str(dtype),
+            "contexts": [context.tolist() for context in self._contexts],
+            "model_aliases": self.model_aliases(),
+            "models": models,
+        }
+        payload["sha256"] = self._compressed_payload_digest(payload)
+        return payload
+
+    @classmethod
+    def from_compressed_payload(
+        cls,
+        payload: Mapping[str, Any],
+    ) -> ExternalTransitionModelBank:
+        """Restore and decompress a storage checkpoint into runtime models."""
+
+        if not isinstance(payload, Mapping) or payload.get("schema") != (
+            EXTERNAL_TRANSITION_MODEL_COMPRESSION_SCHEMA
+        ):
+            raise ValueError("unsupported compressed transition-model payload")
+        configuration = payload.get("configuration")
+        contexts = payload.get("contexts")
+        models = payload.get("models")
+        if not isinstance(configuration, Mapping):
+            raise TypeError("compressed transition-model configuration is missing")
+        if not isinstance(contexts, list) or not isinstance(models, list):
+            raise TypeError("compressed transition-model payload lists are invalid")
+        aliases_payload = payload.get("model_aliases")
+        aliases = (
+            list(range(len(models)))
+            if aliases_payload is None
+            else [int(alias) for alias in aliases_payload]
+        )
+        if len(contexts) != len(models) or len(aliases) != len(models):
+            raise ValueError("compressed transition-model payload lengths differ")
+        bank = cls(
+            int(configuration["state_width"]),
+            int(configuration["intention_width"]),
+            int(configuration["context_width"]),
+            hidden_width=int(configuration["hidden_width"]),
+            matching_tolerance=float(configuration["matching_tolerance"]),
+            capacity=(
+                None
+                if configuration.get("capacity") is None
+                else int(configuration["capacity"])
+            ),
+        )
+        if bank.capacity is not None and len(contexts) > bank.capacity:
+            raise ValueError("compressed transition-model payload exceeds capacity")
+        for index, (values, model_payload) in enumerate(
+            zip(contexts, models, strict=True)
+        ):
+            if not isinstance(model_payload, Mapping):
+                raise TypeError("compressed transition-model slot is invalid")
+            context = torch.tensor(values, dtype=torch.float32)
+            _validate_tensor(
+                context,
+                name="compressed transition-model context",
+                ndim=1,
+                width=bank.context_width,
+            )
+            if not torch.allclose(
+                torch.linalg.vector_norm(context),
+                torch.ones((), dtype=context.dtype),
+                atol=1e-5,
+                rtol=1e-5,
+            ):
+                raise ValueError("compressed transition-model context is not normalized")
+            bank._contexts.append(context.clone())
+            bank.models.append(
+                ExternalTransitionModel(
+                    bank.state_width,
+                    bank.intention_width,
+                    hidden_width=bank.hidden_width,
+                )
+            )
+            state = model_payload.get("state")
+            if not isinstance(state, Mapping):
+                raise TypeError("compressed transition-model state is missing")
+            if model_payload.get("sha256") != bank._tensor_map_digest(state):
+                raise ValueError("compressed transition-model slot checksum mismatch")
+            decompressed = decompress_growth_artifact(state)
+            current = bank.models[index].state_dict()
+            if tuple(decompressed) != tuple(current):
+                raise ValueError("compressed transition-model state names differ")
+            normalized: dict[str, torch.Tensor] = {}
+            for name, expected in current.items():
+                value = decompressed[name]
+                if value.shape != expected.shape or not bool(torch.isfinite(value).all()):
+                    raise ValueError("compressed transition-model state is incompatible")
+                normalized[name] = value.to(dtype=expected.dtype)
+            bank.models[index].load_state_dict(normalized, strict=True)
+        if any(alias < 0 or alias > index for index, alias in enumerate(aliases)):
+            raise ValueError("compressed transition-model aliases are invalid")
+        for index, alias in enumerate(aliases):
+            if alias != index:
+                bank.models[index] = bank.models[alias]
+        if payload.get("sha256") != bank._compressed_payload_digest(payload):
+            raise ValueError("compressed transition-model payload checksum mismatch")
+        return bank
+
+    def compress_verified(
+        self,
+        *,
+        dtype: torch.dtype | str = torch.float16,
+        retention_probe: Callable[[ExternalTransitionModelBank], bool] | None = None,
+    ) -> ExternalTransitionModelCompressionReceipt:
+        """Accept a compressed storage candidate only after behavior probing."""
+
+        payload = self.compressed_payload(dtype=dtype)
+        candidate = self.from_compressed_payload(payload)
+        if retention_probe is not None and not callable(retention_probe):
+            raise TypeError("transition-model compression retention probe is invalid")
+        accepted = retention_probe is None or bool(retention_probe(candidate))
+        source_bytes = sum(
+            self._tensor_map_bytes(model.state_dict()) for model in self.models
+        )
+        compressed_bytes = sum(
+            self._tensor_map_bytes(model_payload["state"])
+            for model_payload in payload["models"]
+        )
+        return ExternalTransitionModelCompressionReceipt(
+            accepted=accepted,
+            codec=str(dtype),
+            source_bytes=source_bytes,
+            compressed_bytes=compressed_bytes,
+            context_count=self.context_count,
+            physical_models=self.physical_model_count,
+            candidate_digest=candidate.digest(),
+            reason=(
+                "compressed candidate passed retention probe"
+                if accepted
+                else "compressed candidate failed retention probe"
+            ),
+        ).validate()
+
     def content_digest(self) -> str:
         """Digest slot keys and model weights without capacity metadata."""
 
         digest = hashlib.sha256()
         digest.update(self.schema.encode("utf-8"))
-        digest.update(repr(self.model_aliases()).encode("utf-8"))
+        aliases = self.model_aliases()
+        if aliases != list(range(len(aliases))):
+            digest.update(repr(aliases).encode("utf-8"))
         for context in self._contexts:
             detached = context.detach().cpu().contiguous()
             digest.update(detached.numpy().tobytes())
@@ -892,6 +1084,34 @@ class ExternalTransitionModelConsolidationReceipt:
             raise ValueError("accepted consolidation did not reduce physical models")
         if not isinstance(self.reason, str) or not self.reason:
             raise ValueError("transition-model consolidation reason is missing")
+        return self
+
+
+@dataclass(frozen=True)
+class ExternalTransitionModelCompressionReceipt:
+    """Auditable result of a held-out-verified storage codec candidate."""
+
+    accepted: bool
+    codec: str
+    source_bytes: int
+    compressed_bytes: int
+    context_count: int
+    physical_models: int
+    candidate_digest: str
+    reason: str
+    schema: str = EXTERNAL_TRANSITION_MODEL_COMPRESSION_SCHEMA
+
+    def validate(self) -> ExternalTransitionModelCompressionReceipt:
+        if self.schema != EXTERNAL_TRANSITION_MODEL_COMPRESSION_SCHEMA:
+            raise ValueError("unsupported transition-model compression schema")
+        if min(self.source_bytes, self.compressed_bytes, self.context_count, self.physical_models) < 0:
+            raise ValueError("transition-model compression counts are invalid")
+        if self.accepted and self.compressed_bytes >= self.source_bytes:
+            raise ValueError("accepted compression did not reduce storage bytes")
+        if not isinstance(self.codec, str) or not self.codec:
+            raise ValueError("transition-model compression codec is missing")
+        if not isinstance(self.reason, str) or not self.reason:
+            raise ValueError("transition-model compression reason is missing")
         return self
 
 
@@ -2974,6 +3194,7 @@ __all__ = [
     "EXTERNAL_TRANSITION_EVIDENCE_CALIBRATOR_SCHEMA",
     "EXTERNAL_TRANSITION_MEMORY_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_BANK_SCHEMA",
+    "EXTERNAL_TRANSITION_MODEL_COMPRESSION_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_CONSOLIDATION_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_GROWTH_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_SCHEMA",
@@ -2993,6 +3214,7 @@ __all__ = [
     "ExternalTransitionMemory",
     "ExternalTransitionModel",
     "ExternalTransitionModelBank",
+    "ExternalTransitionModelCompressionReceipt",
     "ExternalTransitionModelConsolidationReceipt",
     "ExternalTransitionModelGrowthReceipt",
     "ExternalTransitionObservation",

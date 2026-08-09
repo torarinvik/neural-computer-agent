@@ -4688,3 +4688,25 @@ difference, and the current mechanism does not yet learn low-rank/shared
 representations for genuinely complementary functions. Evidence is archived
 in
 `session_records/sequence_working_memory_2026-08-02/external_transition_model_consolidation_promoted_2026-08-09/`.
+
+## Held-out verified external transition-model compression (2026-08-09)
+
+The bank now exposes compressed payload candidates using the existing external
+storage codecs and restores them into independent runtime candidates. A
+caller-owned retention probe must pass before a codec is promoted; candidate
+construction performs no controller or model optimizer updates. Alias metadata
+is preserved through compression and restore.
+
+Across two seeds, float16 reduced model-state bytes from `26,944` to `13,472`
+with held-out loss deltas below `4e-8`; int8 reduced them to `6,784` with
+deltas below `9e-6`. Both codecs passed retention. Int4 reduced storage to
+`5,176` bytes but was rejected by the same `1e-4` retention tolerance because
+its loss drift was `2.7e-4`–`7.6e-4`. The controller and compression path used
+zero optimizer updates, and compressed payload persistence passed.
+
+This promotes external storage compression, not live reduced-precision
+reasoning or new computation. Codec choice remains verifier-dependent and
+finite held-out probes can miss rare failures; the next frontier is adaptive
+codec selection and longer-horizon/alternating validation before compressed
+artifacts are promoted. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_transition_model_compression_promoted_2026-08-09/`.

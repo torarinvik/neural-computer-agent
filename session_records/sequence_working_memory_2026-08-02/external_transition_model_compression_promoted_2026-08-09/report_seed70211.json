@@ -1,0 +1,90 @@
+{
+  "schema": "neural-computer.external-transition-model-compression-pressure-test.v1",
+  "seed": 70211,
+  "configuration": {
+    "state_width": 8,
+    "intention_width": 4,
+    "context_width": 6,
+    "source_updates": 1200,
+    "target_updates": 1200,
+    "retention_tolerance": 0.0001,
+    "policy": "external_storage_codec_then_heldout_retention_promotion_v1"
+  },
+  "gates": {
+    "controller_unchanged": true,
+    "source_model_learns": true,
+    "target_model_learns": true,
+    "float16_accepted": true,
+    "int8_accepted": true,
+    "int4_rejected": true,
+    "float16_saves_bytes": true,
+    "int8_saves_bytes": true,
+    "float16_persistence_exact": true,
+    "zero_compression_optimizer_updates": true
+  },
+  "promoted": true,
+  "source": {
+    "optimizer_updates": 1200,
+    "loss": 1.886904521519739e-11
+  },
+  "target": {
+    "optimizer_updates": 1200,
+    "loss": 2.4853876552308196e-13
+  },
+  "baseline_losses": {
+    "source": 3.8258491426995667e-13,
+    "target": 9.66341047979602e-13
+  },
+  "compression_receipts": {
+    "torch.float16": {
+      "accepted": true,
+      "codec": "torch.float16",
+      "source_bytes": 26944,
+      "compressed_bytes": 13472,
+      "candidate_digest": "4880f180dfc47b7a3b2fed72007f3956cd97fbdb4cc748aff474651f41bc6cb1",
+      "reason": "compressed candidate passed retention probe"
+    },
+    "torch.int8": {
+      "accepted": true,
+      "codec": "torch.int8",
+      "source_bytes": 26944,
+      "compressed_bytes": 6784,
+      "candidate_digest": "da5e9829064f9855609129853504a215ce96e26d2132d9f220435ea6ccbb65c8",
+      "reason": "compressed candidate passed retention probe"
+    },
+    "int4": {
+      "accepted": false,
+      "codec": "int4",
+      "source_bytes": 26944,
+      "compressed_bytes": 5176,
+      "candidate_digest": "cc12bdeaff00984f4e7045d532dfd00d9c5c7224b3e4192f215c6048636b65c9",
+      "reason": "compressed candidate failed retention probe"
+    }
+  },
+  "heldout_loss_deltas": {
+    "torch.float16": [
+      6.6539829181528135e-09,
+      9.139331066791191e-09
+    ],
+    "torch.int8": [
+      8.858842720058818e-06,
+      2.8892683872043393e-06
+    ],
+    "int4": [
+      0.0005436937204461569,
+      0.0005219232397735111
+    ]
+  },
+  "accounting": {
+    "controller_parameter_updates": 0,
+    "compression_optimizer_updates": 0,
+    "source_replayed_examples": 14388,
+    "target_replayed_examples": 14388,
+    "contexts_preserved": 2
+  },
+  "digests": {
+    "controller": "3d837eee80e5bf1afa4ccea6fae426c6266fd324a77815f53e833c5e37ec0b1d",
+    "bank": "33a7ad53d3993e6efa56f4c61e426a70dc38e3fc6d5e79fdc54881d53517c178"
+  },
+  "elapsed_seconds": 6.818565750028938
+}
