@@ -407,6 +407,48 @@ def test_online_router_repairs_reference_after_policy_selected_eviction() -> Non
     assert router._active_slot == 1
 
 
+def test_model_based_planner_selects_external_model_by_goal_reachability() -> None:
+    bank = ExternalTransitionModelBank(
+        1,
+        1,
+        2,
+        model_family="affine_sufficient_statistics_v1",
+        affine_ridge=1e-7,
+    )
+    contexts = (
+        torch.tensor([1.0, 0.0]),
+        torch.tensor([0.0, 1.0]),
+    )
+    state = torch.tensor([[0.0], [0.2], [0.4], [0.1], [0.8], [0.3], [0.6], [0.9]])
+    intention = torch.tensor([[0.1], [0.7], [0.2], [0.9], [0.4], [0.8], [0.3], [0.6]])
+    for index, context in enumerate(contexts):
+        slot = bank.ensure_context(context)
+        target = state + intention + float(index * 5)
+        observation = ExternalTransitionObservation(state, intention, target)
+        context_batch = bank.context_at(slot).unsqueeze(0).expand(8, -1)
+        bank.adaptation_step(observation, context_batch, None)
+    planner = ExternalModelBasedPlanner(bank, beam_width=1)
+    candidate_intentions = torch.ones(1, 1)
+    first = planner.select_bank_model(
+        bank,
+        torch.zeros(1, 1),
+        torch.ones(1, 1),
+        candidate_intentions,
+        horizon=1,
+    )
+    second = planner.select_bank_model(
+        bank,
+        torch.zeros(1, 1),
+        torch.full((1, 1), 6.0),
+        candidate_intentions,
+        horizon=1,
+    )
+    assert first.selected_slot_id == 0
+    assert second.selected_slot_id == 1
+    assert first.scores[0] < first.scores[1]
+    assert second.scores[1] < second.scores[0]
+
+
 def test_transition_model_bank_consolidation_shares_only_equivalent_models() -> None:
     torch.manual_seed(1212)
     bank = ExternalTransitionModelBank(2, 1, 3, hidden_width=8)

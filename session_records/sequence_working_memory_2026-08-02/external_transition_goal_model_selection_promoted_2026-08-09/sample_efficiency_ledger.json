@@ -1,0 +1,31 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_transition_goal_model_selection",
+  "entries": [
+    {
+      "seed": 1701,
+      "arm": "goal-conditioned-factual-model-search",
+      "unique_verifier_bits": 200,
+      "unique_logical_lifetimes": 1200,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "controller_updates": 0,
+      "heldout_selection": 1.0,
+      "random_control": 0.3333333333333333,
+      "promoted": true
+    },
+    {
+      "seed": 1702,
+      "arm": "goal-conditioned-factual-model-search",
+      "unique_verifier_bits": 200,
+      "unique_logical_lifetimes": 1200,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "controller_updates": 0,
+      "heldout_selection": 1.0,
+      "random_control": 0.3333333333333333,
+      "promoted": true
+    }
+  ],
+  "claim_boundary": "bounded goal-conditioned factual model selection; not general continual learning"
+}

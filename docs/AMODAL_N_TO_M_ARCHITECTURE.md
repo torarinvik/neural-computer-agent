@@ -5154,3 +5154,19 @@ capabilities genuinely ambiguous to recency, then integrate verified
 consolidation and compression decisions into the same lifecycle ledger. Until
 that passes, the system has bounded retention with safe fallback, not general
 continual learning.
+
+## Goal-conditioned factual model search (2026-08-09)
+
+The external planner now ranks runtime-variable factual models by predicted
+goal reachability and returns a stable logical model address. In a two-seed
+audit with three independently learned dynamics, selection reached `1.000`
+versus `0.333` random, with a positive held-out goal margin on every
+evaluation. No task policy was stored; controller updates and transition
+replay were zero. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_transition_goal_model_selection_promoted_2026-08-09/`.
+
+This is the strongest current route toward reusable capability: memory stores
+facts and inference derives behavior from the current goal. The next pressure
+test must vary the query representation and modality/frontend while keeping
+the factual bank fixed, then verify that selected logical addresses and
+retention floors survive that replacement.

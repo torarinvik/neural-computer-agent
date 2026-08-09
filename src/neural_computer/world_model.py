@@ -94,6 +94,9 @@ EXTERNAL_TRANSITION_MODEL_FAMILY_SELECTION_SCHEMA = (
     "neural-computer.external-transition-model-family-selection.v1"
 )
 EXTERNAL_MODEL_PLANNER_SCHEMA = "neural-computer.external-model-planner.v1"
+EXTERNAL_GOAL_CONDITIONED_MODEL_SELECTION_SCHEMA = (
+    "neural-computer.external-goal-conditioned-model-selection.v1"
+)
 
 EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY = "nonlinear_mlp_v1"
 EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY = "affine_sufficient_statistics_v1"
@@ -5311,6 +5314,45 @@ class ModelBasedPlanningResult:
         return self
 
 
+@dataclass(frozen=True)
+class GoalConditionedModelSelection:
+    """Goal-reachability ranking over stable external model addresses."""
+
+    selected_slot_id: int
+    candidate_slot_ids: tuple[int, ...]
+    scores: torch.Tensor
+    planning: ModelBasedPlanningResult
+    schema: str = EXTERNAL_GOAL_CONDITIONED_MODEL_SELECTION_SCHEMA
+
+    def validate(
+        self,
+        *,
+        state_width: int,
+        intention_width: int,
+    ) -> GoalConditionedModelSelection:
+        if self.schema != EXTERNAL_GOAL_CONDITIONED_MODEL_SELECTION_SCHEMA:
+            raise ValueError("unsupported goal-conditioned model selection schema")
+        if self.scores.ndim != 1 or self.scores.shape[0] != len(
+            self.candidate_slot_ids
+        ):
+            raise ValueError("goal-conditioned model scores are misaligned")
+        if not bool(torch.isfinite(self.scores).all()):
+            raise ValueError("goal-conditioned model scores are not finite")
+        if len(set(self.candidate_slot_ids)) != len(self.candidate_slot_ids):
+            raise ValueError("goal-conditioned model slot IDs are duplicated")
+        if any(slot_id < 0 for slot_id in self.candidate_slot_ids):
+            raise ValueError("goal-conditioned model slot ID is invalid")
+        if self.selected_slot_id not in self.candidate_slot_ids:
+            raise ValueError("goal-conditioned selected model is not a candidate")
+        self.planning.validate(
+            batch=1,
+            horizon=self.planning.intentions.shape[1],
+            state_width=state_width,
+            intention_width=intention_width,
+        )
+        return self
+
+
 class ExternalModelBasedPlanner:
     """Beam search over opaque candidate intentions and a frozen model."""
 
@@ -5506,10 +5548,63 @@ class ExternalModelBasedPlanner:
             intention_width=self.model.intention_width,
         )
 
+    @torch.no_grad()
+    def select_bank_model(
+        self,
+        bank: ExternalTransitionModelBank,
+        state: torch.Tensor,
+        goal_state: torch.Tensor,
+        candidate_intentions: torch.Tensor,
+        *,
+        horizon: int,
+        beam_width: int | None = None,
+    ) -> GoalConditionedModelSelection:
+        """Select the model whose factual rollout best reaches the goal.
+
+        This is inference-time search over facts, not a stored task policy.
+        Candidate model count remains runtime-variable; the controller and
+        each model interface remain unchanged. Stable logical addresses are
+        returned so physical bank reorganization cannot stale the selection.
+        """
+
+        if not isinstance(bank, ExternalTransitionModelBank):
+            raise TypeError("goal-conditioned selection requires an external model bank")
+        if bank.state_width != self.model.state_width or bank.intention_width != self.model.intention_width:
+            raise ValueError("model bank dimensions do not match planner")
+        if state.shape[0] != 1 or goal_state.shape[0] != 1:
+            raise ValueError("goal-conditioned bank selection accepts one query row")
+        if bank.context_count < 1:
+            raise ValueError("goal-conditioned bank selection needs one model")
+        results: list[ModelBasedPlanningResult] = []
+        for index in range(bank.context_count):
+            context = bank.context_at(index).to(state)
+            results.append(
+                self.plan(
+                    state,
+                    goal_state,
+                    candidate_intentions,
+                    horizon=horizon,
+                    beam_width=beam_width,
+                    transition_context=context.unsqueeze(0),
+                )
+            )
+        scores = torch.stack([result.scores[0] for result in results])
+        selected_index = int(scores.argmin())
+        return GoalConditionedModelSelection(
+            selected_slot_id=bank.slot_id_at(selected_index),
+            candidate_slot_ids=bank.slot_ids,
+            scores=scores.detach().clone(),
+            planning=results[selected_index],
+        ).validate(
+            state_width=bank.state_width,
+            intention_width=bank.intention_width,
+        )
+
 
 __all__ = [
     "EXTERNAL_CONTEXTUAL_EVIDENCE_CALIBRATOR_SCHEMA",
     "EXTERNAL_CONTEXT_ADDRESS_RESOLVER_SCHEMA",
+    "EXTERNAL_GOAL_CONDITIONED_MODEL_SELECTION_SCHEMA",
     "EXTERNAL_GOAL_EVALUATOR_SCHEMA",
     "EXTERNAL_MODEL_PLANNER_SCHEMA",
     "EXTERNAL_ONLINE_CONTEXT_RESOLVER_SCHEMA",
@@ -5551,5 +5646,6 @@ __all__ = [
     "ExternalTransitionModelConsolidationReceipt",
     "ExternalTransitionModelGrowthReceipt",
     "ExternalTransitionObservation",
+    "GoalConditionedModelSelection",
     "ModelBasedPlanningResult",
 ]

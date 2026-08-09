@@ -287,6 +287,7 @@ from .state_store import OPAQUE_STATE_STORE_SCHEMA, PersistentOpaqueStateStore
 from .world_model import (
     EXTERNAL_CONTEXT_ADDRESS_RESOLVER_SCHEMA,
     EXTERNAL_CONTEXTUAL_EVIDENCE_CALIBRATOR_SCHEMA,
+    EXTERNAL_GOAL_CONDITIONED_MODEL_SELECTION_SCHEMA,
     EXTERNAL_GOAL_EVALUATOR_SCHEMA,
     EXTERNAL_MODEL_PLANNER_SCHEMA,
     EXTERNAL_ONLINE_CONTEXT_RESOLVER_SCHEMA,
@@ -335,6 +336,7 @@ from .world_model import (
     ExternalTransitionModelLifetimeProposal,
     ExternalTransitionModelLifetimeTelemetry,
     ExternalTransitionObservation,
+    GoalConditionedModelSelection,
     ModelBasedPlanningResult,
 )
 
@@ -373,6 +375,7 @@ __all__ = [
     "EXTERNAL_CONTEXTUAL_EVIDENCE_CALIBRATOR_SCHEMA",
     "EXTERNAL_CONTEXT_ADDRESS_RESOLVER_SCHEMA",
     "EXTERNAL_FAST_WEIGHT_SCHEMA",
+    "EXTERNAL_GOAL_CONDITIONED_MODEL_SELECTION_SCHEMA",
     "EXTERNAL_GOAL_EVALUATOR_SCHEMA",
     "EXTERNAL_MODEL_PLANNER_SCHEMA",
     "EXTERNAL_ONLINE_CONTEXT_RESOLVER_SCHEMA",
@@ -550,6 +553,7 @@ __all__ = [
     "ExternalTransitionObservation",
     "FactorizedOpaqueAddressRouter",
     "GoalConditionedMemoryProposal",
+    "GoalConditionedModelSelection",
     "GrowthLoadReceipt",
     "HoldoutLedger",
     "InstructionConditionedRelationalTransition",
