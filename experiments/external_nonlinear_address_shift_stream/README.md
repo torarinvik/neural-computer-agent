@@ -6,6 +6,9 @@ encoder is frozen; novel address versions adapt copy-on-write from current
 evidence, while committed historical keys and factual model slots remain
 immutable unless a held-out retention gate authorizes promotion.
 
+The capacity-growth arm starts with four slots and performs retention-verified
+copy-on-write growth to six slots before the fifth regime arrives.
+
 Run one seed with:
 
 ```text

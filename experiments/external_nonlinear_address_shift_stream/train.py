@@ -45,6 +45,7 @@ REGIME_NAMES = (
     "target_e",
     "target_f",
 )
+INITIAL_CAPACITY = 4
 SOURCE_REGIMES = 2
 TARGET_REGIMES = tuple(range(SOURCE_REGIMES, len(REGIME_NAMES)))
 SEQUENCE = (
@@ -100,7 +101,7 @@ def _new_bank() -> ExternalTransitionModelBank:
         random_feature_width=FEATURE_WIDTH,
         random_feature_seed=17,
         affine_ridge=1e-4,
-        capacity=len(REGIME_NAMES),
+        capacity=INITIAL_CAPACITY,
     )
 
 
@@ -169,7 +170,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         continuation_tolerance=LOSS_THRESHOLD,
         provisional_continuation_tolerance=1e9,
         admission_observations=ADMISSION_ROWS,
-        max_contexts=len(REGIME_NAMES),
+        max_contexts=INITIAL_CAPACITY,
         defer_admission=True,
         candidate_model_families=(RANDOM_FEATURE_FAMILY,),
         provisional_evidence_policy="streaming_statistics",
@@ -180,9 +181,31 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
     prior_contexts: dict[str, torch.Tensor] = dict(source_contexts)
     prior_slot_digests = dict(source_slot_digests)
     all_retained = True
+    growth_records: list[dict[str, object]] = []
 
     for regime in TARGET_REGIMES:
         name = REGIME_NAMES[regime]
+        if name == "target_e":
+            def growth_retention_probe(candidate: ExternalTransitionModelBank) -> bool:
+                return all(
+                    _error(candidate, heldout[old_name], old_context)
+                    < LOSS_THRESHOLD
+                    for old_name, old_context in prior_contexts.items()
+                )
+
+            growth_receipt = router.grow_verified(6, growth_retention_probe)
+            if not growth_receipt.accepted:
+                raise RuntimeError(
+                    f"capacity growth failed: {growth_receipt.reason}"
+                )
+            growth_records.append(
+                {
+                    "source_capacity": growth_receipt.source_capacity,
+                    "destination_capacity": growth_receipt.destination_capacity,
+                    "context_count": growth_receipt.context_count,
+                    "reason": growth_receipt.reason,
+                }
+            )
         statuses = _consume(router, observations[name])
         status_counts.update(f"{name}:{key}" for key in statuses for _ in range(statuses[key]))
         if router.provisional_candidate_count != 1:
@@ -268,6 +291,11 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
     gates = {
         "context_encoder_converged": context_loss < 0.05,
         "all_target_promotions_pass": len(acquisition_records) == len(TARGET_REGIMES),
+        "capacity_growth_verified": (
+            len(growth_records) == 1
+            and growth_records[0]["source_capacity"] == INITIAL_CAPACITY
+            and growth_records[0]["destination_capacity"] == 6
+        ),
         "all_target_heldout_errors_pass": all(
             float(record["heldout_error"]) < LOSS_THRESHOLD
             for record in acquisition_records
@@ -324,6 +352,8 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "train_rows_per_regime": TRAIN_ROWS,
             "presented_rows_per_stream": PRESENTED_ROWS,
             "heldout_rows_per_regime": HELDOUT_ROWS,
+            "initial_capacity": INITIAL_CAPACITY,
+            "final_capacity": bank.capacity,
             "admission_rows": ADMISSION_ROWS,
             "context_encoder_updates": CONTEXT_UPDATES,
             "model_family": RANDOM_FEATURE_FAMILY,
@@ -337,6 +367,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "aggregation": "mean_pool",
         },
         "acquisitions": acquisition_records,
+        "capacity_growth": growth_records,
         "routes": route_records,
         "corruption_control": corruption_control,
         "status_counts": dict(status_counts),

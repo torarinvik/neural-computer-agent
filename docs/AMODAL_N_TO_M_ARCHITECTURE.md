@@ -5810,3 +5810,20 @@ mismatch. The next frontier is unbounded growth with verified consolidation or
 compression, plus a learned evidence policy that can decide when a mismatch is
 real under noisy multimodal streams. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_nonlinear_address_shift_stream_promoted_2026-08-10/`.
+
+## Verifier-gated nonlinear address-space growth (2026-08-10)
+
+The same long alternating stream now starts with a four-slot external bank.
+Before admitting the fifth regime, `ExternalOnlineTransitionContextRouter`
+calls `grow_verified(6, retention_probe)`. The transaction changes capacity
+metadata only after pre/post held-out retention checks; it does not rewrite
+contexts, models, or address versions.
+
+Seeds `82101`, `82102`, and `82103` all promoted the `4 -> 6` growth, acquired
+the remaining nonlinear regimes, revisited every target successfully, and
+passed the existing copy-on-write address, historical-key immutability,
+corruption, frozen-controller, zero-replay, and exact-persistence gates. This
+promotes verified nonlinear memory growth under learned address adaptation, not
+unrestricted growth or autonomous consolidation/compression. Evidence is
+archived in
+`session_records/sequence_working_memory_2026-08-02/external_nonlinear_address_shift_capacity_growth_promoted_2026-08-10/`.
