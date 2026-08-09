@@ -169,6 +169,10 @@ from .memory import (
     PersistentAppendOnlyContentAddressedMemory,
     PersistentContentAddressedMemory,
 )
+from .online_transition import (
+    EXTERNAL_TRANSITION_AFFINE_STATISTICS_SCHEMA,
+    ExternalAffineTransitionStatistics,
+)
 from .plasticity import (
     EXTERNAL_FAST_WEIGHT_SCHEMA,
     EXTERNAL_OUTCOME_CREDIT_SCHEMA,
@@ -372,6 +376,7 @@ __all__ = [
     "EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE",
     "EXTERNAL_REGISTER_SHARED_STABLE_RELATIONAL_MODE",
     "EXTERNAL_REGISTER_STATE_SCHEMA",
+    "EXTERNAL_TRANSITION_AFFINE_STATISTICS_SCHEMA",
     "EXTERNAL_TRANSITION_CONTEXT_ENCODER_SCHEMA",
     "EXTERNAL_TRANSITION_EVIDENCE_CALIBRATOR_SCHEMA",
     "EXTERNAL_TRANSITION_MEMORY_SCHEMA",
@@ -445,6 +450,7 @@ __all__ = [
     "EventTokenWindow",
     "EventWaitPolicy",
     "ExecutableArtifactMemory",
+    "ExternalAffineTransitionStatistics",
     "ExternalCapabilityComposition",
     "ExternalCapabilityEvictionPolicy",
     "ExternalCapabilityLifecycle",

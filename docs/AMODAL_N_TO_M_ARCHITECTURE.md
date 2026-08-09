@@ -4824,6 +4824,25 @@ learn the sparse target stream in one pass. Repeating the current bundle was
 accounted separately from old-evidence replay. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_provisional_candidate_one_pass_rejected_2026-08-09/`.
 
+## Replay-free affine sufficient-statistics memory (2026-08-09)
+
+The rejected one-pass MLP control identified a missing class of mechanism:
+some transition structure can be learned exactly from compact sufficient
+statistics, without retaining or replaying raw observations. The new
+`ExternalAffineTransitionStatistics` component accumulates weighted normal and
+target matrices over opaque state/intention/next-state tensors and persists
+only those matrices plus a sample count.
+
+Across two seeds, `12` training rows were consumed once and `4` held-out rows
+were predicted with errors `1.84e-13` and `2.58e-14`. Both raw-evidence absence
+and exact persistence passed, with zero optimizer updates and zero replayed
+examples. This promotes a narrow replay-free affine memory primitive, not a
+general nonlinear learner. Its next architectural use is as a replaceable
+fast path or expandable component alongside the general external transition
+model, with verifier-gated selection rather than hand-assigned semantics.
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_affine_one_pass_promoted_2026-08-09/`.
+
 ## Alternating provisional-candidate isolation (2026-08-09)
 
 The previous candidate boundary had one mutable provisional model. If a

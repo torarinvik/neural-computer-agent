@@ -1,0 +1,32 @@
+{
+  "schema": "neural-computer.external-affine-one-pass-pressure-test.v1",
+  "seed": 13012,
+  "configuration": {
+    "train_rows": 12,
+    "heldout_rows": 4,
+    "optimizer_updates": 0,
+    "replayed_examples": 0,
+    "representation": "opaque_affine_sufficient_statistics_v1"
+  },
+  "gates": {
+    "train_prediction_passes": true,
+    "heldout_prediction_passes": true,
+    "one_pass_sample_count": true,
+    "raw_evidence_not_stored": true,
+    "exact_persistence": true
+  },
+  "promoted": true,
+  "metrics": {
+    "train_error": 9.843977202665406e-15,
+    "heldout_error": 2.5757174171303632e-14,
+    "sample_count": 12,
+    "state_digest": "d618d9bc65b8b92835651cd64ea0f6529d13eee98e29f8c4b547a9895559a6e6"
+  },
+  "accounting": {
+    "unique_logical_lifetimes": 16,
+    "optimizer_updates": 0,
+    "streaming_statistics_updates": 12,
+    "replayed_examples": 0,
+    "old_evidence_replay": 0
+  }
+}
