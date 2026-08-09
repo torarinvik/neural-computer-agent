@@ -361,3 +361,29 @@ Each run used `370,176` verifier bits, `47,680` logical lifetimes, `2,912`
 optimizer updates, and zero replayed examples. The next frontier is a third
 sequential capability plus reversal testing, to distinguish durable growth
 from a two-stage benchmark effect.
+
+## Sequential three-target acquisition — promoted replicated rung
+
+The next audit appended a third instruction only after the first two targets
+had been promoted. It acquired `rotate`, `prefix_parity`, and then
+`global_parity`, adding a fresh basis slot, decoder, and learned event bridge
+for each target. Candidate restarts were allowed, but rejected candidates were
+rolled back before the next attempt; no old examples were replayed.
+
+Both seeds promoted all three targets. Every retained source and target
+capability stayed above the `0.8` floor after the final acquisition. The
+shuffled-outcome controls stayed at `0.4531`–`0.5156`, missing-evidence stayed
+at `0.5`, and all measured fixed-suite retention deltas were zero. Seed
+`69316` used `518,656` verifier bits and `4,064` optimizer updates; seed
+`69317` used `809,472` verifier bits and `6,368` optimizer updates because
+the first two candidate attempts were rejected before successful restarts.
+Both used zero replayed examples.
+
+The corrected pressure test uses a pixel-level sequence-order rerender rather
+than the earlier no-op operation-cue flip. `rotate` and `prefix_parity` had
+changed rendered labels under reversal, while `global_parity` correctly stayed
+label-invariant because parity is order-invariant. The retained capabilities
+remained strong under these rerenders, so this is evidence for durable
+generalization—not evidence that unrestricted continual learning is solved.
+The next frontier is genuinely novel composition and longer, interleaved
+acquisition with bounded memory growth.

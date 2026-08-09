@@ -102,6 +102,38 @@ def test_runtime_generated_program_renderer_supports_eight_steps() -> None:
     assert torch.isfinite(batch.query_frames).all()
 
 
+def test_sequence_reversal_rerenders_inputs_and_recomputes_order_sensitive_labels() -> None:
+    normal = generate_sequence_memory_batch(
+        8, span=4, distractors=0, seed=117, operation="prefix_parity",
+        heldout=True,
+    )
+    reversed_sequence = generate_sequence_memory_batch(
+        8, span=4, distractors=0, seed=117, operation="prefix_parity",
+        heldout=True, reverse_sequence=True,
+    )
+
+    assert not torch.equal(normal.input_frames, reversed_sequence.input_frames)
+    assert not torch.equal(
+        normal.correct_actions, reversed_sequence.correct_actions
+    )
+
+
+def test_sequence_reversal_preserves_order_invariant_global_parity_labels() -> None:
+    normal = generate_sequence_memory_batch(
+        8, span=4, distractors=0, seed=118, operation="global_parity",
+        heldout=True,
+    )
+    reversed_sequence = generate_sequence_memory_batch(
+        8, span=4, distractors=0, seed=118, operation="global_parity",
+        heldout=True, reverse_sequence=True,
+    )
+
+    assert not torch.equal(normal.input_frames, reversed_sequence.input_frames)
+    assert torch.equal(
+        normal.correct_actions, reversed_sequence.correct_actions
+    )
+
+
 def test_spatial_binding_frontend_preserves_event_shape() -> None:
     encoder = SpatialBindingFrameEventEncoder(32)
     frames = torch.rand(4, 3, 32, 32)

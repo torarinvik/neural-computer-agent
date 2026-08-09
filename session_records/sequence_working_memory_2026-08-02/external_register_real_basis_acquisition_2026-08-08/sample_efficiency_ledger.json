@@ -16,5 +16,30 @@
   },
   "stable_bits_to_threshold": "failed",
   "transfer_ratio_against_fresh_learner": "not measured",
-  "decision": "reject as capability learner; retain as trainer-only credit diagnostic"
+  "decision": "reject as capability learner; retain as trainer-only credit diagnostic",
+  "follow_up_promotions": [
+    {
+      "experiment": "sequential_three_target_append_only_growth",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "Three opaque capabilities can be appended and frozen sequentially without replay while retaining prior capabilities under fixed-suite and causal controls.",
+      "unique_verifier_bits": {
+        "69316": 518656,
+        "69317": 809472
+      },
+      "unique_logical_lifetimes": {
+        "69316": 66752,
+        "69317": 104128
+      },
+      "optimizer_updates": {
+        "69316": 4064,
+        "69317": 6368
+      },
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": "frozen candidate probe gate passed for all three targets in both seeds",
+      "retention_on_mastered_primitives": "all fixed-suite deltas zero; all retained scores above 0.8",
+      "transfer_ratio_against_fresh_learner": "not measured",
+      "decision": "promote bounded three-target rung; do not claim unrestricted continual learning"
+    }
+  ]
 }

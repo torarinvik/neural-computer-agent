@@ -76,9 +76,31 @@
       "promoted_seeds": [69316, 69317],
       "target_operations": ["rotate", "prefix_parity"],
       "replayed_examples": 0
+    },
+    {
+      "name": "sequential_three_target_append_only_growth",
+      "decision": "promote_replicated_three_target_rung",
+      "verifier_bits_per_run": {
+        "69316": 518656,
+        "69317": 809472
+      },
+      "optimizer_updates_per_run": {
+        "69316": 4064,
+        "69317": 6368
+      },
+      "logical_lifetimes_per_run": {
+        "69316": 66752,
+        "69317": 104128
+      },
+      "frozen_candidate_probe_gate": "passed_for_all_three_targets_both_seeds",
+      "source_retention": "passed",
+      "promoted_seeds": [69316, 69317],
+      "target_operations": ["rotate", "prefix_parity", "global_parity"],
+      "replayed_examples": 0,
+      "sequence_reversal": "valid_rerender_control; no capability collapse"
     }
   ],
-  "next_frontier": "third_sequential_capability_plus_reversal",
+  "next_frontier": "interleaved_fourth_capability_and_composition_transfer",
   "candidate_event_bridge": {
     "decision": "retain_architecture_reject_current_learning_rung",
     "verifier_bits_per_run": 70656,

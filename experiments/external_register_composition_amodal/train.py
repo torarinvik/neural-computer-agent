@@ -84,6 +84,8 @@ def _batch(
     seed: int,
     generated_composition_ids: tuple[int, ...] | None = None,
     generated_compositions: GeneratedCompositionGrammar | None = None,
+    reverse_operations: bool = False,
+    reverse_sequence: bool = False,
 ):
     return generate_sequence_memory_batch(
         count,
@@ -93,6 +95,8 @@ def _batch(
         operation=operation,
         generated_composition_ids=generated_composition_ids,
         generated_compositions=generated_compositions,
+        reverse_operations=reverse_operations,
+        reverse_sequence=reverse_sequence,
     )
 
 
@@ -556,6 +560,8 @@ def _accuracy(
     value_head: OpaqueVerifierValue | None = None,
     q_head: OpaqueVerifierQ | None = None,
     event_bridge: AmodalEventBridge | None = None,
+    reverse_operations: bool = False,
+    reverse_sequence: bool = False,
 ) -> float:
     batch = _batch(
         operation,
@@ -564,6 +570,8 @@ def _accuracy(
         seed=seed,
         generated_composition_ids=generated_composition_ids,
         generated_compositions=generated_compositions,
+        reverse_operations=reverse_operations,
+        reverse_sequence=reverse_sequence,
     )
     return float(
         _rollout(

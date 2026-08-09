@@ -35,7 +35,7 @@ from .train import (
     _train_stage,
 )
 
-TARGET_OPERATIONS = ("rotate", "prefix_parity")
+TARGET_OPERATIONS = ("rotate", "prefix_parity", "global_parity")
 MASTERY_THRESHOLD = 0.8
 
 
@@ -49,7 +49,17 @@ def _target_spec(
     return operation, instruction, decoder, basis_slot, event_bridge
 
 
-def _score_spec(parent, machine, spec, *, count: int, span: int, seed: int) -> float:
+def _score_spec(
+    parent,
+    machine,
+    spec,
+    *,
+    count: int,
+    span: int,
+    seed: int,
+    reverse_operations: bool = False,
+    reverse_sequence: bool = False,
+) -> float:
     operation, instruction, decoder, basis_slot, event_bridge = spec
     return _accuracy(
         parent,
@@ -63,6 +73,8 @@ def _score_spec(parent, machine, spec, *, count: int, span: int, seed: int) -> f
         seed=seed,
         credit_mode="attempted_bce",
         event_bridge=event_bridge,
+        reverse_operations=reverse_operations,
+        reverse_sequence=reverse_sequence,
     )
 
 
@@ -329,6 +341,8 @@ def _acquire_target(
 
 def run(args: argparse.Namespace) -> dict[str, object]:
     torch.set_num_threads(1)
+    if args.candidate_restarts < 1:
+        raise ValueError("candidate restarts must be positive")
     parent = _runtime(seed=args.seed, growth=False)
     _train_with_progress(
         parent,
@@ -404,14 +418,39 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         for target_stage_index, operation in enumerate(TARGET_OPERATIONS):
             if target_stage_index:
                 machine.add_instruction(ExternalRegisterInstruction(INSTRUCTION_WIDTH))
-            result, accepted_spec = _acquire_target(
-                parent,
-                machine,
-                retained_specs,
-                target_index=len(machine.instructions) - 1,
-                operation=operation,
-                args=args,
-            )
+            target_index = len(machine.instructions) - 1
+            attempts: list[dict[str, object]] = []
+            accepted_spec = None
+            result = None
+            for attempt in range(args.candidate_restarts):
+                attempt_args = copy.copy(args)
+                attempt_args.seed = args.seed + attempt * 1_000_000
+                attempt_result, attempt_spec = _acquire_target(
+                    parent,
+                    machine,
+                    retained_specs,
+                    target_index=target_index,
+                    operation=operation,
+                    args=attempt_args,
+                )
+                attempts.append(
+                    {
+                        "attempt": attempt + 1,
+                        "accepted": attempt_result["accepted"],
+                        "candidate_accuracy": attempt_result["candidate_accuracy"],
+                        "consolidation_probe_scores": attempt_result[
+                            "consolidation_probe_scores"
+                        ],
+                        "retained_after": attempt_result["retained_after"],
+                    }
+                )
+                result = attempt_result
+                accepted_spec = attempt_spec
+                if accepted_spec is not None:
+                    break
+            assert result is not None
+            result["candidate_attempt_count"] = len(attempts)
+            result["candidate_attempts"] = attempts
             targets.append(result)
             if accepted_spec is None:
                 break
@@ -433,7 +472,57 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "unique_verifier_bits": 0,
         },
     }
+    reversal_probes = []
+    if report["promoted_target_count"] == len(TARGET_OPERATIONS):
+        for index, spec in enumerate(retained_specs):
+            if index < len(SOURCE_OPERATIONS):
+                continue
+            reversal_probes.append(
+                {
+                    "operation": spec[0],
+                    "normal_accuracy": _score_spec(
+                        parent,
+                        machine,
+                        spec,
+                        count=args.consolidation_audit_count,
+                        span=args.span,
+                        seed=args.seed + 900_000 + index * 1_009,
+                    ),
+                    "sequence_reversal_accuracy": _score_spec(
+                        parent,
+                        machine,
+                        spec,
+                        count=args.consolidation_audit_count,
+                        span=args.span,
+                        seed=args.seed + 900_000 + index * 1_009,
+                        reverse_sequence=True,
+                    ),
+                }
+            )
+    report["reversal_probes"] = reversal_probes
+    report["sequence_reversal_pressure_detected"] = bool(
+        reversal_probes
+        and all(
+            probe["normal_accuracy"] >= MASTERY_THRESHOLD
+            and probe["sequence_reversal_accuracy"] < (
+                probe["normal_accuracy"] - 0.1
+            )
+            for probe in reversal_probes
+        )
+    )
+    reversal_bits = (
+        len(reversal_probes)
+        * args.consolidation_audit_count
+        * args.span
+        * 4
+    )
+    reversal_lifetimes = (
+        len(reversal_probes) * args.consolidation_audit_count * 2
+    )
     target_count = len(targets)
+    candidate_attempt_count = sum(
+        int(target["candidate_attempt_count"]) for target in targets
+    )
     source_selection_evaluations = (
         (args.source_updates + args.eval_every - 1) // args.eval_every
     )
@@ -452,7 +541,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         * 2
     )
     target_stage_bits = (
-        target_count
+        candidate_attempt_count
         * (
             args.growth_warmup_updates * args.growth_span
             + (args.growth_basis_focus_updates + args.target_updates) * args.span
@@ -461,10 +550,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         * 2
     )
     shuffled_control_bits = (
-        target_count * args.target_updates * args.batch_size * args.span * 2
+        candidate_attempt_count
+        * args.target_updates
+        * args.batch_size
+        * args.span
+        * 2
     )
     consolidation_bits = (
-        target_count
+        candidate_attempt_count
         * args.consolidation_probes
         * args.consolidation_audit_count
         * args.span
@@ -477,6 +570,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "target_stage_verifier_bits": target_stage_bits,
             "shuffled_control_verifier_bits": shuffled_control_bits,
             "consolidation_verifier_bits": consolidation_bits,
+            "reversal_verifier_bits": reversal_bits,
             "unique_verifier_bits": (
                 report["accounting"]["parent_unique_verifier_bits"]
                 + source_train_bits
@@ -484,11 +578,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 + target_stage_bits
                 + shuffled_control_bits
                 + consolidation_bits
+                + reversal_bits
             ),
             "optimizer_updates": (
                 args.parent_updates
                 + args.source_updates * len(SOURCE_OPERATIONS)
-                + target_count
+                + candidate_attempt_count
                 * (
                     args.growth_warmup_updates
                     + args.growth_basis_focus_updates
@@ -504,7 +599,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 + source_selection_evaluations
                 * len(SOURCE_OPERATIONS)
                 * args.source_selection_audit_count
-                + target_count
+                + candidate_attempt_count
                 * (
                     (args.growth_warmup_updates + args.growth_basis_focus_updates
                      + args.target_updates)
@@ -512,6 +607,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                     + args.target_updates * args.batch_size
                     + args.consolidation_probes * args.consolidation_audit_count
                 )
+                + reversal_lifetimes
             ),
         }
     )
@@ -532,6 +628,7 @@ def main() -> None:
     parser.add_argument("--growth-warmup-updates", type=int, default=64)
     parser.add_argument("--growth-basis-focus-updates", type=int, default=64)
     parser.add_argument("--target-updates", type=int, default=512)
+    parser.add_argument("--candidate-restarts", type=int, default=2)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--span", type=int, default=4)
     parser.add_argument("--growth-span", type=int, default=2)
