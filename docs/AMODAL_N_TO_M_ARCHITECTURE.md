@@ -4149,3 +4149,21 @@ removed from the production path. The result does not disprove a future
 execution context, but shows that adding structural position to the existing
 instruction code does not repair the portable serial algebra. Evidence is in
 `session_records/sequence_working_memory_2026-08-02/external_register_execution_position_rejected_v1_2026-08-09/`.
+
+## Portable external-program artifact contract (2026-08-09)
+
+The external-program boundary now has a typed, independently versioned file
+contract: `ExternalProgramArtifact`. It contains only finite learned opaque
+instruction tensors and the interpreter, execution, and optional output
+interface schemas needed to validate a compatible runtime. It has no task
+name, modality identity, protocol action, correct answer, or verifier-private
+metadata. Artifacts produce a deterministic interface-and-content digest,
+round-trip through a torch-safe payload, reject tensor tampering, and can be
+admitted to or snapshotted from `ExternalSequenceProgramMemory` only after ABI
+validation.
+
+This closes a real implementation seam between “external memory as files” and
+the register interpreter, but it is an interface/persistence gain rather than
+evidence of new learned capability or positive transfer. Behavior still must
+be verified after loading, and the next capability bottleneck remains a
+portable execution-state representation shared across longer programs.

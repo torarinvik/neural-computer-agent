@@ -179,6 +179,7 @@ from .plasticity import (
     project_parameter_update_against_reference,
     zero_gradient_map,
 )
+from .program import EXTERNAL_PROGRAM_ARTIFACT_SCHEMA, ExternalProgramArtifact
 from .policies import EventReliabilityPolicy, EventWaitPolicy
 from .promotion import (
     HOLDOUT_LEDGER_SCHEMA,

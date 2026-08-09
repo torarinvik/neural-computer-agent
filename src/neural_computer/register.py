@@ -21,6 +21,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from .interface import IntentEvent
+from .program import ExternalProgramArtifact
 
 EXTERNAL_REGISTER_SCHEMA = "neural-computer.external-register.v4"
 EXTERNAL_REGISTER_INSTRUCTION_SCHEMA = (
@@ -437,7 +438,39 @@ class ExternalSequenceProgramMemory(nn.Module):
             ),
             "storage": "append_only_opaque_instruction_sequences_v1",
             "computation": "shared_register_interpreter_v1",
+            "artifact_schema": "neural-computer.external-program-artifact.v1",
         }
+
+    def add_artifact(self, artifact: ExternalProgramArtifact) -> int:
+        """Admit one portable opaque program after validating its ABI."""
+
+        if not isinstance(artifact, ExternalProgramArtifact):
+            raise TypeError(
+                "sequence program memory requires an external program artifact"
+            )
+        artifact.validate_for(
+            instruction_width=self.instruction_width,
+            interpreter_schema="neural-computer.external-register.v4",
+            execution_schema="neural-computer.external-register-read-execute.v1",
+        )
+        return self.add_program(artifact.codes)
+
+    def artifact(
+        self,
+        slot: int,
+        *,
+        output_schema: str | None = None,
+    ) -> ExternalProgramArtifact:
+        """Snapshot one stored program as a portable external artifact."""
+
+        if not 0 <= slot < len(self.programs):
+            raise ValueError("sequence program memory slot index is out of range")
+        return ExternalProgramArtifact(
+            codes=self.programs[slot].detach(),
+            interpreter_schema="neural-computer.external-register.v4",
+            execution_schema="neural-computer.external-register-read-execute.v1",
+            output_schema=output_schema,
+        )
 
     def add_program(self, codes: torch.Tensor) -> int:
         if (
