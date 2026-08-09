@@ -4,6 +4,7 @@ from neural_computer import (
     ExternalContextAddressResolver,
     ExternalGoalEvaluator,
     ExternalModelBasedPlanner,
+    ExternalOnlineContextAddressResolver,
     ExternalTransitionMemory,
     ExternalTransitionModel,
     ExternalTransitionObservation,
@@ -235,3 +236,60 @@ def test_context_resolver_reuses_consistent_facts_and_allocates_new_regime() -> 
     assert reversal_again.reused
     assert resolver.context_count == 2
     assert torch.allclose(restored.addresses(), resolver.addresses())
+
+
+def test_online_context_resolver_accumulates_interleaved_evidence_without_early_writes() -> None:
+    memory = ExternalTransitionMemory(1, 1, context_width=2)
+    resolver = ExternalOnlineContextAddressResolver(
+        2,
+        address_seed=1205,
+        admission_observations=3,
+        contradiction_observations=2,
+    )
+
+    def row(position: float, next_position: float) -> ExternalTransitionObservation:
+        return ExternalTransitionObservation(
+            state=torch.tensor([[position]]),
+            intention=torch.ones(1, 1),
+            next_state=torch.tensor([[next_position]]),
+        )
+
+    stream_a = torch.tensor([1.0, 0.0])
+    stream_b = torch.tensor([0.0, 1.0])
+    a1 = resolver.observe(row(0.0, 1.0), stream_a, memory)
+    b1 = resolver.observe(row(0.0, -1.0), stream_b, memory)
+    a2 = resolver.observe(row(1.0, 2.0), stream_a, memory)
+    b2 = resolver.observe(row(1.0, 0.0), stream_b, memory)
+    assert a1.status == "uncertain" and b1.status == "uncertain"
+    assert a2.status == "uncertain" and b2.status == "uncertain"
+    assert memory.record_count == 0
+
+    a3 = resolver.observe(row(2.0, 3.0), stream_a, memory)
+    b3 = resolver.observe(row(2.0, 1.0), stream_b, memory)
+
+    assert a3.status == "admitted" and b3.status == "admitted"
+    assert memory.record_count == 6
+
+    reversal_1 = resolver.observe(row(0.0, -1.0), stream_a, memory)
+    reversal_2 = resolver.observe(row(1.0, 0.0), stream_a, memory)
+    assert reversal_1.status == "conflict"
+    assert reversal_1.committed_observations == 0
+    assert reversal_2.status == "admitted"
+    assert memory.record_count == 8
+
+    restored = ExternalOnlineContextAddressResolver.from_payload(resolver.payload())
+    assert restored.context_count == resolver.context_count == 3
+    assert restored.pending_observations(stream_a) == 0
+
+    pending_memory = ExternalTransitionMemory(1, 1, context_width=2)
+    pending_resolver = ExternalOnlineContextAddressResolver(
+        2, address_seed=1206, admission_observations=3
+    )
+    pending_resolver.observe(row(0.0, 1.0), stream_a, pending_memory)
+    pending_resolver.observe(row(1.0, 2.0), stream_a, pending_memory)
+    resumed = ExternalOnlineContextAddressResolver.from_payload(
+        pending_resolver.payload()
+    )
+    resumed_result = resumed.observe(row(2.0, 3.0), stream_a, pending_memory)
+    assert resumed_result.status == "admitted"
+    assert pending_memory.record_count == 3

@@ -1254,6 +1254,27 @@
       "fresh_memory_factual_control": "all fresh-memory transition hit rates were 0.0",
       "controls": "controller unchanged, new-address admission, duplicate reuse, rediscovery, reversal retention, wrong-context factual error, corruption factual error, fresh factual misses, persistence, zero target updates, and zero replay passed",
       "decision": "promote bounded verified-bundle address admission; next learn partial-stream context clustering and test capacity growth, compression, and extrapolation beyond exact stored facts"
+    },
+    {
+      "experiment": "external_online_context_admission",
+      "date": "2026-08-09",
+      "seeds": [69601, 69602],
+      "claim": "An external resolver can accumulate partial verified transition evidence online across interleaved opaque streams, delay writes while uncertain, and preserve old facts through reversal admission.",
+      "module": "ExternalOnlineContextAddressResolver + ExternalTransitionMemory",
+      "stream_count_per_seed": 3,
+      "admission_observations": 3,
+      "contradiction_observations": 2,
+      "unique_transition_lifetimes_per_seed": 11,
+      "unique_verifier_bits_per_seed": 11,
+      "target_optimizer_updates_per_seed": 0,
+      "replayed_examples": 0,
+      "initial_context_addresses": [3, 3],
+      "post_reversal_context_addresses": [4, 4],
+      "retention_hit_rate": [1.0, 1.0],
+      "wrong_context_factual_control": "non-zero next-state MSE in both seeds",
+      "fresh_memory_factual_control": "zero transition hits in both seeds",
+      "controls": "no early writes, interleaved admission, duplicate reuse, reversal conflict/no-write, reversal retention, wrong-context error, corruption error, fresh misses, persistence, frozen controller, zero target updates, and zero replay passed",
+      "decision": "promote bounded online partial-evidence admission; next learn thresholds and modality-grounded context formation, then test partial clustering, capacity growth, compression, and extrapolation"
     }
   ]
 }

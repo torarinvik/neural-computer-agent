@@ -15,6 +15,7 @@ behavior is recomputed instead of being stored as a task-specific policy.
 from __future__ import annotations
 
 import hashlib
+import math
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -35,6 +36,9 @@ EXTERNAL_TRANSITION_MODEL_SCHEMA = "neural-computer.external-transition-model.v1
 EXTERNAL_TRANSITION_MEMORY_SCHEMA = "neural-computer.external-transition-memory.v1"
 EXTERNAL_CONTEXT_ADDRESS_RESOLVER_SCHEMA = (
     "neural-computer.external-context-address-resolver.v1"
+)
+EXTERNAL_ONLINE_CONTEXT_RESOLVER_SCHEMA = (
+    "neural-computer.external-online-context-resolver.v1"
 )
 EXTERNAL_GOAL_EVALUATOR_SCHEMA = "neural-computer.external-goal-evaluator.v1"
 EXTERNAL_MODEL_PLANNER_SCHEMA = "neural-computer.external-model-planner.v1"
@@ -500,7 +504,9 @@ class ExternalContextResolution:
             raise TypeError("context-resolution reused flag must be boolean")
         if not isinstance(self.matched_observations, int) or self.matched_observations < 0:
             raise ValueError("context-resolution match count is invalid")
-        if self.mean_error < 0.0 or self.mean_error != self.mean_error:
+        if not isinstance(self.mean_error, (float, int)) or not math.isfinite(
+            float(self.mean_error)
+        ) or self.mean_error < 0.0:
             raise ValueError("context-resolution mean error is invalid")
         return self
 
@@ -658,6 +664,384 @@ class ExternalContextAddressResolver:
         if not isinstance(allocation_count, int) or allocation_count < len(addresses):
             raise ValueError("context-resolver allocation count is invalid")
         resolver._allocation_count = allocation_count
+        return resolver
+
+
+@dataclass(frozen=True)
+class ExternalOnlineContextResolution:
+    """Result of one partial-evidence online address decision."""
+
+    status: str
+    context: torch.Tensor | None
+    committed_observations: int
+    pending_observations: int
+    schema: str = EXTERNAL_ONLINE_CONTEXT_RESOLVER_SCHEMA
+
+    def validate(
+        self, *, context_width: int
+    ) -> ExternalOnlineContextResolution:
+        if self.schema != EXTERNAL_ONLINE_CONTEXT_RESOLVER_SCHEMA:
+            raise ValueError("unsupported online context-resolution schema")
+        if self.status not in {"uncertain", "conflict", "reused", "admitted"}:
+            raise ValueError("unsupported online context-resolution status")
+        if self.context is not None:
+            _validate_tensor(
+                self.context, name="online context", ndim=1, width=context_width
+            )
+        if (
+            not isinstance(self.committed_observations, int)
+            or self.committed_observations < 0
+            or not isinstance(self.pending_observations, int)
+            or self.pending_observations < 0
+        ):
+            raise ValueError("online context-resolution counts are invalid")
+        return self
+
+
+class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
+    """Accumulate partial verified evidence before changing memory addresses.
+
+    New streams remain provisional until ``admission_observations`` consistent
+    facts have accumulated.  An already-bound stream remains provisional on an
+    unknown row and requires ``contradiction_observations`` contradictory hits
+    before a new address is admitted.  Ambiguous rows are never written to the
+    old address.  ``stream_key`` is an opaque transport binding, not a task or
+    semantic label.
+    """
+
+    schema = EXTERNAL_ONLINE_CONTEXT_RESOLVER_SCHEMA
+
+    def __init__(
+        self,
+        context_width: int,
+        *,
+        match_tolerance: float = 1e-6,
+        address_seed: int = 0,
+        admission_observations: int = 3,
+        contradiction_observations: int = 2,
+    ) -> None:
+        super().__init__(
+            context_width,
+            match_tolerance=match_tolerance,
+            address_seed=address_seed,
+        )
+        if admission_observations < 1 or contradiction_observations < 1:
+            raise ValueError("online admission thresholds must be positive")
+        self.admission_observations = int(admission_observations)
+        self.contradiction_observations = int(contradiction_observations)
+        self._assigned: dict[tuple[float, ...], int] = {}
+        self._pending: dict[
+            tuple[float, ...], list[ExternalTransitionObservation]
+        ] = {}
+        self._contradiction_streak: dict[tuple[float, ...], int] = {}
+
+    def configuration(self) -> dict[str, int | float | str]:
+        return {
+            "schema": self.schema,
+            "context_width": self.context_width,
+            "match_tolerance": self.match_tolerance,
+            "address_seed": self.address_seed,
+            "admission_observations": self.admission_observations,
+            "contradiction_observations": self.contradiction_observations,
+            "behavior": "uncertain_rows_are_not_written_v1",
+        }
+
+    def _stream_id(self, stream_key: torch.Tensor) -> tuple[float, ...]:
+        _validate_tensor(
+            stream_key, name="stream_key", ndim=1, width=self.context_width
+        )
+        if float(torch.linalg.vector_norm(stream_key)) <= 1e-12:
+            raise ValueError("stream_key must be non-zero")
+        normalized = torch.nn.functional.normalize(
+            stream_key.detach().to(device="cpu", dtype=torch.float32), dim=0
+        )
+        return tuple(float(value) for value in normalized.tolist())
+
+    @staticmethod
+    def _clone_observation(
+        observation: ExternalTransitionObservation,
+    ) -> ExternalTransitionObservation:
+        return ExternalTransitionObservation(
+            state=observation.state.detach().clone(),
+            intention=observation.intention.detach().clone(),
+            next_state=observation.next_state.detach().clone(),
+            confidence=(
+                None
+                if observation.confidence is None
+                else observation.confidence.detach().clone()
+            ),
+        )
+
+    @staticmethod
+    def _merge(
+        observations: list[ExternalTransitionObservation],
+    ) -> ExternalTransitionObservation:
+        if not observations:
+            raise ValueError("cannot merge empty online observation list")
+        confidence = [
+            torch.ones(item.state.shape[0], device=item.state.device)
+            if item.confidence is None
+            else item.confidence.reshape(-1)
+            for item in observations
+        ]
+        return ExternalTransitionObservation(
+            state=torch.cat([item.state for item in observations]),
+            intention=torch.cat([item.intention for item in observations]),
+            next_state=torch.cat([item.next_state for item in observations]),
+            confidence=torch.cat(confidence),
+        )
+
+    def _candidate(
+        self,
+        observation: ExternalTransitionObservation,
+        memory: ExternalTransitionMemory,
+    ) -> tuple[int, float] | None:
+        best: tuple[int, float] | None = None
+        for index, address in enumerate(self._addresses):
+            prediction, hits = memory.predict_with_hit(
+                observation.state,
+                observation.intention,
+                context=address.to(observation.state)
+                .unsqueeze(0)
+                .expand(observation.state.shape[0], -1),
+            )
+            if not bool(hits.all()):
+                continue
+            error = float(
+                (prediction - observation.next_state).square().mean().detach()
+            )
+            if error <= self.match_tolerance and (
+                best is None or error < best[1]
+            ):
+                best = (index, error)
+        return best
+
+    def _commit(
+        self,
+        stream_id: tuple[float, ...],
+        memory: ExternalTransitionMemory,
+        context_index: int,
+        observations: list[ExternalTransitionObservation],
+    ) -> int:
+        if not observations:
+            return 0
+        memory.write(
+            self._merge(observations),
+            context=self._addresses[context_index]
+            .to(observations[0].state)
+            .unsqueeze(0)
+            .expand(sum(item.state.shape[0] for item in observations), -1),
+        )
+        self._assigned[stream_id] = context_index
+        return sum(item.state.shape[0] for item in observations)
+
+    def observe(
+        self,
+        observation: ExternalTransitionObservation,
+        stream_key: torch.Tensor,
+        memory: ExternalTransitionMemory,
+    ) -> ExternalOnlineContextResolution:
+        """Consume one verified row without writing while its address is ambiguous."""
+
+        if not isinstance(memory, ExternalTransitionMemory):
+            raise TypeError("online resolver requires ExternalTransitionMemory")
+        observation.validate(
+            state_width=memory.state_width,
+            intention_width=memory.intention_width,
+        )
+        if observation.state.shape[0] != 1:
+            raise ValueError("online resolver expects one observation per call")
+        if memory.context_width != self.context_width:
+            raise ValueError("resolver and transition memory context widths differ")
+        stream_id = self._stream_id(stream_key)
+        current = self._clone_observation(observation)
+        pending = self._pending.setdefault(stream_id, [])
+
+        if stream_id not in self._assigned:
+            candidate = self._candidate(current, memory)
+            if candidate is not None and not pending:
+                committed = self._commit(
+                    stream_id, memory, candidate[0], [current]
+                )
+                return ExternalOnlineContextResolution(
+                    status="reused",
+                    context=self._addresses[candidate[0]].clone(),
+                    committed_observations=committed,
+                    pending_observations=0,
+                ).validate(context_width=self.context_width)
+            pending.append(current)
+            if len(pending) < self.admission_observations:
+                return ExternalOnlineContextResolution(
+                    status="uncertain",
+                    context=None,
+                    committed_observations=0,
+                    pending_observations=len(pending),
+                ).validate(context_width=self.context_width)
+            context = self._new_address()
+            context_index = len(self._addresses) - 1
+            committed = self._commit(stream_id, memory, context_index, pending)
+            pending.clear()
+            return ExternalOnlineContextResolution(
+                status="admitted",
+                context=context.clone(),
+                committed_observations=committed,
+                pending_observations=0,
+            ).validate(context_width=self.context_width)
+
+        context_index = self._assigned[stream_id]
+        context = self._addresses[context_index]
+        prediction, hits = memory.predict_with_hit(
+            current.state,
+            current.intention,
+            context=context.to(current.state).unsqueeze(0),
+        )
+        if bool(hits.all()):
+            error = float(
+                (prediction - current.next_state).square().mean().detach()
+            )
+            if error <= self.match_tolerance:
+                pending.clear()
+                self._contradiction_streak.pop(stream_id, None)
+                committed = self._commit(stream_id, memory, context_index, [current])
+                return ExternalOnlineContextResolution(
+                    status="reused",
+                    context=context.clone(),
+                    committed_observations=committed,
+                    pending_observations=0,
+                ).validate(context_width=self.context_width)
+            self._contradiction_streak[stream_id] = (
+                self._contradiction_streak.get(stream_id, 0) + 1
+            )
+            pending.append(current)
+            if (
+                self._contradiction_streak[stream_id]
+                < self.contradiction_observations
+            ):
+                return ExternalOnlineContextResolution(
+                    status="conflict",
+                    context=None,
+                    committed_observations=0,
+                    pending_observations=len(pending),
+                ).validate(context_width=self.context_width)
+            new_context = self._new_address()
+            new_index = len(self._addresses) - 1
+            committed = self._commit(stream_id, memory, new_index, pending)
+            pending.clear()
+            self._contradiction_streak[stream_id] = 0
+            return ExternalOnlineContextResolution(
+                status="admitted",
+                context=new_context.clone(),
+                committed_observations=committed,
+                pending_observations=0,
+            ).validate(context_width=self.context_width)
+
+        pending.append(current)
+        return ExternalOnlineContextResolution(
+            status="uncertain",
+            context=None,
+            committed_observations=0,
+            pending_observations=len(pending),
+        ).validate(context_width=self.context_width)
+
+    def pending_observations(self, stream_key: torch.Tensor) -> int:
+        return len(self._pending.get(self._stream_id(stream_key), []))
+
+    def payload(self) -> dict[str, object]:
+        base = super().payload()
+        base["schema"] = self.schema
+        base["admission_observations"] = self.admission_observations
+        base["contradiction_observations"] = self.contradiction_observations
+        base["assigned"] = [
+            {"stream_key": list(stream), "address_index": index}
+            for stream, index in self._assigned.items()
+        ]
+        base["contradiction_streak"] = [
+            {"stream_key": list(stream), "count": count}
+            for stream, count in self._contradiction_streak.items()
+        ]
+        base["pending"] = [
+            {
+                "stream_key": list(stream),
+                "observations": [
+                    {
+                        "state": item.state.tolist(),
+                        "intention": item.intention.tolist(),
+                        "next_state": item.next_state.tolist(),
+                        "confidence": (
+                            None
+                            if item.confidence is None
+                            else item.confidence.tolist()
+                        ),
+                    }
+                    for item in observations
+                ],
+            }
+            for stream, observations in self._pending.items()
+            if observations
+        ]
+        return base
+
+    @classmethod
+    def from_payload(
+        cls, payload: Mapping[str, Any]
+    ) -> ExternalOnlineContextAddressResolver:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported online context-resolver payload")
+        resolver = cls(
+            int(payload["context_width"]),
+            match_tolerance=float(payload["match_tolerance"]),
+            address_seed=int(payload["address_seed"]),
+            admission_observations=int(payload["admission_observations"]),
+            contradiction_observations=int(payload["contradiction_observations"]),
+        )
+        addresses = payload.get("addresses")
+        if not isinstance(addresses, list):
+            raise TypeError("online context-resolver addresses must be a list")
+        for values in addresses:
+            address = torch.tensor(values, dtype=torch.float32)
+            _validate_tensor(
+                address, name="online context address", ndim=1, width=resolver.context_width
+            )
+            resolver._addresses.append(torch.nn.functional.normalize(address, dim=0))
+        allocation_count = payload.get("allocation_count", len(addresses))
+        if not isinstance(allocation_count, int) or allocation_count < len(addresses):
+            raise ValueError("online context-resolver allocation count is invalid")
+        resolver._allocation_count = allocation_count
+        assigned = payload.get("assigned", [])
+        if not isinstance(assigned, list):
+            raise TypeError("online context-resolver assignments must be a list")
+        for item in assigned:
+            stream = resolver._stream_id(torch.tensor(item["stream_key"]))
+            index = int(item["address_index"])
+            if not 0 <= index < resolver.context_count:
+                raise ValueError("online context-resolver address index is invalid")
+            resolver._assigned[stream] = index
+        streaks = payload.get("contradiction_streak", [])
+        if not isinstance(streaks, list):
+            raise TypeError("online context-resolver streaks must be a list")
+        for item in streaks:
+            resolver._contradiction_streak[resolver._stream_id(torch.tensor(item["stream_key"]))] = int(item["count"])
+        pending = payload.get("pending", [])
+        if not isinstance(pending, list):
+            raise TypeError("online context-resolver pending state must be a list")
+        for item in pending:
+            stream = resolver._stream_id(torch.tensor(item["stream_key"]))
+            rows: list[ExternalTransitionObservation] = []
+            for row in item["observations"]:
+                confidence = row.get("confidence")
+                rows.append(
+                    ExternalTransitionObservation(
+                        state=torch.tensor(row["state"], dtype=torch.float32),
+                        intention=torch.tensor(row["intention"], dtype=torch.float32),
+                        next_state=torch.tensor(row["next_state"], dtype=torch.float32),
+                        confidence=(
+                            None
+                            if confidence is None
+                            else torch.tensor(confidence, dtype=torch.float32)
+                        ),
+                    )
+                )
+            resolver._pending[stream] = rows
         return resolver
 
 
@@ -899,6 +1283,7 @@ __all__ = [
     "EXTERNAL_CONTEXT_ADDRESS_RESOLVER_SCHEMA",
     "EXTERNAL_GOAL_EVALUATOR_SCHEMA",
     "EXTERNAL_MODEL_PLANNER_SCHEMA",
+    "EXTERNAL_ONLINE_CONTEXT_RESOLVER_SCHEMA",
     "EXTERNAL_TRANSITION_MEMORY_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_SCHEMA",
     "EXTERNAL_TRANSITION_OBSERVATION_SCHEMA",
@@ -906,6 +1291,8 @@ __all__ = [
     "ExternalContextResolution",
     "ExternalGoalEvaluator",
     "ExternalModelBasedPlanner",
+    "ExternalOnlineContextAddressResolver",
+    "ExternalOnlineContextResolution",
     "ExternalTransitionMemory",
     "ExternalTransitionModel",
     "ExternalTransitionObservation",

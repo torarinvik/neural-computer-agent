@@ -4482,3 +4482,26 @@ general continual learning: admission consumes a complete bundle, uses exact
 stored facts, and allocates opaque handles rather than learning partial-stream
 clustering. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_context_address_transfer_promoted_2026-08-09/`.
+
+## Online partial-evidence context admission (2026-08-09)
+
+The next two-seed rung extends address admission from complete bundles to
+interleaved online evidence. `ExternalOnlineContextAddressResolver` keeps
+provisional rows outside the transition store until three consistent verified
+observations have accumulated. For an already-bound opaque stream, a first
+contradiction returns `conflict` with zero writes; a second contradiction
+admits a new address and commits only the buffered contradictory facts.
+
+Both seeds passed the no-early-write, interleaved-admission, duplicate-reuse,
+retention, reversal, wrong-context factual-error, corruption, fresh-memory,
+persistence, and frozen-controller gates. The first six interleaved
+observations produced zero memory records; three addresses were then admitted,
+and the reversal created a fourth without changing the original facts. The
+target phase used zero optimizer updates and zero replay.
+
+This is still a bounded memory-side protocol, not general continual learning.
+The stream binding is opaque transport state, thresholds are fixed, and the
+resolver does not yet infer contexts from raw modalities, learn its evidence
+thresholds, cluster arbitrary partial evidence, or compress unbounded history.
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_online_context_admission_promoted_2026-08-09/`.
