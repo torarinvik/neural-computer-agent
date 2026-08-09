@@ -764,6 +764,17 @@ class OpaqueCandidateGrowthRouter(nn.Module):
         )
         return self.score(pair).squeeze(-1)
 
+    def configuration(self) -> dict[str, object]:
+        """Return the replaceable scorer contract for external persistence."""
+
+        return {
+            "schema": self.schema,
+            "width": self.width,
+            "hidden": self.hidden,
+            "behavior": "permutation_equivariant_pair_score_v1",
+            "initialization": "zero_impact_final_score_v1",
+        }
+
 
 class OpaqueViewRouteExtension(nn.Module):
     """Memory-side score for one newly appended opaque executable view.

@@ -19,6 +19,7 @@ from neural_computer import (
     ExternalTransitionModelPriorSelectionReceipt,
     ExternalTransitionObservation,
     ExternalTransitionRouteQuery,
+    OpaqueCandidateGrowthRouter,
 )
 
 
@@ -78,6 +79,92 @@ def test_transition_route_query_empty_bank_is_explicit() -> None:
     assert proposal.selected_slot_id is None
     assert proposal.scores.numel() == 0
     assert proposal.margin is None
+
+
+def test_learned_transition_route_query_is_persistent_and_opaque() -> None:
+    torch.manual_seed(1211)
+    encoder = ExternalTransitionContextEncoder(2, 1, hidden_width=6, context_width=4)
+    adapter = ExternalTransitionContextAddressAdapter(encoder)
+    observation = ExternalTransitionObservation(
+        state=torch.randn(3, 2),
+        intention=torch.randn(3, 1),
+        next_state=torch.randn(3, 2),
+        confidence=torch.ones(3),
+    )
+    scorer = OpaqueCandidateGrowthRouter(width=8, hidden=6)
+    with torch.no_grad():
+        scorer.score[-1].bias.fill_(0.25)
+    query = ExternalTransitionRouteQuery(
+        4,
+        minimum_score=0.1,
+        route_width=8,
+        learned_scorer=scorer,
+    )
+    query.register_slot(
+        22,
+        adapter,
+        route_key=torch.randn(8),
+    )
+    query.register_slot(
+        33,
+        adapter,
+        route_key=torch.randn(8),
+    )
+    contexts = torch.randn(2, 4)
+    fallback = torch.randn(8)
+    proposal = query.propose_observation(
+        observation,
+        contexts,
+        (22, 33),
+        fallback_query=fallback,
+    )
+
+    restored = ExternalTransitionRouteQuery.from_payload(query.state_payload())
+    restored_proposal = restored.propose_observation(
+        observation,
+        contexts,
+        (22, 33),
+        fallback_query=fallback,
+    )
+    assert restored.learned_scorer is not None
+    assert restored.configuration() == query.configuration()
+    assert restored.digest() == query.digest()
+    assert torch.allclose(restored_proposal.scores, proposal.scores)
+    assert restored_proposal.selected_slot_id == proposal.selected_slot_id
+
+
+def test_transition_router_factual_fallback_survives_wrong_route_proposal() -> None:
+    torch.manual_seed(1212)
+    bank = ExternalTransitionModelBank(2, 1, 4, hidden_width=8)
+    encoder = ExternalTransitionContextEncoder(2, 1, hidden_width=6, context_width=4)
+    observation = ExternalTransitionObservation(
+        state=torch.zeros(2, 2),
+        intention=torch.zeros(2, 1),
+        next_state=torch.ones(2, 2),
+        confidence=torch.ones(2),
+    )
+    query_vector = encoder.encode_observation(observation)
+    first = bank.ensure_context(query_vector)
+    second = bank.ensure_context(-query_vector)
+    with torch.no_grad():
+        for parameter in bank.models[first].parameters():
+            parameter.zero_()
+        for parameter in bank.models[second].parameters():
+            parameter.zero_()
+        bank.models[first].network[-1].bias.zero_()
+        bank.models[second].network[-1].bias.fill_(1.0)
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        encoder,
+        match_tolerance=1e-6,
+        match_margin=1e-6,
+        route_query=ExternalTransitionRouteQuery(4, minimum_score=-1.0),
+    )
+
+    selected = router._best_slot(observation)
+
+    assert selected is not None
+    assert selected[0] == second
 
 
 def test_transition_model_bank_marks_random_features_replay_free() -> None:

@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING, Any
 import torch
 from torch import nn
 
+from .addressing import OpaqueCandidateGrowthRouter
 from .growth import compress_growth_artifact, decompress_growth_artifact
 from .memory import (
     AppendOnlyContentAddressedMemory,
@@ -3241,7 +3242,7 @@ class ExternalTransitionRouteQueryProposal:
 
 
 class ExternalTransitionRouteQuery(nn.Module):
-    """Versioned opaque-address proposal using a stable cosine query.
+    """Versioned opaque-address proposal using cosine or learned scoring.
 
     This component intentionally has no task labels, semantic fields, or
     factual model parameters.  It is replaceable routing infrastructure.  A
@@ -3258,6 +3259,7 @@ class ExternalTransitionRouteQuery(nn.Module):
         *,
         minimum_score: float = -1.0,
         route_width: int | None = None,
+        learned_scorer: OpaqueCandidateGrowthRouter | None = None,
     ) -> None:
         super().__init__()
         if context_width < 1:
@@ -3266,21 +3268,38 @@ class ExternalTransitionRouteQuery(nn.Module):
             raise ValueError("transition route-query minimum score must lie in [-1, 1]")
         if route_width is not None and route_width < 1:
             raise ValueError("transition route-query route width must be positive")
+        if learned_scorer is not None:
+            if not isinstance(learned_scorer, OpaqueCandidateGrowthRouter):
+                raise TypeError("transition route-query scorer has an unsupported type")
+            if route_width is None or learned_scorer.width != route_width:
+                raise ValueError(
+                    "learned route-query scorer width must match route width"
+                )
         self.context_width = int(context_width)
         self.minimum_score = float(minimum_score)
         self.route_width = None if route_width is None else int(route_width)
+        self.learned_scorer = learned_scorer
         self._slot_adapters: dict[
             int, ExternalTransitionContextAddressAdapter
         ] = {}
         self._slot_route_keys: dict[int, torch.Tensor] = {}
 
-    def configuration(self) -> dict[str, int | str]:
+    def configuration(self) -> dict[str, object]:
         return {
             "schema": self.schema,
             "context_width": self.context_width,
             "minimum_score": self.minimum_score,
             "route_width": self.route_width,
-            "metric": "normalized_cosine_v1",
+            "learned_scorer": (
+                None
+                if self.learned_scorer is None
+                else self.learned_scorer.configuration()
+            ),
+            "metric": (
+                "learned_permutation_equivariant_pair_score_v1"
+                if self.learned_scorer is not None
+                else "normalized_cosine_v1"
+            ),
             "role": "proposal_only_factual_verification_required_v1",
             "slot_adapter_count": len(self._slot_adapters),
         }
@@ -3406,8 +3425,63 @@ class ExternalTransitionRouteQuery(nn.Module):
                 fallback_query,
                 name="transition route-query fallback vector",
                 ndim=1,
-                width=self.context_width,
+                width=(
+                    self.route_width
+                    if self.learned_scorer is not None
+                    else self.context_width
+                ),
             )
+        if self.learned_scorer is not None:
+            if fallback_query is None or fallback_query.shape[0] != self.route_width:
+                raise ValueError(
+                    "learned route query requires a full-width fallback query"
+                )
+            if any(int(slot_id) not in self._slot_route_keys for slot_id in slot_ids):
+                return ExternalTransitionRouteQueryProposal(
+                    selected_slot_id=None,
+                    scores=torch.zeros(
+                        len(slot_ids),
+                        dtype=fallback_query.dtype,
+                        device=fallback_query.device,
+                    ),
+                    eligible_slot_ids=tuple(int(slot_id) for slot_id in slot_ids),
+                    margin=None,
+                    reason="learned route query lacks an opaque key for a slot",
+                ).validate()
+            keys = torch.stack(
+                [self._slot_route_keys[int(slot_id)] for slot_id in slot_ids]
+            ).to(fallback_query)
+            learned_scores = self.learned_scorer(
+                fallback_query.unsqueeze(0),
+                keys,
+            )[0]
+            ordered = torch.argsort(learned_scores, descending=True, stable=True)
+            best = int(ordered[0])
+            margin = (
+                None
+                if len(slot_ids) == 1
+                else float(
+                    (learned_scores[ordered[0]] - learned_scores[ordered[1]])
+                    .detach()
+                )
+            )
+            selected_slot_id = (
+                int(slot_ids[best])
+                if float(learned_scores[best].detach()) >= self.minimum_score
+                else None
+            )
+            return ExternalTransitionRouteQueryProposal(
+                selected_slot_id=selected_slot_id,
+                scores=learned_scores.detach().clone(),
+                eligible_slot_ids=tuple(int(slot_id) for slot_id in slot_ids),
+                margin=margin,
+                reason=(
+                    "learned counterfactual route proposal; factual verification required"
+                    if selected_slot_id is not None
+                    else "learned route score did not clear the proposal floor"
+                ),
+            ).validate()
+
         scores: list[torch.Tensor] = []
         normalized_contexts = torch.nn.functional.normalize(
             contexts.to(observation.state), dim=-1
@@ -3476,6 +3550,7 @@ class ExternalTransitionRouteQuery(nn.Module):
                 str(slot_id): key.detach().cpu().tolist()
                 for slot_id, key in sorted(self._slot_route_keys.items())
             },
+            "learned_scorer": self._learned_scorer_payload(),
             "sha256": "",
         }
         digest = hashlib.sha256()
@@ -3487,11 +3562,72 @@ class ExternalTransitionRouteQuery(nn.Module):
             route_key = self._slot_route_keys.get(slot_id)
             if route_key is not None:
                 digest.update(route_key.detach().cpu().contiguous().numpy().tobytes())
+        scorer_payload = payload["learned_scorer"]
+        if isinstance(scorer_payload, Mapping):
+            digest.update(str(scorer_payload["sha256"]).encode("utf-8"))
         payload["sha256"] = digest.hexdigest()
         return payload
 
     def digest(self) -> str:
         return str(self.state_payload()["sha256"])
+
+    def _learned_scorer_payload(self) -> dict[str, object] | None:
+        if self.learned_scorer is None:
+            return None
+        state = {
+            name: value.detach().cpu().clone()
+            for name, value in self.learned_scorer.state_dict().items()
+        }
+        digest = hashlib.sha256()
+        digest.update(repr(self.learned_scorer.configuration()).encode("utf-8"))
+        for name, value in sorted(state.items()):
+            digest.update(name.encode("utf-8"))
+            digest.update(str(value.dtype).encode("utf-8"))
+            digest.update(repr(tuple(value.shape)).encode("utf-8"))
+            digest.update(value.contiguous().numpy().tobytes())
+        return {
+            "configuration": self.learned_scorer.configuration(),
+            "state": state,
+            "sha256": digest.hexdigest(),
+        }
+
+    @staticmethod
+    def _learned_scorer_from_payload(
+        payload: Mapping[str, Any],
+    ) -> OpaqueCandidateGrowthRouter:
+        configuration = payload.get("configuration")
+        state = payload.get("state")
+        if not isinstance(configuration, Mapping) or not isinstance(state, Mapping):
+            raise TypeError("learned route-query scorer payload is incomplete")
+        if configuration.get("schema") != OpaqueCandidateGrowthRouter.schema:
+            raise ValueError("unsupported learned route-query scorer schema")
+        scorer = OpaqueCandidateGrowthRouter(
+            int(configuration["width"]),
+            hidden=int(configuration["hidden"]),
+        )
+        current = scorer.state_dict()
+        if tuple(state) != tuple(current):
+            raise ValueError("learned route-query scorer state names differ")
+        normalized: dict[str, torch.Tensor] = {}
+        digest = hashlib.sha256()
+        digest.update(repr(scorer.configuration()).encode("utf-8"))
+        for name, expected in sorted(current.items()):
+            value = state[name]
+            if not isinstance(value, torch.Tensor):
+                raise TypeError("learned route-query scorer state is not a tensor")
+            if value.shape != expected.shape or value.dtype != expected.dtype:
+                raise ValueError("learned route-query scorer state is incompatible")
+            if not bool(torch.isfinite(value).all()):
+                raise ValueError("learned route-query scorer state is not finite")
+            normalized[name] = value.detach().clone()
+            digest.update(name.encode("utf-8"))
+            digest.update(str(value.dtype).encode("utf-8"))
+            digest.update(repr(tuple(value.shape)).encode("utf-8"))
+            digest.update(value.contiguous().numpy().tobytes())
+        if payload.get("sha256") != digest.hexdigest():
+            raise ValueError("learned route-query scorer checksum mismatch")
+        scorer.load_state_dict(normalized, strict=True)
+        return scorer
 
     @classmethod
     def from_payload(
@@ -3503,6 +3639,9 @@ class ExternalTransitionRouteQuery(nn.Module):
         configuration = payload.get("configuration")
         if not isinstance(configuration, Mapping):
             raise TypeError("transition route-query configuration is missing")
+        scorer_payload = payload.get("learned_scorer")
+        if scorer_payload is not None and not isinstance(scorer_payload, Mapping):
+            raise TypeError("transition route-query learned scorer is invalid")
         query = cls(
             int(configuration["context_width"]),
             minimum_score=float(configuration.get("minimum_score", -1.0)),
@@ -3510,6 +3649,11 @@ class ExternalTransitionRouteQuery(nn.Module):
                 None
                 if configuration.get("route_width") is None
                 else int(configuration["route_width"])
+            ),
+            learned_scorer=(
+                None
+                if scorer_payload is None
+                else cls._learned_scorer_from_payload(scorer_payload)
             ),
         )
         slot_adapters = payload.get("slot_adapters", {})
@@ -4299,37 +4443,34 @@ class ExternalOnlineTransitionContextRouter:
         else:
             with torch.no_grad():
                 query = (
-                    self.address_adapter.encode_observation(observation)
-                    if self.address_adapter is not None
-                    else self.context_encoder.encode_observation(observation)
+                    self.context_encoder.trajectory_stats(observation)
+                    if self.route_query.route_width is not None
+                    else (
+                        self.address_adapter.encode_observation(observation)
+                        if self.address_adapter is not None
+                        else self.context_encoder.encode_observation(observation)
+                    )
                 )
-            proposal = self.route_query.propose_observation(
+            self.route_query.propose_observation(
                 observation,
                 self.bank.contexts,
                 self.bank.slot_ids,
                 fallback_query=query,
             )
-            if proposal.selected_slot_id is None:
-                return None
-            try:
-                index = self.bank.physical_index_for_slot_id(
-                    proposal.selected_slot_id
-                )
-            except KeyError:
-                return None
-            error, _candidate_index, _candidate_context = candidates[index]
-            # A route proposal never overrides factual evidence.  Requiring
-            # the proposed slot to be the factual winner prevents a learned
-            # or stale query from silently binding a collision to the wrong
-            # model.  The existing factual margin remains the ambiguity gate.
             factual_error, factual_index, _factual_context = min(
                 candidates,
                 key=lambda item: (item[0], item[1]),
             )
-            if factual_index != index:
-                return None
+            # A route query is an accelerator proposal, never a correctness
+            # gate.  The factual verifier remains authoritative: a stale or
+            # newly learned scorer may miss the right slot, but it must not
+            # block a match that the verifier can establish.  Today all
+            # candidates are evaluated, so this fallback is correctness-first;
+            # a future indexed bank may use the proposal to avoid work while
+            # retaining the same verifier fallback contract.
+            index = factual_index
             error = factual_error
-            context = self.bank.context_at(index)
+            context = _factual_context
         ordered_errors = sorted(item[0] for item in candidates)
         margin = (
             float("inf")

@@ -18,6 +18,7 @@ from functools import partial
 from pathlib import Path
 
 import torch
+from torch.nn import functional as F
 
 from experiments.external_nonlinear_drift_learned_context.train import (
     CONTEXT_HIDDEN_WIDTH,
@@ -36,6 +37,8 @@ from neural_computer import (
     ExternalTransitionModelBank,
     ExternalTransitionObservation,
     ExternalTransitionRouteQuery,
+    OpaqueCandidateGrowthRouter,
+    paired_counterfactual_ranking_loss,
 )
 
 CONTEXT_WIDTH = 12
@@ -53,6 +56,8 @@ PROMOTION_THRESHOLD = 0.20
 MATCH_TOLERANCE = 0.01
 GRADIENT_STEPS_PER_BUNDLE = 4
 ROUTE_QUERY_MINIMUM_SCORE = 0.80
+LEARNED_ROUTE_HIDDEN = 48
+LEARNED_ROUTE_UPDATES = 128
 
 
 def _digest(module: torch.nn.Module) -> str:
@@ -140,9 +145,13 @@ def _route_diagnostic(
     if router.route_query is None:
         return None
     fallback = (
-        router.address_adapter.encode_observation(observation)
-        if router.address_adapter is not None
-        else router.context_encoder.encode_observation(observation)
+        router.context_encoder.trajectory_stats(observation)
+        if router.route_query.route_width is not None
+        else (
+            router.address_adapter.encode_observation(observation)
+            if router.address_adapter is not None
+            else router.context_encoder.encode_observation(observation)
+        )
     )
     proposal = router.route_query.propose_observation(
         observation,
@@ -156,12 +165,85 @@ def _route_diagnostic(
             observation.state.shape[0], -1
         )
         errors.append(float(router.bank.loss(observation, context).detach()))
+    factual_best_slot_id = router.bank.slot_id_at(
+        min(range(len(errors)), key=lambda index: errors[index])
+    )
     return {
         "selected_slot_id": proposal.selected_slot_id,
+        "factual_best_slot_id": factual_best_slot_id,
         "scores": proposal.scores.tolist(),
         "factual_errors": errors,
         "margin": proposal.margin,
     }
+
+
+def _train_learned_route_query(
+    router: ExternalOnlineTransitionContextRouter,
+    observation: ExternalTransitionObservation,
+    *,
+    updates: int,
+) -> int:
+    """Train route identity from current factual counterfactual utilities."""
+
+    if router.route_query is None or router.route_query.learned_scorer is None:
+        return 0
+    if router.bank.context_count < 2:
+        return 0
+    route_query = router.route_query
+    scorer = route_query.learned_scorer
+    if route_query.route_width is None:
+        raise RuntimeError("learned route query has no route width")
+    if any(
+        slot_id not in route_query._slot_route_keys
+        for slot_id in router.bank.slot_ids
+    ):
+        raise RuntimeError("learned route query has an incomplete key bank")
+    with torch.no_grad():
+        query = router.context_encoder.trajectory_stats(observation)
+        keys = torch.stack(
+            [route_query._slot_route_keys[slot_id] for slot_id in router.bank.slot_ids]
+        ).to(query)
+        errors = torch.stack(
+            [
+                router.bank.loss(
+                    observation,
+                    router.bank.context_at(index)
+                    .to(observation.state)
+                    .unsqueeze(0)
+                    .expand(observation.state.shape[0], -1),
+                )
+                for index in range(router.bank.context_count)
+            ]
+        )
+        utilities = 1.0 / (1.0 + errors)
+    pairs = [
+        (left, right)
+        for left in range(router.bank.context_count)
+        for right in range(left + 1, router.bank.context_count)
+    ]
+    attempted = torch.tensor(pairs, dtype=torch.long)
+    pair_utilities = utilities[attempted]
+    optimizer = torch.optim.AdamW(scorer.parameters(), lr=3e-3, weight_decay=1e-5)
+    for update in range(updates):
+        # Reuse only the current opaque evidence window. This is counted as
+        # current-window route optimization, never as old-regime replay.
+        query_batch = query.unsqueeze(0).expand(len(pairs), -1).clone()
+        query_batch = query_batch + 0.002 * torch.randn_like(query_batch)
+        scores = scorer(query_batch, keys)
+        pair_scores = scores
+        ranking_loss, _advantage = paired_counterfactual_ranking_loss(
+            pair_scores,
+            attempted,
+            pair_utilities,
+        )
+        best = int(utilities.argmax())
+        loss = ranking_loss + F.softplus(1.0 - scores[:, best]).mean()
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(scorer.parameters(), 1.0)
+        optimizer.step()
+    scorer.eval()
+    return updates
 
 
 def run(
@@ -171,6 +253,8 @@ def run(
     use_route_query: bool = False,
     match_tolerance: float = MATCH_TOLERANCE,
     route_query_minimum_score: float = ROUTE_QUERY_MINIMUM_SCORE,
+    use_learned_route_query: bool = False,
+    learned_route_updates: int = LEARNED_ROUTE_UPDATES,
 ) -> dict[str, object]:
     begun = time.perf_counter()
     torch.set_num_threads(1)
@@ -207,6 +291,12 @@ def run(
         parameter.requires_grad_(False)
 
     bank = _new_bank(1)
+    route_width = CONTEXT_WIDTH + CONTEXT_HIDDEN_WIDTH * 3
+    learned_scorer = (
+        OpaqueCandidateGrowthRouter(route_width, hidden=LEARNED_ROUTE_HIDDEN)
+        if use_learned_route_query
+        else None
+    )
     router = ExternalOnlineTransitionContextRouter(
         bank,
         encoder,
@@ -223,9 +313,13 @@ def run(
         route_query=(
             ExternalTransitionRouteQuery(
                 CONTEXT_WIDTH,
-                minimum_score=route_query_minimum_score,
+                minimum_score=(
+                    0.5 if use_learned_route_query else route_query_minimum_score
+                ),
+                route_width=route_width if use_learned_route_query else None,
+                learned_scorer=learned_scorer,
             )
-            if use_route_query
+            if (use_route_query or use_learned_route_query)
             else None
         ),
     )
@@ -236,6 +330,7 @@ def run(
     status_counts: Counter[str] = Counter()
     records: list[dict[str, object]] = []
     optimizer_updates = 0
+    route_scorer_updates = 0
 
     for index, name in enumerate(NAMES):
         if index:
@@ -300,6 +395,12 @@ def run(
                 "address_version": router.address_adapter.version,
             }
         )
+        if use_learned_route_query:
+            route_scorer_updates += _train_learned_route_query(
+                router,
+                observations[name],
+                updates=learned_route_updates,
+            )
 
     revisit_order = (NAMES[2], NAMES[0], NAMES[3], NAMES[1], NAMES[0], NAMES[2])
     revisit_records: list[dict[str, object]] = []
@@ -328,6 +429,19 @@ def run(
                 "route_diagnostic": route_diagnostic,
             }
         )
+
+    route_diagnostics = [
+        record["route_diagnostic"]
+        for record in revisit_records
+        if record["route_diagnostic"] is not None
+    ]
+    route_proposals_match_factual_winners = all(
+        diagnostic["selected_slot_id"] == diagnostic["factual_best_slot_id"]
+        for diagnostic in route_diagnostics
+    )
+    route_query_floor = (
+        0.5 if use_learned_route_query else route_query_minimum_score
+    )
 
     corruption_router = ExternalOnlineTransitionContextRouter.from_payload(router.state_payload())
     corruption_router.bank.capacity = REGIME_COUNT + 1
@@ -384,6 +498,7 @@ def run(
         "revisits_match_existing_slots": all(
             bool(record["matched_existing_slot"]) for record in revisit_records
         ),
+        "route_proposals_match_factual_winners": route_proposals_match_factual_winners,
         "all_prior_slots_retained": prior_retained,
         "corruption_rejected_without_bank_write": corruption_rejected,
         "no_raw_candidate_rows_retained": (
@@ -432,9 +547,16 @@ def run(
             "promotion_threshold": PROMOTION_THRESHOLD,
             "match_tolerance": match_tolerance,
             "route_query": "cosine_proposal_with_factual_verification_v1"
-            if use_route_query
-            else None,
-            "route_query_minimum_score": route_query_minimum_score,
+            if use_route_query and not use_learned_route_query
+            else (
+                "learned_counterfactual_route_query_v1"
+                if use_learned_route_query
+                else None
+            ),
+            "route_query_minimum_score": route_query_floor,
+            "learned_route_updates_per_regime": learned_route_updates
+            if use_learned_route_query
+            else 0,
             "context_encoder_optimizer_updates": 0,
             "provisional_evidence_policy": "streaming_gradient",
             "gradient_steps_per_current_window": GRADIENT_STEPS_PER_BUNDLE,
@@ -461,6 +583,14 @@ def run(
             "context_encoder_optimizer_updates": 0,
             "address_adapter_optimizer_updates": router.address_adapter.version * 4,
             "model_optimizer_updates": optimizer_updates,
+            "route_scorer_optimizer_updates": route_scorer_updates,
+            "route_scorer_unique_current_windows": max(0, REGIME_COUNT - 1)
+            if use_learned_route_query
+            else 0,
+            "route_scorer_current_window_reuses": max(
+                0,
+                route_scorer_updates - max(0, REGIME_COUNT - 1),
+            ),
             "current_window_reuses": (
                 REGIME_COUNT
                 * PRESENTED_ROWS
@@ -490,17 +620,27 @@ def main() -> None:
         type=float,
         default=ROUTE_QUERY_MINIMUM_SCORE,
     )
+    parser.add_argument("--learned-route-query", action="store_true")
+    parser.add_argument(
+        "--learned-route-updates",
+        type=int,
+        default=LEARNED_ROUTE_UPDATES,
+    )
     args = parser.parse_args()
     if args.match_tolerance < 0.0:
         raise SystemExit("--match-tolerance must be non-negative")
     if not -1.0 <= args.route_query_minimum_score <= 1.0:
         raise SystemExit("--route-query-minimum-score must lie in [-1, 1]")
+    if args.learned_route_updates < 1:
+        raise SystemExit("--learned-route-updates must be positive")
     run(
         args.seed,
         args.report_out,
         use_route_query=args.route_query,
         match_tolerance=args.match_tolerance,
         route_query_minimum_score=args.route_query_minimum_score,
+        use_learned_route_query=args.learned_route_query,
+        learned_route_updates=args.learned_route_updates,
     )
 
 

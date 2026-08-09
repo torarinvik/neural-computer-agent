@@ -5961,3 +5961,26 @@ next candidate must learn a reusable route score from verifier-grounded
 counterfactuals or a meta-learned representation, while retaining a factual
 challenger and explicit novel-regime rejection. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_learned_nonlinear_route_query_rejected_2026-08-10/`.
+
+## Rejected shared current-window learned route scorer (2026-08-10)
+
+The next candidate reused the repository's permutation-equivariant
+`OpaqueCandidateGrowthRouter` as a trainable external route scorer. It scored
+opaque trajectory-statistics queries against opaque slot keys and learned from
+paired factual counterfactual utilities. The controller and base context
+encoder remained frozen; route updates used only the current evidence window,
+with no old-regime replay or raw transition rows retained.
+
+Across seeds `82601`, `82602`, and `82603`, the scorer repeatedly collapsed
+toward the newest slot. Route proposals failed the factual-winner diagnostic
+and revisit identity remained `0/6` for every seed. Exact route-state
+persistence and corruption rejection passed. A factual fallback was added and
+regression-tested so a bad proposal cannot override a verifier-established
+match, but that safety fallback is not a learned capability gain.
+
+This rejects a shared scorer trained only on the newest window. The failure
+shows that the route learner itself needs isolated per-slot state or a
+compressed verifier-maintained route-constraint memory; more updates on the
+same window and threshold tuning would merely reinforce forgetting. Evidence
+is archived in
+`session_records/sequence_working_memory_2026-08-02/external_learned_nonlinear_learned_route_query_rejected_2026-08-10/`.
