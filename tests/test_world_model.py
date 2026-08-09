@@ -15,6 +15,7 @@ from neural_computer import (
     ExternalTransitionModel,
     ExternalTransitionModelBank,
     ExternalTransitionModelLifetimePolicy,
+    ExternalTransitionModelPriorSelectionReceipt,
     ExternalTransitionObservation,
 )
 
@@ -272,6 +273,46 @@ def test_transition_model_bank_growth_is_verified_and_content_preserving() -> No
     restored = ExternalTransitionModelBank.from_payload(bank.payload())
     assert restored.capacity == 3
     assert restored.content_digest() == bank.content_digest()
+
+
+def test_transition_model_bank_prior_challenger_is_copy_on_write() -> None:
+    torch.manual_seed(1210)
+    bank = ExternalTransitionModelBank(2, 1, 3, hidden_width=8)
+    source_index = bank.ensure_context(torch.tensor([1.0, 0.0, 0.0]))
+    source_digest = bank.models[source_index].digest()
+    observation = ExternalTransitionObservation(
+        state=torch.randn(4, 2),
+        intention=torch.randn(4, 1),
+        next_state=torch.randn(4, 2),
+        confidence=torch.ones(4),
+    )
+
+    def probe(
+        transfer: torch.nn.Module,
+        fresh: torch.nn.Module,
+        current: ExternalTransitionObservation,
+    ) -> tuple[float, float]:
+        with torch.no_grad():
+            next(iter(fresh.parameters())).add_(0.01)
+        return (
+            float(transfer.loss(current).detach()),
+            float(fresh.loss(current).detach()) + 1.0,
+        )
+
+    receipt, selected = bank.select_verified_transfer_prior(
+        source_index,
+        observation,
+        probe,
+        probe_updates=4,
+    )
+
+    assert isinstance(receipt, ExternalTransitionModelPriorSelectionReceipt)
+    assert receipt.selected_initialization == "transfer"
+    assert receipt.source_slot_id == bank.slot_id_at(source_index)
+    assert receipt.probe_updates == 4
+    assert receipt.selected_model_digest == selected.digest()
+    assert bank.context_count == 1
+    assert bank.models[source_index].digest() == source_digest
 
 
 def test_transition_model_bank_eviction_is_verified_and_alias_safe() -> None:

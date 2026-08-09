@@ -110,6 +110,9 @@ EXTERNAL_GOAL_CONDITIONED_MODEL_SELECTION_SCHEMA = (
 EXTERNAL_TRANSITION_MODEL_MIGRATION_SCHEMA = (
     "neural-computer.external-transition-model-migration.v1"
 )
+EXTERNAL_TRANSITION_MODEL_PRIOR_SELECTION_SCHEMA = (
+    "neural-computer.external-transition-model-prior-selection.v1"
+)
 
 EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY = "nonlinear_mlp_v1"
 EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY = "affine_sufficient_statistics_v1"
@@ -429,6 +432,53 @@ class ExternalTransitionModelMigrationReceipt:
         return self
 
 
+@dataclass(frozen=True)
+class ExternalTransitionModelPriorSelectionReceipt:
+    """Auditable choice between a transfer prior and a fresh model candidate."""
+
+    selected_initialization: str
+    source_slot_id: int
+    transfer_probe_error: float
+    fresh_probe_error: float
+    probe_updates: int
+    source_model_digest: str
+    selected_model_digest: str
+    reason: str
+    schema: str = EXTERNAL_TRANSITION_MODEL_PRIOR_SELECTION_SCHEMA
+
+    def validate(self) -> ExternalTransitionModelPriorSelectionReceipt:
+        if self.schema != EXTERNAL_TRANSITION_MODEL_PRIOR_SELECTION_SCHEMA:
+            raise ValueError("unsupported transition-model prior-selection schema")
+        if self.selected_initialization not in {"transfer", "fresh"}:
+            raise ValueError("transition-model prior selection is invalid")
+        if (
+            not isinstance(self.source_slot_id, int)
+            or isinstance(self.source_slot_id, bool)
+            or self.source_slot_id < 0
+        ):
+            raise ValueError("transition-model prior source slot is invalid")
+        for name, value in (
+            ("transfer_probe_error", self.transfer_probe_error),
+            ("fresh_probe_error", self.fresh_probe_error),
+        ):
+            if not isinstance(value, (float, int)) or not math.isfinite(float(value)) or value < 0.0:
+                raise ValueError(f"transition-model {name} is invalid")
+        if (
+            not isinstance(self.probe_updates, int)
+            or isinstance(self.probe_updates, bool)
+            or self.probe_updates < 0
+        ):
+            raise ValueError("transition-model prior probe updates are invalid")
+        for name, value in (
+            ("source_model_digest", self.source_model_digest),
+            ("selected_model_digest", self.selected_model_digest),
+            ("reason", self.reason),
+        ):
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"transition-model prior {name} is missing")
+        return self
+
+
 class ExternalTransitionModelBank(nn.Module):
     """Append-only external transition-model slots keyed by opaque context.
 
@@ -608,6 +658,80 @@ class ExternalTransitionModelBank(nn.Module):
             prediction_tolerance=prediction_tolerance,
             retention_probe=retention_probe,
         )
+
+    def select_verified_transfer_prior(
+        self,
+        source_index: int,
+        observation: ExternalTransitionObservation,
+        probe: Callable[
+            [nn.Module, nn.Module, ExternalTransitionObservation], tuple[float, float]
+        ],
+        *,
+        probe_updates: int = 0,
+    ) -> tuple[ExternalTransitionModelPriorSelectionReceipt, nn.Module]:
+        """Select transfer or fresh initialization without mutating the bank.
+
+        The caller owns the bounded shadow adaptation represented by ``probe``.
+        It receives an isolated transfer copy, an isolated fresh candidate, and
+        the current opaque transition evidence, then returns their factual
+        probe errors in that order.  Only the selected candidate is returned;
+        the caller must explicitly append it to the bank.  This makes negative
+        transfer measurable and reversible instead of silently forcing every
+        new regime through an old parameter state.
+        """
+
+        if not 0 <= source_index < self.context_count:
+            raise IndexError("transition-model prior source index is out of range")
+        if not callable(probe):
+            raise TypeError("transition-model prior probe must be callable")
+        if not isinstance(probe_updates, int) or isinstance(probe_updates, bool):
+            raise TypeError("transition-model prior probe updates must be an integer")
+        if probe_updates < 0:
+            raise ValueError("transition-model prior probe updates cannot be negative")
+        observation.validate(
+            state_width=self.state_width,
+            intention_width=self.intention_width,
+        )
+        family = self.model_family_at(source_index)
+        transfer = self._new_model(family)
+        transfer.load_state_dict(self.models[source_index].state_dict())
+        fresh = self._new_model(family)
+        source_digest = self.models[source_index].digest()
+        scores = probe(transfer, fresh, observation)
+        if not isinstance(scores, (tuple, list)) or len(scores) != 2:
+            raise TypeError("transition-model prior probe must return two errors")
+        transfer_error, fresh_error = (float(value) for value in scores)
+        if not all(
+            math.isfinite(value) and value >= 0.0
+            for value in (transfer_error, fresh_error)
+        ):
+            raise ValueError("transition-model prior probe errors must be finite")
+        if self.models[source_index].digest() != source_digest:
+            raise RuntimeError("transition-model prior probe mutated the source slot")
+        selected_initialization = (
+            "transfer" if transfer_error <= fresh_error else "fresh"
+        )
+        selected = transfer if selected_initialization == "transfer" else fresh
+        if any(
+            not bool(torch.isfinite(value).all())
+            for value in selected.state_dict().values()
+        ):
+            raise ValueError("transition-model prior probe produced non-finite weights")
+        receipt = ExternalTransitionModelPriorSelectionReceipt(
+            selected_initialization=selected_initialization,
+            source_slot_id=self.slot_id_at(source_index),
+            transfer_probe_error=transfer_error,
+            fresh_probe_error=fresh_error,
+            probe_updates=probe_updates,
+            source_model_digest=source_digest,
+            selected_model_digest=selected.digest(),
+            reason=(
+                "transfer prior passed the factual challenger"
+                if selected_initialization == "transfer"
+                else "fresh initialization won the factual challenger"
+            ),
+        )
+        return receipt.validate(), selected
 
     @property
     def context_count(self) -> int:
@@ -6353,6 +6477,7 @@ __all__ = [
     "EXTERNAL_TRANSITION_MODEL_FAMILY_SELECTION_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_GROWTH_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_MIGRATION_SCHEMA",
+    "EXTERNAL_TRANSITION_MODEL_PRIOR_SELECTION_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_SCHEMA",
     "EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY",
     "EXTERNAL_TRANSITION_OBSERVATION_SCHEMA",
@@ -6379,6 +6504,7 @@ __all__ = [
     "ExternalTransitionModelConsolidationReceipt",
     "ExternalTransitionModelGrowthReceipt",
     "ExternalTransitionModelMigrationReceipt",
+    "ExternalTransitionModelPriorSelectionReceipt",
     "ExternalTransitionObservation",
     "GoalConditionedModelSelection",
     "ModelBasedPlanningResult",

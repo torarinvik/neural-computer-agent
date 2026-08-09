@@ -2458,3 +2458,15 @@ no-write, frozen-controller, frozen-rule, zero-replay, and zero-raw-row gates
 passed. This is safe bounded external capacity growth, not unrestricted
 memory growth or general continual learning. See
 `session_records/sequence_working_memory_2026-08-02/external_program_capacity_growth_promoted_2026-08-09/`.
+
+### Copy-on-write transfer challenger for disjoint compounding (2026-08-09)
+
+The external model bank now supports a verifier-gated, copy-on-write choice
+between a transferred factual model and a fresh candidate. The live source
+slot is byte-stable, and only the selected candidate is explicitly appended.
+On two source and two sequential target regimes, four of five seeds beat
+matched fresh cumulative model cost while retaining all prior regimes; one
+seed was slightly worse, so the effect was rejected for promotion. This
+establishes a useful anti-negative-transfer mechanism, not general continual
+learning. The reports and ledger are in
+`session_records/sequence_working_memory_2026-08-02/external_transition_model_disjoint_compounding_rejected_2026-08-09/`.

@@ -1,0 +1,301 @@
+{
+  "schema": "neural-computer.external-transition-model-disjoint-compounding-pressure-test.v1",
+  "claim_boundary": "A factual external model initialized from prior disjoint dynamics can acquire later disjoint dynamics with lower cumulative model cost while retaining earlier models; this is not unrestricted continual learning.",
+  "seed": 70415,
+  "configuration": {
+    "regime_names": [
+      "source_a",
+      "source_b",
+      "target_c",
+      "target_d"
+    ],
+    "source_regimes": [
+      0,
+      1
+    ],
+    "target_regimes": [
+      2,
+      3
+    ],
+    "state_width": 8,
+    "intention_width": 4,
+    "context_width": 12,
+    "context_encoder_updates": 400,
+    "source_update_budget": 900,
+    "target_update_budget": 220,
+    "prior_probe_updates_per_candidate": 4,
+    "loss_threshold": 0.01,
+    "mastery_threshold": 0.8,
+    "horizon": 3,
+    "policy": "none_external_disjoint_model_compounding_search_v1"
+  },
+  "gates": {
+    "controller_unchanged": true,
+    "context_encoder_converged": true,
+    "transition_tables_are_disjoint": true,
+    "all_source_regimes_mastered": true,
+    "all_warm_targets_mastered": true,
+    "all_fresh_controls_mastered": true,
+    "warm_cumulative_cost_beats_fresh": false,
+    "all_prior_regimes_retained_and_byte_stable": true,
+    "old_regime_replay_during_adaptation_zero": true,
+    "planner_is_inference_only": true
+  },
+  "promoted": false,
+  "source": {
+    "rows": [
+      {
+        "regime_index": 0,
+        "optimizer_updates": 35,
+        "loss": 0.009096537716686726,
+        "result": {
+          "successes": [
+            true,
+            true,
+            true
+          ],
+          "mastery": 1.0,
+          "expanded_nodes": 42
+        },
+        "model_digest": "1fd4d3a97b981bba83a224ef5d92266169827cc3b1308d63ec7c462818ac1ffc"
+      },
+      {
+        "regime_index": 1,
+        "optimizer_updates": 38,
+        "loss": 0.009318249300122261,
+        "result": {
+          "successes": [
+            true,
+            true,
+            true
+          ],
+          "mastery": 1.0,
+          "expanded_nodes": 42
+        },
+        "model_digest": "40a6d0a225812d15da80a0e4b1161f350fd638329a97609bf90e69ed18ec98f5"
+      }
+    ],
+    "optimizer_updates": 73
+  },
+  "targets": [
+    {
+      "regime_index": 2,
+      "regime_name": "target_c",
+      "transition_table": [
+        [
+          1,
+          4,
+          4,
+          1,
+          2,
+          4,
+          3
+        ],
+        [
+          5,
+          4,
+          0,
+          4,
+          0,
+          6,
+          3
+        ]
+      ],
+      "prior_selection": {
+        "schema": "neural-computer.external-transition-model-prior-selection.v1",
+        "selected_initialization": "fresh",
+        "source_slot_id": 1,
+        "source_model_digest": "40a6d0a225812d15da80a0e4b1161f350fd638329a97609bf90e69ed18ec98f5",
+        "transfer_probe_error": 0.1037289947271347,
+        "fresh_probe_error": 0.08670530468225479,
+        "probe_updates_per_candidate": 4,
+        "selected_model_digest": "f9cb7e5a49787e1aa6653ff049df04ffe8939446ffc3ac17688c7b8045e651b0",
+        "reason": "fresh initialization won the factual challenger"
+      },
+      "pre_continuation": {
+        "successes": [
+          false,
+          false,
+          true
+        ],
+        "mastery": 0.3333333333333333,
+        "expanded_nodes": 42
+      },
+      "warm": {
+        "optimizer_updates": 37,
+        "shadow_optimizer_updates": 8,
+        "continuation_optimizer_updates": 29,
+        "loss": 0.0092268455773592,
+        "result": {
+          "successes": [
+            true,
+            true,
+            true
+          ],
+          "mastery": 1.0,
+          "expanded_nodes": 42
+        }
+      },
+      "fresh": {
+        "optimizer_updates": 35,
+        "loss": 0.009961853735148907,
+        "result": {
+          "successes": [
+            true,
+            true,
+            true
+          ],
+          "mastery": 1.0,
+          "expanded_nodes": 42
+        }
+      },
+      "retained_prefix": [
+        {
+          "regime_index": 0,
+          "mastery": 1.0,
+          "expanded_nodes": 42,
+          "byte_stable": true
+        },
+        {
+          "regime_index": 1,
+          "mastery": 1.0,
+          "expanded_nodes": 42,
+          "byte_stable": true
+        }
+      ],
+      "cumulative_cost": {
+        "warm_model_updates": 110,
+        "fresh_model_updates": 108,
+        "warm_search_expansions": 42,
+        "fresh_search_expansions": 42
+      }
+    },
+    {
+      "regime_index": 3,
+      "regime_name": "target_d",
+      "transition_table": [
+        [
+          1,
+          2,
+          0,
+          5,
+          3,
+          3,
+          1
+        ],
+        [
+          0,
+          0,
+          0,
+          3,
+          4,
+          2,
+          6
+        ]
+      ],
+      "prior_selection": {
+        "schema": "neural-computer.external-transition-model-prior-selection.v1",
+        "selected_initialization": "transfer",
+        "source_slot_id": 2,
+        "source_model_digest": "8bc13821ff09dfed6e3080d5ee84a08024df17feaf8d44bd10ad58e3e43118b7",
+        "transfer_probe_error": 0.08320830017328262,
+        "fresh_probe_error": 0.0862271636724472,
+        "probe_updates_per_candidate": 4,
+        "selected_model_digest": "f0117f285b92e0bcf72bdc88dbb9fd28543b9c5113a087f94e453771d6325923",
+        "reason": "transfer prior passed the factual challenger"
+      },
+      "pre_continuation": {
+        "successes": [
+          false,
+          false,
+          true
+        ],
+        "mastery": 0.3333333333333333,
+        "expanded_nodes": 42
+      },
+      "warm": {
+        "optimizer_updates": 31,
+        "shadow_optimizer_updates": 8,
+        "continuation_optimizer_updates": 23,
+        "loss": 0.007183987181633711,
+        "result": {
+          "successes": [
+            true,
+            true,
+            true
+          ],
+          "mastery": 1.0,
+          "expanded_nodes": 42
+        }
+      },
+      "fresh": {
+        "optimizer_updates": 31,
+        "loss": 0.008978024125099182,
+        "result": {
+          "successes": [
+            true,
+            true,
+            true
+          ],
+          "mastery": 1.0,
+          "expanded_nodes": 42
+        }
+      },
+      "retained_prefix": [
+        {
+          "regime_index": 0,
+          "mastery": 1.0,
+          "expanded_nodes": 42,
+          "byte_stable": true
+        },
+        {
+          "regime_index": 1,
+          "mastery": 1.0,
+          "expanded_nodes": 42,
+          "byte_stable": true
+        },
+        {
+          "regime_index": 2,
+          "mastery": 1.0,
+          "expanded_nodes": 42,
+          "byte_stable": true
+        }
+      ],
+      "cumulative_cost": {
+        "warm_model_updates": 141,
+        "fresh_model_updates": 139,
+        "warm_search_expansions": 42,
+        "fresh_search_expansions": 42
+      }
+    }
+  ],
+  "accounting": {
+    "unique_verifier_bits": 56,
+    "unique_logical_lifetimes": 56,
+    "context_encoder_optimizer_updates": 400,
+    "warm_model_optimizer_updates": 141,
+    "fresh_model_optimizer_updates": 139,
+    "warm_target_updates": [
+      37,
+      31
+    ],
+    "fresh_target_updates": [
+      35,
+      31
+    ],
+    "shadow_prior_probe_updates": 16,
+    "current_target_rows_reused_for_optimizer": true,
+    "old_regime_replay_during_target_adaptation": 0,
+    "controller_optimizer_updates": 0,
+    "planner_search_compute_reported": true,
+    "stable_bits_to_threshold": 56,
+    "retention_on_mastered_primitives": 1.0,
+    "transfer_ratio_against_fresh_learner": 0.9858156028368794
+  },
+  "digests": {
+    "controller": "17e8847f232b4c8ec4941a626052f7b4e88f42e5903337917a58c8c5f44c77cf",
+    "context_encoder": "1b1f056c993a37e53b64affd24f3b53a5b957760d1355aae788704a7a84353d6",
+    "bank": "4667cc3f3e55da57789af6b4479bc9414123777fa38a1a803572ad6de1216353"
+  },
+  "elapsed_seconds": 4.171547000005376
+}

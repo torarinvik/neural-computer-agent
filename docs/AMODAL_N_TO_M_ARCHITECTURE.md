@@ -4799,6 +4799,35 @@ unbounded alternation, and compression/consolidation validated over longer
 horizons. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_disjoint_dynamics_online_promoted_2026-08-09/`.
 
+## Copy-on-write transfer challenger for disjoint compounding (2026-08-09)
+
+The exported session's next-step requirement was seed-widening on genuinely
+different dynamics, while keeping the factual-model/policy distinction. The
+new `ExternalTransitionModelBank.select_verified_transfer_prior()` API creates
+isolated transfer and fresh candidates, lets a caller run a bounded
+current-target factual probe, and returns an auditable selection receipt. The
+live source slot is checked byte-for-byte before the caller explicitly appends
+the selected candidate. This makes negative transfer measurable and
+reversible without putting a policy or target label into the controller.
+
+`experiments/external_transition_model_disjoint_compounding/` applies the
+primitive to two source and two sequential target regimes with matched fresh
+controls. Across five seeds, four warm runs had lower cumulative model-update
+cost (`155/158`, `123/146`, `122/136`, and `146/155`) while retaining every
+earlier slot at full planner mastery and byte stability. One seed was more
+expensive (`141/139`), so the aggregate was correctly rejected rather than
+promoted. A wider eight-update probe did not remove that failure, and a
+sixteen-update probe was worse on all five seeds because challenger overhead
+dominated.
+
+The supported architectural result is the copy-on-write, verifier-gated
+challenger—not reliable general compounding. The remaining bottleneck is
+predicting full acquisition cost from a small factual prefix. The next useful
+test is a cost-aware or multi-prefix challenger with a strict held-out gate,
+followed by a wider disjoint-dynamics family. Evidence, including the
+negative seed, is archived in
+`session_records/sequence_working_memory_2026-08-02/external_transition_model_disjoint_compounding_rejected_2026-08-09/`.
+
 ## Variable-prefix online identity rejection (2026-08-09)
 
 The next experiment trained `ExternalTransitionContextEncoder` with a new
