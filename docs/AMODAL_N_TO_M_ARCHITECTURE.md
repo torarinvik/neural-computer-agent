@@ -4960,6 +4960,23 @@ unrestricted neural computation; distribution shift, repeated growth, and
 long-horizon retention remain unverified before treating it as general
 continual learning.
 
+## Composed goal-conditioned lifecycle rewrites (2026-08-09)
+
+The external lifecycle now has a two-seed composition audit covering
+query-conditioned verifier-gated eviction, held-out verified consolidation of
+equivalent survivors, and verified float16 compression. Both seeds preserved
+retained factual behavior and stable logical addresses while preserving
+bank-owned telemetry across normal and compressed checkpoints. Consolidation
+reduced three physical models to one shared parameter object, and compression
+selected `torch.float16`; controller updates and replayed transition examples
+were zero. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_transition_lifecycle_rewrite_promoted_2026-08-09/`.
+
+This closes bounded lifecycle composition. The next unresolved boundary is
+long-horizon query-conditioned relevance across actual controller replacement
+and multimodal representation drift; without that, the system still has a
+safe bounded memory manager rather than general continual learning.
+
 ## Goal-conditioned external relevance (2026-08-09)
 
 The ambiguity control identifies the missing signal; the corresponding

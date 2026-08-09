@@ -1,0 +1,31 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_transition_lifecycle_rewrite",
+  "entries": [
+    {
+      "seed": 1701,
+      "arm": "query-evict-consolidate-compress",
+      "unique_verifier_bits": 6,
+      "unique_logical_lifetimes": 12,
+      "optimizer_updates": 1,
+      "replayed_examples": 0,
+      "controller_updates": 0,
+      "retained_behavior": true,
+      "stable_ids": true,
+      "promoted": true
+    },
+    {
+      "seed": 1702,
+      "arm": "query-evict-consolidate-compress",
+      "unique_verifier_bits": 6,
+      "unique_logical_lifetimes": 12,
+      "optimizer_updates": 1,
+      "replayed_examples": 0,
+      "controller_updates": 0,
+      "retained_behavior": true,
+      "stable_ids": true,
+      "promoted": true
+    }
+  ],
+  "claim_boundary": "composed bounded external lifecycle rewrites; not unrestricted general continual learning"
+}

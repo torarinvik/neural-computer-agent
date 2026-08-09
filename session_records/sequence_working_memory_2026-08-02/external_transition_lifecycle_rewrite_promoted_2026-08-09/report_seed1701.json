@@ -1,0 +1,33 @@
+{
+  "schema": "neural-computer.external-transition-lifecycle-rewrite.v1",
+  "seed": 1701,
+  "gates": {
+    "query_conditioned_eviction": true,
+    "consolidation": true,
+    "compression": true,
+    "retained_behavior": true,
+    "stable_ids": true,
+    "telemetry_preserved": true,
+    "payload_persistence": true,
+    "compressed_persistence": true,
+    "zero_controller_updates": true,
+    "zero_replayed_transition_examples": true
+  },
+  "promoted": true,
+  "metrics": {
+    "selected_eviction_slot_id": 1,
+    "physical_models_after_consolidation": 1,
+    "compression_selected_codec": "torch.float16",
+    "policy_digest": "ce45bad2104f89b51a0c2324f83d9f6c5b25f6f2ca4e0739527da7f3f7a48a97"
+  },
+  "accounting": {
+    "unique_verifier_bits": 6,
+    "unique_logical_lifetimes": 12,
+    "policy_optimizer_updates": 1,
+    "controller_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "old_memory_replay": 0,
+    "wall_seconds": 1.2392187920049764
+  },
+  "claim_boundary": "composed bounded external lifecycle rewrites; not unrestricted general continual learning"
+}
