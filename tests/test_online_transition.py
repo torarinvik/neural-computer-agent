@@ -693,6 +693,73 @@ def test_streaming_statistics_candidate_does_not_retain_raw_evidence() -> None:
     assert source_index == 0
 
 
+def test_streaming_gradient_candidate_is_one_pass_and_persisted() -> None:
+    torch.manual_seed(13065)
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        4,
+        model_family="nonlinear_mlp_v1",
+        hidden_width=16,
+        capacity=1,
+    )
+    encoder = ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4)
+    target = _affine_observation(8)
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        encoder,
+        match_tolerance=1e-8,
+        continuation_tolerance=1e9,
+        admission_observations=2,
+        max_contexts=1,
+        defer_admission=True,
+        candidate_model_families=("nonlinear_mlp_v1",),
+        provisional_evidence_policy="streaming_gradient",
+    )
+    optimizer = None
+    losses: list[float] = []
+    before_digest = None
+    for row in range(target.state.shape[0]):
+        result = router.observe(
+            ExternalTransitionObservation(
+                state=target.state[row : row + 1],
+                intention=target.intention[row : row + 1],
+                next_state=target.next_state[row : row + 1],
+                confidence=torch.ones(1),
+            )
+        )
+        if result.status == "staged":
+            if optimizer is None:
+                before_digest = router.provisional_model_at(0).digest()
+                optimizer = torch.optim.Adam(
+                    router.provisional_model_at(0).parameters(),
+                    lr=0.01,
+                )
+            losses.append(
+                router.adaptation_step(
+                    result,
+                    optimizer,
+                    replay_evidence=False,
+                )
+            )
+
+    assert router.provisional_candidate_count == 1
+    assert len(losses) == 4
+    assert all(torch.isfinite(torch.tensor(loss)) for loss in losses)
+    assert before_digest is not None
+    assert router.provisional_model_at(0).digest() != before_digest
+    assert router.provisional_evidence_count(0) == target.state.shape[0]
+    assert router._provisional_observations == []
+    payload = router.state_payload()
+    assert payload["configuration"]["provisional_evidence_policy"] == (
+        "streaming_gradient"
+    )
+    assert payload["provisional_candidates"][0]["observations"] == []
+    restored = ExternalOnlineTransitionContextRouter.from_payload(payload)
+    assert restored.provisional_evidence_count(0) == target.state.shape[0]
+    assert restored._provisional_observations == []
+
+
 def test_streaming_statistics_isolates_two_interleaved_candidates() -> None:
     torch.manual_seed(1307)
     affine_family = "affine_sufficient_statistics_v1"

@@ -5438,9 +5438,12 @@ random-feature sufficient-statistics model. Each provisional transition row is
 consumed once into external statistics; the candidate persists only its opaque
 context key, model statistics, and an evidence count. Raw candidate rows are
 not retained and cannot be replayed accidentally during adaptation or payload
-restore. The existing cumulative-window mode remains available for general
-learned MLP candidates, whose replay requirement is now explicit rather than
-hidden behind a nominal “online” path.
+restore. The new `streaming_gradient` mode gives caller-owned learned models the
+same raw-evidence boundary: current windows are optimized without retaining
+provisional rows, while local repeated updates are accounted separately from
+old-regime replay. The existing cumulative-window mode remains available for
+general learned MLP candidates, whose replay requirement is now explicit rather
+than hidden behind a nominal “online” path.
 
 Across seeds `1801` and `1802`, three nonlinear transition regimes were
 staged and promoted from `64` rows each. Held-out factual errors were
@@ -5911,3 +5914,26 @@ factual basis is a fixed random-feature family, the ambiguity control is
 verifier-constructed, and the controller still has no learned multimodal
 context formation or arbitrary new computation. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_partial_ambiguous_open_world_promoted_2026-08-10/`.
+
+## Rejected naive learned-MLP factual substitution (2026-08-10)
+
+The new `streaming_gradient` protocol was applied to a trainable
+`ExternalTransitionModel` MLP in
+`experiments/external_learned_nonlinear_open_world/`. Four regimes exposed
+only `48/64` training rows. The controller and context encoder stayed frozen;
+raw provisional rows and old-regime replay were zero. Current four-row
+windows received four local optimizer updates, and those current-window
+reuses were counted separately.
+
+The model sometimes passed its current held-out factual gate, but three seeds
+could not reliably route later revisits to the old logical slots. A strict
+factual routing tolerance caused capacity pressure instead of a match; a loose
+tolerance prematurely matched novel regimes. Seed `82602` also failed the
+stricter `0.08` held-out quality gate. The result is rejected, with the fixed
+random-feature sufficient-statistics family retained as the current baseline.
+
+This rejects the naive substitution, not learned nonlinear factual memory in
+general. A successful replacement needs a representation-stable or
+meta-learned initialization and an independently verified route query; lower
+training loss alone is insufficient. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_learned_nonlinear_open_world_rejected_2026-08-10/`.

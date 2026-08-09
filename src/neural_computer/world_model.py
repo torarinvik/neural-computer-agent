@@ -3498,10 +3498,11 @@ class ExternalOnlineTransitionContextRouter:
         if provisional_evidence_policy not in {
             "cumulative_replay",
             "streaming_statistics",
+            "streaming_gradient",
         }:
             raise ValueError(
-                "provisional evidence policy must be cumulative_replay or "
-                "streaming_statistics"
+                "provisional evidence policy must be cumulative_replay, "
+                "streaming_statistics, or streaming_gradient"
             )
         if provisional_match_margin < 0.0:
             raise ValueError("provisional context match margin cannot be negative")
@@ -3950,6 +3951,12 @@ class ExternalOnlineTransitionContextRouter:
             raise ValueError(
                 "streaming_statistics candidates require models with one-pass observe"
             )
+        if self.provisional_evidence_policy == "streaming_gradient" and any(
+            hasattr(model, "observe") for model in models.values()
+        ):
+            raise ValueError(
+                "streaming_gradient candidates require caller-optimized models"
+            )
         if prior_index is not None:
             prior_family = self.bank.model_family_at(prior_index)
             for family, model in models.items():
@@ -4335,10 +4342,13 @@ class ExternalOnlineTransitionContextRouter:
             ):
                 return 0.0
             candidate = self._provisional_candidates[candidate_index]
-            if self.provisional_evidence_policy == "streaming_statistics":
+            if self.provisional_evidence_policy in {
+                "streaming_statistics",
+                "streaming_gradient",
+            }:
                 if replay_evidence:
                     raise ValueError(
-                        "streaming_statistics candidates cannot replay provisional evidence"
+                        "one-pass provisional candidates cannot replay evidence"
                     )
                 evidence = result.observation
                 deferred = list(candidate.deferred_observations)
@@ -4960,11 +4970,12 @@ class ExternalOnlineTransitionContextRouter:
             if not isinstance(evidence_count, int) or evidence_count < 0:
                 raise ValueError("online transition provisional evidence count is invalid")
             if (
-                router.provisional_evidence_policy == "streaming_statistics"
+                router.provisional_evidence_policy
+                in {"streaming_statistics", "streaming_gradient"}
                 and observations_payload
             ):
                 raise ValueError(
-                    "streaming_statistics payload cannot contain raw provisional evidence"
+                    "one-pass provisional payload cannot contain raw evidence"
                 )
             _validate_tensor(
                 provisional_context,

@@ -1,0 +1,31 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_learned_nonlinear_open_world",
+  "decision": "reject",
+  "claim_boundary": "diagnostic trainable nonlinear factual-memory slots under partial open-world evidence; rejected for unstable revisit routing",
+  "seeds": [82601, 82602, 82603],
+  "accounting": {
+    "regimes_per_seed": 4,
+    "presented_rows_per_regime": 48,
+    "available_train_rows_per_regime": 64,
+    "heldout_rows_per_regime": 64,
+    "admission_rows": 4,
+    "gradient_steps_per_current_window": 4,
+    "replayed_examples": 0,
+    "old_regime_replay": 0,
+    "context_encoder_optimizer_updates": 0,
+    "controller_optimizer_updates": 0
+  },
+  "gates": {
+    "all_three_runs_completed": true,
+    "learned_nonlinear_model_family": true,
+    "partial_evidence": true,
+    "no_raw_candidate_rows": true,
+    "old_regime_replay_zero": true,
+    "all_prior_retention": true,
+    "revisit_routing": false,
+    "all_quality_gates": false,
+    "decision_rejected": true
+  },
+  "finding": "A naive trainable nonlinear model is not yet a stable factual identity substrate: strict factual routing rejects revisits, while loose routing admits novel-regime collisions."
+}
