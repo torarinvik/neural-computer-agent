@@ -854,3 +854,17 @@ The intervention is rejected as implemented: updating the whole shared
 machine on chains damages the primitive contract. The next attempt must
 protect mastered source instructions/operator components while learning only
 the missing compositional capacity.
+
+## Protected-meta sequence calibration screen — not interpretable yet
+
+The sequence-calibration diagnostic was connected to the existing
+`factorized_protected_meta` mode, restricting calibration updates to the
+zero-initialized `operator_meta_*` residual and temporary chain decoders.
+Source instruction codes and the mastered base path were frozen.
+
+At the first two-seed screen, both runs failed source mastery before the
+calibration comparison (`0.5234–0.7461` source floors). The source-protection
+mechanism therefore has no valid capability result yet; the rung is rejected
+for under-training rather than for a retention failure. A future run must
+first establish a mastered protected-meta source checkpoint before testing
+chain acquisition.

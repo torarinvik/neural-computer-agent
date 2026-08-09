@@ -1,0 +1,273 @@
+{
+  "schema": "neural-computer.external-register-interleaved-basis-acquisition-audit.v1",
+  "seed": 69317,
+  "source_operations": [
+    "reverse",
+    "adjacent_xor",
+    "complement"
+  ],
+  "source_acquisition_mode": "balanced_joint_calibration_upper_bound",
+  "joint_source_updates": 576,
+  "sequence_calibration_updates": 64,
+  "sequence_calibration_trainable_surface": "operator_meta_residual_plus_temporary_decoders",
+  "sequence_calibration_accepted": true,
+  "sequence_calibration_source_before": [
+    0.74609375,
+    0.5078125,
+    0.58984375
+  ],
+  "sequence_calibration_source_after": [
+    0.74609375,
+    0.5078125,
+    0.58984375
+  ],
+  "sequence_calibration_progress": [
+    {
+      "update": 64,
+      "sequence_floor": 0.50390625,
+      "source_floor": 0.51953125,
+      "sequence_scores": [
+        0.5078125,
+        0.50390625
+      ]
+    }
+  ],
+  "operator_mode": "factorized_protected_meta",
+  "operator_rank": 8,
+  "role_binding": null,
+  "preserve_composition_trace": true,
+  "target_operations": [
+    "complement_rotate",
+    "prefix_parity"
+  ],
+  "composition_programs": [
+    [
+      "reverse",
+      "adjacent_xor",
+      "complement"
+    ],
+    [
+      "reverse",
+      "complement",
+      "adjacent_xor"
+    ]
+  ],
+  "decoder_prior": null,
+  "shared_bridge_prior": null,
+  "source_before": [
+    0.74609375,
+    0.5078125,
+    0.58984375
+  ],
+  "source_attempt_scores": [
+    [
+      0.74609375
+    ],
+    [
+      0.5078125
+    ],
+    [
+      0.58984375
+    ]
+  ],
+  "retained_before": [
+    0.74609375,
+    0.5078125,
+    0.58984375
+  ],
+  "bridge_prior_source_after": [
+    0.74609375,
+    0.5078125,
+    0.58984375
+  ],
+  "bridge_prior_progress": [],
+  "canonical_readout_prior": null,
+  "canonical_readout_prior_progress": [],
+  "targets": [
+    {
+      "operation": "complement_rotate",
+      "composition_program": null,
+      "candidate_accuracy": 0.6875,
+      "consolidation_probe_accuracy": 0.6796875,
+      "shuffled_training_accuracy": 0.5,
+      "missing_evidence_accuracy": 0.5,
+      "retained_before": [
+        0.74609375,
+        0.5078125,
+        0.58984375
+      ],
+      "retained_after": [
+        0.74609375,
+        0.5078125,
+        0.58984375
+      ],
+      "retention_deltas": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "candidate_progress": [
+        {
+          "update": 64,
+          "heldout_accuracy": 0.671875
+        }
+      ],
+      "accepted": false
+    },
+    {
+      "operation": "prefix_parity",
+      "composition_program": null,
+      "candidate_accuracy": 0.734375,
+      "consolidation_probe_accuracy": 0.75,
+      "shuffled_training_accuracy": 0.53125,
+      "missing_evidence_accuracy": 0.5,
+      "retained_before": [
+        0.74609375,
+        0.5078125,
+        0.58984375
+      ],
+      "retained_after": [
+        0.74609375,
+        0.5078125,
+        0.58984375
+      ],
+      "retention_deltas": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "candidate_progress": [
+        {
+          "update": 64,
+          "heldout_accuracy": 0.75
+        }
+      ],
+      "accepted": false
+    },
+    {
+      "operation": "generated_composition",
+      "composition_program": [
+        "reverse",
+        "adjacent_xor",
+        "complement"
+      ],
+      "candidate_accuracy": 0.7421875,
+      "consolidation_probe_accuracy": 0.75,
+      "shuffled_training_accuracy": 0.46875,
+      "missing_evidence_accuracy": 0.5,
+      "retained_before": [
+        0.74609375,
+        0.5078125,
+        0.58984375
+      ],
+      "retained_after": [
+        0.74609375,
+        0.5078125,
+        0.58984375
+      ],
+      "retention_deltas": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "candidate_progress": [
+        {
+          "update": 64,
+          "heldout_accuracy": 0.734375
+        }
+      ],
+      "accepted": false
+    },
+    {
+      "operation": "generated_composition",
+      "composition_program": [
+        "reverse",
+        "complement",
+        "adjacent_xor"
+      ],
+      "candidate_accuracy": 0.7578125,
+      "consolidation_probe_accuracy": 0.75,
+      "shuffled_training_accuracy": 0.4921875,
+      "missing_evidence_accuracy": 0.5,
+      "retained_before": [
+        0.74609375,
+        0.5078125,
+        0.58984375
+      ],
+      "retained_after": [
+        0.74609375,
+        0.5078125,
+        0.58984375
+      ],
+      "retention_deltas": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "candidate_progress": [
+        {
+          "update": 64,
+          "heldout_accuracy": 0.7421875
+        }
+      ],
+      "accepted": false
+    }
+  ],
+  "fresh_transfer": [
+    {
+      "composition_program": [
+        "reverse",
+        "adjacent_xor",
+        "complement"
+      ],
+      "inherited_stable_bits": null,
+      "fresh_stable_bits": null,
+      "fresh_accuracy": 0.75,
+      "fresh_source_training_verifier_bits": 73728,
+      "fresh_sequence_calibration_verifier_bits": 8192,
+      "positive_transfer": false
+    },
+    {
+      "composition_program": [
+        "reverse",
+        "complement",
+        "adjacent_xor"
+      ],
+      "inherited_stable_bits": null,
+      "fresh_stable_bits": null,
+      "fresh_accuracy": 0.7734375,
+      "fresh_source_training_verifier_bits": 73728,
+      "fresh_sequence_calibration_verifier_bits": 8192,
+      "positive_transfer": false
+    }
+  ],
+  "transfer_promoted": false,
+  "curriculum_fresh_control": true,
+  "interleaving": {
+    "schedule": "round_robin_per_local_update",
+    "candidate_count": 4,
+    "separate_optimizer_state": true,
+    "transactional_admission": true
+  },
+  "accounting": {
+    "replayed_examples": 0,
+    "parent_training_verifier_bits": 2048,
+    "source_training_verifier_bits": 73728,
+    "source_selection_verifier_bits": 13824,
+    "joint_source_calibration_verifier_bits": 73728,
+    "bridge_prior_training_verifier_bits": 0,
+    "canonical_readout_prior_training_verifier_bits": 0,
+    "normal_target_training_verifier_bits": 45056,
+    "shuffled_target_training_verifier_bits": 45056,
+    "fresh_transfer_training_verifier_bits": 22528,
+    "fresh_curriculum_source_verifier_bits": 147456,
+    "sequence_calibration_verifier_bits": 8192,
+    "fresh_sequence_calibration_verifier_bits": 16384,
+    "progress_audit_verifier_bits": 5120,
+    "suite_and_control_verifier_bits": 8704,
+    "unique_verifier_bits": 388096,
+    "optimizer_updates": 2912,
+    "unique_logical_lifetimes": 50176
+  },
+  "promoted": false
+}

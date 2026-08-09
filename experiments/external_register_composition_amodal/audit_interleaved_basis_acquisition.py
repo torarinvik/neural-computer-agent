@@ -457,9 +457,21 @@ def _train_joint_source_bank(parent, machine, *, args, seed_base: int):
         OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
         for _ in args.source_operations
     ]
-    trainable = list(machine.parameters()) + [
+    if args.operator_mode == "factorized_protected_meta":
+        for parameter in machine.parameters():
+            parameter.requires_grad_(False)
+        trainable = [
+            parameter
+            for name, parameter in machine.named_parameters()
+            if name.startswith("operator_meta_")
+        ]
+        for parameter in trainable:
+            parameter.requires_grad_(True)
+    else:
+        trainable = list(machine.parameters())
+    trainable.extend(
         parameter for decoder in decoders for parameter in decoder.parameters()
-    ]
+    )
     optimizer = torch.optim.AdamW(trainable, lr=args.learning_rate, weight_decay=1e-5)
     best_state = None
     best_decoders = None
@@ -1535,6 +1547,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         ),
         "joint_source_updates": args.joint_source_updates,
         "sequence_calibration_updates": args.sequence_calibration_updates,
+        "sequence_calibration_trainable_surface": (
+            "operator_meta_residual_plus_temporary_decoders"
+            if args.operator_mode == "factorized_protected_meta"
+            else "entire_machine_plus_temporary_decoders"
+        ),
         "sequence_calibration_accepted": sequence_calibration_accepted,
         "sequence_calibration_source_before": source_before,
         "sequence_calibration_source_after": sequence_calibration_source_after,
