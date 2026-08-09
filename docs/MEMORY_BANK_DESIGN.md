@@ -2623,3 +2623,40 @@ and are the only mechanisms that would make reuse preferred over
 relearning.
 
 Probes 145-150 are `reacher_ladder.py --sparse --warm-mix --freeze-plant`.
+
+**F65 (probes 151-156). Widening the adaptation channel does nothing.
+The bottleneck is not capacity.** F64 located the problem as the channel
+through which a new task exploits a frozen prior — 4160 params that
+re-map goal meaning but cannot change action selection. Adding the
+output head (5348 params) should have loosened exactly that.
+
+| arm | zero-shot | final |
+| --- | ---: | ---: |
+| cold | — | 0.625 |
+| goal adapter only | 0.520 | 0.613 |
+| goal adapter + output head | 0.520 | **0.613** |
+
+Identical to three decimals. So the frozen prior's competence is not
+being withheld by a too-narrow adapter, and F64's diagnosis is wrong.
+Something else prevents 0.520 of transferred capability from becoming
+better-than-cold learning, and adding parameters to the adaptation path
+is not it.
+
+The two mechanisms that have never been tested remain the live
+candidates, and both are about INCENTIVE rather than capacity: there is
+no cost term making reuse preferable to relearning, and no
+retrieval-before-learning step that consults the bank at all. A neutral
+prior is exactly what "carried but never consulted" looks like.
+
+**Process failure recorded.** The amortisation arm of the same sweep did
+not run the configuration I specified: my shell wrapper referenced `$3`,
+so every flag after the first was silently dropped and the "warm" arm
+ran without freezing, without the head, and without multiple targets —
+its `cost_per_target 800, lifetime 800` (implying one target, not three)
+is what exposed it. Fixed by `"$@"`. This is the same species as the
+argparse no-op earlier today and the runs I reported as training while
+they were dead: **the harness lying about what it ran.** Third instance
+in one session, and the reason every sweep now prints back the
+configuration it actually received.
+
+Probes 151-156 are `reacher_ladder.py --adapt-decoder`.
