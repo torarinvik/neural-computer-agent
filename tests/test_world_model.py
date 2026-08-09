@@ -6,6 +6,7 @@ from neural_computer import (
     ExternalGoalEvaluator,
     ExternalModelBasedPlanner,
     ExternalOnlineContextAddressResolver,
+    ExternalOnlineTransitionContextRouter,
     ExternalTransitionContextEncoder,
     ExternalTransitionEvidenceEvaluator,
     ExternalTransitionMemory,
@@ -221,6 +222,86 @@ def test_transition_model_bank_round_trip_preserves_learned_context_bytes() -> N
 
     assert restored.digest() == bank.digest()
     assert torch.equal(restored._contexts[0], bank._contexts[0])
+
+
+def test_online_transition_context_router_admits_current_bundle_and_persists() -> None:
+    torch.manual_seed(1210)
+    bank = ExternalTransitionModelBank(2, 1, 4, hidden_width=8)
+    encoder = ExternalTransitionContextEncoder(
+        2,
+        1,
+        hidden_width=8,
+        context_width=4,
+    )
+    bank.ensure_context(torch.tensor([1.0, 0.0, 0.0, 0.0]))
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        encoder,
+        match_tolerance=1e-8,
+        admission_observations=2,
+    )
+    rows = [
+        ExternalTransitionObservation(
+            state=torch.tensor([[0.1, 0.2]]),
+            intention=torch.tensor([[0.3]]),
+            next_state=torch.tensor([[0.7, -0.4]]),
+            confidence=torch.ones(1),
+        ),
+        ExternalTransitionObservation(
+            state=torch.tensor([[0.2, 0.1]]),
+            intention=torch.tensor([[-0.3]]),
+            next_state=torch.tensor([[0.4, -0.6]]),
+            confidence=torch.ones(1),
+        ),
+    ]
+
+    first = router.observe(rows[0])
+    admitted = router.observe(rows[1])
+
+    assert first.status == "pending"
+    assert first.pending_observations == 1
+    assert admitted.status == "admitted"
+    assert admitted.slot_index == 1
+    assert admitted.observation is not None
+    assert admitted.observation.state.shape == (2, 2)
+    optimizer = torch.optim.Adam(
+        router.bank.models[admitted.slot_index].parameters(),
+        lr=0.01,
+    )
+    assert router.adaptation_step(admitted, optimizer) > 0.0
+
+    restored = ExternalOnlineTransitionContextRouter.from_payload(
+        router.state_payload()
+    )
+    assert restored.configuration() == router.configuration()
+    assert restored.bank.digest() == router.bank.digest()
+    assert restored.context_encoder.digest() == router.context_encoder.digest()
+
+
+def test_online_transition_context_router_capacity_guard_does_not_grow_or_write() -> None:
+    torch.manual_seed(1211)
+    bank = ExternalTransitionModelBank(2, 1, 4, hidden_width=8)
+    encoder = ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4)
+    bank.ensure_context(torch.tensor([1.0, 0.0, 0.0, 0.0]))
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        encoder,
+        match_tolerance=1e-8,
+        admission_observations=2,
+        max_contexts=1,
+    )
+    row = ExternalTransitionObservation(
+        state=torch.tensor([[0.1, 0.2]]),
+        intention=torch.tensor([[0.3]]),
+        next_state=torch.tensor([[0.7, -0.4]]),
+    )
+
+    router.observe(row)
+    capacity = router.observe(row)
+
+    assert capacity.status == "capacity"
+    assert capacity.pending_observations == 0
+    assert router.bank.context_count == 1
 
 
 def test_transition_observation_rejects_mismatched_batch_and_nonfinite_values() -> None:

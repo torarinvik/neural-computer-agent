@@ -1360,6 +1360,32 @@
       "persistence_exact": [true, true],
       "controls": "learned context loss, paired-view stability, regime separation, automatic slot growth, frozen controller, prior retention, prior-slot byte stability, wrong-context, corruption, matched fresh model, persistence, and zero old-prior replay passed",
       "decision": "promote bounded learned context formation; next test online identity under alternating regimes and capacity pressure, then consolidation and compression"
+    },
+    {
+      "experiment": "external_online_transition_context",
+      "date": "2026-08-09",
+      "seeds": [70011, 70012],
+      "claim": "An external windowed factual router can identify alternating opaque transition regimes, admit a novel regime without a label, reuse it later, and preserve earlier isolated slots while a frozen controller remains unchanged.",
+      "module": "ExternalOnlineTransitionContextRouter + ExternalTransitionContextEncoder + ExternalTransitionModelBank",
+      "context_optimizer_updates_per_seed": 500,
+      "admission_window_observations": 12,
+      "target_optimizer_updates_per_seed": [22, 22],
+      "fresh_target_updates_per_seed": [31, 37],
+      "target_mastery": [1.0, 1.0],
+      "base_retention": [1.0, 1.0],
+      "auxiliary_retention": [1.0, 1.0],
+      "target_admissions": [1, 1],
+      "target_reuse_after_admission": [1, 1],
+      "old_prior_replay_during_target": [0, 0],
+      "controller_parameter_updates": [0, 0],
+      "capacity_slots_before_after": [[3, 3], [3, 3]],
+      "capacity_refusal_events": [1, 1],
+      "wrong_context_control": [true, true],
+      "corruption_control": [true, true],
+      "persistence_exact": [true, true],
+      "regime_labels_used_by_router": [false, false],
+      "controls": "aggregate-window routing margin, alternating slot assignments, target admission/reuse, prior retention and byte stability, frozen controller, zero old-prior replay, capacity refusal/no-growth, wrong-context MSE, corruption, matched fresh model, and persistence passed",
+      "decision": "promote bounded online transition identity; next implement verifier-gated capacity growth, consolidation, and compression across alternating regimes"
     }
   ]
 }

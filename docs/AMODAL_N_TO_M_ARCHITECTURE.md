@@ -4611,3 +4611,33 @@ slot consolidation or compression. The next bottleneck is therefore online
 context identity and capacity management under alternating regimes. Evidence
 is archived in
 `session_records/sequence_working_memory_2026-08-02/external_learned_transition_context_promoted_2026-08-09/`.
+
+## Online transition-context identity under alternating regimes (2026-08-09)
+
+The next two-seed rung adds `ExternalOnlineTransitionContextRouter`. Individual
+opaque transitions are not assumed to identify a regime: some distinct
+dynamics produce the same saturated next state. The router therefore buffers a
+finite current-stream window, compares aggregate factual prediction errors and
+a best-vs-second-best margin, and only then either routes the whole window to
+an existing slot or admits a new opaque context. Ambiguous windows are not
+written to any model.
+
+The stream alternated base, auxiliary, base, held-out target, auxiliary,
+target, and base regimes. Both seeds routed the mastered regimes to the
+correct isolated slots, admitted the target exactly once without a regime
+label, reused it on return, and reached `1.0` target mastery. Target adaptation
+used 22 updates versus 31 and 37 for matched fresh models. Both prior slots
+remained byte-stable with `1.0` retention; old-prior replay during target
+learning was zero. A fourth regime at the three-slot capacity limit generated
+a capacity result without growing or modifying the bank. Wrong-context MSE,
+corruption, frozen-controller, and exact persistence controls passed.
+
+This promotes bounded online identity and safe ambiguity handling, not
+unrestricted continual learning. The encoder is pretrained, identity is
+windowed rather than instantaneous, capacity pressure is refused rather than
+solved by consolidation/compression, and current target windows are replayed
+and accounted for separately. The next bottleneck is learned capacity
+management: verified consolidation/compression must preserve all alternating
+capabilities while allowing the external memory to grow beyond its fixed
+window and slot budget. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_online_transition_context_promoted_2026-08-09/`.

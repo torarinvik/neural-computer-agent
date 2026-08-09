@@ -53,6 +53,9 @@ EXTERNAL_CONTEXTUAL_EVIDENCE_CALIBRATOR_SCHEMA = (
 EXTERNAL_TRANSITION_CONTEXT_ENCODER_SCHEMA = (
     "neural-computer.external-transition-context-encoder.v1"
 )
+EXTERNAL_ONLINE_TRANSITION_CONTEXT_ROUTER_SCHEMA = (
+    "neural-computer.external-online-transition-context-router.v1"
+)
 EXTERNAL_TRANSITION_MODEL_BANK_SCHEMA = (
     "neural-computer.external-transition-model-bank.v1"
 )
@@ -325,6 +328,21 @@ class ExternalTransitionModelBank(nn.Module):
     @property
     def context_count(self) -> int:
         return len(self._contexts)
+
+    @property
+    def contexts(self) -> torch.Tensor:
+        """Return a detached snapshot of the opaque slot keys."""
+
+        if not self._contexts:
+            return torch.empty((0, self.context_width), dtype=torch.float32)
+        return torch.stack(self._contexts).detach().clone()
+
+    def context_at(self, index: int) -> torch.Tensor:
+        """Return one detached opaque slot key without exposing semantics."""
+
+        if not 0 <= index < self.context_count:
+            raise IndexError("transition-model context index is out of range")
+        return self._contexts[index].detach().clone()
 
     def _validate_context(self, context: torch.Tensor) -> torch.Tensor:
         _validate_tensor(
@@ -794,6 +812,380 @@ class ExternalTransitionContextEncoder(nn.Module):
         if payload.get("sha256") != encoder.digest():
             raise ValueError("transition-context encoder checksum mismatch")
         return encoder
+
+
+@dataclass(frozen=True)
+class ExternalOnlineTransitionContextResult:
+    """One read/admit decision from the online transition router."""
+
+    status: str
+    slot_index: int | None
+    context: torch.Tensor | None
+    pending_observations: int
+    prediction_error: float | None
+    observation: ExternalTransitionObservation | None = None
+    schema: str = EXTERNAL_ONLINE_TRANSITION_CONTEXT_ROUTER_SCHEMA
+
+    def validate(
+        self,
+        *,
+        state_width: int,
+        intention_width: int,
+        context_width: int,
+    ) -> ExternalOnlineTransitionContextResult:
+        if self.schema != EXTERNAL_ONLINE_TRANSITION_CONTEXT_ROUTER_SCHEMA:
+            raise ValueError("unsupported online transition-context result schema")
+        if self.status not in {
+            "matched",
+            "pending",
+            "admitted",
+            "reused",
+            "capacity",
+        }:
+            raise ValueError("unsupported online transition-context result status")
+        if self.slot_index is not None and self.slot_index < 0:
+            raise ValueError("online transition-context slot index is invalid")
+        if self.context is not None:
+            _validate_tensor(
+                self.context,
+                name="online transition-context result key",
+                ndim=1,
+                width=context_width,
+            )
+        if (
+            not isinstance(self.pending_observations, int)
+            or self.pending_observations < 0
+        ):
+            raise ValueError("online transition-context pending count is invalid")
+        if self.prediction_error is not None and (
+            not math.isfinite(self.prediction_error) or self.prediction_error < 0.0
+        ):
+            raise ValueError("online transition-context prediction error is invalid")
+        if self.observation is not None:
+            self.observation.validate(
+                state_width=state_width,
+                intention_width=intention_width,
+            )
+        return self
+
+
+class ExternalOnlineTransitionContextRouter:
+    """Route alternating opaque transitions and admit novel regimes online.
+
+    Existing slots are selected by factual one-step prediction error. An
+    unmatched row is provisional and is not written to a model. Once enough
+    consecutive unmatched current-stream rows exist, the external context
+    encoder forms an opaque key and a new isolated model slot is appended.
+    The controller is not involved; callers own optimizer updates through
+    :meth:`adaptation_step`.
+    """
+
+    schema = EXTERNAL_ONLINE_TRANSITION_CONTEXT_ROUTER_SCHEMA
+
+    def __init__(
+        self,
+        bank: ExternalTransitionModelBank,
+        context_encoder: ExternalTransitionContextEncoder,
+        *,
+        match_tolerance: float = 0.05,
+        match_margin: float = 0.01,
+        admission_observations: int = 12,
+        max_contexts: int | None = None,
+    ) -> None:
+        if (
+            bank.state_width != context_encoder.state_width
+            or bank.intention_width != context_encoder.intention_width
+        ):
+            raise ValueError("router bank and context encoder widths differ")
+        if bank.context_width != context_encoder.context_width:
+            raise ValueError("router bank and context widths differ")
+        if match_tolerance < 0.0:
+            raise ValueError("online context match tolerance cannot be negative")
+        if match_margin < 0.0:
+            raise ValueError("online context match margin cannot be negative")
+        if admission_observations < 1:
+            raise ValueError("online context admission count must be positive")
+        if max_contexts is not None and max_contexts < 1:
+            raise ValueError("online context maximum must be positive")
+        self.bank = bank
+        self.context_encoder = context_encoder
+        self.match_tolerance = float(match_tolerance)
+        self.match_margin = float(match_margin)
+        self.admission_observations = int(admission_observations)
+        self.max_contexts = max_contexts
+        self._pending: list[ExternalTransitionObservation] = []
+
+    @property
+    def pending_observations(self) -> int:
+        return len(self._pending)
+
+    def configuration(self) -> dict[str, int | float | str | None]:
+        return {
+            "schema": self.schema,
+            "state_width": self.bank.state_width,
+            "intention_width": self.bank.intention_width,
+            "context_width": self.bank.context_width,
+            "match_tolerance": self.match_tolerance,
+            "match_margin": self.match_margin,
+            "admission_observations": self.admission_observations,
+            "max_contexts": self.max_contexts,
+            "routing": "factual_prediction_error_then_pending_context_admission_v1",
+            "writes": "caller_owned_slot_only_v1",
+        }
+
+    @staticmethod
+    def _clone_observation(
+        observation: ExternalTransitionObservation,
+    ) -> ExternalTransitionObservation:
+        return ExternalTransitionObservation(
+            state=observation.state.detach().clone(),
+            intention=observation.intention.detach().clone(),
+            next_state=observation.next_state.detach().clone(),
+            confidence=(
+                None
+                if observation.confidence is None
+                else observation.confidence.detach().clone()
+            ),
+        )
+
+    @staticmethod
+    def _merge_observations(
+        observations: list[ExternalTransitionObservation],
+    ) -> ExternalTransitionObservation:
+        if not observations:
+            raise ValueError("cannot merge an empty pending transition bundle")
+        confidence = [
+            torch.ones(item.state.shape[0], device=item.state.device)
+            if item.confidence is None
+            else item.confidence.reshape(-1)
+            for item in observations
+        ]
+        return ExternalTransitionObservation(
+            state=torch.cat([item.state for item in observations]),
+            intention=torch.cat([item.intention for item in observations]),
+            next_state=torch.cat([item.next_state for item in observations]),
+            confidence=torch.cat(confidence),
+        )
+
+    def _best_slot(
+        self,
+        observation: ExternalTransitionObservation,
+    ) -> tuple[int, float, float, torch.Tensor] | None:
+        if self.bank.context_count == 0:
+            return None
+        candidates: list[tuple[float, int, torch.Tensor]] = []
+        for index in range(self.bank.context_count):
+            context = self.bank.context_at(index).to(observation.state)
+            context_batch = context.unsqueeze(0).expand(observation.state.shape[0], -1)
+            prediction = self.bank(
+                observation.state,
+                observation.intention,
+                context_batch,
+            )
+            error = float(
+                (prediction - observation.next_state).square().mean().detach()
+            )
+            candidates.append((error, index, context))
+        error, index, context = min(candidates, key=lambda item: (item[0], item[1]))
+        ordered_errors = sorted(item[0] for item in candidates)
+        margin = (
+            float("inf")
+            if len(ordered_errors) == 1
+            else ordered_errors[1] - ordered_errors[0]
+        )
+        if error > self.match_tolerance or margin < self.match_margin:
+            return None
+        return index, error, margin, context
+
+    def _pending_result(
+        self,
+        *,
+        status: str = "pending",
+        prediction_error: float | None = None,
+    ) -> ExternalOnlineTransitionContextResult:
+        return ExternalOnlineTransitionContextResult(
+            status=status,
+            slot_index=None,
+            context=None,
+            pending_observations=self.pending_observations,
+            prediction_error=prediction_error,
+        ).validate(
+            state_width=self.bank.state_width,
+            intention_width=self.bank.intention_width,
+            context_width=self.bank.context_width,
+        )
+
+    def observe(
+        self,
+        observation: ExternalTransitionObservation,
+    ) -> ExternalOnlineTransitionContextResult:
+        """Route one current-stream row without accepting a regime label."""
+
+        observation.validate(
+            state_width=self.bank.state_width,
+            intention_width=self.bank.intention_width,
+        )
+        if observation.state.shape[0] != 1:
+            raise ValueError("online context routing accepts one transition row")
+        self._pending.append(self._clone_observation(observation))
+        if self.pending_observations < self.admission_observations:
+            return self._pending_result()
+
+        bundle = self._merge_observations(self._pending)
+        match = self._best_slot(bundle)
+        if match is not None:
+            index, error, _margin, context = match
+            self._pending.clear()
+            return ExternalOnlineTransitionContextResult(
+                status="matched",
+                slot_index=index,
+                context=context,
+                pending_observations=0,
+                prediction_error=error,
+                observation=bundle,
+            ).validate(
+                state_width=self.bank.state_width,
+                intention_width=self.bank.intention_width,
+                context_width=self.bank.context_width,
+            )
+
+        if self.max_contexts is not None and self.bank.context_count >= self.max_contexts:
+            self._pending.clear()
+            return self._pending_result(status="capacity")
+
+        with torch.no_grad():
+            context = self.context_encoder.encode_observation(bundle).detach()
+        prior_index: int | None = None
+        if self.bank.context_count:
+            prior_index = int(
+                (self.bank.contexts @ context.to(self.bank.contexts)).argmax()
+            )
+        before = self.bank.context_count
+        index = self.bank.ensure_context(context, initialize_from=prior_index)
+        status = "admitted" if index == before else "reused"
+        self._pending.clear()
+        return ExternalOnlineTransitionContextResult(
+            status=status,
+            slot_index=index,
+            context=self.bank.context_at(index),
+            pending_observations=0,
+            prediction_error=None,
+            observation=bundle,
+        ).validate(
+            state_width=self.bank.state_width,
+            intention_width=self.bank.intention_width,
+            context_width=self.bank.context_width,
+        )
+
+    def adaptation_step(
+        self,
+        result: ExternalOnlineTransitionContextResult,
+        optimizer: torch.optim.Optimizer,
+    ) -> float:
+        """Update only the externally selected slot using current evidence."""
+
+        result.validate(
+            state_width=self.bank.state_width,
+            intention_width=self.bank.intention_width,
+            context_width=self.bank.context_width,
+        )
+        if result.slot_index is None or result.context is None or result.observation is None:
+            return 0.0
+        context = result.context.to(result.observation.state)
+        context_batch = context.unsqueeze(0).expand(
+            result.observation.state.shape[0], -1
+        )
+        return self.bank.adaptation_step(
+            result.observation,
+            context_batch,
+            optimizer,
+        )
+
+    @staticmethod
+    def _observation_payload(
+        observation: ExternalTransitionObservation,
+    ) -> dict[str, object]:
+        return {
+            "state": observation.state.detach().cpu().tolist(),
+            "intention": observation.intention.detach().cpu().tolist(),
+            "next_state": observation.next_state.detach().cpu().tolist(),
+            "confidence": (
+                None
+                if observation.confidence is None
+                else observation.confidence.detach().cpu().tolist()
+            ),
+        }
+
+    @staticmethod
+    def _observation_from_payload(
+        payload: Mapping[str, Any],
+    ) -> ExternalTransitionObservation:
+        if not isinstance(payload, Mapping):
+            raise TypeError("online transition pending row must be a mapping")
+        confidence = payload.get("confidence")
+        return ExternalTransitionObservation(
+            state=torch.tensor(payload["state"], dtype=torch.float32),
+            intention=torch.tensor(payload["intention"], dtype=torch.float32),
+            next_state=torch.tensor(payload["next_state"], dtype=torch.float32),
+            confidence=(
+                None
+                if confidence is None
+                else torch.tensor(confidence, dtype=torch.float32)
+            ),
+        )
+
+    def state_payload(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "bank": self.bank.payload(),
+            "context_encoder": self.context_encoder.state_payload(),
+            "pending": [self._observation_payload(row) for row in self._pending],
+        }
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, Any],
+    ) -> ExternalOnlineTransitionContextRouter:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported online transition-context router payload")
+        configuration = payload.get("configuration")
+        if not isinstance(configuration, Mapping):
+            raise TypeError("online transition-context router configuration is missing")
+        bank_payload = payload.get("bank")
+        encoder_payload = payload.get("context_encoder")
+        pending_payload = payload.get("pending")
+        if not isinstance(bank_payload, Mapping) or not isinstance(
+            encoder_payload, Mapping
+        ):
+            raise TypeError("online transition-context router components are missing")
+        if not isinstance(pending_payload, list):
+            raise TypeError("online transition-context router pending rows are invalid")
+        bank = ExternalTransitionModelBank.from_payload(bank_payload)
+        encoder = ExternalTransitionContextEncoder.from_payload(encoder_payload)
+        router = cls(
+            bank,
+            encoder,
+            match_tolerance=float(configuration["match_tolerance"]),
+            match_margin=float(configuration["match_margin"]),
+            admission_observations=int(configuration["admission_observations"]),
+            max_contexts=(
+                None
+                if configuration.get("max_contexts") is None
+                else int(configuration["max_contexts"])
+            ),
+        )
+        for row_payload in pending_payload:
+            row = cls._observation_from_payload(row_payload)
+            row.validate(
+                state_width=bank.state_width,
+                intention_width=bank.intention_width,
+            )
+            if row.state.shape[0] != 1:
+                raise ValueError("online transition pending row is not scalar")
+            router._pending.append(row)
+        return router
 
 
 class ExternalGoalEvaluator(nn.Module):
@@ -2272,6 +2664,7 @@ __all__ = [
     "EXTERNAL_GOAL_EVALUATOR_SCHEMA",
     "EXTERNAL_MODEL_PLANNER_SCHEMA",
     "EXTERNAL_ONLINE_CONTEXT_RESOLVER_SCHEMA",
+    "EXTERNAL_ONLINE_TRANSITION_CONTEXT_ROUTER_SCHEMA",
     "EXTERNAL_TRANSITION_CONTEXT_ENCODER_SCHEMA",
     "EXTERNAL_TRANSITION_EVIDENCE_CALIBRATOR_SCHEMA",
     "EXTERNAL_TRANSITION_MEMORY_SCHEMA",
@@ -2285,6 +2678,8 @@ __all__ = [
     "ExternalModelBasedPlanner",
     "ExternalOnlineContextAddressResolver",
     "ExternalOnlineContextResolution",
+    "ExternalOnlineTransitionContextResult",
+    "ExternalOnlineTransitionContextRouter",
     "ExternalTransitionContextEncoder",
     "ExternalTransitionEvidenceCalibrator",
     "ExternalTransitionEvidenceEvaluator",
