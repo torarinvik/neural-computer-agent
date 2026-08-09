@@ -1072,6 +1072,13 @@ leading architecture, but not promoted until replication closes the gap and
 the route is learned rather than slot-indexed. Raw report:
 `protected_bounded_meta_program_memory/report_seed69316.json`.
 
+The fixed program-memory screen replicated under calibration seed `69317` at
+the same `0.7344` causal floor, with changed per-order scores but exact source
+retention and zero replay. This closes the basic replication gate, but the
+result remains just below the `0.7422` rank-16 baseline and still relies on
+slot-indexed execution. Raw report:
+`protected_bounded_meta_program_memory_replication/report_seed69317.json`.
+
 Learned soft routing over those executable program slots was then tested with
 the same six-slot counterfactual outcome credit. It fell to `0.6875`
 (`0.7656, 0.7188, 0.8047, 0.7344, 0.6875, 0.7500`) while retaining source
