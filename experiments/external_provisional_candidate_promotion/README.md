@@ -20,6 +20,13 @@ The gain is bounded and explicitly replay-accounted: four unique target rows
 were presented 600 times to the provisional candidate, while old committed
 slot replay stayed zero. It is not yet replay-free general continual learning.
 
+The router now also supports multiple isolated provisional candidates. Each
+candidate has its own model, opaque context, evidence window, candidate-indexed
+adaptation, and verifier-gated promotion. This prevents an alternating novel
+stream from silently contaminating an earlier candidate; the focused
+alternating-isolation regression covers staging, payload restore, promotion of
+the second candidate, and byte stability of the first.
+
 ```text
 .venv/bin/python experiments/external_provisional_candidate_promotion/train.py \
   --seed 70611 \

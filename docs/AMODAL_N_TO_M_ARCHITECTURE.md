@@ -4815,3 +4815,23 @@ unrestricted memory growth. Evidence from the rejection remains archived in
 `session_records/sequence_working_memory_2026-08-02/external_provisional_candidate_promotion_rejected_2026-08-09/`.
 The promoted rerun is archived in
 `session_records/sequence_working_memory_2026-08-02/external_provisional_candidate_promotion_promoted_2026-08-09/`.
+
+## Alternating provisional-candidate isolation (2026-08-09)
+
+The previous candidate boundary had one mutable provisional model. If a
+second novel stream arrived before the first candidate was promoted, its
+observations could be folded into the first evidence window. The router now
+keeps a bounded list of isolated provisional candidates. Factual candidate
+prediction selects the matching candidate for continuation; a conflicting
+stream stages a new candidate when capacity permits. Adaptation and promotion
+carry the candidate index, and the full candidate list—including models and
+evidence windows—persists through the payload boundary.
+
+The focused alternating-stream regression passed: two novel candidates were
+staged without a committed-bank write, payload restore preserved both, the
+second candidate was promoted through the verifier and source-retention
+gates, and the first candidate's digest remained unchanged. The complete suite passed
+`408` tests. This is an interference-safety and bounded-quarantine result, not
+yet general continual learning: candidate capacity is finite, candidate
+evidence is still replayed within each quarantine, and multi-candidate
+promotion still requires caller-owned held-out verification.

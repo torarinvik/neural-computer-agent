@@ -131,6 +131,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         bank,
         encoder,
         match_tolerance=1e-8,
+        continuation_tolerance=1e9,
         admission_observations=ADMISSION_OBSERVATIONS,
         max_contexts=2,
         defer_admission=True,

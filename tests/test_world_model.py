@@ -384,8 +384,8 @@ def test_online_transition_context_router_admits_current_bundle_and_persists() -
         bank,
         encoder,
         match_tolerance=1e-8,
-        admission_observations=2,
         continuation_tolerance=1e9,
+        admission_observations=2,
         conflict_patience=2,
     )
     rows = [
@@ -443,6 +443,7 @@ def test_online_transition_context_router_capacity_guard_does_not_grow_or_write(
         bank,
         encoder,
         match_tolerance=1e-8,
+        continuation_tolerance=1e9,
         admission_observations=2,
         max_contexts=1,
     )
@@ -470,6 +471,7 @@ def test_online_router_stages_candidate_before_heldout_verified_promotion() -> N
         bank,
         encoder,
         match_tolerance=1e-8,
+        continuation_tolerance=1e9,
         admission_observations=2,
         max_contexts=2,
         defer_admission=True,
@@ -525,6 +527,7 @@ def test_online_router_persists_provisional_evidence_window() -> None:
         bank,
         encoder,
         match_tolerance=1e-8,
+        continuation_tolerance=1e9,
         admission_observations=2,
         max_contexts=2,
         defer_admission=True,
@@ -570,6 +573,91 @@ def test_online_router_persists_provisional_evidence_window() -> None:
     assert restored.provisional_model is not None
     assert restored._provisional_context is not None
     assert restored.state_payload()["bank"]["sha256"] == bank.digest()
+
+
+def test_online_router_isolates_alternating_provisional_candidates() -> None:
+    torch.manual_seed(1214)
+    bank = ExternalTransitionModelBank(2, 1, 4, hidden_width=8, capacity=3)
+    encoder = ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4)
+    source_index = bank.ensure_context(torch.tensor([1.0, 0.0, 0.0, 0.0]))
+    source_digest = bank.models[source_index].digest()
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        encoder,
+        match_tolerance=1e-8,
+        continuation_tolerance=1e-8,
+        admission_observations=2,
+        max_contexts=3,
+        defer_admission=True,
+    )
+    stream_a = [
+        ExternalTransitionObservation(
+            state=torch.tensor([[0.1, 0.2]]),
+            intention=torch.tensor([[0.3]]),
+            next_state=torch.tensor([[0.7, -0.4]]),
+            confidence=torch.ones(1),
+        ),
+        ExternalTransitionObservation(
+            state=torch.tensor([[0.2, 0.1]]),
+            intention=torch.tensor([[-0.3]]),
+            next_state=torch.tensor([[0.4, -0.6]]),
+            confidence=torch.ones(1),
+        ),
+    ]
+    stream_b = [
+        ExternalTransitionObservation(
+            state=torch.tensor([[0.1, 0.2]]),
+            intention=torch.tensor([[0.3]]),
+            next_state=torch.tensor([[10.7, -10.4]]),
+            confidence=torch.ones(1),
+        ),
+        ExternalTransitionObservation(
+            state=torch.tensor([[0.2, 0.1]]),
+            intention=torch.tensor([[-0.3]]),
+            next_state=torch.tensor([[10.4, -10.6]]),
+            confidence=torch.ones(1),
+        ),
+    ]
+
+    router.observe(stream_a[0])
+    staged_a = router.observe(stream_a[1])
+    assert staged_a.status == "staged"
+    candidate_a_digest = router._provisional_candidates[0].model.digest()
+    router.observe(stream_b[0])
+    staged_b = router.observe(stream_b[1])
+    assert staged_b.status == "staged"
+    assert staged_b.slot_index == 1
+    assert router.provisional_candidate_count == 2
+    assert router._provisional_candidates[0].model.digest() == candidate_a_digest
+
+    restored = ExternalOnlineTransitionContextRouter.from_payload(router.state_payload())
+    assert restored.provisional_candidate_count == 2
+    assert [
+        len(candidate.observations)
+        for candidate in restored._provisional_candidates
+    ] == [1, 1]
+
+    optimizer = torch.optim.Adam(
+        router._provisional_candidates[1].model.parameters(), lr=0.03
+    )
+    for _ in range(120):
+        router.adaptation_step(staged_b, optimizer)
+    receipt = router.promote_staged_candidate(
+        ExternalTransitionObservation(
+            state=torch.cat([row.state for row in stream_b]),
+            intention=torch.cat([row.intention for row in stream_b]),
+            next_state=torch.cat([row.next_state for row in stream_b]),
+            confidence=torch.ones(2),
+        ),
+        lambda candidate: candidate.context_count == 2
+        and candidate.models[0].digest() == source_digest,
+        prediction_tolerance=0.05,
+        candidate_index=1,
+    )
+    assert receipt.accepted
+    assert router.bank.context_count == 2
+    assert router.provisional_candidate_count == 1
+    assert router._provisional_candidates[0].model.digest() == candidate_a_digest
 
 
 def test_online_transition_context_router_growth_updates_capacity_atomically() -> None:

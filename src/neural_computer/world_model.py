@@ -1533,15 +1533,26 @@ class ExternalOnlineTransitionContextResult:
         return self
 
 
+@dataclass
+class _ProvisionalTransitionCandidate:
+    """Mutable isolated candidate state held outside the committed bank."""
+
+    context: torch.Tensor
+    model: ExternalTransitionModel
+    observations: list[ExternalTransitionObservation]
+
+
 class ExternalOnlineTransitionContextRouter:
     """Route alternating opaque transitions and admit novel regimes online.
 
     Existing slots are selected by factual one-step prediction error. An
-    unmatched row is provisional and is not written to a model. Once enough
-    consecutive unmatched current-stream rows exist, the external context
-    encoder forms an opaque key and a new isolated model slot is appended.
-    The controller is not involved; callers own optimizer updates through
-    :meth:`adaptation_step`.
+    unmatched row is provisional and is not written to a committed model.
+    Once enough consecutive unmatched current-stream rows exist, the external
+    context encoder forms an opaque key and stages an isolated candidate.
+    Conflicting novel streams receive separate candidates while capacity
+    permits. The controller is not involved; callers own optimizer updates
+    through :meth:`adaptation_step` and promotion through
+    :meth:`promote_staged_candidate`.
     """
 
     schema = EXTERNAL_ONLINE_TRANSITION_CONTEXT_ROUTER_SCHEMA
@@ -1594,9 +1605,7 @@ class ExternalOnlineTransitionContextRouter:
         self._pending: list[ExternalTransitionObservation] = []
         self._active_slot: int | None = None
         self._conflict_windows = 0
-        self._provisional_context: torch.Tensor | None = None
-        self._provisional_model: ExternalTransitionModel | None = None
-        self._provisional_observations: list[ExternalTransitionObservation] = []
+        self._provisional_candidates: list[_ProvisionalTransitionCandidate] = []
 
     @property
     def pending_observations(self) -> int:
@@ -1604,9 +1613,60 @@ class ExternalOnlineTransitionContextRouter:
 
     @property
     def provisional_model(self) -> ExternalTransitionModel | None:
-        """Return the staged model, if any, for caller-owned updates."""
+        """Return the first staged model for backward-compatible callers."""
 
-        return self._provisional_model
+        return (
+            None
+            if not self._provisional_candidates
+            else self._provisional_candidates[0].model
+        )
+
+    @property
+    def provisional_candidate_count(self) -> int:
+        """Return the number of isolated candidates awaiting promotion."""
+
+        return len(self._provisional_candidates)
+
+    def provisional_model_at(self, candidate_index: int) -> ExternalTransitionModel:
+        """Return one isolated candidate for caller-owned optimization."""
+
+        if not 0 <= candidate_index < len(self._provisional_candidates):
+            raise IndexError("provisional candidate index is out of range")
+        return self._provisional_candidates[candidate_index].model
+
+    def provisional_context_at(self, candidate_index: int) -> torch.Tensor:
+        """Return one detached opaque candidate key."""
+
+        if not 0 <= candidate_index < len(self._provisional_candidates):
+            raise IndexError("provisional candidate index is out of range")
+        return self._provisional_candidates[candidate_index].context.detach().clone()
+
+    def provisional_evidence_count(self, candidate_index: int) -> int:
+        """Return the number of evidence bundles retained by one candidate."""
+
+        if not 0 <= candidate_index < len(self._provisional_candidates):
+            raise IndexError("provisional candidate index is out of range")
+        return len(self._provisional_candidates[candidate_index].observations)
+
+    @property
+    def _provisional_context(self) -> torch.Tensor | None:
+        return (
+            None
+            if not self._provisional_candidates
+            else self._provisional_candidates[0].context
+        )
+
+    @property
+    def _provisional_model(self) -> ExternalTransitionModel | None:
+        return self.provisional_model
+
+    @property
+    def _provisional_observations(self) -> list[ExternalTransitionObservation]:
+        return (
+            []
+            if not self._provisional_candidates
+            else self._provisional_candidates[0].observations
+        )
 
     def configuration(self) -> dict[str, int | float | str | None]:
         return {
@@ -1624,6 +1684,7 @@ class ExternalOnlineTransitionContextRouter:
             "routing": "factual_prediction_error_then_bound_continuation_v2",
             "writes": "caller_owned_slot_only_v1",
             "provisional_evidence": "cumulative_verified_window_v1",
+            "provisional_candidates": "isolated_indexed_copy_on_write_v1",
         }
 
     def grow_verified(
@@ -1749,7 +1810,7 @@ class ExternalOnlineTransitionContextRouter:
         context: torch.Tensor,
         *,
         prior_index: int | None,
-    ) -> None:
+    ) -> int:
         model = ExternalTransitionModel(
             self.bank.state_width,
             self.bank.intention_width,
@@ -1757,24 +1818,32 @@ class ExternalOnlineTransitionContextRouter:
         )
         if prior_index is not None:
             model.load_state_dict(self.bank.models[prior_index].state_dict())
-        self._provisional_context = context.detach().clone()
-        self._provisional_model = model
-        self._provisional_observations.clear()
+        self._provisional_candidates.append(
+            _ProvisionalTransitionCandidate(
+                context=context.detach().clone(),
+                model=model,
+                observations=[],
+            )
+        )
+        return len(self._provisional_candidates) - 1
 
     def _staged_result(
         self,
         observation: ExternalTransitionObservation,
+        *,
+        candidate_index: int,
     ) -> ExternalOnlineTransitionContextResult:
-        if self._provisional_context is None or self._provisional_model is None:
+        if not 0 <= candidate_index < len(self._provisional_candidates):
             raise RuntimeError("staged result requested without a candidate")
-        self._provisional_observations.append(self._clone_observation(observation))
+        candidate = self._provisional_candidates[candidate_index]
+        candidate.observations.append(self._clone_observation(observation))
         return ExternalOnlineTransitionContextResult(
             status="staged",
-            slot_index=None,
-            context=self._provisional_context.detach().clone(),
+            slot_index=candidate_index,
+            context=candidate.context.detach().clone(),
             pending_observations=0,
             prediction_error=self._slot_error_from_model(
-                self._provisional_model,
+                candidate.model,
                 observation,
             ),
             observation=observation,
@@ -1815,9 +1884,12 @@ class ExternalOnlineTransitionContextRouter:
         if match is not None:
             index, error, _margin, context = match
             self._pending.clear()
-            self._provisional_context = None
-            self._provisional_model = None
-            self._provisional_observations.clear()
+            self._provisional_candidates = [
+                candidate
+                for candidate in self._provisional_candidates
+                if self._slot_error_from_model(candidate.model, bundle)
+                > self.continuation_tolerance
+            ]
             self._active_slot = index
             self._conflict_windows = 0
             return ExternalOnlineTransitionContextResult(
@@ -1864,22 +1936,48 @@ class ExternalOnlineTransitionContextRouter:
             self._conflict_windows = 0
 
         if self.defer_admission:
-            if self._provisional_model is None:
-                with torch.no_grad():
-                    candidate_context = self.context_encoder.encode_observation(
-                        bundle
-                    ).detach()
-                prior_index: int | None = None
-                if self.bank.context_count:
-                    prior_index = int(
-                        (
-                            self.bank.contexts
-                            @ candidate_context.to(self.bank.contexts)
-                        ).argmax()
+            if self._provisional_candidates:
+                candidate_errors = [
+                    (
+                        self._slot_error_from_model(candidate.model, bundle),
+                        index,
                     )
-                self._stage_candidate(candidate_context, prior_index=prior_index)
+                    for index, candidate in enumerate(self._provisional_candidates)
+                ]
+                candidate_error, candidate_index = min(
+                    candidate_errors,
+                    key=lambda item: (item[0], item[1]),
+                )
+                if candidate_error <= self.continuation_tolerance:
+                    self._pending.clear()
+                    return self._staged_result(
+                        bundle,
+                        candidate_index=candidate_index,
+                    )
+            if self.max_contexts is not None and (
+                self.bank.context_count + len(self._provisional_candidates)
+                >= self.max_contexts
+            ):
+                self._pending.clear()
+                return self._pending_result(status="capacity")
+            with torch.no_grad():
+                candidate_context = self.context_encoder.encode_observation(
+                    bundle
+                ).detach()
+            prior_index: int | None = None
+            if self.bank.context_count:
+                prior_index = int(
+                    (
+                        self.bank.contexts
+                        @ candidate_context.to(self.bank.contexts)
+                    ).argmax()
+                )
+            candidate_index = self._stage_candidate(
+                candidate_context,
+                prior_index=prior_index,
+            )
             self._pending.clear()
-            return self._staged_result(bundle)
+            return self._staged_result(bundle, candidate_index=candidate_index)
 
         if self.max_contexts is not None and self.bank.context_count >= self.max_contexts:
             self._pending.clear()
@@ -1924,17 +2022,18 @@ class ExternalOnlineTransitionContextRouter:
             context_width=self.bank.context_width,
         )
         if result.status == "staged":
+            candidate_index = 0 if result.slot_index is None else result.slot_index
             if (
-                self._provisional_model is None
-                or self._provisional_context is None
-                or result.observation is None
+                result.observation is None
+                or not 0 <= candidate_index < len(self._provisional_candidates)
             ):
                 return 0.0
+            candidate = self._provisional_candidates[candidate_index]
             optimizer.zero_grad()
             evidence = self._merge_observations(
-                self._provisional_observations or [result.observation]
+                candidate.observations or [result.observation]
             )
-            loss = self._provisional_model.loss(evidence)
+            loss = candidate.model.loss(evidence)
             loss.backward()
             optimizer.step()
             return float(loss.detach())
@@ -1956,6 +2055,7 @@ class ExternalOnlineTransitionContextRouter:
         retention_probe: Callable[[ExternalTransitionModelBank], bool],
         *,
         prediction_tolerance: float = 0.05,
+        candidate_index: int = 0,
     ) -> ExternalTransitionModelCandidateReceipt:
         """Commit a provisional model only after held-out and retention proof."""
 
@@ -1968,8 +2068,13 @@ class ExternalOnlineTransitionContextRouter:
         if not callable(retention_probe):
             raise TypeError("candidate retention probe must be callable")
         before = self.bank.content_digest()
-        model = self._provisional_model
-        context = self._provisional_context
+        if not 0 <= candidate_index < len(self._provisional_candidates):
+            model = None
+            context = None
+        else:
+            candidate = self._provisional_candidates[candidate_index]
+            model = candidate.model
+            context = candidate.context
         candidate_digest = "none" if model is None else model.digest()
         if model is None or context is None:
             return ExternalTransitionModelCandidateReceipt(
@@ -1996,8 +2101,8 @@ class ExternalOnlineTransitionContextRouter:
 
         candidate_bank = ExternalTransitionModelBank.from_payload(self.bank.payload())
         candidate_count_before = candidate_bank.context_count
-        candidate_index = candidate_bank.ensure_context(context)
-        if candidate_index != candidate_count_before:
+        bank_candidate_index = candidate_bank.ensure_context(context)
+        if bank_candidate_index != candidate_count_before:
             return ExternalTransitionModelCandidateReceipt(
                 accepted=False,
                 slot_index=None,
@@ -2008,7 +2113,7 @@ class ExternalOnlineTransitionContextRouter:
                 content_digest_after=before,
                 reason="provisional context duplicates a committed context",
             ).validate()
-        candidate_bank.models[candidate_index].load_state_dict(model.state_dict())
+        candidate_bank.models[bank_candidate_index].load_state_dict(model.state_dict())
         heldout_context = context.unsqueeze(0).expand(
             heldout_observation.state.shape[0], -1
         )
@@ -2050,9 +2155,7 @@ class ExternalOnlineTransitionContextRouter:
         slot_index = self.bank.context_count - 1
         self._active_slot = slot_index
         self._conflict_windows = 0
-        self._provisional_context = None
-        self._provisional_model = None
-        self._provisional_observations.clear()
+        del self._provisional_candidates[candidate_index]
         return ExternalTransitionModelCandidateReceipt(
             accepted=True,
             slot_index=slot_index,
@@ -2098,6 +2201,22 @@ class ExternalOnlineTransitionContextRouter:
         )
 
     def state_payload(self) -> dict[str, object]:
+        provisional_candidates = [
+            {
+                "context": candidate.context.detach().cpu().clone(),
+                "model": candidate.model.state_payload(),
+                "observations": [
+                    self._observation_payload(row)
+                    for row in candidate.observations
+                ],
+            }
+            for candidate in self._provisional_candidates
+        ]
+        first_candidate = (
+            None
+            if not self._provisional_candidates
+            else self._provisional_candidates[0]
+        )
         return {
             "schema": self.schema,
             "configuration": self.configuration(),
@@ -2106,19 +2225,20 @@ class ExternalOnlineTransitionContextRouter:
             "pending": [self._observation_payload(row) for row in self._pending],
             "active_slot": self._active_slot,
             "conflict_windows": self._conflict_windows,
+            "provisional_candidates": provisional_candidates,
             "provisional_context": (
                 None
-                if self._provisional_context is None
-                else self._provisional_context.detach().cpu().clone()
+                if first_candidate is None
+                else first_candidate.context.detach().cpu().clone()
             ),
             "provisional_model": (
                 None
-                if self._provisional_model is None
-                else self._provisional_model.state_payload()
+                if first_candidate is None
+                else first_candidate.model.state_payload()
             ),
             "provisional_observations": [
                 self._observation_payload(row)
-                for row in self._provisional_observations
+                for row in ([] if first_candidate is None else first_candidate.observations)
             ],
         }
 
@@ -2135,6 +2255,7 @@ class ExternalOnlineTransitionContextRouter:
         bank_payload = payload.get("bank")
         encoder_payload = payload.get("context_encoder")
         pending_payload = payload.get("pending")
+        provisional_candidates_payload = payload.get("provisional_candidates")
         provisional_observations_payload = payload.get("provisional_observations", [])
         if not isinstance(bank_payload, Mapping) or not isinstance(
             encoder_payload, Mapping
@@ -2145,6 +2266,12 @@ class ExternalOnlineTransitionContextRouter:
         if not isinstance(provisional_observations_payload, list):
             raise TypeError(
                 "online transition-context provisional evidence is invalid"
+            )
+        if provisional_candidates_payload is not None and not isinstance(
+            provisional_candidates_payload, list
+        ):
+            raise TypeError(
+                "online transition-context provisional candidates are invalid"
             )
         bank = ExternalTransitionModelBank.from_payload(bank_payload)
         encoder = ExternalTransitionContextEncoder.from_payload(encoder_payload)
@@ -2186,21 +2313,42 @@ class ExternalOnlineTransitionContextRouter:
         if not isinstance(conflict_windows, int) or conflict_windows < 0:
             raise ValueError("online transition conflict count is invalid")
         router._conflict_windows = conflict_windows
-        provisional_context = payload.get("provisional_context")
-        provisional_model = payload.get("provisional_model")
-        if (provisional_context is None) != (provisional_model is None):
-            raise ValueError("online transition provisional candidate is incomplete")
-        if provisional_context is not None and not isinstance(provisional_context, torch.Tensor):
-            raise TypeError("online transition provisional context is not a tensor")
-        if provisional_context is not None:
+        if provisional_candidates_payload is None:
+            provisional_context = payload.get("provisional_context")
+            provisional_model = payload.get("provisional_model")
+            if (provisional_context is None) != (provisional_model is None):
+                raise ValueError("online transition provisional candidate is incomplete")
+            if provisional_context is not None and not isinstance(
+                provisional_context, torch.Tensor
+            ):
+                raise TypeError("online transition provisional context is not a tensor")
+            provisional_candidates_payload = []
+            if provisional_context is not None:
+                provisional_candidates_payload.append(
+                    {
+                        "context": provisional_context,
+                        "model": provisional_model,
+                        "observations": provisional_observations_payload,
+                    }
+                )
+        for candidate_payload in provisional_candidates_payload:
+            if not isinstance(candidate_payload, Mapping):
+                raise TypeError("online transition provisional candidate is invalid")
+            provisional_context = candidate_payload.get("context")
+            provisional_model = candidate_payload.get("model")
+            observations_payload = candidate_payload.get("observations", [])
+            if not isinstance(provisional_context, torch.Tensor):
+                raise TypeError("online transition provisional context is not a tensor")
+            if not isinstance(provisional_model, Mapping):
+                raise TypeError("online transition provisional model is invalid")
+            if not isinstance(observations_payload, list):
+                raise TypeError("online transition provisional evidence is invalid")
             _validate_tensor(
                 provisional_context,
                 name="online transition provisional context",
                 ndim=1,
                 width=bank.context_width,
             )
-            if not isinstance(provisional_model, Mapping):
-                raise TypeError("online transition provisional model is invalid")
             restored_model = ExternalTransitionModel.from_payload(provisional_model)
             if (
                 restored_model.state_width != bank.state_width
@@ -2208,18 +2356,20 @@ class ExternalOnlineTransitionContextRouter:
                 or restored_model.hidden_width != bank.hidden_width
             ):
                 raise ValueError("online transition provisional model is incompatible")
-            router._provisional_context = provisional_context.detach().clone()
-            router._provisional_model = restored_model
-            for observation_payload in provisional_observations_payload:
+            observations: list[ExternalTransitionObservation] = []
+            for observation_payload in observations_payload:
                 observation = cls._observation_from_payload(observation_payload)
                 observation.validate(
                     state_width=bank.state_width,
                     intention_width=bank.intention_width,
                 )
-                router._provisional_observations.append(observation)
-        elif provisional_observations_payload:
-            raise ValueError(
-                "online transition provisional evidence has no candidate"
+                observations.append(observation)
+            router._provisional_candidates.append(
+                _ProvisionalTransitionCandidate(
+                    context=provisional_context.detach().clone(),
+                    model=restored_model,
+                    observations=observations,
+                )
             )
         return router
 
