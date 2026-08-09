@@ -2,6 +2,7 @@ import torch
 
 from neural_computer import (
     ExternalContextAddressResolver,
+    ExternalContextualEvidenceCalibrator,
     ExternalGoalEvaluator,
     ExternalModelBasedPlanner,
     ExternalOnlineContextAddressResolver,
@@ -313,3 +314,69 @@ def test_transition_evidence_evaluator_has_versioned_scalar_outcome_boundary() -
     assert logits.shape == (4,)
     assert torch.isfinite(evaluator.loss(prediction, observed, outcomes))
     assert evaluator.configuration()["behavior"] == "read_only_consistency_gate_v1"
+
+
+def test_contextual_evidence_calibration_isolated_and_persistent() -> None:
+    evaluator = ExternalTransitionEvidenceEvaluator(2, hidden_width=8)
+    calibrator = ExternalContextualEvidenceCalibrator(
+        evaluator,
+        3,
+        prior_strength=0.0,
+    )
+    source = torch.tensor([1.0, 0.0, 0.0])
+    target = torch.tensor([0.0, 1.0, 0.0])
+    source_index = calibrator.ensure_context(source)
+    target_index = calibrator.ensure_context(target)
+    assert (source_index, target_index) == (0, 1)
+
+    with torch.no_grad():
+        calibrator.calibrators[target_index].bias.fill_(2.0)
+    prediction = torch.zeros(2, 2)
+    observed = torch.ones(2, 2)
+    contexts = torch.stack((source, target))
+    before = calibrator(prediction, observed, torch.ones(2), contexts)
+    assert before[1] > before[0]
+
+    source_digest = calibrator.calibrators[source_index].digest()
+    payload = calibrator.payload()
+    restored = ExternalContextualEvidenceCalibrator.from_payload(
+        payload,
+        evaluator=evaluator,
+    )
+    assert restored.context_count == 2
+    assert torch.allclose(
+        restored(prediction, observed, torch.ones(2), contexts), before
+    )
+    assert restored.calibrators[source_index].digest() == source_digest
+
+
+def test_online_resolver_passes_candidate_context_to_contextual_calibrator() -> None:
+    memory = ExternalTransitionMemory(1, 1, context_width=3)
+    resolver = ExternalOnlineContextAddressResolver(
+        3,
+        address_seed=1207,
+        admission_observations=2,
+    )
+    row = ExternalTransitionObservation(
+        state=torch.tensor([[0.0]]),
+        intention=torch.tensor([[1.0]]),
+        next_state=torch.tensor([[1.0]]),
+    )
+    stream_a = torch.tensor([1.0, 0.0, 0.0])
+    stream_b = torch.tensor([0.0, 1.0, 0.0])
+    resolver.observe(row, stream_a, memory)
+    admitted = resolver.observe(row, stream_a, memory)
+    assert admitted.status == "admitted"
+
+    evaluator = ExternalTransitionEvidenceEvaluator(1, hidden_width=8)
+    calibrator = ExternalContextualEvidenceCalibrator(evaluator, 3)
+    address = admitted.context
+    assert address is not None
+    slot = calibrator.ensure_context(address)
+    with torch.no_grad():
+        calibrator.calibrators[slot].bias.fill_(10.0)
+    resolver.evidence_evaluator = calibrator
+    reused = resolver.observe(row, stream_b, memory)
+    assert reused.status == "reused"
+    assert reused.committed_observations == 0
+    assert memory.record_count == 1

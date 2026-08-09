@@ -1295,6 +1295,26 @@
       "fresh_factual_control": [true, true],
       "controls": "controller unchanged, evaluator loss, noisy read-only reuse, exact-match baseline, contradiction admission, wrong-context error, fresh miss, persistence, zero target updates, and target zero replay passed",
       "decision": "promote noise-tolerant read-only evidence gating; next calibrate evidence online from real event tensors and test transfer across representation drift without replay"
+    },
+    {
+      "experiment": "external_contextual_calibration",
+      "date": "2026-08-09",
+      "seeds": [69801, 69802],
+      "claim": "Context-isolated external scalar calibration can adapt a frozen evidence evaluator to a shifted verifier regime without replaying target examples or damaging the source slot.",
+      "module": "ExternalContextualEvidenceCalibrator + frozen ExternalTransitionEvidenceEvaluator",
+      "target_unique_verifier_bits_per_seed": 256,
+      "target_optimizer_updates_per_seed": 256,
+      "target_replayed_examples_per_seed": 0,
+      "target_accuracy_before": [0.4765625, 0.49609375],
+      "target_accuracy_after": [0.92578125, 0.927734375],
+      "source_accuracy_before": [1.0, 1.0],
+      "source_accuracy_after": [1.0, 1.0],
+      "source_slot_untouched": [true, true],
+      "base_evaluator_frozen": [true, true],
+      "controller_parameter_updates": [0, 0],
+      "external_state_persistence": [true, true],
+      "controls": "source retention, source-slot digest, frozen evaluator, frozen controller, wrong-context control, exact external payload restore, and zero target replay passed",
+      "decision": "promote bounded context-isolated online calibration; next learn context formation and test alternating regimes under capacity growth, consolidation, and compression"
     }
   ]
 }

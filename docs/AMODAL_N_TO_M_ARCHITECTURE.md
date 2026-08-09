@@ -4528,3 +4528,30 @@ of the evaluator. The next bottleneck is to learn evidence calibration online
 from real multimodal event tensors and test whether the verifier transfers
 across representation changes without replay. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_learned_evidence_admission_promoted_2026-08-09/`.
+
+## Context-isolated external calibration (2026-08-09)
+
+The next two-seed rung isolates online adaptation in external memory. A frozen
+`ExternalTransitionEvidenceEvaluator` supplies the reusable evidence score,
+while `ExternalContextualEvidenceCalibrator` maintains append-only scalar
+temperature and bias states keyed by opaque context tensors. The resolver can
+pass a candidate context through the same evidence boundary; the controller
+and evaluator remain frozen.
+
+Each target stream received one deterministic verifier outcome at a time. The
+target held-out accuracy improved from `0.477`/`0.496` to `0.926`/`0.928` across
+the two seeds, while source accuracy stayed at `1.0`. The source slot and base
+evaluator were byte-stable, a wrong-context control did not obtain the gain,
+and the external calibration payload restored exactly. The target phase used
+256 unique verifier bits, 256 optimizer updates, and zero replayed target
+examples per seed.
+
+This is the first promoted memory-side update that adapts online without
+replaying old target examples while retaining an isolated prior capability.
+It remains bounded continual calibration, not general continual learning:
+context vectors are supplied, scalar adaptation cannot add arbitrary
+computation, slots grow append-only, and there is no learned context discovery,
+consolidation, compression, or unbounded-stream test. The next bottleneck is
+to learn context/address formation and test many alternating regimes under
+capacity pressure. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_contextual_calibration_promoted_2026-08-09/`.

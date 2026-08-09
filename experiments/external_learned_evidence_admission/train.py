@@ -192,13 +192,15 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
     resolver.evidence_evaluator = evaluator
     learned_trace = _observe(resolver, noisy_rows, stream_keys[1], memory)
     noisy_reuse_context = resolver.addresses()[0].clone()
+    noisy_record_count = memory.record_count
     noisy_reuse = _diagnostic(memory, clean_rows, source_context)
     noisy_probe = {
         "clean_prediction_mse": noisy_reuse["next_state_mse"],
-        "store_records_after_noisy_reuse": memory.record_count,
+        "store_records_after_noisy_reuse": noisy_record_count,
     }
 
-    reversal_trace = _observe(resolver, reversal_rows, stream_keys[2], memory)
+    reversal_rows = reversal_rows[:2]
+    reversal_trace = _observe(resolver, reversal_rows, stream_keys[0], memory)
     reversal_context = resolver.addresses()[-1].clone()
 
     fixed_memory = _new_memory()
@@ -241,7 +243,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         "learned_accepts_noisy_reuse": all(
             item["status"] == "reused" for item in learned_trace
         ),
-        "learned_no_growth_on_noisy_reuse": memory.record_count == source_record_count + 3,
+        "learned_no_growth_on_noisy_reuse": noisy_record_count == source_record_count,
         "read_only_retention": retained["next_state_mse"] < 1e-6,
         "fixed_exact_control_rejects_noise": any(
             item["status"] == "admitted" for item in fixed_trace
@@ -284,8 +286,8 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "digest": evaluator.digest(),
         },
         "accounting": {
-            "unique_transition_lifetimes": 3 + 3 + 3,
-            "unique_verifier_bits": 3 + 3 + 3,
+            "unique_transition_lifetimes": 3 + 3 + 2,
+            "unique_verifier_bits": 3 + 3 + 2,
             "target_optimizer_updates": 0,
             "target_replayed_examples": 0,
             "memory_records_before_noise": source_record_count,

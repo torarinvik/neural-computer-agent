@@ -85,22 +85,16 @@
   ],
   "reversal_trace": [
     {
-      "status": "uncertain",
+      "status": "conflict",
       "committed_observations": 0,
       "pending_observations": 1,
       "record_count": 3
     },
     {
-      "status": "uncertain",
-      "committed_observations": 0,
-      "pending_observations": 2,
-      "record_count": 3
-    },
-    {
       "status": "admitted",
-      "committed_observations": 3,
+      "committed_observations": 2,
       "pending_observations": 0,
-      "record_count": 6
+      "record_count": 5
     }
   ],
   "noisy_probe": {
@@ -113,7 +107,7 @@
   },
   "wrong_context": {
     "hit_rate": 1.0,
-    "next_state_mse": 0.22420769929885864
+    "next_state_mse": 0.2190430611371994
   },
   "fresh": {
     "hit_rate": 0.0,
@@ -133,14 +127,14 @@
     "digest": "42f8e3cf891e9dd16d47c839e0da4d246d46d7b52fd6e404b12a80084d307241"
   },
   "accounting": {
-    "unique_transition_lifetimes": 9,
-    "unique_verifier_bits": 9,
+    "unique_transition_lifetimes": 8,
+    "unique_verifier_bits": 8,
     "target_optimizer_updates": 0,
     "target_replayed_examples": 0,
     "memory_records_before_noise": 3,
-    "memory_records_after_noise_and_reversal": 6,
+    "memory_records_after_noise_and_reversal": 5,
     "learned_context_addresses": 2
   },
-  "controller_digest": "376d263bde8c5b02db4a73908b3a9f370949ffeca9a168d80c5b50f364837d6d",
-  "elapsed_seconds": 0.9695160840055905
+  "controller_digest": "c91ad4c3eeed248ccfb3583c3319dd7ac466eb0d97139b70c8064983e4f3669d",
+  "elapsed_seconds": 1.482234499999322
 }

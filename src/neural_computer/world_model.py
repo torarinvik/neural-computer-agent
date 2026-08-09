@@ -44,6 +44,12 @@ EXTERNAL_GOAL_EVALUATOR_SCHEMA = "neural-computer.external-goal-evaluator.v1"
 EXTERNAL_TRANSITION_EVIDENCE_EVALUATOR_SCHEMA = (
     "neural-computer.external-transition-evidence-evaluator.v1"
 )
+EXTERNAL_TRANSITION_EVIDENCE_CALIBRATOR_SCHEMA = (
+    "neural-computer.external-transition-evidence-calibrator.v1"
+)
+EXTERNAL_CONTEXTUAL_EVIDENCE_CALIBRATOR_SCHEMA = (
+    "neural-computer.contextual-evidence-calibrator.v1"
+)
 EXTERNAL_MODEL_PLANNER_SCHEMA = "neural-computer.external-model-planner.v1"
 
 
@@ -451,6 +457,316 @@ class ExternalTransitionEvidenceEvaluator(nn.Module):
         return digest.hexdigest()
 
 
+class ExternalTransitionEvidenceCalibrator(nn.Module):
+    """Trainable scalar calibration state around a frozen evidence evaluator."""
+
+    schema = EXTERNAL_TRANSITION_EVIDENCE_CALIBRATOR_SCHEMA
+
+    def __init__(
+        self,
+        evaluator: ExternalTransitionEvidenceEvaluator,
+        *,
+        prior_strength: float = 0.01,
+    ) -> None:
+        super().__init__()
+        if not isinstance(evaluator, ExternalTransitionEvidenceEvaluator):
+            raise TypeError("calibrator requires ExternalTransitionEvidenceEvaluator")
+        if prior_strength < 0.0:
+            raise ValueError("calibration prior strength cannot be negative")
+        self.evaluator = evaluator
+        for parameter in self.evaluator.parameters():
+            parameter.requires_grad_(False)
+        self.state_width = evaluator.state_width
+        self.prior_strength = float(prior_strength)
+        self.log_temperature = nn.Parameter(torch.zeros(()))
+        self.bias = nn.Parameter(torch.zeros(()))
+        self.register_buffer("reference_log_temperature", torch.zeros(()))
+        self.register_buffer("reference_bias", torch.zeros(()))
+
+    def configuration(self) -> dict[str, int | float | str | dict[str, object]]:
+        return {
+            "schema": self.schema,
+            "state_width": self.state_width,
+            "prior_strength": self.prior_strength,
+            "trainable_state": "scalar_temperature_and_bias_v1",
+            "frozen_base": self.evaluator.configuration(),
+            "replay": "caller_owned_online_scalar_outcomes_v1",
+        }
+
+    def forward(
+        self,
+        prediction: torch.Tensor,
+        observed: torch.Tensor,
+        hit: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        base_logits = self.evaluator(prediction, observed, hit).detach()
+        temperature = self.log_temperature.exp().clamp_min(1e-4)
+        return base_logits / temperature + self.bias
+
+    def loss(
+        self,
+        prediction: torch.Tensor,
+        observed: torch.Tensor,
+        outcome: torch.Tensor,
+        hit: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        if outcome.shape not in ((prediction.shape[0],), (prediction.shape[0], 1)):
+            raise ValueError("calibration outcomes must match the batch")
+        if not bool(torch.isfinite(outcome).all()) or bool(
+            torch.any(outcome < 0) or torch.any(outcome > 1)
+        ):
+            raise ValueError("calibration outcomes must lie in [0, 1]")
+        targets = outcome.reshape(-1).to(
+            device=prediction.device, dtype=prediction.dtype
+        )
+        prior = self.prior_strength * (
+            (self.log_temperature - self.reference_log_temperature).square()
+            + (self.bias - self.reference_bias).square()
+        )
+        return nn.functional.binary_cross_entropy_with_logits(
+            self(prediction, observed, hit), targets
+        ) + prior
+
+    def calibration_step(
+        self,
+        prediction: torch.Tensor,
+        observed: torch.Tensor,
+        outcome: torch.Tensor,
+        optimizer: torch.optim.Optimizer,
+        hit: torch.Tensor | None = None,
+    ) -> float:
+        """Apply one caller-owned live scalar-outcome update."""
+
+        optimizer.zero_grad()
+        loss = self.loss(prediction, observed, outcome, hit)
+        loss.backward()
+        optimizer.step()
+        return float(loss.detach())
+
+    def digest(self) -> str:
+        digest = hashlib.sha256()
+        digest.update(self.schema.encode("utf-8"))
+        for name, value in sorted(self.state_dict().items()):
+            detached = value.detach().cpu().contiguous()
+            digest.update(name.encode("utf-8"))
+            digest.update(str(detached.dtype).encode("utf-8"))
+            digest.update(repr(tuple(detached.shape)).encode("utf-8"))
+            digest.update(detached.numpy().tobytes())
+        return digest.hexdigest()
+
+
+class ExternalContextualEvidenceCalibrator(nn.Module):
+    """Append-only per-context calibration states around one frozen evaluator."""
+
+    schema = EXTERNAL_CONTEXTUAL_EVIDENCE_CALIBRATOR_SCHEMA
+
+    def __init__(
+        self,
+        evaluator: ExternalTransitionEvidenceEvaluator,
+        context_width: int,
+        *,
+        matching_tolerance: float = 1e-4,
+        prior_strength: float = 0.01,
+    ) -> None:
+        super().__init__()
+        if context_width < 1:
+            raise ValueError("context width must be positive")
+        if matching_tolerance < 0.0:
+            raise ValueError("context matching tolerance cannot be negative")
+        if not isinstance(evaluator, ExternalTransitionEvidenceEvaluator):
+            raise TypeError("contextual calibrator requires evidence evaluator")
+        self.evaluator = evaluator
+        for parameter in self.evaluator.parameters():
+            parameter.requires_grad_(False)
+        self.state_width = evaluator.state_width
+        self.context_width = int(context_width)
+        self.matching_tolerance = float(matching_tolerance)
+        self.prior_strength = float(prior_strength)
+        self.calibrators = nn.ModuleList()
+        self._contexts: list[torch.Tensor] = []
+
+    @property
+    def context_count(self) -> int:
+        return len(self._contexts)
+
+    def _validate_context(self, context: torch.Tensor) -> torch.Tensor:
+        _validate_tensor(
+            context, name="calibration context", ndim=2, width=self.context_width
+        )
+        norms = torch.linalg.vector_norm(context, dim=-1)
+        if bool(torch.any(norms <= 1e-12)):
+            raise ValueError("calibration contexts must be non-zero")
+        return torch.nn.functional.normalize(context.detach().to("cpu"), dim=-1)
+
+    def ensure_context(self, context: torch.Tensor) -> int:
+        """Return an existing calibration slot or append a new one."""
+
+        normalized = self._validate_context(
+            context if context.ndim == 2 else context.unsqueeze(0)
+        )[0]
+        if self._contexts:
+            distances = torch.linalg.vector_norm(
+                torch.stack(self._contexts) - normalized, dim=-1
+            )
+            nearest = int(distances.argmin())
+            if float(distances[nearest]) <= self.matching_tolerance:
+                return nearest
+        self._contexts.append(normalized.clone())
+        self.calibrators.append(
+            ExternalTransitionEvidenceCalibrator(
+                self.evaluator,
+                prior_strength=self.prior_strength,
+            )
+        )
+        return len(self._contexts) - 1
+
+    def _context_indices(self, context: torch.Tensor) -> list[int]:
+        normalized = self._validate_context(context)
+        return [self.ensure_context(row) for row in normalized]
+
+    def configuration(self) -> dict[str, int | float | str | dict[str, object]]:
+        return {
+            "schema": self.schema,
+            "state_width": self.state_width,
+            "context_width": self.context_width,
+            "matching_tolerance": self.matching_tolerance,
+            "prior_strength": self.prior_strength,
+            "context_count": self.context_count,
+            "growth": "append_only_context_calibration_v1",
+            "frozen_base": self.evaluator.configuration(),
+        }
+
+    def score(
+        self,
+        prediction: torch.Tensor,
+        observed: torch.Tensor,
+        hit: torch.Tensor | None,
+        context: torch.Tensor,
+    ) -> torch.Tensor:
+        if prediction.shape[0] != context.shape[0]:
+            raise ValueError("calibration context batch differs")
+        indices = self._context_indices(context)
+        values = [
+            self.calibrators[index](
+                prediction[row : row + 1],
+                observed[row : row + 1],
+                None if hit is None else hit[row : row + 1],
+            ).squeeze(0)
+            for row, index in enumerate(indices)
+        ]
+        return torch.stack(values)
+
+    def forward(
+        self,
+        prediction: torch.Tensor,
+        observed: torch.Tensor,
+        hit: torch.Tensor | None,
+        context: torch.Tensor,
+    ) -> torch.Tensor:
+        return self.score(prediction, observed, hit, context)
+
+    def loss(
+        self,
+        prediction: torch.Tensor,
+        observed: torch.Tensor,
+        outcome: torch.Tensor,
+        hit: torch.Tensor | None,
+        context: torch.Tensor,
+    ) -> torch.Tensor:
+        if outcome.shape not in ((prediction.shape[0],), (prediction.shape[0], 1)):
+            raise ValueError("contextual calibration outcomes must match the batch")
+        targets = outcome.reshape(-1).to(prediction)
+        indices = self._context_indices(context)
+        losses = [
+            self.calibrators[index].loss(
+                prediction[row : row + 1],
+                observed[row : row + 1],
+                targets[row : row + 1],
+                None if hit is None else hit[row : row + 1],
+            )
+            for row, index in enumerate(indices)
+        ]
+        return torch.stack(losses).mean()
+
+    def calibration_step(
+        self,
+        prediction: torch.Tensor,
+        observed: torch.Tensor,
+        outcome: torch.Tensor,
+        context: torch.Tensor,
+        optimizer: torch.optim.Optimizer,
+        hit: torch.Tensor | None = None,
+    ) -> float:
+        """Apply one caller-owned live update to only the addressed slots."""
+
+        optimizer.zero_grad()
+        loss = self.loss(prediction, observed, outcome, hit, context)
+        loss.backward()
+        optimizer.step()
+        return float(loss.detach())
+
+    def digest(self) -> str:
+        digest = hashlib.sha256()
+        digest.update(self.schema.encode("utf-8"))
+        for name, value in sorted(self.state_dict().items()):
+            detached = value.detach().cpu().contiguous()
+            digest.update(name.encode("utf-8"))
+            digest.update(str(detached.dtype).encode("utf-8"))
+            digest.update(repr(tuple(detached.shape)).encode("utf-8"))
+            digest.update(detached.numpy().tobytes())
+        for context in self._contexts:
+            digest.update(context.detach().cpu().contiguous().numpy().tobytes())
+        return digest.hexdigest()
+
+    def payload(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "context_width": self.context_width,
+            "matching_tolerance": self.matching_tolerance,
+            "prior_strength": self.prior_strength,
+            "contexts": [context.tolist() for context in self._contexts],
+            "calibrators": [
+                {
+                    "log_temperature": float(calibrator.log_temperature.detach()),
+                    "bias": float(calibrator.bias.detach()),
+                }
+                for calibrator in self.calibrators
+            ],
+        }
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, Any],
+        *,
+        evaluator: ExternalTransitionEvidenceEvaluator,
+    ) -> ExternalContextualEvidenceCalibrator:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported contextual-calibrator payload")
+        contexts = payload.get("contexts")
+        calibrators = payload.get("calibrators")
+        if not isinstance(contexts, list) or not isinstance(calibrators, list):
+            raise TypeError("contextual-calibrator payload lists are invalid")
+        if len(contexts) != len(calibrators):
+            raise ValueError("contextual-calibrator payload lengths differ")
+        restored = cls(
+            evaluator,
+            int(payload["context_width"]),
+            matching_tolerance=float(payload["matching_tolerance"]),
+            prior_strength=float(payload["prior_strength"]),
+        )
+        for values, state in zip(contexts, calibrators, strict=True):
+            context = torch.tensor(values, dtype=torch.float32)
+            index = restored.ensure_context(context)
+            if not isinstance(state, Mapping):
+                raise TypeError("contextual-calibrator scalar state is invalid")
+            restored.calibrators[index].log_temperature.data.fill_(
+                float(state["log_temperature"])
+            )
+            restored.calibrators[index].bias.data.fill_(float(state["bias"]))
+        return restored
+
+
 class ExternalTransitionMemory(nn.Module):
     """Append-only factual transition memory keyed by learned opaque context."""
 
@@ -824,7 +1140,7 @@ class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
         address_seed: int = 0,
         admission_observations: int = 3,
         contradiction_observations: int = 2,
-        evidence_evaluator: ExternalTransitionEvidenceEvaluator | None = None,
+        evidence_evaluator: nn.Module | None = None,
         evidence_threshold: float = 0.5,
     ) -> None:
         super().__init__(
@@ -870,15 +1186,19 @@ class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
         prediction: torch.Tensor,
         observed: torch.Tensor,
         hits: torch.Tensor,
+        context: torch.Tensor | None = None,
     ) -> tuple[bool, float]:
         error = float((prediction - observed).square().mean().detach())
         if self.evidence_evaluator is None:
             return error <= self.match_tolerance, error
         with torch.no_grad():
+            scorer = getattr(self.evidence_evaluator, "score", None)
+            if callable(scorer):
+                logits = scorer(prediction, observed, hits, context)
+            else:
+                logits = self.evidence_evaluator(prediction, observed, hits)
             probability = float(
-                torch.sigmoid(
-                    self.evidence_evaluator(prediction, observed, hits)
-                ).mean()
+                torch.sigmoid(logits).mean()
             )
         return probability >= self.evidence_threshold, error
 
@@ -947,7 +1267,12 @@ class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
                 (prediction - observation.next_state).square().mean().detach()
             )
             consistent, _error = self._consistent(
-                prediction, observation.next_state, hits
+                prediction,
+                observation.next_state,
+                hits,
+                address.to(observation.state).unsqueeze(0).expand(
+                    observation.state.shape[0], -1
+                ),
             )
             if consistent and (
                 best is None or error < best[1]
@@ -1039,7 +1364,10 @@ class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
         )
         if bool(hits.all()):
             consistent, _error = self._consistent(
-                prediction, current.next_state, hits
+                prediction,
+                current.next_state,
+                hits,
+                context.to(current.state).unsqueeze(0),
             )
             if consistent:
                 pending.clear()
@@ -1127,7 +1455,7 @@ class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
         cls,
         payload: Mapping[str, Any],
         *,
-        evidence_evaluator: ExternalTransitionEvidenceEvaluator | None = None,
+        evidence_evaluator: nn.Module | None = None,
     ) -> ExternalOnlineContextAddressResolver:
         if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
             raise ValueError("unsupported online context-resolver payload")
@@ -1426,19 +1754,23 @@ class ExternalModelBasedPlanner:
 
 
 __all__ = [
+    "EXTERNAL_CONTEXTUAL_EVIDENCE_CALIBRATOR_SCHEMA",
     "EXTERNAL_CONTEXT_ADDRESS_RESOLVER_SCHEMA",
     "EXTERNAL_GOAL_EVALUATOR_SCHEMA",
     "EXTERNAL_MODEL_PLANNER_SCHEMA",
     "EXTERNAL_ONLINE_CONTEXT_RESOLVER_SCHEMA",
+    "EXTERNAL_TRANSITION_EVIDENCE_CALIBRATOR_SCHEMA",
     "EXTERNAL_TRANSITION_MEMORY_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_SCHEMA",
     "EXTERNAL_TRANSITION_OBSERVATION_SCHEMA",
     "ExternalContextAddressResolver",
     "ExternalContextResolution",
+    "ExternalContextualEvidenceCalibrator",
     "ExternalGoalEvaluator",
     "ExternalModelBasedPlanner",
     "ExternalOnlineContextAddressResolver",
     "ExternalOnlineContextResolution",
+    "ExternalTransitionEvidenceCalibrator",
     "ExternalTransitionEvidenceEvaluator",
     "ExternalTransitionMemory",
     "ExternalTransitionModel",
