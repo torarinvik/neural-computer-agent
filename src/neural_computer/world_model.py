@@ -69,6 +69,9 @@ EXTERNAL_TRANSITION_MODEL_GROWTH_SCHEMA = (
 EXTERNAL_TRANSITION_MODEL_EVICTION_SCHEMA = (
     "neural-computer.external-transition-model-eviction.v1"
 )
+EXTERNAL_TRANSITION_MODEL_SLOT_ADDRESS_SCHEMA = (
+    "neural-computer.external-transition-model-slot-address.v1"
+)
 EXTERNAL_TRANSITION_MODEL_CANDIDATE_SCHEMA = (
     "neural-computer.external-transition-model-candidate.v1"
 )
@@ -384,6 +387,8 @@ class ExternalTransitionModelBank(nn.Module):
         self.models = nn.ModuleList()
         self._contexts: list[torch.Tensor] = []
         self._model_families: list[str] = []
+        self._slot_ids: list[int] = []
+        self._next_slot_id = 0
 
     @property
     def replay_free_updates(self) -> bool:
@@ -441,6 +446,29 @@ class ExternalTransitionModelBank(nn.Module):
         if not 0 <= index < self.context_count:
             raise IndexError("transition-model context is out of range")
         return self._model_families[index]
+
+    @property
+    def slot_ids(self) -> tuple[int, ...]:
+        """Return stable logical addresses in current physical-slot order."""
+
+        return tuple(self._slot_ids)
+
+    def slot_id_at(self, index: int) -> int:
+        """Return the stable logical address for a physical slot."""
+
+        if not 0 <= index < self.context_count:
+            raise IndexError("transition-model context index is out of range")
+        return self._slot_ids[index]
+
+    def physical_index_for_slot_id(self, slot_id: int) -> int:
+        """Resolve a stable logical address to its current physical index."""
+
+        if not isinstance(slot_id, int) or isinstance(slot_id, bool) or slot_id < 0:
+            raise ValueError("transition-model slot ID must be a non-negative integer")
+        try:
+            return self._slot_ids.index(slot_id)
+        except ValueError as error:
+            raise KeyError(f"unknown transition-model slot ID: {slot_id}") from error
 
     def select_model_family_verified(
         self,
@@ -553,7 +581,25 @@ class ExternalTransitionModelBank(nn.Module):
         self._contexts.append(normalized.clone())
         self.models.append(model)
         self._model_families.append(selected_family)
+        self._slot_ids.append(self._next_slot_id)
+        self._next_slot_id += 1
         return self.context_count - 1
+
+    def ensure_context_id(
+        self,
+        context: torch.Tensor,
+        *,
+        initialize_from: int | None = None,
+        model_family: str | None = None,
+    ) -> int:
+        """Return a stable logical address, creating the slot if necessary."""
+
+        index = self.ensure_context(
+            context,
+            initialize_from=initialize_from,
+            model_family=model_family,
+        )
+        return self.slot_id_at(index)
 
     def _context_indices(self, context: torch.Tensor) -> list[int]:
         normalized = self._validate_context(context)
@@ -582,6 +628,7 @@ class ExternalTransitionModelBank(nn.Module):
             "random_feature_seed": self.random_feature_seed,
             "matching_tolerance": self.matching_tolerance,
             "growth": "append_only_isolated_model_slots_v1",
+            "slot_addressing": EXTERNAL_TRANSITION_MODEL_SLOT_ADDRESS_SCHEMA,
             "behavior": "derived_by_external_model_search_v1",
             "updates": "caller_or_bank_owned_optimizer_v1",
         }
@@ -714,6 +761,7 @@ class ExternalTransitionModelBank(nn.Module):
             raise TypeError("transition-model eviction retention probe is invalid")
         before = self.content_digest()
         physical_before = self.physical_model_count
+        evicted_slot_id = self.slot_id_at(index)
         if index != self.context_count - 1:
             return ExternalTransitionModelEvictionReceipt(
                 accepted=False,
@@ -746,6 +794,7 @@ class ExternalTransitionModelBank(nn.Module):
         del candidate._contexts[index]
         del candidate.models[index]
         del candidate._model_families[index]
+        del candidate._slot_ids[index]
         after = candidate.content_digest()
         if not bool(retention_probe(candidate)):
             return ExternalTransitionModelEvictionReceipt(
@@ -763,9 +812,12 @@ class ExternalTransitionModelBank(nn.Module):
         self._contexts = candidate._contexts
         self.models = candidate.models
         self._model_families = candidate._model_families
+        self._slot_ids = candidate._slot_ids
+        self._next_slot_id = candidate._next_slot_id
         return ExternalTransitionModelEvictionReceipt(
             accepted=True,
             evicted_index=index,
+            evicted_slot_id=evicted_slot_id,
             source_context_count=self.context_count + 1,
             destination_context_count=self.context_count,
             physical_models_before=physical_before,
@@ -773,6 +825,77 @@ class ExternalTransitionModelBank(nn.Module):
             content_digest_before=before,
             content_digest_after=after,
             reason="retention-verified model-slot eviction committed",
+        ).validate()
+
+    def evict_verified_id(
+        self,
+        slot_id: int,
+        retention_probe: Callable[[ExternalTransitionModelBank], bool],
+    ) -> ExternalTransitionModelEvictionReceipt:
+        """Evict any logical slot without renumbering surviving addresses.
+
+        The operation is copy-on-write and verifier-gated.  Physical indices
+        may change after a middle removal, but stable slot IDs of survivors do
+        not.  Callers that persist references must use this method's logical
+        address API rather than retaining a physical index.
+        """
+
+        index = self.physical_index_for_slot_id(slot_id)
+        if not callable(retention_probe):
+            raise TypeError("transition-model eviction retention probe is invalid")
+        before = self.content_digest()
+        physical_before = self.physical_model_count
+        source_count = self.context_count
+        if not bool(retention_probe(self)):
+            return ExternalTransitionModelEvictionReceipt(
+                accepted=False,
+                evicted_index=index,
+                evicted_slot_id=slot_id,
+                source_context_count=source_count,
+                destination_context_count=source_count,
+                physical_models_before=physical_before,
+                physical_models_after=physical_before,
+                content_digest_before=before,
+                content_digest_after=before,
+                reason="pre-eviction retention probe failed",
+            ).validate()
+
+        candidate = ExternalTransitionModelBank.from_payload(self.payload())
+        del candidate._contexts[index]
+        del candidate.models[index]
+        del candidate._model_families[index]
+        del candidate._slot_ids[index]
+        after = candidate.content_digest()
+        if not bool(retention_probe(candidate)):
+            return ExternalTransitionModelEvictionReceipt(
+                accepted=False,
+                evicted_index=index,
+                evicted_slot_id=slot_id,
+                source_context_count=source_count,
+                destination_context_count=candidate.context_count,
+                physical_models_before=physical_before,
+                physical_models_after=candidate.physical_model_count,
+                content_digest_before=before,
+                content_digest_after=before,
+                reason="post-eviction retention probe failed",
+            ).validate()
+
+        self._contexts = candidate._contexts
+        self.models = candidate.models
+        self._model_families = candidate._model_families
+        self._slot_ids = candidate._slot_ids
+        self._next_slot_id = candidate._next_slot_id
+        return ExternalTransitionModelEvictionReceipt(
+            accepted=True,
+            evicted_index=index,
+            evicted_slot_id=slot_id,
+            source_context_count=source_count,
+            destination_context_count=self.context_count,
+            physical_models_before=physical_before,
+            physical_models_after=self.physical_model_count,
+            content_digest_before=before,
+            content_digest_after=after,
+            reason="retention-verified logical model-slot eviction committed",
         ).validate()
 
     def forward(
@@ -1017,6 +1140,26 @@ class ExternalTransitionModelBank(nn.Module):
             digest.update(
                 torch.tensor(context, dtype=torch.float32).numpy().tobytes()
             )
+        digest.update(repr(payload.get("slot_ids")).encode("utf-8"))
+        digest.update(repr(payload.get("next_slot_id")).encode("utf-8"))
+        digest.update(repr(payload["model_aliases"]).encode("utf-8"))
+        for model_payload in payload["models"]:
+            digest.update(
+                self._tensor_map_digest(model_payload["state"]).encode("utf-8")
+            )
+        return digest.hexdigest()
+
+    def _legacy_compressed_payload_digest(self, payload: Mapping[str, Any]) -> str:
+        """Checksum the pre-stable-address compressed payload format."""
+
+        digest = hashlib.sha256()
+        digest.update(EXTERNAL_TRANSITION_MODEL_COMPRESSION_SCHEMA.encode("utf-8"))
+        digest.update(str(payload["codec"]).encode("utf-8"))
+        digest.update(repr(payload["configuration"]).encode("utf-8"))
+        for context in payload["contexts"]:
+            digest.update(
+                torch.tensor(context, dtype=torch.float32).numpy().tobytes()
+            )
         digest.update(repr(payload["model_aliases"]).encode("utf-8"))
         for model_payload in payload["models"]:
             digest.update(
@@ -1045,6 +1188,8 @@ class ExternalTransitionModelBank(nn.Module):
             "configuration": self.configuration(),
             "codec": str(dtype),
             "contexts": [context.tolist() for context in self._contexts],
+            "slot_ids": list(self._slot_ids),
+            "next_slot_id": self._next_slot_id,
             "model_aliases": self.model_aliases(),
             "models": models,
         }
@@ -1077,6 +1222,21 @@ class ExternalTransitionModelBank(nn.Module):
         )
         if len(contexts) != len(models) or len(aliases) != len(models):
             raise ValueError("compressed transition-model payload lengths differ")
+        slot_ids_payload = payload.get("slot_ids")
+        if slot_ids_payload is None:
+            slot_ids = list(range(len(contexts)))
+            next_slot_id = len(slot_ids)
+        else:
+            if not isinstance(slot_ids_payload, list):
+                raise TypeError("compressed transition-model slot IDs are invalid")
+            slot_ids = [int(slot_id) for slot_id in slot_ids_payload]
+            next_slot_id = int(payload.get("next_slot_id", len(slot_ids)))
+        if len(slot_ids) != len(contexts) or len(set(slot_ids)) != len(slot_ids):
+            raise ValueError("compressed transition-model slot IDs are invalid")
+        if any(slot_id < 0 for slot_id in slot_ids) or next_slot_id <= max(
+            slot_ids, default=-1
+        ):
+            raise ValueError("compressed transition-model slot ID sequence is invalid")
         bank = cls(
             int(configuration["state_width"]),
             int(configuration["intention_width"]),
@@ -1125,6 +1285,7 @@ class ExternalTransitionModelBank(nn.Module):
             bank._contexts.append(context.clone())
             bank.models.append(bank._new_model(model_families[index]))
             bank._model_families.append(model_families[index])
+            bank._slot_ids.append(slot_ids[index])
             state = model_payload.get("state")
             if not isinstance(state, Mapping):
                 raise TypeError("compressed transition-model state is missing")
@@ -1149,7 +1310,15 @@ class ExternalTransitionModelBank(nn.Module):
                     raise ValueError("compressed transition-model aliases cross families")
                 bank.models[index] = bank.models[alias]
                 bank._model_families[index] = bank._model_families[alias]
-        if payload.get("sha256") != bank._compressed_payload_digest(payload):
+        bank._next_slot_id = next_slot_id
+        if (
+            payload.get("sha256") != bank._compressed_payload_digest(payload)
+            and (
+                payload.get("slot_ids") is not None
+                or payload.get("sha256")
+                != bank._legacy_compressed_payload_digest(payload)
+            )
+        ):
             raise ValueError("compressed transition-model payload checksum mismatch")
         return bank
 
@@ -1221,7 +1390,25 @@ class ExternalTransitionModelBank(nn.Module):
         ).validate()
 
     def content_digest(self) -> str:
-        """Digest slot keys and model weights without capacity metadata."""
+        """Digest stable slot addresses, keys, and model weights."""
+
+        digest = hashlib.sha256()
+        digest.update(self.schema.encode("utf-8"))
+        aliases = self.model_aliases()
+        if aliases != list(range(len(aliases))):
+            digest.update(repr(aliases).encode("utf-8"))
+        for slot_id, context in zip(self._slot_ids, self._contexts, strict=True):
+            digest.update(str(slot_id).encode("utf-8"))
+            detached = context.detach().cpu().contiguous()
+            digest.update(detached.numpy().tobytes())
+        for index, model in enumerate(self.models):
+            digest.update(str(index).encode("utf-8"))
+            digest.update(self._model_families[index].encode("utf-8"))
+            digest.update(model.digest().encode("utf-8"))
+        return digest.hexdigest()
+
+    def _legacy_content_digest(self) -> str:
+        """Checksum the pre-stable-address logical content representation."""
 
         digest = hashlib.sha256()
         digest.update(self.schema.encode("utf-8"))
@@ -1229,8 +1416,7 @@ class ExternalTransitionModelBank(nn.Module):
         if aliases != list(range(len(aliases))):
             digest.update(repr(aliases).encode("utf-8"))
         for context in self._contexts:
-            detached = context.detach().cpu().contiguous()
-            digest.update(detached.numpy().tobytes())
+            digest.update(context.detach().cpu().contiguous().numpy().tobytes())
         for index, model in enumerate(self.models):
             digest.update(str(index).encode("utf-8"))
             digest.update(self._model_families[index].encode("utf-8"))
@@ -1253,11 +1439,21 @@ class ExternalTransitionModelBank(nn.Module):
         digest.update(self.content_digest().encode("utf-8"))
         return digest.hexdigest()
 
+    def _legacy_digest(self) -> str:
+        configuration = self.configuration()
+        configuration.pop("slot_addressing", None)
+        digest = hashlib.sha256()
+        digest.update(repr(configuration).encode("utf-8"))
+        digest.update(self._legacy_content_digest().encode("utf-8"))
+        return digest.hexdigest()
+
     def payload(self) -> dict[str, object]:
         return {
             "schema": self.schema,
             "configuration": self.configuration(),
             "contexts": [context.tolist() for context in self._contexts],
+            "slot_ids": list(self._slot_ids),
+            "next_slot_id": self._next_slot_id,
             "model_aliases": self.model_aliases(),
             "models": [
                 {
@@ -1289,6 +1485,21 @@ class ExternalTransitionModelBank(nn.Module):
             raise TypeError("transition-model bank payload lists are invalid")
         if len(contexts) != len(models):
             raise ValueError("transition-model bank payload lengths differ")
+        slot_ids_payload = payload.get("slot_ids")
+        if slot_ids_payload is None:
+            slot_ids = list(range(len(contexts)))
+            next_slot_id = len(slot_ids)
+        else:
+            if not isinstance(slot_ids_payload, list):
+                raise TypeError("transition-model bank slot IDs are invalid")
+            slot_ids = [int(slot_id) for slot_id in slot_ids_payload]
+            next_slot_id = int(payload.get("next_slot_id", len(slot_ids)))
+        if len(slot_ids) != len(contexts) or len(set(slot_ids)) != len(slot_ids):
+            raise ValueError("transition-model bank slot IDs are invalid")
+        if any(slot_id < 0 for slot_id in slot_ids) or next_slot_id <= max(
+            slot_ids, default=-1
+        ):
+            raise ValueError("transition-model bank slot ID sequence is invalid")
         if model_aliases is None:
             aliases = list(range(len(models)))
         elif isinstance(model_aliases, list):
@@ -1348,6 +1559,7 @@ class ExternalTransitionModelBank(nn.Module):
             family = model_families[index]
             bank.models.append(bank._new_model(family))
             bank._model_families.append(family)
+            bank._slot_ids.append(slot_ids[index])
             if not isinstance(model_payload, Mapping):
                 raise TypeError("transition-model bank slot is invalid")
             state_payload = model_payload.get("state")
@@ -1371,7 +1583,14 @@ class ExternalTransitionModelBank(nn.Module):
                     raise ValueError("transition-model aliases cross families")
                 bank.models[index] = bank.models[alias]
                 bank._model_families[index] = bank._model_families[alias]
-        if payload.get("sha256") != bank.digest():
+        bank._next_slot_id = next_slot_id
+        if (
+            payload.get("sha256") != bank.digest()
+            and (
+                payload.get("slot_ids") is not None
+                or payload.get("sha256") != bank._legacy_digest()
+            )
+        ):
             raise ValueError("transition-model bank checksum mismatch")
         return bank
 
@@ -1414,6 +1633,7 @@ class ExternalTransitionModelEvictionReceipt:
     content_digest_before: str
     content_digest_after: str
     reason: str
+    evicted_slot_id: int | None = None
     schema: str = EXTERNAL_TRANSITION_MODEL_EVICTION_SCHEMA
 
     def validate(self) -> ExternalTransitionModelEvictionReceipt:
@@ -1427,6 +1647,8 @@ class ExternalTransitionModelEvictionReceipt:
             self.physical_models_after,
         ) < 0:
             raise ValueError("transition-model eviction counts are invalid")
+        if self.evicted_slot_id is not None and self.evicted_slot_id < 0:
+            raise ValueError("transition-model eviction slot ID is invalid")
         if self.accepted and self.destination_context_count != self.source_context_count - 1:
             raise ValueError("accepted transition-model eviction count is invalid")
         if not isinstance(self.reason, str) or not self.reason:
@@ -1446,6 +1668,7 @@ class ExternalTransitionModelCandidateReceipt:
     content_digest_before: str
     content_digest_after: str
     reason: str
+    slot_id: int | None = None
     schema: str = EXTERNAL_TRANSITION_MODEL_CANDIDATE_SCHEMA
 
     def validate(self) -> ExternalTransitionModelCandidateReceipt:
@@ -1455,6 +1678,8 @@ class ExternalTransitionModelCandidateReceipt:
             raise ValueError("transition-model candidate context count is invalid")
         if self.accepted and (self.slot_index is None or self.slot_index < 0):
             raise ValueError("accepted transition-model candidate has no slot")
+        if self.slot_id is not None and self.slot_id < 0:
+            raise ValueError("transition-model candidate slot ID is invalid")
         if not math.isfinite(self.heldout_error) and self.accepted:
             raise ValueError("accepted transition-model candidate error is invalid")
         if not isinstance(self.candidate_digest, str) or not self.candidate_digest:
@@ -1832,6 +2057,7 @@ class ExternalOnlineTransitionContextResult:
     pending_observations: int
     prediction_error: float | None
     observation: ExternalTransitionObservation | None = None
+    stable_slot_id: int | None = None
     schema: str = EXTERNAL_ONLINE_TRANSITION_CONTEXT_ROUTER_SCHEMA
 
     def validate(
@@ -1856,6 +2082,8 @@ class ExternalOnlineTransitionContextResult:
             raise ValueError("unsupported online transition-context result status")
         if self.slot_index is not None and self.slot_index < 0:
             raise ValueError("online transition-context slot index is invalid")
+        if self.stable_slot_id is not None and self.stable_slot_id < 0:
+            raise ValueError("online transition-context stable slot ID is invalid")
         if self.context is not None:
             _validate_tensor(
                 self.context,
@@ -1992,6 +2220,7 @@ class ExternalOnlineTransitionContextRouter:
         self.candidate_model_families = families
         self._pending: list[ExternalTransitionObservation] = []
         self._active_slot: int | None = None
+        self._active_slot_id: int | None = None
         self._conflict_windows = 0
         self._provisional_candidates: list[_ProvisionalTransitionCandidate] = []
 
@@ -2101,13 +2330,48 @@ class ExternalOnlineTransitionContextRouter:
         """Evict a bank tail and invalidate any stale active-slot reference."""
 
         receipt = self.bank.evict_verified(index, retention_probe)
-        if (
-            receipt.accepted
-            and self._active_slot is not None
-            and self._active_slot >= self.bank.context_count
-        ):
-            self._active_slot = None
+        if receipt.accepted:
+            self._refresh_active_slot()
         return receipt
+
+    def evict_verified_id(
+        self,
+        slot_id: int,
+        retention_probe: Callable[[ExternalTransitionModelBank], bool],
+    ) -> ExternalTransitionModelEvictionReceipt:
+        """Evict a logical slot and repair the router's physical cache."""
+
+        receipt = self.bank.evict_verified_id(slot_id, retention_probe)
+        if receipt.accepted:
+            self._refresh_active_slot()
+        return receipt
+
+    def slot_id_at(self, index: int) -> int:
+        """Expose a stable memory address for a physical slot."""
+
+        return self.bank.slot_id_at(index)
+
+    def physical_index_for_slot_id(self, slot_id: int) -> int:
+        """Resolve a persisted logical address after memory reorganization."""
+
+        return self.bank.physical_index_for_slot_id(slot_id)
+
+    def _set_active_slot(self, index: int | None) -> None:
+        self._active_slot = index
+        self._active_slot_id = (
+            None if index is None else self.bank.slot_id_at(index)
+        )
+
+    def _refresh_active_slot(self) -> None:
+        if self._active_slot_id is None:
+            self._set_active_slot(None)
+            return
+        try:
+            self._active_slot = self.bank.physical_index_for_slot_id(
+                self._active_slot_id
+            )
+        except KeyError:
+            self._set_active_slot(None)
 
     @staticmethod
     def _clone_observation(
@@ -2195,6 +2459,7 @@ class ExternalOnlineTransitionContextRouter:
         status: str = "pending",
         prediction_error: float | None = None,
         slot_index: int | None = None,
+        stable_slot_id: int | None = None,
         context: torch.Tensor | None = None,
         observation: ExternalTransitionObservation | None = None,
     ) -> ExternalOnlineTransitionContextResult:
@@ -2205,6 +2470,7 @@ class ExternalOnlineTransitionContextRouter:
             pending_observations=self.pending_observations,
             prediction_error=prediction_error,
             observation=observation,
+            stable_slot_id=stable_slot_id,
         ).validate(
             state_width=self.bank.state_width,
             intention_width=self.bank.intention_width,
@@ -2297,6 +2563,7 @@ class ExternalOnlineTransitionContextRouter:
     ) -> ExternalOnlineTransitionContextResult:
         """Route one current-stream row without accepting a regime label."""
 
+        self._refresh_active_slot()
         observation.validate(
             state_width=self.bank.state_width,
             intention_width=self.bank.intention_width,
@@ -2318,7 +2585,7 @@ class ExternalOnlineTransitionContextRouter:
                 if self._candidate_error(candidate, bundle)
                 > self.provisional_continuation_tolerance
             ]
-            self._active_slot = index
+            self._set_active_slot(index)
             self._conflict_windows = 0
             return ExternalOnlineTransitionContextResult(
                 status="matched",
@@ -2327,6 +2594,7 @@ class ExternalOnlineTransitionContextRouter:
                 pending_observations=0,
                 prediction_error=error,
                 observation=bundle,
+                stable_slot_id=self.bank.slot_id_at(index),
             ).validate(
                 state_width=self.bank.state_width,
                 intention_width=self.bank.intention_width,
@@ -2347,6 +2615,7 @@ class ExternalOnlineTransitionContextRouter:
                     pending_observations=0,
                     prediction_error=active_error,
                     observation=bundle,
+                    stable_slot_id=self.bank.slot_id_at(index),
                 ).validate(
                     state_width=self.bank.state_width,
                     intention_width=self.bank.intention_width,
@@ -2422,7 +2691,7 @@ class ExternalOnlineTransitionContextRouter:
         index = self.bank.ensure_context(context, initialize_from=prior_index)
         status = "admitted" if index == before else "reused"
         self._pending.clear()
-        self._active_slot = index
+        self._set_active_slot(index)
         self._conflict_windows = 0
         return ExternalOnlineTransitionContextResult(
             status=status,
@@ -2431,6 +2700,7 @@ class ExternalOnlineTransitionContextRouter:
             pending_observations=0,
             prediction_error=None,
             observation=bundle,
+            stable_slot_id=self.bank.slot_id_at(index),
         ).validate(
             state_width=self.bank.state_width,
             intention_width=self.bank.intention_width,
@@ -2665,13 +2935,15 @@ class ExternalOnlineTransitionContextRouter:
         self.bank._contexts.append(context.detach().cpu().clone())
         self.bank.models.append(promoted_model)
         self.bank._model_families.append(selected_family)
+        self.bank._slot_ids.append(self.bank._next_slot_id)
+        self.bank._next_slot_id += 1
         if destination_capacity is not None:
             self.bank.capacity = destination_capacity
             if self.max_contexts is not None:
                 self.max_contexts = destination_capacity
         after = self.bank.content_digest()
         slot_index = self.bank.context_count - 1
-        self._active_slot = slot_index
+        self._set_active_slot(slot_index)
         self._conflict_windows = 0
         del self._provisional_candidates[candidate_index]
         return ExternalTransitionModelCandidateReceipt(
@@ -2682,6 +2954,7 @@ class ExternalOnlineTransitionContextRouter:
             candidate_digest=candidate_digest,
             content_digest_before=before,
             content_digest_after=after,
+            slot_id=self.bank.slot_id_at(slot_index),
             reason=(
                 "held-out and retention-verified candidate promotion with "
                 "capacity growth committed"
@@ -2768,6 +3041,7 @@ class ExternalOnlineTransitionContextRouter:
             "context_encoder": self.context_encoder.state_payload(),
             "pending": [self._observation_payload(row) for row in self._pending],
             "active_slot": self._active_slot,
+            "active_slot_id": self._active_slot_id,
             "conflict_windows": self._conflict_windows,
             "provisional_candidates": provisional_candidates,
             "provisional_context": (
@@ -2867,7 +3141,24 @@ class ExternalOnlineTransitionContextRouter:
             not isinstance(active_slot, int) or not 0 <= active_slot < bank.context_count
         ):
             raise ValueError("online transition active slot is invalid")
-        router._active_slot = active_slot
+        active_slot_id = payload.get("active_slot_id")
+        if active_slot_id is not None and (
+            not isinstance(active_slot_id, int)
+            or isinstance(active_slot_id, bool)
+            or active_slot_id < 0
+        ):
+            raise ValueError("online transition active stable slot ID is invalid")
+        if active_slot_id is not None:
+            try:
+                resolved_active_slot = bank.physical_index_for_slot_id(active_slot_id)
+            except KeyError as error:
+                raise ValueError(
+                    "online transition active stable slot ID is unknown"
+                ) from error
+            if active_slot is not None and active_slot != resolved_active_slot:
+                raise ValueError("online transition active slot references disagree")
+            active_slot = resolved_active_slot
+        router._set_active_slot(active_slot)
         conflict_windows = payload.get("conflict_windows", 0)
         if not isinstance(conflict_windows, int) or conflict_windows < 0:
             raise ValueError("online transition conflict count is invalid")

@@ -241,6 +241,14 @@ def test_transition_model_bank_round_trip_preserves_learned_context_bytes() -> N
     legacy_payload.pop("model_aliases")
     legacy_restored = ExternalTransitionModelBank.from_payload(legacy_payload)
     assert legacy_restored.digest() == bank.digest()
+    pre_address_payload = bank.payload()
+    pre_address_payload["configuration"].pop("slot_addressing")
+    pre_address_payload.pop("slot_ids")
+    pre_address_payload.pop("next_slot_id")
+    pre_address_payload["sha256"] = bank._legacy_digest()
+    pre_address_restored = ExternalTransitionModelBank.from_payload(pre_address_payload)
+    assert pre_address_restored.slot_ids == (0,)
+    assert pre_address_restored.digest() == bank.digest()
 
 
 def test_transition_model_bank_growth_is_verified_and_content_preserving() -> None:
@@ -309,6 +317,65 @@ def test_transition_model_bank_eviction_is_verified_and_alias_safe() -> None:
     assert not rejected.accepted
     assert bank.context_count == 2
     assert bank.models[0].digest() == source_digest
+
+
+def test_transition_model_bank_keeps_logical_addresses_across_middle_eviction() -> None:
+    bank = ExternalTransitionModelBank(2, 1, 3, hidden_width=8, capacity=4)
+    first = bank.ensure_context(torch.tensor([1.0, 0.0, 0.0]))
+    middle = bank.ensure_context(torch.tensor([0.0, 1.0, 0.0]))
+    last = bank.ensure_context(torch.tensor([0.0, 0.0, 1.0]))
+    assert (bank.slot_id_at(first), bank.slot_id_at(middle), bank.slot_id_at(last)) == (
+        0,
+        1,
+        2,
+    )
+
+    retained_ids: list[tuple[int, ...]] = []
+
+    def retention_probe(candidate: ExternalTransitionModelBank) -> bool:
+        retained_ids.append(candidate.slot_ids)
+        return candidate.slot_ids in {(0, 1, 2), (0, 2)}
+
+    receipt = bank.evict_verified_id(1, retention_probe)
+
+    assert receipt.accepted
+    assert receipt.evicted_slot_id == 1
+    assert bank.slot_ids == (0, 2)
+    assert bank.physical_index_for_slot_id(0) == 0
+    assert bank.physical_index_for_slot_id(2) == 1
+    assert bank.slot_id_at(1) == 2
+    with pytest.raises(KeyError):
+        bank.physical_index_for_slot_id(1)
+
+    new_index = bank.ensure_context(torch.tensor([0.5, 0.5, 0.5]))
+    assert bank.slot_id_at(new_index) == 3
+    restored = ExternalTransitionModelBank.from_payload(bank.payload())
+    assert restored.slot_ids == bank.slot_ids
+    assert restored.digest() == bank.digest()
+    assert retained_ids == [(0, 1, 2), (0, 2)]
+
+
+def test_online_router_repairs_active_physical_index_after_logical_eviction() -> None:
+    bank = ExternalTransitionModelBank(2, 1, 3, hidden_width=8, capacity=3)
+    bank.ensure_context(torch.tensor([1.0, 0.0, 0.0]))
+    bank.ensure_context(torch.tensor([0.0, 1.0, 0.0]))
+    bank.ensure_context(torch.tensor([0.0, 0.0, 1.0]))
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=3),
+        max_contexts=3,
+    )
+    router._set_active_slot(2)
+
+    receipt = router.evict_verified_id(
+        1,
+        lambda candidate: candidate.slot_ids in {(0, 1, 2), (0, 2)},
+    )
+
+    assert receipt.accepted
+    assert router._active_slot_id == 2
+    assert router._active_slot == 1
+    assert router.bank.slot_id_at(router._active_slot) == 2
 
 
 def test_transition_model_bank_consolidation_shares_only_equivalent_models() -> None:

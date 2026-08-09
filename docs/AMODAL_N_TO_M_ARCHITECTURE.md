@@ -4996,3 +4996,27 @@ router persistence passed. This is the strongest current retention result, but
 the context encoder was not trained in this fixture and the memory capacity is
 four slots. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_random_feature_online_retention_promoted_2026-08-09/`.
+
+## Stable logical addresses under verified memory reorganization (2026-08-09)
+
+The exported session's model-versus-policy result also implies a memory-system
+requirement: a growing factual store must be able to reorganize without
+silently changing the meaning of a persisted reference. `ExternalTransitionModelBank`
+now assigns monotonic opaque slot IDs in addition to its backward-compatible
+physical indices. IDs survive payload and compressed-payload round trips,
+middle-slot removal, alias-preserving consolidation, and later capacity reuse;
+the router resolves its cached active slot by logical ID after reorganization.
+
+`evict_verified_id` performs the same copy-on-write, pre/post retention proof as
+tail eviction but permits a verified middle removal. A focused regression
+removed logical slot `1` from `(0, 1, 2)`, retained `(0, 2)` without renumbering,
+reused a fresh ID `3`, and repaired the router's physical cache. Legacy payloads
+without IDs remain readable through a compatibility checksum path. The full
+suite passed `424` tests.
+
+This closes address stability for the current bounded model bank. It does not
+make eviction learned: retention probes, lifetime policies, and reclamation
+decisions remain caller/verifier-owned. The next bottleneck is a learned,
+auditable memory policy that can choose what to consolidate, compress, or evict
+under long alternating streams while preserving the stable logical address
+contract.
