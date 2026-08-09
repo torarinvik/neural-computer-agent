@@ -153,6 +153,18 @@
       "positive_transfer": false,
       "retention_on_mastered_primitives": "inherited path retained exact zero-delta source behavior",
       "decision": "reject positive sample-efficiency claim; retain diagnostic and target decoder/event-bridge adaptation"
+    },
+    {
+      "experiment": "interleaved_mastered_decoder_prior_diagnostic",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "A mastered opaque decoder can serve as a reusable prior for new compositional output paths.",
+      "composition_program_count": 2,
+      "decoder_prior": "source_decoder_0",
+      "replayed_examples": 0,
+      "retention_on_mastered_primitives": "source retention passed with exact zero deltas; the full transaction was rejected in seed 69316 and passed in seed 69317",
+      "positive_transfer": false,
+      "decision": "reject raw decoder-weight reuse as a general interface prior; retain opt-in diagnostic only"
     }
   ]
 }
