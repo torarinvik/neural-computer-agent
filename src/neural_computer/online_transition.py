@@ -13,18 +13,20 @@ from __future__ import annotations
 import hashlib
 import math
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Any
 
 import torch
 from torch import nn
 
-from .world_model import ExternalTransitionObservation
+from .world_model import (
+    EXTERNAL_TRANSITION_MODEL_FAMILY_SELECTION_SCHEMA,
+    ExternalTransitionObservation,
+)
 
 EXTERNAL_TRANSITION_AFFINE_STATISTICS_SCHEMA = (
     "neural-computer.external-transition-affine-statistics.v1"
 )
-
-
 class ExternalAffineTransitionStatistics(nn.Module):
     """Compact online memory for an opaque affine transition function."""
 
@@ -185,7 +187,152 @@ class ExternalAffineTransitionStatistics(nn.Module):
         return model
 
 
+@dataclass(frozen=True)
+class ExternalTransitionModelFamilyCandidateReceipt:
+    """Verifier result for one independently trained opaque model candidate."""
+
+    model_family: str
+    accepted: bool
+    heldout_error: float
+    storage_bytes: int
+    candidate_digest: str
+    reason: str
+
+    def validate(self) -> ExternalTransitionModelFamilyCandidateReceipt:
+        if not self.model_family:
+            raise ValueError("model-family candidate name must be nonempty")
+        if not math.isfinite(self.heldout_error) or self.heldout_error < 0.0:
+            raise ValueError("model-family held-out error is invalid")
+        if self.storage_bytes < 1:
+            raise ValueError("model-family candidate storage must be positive")
+        if not self.candidate_digest or not self.reason:
+            raise ValueError("model-family candidate receipt is incomplete")
+        return self
+
+
+@dataclass(frozen=True)
+class ExternalTransitionModelFamilySelection:
+    """Auditable smallest-accepted candidate selection."""
+
+    accepted: bool
+    selected_family: str | None
+    candidates: tuple[ExternalTransitionModelFamilyCandidateReceipt, ...]
+    reason: str
+    schema: str = EXTERNAL_TRANSITION_MODEL_FAMILY_SELECTION_SCHEMA
+
+    def validate(self) -> ExternalTransitionModelFamilySelection:
+        if self.schema != EXTERNAL_TRANSITION_MODEL_FAMILY_SELECTION_SCHEMA:
+            raise ValueError("unsupported model-family selection schema")
+        if not self.candidates:
+            raise ValueError("model-family selection must include candidates")
+        for candidate in self.candidates:
+            candidate.validate()
+        accepted = [candidate.model_family for candidate in self.candidates if candidate.accepted]
+        if self.accepted != bool(accepted):
+            raise ValueError("model-family selection acceptance is inconsistent")
+        if self.selected_family not in accepted and self.selected_family is not None:
+            raise ValueError("selected model family was not accepted")
+        if self.accepted and self.selected_family is None:
+            raise ValueError("accepted model-family selection lacks a winner")
+        if not self.reason:
+            raise ValueError("model-family selection reason is missing")
+        return self
+
+
+def _candidate_digest(model: nn.Module) -> str:
+    digest = hashlib.sha256()
+    schema = str(getattr(model, "schema", type(model).__name__))
+    digest.update(schema.encode("utf-8"))
+    for name, value in sorted(model.state_dict().items()):
+        detached = value.detach().cpu().contiguous()
+        digest.update(name.encode("utf-8"))
+        digest.update(str(detached.dtype).encode("utf-8"))
+        digest.update(repr(tuple(detached.shape)).encode("utf-8"))
+        digest.update(detached.numpy().tobytes())
+    return digest.hexdigest()
+
+
+def select_verified_transition_model_family(
+    candidates: Mapping[str, nn.Module],
+    heldout_observation: ExternalTransitionObservation,
+    *,
+    prediction_tolerance: float = 0.05,
+    retention_probe: Any = None,
+) -> ExternalTransitionModelFamilySelection:
+    """Choose the smallest opaque candidate that passes held-out verification.
+
+    Candidate training is deliberately outside this function. Each candidate
+    must already have been adapted from the same verified stream. Selection
+    only measures held-out factual prediction and an optional retention probe;
+    it does not infer a semantic model family or mutate any candidate.
+    """
+
+    if not isinstance(candidates, Mapping) or not candidates:
+        raise ValueError("model-family candidates must be a nonempty mapping")
+    if any(not isinstance(name, str) or not name for name in candidates):
+        raise ValueError("model-family candidate names must be nonempty strings")
+    if prediction_tolerance < 0.0 or not math.isfinite(prediction_tolerance):
+        raise ValueError("model-family prediction tolerance is invalid")
+    if retention_probe is not None and not callable(retention_probe):
+        raise TypeError("model-family retention probe must be callable")
+    first_model = next(iter(candidates.values()))
+    if not isinstance(first_model, nn.Module) or not hasattr(first_model, "loss"):
+        raise TypeError("model-family candidates must be learned modules with loss()")
+    heldout_observation.validate(
+        state_width=int(first_model.state_width),
+        intention_width=int(first_model.intention_width),
+    )
+    receipts: list[ExternalTransitionModelFamilyCandidateReceipt] = []
+    for name, model in candidates.items():
+        if not isinstance(model, nn.Module) or not hasattr(model, "loss"):
+            raise TypeError("model-family candidates must be learned modules with loss()")
+        heldout_error = float(model.loss(heldout_observation).detach())
+        storage_bytes = sum(
+            value.numel() * value.element_size() for value in model.state_dict().values()
+        )
+        retained = retention_probe is None or bool(retention_probe(model))
+        accepted = heldout_error <= prediction_tolerance and retained
+        receipts.append(
+            ExternalTransitionModelFamilyCandidateReceipt(
+                model_family=name,
+                accepted=accepted,
+                heldout_error=heldout_error,
+                storage_bytes=storage_bytes,
+                candidate_digest=_candidate_digest(model),
+                reason=(
+                    "held-out and retention-verified candidate accepted"
+                    if accepted
+                    else (
+                        "held-out candidate prediction failed"
+                        if heldout_error > prediction_tolerance
+                        else "candidate retention probe failed"
+                    )
+                ),
+            ).validate()
+        )
+    accepted = [receipt for receipt in receipts if receipt.accepted]
+    selected = (
+        min(accepted, key=lambda receipt: (receipt.storage_bytes, receipt.heldout_error, receipt.model_family))
+        if accepted
+        else None
+    )
+    return ExternalTransitionModelFamilySelection(
+        accepted=selected is not None,
+        selected_family=None if selected is None else selected.model_family,
+        candidates=tuple(receipts),
+        reason=(
+            "smallest held-out and retention-verified model family selected"
+            if selected is not None
+            else "no model-family candidate passed verification"
+        ),
+    ).validate()
+
+
 __all__ = [
     "EXTERNAL_TRANSITION_AFFINE_STATISTICS_SCHEMA",
+    "EXTERNAL_TRANSITION_MODEL_FAMILY_SELECTION_SCHEMA",
     "ExternalAffineTransitionStatistics",
+    "ExternalTransitionModelFamilyCandidateReceipt",
+    "ExternalTransitionModelFamilySelection",
+    "select_verified_transition_model_family",
 ]

@@ -4843,6 +4843,17 @@ model, with verifier-gated selection rather than hand-assigned semantics.
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_affine_one_pass_promoted_2026-08-09/`.
 
+The primitive is now available through the same `ExternalTransitionModelBank`
+boundary as the nonlinear MLP. A bank can create uncommitted candidates from
+either family, route affine updates directly into sufficient statistics without
+an optimizer, and round-trip either family through the bank checkpoint. The
+bank also exposes verifier-gated family selection: independently adapted
+candidates are compared on held-out factual prediction, optional retention,
+and storage size, then the smallest accepted candidate is reported without
+mutating the live bank. This removes a hand-assigned “affine task” decision,
+but it does not yet train both candidates automatically or support mixed model
+families within one committed bank.
+
 ## Alternating provisional-candidate isolation (2026-08-09)
 
 The previous candidate boundary had one mutable provisional model. If a

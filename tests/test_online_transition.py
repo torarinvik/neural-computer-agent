@@ -4,8 +4,131 @@ import torch
 
 from neural_computer import (
     ExternalAffineTransitionStatistics,
+    ExternalOnlineTransitionContextRouter,
+    ExternalTransitionContextEncoder,
+    ExternalTransitionModelBank,
     ExternalTransitionObservation,
 )
+
+
+def _affine_observation(rows: int = 8) -> ExternalTransitionObservation:
+    state = torch.arange(rows * 2, dtype=torch.float32).reshape(rows, 2) / 7.0
+    intention = torch.arange(rows, dtype=torch.float32).reshape(rows, 1) / 5.0
+    features = torch.cat((state, intention, torch.ones(rows, 1)), dim=-1)
+    weights = torch.tensor(
+        [[1.0, 0.2], [-0.3, 0.8], [0.7, -1.1], [0.4, -0.6]]
+    )
+    return ExternalTransitionObservation(
+        state=state,
+        intention=intention,
+        next_state=features @ weights,
+        confidence=torch.ones(rows),
+    )
+
+
+def test_affine_statistics_is_a_bank_fast_path_without_optimizer_replay() -> None:
+    observation = _affine_observation()
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        3,
+        model_family="affine_sufficient_statistics_v1",
+        affine_ridge=1e-7,
+        capacity=1,
+    )
+    context = torch.tensor([1.0, 0.0, 0.0])
+    bank.ensure_context(context)
+    loss_before = bank.adaptation_step(
+        observation,
+        context.unsqueeze(0).expand(observation.state.shape[0], -1),
+        None,
+    )
+    assert loss_before > 0.0
+    assert int(bank.models[0].sample_count) == observation.state.shape[0]
+    assert float(bank.loss(observation, context.unsqueeze(0).expand(8, -1))) < 1e-7
+
+    restored = ExternalTransitionModelBank.from_payload(bank.payload())
+    assert restored.configuration()["model_family"] == "affine_sufficient_statistics_v1"
+    assert restored.content_digest() == bank.content_digest()
+
+
+def test_router_stages_and_promotes_affine_candidate_without_optimizer() -> None:
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        4,
+        model_family="affine_sufficient_statistics_v1",
+        affine_ridge=1e-7,
+        capacity=1,
+    )
+    encoder = ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4)
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        encoder,
+        match_tolerance=1e-8,
+        continuation_tolerance=1e9,
+        admission_observations=4,
+        max_contexts=1,
+        defer_admission=True,
+    )
+    observation = _affine_observation(4)
+    rows = [
+        ExternalTransitionObservation(
+            state=observation.state[row : row + 1],
+            intention=observation.intention[row : row + 1],
+            next_state=observation.next_state[row : row + 1],
+            confidence=torch.ones(1),
+        )
+        for row in range(4)
+    ]
+    for row in rows[:3]:
+        assert router.observe(row).status == "pending"
+    staged = router.observe(rows[3])
+    assert staged.status == "staged"
+    assert router.adaptation_step(staged, None) > 0.0
+    assert int(router.provisional_model_at(0).sample_count) == 4
+
+    heldout = _affine_observation(4)
+    receipt = router.promote_staged_candidate(
+        heldout,
+        lambda candidate: candidate.context_count == 1,
+        prediction_tolerance=1e-7,
+    )
+    assert receipt.accepted
+    assert router.bank.models[0].sample_count.item() == 4
+
+
+def test_bank_selects_smallest_verified_model_family_without_mutating_candidates() -> None:
+    torch.manual_seed(1303)
+    observation = _affine_observation(12)
+    heldout = _affine_observation(4)
+    bank = ExternalTransitionModelBank(2, 1, 3)
+    affine = bank.new_model("affine_sufficient_statistics_v1")
+    for row in range(observation.state.shape[0]):
+        affine.observe(
+            ExternalTransitionObservation(
+                state=observation.state[row : row + 1],
+                intention=observation.intention[row : row + 1],
+                next_state=observation.next_state[row : row + 1],
+                confidence=torch.ones(1),
+            )
+        )
+    nonlinear = bank.new_model("nonlinear_mlp_v1")
+    affine_digest = affine.digest()
+    nonlinear_digest = nonlinear.digest()
+
+    selection = bank.select_model_family_verified(
+        {
+            "affine_sufficient_statistics_v1": affine,
+            "nonlinear_mlp_v1": nonlinear,
+        },
+        heldout,
+        prediction_tolerance=1e-6,
+    )
+    assert selection.accepted
+    assert selection.selected_family == "affine_sufficient_statistics_v1"
+    assert affine.digest() == affine_digest
+    assert nonlinear.digest() == nonlinear_digest
 
 
 def test_affine_transition_statistics_learns_and_persists_one_pass() -> None:
