@@ -156,12 +156,17 @@ never was.
    there is no learned controller to carry habits at all.
 2. **Cost is not in the objective** (§3.2, §3.3), so nothing yet
    pressures reuse.
-2b. **Positive transfer is not demonstrated, and our tests cannot
-   currently detect it (F62).** Concurrent multi-domain warm-start
-   recovers most of F61's damage (0.277 -> 0.824) but cold still wins
-   (1.000 @200 vs 0.824 @400). The test is flawed: r4 masters cold in
-   200 updates, so there is no headroom for a prior to save anything.
-   A transfer test needs a target that is EXPENSIVE from scratch.
+2b. **Positive transfer is NOT demonstrated, on cheap or expensive
+   targets (F62, F63).** Concurrent multi-domain warm-start recovers
+   most of F61's damage but never exceeds cold start: 0.824 vs 1.000 on
+   a cheap target, 0.613 vs 0.625 on a sparse-reward target expensive
+   enough that cold never masters. Single-domain priors are harmful in
+   all three tests. **Diversity converts harmful priors into neutral
+   ones; nothing so far converts them into helpful ones.** Measured
+   against §3's objective, the founding claim has no supporting
+   evidence: prior learning has never made a novel task cheaper here.
+   Every positive result in this project concerns storing and reusing
+   skills WITHIN a task family, not compounding across novel ones.
 3. **Retrieval is never tried before learning.** The bank is only ever
    *given* fragments; it is never asked whether it already contains a
    solution. Without that loop, reuse cannot be selected even if it is

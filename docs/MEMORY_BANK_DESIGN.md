@@ -2518,3 +2518,52 @@ transfer" should be read as "not yet measurable", not as "does not
 exist".
 
 Probes 133-138 are `reacher_ladder.py --warm-mix`.
+
+**F63 (probes 139-144). Positive transfer is NOT demonstrated, on a
+target expensive enough to show it. Diversity buys neutrality, not
+benefit.** F62 found our transfer tests used targets that master cold in
+200 updates, leaving no headroom. Sparse reward fixes that -- arrival
+must be discovered, and cold start never masters. Three arms, two seeds:
+
+| arm | reach | mastered | path ratio |
+| --- | ---: | --- | ---: |
+| cold | **0.625** | 0/2 | 1.02 |
+| warm from r1 alone | 0.176 | 0/2 | 1.04 |
+| warm from r1+r3 concurrently | 0.613 | 0/2 | 1.10 |
+
+Multi-domain warm-start is NEUTRAL (0.613 vs 0.625). Single-domain is
+harmful (0.176), reproducing F61/F62 a third time. So across cheap
+targets (F62) and expensive ones (here), the pattern is stable:
+
+> **Diversity converts harmful priors into neutral ones. Nothing so far
+> converts them into helpful ones.**
+
+Stated against the adopted objective -- *produce a program such that
+having learned A makes a NOVEL B faster to learn than from scratch* --
+the project's founding claim has **no supporting measurement**. Prior
+learning has never once made a novel task cheaper here. That is the
+honest headline and it should not be softened: every positive result in
+this program (bank necessity F54, composition, cued addressing F57) is
+about STORING and REUSING skills within a task family, not about
+compounding across novel ones.
+
+Caveat recorded rather than used as an excuse: no arm mastered (0/2
+everywhere), so 800 updates is short for this target. The reach numbers
+still separate the arms cleanly, but a budget where some arm succeeds
+would measure the curve rather than a single point.
+
+**Two candidate explanations, both untested.**
+
+1. **Nothing pressures reuse.** There is no cost term in the objective
+   and no retrieval-before-learning loop (ARCHITECTURE.md §5.2, §5.3).
+   A system with no incentive to consult its prior will relearn, and a
+   neutral prior is exactly what "carried but unused" looks like. This
+   is the cheaper hypothesis and it is directly testable: add a cost
+   term, add a try-the-bank-first step, re-run these three arms.
+2. **The plant is the wrong home for a policy at all.** F61 showed a
+   frozen plant plus a goal adapter cannot repair a wrong pursuit
+   policy. Route 2 keeps only a transition model in weights and DERIVES
+   the policy by search, so there is no learned controller to carry or
+   to be stale. This is the larger rebuild and the stronger claim.
+
+Probes 139-144 are `reacher_ladder.py --sparse`.
