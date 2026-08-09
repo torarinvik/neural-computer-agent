@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+from functools import lru_cache
 from pathlib import Path
 from time import perf_counter
 
@@ -44,6 +45,40 @@ INTENTION_WIDTH = 16
 REGISTER_WIDTH = 32
 INSTRUCTION_WIDTH = 16
 GeneratedCompositionGrammar = tuple[tuple[str, ...], ...]
+
+
+@lru_cache(maxsize=8)
+def _opaque_composed_event_matrix(width: int) -> torch.Tensor:
+    """Return a fixed trainer-only dense event-space transform.
+
+    The matrix is part of the rendered-environment corruption, not an input to
+    the bridge optimizer. A deterministic generator keeps reports reproducible
+    while the dense orthogonal mix removes the cyclic-coordinate shortcut.
+    """
+
+    if width < 2:
+        raise ValueError("composed event transform needs at least two features")
+    generator = torch.Generator(device="cpu").manual_seed(4_271_991)
+    raw = torch.randn(width, width, generator=generator)
+    matrix, _ = torch.linalg.qr(raw)
+    if torch.linalg.det(matrix) < 0:
+        matrix[:, 0].neg_()
+    return matrix
+
+
+def _apply_bridge_event_transform(
+    event: torch.Tensor,
+    mode: str,
+) -> torch.Tensor:
+    if mode == "cyclic_permutation":
+        return torch.roll(event, shifts=1, dims=-1)
+    if mode == "composed_orthogonal":
+        matrix = _opaque_composed_event_matrix(event.shape[-1]).to(
+            device=event.device,
+            dtype=event.dtype,
+        )
+        return event @ matrix
+    return event
 
 
 class OpaqueVerifierValue(nn.Module):
@@ -184,6 +219,7 @@ def _rollout(
         "normal",
         "zero",
         "cyclic_permutation",
+        "composed_orthogonal",
         "norm_matched_noise",
     ):
         raise ValueError(f"unknown bridge event mode: {bridge_event_mode!r}")
@@ -289,11 +325,17 @@ def _rollout(
             bridge_event = event
             if bridge_event_mode == "zero":
                 bridge_event = torch.zeros_like(bridge_event)
-            elif bridge_event_mode == "cyclic_permutation":
+            elif bridge_event_mode in (
+                "cyclic_permutation",
+                "composed_orthogonal",
+            ):
                 # A deterministic representation-space replacement used by
                 # trainer diagnostics. The controller never sees this raw
                 # transform; the bridge must learn to undo it.
-                bridge_event = torch.roll(bridge_event, shifts=1, dims=-1)
+                bridge_event = _apply_bridge_event_transform(
+                    bridge_event,
+                    bridge_event_mode,
+                )
             elif bridge_event_mode == "norm_matched_noise":
                 # Deterministic, data-independent noise with the original
                 # row norm. This is a trainer-only corruption control; the

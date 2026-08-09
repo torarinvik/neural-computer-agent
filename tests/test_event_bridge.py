@@ -113,6 +113,23 @@ def test_bridge_corruption_control_keeps_scalar_credit_on_external_path() -> Non
     assert torch.isfinite(cyclic_loss)
     assert any(parameter.grad is not None for parameter in bridge.parameters())
 
+    bridge.zero_grad(set_to_none=True)
+    composed_loss, _ = _rollout(
+        parent,
+        machine,
+        decoder,
+        batch,
+        tuple(machine.instructions),
+        train_decoder=True,
+        credit_mode="reinforce_baseline",
+        event_bridge=bridge,
+        bridge_event_mode="composed_orthogonal",
+        bridge_state_mode="zero",
+    )
+    composed_loss.backward()
+    assert torch.isfinite(composed_loss)
+    assert any(parameter.grad is not None for parameter in bridge.parameters())
+
 
 def test_bridge_input_override_requires_a_bridge() -> None:
     parent = _runtime(seed=37, growth=False)

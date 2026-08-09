@@ -94,7 +94,7 @@ def _score(
     count: int,
     span: int,
     seed: int,
-    bridge_event_mode: str = "cyclic_permutation",
+    bridge_event_mode: str,
     shuffle_outcomes: bool = False,
 ) -> float:
     return _accuracy(
@@ -128,6 +128,7 @@ def _train_bridge(
     learning_rate: float,
     eval_every: int,
     audit_count: int,
+    bridge_event_mode: str,
     shuffle_outcomes: bool = False,
 ) -> list[dict[str, float | int]]:
     optimizer = torch.optim.AdamW(
@@ -152,7 +153,7 @@ def _train_bridge(
             shuffle_outcomes=shuffle_outcomes,
             credit_mode="attempted_bce",
             event_bridge=bridge,
-            bridge_event_mode="cyclic_permutation",
+            bridge_event_mode=bridge_event_mode,
             bridge_state_mode="zero",
         )
         optimizer.zero_grad(set_to_none=True)
@@ -168,6 +169,7 @@ def _train_bridge(
                 count=audit_count,
                 span=span,
                 seed=seed + 100_000 + update,
+                bridge_event_mode=bridge_event_mode,
             )
             progress.append({"update": update, "heldout_accuracy": accuracy})
     return progress
@@ -278,6 +280,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         count=args.audit_count,
         span=args.span,
         seed=args.seed + 30_000,
+        bridge_event_mode=args.bridge_event_mode,
     )
     bridge_progress = _train_bridge(
         parent,
@@ -291,6 +294,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         learning_rate=args.learning_rate,
         eval_every=args.eval_every,
         audit_count=args.audit_count,
+        bridge_event_mode=args.bridge_event_mode,
     )
     target_after = _score(
         parent,
@@ -300,6 +304,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         count=args.audit_count,
         span=args.span,
         seed=args.seed + 50_000,
+        bridge_event_mode=args.bridge_event_mode,
     )
     shuffled_bridge = AmodalEventBridge(
         EVENT_WIDTH,
@@ -319,6 +324,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         learning_rate=args.learning_rate,
         eval_every=args.eval_every,
         audit_count=args.audit_count,
+        bridge_event_mode=args.bridge_event_mode,
         shuffle_outcomes=True,
     )
     shuffled_accuracy = _score(
@@ -329,6 +335,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         count=args.audit_count,
         span=args.span,
         seed=args.seed + 70_000,
+        bridge_event_mode=args.bridge_event_mode,
     )
     source_after = _accuracy(
         parent,
@@ -371,7 +378,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "schema": "neural-computer.outcome-only-event-alignment-report.v1",
         "claim_boundary": (
             "A frozen external computation can recover one deterministic event-"
-            "space permutation from sampled scalar outcomes; this is not a "
+            "space transform from sampled scalar outcomes; this is not a "
             "general alignment or continual-learning promotion."
         ),
         "seed": args.seed,
@@ -379,7 +386,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "operation": OPERATION,
             "source_bank_width": SOURCE_BANK_WIDTH,
             "event_width": EVENT_WIDTH,
-            "bridge_event_mode": "cyclic_permutation",
+            "bridge_event_mode": args.bridge_event_mode,
             "bridge_state_mode": "zero",
             "parent_updates": args.parent_updates,
             "source_updates": args.source_updates,
@@ -457,6 +464,11 @@ def main() -> None:
     parser.add_argument("--audit-count", type=int, default=64)
     parser.add_argument("--eval-every", type=int, default=32)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
+    parser.add_argument(
+        "--bridge-event-mode",
+        choices=("cyclic_permutation", "composed_orthogonal"),
+        default="cyclic_permutation",
+    )
     args = parser.parse_args()
     run(args)
 

@@ -5281,3 +5281,26 @@ It is not yet arbitrary multimodal alignment or general continual learning.
 The next bottleneck is to replace the known cyclic permutation with unknown,
 composed, and eventually modality-specific representation drift while keeping
 the same scalar-only credit and retention controls.
+
+## Outcome-only composed event alignment (2026-08-09)
+
+The alignment pressure test now removes the coordinatewise shortcut. A fixed,
+opaque dense orthogonal transform mixes all 32 event features before the
+replaceable bridge. The bridge receives no transform description and no
+controller state; it is trained only from sampled scalar outcomes on opaque
+actions. A matched reward-shuffled arm uses the same transform, architecture,
+and verifier budget.
+
+Across seeds `69316` and `69317`, source capability was `0.941`/`0.992`,
+transformed capability was `0.500`/`0.504` before adaptation, and the bridge
+reached `0.949`/`0.984`. Shuffled-outcome controls stayed at `0.445`/`0.594`;
+source retention, frozen parent, external register, and decoder digest gates
+all passed. Stable prefixes appeared at `10,240` and `6,144` unique verifier
+bits, with zero replayed examples. Reports and accounting are archived in
+`session_records/sequence_working_memory_2026-08-02/outcome_only_composed_event_alignment_promoted_2026-08-09/`.
+
+This materially strengthens the representation result: outcome-only bridge
+learning can recover a dense composed invertible change, not only a known
+cyclic coordinate shift. The remaining gap is unknown transform identity and
+composition across changing frontends or modalities, followed by
+non-invertible information loss and long-horizon continual retention.
