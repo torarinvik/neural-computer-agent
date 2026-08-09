@@ -169,9 +169,12 @@ from .memory import (
 )
 from .plasticity import (
     CapabilityEvictionObservation,
+    EXTERNAL_FAST_WEIGHT_SCHEMA,
     ExternalCapabilityEvictionPolicy,
+    ExternalFastWeightPlasticity,
     ExternalMemoryEvictionPolicy,
     ExternalMemoryWritePolicy,
+    ExternalFastWeightState,
     MemoryEvictionObservation,
     MemoryWriteObservation,
     accumulate_current_gradients,
@@ -355,6 +358,9 @@ __all__ = [
     "ExecutableArtifactMemory",
     "ExternalCapabilityComposition",
     "ExternalCapabilityEvictionPolicy",
+    "EXTERNAL_FAST_WEIGHT_SCHEMA",
+    "ExternalFastWeightPlasticity",
+    "ExternalFastWeightState",
     "ExternalCapabilityLifecycle",
     "ExternalCapabilityPipeline",
     "ExternalCapabilityPipelineState",

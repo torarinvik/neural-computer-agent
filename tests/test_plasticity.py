@@ -2,12 +2,71 @@ import torch
 
 from neural_computer import (
     CapabilityEvictionObservation,
+    ExternalFastWeightPlasticity,
     ExternalCapabilityEvictionPolicy,
     ExternalMemoryEvictionPolicy,
     ExternalMemoryWritePolicy,
+    ExternalFastWeightState,
     MemoryEvictionObservation,
     MemoryWriteObservation,
 )
+
+
+def test_fast_weight_plasticity_learns_while_state_is_external() -> None:
+    rule = ExternalFastWeightPlasticity(key_width=4, value_width=2, hidden=8)
+    state = rule.initial_state(2)
+    queries = torch.tensor(
+        [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0]]
+    )
+    values = torch.tensor([[1.0, -1.0], [0.5, 0.25]])
+    next_state = rule.update(
+        state,
+        queries,
+        values,
+        torch.tensor([1.0, 0.0]),
+    )
+
+    read = rule.read(next_state, queries)
+    assert read[0].abs().min() > 0.9
+    assert torch.equal(read[1], torch.zeros(2))
+    assert next_state.updates.tolist() == [1, 1]
+    assert rule.configuration()["update_rule"] == (
+        "outcome_gated_normalized_delta_fast_weight_v1"
+    )
+
+
+def test_fast_weight_plasticity_preserves_old_state_on_missing_evidence() -> None:
+    rule = ExternalFastWeightPlasticity(key_width=3, value_width=2, hidden=8)
+    state = rule.initial_state(2)
+    queries = torch.eye(3)[:2]
+    values = torch.tensor([[1.0, 0.0], [0.0, 1.0]])
+    mastered = rule.update(state, queries, values, torch.ones(2))
+    old_weights = mastered.weights[0].clone()
+    updated = rule.update(
+        mastered,
+        queries,
+        torch.tensor([[-1.0, -1.0], [0.25, 0.75]]),
+        torch.ones(2),
+        present=torch.tensor([False, True]),
+    )
+
+    assert torch.equal(updated.weights[0], old_weights)
+    assert not torch.equal(updated.weights[1], mastered.weights[1])
+
+
+def test_fast_weight_plasticity_state_round_trips_as_tensor_payload() -> None:
+    rule = ExternalFastWeightPlasticity(key_width=3, value_width=2, hidden=8)
+    state = rule.update(
+        rule.initial_state(1),
+        torch.tensor([[1.0, 2.0, 3.0]]),
+        torch.tensor([[0.5, -0.5]]),
+        torch.ones(1),
+    )
+    restored = rule.state_from_payload(rule.state_payload(state))
+
+    assert isinstance(restored, ExternalFastWeightState)
+    assert torch.equal(restored.weights, state.weights)
+    assert torch.equal(restored.updates, state.updates)
 
 
 def _observation(batch: int = 3) -> MemoryWriteObservation:

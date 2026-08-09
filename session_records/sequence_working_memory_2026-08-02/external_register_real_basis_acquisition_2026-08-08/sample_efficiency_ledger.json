@@ -1066,6 +1066,24 @@
       "target_behavior": "seed 69316 accepted 4/4 targets; seed 69317 accepted 3/4",
       "fresh_transfer": "0/4 positive comparisons; inherited was slower in three comparisons and had no stable prefix in one",
       "decision": "reject and remove the branch; additional latent execution depth increased optimization burden without improving reusable learning"
+    },
+    {
+      "experiment": "external_fast_plasticity_promoted",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "An outcome-gated external fast-weight delta rule can acquire isolated opaque associations while the controller and rule parameters remain frozen.",
+      "module": "ExternalFastWeightPlasticity",
+      "update_rule": "outcome_gated_normalized_delta_fast_weight_v1",
+      "key_width": 8,
+      "value_width": 4,
+      "updates_per_capability": 8,
+      "replayed_examples": 0,
+      "unique_verifier_bits_per_seed": 18,
+      "unique_logical_lifetimes_per_seed": 16,
+      "stable_bits_to_threshold": [1, 1],
+      "source_retention": "exact source state after independent target acquisition",
+      "controls": "failed-outcome no-write, missing-evidence no-write, persistence, and frozen-rule gates passed on both seeds",
+      "decision": "promote only as a bounded external associative-plasticity primitive; require a matched fresh-learner capability-adapter transfer audit before broader claims"
     }
   ]
 }

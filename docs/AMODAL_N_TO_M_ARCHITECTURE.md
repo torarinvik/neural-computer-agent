@@ -4226,3 +4226,26 @@ frontier is protected meta-plasticity: an external, independently versioned
 update state trained explicitly for rapid new-capability adaptation while
 mastered computation remains frozen. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_shared_operator_program_rejected_2026-08-09/`.
+
+## External fast-weight plasticity primitive (2026-08-09)
+
+The memory boundary now exposes `ExternalFastWeightPlasticity`, an
+independently versioned outcome-gated delta rule. It reads learned opaque
+query/value tensors and updates an external per-capability matrix state; the
+controller and the plasticity-rule parameters do not change during the
+acquisition stream. Failed outcomes and missing evidence leave the
+computation-state weights unchanged, while a positive outcome writes toward
+the observed value.
+
+Two seeds passed the bounded pressure test: source and target associations
+reached the stable readout gate in one verifier bit, source state was retained
+exactly while target state was acquired, persistence was exact, and zero replay
+was used. This promotes an isolated external associative-plasticity primitive,
+not general continual learning or arbitrary new computation. The current
+target starts from a fresh state, so positive transfer has not been tested.
+
+The next high-ROI boundary is to connect this state to a learned capability
+adapter and run a matched fresh-learner curve. That test must establish that
+the external state makes a genuinely new capability faster to learn while
+protected source capabilities remain unchanged. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_fast_plasticity_promoted_2026-08-09/`.

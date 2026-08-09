@@ -1,0 +1,23 @@
+{
+  "schema": "neural-computer.external-fast-plasticity-pressure-test.v1",
+  "seed": 69316,
+  "key_width": 8,
+  "value_width": 4,
+  "updates_per_capability": 8,
+  "source_stable": true,
+  "target_stable": true,
+  "stable_bits_to_threshold": 1,
+  "target_stable_bits_to_threshold": 1,
+  "source_retention_after_target": 1.0000001192092896,
+  "target_score": 1.0,
+  "failed_outcome_no_write": true,
+  "missing_evidence_no_write": true,
+  "persistence_exact": true,
+  "plasticity_rule_frozen": true,
+  "replayed_examples": 0,
+  "unique_verifier_bits": 18,
+  "unique_logical_lifetimes": 16,
+  "optimizer_updates": 0,
+  "promoted": true,
+  "claim_boundary": "bounded isolated external associative plasticity, not general continual learning"
+}

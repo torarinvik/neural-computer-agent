@@ -13,10 +13,247 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 import torch
+import torch.nn.functional as F
 from torch import nn
 
 NamedParameters = Sequence[tuple[str, torch.nn.Parameter]]
 GradientMap = Mapping[str, torch.Tensor]
+
+EXTERNAL_FAST_WEIGHT_SCHEMA = (
+    "neural-computer.external-fast-weight-plasticity.v1"
+)
+
+
+@dataclass(frozen=True)
+class ExternalFastWeightState:
+    """External per-capability state for one fast associative computation.
+
+    ``weights`` and ``updates`` are state, not parameters of the controller or
+    of the plasticity rule.  A memory backend may keep one state per opaque
+    capability, append new states, or serialize them as independent files.
+    """
+
+    weights: torch.Tensor
+    updates: torch.Tensor
+
+    def validate(self, *, key_width: int, value_width: int) -> None:
+        if self.weights.ndim != 3 or self.weights.shape[1:] != (
+            key_width,
+            value_width,
+        ):
+            raise ValueError("fast-weight state has the wrong weight shape")
+        if self.updates.ndim != 1 or self.updates.shape[0] != self.weights.shape[0]:
+            raise ValueError("fast-weight state has the wrong update shape")
+        if self.updates.dtype not in (torch.int32, torch.int64):
+            raise TypeError("fast-weight update counts must be integer tensors")
+        if self.updates.device != self.weights.device:
+            raise ValueError("fast-weight state tensors must share a device")
+        if not bool(torch.isfinite(self.weights).all()):
+            raise ValueError("fast-weight state must contain finite weights")
+        if bool((self.updates < 0).any()):
+            raise ValueError("fast-weight update counts cannot be negative")
+
+
+class ExternalFastWeightPlasticity(nn.Module):
+    """Learnable, outcome-gated delta-rule plasticity outside the controller.
+
+    The rule reads an opaque query from an external fast-weight matrix and
+    updates only that external state from an opaque value and a deterministic
+    scalar outcome.  It is a bounded associative computation primitive: a
+    successful value is written with a delta rule, while failed or missing
+    evidence leaves the stored computation unchanged.  The learned write gate
+    is independently replaceable and can be meta-trained without changing the
+    frozen controller.
+    """
+
+    schema = EXTERNAL_FAST_WEIGHT_SCHEMA
+
+    def __init__(
+        self,
+        key_width: int,
+        value_width: int,
+        *,
+        hidden: int = 32,
+        initial_learning_rate: float = 1.0,
+    ) -> None:
+        super().__init__()
+        if min(key_width, value_width, hidden) < 1:
+            raise ValueError("fast-weight dimensions must be positive")
+        if not 0.0 < initial_learning_rate <= 1.0:
+            raise ValueError("initial fast-weight learning rate must lie in (0, 1]")
+        self.key_width = int(key_width)
+        self.value_width = int(value_width)
+        self.hidden = int(hidden)
+        self.feature_width = key_width + 2 * value_width + 1
+        self.write_gate = nn.Sequential(
+            nn.Linear(self.feature_width, hidden),
+            nn.GELU(),
+            nn.Linear(hidden, 1),
+        )
+        # Start from an almost-open generic write gate.  Meta-training may
+        # learn selective plasticity, but a new state is immediately useful.
+        nn.init.zeros_(self.write_gate[-1].weight)
+        nn.init.constant_(
+            self.write_gate[-1].bias,
+            float(torch.logit(torch.tensor(0.99))),
+        )
+        learning_rate = torch.tensor(float(initial_learning_rate)).clamp(
+            1e-4, 1.0 - 1e-4
+        )
+        self.learning_rate_logit = nn.Parameter(torch.logit(learning_rate))
+
+    def configuration(self) -> dict[str, int | float | str]:
+        return {
+            "schema": self.schema,
+            "key_width": self.key_width,
+            "value_width": self.value_width,
+            "hidden": self.hidden,
+            "feature_width": self.feature_width,
+            "update_rule": "outcome_gated_normalized_delta_fast_weight_v1",
+            "state": "external_per_capability_tensor_state_v1",
+            "learning_rate": float(self.learning_rate.detach().sigmoid()),
+        }
+
+    def initial_state(
+        self,
+        batch_size: int,
+        *,
+        device: torch.device | str = "cpu",
+        dtype: torch.dtype = torch.float32,
+    ) -> ExternalFastWeightState:
+        if batch_size < 1:
+            raise ValueError("fast-weight batch size must be positive")
+        return ExternalFastWeightState(
+            weights=torch.zeros(
+                batch_size,
+                self.key_width,
+                self.value_width,
+                device=device,
+                dtype=dtype,
+            ),
+            updates=torch.zeros(batch_size, device=device, dtype=torch.long),
+        )
+
+    @property
+    def learning_rate(self) -> torch.Tensor:
+        return self.learning_rate_logit.sigmoid()
+
+    def _validate_query(
+        self, query: torch.Tensor, *, batch_size: int | None = None
+    ) -> None:
+        if query.ndim != 2 or query.shape[1] != self.key_width:
+            raise ValueError("fast-weight query has the wrong shape")
+        if batch_size is not None and query.shape[0] != batch_size:
+            raise ValueError("fast-weight query batch does not match state")
+        if not bool(torch.isfinite(query).all()):
+            raise ValueError("fast-weight query must be finite")
+
+    def _validate_value(
+        self, value: torch.Tensor, *, batch_size: int | None = None
+    ) -> None:
+        if value.ndim != 2 or value.shape[1] != self.value_width:
+            raise ValueError("fast-weight value has the wrong shape")
+        if batch_size is not None and value.shape[0] != batch_size:
+            raise ValueError("fast-weight value batch does not match state")
+        if not bool(torch.isfinite(value).all()):
+            raise ValueError("fast-weight value must be finite")
+
+    @staticmethod
+    def _validate_outcome(outcome: torch.Tensor, batch_size: int) -> None:
+        if outcome.ndim != 1 or outcome.shape[0] != batch_size:
+            raise ValueError("fast-weight outcome must have shape [batch]")
+        if not bool(torch.isfinite(outcome).all()):
+            raise ValueError("fast-weight outcome must be finite")
+        if bool(((outcome < 0.0) | (outcome > 1.0)).any()):
+            raise ValueError("fast-weight outcome must lie in [0, 1]")
+
+    def read(
+        self,
+        state: ExternalFastWeightState,
+        query: torch.Tensor,
+    ) -> torch.Tensor:
+        """Read one opaque value from external state without mutating it."""
+
+        state.validate(key_width=self.key_width, value_width=self.value_width)
+        self._validate_query(query, batch_size=state.weights.shape[0])
+        normalized_query = F.normalize(query, dim=-1, eps=1e-8)
+        return torch.einsum("bk,bkv->bv", normalized_query, state.weights)
+
+    def update(
+        self,
+        state: ExternalFastWeightState,
+        query: torch.Tensor,
+        value: torch.Tensor,
+        outcome: torch.Tensor,
+        *,
+        present: torch.Tensor | None = None,
+    ) -> ExternalFastWeightState:
+        """Apply one outcome-only external-memory update.
+
+        A positive outcome writes the value toward the current read using a
+        normalized delta rule.  A zero outcome or absent evidence produces an
+        exactly unchanged weight matrix, which makes retention measurable
+        without replaying the old examples.
+        """
+
+        state.validate(key_width=self.key_width, value_width=self.value_width)
+        batch_size = state.weights.shape[0]
+        self._validate_query(query, batch_size=batch_size)
+        self._validate_value(value, batch_size=batch_size)
+        self._validate_outcome(outcome, batch_size)
+        if present is None:
+            present = torch.ones(batch_size, dtype=torch.bool, device=query.device)
+        if present.ndim != 1 or present.shape[0] != batch_size:
+            raise ValueError("fast-weight presence must have shape [batch]")
+        if present.dtype is not torch.bool:
+            raise TypeError("fast-weight presence must be boolean")
+        normalized_query = F.normalize(query, dim=-1, eps=1e-8)
+        current = torch.einsum("bk,bkv->bv", normalized_query, state.weights)
+        features = torch.cat(
+            (query, value, current, outcome.unsqueeze(-1)), dim=-1
+        )
+        gate = torch.sigmoid(self.write_gate(features)).squeeze(-1)
+        strength = gate * outcome * present.to(dtype=query.dtype)
+        error = value - current
+        delta = torch.einsum("bk,bv->bkv", normalized_query, error)
+        delta = self.learning_rate.to(dtype=delta.dtype) * strength[:, None, None] * delta
+        next_weights = state.weights + delta
+        next_updates = state.updates + present.to(device=state.updates.device).long()
+        next_state = ExternalFastWeightState(next_weights, next_updates)
+        next_state.validate(key_width=self.key_width, value_width=self.value_width)
+        return next_state
+
+    def state_payload(self, state: ExternalFastWeightState) -> dict[str, object]:
+        """Return a tensor-only versioned payload for an external memory file."""
+
+        state.validate(key_width=self.key_width, value_width=self.value_width)
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "weights": state.weights.detach().cpu().clone(),
+            "updates": state.updates.detach().cpu().clone(),
+        }
+
+    def state_from_payload(self, payload: Mapping[str, object]) -> ExternalFastWeightState:
+        if payload.get("schema") != self.schema:
+            raise ValueError("unsupported fast-weight state schema")
+        configuration = payload.get("configuration")
+        if not isinstance(configuration, Mapping):
+            raise TypeError("fast-weight state configuration is invalid")
+        if (
+            configuration.get("key_width") != self.key_width
+            or configuration.get("value_width") != self.value_width
+        ):
+            raise ValueError("fast-weight state dimensions do not match")
+        weights = payload.get("weights")
+        updates = payload.get("updates")
+        if not isinstance(weights, torch.Tensor) or not isinstance(
+            updates, torch.Tensor
+        ):
+            raise TypeError("fast-weight state payload must contain tensors")
+        state = ExternalFastWeightState(weights, updates)
+        state.validate(key_width=self.key_width, value_width=self.value_width)
+        return state
 
 
 @dataclass(frozen=True)
