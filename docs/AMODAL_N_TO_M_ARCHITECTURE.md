@@ -5753,3 +5753,33 @@ continual learning. The next bottleneck is learned evidence/address formation
 for richer nonlinear drift under the same no-replay and retention gates.
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_partial_drift_streaming_model_promoted_2026-08-10/`.
+
+## Learned-context nonlinear drift (2026-08-10)
+
+The next three-seed pressure test trains `ExternalTransitionContextEncoder`
+only on two source transition bundles, freezes it, and then routes two
+nonlinear target drift regimes through `ExternalOnlineTransitionContextRouter`.
+The encoder now has a persisted `mean_pool` aggregation mode: it pools
+independent learned token features, so the opaque address is invariant to
+transport arrival order rather than accidentally depending on the last row.
+
+Each target supplied only `32` of `64` available transition rows. The
+random-feature sufficient-statistics slot consumed the four eight-row windows
+once, and promotion required held-out factual prediction plus source-slot
+retention. Seeds `82001`, `82002`, and `82003` all passed, with target held-out
+MSEs of `1.31e-4/3.57e-4`, `6.70e-4/3.27e-4`, and
+`1.51e-3/9.83e-5` for target C/D. Source re-routing returned to the original
+slot; corrupted evidence staged but failed held-out verification without a
+bank write; no raw provisional rows or old-regime examples were replayed; the
+controller remained frozen; and router persistence was exact.
+
+This promotes bounded replay-free nonlinear drift retention with a
+source-trained permutation-invariant learned address. It does not establish
+unrestricted memory growth, arbitrary new computation, or general continual
+learning: the context encoder is pre-trained before target exposure, the
+model basis is fixed and finite, and the stream has only two target regimes.
+The next bottleneck is online address adaptation under distribution shift
+without changing the meaning of old keys, followed by verified model-bank
+growth and compression under longer alternating streams. Evidence is archived
+in
+`session_records/sequence_working_memory_2026-08-02/external_nonlinear_drift_learned_context_promoted_2026-08-10/`.
