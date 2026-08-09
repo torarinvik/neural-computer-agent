@@ -5034,12 +5034,21 @@ verifier outcome bit from that transaction as an external update.
 Focused controls pass permutation-equivalent scoring, all-protected refusal,
 rejection without bank mutation, stable-ID middle eviction, exact policy
 checkpoint restoration, and router active-reference repair. The full suite
-passes `424` tests before this policy's addition; the policy itself has no
-controller parameters or controller optimizer updates.
+passes `428` tests; the policy has no controller parameters or controller
+optimizer updates.
 
-This is a learned proposal mechanism, not learned eviction or unrestricted
-continual memory: the verifier remains authoritative, telemetry is supplied by
-the caller, and no long-horizon multi-seed capability gain has been promoted.
-The next experiment must train this policy online across alternating regimes
-and compare it against FIFO/recency and random eviction under identical
-retention probes, with every verifier bit and policy update accounted for.
+The two-seed online audit then trained the policy from one verifier bit per
+transaction and compared it with matched random and recency selectors. Learned
+held-out selection was `0.780`/`0.820`, versus random `0.515`/`0.530` and
+recency `0.265`/`0.295`; protected-slot, stable-address, persistence, and
+zero-replay gates passed on both seeds. Evidence and accounting are archived
+in
+`session_records/sequence_working_memory_2026-08-02/external_transition_lifetime_policy_promoted_2026-08-09/`.
+
+This promotes a bounded verifier-trained lifetime proposal mechanism, not
+unrestricted learned eviction or general continual memory: the verifier
+remains authoritative, telemetry is supplied by the fixture, and the policy
+has not yet learned consolidation/compression tradeoffs or survived a long
+alternating capability stream. The next experiment must put the policy under
+capacity pressure while it chooses among genuinely retained and disposable
+models, with recency, random, and forced-growth controls.

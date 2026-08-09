@@ -1,0 +1,40 @@
+{
+  "schema": "neural-computer.external-transition-lifetime-policy.v1",
+  "seed": 1701,
+  "configuration": {
+    "train_episodes": 200,
+    "evaluation_episodes": 200,
+    "slot_count": 3,
+    "verifier": "opaque_hidden_generic_feature_rule_v1"
+  },
+  "gates": {
+    "learned_beats_random_by_margin": true,
+    "learned_beats_recency": true,
+    "protected_slot_gate": true,
+    "stable_address_gate": true,
+    "exact_policy_persistence": true,
+    "zero_controller_updates": true,
+    "zero_replayed_transition_examples": true
+  },
+  "promoted": true,
+  "metrics": {
+    "learned_train_accuracy": 0.685,
+    "learned_eval_accuracy": 0.78,
+    "control_accuracy": {
+      "random": 0.515,
+      "recency": 0.265
+    },
+    "policy_digest": "02ca1fef3c836bbd62a2faa1fa8ecf93b14f269f61808051fa240f983fb0b353"
+  },
+  "accounting": {
+    "unique_verifier_bits": 400,
+    "unique_logical_lifetimes": 1200,
+    "policy_optimizer_updates": 200,
+    "controller_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "old_memory_replay": 0,
+    "wall_seconds": 3.8809652499621734
+  },
+  "claim_boundary": "two-seed bounded verifier-trained lifetime proposal; not learned unrestricted eviction or general continual learning"
+}
+
