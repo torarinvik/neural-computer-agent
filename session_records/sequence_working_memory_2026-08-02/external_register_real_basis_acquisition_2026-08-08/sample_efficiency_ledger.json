@@ -1084,6 +1084,24 @@
       "source_retention": "exact source state after independent target acquisition",
       "controls": "failed-outcome no-write, missing-evidence no-write, persistence, and frozen-rule gates passed on both seeds",
       "decision": "promote only as a bounded external associative-plasticity primitive; require a matched fresh-learner capability-adapter transfer audit before broader claims"
+    },
+    {
+      "experiment": "external_fast_plasticity_capability_transfer",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "A source-trained shared intention adapter will transfer to fresh external capability state faster than a matched fresh adapter without source replay while retaining the source capabilities.",
+      "module": "ExternalFastWeightCapabilityProgram",
+      "source_examples": 64,
+      "target_examples": 16,
+      "replayed_examples": 0,
+      "unique_verifier_bits_per_seed": 80,
+      "unique_logical_lifetimes_per_seed": 80,
+      "inherited_stable_examples": [1, 1],
+      "fresh_control_stable_examples": [7, 14],
+      "source_retention_floor": [0.997112, 0.997874],
+      "inherited_target_optimizer_updates": 0,
+      "controls": "failed-outcome no-write, missing-evidence no-write, persistence, frozen-program, and paired fresh-control gates passed",
+      "decision": "promote only as qualified interface-prior transfer; next test must vary the relation and require new multi-step outcome-only capability acquisition"
     }
   ]
 }

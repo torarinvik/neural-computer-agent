@@ -4249,3 +4249,35 @@ adapter and run a matched fresh-learner curve. That test must establish that
 the external state makes a genuinely new capability faster to learn while
 protected source capabilities remain unchanged. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_fast_plasticity_promoted_2026-08-09/`.
+
+## External fast-weight capability-adapter transfer (2026-08-09)
+
+`ExternalFastWeightCapabilityProgram` now connects the external fast-weight
+state to the intention bus through a replaceable learned adapter. The frozen
+processor provides learned event and intention tensors; the memory-side query
+encoder addresses one external state, and only a positive outcome can write an
+opaque attempted action. A read is transformed into an intention residual. No
+task identity, correct unattempted action, raw modality, or device protocol is
+introduced.
+
+The matched two-seed audit trained the shared intention adapter on `64` unique
+source lifetimes, froze the entire inherited program, and then acquired `16`
+fresh target lifetimes with zero target optimizer updates and zero source
+replay. The inherited target reached the stable `0.95` cosine floor after `1`
+target example on both seeds. A fresh adapter receiving the same target stream
+needed `7` and `14` examples respectively. Source retention floors were
+`0.9971` and `0.9979`; failed-outcome no-write, missing-evidence no-write,
+state persistence, frozen-parameter, and accounting controls passed.
+
+This promotes a qualified interface-prior transfer result: an isolated
+growable memory state can reuse a learned intention mapping when a new
+capability is instantiated. It is not general continual learning. The audit
+uses a deliberately regular action-to-intention relation and does not test
+variable-length working-memory programs, delayed credit assignment,
+interference between many states, learned write/eviction/compression, or
+arbitrary new computation. The next pressure test should vary the relation and
+require a new multi-step capability to be acquired from outcome-only feedback
+while source traces remain protected.
+
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_fast_plasticity_capability_transfer_2026-08-09/`.

@@ -19,6 +19,7 @@ from neural_computer import (
     ExternalCapabilityReusableComputeLibrary,
     ExternalCapabilitySharedResidualBank,
     ExternalComputeCandidateScreen,
+    ExternalFastWeightCapabilityProgram,
     IntentEvent,
     LearnedComputeCandidateScreen,
     LearnedOpaqueCandidateKeyMemory,
@@ -143,6 +144,42 @@ def test_external_capability_program_keeps_state_outside_controller() -> None:
     assert next_state.context.shape == (3, 8)
     assert program.configuration()["schema"] == (
         "neural-computer.external-capability.v1"
+    )
+
+
+def test_fast_weight_capability_binds_external_state_to_intention_bus() -> None:
+    program = ExternalFastWeightCapabilityProgram(
+        event_width=4,
+        action_width=2,
+        intention_width=6,
+        key_width=8,
+        query_hidden=10,
+        fast_weight_hidden=8,
+    )
+    event = torch.randn(2, 4)
+    intention = IntentEvent(torch.zeros(2, 6))
+    state = program.initial_state(2, device="cpu")
+    action = torch.tensor([[1.0, 0.0], [0.0, 1.0]])
+    _, written = program.step(
+        event=event,
+        action=action,
+        outcome=torch.ones(2),
+        intention=intention,
+        state=state,
+    )
+    _, missing = program.step(
+        event=event,
+        action=-action,
+        outcome=torch.ones(2),
+        intention=intention,
+        state=written,
+        present=torch.zeros(2, dtype=torch.bool),
+    )
+
+    assert bool(torch.any(written.weights != 0.0))
+    assert torch.equal(missing.weights, written.weights)
+    assert program.configuration()["schema"] == (
+        "neural-computer.external-capability-fast-weight.v1"
     )
 
 

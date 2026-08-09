@@ -25,6 +25,7 @@ from .addressing import (
 )
 from .episodic import EpisodicContextEncoder, EpisodicIntentAdapter
 from .interface import IntentEvent
+from .plasticity import ExternalFastWeightPlasticity, ExternalFastWeightState
 
 EXTERNAL_CAPABILITY_SCHEMA = "neural-computer.external-capability.v1"
 EXTERNAL_CAPABILITY_PIPELINE_SCHEMA = "neural-computer.external-capability-pipeline.v1"
@@ -66,6 +67,9 @@ EXTERNAL_CAPABILITY_PAGE_LOCAL_LEARNED_COMPUTE_SCREEN_SCHEMA = (
 )
 EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA = (
     "neural-computer.external-capability-slot-binding.v1"
+)
+EXTERNAL_CAPABILITY_FAST_WEIGHT_SCHEMA = (
+    "neural-computer.external-capability-fast-weight.v1"
 )
 
 
@@ -1593,6 +1597,137 @@ class ExternalCapabilityProgram(nn.Module):
         )
         adapted = self.intent_adapter(intention, context.context)
         return adapted, ExternalCapabilityState(next_context)
+
+
+class ExternalFastWeightCapabilityProgram(nn.Module):
+    """Connect external fast weights to the opaque intention bus.
+
+    The frozen controller supplies learned event and intention tensors.  A
+    memory-side query encoder addresses one external fast-weight state, and a
+    successful opaque action is the only value eligible for writing.  The
+    retrieved action representation is transformed into an intention residual
+    by an independently replaceable adapter.  No task ID, correct action, or
+    raw modality format crosses this boundary.
+    """
+
+    def __init__(
+        self,
+        event_width: int,
+        action_width: int,
+        intention_width: int,
+        *,
+        key_width: int = 32,
+        query_hidden: int = 64,
+        fast_weight_hidden: int = 32,
+    ) -> None:
+        super().__init__()
+        if min(
+            event_width,
+            action_width,
+            intention_width,
+            key_width,
+            query_hidden,
+            fast_weight_hidden,
+        ) < 1:
+            raise ValueError("fast-weight capability dimensions must be positive")
+        self.event_width = int(event_width)
+        self.action_width = int(action_width)
+        self.intention_width = int(intention_width)
+        self.key_width = int(key_width)
+        self.query_hidden = int(query_hidden)
+        self.fast_weight_hidden = int(fast_weight_hidden)
+        self.query_encoder = nn.Sequential(
+            nn.Linear(event_width + intention_width, query_hidden),
+            nn.GELU(),
+            nn.Linear(query_hidden, key_width),
+        )
+        self.fast_weight = ExternalFastWeightPlasticity(
+            key_width,
+            action_width,
+            hidden=fast_weight_hidden,
+        )
+        self.intent_adapter = nn.Linear(action_width, intention_width)
+        nn.init.zeros_(self.intent_adapter.weight)
+        nn.init.zeros_(self.intent_adapter.bias)
+
+    def configuration(self) -> dict[str, int | str]:
+        return {
+            "schema": EXTERNAL_CAPABILITY_FAST_WEIGHT_SCHEMA,
+            "event_width": self.event_width,
+            "action_width": self.action_width,
+            "intention_width": self.intention_width,
+            "key_width": self.key_width,
+            "query_hidden": self.query_hidden,
+            "fast_weight_hidden": self.fast_weight_hidden,
+            "state": "external_fast_weight_per_capability_v1",
+            "query": "learned_event_plus_intention_opaque_query_v1",
+            "write": "positive_outcome_gated_opaque_action_v1",
+            "output": "retrieved_action_to_intention_residual_v1",
+        }
+
+    def initial_state(
+        self,
+        batch_size: int,
+        *,
+        device: torch.device | str,
+        dtype: torch.dtype = torch.float32,
+    ) -> ExternalFastWeightState:
+        return self.fast_weight.initial_state(
+            batch_size,
+            device=device,
+            dtype=dtype,
+        )
+
+    def _query(
+        self,
+        event: torch.Tensor,
+        intention: IntentEvent,
+    ) -> torch.Tensor:
+        intention.validate(width=self.intention_width)
+        if event.ndim != 2 or event.shape[1] != self.event_width:
+            raise ValueError("event has the wrong shape for fast-weight capability")
+        if event.shape[0] != intention.payload.shape[0]:
+            raise ValueError("event and intention batches do not match")
+        if not bool(torch.isfinite(event).all()):
+            raise ValueError("event must contain only finite values")
+        return self.query_encoder(torch.cat((event, intention.payload), dim=-1))
+
+    def step(
+        self,
+        *,
+        event: torch.Tensor,
+        action: torch.Tensor,
+        outcome: torch.Tensor,
+        intention: IntentEvent,
+        state: ExternalFastWeightState,
+        present: torch.Tensor | None = None,
+    ) -> tuple[IntentEvent, ExternalFastWeightState]:
+        """Read old external state, then commit only verified action evidence."""
+
+        if action.ndim != 2 or action.shape != (
+            event.shape[0],
+            self.action_width,
+        ):
+            raise ValueError("action has the wrong shape for fast-weight capability")
+        if outcome.ndim != 1 or outcome.shape[0] != event.shape[0]:
+            raise ValueError("outcome has the wrong shape for fast-weight capability")
+        query = self._query(event, intention)
+        memory_value = self.fast_weight.read(state, query)
+        residual = self.intent_adapter(memory_value)
+        adapted = IntentEvent(
+            payload=intention.payload + residual,
+            timestamp=intention.timestamp,
+            confidence=intention.confidence,
+            target_key=intention.target_key,
+        ).validate(width=self.intention_width)
+        next_state = self.fast_weight.update(
+            state,
+            query,
+            action,
+            outcome,
+            present=present,
+        )
+        return adapted, next_state
 
 
 class ExternalCapabilitySharedResidualBank(nn.Module):
