@@ -69,3 +69,48 @@ def test_external_rollout_trains_bridge_while_parent_stays_frozen() -> None:
 
     assert any(parameter.grad is not None for parameter in bridge.parameters())
     assert all(parameter.grad is None for parameter in parent.parameters())
+
+
+def test_bridge_corruption_control_keeps_scalar_credit_on_external_path() -> None:
+    parent = _runtime(seed=29, growth=False)
+    machine = _new_machine(1)
+    decoder = OpaqueProtocolDecoder(32, 2, hidden=8)
+    bridge = AmodalEventBridge(32, parent.controller.width, 32, hidden=8)
+    batch = _batch("forward", count=4, span=2, seed=31)
+
+    loss, _ = _rollout(
+        parent,
+        machine,
+        decoder,
+        batch,
+        tuple(machine.instructions),
+        train_decoder=True,
+        credit_mode="reinforce_baseline",
+        event_bridge=bridge,
+        bridge_event_mode="norm_matched_noise",
+        bridge_state_mode="zero",
+    )
+    loss.backward()
+
+    assert torch.isfinite(loss)
+    assert any(parameter.grad is not None for parameter in bridge.parameters())
+    assert all(parameter.grad is None for parameter in parent.parameters())
+
+
+def test_bridge_input_override_requires_a_bridge() -> None:
+    parent = _runtime(seed=37, growth=False)
+    machine = _new_machine(1)
+    decoder = OpaqueProtocolDecoder(32, 2, hidden=8)
+    batch = _batch("forward", count=2, span=1, seed=41)
+
+    with pytest.raises(ValueError, match="require an event bridge"):
+        _rollout(
+            parent,
+            machine,
+            decoder,
+            batch,
+            tuple(machine.instructions),
+            train_decoder=False,
+            event_bridge=None,
+            bridge_event_mode="zero",
+        )

@@ -550,6 +550,8 @@ def _source_bridge_accuracy(
     count: int,
     span: int,
     seed: int,
+    bridge_event_mode: str = "normal",
+    bridge_state_mode: str = "normal",
 ) -> float:
     operation, instruction, decoder, basis_slot = source_spec
     if conditioned:
@@ -566,6 +568,8 @@ def _source_bridge_accuracy(
         seed=seed,
         credit_mode="paired_counterfactual",
         event_bridge=bridge,
+        bridge_event_mode=bridge_event_mode,
+        bridge_state_mode=bridge_state_mode,
     )
 
 
@@ -1061,7 +1065,16 @@ def _train_shared_bridge_prior(
     *,
     args: argparse.Namespace,
 ) -> tuple[AmodalEventBridge, list[dict[str, object]]]:
-    """Learn one reusable event interface from mastered source outcomes."""
+    """Learn a reusable event interface with acquire-then-protect staging.
+
+    Stage one uses scalar verifier outcomes on valid source evidence. Optional
+    stage two uses only sampled scalar outcomes on norm-matched unusable event
+    inputs, with the frozen controller state masked. This teaches the bridge
+    not to turn an unrecognized representation into a confident default while
+    keeping the controller and source decoders frozen. It is intentionally a
+    trainer-only candidate protocol; source retention and target transfer
+    remain authoritative promotion gates.
+    """
     bridge = (
         CapabilityConditionedEventBridge(
             EVENT_WIDTH,
@@ -1084,7 +1097,100 @@ def _train_shared_bridge_prior(
             parameter.requires_grad_(False)
     best_state = None
     best_floor = float("-inf")
+    source_baseline: float | None = None
+
     progress = []
+
+    initial_source_baseline = min(
+        _source_bridge_accuracy(
+            parent,
+            machine,
+            source_spec=(operation, instruction, decoder, basis_slot),
+            bridge=bridge,
+            conditioned=args.reuse_conditioned_bridge_prior,
+            count=args.source_selection_audit_count,
+            span=args.span,
+            seed=args.seed + 1_800_000 + index * 1_009,
+        )
+        for index, (operation, instruction, decoder, basis_slot) in enumerate(source_specs)
+    )
+
+    def evaluate(stage: str, update: int) -> None:
+        nonlocal best_state, best_floor, source_baseline
+        scores = [
+            _source_bridge_accuracy(
+                parent,
+                machine,
+                source_spec=(
+                    operation_name,
+                    instruction_value,
+                    decoder,
+                    slot,
+                ),
+                bridge=bridge,
+                conditioned=args.reuse_conditioned_bridge_prior,
+                count=args.source_selection_audit_count,
+                span=args.span,
+                seed=args.seed + 60_000 + source_index * 101 + source_index * 1009,
+            )
+            for source_index, (
+                operation_name,
+                instruction_value,
+                decoder,
+                slot,
+            ) in enumerate(source_specs)
+        ]
+        decoy_scores = []
+        if args.bridge_prior_necessity_updates > 0:
+            decoy_scores = [
+                _source_bridge_accuracy(
+                    parent,
+                    machine,
+                    source_spec=(
+                        operation_name,
+                        instruction_value,
+                        decoder,
+                        slot,
+                    ),
+                    bridge=bridge,
+                    conditioned=args.reuse_conditioned_bridge_prior,
+                    count=args.source_selection_audit_count,
+                    span=args.span,
+                    seed=args.seed + 90_000 + source_index * 1_009,
+                    bridge_event_mode="norm_matched_noise",
+                    bridge_state_mode="zero",
+                )
+                for source_index, (
+                    operation_name,
+                    instruction_value,
+                    decoder,
+                    slot,
+                ) in enumerate(source_specs)
+            ]
+        progress.append(
+            {
+                "stage": stage,
+                "update": update,
+                "source_scores": scores,
+                "decoy_scores": decoy_scores,
+            }
+        )
+        if stage == "acquire" or source_baseline is None:
+            source_baseline = min(scores, default=initial_source_baseline)
+        # Never prefer a necessity candidate that has already damaged the
+        # acquired source floor. Among safe candidates, lower decoy behavior
+        # is preferred, with source quality breaking ties.
+        if min(scores, default=0.0) + args.retention_regression_tolerance < source_baseline:
+            return
+        decoy_objective = max(decoy_scores, default=1.0)
+        candidate_score = -decoy_objective + 1e-3 * min(scores, default=0.0)
+        if candidate_score > best_floor:
+            best_floor = candidate_score
+            best_state = {
+                name: value.detach().clone()
+                for name, value in bridge.state_dict().items()
+            }
+
     for update in range(1, args.bridge_prior_updates + 1):
         index = (update - 1) % len(source_specs)
         operation, instruction, decoder, basis_slot = source_specs[index]
@@ -1112,37 +1218,42 @@ def _train_shared_bridge_prior(
         torch.nn.utils.clip_grad_norm_(bridge.parameters(), 1.0)
         optimizer.step()
         if update % args.eval_every == 0 or update == args.bridge_prior_updates:
-            scores = [
-                _source_bridge_accuracy(
-                    parent,
-                    machine,
-                    source_spec=(
-                        operation_name,
-                        instruction_value,
-                        decoder,
-                        slot,
-                    ),
-                    bridge=bridge,
-                    count=args.source_selection_audit_count,
-                    span=args.span,
-                    seed=args.seed + 60_000 + source_index * 101 + source_index * 1009,
-                    conditioned=args.reuse_conditioned_bridge_prior,
-                )
-                for source_index, (
-                    operation_name,
-                    instruction_value,
-                    decoder,
-                    slot,
-                ) in enumerate(source_specs)
-            ]
-            floor = min(scores)
-            progress.append({"update": update, "source_scores": scores})
-            if floor > best_floor:
-                best_floor = floor
-                best_state = {
-                    name: value.detach().clone()
-                    for name, value in bridge.state_dict().items()
-                }
+            evaluate("acquire", update)
+
+    for update in range(1, args.bridge_prior_necessity_updates + 1):
+        index = (update - 1) % len(source_specs)
+        operation, instruction, decoder, basis_slot = source_specs[index]
+        if args.reuse_conditioned_bridge_prior:
+            bridge.set_context(_instruction_context((instruction,)))
+        batch = _batch(
+            operation,
+            count=args.batch_size,
+            span=args.span,
+            seed=args.seed + 2_100_000 + update * 10_007,
+        )
+        # This is still outcome-only: the bridge samples an opaque action and
+        # receives only the scalar verifier result. No target action or label
+        # is passed to the optimizer. Unusable evidence has no reliable action
+        # correlation, so the expected policy is non-confident.
+        loss, _ = _rollout(
+            parent,
+            machine,
+            decoder,
+            batch,
+            (instruction,),
+            basis_slots=(basis_slot,),
+            train_decoder=True,
+            credit_mode="reinforce_baseline",
+            event_bridge=bridge,
+            bridge_event_mode="norm_matched_noise",
+            bridge_state_mode="zero",
+        )
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(bridge.parameters(), 1.0)
+        optimizer.step()
+        if update % args.eval_every == 0 or update == args.bridge_prior_necessity_updates:
+            evaluate("necessity", update)
     if best_state is not None:
         bridge.load_state_dict(best_state, strict=True)
     for _, _, decoder, _ in source_specs:
@@ -1262,6 +1373,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("joint source updates cannot be negative")
     if args.sequence_calibration_updates < 0:
         raise ValueError("sequence calibration updates cannot be negative")
+    if args.bridge_prior_necessity_updates < 0:
+        raise ValueError("bridge prior necessity updates cannot be negative")
     if args.route_assignment_loss_weight < 0.0:
         raise ValueError("route assignment loss weight cannot be negative")
     if args.route_assignment_entropy_weight < 0.0:
@@ -2029,6 +2142,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             if args.reuse_shared_bridge_prior
             else 0
         )
+        + (
+            args.bridge_prior_necessity_updates * args.batch_size
+            if args.reuse_shared_bridge_prior
+            else 0
+        )
         + normal_target_training_lifetimes
         + shuffled_target_training_lifetimes
         + fresh_transfer_training_lifetimes
@@ -2048,6 +2166,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     )
     bridge_prior_training_bits = (
         args.bridge_prior_updates * args.batch_size * args.span * 2
+        if args.reuse_shared_bridge_prior
+        else 0
+    )
+    bridge_prior_necessity_training_bits = (
+        args.bridge_prior_necessity_updates * args.batch_size * args.span
         if args.reuse_shared_bridge_prior
         else 0
     )
@@ -2101,6 +2224,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         + source_training_bits
         + source_selection_bits
         + bridge_prior_training_bits
+        + bridge_prior_necessity_training_bits
         + readout_prior_training_bits
         + normal_target_training_bits
         + shuffled_target_training_bits
@@ -2225,6 +2349,24 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "retained_before": retained_before,
         "bridge_prior_source_after": bridge_prior_source_after,
         "bridge_prior_progress": bridge_prior_progress,
+        "bridge_prior_staging": {
+            "acquire_updates": (
+                args.bridge_prior_updates if args.reuse_shared_bridge_prior else 0
+            ),
+            "necessity_updates": (
+                args.bridge_prior_necessity_updates
+                if args.reuse_shared_bridge_prior
+                else 0
+            ),
+            "necessity_credit": (
+                "sampled_scalar_outcome_on_norm_matched_unusable_evidence"
+                if args.bridge_prior_necessity_updates > 0
+                else None
+            ),
+            "controller_state_masked": bool(
+                args.bridge_prior_necessity_updates > 0
+            ),
+        },
         "canonical_readout_prior": (
             "source_trained_frozen_register_readout"
             if args.reuse_canonical_readout_prior
@@ -2258,6 +2400,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 source_training_bits if args.joint_source_updates else 0
             ),
             "bridge_prior_training_verifier_bits": bridge_prior_training_bits,
+            "bridge_prior_necessity_training_verifier_bits": (
+                bridge_prior_necessity_training_bits
+            ),
             "canonical_readout_prior_training_verifier_bits": readout_prior_training_bits,
             "normal_target_training_verifier_bits": normal_target_training_bits,
             "shuffled_target_training_verifier_bits": shuffled_target_training_bits,
@@ -2274,6 +2419,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 + args.sequence_calibration_updates
                 + (
                     args.bridge_prior_updates
+                    if args.reuse_shared_bridge_prior
+                    else 0
+                )
+                + (
+                    args.bridge_prior_necessity_updates
                     if args.reuse_shared_bridge_prior
                     else 0
                 )
@@ -2513,6 +2663,15 @@ def main() -> None:
         help="initialize fresh transfer controls from the mastered shared interpreter state",
     )
     parser.add_argument("--bridge-prior-updates", type=int, default=128)
+    parser.add_argument(
+        "--bridge-prior-necessity-updates",
+        type=int,
+        default=0,
+        help=(
+            "after bridge acquisition, train it from scalar outcomes on "
+            "norm-matched unusable evidence with controller state masked"
+        ),
+    )
     parser.add_argument("--readout-prior-updates", type=int, default=256)
     parser.add_argument("--retention-regression-tolerance", type=float, default=0.02)
     args = parser.parse_args()

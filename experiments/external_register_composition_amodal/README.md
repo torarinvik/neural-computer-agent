@@ -326,3 +326,14 @@ delivered scalar outcomes. Shuffled-training controls then collapse to `0.4766`
 and `0.5000`, while normal target accuracy remains `0.9375` and `0.9063` with
 source retention intact. Stable-prefix promotion still fails, so growth is
 not promoted; the credit-path repair is retained.
+
+## Optional staged bridge necessity diagnostic
+
+`audit_interleaved_basis_acquisition.py` supports
+`--bridge-prior-necessity-updates` as a trainer-only diagnostic. It first
+acquires a capability-conditioned bridge from sampled scalar outcomes, then
+optionally trains the bridge on norm-matched unusable evidence with the frozen
+controller state masked. The best source-retaining checkpoint is selected
+transactionally. This flag is disabled by default and is not a promotion
+mechanism; the two-seed diagnostic is archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_staged_bridge_necessity_rejected_2026-08-09/`.

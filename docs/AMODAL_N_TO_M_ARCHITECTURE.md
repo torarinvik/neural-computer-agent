@@ -4139,6 +4139,34 @@ localizes the bottleneck to source-state geometry/interface alignment rather
 than memory capacity. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_real_basis_acquisition_2026-08-08/interleaved_conditioned_curriculum_transfer/`.
 
+## Staged outcome-only bridge necessity diagnostic (2026-08-09)
+
+The export-session lesson that necessity pressure should follow acquisition was
+implemented as an opt-in bridge-prior stage. A frozen parent and source
+decoders first trained a capability-conditioned event bridge from sampled
+scalar verifier outcomes on valid evidence. A second stage then trained only
+the bridge from sampled scalar outcomes on norm-matched unusable evidence while
+masking the frozen controller state. The candidate selector retained an
+acquisition checkpoint whenever the necessity phase damaged source behavior.
+
+The two-seed diagnostic preserved source and target behavior gates, but it did
+not improve the alignment bottleneck or positive transfer. On seed `69316`,
+the necessity phase ended with source scores `0.770/0.777/0.699` and decoy
+scores near `0.46–0.55`; on seed `69317`, source scores ended at
+`1.000/0.898/0.945` and decoy scores worsened to `0.605/0.539/0.559`.
+The transactional selector therefore kept the earlier acquisition state.
+Matched fresh target prefixes were incomplete in this reduced audit, so no
+sample-efficiency claim is made.
+
+This rejects necessity pressure as the missing bridge-transfer mechanism. It
+does retain two useful rules: acquisition and protection must be separate
+phases, and a candidate must be rejected if protection damages source state.
+The canonical path should not add this loss by default. The unresolved
+bottleneck remains learned source-state/interface geometry, which requires a
+capability-conditioned alignment signal or a richer factual external model,
+not a stronger default-suppression penalty. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_staged_bridge_necessity_rejected_2026-08-09/`.
+
 An optional generic normalized program-counter signal was then tested in the
 shared register interpreter. It improved primitive retention on one matched
 four-instruction rung (`0.8828`) but the inherited composition never reached a

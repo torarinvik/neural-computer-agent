@@ -175,9 +175,18 @@ def _rollout(
     preserve_execution_trace: bool = False,
     route_probe: bool = False,
     program_route_probe: bool = False,
+    bridge_event_mode: str = "normal",
+    bridge_state_mode: str = "normal",
 ) -> tuple[torch.Tensor, torch.Tensor]:
     if execution_mode not in ("in_place", "read_execute"):
         raise ValueError(f"unknown execution mode: {execution_mode!r}")
+    if bridge_event_mode not in ("normal", "zero", "norm_matched_noise"):
+        raise ValueError(f"unknown bridge event mode: {bridge_event_mode!r}")
+    if bridge_state_mode not in ("normal", "zero"):
+        raise ValueError(f"unknown bridge state mode: {bridge_state_mode!r}")
+    if bridge_event_mode != "normal" or bridge_state_mode != "normal":
+        if event_bridge is None:
+            raise ValueError("bridge input overrides require an event bridge")
     if preserve_execution_trace and execution_mode != "read_execute":
         raise ValueError("execution traces require read_execute mode")
     if route_probe:
@@ -272,7 +281,26 @@ def _rollout(
         # lived inside the no-grad block, so bridge parameters could be listed
         # as trainable but were silently inert.
         if event_bridge is not None:
-            event = event_bridge(event, parent_state.hidden.detach())
+            bridge_event = event
+            if bridge_event_mode == "zero":
+                bridge_event = torch.zeros_like(bridge_event)
+            elif bridge_event_mode == "norm_matched_noise":
+                # Deterministic, data-independent noise with the original
+                # row norm. This is a trainer-only corruption control; the
+                # deployed bridge never receives this mode or its label.
+                noise_index = torch.arange(
+                    bridge_event.numel(),
+                    device=bridge_event.device,
+                    dtype=bridge_event.dtype,
+                ).reshape_as(bridge_event)
+                bridge_event = torch.sin(noise_index * 12.9898 + 78.233)
+                source_norm = event.norm(dim=-1, keepdim=True)
+                bridge_norm = bridge_event.norm(dim=-1, keepdim=True).clamp_min(1e-8)
+                bridge_event = bridge_event * (source_norm / bridge_norm)
+            bridge_state = parent_state.hidden.detach()
+            if bridge_state_mode == "zero":
+                bridge_state = torch.zeros_like(bridge_state)
+            event = event_bridge(bridge_event, bridge_state)
         elif machine.event_input_mode == "append_controller_state":
             # Optional versioned boundary: external memory may receive a
             # standardized learned controller-state event in addition to
@@ -849,6 +877,8 @@ def _accuracy(
     preserve_execution_trace: bool = False,
     reverse_operations: bool = False,
     reverse_sequence: bool = False,
+    bridge_event_mode: str = "normal",
+    bridge_state_mode: str = "normal",
 ) -> float:
     batch = _batch(
         operation,
@@ -887,6 +917,8 @@ def _accuracy(
             event_bridge=event_bridge,
             register_readout=register_readout,
             preserve_execution_trace=preserve_execution_trace,
+            bridge_event_mode=bridge_event_mode,
+            bridge_state_mode=bridge_state_mode,
         )[1].mean()
     )
 
