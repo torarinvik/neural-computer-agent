@@ -47,8 +47,8 @@ INSTRUCTION_WIDTH = 16
 GeneratedCompositionGrammar = tuple[tuple[str, ...], ...]
 
 
-@lru_cache(maxsize=8)
-def _opaque_composed_event_matrix(width: int) -> torch.Tensor:
+@lru_cache(maxsize=16)
+def _opaque_composed_event_matrix(width: int, seed: int) -> torch.Tensor:
     """Return a fixed trainer-only dense event-space transform.
 
     The matrix is part of the rendered-environment corruption, not an input to
@@ -58,7 +58,7 @@ def _opaque_composed_event_matrix(width: int) -> torch.Tensor:
 
     if width < 2:
         raise ValueError("composed event transform needs at least two features")
-    generator = torch.Generator(device="cpu").manual_seed(4_271_991)
+    generator = torch.Generator(device="cpu").manual_seed(seed)
     raw = torch.randn(width, width, generator=generator)
     matrix, _ = torch.linalg.qr(raw)
     if torch.linalg.det(matrix) < 0:
@@ -69,11 +69,15 @@ def _opaque_composed_event_matrix(width: int) -> torch.Tensor:
 def _apply_bridge_event_transform(
     event: torch.Tensor,
     mode: str,
+    transform_seed: int = 4_271_991,
 ) -> torch.Tensor:
     if mode == "cyclic_permutation":
         return torch.roll(event, shifts=1, dims=-1)
     if mode == "composed_orthogonal":
-        matrix = _opaque_composed_event_matrix(event.shape[-1]).to(
+        matrix = _opaque_composed_event_matrix(
+            event.shape[-1],
+            transform_seed,
+        ).to(
             device=event.device,
             dtype=event.dtype,
         )
@@ -212,6 +216,7 @@ def _rollout(
     program_route_probe: bool = False,
     bridge_event_mode: str = "normal",
     bridge_state_mode: str = "normal",
+    bridge_transform_seed: int = 4_271_991,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     if execution_mode not in ("in_place", "read_execute"):
         raise ValueError(f"unknown execution mode: {execution_mode!r}")
@@ -335,6 +340,7 @@ def _rollout(
                 bridge_event = _apply_bridge_event_transform(
                     bridge_event,
                     bridge_event_mode,
+                    bridge_transform_seed,
                 )
             elif bridge_event_mode == "norm_matched_noise":
                 # Deterministic, data-independent noise with the original
@@ -931,6 +937,7 @@ def _accuracy(
     reverse_sequence: bool = False,
     bridge_event_mode: str = "normal",
     bridge_state_mode: str = "normal",
+    bridge_transform_seed: int = 4_271_991,
 ) -> float:
     batch = _batch(
         operation,
@@ -971,6 +978,7 @@ def _accuracy(
             preserve_execution_trace=preserve_execution_trace,
             bridge_event_mode=bridge_event_mode,
             bridge_state_mode=bridge_state_mode,
+            bridge_transform_seed=bridge_transform_seed,
         )[1].mean()
     )
 

@@ -5304,3 +5304,28 @@ learning can recover a dense composed invertible change, not only a known
 cyclic coordinate shift. The remaining gap is unknown transform identity and
 composition across changing frontends or modalities, followed by
 non-invertible information loss and long-horizon continual retention.
+
+## Persistent external alignment-cell stream (2026-08-09)
+
+Alignment is now pressure-tested as growable external state. For each of
+three opaque dense frontend transforms, the stream allocates a fresh
+`neural-computer.event-bridge.v1` cell, trains it from scalar verifier
+outcomes, freezes it on admission, and then returns to all earlier cells
+without replaying their acquisition examples. The parent controller, source
+register, and decoder remain frozen throughout.
+
+Both seeds passed the full stream gates. Every cell mastered; every prior cell
+retained mastery after later admissions; reward-shuffled controls failed for
+all cells; and zeroing one cell degraded only that cell. Seed `69316` ended at
+`0.957`/`1.000`/`1.000`, while seed `69317` ended at `0.984`/`0.980`/`0.992`.
+Stable prefixes were `10,240`/`4,096`/`6,144` and `6,144`/`4,096`/`4,096`
+verifier bits, with zero replayed examples. Reports and accounting are
+archived in
+`session_records/sequence_working_memory_2026-08-02/outcome_only_alignment_cell_stream_promoted_2026-08-09/`.
+
+This is the first bounded no-replay growth result at the alignment boundary:
+external plastic state can expand while retaining earlier learned interfaces.
+The decisive remaining bottleneck is automatic addressing: the system still
+needs to infer which opaque alignment cell applies to the current stream,
+without a task or frontend identity, and must do so under longer sequences,
+cell eviction, and genuinely ambiguous drift.
