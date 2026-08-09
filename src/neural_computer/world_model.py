@@ -2842,14 +2842,18 @@ class ExternalTransitionContextEncoder(nn.Module):
         *,
         hidden_width: int = 64,
         context_width: int = 32,
+        aggregation: str = "last_token",
     ) -> None:
         super().__init__()
         if min(state_width, intention_width, hidden_width, context_width) < 1:
             raise ValueError("transition-context dimensions must be positive")
+        if aggregation not in {"last_token", "mean_pool"}:
+            raise ValueError("unsupported transition-context aggregation")
         self.state_width = int(state_width)
         self.intention_width = int(intention_width)
         self.hidden_width = int(hidden_width)
         self.context_width = int(context_width)
+        self.aggregation = aggregation
         token_width = self.state_width * 2 + self.intention_width + 1
         self.token_encoder = nn.Sequential(
             nn.Linear(token_width, self.hidden_width),
@@ -2872,6 +2876,7 @@ class ExternalTransitionContextEncoder(nn.Module):
             "intention_width": self.intention_width,
             "hidden_width": self.hidden_width,
             "context_width": self.context_width,
+            "aggregation": self.aggregation,
             "input": "opaque_state_intention_next_state_confidence_v1",
             "training": "paired_noisy_transition_view_contrastive_v1",
             "inference": "read_only_context_key_v1",
@@ -2932,9 +2937,20 @@ class ExternalTransitionContextEncoder(nn.Module):
             ),
             dim=-1,
         )
-        sequence, _hidden = self.recurrent(self.token_encoder(tokens))
+        token_features = self.token_encoder(tokens)
+        if self.aggregation == "last_token":
+            sequence, _hidden = self.recurrent(token_features)
+            summary = sequence[:, -1]
+        else:
+            # Mean-pool independent token features so a bundle's address is
+            # invariant to transport arrival order. The recurrent path is
+            # retained as the compatibility default for existing checkpoints.
+            weights = confidence_values.unsqueeze(-1)
+            summary = (token_features * weights).sum(dim=1) / weights.sum(
+                dim=1
+            ).clamp_min(1e-12)
         return torch.nn.functional.normalize(
-            self.context_projection(sequence[:, -1]),
+            self.context_projection(summary),
             dim=-1,
         )
 
@@ -3072,6 +3088,7 @@ class ExternalTransitionContextEncoder(nn.Module):
             int(configuration["intention_width"]),
             hidden_width=int(configuration["hidden_width"]),
             context_width=int(configuration["context_width"]),
+            aggregation=str(configuration.get("aggregation", "last_token")),
         )
         current = encoder.state_dict()
         if tuple(state) != tuple(current):

@@ -76,6 +76,39 @@ def test_transition_context_encoder_is_opaque_normalized_and_persistent() -> Non
     assert torch.equal(restored.encode_observation(observation), context)
 
 
+def test_transition_context_mean_pool_is_permutation_invariant_and_persistent() -> None:
+    torch.manual_seed(1200)
+    encoder = ExternalTransitionContextEncoder(
+        2,
+        1,
+        hidden_width=8,
+        context_width=5,
+        aggregation="mean_pool",
+    )
+    observation = ExternalTransitionObservation(
+        state=torch.randn(6, 2),
+        intention=torch.randn(6, 1),
+        next_state=torch.randn(6, 2),
+        confidence=torch.rand(6),
+    )
+    permutation = torch.tensor([5, 1, 3, 0, 4, 2])
+    permuted = ExternalTransitionObservation(
+        state=observation.state.index_select(0, permutation),
+        intention=observation.intention.index_select(0, permutation),
+        next_state=observation.next_state.index_select(0, permutation),
+        confidence=observation.confidence.index_select(0, permutation),
+    )
+
+    assert torch.allclose(
+        encoder.encode_observation(observation),
+        encoder.encode_observation(permuted),
+        atol=1e-6,
+    )
+    restored = ExternalTransitionContextEncoder.from_payload(encoder.state_payload())
+    assert restored.configuration() == encoder.configuration()
+    assert restored.digest() == encoder.digest()
+
+
 def test_transition_context_prefix_alignment_supports_variable_evidence() -> None:
     torch.manual_seed(1200)
     prefixes = torch.randn(3, 4, 5)
