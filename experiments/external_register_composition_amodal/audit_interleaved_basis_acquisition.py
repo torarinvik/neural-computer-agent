@@ -417,6 +417,14 @@ def _fresh_source_curriculum(parent, *, args, seed_base: int):
     )
     for _ in args.source_operations:
         machine.add_basis_slot()
+    if args.joint_source_updates:
+        _train_joint_source_bank(
+            parent,
+            machine,
+            args=args,
+            seed_base=seed_base,
+        )
+        return machine
     for index in range(len(args.source_operations)):
         decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
         source_args = copy.copy(args)
@@ -430,6 +438,86 @@ def _fresh_source_curriculum(parent, *, args, seed_base: int):
             source_operations=args.source_operations,
         )
     return machine
+
+
+def _train_joint_source_bank(parent, machine, *, args, seed_base: int):
+    """Train all source instructions against one balanced shared operator.
+
+    This is an explicit calibration upper bound, not a continual-learning
+    result: it uses all source procedures during one acquisition phase and is
+    reported separately from sequential source learning.
+    """
+    decoders = [
+        OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
+        for _ in args.source_operations
+    ]
+    trainable = list(machine.parameters()) + [
+        parameter for decoder in decoders for parameter in decoder.parameters()
+    ]
+    optimizer = torch.optim.AdamW(trainable, lr=args.learning_rate, weight_decay=1e-5)
+    best_state = None
+    best_decoders = None
+    best_floor = float("-inf")
+    for update in range(1, args.joint_source_updates + 1):
+        index = (update - 1) % len(args.source_operations)
+        batch = _batch(
+            args.source_operations[index],
+            count=args.batch_size,
+            span=args.span,
+            seed=seed_base + update * 10_007,
+        )
+        loss, _ = _rollout(
+            parent,
+            machine,
+            decoders[index],
+            batch,
+            (machine.instructions[index],),
+            basis_slots=(index,),
+            train_decoder=True,
+            credit_mode="paired_counterfactual",
+        )
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(trainable, 1.0)
+        optimizer.step()
+        if update % args.eval_every == 0 or update == args.joint_source_updates:
+            scores = [
+                _accuracy(
+                    parent,
+                    machine,
+                    decoder,
+                    operation=operation,
+                    instructions=(machine.instructions[index_value],),
+                    basis_slots=(index_value,),
+                    count=args.source_selection_audit_count,
+                    span=args.span,
+                    seed=seed_base + 70_000 + index_value * 1_009,
+                    credit_mode="paired_counterfactual",
+                )
+                for index_value, (operation, decoder) in enumerate(
+                    zip(args.source_operations, decoders, strict=True)
+                )
+            ]
+            floor = min(scores)
+            if floor > best_floor:
+                best_floor = floor
+                best_state = {
+                    name: value.detach().clone()
+                    for name, value in machine.state_dict().items()
+                }
+                best_decoders = [
+                    {
+                        name: value.detach().clone()
+                        for name, value in decoder.state_dict().items()
+                    }
+                    for decoder in decoders
+                ]
+    if best_state is None or best_decoders is None:
+        raise RuntimeError("joint source calibration did not produce a checkpoint")
+    machine.load_state_dict(best_state, strict=True)
+    for decoder, state in zip(decoders, best_decoders, strict=True):
+        decoder.load_state_dict(state, strict=True)
+    return decoders
 
 def _train_shared_bridge_prior(
     parent,
@@ -635,6 +723,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     args.source_operations = source_operations
     if args.source_restarts < 1:
         raise ValueError("source restarts must be positive")
+    if args.joint_source_updates < 0:
+        raise ValueError("joint source updates cannot be negative")
     if args.reuse_shared_bridge_prior and args.reuse_conditioned_bridge_prior:
         raise ValueError("choose one bridge prior mode")
     args.reuse_shared_bridge_prior = (
@@ -665,7 +755,37 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         machine.add_basis_slot()
     source_decoders = []
     source_attempt_counts = []
-    for index in range(len(args.source_operations)):
+    if args.joint_source_updates:
+        source_decoders = _train_joint_source_bank(
+            parent,
+            machine,
+            args=args,
+            seed_base=args.seed + 1_500_000,
+        )
+        source_attempt_counts = [
+            [
+                _accuracy(
+                    parent,
+                    machine,
+                    decoder,
+                    operation=operation,
+                    instructions=(machine.instructions[index],),
+                    basis_slots=(index,),
+                    count=args.source_selection_audit_count,
+                    span=args.span,
+                    seed=args.seed + 60_000 + index * 101 + index * 1009,
+                    credit_mode="paired_counterfactual",
+                )
+            ]
+            for index, (operation, decoder) in enumerate(
+                zip(args.source_operations, source_decoders, strict=True)
+            )
+        ]
+    for index in (
+        range(len(args.source_operations))
+        if not args.joint_source_updates
+        else ()
+    ):
         source_parent = copy.deepcopy(machine)
         best_machine_state = None
         best_decoder_state = None
@@ -896,11 +1016,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 seed_base=args.seed + 2_000_000 + index * 20_003,
             )
             fresh_source_training_bits = (
-                len(args.source_operations)
-                * args.source_updates
-                * args.batch_size
-                * args.span
-                * 2
+                (
+                    args.joint_source_updates
+                    if args.joint_source_updates
+                    else len(args.source_operations) * args.source_updates
+                )
+                * args.batch_size * args.span * 2
             )
         else:
             fresh_machine = _new_machine(
@@ -1080,8 +1201,18 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         machine = pre_growth_machine
 
     candidate_count = len(candidates)
+    source_selection_updates = (
+        args.joint_source_updates
+        if args.joint_source_updates
+        else args.source_updates
+    )
     source_selection_evaluations = (
-        (args.source_updates + args.eval_every - 1) // args.eval_every
+        (source_selection_updates + args.eval_every - 1) // args.eval_every
+    )
+    source_acquisition_updates = (
+        args.joint_source_updates
+        if args.joint_source_updates
+        else args.source_updates * source_attempt_count
     )
     phase_audit_lifetimes = candidate_count * (
         (args.warmup_updates + args.eval_every - 1) // args.eval_every * args.audit_count
@@ -1111,7 +1242,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     )
     logical_lifetimes = (
         args.parent_updates * args.batch_size
-        + args.source_updates * source_attempt_count * args.batch_size
+        + source_acquisition_updates * args.batch_size
         + (
             args.bridge_prior_updates * args.batch_size
             if args.reuse_shared_bridge_prior
@@ -1124,9 +1255,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         + audit_lifetimes
     )
     parent_training_bits = args.parent_updates * args.batch_size * 2 * 2
-    source_training_bits = (
-        args.source_updates * source_attempt_count * args.batch_size * args.span * 2
-    )
+    source_training_bits = source_acquisition_updates * args.batch_size * args.span * 2
     source_selection_bits = (
         source_selection_evaluations
         * source_attempt_count
@@ -1190,6 +1319,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "schema": "neural-computer.external-register-interleaved-basis-acquisition-audit.v1",
         "seed": args.seed,
         "source_operations": list(args.source_operations),
+        "source_acquisition_mode": (
+            "balanced_joint_calibration_upper_bound"
+            if args.joint_source_updates
+            else "sequential_with_restarts"
+        ),
+        "joint_source_updates": args.joint_source_updates,
         "target_operations": list(target_operations),
         "composition_programs": [list(program) for program in composition_programs]
         if args.include_composition
@@ -1233,6 +1368,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "parent_training_verifier_bits": parent_training_bits,
             "source_training_verifier_bits": source_training_bits,
             "source_selection_verifier_bits": source_selection_bits,
+            "joint_source_calibration_verifier_bits": (
+                source_training_bits if args.joint_source_updates else 0
+            ),
             "bridge_prior_training_verifier_bits": bridge_prior_training_bits,
             "canonical_readout_prior_training_verifier_bits": readout_prior_training_bits,
             "normal_target_training_verifier_bits": normal_target_training_bits,
@@ -1244,7 +1382,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "unique_verifier_bits": unique_verifier_bits,
             "optimizer_updates": (
                 args.parent_updates
-                + args.source_updates * source_attempt_count
+                + source_acquisition_updates
                 + (
                     args.bridge_prior_updates
                     if args.reuse_shared_bridge_prior
@@ -1261,8 +1399,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 * (args.warmup_updates + args.focus_updates + args.target_updates)
                 + (
                     fresh_transfer_candidate_count
-                    * len(args.source_operations)
-                    * args.source_updates
+                    * (
+                        args.joint_source_updates
+                        if args.joint_source_updates
+                        else len(args.source_operations) * args.source_updates
+                    )
                     if args.curriculum_fresh_control
                     else 0
                 )
@@ -1282,6 +1423,12 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=69316)
     parser.add_argument("--parent-updates", type=int, default=32)
     parser.add_argument("--source-updates", type=int, default=192)
+    parser.add_argument(
+        "--joint-source-updates",
+        type=int,
+        default=0,
+        help="balanced source-bank calibration updates (diagnostic upper bound)",
+    )
     parser.add_argument("--source-restarts", type=int, default=1)
     parser.add_argument("--warmup-updates", type=int, default=64)
     parser.add_argument("--focus-updates", type=int, default=64)

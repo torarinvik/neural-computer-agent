@@ -675,3 +675,22 @@ This confirms that the shared interpreter is order-sensitive. The original
 reverse-first order remains the stronger baseline, but the real fix is to
 learn or calibrate the shared operator contract without allowing the first
 capability to define it.
+
+## Balanced joint calibration upper bound — rejected for composition transfer
+
+To separate order poisoning from operator expressivity, the audit gained an
+explicit balanced calibration mode. All three source instructions and the
+shared interpreter were trained round-robin for `576` updates, then frozen
+before composition learning. This is deliberately an upper bound, not a
+continual-learning claim, because it uses every source procedure up front.
+
+Source mastery became strong in both seeds (`0.9844/0.9805/0.9609` and
+`0.9688/0.9570/0.9531`) with exact zero retention deltas. Nevertheless,
+positive composition transfer was not replicated: seed `69316` rejected one
+composition at `0.6719`, and neither seed passed the strict fresh-transfer
+gate. The shared operator can therefore learn the individual primitives, but
+their register states do not yet form a reliable compositional algebra.
+
+This localizes the next major bottleneck: the representation and execution
+semantics between serial instructions, not source acquisition order, rank, or
+decoder normalization.

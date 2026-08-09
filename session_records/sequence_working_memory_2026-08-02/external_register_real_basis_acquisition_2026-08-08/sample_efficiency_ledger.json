@@ -277,6 +277,22 @@
       "retention_on_mastered_primitives": "exact zero source retention deltas, but source mastery weakened, especially in seed 69317",
       "positive_transfer": false,
       "decision": "reject adjacent-first acquisition order; retain order as a diagnostic and preserve the original reverse-first baseline"
+    },
+    {
+      "experiment": "interleaved_shared_interpreter_joint_calibration_upper_bound",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "Balanced joint source calibration can establish a shared operator geometry that composes source programs reliably.",
+      "operator_mode": "factorized_shared_interpreter",
+      "joint_source_updates": 576,
+      "composition_program_count": 2,
+      "curriculum_fresh_control": true,
+      "joint_source_calibration_verifier_bits_per_run": 73728,
+      "replayed_examples": 0,
+      "source_mastery": "both seeds reached source floors above 0.95",
+      "retention_on_mastered_primitives": "exact zero source retention deltas",
+      "positive_transfer": false,
+      "decision": "reject composition-transfer claim; retain as decisive upper bound showing the remaining bottleneck is compositional state algebra, not source acquisition order"
     }
   ]
 }
