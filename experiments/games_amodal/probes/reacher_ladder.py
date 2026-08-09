@@ -52,6 +52,15 @@ parser.add_argument("--hidden", type=int, default=32)
 parser.add_argument("--size", type=int, default=8)
 parser.add_argument("--eval-batches", type=int, default=4)
 parser.add_argument(
+    "--sparse", action="store_true",
+    help="reward ONLY on arrival -- no progress shaping. F62 found every "
+         "transfer test in this project used targets that are cheap cold "
+         "(r4 masters at 200 updates even at size 16), leaving no "
+         "headroom for a prior to pay for itself, so positive transfer "
+         "was undetectable by construction. Sparse reward makes arrival "
+         "something the agent must DISCOVER, which is precisely where "
+         "knowing how to move toward goals should help.")
+parser.add_argument(
     "--warm-mix", default="",
     help="comma-separated rungs to warm-start on CONCURRENTLY (e.g. "
          "'r1,r3'). F61: warming on ONE domain leaves the plant holding "
@@ -210,7 +219,9 @@ def rollout(spec, *, seed: int, sample: bool, random_actions: bool = False):
                                                          float(step + 1)),
                                  steps_used)
         arrived = torch.maximum(arrived, (new_gap == 0).float())
-        rewards.append((gap - new_gap) + 2.0 * (new_gap == 0).float())
+        rewards.append(
+            2.0 * (new_gap == 0).float() if args.sparse
+            else (gap - new_gap) + 2.0 * (new_gap == 0).float())
         gap = new_gap
         feedback = ControllerFeedback(
             action=agent.feedback_encoders["keypress"](acts),
