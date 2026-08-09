@@ -1853,3 +1853,11 @@ promoted, but strict positive transfer was not replicated across seeds. This
 localizes the next bottleneck to efficient adaptation of fresh decoders and
 event bridges, rather than retention. Evidence is in
 `external_register_real_basis_acquisition_2026-08-08/interleaved_full_grammar_transfer/`.
+
+## Mastered decoder prior diagnostic (2026-08-09)
+
+Copying a mastered source decoder into new composition candidates was tested
+as an adaptation shortcut. It was seed- and program-dependent, so the strict
+replicated transfer gate rejected it. Raw action-decoder reuse is not adopted
+as the general prior. Evidence is in
+`external_register_real_basis_acquisition_2026-08-08/interleaved_decoder_prior_diagnostic/`.

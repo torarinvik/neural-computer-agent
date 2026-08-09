@@ -4102,3 +4102,10 @@ mixed across seeds. This identifies decoder/event-bridge adaptation as the
 next bottleneck and preserves the distinction between capability retention
 and faster learning. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_real_basis_acquisition_2026-08-08/interleaved_full_grammar_transfer/`.
+
+Raw reuse of a mastered action decoder was tested as the next adaptation
+shortcut and rejected after seed- and program-dependent effects. The
+production boundary therefore does not assume decoder weights transfer across
+skills; a future interface prior must be protocol-agnostic and independently
+verified. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_real_basis_acquisition_2026-08-08/interleaved_decoder_prior_diagnostic/`.

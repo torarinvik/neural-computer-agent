@@ -535,3 +535,19 @@ bottleneck is adaptation efficiency at the memory-to-decoder/event-bridge
 boundary, not source-program retention. Evidence is in
 `interleaved_full_grammar_transfer/`; its fresh-control accounting adds
 `466,944` verifier bits per run, with zero replay.
+
+## Mastered decoder prior diagnostic — rejected
+
+As a targeted adaptation intervention, the two-program audit initialized each
+new composition decoder from mastered source decoder 0 while keeping the
+composition bridge fresh. The shuffled-outcome control received the same
+initialization. The prior was not stable: seed `69316` degraded one
+composition from `0.8828` to `0.8125`, while seed `69317` improved another
+from `0.9141` to `0.9844`; the full transaction was rejected in seed `69316`
+and accepted in seed `69317`, so no replicated positive transfer gate passed.
+
+This rejects raw decoder-weight reuse as a general interface prior. It is
+retained as an explicit opt-in diagnostic, not as the production default. The
+next intervention should learn a protocol-agnostic interface representation or
+adaptation rule, rather than copying action-decoder weights across skills.
+Evidence is in `interleaved_decoder_prior_diagnostic/`.

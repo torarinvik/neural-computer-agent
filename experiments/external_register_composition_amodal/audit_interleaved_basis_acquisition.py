@@ -194,6 +194,8 @@ def _prepare_candidates(
     operations: tuple[str, ...],
     *,
     include_composition: bool,
+    decoder_prior_state: dict[str, torch.Tensor] | None = None,
+    composition_programs: tuple[tuple[str, ...], ...] = COMPOSITION_PROGRAMS,
 ) -> list[dict[str, object]]:
     candidates = []
     for index, operation in enumerate(operations):
@@ -220,10 +222,15 @@ def _prepare_candidates(
         # decoder/bridge learning to expose a different generated program
         # executed by the frozen source capabilities, making the test about
         # compositional reuse rather than another direct primitive.
-        for program in COMPOSITION_PROGRAMS:
+        for program in composition_programs:
             source_indices = tuple(
                 SOURCE_OPERATIONS.index(primitive) for primitive in program
             )
+            decoder = OpaqueProtocolDecoder(
+                REGISTER_WIDTH, ACTION_WIDTH, hidden=16
+            )
+            if decoder_prior_state is not None:
+                decoder.load_state_dict(decoder_prior_state, strict=True)
             candidates.append(
                 {
                     "operation": "generated_composition",
@@ -235,9 +242,7 @@ def _prepare_candidates(
                     "generated_compositions": (program,),
                     "composition_program": program,
                     "mutable": False,
-                    "decoder": OpaqueProtocolDecoder(
-                        REGISTER_WIDTH, ACTION_WIDTH, hidden=16
-                    ),
+                    "decoder": decoder,
                     "bridge": AmodalEventBridge(
                         EVENT_WIDTH, parent.controller.width, EVENT_WIDTH, hidden=64
                     ),
@@ -333,6 +338,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("at least one target operation is required")
     if args.source_restarts < 1:
         raise ValueError("source restarts must be positive")
+    if not 1 <= args.composition_program_count <= len(COMPOSITION_PROGRAMS):
+        raise ValueError("composition program count is outside the available grammar")
+    composition_programs = COMPOSITION_PROGRAMS[: args.composition_program_count]
     parent = _runtime(seed=args.seed, growth=False)
     _train_with_progress(
         parent,
@@ -432,11 +440,19 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     for _ in target_operations:
         machine.add_instruction(ExternalRegisterInstruction(INSTRUCTION_WIDTH))
     pre_growth_machine = copy.deepcopy(machine)
+    decoder_prior_state = None
+    if args.reuse_decoder_prior:
+        decoder_prior_state = {
+            name: value.detach().clone()
+            for name, value in source_decoders[0].state_dict().items()
+        }
     candidates = _prepare_candidates(
         parent,
         machine,
         target_operations,
         include_composition=args.include_composition,
+        decoder_prior_state=decoder_prior_state,
+        composition_programs=composition_programs,
     )
     retained_before = [
         source_score(spec, index) for index, spec in enumerate(source_specs)
@@ -500,6 +516,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         shuffled_machine,
         target_operations,
         include_composition=args.include_composition,
+        decoder_prior_state=decoder_prior_state,
+        composition_programs=composition_programs,
     )
     _freeze(shuffled_machine)
     for candidate in shuffled_candidates:
@@ -764,9 +782,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "seed": args.seed,
         "source_operations": list(SOURCE_OPERATIONS),
         "target_operations": list(target_operations),
-        "composition_programs": [list(program) for program in COMPOSITION_PROGRAMS]
+        "composition_programs": [list(program) for program in composition_programs]
         if args.include_composition
         else [],
+        "decoder_prior": "source_decoder_0"
+        if args.reuse_decoder_prior
+        else None,
         "source_before": source_before,
         "source_attempt_scores": source_attempt_counts,
         "retained_before": retained_before,
@@ -840,6 +861,18 @@ def main() -> None:
         action=argparse.BooleanOptionalAction,
         default=True,
         help="interleave a fresh decoder/bridge for a frozen source-program composition",
+    )
+    parser.add_argument(
+        "--reuse-decoder-prior",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="initialize fresh candidate decoders from mastered source decoder 0",
+    )
+    parser.add_argument(
+        "--composition-program-count",
+        type=int,
+        default=len(COMPOSITION_PROGRAMS),
+        help="number of deterministic source-program permutations to interleave",
     )
     parser.add_argument("--retention-regression-tolerance", type=float, default=0.02)
     args = parser.parse_args()
