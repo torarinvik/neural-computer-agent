@@ -1233,6 +1233,27 @@
       "fresh_memory_control": [0.333333, 0.333333],
       "controls": "frozen controller, source/target append receipts, source retention, goal/context shuffles, corruption, fresh memory, exact persistence, zero target optimizer updates, and zero replay passed",
       "decision": "promote bounded disjoint-dynamics append-only factual memory; next test learned context discovery, many-regime interference, compression, and transfer beyond stored transitions"
+    },
+    {
+      "experiment": "external_context_address_transfer",
+      "date": "2026-08-09",
+      "seeds": [69501, 69502],
+      "claim": "Verified opaque transition consistency can decide whether to reuse an existing external dynamics address or append a new one without supplied context labels.",
+      "module": "ExternalContextAddressResolver + ExternalTransitionMemory",
+      "unique_dynamics_per_seed": 3,
+      "regime_bundles_per_seed": 4,
+      "transition_lifetimes_per_seed": 48,
+      "unique_verifier_bits_per_seed": 12,
+      "target_optimizer_updates_per_seed": 0,
+      "evaluator_optimizer_updates_per_seed": 1200,
+      "replayed_examples": 0,
+      "address_count": [3, 3],
+      "all_regimes_mastery": [1.0, 1.0],
+      "source_and_reversal_retention": [1.0, 1.0],
+      "wrong_context_factual_control": "all wrong-context next-state MSE values exceeded 0.1",
+      "fresh_memory_factual_control": "all fresh-memory transition hit rates were 0.0",
+      "controls": "controller unchanged, new-address admission, duplicate reuse, rediscovery, reversal retention, wrong-context factual error, corruption factual error, fresh factual misses, persistence, zero target updates, and zero replay passed",
+      "decision": "promote bounded verified-bundle address admission; next learn partial-stream context clustering and test capacity growth, compression, and extrapolation beyond exact stored facts"
     }
   ]
 }

@@ -1,0 +1,391 @@
+{
+  "schema": "neural-computer.external-context-address-transfer-pressure-test.v1",
+  "seed": 69502,
+  "configuration": {
+    "state_width": 8,
+    "intention_width": 4,
+    "context_width": 6,
+    "regime_count": 4,
+    "unique_dynamics_count": 3,
+    "regime_deltas": [
+      [
+        -1,
+        1
+      ],
+      [
+        -2,
+        2
+      ],
+      [
+        1,
+        -1
+      ],
+      [
+        -1,
+        1
+      ]
+    ],
+    "targets": [
+      [
+        0,
+        4
+      ],
+      [
+        4,
+        0
+      ],
+      [
+        1,
+        5
+      ]
+    ],
+    "policy": "learned_fact_consistency_address_admission_v1"
+  },
+  "gates": {
+    "controller_unchanged": true,
+    "goal_evaluator_learns": true,
+    "new_regimes_allocate": true,
+    "duplicate_regime_reuses": true,
+    "all_regimes_rediscover": true,
+    "address_count_matches_unique_dynamics": true,
+    "all_regimes_mastered": true,
+    "reversal_retention": true,
+    "shuffled_context_factual_control": true,
+    "corruption_control": true,
+    "corruption_factual_control": true,
+    "fresh_factual_control": true,
+    "persistence_exact": true
+  },
+  "promoted": true,
+  "admissions": [
+    {
+      "regime_index": 0,
+      "reused": false,
+      "matched_observations": 0,
+      "mean_error": 0.0,
+      "committed": true,
+      "record_count": 12
+    },
+    {
+      "regime_index": 1,
+      "reused": false,
+      "matched_observations": 0,
+      "mean_error": 0.0,
+      "committed": true,
+      "record_count": 24
+    },
+    {
+      "regime_index": 2,
+      "reused": false,
+      "matched_observations": 0,
+      "mean_error": 0.0,
+      "committed": true,
+      "record_count": 36
+    },
+    {
+      "regime_index": 3,
+      "reused": true,
+      "matched_observations": 12,
+      "mean_error": 0.0,
+      "committed": true,
+      "record_count": 36
+    }
+  ],
+  "rediscovery_reused": [
+    true,
+    true,
+    true,
+    true
+  ],
+  "retained": [
+    {
+      "successes": [
+        true,
+        true,
+        true
+      ],
+      "mastery": 1.0,
+      "predicted_final_positions": [
+        4,
+        0,
+        5
+      ],
+      "mean_latency_seconds": 0.009217264014296234
+    },
+    {
+      "successes": [
+        true,
+        true,
+        true
+      ],
+      "mastery": 1.0,
+      "predicted_final_positions": [
+        4,
+        0,
+        5
+      ],
+      "mean_latency_seconds": 0.002518333320040256
+    },
+    {
+      "successes": [
+        true,
+        true,
+        true
+      ],
+      "mastery": 1.0,
+      "predicted_final_positions": [
+        4,
+        0,
+        5
+      ],
+      "mean_latency_seconds": 0.007907347326787809
+    },
+    {
+      "successes": [
+        true,
+        true,
+        true
+      ],
+      "mastery": 1.0,
+      "predicted_final_positions": [
+        4,
+        0,
+        5
+      ],
+      "mean_latency_seconds": 0.006506041681859642
+    }
+  ],
+  "shuffled_context": [
+    {
+      "successes": [
+        false,
+        true,
+        false
+      ],
+      "mastery": 0.3333333333333333,
+      "predicted_final_positions": [
+        2,
+        0,
+        3
+      ],
+      "mean_latency_seconds": 0.014990847344355037
+    },
+    {
+      "successes": [
+        false,
+        false,
+        false
+      ],
+      "mastery": 0.0,
+      "predicted_final_positions": [
+        0,
+        5,
+        2
+      ],
+      "mean_latency_seconds": 0.002654403001846125
+    },
+    {
+      "successes": [
+        false,
+        false,
+        false
+      ],
+      "mastery": 0.0,
+      "predicted_final_positions": [
+        0,
+        5,
+        0
+      ],
+      "mean_latency_seconds": 0.01887122233165428
+    }
+  ],
+  "shuffled_context_diagnostics": [
+    {
+      "hit_rate": 1.0,
+      "next_state_mse": 0.155057892203331
+    },
+    {
+      "hit_rate": 1.0,
+      "next_state_mse": 0.20403234660625458
+    },
+    {
+      "hit_rate": 1.0,
+      "next_state_mse": 0.22731532156467438
+    }
+  ],
+  "corrupted_memory": [
+    {
+      "successes": [
+        false,
+        false,
+        false
+      ],
+      "mastery": 0.0,
+      "predicted_final_positions": [
+        1,
+        5,
+        0
+      ],
+      "mean_latency_seconds": 0.01030248599514986
+    },
+    {
+      "successes": [
+        false,
+        false,
+        false
+      ],
+      "mastery": 0.0,
+      "predicted_final_positions": [
+        0,
+        5,
+        1
+      ],
+      "mean_latency_seconds": 0.0026378469774499536
+    },
+    {
+      "successes": [
+        true,
+        false,
+        false
+      ],
+      "mastery": 0.3333333333333333,
+      "predicted_final_positions": [
+        4,
+        5,
+        1
+      ],
+      "mean_latency_seconds": 0.009917041655474653
+    }
+  ],
+  "corrupted_diagnostics": [
+    {
+      "hit_rate": 1.0,
+      "next_state_mse": 0.22804264724254608
+    },
+    {
+      "hit_rate": 1.0,
+      "next_state_mse": 0.2036437839269638
+    },
+    {
+      "hit_rate": 1.0,
+      "next_state_mse": 0.22426439821720123
+    }
+  ],
+  "fresh_memory": [
+    {
+      "successes": [
+        false,
+        true,
+        false
+      ],
+      "mastery": 0.3333333333333333,
+      "predicted_final_positions": [
+        0,
+        0,
+        0
+      ],
+      "mean_latency_seconds": 0.002095222647767514
+    },
+    {
+      "successes": [
+        false,
+        true,
+        false
+      ],
+      "mastery": 0.3333333333333333,
+      "predicted_final_positions": [
+        0,
+        0,
+        0
+      ],
+      "mean_latency_seconds": 0.0009182776363256077
+    },
+    {
+      "successes": [
+        true,
+        false,
+        true
+      ],
+      "mastery": 0.6666666666666666,
+      "predicted_final_positions": [
+        4,
+        5,
+        5
+      ],
+      "mean_latency_seconds": 0.0021569166759339473
+    }
+  ],
+  "fresh_diagnostics": [
+    {
+      "hit_rate": 0.0,
+      "next_state_mse": 0.125
+    },
+    {
+      "hit_rate": 0.0,
+      "next_state_mse": 0.125
+    },
+    {
+      "hit_rate": 0.0,
+      "next_state_mse": 0.1250000149011612
+    }
+  ],
+  "persisted": [
+    {
+      "successes": [
+        true,
+        true,
+        true
+      ],
+      "mastery": 1.0,
+      "predicted_final_positions": [
+        4,
+        0,
+        5
+      ],
+      "mean_latency_seconds": 0.009341722315487763
+    },
+    {
+      "successes": [
+        true,
+        true,
+        true
+      ],
+      "mastery": 1.0,
+      "predicted_final_positions": [
+        4,
+        0,
+        5
+      ],
+      "mean_latency_seconds": 0.0018913193295399349
+    },
+    {
+      "successes": [
+        true,
+        true,
+        true
+      ],
+      "mastery": 1.0,
+      "predicted_final_positions": [
+        4,
+        0,
+        5
+      ],
+      "mean_latency_seconds": 0.00679070867287616
+    }
+  ],
+  "accounting": {
+    "unique_transition_lifetimes": 48,
+    "unique_verifier_bits": 12,
+    "target_optimizer_updates": 0,
+    "evaluator_optimizer_updates": 1200,
+    "replayed_examples": 0,
+    "memory_records": 36,
+    "learned_context_addresses": 3
+  },
+  "evaluator": {
+    "final_loss": 2.5723081762407674e-06,
+    "digest": "7c5e64071b5f4d75c1dfe4cc1478a37bed44db0870845eedf92fddde7d91a6e4"
+  },
+  "controller_digest": "6e61d09eb9caeda34cc7c19092aefedc9a655ddb959e7d87cee380aba6aa399e",
+  "elapsed_seconds": 2.488517249992583
+}

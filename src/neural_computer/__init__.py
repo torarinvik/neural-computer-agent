@@ -268,11 +268,14 @@ from .runtime import (
 )
 from .state_store import OPAQUE_STATE_STORE_SCHEMA, PersistentOpaqueStateStore
 from .world_model import (
+    EXTERNAL_CONTEXT_ADDRESS_RESOLVER_SCHEMA,
     EXTERNAL_GOAL_EVALUATOR_SCHEMA,
     EXTERNAL_MODEL_PLANNER_SCHEMA,
     EXTERNAL_TRANSITION_MEMORY_SCHEMA,
     EXTERNAL_TRANSITION_MODEL_SCHEMA,
     EXTERNAL_TRANSITION_OBSERVATION_SCHEMA,
+    ExternalContextAddressResolver,
+    ExternalContextResolution,
     ExternalGoalEvaluator,
     ExternalModelBasedPlanner,
     ExternalTransitionMemory,
@@ -313,6 +316,7 @@ __all__ = [
     "EXTERNAL_CAPABILITY_SCHEMA",
     "EXTERNAL_CAPABILITY_SHARED_RESIDUAL_SCHEMA",
     "EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA",
+    "EXTERNAL_CONTEXT_ADDRESS_RESOLVER_SCHEMA",
     "EXTERNAL_FAST_WEIGHT_SCHEMA",
     "EXTERNAL_GOAL_EVALUATOR_SCHEMA",
     "EXTERNAL_MODEL_PLANNER_SCHEMA",
@@ -414,6 +418,8 @@ __all__ = [
     "ExternalCapabilitySharedResidualBank",
     "ExternalCapabilityState",
     "ExternalComputeCandidateScreen",
+    "ExternalContextAddressResolver",
+    "ExternalContextResolution",
     "ExternalExecutionSnapshot",
     "ExternalFastWeightCapabilityProgram",
     "ExternalFastWeightPlasticity",

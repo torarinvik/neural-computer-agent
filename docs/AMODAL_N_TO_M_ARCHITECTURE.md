@@ -4455,3 +4455,30 @@ extrapolation beyond stored facts. The next bottleneck is to learn when and how
 to create a context/address, then test many regimes with controlled capacity
 growth and compression. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_transition_memory_transfer_promoted_2026-08-09/`.
+
+## Learned context-address admission (2026-08-09)
+
+The next two-seed rung removes the supplied context labels. A replaceable
+`ExternalContextAddressResolver` receives only complete opaque transition
+bundles and verified next-state tensors. It reuses an existing context address
+only when the append-only transition facts explain every row within tolerance;
+otherwise it allocates a fresh opaque handle. The controller still receives
+only learned tensors, and the resolver remains outside the controller.
+
+Each seed presented three unique dynamics regimes and one duplicate regime.
+The resolver discovered exactly three addresses, reused the duplicate address,
+and retained all regimes—including a reversal—with `1.0` behavioral mastery.
+Wrong-context bundles produced non-zero factual next-state error, fresh memory
+produced zero factual hits, corrupted facts were rejected, persistence was
+exact, and the controller remained unchanged. The run used 48 transition
+lifetimes, 12 verifier bits, zero target optimizer updates, and zero replay.
+
+The direct factual controls are stronger than the behavioral shuffle result:
+some wrong-context plans reached individual goals by chance, so goal mastery
+alone is not treated as evidence of context causality. The promoted result is
+therefore only that verified transition consistency can drive bounded opaque
+address admission and preserve multiple stored dynamics. It is not yet
+general continual learning: admission consumes a complete bundle, uses exact
+stored facts, and allocates opaque handles rather than learning partial-stream
+clustering. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_context_address_transfer_promoted_2026-08-09/`.

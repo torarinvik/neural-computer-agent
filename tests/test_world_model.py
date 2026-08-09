@@ -1,6 +1,7 @@
 import torch
 
 from neural_computer import (
+    ExternalContextAddressResolver,
     ExternalGoalEvaluator,
     ExternalModelBasedPlanner,
     ExternalTransitionMemory,
@@ -204,3 +205,33 @@ def test_planner_accepts_contextual_append_only_transition_memory() -> None:
 
     assert torch.equal(result.intentions[0, 0], torch.ones(1))
     assert torch.equal(result.predicted_states[0, 0], torch.ones(1))
+
+
+def test_context_resolver_reuses_consistent_facts_and_allocates_new_regime() -> None:
+    memory = ExternalTransitionMemory(1, 1, context_width=2)
+    resolver = ExternalContextAddressResolver(2, address_seed=1204)
+    source = ExternalTransitionObservation(
+        state=torch.tensor([[0.0], [1.0]]),
+        intention=torch.tensor([[1.0], [1.0]]),
+        next_state=torch.tensor([[1.0], [2.0]]),
+    )
+    reversal = ExternalTransitionObservation(
+        state=source.state,
+        intention=source.intention,
+        next_state=torch.tensor([[-1.0], [0.0]]),
+    )
+
+    first = resolver.resolve(source, memory)
+    memory.write(source, context=first.context.expand(2, -1))
+    source_again = resolver.resolve(source, memory)
+    second = resolver.resolve(reversal, memory)
+    memory.write(reversal, context=second.context.expand(2, -1))
+    reversal_again = resolver.resolve(reversal, memory)
+    restored = ExternalContextAddressResolver.from_payload(resolver.payload())
+
+    assert not first.reused
+    assert source_again.reused
+    assert not second.reused
+    assert reversal_again.reused
+    assert resolver.context_count == 2
+    assert torch.allclose(restored.addresses(), resolver.addresses())

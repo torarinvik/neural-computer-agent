@@ -33,6 +33,9 @@ EXTERNAL_TRANSITION_OBSERVATION_SCHEMA = (
 )
 EXTERNAL_TRANSITION_MODEL_SCHEMA = "neural-computer.external-transition-model.v1"
 EXTERNAL_TRANSITION_MEMORY_SCHEMA = "neural-computer.external-transition-memory.v1"
+EXTERNAL_CONTEXT_ADDRESS_RESOLVER_SCHEMA = (
+    "neural-computer.external-context-address-resolver.v1"
+)
 EXTERNAL_GOAL_EVALUATOR_SCHEMA = "neural-computer.external-goal-evaluator.v1"
 EXTERNAL_MODEL_PLANNER_SCHEMA = "neural-computer.external-model-planner.v1"
 
@@ -480,6 +483,185 @@ class ExternalTransitionMemory(nn.Module):
 
 
 @dataclass(frozen=True)
+class ExternalContextResolution:
+    """Memory-side decision to reuse or allocate one opaque context address."""
+
+    context: torch.Tensor
+    reused: bool
+    matched_observations: int
+    mean_error: float
+    schema: str = EXTERNAL_CONTEXT_ADDRESS_RESOLVER_SCHEMA
+
+    def validate(self, *, context_width: int) -> ExternalContextResolution:
+        if self.schema != EXTERNAL_CONTEXT_ADDRESS_RESOLVER_SCHEMA:
+            raise ValueError("unsupported context-resolution schema")
+        _validate_tensor(self.context, name="context", ndim=1, width=context_width)
+        if not isinstance(self.reused, bool):
+            raise TypeError("context-resolution reused flag must be boolean")
+        if not isinstance(self.matched_observations, int) or self.matched_observations < 0:
+            raise ValueError("context-resolution match count is invalid")
+        if self.mean_error < 0.0 or self.mean_error != self.mean_error:
+            raise ValueError("context-resolution mean error is invalid")
+        return self
+
+
+class ExternalContextAddressResolver:
+    """Infer opaque regime addresses from verified transition bundles.
+
+    A candidate address is reusable only when its existing factual rows
+    explain every observation in the bundle within ``match_tolerance``.  An
+    unexplained bundle receives a fresh opaque handle.  The resolver has no
+    task labels, modality fields, or controller path; it is a replaceable
+    memory-side admission policy.
+    """
+
+    schema = EXTERNAL_CONTEXT_ADDRESS_RESOLVER_SCHEMA
+
+    def __init__(
+        self,
+        context_width: int,
+        *,
+        match_tolerance: float = 1e-6,
+        address_seed: int = 0,
+    ) -> None:
+        if context_width < 1:
+            raise ValueError("context width must be positive")
+        if match_tolerance < 0.0:
+            raise ValueError("context match tolerance must be non-negative")
+        if not isinstance(address_seed, int) or address_seed < 0:
+            raise ValueError("context address seed must be a non-negative integer")
+        self.context_width = int(context_width)
+        self.match_tolerance = float(match_tolerance)
+        self.address_seed = address_seed
+        self._allocation_count = 0
+        self._addresses: list[torch.Tensor] = []
+
+    @property
+    def context_count(self) -> int:
+        return len(self._addresses)
+
+    def addresses(self) -> torch.Tensor:
+        if not self._addresses:
+            return torch.empty(0, self.context_width)
+        return torch.stack(self._addresses)
+
+    def _new_address(self) -> torch.Tensor:
+        generator = torch.Generator().manual_seed(
+            self.address_seed + self._allocation_count
+        )
+        for _attempt in range(100):
+            candidate = torch.nn.functional.normalize(
+                torch.randn(self.context_width, generator=generator), dim=0
+            )
+            if not self._addresses:
+                break
+            distances = torch.linalg.vector_norm(
+                torch.stack(self._addresses) - candidate, dim=-1
+            )
+            if bool(torch.all(distances > 1e-4)):
+                break
+        self._allocation_count += 1
+        self._addresses.append(candidate.detach().clone())
+        return candidate
+
+    def resolve(
+        self,
+        observation: ExternalTransitionObservation,
+        memory: ExternalTransitionMemory,
+    ) -> ExternalContextResolution:
+        """Reuse a factually consistent address or append a new one."""
+
+        if not isinstance(memory, ExternalTransitionMemory):
+            raise TypeError("context resolver requires ExternalTransitionMemory")
+        observation.validate(
+            state_width=memory.state_width,
+            intention_width=memory.intention_width,
+        )
+        if memory.context_width != self.context_width:
+            raise ValueError("resolver and transition memory context widths differ")
+        if observation.state.shape[0] < 1:
+            raise ValueError("context resolution requires at least one observation")
+
+        best: tuple[float, int, torch.Tensor] | None = None
+        for index, address in enumerate(self._addresses):
+            context = address.to(observation.state)
+            prediction, hits = memory.predict_with_hit(
+                observation.state,
+                observation.intention,
+                context=context.unsqueeze(0).expand(observation.state.shape[0], -1),
+            )
+            matched = int(hits.sum())
+            if matched != observation.state.shape[0]:
+                continue
+            error = float(
+                (prediction - observation.next_state).square().mean().detach()
+            )
+            candidate = (error, index, address)
+            if error <= self.match_tolerance and (
+                best is None or candidate[:2] < best[:2]
+            ):
+                best = candidate
+        if best is not None:
+            resolution = ExternalContextResolution(
+                context=best[2].clone(),
+                reused=True,
+                matched_observations=observation.state.shape[0],
+                mean_error=best[0],
+            )
+            return resolution.validate(context_width=self.context_width)
+
+        context = self._new_address()
+        resolution = ExternalContextResolution(
+            context=context,
+            reused=False,
+            matched_observations=0,
+            mean_error=0.0,
+        )
+        return resolution.validate(context_width=self.context_width)
+
+    def payload(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "context_width": self.context_width,
+            "match_tolerance": self.match_tolerance,
+            "address_seed": self.address_seed,
+            "allocation_count": self._allocation_count,
+            "addresses": [address.tolist() for address in self._addresses],
+        }
+
+    @classmethod
+    def from_payload(
+        cls, payload: Mapping[str, Any]
+    ) -> ExternalContextAddressResolver:
+        if not isinstance(payload, Mapping):
+            raise TypeError("context-resolver payload must be a mapping")
+        if payload.get("schema") != cls.schema:
+            raise ValueError("unsupported context-resolver schema")
+        resolver = cls(
+            int(payload["context_width"]),
+            match_tolerance=float(payload["match_tolerance"]),
+            address_seed=int(payload["address_seed"]),
+        )
+        addresses = payload.get("addresses")
+        if not isinstance(addresses, list):
+            raise TypeError("context-resolver addresses must be a list")
+        for values in addresses:
+            if not isinstance(values, list):
+                raise TypeError("context-resolver address must be a list")
+            address = torch.tensor(values, dtype=torch.float32)
+            _validate_tensor(
+                address, name="context address", ndim=1, width=resolver.context_width
+            )
+            address = torch.nn.functional.normalize(address, dim=0)
+            resolver._addresses.append(address)
+        allocation_count = payload.get("allocation_count", len(addresses))
+        if not isinstance(allocation_count, int) or allocation_count < len(addresses):
+            raise ValueError("context-resolver allocation count is invalid")
+        resolver._allocation_count = allocation_count
+        return resolver
+
+
+@dataclass(frozen=True)
 class ModelBasedPlanningResult:
     """Opaque search output returned to an intention decoder."""
 
@@ -714,11 +896,14 @@ class ExternalModelBasedPlanner:
 
 
 __all__ = [
+    "EXTERNAL_CONTEXT_ADDRESS_RESOLVER_SCHEMA",
     "EXTERNAL_GOAL_EVALUATOR_SCHEMA",
     "EXTERNAL_MODEL_PLANNER_SCHEMA",
     "EXTERNAL_TRANSITION_MEMORY_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_SCHEMA",
     "EXTERNAL_TRANSITION_OBSERVATION_SCHEMA",
+    "ExternalContextAddressResolver",
+    "ExternalContextResolution",
     "ExternalGoalEvaluator",
     "ExternalModelBasedPlanner",
     "ExternalTransitionMemory",
