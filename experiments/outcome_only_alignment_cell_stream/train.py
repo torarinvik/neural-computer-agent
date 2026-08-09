@@ -22,6 +22,7 @@ from experiments.external_register_composition_amodal.train import (
     EVENT_WIDTH,
     REGISTER_WIDTH,
     _accuracy,
+    _apply_bridge_event_transform,
     _batch,
     _module_digest,
     _new_machine,
@@ -83,6 +84,47 @@ class ExternalAlignmentCellBank(nn.Module):
             "logical_ids": tuple(self.cells.keys()),
             "cell_interface": "neural-computer.event-bridge.v1",
         }
+
+
+class OpaqueAlignmentRouter(nn.Module):
+    """Select an external alignment cell from learned event statistics only."""
+
+    def __init__(self, context_width: int, cell_count: int, hidden: int = 64) -> None:
+        super().__init__()
+        if min(context_width, cell_count, hidden) < 1:
+            raise ValueError("alignment router dimensions must be positive")
+        self.network = nn.Sequential(
+            nn.Linear(context_width, hidden),
+            nn.GELU(),
+            nn.Linear(hidden, cell_count),
+        )
+
+    def forward(self, context: torch.Tensor) -> torch.Tensor:
+        if context.ndim != 2 or context.shape[1] != self.network[0].in_features:
+            raise ValueError("alignment router context has the wrong shape")
+        return self.network(context)
+
+
+@torch.no_grad()
+def _router_context(parent, batch, transform_seed: int) -> torch.Tensor:
+    """Build an opaque episode signature from encoded events, not raw frames."""
+
+    frames = torch.cat(
+        (batch.input_frames, batch.distractor_frames, batch.query_frames),
+        dim=1,
+    )
+    batch_size, frame_count = frames.shape[:2]
+    encoded = parent.encoders["vision"](
+        frames.reshape(batch_size * frame_count, *frames.shape[2:])
+    ).reshape(batch_size, frame_count, EVENT_WIDTH)
+    transformed = _apply_bridge_event_transform(
+        encoded.reshape(-1, EVENT_WIDTH),
+        "composed_orthogonal",
+        transform_seed,
+    ).reshape_as(encoded)
+    mean = transformed.mean(dim=1)
+    standard_deviation = transformed.std(dim=1, unbiased=False)
+    return torch.cat((mean, standard_deviation), dim=-1)
 
 
 def _source_setup(args: argparse.Namespace):
@@ -297,6 +339,140 @@ def _return_scores(
     ]
 
 
+def _train_router(
+    parent,
+    machine,
+    decoder,
+    bank: ExternalAlignmentCellBank,
+    *,
+    transform_seeds: tuple[int, ...],
+    updates: int,
+    batch_size: int,
+    span: int,
+    seed: int,
+    learning_rate: float,
+    eval_every: int,
+    shuffle_outcomes: bool,
+) -> tuple[OpaqueAlignmentRouter, list[dict[str, float | int]]]:
+    router = OpaqueAlignmentRouter(EVENT_WIDTH * 2, len(transform_seeds))
+    optimizer = torch.optim.AdamW(
+        router.parameters(),
+        lr=learning_rate,
+        weight_decay=1e-5,
+    )
+    progress: list[dict[str, float | int]] = []
+    baseline = 0.5
+    previous_reward = 0.5
+    for update in range(1, updates + 1):
+        transform_index = ((update - 1) * 7 + seed) % len(transform_seeds)
+        batch = _batch(
+            OPERATION,
+            count=batch_size,
+            span=span,
+            seed=seed + update * 10_007,
+        )
+        context = _router_context(
+            parent,
+            batch,
+            transform_seeds[transform_index],
+        ).mean(dim=0, keepdim=True)
+        distribution = torch.distributions.Categorical(logits=router(context))
+        selected_index = distribution.sample()
+        selected_bridge = bank.cell(f"cell_{int(selected_index.item())}")
+        with torch.no_grad():
+            _, rewards = _rollout(
+                parent,
+                machine,
+                decoder,
+                batch,
+                (machine.instructions[0],),
+                basis_slots=(0,),
+                train_decoder=False,
+                credit_mode="attempted_bce",
+                event_bridge=selected_bridge,
+                bridge_event_mode="composed_orthogonal",
+                bridge_state_mode="zero",
+                bridge_transform_seed=transform_seeds[transform_index],
+            )
+        reward = float(rewards.mean())
+        delivered_reward = previous_reward if shuffle_outcomes else reward
+        advantage = delivered_reward - baseline
+        entropy = distribution.entropy().mean()
+        loss = -advantage * distribution.log_prob(selected_index).mean()
+        loss = loss - 0.01 * entropy
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(router.parameters(), 1.0)
+        optimizer.step()
+        baseline = 0.95 * baseline + 0.05 * delivered_reward
+        previous_reward = reward
+        if update % eval_every == 0 or update == updates:
+            progress.append(
+                {
+                    "update": update,
+                    "delivered_reward": delivered_reward,
+                    "router_loss": float(loss.detach()),
+                }
+            )
+    return router, progress
+
+
+@torch.no_grad()
+def _evaluate_router(
+    parent,
+    machine,
+    decoder,
+    bank: ExternalAlignmentCellBank,
+    router: OpaqueAlignmentRouter,
+    *,
+    transform_seeds: tuple[int, ...],
+    count: int,
+    span: int,
+    seed: int,
+) -> dict[str, object]:
+    router.eval()
+    rows: list[dict[str, object]] = []
+    for target_index, transform_seed in enumerate(transform_seeds):
+        batch = _batch(
+            OPERATION,
+            count=count,
+            span=span,
+            seed=seed + target_index * 1009,
+        )
+        context = _router_context(parent, batch, transform_seed).mean(
+            dim=0,
+            keepdim=True,
+        )
+        selected_index = int(router(context).argmax(dim=-1).item())
+        action_accuracy = _score(
+            parent,
+            machine,
+            decoder,
+            bank.cell(f"cell_{selected_index}"),
+            transform_seed=transform_seed,
+            count=count,
+            span=span,
+            seed=seed + target_index * 1009,
+        )
+        rows.append(
+            {
+                "target_index": target_index,
+                "selected_index": selected_index,
+                "routing_correct": selected_index == target_index,
+                "action_accuracy": action_accuracy,
+            }
+        )
+    return {
+        "rows": rows,
+        "routing_accuracy": sum(
+            bool(row["routing_correct"]) for row in rows
+        ) / len(rows),
+        "action_mastery": all(
+            float(row["action_accuracy"]) >= MASTERY_THRESHOLD for row in rows
+        ),
+    }
+
+
 def run(args: argparse.Namespace) -> dict[str, object]:
     started = perf_counter()
     torch.set_num_threads(1)
@@ -308,6 +484,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         args.source_updates,
         args.source_restarts,
         args.bridge_updates,
+        args.router_updates,
         args.batch_size,
         args.span,
         args.audit_count,
@@ -512,8 +689,71 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "frozen_source_decoder": decoder_digest_before == decoder_digest_after,
         "source_retained": source_after >= source_accuracy - 0.02,
     }
+    router, router_progress = _train_router(
+        parent,
+        machine,
+        decoder,
+        bank,
+        transform_seeds=TRANSFORM_SEEDS[: args.cell_count],
+        updates=args.router_updates,
+        batch_size=args.batch_size,
+        span=args.span,
+        seed=args.seed + 110_000,
+        learning_rate=args.learning_rate,
+        eval_every=args.eval_every,
+        shuffle_outcomes=False,
+    )
+    shuffled_router, shuffled_router_progress = _train_router(
+        parent,
+        machine,
+        decoder,
+        bank,
+        transform_seeds=TRANSFORM_SEEDS[: args.cell_count],
+        updates=args.router_updates,
+        batch_size=args.batch_size,
+        span=args.span,
+        seed=args.seed + 210_000,
+        learning_rate=args.learning_rate,
+        eval_every=args.eval_every,
+        shuffle_outcomes=True,
+    )
+    router_evaluation = _evaluate_router(
+        parent,
+        machine,
+        decoder,
+        bank,
+        router,
+        transform_seeds=TRANSFORM_SEEDS[: args.cell_count],
+        count=args.audit_count,
+        span=args.span,
+        seed=args.seed + 120_000,
+    )
+    shuffled_router_evaluation = _evaluate_router(
+        parent,
+        machine,
+        decoder,
+        bank,
+        shuffled_router,
+        transform_seeds=TRANSFORM_SEEDS[: args.cell_count],
+        count=args.audit_count,
+        span=args.span,
+        seed=args.seed + 220_000,
+    )
+    gates.update(
+        {
+            "automatic_cell_addressing": (
+                float(router_evaluation["routing_accuracy"]) == 1.0
+                and bool(router_evaluation["action_mastery"])
+            ),
+            "shuffled_router_rejected": (
+                float(shuffled_router_evaluation["routing_accuracy"])
+                < float(router_evaluation["routing_accuracy"])
+                and not bool(shuffled_router_evaluation["action_mastery"])
+            ),
+        }
+    )
     report = {
-        "schema": "neural-computer.outcome-only-alignment-cell-stream-report.v1",
+        "schema": "neural-computer.outcome-only-alignment-cell-stream-report.v2",
         "claim_boundary": (
             "A growable external bank can acquire and retain bounded event-"
             "alignment cells from scalar outcomes while the computation core "
@@ -530,6 +770,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "source_updates": args.source_updates,
             "source_restarts": args.source_restarts,
             "bridge_updates_per_cell": args.bridge_updates,
+            "router_updates": args.router_updates,
             "batch_size": args.batch_size,
             "span": args.span,
             "audit_count": args.audit_count,
@@ -544,21 +785,30 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "corrupted_cell_index": corruption_index,
             "corrupted_returns": corrupted_returns,
             "bank_configuration": bank.configuration(),
+            "router": {
+                "normal": router_evaluation,
+                "shuffled": shuffled_router_evaluation,
+                "normal_progress": router_progress,
+                "shuffled_progress": shuffled_router_progress,
+            },
         },
         "accounting": {
             "unique_verifier_bits": (
                 args.parent_updates * args.batch_size * 2 * 2
                 + args.source_updates * args.batch_size * args.span * 2
                 + args.cell_count * args.bridge_updates * args.batch_size * args.span * 2
+                + args.router_updates * args.batch_size * args.span * 2
             ),
             "unique_logical_lifetimes": (
                 args.source_updates * args.batch_size
                 + args.cell_count * args.bridge_updates * args.batch_size * 2
+                + args.router_updates * args.batch_size * 2
             ),
             "optimizer_updates": (
                 args.parent_updates
                 + args.source_updates
                 + args.cell_count * args.bridge_updates * 2
+                + args.router_updates * 2
             ),
             "replayed_examples": 0,
             "stable_bits_to_threshold": normal_stable_bits,
@@ -572,6 +822,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "source_decoder_before": decoder_digest_before,
             "source_decoder_after": decoder_digest_after,
             "bank": _module_digest(bank),
+            "router": _module_digest(router),
+            "shuffled_router": _module_digest(shuffled_router),
         },
         "gates": gates,
         "promoted": all(gates.values()),
@@ -592,6 +844,7 @@ def main() -> None:
     parser.add_argument("--source-updates", type=int, default=192)
     parser.add_argument("--source-restarts", type=int, default=2)
     parser.add_argument("--bridge-updates", type=int, default=256)
+    parser.add_argument("--router-updates", type=int, default=256)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--span", type=int, default=4)
     parser.add_argument("--audit-count", type=int, default=64)

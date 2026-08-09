@@ -1,0 +1,492 @@
+{
+  "schema": "neural-computer.outcome-only-alignment-cell-stream-report.v2",
+  "claim_boundary": "A growable external bank can acquire and retain bounded event-alignment cells from scalar outcomes while the computation core stays frozen; this is not general continual learning.",
+  "seed": 69317,
+  "configuration": {
+    "operation": "reverse",
+    "cell_count": 3,
+    "transform_seeds": [
+      4271991,
+      98271,
+      193817
+    ],
+    "bridge_event_mode": "composed_orthogonal",
+    "bridge_state_mode": "zero",
+    "parent_updates": 32,
+    "source_updates": 192,
+    "source_restarts": 2,
+    "bridge_updates_per_cell": 256,
+    "router_updates": 256,
+    "batch_size": 16,
+    "span": 4,
+    "audit_count": 64
+  },
+  "results": {
+    "source_accuracy": 0.9921875,
+    "source_attempts": [
+      0.9453125,
+      0.9921875
+    ],
+    "source_after": 0.99609375,
+    "cells": [
+      {
+        "logical_id": "cell_0",
+        "transform_seed": 4271991,
+        "target_before": 0.50390625,
+        "target_after": 0.984375,
+        "shuffled_after": 0.56640625,
+        "stable_bits_to_threshold": 6144,
+        "shuffled_stable_bits_to_threshold": null,
+        "progress": [
+          {
+            "update": 32,
+            "heldout_accuracy": 0.7578125
+          },
+          {
+            "update": 64,
+            "heldout_accuracy": 0.75390625
+          },
+          {
+            "update": 96,
+            "heldout_accuracy": 0.859375
+          },
+          {
+            "update": 128,
+            "heldout_accuracy": 0.9140625
+          },
+          {
+            "update": 160,
+            "heldout_accuracy": 0.9375
+          },
+          {
+            "update": 192,
+            "heldout_accuracy": 0.96875
+          },
+          {
+            "update": 224,
+            "heldout_accuracy": 0.984375
+          },
+          {
+            "update": 256,
+            "heldout_accuracy": 0.984375
+          }
+        ],
+        "shuffled_progress": [
+          {
+            "update": 32,
+            "heldout_accuracy": 0.48046875
+          },
+          {
+            "update": 64,
+            "heldout_accuracy": 0.54296875
+          },
+          {
+            "update": 96,
+            "heldout_accuracy": 0.60546875
+          },
+          {
+            "update": 128,
+            "heldout_accuracy": 0.50390625
+          },
+          {
+            "update": 160,
+            "heldout_accuracy": 0.55859375
+          },
+          {
+            "update": 192,
+            "heldout_accuracy": 0.51953125
+          },
+          {
+            "update": 224,
+            "heldout_accuracy": 0.44921875
+          },
+          {
+            "update": 256,
+            "heldout_accuracy": 0.546875
+          }
+        ],
+        "return_scores_after_admission": [
+          0.984375
+        ]
+      },
+      {
+        "logical_id": "cell_1",
+        "transform_seed": 98271,
+        "target_before": 0.5,
+        "target_after": 0.984375,
+        "shuffled_after": 0.45703125,
+        "stable_bits_to_threshold": 4096,
+        "shuffled_stable_bits_to_threshold": null,
+        "progress": [
+          {
+            "update": 32,
+            "heldout_accuracy": 0.796875
+          },
+          {
+            "update": 64,
+            "heldout_accuracy": 0.828125
+          },
+          {
+            "update": 96,
+            "heldout_accuracy": 0.9140625
+          },
+          {
+            "update": 128,
+            "heldout_accuracy": 0.9375
+          },
+          {
+            "update": 160,
+            "heldout_accuracy": 0.98828125
+          },
+          {
+            "update": 192,
+            "heldout_accuracy": 0.984375
+          },
+          {
+            "update": 224,
+            "heldout_accuracy": 0.98046875
+          },
+          {
+            "update": 256,
+            "heldout_accuracy": 0.984375
+          }
+        ],
+        "shuffled_progress": [
+          {
+            "update": 32,
+            "heldout_accuracy": 0.359375
+          },
+          {
+            "update": 64,
+            "heldout_accuracy": 0.56640625
+          },
+          {
+            "update": 96,
+            "heldout_accuracy": 0.5234375
+          },
+          {
+            "update": 128,
+            "heldout_accuracy": 0.5234375
+          },
+          {
+            "update": 160,
+            "heldout_accuracy": 0.46484375
+          },
+          {
+            "update": 192,
+            "heldout_accuracy": 0.421875
+          },
+          {
+            "update": 224,
+            "heldout_accuracy": 0.45703125
+          },
+          {
+            "update": 256,
+            "heldout_accuracy": 0.47265625
+          }
+        ],
+        "return_scores_after_admission": [
+          0.984375,
+          0.98046875
+        ]
+      },
+      {
+        "logical_id": "cell_2",
+        "transform_seed": 193817,
+        "target_before": 0.46875,
+        "target_after": 0.98828125,
+        "shuffled_after": 0.546875,
+        "stable_bits_to_threshold": 4096,
+        "shuffled_stable_bits_to_threshold": null,
+        "progress": [
+          {
+            "update": 32,
+            "heldout_accuracy": 0.796875
+          },
+          {
+            "update": 64,
+            "heldout_accuracy": 0.8515625
+          },
+          {
+            "update": 96,
+            "heldout_accuracy": 0.91015625
+          },
+          {
+            "update": 128,
+            "heldout_accuracy": 0.99609375
+          },
+          {
+            "update": 160,
+            "heldout_accuracy": 0.984375
+          },
+          {
+            "update": 192,
+            "heldout_accuracy": 0.98046875
+          },
+          {
+            "update": 224,
+            "heldout_accuracy": 0.98828125
+          },
+          {
+            "update": 256,
+            "heldout_accuracy": 0.9921875
+          }
+        ],
+        "shuffled_progress": [
+          {
+            "update": 32,
+            "heldout_accuracy": 0.5
+          },
+          {
+            "update": 64,
+            "heldout_accuracy": 0.578125
+          },
+          {
+            "update": 96,
+            "heldout_accuracy": 0.609375
+          },
+          {
+            "update": 128,
+            "heldout_accuracy": 0.6171875
+          },
+          {
+            "update": 160,
+            "heldout_accuracy": 0.57421875
+          },
+          {
+            "update": 192,
+            "heldout_accuracy": 0.64453125
+          },
+          {
+            "update": 224,
+            "heldout_accuracy": 0.6171875
+          },
+          {
+            "update": 256,
+            "heldout_accuracy": 0.5546875
+          }
+        ],
+        "return_scores_after_admission": [
+          0.984375,
+          0.98046875,
+          0.9921875
+        ]
+      }
+    ],
+    "return_history": [
+      [
+        0.984375
+      ],
+      [
+        0.984375,
+        0.98046875
+      ],
+      [
+        0.984375,
+        0.98046875,
+        0.9921875
+      ]
+    ],
+    "baseline_returns": [
+      0.984375,
+      0.98046875,
+      0.9921875
+    ],
+    "corrupted_cell_index": 1,
+    "corrupted_returns": [
+      0.984375,
+      0.5,
+      0.9921875
+    ],
+    "bank_configuration": {
+      "schema": "neural-computer.external-alignment-cell-bank.v1",
+      "cell_count": 3,
+      "logical_ids": [
+        "cell_0",
+        "cell_1",
+        "cell_2"
+      ],
+      "cell_interface": "neural-computer.event-bridge.v1"
+    },
+    "router": {
+      "normal": {
+        "rows": [
+          {
+            "target_index": 0,
+            "selected_index": 0,
+            "routing_correct": true,
+            "action_accuracy": 0.984375
+          },
+          {
+            "target_index": 1,
+            "selected_index": 1,
+            "routing_correct": true,
+            "action_accuracy": 0.9765625
+          },
+          {
+            "target_index": 2,
+            "selected_index": 2,
+            "routing_correct": true,
+            "action_accuracy": 0.99609375
+          }
+        ],
+        "routing_accuracy": 1.0,
+        "action_mastery": true
+      },
+      "shuffled": {
+        "rows": [
+          {
+            "target_index": 0,
+            "selected_index": 0,
+            "routing_correct": true,
+            "action_accuracy": 0.984375
+          },
+          {
+            "target_index": 1,
+            "selected_index": 2,
+            "routing_correct": false,
+            "action_accuracy": 0.5
+          },
+          {
+            "target_index": 2,
+            "selected_index": 2,
+            "routing_correct": true,
+            "action_accuracy": 0.98828125
+          }
+        ],
+        "routing_accuracy": 0.6666666666666666,
+        "action_mastery": false
+      },
+      "normal_progress": [
+        {
+          "update": 32,
+          "delivered_reward": 0.453125,
+          "router_loss": -0.4214058220386505
+        },
+        {
+          "update": 64,
+          "delivered_reward": 0.984375,
+          "router_loss": 0.03684619441628456
+        },
+        {
+          "update": 96,
+          "delivered_reward": 0.984375,
+          "router_loss": 0.003191318828612566
+        },
+        {
+          "update": 128,
+          "delivered_reward": 1.0,
+          "router_loss": 0.0015319811645895243
+        },
+        {
+          "update": 160,
+          "delivered_reward": 0.984375,
+          "router_loss": -0.00035314203705638647
+        },
+        {
+          "update": 192,
+          "delivered_reward": 1.0,
+          "router_loss": -0.0001946676056832075
+        },
+        {
+          "update": 224,
+          "delivered_reward": 0.5625,
+          "router_loss": -1.5445683002471924
+        },
+        {
+          "update": 256,
+          "delivered_reward": 0.984375,
+          "router_loss": -0.0004783410404343158
+        }
+      ],
+      "shuffled_progress": [
+        {
+          "update": 32,
+          "delivered_reward": 0.453125,
+          "router_loss": -0.25932908058166504
+        },
+        {
+          "update": 64,
+          "delivered_reward": 0.453125,
+          "router_loss": -0.2153192013502121
+        },
+        {
+          "update": 96,
+          "delivered_reward": 0.484375,
+          "router_loss": -0.06975548714399338
+        },
+        {
+          "update": 128,
+          "delivered_reward": 0.484375,
+          "router_loss": -0.2713433504104614
+        },
+        {
+          "update": 160,
+          "delivered_reward": 0.984375,
+          "router_loss": 0.2308494597673416
+        },
+        {
+          "update": 192,
+          "delivered_reward": 0.984375,
+          "router_loss": 0.30020540952682495
+        },
+        {
+          "update": 224,
+          "delivered_reward": 0.53125,
+          "router_loss": -0.22373460233211517
+        },
+        {
+          "update": 256,
+          "delivered_reward": 0.984375,
+          "router_loss": 0.15263144671916962
+        }
+      ]
+    }
+  },
+  "accounting": {
+    "unique_verifier_bits": 157696,
+    "unique_logical_lifetimes": 35840,
+    "optimizer_updates": 2272,
+    "replayed_examples": 0,
+    "stable_bits_to_threshold": [
+      6144,
+      4096,
+      4096
+    ],
+    "shuffled_stable_bits_to_threshold": [
+      null,
+      null,
+      null
+    ]
+  },
+  "digests": {
+    "parent_before": "3ac5691ace6bbe09b18cbbb107371d34af75345f7b00ccf1fc9893349a070557",
+    "parent_after": "3ac5691ace6bbe09b18cbbb107371d34af75345f7b00ccf1fc9893349a070557",
+    "source_machine_before": "d8d562d788c0fcf4b47a6422624eaf534f845e9ae8e428ccfa7b1dc779a71488",
+    "source_machine_after": "d8d562d788c0fcf4b47a6422624eaf534f845e9ae8e428ccfa7b1dc779a71488",
+    "source_decoder_before": "7f2fa54f089ac47d02542ff2c1609ddb3e2f7eb1379e4e2c78abf2dec9901f2e",
+    "source_decoder_after": "7f2fa54f089ac47d02542ff2c1609ddb3e2f7eb1379e4e2c78abf2dec9901f2e",
+    "bank": "552e17899a1d99c2780a4c5a9a453c0bb8862f548730adf567926e217b125f00",
+    "router": "1e90303489faa6b1f451159905815102000eb0e6fccb6251f741fc3339f52c8c",
+    "shuffled_router": "1f8de0881d49d28176c195ed0f19361894880fca8472abb294ef104cca8e2bda"
+  },
+  "gates": {
+    "source_mastered": true,
+    "every_cell_target_mastered": true,
+    "every_cell_representation_shifted": true,
+    "shuffled_outcomes_rejected": true,
+    "stable_prefix_for_every_cell": true,
+    "no_shuffled_stable_prefix": true,
+    "return_retention": true,
+    "single_cell_corruption_is_local": true,
+    "corrupted_cell_degrades": true,
+    "frozen_parent": true,
+    "frozen_source_machine": true,
+    "frozen_source_decoder": true,
+    "source_retained": true,
+    "automatic_cell_addressing": true,
+    "shuffled_router_rejected": true
+  },
+  "promoted": true,
+  "elapsed_seconds": 203.8863194999867
+}

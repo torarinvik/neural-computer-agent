@@ -5329,3 +5329,27 @@ The decisive remaining bottleneck is automatic addressing: the system still
 needs to infer which opaque alignment cell applies to the current stream,
 without a task or frontend identity, and must do so under longer sequences,
 cell eviction, and genuinely ambiguous drift.
+
+## Outcome-only automatic alignment-cell addressing (2026-08-09)
+
+The external alignment bank now has a learned router. It receives only pooled
+statistics of the current learned event tensors, selects an opaque cell, and
+learns from the scalar verifier outcome of the selected action. Transform
+seeds, frontend identities, task labels, and correct actions are excluded from
+the router optimizer. A reward-misaligned control delivers the previous
+episode's scalar outcome to the current choice.
+
+Across seeds `69316` and `69317`, routing accuracy was `1.000` in both runs.
+Selected-cell action accuracy was `0.965`/`0.988`/`0.992` and
+`0.984`/`0.977`/`0.996`; shuffled routers reached only `0.333` and `0.667`
+routing accuracy and failed action mastery. The three-cell growth,
+no-replay retention, single-cell corruption, and frozen-core gates all passed.
+Reports and accounting are archived in
+`session_records/sequence_working_memory_2026-08-02/outcome_only_alignment_cell_routing_promoted_2026-08-09/`.
+
+This closes the bounded stream's addressing gap: external alignment cells can
+grow, retain older capabilities, and be selected from learned event evidence
+using scalar credit. The next frontier is more demanding: unknown frontend
+changes must be discovered online rather than drawn from a fixed registered
+transform set, and the bank must support eviction/consolidation while keeping
+the same no-replay retention guarantees.
