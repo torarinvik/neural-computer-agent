@@ -31,6 +31,7 @@ from neural_computer import (
     AmodalEventBridge,
     ExternalRegisterInstruction,
     OpaqueProtocolDecoder,
+    CanonicalRegisterReadout,
     PersistentOpaqueStateStore,
     paired_counterfactual_ranking_loss,
 )
@@ -159,6 +160,7 @@ def _rollout(
     value_head: OpaqueVerifierValue | None = None,
     q_head: OpaqueVerifierQ | None = None,
     event_bridge: AmodalEventBridge | None = None,
+    register_readout: CanonicalRegisterReadout | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     if execution_mode not in ("in_place", "read_execute"):
         raise ValueError(f"unknown execution mode: {execution_mode!r}")
@@ -218,7 +220,10 @@ def _rollout(
             instructions=instructions,
             basis_slots=basis_slots,
         )
-        return decoder(register), register
+        decoded_register = (
+            register if register_readout is None else register_readout(register)
+        )
+        return decoder(decoded_register), register
 
     quiet = _feedback(
         previous_action,
@@ -564,6 +569,7 @@ def _accuracy(
     value_head: OpaqueVerifierValue | None = None,
     q_head: OpaqueVerifierQ | None = None,
     event_bridge: AmodalEventBridge | None = None,
+    register_readout: CanonicalRegisterReadout | None = None,
     reverse_operations: bool = False,
     reverse_sequence: bool = False,
 ) -> float:
@@ -593,6 +599,7 @@ def _accuracy(
             value_head=value_head,
             q_head=q_head,
             event_bridge=event_bridge,
+            register_readout=register_readout,
         )[1].mean()
     )
 

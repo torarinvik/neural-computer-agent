@@ -24,6 +24,7 @@ from experiments.working_memory_continuous.canonical_growth_pressure_test import
 from neural_computer import (
     AmodalEventBridge,
     CapabilityConditionedEventBridge,
+    CanonicalRegisterReadout,
     ExternalRegisterInstruction,
     OpaqueProtocolDecoder,
 )
@@ -83,6 +84,7 @@ def _score(
         event_bridge=candidate["bridge"],
         generated_composition_ids=candidate.get("generated_composition_ids"),
         generated_compositions=candidate.get("generated_compositions"),
+        register_readout=candidate.get("readout"),
     )
 
 
@@ -165,6 +167,7 @@ def _train_interleaved_phase(
             credit_mode="attempted_bce",
             shuffle_outcomes=shuffle_outcomes,
             event_bridge=candidate["bridge"],
+            register_readout=candidate.get("readout"),
         )
         optimizer = candidate["phase_optimizer"]
         optimizer.zero_grad(set_to_none=True)
@@ -211,6 +214,7 @@ def _prepare_candidates(
     composition_programs: tuple[tuple[str, ...], ...] = COMPOSITION_PROGRAMS,
     bridge_prior_state: dict[str, torch.Tensor] | None = None,
     conditioned_bridge_prior: bool = False,
+    readout_prior_state: dict[str, torch.Tensor] | None = None,
 ) -> list[dict[str, object]]:
     candidates = []
     for index, operation in enumerate(operations):
@@ -269,6 +273,13 @@ def _prepare_candidates(
                     )
                 for parameter in bridge.parameters():
                     parameter.requires_grad_(False)
+            readout = CanonicalRegisterReadout(
+                REGISTER_WIDTH, REGISTER_WIDTH, hidden=64
+            )
+            if readout_prior_state is not None:
+                readout.load_state_dict(readout_prior_state, strict=True)
+                for parameter in readout.parameters():
+                    parameter.requires_grad_(False)
             candidates.append(
                 {
                     "operation": "generated_composition",
@@ -283,6 +294,7 @@ def _prepare_candidates(
                     "decoder": decoder,
                     "bridge": bridge,
                     "bridge_frozen": bridge_prior_state is not None,
+                    "readout": readout,
                 }
             )
     return candidates
@@ -507,6 +519,96 @@ def _train_shared_bridge_prior(
     return bridge, progress
 
 
+def _train_canonical_readout_prior(
+    parent,
+    machine,
+    source_specs,
+    *,
+    args: argparse.Namespace,
+) -> tuple[CanonicalRegisterReadout, dict[str, torch.Tensor], list[dict[str, object]]]:
+    """Fit one shared register-to-output convention on mastered source skills."""
+    readout = CanonicalRegisterReadout(REGISTER_WIDTH, REGISTER_WIDTH, hidden=64)
+    decoders = [
+        OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
+        for _ in source_specs
+    ]
+    for decoder, (_, _, source_decoder, _) in zip(decoders, source_specs, strict=True):
+        decoder.load_state_dict(source_decoder.state_dict(), strict=True)
+    _freeze(machine)
+    optimizer = torch.optim.AdamW(
+        list(readout.parameters())
+        + [parameter for decoder in decoders for parameter in decoder.parameters()],
+        lr=args.learning_rate,
+        weight_decay=1e-5,
+    )
+    best_state = None
+    best_floor = float("-inf")
+    progress = []
+    for update in range(1, args.readout_prior_updates + 1):
+        index = (update - 1) % len(source_specs)
+        operation, instruction, _, basis_slot = source_specs[index]
+        batch = _batch(
+            operation,
+            count=args.batch_size,
+            span=args.span,
+            seed=args.seed + 2_300_000 + update * 10_007,
+        )
+        loss, _ = _rollout(
+            parent,
+            machine,
+            decoders[index],
+            batch,
+            (instruction,),
+            basis_slots=(basis_slot,),
+            train_decoder=True,
+            credit_mode="attempted_bce",
+            register_readout=readout,
+        )
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(
+            list(readout.parameters())
+            + [parameter for decoder in decoders for parameter in decoder.parameters()],
+            1.0,
+        )
+        optimizer.step()
+        if update % args.eval_every == 0 or update == args.readout_prior_updates:
+            scores = [
+                _accuracy(
+                    parent,
+                    machine,
+                    decoder,
+                    operation=operation_name,
+                    instructions=(instruction_value,),
+                    basis_slots=(slot,),
+                    count=args.source_selection_audit_count,
+                    span=args.span,
+                    seed=args.seed + 70_000 + source_index * 101,
+                    credit_mode="paired_counterfactual",
+                    register_readout=readout,
+                )
+                for source_index, (
+                    operation_name,
+                    instruction_value,
+                    _,
+                    slot,
+                ) in enumerate(source_specs)
+                for decoder in (decoders[source_index],)
+            ]
+            floor = min(scores)
+            progress.append({"update": update, "source_scores": scores})
+            if floor > best_floor:
+                best_floor = floor
+                best_state = {
+                    name: value.detach().clone()
+                    for name, value in readout.state_dict().items()
+                }
+    if best_state is None:
+        raise RuntimeError("canonical readout prior did not produce a checkpoint")
+    readout.load_state_dict(best_state, strict=True)
+    return readout, best_state, progress
+
+
 def run(args: argparse.Namespace) -> dict[str, object]:
     torch.set_num_threads(1)
     target_operations = tuple(
@@ -640,6 +742,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         bridge_prior_source_after = [
             source_score(spec, index) for index, spec in enumerate(source_specs)
         ]
+    readout_prior_state = None
+    readout_prior_progress = []
+    if args.reuse_canonical_readout_prior:
+        _, readout_prior_state, readout_prior_progress = _train_canonical_readout_prior(
+            parent,
+            machine,
+            source_specs,
+            args=args,
+        )
     decoder_prior_state = None
     if args.reuse_decoder_prior:
         decoder_prior_state = {
@@ -655,6 +766,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         composition_programs=composition_programs,
         bridge_prior_state=bridge_prior_state,
         conditioned_bridge_prior=args.reuse_conditioned_bridge_prior,
+        readout_prior_state=readout_prior_state,
     )
     retained_before = [
         source_score(spec, index) for index, spec in enumerate(source_specs)
@@ -1002,6 +1114,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         if args.reuse_shared_bridge_prior
         else 0
     )
+    readout_prior_training_bits = (
+        args.readout_prior_updates * args.batch_size * args.span * 2
+        if args.reuse_canonical_readout_prior
+        else 0
+    )
     normal_target_training_bits = candidate_count * (
         args.warmup_updates * args.batch_size * args.warmup_span * 2
         + (args.focus_updates + args.target_updates) * args.batch_size * args.span * 2
@@ -1036,6 +1153,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         + source_training_bits
         + source_selection_bits
         + bridge_prior_training_bits
+        + readout_prior_training_bits
         + normal_target_training_bits
         + shuffled_target_training_bits
         + fresh_transfer_training_bits
@@ -1066,6 +1184,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "retained_before": retained_before,
         "bridge_prior_source_after": bridge_prior_source_after,
         "bridge_prior_progress": bridge_prior_progress,
+        "canonical_readout_prior": (
+            "source_trained_frozen_register_readout"
+            if args.reuse_canonical_readout_prior
+            else None
+        ),
+        "canonical_readout_prior_progress": readout_prior_progress,
         "targets": records,
         "fresh_transfer": transfer_records,
         "transfer_promoted": bool(
@@ -1085,6 +1209,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "source_training_verifier_bits": source_training_bits,
             "source_selection_verifier_bits": source_selection_bits,
             "bridge_prior_training_verifier_bits": bridge_prior_training_bits,
+            "canonical_readout_prior_training_verifier_bits": readout_prior_training_bits,
             "normal_target_training_verifier_bits": normal_target_training_bits,
             "shuffled_target_training_verifier_bits": shuffled_target_training_bits,
             "fresh_transfer_training_verifier_bits": fresh_transfer_training_bits,
@@ -1098,6 +1223,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 + (
                     args.bridge_prior_updates
                     if args.reuse_shared_bridge_prior
+                    else 0
+                )
+                + (
+                    args.readout_prior_updates
+                    if args.reuse_canonical_readout_prior
                     else 0
                 )
                 + candidate_count * (args.warmup_updates + args.focus_updates + args.target_updates)
@@ -1177,12 +1307,19 @@ def main() -> None:
         help="condition a reusable bridge on opaque source-program vectors",
     )
     parser.add_argument(
+        "--reuse-canonical-readout-prior",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="freeze a source-trained canonical register readout for compositions",
+    )
+    parser.add_argument(
         "--curriculum-fresh-control",
         action=argparse.BooleanOptionalAction,
         default=False,
         help="acquire source primitives before training each fresh target control",
     )
     parser.add_argument("--bridge-prior-updates", type=int, default=128)
+    parser.add_argument("--readout-prior-updates", type=int, default=256)
     parser.add_argument("--retention-regression-tolerance", type=float, default=0.02)
     args = parser.parse_args()
     print(json.dumps(run(args), indent=2))

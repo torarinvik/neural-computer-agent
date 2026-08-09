@@ -219,6 +219,20 @@
       "retention_on_mastered_primitives": "all exact paired source deltas zero",
       "positive_transfer": false,
       "decision": "reject positive transfer; retain as decisive source-state geometry diagnostic"
+    },
+    {
+      "experiment": "interleaved_canonical_register_readout_diagnostic",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "A source-outcome-trained, frozen canonical register readout improves composition transfer after matched source curriculum.",
+      "composition_program_count": 2,
+      "source_restarts": 2,
+      "curriculum_fresh_control": true,
+      "canonical_readout_prior_training_verifier_bits_per_run": 32768,
+      "replayed_examples": 0,
+      "retention_on_mastered_primitives": "all exact paired source deltas zero; behavior suites passed",
+      "positive_transfer": "seed 69317 only for one of two programs",
+      "decision": "reject replicated positive transfer; retain identity-initialized readout as an explicit interface diagnostic, not a capability claim"
     }
   ]
 }

@@ -1,12 +1,44 @@
 import torch
 
 from neural_computer import (
+    CanonicalRegisterReadout,
     ExternalCapabilityRegisterMachine,
     ExternalRegisterBasisCompatibilityPrior,
     ExternalRegisterComputeBasis,
     ExternalRegisterInstruction,
     IntentEvent,
 )
+
+
+def test_canonical_register_readout_is_identity_initialized_and_versioned() -> None:
+    torch.manual_seed(913)
+    readout = CanonicalRegisterReadout(8, 8, hidden=12)
+    register = torch.randn(3, 8)
+
+    assert readout.configuration()["schema"] == (
+        "neural-computer.external-register-canonical-readout.v1"
+    )
+    assert torch.equal(readout(register), register)
+
+    with torch.no_grad():
+        readout.base.bias[0] = 1.0
+    assert not torch.equal(readout(register), register)
+
+
+def test_canonical_register_readout_validates_register_shape_and_finiteness() -> None:
+    readout = CanonicalRegisterReadout(8, 6)
+    try:
+        readout(torch.zeros(2, 7))
+    except ValueError as error:
+        assert "wrong shape" in str(error)
+    else:
+        raise AssertionError("expected shape validation")
+    try:
+        readout(torch.full((2, 8), float("nan")))
+    except ValueError as error:
+        assert "finite" in str(error)
+    else:
+        raise AssertionError("expected finite-value validation")
 
 
 def _machine() -> ExternalCapabilityRegisterMachine:

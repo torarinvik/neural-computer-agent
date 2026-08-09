@@ -32,6 +32,58 @@ EXTERNAL_REGISTER_BASIS_SCHEMA = "neural-computer.external-register-compute-basi
 EXTERNAL_REGISTER_COMPATIBILITY_SCHEMA = (
     "neural-computer.external-register-compatibility-prior.v1"
 )
+EXTERNAL_REGISTER_READOUT_SCHEMA = (
+    "neural-computer.external-register-canonical-readout.v1"
+)
+
+
+class CanonicalRegisterReadout(nn.Module):
+    """Learned, protocol-independent boundary from register state to output state.
+
+    The readout is deliberately separate from the register interpreter.  It is
+    identity-initialized, so inserting it does not change an existing runtime,
+    while its residual path can learn a shared coordinate/scale convention
+    across mastered external programs.  It consumes only the executed
+    register; no operation, modality, or verifier metadata is available here.
+    """
+
+    def __init__(self, register_width: int, output_width: int, *, hidden: int = 64) -> None:
+        super().__init__()
+        if min(register_width, output_width, hidden) < 1:
+            raise ValueError("canonical readout dimensions must be positive")
+        self.register_width = int(register_width)
+        self.output_width = int(output_width)
+        self.hidden = int(hidden)
+        self.base = nn.Linear(register_width, output_width)
+        if register_width == output_width:
+            nn.init.eye_(self.base.weight)
+        else:
+            nn.init.xavier_uniform_(self.base.weight)
+        nn.init.zeros_(self.base.bias)
+        self.residual = nn.Sequential(
+            nn.Linear(register_width, hidden),
+            nn.GELU(),
+            nn.Linear(hidden, output_width),
+        )
+        nn.init.zeros_(self.residual[-1].weight)
+        nn.init.zeros_(self.residual[-1].bias)
+
+    def configuration(self) -> dict[str, int | str]:
+        return {
+            "schema": EXTERNAL_REGISTER_READOUT_SCHEMA,
+            "register_width": self.register_width,
+            "output_width": self.output_width,
+            "hidden": self.hidden,
+            "initialization": "identity_plus_zero_residual_v1",
+            "metadata": "register_only_v1",
+        }
+
+    def forward(self, register: torch.Tensor) -> torch.Tensor:
+        if register.ndim != 2 or register.shape[1] != self.register_width:
+            raise ValueError("register has the wrong shape for canonical readout")
+        if not bool(torch.isfinite(register).all()):
+            raise ValueError("register must contain only finite values")
+        return self.base(register) + self.residual(register)
 
 
 @dataclass(frozen=True)

@@ -611,3 +611,18 @@ Behavioral promotion and retention remain intact. The next bottleneck is
 aligning learned source-state geometry with new program/output paths, not
 simply storing more source skills. Evidence is in
 `interleaved_conditioned_curriculum_transfer/`.
+
+## Canonical register readout diagnostic — rejected for transfer
+
+The raw executed register is now separated from the decoder by an explicit,
+identity-initialized `CanonicalRegisterReadout`. A single readout was trained
+from scalar outcomes across the three mastered source skills, frozen, and
+then supplied to two new composition decoders. Both seeds passed causal,
+retention, and behavior gates with zero source regression and zero replay.
+
+The matched fresh curriculum control did not replicate positive transfer:
+seed `69316` favored the fresh path on both compositions, while seed `69317`
+favored it on one and tied on the other. The readout is retained as clean
+interface infrastructure and a diagnostic boundary, but the learned
+source-state geometry remains the bottleneck. Output normalization alone is
+not enough to make independently acquired external programs composable.
