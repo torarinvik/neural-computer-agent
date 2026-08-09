@@ -594,3 +594,20 @@ not reach stable mastery, so this promotes robust bounded behavior—not
 positive sample-efficiency transfer. Each run used zero replay.
 
 Evidence is in `interleaved_conditioned_bridge_restart_repair/`.
+
+## Curriculum-matched fresh transfer — rejected
+
+The fresh control was strengthened to acquire the same three source
+primitives before learning each composition. This removes the confound that
+the inherited path had mastered source programs while the prior fresh arm
+had not. The result is negative for transfer: in both seeds, fresh target
+adaptation reached stable mastery in `8,192` target bits for both programs,
+while inherited adaptation required `8,192`/`16,384` in seed `69317` and
+`16,384`/`24,576` in seed `69316`. Fresh source acquisition cost an additional
+`73,728` bits per composition, but the inherited path still did not pass the
+strict positive-transfer gate.
+
+Behavioral promotion and retention remain intact. The next bottleneck is
+aligning learned source-state geometry with new program/output paths, not
+simply storing more source skills. Evidence is in
+`interleaved_conditioned_curriculum_transfer/`.

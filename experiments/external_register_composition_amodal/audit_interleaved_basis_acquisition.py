@@ -395,6 +395,21 @@ def _source_bridge_accuracy(
     )
 
 
+def _fresh_source_curriculum(parent, *, args, seed_base: int):
+    """Acquire a matched fresh source bank before target adaptation."""
+    machine = _new_machine(
+        len(SOURCE_OPERATIONS),
+        operator_mode=args.operator_mode,
+    )
+    for _ in SOURCE_OPERATIONS:
+        machine.add_basis_slot()
+    for index in range(len(SOURCE_OPERATIONS)):
+        decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
+        source_args = copy.copy(args)
+        source_args.seed = seed_base + index * 100_003
+        _train_source(parent, machine, decoder, index, source_args)
+    return machine
+
 def _train_shared_bridge_prior(
     parent,
     machine,
@@ -737,12 +752,27 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         if candidate["operation"] != "generated_composition":
             continue
         program = tuple(candidate["composition_program"])
-        fresh_machine = _new_machine(
-            len(SOURCE_OPERATIONS),
-            operator_mode=args.operator_mode,
-        )
-        for _ in SOURCE_OPERATIONS:
-            fresh_machine.add_basis_slot()
+        fresh_source_training_bits = 0
+        if args.curriculum_fresh_control:
+            fresh_machine = _fresh_source_curriculum(
+                parent,
+                args=args,
+                seed_base=args.seed + 2_000_000 + index * 20_003,
+            )
+            fresh_source_training_bits = (
+                len(SOURCE_OPERATIONS)
+                * args.source_updates
+                * args.batch_size
+                * args.span
+                * 2
+            )
+        else:
+            fresh_machine = _new_machine(
+                len(SOURCE_OPERATIONS),
+                operator_mode=args.operator_mode,
+            )
+            for _ in SOURCE_OPERATIONS:
+                fresh_machine.add_basis_slot()
         source_indices = tuple(
             SOURCE_OPERATIONS.index(primitive) for primitive in program
         )
@@ -822,6 +852,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 "inherited_stable_bits": inherited_stable,
                 "fresh_stable_bits": fresh_stable,
                 "fresh_accuracy": fresh_accuracy,
+                "fresh_source_training_verifier_bits": fresh_source_training_bits,
                 "positive_transfer": bool(
                     inherited_stable is not None
                     and fresh_stable is not None
@@ -930,6 +961,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         args.warmup_updates * args.batch_size
         + (args.focus_updates + args.target_updates) * args.batch_size
     )
+    fresh_curriculum_source_lifetimes = sum(
+        int(row["fresh_source_training_verifier_bits"]) // (args.span * 2)
+        for row in transfer_records
+    )
     audit_lifetimes = (
         candidate_count * args.audit_count * 3
         + candidate_count * args.consolidation_audit_count
@@ -948,6 +983,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         + normal_target_training_lifetimes
         + shuffled_target_training_lifetimes
         + fresh_transfer_training_lifetimes
+        + fresh_curriculum_source_lifetimes
         + audit_lifetimes
     )
     parent_training_bits = args.parent_updates * args.batch_size * 2 * 2
@@ -978,6 +1014,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         * args.span
         * 2
     )
+    fresh_curriculum_source_bits = sum(
+        int(row["fresh_source_training_verifier_bits"])
+        for row in transfer_records
+    )
     progress_audit_bits = candidate_count * 2 * (
         (args.warmup_updates + args.eval_every - 1) // args.eval_every
         * args.audit_count * args.warmup_span * 2
@@ -999,6 +1039,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         + normal_target_training_bits
         + shuffled_target_training_bits
         + fresh_transfer_training_bits
+        + fresh_curriculum_source_bits
         + progress_audit_bits
         + suite_and_control_bits
     )
@@ -1031,6 +1072,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             transfer_records
             and all(row["positive_transfer"] for row in transfer_records)
         ),
+        "curriculum_fresh_control": args.curriculum_fresh_control,
         "interleaving": {
             "schedule": "round_robin_per_local_update",
             "candidate_count": len(candidates),
@@ -1046,6 +1088,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "normal_target_training_verifier_bits": normal_target_training_bits,
             "shuffled_target_training_verifier_bits": shuffled_target_training_bits,
             "fresh_transfer_training_verifier_bits": fresh_transfer_training_bits,
+            "fresh_curriculum_source_verifier_bits": fresh_curriculum_source_bits,
             "progress_audit_verifier_bits": progress_audit_bits,
             "suite_and_control_verifier_bits": suite_and_control_bits,
             "unique_verifier_bits": unique_verifier_bits,
@@ -1061,6 +1104,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 + candidate_count * (args.warmup_updates + args.focus_updates + args.target_updates)
                 + fresh_transfer_candidate_count
                 * (args.warmup_updates + args.focus_updates + args.target_updates)
+                + (
+                    fresh_transfer_candidate_count
+                    * len(SOURCE_OPERATIONS)
+                    * args.source_updates
+                    if args.curriculum_fresh_control
+                    else 0
+                )
             ),
             "unique_logical_lifetimes": logical_lifetimes,
         },
@@ -1125,6 +1175,12 @@ def main() -> None:
         action=argparse.BooleanOptionalAction,
         default=False,
         help="condition a reusable bridge on opaque source-program vectors",
+    )
+    parser.add_argument(
+        "--curriculum-fresh-control",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="acquire source primitives before training each fresh target control",
     )
     parser.add_argument("--bridge-prior-updates", type=int, default=128)
     parser.add_argument("--retention-regression-tolerance", type=float, default=0.02)

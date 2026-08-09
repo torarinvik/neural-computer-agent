@@ -4130,3 +4130,11 @@ conditioned-bridge behavior rung across both seeds. This promotes bounded
 source-robust compositional retention, while matched fresh learners still do
 not establish positive sample-efficiency transfer. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_real_basis_acquisition_2026-08-08/interleaved_conditioned_bridge_restart_repair/`.
+
+The fresh transfer control now acquires the same source primitives before
+target composition learning. Fresh learners reached stable target mastery in
+8,192 verifier bits for both programs across both seeds, while inherited paths
+were slower in three of four comparisons. This rejects positive transfer and
+localizes the bottleneck to source-state geometry/interface alignment rather
+than memory capacity. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_real_basis_acquisition_2026-08-08/interleaved_conditioned_curriculum_transfer/`.

@@ -1886,3 +1886,12 @@ zero replay. Fresh stable-transfer mastery still failed, so this is a bounded
 robustness promotion rather than a general sample-efficiency claim. Evidence
 is in
 `external_register_real_basis_acquisition_2026-08-08/interleaved_conditioned_bridge_restart_repair/`.
+
+## Curriculum-matched fresh transfer (2026-08-09)
+
+Fresh controls first acquired the same source primitives before composition
+learning. They reached target mastery in 8,192 bits for both programs in both
+seeds, while inherited paths required more target bits in three of four
+comparisons. Positive transfer is therefore rejected; retention and behavior
+promotion remain intact. Evidence is in
+`external_register_real_basis_acquisition_2026-08-08/interleaved_conditioned_curriculum_transfer/`.

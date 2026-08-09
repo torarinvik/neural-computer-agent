@@ -204,6 +204,21 @@
       "behavior_promoted": true,
       "positive_transfer": false,
       "decision": "promote bounded source-robust conditioned composition; retain fresh-transfer bottleneck"
+    },
+    {
+      "experiment": "interleaved_conditioned_bridge_curriculum_matched_fresh_transfer",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "After both inherited and fresh systems acquire the same source primitives, the conditioned external memory path reduces target composition cost.",
+      "composition_program_count": 2,
+      "curriculum_fresh_control": true,
+      "fresh_source_verifier_bits_per_composition": 73728,
+      "inherited_target_stable_bits": [[16384, 24576], [8192, 16384]],
+      "fresh_target_stable_bits": [[8192, 8192], [8192, 8192]],
+      "replayed_examples": 0,
+      "retention_on_mastered_primitives": "all exact paired source deltas zero",
+      "positive_transfer": false,
+      "decision": "reject positive transfer; retain as decisive source-state geometry diagnostic"
     }
   ]
 }
