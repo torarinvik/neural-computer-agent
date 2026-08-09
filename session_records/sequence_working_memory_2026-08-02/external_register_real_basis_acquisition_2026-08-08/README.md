@@ -1045,3 +1045,10 @@ is the clearest current diagnosis: external slots and routing can fit
 order-specific readouts, but they do not yet converge on a common
 action-relevant representation. The raw report is
 `protected_bounded_meta_shared_decoder/report_seed69316.json`.
+
+Adding a trainable shared canonical register readout before that decoder also
+failed: the floor fell to `0.1875` (`0.1875, 0.8125, 0.6094, 0.6016, 0.8203,
+0.3906`) with exact source retention. The readout is therefore not promoted;
+the mismatch is upstream in the operator-learning contract, not merely in the
+final decoder. Raw report:
+`protected_bounded_meta_shared_readout/report_seed69316.json`.

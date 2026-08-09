@@ -1,0 +1,261 @@
+{
+  "schema": "neural-computer.external-register-interleaved-basis-acquisition-audit.v1",
+  "seed": 69316,
+  "source_operations": [
+    "reverse",
+    "adjacent_xor",
+    "complement"
+  ],
+  "source_acquisition_mode": "sequential_with_restarts",
+  "joint_source_updates": 0,
+  "sequence_calibration_updates": 384,
+  "sequence_calibration_trainable_surface": "sequence_operator_memory_slots_plus_learned_router_plus_outcome_probe_plus_shared_decoder_plus_readout",
+  "sequence_calibration_accepted": true,
+  "sequence_calibration_source_before": [
+    0.96875,
+    0.96875,
+    0.9765625
+  ],
+  "sequence_calibration_source_after": [
+    0.96875,
+    0.96875,
+    0.9765625
+  ],
+  "sequence_calibration_progress": [
+    {
+      "update": 64,
+      "sequence_floor": 0.4140625,
+      "source_floor": 0.96875,
+      "sequence_scores": [
+        0.5234375,
+        0.484375,
+        0.5625,
+        0.5859375,
+        0.4765625,
+        0.4140625
+      ]
+    },
+    {
+      "update": 128,
+      "sequence_floor": 0.3828125,
+      "source_floor": 0.96875,
+      "sequence_scores": [
+        0.3828125,
+        0.625,
+        0.59375,
+        0.5859375,
+        0.625,
+        0.40625
+      ]
+    },
+    {
+      "update": 192,
+      "sequence_floor": 0.28125,
+      "source_floor": 0.96875,
+      "sequence_scores": [
+        0.28125,
+        0.71875,
+        0.6171875,
+        0.609375,
+        0.703125,
+        0.375
+      ]
+    },
+    {
+      "update": 256,
+      "sequence_floor": 0.2890625,
+      "source_floor": 0.96875,
+      "sequence_scores": [
+        0.2890625,
+        0.734375,
+        0.4921875,
+        0.4765625,
+        0.7265625,
+        0.4921875
+      ]
+    },
+    {
+      "update": 320,
+      "sequence_floor": 0.4140625,
+      "source_floor": 0.96875,
+      "sequence_scores": [
+        0.4140625,
+        0.59375,
+        0.5625,
+        0.5703125,
+        0.59375,
+        0.4375
+      ]
+    },
+    {
+      "update": 384,
+      "sequence_floor": 0.1875,
+      "source_floor": 0.96875,
+      "sequence_scores": [
+        0.1875,
+        0.8125,
+        0.609375,
+        0.6015625,
+        0.8203125,
+        0.390625
+      ]
+    }
+  ],
+  "sequence_memory": null,
+  "sequence_operator_memory": {
+    "schema": "neural-computer.external-sequence-operator-memory.v1",
+    "register_width": 32,
+    "instruction_width": 16,
+    "operator_rank": 8,
+    "router_hidden": 32,
+    "router_temperature": 0.25,
+    "route_encoder": "gru_order_sensitive_v1",
+    "slot_count": 6,
+    "growth": "append_only_external_operator_state_v1"
+  },
+  "sequence_readout": {
+    "schema": "neural-computer.external-register-canonical-readout.v1",
+    "register_width": 32,
+    "output_width": 32,
+    "hidden": 64,
+    "initialization": "identity_plus_zero_residual_v1",
+    "metadata": "register_only_v1"
+  },
+  "route_credit": "counterfactual_scalar_outcome_per_operator_slot",
+  "route_assignment_regularization": null,
+  "operator_mode": "factorized_protected_bounded_meta",
+  "operator_rank": 8,
+  "role_binding": null,
+  "preserve_composition_trace": false,
+  "target_operations": [
+    "complement_rotate",
+    "prefix_parity"
+  ],
+  "composition_programs": [],
+  "target_composition_programs": [],
+  "decoder_prior": null,
+  "shared_bridge_prior": null,
+  "source_before": [
+    0.96875,
+    0.96875,
+    0.9765625
+  ],
+  "source_checkpoint_loaded": true,
+  "source_checkpoint_out": null,
+  "source_attempt_scores": [
+    [
+      "loaded_checkpoint"
+    ],
+    [
+      "loaded_checkpoint"
+    ],
+    [
+      "loaded_checkpoint"
+    ]
+  ],
+  "retained_before": [
+    0.96875,
+    0.96875,
+    0.9765625
+  ],
+  "bridge_prior_source_after": [
+    0.96875,
+    0.96875,
+    0.9765625
+  ],
+  "bridge_prior_progress": [],
+  "canonical_readout_prior": null,
+  "canonical_readout_prior_progress": [],
+  "targets": [
+    {
+      "operation": "complement_rotate",
+      "composition_program": null,
+      "candidate_accuracy": 0.75,
+      "consolidation_probe_accuracy": 0.65625,
+      "shuffled_training_accuracy": 0.625,
+      "missing_evidence_accuracy": 0.75,
+      "retained_before": [
+        0.96875,
+        0.96875,
+        0.9765625
+      ],
+      "retained_after": [
+        0.96875,
+        0.96875,
+        0.9765625
+      ],
+      "retention_deltas": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "candidate_progress": [
+        {
+          "update": 1,
+          "heldout_accuracy": 0.75
+        }
+      ],
+      "accepted": false
+    },
+    {
+      "operation": "prefix_parity",
+      "composition_program": null,
+      "candidate_accuracy": 0.625,
+      "consolidation_probe_accuracy": 0.53125,
+      "shuffled_training_accuracy": 0.25,
+      "missing_evidence_accuracy": 0.75,
+      "retained_before": [
+        0.96875,
+        0.96875,
+        0.9765625
+      ],
+      "retained_after": [
+        0.96875,
+        0.96875,
+        0.9765625
+      ],
+      "retention_deltas": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "candidate_progress": [
+        {
+          "update": 1,
+          "heldout_accuracy": 0.625
+        }
+      ],
+      "accepted": false
+    }
+  ],
+  "fresh_transfer": [],
+  "transfer_promoted": false,
+  "curriculum_fresh_control": false,
+  "interleaving": {
+    "schedule": "round_robin_per_local_update",
+    "candidate_count": 2,
+    "separate_optimizer_state": true,
+    "transactional_admission": true
+  },
+  "accounting": {
+    "replayed_examples": 0,
+    "parent_training_verifier_bits": 256,
+    "source_training_verifier_bits": 73728,
+    "source_selection_verifier_bits": 2304,
+    "joint_source_calibration_verifier_bits": 0,
+    "bridge_prior_training_verifier_bits": 0,
+    "canonical_readout_prior_training_verifier_bits": 0,
+    "normal_target_training_verifier_bits": 640,
+    "shuffled_target_training_verifier_bits": 640,
+    "fresh_transfer_training_verifier_bits": 0,
+    "fresh_curriculum_source_verifier_bits": 0,
+    "sequence_calibration_verifier_bits": 294912,
+    "fresh_sequence_calibration_verifier_bits": 0,
+    "progress_audit_verifier_bits": 320,
+    "suite_and_control_verifier_bits": 2624,
+    "unique_verifier_bits": 375424,
+    "optimizer_updates": 976,
+    "unique_logical_lifetimes": 16280
+  },
+  "promoted": false
+}
