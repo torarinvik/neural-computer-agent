@@ -18,7 +18,66 @@ from neural_computer import (
     ExternalTransitionModelLifetimePolicy,
     ExternalTransitionModelPriorSelectionReceipt,
     ExternalTransitionObservation,
+    ExternalTransitionRouteQuery,
 )
+
+
+def test_transition_route_query_is_opaque_proposal_and_persistent() -> None:
+    query = ExternalTransitionRouteQuery(4)
+    contexts = torch.tensor(
+        [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+        ]
+    )
+    proposal = query.propose(
+        torch.tensor([0.0, 0.9, 0.1, 0.0]),
+        contexts,
+        (11, 22, 33),
+    )
+
+    assert proposal.selected_slot_id == 22
+    assert proposal.eligible_slot_ids == (11, 22, 33)
+    assert proposal.margin is not None and proposal.margin > 0.0
+    assert "verification" in proposal.reason
+
+    restored = ExternalTransitionRouteQuery.from_payload(query.state_payload())
+    assert restored.configuration() == query.configuration()
+    assert restored.digest() == query.digest()
+
+    encoder = ExternalTransitionContextEncoder(2, 1, hidden_width=6, context_width=4)
+    adapter = ExternalTransitionContextAddressAdapter(encoder)
+    observation = ExternalTransitionObservation(
+        state=torch.randn(3, 2),
+        intention=torch.randn(3, 1),
+        next_state=torch.randn(3, 2),
+        confidence=torch.ones(3),
+    )
+    query.register_slot(22, adapter, route_key=adapter.trajectory_stats(observation))
+    restored_with_slot = ExternalTransitionRouteQuery.from_payload(
+        query.state_payload()
+    )
+    proposal = restored_with_slot.propose_observation(
+        observation,
+        contexts,
+        (11, 22, 33),
+        fallback_query=torch.tensor([0.0, 0.0, 0.0, 1.0]),
+    )
+    assert proposal.selected_slot_id == 22
+    assert restored_with_slot.digest() == query.digest()
+
+
+def test_transition_route_query_empty_bank_is_explicit() -> None:
+    proposal = ExternalTransitionRouteQuery(3).propose(
+        torch.tensor([1.0, 0.0, 0.0]),
+        torch.empty(0, 3),
+        (),
+    )
+
+    assert proposal.selected_slot_id is None
+    assert proposal.scores.numel() == 0
+    assert proposal.margin is None
 
 
 def test_transition_model_bank_marks_random_features_replay_free() -> None:

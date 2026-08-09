@@ -1,0 +1,46 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_learned_nonlinear_route_query_rejected_2026-08-10",
+  "entries": [
+    {
+      "seed": 82601,
+      "arm": "trajectory-stats-slot-local-route-query",
+      "unique_verifier_bits": 512,
+      "unique_logical_lifetimes": 512,
+      "optimizer_updates": 192,
+      "replayed_examples": 0,
+      "controller_updates": 0,
+      "heldout_quality": true,
+      "revisit_matches": 0,
+      "revisit_queries": 6,
+      "promoted": false
+    },
+    {
+      "seed": 82602,
+      "arm": "trajectory-stats-slot-local-route-query",
+      "unique_verifier_bits": 512,
+      "unique_logical_lifetimes": 512,
+      "optimizer_updates": 192,
+      "replayed_examples": 0,
+      "controller_updates": 0,
+      "heldout_quality": false,
+      "revisit_matches": 1,
+      "revisit_queries": 6,
+      "promoted": false
+    },
+    {
+      "seed": 82603,
+      "arm": "trajectory-stats-slot-local-route-query",
+      "unique_verifier_bits": 512,
+      "unique_logical_lifetimes": 512,
+      "optimizer_updates": 192,
+      "replayed_examples": 0,
+      "controller_updates": 0,
+      "heldout_quality": true,
+      "revisit_matches": 0,
+      "revisit_queries": 6,
+      "promoted": false
+    }
+  ],
+  "claim_boundary": "Rejected route-query identity calibration for learned nonlinear factual memory; not a rejection of trajectory statistics or model-first continual learning."
+}

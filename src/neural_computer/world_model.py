@@ -70,6 +70,9 @@ EXTERNAL_TRANSITION_CONTEXT_ENCODER_SCHEMA = (
 EXTERNAL_TRANSITION_CONTEXT_ADDRESS_ADAPTER_SCHEMA = (
     "neural-computer.external-transition-context-address-adapter.v1"
 )
+EXTERNAL_TRANSITION_ROUTE_QUERY_SCHEMA = (
+    "neural-computer.external-transition-route-query.v1"
+)
 EXTERNAL_ONLINE_TRANSITION_CONTEXT_ROUTER_SCHEMA = (
     "neural-computer.external-online-transition-context-router.v1"
 )
@@ -3007,6 +3010,52 @@ class ExternalTransitionContextEncoder(nn.Module):
             None if confidence is None else confidence.unsqueeze(0),
         )[0]
 
+    def trajectory_stats(
+        self,
+        observation: ExternalTransitionObservation,
+    ) -> torch.Tensor:
+        """Return an opaque richer route representation for one bundle."""
+
+        observation.validate(
+            state_width=self.state_width,
+            intention_width=self.intention_width,
+        )
+        state = observation.state.unsqueeze(0)
+        intention = observation.intention.unsqueeze(0)
+        next_state = observation.next_state.unsqueeze(0)
+        confidence = (
+            None
+            if observation.confidence is None
+            else observation.confidence.unsqueeze(0)
+        )
+        confidence_values = self._validate_inputs(
+            state,
+            intention,
+            next_state,
+            confidence,
+        )
+        tokens = torch.cat(
+            (state, intention, next_state, confidence_values.unsqueeze(-1)),
+            dim=-1,
+        )
+        token_features = self.token_encoder(tokens)
+        sequence, _hidden = self.recurrent(token_features)
+        final = sequence[:, -1]
+        mean = sequence.mean(dim=1)
+        maximum = sequence.amax(dim=1)
+        if self.aggregation == "mean_pool":
+            weights = confidence_values.unsqueeze(-1)
+            summary = (token_features * weights).sum(dim=1) / weights.sum(
+                dim=1
+            ).clamp_min(1e-12)
+        else:
+            summary = final
+        context = self.context_projection(summary)
+        return torch.nn.functional.normalize(
+            torch.cat((context, final, mean, maximum), dim=-1),
+            dim=-1,
+        )[0]
+
     @staticmethod
     def contrastive_loss(
         left_context: torch.Tensor,
@@ -3146,6 +3195,360 @@ class ExternalTransitionContextEncoder(nn.Module):
         return encoder
 
 
+@dataclass(frozen=True)
+class ExternalTransitionRouteQueryProposal:
+    """A non-authoritative opaque slot proposal.
+
+    A route query is deliberately not a factual decision.  It only orders
+    stable external addresses; the router must still verify the selected
+    address against the current transition evidence before returning a match.
+    """
+
+    selected_slot_id: int | None
+    scores: torch.Tensor
+    eligible_slot_ids: tuple[int, ...]
+    margin: float | None
+    reason: str
+    schema: str = EXTERNAL_TRANSITION_ROUTE_QUERY_SCHEMA
+
+    def validate(self) -> ExternalTransitionRouteQueryProposal:
+        if self.schema != EXTERNAL_TRANSITION_ROUTE_QUERY_SCHEMA:
+            raise ValueError("unsupported transition route-query schema")
+        if self.scores.ndim != 1 or self.scores.shape[0] != len(
+            self.eligible_slot_ids
+        ):
+            raise ValueError("transition route-query scores are misaligned")
+        if not bool(torch.isfinite(self.scores).all()):
+            raise ValueError("transition route-query scores are not finite")
+        if len(set(self.eligible_slot_ids)) != len(self.eligible_slot_ids):
+            raise ValueError("transition route-query slot IDs are duplicated")
+        if any(
+            not isinstance(slot_id, int) or isinstance(slot_id, bool) or slot_id < 0
+            for slot_id in self.eligible_slot_ids
+        ):
+            raise ValueError("transition route-query slot ID is invalid")
+        if self.selected_slot_id is not None and self.selected_slot_id not in (
+            self.eligible_slot_ids
+        ):
+            raise ValueError("transition route-query selected slot is ineligible")
+        if self.margin is not None and (
+            not math.isfinite(self.margin) or self.margin < 0.0
+        ):
+            raise ValueError("transition route-query margin is invalid")
+        if not isinstance(self.reason, str) or not self.reason:
+            raise ValueError("transition route-query reason is missing")
+        return self
+
+
+class ExternalTransitionRouteQuery(nn.Module):
+    """Versioned opaque-address proposal using a stable cosine query.
+
+    This component intentionally has no task labels, semantic fields, or
+    factual model parameters.  It is replaceable routing infrastructure.  A
+    caller may replace it with a learned route query later, but every proposal
+    remains subject to independent factual verification by the transition
+    router.
+    """
+
+    schema = EXTERNAL_TRANSITION_ROUTE_QUERY_SCHEMA
+
+    def __init__(
+        self,
+        context_width: int,
+        *,
+        minimum_score: float = -1.0,
+        route_width: int | None = None,
+    ) -> None:
+        super().__init__()
+        if context_width < 1:
+            raise ValueError("transition route-query width must be positive")
+        if not -1.0 <= minimum_score <= 1.0 or not math.isfinite(minimum_score):
+            raise ValueError("transition route-query minimum score must lie in [-1, 1]")
+        if route_width is not None and route_width < 1:
+            raise ValueError("transition route-query route width must be positive")
+        self.context_width = int(context_width)
+        self.minimum_score = float(minimum_score)
+        self.route_width = None if route_width is None else int(route_width)
+        self._slot_adapters: dict[
+            int, ExternalTransitionContextAddressAdapter
+        ] = {}
+        self._slot_route_keys: dict[int, torch.Tensor] = {}
+
+    def configuration(self) -> dict[str, int | str]:
+        return {
+            "schema": self.schema,
+            "context_width": self.context_width,
+            "minimum_score": self.minimum_score,
+            "route_width": self.route_width,
+            "metric": "normalized_cosine_v1",
+            "role": "proposal_only_factual_verification_required_v1",
+            "slot_adapter_count": len(self._slot_adapters),
+        }
+
+    def propose(
+        self,
+        query: torch.Tensor,
+        contexts: torch.Tensor,
+        slot_ids: Sequence[int],
+    ) -> ExternalTransitionRouteQueryProposal:
+        _validate_tensor(
+            query,
+            name="transition route-query vector",
+            ndim=1,
+            width=self.context_width,
+        )
+        _validate_tensor(
+            contexts,
+            name="transition route-query contexts",
+            ndim=2,
+            width=self.context_width,
+        )
+        if contexts.shape[0] != len(slot_ids):
+            raise ValueError("transition route-query contexts and slots differ")
+        if contexts.shape[0] == 0:
+            return ExternalTransitionRouteQueryProposal(
+                selected_slot_id=None,
+                scores=torch.empty(0, dtype=query.dtype, device=query.device),
+                eligible_slot_ids=(),
+                margin=None,
+                reason="no committed slots are available",
+            ).validate()
+        query_norm = torch.nn.functional.normalize(query, dim=-1)
+        context_norm = torch.nn.functional.normalize(
+            contexts.to(device=query.device, dtype=query.dtype), dim=-1
+        )
+        scores = context_norm @ query_norm
+        ordered = torch.argsort(scores, descending=True, stable=True)
+        best = int(ordered[0])
+        margin = (
+            None
+            if len(slot_ids) == 1
+            else float((scores[ordered[0]] - scores[ordered[1]]).detach())
+        )
+        selected_slot_id = (
+            int(slot_ids[best])
+            if float(scores[best].detach()) >= self.minimum_score
+            else None
+        )
+        return ExternalTransitionRouteQueryProposal(
+            selected_slot_id=selected_slot_id,
+            scores=scores.detach().clone(),
+            eligible_slot_ids=tuple(int(slot_id) for slot_id in slot_ids),
+            margin=margin,
+            reason=(
+                "opaque cosine route proposal; factual verification required"
+                if selected_slot_id is not None
+                else "no opaque route exceeded the proposal-quality floor"
+            ),
+        ).validate()
+
+    def register_slot(
+        self,
+        slot_id: int,
+        address_adapter: ExternalTransitionContextAddressAdapter,
+        route_key: torch.Tensor | None = None,
+    ) -> None:
+        """Persist one immutable slot-local address view.
+
+        The adapter is external state, not controller or transition-model
+        weights.  It contains no raw observations; it is only a versioned
+        address representation learned during that slot's copy-on-write
+        admission.
+        """
+
+        if not isinstance(slot_id, int) or isinstance(slot_id, bool) or slot_id < 0:
+            raise ValueError("transition route-query slot ID is invalid")
+        if address_adapter.context_width != self.context_width:
+            raise ValueError("transition route-query adapter width differs")
+        if route_key is not None:
+            _validate_tensor(
+                route_key,
+                name="transition route-query route key",
+                ndim=1,
+            )
+            if self.route_width is not None and route_key.shape[0] != self.route_width:
+                raise ValueError("transition route-query route key width differs")
+            if self.route_width is None:
+                self.route_width = int(route_key.shape[0])
+            self._slot_route_keys[slot_id] = torch.nn.functional.normalize(
+                route_key.detach().clone(), dim=-1
+            )
+        self._slot_adapters[slot_id] = ExternalTransitionContextAddressAdapter.from_payload(
+            address_adapter.state_payload()
+        )
+
+    def unregister_slot(self, slot_id: int) -> None:
+        if not isinstance(slot_id, int) or isinstance(slot_id, bool) or slot_id < 0:
+            raise ValueError("transition route-query slot ID is invalid")
+        self._slot_adapters.pop(slot_id, None)
+        self._slot_route_keys.pop(slot_id, None)
+
+    def propose_observation(
+        self,
+        observation: ExternalTransitionObservation,
+        contexts: torch.Tensor,
+        slot_ids: Sequence[int],
+        *,
+        fallback_query: torch.Tensor | None = None,
+    ) -> ExternalTransitionRouteQueryProposal:
+        """Propose a slot using local address views without retaining rows."""
+
+        if contexts.shape[0] != len(slot_ids):
+            raise ValueError("transition route-query contexts and slots differ")
+        if len(slot_ids) == 0:
+            return self.propose(
+                torch.zeros(self.context_width, device=contexts.device),
+                contexts,
+                slot_ids,
+            )
+        if fallback_query is not None:
+            _validate_tensor(
+                fallback_query,
+                name="transition route-query fallback vector",
+                ndim=1,
+                width=self.context_width,
+            )
+        scores: list[torch.Tensor] = []
+        normalized_contexts = torch.nn.functional.normalize(
+            contexts.to(observation.state), dim=-1
+        )
+        for row, slot_id in enumerate(slot_ids):
+            adapter = self._slot_adapters.get(int(slot_id))
+            route_key = self._slot_route_keys.get(int(slot_id))
+            if adapter is not None and route_key is not None:
+                query = adapter.trajectory_stats(observation).to(observation.state)
+                key = route_key.to(observation.state)
+            elif adapter is None:
+                if fallback_query is None:
+                    return self.propose(
+                        torch.zeros(
+                            self.context_width,
+                            dtype=contexts.dtype,
+                            device=contexts.device,
+                        ),
+                        contexts,
+                        slot_ids,
+                    )
+                query = fallback_query.to(observation.state)
+                key = normalized_contexts[row]
+            else:
+                query = adapter.encode_observation(observation).to(
+                    observation.state
+                )
+                key = normalized_contexts[row]
+            scores.append(
+                (key * torch.nn.functional.normalize(query, dim=-1)).sum()
+            )
+        score_tensor = torch.stack(scores)
+        ordered = torch.argsort(score_tensor, descending=True, stable=True)
+        best = int(ordered[0])
+        margin = (
+            None
+            if len(slot_ids) == 1
+            else float((score_tensor[ordered[0]] - score_tensor[ordered[1]]).detach())
+        )
+        selected_slot_id = (
+            int(slot_ids[best])
+            if float(score_tensor[best].detach()) >= self.minimum_score
+            else None
+        )
+        return ExternalTransitionRouteQueryProposal(
+            selected_slot_id=selected_slot_id,
+            scores=score_tensor.detach().clone(),
+            eligible_slot_ids=tuple(int(slot_id) for slot_id in slot_ids),
+            margin=margin,
+            reason=(
+                "slot-local opaque address proposal; factual verification required"
+                if selected_slot_id is not None
+                else "no slot-local address exceeded the proposal-quality floor"
+            ),
+        ).validate()
+
+    def state_payload(self) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "slot_adapters": {
+                str(slot_id): adapter.state_payload()
+                for slot_id, adapter in sorted(self._slot_adapters.items())
+            },
+            "slot_route_keys": {
+                str(slot_id): key.detach().cpu().tolist()
+                for slot_id, key in sorted(self._slot_route_keys.items())
+            },
+            "sha256": "",
+        }
+        digest = hashlib.sha256()
+        digest.update(self.schema.encode("utf-8"))
+        digest.update(repr(self.configuration()).encode("utf-8"))
+        for slot_id, adapter in sorted(self._slot_adapters.items()):
+            digest.update(str(slot_id).encode("utf-8"))
+            digest.update(adapter.digest().encode("utf-8"))
+            route_key = self._slot_route_keys.get(slot_id)
+            if route_key is not None:
+                digest.update(route_key.detach().cpu().contiguous().numpy().tobytes())
+        payload["sha256"] = digest.hexdigest()
+        return payload
+
+    def digest(self) -> str:
+        return str(self.state_payload()["sha256"])
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, Any],
+    ) -> ExternalTransitionRouteQuery:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported transition route-query payload")
+        configuration = payload.get("configuration")
+        if not isinstance(configuration, Mapping):
+            raise TypeError("transition route-query configuration is missing")
+        query = cls(
+            int(configuration["context_width"]),
+            minimum_score=float(configuration.get("minimum_score", -1.0)),
+            route_width=(
+                None
+                if configuration.get("route_width") is None
+                else int(configuration["route_width"])
+            ),
+        )
+        slot_adapters = payload.get("slot_adapters", {})
+        if not isinstance(slot_adapters, Mapping):
+            raise TypeError("transition route-query slot adapters are invalid")
+        for slot_id, adapter_payload in slot_adapters.items():
+            if not isinstance(adapter_payload, Mapping):
+                raise TypeError("transition route-query slot adapter is invalid")
+            query.register_slot(
+                int(slot_id),
+                ExternalTransitionContextAddressAdapter.from_payload(adapter_payload),
+            )
+        route_keys = payload.get("slot_route_keys", {})
+        if not isinstance(route_keys, Mapping):
+            raise TypeError("transition route-query route keys are invalid")
+        for slot_id, values in route_keys.items():
+            adapter = query._slot_adapters.get(int(slot_id))
+            if adapter is None:
+                raise ValueError("transition route-query route key lacks an adapter")
+            key = torch.tensor(values, dtype=torch.float32)
+            _validate_tensor(key, name="transition route-query route key", ndim=1)
+            if query.route_width != key.shape[0]:
+                raise ValueError("transition route-query route key width differs")
+            if not torch.allclose(
+                torch.linalg.vector_norm(key),
+                torch.ones((), dtype=key.dtype),
+                atol=1e-5,
+                rtol=1e-5,
+            ):
+                raise ValueError("transition route-query route key is not normalized")
+            query._slot_route_keys[int(slot_id)] = key.detach().clone()
+        expected_adapter_count = int(configuration.get("slot_adapter_count", 0))
+        if expected_adapter_count != len(query._slot_adapters):
+            raise ValueError("transition route-query slot adapter count differs")
+        if payload.get("sha256") != query.digest():
+            raise ValueError("transition route-query checksum mismatch")
+        return query
+
+
 class ExternalTransitionContextAddressAdapter(nn.Module):
     """Copy-on-write address adaptation for novel factual evidence.
 
@@ -3221,6 +3624,12 @@ class ExternalTransitionContextAddressAdapter(nn.Module):
         observation: ExternalTransitionObservation,
     ) -> torch.Tensor:
         return self.encoder.encode_observation(observation)
+
+    def trajectory_stats(
+        self,
+        observation: ExternalTransitionObservation,
+    ) -> torch.Tensor:
+        return self.encoder.trajectory_stats(observation)
 
     def _validate_anchors(self, anchors: torch.Tensor | None) -> torch.Tensor:
         if anchors is None:
@@ -3468,6 +3877,7 @@ class ExternalOnlineTransitionContextRouter:
         evidence_threshold: float = 0.5,
         evidence_gate_min_evidence: int = 0,
         address_adapter: ExternalTransitionContextAddressAdapter | None = None,
+        route_query: ExternalTransitionRouteQuery | None = None,
     ) -> None:
         if (
             bank.state_width != context_encoder.state_width
@@ -3482,6 +3892,8 @@ class ExternalOnlineTransitionContextRouter:
             or address_adapter.context_width != bank.context_width
         ):
             raise ValueError("router address adapter and bank widths differ")
+        if route_query is not None and route_query.context_width != bank.context_width:
+            raise ValueError("router route query and bank widths differ")
         if match_tolerance < 0.0:
             raise ValueError("online context match tolerance cannot be negative")
         if match_margin < 0.0:
@@ -3578,6 +3990,7 @@ class ExternalOnlineTransitionContextRouter:
         self.evidence_threshold = float(evidence_threshold)
         self.evidence_gate_min_evidence = int(evidence_gate_min_evidence)
         self.address_adapter = address_adapter
+        self.route_query = route_query
         self.candidate_model_families = families
         self._pending: list[ExternalTransitionObservation] = []
         self._active_slot: int | None = None
@@ -3673,6 +4086,12 @@ class ExternalOnlineTransitionContextRouter:
             "defer_admission": self.defer_admission,
             "candidate_model_families": list(self.candidate_model_families),
             "routing": "factual_prediction_error_then_bound_continuation_v2",
+            "route_query": (
+                None
+                if self.route_query is None
+                else self.route_query.configuration()
+            ),
+            "route_query_role": "proposal_only_factual_verification_required_v1",
             "writes": "caller_owned_slot_only_v1",
             "provisional_evidence": (
                 "cumulative_verified_window_v1"
@@ -3723,6 +4142,8 @@ class ExternalOnlineTransitionContextRouter:
         receipt = self.bank.evict_verified(index, retention_probe)
         if receipt.accepted:
             self._refresh_active_slot()
+            if self.route_query is not None and receipt.evicted_slot_id is not None:
+                self.route_query.unregister_slot(receipt.evicted_slot_id)
         return receipt
 
     def evict_with_lifetime_policy_verified(
@@ -3751,6 +4172,8 @@ class ExternalOnlineTransitionContextRouter:
         )
         if receipt is not None and receipt.accepted:
             self._refresh_active_slot()
+            if self.route_query is not None and receipt.evicted_slot_id is not None:
+                self.route_query.unregister_slot(receipt.evicted_slot_id)
         return proposal, receipt
 
     def evict_with_bank_lifetime_policy_verified(
@@ -3773,6 +4196,8 @@ class ExternalOnlineTransitionContextRouter:
         )
         if receipt is not None and receipt.accepted:
             self._refresh_active_slot()
+            if self.route_query is not None and receipt.evicted_slot_id is not None:
+                self.route_query.unregister_slot(receipt.evicted_slot_id)
         return proposal, receipt
 
     def evict_verified_id(
@@ -3785,6 +4210,8 @@ class ExternalOnlineTransitionContextRouter:
         receipt = self.bank.evict_verified_id(slot_id, retention_probe)
         if receipt.accepted:
             self._refresh_active_slot()
+            if self.route_query is not None and receipt.evicted_slot_id is not None:
+                self.route_query.unregister_slot(receipt.evicted_slot_id)
         return receipt
 
     def slot_id_at(self, index: int) -> int:
@@ -3867,7 +4294,42 @@ class ExternalOnlineTransitionContextRouter:
                 (prediction - observation.next_state).square().mean().detach()
             )
             candidates.append((error, index, context))
-        error, index, context = min(candidates, key=lambda item: (item[0], item[1]))
+        if self.route_query is None:
+            error, index, context = min(candidates, key=lambda item: (item[0], item[1]))
+        else:
+            with torch.no_grad():
+                query = (
+                    self.address_adapter.encode_observation(observation)
+                    if self.address_adapter is not None
+                    else self.context_encoder.encode_observation(observation)
+                )
+            proposal = self.route_query.propose_observation(
+                observation,
+                self.bank.contexts,
+                self.bank.slot_ids,
+                fallback_query=query,
+            )
+            if proposal.selected_slot_id is None:
+                return None
+            try:
+                index = self.bank.physical_index_for_slot_id(
+                    proposal.selected_slot_id
+                )
+            except KeyError:
+                return None
+            error, _candidate_index, _candidate_context = candidates[index]
+            # A route proposal never overrides factual evidence.  Requiring
+            # the proposed slot to be the factual winner prevents a learned
+            # or stale query from silently binding a collision to the wrong
+            # model.  The existing factual margin remains the ambiguity gate.
+            factual_error, factual_index, _factual_context = min(
+                candidates,
+                key=lambda item: (item[0], item[1]),
+            )
+            if factual_index != index:
+                return None
+            error = factual_error
+            context = self.bank.context_at(index)
         ordered_errors = sorted(item[0] for item in candidates)
         margin = (
             float("inf")
@@ -4625,7 +5087,16 @@ class ExternalOnlineTransitionContextRouter:
         self.bank._model_families.append(selected_family)
         self.bank._slot_ids.append(self.bank._next_slot_id)
         self.bank._initialize_lifetime_slot(self.bank._next_slot_id)
+        promoted_slot_id = self.bank._next_slot_id
         self.bank._next_slot_id += 1
+        if self.route_query is not None and candidate.address_adapter is not None:
+            self.route_query.register_slot(
+                promoted_slot_id,
+                candidate.address_adapter,
+                route_key=candidate.address_adapter.trajectory_stats(
+                    heldout_observation
+                ),
+            )
         if destination_capacity is not None:
             self.bank.capacity = destination_capacity
             if self.max_contexts is not None:
@@ -4743,6 +5214,11 @@ class ExternalOnlineTransitionContextRouter:
                 if self.address_adapter is None
                 else self.address_adapter.state_payload()
             ),
+            "route_query": (
+                None
+                if self.route_query is None
+                else self.route_query.state_payload()
+            ),
             "pending": [self._observation_payload(row) for row in self._pending],
             "ambiguous_quarantine": [
                 self._observation_payload(row)
@@ -4793,6 +5269,7 @@ class ExternalOnlineTransitionContextRouter:
         bank_payload = payload.get("bank")
         encoder_payload = payload.get("context_encoder")
         address_adapter_payload = payload.get("address_adapter")
+        route_query_payload = payload.get("route_query")
         pending_payload = payload.get("pending")
         ambiguous_quarantine_payload = payload.get("ambiguous_quarantine", [])
         provisional_candidates_payload = payload.get("provisional_candidates")
@@ -4825,6 +5302,11 @@ class ExternalOnlineTransitionContextRouter:
             else ExternalTransitionContextAddressAdapter.from_payload(
                 address_adapter_payload
             )
+        )
+        route_query = (
+            None
+            if route_query_payload is None
+            else ExternalTransitionRouteQuery.from_payload(route_query_payload)
         )
         router = cls(
             bank,
@@ -4870,6 +5352,7 @@ class ExternalOnlineTransitionContextRouter:
                 configuration.get("evidence_gate_min_evidence", 0)
             ),
             address_adapter=address_adapter,
+            route_query=route_query,
         )
         for row_payload in pending_payload:
             row = cls._observation_from_payload(row_payload)

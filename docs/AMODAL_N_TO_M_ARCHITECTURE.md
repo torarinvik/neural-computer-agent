@@ -5937,3 +5937,27 @@ general. A successful replacement needs a representation-stable or
 meta-learned initialization and an independently verified route query; lower
 training loss alone is insufficient. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_learned_nonlinear_open_world_rejected_2026-08-10/`.
+
+## Rejected frozen trajectory-statistics route query (2026-08-10)
+
+The exported game-learning session's successful `trajectory_stats` idea was
+ported into a versioned `ExternalTransitionRouteQuery`. It proposes opaque
+slots from slot-local copy-on-write address adapters and stores only a richer
+route key: projected context, final recurrent state, mean recurrent state,
+and max recurrent state. A proposal-quality floor was added, but factual
+prediction verification remained independent and strict.
+
+Across seeds `82601`, `82602`, and `82603`, the learned MLP acquired all four
+partial-evidence regimes, retained the controller byte-for-byte, stored no
+raw candidate rows, replayed no old evidence, and restored exact route state.
+However, revisit identity matched only `0/6`, `1/6`, and `0/6` queries; one
+seed also failed held-out model quality. A loose factual tolerance admitted a
+novel regime during smoke and is rejected as a workaround.
+
+The route query sometimes nominated the correct slot, but a frozen similarity
+metric did not provide reliable identity calibration. This rejects threshold
+tuning and frozen cosine routing for learned nonlinear open-world memory. The
+next candidate must learn a reusable route score from verifier-grounded
+counterfactuals or a meta-learned representation, while retaining a factual
+challenger and explicit novel-regime rejection. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_learned_nonlinear_route_query_rejected_2026-08-10/`.

@@ -35,6 +35,7 @@ from neural_computer import (
     ExternalTransitionContextEncoder,
     ExternalTransitionModelBank,
     ExternalTransitionObservation,
+    ExternalTransitionRouteQuery,
 )
 
 CONTEXT_WIDTH = 12
@@ -51,6 +52,7 @@ QUALITY_THRESHOLD = 0.08
 PROMOTION_THRESHOLD = 0.20
 MATCH_TOLERANCE = 0.01
 GRADIENT_STEPS_PER_BUNDLE = 4
+ROUTE_QUERY_MINIMUM_SCORE = 0.80
 
 
 def _digest(module: torch.nn.Module) -> str:
@@ -131,7 +133,45 @@ def _consume(
     return statuses, optimizer, losses, results
 
 
-def run(seed: int, report_out: Path) -> dict[str, object]:
+def _route_diagnostic(
+    router: ExternalOnlineTransitionContextRouter,
+    observation: ExternalTransitionObservation,
+) -> dict[str, object] | None:
+    if router.route_query is None:
+        return None
+    fallback = (
+        router.address_adapter.encode_observation(observation)
+        if router.address_adapter is not None
+        else router.context_encoder.encode_observation(observation)
+    )
+    proposal = router.route_query.propose_observation(
+        observation,
+        router.bank.contexts,
+        router.bank.slot_ids,
+        fallback_query=fallback,
+    )
+    errors = []
+    for index in range(router.bank.context_count):
+        context = router.bank.context_at(index).unsqueeze(0).expand(
+            observation.state.shape[0], -1
+        )
+        errors.append(float(router.bank.loss(observation, context).detach()))
+    return {
+        "selected_slot_id": proposal.selected_slot_id,
+        "scores": proposal.scores.tolist(),
+        "factual_errors": errors,
+        "margin": proposal.margin,
+    }
+
+
+def run(
+    seed: int,
+    report_out: Path,
+    *,
+    use_route_query: bool = False,
+    match_tolerance: float = MATCH_TOLERANCE,
+    route_query_minimum_score: float = ROUTE_QUERY_MINIMUM_SCORE,
+) -> dict[str, object]:
     begun = time.perf_counter()
     torch.set_num_threads(1)
     torch.manual_seed(seed)
@@ -170,7 +210,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
     router = ExternalOnlineTransitionContextRouter(
         bank,
         encoder,
-        match_tolerance=MATCH_TOLERANCE,
+        match_tolerance=match_tolerance,
         match_margin=0.005,
         continuation_tolerance=MATCH_TOLERANCE,
         provisional_continuation_tolerance=1e9,
@@ -180,6 +220,14 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         candidate_model_families=(MODEL_FAMILY,),
         provisional_evidence_policy="streaming_gradient",
         address_adapter=address_adapter,
+        route_query=(
+            ExternalTransitionRouteQuery(
+                CONTEXT_WIDTH,
+                minimum_score=route_query_minimum_score,
+            )
+            if use_route_query
+            else None
+        ),
     )
 
     contexts: dict[str, torch.Tensor] = {}
@@ -256,6 +304,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
     revisit_order = (NAMES[2], NAMES[0], NAMES[3], NAMES[1], NAMES[0], NAMES[2])
     revisit_records: list[dict[str, object]] = []
     for name in revisit_order:
+        route_diagnostic = _route_diagnostic(router, observations[name])
         statuses, _optimizer, _losses, results = _consume(
             router,
             observations[name],
@@ -276,6 +325,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
                 "returned_slot_ids": sorted(returned_slots),
                 "matched_existing_slot": expected_slot in returned_slots,
                 "heldout_error": _error(bank, heldout[name], contexts[name]),
+                "route_diagnostic": route_diagnostic,
             }
         )
 
@@ -353,6 +403,14 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             and restored.address_adapter is not None
             and router.address_adapter is not None
             and restored.address_adapter.digest() == router.address_adapter.digest()
+            and (
+                (restored.route_query is None and router.route_query is None)
+                or (
+                    restored.route_query is not None
+                    and router.route_query is not None
+                    and restored.route_query.digest() == router.route_query.digest()
+                )
+            )
         ),
     }
     report = {
@@ -372,7 +430,11 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "admission_rows": ADMISSION_ROWS,
             "quality_threshold": QUALITY_THRESHOLD,
             "promotion_threshold": PROMOTION_THRESHOLD,
-            "match_tolerance": MATCH_TOLERANCE,
+            "match_tolerance": match_tolerance,
+            "route_query": "cosine_proposal_with_factual_verification_v1"
+            if use_route_query
+            else None,
+            "route_query_minimum_score": route_query_minimum_score,
             "context_encoder_optimizer_updates": 0,
             "provisional_evidence_policy": "streaming_gradient",
             "gradient_steps_per_current_window": GRADIENT_STEPS_PER_BUNDLE,
@@ -421,8 +483,25 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=82601)
     parser.add_argument("--report-out", type=Path, required=True)
+    parser.add_argument("--route-query", action="store_true")
+    parser.add_argument("--match-tolerance", type=float, default=MATCH_TOLERANCE)
+    parser.add_argument(
+        "--route-query-minimum-score",
+        type=float,
+        default=ROUTE_QUERY_MINIMUM_SCORE,
+    )
     args = parser.parse_args()
-    run(args.seed, args.report_out)
+    if args.match_tolerance < 0.0:
+        raise SystemExit("--match-tolerance must be non-negative")
+    if not -1.0 <= args.route_query_minimum_score <= 1.0:
+        raise SystemExit("--route-query-minimum-score must lie in [-1, 1]")
+    run(
+        args.seed,
+        args.report_out,
+        use_route_query=args.route_query,
+        match_tolerance=args.match_tolerance,
+        route_query_minimum_score=args.route_query_minimum_score,
+    )
 
 
 if __name__ == "__main__":
