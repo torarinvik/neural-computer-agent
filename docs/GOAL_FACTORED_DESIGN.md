@@ -116,3 +116,144 @@ Rung C — deliberative search:
 
 Every rung: two seeds minimum, no-agent control first, matched
 configurations, archives with README + SHA256SUMS on promotion.
+
+---
+
+# Revision, 2026-08-09: the universal reacher
+
+Recorded after F58. This supersedes the executor half of the design
+above; the bank half is unchanged and its composition result stands.
+
+## What F58 forced
+
+The executor was failing and the reason was not what any of our fixes
+assumed. Six seeds, phase-1 only: budget 1500 and 3600 both 0/6,
+hidden 32 and 64 both 0/6, EWC at 1, 10 and 200 all identical, and two
+goals failing exactly as three did. One signature everywhere — one goal
+at 1.00, the rest at 0.02.
+
+The plant was learning an unconditional habit and never reading its
+goal channel. **With a handful of goals that is a rational solution:
+"always do the one thing" scores well. Under isolation it is
+*optimal*.** Every curriculum we tried therefore built a habit first and
+then asked it to become conditional, which is the one transition none
+of them can make. Chan et al. (LITERATURE_MAP S1) describe this exactly:
+few, frequent, fixed-meaning classes drive in-weights memorisation;
+many varied ones drive in-context reading. Three goals is the
+pathological regime by their criterion.
+
+## The formulation
+
+Not "learn goals g1..gN" but:
+
+> **Given any state X, learn the fastest path to make any state Y the
+> current state.**
+
+One function, `pi(action | X, Y)`, with a distance `d(X, Y)` underneath.
+Every task becomes a query. Tennis is "make the ball-returned state
+current"; anti-tennis is "make a state where you are elsewhere current".
+The task never enters the machinery — only the target does.
+
+## Why this is a redesign and not a tuning fix
+
+**Forgetting stops being a thing.** Catastrophic forgetting is an
+artifact of N separate skills competing for one set of weights. With one
+universal function there is no "skill 3" stored anywhere to be
+overwritten by skill 4; there is a function that gets refined in one
+region of its domain. Local degradation is still possible; "A destroys
+B" is not, because A and B were never separate objects. This is a
+stronger position than penalising drift, which is what this program has
+been doing for weeks — the difference between preventing a collision and
+removing the possibility of one.
+
+**The storage rule becomes structural.** A universal reacher is
+genuinely task-invariant: it is geography, not skill, so keeping it in
+weights is not a violation. The bank holds target states — small,
+per-task, composable. Prediction that follows: **adding a game should
+require ZERO plant change, only a new target.**
+
+**Conditioning stops needing enforcement.** A goal space too large to
+memorise makes reading the instruction the only representable solution.
+No update rule polices it; the task design does.
+
+## What it does NOT solve
+
+A perfect reacher tells you how to get anywhere and nothing about where
+you should want to go. **The twins survive the reframe untouched**:
+identical X, identical reachable Y, opposite desirable Y. Specification
+is irreducible and it is exactly the bank's job. The reframe does not
+replace the architecture — it cleans the split. Execution becomes
+universal and free; wanting stays external and per-context. We have been
+muddling this by asking the plant to hold both.
+
+## The compounding claim, and its gate
+
+The learned distance function IS a search heuristic. Perfect d means
+greedy descent and no search; approximate d still prunes, because you
+can rank candidate next states instead of expanding them. So every task
+sharpens the heuristic that makes the NEXT task cheaper. That is the
+amortised-planning bargain.
+
+This makes the program's founding claim measurable for the first time.
+Every rung so far measured RETENTION — did task 3 survive task 4 —
+which is much weaker. The reacher predicts:
+
+> **the cost of acquiring task N falls as N grows.**
+
+Flat curve = we built a library. Downward curve = we built a map. This
+is the headline gate for the reacher rung; it is falsifiable in a way
+"we did not forget" never was. Note we have already seen its endpoint
+without recognising it: the composition rung assembled held-out games
+for ZERO learning, which is acquisition cost driven to nothing.
+
+## Why tiny tasks first is the correct curriculum
+
+Previously justified by iteration speed. The better reason: in a small
+state space you can learn a nearly exact distance function, and an exact
+heuristic in a small space transfers as a good-enough heuristic in a
+larger space that shares structure. Bootstrap the map where search is
+still cheap, then carry it where naive search would be hopeless.
+
+## What makes it affordable
+
+The (X, Y) pair space is quadratic, and hindsight relabelling is what
+makes it tractable: **every trajectory is a correct demonstration of
+reaching wherever it actually ended up.** Wander somewhere useless and
+you have still produced perfect data for that destination. This is
+re-derivation, not recall — nothing is stored — so the no-replay rule is
+intact. It is the same property that made the micro-goal self-check
+possible: goals are verifiable by the agent without the verifier.
+
+## Honest limits
+
+- **Representation is everything.** "Any state Y" is meaningful only if
+  states are representable. Our 8x8 grids are; a rich world needs a
+  learned latent space, and a universal reacher over a bad space is a
+  universal reacher to the wrong places. This is where real systems
+  break and we would inherit it.
+- **Not all Y are reachable, and reachability is not symmetric.** The
+  function must express "impossible" and "how close can I get", not just
+  distance. Irreversibility is the sharp case — death is a state you
+  cannot leave, and our intercept games have exactly that structure. A
+  shortest-path framing quietly assumes you can retry.
+- **Compounding needs shared structure.** Learning NYC does not shrink
+  search in Tokyo unless what transferred was "cities are grids". Our
+  family shares dynamics by construction; the real world only partly
+  does. This is the boundary condition on the whole claim.
+
+## Pre-registered gates for the reacher rung
+
+1. **Reach rate** over random (X, Y) pairs, against a measured no-agent
+   floor and a random-goal control.
+2. **Conditioning**: same X, different Y must produce different action
+   distributions. This is the property every previous executor failed;
+   it gets a direct measurement, not an inference from task score.
+3. **Held-out targets**: cells never commanded in training must be
+   reachable, or the reacher memorised after all.
+4. **Zero-plant-change**: a new game is added by supplying a target
+   only; the plant is frozen and must not be touched.
+5. **Acquisition-cost curve**: updates-to-mastery for game N as a
+   function of N, with the no-reacher baseline as control. Downward
+   slope is the compounding claim; flat is its refutation.
+6. Every gate runs the no-agent control FIRST (weakness 18) and reports
+   against measured floors (F52).
