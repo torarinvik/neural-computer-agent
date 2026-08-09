@@ -1476,6 +1476,27 @@
       "planner_compute_accounted_separately": [true, true],
       "controls": "outcome-based stopping, matched fresh models, zero-shot separation, cumulative source-cost accounting, planner expansion/latency accounting, prior mastery and byte stability, frozen controller, zero old-regime replay, and persistence passed",
       "decision": "promote bounded policy-free compounding signal; next test genuinely disjoint dynamics, wider seeds, and learned online context identity"
+    },
+    {
+      "experiment": "external_disjoint_dynamics_online",
+      "date": "2026-08-09",
+      "seeds": [70411, 70412],
+      "claim": "An external learned-context router can admit and later reuse disjoint opaque transition regimes while model-based search acquires each novel regime faster than a matched fresh model and preserves earlier factual slots.",
+      "module": "ExternalOnlineTransitionContextRouter + ExternalTransitionContextEncoder + ExternalTransitionModelBank + ExternalModelBasedPlanner",
+      "context_pretraining_updates_per_seed": [400, 400],
+      "target_warm_updates_per_seed": [[36, 32], [35, 31]],
+      "target_fresh_updates_per_seed": [[44, 43], [40, 35]],
+      "target_admissions": [[1, 1], [1, 1]],
+      "target_reuses_after_admission": [[1, 1], [1, 1]],
+      "all_regime_mastery": [[1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0]],
+      "source_slot_byte_stable": [true, true],
+      "old_slot_optimizer_updates": [0, 0],
+      "wrong_context_factual_control": [true, true],
+      "controller_parameter_updates": [0, 0],
+      "regime_labels_used_by_router": [false, false],
+      "persistence_exact": [true, true],
+      "controls": "unrelated transition-table distinctness, single-row provisional buffering, learned context admission, later route reuse, source retention and byte stability, wrong-context factual error, frozen controller, zero old-slot updates, fresh models, and persistence passed",
+      "decision": "promote bounded disjoint-dynamics online routing; next test partial multimodal evidence, longer alternation, and unbounded bank capacity management"
     }
   ]
 }

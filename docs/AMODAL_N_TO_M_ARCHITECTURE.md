@@ -4743,3 +4743,30 @@ nested dynamics family. It does not establish general continual learning:
 the fixture is small, context vectors are supplied, and the dynamics are not
 yet genuinely disjoint across a wider family. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_transition_model_compounding_promoted_2026-08-09/`.
+
+## Online routing over disjoint dynamics (2026-08-09)
+
+The next pressure test removes the nested movement geometry. Four regimes
+share one opaque state/intention interface but use unrelated transition tables.
+`experiments/external_disjoint_dynamics_online/` feeds the online router one
+row at a time. Rows remain provisional until the router's factual prediction
+error and margin test fail, after which the frozen context encoder forms an
+opaque key and a new external model slot is admitted. The router receives no
+regime labels; labels in the experiment are diagnostics only.
+
+Both seeds admitted two novel regimes once, reused each on a later visit, and
+reached `1.0` planner mastery for all four regimes. Warm target updates were
+`36/32` versus fresh `44/43` on seed `70411`, and `35/31` versus `40/35` on
+seed `70412`. Source models stayed at `1.0` and byte-stable, old-slot
+optimizer updates were zero, wrong-context factual error passed, the
+controller stayed frozen, and persistence was exact.
+
+This promotes a stronger bounded claim than nested-delta transfer: factual
+model routing and acquisition survive disjoint transition functions. It still
+does not establish general continual learning. The context encoder is
+pretrained on two source regimes, the evidence is a finite transition bundle,
+and the planner has a finite horizon. The next frontier is online context
+formation from partial multimodal event streams, model-bank growth under
+unbounded alternation, and compression/consolidation validated over longer
+horizons. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_disjoint_dynamics_online_promoted_2026-08-09/`.
