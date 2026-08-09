@@ -8,6 +8,7 @@ from neural_computer import (
     ExternalModelBasedPlanner,
     ExternalOnlineContextAddressResolver,
     ExternalOnlineTransitionContextRouter,
+    ExternalTransitionContextAddressAdapter,
     ExternalTransitionContextEncoder,
     ExternalTransitionEvidenceEvaluator,
     ExternalTransitionEvidenceStatistics,
@@ -107,6 +108,121 @@ def test_transition_context_mean_pool_is_permutation_invariant_and_persistent() 
     restored = ExternalTransitionContextEncoder.from_payload(encoder.state_payload())
     assert restored.configuration() == encoder.configuration()
     assert restored.digest() == encoder.digest()
+
+
+def test_context_address_adapter_is_copy_on_write_and_persistent() -> None:
+    torch.manual_seed(1203)
+    encoder = ExternalTransitionContextEncoder(
+        2,
+        1,
+        hidden_width=8,
+        context_width=5,
+        aggregation="mean_pool",
+    )
+    adapter = ExternalTransitionContextAddressAdapter(
+        encoder,
+        learning_rate=0.01,
+        adaptation_steps=16,
+        anchor_cosine_ceiling=0.2,
+    )
+    observation = ExternalTransitionObservation(
+        state=torch.randn(8, 2),
+        intention=torch.randn(8, 1),
+        next_state=torch.randn(8, 2),
+        confidence=torch.ones(8),
+    )
+    anchor = adapter.encode_observation(observation).unsqueeze(0)
+    before_digest = adapter.digest()
+    candidate = adapter.copy_on_write(observation, anchor)
+
+    assert adapter.digest() == before_digest
+    assert candidate.version == adapter.version + 1
+    assert candidate.parent_digest == before_digest
+    assert (
+        float(
+            adapter.encode_observation(observation)
+            .detach()
+            @ candidate.encode_observation(observation).detach()
+        )
+        <= 0.2
+    )
+    restored = ExternalTransitionContextAddressAdapter.from_payload(
+        candidate.state_payload()
+    )
+    assert restored.configuration() == candidate.configuration()
+    assert restored.digest() == candidate.digest()
+
+
+def test_online_router_keeps_address_adapter_copy_isolated_until_promotion() -> None:
+    torch.manual_seed(1204)
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        5,
+        model_family="random_feature_sufficient_statistics_v1",
+        capacity=2,
+    )
+    encoder = ExternalTransitionContextEncoder(
+        2,
+        1,
+        hidden_width=8,
+        context_width=5,
+        aggregation="mean_pool",
+    )
+    adapter = ExternalTransitionContextAddressAdapter(
+        encoder,
+        learning_rate=0.01,
+        adaptation_steps=2,
+    )
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        encoder,
+        admission_observations=2,
+        max_contexts=2,
+        defer_admission=True,
+        provisional_continuation_tolerance=1e9,
+        provisional_evidence_policy="streaming_statistics",
+        candidate_model_families=("random_feature_sufficient_statistics_v1",),
+        address_adapter=adapter,
+    )
+    observations = ExternalTransitionObservation(
+        state=torch.randn(2, 2),
+        intention=torch.randn(2, 1),
+        next_state=torch.randn(2, 2),
+        confidence=torch.ones(2),
+    )
+
+    assert router.observe(
+        ExternalTransitionObservation(
+            observations.state[:1],
+            observations.intention[:1],
+            observations.next_state[:1],
+            observations.confidence[:1],
+        )
+    ).status == "pending"
+    staged = router.observe(
+        ExternalTransitionObservation(
+            observations.state[1:2],
+            observations.intention[1:2],
+            observations.next_state[1:2],
+            observations.confidence[1:2],
+        )
+    )
+    assert staged.status == "staged"
+    assert router.address_adapter.digest() == adapter.digest()
+    assert router._provisional_candidates[0].address_adapter is not None
+    assert router._provisional_candidates[0].address_adapter.version == 2
+
+    restored = ExternalOnlineTransitionContextRouter.from_payload(
+        router.state_payload()
+    )
+    assert restored.address_adapter is not None
+    assert restored.address_adapter.digest() == router.address_adapter.digest()
+    assert (
+        restored._provisional_candidates[0].address_adapter is not None
+        and restored._provisional_candidates[0].address_adapter.digest()
+        == router._provisional_candidates[0].address_adapter.digest()
+    )
 
 
 def test_transition_context_prefix_alignment_supports_variable_evidence() -> None:

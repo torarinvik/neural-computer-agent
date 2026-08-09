@@ -21,6 +21,7 @@ import torch
 from neural_computer import (
     AmodalCognitiveController,
     ExternalOnlineTransitionContextRouter,
+    ExternalTransitionContextAddressAdapter,
     ExternalTransitionContextEncoder,
     ExternalTransitionModelBank,
     ExternalTransitionObservation,
@@ -224,7 +225,12 @@ def _consume_target(
     return statuses, staged_windows, consumed_rows
 
 
-def run(seed: int, report_out: Path) -> dict[str, object]:
+def run(
+    seed: int,
+    report_out: Path,
+    *,
+    adapt_address: bool = False,
+) -> dict[str, object]:
     begun = time.perf_counter()
     torch.set_num_threads(1)
     torch.manual_seed(seed)
@@ -248,6 +254,19 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         seed=seed,
     )
     encoder.eval()
+    address_adapter = (
+        None
+        if not adapt_address
+        else ExternalTransitionContextAddressAdapter(
+            encoder,
+            learning_rate=0.001,
+            adaptation_steps=4,
+            anchor_cosine_ceiling=0.75,
+        )
+    )
+    base_address_digest = (
+        None if address_adapter is None else address_adapter.digest()
+    )
     with torch.no_grad():
         contexts = {
             name: encoder.encode_observation(observation)
@@ -297,6 +316,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         defer_admission=True,
         candidate_model_families=(RANDOM_FEATURE_FAMILY,),
         provisional_evidence_policy="streaming_statistics",
+        address_adapter=address_adapter,
     )
     target_records: list[dict[str, object]] = []
     target_contexts: dict[str, torch.Tensor] = {}
@@ -405,6 +425,15 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         "mean_pool_configuration_persisted": (
             encoder.configuration()["aggregation"] == "mean_pool"
         ),
+        "address_adapter_used": (
+            not adapt_address
+            or (
+                router.address_adapter is not None
+                and router.address_adapter.version > 0
+                and address_adapter is not None
+                and address_adapter.digest() == base_address_digest
+            )
+        ),
         "replay_free_model_family": bank.replay_free_updates,
         "partial_evidence_used": all(
             int(row["presented_rows"]) < int(row["available_rows"])
@@ -423,6 +452,11 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         "exact_router_persistence": (
             restored.bank.digest() == router.bank.digest()
             and restored.context_encoder.digest() == router.context_encoder.digest()
+            and (
+                restored.address_adapter is None
+                if router.address_adapter is None
+                else restored.address_adapter.digest() == router.address_adapter.digest()
+            )
         ),
     }
     report = {
@@ -442,6 +476,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "heldout_rows": HELDOUT_ROWS,
             "admission_rows": ADMISSION_ROWS,
             "context_aggregation": "mean_pool",
+            "address_adaptation": adapt_address,
             "model_family": RANDOM_FEATURE_FAMILY,
             "policy": "none_external_factual_model_search_v1",
         },
@@ -452,6 +487,17 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "loss": context_loss,
             "digest": encoder.digest(),
         },
+        "address_adapter": (
+            None
+            if router.address_adapter is None
+            else {
+                "base_digest": base_address_digest,
+                "committed_version": router.address_adapter.version,
+                "committed_digest": router.address_adapter.digest(),
+                "copy_on_write": True,
+                "historical_bank_keys_immutable": True,
+            }
+        ),
         "source": source_records,
         "targets": target_records,
         "return_to_source": {
@@ -489,8 +535,9 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=82001)
     parser.add_argument("--report-out", type=Path, required=True)
+    parser.add_argument("--adapt-address", action="store_true")
     args = parser.parse_args()
-    run(args.seed, args.report_out)
+    run(args.seed, args.report_out, adapt_address=args.adapt_address)
 
 
 if __name__ == "__main__":

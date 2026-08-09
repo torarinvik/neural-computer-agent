@@ -67,6 +67,9 @@ EXTERNAL_CONTEXTUAL_EVIDENCE_CALIBRATOR_SCHEMA = (
 EXTERNAL_TRANSITION_CONTEXT_ENCODER_SCHEMA = (
     "neural-computer.external-transition-context-encoder.v1"
 )
+EXTERNAL_TRANSITION_CONTEXT_ADDRESS_ADAPTER_SCHEMA = (
+    "neural-computer.external-transition-context-address-adapter.v1"
+)
 EXTERNAL_ONLINE_TRANSITION_CONTEXT_ROUTER_SCHEMA = (
     "neural-computer.external-online-transition-context-router.v1"
 )
@@ -3109,6 +3112,210 @@ class ExternalTransitionContextEncoder(nn.Module):
         return encoder
 
 
+class ExternalTransitionContextAddressAdapter(nn.Module):
+    """Copy-on-write address adaptation for novel factual evidence.
+
+    The base encoder remains untouched.  A candidate copy may learn a stable
+    representation for a current transition bundle while a generic cosine
+    ceiling keeps its key away from committed historical keys.  The caller
+    commits the candidate only after the associated factual model passes the
+    held-out retention gate.  This makes address learning external state with
+    immutable historical keys rather than a hidden global weight update.
+    """
+
+    schema = EXTERNAL_TRANSITION_CONTEXT_ADDRESS_ADAPTER_SCHEMA
+
+    def __init__(
+        self,
+        encoder: ExternalTransitionContextEncoder,
+        *,
+        version: int = 0,
+        learning_rate: float = 1e-3,
+        adaptation_steps: int = 8,
+        anchor_cosine_ceiling: float = 0.75,
+        parent_digest: str | None = None,
+    ) -> None:
+        super().__init__()
+        if not isinstance(encoder, ExternalTransitionContextEncoder):
+            raise TypeError("address adapter requires a context encoder")
+        if version < 0:
+            raise ValueError("address adapter version cannot be negative")
+        if learning_rate <= 0.0 or not math.isfinite(learning_rate):
+            raise ValueError("address adapter learning rate must be positive")
+        if adaptation_steps < 1:
+            raise ValueError("address adapter adaptation steps must be positive")
+        if not 0.0 < anchor_cosine_ceiling <= 1.0:
+            raise ValueError("address adapter cosine ceiling must lie in (0, 1]")
+        if parent_digest is not None and not parent_digest:
+            raise ValueError("address adapter parent digest cannot be empty")
+        self.encoder = ExternalTransitionContextEncoder.from_payload(
+            encoder.state_payload()
+        )
+        self.version = int(version)
+        self.learning_rate = float(learning_rate)
+        self.adaptation_steps = int(adaptation_steps)
+        self.anchor_cosine_ceiling = float(anchor_cosine_ceiling)
+        self.parent_digest = parent_digest
+
+    @property
+    def state_width(self) -> int:
+        return self.encoder.state_width
+
+    @property
+    def intention_width(self) -> int:
+        return self.encoder.intention_width
+
+    @property
+    def context_width(self) -> int:
+        return self.encoder.context_width
+
+    def configuration(self) -> dict[str, int | float | str | None]:
+        return {
+            "schema": self.schema,
+            "version": self.version,
+            "learning_rate": self.learning_rate,
+            "adaptation_steps": self.adaptation_steps,
+            "anchor_cosine_ceiling": self.anchor_cosine_ceiling,
+            "parent_digest": self.parent_digest,
+            "encoder": self.encoder.configuration(),
+            "update": "copy_on_write_current_bundle_anchor_separation_v1",
+            "historical_keys": "immutable_bank_owned_v1",
+        }
+
+    def encode_observation(
+        self,
+        observation: ExternalTransitionObservation,
+    ) -> torch.Tensor:
+        return self.encoder.encode_observation(observation)
+
+    def _validate_anchors(self, anchors: torch.Tensor | None) -> torch.Tensor:
+        if anchors is None:
+            return torch.empty((0, self.context_width), dtype=torch.float32)
+        _validate_tensor(
+            anchors,
+            name="address adapter anchors",
+            ndim=2,
+            width=self.context_width,
+        )
+        if anchors.shape[0] == 0:
+            return anchors.detach().clone()
+        return torch.nn.functional.normalize(anchors.detach(), dim=-1)
+
+    @staticmethod
+    def _perturbed_view(
+        observation: ExternalTransitionObservation,
+    ) -> ExternalTransitionObservation:
+        # Deterministic perturbation prevents the address update from needing
+        # stored examples or a random replay buffer. It represents ordinary
+        # front-end noise, not privileged metadata.
+        return ExternalTransitionObservation(
+            state=observation.state + 0.01 * torch.tanh(observation.state),
+            intention=observation.intention,
+            next_state=observation.next_state
+            + 0.01 * torch.tanh(observation.next_state),
+            confidence=observation.confidence,
+        )
+
+    def adaptation_loss(
+        self,
+        observation: ExternalTransitionObservation,
+        anchors: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """Return a one-bundle stability/separation loss."""
+
+        observation.validate(
+            state_width=self.state_width,
+            intention_width=self.intention_width,
+        )
+        anchor_values = self._validate_anchors(anchors).to(observation.state)
+        left = self.encode_observation(observation)
+        right = self.encode_observation(self._perturbed_view(observation))
+        stability = 1.0 - torch.nn.functional.cosine_similarity(
+            left.unsqueeze(0), right.unsqueeze(0), dim=-1
+        ).mean()
+        if anchor_values.shape[0] == 0:
+            separation = left.new_zeros(())
+        else:
+            similarities = torch.nn.functional.normalize(left, dim=-1) @ anchor_values.T
+            separation = torch.relu(
+                similarities.max() - self.anchor_cosine_ceiling
+            ).square()
+        return stability + separation
+
+    def copy_on_write(
+        self,
+        observation: ExternalTransitionObservation,
+        anchors: torch.Tensor | None = None,
+    ) -> ExternalTransitionContextAddressAdapter:
+        """Adapt an isolated version without mutating this adapter."""
+
+        observation.validate(
+            state_width=self.state_width,
+            intention_width=self.intention_width,
+        )
+        candidate = ExternalTransitionContextAddressAdapter.from_payload(
+            self.state_payload()
+        )
+        candidate.version = self.version + 1
+        candidate.parent_digest = self.digest()
+        optimizer = torch.optim.Adam(
+            candidate.encoder.parameters(),
+            lr=candidate.learning_rate,
+        )
+        for _step in range(candidate.adaptation_steps):
+            optimizer.zero_grad()
+            loss = candidate.adaptation_loss(observation, anchors)
+            loss.backward()
+            optimizer.step()
+        return candidate
+
+    def state_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "encoder": self.encoder.state_payload(),
+            "sha256": "",
+        }
+        digest = hashlib.sha256()
+        digest.update(self.schema.encode("utf-8"))
+        digest.update(repr(self.configuration()).encode("utf-8"))
+        digest.update(self.encoder.digest().encode("utf-8"))
+        payload["sha256"] = digest.hexdigest()
+        return payload
+
+    def digest(self) -> str:
+        return str(self.state_payload()["sha256"])
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, Any],
+    ) -> ExternalTransitionContextAddressAdapter:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported transition-context address adapter payload")
+        configuration = payload.get("configuration")
+        encoder_payload = payload.get("encoder")
+        if not isinstance(configuration, Mapping) or not isinstance(
+            encoder_payload, Mapping
+        ):
+            raise TypeError("transition-context address adapter payload is incomplete")
+        adapter = cls(
+            ExternalTransitionContextEncoder.from_payload(encoder_payload),
+            version=int(configuration["version"]),
+            learning_rate=float(configuration["learning_rate"]),
+            adaptation_steps=int(configuration["adaptation_steps"]),
+            anchor_cosine_ceiling=float(configuration["anchor_cosine_ceiling"]),
+            parent_digest=(
+                None
+                if configuration.get("parent_digest") is None
+                else str(configuration["parent_digest"])
+            ),
+        )
+        if payload.get("sha256") != adapter.digest():
+            raise ValueError("transition-context address adapter checksum mismatch")
+        return adapter
+
+
 @dataclass(frozen=True)
 class ExternalOnlineTransitionContextResult:
     """One read/admit decision from the online transition router."""
@@ -3179,6 +3386,7 @@ class _ProvisionalTransitionCandidate:
     model: nn.Module
     model_family: str
     observations: list[ExternalTransitionObservation]
+    address_adapter: ExternalTransitionContextAddressAdapter | None = None
     evidence_count: int = 0
     deferred_observations: list[ExternalTransitionObservation] = field(
         default_factory=list
@@ -3225,6 +3433,7 @@ class ExternalOnlineTransitionContextRouter:
         evidence_evaluator: nn.Module | None = None,
         evidence_threshold: float = 0.5,
         evidence_gate_min_evidence: int = 0,
+        address_adapter: ExternalTransitionContextAddressAdapter | None = None,
     ) -> None:
         if (
             bank.state_width != context_encoder.state_width
@@ -3233,6 +3442,12 @@ class ExternalOnlineTransitionContextRouter:
             raise ValueError("router bank and context encoder widths differ")
         if bank.context_width != context_encoder.context_width:
             raise ValueError("router bank and context widths differ")
+        if address_adapter is not None and (
+            address_adapter.state_width != bank.state_width
+            or address_adapter.intention_width != bank.intention_width
+            or address_adapter.context_width != bank.context_width
+        ):
+            raise ValueError("router address adapter and bank widths differ")
         if match_tolerance < 0.0:
             raise ValueError("online context match tolerance cannot be negative")
         if match_margin < 0.0:
@@ -3327,6 +3542,7 @@ class ExternalOnlineTransitionContextRouter:
         self.evidence_evaluator = evidence_evaluator
         self.evidence_threshold = float(evidence_threshold)
         self.evidence_gate_min_evidence = int(evidence_gate_min_evidence)
+        self.address_adapter = address_adapter
         self.candidate_model_families = families
         self._pending: list[ExternalTransitionObservation] = []
         self._active_slot: int | None = None
@@ -3433,6 +3649,11 @@ class ExternalOnlineTransitionContextRouter:
             "quarantine_capacity": self.quarantine_capacity,
             "evidence_threshold": self.evidence_threshold,
             "evidence_gate_min_evidence": self.evidence_gate_min_evidence,
+            "address_adapter": (
+                None
+                if self.address_adapter is None
+                else self.address_adapter.configuration()
+            ),
             "evidence_evaluator": (
                 None
                 if self.evidence_evaluator is None
@@ -3662,11 +3883,28 @@ class ExternalOnlineTransitionContextRouter:
             context_width=self.bank.context_width,
         )
 
+    def _candidate_context(
+        self,
+        observation: ExternalTransitionObservation,
+    ) -> tuple[torch.Tensor, ExternalTransitionContextAddressAdapter | None]:
+        if self.address_adapter is None:
+            with torch.no_grad():
+                return (
+                    self.context_encoder.encode_observation(observation).detach(),
+                    None,
+                )
+        candidate_adapter = self.address_adapter.copy_on_write(
+            observation,
+            self.bank.contexts,
+        )
+        return candidate_adapter.encode_observation(observation).detach(), candidate_adapter
+
     def _stage_candidate(
         self,
         context: torch.Tensor,
         *,
         prior_index: int | None,
+        address_adapter: ExternalTransitionContextAddressAdapter | None = None,
     ) -> int:
         models = {
             family: self.bank._new_model(family)
@@ -3692,6 +3930,7 @@ class ExternalOnlineTransitionContextRouter:
                 model=models[self.candidate_model_families[0]],
                 model_family=self.candidate_model_families[0],
                 observations=[],
+                address_adapter=address_adapter,
                 evidence_count=0,
                 alternatives={
                     family: model
@@ -3711,6 +3950,14 @@ class ExternalOnlineTransitionContextRouter:
         if not 0 <= candidate_index < len(self._provisional_candidates):
             raise RuntimeError("staged result requested without a candidate")
         candidate = self._provisional_candidates[candidate_index]
+        if candidate.address_adapter is not None:
+            candidate.address_adapter = candidate.address_adapter.copy_on_write(
+                observation,
+                self.bank.contexts,
+            )
+            candidate.context = candidate.address_adapter.encode_observation(
+                observation
+            ).detach()
         candidate.evidence_count += int(observation.state.shape[0])
         if self.provisional_evidence_policy == "cumulative_replay":
             candidate.observations.append(self._clone_observation(observation))
@@ -3953,10 +4200,9 @@ class ExternalOnlineTransitionContextRouter:
             ):
                 self._pending.clear()
                 return self._pending_result(status="capacity")
-            with torch.no_grad():
-                candidate_context = self.context_encoder.encode_observation(
-                    bundle
-                ).detach()
+            candidate_context, candidate_address_adapter = self._candidate_context(
+                bundle
+            )
             prior_index: int | None = None
             if self.bank.context_count:
                 prior_index = int(
@@ -3968,6 +4214,7 @@ class ExternalOnlineTransitionContextRouter:
             candidate_index = self._stage_candidate(
                 candidate_context,
                 prior_index=prior_index,
+                address_adapter=candidate_address_adapter,
             )
             self._pending.clear()
             return self._staged_result(bundle, candidate_index=candidate_index)
@@ -3976,8 +4223,7 @@ class ExternalOnlineTransitionContextRouter:
             self._pending.clear()
             return self._pending_result(status="capacity")
 
-        with torch.no_grad():
-            context = self.context_encoder.encode_observation(bundle).detach()
+        context, candidate_address_adapter = self._candidate_context(bundle)
         prior_index: int | None = None
         if self.bank.context_count:
             prior_index = int(
@@ -3985,6 +4231,8 @@ class ExternalOnlineTransitionContextRouter:
             )
         before = self.bank.context_count
         index = self.bank.ensure_context(context, initialize_from=prior_index)
+        if candidate_address_adapter is not None:
+            self.address_adapter = candidate_address_adapter
         status = "admitted" if index == before else "reused"
         self._pending.clear()
         self._set_active_slot(index)
@@ -4268,6 +4516,8 @@ class ExternalOnlineTransitionContextRouter:
 
         promoted_model = self.bank._new_model(selected_family)
         promoted_model.load_state_dict(model.state_dict())
+        if candidate.address_adapter is not None:
+            self.address_adapter = candidate.address_adapter
         self.bank._contexts.append(context.detach().cpu().clone())
         self.bank.models.append(promoted_model)
         self.bank._model_families.append(selected_family)
@@ -4355,6 +4605,11 @@ class ExternalOnlineTransitionContextRouter:
                 "context": candidate.context.detach().cpu().clone(),
                 "model": candidate.model.state_payload(),
                 "model_family": candidate.model_family,
+                "address_adapter": (
+                    None
+                    if candidate.address_adapter is None
+                    else candidate.address_adapter.state_payload()
+                ),
                 "models": {
                     family: model.state_payload()
                     for family, model in candidate.models().items()
@@ -4381,6 +4636,11 @@ class ExternalOnlineTransitionContextRouter:
             "configuration": self.configuration(),
             "bank": self.bank.payload(),
             "context_encoder": self.context_encoder.state_payload(),
+            "address_adapter": (
+                None
+                if self.address_adapter is None
+                else self.address_adapter.state_payload()
+            ),
             "pending": [self._observation_payload(row) for row in self._pending],
             "ambiguous_quarantine": [
                 self._observation_payload(row)
@@ -4430,6 +4690,7 @@ class ExternalOnlineTransitionContextRouter:
             )
         bank_payload = payload.get("bank")
         encoder_payload = payload.get("context_encoder")
+        address_adapter_payload = payload.get("address_adapter")
         pending_payload = payload.get("pending")
         ambiguous_quarantine_payload = payload.get("ambiguous_quarantine", [])
         provisional_candidates_payload = payload.get("provisional_candidates")
@@ -4456,6 +4717,13 @@ class ExternalOnlineTransitionContextRouter:
             )
         bank = ExternalTransitionModelBank.from_payload(bank_payload)
         encoder = ExternalTransitionContextEncoder.from_payload(encoder_payload)
+        address_adapter = (
+            None
+            if address_adapter_payload is None
+            else ExternalTransitionContextAddressAdapter.from_payload(
+                address_adapter_payload
+            )
+        )
         router = cls(
             bank,
             encoder,
@@ -4499,6 +4767,7 @@ class ExternalOnlineTransitionContextRouter:
             evidence_gate_min_evidence=int(
                 configuration.get("evidence_gate_min_evidence", 0)
             ),
+            address_adapter=address_adapter,
         )
         for row_payload in pending_payload:
             row = cls._observation_from_payload(row_payload)
@@ -4572,6 +4841,9 @@ class ExternalOnlineTransitionContextRouter:
             provisional_model = candidate_payload.get("model")
             candidate_models_payload = candidate_payload.get("models")
             candidate_model_family = candidate_payload.get("model_family")
+            candidate_address_adapter_payload = candidate_payload.get(
+                "address_adapter"
+            )
             observations_payload = candidate_payload.get("observations", [])
             deferred_observations_payload = candidate_payload.get(
                 "deferred_observations", []
@@ -4668,6 +4940,13 @@ class ExternalOnlineTransitionContextRouter:
                     model=restored_models[primary_family],
                     model_family=primary_family,
                     observations=observations,
+                    address_adapter=(
+                        None
+                        if candidate_address_adapter_payload is None
+                        else ExternalTransitionContextAddressAdapter.from_payload(
+                            candidate_address_adapter_payload
+                        )
+                    ),
                     evidence_count=evidence_count,
                     deferred_observations=deferred_observations,
                     alternatives={
@@ -6484,6 +6763,7 @@ __all__ = [
     "EXTERNAL_ONLINE_TRANSITION_CONTEXT_ROUTER_SCHEMA",
     "EXTERNAL_REPRESENTATION_SPACE_SCHEMA",
     "EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY",
+    "EXTERNAL_TRANSITION_CONTEXT_ADDRESS_ADAPTER_SCHEMA",
     "EXTERNAL_TRANSITION_CONTEXT_ENCODER_SCHEMA",
     "EXTERNAL_TRANSITION_EVIDENCE_CALIBRATOR_SCHEMA",
     "EXTERNAL_TRANSITION_EVIDENCE_STATISTICS_SCHEMA",
@@ -6511,6 +6791,7 @@ __all__ = [
     "ExternalOnlineContextResolution",
     "ExternalOnlineTransitionContextResult",
     "ExternalOnlineTransitionContextRouter",
+    "ExternalTransitionContextAddressAdapter",
     "ExternalTransitionContextEncoder",
     "ExternalTransitionEvidenceCalibrator",
     "ExternalTransitionEvidenceEvaluator",

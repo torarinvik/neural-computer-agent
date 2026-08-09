@@ -14,5 +14,9 @@ Run one seed with:
   --report-out /tmp/external-nonlinear-drift-learned-context.json
 ```
 
+The copy-on-write address-adaptation arm adds `--adapt-address`; it keeps the
+source encoder and committed keys immutable while adapting isolated candidate
+versions from current evidence.
+
 The claim is intentionally bounded: this tests nonlinear drift and learned
 address formation, not unbounded memory growth or general continual learning.
