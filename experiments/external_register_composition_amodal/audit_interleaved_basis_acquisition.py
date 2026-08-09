@@ -986,6 +986,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     if not 1 <= args.composition_program_count <= len(COMPOSITION_PROGRAMS):
         raise ValueError("composition program count is outside the available grammar")
     composition_programs = COMPOSITION_PROGRAMS[: args.composition_program_count]
+    if args.target_composition_start is None:
+        target_composition_programs = composition_programs
+    else:
+        target_start = args.target_composition_start
+        target_stop = target_start + args.composition_program_count
+        if target_start < 0 or target_stop > len(COMPOSITION_PROGRAMS):
+            raise ValueError("target composition range is outside the available grammar")
+        target_composition_programs = COMPOSITION_PROGRAMS[target_start:target_stop]
     parent = _runtime(seed=args.seed, growth=False)
     _train_with_progress(
         parent,
@@ -1202,7 +1210,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         include_composition=args.include_composition,
         source_operations=args.source_operations,
         decoder_prior_state=decoder_prior_state,
-        composition_programs=composition_programs,
+        composition_programs=target_composition_programs,
         bridge_prior_state=bridge_prior_state,
         conditioned_bridge_prior=args.reuse_conditioned_bridge_prior,
         preserve_composition_trace=args.preserve_composition_trace,
@@ -1271,7 +1279,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         target_operations,
         include_composition=args.include_composition,
         decoder_prior_state=decoder_prior_state,
-        composition_programs=composition_programs,
+        composition_programs=target_composition_programs,
         bridge_prior_state=bridge_prior_state,
         conditioned_bridge_prior=args.reuse_conditioned_bridge_prior,
         source_operations=args.source_operations,
@@ -1693,6 +1701,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "composition_programs": [list(program) for program in composition_programs]
         if args.include_composition
         else [],
+        "target_composition_programs": [list(program) for program in target_composition_programs]
+        if args.include_composition
+        else [],
         "decoder_prior": "source_decoder_0"
         if args.reuse_decoder_prior
         else None,
@@ -1869,6 +1880,12 @@ def main() -> None:
         type=int,
         default=len(COMPOSITION_PROGRAMS),
         help="number of deterministic source-program permutations to interleave",
+    )
+    parser.add_argument(
+        "--target-composition-start",
+        type=int,
+        default=None,
+        help="optional held-out target permutation start; calibration keeps the first programs",
     )
     parser.add_argument(
         "--reuse-shared-bridge-prior",

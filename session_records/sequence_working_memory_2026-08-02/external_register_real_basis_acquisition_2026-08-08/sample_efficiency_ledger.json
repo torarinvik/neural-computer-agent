@@ -575,6 +575,23 @@
       "target_results": "direct targets 0.875/0.875; compositions 0.875 and 0.7813",
       "fresh_transfer": "no positive sample-efficiency transfer; inherited stable-bit curve did not beat fresh",
       "decision": "retain as frozen-core adaptation evidence; prioritize transfer-efficiency mechanism next"
+    },
+    {
+      "experiment": "protected_bounded_meta_heldout_order_transfer64",
+      "date": "2026-08-09",
+      "seeds": [69316],
+      "claim": "Meta capacity calibrated on two orderings transfers to two unseen source-program orderings.",
+      "operator_mode": "factorized_protected_bounded_meta",
+      "sequence_calibration_updates": 128,
+      "target_updates": 64,
+      "calibration_composition_programs": 2,
+      "heldout_target_composition_programs": 2,
+      "replayed_examples": 0,
+      "source_retention": "exact zero deltas",
+      "inherited_target_results": "0.6719 and 0.7031",
+      "fresh_control_results": "0.7344 and 0.8125",
+      "positive_transfer": false,
+      "decision": "reject transfer claim; retain seen-order capacity but repair sequence/order generalization before further promotion"
     }
   ]
 }

@@ -951,3 +951,13 @@ retention deltas remained exactly zero. The inherited learner did not yet beat
 the fresh-control stable-bit curve, so this demonstrates retained frozen-core
 adaptation but not reusable sample-efficiency gain. The transfer predicate was
 also corrected to require fewer inherited stable bits than fresh.
+
+## Held-out ordering transfer — rejected for negative transfer
+
+Calibration used the first two permutations while target evaluation used two
+unseen permutations. After 64 target updates, the inherited system reached
+only `0.6719` and `0.7031`; fresh controls reached `0.7344` and `0.8125`.
+Source retention remained exact, so this is not catastrophic forgetting, but
+the learned meta residual does not yet generalize to unseen orderings and can
+make them harder to learn. The next repair must make the external computation
+memory sequence/order-aware or otherwise prevent seen-order specialization.
