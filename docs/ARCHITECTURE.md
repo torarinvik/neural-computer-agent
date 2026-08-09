@@ -171,6 +171,14 @@ never was.
    it does not yet compound.** The bottleneck is now the adaptation
    channel — a 4160-param goal adapter can re-map what a goal means but
    not what the frozen policy does with it — not the plant's knowledge.
+   *Closed by F65/F66:* widening the channel changes nothing (0.613
+   both), and freezing the plant merely MOVES forgetting into the
+   adapter — across three sequential targets the frozen arm's zero-shot
+   DECLINES (0.531 -> 0.129) while a cold arm stays flat (0.422 ->
+   0.363), costs 60% more, and ends worse. Freezing relocates the
+   storage-rule violation to whatever is still plastic. One untried
+   mechanism remains: a plant holding NO policy, with behaviour derived
+   by search over a learned model.
 3. **Retrieval is never tried before learning.** The bank is only ever
    *given* fragments; it is never asked whether it already contains a
    solution. Without that loop, reuse cannot be selected even if it is

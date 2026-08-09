@@ -2660,3 +2660,55 @@ in one session, and the reason every sweep now prints back the
 configuration it actually received.
 
 Probes 151-156 are `reacher_ladder.py --adapt-decoder`.
+
+**F66 (probes 157-160). Freezing the plant moves forgetting into the
+adapter. The founding claim remains unsupported.** First properly
+instrumented compounding test: one warm-start, three sequential novel
+targets, cost measured as work actually done (early-stop on mastery, and
+a target the prior already solves costs zero), against a cold-sequential
+control on the identical sequence.
+
+| arm | lifetime cost | r2 zero-shot | r3 zero-shot | r4 zero-shot | r4 final |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| cold sequential | **800** | 0.422 | 0.176 | **0.363** | **0.441** |
+| warm + frozen + head | 1300 | 0.531 | 0.184 | **0.129** | 0.133 |
+
+The warm arm costs 60% more and ends worse. But the diagnostic number is
+zero-shot ACROSS the sequence: **cold stays roughly flat (0.422 ->
+0.363) while warm-frozen DECLINES (0.531 -> 0.129).** It begins with the
+better prior and ends with the worse one.
+
+**Mechanism.** With the plant frozen, every task's content must go into
+the 5348-param adapter, and each successive target overwrites the last.
+We removed forgetting from the plant by freezing it and reintroduced it
+in the adapter — smaller, unprotected, and now carrying all task
+content. The cold arm, free to update everything, accumulates better
+than the "protected" one.
+
+This is the storage rule biting for the sixth distinct time. F11 kept a
+default context in weights, F50 let one twin take the plant, F58 stored
+a habit, F61 stored a pursuit policy, F64/F65 showed the prior is
+carried but unused — and here the bank-substitute itself becomes the
+overwritten store. **Freezing does not solve the problem; it relocates
+it to whatever is still plastic.**
+
+**Honest note on circularity, stated before the run.** Retrieval-first
+makes a warm arm's cost lower almost by construction, so total spend was
+never the evidence — zero-shot per target was, and it went the wrong
+way. The mechanism flattered itself on cost and still lost.
+
+**Status of the founding claim after 66 findings.** *Produce a program
+such that having learned A makes a novel B faster to learn than from
+scratch* — no supporting measurement. What IS supported: storage and
+reuse within a family (F54 necessity, composition at 85-111% with zero
+learning, F57 addressing), and single-target capability transfer (F64,
+0.520 zero-shot vs 0.172 floor). What is not: any reduction in the cost
+of acquiring a novel task.
+
+The untested mechanism list is now down to one that is genuinely
+untried: a plant that holds NO policy at all, with behaviour derived by
+search over a learned transition model (GOAL_FACTORED_DESIGN rung C).
+Everything else — diversity, freezing, wider channels, cost accounting,
+retrieval-first — has been built and measured.
+
+Probes 157-160 are `reacher_ladder.py --retrieval-first --targets`.
