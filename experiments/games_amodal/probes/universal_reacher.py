@@ -67,6 +67,16 @@ parser.add_argument("--view", choices=("none", "roll", "crop"), default="none",
                          "allocentric encoder at 0.69/axis -- present but "
                          "~30%% wrong, which is 'approaches, misses by a cell'.")
 parser.add_argument(
+    "--relative-goal", action="store_true",
+    help="encode the goal as the offset (target - avatar) measured ONCE at "
+         "episode start, not as an absolute cell. Egocentric views destroy "
+         "absolute position, so pairing them with an absolute goal removes "
+         "the very information needed to read the instruction -- measured: "
+         "roll/crop with an absolute goal are WORSE than allocentric "
+         "(reach 0.21/0.26 vs 0.32). Offsets are translation-invariant, "
+         "which is also the natural instruction for a reacher; the agent "
+         "must still integrate its own motion to track what remains.")
+parser.add_argument(
     "--holdout-quadrant", action="store_true", default=True,
     help="reserve the bottom-right quadrant of targets for the held-out gate")
 args = parser.parse_args()
@@ -106,8 +116,8 @@ def avatar_cells(observation: torch.Tensor) -> torch.Tensor:
     return torch.stack([index // GRID, index % GRID], dim=-1)
 
 
-def encode(targets: torch.Tensor) -> torch.Tensor:
-    normalised = targets.float() / (GRID - 1)
+def encode(targets: torch.Tensor, *, span: int = GRID) -> torch.Tensor:
+    normalised = targets.float() / (span - 1)
     payload = goal_encoder(normalised)
     return payload / payload.norm(dim=-1, keepdim=True).clamp_min(1e-6) * 4.0
 
@@ -137,7 +147,11 @@ def rollout(targets: torch.Tensor, *, seed: int, sample: bool,
         propensity=torch.ones(args.batch_size),
         has_feedback=torch.zeros(args.batch_size))
     rng = torch.Generator().manual_seed(seed + 5)
-    goal_payload = encode(targets)
+    start_cells = avatar_cells(
+        pad_channels(verifier.observation(), SHARED_SCREEN_CHANNELS))
+    goal_payload = encode(
+        (targets - start_cells + (GRID - 1)) if args.relative_goal else targets,
+        span=(2 * GRID - 1) if args.relative_goal else GRID)
     rewards, logps, actions, arrived = [], [], [], torch.zeros(args.batch_size)
     raw = pad_channels(verifier.observation(), SHARED_SCREEN_CHANNELS)
     observation = viewed(raw)
