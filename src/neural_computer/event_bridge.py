@@ -5,7 +5,6 @@ from __future__ import annotations
 import torch
 from torch import nn
 
-
 EVENT_BRIDGE_SCHEMA = "neural-computer.event-bridge.v1"
 CONDITIONED_EVENT_BRIDGE_SCHEMA = "neural-computer.conditioned-event-bridge.v1"
 

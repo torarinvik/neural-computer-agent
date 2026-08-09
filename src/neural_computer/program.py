@@ -14,7 +14,6 @@ from typing import Any
 
 import torch
 
-
 EXTERNAL_PROGRAM_ARTIFACT_SCHEMA = "neural-computer.external-program-artifact.v1"
 
 

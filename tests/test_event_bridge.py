@@ -9,8 +9,11 @@ from experiments.external_register_composition_amodal.train import (
 from experiments.working_memory_continuous.canonical_growth_pressure_test import (
     _runtime,
 )
-from neural_computer import AmodalEventBridge, CapabilityConditionedEventBridge
-from neural_computer import OpaqueProtocolDecoder
+from neural_computer import (
+    AmodalEventBridge,
+    CapabilityConditionedEventBridge,
+    OpaqueProtocolDecoder,
+)
 
 
 def test_event_bridge_starts_behavior_preserving_and_is_versioned() -> None:
