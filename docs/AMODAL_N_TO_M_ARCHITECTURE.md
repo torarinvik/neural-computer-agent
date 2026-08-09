@@ -5353,3 +5353,26 @@ using scalar credit. The next frontier is more demanding: unknown frontend
 changes must be discovered online rather than drawn from a fixed registered
 transform set, and the bank must support eviction/consolidation while keeping
 the same no-replay retention guarantees.
+
+## Outcome-only online admission with immutable alignment keys (2026-08-09)
+
+The alignment bank now admits an unregistered fourth dense event transform
+after three cells have already been mastered and routed. The new bridge learns
+from scalar verifier outcomes, while old bridge cells and old address keys are
+frozen. During the growth phase, no old-stream examples are replayed. The new
+cell's address is an opaque event-signature key appended to external memory;
+it is not a task or frontend identity.
+
+Across seeds `69316` and `69317`, the new cell reached `0.984`/`0.980`, its
+shuffled controls reached `0.496`/`0.449`, and immutable-key routing selected all
+four cells correctly with action mastery. Key corruption dropped routing to
+`0.5` in both seeds. A matched shared-head expansion failed old-route
+retention in both seeds, even with old output rows frozen; this is retained as
+the negative control that motivated immutable append-only keys. Reports and
+accounting are archived in
+`session_records/sequence_working_memory_2026-08-02/outcome_only_online_alignment_growth_promoted_2026-08-09/`.
+
+This closes bounded online admission and no-replay address retention. The
+remaining frontier is now lifecycle management: the key bank must handle
+ambiguous or drifting signatures, capacity pressure, eviction, consolidation,
+and recovery after corrupted or stale cells without replaying old experiences.
