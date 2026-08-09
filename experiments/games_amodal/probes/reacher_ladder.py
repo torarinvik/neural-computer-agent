@@ -285,6 +285,14 @@ if args.warm_mix:
     train(mix[0], args.warm_updates, "warm", curve, mix=mix)
     report["warm_mix_final"] = {
         name: measure(SPEC[name]) for name in args.warm_mix.split(",")}
+    if args.freeze_plant:
+        # F61 froze after ONE domain, preserving a wrong policy. Freezing
+        # after DIVERSE domains preserves a general one -- the untested
+        # combination, and the cheap form of "reuse rather than relearn".
+        for parameter in params:
+            parameter.requires_grad_(False)
+        target_optimizer = torch.optim.Adam(adapter.parameters(), lr=1e-2)
+        report["adapted_params"] = sum(p.numel() for p in adapter.parameters())
 elif args.warm_start:
     train(SPEC[args.warm_start], args.warm_updates, "warm", curve)
     report["warm_rung_final"] = measure(SPEC[args.warm_start])
@@ -295,6 +303,12 @@ elif args.warm_start:
         report["adapted_params"] = sum(
             p.numel() for p in adapter.parameters())
 report["no_agent"] = measure(spec, rand=True)
+if args.warm_mix or args.warm_start:
+    # ZERO-SHOT reuse: what the warm plant does on the target BEFORE any
+    # target training. This is the purest transfer number and we had
+    # never taken it -- every previous measurement confounded transfer
+    # with re-learning.
+    report["zero_shot"] = measure(spec)
 train(spec, args.updates, "target", curve, target_optimizer)
 report["final"] = measure(spec)
 report["curve"] = curve
