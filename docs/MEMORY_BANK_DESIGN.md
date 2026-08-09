@@ -2377,3 +2377,48 @@ blocker for the reacher rung. Numeric remains the control surface where
 every part is known to work.
 
 Probes 109-120 are `numeric_reacher.py` and `universal_reacher.py`.
+
+**F60 (probes 121-124). Perception is NOT the grid reacher's bottleneck.
+Seven interventions refuted; the 2D task itself is the difficulty.** The
+decisive test: replace the screen encoding with a perfect one-hot of the
+avatar's own cell -- exactly the clean state the numeric reacher gets.
+
+| condition | trained reach |
+| --- | ---: |
+| numeric line | **0.938** |
+| grid, ORACLE state (perfect perception) | 0.379 |
+| grid, screen encoder + one-hot goal | 0.316 |
+| grid floor | ~0.20 |
+
+Flawless self-knowledge recovers almost none of the gap. Every
+perception-side hypothesis is therefore dead, and with it the story I
+had been telling since the linear probe:
+
+| intervention | verdict |
+| --- | --- |
+| egocentric roll / crop (absolute goal) | worse |
+| egocentric crop (relative goal) | worse, most habitual arm |
+| self-supervised localisation head | worse |
+| true shortest-path (BFS) reward | worse than Manhattan |
+| one-hot goal encoding | +0.03, marginal |
+| relative goals | held-out only (0.273 -> 0.461) |
+| **oracle state** | **+0.06, marginal** |
+
+What remains is the task. Numeric: two actions, one dimension, no
+obstacles, and a path that is one sustained direction. Grid: four
+actions, a wall pierced by a single gap, and paths needing turn
+sequences. The difficulty is SEQUENTIAL DECISION-MAKING under sparse
+credit, not seeing.
+
+**Consequence: build the ladder from the working end.** Rather than
+attacking the grid again, vary one axis at a time between the two --
+1D line, 1D with a blocked cell, 2D open, 2D walled, 2D from pixels --
+and find exactly which step breaks competence. Every rung is tiny, so
+this also supplies many points for the acquisition-cost curve, and it
+converts the games from a target into an INSTRUMENT: the headline gate
+becomes whether pre-training on lower rungs makes higher rungs cheaper
+to acquire, measured against from-scratch controls. Transfer must be
+measured, not assumed -- a flat curve is a real result and would say the
+shared controller carries nothing across these steps.
+
+Probes 121-124 are `universal_reacher.py --oracle-state`.
