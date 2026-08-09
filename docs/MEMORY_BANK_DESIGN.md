@@ -2475,3 +2475,46 @@ formulation: a learned d(X, Y) IS a search heuristic, and a planner over
 a model has no habits to carry.
 
 Probes 129-132 are `reacher_ladder.py --warm-start r1 [--freeze-plant]`.
+
+**F62 (probes 133-138). Concurrent multi-domain warm-start converts
+catastrophic negative transfer into mild negative transfer — but does
+NOT produce positive transfer. And the test cannot currently detect it.**
+Route 1 of F61, three arms, two seeds, target = r4 (walled grid):
+
+| arm | r4 reach | mastered at | path ratio |
+| --- | ---: | ---: | ---: |
+| cold start | **1.000** | **200** | 1.03 |
+| warm from r1 alone | 0.277 | never (0/2) | 1.23 |
+| warm from r1+r3 concurrently | 0.824 | 400 (1/2) | 1.10 |
+
+The mechanism is confirmed: a plant trained on ONE domain cannot
+separate "how to pursue a goal" from "how to pursue a goal in a line" —
+both explain its data, and the specific one is cheaper, so it stores
+that. Two structurally different domains at once make those hypotheses
+disagree, and only the shared machinery survives contact with both.
+Diversity is not regularisation here; it is what makes the general layer
+IDENTIFIABLE. That recovers 0.277 -> 0.824.
+
+**But the objective is not met.** Stated properly (and this is the
+formulation to adopt): *produce a program such that having learned task
+A makes a novel task B faster to learn than from scratch.* Cold masters
+at 200 updates; the best warm arm needs 400 and only on one seed. Prior
+training still costs. The honest verdict is that we have reduced harm,
+not created benefit.
+
+**A methodological flaw in the test itself, recorded before it misleads
+us.** r4 is too EASY cold — 200 updates to 1.000. There is almost no
+headroom for a prior to save anything, and any prior at all is a
+handicap on a task that is cheap to learn fresh. **A transfer test needs
+a target that is expensive from scratch**, or positive transfer is
+undetectable by construction. Every transfer measurement in this project
+so far has used cheap targets, so the absence of positive transfer is
+weaker evidence than it looks.
+
+Next: re-run the same three arms against a target that is genuinely
+expensive cold (a larger grid, the composition suite, or the twins),
+where a prior has room to pay for itself. Until then "no positive
+transfer" should be read as "not yet measurable", not as "does not
+exist".
+
+Probes 133-138 are `reacher_ladder.py --warm-mix`.

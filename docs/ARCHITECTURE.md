@@ -84,8 +84,19 @@ Two validated routes:
 
 Not "perform well on task T" but:
 
-> **From any state X, reach any goal G at least cost — and get cheaper
-> at doing so as more tasks are seen.**
+> **Produce a program such that having learned task A makes a NOVEL task
+> B faster to learn than from scratch.**
+
+This is the objective and the measurement at once — there is no gap
+between the claim and its test, which is where this project has
+repeatedly gone wrong. "From scratch" is the only baseline that cannot
+be gamed: a system that learns each task independently and never forgets
+scores exactly zero against it, so the objective is unsatisfiable
+without genuine reuse. The load-bearing word is NOVEL — if B shares a
+family with A, "faster" is nearly free and means little.
+
+Operationally, for a reacher: from any state X, reach any goal G at
+least cost, and get cheaper at it as more tasks are seen.
 
 Three consequences, in order of how well established they are:
 
@@ -145,6 +156,12 @@ never was.
    there is no learned controller to carry habits at all.
 2. **Cost is not in the objective** (§3.2, §3.3), so nothing yet
    pressures reuse.
+2b. **Positive transfer is not demonstrated, and our tests cannot
+   currently detect it (F62).** Concurrent multi-domain warm-start
+   recovers most of F61's damage (0.277 -> 0.824) but cold still wins
+   (1.000 @200 vs 0.824 @400). The test is flawed: r4 masters cold in
+   200 updates, so there is no headroom for a prior to save anything.
+   A transfer test needs a target that is EXPENSIVE from scratch.
 3. **Retrieval is never tried before learning.** The bank is only ever
    *given* fragments; it is never asked whether it already contains a
    solution. Without that loop, reuse cannot be selected even if it is
