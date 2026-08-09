@@ -140,6 +140,19 @@
       "retention_on_mastered_primitives": "all paired fixed-suite deltas zero; source floor passed",
       "transfer_ratio_against_fresh_learner": "not measured",
       "decision": "promote bounded full finite permutation grammar; larger depth, novel primitives, and fresh-learner transfer remain untested"
+    },
+    {
+      "experiment": "full_permutation_grammar_matched_fresh_transfer_diagnostic",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "Measure whether frozen learned source programs reduce the verifier budget needed by fresh decoder and event-bridge paths across all six source permutations.",
+      "composition_program_count": 6,
+      "fresh_control_verifier_bits_per_run": 466944,
+      "fresh_control_replayed_examples": 0,
+      "inherited_path": "behavior promotion retained",
+      "positive_transfer": false,
+      "retention_on_mastered_primitives": "inherited path retained exact zero-delta source behavior",
+      "decision": "reject positive sample-efficiency claim; retain diagnostic and target decoder/event-bridge adaptation"
     }
   ]
 }

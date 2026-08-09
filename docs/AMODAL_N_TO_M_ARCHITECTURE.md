@@ -4094,3 +4094,11 @@ source-retention gates across both seeds with zero replay. This remains a
 bounded grammar result rather than unrestricted program induction or general
 continual learning. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_real_basis_acquisition_2026-08-08/interleaved_full_composition_grammar/`.
+
+The matched fresh-learner arm is now part of the full-grammar audit. It does
+not yet promote positive sample-efficiency transfer: the inherited path
+passes its behavior gates, but fresh stable-prefix outcomes are incomplete or
+mixed across seeds. This identifies decoder/event-bridge adaptation as the
+next bottleneck and preserves the distinction between capability retention
+and faster learning. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_real_basis_acquisition_2026-08-08/interleaved_full_grammar_transfer/`.

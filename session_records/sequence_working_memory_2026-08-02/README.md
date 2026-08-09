@@ -1844,3 +1844,12 @@ concurrently. Both seeds promoted all eight candidates with zero replay and
 exact source retention. This validates the complete tested finite grammar,
 not unrestricted program induction. Evidence is in
 `external_register_real_basis_acquisition_2026-08-08/interleaved_full_composition_grammar/`.
+
+## Matched fresh-learner transfer diagnostic (2026-08-09)
+
+The full permutation grammar was compared with fresh three-instruction
+learners under the same verifier budget. The inherited memory path remained
+promoted, but strict positive transfer was not replicated across seeds. This
+localizes the next bottleneck to efficient adaptation of fresh decoders and
+event bridges, rather than retention. Evidence is in
+`external_register_real_basis_acquisition_2026-08-08/interleaved_full_grammar_transfer/`.

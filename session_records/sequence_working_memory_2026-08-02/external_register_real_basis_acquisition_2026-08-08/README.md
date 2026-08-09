@@ -517,3 +517,21 @@ This promotes concurrent compositional reuse across the complete finite
 permutation family tested here. It is still a bounded grammar result; larger
 program depth, novel primitives, and transfer against matched fresh learners
 remain open.
+
+## Matched fresh-learner transfer diagnostic — not promoted
+
+The full-grammar audit now includes a strict matched fresh control. For each
+of the six compositions, a fresh machine with three trainable instructions,
+bases, decoder, and event bridge receives the same phase/update budget as the
+inherited candidate. The inherited path retained its full promotion, but the
+transfer gate did not pass: seed `69316` had fresh stable-prefix failure on
+most programs, while seed `69317` showed mixed results when both arms crossed
+the threshold. The strict positive-transfer flag was false for both seeds.
+
+This is a useful negative result. The frozen external program bank can preserve
+and expose learned capability, but we cannot yet claim that it reliably makes
+learning a new output path cheaper than a matched fresh learner. The next
+bottleneck is adaptation efficiency at the memory-to-decoder/event-bridge
+boundary, not source-program retention. Evidence is in
+`interleaved_full_grammar_transfer/`; its fresh-control accounting adds
+`466,944` verifier bits per run, with zero replay.

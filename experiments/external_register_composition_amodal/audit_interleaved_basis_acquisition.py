@@ -41,6 +41,7 @@ from .train import (
     _batch,
     _new_machine,
     _rollout,
+    _stable_bits,
 )
 
 TARGET_OPERATIONS = ("complement_rotate", "prefix_parity")
@@ -105,8 +106,19 @@ def _train_interleaved_phase(
         decoder = candidate["decoder"]
         trainable = []
         if candidate.get("mutable", True):
-            basis = machine.basis_slots[candidate["basis_slot"]]
-            trainable.extend([candidate["instruction"].code, *basis.parameters()])
+            instructions = (
+                candidate["mutable_instructions"]
+                if "mutable_instructions" in candidate
+                else (candidate["instruction"],)
+            )
+            basis_slots = (
+                candidate["mutable_basis_slots"]
+                if "mutable_basis_slots" in candidate
+                else (candidate["basis_slot"],)
+            )
+            trainable.extend(instruction.code for instruction in instructions)
+            for basis_slot in basis_slots:
+                trainable.extend(machine.basis_slots[basis_slot].parameters())
         trainable.extend(candidate["bridge"].parameters())
         if decoder_trainable:
             trainable.extend(decoder.parameters())
@@ -195,6 +207,8 @@ def _prepare_candidates(
                 "instructions": (instruction,),
                 "basis_slots": (basis_slot,),
                 "mutable": True,
+                "mutable_instructions": (instruction,),
+                "mutable_basis_slots": (basis_slot,),
                 "decoder": OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16),
                 "bridge": AmodalEventBridge(
                     EVENT_WIDTH, parent.controller.width, EVENT_WIDTH, hidden=64
@@ -230,6 +244,84 @@ def _prepare_candidates(
                 }
             )
     return candidates
+
+
+def _enable_candidate_capacity(machine, candidate: dict[str, object]) -> None:
+    if not candidate.get("mutable", True):
+        return
+    instructions = (
+        candidate["mutable_instructions"]
+        if "mutable_instructions" in candidate
+        else (candidate["instruction"],)
+    )
+    basis_slots = (
+        candidate["mutable_basis_slots"]
+        if "mutable_basis_slots" in candidate
+        else (candidate["basis_slot"],)
+    )
+    for instruction in instructions:
+        instruction.code.requires_grad_(True)
+    for basis_slot in basis_slots:
+        for parameter in machine.basis_slots[basis_slot].parameters():
+            parameter.requires_grad_(True)
+
+
+def _train_candidate_schedule(
+    parent,
+    machine,
+    candidate: dict[str, object],
+    *,
+    args: argparse.Namespace,
+    seed_base: int,
+) -> None:
+    _freeze(machine)
+    _enable_candidate_capacity(machine, candidate)
+    _train_interleaved_phase(
+        parent,
+        machine,
+        [candidate],
+        updates=args.warmup_updates,
+        batch_size=args.batch_size,
+        span=args.warmup_span,
+        seed=seed_base,
+        learning_rate=args.learning_rate,
+        eval_every=args.eval_every,
+        audit_count=args.audit_count,
+        audit_seed=seed_base + 100_000,
+        decoder_trainable=True,
+    )
+    for parameter in candidate["decoder"].parameters():
+        parameter.requires_grad_(False)
+    _train_interleaved_phase(
+        parent,
+        machine,
+        [candidate],
+        updates=args.focus_updates,
+        batch_size=args.batch_size,
+        span=args.span,
+        seed=seed_base + 200_000,
+        learning_rate=args.learning_rate,
+        eval_every=args.eval_every,
+        audit_count=args.audit_count,
+        audit_seed=seed_base + 300_000,
+        decoder_trainable=False,
+    )
+    for parameter in candidate["decoder"].parameters():
+        parameter.requires_grad_(True)
+    _train_interleaved_phase(
+        parent,
+        machine,
+        [candidate],
+        updates=args.target_updates,
+        batch_size=args.batch_size,
+        span=args.span,
+        seed=seed_base + 400_000,
+        learning_rate=args.learning_rate,
+        eval_every=args.eval_every,
+        audit_count=args.audit_count,
+        audit_seed=seed_base + 500_000,
+        decoder_trainable=True,
+    )
 
 
 def run(args: argparse.Namespace) -> dict[str, object]:
@@ -351,10 +443,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     ]
     _freeze(machine)
     for candidate in candidates:
-        if candidate.get("mutable", True):
-            candidate["instruction"].code.requires_grad_(True)
-            for parameter in machine.basis_slots[candidate["basis_slot"]].parameters():
-                parameter.requires_grad_(True)
+        _enable_candidate_capacity(machine, candidate)
 
     _train_interleaved_phase(
         parent,
@@ -414,10 +503,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     )
     _freeze(shuffled_machine)
     for candidate in shuffled_candidates:
-        if candidate.get("mutable", True):
-            candidate["instruction"].code.requires_grad_(True)
-            for parameter in shuffled_machine.basis_slots[candidate["basis_slot"]].parameters():
-                parameter.requires_grad_(True)
+        _enable_candidate_capacity(shuffled_machine, candidate)
     for phase_updates, phase_span, phase_seed, decoder_trainable in (
         (args.warmup_updates, args.warmup_span, args.seed + 800_000, True),
         (args.focus_updates, args.span, args.seed + 900_000, False),
@@ -437,6 +523,79 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             audit_seed=phase_seed + 100_000,
             decoder_trainable=decoder_trainable,
             shuffle_outcomes=True,
+        )
+
+    transfer_records = []
+    for index, candidate in enumerate(candidates):
+        if candidate["operation"] != "generated_composition":
+            continue
+        program = tuple(candidate["composition_program"])
+        fresh_machine = _new_machine(
+            len(SOURCE_OPERATIONS),
+            operator_mode=args.operator_mode,
+        )
+        for _ in SOURCE_OPERATIONS:
+            fresh_machine.add_basis_slot()
+        source_indices = tuple(
+            SOURCE_OPERATIONS.index(primitive) for primitive in program
+        )
+        fresh_candidate = {
+            "operation": "generated_composition",
+            "instructions": tuple(
+                fresh_machine.instructions[source_index]
+                for source_index in source_indices
+            ),
+            "basis_slots": source_indices,
+            "mutable": True,
+            "mutable_instructions": tuple(fresh_machine.instructions),
+            "mutable_basis_slots": tuple(range(len(SOURCE_OPERATIONS))),
+            "generated_composition_ids": (0,),
+            "generated_compositions": (program,),
+            "composition_program": program,
+            "decoder": OpaqueProtocolDecoder(
+                REGISTER_WIDTH, ACTION_WIDTH, hidden=16
+            ),
+            "bridge": AmodalEventBridge(
+                EVENT_WIDTH, parent.controller.width, EVENT_WIDTH, hidden=64
+            ),
+        }
+        _train_candidate_schedule(
+            parent,
+            fresh_machine,
+            fresh_candidate,
+            args=args,
+            seed_base=args.seed + 1_200_000 + index * 10_009,
+        )
+        inherited_stable = _stable_bits(
+            candidate["phase_progress"],
+            threshold=MASTERY_THRESHOLD,
+            bits_per_update=args.batch_size * args.span * 2,
+        )
+        fresh_stable = _stable_bits(
+            fresh_candidate["phase_progress"],
+            threshold=MASTERY_THRESHOLD,
+            bits_per_update=args.batch_size * args.span * 2,
+        )
+        fresh_accuracy = _score(
+            parent,
+            fresh_machine,
+            fresh_candidate,
+            count=args.audit_count,
+            span=args.span,
+            seed=args.seed + 1_800_000 + index * 1_009,
+        )
+        transfer_records.append(
+            {
+                "composition_program": list(program),
+                "inherited_stable_bits": inherited_stable,
+                "fresh_stable_bits": fresh_stable,
+                "fresh_accuracy": fresh_accuracy,
+                "positive_transfer": bool(
+                    inherited_stable is not None
+                    and fresh_stable is not None
+                    and fresh_stable > inherited_stable
+                ),
+            }
         )
 
     records = []
@@ -507,8 +666,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     if accepted:
         for candidate in candidates:
             if candidate.get("mutable", True):
-                machine.freeze_basis_slot(candidate["basis_slot"])
-                candidate["instruction"].code.requires_grad_(False)
+                for basis_slot in candidate.get(
+                    "mutable_basis_slots", (candidate["basis_slot"],)
+                ):
+                    machine.freeze_basis_slot(basis_slot)
+                for instruction in candidate.get(
+                    "mutable_instructions", (candidate["instruction"],)
+                ):
+                    instruction.code.requires_grad_(False)
     else:
         # The transaction is all-or-nothing: concurrent mutable growth cannot
         # leave one candidate admitted when the paired pressure test fails.
@@ -528,6 +693,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         + (args.focus_updates + args.target_updates) * args.batch_size
     )
     shuffled_target_training_lifetimes = normal_target_training_lifetimes
+    fresh_transfer_candidate_count = len(transfer_records)
+    fresh_transfer_training_lifetimes = fresh_transfer_candidate_count * (
+        args.warmup_updates * args.batch_size
+        + (args.focus_updates + args.target_updates) * args.batch_size
+    )
     audit_lifetimes = (
         candidate_count * args.audit_count * 3
         + candidate_count * args.consolidation_audit_count
@@ -540,6 +710,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         + args.source_updates * source_attempt_count * args.batch_size
         + normal_target_training_lifetimes
         + shuffled_target_training_lifetimes
+        + fresh_transfer_training_lifetimes
         + audit_lifetimes
     )
     parent_training_bits = args.parent_updates * args.batch_size * 2 * 2
@@ -558,6 +729,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         + (args.focus_updates + args.target_updates) * args.batch_size * args.span * 2
     )
     shuffled_target_training_bits = normal_target_training_bits
+    fresh_transfer_training_bits = fresh_transfer_candidate_count * (
+        args.warmup_updates * args.batch_size * args.warmup_span * 2
+        + (args.focus_updates + args.target_updates)
+        * args.batch_size
+        * args.span
+        * 2
+    )
     progress_audit_bits = candidate_count * 2 * (
         (args.warmup_updates + args.eval_every - 1) // args.eval_every
         * args.audit_count * args.warmup_span * 2
@@ -577,6 +755,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         + source_selection_bits
         + normal_target_training_bits
         + shuffled_target_training_bits
+        + fresh_transfer_training_bits
         + progress_audit_bits
         + suite_and_control_bits
     )
@@ -592,6 +771,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "source_attempt_scores": source_attempt_counts,
         "retained_before": retained_before,
         "targets": records,
+        "fresh_transfer": transfer_records,
+        "transfer_promoted": bool(
+            transfer_records
+            and all(row["positive_transfer"] for row in transfer_records)
+        ),
         "interleaving": {
             "schedule": "round_robin_per_local_update",
             "candidate_count": len(candidates),
@@ -605,6 +789,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "source_selection_verifier_bits": source_selection_bits,
             "normal_target_training_verifier_bits": normal_target_training_bits,
             "shuffled_target_training_verifier_bits": shuffled_target_training_bits,
+            "fresh_transfer_training_verifier_bits": fresh_transfer_training_bits,
             "progress_audit_verifier_bits": progress_audit_bits,
             "suite_and_control_verifier_bits": suite_and_control_bits,
             "unique_verifier_bits": unique_verifier_bits,
@@ -613,6 +798,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 + args.source_updates * source_attempt_count
                 + candidate_count * (args.warmup_updates + args.focus_updates + args.target_updates)
                 + candidate_count * (args.warmup_updates + args.focus_updates + args.target_updates)
+                + fresh_transfer_candidate_count
+                * (args.warmup_updates + args.focus_updates + args.target_updates)
             ),
             "unique_logical_lifetimes": logical_lifetimes,
         },
