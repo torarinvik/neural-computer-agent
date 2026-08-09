@@ -1315,6 +1315,28 @@
       "external_state_persistence": [true, true],
       "controls": "source retention, source-slot digest, frozen evaluator, frozen controller, wrong-context control, exact external payload restore, and zero target replay passed",
       "decision": "promote bounded context-isolated online calibration; next learn context formation and test alternating regimes under capacity growth, consolidation, and compression"
+    },
+    {
+      "experiment": "external_transition_model_bank_continual",
+      "date": "2026-08-09",
+      "seeds": [69811, 69812],
+      "claim": "An isolated external transition-model slot initialized from a prior model learns a disjoint target dynamics regime faster than a matched fresh model while retaining the source regime without old-source replay.",
+      "module": "ExternalTransitionModelBank + ExternalModelBasedPlanner",
+      "source_updates_per_seed": 1200,
+      "target_loss_threshold": 0.01,
+      "target_updates_per_seed": [23, 29],
+      "fresh_target_updates_per_seed": [35, 36],
+      "target_mastery": [1.0, 1.0],
+      "fresh_target_mastery": [1.0, 1.0],
+      "source_retention": [1.0, 1.0],
+      "old_source_replay_during_target": [0, 0],
+      "controller_parameter_updates": [0, 0],
+      "source_slot_byte_stable": [true, true],
+      "wrong_context_control": [true, true],
+      "corruption_control": [true, true],
+      "persistence_exact": [true, true],
+      "controls": "matched fresh model, early-stop threshold, source retention, source-slot digest, wrong-context, corruption, persistence, frozen controller, and zero old-source replay passed",
+      "decision": "promote bounded policy-free model-bank acquisition and its replicated speed signal; next learn context formation and test alternating regimes with capacity growth, consolidation, and compression"
     }
   ]
 }

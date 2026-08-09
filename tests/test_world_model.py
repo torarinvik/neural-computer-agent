@@ -9,6 +9,7 @@ from neural_computer import (
     ExternalTransitionEvidenceEvaluator,
     ExternalTransitionMemory,
     ExternalTransitionModel,
+    ExternalTransitionModelBank,
     ExternalTransitionObservation,
 )
 
@@ -107,6 +108,68 @@ def test_planner_supports_per_batch_candidate_sets_without_resize() -> None:
 
     assert torch.equal(result.intentions[:, 0, 0], torch.tensor([1.0, 2.0]))
     assert torch.equal(result.predicted_states[:, 0, 0], torch.tensor([1.0, 2.0]))
+
+
+def test_transition_model_bank_isolates_updates_and_round_trips() -> None:
+    torch.manual_seed(1208)
+    bank = ExternalTransitionModelBank(3, 2, 4, hidden_width=8)
+    source_context = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    target_context = torch.tensor([0.0, 1.0, 0.0, 0.0])
+    source_index = bank.ensure_context(source_context)
+    target_index = bank.ensure_context(
+        target_context,
+        initialize_from=source_index,
+    )
+    assert (source_index, target_index) == (0, 1)
+
+    observation = ExternalTransitionObservation(
+        state=torch.randn(4, 3),
+        intention=torch.randn(4, 2),
+        next_state=torch.randn(4, 3),
+        confidence=torch.ones(4),
+    )
+    source_digest = bank.models[source_index].digest()
+    optimizer = torch.optim.Adam(bank.models[target_index].parameters(), lr=0.01)
+    bank.adaptation_step(
+        observation,
+        target_context.unsqueeze(0).expand(4, -1),
+        optimizer,
+    )
+    assert bank.models[source_index].digest() == source_digest
+
+    source_state = bank(
+        observation.state,
+        observation.intention,
+        source_context.unsqueeze(0).expand(4, -1),
+    )
+    restored = ExternalTransitionModelBank.from_payload(bank.payload())
+    target_state = restored(
+        observation.state,
+        observation.intention,
+        target_context.unsqueeze(0).expand(4, -1),
+    )
+    assert restored.context_count == 2
+    assert torch.allclose(
+        restored(
+            observation.state,
+            observation.intention,
+            source_context.unsqueeze(0).expand(4, -1),
+        ),
+        source_state,
+    )
+    assert torch.isfinite(target_state).all()
+    count_before_unknown = bank.context_count
+    try:
+        bank(
+            observation.state[:1],
+            observation.intention[:1],
+            torch.tensor([[0.0, 0.0, 1.0, 0.0]]),
+        )
+    except KeyError as error:
+        assert "ensure_context" in str(error)
+    else:
+        raise AssertionError("unknown model context must not mutate the bank")
+    assert bank.context_count == count_before_unknown
 
 
 def test_transition_observation_rejects_mismatched_batch_and_nonfinite_values() -> None:

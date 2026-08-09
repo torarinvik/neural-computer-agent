@@ -1,0 +1,198 @@
+{
+  "schema": "neural-computer.external-transition-model-bank-continual-pressure-test.v1",
+  "seed": 69811,
+  "configuration": {
+    "state_width": 8,
+    "intention_width": 4,
+    "context_width": 6,
+    "hidden_width": 48,
+    "source_deltas": [
+      -1,
+      1
+    ],
+    "target_deltas": [
+      -2,
+      2
+    ],
+    "targets": [
+      [
+        0,
+        4
+      ],
+      [
+        4,
+        0
+      ],
+      [
+        1,
+        5
+      ]
+    ],
+    "source_updates": 1200,
+    "target_updates": 125,
+    "target_loss_threshold": 0.01,
+    "policy": "none_external_contextual_transition_model_bank_search_v1"
+  },
+  "gates": {
+    "controller_unchanged": true,
+    "source_model_learns": true,
+    "target_model_adapts": true,
+    "target_learns_faster_than_fresh": true,
+    "source_retained": true,
+    "source_slot_byte_stable": true,
+    "wrong_context_control": true,
+    "corruption_control": true,
+    "fresh_control_is_matched": true,
+    "persistence_exact": true
+  },
+  "promoted": true,
+  "source": {
+    "optimizer_updates": 1200,
+    "logical_transition_lifetimes": 12,
+    "replayed_examples": 14388,
+    "loss": 8.661721039970871e-06,
+    "before_target": {
+      "successes": [
+        true,
+        true,
+        true
+      ],
+      "mastery": 1.0,
+      "predicted_final_positions": [
+        4,
+        0,
+        5
+      ],
+      "mean_latency_seconds": 0.002249986030316601
+    },
+    "after_target": {
+      "successes": [
+        true,
+        true,
+        true
+      ],
+      "mastery": 1.0,
+      "predicted_final_positions": [
+        4,
+        0,
+        5
+      ],
+      "mean_latency_seconds": 0.002122722022856275
+    }
+  },
+  "target": {
+    "optimizer_updates": 23,
+    "logical_transition_lifetimes": 12,
+    "unique_verifier_bits": 12,
+    "replayed_current_target_examples": 264,
+    "replayed_old_source_examples": 0,
+    "loss": 0.009270410984754562,
+    "before_adaptation": {
+      "successes": [
+        true,
+        false,
+        false
+      ],
+      "mastery": 0.3333333333333333,
+      "predicted_final_positions": [
+        4,
+        5,
+        0
+      ],
+      "mean_latency_seconds": 0.000589388325655212
+    },
+    "after_adaptation": {
+      "successes": [
+        true,
+        true,
+        true
+      ],
+      "mastery": 1.0,
+      "predicted_final_positions": [
+        4,
+        0,
+        5
+      ],
+      "mean_latency_seconds": 0.0007410829809183875
+    }
+  },
+  "fresh_target": {
+    "optimizer_updates": 35,
+    "loss": 0.009918886236846447,
+    "replayed_examples": 408,
+    "result": {
+      "successes": [
+        true,
+        true,
+        true
+      ],
+      "mastery": 1.0,
+      "predicted_final_positions": [
+        4,
+        0,
+        5
+      ],
+      "mean_latency_seconds": 0.0011063889833167195
+    }
+  },
+  "wrong_context": {
+    "successes": [
+      true,
+      false,
+      false
+    ],
+    "mastery": 0.3333333333333333,
+    "predicted_final_positions": [
+      4,
+      5,
+      0
+    ],
+    "mean_latency_seconds": 0.0010532086598686874
+  },
+  "corrupted_target": {
+    "successes": [
+      true,
+      false,
+      false
+    ],
+    "mastery": 0.3333333333333333,
+    "predicted_final_positions": [
+      4,
+      5,
+      1
+    ],
+    "mean_latency_seconds": 0.0010200829904836912
+  },
+  "corrupted_training": {
+    "optimizer_updates": 31,
+    "loss": 0.00972109753638506
+  },
+  "persisted_target": {
+    "successes": [
+      true,
+      true,
+      true
+    ],
+    "mastery": 1.0,
+    "predicted_final_positions": [
+      4,
+      0,
+      5
+    ],
+    "mean_latency_seconds": 0.0011003613471984863
+  },
+  "accounting": {
+    "context_slots": 2,
+    "controller_parameter_updates": 0,
+    "old_source_replay_during_target": 0,
+    "target_current_stream_replay": 264,
+    "target_updates": 23,
+    "fresh_target_updates": 35
+  },
+  "digests": {
+    "controller": "110c5fe1e2a7f54d3efb3ed9d32a6275dac6736f4d9e786dd94205d7d7877b70",
+    "source_model": "2b0611a14bd8fc664d8c575980cc909713f7d8bb3561f6398b2f19a9bb965ad4",
+    "bank": "416a706ee2b44fd1e68944224af86cbbb8354a59b9813ffd4918d1efe5466c84"
+  },
+  "elapsed_seconds": 4.472224791999906
+}

@@ -50,6 +50,9 @@ EXTERNAL_TRANSITION_EVIDENCE_CALIBRATOR_SCHEMA = (
 EXTERNAL_CONTEXTUAL_EVIDENCE_CALIBRATOR_SCHEMA = (
     "neural-computer.contextual-evidence-calibrator.v1"
 )
+EXTERNAL_TRANSITION_MODEL_BANK_SCHEMA = (
+    "neural-computer.external-transition-model-bank.v1"
+)
 EXTERNAL_MODEL_PLANNER_SCHEMA = "neural-computer.external-model-planner.v1"
 
 
@@ -281,6 +284,281 @@ class ExternalTransitionModel(nn.Module):
         if expected_digest != model.digest():
             raise ValueError("transition-model checksum mismatch")
         return model
+
+
+class ExternalTransitionModelBank(nn.Module):
+    """Append-only external transition-model slots keyed by opaque context.
+
+    Each slot is a replaceable factual model rather than a policy.  A new slot
+    may copy an existing model as a transfer prior, but subsequent optimizer
+    updates are selected by the caller and affect only the addressed slot.
+    The controller never sees this bank's parameters or context semantics.
+    """
+
+    schema = EXTERNAL_TRANSITION_MODEL_BANK_SCHEMA
+
+    def __init__(
+        self,
+        state_width: int,
+        intention_width: int,
+        context_width: int,
+        *,
+        hidden_width: int = 64,
+        matching_tolerance: float = 1e-4,
+    ) -> None:
+        super().__init__()
+        if min(state_width, intention_width, context_width, hidden_width) < 1:
+            raise ValueError("transition-model bank dimensions must be positive")
+        if matching_tolerance < 0.0:
+            raise ValueError("transition-model context tolerance cannot be negative")
+        self.state_width = int(state_width)
+        self.intention_width = int(intention_width)
+        self.context_width = int(context_width)
+        self.hidden_width = int(hidden_width)
+        self.matching_tolerance = float(matching_tolerance)
+        self.models = nn.ModuleList()
+        self._contexts: list[torch.Tensor] = []
+
+    @property
+    def context_count(self) -> int:
+        return len(self._contexts)
+
+    def _validate_context(self, context: torch.Tensor) -> torch.Tensor:
+        _validate_tensor(
+            context,
+            name="transition-model context",
+            ndim=2,
+            width=self.context_width,
+        )
+        norms = torch.linalg.vector_norm(context, dim=-1)
+        if bool(torch.any(norms <= 1e-12)):
+            raise ValueError("transition-model contexts must be non-zero")
+        return torch.nn.functional.normalize(context.detach().to("cpu"), dim=-1)
+
+    def _nearest_context(self, normalized: torch.Tensor) -> int | None:
+        if not self._contexts:
+            return None
+        distances = torch.linalg.vector_norm(
+            torch.stack(self._contexts) - normalized,
+            dim=-1,
+        )
+        nearest = int(distances.argmin())
+        if float(distances[nearest]) <= self.matching_tolerance:
+            return nearest
+        return None
+
+    def ensure_context(
+        self,
+        context: torch.Tensor,
+        *,
+        initialize_from: int | None = None,
+    ) -> int:
+        """Return a slot or append one, optionally copying a transfer prior."""
+
+        normalized = self._validate_context(
+            context if context.ndim == 2 else context.unsqueeze(0)
+        )[0]
+        nearest = self._nearest_context(normalized)
+        if nearest is not None:
+            return nearest
+        if initialize_from is not None and not 0 <= initialize_from < self.context_count:
+            raise IndexError("transition-model transfer slot is out of range")
+        model = ExternalTransitionModel(
+            self.state_width,
+            self.intention_width,
+            hidden_width=self.hidden_width,
+        )
+        if initialize_from is not None:
+            model.load_state_dict(self.models[initialize_from].state_dict())
+        self._contexts.append(normalized.clone())
+        self.models.append(model)
+        return self.context_count - 1
+
+    def _context_indices(self, context: torch.Tensor) -> list[int]:
+        normalized = self._validate_context(context)
+        indices: list[int] = []
+        for row in normalized:
+            index = self._nearest_context(row)
+            if index is None:
+                raise KeyError(
+                    "unknown transition-model context; call ensure_context first"
+                )
+            indices.append(index)
+        return indices
+
+    def configuration(self) -> dict[str, int | float | str]:
+        return {
+            "schema": self.schema,
+            "state_width": self.state_width,
+            "intention_width": self.intention_width,
+            "context_width": self.context_width,
+            "hidden_width": self.hidden_width,
+            "matching_tolerance": self.matching_tolerance,
+            "growth": "append_only_isolated_model_slots_v1",
+            "behavior": "derived_by_external_model_search_v1",
+            "updates": "caller_selected_slot_only_v1",
+        }
+
+    def _validate_batch(
+        self,
+        state: torch.Tensor,
+        intention: torch.Tensor,
+        context: torch.Tensor,
+    ) -> list[int]:
+        _validate_tensor(state, name="bank state", ndim=2, width=self.state_width)
+        _validate_tensor(
+            intention,
+            name="bank intention",
+            ndim=2,
+            width=self.intention_width,
+        )
+        if state.shape[0] != intention.shape[0]:
+            raise ValueError("bank state and intention batches differ")
+        if context.shape[0] != state.shape[0]:
+            raise ValueError("bank context batch differs")
+        return self._context_indices(context)
+
+    def forward(
+        self,
+        state: torch.Tensor,
+        intention: torch.Tensor,
+        context: torch.Tensor,
+    ) -> torch.Tensor:
+        indices = self._validate_batch(state, intention, context)
+        values = [
+            self.models[index](state[row : row + 1], intention[row : row + 1]).squeeze(0)
+            for row, index in enumerate(indices)
+        ]
+        return torch.stack(values)
+
+    def predict_with_context(
+        self,
+        state: torch.Tensor,
+        intention: torch.Tensor,
+        context: torch.Tensor,
+    ) -> torch.Tensor:
+        return self(state, intention, context)
+
+    def loss(
+        self,
+        observation: ExternalTransitionObservation,
+        context: torch.Tensor,
+    ) -> torch.Tensor:
+        observation.validate(
+            state_width=self.state_width,
+            intention_width=self.intention_width,
+        )
+        indices = self._validate_batch(
+            observation.state,
+            observation.intention,
+            context,
+        )
+        predictions = [
+            self.models[index](
+                observation.state[row : row + 1],
+                observation.intention[row : row + 1],
+            ).squeeze(0)
+            for row, index in enumerate(indices)
+        ]
+        prediction = torch.stack(predictions)
+        errors = (prediction - observation.next_state).square().mean(dim=-1)
+        if observation.confidence is None:
+            return errors.mean()
+        confidence = observation.confidence.reshape(-1).to(
+            device=errors.device,
+            dtype=errors.dtype,
+        )
+        return (errors * confidence).sum() / confidence.sum().clamp_min(1e-12)
+
+    def adaptation_step(
+        self,
+        observation: ExternalTransitionObservation,
+        context: torch.Tensor,
+        optimizer: torch.optim.Optimizer,
+    ) -> float:
+        """Update only parameters selected by the supplied context batch."""
+
+        optimizer.zero_grad()
+        loss = self.loss(observation, context)
+        loss.backward()
+        optimizer.step()
+        return float(loss.detach())
+
+    def digest(self) -> str:
+        digest = hashlib.sha256()
+        digest.update(self.schema.encode("utf-8"))
+        digest.update(repr(self.configuration()).encode("utf-8"))
+        for context in self._contexts:
+            detached = context.detach().cpu().contiguous()
+            digest.update(detached.numpy().tobytes())
+        for index, model in enumerate(self.models):
+            digest.update(str(index).encode("utf-8"))
+            digest.update(model.digest().encode("utf-8"))
+        return digest.hexdigest()
+
+    def payload(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "contexts": [context.tolist() for context in self._contexts],
+            "models": [
+                {
+                    "state": {
+                        name: value.detach().cpu().tolist()
+                        for name, value in model.state_dict().items()
+                    },
+                    "sha256": model.digest(),
+                }
+                for model in self.models
+            ],
+            "sha256": self.digest(),
+        }
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, Any],
+    ) -> ExternalTransitionModelBank:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported transition-model bank payload")
+        configuration = payload.get("configuration")
+        contexts = payload.get("contexts")
+        models = payload.get("models")
+        if not isinstance(configuration, Mapping):
+            raise TypeError("transition-model bank configuration is missing")
+        if not isinstance(contexts, list) or not isinstance(models, list):
+            raise TypeError("transition-model bank payload lists are invalid")
+        if len(contexts) != len(models):
+            raise ValueError("transition-model bank payload lengths differ")
+        bank = cls(
+            int(configuration["state_width"]),
+            int(configuration["intention_width"]),
+            int(configuration["context_width"]),
+            hidden_width=int(configuration["hidden_width"]),
+            matching_tolerance=float(configuration["matching_tolerance"]),
+        )
+        for values, model_payload in zip(contexts, models, strict=True):
+            index = bank.ensure_context(torch.tensor(values, dtype=torch.float32))
+            if not isinstance(model_payload, Mapping):
+                raise TypeError("transition-model bank slot is invalid")
+            state_payload = model_payload.get("state")
+            if not isinstance(state_payload, Mapping):
+                raise TypeError("transition-model bank slot state is missing")
+            current = bank.models[index].state_dict()
+            if tuple(state_payload) != tuple(current):
+                raise ValueError("transition-model bank slot state names differ")
+            normalized: dict[str, torch.Tensor] = {}
+            for name, expected in current.items():
+                value = torch.tensor(state_payload[name], dtype=expected.dtype)
+                if value.shape != expected.shape or not bool(torch.isfinite(value).all()):
+                    raise ValueError("transition-model bank slot state is incompatible")
+                normalized[name] = value
+            bank.models[index].load_state_dict(normalized, strict=True)
+            if model_payload.get("sha256") != bank.models[index].digest():
+                raise ValueError("transition-model bank slot checksum mismatch")
+        if payload.get("sha256") != bank.digest():
+            raise ValueError("transition-model bank checksum mismatch")
+        return bank
 
 
 class ExternalGoalEvaluator(nn.Module):
@@ -1761,6 +2039,7 @@ __all__ = [
     "EXTERNAL_ONLINE_CONTEXT_RESOLVER_SCHEMA",
     "EXTERNAL_TRANSITION_EVIDENCE_CALIBRATOR_SCHEMA",
     "EXTERNAL_TRANSITION_MEMORY_SCHEMA",
+    "EXTERNAL_TRANSITION_MODEL_BANK_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_SCHEMA",
     "EXTERNAL_TRANSITION_OBSERVATION_SCHEMA",
     "ExternalContextAddressResolver",
@@ -1774,6 +2053,7 @@ __all__ = [
     "ExternalTransitionEvidenceEvaluator",
     "ExternalTransitionMemory",
     "ExternalTransitionModel",
+    "ExternalTransitionModelBank",
     "ExternalTransitionObservation",
     "ModelBasedPlanningResult",
 ]

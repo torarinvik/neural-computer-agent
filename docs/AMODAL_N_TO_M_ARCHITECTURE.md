@@ -4555,3 +4555,29 @@ consolidation, compression, or unbounded-stream test. The next bottleneck is
 to learn context/address formation and test many alternating regimes under
 capacity pressure. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_contextual_calibration_promoted_2026-08-09/`.
+
+## Policy-free model-bank acquisition on disjoint dynamics (2026-08-09)
+
+The next two-seed rung follows the exported session's model-versus-policy
+finding. `ExternalTransitionModelBank` stores append-only opaque transition
+models outside the controller. A new target slot is initialized from the
+source model, then trained in isolation. `ExternalModelBasedPlanner` derives
+behavior by searching candidate intentions against the current opaque goal;
+there is no task-specific policy in the controller or bank.
+
+On two disjoint dynamics regimes, early stopping at the same transition-loss
+threshold required 23 versus 35 updates and 29 versus 36 updates for
+source-initialized versus matched fresh target models. Both target models
+reached `1.0` mastery in both seeds. Source mastery stayed at `1.0`, the
+source slot was byte-stable, old-source replay during target adaptation was
+zero, and controller updates were zero. Wrong-context, corrupted-target,
+fresh-model, persistence, and frozen-controller controls were recorded.
+
+This is the first promoted canonical result that transfers both capability
+and measured learning speed through a richer external model state. The
+reported speed gain is conditional: contexts are supplied, the task family is
+small, target transition batches are reused and accounted for, and the bank is
+append-only. It is not yet general continual learning. The next bottlenecks
+are learned context formation, alternating-regime stress, and model-slot
+consolidation/compression. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_transition_model_bank_continual_promoted_2026-08-09/`.
