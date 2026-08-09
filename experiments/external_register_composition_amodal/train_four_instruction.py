@@ -589,6 +589,8 @@ def main() -> None:
             "factorized_film",
             "factorized_hybrid",
             "factorized_bounded_residual",
+            "factorized_shared_stable_relational",
+            "factorized_shared_operator_basis",
         ),
         default="factorized_low_rank",
     )

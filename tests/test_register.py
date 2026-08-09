@@ -253,6 +253,33 @@ def test_stable_relational_mode_keeps_role_binding_instruction_independent() -> 
     assert torch.equal(roles_a, roles_b)
 
 
+def test_shared_operator_basis_mode_uses_common_latent_transition_factors() -> None:
+    machine = ExternalCapabilityRegisterMachine(
+        event_width=4,
+        action_width=2,
+        intention_width=6,
+        register_width=8,
+        instruction_width=5,
+        interpreter_hidden=12,
+        operator_rank=4,
+        operator_mode="factorized_shared_operator_basis",
+        instructions=tuple(ExternalRegisterInstruction(5) for _ in range(3)),
+    )
+    register = torch.randn(2, 8)
+    codes = torch.randn(2, 3, 5)
+    result = machine.execute_code_chain(register, codes)
+    result.square().mean().backward()
+
+    assert machine.configuration()["operator_mode"] == (
+        "factorized_shared_operator_basis"
+    )
+    assert machine.configuration()["operator_basis_count"] == 4
+    assert machine.operator_basis_left.shape == (4, 8, 4)
+    assert machine.operator_basis_right.shape == (4, 4, 8)
+    assert machine.operator_basis_left.grad is not None
+    assert torch.isfinite(result).all()
+
+
 def test_shared_canonical_mode_applies_one_internal_state_contract_per_step() -> None:
     machine = ExternalCapabilityRegisterMachine(
         event_width=4,

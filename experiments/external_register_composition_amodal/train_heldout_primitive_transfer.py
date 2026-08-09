@@ -463,6 +463,7 @@ def main() -> None:
             "factorized_hybrid",
             "factorized_bounded_residual",
             "factorized_protected_meta",
+            "factorized_shared_operator_basis",
         ),
         default="factorized_bounded_residual",
     )

@@ -53,6 +53,9 @@ EXTERNAL_REGISTER_SHARED_RELATIONAL_MODE = "factorized_shared_relational"
 EXTERNAL_REGISTER_SHARED_STABLE_RELATIONAL_MODE = (
     "factorized_shared_stable_relational"
 )
+EXTERNAL_REGISTER_SHARED_OPERATOR_BASIS_MODE = (
+    "factorized_shared_operator_basis"
+)
 EXTERNAL_SEQUENCE_MEMORY_SCHEMA = "neural-computer.external-sequence-memory.v1"
 EXTERNAL_SEQUENCE_PROGRAM_MEMORY_SCHEMA = (
     "neural-computer.external-sequence-program-memory.v1"
@@ -1184,6 +1187,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         event_input_mode: str = "frontend",
         event_window_size: int = 0,
         role_count: int = 4,
+        operator_basis_count: int = 4,
     ) -> None:
         super().__init__()
         if min(
@@ -1212,6 +1216,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             raise ValueError("event window size must be non-negative")
         if role_count < 1:
             raise ValueError("role count must be positive")
+        if operator_basis_count < 1:
+            raise ValueError("operator basis count must be positive")
         if operator_mode not in (
             "factorized_low_rank",
             "factorized_film",
@@ -1226,6 +1232,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
             EXTERNAL_REGISTER_SHARED_RELATIONAL_MODE,
             EXTERNAL_REGISTER_SHARED_STABLE_RELATIONAL_MODE,
+            EXTERNAL_REGISTER_SHARED_OPERATOR_BASIS_MODE,
             "unconstrained_mlp",
         ):
             raise ValueError("unsupported external register operator mode")
@@ -1280,6 +1287,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         self.event_input_mode = event_input_mode
         self.event_window_size = int(event_window_size)
         self.role_count = int(role_count)
+        self.operator_basis_count = int(operator_basis_count)
         seed_width = self.event_width + self.action_width + 2 + self.intention_width
         self.input_encoder = nn.Sequential(
             nn.Linear(seed_width, interpreter_hidden),
@@ -1323,6 +1331,41 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             ):
                 nn.init.normal_(module.weight, mean=0.0, std=0.02)
                 nn.init.zeros_(module.bias)
+        if operator_mode == EXTERNAL_REGISTER_SHARED_OPERATOR_BASIS_MODE:
+            # Every opaque instruction is a mixture of the same learned
+            # transition factors. This creates a common state algebra while
+            # keeping operation identity latent and controller-independent.
+            self.operator_basis_left = nn.Parameter(
+                torch.empty(
+                    self.operator_basis_count,
+                    register_width,
+                    operator_rank,
+                )
+            )
+            self.operator_basis_right = nn.Parameter(
+                torch.empty(
+                    self.operator_basis_count,
+                    operator_rank,
+                    register_width,
+                )
+            )
+            self.operator_basis_bias = nn.Parameter(
+                torch.zeros(self.operator_basis_count, register_width)
+            )
+            self.operator_basis_selector = nn.Linear(
+                instruction_width, self.operator_basis_count
+            )
+            nn.init.normal_(self.operator_basis_left, mean=0.0, std=0.02)
+            nn.init.normal_(self.operator_basis_right, mean=0.0, std=0.02)
+            nn.init.normal_(
+                self.operator_basis_selector.weight, mean=0.0, std=0.02
+            )
+            nn.init.zeros_(self.operator_basis_selector.bias)
+            self.operator_normalizer = nn.LayerNorm(register_width)
+            self.operator_composition_gate = nn.Linear(
+                instruction_width, register_width
+            )
+            nn.init.zeros_(self.operator_composition_gate.bias)
         if operator_mode in (
             "factorized_bounded_residual",
             EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
@@ -1453,6 +1496,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "event_input_mode": self.event_input_mode,
             "event_window_size": self.event_window_size,
             "role_count": self.role_count,
+            "operator_basis_count": self.operator_basis_count,
             "state": "external_working_register_with_recurrent_context_v2",
             "execution": "shared_interpreter_serial_instruction_chain_v1",
             "compute_basis": (
@@ -1464,6 +1508,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                     EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
                     EXTERNAL_REGISTER_SHARED_RELATIONAL_MODE,
                     EXTERNAL_REGISTER_SHARED_STABLE_RELATIONAL_MODE,
+                    EXTERNAL_REGISTER_SHARED_OPERATOR_BASIS_MODE,
                     "factorized_protected_bounded_meta",
                 )
                 else EXTERNAL_REGISTER_BASIS_SCHEMA
@@ -1477,6 +1522,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                     EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
                     EXTERNAL_REGISTER_SHARED_RELATIONAL_MODE,
                     EXTERNAL_REGISTER_SHARED_STABLE_RELATIONAL_MODE,
+                    EXTERNAL_REGISTER_SHARED_OPERATOR_BASIS_MODE,
                     "factorized_protected_bounded_meta",
                 )
                 else "opaque_memory_side_slot_index_v1"
@@ -1877,6 +1923,21 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             if instruction is not None
             else instruction_code.to(device=register.device, dtype=register.dtype)
         )
+        if self.operator_mode == EXTERNAL_REGISTER_SHARED_OPERATOR_BASIS_MODE:
+            normalized = self.operator_normalizer(register)
+            projected = torch.einsum(
+                "bd,kid->bki", normalized, self.operator_basis_right
+            )
+            proposals = torch.einsum(
+                "bki,kri->bkr", projected, self.operator_basis_left
+            )
+            proposals = proposals + self.operator_basis_bias.unsqueeze(0)
+            mixture = torch.softmax(
+                self.operator_basis_selector(code), dim=-1
+            )
+            proposal = torch.einsum("bk,bkr->br", mixture, proposals)
+            gate = torch.sigmoid(self.operator_composition_gate(code))
+            return register + gate * torch.tanh(proposal)
         if self.operator_mode == EXTERNAL_REGISTER_SHARED_BANKED_MODE:
             bank_read = self._read_state_bank(code, state_bank)
         elif state_bank is not None:
@@ -1891,6 +1952,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
             EXTERNAL_REGISTER_SHARED_RELATIONAL_MODE,
             EXTERNAL_REGISTER_SHARED_STABLE_RELATIONAL_MODE,
+            EXTERNAL_REGISTER_SHARED_OPERATOR_BASIS_MODE,
         ):
             if not 0 <= basis_slot < len(self.basis_slots):
                 raise ValueError("basis slot index is out of range")

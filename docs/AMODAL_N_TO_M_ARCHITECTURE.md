@@ -4176,3 +4176,31 @@ tensor-only payload. Existing `read_execute_register()` behavior remains
 compatible; the typed snapshot is the contract for new callers. This is a
 correctness and replacement seam, not yet a claim that the learned serial
 interpreter can solve arbitrary longer programs.
+
+## Shared learned operator basis diagnostic (2026-08-09)
+
+The register interpreter now has an opt-in
+`factorized_shared_operator_basis` mode. Instead of giving each opaque
+instruction code an effectively independent transition, the mode learns a
+small common basis of low-rank state-transition factors. An instruction code
+selects a mixture over those factors and a bounded composition gate applies the
+result to the learned register. The controller still sees only learned opaque
+instruction and state tensors; no task identity, protocol action, execution
+position, correct answer, or verifier-private metadata is introduced.
+
+The matched full screen used two seeds, three mastered source primitives, two
+held-out direct primitives, and two held-out three-instruction compositions.
+All `8/8` target gates passed across the two seeds, every source retention delta
+was exactly zero, and shuffled-training, missing-evidence, persistence,
+corruption, and frozen-parent controls passed. This promotes a narrow
+behavior/retention result: a shared transition algebra can support the tested
+compositions without overwriting the sources.
+
+It does not yet promote general continual-learning transfer. Fresh positive
+transfer occurred in only `1/4` strict stable-prefix comparisons (`1/2` on the
+first seed and `0/2` on the replication). The mode is therefore retained as a
+qualified opt-in architectural direction, not made the default. The next test
+must target portable execution-state algebra and genuinely new longer
+programs, with no-replay fresh-learning curves and retention controls. Evidence
+is archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_shared_operator_basis_full_transfer_2026-08-09/`.
