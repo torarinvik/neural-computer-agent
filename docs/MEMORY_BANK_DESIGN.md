@@ -2567,3 +2567,59 @@ would measure the curve rather than a single point.
    to be stale. This is the larger rebuild and the stronger claim.
 
 Probes 139-144 are `reacher_ladder.py --sparse`.
+
+**F64 (probes 145-150). Transfer of CAPABILITY is demonstrated. Transfer
+of LEARNING SPEED is not. The distinction is the finding.** Two things
+F63 never measured: what the warm plant scores on the target BEFORE any
+target training, and what happens when the plant is frozen after DIVERSE
+domains rather than one. Sparse r4, two seeds:
+
+| arm | zero-shot | final | budget |
+| --- | ---: | ---: | ---: |
+| cold | — | **0.625** | 800 |
+| multi-domain warm + frozen plant | **0.520** | 0.543 | 200 |
+| multi-domain warm + frozen plant | 0.520 | 0.613 | 800 |
+
+**Zero-shot reach is 0.520 against a 0.172 floor** — three times chance,
+with zero gradient steps on the target. A plant trained on a line and an
+open grid carries genuine, substantial competence to a walled grid it
+has never seen. That is the first direct evidence for the founding claim
+in this project, and it was invisible until now because every previous
+transfer number confounded what CARRIED with what was RELEARNED.
+
+But it does not become speed. Cold start still finishes ahead at matched
+budget (0.625 vs 0.613), and adapting the frozen prior moves it only
+0.520 -> 0.613 in 800 updates. So:
+
+> **Prior learning transfers competence but not learnability. The
+> architecture stores and reuses; it does not yet compound.**
+
+That is a more precise statement than F63's flat "no positive transfer",
+and it relocates the problem: the bottleneck is not what the plant knows
+but the channel through which a new task can exploit it. A 4160-param
+linear adapter on the goal payload is almost certainly too weak a
+channel -- it can re-map what a goal MEANS but cannot change what the
+frozen policy DOES with it (F61's mechanism, now confirmed from the
+other side).
+
+**Correction to F61.** F61 concluded "freezing does not rescue transfer"
+from a single-domain warm start -- a plant whose policy was already
+measured wrong. Freezing preserved something worthless, so the test said
+nothing about freezing. The correct claim was "freezing a bad policy
+does not help". I generalised from one condition to the mechanism, and
+that wrong generalisation shaped F62 and F63: I pursued curriculum fixes
+for two rungs while never testing the obvious combination of the two
+ideas already in hand. Each mechanism was tested in isolation, each
+found insufficient, and the pair never tried.
+
+**Also recorded:** I reported a smoke run (one seed, 0.688 beating cold)
+as a positive signal. It did not replicate. Single-seed smoke numbers
+are for checking that code runs, not for claims.
+
+Next, in order of cost: a richer adaptation channel than a linear goal
+adapter (the frozen prior clearly has more to give than 0.613 extracts);
+then the cost term and retrieval-before-learning, which remain untested
+and are the only mechanisms that would make reuse preferred over
+relearning.
+
+Probes 145-150 are `reacher_ladder.py --sparse --warm-mix --freeze-plant`.

@@ -162,11 +162,15 @@ never was.
    a cheap target, 0.613 vs 0.625 on a sparse-reward target expensive
    enough that cold never masters. Single-domain priors are harmful in
    all three tests. **Diversity converts harmful priors into neutral
-   ones; nothing so far converts them into helpful ones.** Measured
-   against §3's objective, the founding claim has no supporting
-   evidence: prior learning has never made a novel task cheaper here.
-   Every positive result in this project concerns storing and reusing
-   skills WITHIN a task family, not compounding across novel ones.
+   ones; nothing so far converts them into helpful ones.** Refined by
+   F64: a multi-domain plant, FROZEN, reaches 0.520 zero-shot on a novel
+   walled grid against a 0.172 floor — real transferred competence, with
+   no gradient steps on the target. But it does not become speed (0.613
+   vs 0.625 cold at matched budget). **Prior learning transfers
+   capability but not learnability: the architecture stores and reuses,
+   it does not yet compound.** The bottleneck is now the adaptation
+   channel — a 4160-param goal adapter can re-map what a goal means but
+   not what the frozen policy does with it — not the plant's knowledge.
 3. **Retrieval is never tried before learning.** The bank is only ever
    *given* fragments; it is never asked whether it already contains a
    solution. Without that loop, reuse cannot be selected even if it is
