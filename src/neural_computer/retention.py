@@ -414,6 +414,41 @@ class CapabilityRetentionLedger:
         self.validate()
         return self.status(normalized)
 
+    def adopt_transformed(
+        self,
+        source: CapabilityRetentionLedger,
+        source_key: torch.Tensor,
+        target_key: torch.Tensor,
+    ) -> CapabilityRetentionStatus:
+        """Transfer opaque evidence across an explicitly verified key map.
+
+        The outcome history is copied as state and never replayed. The caller
+        must separately verify that ``source_key`` and ``target_key`` address
+        the same durable capability before invoking this operation.
+        """
+
+        if not isinstance(source, CapabilityRetentionLedger):
+            raise TypeError("retention evidence source must be a capability ledger")
+        if source.width != self.width:
+            raise ValueError("retention evidence ledgers must have matching widths")
+        if source.config.as_dict() != self.config.as_dict():
+            raise ValueError("retention evidence ledgers must have matching policies")
+        source_normalized = _validate_key(source_key, self.width)
+        target_normalized = _validate_key(target_key, self.width)
+        source_digest = _key_digest(source_normalized, self.width)
+        target_digest = _key_digest(target_normalized, self.width)
+        record = source._records.get(source_digest)
+        if record is None:
+            raise KeyError("retention evidence source has no record for source key")
+        if target_digest in self._records:
+            raise ValueError("transformed retention key already exists in destination")
+        transformed = deepcopy(record)
+        transformed.key = tuple(float(value) for value in target_normalized.tolist())
+        self._records[target_digest] = transformed
+        self._step = max(self._step, source._step) + 1
+        self.validate()
+        return self.status(target_normalized)
+
     def validate(self) -> None:
         """Validate persisted opaque state before it governs eviction."""
 

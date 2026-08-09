@@ -5211,3 +5211,20 @@ first runtime-wide compatibility gate, but it is still not learned alignment:
 the target event representation is supplied by the caller and must already be
 behavior-preserving. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/runtime_representation_migration_promoted_2026-08-09/`.
+
+## Retention-safe external memory representation migration (2026-08-09)
+
+Content-addressed memory now carries explicit opaque key and value space IDs.
+Its copy-on-write migration gate requires a one-to-one mapping for every
+occupied address, preservation of protected retention evidence, and held-out
+query equivalence. Retention histories can be transferred to transformed keys
+as state; verifier outcomes are not replayed. A caller-supplied value-space
+alignment is allowed, but it remains an independently verified candidate.
+
+Across two seeds, a key-permuted replacement preserved both held-out reads and
+the protected row with zero value difference. A candidate with a changed
+stored value was rejected in both seeds. This closes the memory migration
+transaction boundary, but does not establish arbitrary learned value
+alignment, unbounded storage, or general continual learning. Evidence is
+archived in
+`session_records/sequence_working_memory_2026-08-02/memory_representation_migration_promoted_2026-08-09/`.
