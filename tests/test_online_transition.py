@@ -136,6 +136,67 @@ def test_lifetime_policy_transaction_is_verifier_gated_and_uses_stable_ids() -> 
     assert accepted is not None and accepted.accepted
     assert accepted.evicted_slot_id == 1
     assert bank.slot_ids == (0, 2)
+
+
+def test_bank_owns_lifetime_telemetry_and_persists_it_through_logical_eviction() -> None:
+    bank = ExternalTransitionModelBank(2, 1, 3, hidden_width=8, capacity=3)
+    for context in (
+        torch.tensor([1.0, 0.0, 0.0]),
+        torch.tensor([0.0, 1.0, 0.0]),
+        torch.tensor([0.0, 0.0, 1.0]),
+    ):
+        bank.ensure_context(context)
+
+    bank.record_lifetime_observation(0, 0.8)
+    bank.record_lifetime_observation(0, 0.4)
+    bank.record_lifetime_observation(1, 0.2)
+    telemetry = bank.lifetime_telemetry()
+    assert telemetry.slot_ids == (0, 1, 2)
+    assert telemetry.usage.tolist() == [2.0, 1.0, 0.0]
+    assert telemetry.age.tolist() == [1.0, 0.0, 3.0]
+    assert telemetry.prediction_error.tolist() == pytest.approx([0.7, 0.2, 0.0])
+
+    restored = ExternalTransitionModelBank.from_payload(bank.payload())
+    restored_telemetry = restored.lifetime_telemetry()
+    assert restored_telemetry.logical_clock == telemetry.logical_clock
+    assert torch.equal(restored_telemetry.usage, telemetry.usage)
+    assert torch.equal(restored_telemetry.age, telemetry.age)
+    assert torch.equal(restored_telemetry.prediction_error, telemetry.prediction_error)
+
+    policy = ExternalTransitionModelLifetimePolicy(3, hidden_width=8)
+    proposal, receipt = policy.evict_from_bank_verified(
+        bank,
+        protected=torch.tensor([True, False, True]),
+        retention_probe=lambda candidate: candidate.slot_ids in {(0, 1, 2), (0, 2)},
+    )
+    assert proposal.selected_slot_id == 1
+    assert receipt is not None and receipt.accepted
+    assert bank.slot_ids == (0, 2)
+    surviving = bank.lifetime_telemetry()
+    assert surviving.slot_ids == (0, 2)
+    assert surviving.usage.tolist() == [2.0, 0.0]
+
+
+def test_bank_adaptation_updates_lifetime_telemetry_without_replay() -> None:
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        3,
+        model_family="affine_sufficient_statistics_v1",
+        affine_ridge=1e-7,
+    )
+    context = torch.tensor([1.0, 0.0, 0.0])
+    bank.ensure_context(context)
+    observation = _affine_observation(rows=4)
+    bank.adaptation_step(
+        observation,
+        context.unsqueeze(0).expand(observation.state.shape[0], -1),
+        None,
+    )
+    telemetry = bank.lifetime_telemetry()
+    assert telemetry.usage.tolist() == [4.0]
+    assert telemetry.logical_clock == 4
+    assert float(telemetry.prediction_error[0]) > 0.0
 def test_affine_statistics_is_a_bank_fast_path_without_optimizer_replay() -> None:
     observation = _affine_observation()
     bank = ExternalTransitionModelBank(

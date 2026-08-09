@@ -75,6 +75,9 @@ EXTERNAL_TRANSITION_MODEL_SLOT_ADDRESS_SCHEMA = (
 EXTERNAL_TRANSITION_MODEL_LIFETIME_POLICY_SCHEMA = (
     "neural-computer.external-transition-model-lifetime-policy.v1"
 )
+EXTERNAL_TRANSITION_MODEL_LIFETIME_TELEMETRY_SCHEMA = (
+    "neural-computer.external-transition-model-lifetime-telemetry.v1"
+)
 EXTERNAL_TRANSITION_MODEL_CANDIDATE_SCHEMA = (
     "neural-computer.external-transition-model-candidate.v1"
 )
@@ -330,6 +333,44 @@ class ExternalTransitionModel(nn.Module):
         return model
 
 
+@dataclass(frozen=True)
+class ExternalTransitionModelLifetimeTelemetry:
+    """Bank-owned generic lifetime state ordered by stable logical address.
+
+    This state is operational metadata for external memory management, not a
+    semantic label.  It can grow, update, and persist independently while the
+    controller and transition-model weights remain frozen.
+    """
+
+    slot_ids: tuple[int, ...]
+    usage: torch.Tensor
+    age: torch.Tensor
+    prediction_error: torch.Tensor
+    logical_clock: int
+    schema: str = EXTERNAL_TRANSITION_MODEL_LIFETIME_TELEMETRY_SCHEMA
+
+    def validate(self) -> ExternalTransitionModelLifetimeTelemetry:
+        if self.schema != EXTERNAL_TRANSITION_MODEL_LIFETIME_TELEMETRY_SCHEMA:
+            raise ValueError("unsupported transition lifetime telemetry schema")
+        if self.logical_clock < 0:
+            raise ValueError("transition lifetime logical clock cannot be negative")
+        if len(set(self.slot_ids)) != len(self.slot_ids) or any(
+            slot_id < 0 for slot_id in self.slot_ids
+        ):
+            raise ValueError("transition lifetime telemetry slot IDs are invalid")
+        count = len(self.slot_ids)
+        for name, value in (
+            ("usage", self.usage),
+            ("age", self.age),
+            ("prediction error", self.prediction_error),
+        ):
+            if value.ndim != 1 or value.shape[0] != count:
+                raise ValueError(f"transition lifetime telemetry {name} is misaligned")
+            if not bool(torch.isfinite(value).all()) or bool(torch.any(value < 0)):
+                raise ValueError(f"transition lifetime telemetry {name} is invalid")
+        return self
+
+
 class ExternalTransitionModelBank(nn.Module):
     """Append-only external transition-model slots keyed by opaque context.
 
@@ -392,6 +433,10 @@ class ExternalTransitionModelBank(nn.Module):
         self._model_families: list[str] = []
         self._slot_ids: list[int] = []
         self._next_slot_id = 0
+        self._lifetime_clock = 0
+        self._lifetime_usage: dict[int, int] = {}
+        self._lifetime_last_access: dict[int, int] = {}
+        self._lifetime_prediction_error: dict[int, float] = {}
 
     @property
     def replay_free_updates(self) -> bool:
@@ -585,6 +630,7 @@ class ExternalTransitionModelBank(nn.Module):
         self.models.append(model)
         self._model_families.append(selected_family)
         self._slot_ids.append(self._next_slot_id)
+        self._initialize_lifetime_slot(self._next_slot_id)
         self._next_slot_id += 1
         return self.context_count - 1
 
@@ -603,6 +649,151 @@ class ExternalTransitionModelBank(nn.Module):
             model_family=model_family,
         )
         return self.slot_id_at(index)
+
+    def _initialize_lifetime_slot(self, slot_id: int) -> None:
+        self._lifetime_usage.setdefault(slot_id, 0)
+        self._lifetime_last_access.setdefault(slot_id, self._lifetime_clock)
+
+    def record_lifetime_observation(
+        self,
+        slot_id: int,
+        prediction_error: float | None = None,
+        *,
+        elapsed_steps: int = 1,
+    ) -> None:
+        """Update generic lifetime telemetry from one committed observation."""
+
+        self.physical_index_for_slot_id(slot_id)
+        if (
+            not isinstance(elapsed_steps, int)
+            or isinstance(elapsed_steps, bool)
+            or elapsed_steps < 1
+        ):
+            raise ValueError("transition lifetime elapsed steps must be positive")
+        if prediction_error is not None and (
+            not math.isfinite(prediction_error) or prediction_error < 0.0
+        ):
+            raise ValueError("transition lifetime prediction error is invalid")
+        self._initialize_lifetime_slot(slot_id)
+        self._lifetime_clock += elapsed_steps
+        self._lifetime_usage[slot_id] += 1
+        self._lifetime_last_access[slot_id] = self._lifetime_clock
+        if prediction_error is not None:
+            previous = self._lifetime_prediction_error.get(slot_id)
+            self._lifetime_prediction_error[slot_id] = float(
+                prediction_error
+                if previous is None
+                else 0.75 * previous + 0.25 * prediction_error
+            )
+
+    def lifetime_telemetry(self) -> ExternalTransitionModelLifetimeTelemetry:
+        """Return bank-owned telemetry in current physical order."""
+
+        usage = torch.tensor(
+            [self._lifetime_usage.get(slot_id, 0) for slot_id in self._slot_ids],
+            dtype=torch.float32,
+        )
+        age = torch.tensor(
+            [
+                self._lifetime_clock - self._lifetime_last_access.get(
+                    slot_id, self._lifetime_clock
+                )
+                for slot_id in self._slot_ids
+            ],
+            dtype=torch.float32,
+        )
+        prediction_error = torch.tensor(
+            [
+                self._lifetime_prediction_error.get(slot_id, 0.0)
+                for slot_id in self._slot_ids
+            ],
+            dtype=torch.float32,
+        )
+        return ExternalTransitionModelLifetimeTelemetry(
+            slot_ids=self.slot_ids,
+            usage=usage,
+            age=age,
+            prediction_error=prediction_error,
+            logical_clock=self._lifetime_clock,
+        ).validate()
+
+    @staticmethod
+    def _lifetime_telemetry_digest(payload: Mapping[str, Any]) -> str:
+        digest = hashlib.sha256()
+        for key in (
+            "schema",
+            "logical_clock",
+            "slot_ids",
+            "usage",
+            "last_access",
+            "prediction_error",
+        ):
+            digest.update(key.encode("utf-8"))
+            digest.update(repr(payload.get(key)).encode("utf-8"))
+        return digest.hexdigest()
+
+    def _lifetime_telemetry_payload(self) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "schema": EXTERNAL_TRANSITION_MODEL_LIFETIME_TELEMETRY_SCHEMA,
+            "logical_clock": self._lifetime_clock,
+            "slot_ids": list(self._slot_ids),
+            "usage": [self._lifetime_usage.get(slot_id, 0) for slot_id in self._slot_ids],
+            "last_access": [
+                self._lifetime_last_access.get(slot_id, self._lifetime_clock)
+                for slot_id in self._slot_ids
+            ],
+            "prediction_error": [
+                self._lifetime_prediction_error.get(slot_id, 0.0)
+                for slot_id in self._slot_ids
+            ],
+        }
+        payload["sha256"] = self._lifetime_telemetry_digest(payload)
+        return payload
+
+    def _restore_lifetime_telemetry(self, payload: Mapping[str, Any] | None) -> None:
+        self._lifetime_clock = 0
+        self._lifetime_usage = {}
+        self._lifetime_last_access = {}
+        self._lifetime_prediction_error = {}
+        if payload is None:
+            for slot_id in self._slot_ids:
+                self._initialize_lifetime_slot(slot_id)
+            return
+        if payload.get("schema") != EXTERNAL_TRANSITION_MODEL_LIFETIME_TELEMETRY_SCHEMA:
+            raise ValueError("unsupported transition lifetime telemetry payload")
+        if payload.get("sha256") != self._lifetime_telemetry_digest(payload):
+            raise ValueError("transition lifetime telemetry checksum mismatch")
+        slot_ids = payload.get("slot_ids")
+        usage = payload.get("usage")
+        last_access = payload.get("last_access")
+        prediction_error = payload.get("prediction_error")
+        if not all(isinstance(value, list) for value in (slot_ids, usage, last_access, prediction_error)):
+            raise TypeError("transition lifetime telemetry lists are invalid")
+        if slot_ids != list(self._slot_ids) or not (
+            len(usage) == len(last_access) == len(prediction_error) == len(self._slot_ids)
+        ):
+            raise ValueError("transition lifetime telemetry slots are misaligned")
+        logical_clock = payload.get("logical_clock")
+        if not isinstance(logical_clock, int) or logical_clock < 0:
+            raise ValueError("transition lifetime logical clock is invalid")
+        self._lifetime_clock = logical_clock
+        for slot_id, count, access, error in zip(
+            self._slot_ids, usage, last_access, prediction_error, strict=True
+        ):
+            if (
+                not isinstance(count, int)
+                or count < 0
+                or not isinstance(access, int)
+                or access < 0
+                or access > logical_clock
+                or not isinstance(error, (float, int))
+                or not math.isfinite(float(error))
+                or float(error) < 0.0
+            ):
+                raise ValueError("transition lifetime telemetry value is invalid")
+            self._lifetime_usage[slot_id] = count
+            self._lifetime_last_access[slot_id] = access
+            self._lifetime_prediction_error[slot_id] = float(error)
 
     def _context_indices(self, context: torch.Tensor) -> list[int]:
         normalized = self._validate_context(context)
@@ -798,6 +989,9 @@ class ExternalTransitionModelBank(nn.Module):
         del candidate.models[index]
         del candidate._model_families[index]
         del candidate._slot_ids[index]
+        candidate._lifetime_usage.pop(evicted_slot_id, None)
+        candidate._lifetime_last_access.pop(evicted_slot_id, None)
+        candidate._lifetime_prediction_error.pop(evicted_slot_id, None)
         after = candidate.content_digest()
         if not bool(retention_probe(candidate)):
             return ExternalTransitionModelEvictionReceipt(
@@ -817,6 +1011,10 @@ class ExternalTransitionModelBank(nn.Module):
         self._model_families = candidate._model_families
         self._slot_ids = candidate._slot_ids
         self._next_slot_id = candidate._next_slot_id
+        self._lifetime_clock = candidate._lifetime_clock
+        self._lifetime_usage = candidate._lifetime_usage
+        self._lifetime_last_access = candidate._lifetime_last_access
+        self._lifetime_prediction_error = candidate._lifetime_prediction_error
         return ExternalTransitionModelEvictionReceipt(
             accepted=True,
             evicted_index=index,
@@ -868,6 +1066,9 @@ class ExternalTransitionModelBank(nn.Module):
         del candidate.models[index]
         del candidate._model_families[index]
         del candidate._slot_ids[index]
+        candidate._lifetime_usage.pop(slot_id, None)
+        candidate._lifetime_last_access.pop(slot_id, None)
+        candidate._lifetime_prediction_error.pop(slot_id, None)
         after = candidate.content_digest()
         if not bool(retention_probe(candidate)):
             return ExternalTransitionModelEvictionReceipt(
@@ -888,6 +1089,10 @@ class ExternalTransitionModelBank(nn.Module):
         self._model_families = candidate._model_families
         self._slot_ids = candidate._slot_ids
         self._next_slot_id = candidate._next_slot_id
+        self._lifetime_clock = candidate._lifetime_clock
+        self._lifetime_usage = candidate._lifetime_usage
+        self._lifetime_last_access = candidate._lifetime_last_access
+        self._lifetime_prediction_error = candidate._lifetime_prediction_error
         return ExternalTransitionModelEvictionReceipt(
             accepted=True,
             evicted_index=index,
@@ -984,6 +1189,18 @@ class ExternalTransitionModelBank(nn.Module):
 
         loss = self.loss(observation, context)
         indices = self._context_indices(context)
+        with torch.no_grad():
+            for row, index in enumerate(indices):
+                prediction = self.models[index](
+                    observation.state[row : row + 1],
+                    observation.intention[row : row + 1],
+                )
+                error = float(
+                    (prediction - observation.next_state[row : row + 1])
+                    .square()
+                    .mean()
+                )
+                self.record_lifetime_observation(self.slot_id_at(index), error)
         for index in sorted(set(indices)):
             rows = [row for row, selected in enumerate(indices) if selected == index]
             subset = self._observation_rows(observation, rows)
@@ -1195,6 +1412,7 @@ class ExternalTransitionModelBank(nn.Module):
             "next_slot_id": self._next_slot_id,
             "model_aliases": self.model_aliases(),
             "models": models,
+            "lifetime_telemetry": self._lifetime_telemetry_payload(),
         }
         payload["sha256"] = self._compressed_payload_digest(payload)
         return payload
@@ -1314,6 +1532,7 @@ class ExternalTransitionModelBank(nn.Module):
                 bank.models[index] = bank.models[alias]
                 bank._model_families[index] = bank._model_families[alias]
         bank._next_slot_id = next_slot_id
+        bank._restore_lifetime_telemetry(payload.get("lifetime_telemetry"))
         if (
             payload.get("sha256") != bank._compressed_payload_digest(payload)
             and (
@@ -1469,6 +1688,7 @@ class ExternalTransitionModelBank(nn.Module):
                 }
                 for model in self.models
             ],
+            "lifetime_telemetry": self._lifetime_telemetry_payload(),
             "sha256": self.digest(),
         }
 
@@ -1588,6 +1808,7 @@ class ExternalTransitionModelBank(nn.Module):
                 bank.models[index] = bank.models[alias]
                 bank._model_families[index] = bank._model_families[alias]
         bank._next_slot_id = next_slot_id
+        bank._restore_lifetime_telemetry(payload.get("lifetime_telemetry"))
         if (
             payload.get("sha256") != bank.digest()
             and (
@@ -1836,6 +2057,46 @@ class ExternalTransitionModelLifetimePolicy(nn.Module):
             optimizer,
         )
         return proposal, receipt
+
+    def evict_from_bank_verified(
+        self,
+        bank: ExternalTransitionModelBank,
+        protected: torch.Tensor,
+        retention_probe: Callable[[ExternalTransitionModelBank], bool],
+        optimizer: torch.optim.Optimizer | None = None,
+        *,
+        update: bool = True,
+    ) -> tuple[
+        ExternalTransitionModelLifetimeProposal,
+        ExternalTransitionModelEvictionReceipt | None,
+    ]:
+        """Manage a bank using its own persisted lifetime telemetry."""
+
+        telemetry = bank.lifetime_telemetry()
+        if update:
+            return self.evict_verified(
+                bank,
+                telemetry.usage,
+                telemetry.age,
+                telemetry.prediction_error,
+                protected,
+                retention_probe,
+                optimizer,
+            )
+        proposal = self.propose(
+            bank.contexts,
+            bank.slot_ids,
+            telemetry.usage,
+            telemetry.age,
+            telemetry.prediction_error,
+            protected,
+        )
+        if proposal.selected_slot_id is None:
+            return proposal, None
+        return proposal, bank.evict_verified_id(
+            proposal.selected_slot_id,
+            retention_probe,
+        )
 
     def state_payload(self) -> dict[str, object]:
         """Persist the external policy without any controller parameters."""
@@ -2665,6 +2926,28 @@ class ExternalOnlineTransitionContextRouter:
             self._refresh_active_slot()
         return proposal, receipt
 
+    def evict_with_bank_lifetime_policy_verified(
+        self,
+        policy: ExternalTransitionModelLifetimePolicy,
+        protected: torch.Tensor,
+        retention_probe: Callable[[ExternalTransitionModelBank], bool],
+        optimizer: torch.optim.Optimizer | None = None,
+    ) -> tuple[
+        ExternalTransitionModelLifetimeProposal,
+        ExternalTransitionModelEvictionReceipt | None,
+    ]:
+        """Use bank-owned telemetry and repair the active logical reference."""
+
+        proposal, receipt = policy.evict_from_bank_verified(
+            self.bank,
+            protected,
+            retention_probe,
+            optimizer,
+        )
+        if receipt is not None and receipt.accepted:
+            self._refresh_active_slot()
+        return proposal, receipt
+
     def evict_verified_id(
         self,
         slot_id: int,
@@ -3267,6 +3550,7 @@ class ExternalOnlineTransitionContextRouter:
         self.bank.models.append(promoted_model)
         self.bank._model_families.append(selected_family)
         self.bank._slot_ids.append(self.bank._next_slot_id)
+        self.bank._initialize_lifetime_slot(self.bank._next_slot_id)
         self.bank._next_slot_id += 1
         if destination_capacity is not None:
             self.bank.capacity = destination_capacity

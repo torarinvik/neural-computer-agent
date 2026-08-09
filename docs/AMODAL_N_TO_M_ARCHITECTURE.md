@@ -5034,7 +5034,7 @@ verifier outcome bit from that transaction as an external update.
 Focused controls pass permutation-equivalent scoring, all-protected refusal,
 rejection without bank mutation, stable-ID middle eviction, exact policy
 checkpoint restoration, and router active-reference repair. The full suite
-passes `428` tests; the policy has no controller parameters or controller
+passes `430` tests; the policy has no controller parameters or controller
 optimizer updates.
 
 The two-seed online audit then trained the policy from one verifier bit per
@@ -5047,8 +5047,32 @@ in
 
 This promotes a bounded verifier-trained lifetime proposal mechanism, not
 unrestricted learned eviction or general continual memory: the verifier
-remains authoritative, telemetry is supplied by the fixture, and the policy
-has not yet learned consolidation/compression tradeoffs or survived a long
-alternating capability stream. The next experiment must put the policy under
-capacity pressure while it chooses among genuinely retained and disposable
-models, with recency, random, and forced-growth controls.
+remains authoritative, the policy has not yet learned consolidation/compression
+tradeoffs, and it has not survived a long alternating capability stream.
+
+## Bank-owned lifetime telemetry under capacity pressure (2026-08-09)
+
+The bank now owns generic lifetime telemetry keyed by stable logical slot ID:
+access usage, logical age, and an exponentially smoothed factual
+prediction-error signal. The telemetry is updated at the external transition
+observation boundary, persists in normal and compressed bank checkpoints, and
+is removed with the corresponding logical slot during verified copy-on-write
+eviction. A lifetime policy can consume the bank directly through
+`evict_from_bank_verified`, so callers do not need to manufacture feature
+tensors or maintain a parallel physical-index ledger.
+
+The two-seed capacity-pressure audit trained on one verifier bit per
+transaction using three independently trained affine factual models per fresh
+bank. Learned held-out safe selection was `0.575`/`0.555`, versus random
+`0.340`/`0.280` and recency `0.015`/`0.020`. Retained-model held-out behavior,
+protected-slot, stable-address, exact persistence, zero-replay, and
+zero-controller-update gates passed. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_transition_lifetime_capacity_pressure_promoted_2026-08-09/`.
+
+This is a real integration gain: the lifetime policy now operates on external
+memory state produced by actual model use rather than fixture-supplied
+telemetry. It remains bounded and verifier-dependent, not unrestricted
+continual learning. The next bottleneck is a longer alternating stream with
+genuinely retained versus disposable capabilities, where lifetime selection
+must coexist with verified model growth, consolidation, and compression under
+the same capacity budget.

@@ -1,0 +1,33 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_transition_lifetime_capacity_pressure",
+  "entries": [
+    {
+      "seed": 1701,
+      "arm": "bank-owned-verifier-trained-lifetime-policy",
+      "unique_verifier_bits": 400,
+      "unique_logical_lifetimes": 1200,
+      "optimizer_updates": 200,
+      "replayed_examples": 0,
+      "controller_updates": 0,
+      "heldout_selection": 0.575,
+      "random_control": 0.34,
+      "recency_control": 0.015,
+      "promoted": true
+    },
+    {
+      "seed": 1702,
+      "arm": "bank-owned-verifier-trained-lifetime-policy",
+      "unique_verifier_bits": 400,
+      "unique_logical_lifetimes": 1200,
+      "optimizer_updates": 200,
+      "replayed_examples": 0,
+      "controller_updates": 0,
+      "heldout_selection": 0.555,
+      "random_control": 0.28,
+      "recency_control": 0.02,
+      "promoted": true
+    }
+  ],
+  "claim_boundary": "bank-owned bounded lifetime telemetry and verifier-gated selection; not general continual learning"
+}
