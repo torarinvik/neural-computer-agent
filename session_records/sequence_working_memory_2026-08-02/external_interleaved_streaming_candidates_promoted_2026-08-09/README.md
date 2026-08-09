@@ -12,7 +12,9 @@ All held-out errors were below `1e-6`: the largest was
 controls reached `37.49` and `13.99` and were rejected. A full-capacity
 control refused the second unverified stream without modifying the committed
 source slot. Controller freezing, source retention, and exact persistence
-passed in both seeds.
+passed in both seeds. A deliberately ambiguous window, equally explained by
+the two provisional models, was refused with no candidate update in both
+seeds.
 
 This promotes bounded interleaved replay-free factual-candidate isolation and
 verifier-gated model-family selection. It does not establish arbitrary

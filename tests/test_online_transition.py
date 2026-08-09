@@ -691,6 +691,7 @@ def test_streaming_statistics_isolates_two_interleaved_candidates() -> None:
         match_margin=1e-4,
         continuation_tolerance=1e-6,
         provisional_continuation_tolerance=0.05,
+        provisional_match_margin=0.05,
         admission_observations=4,
         max_contexts=3,
         defer_admission=True,
@@ -757,6 +758,31 @@ def test_streaming_statistics_isolates_two_interleaved_candidates() -> None:
         not candidate["observations"]
         for candidate in payload["provisional_candidates"]
     )
+    router.provisional_continuation_tolerance = 100.0
+    ambiguous = None
+    midpoint_state = target_a.state[:4]
+    midpoint_intention = target_a.intention[:4]
+    candidate_predictions = [
+        candidate.model(midpoint_state, midpoint_intention)
+        for candidate in router._provisional_candidates
+    ]
+    midpoint = ExternalTransitionObservation(
+        state=midpoint_state,
+        intention=midpoint_intention,
+        next_state=sum(candidate_predictions) / len(candidate_predictions),
+        confidence=torch.ones(4),
+    )
+    for row in range(4):
+        ambiguous = router.observe(
+            ExternalTransitionObservation(
+                state=midpoint.state[row : row + 1],
+                intention=midpoint.intention[row : row + 1],
+                next_state=midpoint.next_state[row : row + 1],
+                confidence=torch.ones(1),
+            )
+        )
+    assert ambiguous is not None and ambiguous.status == "ambiguous"
+    assert [router.provisional_evidence_count(index) for index in range(2)] == [64, 64]
 
     def retained(candidate: ExternalTransitionModelBank) -> bool:
         return (

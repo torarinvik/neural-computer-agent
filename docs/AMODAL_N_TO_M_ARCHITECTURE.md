@@ -5438,7 +5438,9 @@ candidate is promoted. The router keeps separate copy-on-write candidates,
 updates each only through one-pass sufficient statistics, and offers both
 affine and fixed random-feature families. The family is selected only by the
 held-out factual promotion gate; no task or regime label is given to the
-router.
+router. A provisional match margin now produces an explicit `ambiguous`
+decision when two candidates explain a window too similarly; neither model is
+updated and the window is not silently assigned.
 
 Across seeds `1901` and `1902`, both candidates consumed `64` rows, retained
 zero raw provisional rows, and were promoted as affine models. Held-out errors
@@ -5446,7 +5448,8 @@ were below `1e-6` in every source and target slot; shuffled-next-state controls
 reached `37.49` and `13.99` and were rejected. A capacity-limited control
 refused the second unverified stream without modifying the committed source
 slot. Source retention, frozen-controller, exact-persistence, and zero-replay
-gates passed. Evidence is archived in
+gates passed. A deliberately ambiguous window was refused without a candidate
+update in both seeds. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_interleaved_streaming_candidates_promoted_2026-08-09/`.
 
 This closes a bounded interleaved-candidate isolation gap. It also sharpens

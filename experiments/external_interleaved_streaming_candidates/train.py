@@ -86,6 +86,7 @@ def _router(capacity: int) -> ExternalOnlineTransitionContextRouter:
         match_margin=1e-4,
         continuation_tolerance=LOSS_THRESHOLD,
         provisional_continuation_tolerance=0.05,
+        provisional_match_margin=0.05,
         admission_observations=WINDOW_ROWS,
         max_contexts=capacity,
         defer_admission=True,
@@ -153,6 +154,25 @@ def _normal(seed: int) -> dict[str, object]:
         tuple(router._provisional_candidates[index].models())
         for index in range(2)
     ]
+    router.provisional_continuation_tolerance = 100.0
+    midpoint_state = target_a.state[:WINDOW_ROWS]
+    midpoint_intention = target_a.intention[:WINDOW_ROWS]
+    candidate_predictions = [
+        candidate.model(midpoint_state, midpoint_intention)
+        for candidate in router._provisional_candidates
+    ]
+    midpoint = ExternalTransitionObservation(
+        state=midpoint_state,
+        intention=midpoint_intention,
+        next_state=sum(candidate_predictions) / len(candidate_predictions),
+        confidence=torch.ones(WINDOW_ROWS),
+    )
+    ambiguity_statuses = [
+        router.observe(_row(midpoint, index)).status
+        for index in range(WINDOW_ROWS)
+    ]
+    ambiguous_windows = ambiguity_statuses.count("ambiguous")
+    router.provisional_continuation_tolerance = 0.05
 
     def retain_source(candidate: ExternalTransitionModelBank) -> bool:
         return (
@@ -193,6 +213,7 @@ def _normal(seed: int) -> dict[str, object]:
         "promotions": [first, second],
         "candidate_counts": candidate_counts,
         "candidate_families": candidate_families,
+        "ambiguous_windows": ambiguous_windows,
         "raw_rows": raw_rows,
         "heldout_errors": heldout_errors,
         "source_digest": router.bank.models[0].digest(),
@@ -266,6 +287,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
     normal_router = normal["router"]
     gates = {
         "two_candidates_isolated": normal["candidate_counts"] == [64, 64],
+        "ambiguous_window_refused": normal["ambiguous_windows"] == 1,
         "raw_candidate_rows_not_retained": normal["raw_rows"] == [0, 0],
         "heldout_family_selection": all(
             bool(receipt.accepted)
@@ -310,6 +332,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         "metrics": {
             "candidate_evidence_counts": normal["candidate_counts"],
             "candidate_families": normal["candidate_families"],
+            "ambiguous_windows": normal["ambiguous_windows"],
             "raw_rows_retained": normal["raw_rows"],
             "heldout_errors": normal["heldout_errors"],
             "shuffled_heldout_error": shuffled["heldout_error"],

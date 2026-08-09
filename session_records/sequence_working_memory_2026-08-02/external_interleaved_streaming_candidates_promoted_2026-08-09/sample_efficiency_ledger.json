@@ -19,6 +19,7 @@
     "shuffled_heldout_error_by_seed": [37.48672103881836, 13.993684768676758],
     "candidate_evidence_counts_by_seed": [[64, 64], [64, 64]],
     "raw_rows_retained_by_seed": [[0, 0], [0, 0]],
+    "ambiguous_windows_refused_by_seed": [1, 1],
     "capacity_refusal_by_seed": [true, true],
     "exact_persistence_by_seed": [true, true]
   },

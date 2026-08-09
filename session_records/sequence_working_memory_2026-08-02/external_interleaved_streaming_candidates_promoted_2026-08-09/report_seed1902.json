@@ -28,6 +28,7 @@
         "random_feature_sufficient_statistics_v1"
       ]
     ],
+    "ambiguous_windows": 1,
     "raw_rows_retained": [
       0,
       0
@@ -53,13 +54,14 @@
     "old_committed_slot_replay": 0,
     "raw_provisional_rows_persisted": 0,
     "search_expansions": 0,
-    "wall_seconds": 0.1283669580006972
+    "wall_seconds": 0.12354595796205103
   },
   "digests": {
-    "controller": "6abe2cac3983dd74268bdbd936e23bbfe5b3560b56eceabb53bc5ac4432d43a1"
+    "controller": "9bb6e61d313b84aa24c227e6016f40938ecd40ca23527d6aad8c5b2bb8bc9bed"
   },
   "gates": {
     "two_candidates_isolated": true,
+    "ambiguous_window_refused": true,
     "raw_candidate_rows_not_retained": true,
     "heldout_family_selection": true,
     "all_promotions_accepted": true,

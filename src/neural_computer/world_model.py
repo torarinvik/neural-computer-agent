@@ -2989,6 +2989,7 @@ class ExternalOnlineTransitionContextResult:
             "continuation",
             "conflict",
             "staged",
+            "ambiguous",
             "pending",
             "admitted",
             "reused",
@@ -3068,6 +3069,7 @@ class ExternalOnlineTransitionContextRouter:
         candidate_model_families: Sequence[str] | None = None,
         provisional_continuation_tolerance: float | None = None,
         provisional_evidence_policy: str = "cumulative_replay",
+        provisional_match_margin: float = 0.0,
     ) -> None:
         if (
             bank.state_width != context_encoder.state_width
@@ -3097,6 +3099,8 @@ class ExternalOnlineTransitionContextRouter:
                 "provisional evidence policy must be cumulative_replay or "
                 "streaming_statistics"
             )
+        if provisional_match_margin < 0.0:
+            raise ValueError("provisional context match margin cannot be negative")
         if admission_observations < 1:
             raise ValueError("online context admission count must be positive")
         if max_contexts is not None and max_contexts < 1:
@@ -3143,6 +3147,7 @@ class ExternalOnlineTransitionContextRouter:
         self.conflict_patience = int(conflict_patience)
         self.defer_admission = bool(defer_admission)
         self.provisional_evidence_policy = str(provisional_evidence_policy)
+        self.provisional_match_margin = float(provisional_match_margin)
         self.candidate_model_families = families
         self._pending: list[ExternalTransitionObservation] = []
         self._active_slot: int | None = None
@@ -3223,6 +3228,7 @@ class ExternalOnlineTransitionContextRouter:
             "max_contexts": self.max_contexts,
             "continuation_tolerance": self.continuation_tolerance,
             "provisional_continuation_tolerance": self.provisional_continuation_tolerance,
+            "provisional_match_margin": self.provisional_match_margin,
             "conflict_patience": self.conflict_patience,
             "defer_admission": self.defer_admission,
             "candidate_model_families": list(self.candidate_model_families),
@@ -3635,7 +3641,22 @@ class ExternalOnlineTransitionContextRouter:
                     candidate_errors,
                     key=lambda item: (item[0], item[1]),
                 )
+                ordered_candidate_errors = sorted(
+                    error for error, _index in candidate_errors
+                )
+                candidate_margin = (
+                    float("inf")
+                    if len(ordered_candidate_errors) == 1
+                    else ordered_candidate_errors[1] - ordered_candidate_errors[0]
+                )
                 if candidate_error <= self.provisional_continuation_tolerance:
+                    if candidate_margin < self.provisional_match_margin:
+                        self._pending.clear()
+                        return self._pending_result(
+                            status="ambiguous",
+                            prediction_error=candidate_error,
+                            observation=bundle,
+                        )
                     self._pending.clear()
                     return self._staged_result(
                         bundle,
@@ -4129,6 +4150,9 @@ class ExternalOnlineTransitionContextRouter:
             ),
             provisional_evidence_policy=str(
                 configuration.get("provisional_evidence_policy", "cumulative_replay")
+            ),
+            provisional_match_margin=float(
+                configuration.get("provisional_match_margin", 0.0)
             ),
         )
         for row_payload in pending_payload:
