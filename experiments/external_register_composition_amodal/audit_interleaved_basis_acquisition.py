@@ -412,6 +412,7 @@ def _fresh_source_curriculum(parent, *, args, seed_base: int):
     machine = _new_machine(
         len(SOURCE_OPERATIONS),
         operator_mode=args.operator_mode,
+        operator_rank=args.operator_rank,
     )
     for _ in SOURCE_OPERATIONS:
         machine.add_basis_slot()
@@ -642,6 +643,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     machine = _new_machine(
         len(SOURCE_OPERATIONS),
         operator_mode=args.operator_mode,
+        operator_rank=args.operator_rank,
     )
     for _ in SOURCE_OPERATIONS:
         machine.add_basis_slot()
@@ -882,6 +884,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             fresh_machine = _new_machine(
                 len(SOURCE_OPERATIONS),
                 operator_mode=args.operator_mode,
+                operator_rank=args.operator_rank,
             )
             for _ in SOURCE_OPERATIONS:
                 fresh_machine.add_basis_slot()
@@ -1273,6 +1276,7 @@ def main() -> None:
     )
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument("--operator-mode", default="factorized_low_rank")
+    parser.add_argument("--operator-rank", type=int, default=8)
     parser.add_argument(
         "--target-operations", default=",".join(TARGET_OPERATIONS)
     )

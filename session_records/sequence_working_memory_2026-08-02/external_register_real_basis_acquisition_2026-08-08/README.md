@@ -646,3 +646,18 @@ This is the strongest current architectural direction, but not yet a
 promoted continual-learning capability. The next bottleneck is robust source
 acquisition under a shared operator family, including order sensitivity and
 capacity allocation—not another decoder or readout prior.
+
+## Shared-interpreter capacity screen — rejected
+
+Increasing the shared factorized operator rank from `8` to `16` did not
+repair the mixed result. Across both seeds, source floors weakened (including
+`0.7734` and `0.8047` in seed `69316`), composition candidates became less
+stable, and positive transfer was not replicated. Retention deltas remained
+exactly zero and the causal controls remained valid.
+
+This rejects raw rank expansion as the next intervention. The shared
+interpreter’s main asymmetry is now acquisition order: the first source skill
+trains the shared operator weights, while later skills mostly train their
+opaque instruction vectors. The next diagnostic will test order sensitivity
+and seek a way to acquire the shared operator contract without privileging
+the first capability.

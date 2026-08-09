@@ -247,6 +247,21 @@
       "retention_on_mastered_primitives": "exact zero source retention deltas; one seed rejected one composition for absolute mastery",
       "positive_transfer": "seed 69317 both programs; seed 69316 neither",
       "decision": "retain as the strongest architectural direction, but reject promotion pending source-mastery robustness and seed-stable transfer"
+    },
+    {
+      "experiment": "interleaved_shared_interpreter_rank16_diagnostic",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "Increasing the shared factorized interpreter rank from 8 to 16 repairs source mastery and improves composition transfer.",
+      "operator_mode": "factorized_shared_interpreter",
+      "operator_rank": 16,
+      "composition_program_count": 2,
+      "source_restarts": 2,
+      "curriculum_fresh_control": true,
+      "replayed_examples": 0,
+      "retention_on_mastered_primitives": "exact zero source retention deltas, but source floors weakened in both seeds",
+      "positive_transfer": "one program in seed 69317 only",
+      "decision": "reject rank increase; retain rank 8 as the stronger shared-interpreter baseline and investigate acquisition-order asymmetry"
     }
   ]
 }
