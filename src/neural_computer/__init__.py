@@ -195,6 +195,15 @@ from .plasticity import (
 )
 from .program import EXTERNAL_PROGRAM_ARTIFACT_SCHEMA, ExternalProgramArtifact
 from .policies import EventReliabilityPolicy, EventWaitPolicy
+from .world_model import (
+    EXTERNAL_MODEL_PLANNER_SCHEMA,
+    EXTERNAL_TRANSITION_MODEL_SCHEMA,
+    EXTERNAL_TRANSITION_OBSERVATION_SCHEMA,
+    ExternalModelBasedPlanner,
+    ExternalTransitionModel,
+    ExternalTransitionObservation,
+    ModelBasedPlanningResult,
+)
 from .promotion import (
     HOLDOUT_LEDGER_SCHEMA,
     PROMOTION_SCHEMA,
@@ -279,6 +288,7 @@ __all__ = [
     "CAPACITY_PLANNER_SCHEMA",
     "CONSOLIDATION_OPERATION_COUNT",
     "CONSOLIDATION_POLICY_SCHEMA",
+    "EXTERNAL_MODEL_PLANNER_SCHEMA",
     "EVENT_SCHEMA",
     "EVENT_WINDOW_SCHEMA",
     "EXECUTION_STATES",
@@ -298,6 +308,8 @@ __all__ = [
     "EXTERNAL_CAPABILITY_SCHEMA",
     "EXTERNAL_CAPABILITY_SHARED_RESIDUAL_SCHEMA",
     "EXTERNAL_CAPABILITY_SLOT_BINDING_SCHEMA",
+    "EXTERNAL_TRANSITION_MODEL_SCHEMA",
+    "EXTERNAL_TRANSITION_OBSERVATION_SCHEMA",
     "EXTERNAL_REGISTER_BASIS_SCHEMA",
     "EXTERNAL_REGISTER_COMPATIBILITY_SCHEMA",
     "EXTERNAL_REGISTER_EXECUTION_SNAPSHOT_SCHEMA",
@@ -397,6 +409,7 @@ __all__ = [
     "ExternalCapabilitySharedResidualBank",
     "ExternalCapabilityState",
     "ExternalComputeCandidateScreen",
+    "ExternalModelBasedPlanner",
     "ExternalGrowthPrior",
     "ExternalMemoryEvictionPolicy",
     "ExternalMemoryWritePolicy",
@@ -421,6 +434,7 @@ __all__ = [
     "MemoryRead",
     "MemoryWriteObservation",
     "MemoryWriteReceipt",
+    "ModelBasedPlanningResult",
     "MetricRequirement",
     "OnlineEpisodicRelationReader",
     "OnlineEpisodicRelationState",
@@ -448,6 +462,8 @@ __all__ = [
     "RetentionGateDecision",
     "RetentionPolicyConfig",
     "StagedCapabilityReceipt",
+    "ExternalTransitionModel",
+    "ExternalTransitionObservation",
     "accumulate_current_gradients",
     "apply_consolidation_proposal",
     "attempted_outcome_loss",

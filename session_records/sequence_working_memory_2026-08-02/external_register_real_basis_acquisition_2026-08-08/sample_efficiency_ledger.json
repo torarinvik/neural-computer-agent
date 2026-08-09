@@ -1193,6 +1193,25 @@
       "source_retention": [0.98, 0.976667],
       "controls": "source mastery/retention, source-state isolation, appended-program use, stable-prefix, no-trace rejection, reward-shuffle rejection, no-append capacity rejection, missing-feedback no-write, router/artifact persistence, frozen executor/program memory/rules, and zero-replay gates passed",
       "decision": "promote bounded outcome-only routing over executable external artifacts; next test many-capability interference and fresh-relation transfer against a matched fresh executor"
+    },
+    {
+      "experiment": "external_model_based_planner_initial_rung",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "An external learned transition model can derive behavior for new opaque goals by terminal-goal search while the controller remains frozen and target acquisition uses no replay.",
+      "module": "ExternalTransitionModel + ExternalModelBasedPlanner",
+      "source_updates_per_seed": 1200,
+      "target_optimizer_updates_per_seed": 0,
+      "replayed_examples": 0,
+      "unique_verifier_bits_per_seed": 3,
+      "unique_logical_lifetimes_per_seed": 3,
+      "target_mastery": [1.0, 1.0],
+      "retention_prefix_floor": [1.0, 1.0],
+      "shuffled_goal_control": [0.0, 0.0],
+      "shuffled_transition_control": [0.0, 0.0],
+      "fresh_model_control": [0.333333, 0.0],
+      "controls": "controller unchanged, zero target updates, zero replay, goal shuffle, transition shuffle, fresh model, exact persistence",
+      "decision": "promote only the bounded external-transition-plus-search interface; require disjoint-dynamics transfer, learned goal evaluation, and unrestricted-growth tests before general continual-learning claims"
     }
   ]
 }

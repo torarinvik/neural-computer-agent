@@ -4397,3 +4397,36 @@ and transfer when many capabilities share one growing address space, followed
 by fresh-relation transfer against a matched fresh executor. Evidence is
 archived in
 `session_records/sequence_working_memory_2026-08-02/external_outcome_program_router_promoted_2026-08-09/`.
+
+## External transition memory and model-based search (2026-08-09)
+
+The production package now exposes `ExternalTransitionModel`,
+`ExternalTransitionObservation`, and `ExternalModelBasedPlanner`. The model
+is an independently replaceable external component that learns only from
+opaque state/intention/next-state tensors. The planner derives an intention
+sequence by searching candidate opaque intentions against an opaque terminal
+goal state; it does not store a task-specific policy and does not resize the
+controller when candidate count changes.
+
+The first matched two-seed pressure test froze the controller, trained the
+external model for `1,200` source updates, then acquired three target goals
+with zero target optimizer updates and zero replay. All target and retention
+gates reached `1.0`; shuffled-goal and shuffled-transition controls reached
+`0.0`; fresh-model controls reached `0.3333` and `0.0`; persistence and frozen
+controller checks passed.
+
+This is the first repository rung that directly tests the exported session's
+strongest architectural result: store factual transition knowledge externally
+and compute behavior from the current goal. The initial smoke also exposed an
+important boundary rule: Euclidean progress in an opaque latent space is not
+valid by default. The promoted planner uses terminal opaque-goal matching;
+future general planners need an independently learned/verifier-grounded goal
+evaluator rather than hand-assigned latent geometry.
+
+The result is bounded. The fixture is deterministic and small, the goals use
+one dynamics family, and the model is not yet tested on disjoint dynamics,
+learned goal abstraction, compression, or unrestricted growth. The next
+pressure test must vary dynamics, retain earlier transition knowledge, report
+actual model updates and search compute separately, and compare against a
+matched fresh model. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_model_based_planner_initial_rung_2026-08-09/`.

@@ -1,0 +1,168 @@
+{
+  "schema": "neural-computer.external-model-based-planner-pressure-test.v1",
+  "seed": 69317,
+  "configuration": {
+    "state_width": 8,
+    "intention_width": 4,
+    "hidden_width": 48,
+    "position_count": 6,
+    "targets": [
+      [
+        0,
+        4
+      ],
+      [
+        4,
+        0
+      ],
+      [
+        1,
+        5
+      ]
+    ],
+    "horizon": 4,
+    "beam_width": 16,
+    "policy": "none_external_transition_model_plus_search"
+  },
+  "gates": {
+    "controller_unchanged": true,
+    "model_learns_source_transitions": true,
+    "target_optimizer_updates_zero": true,
+    "replay_examples_zero": true,
+    "target_mastery": true,
+    "retention_prefix_floor": true,
+    "goal_conditioning_causal": true,
+    "shuffled_model_near_floor": true,
+    "persistence_exact": true,
+    "fresh_control_not_mastered": true
+  },
+  "promoted": true,
+  "source": {
+    "optimizer_updates": 1200,
+    "replayed_examples": 0,
+    "unique_transition_lifetimes": 12,
+    "final_loss": 5.129555460947621e-11
+  },
+  "target": {
+    "optimizer_updates": 0,
+    "replayed_examples": 0,
+    "unique_verifier_bits": 3,
+    "unique_goal_lifetimes": 3
+  },
+  "trained": {
+    "successes": [
+      true,
+      true,
+      true
+    ],
+    "mastery": 1.0,
+    "scores": [
+      3.4488009670319286e-11,
+      2.6767796312832104e-11,
+      1.094053292405306e-09
+    ],
+    "predicted_final_positions": [
+      4,
+      0,
+      5
+    ],
+    "mean_latency_seconds": 0.0002964720285187165
+  },
+  "retained": {
+    "successes": [
+      true,
+      true,
+      true
+    ],
+    "mastery": 1.0,
+    "scores": [
+      3.4488009670319286e-11,
+      2.6767796312832104e-11,
+      1.094053292405306e-09
+    ],
+    "predicted_final_positions": [
+      4,
+      0,
+      5
+    ],
+    "mean_latency_seconds": 0.0002496526576578617
+  },
+  "shuffled_goal": {
+    "successes": [
+      true,
+      false,
+      false
+    ],
+    "mastery": 0.3333333333333333,
+    "scores": [
+      0.21213427186012268,
+      0.18712139129638672,
+      9.87167292354485e-12
+    ],
+    "predicted_final_positions": [
+      4,
+      2,
+      0
+    ],
+    "mean_latency_seconds": 0.00024548601747180027
+  },
+  "shuffled_model": {
+    "successes": [
+      false,
+      false,
+      false
+    ],
+    "mastery": 0.0,
+    "scores": [
+      1.2409009286784567e-07,
+      7.02538955010823e-07,
+      3.2012294468586333e-06
+    ],
+    "predicted_final_positions": [
+      0,
+      5,
+      3
+    ],
+    "mean_latency_seconds": 0.0002787496584157149
+  },
+  "fresh_model": {
+    "successes": [
+      false,
+      false,
+      false
+    ],
+    "mastery": 0.0,
+    "scores": [
+      0.11599577963352203,
+      0.15294773876667023,
+      0.11490422487258911
+    ],
+    "predicted_final_positions": [
+      1,
+      5,
+      1
+    ],
+    "mean_latency_seconds": 0.0002508053245643775
+  },
+  "persisted_model": {
+    "successes": [
+      true,
+      true,
+      true
+    ],
+    "mastery": 1.0,
+    "scores": [
+      3.4488009670319286e-11,
+      2.6767796312832104e-11,
+      1.094053292405306e-09
+    ],
+    "predicted_final_positions": [
+      4,
+      0,
+      5
+    ],
+    "mean_latency_seconds": 0.0002515560093646248
+  },
+  "model_digest": "d8b7f4fc89b62d973281b2b57a81b1746725aa869f75db927c1affdd955a89b5",
+  "elapsed_seconds": 0.8187962920055725
+}
