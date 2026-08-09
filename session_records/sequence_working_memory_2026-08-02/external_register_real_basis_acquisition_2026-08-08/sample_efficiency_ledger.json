@@ -899,7 +899,7 @@
     {
       "experiment": "fresh_retained_interpreter_external_program_transfer_long",
       "date": "2026-08-09",
-      "seeds": [69318],
+      "seeds": [69317, 69318],
       "claim": "Retaining the mastered shared interpreter while resetting external candidate state will preserve rapid acquisition and produce positive transfer.",
       "fresh_controller": true,
       "interpreter_prior": "source_interpreter_state",
@@ -910,8 +910,11 @@
       "fresh_accuracy_scores": [0.90625, 0.859375, 0.8125],
       "positive_transfer_count": 1,
       "heldout_target_probe_scores": [0.9140625, 0.8828125, 0.8671875],
+      "replica_fresh_accuracy_scores": [0.890625, 0.875, 0.734375],
+      "replica_positive_transfer_count": 0,
+      "replica_heldout_target_probe_scores": [0.9375, 0.890625, 0.84375],
       "source_retention": "exact zero deltas",
-      "decision": "retain frozen-interpreter boundary; do not promote general fresh-controller transfer until positive transfer replicates across all held-out programs and seeds"
+      "decision": "promote frozen-interpreter/external-memory boundary across two seeds; do not promote general decoder-prior transfer"
     },
     {
       "experiment": "protected_bounded_meta_shared_program_memory_router_sequence384",

@@ -1128,3 +1128,10 @@ two matched or lagged the inherited stable threshold. This validates the
 frozen-interpreter/external-memory boundary, but does not yet promote a
 general fresh-controller transfer claim. Raw report:
 `fresh_retained_interpreter_frozen_long/report_seed69318.json`.
+The same frozen-interpreter protocol replicated under seed `69317`; fresh
+accuracies were `0.8906`, `0.8750`, and `0.7344`, with all held-out target
+gates passing but no positive learning-curve transfer. This promotes the
+frozen-core/external-memory boundary across seeds, while decoder-prior
+transfer remains an open problem.
+Raw replica:
+`fresh_retained_interpreter_frozen_long/report_seed69317.json`.
