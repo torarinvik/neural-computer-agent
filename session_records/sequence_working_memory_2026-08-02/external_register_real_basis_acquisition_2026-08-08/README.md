@@ -840,3 +840,17 @@ This is a genuine broadening of the signal, but not general continual
 learning. The next bottleneck is making stable relational state acquisition
 reliably support every ordering and every fresh control, rather than improving
 only a subset of permutations.
+
+## Sequence calibration upper bound — rejected for retention damage
+
+An explicit `--sequence-calibration-updates` rung now trains the shared
+operator on verifier-checked opaque source-program chains before target
+acquisition. The fresh control receives the same calibration budget. This is
+an upper-bound diagnostic, not replay-free continual learning.
+
+With `64` chain-calibration updates, both seeds failed the source-retention
+gate after calibration, so the audit restored the pre-calibration checkpoint.
+The intervention is rejected as implemented: updating the whole shared
+machine on chains damages the primitive contract. The next attempt must
+protect mastered source instructions/operator components while learning only
+the missing compositional capacity.

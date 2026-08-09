@@ -440,6 +440,20 @@
       "fresh_control": "ten of twelve fresh comparisons reached stable thresholds",
       "positive_transfer": "four of twelve strict comparisons, two orderings in each seed",
       "decision": "retain stable-slot relational mode as the strongest current operator candidate; reject full promotion until all-order fresh transfer is reliable"
+    },
+    {
+      "experiment": "stable_relational_sequence_calibration_screen",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "Verifier-trained opaque sequence calibration can improve all-order composition without replay.",
+      "operator_mode": "factorized_shared_stable_relational",
+      "sequence_calibration_updates": 64,
+      "composition_program_count": 2,
+      "curriculum_fresh_control": true,
+      "replayed_examples": 0,
+      "source_retention": "both seeds failed the post-calibration source-retention gate; pre-calibration checkpoints restored",
+      "positive_transfer": "not evaluated after calibration rejection",
+      "decision": "reject whole-machine sequence calibration; protect mastered source components before learning additional compositional capacity"
     }
   ]
 }

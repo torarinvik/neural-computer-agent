@@ -525,6 +525,138 @@ def _train_joint_source_bank(parent, machine, *, args, seed_base: int):
         decoder.load_state_dict(state, strict=True)
     return decoders
 
+
+def _train_sequence_calibration(
+    parent,
+    machine,
+    *,
+    args: argparse.Namespace,
+    composition_programs: tuple[tuple[str, ...], ...],
+    seed_base: int,
+    source_decoders: list[OpaqueProtocolDecoder] | None = None,
+) -> list[dict[str, object]]:
+    """Calibrate the shared operator on opaque multi-instruction chains.
+
+    This is deliberately an explicit upper bound.  It uses verifier outcomes
+    from generated source programs before target acquisition and is therefore
+    not evidence for replay-free continual learning by itself.  The matched
+    fresh control receives the same calibration budget.
+    """
+
+    if args.sequence_calibration_updates <= 0:
+        return []
+    programs = tuple(composition_programs)
+    if not programs:
+        raise ValueError("sequence calibration requires composition programs")
+    decoders = [
+        OpaqueProtocolDecoder(
+            REGISTER_WIDTH * (len(program) if args.preserve_composition_trace else 1),
+            ACTION_WIDTH,
+            hidden=16,
+        )
+        for program in programs
+    ]
+    trainable = list(machine.parameters()) + [
+        parameter for decoder in decoders for parameter in decoder.parameters()
+    ]
+    optimizer = torch.optim.AdamW(trainable, lr=args.learning_rate, weight_decay=1e-5)
+    best_state = None
+    best_floor = float("-inf")
+    progress: list[dict[str, object]] = []
+    for update in range(1, args.sequence_calibration_updates + 1):
+        index = (update - 1) % len(programs)
+        program = programs[index]
+        source_indices = tuple(args.source_operations.index(name) for name in program)
+        batch = _batch(
+            "generated_composition",
+            count=args.batch_size,
+            span=args.span,
+            seed=seed_base + update * 10_007,
+            generated_composition_ids=(0,),
+            generated_compositions=(program,),
+        )
+        loss, _ = _rollout(
+            parent,
+            machine,
+            decoders[index],
+            batch,
+            tuple(machine.instructions[value] for value in source_indices),
+            basis_slots=source_indices,
+            train_decoder=True,
+            credit_mode="paired_counterfactual",
+            preserve_execution_trace=args.preserve_composition_trace,
+        )
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(trainable, 1.0)
+        optimizer.step()
+        if update % args.eval_every == 0 or update == args.sequence_calibration_updates:
+            sequence_scores = [
+                _accuracy(
+                    parent,
+                    machine,
+                    decoders[index_value],
+                    operation="generated_composition",
+                    instructions=tuple(
+                        machine.instructions[value]
+                        for value in tuple(
+                            args.source_operations.index(name) for name in program_value
+                        )
+                    ),
+                    basis_slots=tuple(
+                        args.source_operations.index(name) for name in program_value
+                    ),
+                    count=args.source_selection_audit_count,
+                    span=args.span,
+                    seed=seed_base + 70_000 + index_value * 1_009,
+                    credit_mode="paired_counterfactual",
+                    generated_composition_ids=(0,),
+                    generated_compositions=(program_value,),
+                    preserve_execution_trace=args.preserve_composition_trace,
+                )
+                for index_value, program_value in enumerate(programs)
+            ]
+            source_floor = None
+            if source_decoders is not None:
+                source_floor = min(
+                    _accuracy(
+                        parent,
+                        machine,
+                        decoder,
+                        operation=operation,
+                        instructions=(machine.instructions[index_value],),
+                        basis_slots=(index_value,),
+                        count=args.source_selection_audit_count,
+                        span=args.span,
+                        seed=seed_base + 80_000 + index_value * 1_009,
+                        credit_mode="paired_counterfactual",
+                    )
+                    for index_value, (operation, decoder) in enumerate(
+                        zip(args.source_operations, source_decoders, strict=True)
+                    )
+                )
+            floor = min(sequence_scores)
+            if source_floor is not None:
+                floor = min(floor, source_floor)
+            progress.append(
+                {
+                    "update": update,
+                    "sequence_floor": floor,
+                    "source_floor": source_floor,
+                    "sequence_scores": sequence_scores,
+                }
+            )
+            if floor > best_floor:
+                best_floor = floor
+                best_state = {
+                    name: value.detach().clone()
+                    for name, value in machine.state_dict().items()
+                }
+    if best_state is None:
+        raise RuntimeError("sequence calibration did not produce a checkpoint")
+    machine.load_state_dict(best_state, strict=True)
+    return progress
+
 def _train_shared_bridge_prior(
     parent,
     machine,
@@ -731,6 +863,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("source restarts must be positive")
     if args.joint_source_updates < 0:
         raise ValueError("joint source updates cannot be negative")
+    if args.sequence_calibration_updates < 0:
+        raise ValueError("sequence calibration updates cannot be negative")
     if args.reuse_shared_bridge_prior and args.reuse_conditioned_bridge_prior:
         raise ValueError("choose one bridge prior mode")
     args.reuse_shared_bridge_prior = (
@@ -865,6 +999,30 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         )
 
     source_before = [source_score(spec, index) for index, spec in enumerate(source_specs)]
+    sequence_calibration_progress: list[dict[str, object]] = []
+    sequence_calibration_source_after = list(source_before)
+    sequence_calibration_accepted = False
+    if args.sequence_calibration_updates:
+        machine_before_sequence_calibration = copy.deepcopy(machine)
+        sequence_calibration_progress = _train_sequence_calibration(
+            parent,
+            machine,
+            args=args,
+            composition_programs=composition_programs,
+            seed_base=args.seed + 1_700_000,
+            source_decoders=source_decoders,
+        )
+        sequence_calibration_source_after = [
+            source_score(spec, index) for index, spec in enumerate(source_specs)
+        ]
+        sequence_calibration_accepted = min(
+            sequence_calibration_source_after, default=0.0
+        ) >= min(source_before, default=0.0) - args.retention_regression_tolerance
+        if not sequence_calibration_accepted:
+            machine.load_state_dict(
+                machine_before_sequence_calibration.state_dict(), strict=True
+            )
+            sequence_calibration_source_after = list(source_before)
     source_attempt_count = sum(len(attempts) for attempts in source_attempt_counts)
     # Do not allocate future target instructions until source acquisition is
     # complete.  The first source phase trains machine parameters jointly; if
@@ -1040,6 +1198,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             )
             for _ in args.source_operations:
                 fresh_machine.add_basis_slot()
+        fresh_sequence_calibration_progress = _train_sequence_calibration(
+            parent,
+            fresh_machine,
+            args=args,
+            composition_programs=composition_programs,
+            seed_base=args.seed + 2_400_000 + index * 20_003,
+        )
         source_indices = tuple(
             args.source_operations.index(primitive) for primitive in program
         )
@@ -1125,6 +1290,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 "fresh_stable_bits": fresh_stable,
                 "fresh_accuracy": fresh_accuracy,
                 "fresh_source_training_verifier_bits": fresh_source_training_bits,
+                "fresh_sequence_calibration_verifier_bits": (
+                    args.sequence_calibration_updates
+                    * args.batch_size
+                    * args.span
+                    * 2
+                    if fresh_sequence_calibration_progress
+                    else 0
+                ),
                 "positive_transfer": bool(
                     inherited_stable is not None
                     and fresh_stable is not None
@@ -1247,6 +1420,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         int(row["fresh_source_training_verifier_bits"]) // (args.span * 2)
         for row in transfer_records
     )
+    sequence_calibration_lifetimes = (
+        args.sequence_calibration_updates * args.batch_size
+        if sequence_calibration_progress
+        else 0
+    )
+    fresh_sequence_calibration_lifetimes = sum(
+        int(row["fresh_sequence_calibration_verifier_bits"]) // (args.span * 2)
+        for row in transfer_records
+    )
     audit_lifetimes = (
         candidate_count * args.audit_count * 3
         + candidate_count * args.consolidation_audit_count
@@ -1266,6 +1448,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         + shuffled_target_training_lifetimes
         + fresh_transfer_training_lifetimes
         + fresh_curriculum_source_lifetimes
+        + sequence_calibration_lifetimes
+        + fresh_sequence_calibration_lifetimes
         + audit_lifetimes
     )
     parent_training_bits = args.parent_updates * args.batch_size * 2 * 2
@@ -1303,6 +1487,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         int(row["fresh_source_training_verifier_bits"])
         for row in transfer_records
     )
+    sequence_calibration_bits = (
+        args.sequence_calibration_updates * args.batch_size * args.span * 2
+        if sequence_calibration_progress
+        else 0
+    )
+    fresh_sequence_calibration_bits = sum(
+        int(row["fresh_sequence_calibration_verifier_bits"])
+        for row in transfer_records
+    )
     progress_audit_bits = candidate_count * 2 * (
         (args.warmup_updates + args.eval_every - 1) // args.eval_every
         * args.audit_count * args.warmup_span * 2
@@ -1326,6 +1519,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         + shuffled_target_training_bits
         + fresh_transfer_training_bits
         + fresh_curriculum_source_bits
+        + sequence_calibration_bits
+        + fresh_sequence_calibration_bits
         + progress_audit_bits
         + suite_and_control_bits
     )
@@ -1339,6 +1534,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             else "sequential_with_restarts"
         ),
         "joint_source_updates": args.joint_source_updates,
+        "sequence_calibration_updates": args.sequence_calibration_updates,
+        "sequence_calibration_accepted": sequence_calibration_accepted,
+        "sequence_calibration_source_before": source_before,
+        "sequence_calibration_source_after": sequence_calibration_source_after,
+        "sequence_calibration_progress": sequence_calibration_progress,
         "operator_mode": args.operator_mode,
         "operator_rank": args.operator_rank,
         "role_binding": (
@@ -1403,12 +1603,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "shuffled_target_training_verifier_bits": shuffled_target_training_bits,
             "fresh_transfer_training_verifier_bits": fresh_transfer_training_bits,
             "fresh_curriculum_source_verifier_bits": fresh_curriculum_source_bits,
+            "sequence_calibration_verifier_bits": sequence_calibration_bits,
+            "fresh_sequence_calibration_verifier_bits": fresh_sequence_calibration_bits,
             "progress_audit_verifier_bits": progress_audit_bits,
             "suite_and_control_verifier_bits": suite_and_control_bits,
             "unique_verifier_bits": unique_verifier_bits,
             "optimizer_updates": (
                 args.parent_updates
                 + source_acquisition_updates
+                + args.sequence_calibration_updates
                 + (
                     args.bridge_prior_updates
                     if args.reuse_shared_bridge_prior
@@ -1423,6 +1626,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 + candidate_count * (args.warmup_updates + args.focus_updates + args.target_updates)
                 + fresh_transfer_candidate_count
                 * (args.warmup_updates + args.focus_updates + args.target_updates)
+                + fresh_transfer_candidate_count * args.sequence_calibration_updates
                 + (
                     fresh_transfer_candidate_count
                     * (
@@ -1456,6 +1660,12 @@ def main() -> None:
         help="balanced source-bank calibration updates (diagnostic upper bound)",
     )
     parser.add_argument("--source-restarts", type=int, default=1)
+    parser.add_argument(
+        "--sequence-calibration-updates",
+        type=int,
+        default=0,
+        help="verifier-trained opaque composition calibration updates before target acquisition",
+    )
     parser.add_argument("--warmup-updates", type=int, default=64)
     parser.add_argument("--focus-updates", type=int, default=64)
     parser.add_argument("--target-updates", type=int, default=512)
