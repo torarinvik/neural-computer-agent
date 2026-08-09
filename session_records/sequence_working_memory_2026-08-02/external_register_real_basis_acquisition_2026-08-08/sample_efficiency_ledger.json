@@ -1386,6 +1386,31 @@
       "regime_labels_used_by_router": [false, false],
       "controls": "aggregate-window routing margin, alternating slot assignments, target admission/reuse, prior retention and byte stability, frozen controller, zero old-prior replay, capacity refusal/no-growth, wrong-context MSE, corruption, matched fresh model, and persistence passed",
       "decision": "promote bounded online transition identity; next implement verifier-gated capacity growth, consolidation, and compression across alternating regimes"
+    },
+    {
+      "experiment": "external_transition_model_capacity_growth",
+      "date": "2026-08-09",
+      "seeds": [70011, 70012],
+      "claim": "A bounded external transition-model bank can grow transactionally after a held-out retention probe, preserving existing alternating capabilities while admitting a fourth regime without old-prior replay.",
+      "module": "ExternalTransitionModelBank.grow_verified + ExternalOnlineTransitionContextRouter",
+      "source_capacity_per_seed": 3,
+      "destination_capacity_per_seed": 4,
+      "target_optimizer_updates_per_seed": [22, 22],
+      "fresh_target_updates_per_seed": [34, 39],
+      "capacity_refusal_before_growth": [true, true],
+      "growth_accepted": [true, true],
+      "content_digest_unchanged_during_growth": [true, true],
+      "base_retention": [1.0, 1.0],
+      "auxiliary_retention": [1.0, 1.0],
+      "target_retention": [1.0, 1.0],
+      "new_regime_mastery": [1.0, 1.0],
+      "old_prior_replay_during_target": [0, 0],
+      "controller_parameter_updates": [0, 0],
+      "wrong_context_control": [true, true],
+      "corruption_control": [true, true],
+      "persistence_exact": [true, true],
+      "controls": "full-capacity no-write refusal, pre/post held-out retention probe, content digest integrity, isolated fourth-slot admission, prior retention, frozen controller, zero old-prior replay, wrong-context, corruption, fresh model, and persistence passed",
+      "decision": "promote verifier-gated capacity growth; reject consolidation of distinct transition functions until behavior-preserving equivalence is demonstrated"
     }
   ]
 }

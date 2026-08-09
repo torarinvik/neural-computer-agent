@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import math
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -58,6 +58,9 @@ EXTERNAL_ONLINE_TRANSITION_CONTEXT_ROUTER_SCHEMA = (
 )
 EXTERNAL_TRANSITION_MODEL_BANK_SCHEMA = (
     "neural-computer.external-transition-model-bank.v1"
+)
+EXTERNAL_TRANSITION_MODEL_GROWTH_SCHEMA = (
+    "neural-computer.external-transition-model-growth.v1"
 )
 EXTERNAL_MODEL_PLANNER_SCHEMA = "neural-computer.external-model-planner.v1"
 
@@ -311,17 +314,21 @@ class ExternalTransitionModelBank(nn.Module):
         *,
         hidden_width: int = 64,
         matching_tolerance: float = 1e-4,
+        capacity: int | None = None,
     ) -> None:
         super().__init__()
         if min(state_width, intention_width, context_width, hidden_width) < 1:
             raise ValueError("transition-model bank dimensions must be positive")
         if matching_tolerance < 0.0:
             raise ValueError("transition-model context tolerance cannot be negative")
+        if capacity is not None and capacity < 1:
+            raise ValueError("transition-model bank capacity must be positive")
         self.state_width = int(state_width)
         self.intention_width = int(intention_width)
         self.context_width = int(context_width)
         self.hidden_width = int(hidden_width)
         self.matching_tolerance = float(matching_tolerance)
+        self.capacity = None if capacity is None else int(capacity)
         self.models = nn.ModuleList()
         self._contexts: list[torch.Tensor] = []
 
@@ -384,6 +391,8 @@ class ExternalTransitionModelBank(nn.Module):
             return nearest
         if initialize_from is not None and not 0 <= initialize_from < self.context_count:
             raise IndexError("transition-model transfer slot is out of range")
+        if self.capacity is not None and self.context_count >= self.capacity:
+            raise MemoryError("transition-model bank capacity is full")
         model = ExternalTransitionModel(
             self.state_width,
             self.intention_width,
@@ -407,8 +416,8 @@ class ExternalTransitionModelBank(nn.Module):
             indices.append(index)
         return indices
 
-    def configuration(self) -> dict[str, int | float | str]:
-        return {
+    def configuration(self) -> dict[str, int | float | str | None]:
+        configuration: dict[str, int | float | str | None] = {
             "schema": self.schema,
             "state_width": self.state_width,
             "intention_width": self.intention_width,
@@ -419,6 +428,9 @@ class ExternalTransitionModelBank(nn.Module):
             "behavior": "derived_by_external_model_search_v1",
             "updates": "caller_selected_slot_only_v1",
         }
+        if self.capacity is not None:
+            configuration["capacity"] = self.capacity
+        return configuration
 
     def _validate_batch(
         self,
@@ -438,6 +450,62 @@ class ExternalTransitionModelBank(nn.Module):
         if context.shape[0] != state.shape[0]:
             raise ValueError("bank context batch differs")
         return self._context_indices(context)
+
+    def grow_verified(
+        self,
+        destination_capacity: int,
+        retention_probe: Callable[[ExternalTransitionModelBank], bool],
+    ) -> ExternalTransitionModelGrowthReceipt:
+        """Grow a bounded bank only after a caller-owned retention proof.
+
+        Growth changes capacity metadata only; it must not rewrite contexts or
+        model weights. The probe is run before and after the transaction so a
+        caller can verify held-out behavior for every retained slot. A failed
+        post-growth probe rolls back the capacity metadata.
+        """
+
+        if self.capacity is None:
+            raise ValueError("verified growth requires an explicit bank capacity")
+        if not isinstance(destination_capacity, int):
+            raise TypeError("destination capacity must be an integer")
+        if destination_capacity <= self.capacity:
+            raise ValueError("destination capacity must exceed current capacity")
+        if not callable(retention_probe):
+            raise TypeError("retention probe must be callable")
+        source_capacity = self.capacity
+        content_before = self.content_digest()
+        if not bool(retention_probe(self)):
+            return ExternalTransitionModelGrowthReceipt(
+                accepted=False,
+                source_capacity=source_capacity,
+                destination_capacity=source_capacity,
+                context_count=self.context_count,
+                content_digest_before=content_before,
+                content_digest_after=content_before,
+                reason="pre-growth retention probe failed",
+            )
+        self.capacity = destination_capacity
+        content_after = self.content_digest()
+        if content_after != content_before or not bool(retention_probe(self)):
+            self.capacity = source_capacity
+            return ExternalTransitionModelGrowthReceipt(
+                accepted=False,
+                source_capacity=source_capacity,
+                destination_capacity=source_capacity,
+                context_count=self.context_count,
+                content_digest_before=content_before,
+                content_digest_after=self.content_digest(),
+                reason="post-growth retention or content-integrity probe failed",
+            )
+        return ExternalTransitionModelGrowthReceipt(
+            accepted=True,
+            source_capacity=source_capacity,
+            destination_capacity=destination_capacity,
+            context_count=self.context_count,
+            content_digest_before=content_before,
+            content_digest_after=content_after,
+            reason="retention-verified capacity growth committed",
+        )
 
     def forward(
         self,
@@ -505,16 +573,23 @@ class ExternalTransitionModelBank(nn.Module):
         optimizer.step()
         return float(loss.detach())
 
-    def digest(self) -> str:
+    def content_digest(self) -> str:
+        """Digest slot keys and model weights without capacity metadata."""
+
         digest = hashlib.sha256()
         digest.update(self.schema.encode("utf-8"))
-        digest.update(repr(self.configuration()).encode("utf-8"))
         for context in self._contexts:
             detached = context.detach().cpu().contiguous()
             digest.update(detached.numpy().tobytes())
         for index, model in enumerate(self.models):
             digest.update(str(index).encode("utf-8"))
             digest.update(model.digest().encode("utf-8"))
+        return digest.hexdigest()
+
+    def digest(self) -> str:
+        digest = hashlib.sha256()
+        digest.update(repr(self.configuration()).encode("utf-8"))
+        digest.update(self.content_digest().encode("utf-8"))
         return digest.hexdigest()
 
     def payload(self) -> dict[str, object]:
@@ -557,7 +632,14 @@ class ExternalTransitionModelBank(nn.Module):
             int(configuration["context_width"]),
             hidden_width=int(configuration["hidden_width"]),
             matching_tolerance=float(configuration["matching_tolerance"]),
+            capacity=(
+                None
+                if configuration.get("capacity") is None
+                else int(configuration["capacity"])
+            ),
         )
+        if bank.capacity is not None and len(contexts) > bank.capacity:
+            raise ValueError("transition-model bank payload exceeds capacity")
         for values, model_payload in zip(contexts, models, strict=True):
             context = torch.tensor(values, dtype=torch.float32)
             _validate_tensor(
@@ -604,6 +686,31 @@ class ExternalTransitionModelBank(nn.Module):
         if payload.get("sha256") != bank.digest():
             raise ValueError("transition-model bank checksum mismatch")
         return bank
+
+
+@dataclass(frozen=True)
+class ExternalTransitionModelGrowthReceipt:
+    """Auditable result of verifier-gated external model-bank growth."""
+
+    accepted: bool
+    source_capacity: int
+    destination_capacity: int
+    context_count: int
+    content_digest_before: str
+    content_digest_after: str
+    reason: str
+    schema: str = EXTERNAL_TRANSITION_MODEL_GROWTH_SCHEMA
+
+    def validate(self) -> ExternalTransitionModelGrowthReceipt:
+        if self.schema != EXTERNAL_TRANSITION_MODEL_GROWTH_SCHEMA:
+            raise ValueError("unsupported transition-model growth schema")
+        if min(self.source_capacity, self.destination_capacity, self.context_count) < 0:
+            raise ValueError("transition-model growth receipt counts are invalid")
+        if self.accepted and self.destination_capacity <= self.source_capacity:
+            raise ValueError("accepted transition-model growth did not grow capacity")
+        if not isinstance(self.reason, str) or not self.reason:
+            raise ValueError("transition-model growth receipt reason is missing")
+        return self
 
 
 class ExternalTransitionContextEncoder(nn.Module):
@@ -932,6 +1039,22 @@ class ExternalOnlineTransitionContextRouter:
             "routing": "factual_prediction_error_then_pending_context_admission_v1",
             "writes": "caller_owned_slot_only_v1",
         }
+
+    def grow_verified(
+        self,
+        destination_capacity: int,
+        retention_probe: Callable[[ExternalTransitionModelBank], bool],
+    ) -> ExternalTransitionModelGrowthReceipt:
+        """Grow routing and bank capacity as one verified external transaction."""
+
+        if self.max_contexts is None:
+            raise ValueError("router requires an explicit maximum for verified growth")
+        if self.bank.capacity != self.max_contexts:
+            raise ValueError("router and bank capacities are out of sync")
+        receipt = self.bank.grow_verified(destination_capacity, retention_probe)
+        if receipt.accepted:
+            self.max_contexts = destination_capacity
+        return receipt
 
     @staticmethod
     def _clone_observation(
@@ -2669,6 +2792,7 @@ __all__ = [
     "EXTERNAL_TRANSITION_EVIDENCE_CALIBRATOR_SCHEMA",
     "EXTERNAL_TRANSITION_MEMORY_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_BANK_SCHEMA",
+    "EXTERNAL_TRANSITION_MODEL_GROWTH_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_SCHEMA",
     "EXTERNAL_TRANSITION_OBSERVATION_SCHEMA",
     "ExternalContextAddressResolver",
@@ -2686,6 +2810,7 @@ __all__ = [
     "ExternalTransitionMemory",
     "ExternalTransitionModel",
     "ExternalTransitionModelBank",
+    "ExternalTransitionModelGrowthReceipt",
     "ExternalTransitionObservation",
     "ModelBasedPlanningResult",
 ]

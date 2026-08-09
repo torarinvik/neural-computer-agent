@@ -1,0 +1,1047 @@
+{
+  "schema": "neural-computer.external-online-transition-context-pressure-test.v1",
+  "seed": 70012,
+  "configuration": {
+    "state_width": 8,
+    "intention_width": 4,
+    "context_width": 16,
+    "context_updates": 500,
+    "base_updates": 1200,
+    "target_updates_limit": 125,
+    "admission_observations": 12,
+    "max_contexts": 3,
+    "match_tolerance": 0.02,
+    "match_margin": 0.01,
+    "regime_labels_used_by_router": false,
+    "policy": "none_external_online_factual_route_then_context_admission_v1"
+  },
+  "gates": {
+    "controller_unchanged": true,
+    "context_encoder_learns": true,
+    "base_model_learns": true,
+    "auxiliary_model_learns": true,
+    "alternating_base_routing": true,
+    "alternating_auxiliary_routing": true,
+    "target_admitted_without_label": true,
+    "target_reused_after_admission": true,
+    "target_mastery": true,
+    "target_faster_than_fresh": true,
+    "base_retained": true,
+    "auxiliary_retained": true,
+    "prior_slots_byte_stable": true,
+    "capacity_refusal_no_write": true,
+    "capacity_growth_verified": true,
+    "wrong_context_control": true,
+    "corruption_control": true,
+    "persistence_exact": true
+  },
+  "promoted": true,
+  "context_encoder": {
+    "optimizer_updates": 500,
+    "loss": 4.172324281626061e-07
+  },
+  "pretraining": {
+    "base_optimizer_updates": 1200,
+    "auxiliary_optimizer_updates": 1200,
+    "base_loss": 2.468766746588358e-09,
+    "auxiliary_loss": 5.141210408510233e-07
+  },
+  "routing": {
+    "counts": {
+      "base:pending": 33,
+      "base:matched": 3,
+      "auxiliary:pending": 22,
+      "auxiliary:matched": 2,
+      "target:pending": 22,
+      "target:admitted": 1,
+      "target:matched": 1,
+      "capacity:pending": 11,
+      "capacity:capacity": 1,
+      "capacity_growth:pending": 11,
+      "capacity_growth:admitted": 1
+    },
+    "assignments": {
+      "base": [
+        0
+      ],
+      "auxiliary": [
+        1
+      ],
+      "target": [
+        2
+      ],
+      "capacity_growth": [
+        3
+      ],
+      "capacity": []
+    },
+    "target_admissions": 1,
+    "target_matches_after_admission": 1,
+    "capacity_events": 1,
+    "trace": [
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 1,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 2,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 3,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 4,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 5,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 6,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 7,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 8,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 9,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 10,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 11,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "matched",
+        "slot_index": 0,
+        "pending_observations": 0,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "auxiliary",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 1,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "auxiliary",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 2,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "auxiliary",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 3,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "auxiliary",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 4,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "auxiliary",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 5,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "auxiliary",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 6,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "auxiliary",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 7,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "auxiliary",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 8,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "auxiliary",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 9,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "auxiliary",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 10,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "auxiliary",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 11,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "auxiliary",
+        "status": "matched",
+        "slot_index": 1,
+        "pending_observations": 0,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 1,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 2,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 3,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 4,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 5,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 6,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 7,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 8,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 9,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 10,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 11,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "matched",
+        "slot_index": 0,
+        "pending_observations": 0,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "target",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 1,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "target",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 2,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "target",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 3,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "target",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 4,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "target",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 5,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "target",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 6,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "target",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 7,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "target",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 8,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "target",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 9,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "target",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 10,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "target",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 11,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "target",
+        "status": "admitted",
+        "slot_index": 2,
+        "pending_observations": 0,
+        "loss": 0.00886896625161171,
+        "updates": 21
+      },
+      {
+        "regime_observed_for_diagnostic_only": "auxiliary",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 1,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "auxiliary",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 2,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "auxiliary",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 3,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "auxiliary",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 4,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "auxiliary",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 5,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "auxiliary",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 6,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "auxiliary",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 7,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "auxiliary",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 8,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "auxiliary",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 9,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "auxiliary",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 10,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "auxiliary",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 11,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "auxiliary",
+        "status": "matched",
+        "slot_index": 1,
+        "pending_observations": 0,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "target",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 1,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "target",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 2,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "target",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 3,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "target",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 4,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "target",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 5,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "target",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 6,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "target",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 7,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "target",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 8,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "target",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 9,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "target",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 10,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "target",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 11,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "target",
+        "status": "matched",
+        "slot_index": 2,
+        "pending_observations": 0,
+        "loss": 0.007812201976776123,
+        "updates": 1
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 1,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 2,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 3,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 4,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 5,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 6,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 7,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 8,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 9,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 10,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 11,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "base",
+        "status": "matched",
+        "slot_index": 0,
+        "pending_observations": 0,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "capacity",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 1,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "capacity",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 2,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "capacity",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 3,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "capacity",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 4,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "capacity",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 5,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "capacity",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 6,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "capacity",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 7,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "capacity",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 8,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "capacity",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 9,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "capacity",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 10,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "capacity",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 11,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "capacity",
+        "status": "capacity",
+        "slot_index": null,
+        "pending_observations": 0,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "capacity_growth",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 1,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "capacity_growth",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 2,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "capacity_growth",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 3,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "capacity_growth",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 4,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "capacity_growth",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 5,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "capacity_growth",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 6,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "capacity_growth",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 7,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "capacity_growth",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 8,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "capacity_growth",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 9,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "capacity_growth",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 10,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "capacity_growth",
+        "status": "pending",
+        "slot_index": null,
+        "pending_observations": 11,
+        "loss": 0.0,
+        "updates": 0
+      },
+      {
+        "regime_observed_for_diagnostic_only": "capacity_growth",
+        "status": "admitted",
+        "slot_index": 3,
+        "pending_observations": 0,
+        "loss": 0.009357846342027187,
+        "updates": 14
+      }
+    ]
+  },
+  "target": {
+    "slot_index": 2,
+    "optimizer_updates": 22,
+    "current_stream_rows_replayed": 264,
+    "old_prior_rows_replayed": 0,
+    "mastery": {
+      "successes": [
+        true,
+        true,
+        true
+      ],
+      "mastery": 1.0
+    }
+  },
+  "retention": {
+    "base": {
+      "successes": [
+        true,
+        true,
+        true
+      ],
+      "mastery": 1.0
+    },
+    "auxiliary": {
+      "successes": [
+        true,
+        true
+      ],
+      "mastery": 1.0
+    },
+    "capacity_growth_regime": {
+      "successes": [
+        true,
+        true,
+        true
+      ],
+      "mastery": 1.0
+    }
+  },
+  "capacity_growth": {
+    "accepted": true,
+    "source_capacity": 3,
+    "destination_capacity": 4,
+    "context_count": 3,
+    "content_digest_before": "0f1531a41231ede3a7762a2f405da7e8d0a98d6b2e69bf571d138ada00ae8d2c",
+    "content_digest_after": "0f1531a41231ede3a7762a2f405da7e8d0a98d6b2e69bf571d138ada00ae8d2c",
+    "reason": "retention-verified capacity growth committed",
+    "replayed_old_prior_rows": 0
+  },
+  "fresh_target": {
+    "optimizer_updates": 39,
+    "loss": 0.009097930043935776,
+    "mastery": {
+      "successes": [
+        true,
+        true,
+        true
+      ],
+      "mastery": 1.0
+    }
+  },
+  "wrong_context": {
+    "planner_diagnostic": {
+      "successes": [
+        false,
+        false,
+        false
+      ],
+      "mastery": 0.0
+    },
+    "target_observation_mse": 0.2063671350479126
+  },
+  "corrupted_target": {
+    "optimizer_updates": 36,
+    "loss": 0.00820071715861559,
+    "mastery": {
+      "successes": [
+        true,
+        false,
+        false
+      ],
+      "mastery": 0.3333333333333333
+    }
+  },
+  "accounting": {
+    "controller_parameter_updates": 0,
+    "external_context_encoder_updates": 500,
+    "external_prior_replay_during_target": 0,
+    "target_current_stream_replay": 264,
+    "unique_target_transition_lifetimes": 12,
+    "context_slots_before_growth": 3,
+    "context_slots_after_capacity_growth": 4
+  },
+  "digests": {
+    "controller": "07471f581ee24c31cafd6791ad6c5c879b6bd652abc4bd31a1ff5842f044332b",
+    "bank": "ffcd670dfabb5978f0265143d9798b9514207b9ba0a6620dfbdc5b55855eb10a",
+    "context_encoder": "a4e4fe9bd98db68042ea2e5d3a8eeddb26c70dac5a9a07556a8ce2d6bc9435d6"
+  },
+  "elapsed_seconds": 3.115104166965466
+}

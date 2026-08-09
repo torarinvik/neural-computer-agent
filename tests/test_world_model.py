@@ -224,6 +224,27 @@ def test_transition_model_bank_round_trip_preserves_learned_context_bytes() -> N
     assert torch.equal(restored._contexts[0], bank._contexts[0])
 
 
+def test_transition_model_bank_growth_is_verified_and_content_preserving() -> None:
+    bank = ExternalTransitionModelBank(2, 1, 3, hidden_width=8, capacity=2)
+    bank.ensure_context(torch.tensor([1.0, 0.0, 0.0]))
+    bank.ensure_context(torch.tensor([0.0, 1.0, 0.0]))
+    content_before = bank.content_digest()
+
+    accepted = bank.grow_verified(3, lambda candidate: candidate.context_count == 2)
+
+    assert accepted.accepted
+    assert accepted.source_capacity == 2
+    assert bank.capacity == 3
+    assert bank.content_digest() == content_before
+    bank.ensure_context(torch.tensor([0.0, 0.0, 1.0]))
+    rejected = bank.grow_verified(4, lambda _candidate: False)
+    assert not rejected.accepted
+    assert bank.capacity == 3
+    restored = ExternalTransitionModelBank.from_payload(bank.payload())
+    assert restored.capacity == 3
+    assert restored.content_digest() == bank.content_digest()
+
+
 def test_online_transition_context_router_admits_current_bundle_and_persists() -> None:
     torch.manual_seed(1210)
     bank = ExternalTransitionModelBank(2, 1, 4, hidden_width=8)
@@ -302,6 +323,24 @@ def test_online_transition_context_router_capacity_guard_does_not_grow_or_write(
     assert capacity.status == "capacity"
     assert capacity.pending_observations == 0
     assert router.bank.context_count == 1
+
+
+def test_online_transition_context_router_growth_updates_capacity_atomically() -> None:
+    bank = ExternalTransitionModelBank(2, 1, 4, hidden_width=8, capacity=1)
+    encoder = ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4)
+    bank.ensure_context(torch.tensor([1.0, 0.0, 0.0, 0.0]))
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        encoder,
+        admission_observations=2,
+        max_contexts=1,
+    )
+
+    receipt = router.grow_verified(2, lambda candidate: candidate.context_count == 1)
+
+    assert receipt.accepted
+    assert router.max_contexts == 2
+    assert router.bank.capacity == 2
 
 
 def test_transition_observation_rejects_mismatched_batch_and_nonfinite_values() -> None:

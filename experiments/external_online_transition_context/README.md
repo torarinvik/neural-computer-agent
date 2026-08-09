@@ -9,13 +9,17 @@ encoder forms an opaque key and the bank admits an isolated slot.
 
 The stream alternates already-mastered regimes, discovers a novel regime
 without a regime label, returns to old regimes, and then attempts a fourth
-regime at a full capacity boundary. The report accounts for current-stream
-replay separately from old-prior replay and includes routing, retention,
-frozen-controller, persistence, and no-growth controls.
+regime at a full capacity boundary. The first attempt is refused safely; a
+retention verifier then authorizes external capacity growth and the fourth
+regime is admitted without rewriting prior slots. The report accounts for
+current-stream replay separately from old-prior replay and includes routing,
+retention, frozen-controller, persistence, no-growth, and verified-growth
+controls.
 
 This is still bounded online identity, not general continual learning: the
 context encoder is pretrained, the admission window is finite, and capacity
-pressure is refused rather than solved by consolidation or compression.
+growth is verifier-gated, while consolidation or compression remains
+unimplemented for factually distinct transition functions.
 
 ```text
 .venv/bin/python experiments/external_online_transition_context/train.py \

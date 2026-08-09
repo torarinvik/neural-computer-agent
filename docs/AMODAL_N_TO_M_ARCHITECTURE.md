@@ -4641,3 +4641,27 @@ management: verified consolidation/compression must preserve all alternating
 capabilities while allowing the external memory to grow beyond its fixed
 window and slot budget. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_online_transition_context_promoted_2026-08-09/`.
+
+## Verifier-gated transition-model capacity growth (2026-08-09)
+
+The online router now gives the external model bank explicit bounded-capacity
+state and a transactional `grow_verified` operation. Growth changes capacity
+metadata only; the bank computes a content digest over all opaque keys and
+model weights, runs a caller-owned held-out retention probe before and after
+the transaction, and rolls back if content or retention changes. The router
+and bank capacities must remain synchronized.
+
+In the two-seed alternating pressure test, a fourth regime was first refused
+at capacity three without writing or modifying the three existing slots. A
+retention probe then passed for base, auxiliary, and target regimes, growth to
+capacity four committed with an unchanged content digest, and the fourth
+regime reached `1.0` measured mastery. Earlier regimes remained at `1.0`, the
+controller stayed frozen, old-prior replay remained zero, and persistence,
+wrong-context, corruption, and fresh-model controls passed.
+
+This promotes safe capacity growth, not consolidation. Distinct transition
+functions must not be merged just to reduce slot count; the next bottleneck
+is a verifier-gated consolidation/compression candidate that preserves every
+slot's held-out behavior, with rejection as the default when equivalence is
+not demonstrated. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_transition_model_capacity_growth_promoted_2026-08-09/`.
