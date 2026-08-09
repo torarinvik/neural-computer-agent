@@ -40,6 +40,9 @@ EXTERNAL_OUTCOME_PROGRAM_CAPACITY_GROWTH_SCHEMA = (
 EXTERNAL_OUTCOME_PROGRAM_PRIOR_SELECTION_SCHEMA = (
     "neural-computer.external-outcome-program-prior-selection.v1"
 )
+EXTERNAL_OUTCOME_PROGRAM_CELL_BANK_SCHEMA = (
+    "neural-computer.external-outcome-program-cell-bank.v1"
+)
 
 
 @dataclass(frozen=True)
@@ -1339,6 +1342,409 @@ class ExternalOutcomeProgramRouter(nn.Module):
         )
         self._validate_state(state)
         return state
+
+
+@dataclass(frozen=True)
+class ExternalOutcomeProgramCellSelectionReceipt:
+    """Auditable outcome-based selection of one retained program cell."""
+
+    selected_cell_id: int | None
+    selected_cell_index: int | None
+    reused: bool
+    context_digest: str
+    candidate_scores: tuple[float, ...]
+    match_threshold: float
+    probe_updates: int
+    reason: str
+    schema: str = EXTERNAL_OUTCOME_PROGRAM_CELL_BANK_SCHEMA
+
+    def validate(self) -> ExternalOutcomeProgramCellSelectionReceipt:
+        if self.schema != EXTERNAL_OUTCOME_PROGRAM_CELL_BANK_SCHEMA:
+            raise ValueError("unsupported program-cell selection schema")
+        if not isinstance(self.reused, bool):
+            raise TypeError("program-cell reuse flag must be boolean")
+        for name, value in (
+            ("selected_cell_id", self.selected_cell_id),
+            ("selected_cell_index", self.selected_cell_index),
+        ):
+            if value is not None and (
+                not isinstance(value, int)
+                or isinstance(value, bool)
+                or value < 0
+            ):
+                raise ValueError(f"program-cell {name} is invalid")
+        if self.reused != (
+            self.selected_cell_id is not None
+            and self.selected_cell_index is not None
+        ):
+            raise ValueError("program-cell selection fields are inconsistent")
+        if (
+            not isinstance(self.context_digest, str)
+            or len(self.context_digest) != 64
+            or any(value not in "0123456789abcdef" for value in self.context_digest)
+        ):
+            raise ValueError("program-cell context digest is invalid")
+        if not isinstance(self.candidate_scores, tuple):
+            raise TypeError("program-cell candidate scores must be a tuple")
+        if any(
+            not isinstance(value, (float, int))
+            or not math.isfinite(float(value))
+            or float(value) < 0.0
+            for value in self.candidate_scores
+        ):
+            raise ValueError("program-cell candidate score is invalid")
+        if (
+            not isinstance(self.match_threshold, (float, int))
+            or not math.isfinite(float(self.match_threshold))
+            or float(self.match_threshold) < 0.0
+        ):
+            raise ValueError("program-cell match threshold is invalid")
+        if (
+            not isinstance(self.probe_updates, int)
+            or isinstance(self.probe_updates, bool)
+            or self.probe_updates < 0
+        ):
+            raise ValueError("program-cell probe updates are invalid")
+        if not isinstance(self.reason, str) or not self.reason:
+            raise ValueError("program-cell selection reason is missing")
+        return self
+
+
+class ExternalOutcomeProgramCellBank(nn.Module):
+    """Append-only bank of independently addressable external route cells.
+
+    Each cell owns an opaque program-router state. Address selection is
+    verifier-owned: a bounded probe receives isolated copies of each candidate
+    and returns a factual error plus post-probe state. The live bank changes
+    only after the caller explicitly commits the selected state.
+    """
+
+    schema = EXTERNAL_OUTCOME_PROGRAM_CELL_BANK_SCHEMA
+
+    def __init__(
+        self,
+        feature_width: int,
+        program_capacity: int,
+        context_width: int,
+        *,
+        initial_programs: int = 1,
+        initial_learning_rate: float = 0.1,
+        initial_trace_decay: float = 0.9,
+        initial_baseline_rate: float = 0.05,
+        initial_baseline: float = 0.5,
+    ) -> None:
+        super().__init__()
+        if min(feature_width, program_capacity, context_width) < 1:
+            raise ValueError("program-cell bank dimensions must be positive")
+        if not 1 <= initial_programs <= program_capacity:
+            raise ValueError("program-cell initial programs are invalid")
+        self.feature_width = int(feature_width)
+        self.program_capacity = int(program_capacity)
+        self.context_width = int(context_width)
+        self.initial_programs = int(initial_programs)
+        self.initial_learning_rate = float(initial_learning_rate)
+        self.initial_trace_decay = float(initial_trace_decay)
+        self.initial_baseline_rate = float(initial_baseline_rate)
+        self.initial_baseline = float(initial_baseline)
+        self.routers = nn.ModuleList()
+        self._states: list[ExternalOutcomeProgramRouterState] = []
+        self._contexts: list[torch.Tensor] = []
+        self._cell_ids: list[int] = []
+        self._next_cell_id = 0
+
+    def _new_router(self) -> ExternalOutcomeProgramRouter:
+        return ExternalOutcomeProgramRouter(
+            self.feature_width,
+            self.program_capacity,
+            initial_programs=self.initial_programs,
+            initial_learning_rate=self.initial_learning_rate,
+            initial_trace_decay=self.initial_trace_decay,
+            initial_baseline_rate=self.initial_baseline_rate,
+            initial_baseline=self.initial_baseline,
+        )
+
+    def _validate_context(self, context: torch.Tensor) -> torch.Tensor:
+        if not isinstance(context, torch.Tensor):
+            raise TypeError("program-cell context must be a tensor")
+        if context.ndim != 1 or context.shape[0] != self.context_width:
+            raise ValueError("program-cell context has the wrong shape")
+        if not bool(torch.isfinite(context).all()):
+            raise ValueError("program-cell context must be finite")
+        return context.detach().cpu().clone()
+
+    def _validate_router_state(
+        self,
+        router: ExternalOutcomeProgramRouter,
+        state: ExternalOutcomeProgramRouterState,
+    ) -> None:
+        if not isinstance(router, ExternalOutcomeProgramRouter):
+            raise TypeError("program-cell router has the wrong type")
+        if (
+            router.feature_width != self.feature_width
+            or router.program_capacity != self.program_capacity
+        ):
+            raise ValueError("program-cell router dimensions do not match")
+        router._validate_state(state)
+        if state.credit.policy.shape[0] != 1:
+            raise ValueError("program-cell states must have batch size one")
+
+    @property
+    def cell_count(self) -> int:
+        return len(self._states)
+
+    @property
+    def cell_ids(self) -> tuple[int, ...]:
+        return tuple(self._cell_ids)
+
+    def configuration(self) -> dict[str, int | float | str]:
+        return {
+            "schema": self.schema,
+            "feature_width": self.feature_width,
+            "program_capacity": self.program_capacity,
+            "context_width": self.context_width,
+            "initial_programs": self.initial_programs,
+            "initial_learning_rate": self.initial_learning_rate,
+            "initial_trace_decay": self.initial_trace_decay,
+            "initial_baseline_rate": self.initial_baseline_rate,
+            "initial_baseline": self.initial_baseline,
+            "storage": "append_only_external_program_router_cells_v1",
+            "addressing": "verifier_gated_copy_on_write_outcome_selection_v1",
+        }
+
+    def append_cell(
+        self,
+        context: torch.Tensor,
+        router: ExternalOutcomeProgramRouter,
+        state: ExternalOutcomeProgramRouterState,
+    ) -> int:
+        """Append one isolated cell and return its stable logical ID."""
+
+        normalized_context = self._validate_context(context)
+        self._validate_router_state(router, state)
+        self.routers.append(copy.deepcopy(router))
+        self._states.append(copy.deepcopy(state))
+        self._contexts.append(normalized_context)
+        cell_id = self._next_cell_id
+        self._cell_ids.append(cell_id)
+        self._next_cell_id += 1
+        return cell_id
+
+    def new_cell_candidate(
+        self,
+        *,
+        active_programs: int | None = None,
+    ) -> tuple[ExternalOutcomeProgramRouter, ExternalOutcomeProgramRouterState]:
+        """Create an uncommitted fresh cell with no learned route state."""
+
+        active = self.initial_programs if active_programs is None else active_programs
+        if (
+            not isinstance(active, int)
+            or isinstance(active, bool)
+            or not 1 <= active <= self.program_capacity
+        ):
+            raise ValueError("program-cell active program count is invalid")
+        router = self._new_router()
+        state = ExternalOutcomeProgramRouterState(
+            credit=router.credit_rule.initial_state(1),
+            active_programs=active,
+        )
+        self._validate_router_state(router, state)
+        return router, state
+
+    def state_at(self, index: int) -> ExternalOutcomeProgramRouterState:
+        if not 0 <= index < self.cell_count:
+            raise IndexError("program-cell index is out of range")
+        return copy.deepcopy(self._states[index])
+
+    def context_at(self, index: int) -> torch.Tensor:
+        if not 0 <= index < self.cell_count:
+            raise IndexError("program-cell index is out of range")
+        return self._contexts[index].clone()
+
+    def cell_id_at(self, index: int) -> int:
+        if not 0 <= index < self.cell_count:
+            raise IndexError("program-cell index is out of range")
+        return self._cell_ids[index]
+
+    def commit_state(
+        self,
+        index: int,
+        state: ExternalOutcomeProgramRouterState,
+    ) -> None:
+        """Commit one adapted cell state after an external verifier decision."""
+
+        if not 0 <= index < self.cell_count:
+            raise IndexError("program-cell index is out of range")
+        self._validate_router_state(self.routers[index], state)
+        self._states[index] = copy.deepcopy(state)
+
+    @staticmethod
+    def _context_digest(context: torch.Tensor) -> str:
+        digest = hashlib.sha256()
+        value = context.detach().cpu().contiguous()
+        digest.update(str(value.dtype).encode("ascii"))
+        digest.update(repr(tuple(value.shape)).encode("ascii"))
+        digest.update(value.numpy().tobytes())
+        return digest.hexdigest()
+
+    def content_digest(self) -> str:
+        digest = hashlib.sha256()
+        digest.update(repr(self.configuration()).encode("utf-8"))
+        for index in range(self.cell_count):
+            digest.update(str(self._cell_ids[index]).encode("ascii"))
+            digest.update(self._context_digest(self._contexts[index]).encode("ascii"))
+            digest.update(
+                self.routers[index]._state_digest(self._states[index]).encode("ascii")
+            )
+        return digest.hexdigest()
+
+    def payload(self) -> dict[str, object]:
+        """Serialize committed cells and their external route states."""
+
+        cells = []
+        for index in range(self.cell_count):
+            cells.append(
+                {
+                    "cell_id": self.cell_id_at(index),
+                    "context": self.context_at(index).tolist(),
+                    "router_state": self.routers[index].state_payload(
+                        self._states[index]
+                    ),
+                }
+            )
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "next_cell_id": self._next_cell_id,
+            "cells": cells,
+        }
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, object],
+    ) -> ExternalOutcomeProgramCellBank:
+        if not isinstance(payload, Mapping):
+            raise TypeError("program-cell bank payload must be a mapping")
+        if payload.get("schema") != cls.schema:
+            raise ValueError("unsupported program-cell bank schema")
+        configuration = payload.get("configuration")
+        if not isinstance(configuration, Mapping):
+            raise TypeError("program-cell bank configuration is invalid")
+        bank = cls(
+            int(configuration["feature_width"]),
+            int(configuration["program_capacity"]),
+            int(configuration["context_width"]),
+            initial_programs=int(configuration["initial_programs"]),
+            initial_learning_rate=float(configuration["initial_learning_rate"]),
+            initial_trace_decay=float(configuration["initial_trace_decay"]),
+            initial_baseline_rate=float(configuration["initial_baseline_rate"]),
+            initial_baseline=float(configuration["initial_baseline"]),
+        )
+        cells = payload.get("cells")
+        if not isinstance(cells, list):
+            raise TypeError("program-cell bank cells must be a list")
+        for cell in cells:
+            if not isinstance(cell, Mapping):
+                raise TypeError("program-cell payload entry is invalid")
+            cell_id = cell.get("cell_id")
+            if cell_id != bank._next_cell_id:
+                raise ValueError("program-cell IDs are not append-only")
+            context_values = cell.get("context")
+            if not isinstance(context_values, list):
+                raise TypeError("program-cell context payload is invalid")
+            router, _ = bank.new_cell_candidate()
+            router_state_payload = cell.get("router_state")
+            if not isinstance(router_state_payload, Mapping):
+                raise TypeError("program-cell router state payload is invalid")
+            state = router.state_from_payload(router_state_payload)
+            bank.append_cell(torch.tensor(context_values), router, state)
+        next_cell_id = payload.get("next_cell_id", bank._next_cell_id)
+        if not isinstance(next_cell_id, int) or next_cell_id != bank._next_cell_id:
+            raise ValueError("program-cell next ID is invalid")
+        return bank
+
+    def select_verified_cell(
+        self,
+        context: torch.Tensor,
+        probe: Callable[
+            [ExternalOutcomeProgramRouter, ExternalOutcomeProgramRouterState],
+            tuple[float, ExternalOutcomeProgramRouterState],
+        ],
+        *,
+        match_threshold: float = 0.2,
+        probe_updates: int = 0,
+    ) -> tuple[
+        ExternalOutcomeProgramCellSelectionReceipt,
+        ExternalOutcomeProgramRouter | None,
+        ExternalOutcomeProgramRouterState | None,
+    ]:
+        """Select a retained cell without mutating any committed cell."""
+
+        normalized_context = self._validate_context(context)
+        if not callable(probe):
+            raise TypeError("program-cell probe must be callable")
+        if (
+            not isinstance(match_threshold, (float, int))
+            or not math.isfinite(float(match_threshold))
+            or float(match_threshold) < 0.0
+        ):
+            raise ValueError("program-cell match threshold is invalid")
+        if not isinstance(probe_updates, int) or isinstance(probe_updates, bool):
+            raise TypeError("program-cell probe updates must be an integer")
+        if probe_updates < 0:
+            raise ValueError("program-cell probe updates cannot be negative")
+        before_digest = self.content_digest()
+        candidates: list[
+            tuple[float, int, ExternalOutcomeProgramRouter, ExternalOutcomeProgramRouterState]
+        ] = []
+        for index in range(self.cell_count):
+            router = copy.deepcopy(self.routers[index])
+            state = copy.deepcopy(self._states[index])
+            score, candidate_state = probe(router, state)
+            self._validate_router_state(router, candidate_state)
+            if (
+                not isinstance(score, (float, int))
+                or not math.isfinite(float(score))
+                or float(score) < 0.0
+            ):
+                raise ValueError("program-cell probe score is invalid")
+            candidates.append((float(score), index, router, candidate_state))
+        if self.content_digest() != before_digest:
+            raise RuntimeError("program-cell probe mutated the committed bank")
+        scores = tuple(candidate[0] for candidate in candidates)
+        eligible = [
+            candidate for candidate in candidates if candidate[0] <= match_threshold
+        ]
+        selected = min(
+            eligible,
+            key=lambda candidate: (candidate[0], candidate[1]),
+            default=None,
+        )
+        if selected is None:
+            receipt = ExternalOutcomeProgramCellSelectionReceipt(
+                selected_cell_id=None,
+                selected_cell_index=None,
+                reused=False,
+                context_digest=self._context_digest(normalized_context),
+                candidate_scores=scores,
+                match_threshold=float(match_threshold),
+                probe_updates=probe_updates,
+                reason="no retained cell passed the verifier match threshold",
+            )
+            return receipt.validate(), None, None
+        _, index, router, state = selected
+        receipt = ExternalOutcomeProgramCellSelectionReceipt(
+            selected_cell_id=self.cell_id_at(index),
+            selected_cell_index=index,
+            reused=True,
+            context_digest=self._context_digest(normalized_context),
+            candidate_scores=scores,
+            match_threshold=float(match_threshold),
+            probe_updates=probe_updates,
+            reason="retained program cell passed the verifier match threshold",
+        )
+        return receipt.validate(), router, state
 
 
 @dataclass(frozen=True)

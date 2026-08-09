@@ -11,6 +11,8 @@ from neural_computer import (
     ExternalOutcomeCreditPlasticity,
     ExternalOutcomeCreditState,
     ExternalOutcomeProgramCapacityGrowthReceipt,
+    ExternalOutcomeProgramCellBank,
+    ExternalOutcomeProgramCellSelectionReceipt,
     ExternalOutcomeProgramPriorSelectionReceipt,
     ExternalOutcomeProgramRouter,
     ExternalOutcomeProgramRouterState,
@@ -355,6 +357,45 @@ def test_external_outcome_program_router_protected_prefix_is_retention_safe() ->
 
     assert torch.equal(updated.credit.policy[..., :2], old_policy[..., :2])
     assert not torch.equal(updated.credit.policy[..., 2:], old_policy[..., 2:])
+
+
+def test_external_outcome_program_cell_bank_selection_is_copy_on_write() -> None:
+    bank = ExternalOutcomeProgramCellBank(
+        feature_width=2,
+        program_capacity=2,
+        context_width=3,
+        initial_programs=2,
+    )
+    router, state = bank.new_cell_candidate(active_programs=2)
+    cell_id = bank.append_cell(torch.tensor([1.0, 0.0, 0.0]), router, state)
+    before_digest = bank.content_digest()
+
+    def probe(
+        candidate_router: ExternalOutcomeProgramRouter,
+        candidate_state: ExternalOutcomeProgramRouterState,
+    ) -> tuple[float, ExternalOutcomeProgramRouterState]:
+        del candidate_router
+        return 0.1, candidate_state
+
+    receipt, selected_router, selected_state = bank.select_verified_cell(
+        torch.tensor([0.0, 1.0, 0.0]),
+        probe,
+        match_threshold=0.2,
+        probe_updates=3,
+    )
+
+    assert isinstance(receipt, ExternalOutcomeProgramCellSelectionReceipt)
+    assert receipt.reused
+    assert receipt.selected_cell_id == cell_id
+    assert receipt.selected_cell_index == 0
+    assert selected_router is not None
+    assert selected_state is not None
+    assert bank.content_digest() == before_digest
+    bank.commit_state(0, selected_state)
+    assert bank.cell_ids == (cell_id,)
+    restored = ExternalOutcomeProgramCellBank.from_payload(bank.payload())
+    assert restored.content_digest() == bank.content_digest()
+    assert restored.cell_ids == bank.cell_ids
 
 
 def test_external_outcome_value_baseline_learns_and_round_trips() -> None:

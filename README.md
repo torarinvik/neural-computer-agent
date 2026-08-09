@@ -2482,3 +2482,14 @@ interpreter, and artifacts stayed frozen, and shuffled outcomes failed. This
 is bounded program-cell compounding, not general program induction or
 unrestricted continual learning. See
 `session_records/sequence_working_memory_2026-08-02/external_program_compounding_promoted_2026-08-10/`.
+
+### Outcome-routed overlapping external program cells (2026-08-10)
+
+The external program memory now routes between independently retained cells
+using verifier outcomes rather than context labels. With identical event
+features but different hidden program relations, three seeds selected
+`[0, 1, 0, 1, 0, 1]`, retained old cells at **82.67–90.33%**, and kept the
+wrong-cell control below **0.67%**. Persistence was exact and old-cell replay
+was zero. This is bounded outcome-based cell routing, not learned raw-modality
+context formation or general continual learning. See
+`session_records/sequence_working_memory_2026-08-02/external_program_cell_routing_promoted_2026-08-10/`.

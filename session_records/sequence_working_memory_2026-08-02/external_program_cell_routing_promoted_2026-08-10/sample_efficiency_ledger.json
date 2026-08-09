@@ -1,0 +1,18 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "external_program_cell_routing_promoted_2026-08-10",
+  "status": "promoted_replicated_overlapping_outcome_routing",
+  "population_seeds": [2501, 2502, 2503],
+  "source_route_updates": [2500, 2500, 2500],
+  "target_route_updates": [2500, 2500, 2500],
+  "target_admission_probe_updates": 64,
+  "unique_verifier_bits": [5000, 5000, 5000],
+  "unique_logical_lifetimes": [5000, 5000, 5000],
+  "source_cell_retention": [0.9033333333, 0.84, 0.8266666667],
+  "target_mastery": [0.9066666667, 0.8066666667, 0.8466666667],
+  "max_wrong_cell_accuracy": [0.0033333333, 0.0066666667, 0.0],
+  "shuffled_outcome_accuracy": [0.0933333333, 0.0366666667, 0.0266666667],
+  "old_cell_replay_during_target_adaptation": 0,
+  "controller_optimizer_updates": 0,
+  "claim_boundary": "Replicated outcome-based routing among two overlapping external program cells with exact persistence and retained old cells; not learned raw-modality context formation or general continual learning."
+}

@@ -5645,6 +5645,30 @@ retained cells under overlapping or drifting evidence. Evidence is archived
 in
 `session_records/sequence_working_memory_2026-08-02/external_program_compounding_promoted_2026-08-10/`.
 
+## Outcome-routed overlapping external program cells (2026-08-10)
+
+The program-cell boundary now has an append-only bank with stable logical cell
+IDs, independently persisted route states, and verifier-gated copy-on-write
+selection. `ExternalOutcomeProgramCellBank` probes isolated copies of every
+retained cell and reuses one only when its executable predictions explain the
+current evidence below the match threshold. A failed match leaves all
+committed cells untouched; callers explicitly append a fresh cell.
+
+The pressure test gives two cells the same event features but different hidden
+program relations, then alternates the streams. Across three seeds the bank
+selected `[0, 1, 0, 1, 0, 1]`, with maximum wrong-cell accuracy below `0.67%`.
+Source-cell retention was `82.67–90.33%`, target mastery was `80.67–90.67%`,
+shuffled outcomes were rejected, and payload restore reproduced the exact bank
+digest. The controller, interpreter, and executable artifacts stayed frozen;
+old-cell replay was zero.
+
+This promotes outcome-based routing among overlapping external cells, not
+learned context formation from raw modalities or general continual learning.
+The next bottleneck is an independently learned address representation that
+can handle gradual relation drift and partial evidence without requiring a
+complete verifier bundle. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_program_cell_routing_promoted_2026-08-10/`.
+
 This is a promoted bounded external address-space-growth primitive. It does
 not establish unrestricted memory growth, arbitrary program induction,
 positive transfer against a fresh learner, or general continual learning.
