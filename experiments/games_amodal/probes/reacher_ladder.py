@@ -52,6 +52,16 @@ parser.add_argument("--hidden", type=int, default=32)
 parser.add_argument("--size", type=int, default=8)
 parser.add_argument("--eval-batches", type=int, default=4)
 parser.add_argument(
+    "--model-search", type=int, default=0,
+    help="POLICY-FREE mode, depth k. Learn only a transition model "
+         "(state,action)->next state, self-supervised from random play, "
+         "then DERIVE behaviour by breadth-first search in that model. "
+         "Six findings (F11, F50, F58, F61, F64/65, F66) are the same "
+         "failure: a policy stored somewhere goes stale, and freezing "
+         "only relocates it to whatever is still plastic. A model is "
+         "FACTUAL, not preferential -- it cannot hold a wrong habit, and "
+         "a new task supplies only a new goal.")
+parser.add_argument(
     "--retrieval-first", action="store_true",
     help="try the prior BEFORE training, and stop as soon as a target is "
          "mastered. Without this, cost per target is the BUDGET rather "
@@ -131,6 +141,12 @@ params = list({id(p): p for p in (
     list(agent.controller.parameters()) + list(decoder.parameters())
     + list(state_encoder.parameters()) + list(goal_encoder.parameters()))}.values())
 optimizer = torch.optim.Adam(params, lr=1e-3)
+# Transition model: (cell, action) -> next cell. Dynamics only; no
+# preference, no policy, nothing task-specific.
+model = torch.nn.Sequential(
+    torch.nn.Linear(N * N + 4, 128), torch.nn.ReLU(),
+    torch.nn.Linear(128, N * N))
+model_optimizer = torch.optim.Adam(model.parameters(), lr=3e-3)
 # Per-rung adapter -- the bank's role: a small module that re-maps the
 # goal for a new world while the plant stays fixed.
 adapter = torch.nn.Linear(args.width, args.width)
@@ -267,6 +283,73 @@ def rollout(spec, *, seed: int, sample: bool, random_actions: bool = False):
             "steps_used": steps_used, "optimal": optimal}
 
 
+
+def learn_model(spec, updates: int) -> float:
+    """Self-supervised dynamics, from random play. No reward, no goal."""
+    walls = wall_cells(spec)
+    rows = N if spec["dims"] == 2 else 1
+    moves = MOVES_2D if spec["dims"] == 2 else MOVES_1D
+    free = [(r, c) for r in range(rows) for c in range(N)
+            if (r, c) not in walls]
+    generator = torch.Generator().manual_seed(args.seed + 31)
+    accuracy = 0.0
+    for step in range(updates):
+        picks = torch.randint(0, len(free), (args.batch_size,),
+                              generator=generator)
+        acts = torch.randint(0, spec["actions"], (args.batch_size,),
+                             generator=generator)
+        cells, targets = [], []
+        for index in range(args.batch_size):
+            cell = free[int(picks[index])]
+            dr, dc = moves[int(acts[index])]
+            nxt = (cell[0] + dr, cell[1] + dc)
+            if not (0 <= nxt[0] < rows and 0 <= nxt[1] < N) or nxt in walls:
+                nxt = cell
+            cells.append(cell[0] * N + cell[1])
+            targets.append(nxt[0] * N + nxt[1])
+        features = torch.cat([
+            one_hot(torch.tensor(cells), N * N),
+            one_hot(acts, 4)], dim=-1)
+        logits = model(features)
+        loss = torch.nn.functional.cross_entropy(
+            logits, torch.tensor(targets))
+        model_optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        model_optimizer.step()
+        if step + 1 == updates:
+            with torch.no_grad():
+                accuracy = float(
+                    (logits.argmax(-1) == torch.tensor(targets)).float().mean())
+    return accuracy
+
+
+def search_action(cell: int, goal: int, spec, depth: int) -> int:
+    """Breadth-first search IN THE LEARNED MODEL. No policy involved."""
+    from collections import deque as _deque
+    queue = _deque([(cell, [])])
+    seen = {cell}
+    while queue:
+        current, path = queue.popleft()
+        if len(path) >= depth:
+            continue
+        features = torch.cat([
+            one_hot(torch.tensor([current]), N * N),
+            one_hot(torch.tensor([0]), 4)], dim=-1).repeat(spec["actions"], 1)
+        for action in range(spec["actions"]):
+            features[action, N * N:] = 0.0
+            features[action, N * N + action] = 1.0
+        with torch.no_grad():
+            nxt = model(features).argmax(-1)
+        for action in range(spec["actions"]):
+            successor = int(nxt[action])
+            if successor == goal:
+                return (path + [action])[0]
+            if successor not in seen:
+                seen.add(successor)
+                queue.append((successor, path + [action]))
+    return 0
+
+
 def train(spec, updates: int, tag: str, curve: list, opt=None, mix=None):
     """Returns updates ACTUALLY spent -- early-stops on mastery."""
     opt = opt or optimizer
@@ -341,6 +424,39 @@ elif args.warm_start:
         report["adapted_params"] = sum(
             p.numel() for p in adapter.parameters())
 report["no_agent"] = measure(spec, rand=True)
+if args.model_search:
+    # Learn dynamics on the WARM rungs only, then act on the target by
+    # searching that model. Nothing task-specific is learned or carried.
+    sources = (args.warm_mix.split(",") if args.warm_mix
+               else [args.warm_start] if args.warm_start else [args.rung])
+    accuracies = {name: round(learn_model(SPEC[name], 600), 4)
+                  for name in sources}
+    report["model_accuracy"] = accuracies
+    report["model_sources"] = sources
+    walls = wall_cells(spec)
+    rows = N if spec["dims"] == 2 else 1
+    free = [(r, c) for r in range(rows) for c in range(N)
+            if (r, c) not in walls]
+    generator = torch.Generator().manual_seed(args.seed + 900)
+    moves = MOVES_2D if spec["dims"] == 2 else MOVES_1D
+    hits = 0
+    trials = 32
+    for trial in range(trials):
+        picks = torch.randint(0, len(free), (2,), generator=generator)
+        position, goal = free[int(picks[0])], free[int(picks[1])]
+        for _ in range(args.steps):
+            if position == goal:
+                hits += 1
+                break
+            action = search_action(position[0] * N + position[1],
+                                   goal[0] * N + goal[1], spec,
+                                   args.model_search)
+            dr, dc = moves[action]
+            nxt = (position[0] + dr, position[1] + dc)
+            if (0 <= nxt[0] < rows and 0 <= nxt[1] < N
+                    and nxt not in walls):
+                position = nxt
+    report["policy_free_reach"] = round(hits / trials, 4)
 if args.warm_mix or args.warm_start:
     # ZERO-SHOT reuse: what the warm plant does on the target BEFORE any
     # target training. This is the purest transfer number and we had
