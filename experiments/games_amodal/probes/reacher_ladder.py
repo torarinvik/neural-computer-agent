@@ -52,6 +52,14 @@ parser.add_argument("--hidden", type=int, default=32)
 parser.add_argument("--size", type=int, default=8)
 parser.add_argument("--eval-batches", type=int, default=4)
 parser.add_argument(
+    "--warm-mix", default="",
+    help="comma-separated rungs to warm-start on CONCURRENTLY (e.g. "
+         "'r1,r3'). F61: warming on ONE domain leaves the plant holding "
+         "that domain's pursuit policy, which a goal adapter cannot "
+         "repair (frozen 0.211, trainable 0.277, cold 0.996). Route 1 is "
+         "to never let it specialise -- if no single domain can become "
+         "the prior, only machinery common to all of them survives.")
+parser.add_argument(
     "--freeze-plant", action="store_true",
     help="after the warm-start rung, FREEZE the controller and adapt only "
          "a small per-rung goal adapter. Warm-starting with a trainable "
@@ -221,10 +229,11 @@ def rollout(spec, *, seed: int, sample: bool, random_actions: bool = False):
             "steps_used": steps_used, "optimal": optimal}
 
 
-def train(spec, updates: int, tag: str, curve: list, opt=None):
+def train(spec, updates: int, tag: str, curve: list, opt=None, mix=None):
     opt = opt or optimizer
     for update in range(updates):
-        out = rollout(spec, seed=args.seed + update, sample=True)
+        active = mix[update % len(mix)] if mix else spec
+        out = rollout(active, seed=args.seed + update, sample=True)
         advantage = out["returns"].detach()
         advantage = (advantage - advantage.mean()) / advantage.std().clamp_min(1e-6)
         loss = -(advantage * out["logp"]).sum() / args.batch_size
@@ -235,7 +244,8 @@ def train(spec, updates: int, tag: str, curve: list, opt=None):
         opt.step()
         if (update + 1) % 100 == 0:
             with torch.no_grad():
-                probe = rollout(spec, seed=args.seed + 700_000, sample=False)
+                probe = rollout(active if mix else spec,
+                                seed=args.seed + 700_000, sample=False)
             curve.append({"tag": tag, "update": update + 1,
                           "reach": round(float(probe["arrived"].mean()), 4)})
 
@@ -259,7 +269,12 @@ spec = SPEC[args.rung]
 report = {"seed": args.seed, "rung": args.rung, "warm_start": args.warm_start}
 curve: list = []
 target_optimizer = optimizer
-if args.warm_start:
+if args.warm_mix:
+    mix = [SPEC[name] for name in args.warm_mix.split(",")]
+    train(mix[0], args.warm_updates, "warm", curve, mix=mix)
+    report["warm_mix_final"] = {
+        name: measure(SPEC[name]) for name in args.warm_mix.split(",")}
+elif args.warm_start:
     train(SPEC[args.warm_start], args.warm_updates, "warm", curve)
     report["warm_rung_final"] = measure(SPEC[args.warm_start])
     if args.freeze_plant:
