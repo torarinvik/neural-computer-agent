@@ -204,6 +204,19 @@ def rollout(targets: torch.Tensor, *, seed: int, sample: bool,
     locate_terms = []
     raw = pad_channels(verifier.observation(), SHARED_SCREEN_CHANNELS)
     observation = viewed(raw)
+    # Targets must be REACHABLE. Uniform sampling puts ~11% of them
+    # inside the wall column, where the distance field is the
+    # unreachable sentinel -- that alone dominated the mean gap (13.2 in
+    # sentinel units, not comparable with the old Manhattan 2.09) and
+    # collapsed one seed to a fully habitual policy (agreement 1.000).
+    targets = targets.clone()
+    for row in range(args.batch_size):
+        if raw[row, 2, int(targets[row, 0]), int(targets[row, 1])] > 0:
+            free = (raw[row, 2] == 0).nonzero()
+            pick = int(torch.randint(0, free.shape[0], (1,),
+                                     generator=torch.Generator().manual_seed(
+                                         seed * 131 + row)))
+            targets[row] = free[pick]
     fields = [distance_field(raw[row, 2], targets[row])
               for row in range(args.batch_size)]
     gap = true_gaps(raw, fields, avatar_cells(raw))
