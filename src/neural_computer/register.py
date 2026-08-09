@@ -36,6 +36,7 @@ EXTERNAL_REGISTER_READOUT_SCHEMA = (
     "neural-computer.external-register-canonical-readout.v1"
 )
 EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE = "factorized_shared_interpreter"
+EXTERNAL_REGISTER_SHARED_BOUNDED_MODE = "factorized_shared_bounded"
 
 
 class CanonicalRegisterReadout(nn.Module):
@@ -478,6 +479,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "factorized_bounded_residual",
             "factorized_protected_meta",
             EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
+            EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
             "unconstrained_mlp",
         ):
             raise ValueError("unsupported external register operator mode")
@@ -535,6 +537,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "factorized_bounded_residual",
             "factorized_protected_meta",
             EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
+            EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
         ):
             self.operator_left = nn.Linear(
                 instruction_width,
@@ -552,7 +555,10 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             ):
                 nn.init.normal_(module.weight, mean=0.0, std=0.02)
                 nn.init.zeros_(module.bias)
-        if operator_mode == "factorized_bounded_residual":
+        if operator_mode in (
+            "factorized_bounded_residual",
+            EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
+        ):
             # Serial instruction chains are sensitive to unbounded additive
             # drift.  Normalize the read state, bound the learned proposal,
             # and let the opaque instruction choose a feature-wise residual
@@ -646,12 +652,18 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "execution": "shared_interpreter_serial_instruction_chain_v1",
             "compute_basis": (
                 "neural-computer.external-register-shared-interpreter.v1"
-                if self.operator_mode == EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE
+                if self.operator_mode in (
+                    EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
+                    EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
+                )
                 else EXTERNAL_REGISTER_BASIS_SCHEMA
             ),
             "basis_binding": (
                 "instruction_vector_selects_shared_interpreter_v1"
-                if self.operator_mode == EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE
+                if self.operator_mode in (
+                    EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
+                    EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
+                )
                 else "opaque_memory_side_slot_index_v1"
             ),
             "read_execute": EXTERNAL_REGISTER_READ_EXECUTE_SCHEMA,
@@ -953,7 +965,10 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             device=register.device,
             dtype=register.dtype,
         )
-        if basis_slot is not None and self.operator_mode != EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE:
+        if basis_slot is not None and self.operator_mode not in (
+            EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
+            EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
+        ):
             if not 0 <= basis_slot < len(self.basis_slots):
                 raise ValueError("basis slot index is out of range")
             if self.event_window_size:
@@ -967,10 +982,14 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "factorized_bounded_residual",
             "factorized_protected_meta",
             EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
+            EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
         ):
             operator_register = (
                 self.operator_normalizer(register)
-                if self.operator_mode == "factorized_bounded_residual"
+                if self.operator_mode in (
+                    "factorized_bounded_residual",
+                    EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
+                )
                 else register
             )
             left = torch.tanh(self.operator_left(code)).reshape(
@@ -991,6 +1010,10 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             ):
                 return register + base_proposal + self.operator_bias(code)
             if self.operator_mode == "factorized_bounded_residual":
+                proposal = torch.tanh(base_proposal + self.operator_bias(code))
+                gate = torch.sigmoid(self.operator_composition_gate(code))
+                return register + gate * proposal
+            if self.operator_mode == EXTERNAL_REGISTER_SHARED_BOUNDED_MODE:
                 proposal = torch.tanh(base_proposal + self.operator_bias(code))
                 gate = torch.sigmoid(self.operator_composition_gate(code))
                 return register + gate * proposal

@@ -197,6 +197,7 @@ from .promotion import (
     write_promotion_record,
 )
 from .register import (
+    EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
     EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
     EXTERNAL_REGISTER_READOUT_SCHEMA,
     CanonicalRegisterReadout,

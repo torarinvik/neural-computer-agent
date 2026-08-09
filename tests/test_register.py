@@ -123,6 +123,30 @@ def test_shared_interpreter_mode_uses_one_instruction_family_for_addressed_slots
     assert torch.equal(shared, addressed)
 
 
+def test_shared_bounded_mode_limits_serial_state_drift() -> None:
+    machine = ExternalCapabilityRegisterMachine(
+        event_width=4,
+        action_width=2,
+        intention_width=6,
+        register_width=8,
+        instruction_width=5,
+        interpreter_hidden=12,
+        operator_mode="factorized_shared_bounded",
+        instructions=tuple(ExternalRegisterInstruction(5) for _ in range(3)),
+    )
+    register = torch.randn(2, 8)
+    result = register
+    for instruction in machine.instructions:
+        result = machine.execute(result, instruction)
+
+    assert machine.configuration()["operator_mode"] == "factorized_shared_bounded"
+    assert machine.configuration()["basis_binding"] == (
+        "instruction_vector_selects_shared_interpreter_v1"
+    )
+    assert torch.isfinite(result).all()
+    assert float(result.abs().mean().detach()) < 10.0
+
+
 def test_new_basis_slot_does_not_resize_controller_or_existing_instruction_data() -> None:
     machine = _machine()
     old_instruction = machine.instructions[0].code.detach().clone()

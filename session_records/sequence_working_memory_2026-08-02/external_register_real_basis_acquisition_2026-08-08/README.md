@@ -694,3 +694,22 @@ their register states do not yet form a reliable compositional algebra.
 This localizes the next major bottleneck: the representation and execution
 semantics between serial instructions, not source acquisition order, rank, or
 decoder normalization.
+
+## Bounded shared-state transitions — stability improvement, not transfer
+
+The shared interpreter now has an explicit `factorized_shared_bounded` mode.
+It normalizes the register before each instruction and bounds the opaque
+instruction’s residual proposal and gate, preventing unbounded serial drift.
+
+Under the balanced joint-calibration upper bound, both seeds passed every
+candidate, retention, and causal gate. Positive transfer was still mixed:
+seed `69316` required `57,344` stable target bits for both compositions versus
+fresh `40,960`/`16,384`, while seed `69317` improved to `24,576`/`16,384`
+versus fresh `32,768`/`32,768`. The sequential rung then failed in both
+seeds, with weak source floors and no stable inherited composition.
+
+This promotes bounded transitions as a useful state-stability primitive, not
+as the compositional algebra or continual-learning solution. The remaining
+problem is semantic binding: serial instructions need a state representation
+whose intermediate results remain meaningful to the next instruction, not
+merely numerically bounded.

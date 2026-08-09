@@ -293,6 +293,33 @@
       "retention_on_mastered_primitives": "exact zero source retention deltas",
       "positive_transfer": false,
       "decision": "reject composition-transfer claim; retain as decisive upper bound showing the remaining bottleneck is compositional state algebra, not source acquisition order"
+    },
+    {
+      "experiment": "interleaved_shared_bounded_joint_calibration_diagnostic",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "Bounded normalized shared-interpreter transitions make serial source programs stable and transferable.",
+      "operator_mode": "factorized_shared_bounded",
+      "joint_source_updates": 576,
+      "composition_program_count": 2,
+      "curriculum_fresh_control": true,
+      "replayed_examples": 0,
+      "behavior_promotion": "both seeds passed all candidate/retention/causal gates",
+      "positive_transfer": "seed 69317 both programs; seed 69316 neither",
+      "decision": "retain bounded transitions as a stability primitive; reject replicated transfer promotion"
+    },
+    {
+      "experiment": "interleaved_shared_bounded_sequential_diagnostic",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "Bounded normalized transitions solve shared-interpreter composition during sequential source acquisition.",
+      "operator_mode": "factorized_shared_bounded",
+      "source_restarts": 2,
+      "composition_program_count": 2,
+      "curriculum_fresh_control": true,
+      "replayed_examples": 0,
+      "positive_transfer": false,
+      "decision": "reject continual-learning claim; bounded state transitions do not remove sequential source-acquisition weakness"
     }
   ]
 }
