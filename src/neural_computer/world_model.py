@@ -4208,6 +4208,13 @@ class ExternalOnlineTransitionContextRouter:
                 raise TypeError("online transition provisional evidence is invalid")
             if not isinstance(evidence_count, int) or evidence_count < 0:
                 raise ValueError("online transition provisional evidence count is invalid")
+            if (
+                router.provisional_evidence_policy == "streaming_statistics"
+                and observations_payload
+            ):
+                raise ValueError(
+                    "streaming_statistics payload cannot contain raw provisional evidence"
+                )
             _validate_tensor(
                 provisional_context,
                 name="online transition provisional context",

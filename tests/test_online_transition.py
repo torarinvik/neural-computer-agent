@@ -669,6 +669,130 @@ def test_streaming_statistics_candidate_does_not_retain_raw_evidence() -> None:
     assert source_index == 0
 
 
+def test_streaming_statistics_isolates_two_interleaved_candidates() -> None:
+    torch.manual_seed(1307)
+    affine_family = "affine_sufficient_statistics_v1"
+    random_feature_family = "random_feature_sufficient_statistics_v1"
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        4,
+        model_family="mixed_verified_v1",
+        affine_ridge=1e-7,
+        random_feature_width=64,
+        random_feature_seed=17,
+        capacity=3,
+    )
+    encoder = ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4)
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        encoder,
+        match_tolerance=1e-6,
+        match_margin=1e-4,
+        continuation_tolerance=1e-6,
+        provisional_continuation_tolerance=0.05,
+        admission_observations=4,
+        max_contexts=3,
+        defer_admission=True,
+        candidate_model_families=(affine_family, random_feature_family),
+        provisional_evidence_policy="streaming_statistics",
+    )
+    source = _affine_observation(64)
+    for row in range(source.state.shape[0]):
+        result = router.observe(
+            ExternalTransitionObservation(
+                state=source.state[row : row + 1],
+                intention=source.intention[row : row + 1],
+                next_state=source.next_state[row : row + 1],
+                confidence=torch.ones(1),
+            )
+        )
+        if result.status == "staged":
+            router.adaptation_step(result, None, replay_evidence=False)
+    source_receipt = router.promote_staged_candidate(
+        source,
+        lambda candidate: candidate.context_count == 1,
+        prediction_tolerance=1e-6,
+    )
+    assert source_receipt.accepted
+    committed_source_context = router.bank.context_at(0)
+
+    target_a = ExternalTransitionObservation(
+        state=source.state,
+        intention=source.intention,
+        next_state=source.next_state * 2.0,
+        confidence=source.confidence,
+    )
+    target_b = ExternalTransitionObservation(
+        state=source.state,
+        intention=source.intention,
+        next_state=source.next_state * -1.0,
+        confidence=source.confidence,
+    )
+    for chunk in range(16):
+        for observation in (target_a, target_b):
+            for row in range(chunk * 4, chunk * 4 + 4):
+                result = router.observe(
+                    ExternalTransitionObservation(
+                        state=observation.state[row : row + 1],
+                        intention=observation.intention[row : row + 1],
+                        next_state=observation.next_state[row : row + 1],
+                        confidence=torch.ones(1),
+                    )
+                )
+                if result.status == "staged":
+                    router.adaptation_step(result, None, replay_evidence=False)
+
+    assert router.provisional_candidate_count == 2
+    assert [router.provisional_evidence_count(index) for index in range(2)] == [64, 64]
+    assert all(
+        not candidate.observations
+        for candidate in router._provisional_candidates
+    )
+    candidate_contexts = [
+        router.provisional_context_at(index) for index in range(2)
+    ]
+    payload = router.state_payload()
+    assert all(
+        not candidate["observations"]
+        for candidate in payload["provisional_candidates"]
+    )
+
+    def retained(candidate: ExternalTransitionModelBank) -> bool:
+        return (
+            candidate.context_count == 2
+            and float(
+                    candidate.loss(
+                        source,
+                        committed_source_context.unsqueeze(0).expand(
+                            source.state.shape[0], -1
+                        ),
+                    )
+            ) < 1e-6
+        )
+
+    first = router.promote_staged_candidate(
+        target_a,
+        retained,
+        prediction_tolerance=1e-6,
+        candidate_index=0,
+    )
+    assert first.accepted
+    second = router.promote_staged_candidate(
+        target_b,
+        lambda candidate: candidate.context_count == 3,
+        prediction_tolerance=1e-6,
+        candidate_index=0,
+    )
+    assert second.accepted
+    assert router.bank.context_count == 3
+    assert router.bank.model_family_at(1) == affine_family
+    assert router.bank.model_family_at(2) == affine_family
+    assert router.bank.context_at(1).shape == candidate_contexts[0].shape
+    assert router.bank.context_at(2).shape == candidate_contexts[1].shape
+    assert random_feature_family in router.configuration()["candidate_model_families"]
+
+
 def test_affine_transition_statistics_learns_and_persists_one_pass() -> None:
     torch.manual_seed(1301)
     model = ExternalAffineTransitionStatistics(2, 1, ridge=1e-7)

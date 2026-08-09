@@ -1,0 +1,75 @@
+{
+  "schema": "neural-computer.external-interleaved-streaming-candidates-pressure-test.v1",
+  "claim_boundary": "Two interleaved partial factual streams can be isolated in copy-on-write external candidates and promoted through held-out model-family and retention gates without raw candidate evidence or old replay; this is not general continual learning.",
+  "seed": 1901,
+  "configuration": {
+    "train_rows": 64,
+    "window_rows": 4,
+    "regime_count": 3,
+    "candidate_model_families": [
+      "affine_sufficient_statistics_v1",
+      "random_feature_sufficient_statistics_v1"
+    ],
+    "provisional_evidence_policy": "streaming_statistics",
+    "loss_threshold": 1e-06
+  },
+  "metrics": {
+    "candidate_evidence_counts": [
+      64,
+      64
+    ],
+    "candidate_families": [
+      [
+        "affine_sufficient_statistics_v1",
+        "random_feature_sufficient_statistics_v1"
+      ],
+      [
+        "affine_sufficient_statistics_v1",
+        "random_feature_sufficient_statistics_v1"
+      ]
+    ],
+    "raw_rows_retained": [
+      0,
+      0
+    ],
+    "heldout_errors": [
+      1.3165250140056983e-14,
+      8.074096946586451e-14,
+      1.693437057248559e-14
+    ],
+    "shuffled_heldout_error": 37.48672103881836,
+    "capacity": {
+      "capacity_events": 1,
+      "committed_context_count": 1,
+      "provisional_candidate_count": 1
+    }
+  },
+  "accounting": {
+    "unique_verifier_bits": 384,
+    "unique_logical_lifetimes": 192,
+    "streaming_statistics_updates": 192,
+    "optimizer_updates": 0,
+    "replayed_examples": 0,
+    "old_committed_slot_replay": 0,
+    "raw_provisional_rows_persisted": 0,
+    "search_expansions": 0,
+    "wall_seconds": 0.11836845800280571
+  },
+  "digests": {
+    "controller": "eb6ca4d808ca73dab8fc1ae6c8e71becc400ee5a146cdfa0df71b0ea8a441dcb"
+  },
+  "gates": {
+    "two_candidates_isolated": true,
+    "raw_candidate_rows_not_retained": true,
+    "heldout_family_selection": true,
+    "all_promotions_accepted": true,
+    "all_heldout_errors_pass": true,
+    "shuffled_transition_rejected": true,
+    "shuffled_raw_rows_not_retained": true,
+    "capacity_refuses_unverified_growth": true,
+    "exact_source_persistence": true,
+    "controller_frozen": true,
+    "zero_replayed_examples": true
+  },
+  "promoted": true
+}
