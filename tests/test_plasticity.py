@@ -2,11 +2,13 @@ import torch
 
 from neural_computer import (
     CapabilityEvictionObservation,
-    ExternalFastWeightPlasticity,
     ExternalCapabilityEvictionPolicy,
+    ExternalFastWeightPlasticity,
+    ExternalFastWeightState,
     ExternalMemoryEvictionPolicy,
     ExternalMemoryWritePolicy,
-    ExternalFastWeightState,
+    ExternalOutcomeCreditPlasticity,
+    ExternalOutcomeCreditState,
     MemoryEvictionObservation,
     MemoryWriteObservation,
 )
@@ -67,6 +69,77 @@ def test_fast_weight_plasticity_state_round_trips_as_tensor_payload() -> None:
     assert isinstance(restored, ExternalFastWeightState)
     assert torch.equal(restored.weights, state.weights)
     assert torch.equal(restored.updates, state.updates)
+
+
+def test_external_outcome_credit_assigns_delayed_feedback_to_external_policy() -> None:
+    rule = ExternalOutcomeCreditPlasticity(
+        feature_width=3,
+        action_count=2,
+        initial_learning_rate=0.2,
+        initial_trace_decay=0.8,
+    )
+    state = rule.initial_state(1)
+    features = torch.tensor([[1.0, 0.0, 0.0]])
+    state = rule.record_decision(
+        state,
+        features,
+        torch.tensor([0]),
+        torch.tensor([0.5]),
+    )
+    assert bool(torch.any(state.eligibility != 0.0))
+    updated = rule.apply_feedback(
+        state,
+        torch.ones(1),
+        terminal=torch.ones(1, dtype=torch.bool),
+    )
+
+    assert bool(torch.any(updated.policy != 0.0))
+    assert torch.equal(updated.eligibility, torch.zeros_like(updated.eligibility))
+    assert updated.decisions.tolist() == [1]
+    assert updated.feedbacks.tolist() == [1]
+    assert rule.configuration()["update_rule"] == (
+        "importance_weighted_delayed_policy_gradient_v1"
+    )
+
+
+def test_external_outcome_credit_missing_feedback_preserves_external_state() -> None:
+    rule = ExternalOutcomeCreditPlasticity(feature_width=2, action_count=2)
+    state = rule.record_decision(
+        rule.initial_state(1),
+        torch.tensor([[1.0, -1.0]]),
+        torch.tensor([1]),
+        torch.tensor([0.5]),
+    )
+    unchanged = rule.apply_feedback(
+        state,
+        torch.ones(1),
+        present=torch.zeros(1, dtype=torch.bool),
+        terminal=torch.ones(1, dtype=torch.bool),
+    )
+
+    assert torch.equal(unchanged.policy, state.policy)
+    assert torch.equal(unchanged.eligibility, state.eligibility)
+    assert torch.equal(unchanged.baseline, state.baseline)
+    assert torch.equal(unchanged.feedbacks, state.feedbacks)
+
+
+def test_external_outcome_credit_state_round_trips_as_tensor_payload() -> None:
+    rule = ExternalOutcomeCreditPlasticity(feature_width=2, action_count=3)
+    state = rule.record_decision(
+        rule.initial_state(2),
+        torch.tensor([[1.0, 0.0], [0.0, 1.0]]),
+        torch.tensor([0, 2]),
+        torch.tensor([1.0 / 3.0, 1.0 / 3.0]),
+    )
+    state = rule.apply_feedback(state, torch.tensor([1.0, 0.0]))
+    restored = rule.state_from_payload(rule.state_payload(state))
+
+    assert isinstance(restored, ExternalOutcomeCreditState)
+    assert torch.equal(restored.policy, state.policy)
+    assert torch.equal(restored.eligibility, state.eligibility)
+    assert torch.equal(restored.baseline, state.baseline)
+    assert torch.equal(restored.decisions, state.decisions)
+    assert torch.equal(restored.feedbacks, state.feedbacks)
 
 
 def _observation(batch: int = 3) -> MemoryWriteObservation:

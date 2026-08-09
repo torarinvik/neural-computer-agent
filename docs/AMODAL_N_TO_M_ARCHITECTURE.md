@@ -4281,3 +4281,36 @@ while source traces remain protected.
 
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_fast_plasticity_capability_transfer_2026-08-09/`.
+
+## External outcome-credit eligibility state (2026-08-09)
+
+The memory boundary now exposes `ExternalOutcomeCreditPlasticity` and
+`ExternalOutcomeCreditState`. The state contains an external capability policy,
+its decayed log-probability eligibility trace, a scalar baseline, and explicit
+decision/feedback counters. It consumes only learned feature tensors, opaque
+sampled choices, exact logging propensities, presence, terminal markers, and
+deterministic scalar outcomes. Delayed feedback updates the external policy and
+terminal feedback clears transient eligibility without touching the frozen
+controller or plasticity-rule parameters.
+
+The two-seed pressure test used a hidden two-step event-to-choice relation. It
+trained `2,000` source episodes, then `5,000` fresh target episodes from one
+terminal verifier bit per episode, with `500` held-out evaluations at each
+`500`-episode prefix. Trace-enabled target accuracy reached `0.980` and
+`0.972`; the stable `0.90` gate was reached after `500` episodes on both
+seeds. The matched no-trace controls remained at `0.518` and `0.470`, leaving
+the first decision at chance, while reward-shuffled controls fell to `0.368`
+and `0.194`. Source capabilities retained `0.958` on both seeds.
+
+All causal, missing-feedback no-write, persistence, frozen-rule, and zero-
+replay gates passed. This promotes a bounded delayed-credit primitive and is a
+stronger learning result than the earlier supervised interface-adapter audit.
+It is still not general continual learning: the policy is fixed-width, the
+relation is linear in learned event features, and the test does not yet cover
+variable-length programs, many-capability interference, learned memory
+allocation, or consolidation. The next integration must connect this credit
+state to executable external programs and test a genuinely new multi-step
+capability across a changed relation while preserving old states.
+
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_outcome_credit_promoted_2026-08-09/`.

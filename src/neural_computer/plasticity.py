@@ -22,6 +22,9 @@ GradientMap = Mapping[str, torch.Tensor]
 EXTERNAL_FAST_WEIGHT_SCHEMA = (
     "neural-computer.external-fast-weight-plasticity.v1"
 )
+EXTERNAL_OUTCOME_CREDIT_SCHEMA = (
+    "neural-computer.external-outcome-credit-plasticity.v1"
+)
 
 
 @dataclass(frozen=True)
@@ -253,6 +256,371 @@ class ExternalFastWeightPlasticity(nn.Module):
             raise TypeError("fast-weight state payload must contain tensors")
         state = ExternalFastWeightState(weights, updates)
         state.validate(key_width=self.key_width, value_width=self.value_width)
+        return state
+
+
+@dataclass(frozen=True)
+class ExternalOutcomeCreditState:
+    """External policy and eligibility state for delayed scalar outcomes.
+
+    ``policy`` is the mutable capability-specific computation.  ``eligibility``
+    is transient episode state that carries credit across time; neither tensor
+    belongs to the frozen controller or to the plasticity-rule parameters.
+    Counters are kept separately so accounting can distinguish decisions from
+    received feedback without storing examples for replay.
+    """
+
+    policy: torch.Tensor
+    eligibility: torch.Tensor
+    baseline: torch.Tensor
+    decisions: torch.Tensor
+    feedbacks: torch.Tensor
+
+    def validate(self, *, feature_width: int, action_count: int) -> None:
+        expected = (feature_width, action_count)
+        if self.policy.ndim != 3 or self.policy.shape[1:] != expected:
+            raise ValueError("outcome-credit policy state has the wrong shape")
+        if self.eligibility.shape != self.policy.shape:
+            raise ValueError("outcome-credit eligibility has the wrong shape")
+        batch_size = self.policy.shape[0]
+        if self.baseline.shape != (batch_size,):
+            raise ValueError("outcome-credit baseline has the wrong shape")
+        for name, value in (
+            ("decisions", self.decisions),
+            ("feedbacks", self.feedbacks),
+        ):
+            if value.shape != (batch_size,):
+                raise ValueError(f"outcome-credit {name} has the wrong shape")
+            if value.dtype not in (torch.int32, torch.int64):
+                raise TypeError(f"outcome-credit {name} must be integer")
+            if bool((value < 0).any()):
+                raise ValueError(f"outcome-credit {name} cannot be negative")
+        if self.baseline.device != self.policy.device:
+            raise ValueError("outcome-credit state tensors must share a device")
+        if self.eligibility.device != self.policy.device:
+            raise ValueError("outcome-credit state tensors must share a device")
+        if self.decisions.device != self.policy.device:
+            raise ValueError("outcome-credit state tensors must share a device")
+        if self.feedbacks.device != self.policy.device:
+            raise ValueError("outcome-credit state tensors must share a device")
+        if not all(
+            bool(torch.isfinite(value).all())
+            for value in (self.policy, self.eligibility, self.baseline)
+        ):
+            raise ValueError("outcome-credit state must contain finite values")
+        if bool(((self.baseline < 0.0) | (self.baseline > 1.0)).any()):
+            raise ValueError("outcome-credit baseline must lie in [0, 1]")
+
+
+class ExternalOutcomeCreditPlasticity(nn.Module):
+    """Learn an external policy from delayed scalar outcomes.
+
+    The rule is an eligibility-trace policy-gradient primitive.  It receives
+    only a learned feature tensor, an opaque sampled choice, its exact logging
+    propensity, and a deterministic scalar outcome.  The policy update is
+    applied to external state, not to the controller or to this rule's
+    parameters.  A terminal feedback clears the trace after credit is applied.
+
+    This is deliberately a learning primitive, not a task solver: it does not
+    receive correct unattempted choices, task IDs, semantic labels, or raw
+    modality data.  A caller still needs a verifier and a memory-side policy
+    for deciding how to allocate or compose capabilities.
+    """
+
+    schema = EXTERNAL_OUTCOME_CREDIT_SCHEMA
+
+    def __init__(
+        self,
+        feature_width: int,
+        action_count: int,
+        *,
+        initial_learning_rate: float = 0.1,
+        initial_trace_decay: float = 0.9,
+        initial_baseline_rate: float = 0.05,
+        initial_baseline: float = 0.5,
+    ) -> None:
+        super().__init__()
+        if min(feature_width, action_count) < 1:
+            raise ValueError("outcome-credit dimensions must be positive")
+        if not 0.0 < initial_learning_rate <= 1.0:
+            raise ValueError("outcome-credit learning rate must lie in (0, 1]")
+        if not 0.0 <= initial_trace_decay < 1.0:
+            raise ValueError("outcome-credit trace decay must lie in [0, 1)")
+        if not 0.0 < initial_baseline_rate <= 1.0:
+            raise ValueError("outcome-credit baseline rate must lie in (0, 1]")
+        if not 0.0 <= initial_baseline <= 1.0:
+            raise ValueError("outcome-credit initial baseline must lie in [0, 1]")
+        self.feature_width = int(feature_width)
+        self.action_count = int(action_count)
+        self.initial_baseline = float(initial_baseline)
+        self._trace_decay_exact_zero = initial_trace_decay == 0.0
+        self.learning_rate_logit = nn.Parameter(
+            torch.logit(torch.tensor(float(initial_learning_rate)).clamp(1e-4, 1.0 - 1e-4))
+        )
+        self.trace_decay_logit = nn.Parameter(
+            torch.tensor(0.0)
+            if self._trace_decay_exact_zero
+            else torch.logit(torch.tensor(float(initial_trace_decay)).clamp(1e-4, 1.0 - 1e-4))
+        )
+        self.baseline_rate_logit = nn.Parameter(
+            torch.logit(torch.tensor(float(initial_baseline_rate)).clamp(1e-4, 1.0 - 1e-4))
+        )
+
+    @property
+    def learning_rate(self) -> torch.Tensor:
+        return self.learning_rate_logit.sigmoid()
+
+    @property
+    def trace_decay(self) -> torch.Tensor:
+        if self._trace_decay_exact_zero:
+            return torch.zeros_like(self.trace_decay_logit)
+        return self.trace_decay_logit.sigmoid()
+
+    @property
+    def baseline_rate(self) -> torch.Tensor:
+        return self.baseline_rate_logit.sigmoid()
+
+    def configuration(self) -> dict[str, int | float | str]:
+        return {
+            "schema": self.schema,
+            "feature_width": self.feature_width,
+            "action_count": self.action_count,
+            "update_rule": "importance_weighted_delayed_policy_gradient_v1",
+            "trace": "decayed_log_probability_gradient_v1",
+            "state": "external_capability_policy_and_eligibility_v1",
+            "learning_rate": float(self.learning_rate.detach()),
+            "trace_decay": float(self.trace_decay.detach()),
+            "baseline_rate": float(self.baseline_rate.detach()),
+            "initial_baseline": self.initial_baseline,
+        }
+
+    def initial_state(
+        self,
+        batch_size: int,
+        *,
+        device: torch.device | str = "cpu",
+        dtype: torch.dtype = torch.float32,
+    ) -> ExternalOutcomeCreditState:
+        if batch_size < 1:
+            raise ValueError("outcome-credit batch size must be positive")
+        policy = torch.zeros(
+            batch_size,
+            self.feature_width,
+            self.action_count,
+            device=device,
+            dtype=dtype,
+        )
+        return ExternalOutcomeCreditState(
+            policy=policy,
+            eligibility=torch.zeros_like(policy),
+            baseline=torch.full(
+                (batch_size,),
+                self.initial_baseline,
+                device=device,
+                dtype=dtype,
+            ),
+            decisions=torch.zeros(batch_size, device=device, dtype=torch.long),
+            feedbacks=torch.zeros(batch_size, device=device, dtype=torch.long),
+        )
+
+    def _validate_features(
+        self,
+        features: torch.Tensor,
+        *,
+        batch_size: int | None = None,
+    ) -> None:
+        if features.ndim != 2 or features.shape[1] != self.feature_width:
+            raise ValueError("outcome-credit features have the wrong shape")
+        if batch_size is not None and features.shape[0] != batch_size:
+            raise ValueError("outcome-credit feature batch does not match state")
+        if not bool(torch.isfinite(features).all()):
+            raise ValueError("outcome-credit features must be finite")
+
+    @staticmethod
+    def _validate_presence(
+        present: torch.Tensor,
+        batch_size: int,
+        *,
+        device: torch.device,
+    ) -> None:
+        if present.shape != (batch_size,) or present.dtype is not torch.bool:
+            raise ValueError("outcome-credit presence must be boolean [batch]")
+        if present.device != device:
+            raise ValueError("outcome-credit presence is on the wrong device")
+
+    def _validate_state(self, state: ExternalOutcomeCreditState) -> None:
+        state.validate(
+            feature_width=self.feature_width,
+            action_count=self.action_count,
+        )
+
+    def logits(
+        self,
+        state: ExternalOutcomeCreditState,
+        features: torch.Tensor,
+    ) -> torch.Tensor:
+        """Read the current external policy without mutating state."""
+
+        self._validate_state(state)
+        self._validate_features(features, batch_size=state.policy.shape[0])
+        return torch.einsum("bf,bfa->ba", features, state.policy)
+
+    def record_decision(
+        self,
+        state: ExternalOutcomeCreditState,
+        features: torch.Tensor,
+        choice: torch.Tensor,
+        propensity: torch.Tensor,
+        *,
+        present: torch.Tensor | None = None,
+    ) -> ExternalOutcomeCreditState:
+        """Append one choice's log-probability gradient to the trace."""
+
+        self._validate_state(state)
+        batch_size = state.policy.shape[0]
+        self._validate_features(features, batch_size=batch_size)
+        if choice.shape != (batch_size,) or choice.dtype not in (
+            torch.int32,
+            torch.int64,
+        ):
+            raise TypeError("outcome-credit choices must be integer [batch]")
+        if bool((choice < 0).any()) or bool((choice >= self.action_count).any()):
+            raise ValueError("outcome-credit choice is outside the action space")
+        if propensity.shape != (batch_size,) or not bool(torch.isfinite(propensity).all()):
+            raise ValueError("outcome-credit propensity must be finite [batch]")
+        if bool((propensity <= 0.0).any()) or bool((propensity > 1.0).any()):
+            raise ValueError("outcome-credit propensity must lie in (0, 1]")
+        if present is None:
+            present = torch.ones(batch_size, dtype=torch.bool, device=features.device)
+        self._validate_presence(present, batch_size, device=features.device)
+        probabilities = self.logits(state, features).softmax(dim=-1)
+        selected_probability = probabilities.gather(1, choice.to(torch.long).unsqueeze(-1)).squeeze(-1)
+        importance = selected_probability / propensity
+        one_hot = F.one_hot(choice.to(torch.long), self.action_count).to(
+            dtype=features.dtype
+        )
+        score_gradient = features.unsqueeze(-1) * (one_hot - probabilities)
+        trace_decay = self.trace_decay.to(dtype=features.dtype)
+        next_eligibility = (
+            trace_decay * state.eligibility
+            + importance[:, None, None] * score_gradient
+        )
+        active = present[:, None, None]
+        next_eligibility = torch.where(active, next_eligibility, state.eligibility)
+        next_decisions = state.decisions + present.to(device=state.decisions.device).long()
+        next_state = ExternalOutcomeCreditState(
+            policy=state.policy,
+            eligibility=next_eligibility,
+            baseline=state.baseline,
+            decisions=next_decisions,
+            feedbacks=state.feedbacks,
+        )
+        self._validate_state(next_state)
+        return next_state
+
+    def apply_feedback(
+        self,
+        state: ExternalOutcomeCreditState,
+        outcome: torch.Tensor,
+        *,
+        present: torch.Tensor | None = None,
+        terminal: torch.Tensor | None = None,
+    ) -> ExternalOutcomeCreditState:
+        """Apply scalar feedback to all eligible decisions in the trace."""
+
+        self._validate_state(state)
+        batch_size = state.policy.shape[0]
+        if outcome.shape != (batch_size,) or not bool(torch.isfinite(outcome).all()):
+            raise ValueError("outcome-credit outcome must be finite [batch]")
+        if bool(((outcome < 0.0) | (outcome > 1.0)).any()):
+            raise ValueError("outcome-credit outcome must lie in [0, 1]")
+        if present is None:
+            present = torch.ones(batch_size, dtype=torch.bool, device=outcome.device)
+        self._validate_presence(present, batch_size, device=outcome.device)
+        if terminal is None:
+            terminal = torch.zeros(batch_size, dtype=torch.bool, device=outcome.device)
+        self._validate_presence(terminal, batch_size, device=outcome.device)
+        active = present[:, None, None]
+        centered = outcome - state.baseline
+        update = (
+            self.learning_rate.to(dtype=state.policy.dtype)
+            * centered[:, None, None]
+            * state.eligibility
+        )
+        updated_policy = torch.where(active, state.policy + update, state.policy)
+        baseline_rate = self.baseline_rate.to(dtype=state.baseline.dtype)
+        updated_baseline = state.baseline + baseline_rate * (outcome - state.baseline)
+        updated_baseline = torch.where(present, updated_baseline, state.baseline)
+        clear = terminal[:, None, None] & active
+        next_eligibility = torch.where(
+            clear,
+            torch.zeros_like(state.eligibility),
+            state.eligibility,
+        )
+        next_feedbacks = state.feedbacks + present.to(device=state.feedbacks.device).long()
+        next_state = ExternalOutcomeCreditState(
+            policy=updated_policy,
+            eligibility=next_eligibility,
+            baseline=updated_baseline,
+            decisions=state.decisions,
+            feedbacks=next_feedbacks,
+        )
+        self._validate_state(next_state)
+        return next_state
+
+    def begin_episode(
+        self,
+        state: ExternalOutcomeCreditState,
+    ) -> ExternalOutcomeCreditState:
+        """Clear transient credit while preserving learned policy and baseline."""
+
+        self._validate_state(state)
+        next_state = ExternalOutcomeCreditState(
+            policy=state.policy,
+            eligibility=torch.zeros_like(state.eligibility),
+            baseline=state.baseline,
+            decisions=state.decisions,
+            feedbacks=state.feedbacks,
+        )
+        self._validate_state(next_state)
+        return next_state
+
+    def state_payload(self, state: ExternalOutcomeCreditState) -> dict[str, object]:
+        """Return a tensor-only versioned payload for external persistence."""
+
+        self._validate_state(state)
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "policy": state.policy.detach().cpu().clone(),
+            "eligibility": state.eligibility.detach().cpu().clone(),
+            "baseline": state.baseline.detach().cpu().clone(),
+            "decisions": state.decisions.detach().cpu().clone(),
+            "feedbacks": state.feedbacks.detach().cpu().clone(),
+        }
+
+    def state_from_payload(
+        self,
+        payload: Mapping[str, object],
+    ) -> ExternalOutcomeCreditState:
+        if payload.get("schema") != self.schema:
+            raise ValueError("unsupported outcome-credit state schema")
+        configuration = payload.get("configuration")
+        if not isinstance(configuration, Mapping):
+            raise TypeError("outcome-credit state configuration is invalid")
+        if (
+            configuration.get("feature_width") != self.feature_width
+            or configuration.get("action_count") != self.action_count
+        ):
+            raise ValueError("outcome-credit state dimensions do not match")
+        tensors: dict[str, torch.Tensor] = {}
+        for name in ("policy", "eligibility", "baseline", "decisions", "feedbacks"):
+            value = payload.get(name)
+            if not isinstance(value, torch.Tensor):
+                raise TypeError(f"outcome-credit payload field {name!r} must be a tensor")
+            tensors[name] = value
+        state = ExternalOutcomeCreditState(**tensors)
+        self._validate_state(state)
         return state
 
 
