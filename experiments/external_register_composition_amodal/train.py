@@ -493,18 +493,33 @@ def _rollout(
             utilities = (attempted == correct.unsqueeze(1)).to(logits.dtype)
             if shuffle_outcomes:
                 utilities = utilities.roll(1, dims=0)
-            slot_logits = route_probe_logits[-1]
-            slot_losses = F.binary_cross_entropy_with_logits(
-                slot_logits,
-                utilities.unsqueeze(1).expand_as(slot_logits),
-                reduction="none",
-            ).mean(dim=-1)
-            route_weights = (
-                sequence_operator_memory.route_weights(sequence_operator_route_query)
-                if route_probe
-                else sequence_program_memory.route_weights(sequence_program_route_query)
-            )
-            loss = (route_weights * slot_losses).sum(dim=-1).mean()
+            if (
+                program_route_probe
+                and sequence_program_memory.content_addressing
+            ):
+                # Content addressing already identifies a program from its
+                # opaque code. Train the selected executable program with the
+                # same action-ranking objective as fixed program execution;
+                # using the generic slot BCE probe here would confound route
+                # learning with a different decoder objective.
+                loss, _ = paired_counterfactual_ranking_loss(
+                    logits,
+                    attempted,
+                    utilities,
+                )
+            else:
+                slot_logits = route_probe_logits[-1]
+                slot_losses = F.binary_cross_entropy_with_logits(
+                    slot_logits,
+                    utilities.unsqueeze(1).expand_as(slot_logits),
+                    reduction="none",
+                ).mean(dim=-1)
+                route_weights = (
+                    sequence_operator_memory.route_weights(sequence_operator_route_query)
+                    if route_probe
+                    else sequence_program_memory.route_weights(sequence_program_route_query)
+                )
+                loss = (route_weights * slot_losses).sum(dim=-1).mean()
         elif credit_mode == "paired_counterfactual":
             attempted = torch.tensor(
                 [[0, 1]], dtype=torch.long, device=device

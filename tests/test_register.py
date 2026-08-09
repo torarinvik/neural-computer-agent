@@ -557,8 +557,58 @@ def test_external_sequence_program_memory_stores_ordered_shared_program_data() -
     assert (first, second) == (0, 1)
     assert memory.configuration()["computation"] == "shared_register_interpreter_v1"
     assert memory.configuration()["program_lengths"] == [3, 2]
+    assert memory.configuration()["addressing"] == "learned_slot_keys_v1"
     assert weights.shape == (1, 2)
     assert torch.allclose(weights.sum(dim=-1), torch.ones(1))
+
+
+def test_external_sequence_program_memory_hard_route_is_discrete_forward() -> None:
+    memory = ExternalSequenceProgramMemory(
+        4, router_hidden=8, router_temperature=0.5, hard_routing=True
+    )
+    memory.add_program(torch.randn(2, 4))
+    memory.add_program(torch.randn(2, 4))
+    query = torch.randn(1, 4, requires_grad=True)
+    weights = memory.route_weights(query)
+
+    assert torch.allclose(weights.detach().sum(dim=-1), torch.ones(1))
+    assert torch.all((weights.detach() == 0) | (weights.detach() == 1))
+    weights.square().sum().backward()
+    assert query.grad is not None
+
+
+def test_external_sequence_program_memory_content_addressing_selects_matching_program() -> None:
+    torch.manual_seed(907)
+    memory = ExternalSequenceProgramMemory(4, content_addressing=True)
+    first_codes = torch.randn(2, 4)
+    second_codes = torch.randn(2, 4)
+    memory.add_program(first_codes)
+    memory.add_program(second_codes)
+    query = memory.encode_program(first_codes.unsqueeze(0))
+    weights = memory.route_weights(query)
+
+    assert int(weights.argmax(dim=-1).item()) == 0
+    assert float(weights.max()) > 0.9
+    with torch.no_grad():
+        memory.programs[0].add_(torch.randn_like(memory.programs[0]))
+    assert int(memory.route_weights(query).argmax(dim=-1).item()) == 0
+    assert memory.configuration()["addressing"] == (
+        "immutable_opaque_program_content_v1"
+    )
+    second_weights = memory.route_weights(
+        memory.encode_program(second_codes.unsqueeze(0))
+    )
+    assert int(second_weights.argmax(dim=-1).item()) == 1
+    assert not any(
+        parameter.requires_grad
+        for module in (
+            memory.query_encoder,
+            memory.program_query,
+            memory.route_query_encoder,
+            memory.key_encoder,
+        )
+        for parameter in module.parameters()
+    )
 
 
 def test_shared_machine_executes_external_program_codes_without_new_operator() -> None:

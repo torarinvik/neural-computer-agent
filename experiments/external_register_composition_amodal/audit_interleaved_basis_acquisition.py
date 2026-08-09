@@ -691,6 +691,11 @@ def _train_sequence_calibration(
         sequence_program_memory is not None
         and args.use_sequence_program_router
     )
+    content_lookup = bool(
+        use_program_router
+        and sequence_program_memory.content_addressing
+        and not args.use_route_outcome_credit
+    )
 
     def route_query(program: tuple[str, ...]) -> torch.Tensor:
         instructions = tuple(
@@ -705,6 +710,23 @@ def _train_sequence_calibration(
         if use_program_router:
             return sequence_program_memory.encode_program(codes).squeeze(0)
         raise ValueError("no sequence route memory is enabled")
+
+    def content_lookup_codes(
+        program: tuple[str, ...], *, batch_size: int, device: torch.device, dtype: torch.dtype
+    ) -> torch.Tensor:
+        if not content_lookup:
+            raise ValueError("content lookup is not enabled")
+        slot = int(
+            sequence_program_memory.route_weights(
+                route_query(program).unsqueeze(0)
+            ).argmax(dim=-1).item()
+        )
+        return sequence_program_memory.program_codes(
+            slot,
+            batch_size=batch_size,
+            device=device,
+            dtype=dtype,
+        )
 
     protected_meta_mode = args.operator_mode in (
         "factorized_protected_meta",
@@ -792,6 +814,13 @@ def _train_sequence_calibration(
                     dtype=batch.input_frames.dtype,
                 )
                 if sequence_program_memory is not None and not use_program_router
+                else content_lookup_codes(
+                    program,
+                    batch_size=args.batch_size,
+                    device=batch.input_frames.device,
+                    dtype=batch.input_frames.dtype,
+                )
+                if content_lookup
                 else None
             ),
             sequence_program_memory=sequence_program_memory,
@@ -875,6 +904,13 @@ def _train_sequence_calibration(
                             dtype=torch.float32,
                         ).squeeze(0)
                         if sequence_program_memory is not None and not use_program_router
+                        else content_lookup_codes(
+                            program_value,
+                            batch_size=1,
+                            device=torch.device("cpu"),
+                            dtype=torch.float32,
+                        ).squeeze(0)
+                        if content_lookup
                         else None
                     ),
                     sequence_program_memory=sequence_program_memory,
@@ -1380,6 +1416,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         sequence_program_memory = ExternalSequenceProgramMemory(
             INSTRUCTION_WIDTH,
             router_temperature=args.operator_router_temperature,
+            hard_routing=args.hard_sequence_program_router,
+            content_addressing=args.content_addressed_sequence_program_router,
         )
         for program in composition_programs:
             codes = torch.stack(
@@ -1924,6 +1962,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     )
     if args.use_sequence_program_memory:
         sequence_surface = (
+            "sequence_program_memory_slots_plus_content_addressed_lookup"
+            if args.use_sequence_program_router
+            and args.content_addressed_sequence_program_router
+            and not args.use_route_outcome_credit
+            else
             "sequence_program_memory_slots_plus_learned_router_plus_outcome_probe"
             if args.use_sequence_program_router and args.use_route_outcome_credit
             else "sequence_program_memory_slots_plus_learned_router"
@@ -2156,6 +2199,18 @@ def main() -> None:
         action=argparse.BooleanOptionalAction,
         default=False,
         help="learn opaque routing over executable program-memory slots",
+    )
+    parser.add_argument(
+        "--hard-sequence-program-router",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="route to one executable program in the forward pass with a straight-through gradient",
+    )
+    parser.add_argument(
+        "--content-addressed-sequence-program-router",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="address executable programs by similarity to their encoded opaque contents",
     )
     parser.add_argument(
         "--use-operator-sequence-memory",

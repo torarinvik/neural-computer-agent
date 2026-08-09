@@ -1085,3 +1085,12 @@ the same six-slot counterfactual outcome credit. It fell to `0.6875`
 skills exactly. Routing is therefore not promoted; fixed program-slot
 execution is currently more reliable than learned soft selection. Raw report:
 `protected_bounded_meta_program_router/report_seed69316.json`.
+
+The slot-index dependency was then removed with immutable opaque content
+addresses and a direct content lookup. The lookup selects one executable
+program before the shared interpreter runs, and reaches the replicated
+`0.7344` floor with exact source retention while spending only `49,152`
+sequence-calibration verifier bits. This is now the preferred external-memory
+interface, although the capability result itself remains below the `0.7422`
+rank-16 baseline. Raw report:
+`protected_bounded_meta_program_content_lookup/report_seed69317.json`.

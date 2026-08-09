@@ -17,6 +17,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 
 import torch
+import torch.nn.functional as F
 from torch import nn
 
 from .interface import IntentEvent
@@ -374,6 +375,8 @@ class ExternalSequenceProgramMemory(nn.Module):
         *,
         router_hidden: int = 32,
         router_temperature: float = 1.0,
+        hard_routing: bool = False,
+        content_addressing: bool = False,
     ) -> None:
         super().__init__()
         if min(instruction_width, router_hidden) < 1:
@@ -383,7 +386,10 @@ class ExternalSequenceProgramMemory(nn.Module):
         self.instruction_width = int(instruction_width)
         self.router_hidden = int(router_hidden)
         self.router_temperature = float(router_temperature)
+        self.hard_routing = bool(hard_routing)
+        self.content_addressing = bool(content_addressing)
         self.programs = nn.ParameterList()
+        self.address_programs = nn.ParameterList()
         self.slot_keys = nn.ParameterList()
         self.query_encoder = nn.GRU(
             self.instruction_width, self.router_hidden, batch_first=True
@@ -401,6 +407,18 @@ class ExternalSequenceProgramMemory(nn.Module):
             nn.GELU(),
             nn.Linear(self.router_hidden, self.router_hidden),
         )
+        if self.content_addressing:
+            # Content addressing is a data-structure operation, not a second
+            # learned reasoning branch. Keep its shared code embedding fixed;
+            # only the stored executable program data may adapt.
+            for module in (
+                self.query_encoder,
+                self.program_query,
+                self.route_query_encoder,
+                self.key_encoder,
+            ):
+                for parameter in module.parameters():
+                    parameter.requires_grad_(False)
 
     def configuration(self) -> dict[str, object]:
         return {
@@ -408,8 +426,15 @@ class ExternalSequenceProgramMemory(nn.Module):
             "instruction_width": self.instruction_width,
             "router_hidden": self.router_hidden,
             "router_temperature": self.router_temperature,
+            "hard_routing": self.hard_routing,
+            "content_addressing": self.content_addressing,
             "slot_count": len(self.programs),
             "program_lengths": [int(program.shape[0]) for program in self.programs],
+            "addressing": (
+                "immutable_opaque_program_content_v1"
+                if self.content_addressing
+                else "learned_slot_keys_v1"
+            ),
             "storage": "append_only_opaque_instruction_sequences_v1",
             "computation": "shared_register_interpreter_v1",
         }
@@ -425,7 +450,11 @@ class ExternalSequenceProgramMemory(nn.Module):
             )
         if not bool(torch.isfinite(codes).all()):
             raise ValueError("program codes must be finite")
-        self.programs.append(nn.Parameter(codes.detach().clone()))
+        detached_codes = codes.detach().clone()
+        self.programs.append(nn.Parameter(detached_codes.clone()))
+        self.address_programs.append(
+            nn.Parameter(detached_codes, requires_grad=False)
+        )
         key = nn.Parameter(torch.empty(self.instruction_width))
         nn.init.normal_(key, mean=0.0, std=0.02)
         self.slot_keys.append(key)
@@ -452,6 +481,18 @@ class ExternalSequenceProgramMemory(nn.Module):
             or codes.shape[2] != self.instruction_width
         ):
             raise ValueError("program codes must have shape [batch, steps, width]")
+        if self.content_addressing:
+            positions = torch.arange(
+                1,
+                codes.shape[1] + 1,
+                device=codes.device,
+                dtype=codes.dtype,
+            ).view(1, -1, 1)
+            weighted = (codes * positions).sum(dim=1)
+            # Instruction vectors are deliberately small. A fixed gain keeps
+            # distinct ordered programs separable in the address metric while
+            # preserving the opaque learned code values.
+            return weighted * 32.0
         _, hidden = self.query_encoder(codes)
         return self.program_query(hidden[-1])
 
@@ -460,13 +501,31 @@ class ExternalSequenceProgramMemory(nn.Module):
             raise ValueError("sequence program route query has the wrong shape")
         if not len(self.programs):
             raise ValueError("cannot route an empty sequence program memory")
-        keys = torch.stack(tuple(self.slot_keys), dim=0)
-        query_latent = self.route_query_encoder(query)
-        key_latent = self.key_encoder(keys)
-        logits = torch.einsum("bh,sh->bs", query_latent, key_latent)
-        return torch.softmax(
+        if self.content_addressing:
+            stored = torch.stack(
+                tuple(
+                    self.encode_program(program.unsqueeze(0)).squeeze(0)
+                    for program in self.address_programs
+                ),
+                dim=0,
+            )
+            logits = -(
+                query.unsqueeze(1) - stored.unsqueeze(0)
+            ).square().mean(dim=-1)
+        else:
+            keys = torch.stack(tuple(self.slot_keys), dim=0)
+            query_latent = self.route_query_encoder(query)
+            key_latent = self.key_encoder(keys)
+            logits = torch.einsum("bh,sh->bs", query_latent, key_latent)
+        soft_weights = torch.softmax(
             logits / (self.router_temperature * (self.router_hidden**0.5)), dim=-1
         )
+        if not self.hard_routing:
+            return soft_weights
+        hard_weights = F.one_hot(
+            soft_weights.argmax(dim=-1), num_classes=soft_weights.shape[-1]
+        ).to(dtype=soft_weights.dtype)
+        return hard_weights + soft_weights - soft_weights.detach()
 
 
 class _ExternalSequenceOperatorSlot(nn.Module):
