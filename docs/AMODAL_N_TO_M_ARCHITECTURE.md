@@ -5170,3 +5170,26 @@ facts and inference derives behavior from the current goal. The next pressure
 test must vary the query representation and modality/frontend while keeping
 the factual bank fixed, then verify that selected logical addresses and
 retention floors survive that replacement.
+
+## Explicit representation-space compatibility and migration (2026-08-09)
+
+The external factual bank and planner now carry explicit state and intention
+representation-space IDs. Goal-conditioned model search rejects equal-width
+but semantically different replacements instead of silently interpreting them
+as compatible. The IDs are persisted in bank configuration and included in its
+digest; legacy payloads without IDs load into the documented `opaque-state-v1`
+and `opaque-intention-v1` defaults.
+
+Replacement is copy-on-write. A candidate bank can be approved only when its
+stable logical addresses and opaque context keys match, held-out transition
+predictions remain within tolerance, and an optional retention probe passes.
+The live bank is not mutated by approval. This creates the needed interface
+version gate without pretending that metadata relabeling repairs arbitrary
+representation drift: a real controller/frontend replacement still needs a
+learned alignment or a behavior-preserving migration candidate.
+
+In the two-seed migration audit, the unchanged candidate was accepted with
+zero held-out prediction difference, both drifted candidates were rejected,
+and the old planner/bank mismatch was rejected before search. Evidence is
+archived in
+`session_records/sequence_working_memory_2026-08-02/external_transition_representation_migration_promoted_2026-08-09/`.

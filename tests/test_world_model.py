@@ -449,6 +449,104 @@ def test_model_based_planner_selects_external_model_by_goal_reachability() -> No
     assert second.scores[1] < second.scores[0]
 
 
+def test_external_model_selection_requires_matching_representation_spaces() -> None:
+    bank = ExternalTransitionModelBank(
+        1,
+        1,
+        2,
+        hidden_width=4,
+        state_space_id="controller-state-v2",
+        intention_space_id="controller-intention-v2",
+    )
+    bank.ensure_context(torch.tensor([1.0, 0.0]))
+    planner = ExternalModelBasedPlanner(
+        bank,
+        beam_width=1,
+        state_space_id="controller-state-v1",
+        intention_space_id="controller-intention-v2",
+    )
+
+    with pytest.raises(ValueError, match="state representation space"):
+        planner.select_bank_model(
+            bank,
+            torch.zeros(1, 1),
+            torch.ones(1, 1),
+            torch.ones(1, 1),
+            horizon=1,
+        )
+
+
+def test_external_model_bank_representation_spaces_round_trip() -> None:
+    bank = ExternalTransitionModelBank(
+        1,
+        1,
+        2,
+        hidden_width=4,
+        state_space_id="state-replacement-v3",
+        intention_space_id="intention-replacement-v3",
+    )
+    bank.ensure_context(torch.tensor([1.0, 0.0]))
+
+    restored = ExternalTransitionModelBank.from_payload(bank.payload())
+
+    assert restored.state_space_id == "state-replacement-v3"
+    assert restored.intention_space_id == "intention-replacement-v3"
+    assert restored.digest() == bank.digest()
+    assert restored.configuration()["representation_space_schema"] == (
+        "neural-computer.external-representation-space.v1"
+    )
+
+
+def test_external_model_bank_verified_representation_migration_is_copy_on_write() -> None:
+    source = ExternalTransitionModelBank(
+        1,
+        1,
+        2,
+        hidden_width=4,
+        state_space_id="state-v1",
+        intention_space_id="intention-v1",
+    )
+    source_index = source.ensure_context(torch.tensor([1.0, 0.0]))
+    candidate = ExternalTransitionModelBank(
+        1,
+        1,
+        2,
+        hidden_width=4,
+        state_space_id="state-v2",
+        intention_space_id="intention-v2",
+    )
+    candidate_index = candidate.ensure_context(torch.tensor([1.0, 0.0]))
+    candidate.models[candidate_index].load_state_dict(
+        source.models[source_index].state_dict()
+    )
+    heldout = ExternalTransitionObservation(
+        state=torch.tensor([[0.2], [0.8]]),
+        intention=torch.tensor([[0.1], [-0.3]]),
+        next_state=torch.zeros(2, 1),
+    )
+    source_digest = source.digest()
+    receipt = source.migrate_representation_verified(
+        candidate,
+        [(source.slot_ids[source_index], heldout)],
+        retention_probe=lambda bank: bank.context_count == 1,
+    )
+
+    assert receipt.accepted
+    assert receipt.max_heldout_difference == 0.0
+    assert source.digest() == source_digest
+    assert source.state_space_id == "state-v1"
+    assert candidate.state_space_id == "state-v2"
+
+    next(candidate.models[candidate_index].parameters()).data.add_(1.0)
+    rejected = source.migrate_representation_verified(
+        candidate,
+        [(source.slot_ids[source_index], heldout)],
+        prediction_tolerance=1e-8,
+    )
+    assert not rejected.accepted
+    assert rejected.reason == "held-out transition behavior changed"
+
+
 def test_transition_model_bank_consolidation_shares_only_equivalent_models() -> None:
     torch.manual_seed(1212)
     bank = ExternalTransitionModelBank(2, 1, 3, hidden_width=8)

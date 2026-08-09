@@ -97,6 +97,15 @@ EXTERNAL_MODEL_PLANNER_SCHEMA = "neural-computer.external-model-planner.v1"
 EXTERNAL_GOAL_CONDITIONED_MODEL_SELECTION_SCHEMA = (
     "neural-computer.external-goal-conditioned-model-selection.v1"
 )
+EXTERNAL_REPRESENTATION_SPACE_SCHEMA = (
+    "neural-computer.external-representation-space.v1"
+)
+EXTERNAL_TRANSITION_MODEL_MIGRATION_SCHEMA = (
+    "neural-computer.external-transition-model-migration.v1"
+)
+
+DEFAULT_STATE_SPACE_ID = "opaque-state-v1"
+DEFAULT_INTENTION_SPACE_ID = "opaque-intention-v1"
 
 EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY = "nonlinear_mlp_v1"
 EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY = "affine_sufficient_statistics_v1"
@@ -374,6 +383,48 @@ class ExternalTransitionModelLifetimeTelemetry:
         return self
 
 
+@dataclass(frozen=True)
+class ExternalTransitionModelMigrationReceipt:
+    """Auditable copy-on-write migration between representation spaces.
+
+    Migration approves a candidate bank for caller-side swapping; it never
+    relabels or mutates the live bank. Held-out observations are addressed by
+    stable slot ID so physical reordering cannot hide a semantic mismatch.
+    """
+
+    accepted: bool
+    source_state_space_id: str
+    target_state_space_id: str
+    source_intention_space_id: str
+    target_intention_space_id: str
+    context_count: int
+    max_heldout_difference: float
+    source_digest: str
+    target_digest: str
+    reason: str
+    schema: str = EXTERNAL_TRANSITION_MODEL_MIGRATION_SCHEMA
+
+    def validate(self) -> ExternalTransitionModelMigrationReceipt:
+        if self.schema != EXTERNAL_TRANSITION_MODEL_MIGRATION_SCHEMA:
+            raise ValueError("unsupported transition-model migration schema")
+        if self.context_count < 0:
+            raise ValueError("transition-model migration context count is invalid")
+        if self.accepted and not math.isfinite(self.max_heldout_difference):
+            raise ValueError("accepted transition-model migration difference is invalid")
+        for name, value in (
+            ("source_state_space_id", self.source_state_space_id),
+            ("target_state_space_id", self.target_state_space_id),
+            ("source_intention_space_id", self.source_intention_space_id),
+            ("target_intention_space_id", self.target_intention_space_id),
+            ("source_digest", self.source_digest),
+            ("target_digest", self.target_digest),
+            ("reason", self.reason),
+        ):
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"transition-model migration {name} is missing")
+        return self
+
+
 class ExternalTransitionModelBank(nn.Module):
     """Append-only external transition-model slots keyed by opaque context.
 
@@ -399,6 +450,8 @@ class ExternalTransitionModelBank(nn.Module):
         adaptation_learning_rate: float = 1e-2,
         random_feature_width: int = 128,
         random_feature_seed: int = 0,
+        state_space_id: str = DEFAULT_STATE_SPACE_ID,
+        intention_space_id: str = DEFAULT_INTENTION_SPACE_ID,
     ) -> None:
         super().__init__()
         if min(state_width, intention_width, context_width, hidden_width) < 1:
@@ -420,6 +473,12 @@ class ExternalTransitionModelBank(nn.Module):
             raise ValueError("transition-model adaptation learning rate must be positive")
         if random_feature_width < 1:
             raise ValueError("random-feature width must be positive")
+        for name, value in (
+            ("state_space_id", state_space_id),
+            ("intention_space_id", intention_space_id),
+        ):
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"transition-model {name} must be non-empty")
         self.state_width = int(state_width)
         self.intention_width = int(intention_width)
         self.context_width = int(context_width)
@@ -431,6 +490,8 @@ class ExternalTransitionModelBank(nn.Module):
         self.adaptation_learning_rate = float(adaptation_learning_rate)
         self.random_feature_width = int(random_feature_width)
         self.random_feature_seed = int(random_feature_seed)
+        self.state_space_id = state_space_id.strip()
+        self.intention_space_id = intention_space_id.strip()
         self.models = nn.ModuleList()
         self._contexts: list[torch.Tensor] = []
         self._model_families: list[str] = []
@@ -852,6 +913,9 @@ class ExternalTransitionModelBank(nn.Module):
             "state_width": self.state_width,
             "intention_width": self.intention_width,
             "context_width": self.context_width,
+            "representation_space_schema": EXTERNAL_REPRESENTATION_SPACE_SCHEMA,
+            "state_space_id": self.state_space_id,
+            "intention_space_id": self.intention_space_id,
             "hidden_width": self.hidden_width,
             "model_family": self.model_family,
             "model_families": list(self._model_families),
@@ -1518,6 +1582,12 @@ class ExternalTransitionModelBank(nn.Module):
             ),
             random_feature_width=int(configuration.get("random_feature_width", 128)),
             random_feature_seed=int(configuration.get("random_feature_seed", 0)),
+            state_space_id=str(
+                configuration.get("state_space_id", DEFAULT_STATE_SPACE_ID)
+            ),
+            intention_space_id=str(
+                configuration.get("intention_space_id", DEFAULT_INTENTION_SPACE_ID)
+            ),
             capacity=(
                 None
                 if configuration.get("capacity") is None
@@ -1577,12 +1647,11 @@ class ExternalTransitionModelBank(nn.Module):
         bank._next_slot_id = next_slot_id
         bank._restore_lifetime_telemetry(payload.get("lifetime_telemetry"))
         if (
-            payload.get("sha256") != bank._compressed_payload_digest(payload)
-            and (
-                payload.get("slot_ids") is not None
-                or payload.get("sha256")
-                != bank._legacy_compressed_payload_digest(payload)
-            )
+            payload.get("sha256")
+            not in {
+                bank._compressed_payload_digest(payload),
+                bank._legacy_compressed_payload_digest(payload),
+            }
         ):
             raise ValueError("compressed transition-model payload checksum mismatch")
         return bank
@@ -1705,12 +1774,131 @@ class ExternalTransitionModelBank(nn.Module):
         digest.update(self.content_digest().encode("utf-8"))
         return digest.hexdigest()
 
+    def migrate_representation_verified(
+        self,
+        candidate: ExternalTransitionModelBank,
+        heldout: Sequence[tuple[int, ExternalTransitionObservation]],
+        *,
+        prediction_tolerance: float = 1e-6,
+        retention_probe: Callable[[ExternalTransitionModelBank], bool] | None = None,
+    ) -> ExternalTransitionModelMigrationReceipt:
+        """Approve a replacement bank only after stable-address verification.
+
+        The candidate may carry a replacement state or intention space and may
+        contain migrated model weights. The live bank remains untouched; the
+        caller swaps to the candidate only after an accepted receipt. This is
+        a compatibility gate, not a claim that arbitrary representation drift
+        can be repaired without learned alignment data.
+        """
+
+        if not isinstance(candidate, ExternalTransitionModelBank):
+            raise TypeError("transition-model migration candidate is invalid")
+        if prediction_tolerance < 0.0 or not math.isfinite(prediction_tolerance):
+            raise ValueError("transition-model migration tolerance is invalid")
+        if not heldout:
+            raise ValueError("transition-model migration needs held-out evidence")
+        if (
+            self.state_width != candidate.state_width
+            or self.intention_width != candidate.intention_width
+            or self.context_width != candidate.context_width
+            or self.slot_ids != candidate.slot_ids
+        ):
+            raise ValueError("transition-model migration structure does not match")
+        if not any(
+            (
+                self.state_space_id != candidate.state_space_id,
+                self.intention_space_id != candidate.intention_space_id,
+            )
+        ):
+            raise ValueError("transition-model migration does not change a space")
+        if not torch.allclose(self.contexts, candidate.contexts, atol=1e-6, rtol=1e-6):
+            raise ValueError("transition-model migration context keys changed")
+        before_digest = self.digest()
+        max_difference = 0.0
+        for slot_id, observation in heldout:
+            source_index = self.physical_index_for_slot_id(slot_id)
+            candidate_index = candidate.physical_index_for_slot_id(slot_id)
+            observation.validate(
+                state_width=self.state_width,
+                intention_width=self.intention_width,
+            )
+            with torch.no_grad():
+                source_prediction = self.models[source_index](
+                    observation.state,
+                    observation.intention,
+                )
+                candidate_prediction = candidate.models[candidate_index](
+                    observation.state,
+                    observation.intention,
+                )
+            max_difference = max(
+                max_difference,
+                float(
+                    (source_prediction - candidate_prediction).square().mean()
+                ),
+            )
+        if max_difference > prediction_tolerance:
+            return ExternalTransitionModelMigrationReceipt(
+                accepted=False,
+                source_state_space_id=self.state_space_id,
+                target_state_space_id=candidate.state_space_id,
+                source_intention_space_id=self.intention_space_id,
+                target_intention_space_id=candidate.intention_space_id,
+                context_count=self.context_count,
+                max_heldout_difference=max_difference,
+                source_digest=before_digest,
+                target_digest=candidate.digest(),
+                reason="held-out transition behavior changed",
+            ).validate()
+        if retention_probe is not None and not callable(retention_probe):
+            raise TypeError("transition-model migration retention probe is invalid")
+        if retention_probe is not None and not bool(retention_probe(candidate)):
+            return ExternalTransitionModelMigrationReceipt(
+                accepted=False,
+                source_state_space_id=self.state_space_id,
+                target_state_space_id=candidate.state_space_id,
+                source_intention_space_id=self.intention_space_id,
+                target_intention_space_id=candidate.intention_space_id,
+                context_count=self.context_count,
+                max_heldout_difference=max_difference,
+                source_digest=before_digest,
+                target_digest=candidate.digest(),
+                reason="candidate retention probe failed",
+            ).validate()
+        return ExternalTransitionModelMigrationReceipt(
+            accepted=True,
+            source_state_space_id=self.state_space_id,
+            target_state_space_id=candidate.state_space_id,
+            source_intention_space_id=self.intention_space_id,
+            target_intention_space_id=candidate.intention_space_id,
+            context_count=self.context_count,
+            max_heldout_difference=max_difference,
+            source_digest=before_digest,
+            target_digest=candidate.digest(),
+            reason="candidate passed stable-address held-out migration checks",
+        ).validate()
+
     def _legacy_digest(self) -> str:
         configuration = self.configuration()
         configuration.pop("slot_addressing", None)
+        configuration.pop("representation_space_schema", None)
+        configuration.pop("state_space_id", None)
+        configuration.pop("intention_space_id", None)
         digest = hashlib.sha256()
         digest.update(repr(configuration).encode("utf-8"))
         digest.update(self._legacy_content_digest().encode("utf-8"))
+        return digest.hexdigest()
+
+    def _legacy_stable_digest(self) -> str:
+        """Checksum payloads from before representation-space versioning."""
+
+        configuration = self.configuration()
+        configuration.pop("representation_space_schema", None)
+        configuration.pop("state_space_id", None)
+        configuration.pop("intention_space_id", None)
+        digest = hashlib.sha256()
+        digest.update(repr(configuration).encode("utf-8"))
+        digest.update(self.content_digest().encode("utf-8"))
         return digest.hexdigest()
 
     def payload(self) -> dict[str, object]:
@@ -1795,6 +1983,12 @@ class ExternalTransitionModelBank(nn.Module):
             ),
             random_feature_width=int(configuration.get("random_feature_width", 128)),
             random_feature_seed=int(configuration.get("random_feature_seed", 0)),
+            state_space_id=str(
+                configuration.get("state_space_id", DEFAULT_STATE_SPACE_ID)
+            ),
+            intention_space_id=str(
+                configuration.get("intention_space_id", DEFAULT_INTENTION_SPACE_ID)
+            ),
             capacity=(
                 None
                 if configuration.get("capacity") is None
@@ -1854,10 +2048,8 @@ class ExternalTransitionModelBank(nn.Module):
         bank._restore_lifetime_telemetry(payload.get("lifetime_telemetry"))
         if (
             payload.get("sha256") != bank.digest()
-            and (
-                payload.get("slot_ids") is not None
-                or payload.get("sha256") != bank._legacy_digest()
-            )
+            and payload.get("sha256")
+            not in {bank._legacy_stable_digest(), bank._legacy_digest()}
         ):
             raise ValueError("transition-model bank checksum mismatch")
         return bank
@@ -5364,6 +5556,8 @@ class ExternalModelBasedPlanner:
         *,
         beam_width: int = 4,
         goal_evaluator: ExternalGoalEvaluator | None = None,
+        state_space_id: str = DEFAULT_STATE_SPACE_ID,
+        intention_space_id: str = DEFAULT_INTENTION_SPACE_ID,
     ) -> None:
         if not isinstance(model, nn.Module) or not all(
             isinstance(getattr(model, name, None), int)
@@ -5374,9 +5568,17 @@ class ExternalModelBasedPlanner:
             raise ValueError("planner beam_width must be positive")
         if goal_evaluator is not None and goal_evaluator.state_width != model.state_width:
             raise ValueError("goal evaluator width must match transition model state width")
+        for name, value in (
+            ("state_space_id", state_space_id),
+            ("intention_space_id", intention_space_id),
+        ):
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"planner {name} must be non-empty")
         self.model = model
         self.beam_width = int(beam_width)
         self.goal_evaluator = goal_evaluator
+        self.state_space_id = state_space_id.strip()
+        self.intention_space_id = intention_space_id.strip()
 
     def configuration(self) -> dict[str, int | str]:
         return {
@@ -5389,6 +5591,9 @@ class ExternalModelBasedPlanner:
                 else "terminal_opaque_goal_state_match_v1"
             ),
             "policy": "none_behavior_derived_at_inference_v1",
+            "representation_space_schema": EXTERNAL_REPRESENTATION_SPACE_SCHEMA,
+            "state_space_id": self.state_space_id,
+            "intention_space_id": self.intention_space_id,
         }
 
     def _predict(
@@ -5571,6 +5776,14 @@ class ExternalModelBasedPlanner:
             raise TypeError("goal-conditioned selection requires an external model bank")
         if bank.state_width != self.model.state_width or bank.intention_width != self.model.intention_width:
             raise ValueError("model bank dimensions do not match planner")
+        if bank.state_space_id != self.state_space_id:
+            raise ValueError(
+                "model bank state representation space does not match planner"
+            )
+        if bank.intention_space_id != self.intention_space_id:
+            raise ValueError(
+                "model bank intention representation space does not match planner"
+            )
         if state.shape[0] != 1 or goal_state.shape[0] != 1:
             raise ValueError("goal-conditioned bank selection accepts one query row")
         if bank.context_count < 1:
@@ -5602,6 +5815,8 @@ class ExternalModelBasedPlanner:
 
 
 __all__ = [
+    "DEFAULT_INTENTION_SPACE_ID",
+    "DEFAULT_STATE_SPACE_ID",
     "EXTERNAL_CONTEXTUAL_EVIDENCE_CALIBRATOR_SCHEMA",
     "EXTERNAL_CONTEXT_ADDRESS_RESOLVER_SCHEMA",
     "EXTERNAL_GOAL_CONDITIONED_MODEL_SELECTION_SCHEMA",
@@ -5609,6 +5824,7 @@ __all__ = [
     "EXTERNAL_MODEL_PLANNER_SCHEMA",
     "EXTERNAL_ONLINE_CONTEXT_RESOLVER_SCHEMA",
     "EXTERNAL_ONLINE_TRANSITION_CONTEXT_ROUTER_SCHEMA",
+    "EXTERNAL_REPRESENTATION_SPACE_SCHEMA",
     "EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY",
     "EXTERNAL_TRANSITION_CONTEXT_ENCODER_SCHEMA",
     "EXTERNAL_TRANSITION_EVIDENCE_CALIBRATOR_SCHEMA",
@@ -5621,6 +5837,7 @@ __all__ = [
     "EXTERNAL_TRANSITION_MODEL_CONSOLIDATION_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_FAMILY_SELECTION_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_GROWTH_SCHEMA",
+    "EXTERNAL_TRANSITION_MODEL_MIGRATION_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_SCHEMA",
     "EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY",
     "EXTERNAL_TRANSITION_OBSERVATION_SCHEMA",
@@ -5645,6 +5862,7 @@ __all__ = [
     "ExternalTransitionModelCompressionSelection",
     "ExternalTransitionModelConsolidationReceipt",
     "ExternalTransitionModelGrowthReceipt",
+    "ExternalTransitionModelMigrationReceipt",
     "ExternalTransitionObservation",
     "GoalConditionedModelSelection",
     "ModelBasedPlanningResult",
