@@ -1,0 +1,34 @@
+{
+  "schema": "neural-computer.external-transition-goal-conditioned-relevance.v1",
+  "seed": 1702,
+  "configuration": {
+    "train_episodes": 200,
+    "evaluation_episodes": 200,
+    "slot_count": 4,
+    "query": "opaque learned-space_key_alignment_v1",
+    "relevance_weight": 100.0
+  },
+  "gates": {
+    "query_conditioned_selection": true,
+    "exact_policy_persistence": true,
+    "zero_controller_updates": true,
+    "zero_replayed_transition_examples": true
+  },
+  "promoted": true,
+  "metrics": {
+    "learned_train_accuracy": 1.0,
+    "query_conditioned_eval_accuracy": 1.0,
+    "matched_telemetry_random_reference": 0.5,
+    "policy_digest": "8f6ab262adbed490d581a6c4a3e55e5858cfafbec3439eeb646b6be8240e7123"
+  },
+  "accounting": {
+    "unique_verifier_bits": 200,
+    "unique_logical_lifetimes": 800,
+    "policy_optimizer_updates": 200,
+    "controller_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "old_memory_replay": 0,
+    "wall_seconds": 1.7550203750142828
+  },
+  "claim_boundary": "goal-conditioned external retrieval over learned opaque keys; not general continual learning"
+}

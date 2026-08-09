@@ -195,8 +195,50 @@ def test_bank_adaptation_updates_lifetime_telemetry_without_replay() -> None:
     )
     telemetry = bank.lifetime_telemetry()
     assert telemetry.usage.tolist() == [4.0]
-    assert telemetry.logical_clock == 4
+    assert telemetry.logical_clock == 1
     assert float(telemetry.prediction_error[0]) > 0.0
+
+
+def test_lifetime_telemetry_batches_share_one_logical_timestamp() -> None:
+    bank = ExternalTransitionModelBank(2, 1, 3, hidden_width=8)
+    bank.ensure_context(torch.tensor([1.0, 0.0, 0.0]))
+    bank.ensure_context(torch.tensor([0.0, 1.0, 0.0]))
+    bank.record_lifetime_observations((0, 1), (0.1, 0.2))
+    telemetry = bank.lifetime_telemetry()
+    assert telemetry.logical_clock == 1
+    assert telemetry.usage.tolist() == [1.0, 1.0]
+    assert telemetry.age.tolist() == [0.0, 0.0]
+    bank.record_lifetime_observation(0, 0.3)
+    assert bank.lifetime_telemetry().age.tolist() == [0.0, 1.0]
+
+
+def test_query_conditioned_eviction_preserves_aligned_slot_under_capacity_pressure() -> None:
+    torch.manual_seed(1603)
+    bank = ExternalTransitionModelBank(2, 1, 3, hidden_width=8, capacity=3)
+    bank.ensure_context(torch.tensor([1.0, 0.0, 0.0]))
+    bank.ensure_context(torch.tensor([0.0, 1.0, 0.0]))
+    bank.ensure_context(torch.tensor([0.0, 0.0, 1.0]))
+    policy = ExternalTransitionModelLifetimePolicy(3, hidden_width=8)
+    query = torch.tensor([0.0, 1.0, 0.0])
+    proposal = policy.propose_from_query(
+        bank,
+        query,
+        torch.zeros(3, dtype=torch.bool),
+        relevance_weight=100.0,
+    )
+    assert proposal.selected_slot_id != 1
+    proposal, receipt = policy.evict_from_bank_query_verified(
+        bank,
+        query,
+        torch.zeros(3, dtype=torch.bool),
+        lambda candidate: candidate.slot_ids in {(0, 1, 2), tuple(
+            slot_id for slot_id in (0, 1, 2) if slot_id != proposal.selected_slot_id
+        )},
+        relevance_weight=100.0,
+        update=False,
+    )
+    assert receipt is not None and receipt.accepted
+    assert 1 in bank.slot_ids
 def test_affine_statistics_is_a_bank_fast_path_without_optimizer_replay() -> None:
     observation = _affine_observation()
     bank = ExternalTransitionModelBank(

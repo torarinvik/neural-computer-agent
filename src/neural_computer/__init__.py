@@ -255,6 +255,11 @@ from .register import (
     InstructionConditionedRelationalTransition,
     LearnedRegisterRoleBinding,
 )
+from .relevance import (
+    GOAL_CONDITIONED_MEMORY_RELEVANCE_SCHEMA,
+    ExternalGoalConditionedMemoryRelevance,
+    GoalConditionedMemoryProposal,
+)
 from .retention import (
     RETENTION_LEDGER_SCHEMA,
     CapabilityRetentionLedger,
@@ -417,6 +422,7 @@ __all__ = [
     "EXTERNAL_TRANSITION_RANDOM_FEATURE_GROWTH_SCHEMA",
     "EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY",
     "EXTERNAL_TRANSITION_RANDOM_FEATURE_STATISTICS_SCHEMA",
+    "GOAL_CONDITIONED_MEMORY_RELEVANCE_SCHEMA",
     "GROWTH_PRIOR_SCHEMA",
     "HOLDOUT_LEDGER_SCHEMA",
     "INTENTION_SCHEMA",
@@ -498,6 +504,7 @@ __all__ = [
     "ExternalFastWeightCapabilityProgram",
     "ExternalFastWeightPlasticity",
     "ExternalFastWeightState",
+    "ExternalGoalConditionedMemoryRelevance",
     "ExternalGoalEvaluator",
     "ExternalGrowthPrior",
     "ExternalMemoryEvictionPolicy",
@@ -542,6 +549,7 @@ __all__ = [
     "ExternalTransitionModelLifetimeTelemetry",
     "ExternalTransitionObservation",
     "FactorizedOpaqueAddressRouter",
+    "GoalConditionedMemoryProposal",
     "GrowthLoadReceipt",
     "HoldoutLedger",
     "InstructionConditionedRelationalTransition",

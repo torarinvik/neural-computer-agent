@@ -1,0 +1,34 @@
+{
+  "schema": "neural-computer.external-transition-future-relevance-ambiguity.v1",
+  "seed": 1701,
+  "configuration": {
+    "train_episodes": 400,
+    "evaluation_episodes": 200,
+    "slot_count": 4,
+    "matched_telemetry": "usage_age_prediction_error_equalized_v1",
+    "hidden_future_rule": "random_retained_candidate_v1"
+  },
+  "gates": {
+    "no_signal_above_random": true,
+    "exact_policy_persistence": true,
+    "zero_controller_updates": true,
+    "zero_replayed_transition_examples": true
+  },
+  "promoted": false,
+  "metrics": {
+    "learned_train_accuracy": 0.51,
+    "learned_eval_accuracy": 0.46,
+    "random_expected_accuracy": 0.5,
+    "policy_digest": "83a18b6e90b4766532ad79196bada4c81e2348b9367385e0727600a533072530"
+  },
+  "accounting": {
+    "unique_verifier_bits": 400,
+    "unique_logical_lifetimes": 1600,
+    "policy_optimizer_updates": 400,
+    "controller_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "old_memory_replay": 0,
+    "wall_seconds": 4.078690499998629
+  },
+  "claim_boundary": "decisively rejected as a general relevance mechanism; generic telemetry cannot reveal random future relevance"
+}

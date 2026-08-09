@@ -663,28 +663,64 @@ class ExternalTransitionModelBank(nn.Module):
     ) -> None:
         """Update generic lifetime telemetry from one committed observation."""
 
-        self.physical_index_for_slot_id(slot_id)
+        self.record_lifetime_observations(
+            (slot_id,),
+            None if prediction_error is None else (prediction_error,),
+            elapsed_steps=elapsed_steps,
+        )
+
+    def record_lifetime_observations(
+        self,
+        slot_ids: Sequence[int],
+        prediction_errors: Sequence[float | None] | None = None,
+        *,
+        elapsed_steps: int = 1,
+    ) -> None:
+        """Update several accessed slots at one logical time step.
+
+        A committed observation bundle is simultaneous for lifetime purposes:
+        usage counts each row, but all rows receive the same logical timestamp.
+        This prevents arbitrary minibatch ordering from becoming a learned age
+        signal.
+        """
+
+        if not slot_ids:
+            raise ValueError("transition lifetime observation batch cannot be empty")
         if (
             not isinstance(elapsed_steps, int)
             or isinstance(elapsed_steps, bool)
             or elapsed_steps < 1
         ):
             raise ValueError("transition lifetime elapsed steps must be positive")
-        if prediction_error is not None and (
-            not math.isfinite(prediction_error) or prediction_error < 0.0
+        if prediction_errors is not None and len(prediction_errors) != len(slot_ids):
+            raise ValueError("transition lifetime errors are misaligned")
+        normalized_errors = (
+            [None] * len(slot_ids)
+            if prediction_errors is None
+            else list(prediction_errors)
+        )
+        for slot_id, prediction_error in zip(
+            slot_ids, normalized_errors, strict=True
         ):
-            raise ValueError("transition lifetime prediction error is invalid")
-        self._initialize_lifetime_slot(slot_id)
+            self.physical_index_for_slot_id(slot_id)
+            if prediction_error is not None and (
+                not math.isfinite(prediction_error) or prediction_error < 0.0
+            ):
+                raise ValueError("transition lifetime prediction error is invalid")
+            self._initialize_lifetime_slot(slot_id)
         self._lifetime_clock += elapsed_steps
-        self._lifetime_usage[slot_id] += 1
-        self._lifetime_last_access[slot_id] = self._lifetime_clock
-        if prediction_error is not None:
-            previous = self._lifetime_prediction_error.get(slot_id)
-            self._lifetime_prediction_error[slot_id] = float(
-                prediction_error
-                if previous is None
-                else 0.75 * previous + 0.25 * prediction_error
-            )
+        for slot_id, prediction_error in zip(
+            slot_ids, normalized_errors, strict=True
+        ):
+            self._lifetime_usage[slot_id] += 1
+            self._lifetime_last_access[slot_id] = self._lifetime_clock
+            if prediction_error is not None:
+                previous = self._lifetime_prediction_error.get(slot_id)
+                self._lifetime_prediction_error[slot_id] = float(
+                    prediction_error
+                    if previous is None
+                    else 0.75 * previous + 0.25 * prediction_error
+                )
 
     def lifetime_telemetry(self) -> ExternalTransitionModelLifetimeTelemetry:
         """Return bank-owned telemetry in current physical order."""
@@ -1189,6 +1225,8 @@ class ExternalTransitionModelBank(nn.Module):
 
         loss = self.loss(observation, context)
         indices = self._context_indices(context)
+        lifetime_slot_ids: list[int] = []
+        lifetime_errors: list[float] = []
         with torch.no_grad():
             for row, index in enumerate(indices):
                 prediction = self.models[index](
@@ -1200,7 +1238,9 @@ class ExternalTransitionModelBank(nn.Module):
                     .square()
                     .mean()
                 )
-                self.record_lifetime_observation(self.slot_id_at(index), error)
+                lifetime_slot_ids.append(self.slot_id_at(index))
+                lifetime_errors.append(error)
+        self.record_lifetime_observations(lifetime_slot_ids, lifetime_errors)
         for index in sorted(set(indices)):
             rows = [row for row, selected in enumerate(indices) if selected == index]
             subset = self._observation_rows(observation, rows)
@@ -1978,6 +2018,77 @@ class ExternalTransitionModelLifetimePolicy(nn.Module):
             reason="learned lifetime score selected an unprotected logical slot",
         ).validate()
 
+    @torch.no_grad()
+    def propose_from_query(
+        self,
+        bank: ExternalTransitionModelBank,
+        query: torch.Tensor,
+        protected: torch.Tensor,
+        *,
+        relevance_weight: float = 1.0,
+    ) -> ExternalTransitionModelLifetimeProposal:
+        """Bias eviction away from slots aligned with a learned query.
+
+        The query and bank contexts already inhabit a learned opaque space.
+        Shared cosine addressing supplies the relevance term without adding a
+        fresh random adapter to the critical path.  Larger adjusted scores
+        still mean eviction.
+        """
+
+        if not math.isfinite(relevance_weight) or relevance_weight < 0.0:
+            raise ValueError("transition lifetime relevance weight is invalid")
+        if query.ndim == 1:
+            query = query.unsqueeze(0)
+        _validate_tensor(
+            query,
+            name="transition lifetime relevance query",
+            ndim=2,
+            width=bank.context_width,
+        )
+        if query.shape[0] != 1:
+            raise ValueError("transition lifetime relevance query must have one row")
+        contexts = bank.contexts.to(query)
+        if not bank.context_count:
+            raise ValueError("transition lifetime query needs at least one slot")
+        if protected.ndim != 1 or protected.shape[0] != bank.context_count:
+            raise ValueError("transition lifetime query protection mask is misaligned")
+        if protected.dtype != torch.bool:
+            raise TypeError("transition lifetime query protection mask must be boolean")
+        telemetry = bank.lifetime_telemetry()
+        lifetime_scores = self(
+            contexts,
+            telemetry.usage.to(contexts),
+            telemetry.age.to(contexts),
+            telemetry.prediction_error.to(contexts),
+        )
+        query_key = torch.nn.functional.normalize(query, dim=-1)
+        memory_keys = torch.nn.functional.normalize(contexts, dim=-1)
+        relevance = memory_keys @ query_key.squeeze(0)
+        scores = lifetime_scores - relevance_weight * relevance
+        eligible_indices = [
+            index
+            for index, is_protected in enumerate(protected.tolist())
+            if not is_protected
+        ]
+        if not eligible_indices:
+            return ExternalTransitionModelLifetimeProposal(
+                selected_slot_id=None,
+                scores=scores.new_empty((0,)),
+                eligible_slot_ids=(),
+                reason="all query-conditioned lifetime slots are protected",
+            ).validate()
+        selected_index = max(
+            eligible_indices,
+            key=lambda index: (float(scores[index]), -index),
+        )
+        eligible = tuple(bank.slot_id_at(index) for index in eligible_indices)
+        return ExternalTransitionModelLifetimeProposal(
+            selected_slot_id=bank.slot_id_at(selected_index),
+            scores=scores[eligible_indices].detach().clone(),
+            eligible_slot_ids=eligible,
+            reason="query-conditioned relevance adjusted lifetime eviction score",
+        ).validate()
+
     def adaptation_step(
         self,
         contexts: torch.Tensor,
@@ -2097,6 +2208,50 @@ class ExternalTransitionModelLifetimePolicy(nn.Module):
             proposal.selected_slot_id,
             retention_probe,
         )
+
+    def evict_from_bank_query_verified(
+        self,
+        bank: ExternalTransitionModelBank,
+        query: torch.Tensor,
+        protected: torch.Tensor,
+        retention_probe: Callable[[ExternalTransitionModelBank], bool],
+        *,
+        relevance_weight: float = 1.0,
+        optimizer: torch.optim.Optimizer | None = None,
+        update: bool = True,
+    ) -> tuple[
+        ExternalTransitionModelLifetimeProposal,
+        ExternalTransitionModelEvictionReceipt | None,
+    ]:
+        """Run a query-conditioned, verifier-gated external eviction."""
+
+        telemetry = bank.lifetime_telemetry()
+        contexts_before = bank.contexts
+        slot_ids_before = bank.slot_ids
+        proposal = self.propose_from_query(
+            bank,
+            query,
+            protected,
+            relevance_weight=relevance_weight,
+        )
+        if proposal.selected_slot_id is None:
+            return proposal, None
+        receipt = bank.evict_verified_id(
+            proposal.selected_slot_id,
+            retention_probe,
+        )
+        if update:
+            self.adaptation_step(
+                contexts_before,
+                slot_ids_before,
+                telemetry.usage,
+                telemetry.age,
+                telemetry.prediction_error,
+                proposal.selected_slot_id,
+                receipt.accepted,
+                optimizer,
+            )
+        return proposal, receipt
 
     def state_payload(self) -> dict[str, object]:
         """Persist the external policy without any controller parameters."""

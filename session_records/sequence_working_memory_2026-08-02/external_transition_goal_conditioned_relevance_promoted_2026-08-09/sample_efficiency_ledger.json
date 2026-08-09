@@ -1,0 +1,31 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_transition_goal_conditioned_relevance",
+  "entries": [
+    {
+      "seed": 1701,
+      "arm": "query-conditioned-external-lifetime-selection",
+      "unique_verifier_bits": 200,
+      "unique_logical_lifetimes": 800,
+      "optimizer_updates": 200,
+      "replayed_examples": 0,
+      "controller_updates": 0,
+      "heldout_selection": 1.0,
+      "matched_telemetry_random_control": 0.5,
+      "promoted": true
+    },
+    {
+      "seed": 1702,
+      "arm": "query-conditioned-external-lifetime-selection",
+      "unique_verifier_bits": 200,
+      "unique_logical_lifetimes": 800,
+      "optimizer_updates": 200,
+      "replayed_examples": 0,
+      "controller_updates": 0,
+      "heldout_selection": 1.0,
+      "matched_telemetry_random_control": 0.5,
+      "promoted": true
+    }
+  ],
+  "claim_boundary": "goal-conditioned external retrieval over learned opaque keys; not general continual learning"
+}

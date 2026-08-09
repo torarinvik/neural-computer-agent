@@ -4959,6 +4959,45 @@ with zero historical evidence, so no old rows are replayed. This is still not
 unrestricted neural computation; distribution shift, repeated growth, and
 long-horizon retention remain unverified before treating it as general
 continual learning.
+
+## Goal-conditioned external relevance (2026-08-09)
+
+The ambiguity control identifies the missing signal; the corresponding
+external boundary now consumes a learned opaque query aligned with the current
+goal and compares it with stable memory context keys. Query/key cosine
+alignment adjusts the lifetime proposal away from relevant slots, while the
+generic telemetry scorer and verifier-gated copy-on-write transaction remain
+independent and replaceable.
+
+On two seeds, the query-conditioned transaction achieved `1.000` held-out
+selection versus `0.500` for the matched-telemetry random reference. Retained
+factual models passed held-out probes, policy checkpoints restored exactly,
+and controller updates and replayed transition examples were zero. Evidence
+is archived in
+`session_records/sequence_working_memory_2026-08-02/external_transition_goal_conditioned_relevance_promoted_2026-08-09/`.
+
+This promotes the retrieval boundary, not upstream query learning: the query
+is treated as a learned output of the replaceable controller/event system.
+The next bottleneck is verifying that learned queries remain stable across
+modalities and controller replacements, then integrating verified
+consolidation/compression into the same goal-conditioned lifecycle.
+
+## Matched-telemetry future relevance control (2026-08-09)
+
+The next control equalized bank-owned usage, age, and factual prediction-error
+telemetry across four real transition models. Two candidate memories were
+otherwise indistinguishable, while an opaque future schedule randomly selected
+which one would be needed later. The lifetime policy achieved held-out
+selection `0.460`/`0.595` across two seeds against a `0.500` random ceiling.
+
+This result is decisively rejected as a general relevance mechanism. It passed
+exact policy persistence, zero-replay, and zero-controller-update gates, but it
+shows that more generic lifetime heuristics cannot infer information that is
+absent from the current evidence. The next boundary must be a
+goal-conditioned external query/relevance mechanism: learned current event,
+intention, or goal state selects factual memory candidates, while the verifier
+continues to authorize retention transactions. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_transition_future_relevance_ambiguity_rejected_2026-08-09/`.
 The two-seed reports and accounting ledger are archived in
 `session_records/sequence_working_memory_2026-08-02/external_random_feature_one_pass_promoted_2026-08-09/`.
 
