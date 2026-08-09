@@ -651,14 +651,27 @@ def _train_sequence_calibration(
     programs = tuple(composition_programs)
     if not programs:
         raise ValueError("sequence calibration requires composition programs")
-    decoders = [
-        OpaqueProtocolDecoder(
-            REGISTER_WIDTH * (len(program) if args.preserve_composition_trace else 1),
-            ACTION_WIDTH,
-            hidden=16,
-        )
-        for program in programs
-    ]
+    decoder_input_width = REGISTER_WIDTH * (
+        len(programs[0]) if args.preserve_composition_trace else 1
+    )
+    if args.shared_sequence_decoder and args.preserve_composition_trace:
+        if any(len(program) != len(programs[0]) for program in programs):
+            raise ValueError("shared sequence decoder requires equal trace widths")
+    shared_decoder = OpaqueProtocolDecoder(
+        decoder_input_width, ACTION_WIDTH, hidden=16
+    )
+    decoders = (
+        [shared_decoder for _ in programs]
+        if args.shared_sequence_decoder
+        else [
+            OpaqueProtocolDecoder(
+                REGISTER_WIDTH * (len(program) if args.preserve_composition_trace else 1),
+                ACTION_WIDTH,
+                hidden=16,
+            )
+            for program in programs
+        ]
+    )
     use_operator_router = bool(
         sequence_operator_memory is not None
         and args.use_operator_sequence_router
@@ -695,13 +708,17 @@ def _train_sequence_calibration(
             )
     else:
         trainable = list(machine.parameters())
-    trainable.extend(
-        parameter for decoder in decoders for parameter in decoder.parameters()
-    )
+    seen_decoder_parameters: set[int] = set()
+    for decoder in decoders:
+        for parameter in decoder.parameters():
+            if id(parameter) not in seen_decoder_parameters:
+                trainable.append(parameter)
+                seen_decoder_parameters.add(id(parameter))
     if sequence_memory is not None and not protected_meta_mode:
         trainable.extend(sequence_memory.parameters())
     optimizer = torch.optim.AdamW(trainable, lr=args.learning_rate, weight_decay=1e-5)
     best_state = None
+    best_decoder_states = None
     best_floor = float("-inf")
     progress: list[dict[str, object]] = []
     for update in range(1, args.sequence_calibration_updates + 1):
@@ -852,6 +869,13 @@ def _train_sequence_calibration(
                         name: value.detach().clone()
                         for name, value in sequence_operator_memory.state_dict().items()
                     }
+                best_decoder_states = [
+                    {
+                        name: value.detach().clone()
+                        for name, value in decoder.state_dict().items()
+                    }
+                    for decoder in decoders
+                ]
     if best_state is None:
         raise RuntimeError("sequence calibration did not produce a checkpoint")
     machine.load_state_dict(best_state, strict=True)
@@ -864,6 +888,9 @@ def _train_sequence_calibration(
         sequence_operator_memory.load_state_dict(
             best_operator_memory_state, strict=True
         )
+    if best_decoder_states is not None:
+        for decoder, state in zip(decoders, best_decoder_states, strict=True):
+            decoder.load_state_dict(state, strict=True)
     return progress
 
 def _train_shared_bridge_prior(
@@ -1804,9 +1831,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             (
                 (
                     (
-                        "sequence_operator_memory_slots_plus_learned_router_plus_outcome_probe_plus_temporary_decoders"
-                        if args.use_route_outcome_credit
-                        else "sequence_operator_memory_slots_plus_learned_router_plus_temporary_decoders"
+                        "sequence_operator_memory_slots_plus_learned_router_plus_outcome_probe_plus_shared_decoder"
+                        if args.shared_sequence_decoder and args.use_route_outcome_credit
+                        else (
+                            "sequence_operator_memory_slots_plus_learned_router_plus_shared_decoder"
+                            if args.shared_sequence_decoder
+                            else "sequence_operator_memory_slots_plus_learned_router_plus_outcome_probe_plus_temporary_decoders"
+                            if args.use_route_outcome_credit
+                            else "sequence_operator_memory_slots_plus_learned_router_plus_temporary_decoders"
+                        )
                     )
                     if args.use_operator_sequence_router
                     else "sequence_operator_memory_slots_plus_temporary_decoders"
@@ -2028,6 +2061,12 @@ def main() -> None:
         action=argparse.BooleanOptionalAction,
         default=False,
         help="train routing from counterfactual scalar outcomes of every operator slot",
+    )
+    parser.add_argument(
+        "--shared-sequence-decoder",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="use one reusable decoder across all sequence-calibration programs",
     )
     parser.add_argument(
         "--route-assignment-loss-weight",

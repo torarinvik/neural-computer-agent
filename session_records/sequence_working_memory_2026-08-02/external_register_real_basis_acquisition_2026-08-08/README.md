@@ -1034,3 +1034,14 @@ Adding a balanced low-entropy assignment regularizer to break slot symmetry
 also failed: the floor was `0.6641` with the same exact source retention and
 the same `294,912` verifier-bit counterfactual cost. This is archived as
 `protected_bounded_meta_route_credit/report_assignment01_seed69316.json`.
+
+## Shared reusable decoder — decisive rejection
+
+To test whether temporary per-order decoders were hiding non-reusable
+computation, all six sequence programs were trained through one shared
+decoder. The causal all-order floor collapsed to `0.2656` after 384 updates,
+while all three mastered source primitives retained exact zero deltas. This
+is the clearest current diagnosis: external slots and routing can fit
+order-specific readouts, but they do not yet converge on a common
+action-relevant representation. The raw report is
+`protected_bounded_meta_shared_decoder/report_seed69316.json`.
