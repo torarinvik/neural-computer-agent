@@ -917,6 +917,23 @@
       "decision": "promote frozen-interpreter/external-memory boundary across two seeds; do not promote general decoder-prior transfer"
     },
     {
+      "experiment": "matched_external_program_memory_transfer_long",
+      "date": "2026-08-09",
+      "seeds": [69317, 69318],
+      "claim": "A fresh transfer path with the same append-only content-addressed program-memory architecture will preserve capability and improve at least one held-out learning curve.",
+      "fresh_controller": true,
+      "interpreter_prior": "source_interpreter_state",
+      "decoder_prior": "mastered source decoder 0",
+      "external_program_memory": "fresh appended content-addressed slot",
+      "replayed_examples": 0,
+      "unique_verifier_bits_per_seed": 345856,
+      "seed_69317_fresh_accuracy": [0.859375, 0.90625, 0.859375],
+      "seed_69318_fresh_accuracy": [0.921875, 0.859375, 0.828125],
+      "positive_transfer_count_per_seed": [1, 1],
+      "heldout_gates": "all passed on both seeds",
+      "decision": "promote matched frozen-interpreter/external-memory transfer; retain all-program positive transfer as the next research gate"
+    },
+    {
       "experiment": "protected_bounded_meta_shared_program_memory_router_sequence384",
       "date": "2026-08-09",
       "seeds": [69316],

@@ -1135,3 +1135,11 @@ frozen-core/external-memory boundary across seeds, while decoder-prior
 transfer remains an open problem.
 Raw replica:
 `fresh_retained_interpreter_frozen_long/report_seed69317.json`.
+
+When the fresh path receives the same append-only external program-memory
+architecture as the inherited path, transfer becomes a fair comparison. The
+matched protocol replicated across both seeds, passed every held-out target
+gate, and produced one positive-transfer program per seed. It still does not
+meet the stricter all-program positive-transfer criterion. Raw reports:
+`matched_program_memory_transfer_long/report_seed69317.json` and
+`matched_program_memory_transfer_long/report_seed69318.json`.

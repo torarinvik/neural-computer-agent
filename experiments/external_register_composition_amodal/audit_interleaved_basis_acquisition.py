@@ -1757,6 +1757,22 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         source_indices = tuple(
             args.source_operations.index(primitive) for primitive in program
         )
+        fresh_program_memory = None
+        fresh_program_slot = None
+        if args.grow_sequence_program_memory:
+            fresh_program_memory = ExternalSequenceProgramMemory(
+                INSTRUCTION_WIDTH,
+                router_temperature=args.operator_router_temperature,
+                content_addressing=True,
+            )
+            fresh_program_slot = fresh_program_memory.add_program(
+                torch.stack(
+                    tuple(
+                        fresh_machine.instructions[source_index].code.detach().squeeze(0)
+                        for source_index in source_indices
+                    )
+                )
+            )
         fresh_bridge = (
             CapabilityConditionedEventBridge(
                 EVENT_WIDTH,
@@ -1823,6 +1839,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "bridge": fresh_bridge,
             "bridge_frozen": bridge_prior_state is not None,
             "readout": fresh_readout,
+            "program_mutable": fresh_program_memory is not None,
+            "sequence_program_memory": fresh_program_memory,
+            "sequence_program_slot": fresh_program_slot,
             "preserve_execution_trace": args.preserve_composition_trace,
         }
         _train_candidate_schedule(
