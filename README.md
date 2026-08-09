@@ -2517,3 +2517,10 @@ retaining earlier factual models byte-for-byte and using zero old-regime
 replay. This remains a bounded nested-dynamics result; the next pressure test
 is partial evidence, gradual drift, or broader disjoint dynamics. See
 `session_records/sequence_working_memory_2026-08-02/external_transition_model_compounding_seed_widening_promoted_2026-08-10/`.
+
+The next pressure test also passed on three seeds: replay-free affine factual
+memory learned two gradual drift versions from only `8/12` rows per regime,
+retained the original slot, routed back to it later, and rejected corrupted
+evidence without a bank write. This remains a bounded result; richer
+nonlinear drift and learned address formation are next. See
+`session_records/sequence_working_memory_2026-08-02/external_partial_drift_streaming_model_promoted_2026-08-10/`.

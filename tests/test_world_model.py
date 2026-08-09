@@ -20,6 +20,26 @@ from neural_computer import (
 )
 
 
+def test_transition_model_bank_marks_random_features_replay_free() -> None:
+    affine = ExternalTransitionModelBank(
+        2,
+        1,
+        3,
+        model_family="affine_sufficient_statistics_v1",
+    )
+    random_features = ExternalTransitionModelBank(
+        2,
+        1,
+        3,
+        model_family="random_feature_sufficient_statistics_v1",
+    )
+    neural = ExternalTransitionModelBank(2, 1, 3)
+
+    assert affine.replay_free_updates
+    assert random_features.replay_free_updates
+    assert not neural.replay_free_updates
+
+
 def test_transition_context_encoder_is_opaque_normalized_and_persistent() -> None:
     torch.manual_seed(1200)
     encoder = ExternalTransitionContextEncoder(

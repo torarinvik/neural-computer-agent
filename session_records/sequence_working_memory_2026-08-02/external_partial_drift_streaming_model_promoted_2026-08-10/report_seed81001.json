@@ -1,0 +1,116 @@
+{
+  "schema": "neural-computer.external-partial-drift-streaming-model.v1",
+  "seed": 81001,
+  "configuration": {
+    "drift_slopes": [
+      1.0,
+      1.5,
+      2.0
+    ],
+    "available_rows_per_phase": 12,
+    "presented_rows_per_phase": 8,
+    "admission_rows": 4,
+    "model_family": "affine_sufficient_statistics_v1",
+    "policy": "none_replay_free_versioned_factual_drift_v1"
+  },
+  "gates": {
+    "replay_free_bank_family": true,
+    "partial_rows_used": true,
+    "all_drift_versions_promoted": true,
+    "all_drift_planner_mastery": true,
+    "source_return_routed_to_old_slot": true,
+    "source_slot_retained": true,
+    "corruption_rejected_without_bank_write": true,
+    "no_raw_candidate_rows_retained": true,
+    "controller_unchanged": true,
+    "exact_router_persistence": true
+  },
+  "promoted": true,
+  "phases": [
+    {
+      "phase": 0,
+      "slope": 1.0,
+      "statuses": {
+        "pending": 6,
+        "staged": 2
+      },
+      "staged_windows": 2,
+      "presented_rows": 8,
+      "available_rows": 12,
+      "candidate_evidence_count": 8,
+      "slot_id": 0,
+      "heldout_error": 0.0,
+      "planner_mastery": 1.0
+    },
+    {
+      "phase": 1,
+      "slope": 1.5,
+      "statuses": {
+        "pending": 6,
+        "staged": 2
+      },
+      "staged_windows": 2,
+      "presented_rows": 8,
+      "available_rows": 12,
+      "candidate_evidence_count": 8,
+      "slot_id": 1,
+      "heldout_error": 7.105427357601002e-15,
+      "planner_mastery": 1.0
+    },
+    {
+      "phase": 2,
+      "slope": 2.0,
+      "statuses": {
+        "pending": 6,
+        "staged": 2
+      },
+      "staged_windows": 2,
+      "presented_rows": 8,
+      "available_rows": 12,
+      "candidate_evidence_count": 8,
+      "slot_id": 2,
+      "heldout_error": 0.0,
+      "planner_mastery": 1.0
+    }
+  ],
+  "return_to_source": {
+    "statuses": {
+      "pending": 6,
+      "matched": 2
+    },
+    "source_return_matched": true,
+    "source_return_mastery": 1.0
+  },
+  "corruption_control": {
+    "statuses": {
+      "pending": 6,
+      "staged": 2
+    },
+    "promotion_accepted": false,
+    "reason": "candidate retention probe failed"
+  },
+  "routing": {
+    "slot_ids": [
+      0,
+      1,
+      2
+    ],
+    "route_counts": {
+      "pending": 24,
+      "staged": 6,
+      "matched": 2
+    },
+    "committed_context_count": 3
+  },
+  "accounting": {
+    "unique_transition_rows": 24,
+    "unique_heldout_rows": 12,
+    "replayed_examples": 0,
+    "old_regime_replay": 0,
+    "controller_optimizer_updates": 0,
+    "context_encoder_optimizer_updates": 0,
+    "streaming_statistics_updates": 24,
+    "wall_seconds": 0.06955670798197389
+  },
+  "claim_boundary": "bounded replay-free partial-evidence factual drift versions with planner verification; not learned multimodal context formation, unrestricted memory growth, or general continual learning"
+}

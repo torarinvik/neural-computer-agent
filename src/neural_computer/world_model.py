@@ -560,7 +560,10 @@ class ExternalTransitionModelBank(nn.Module):
     def replay_free_updates(self) -> bool:
         """Whether this bank family consumes each observation once in-place."""
 
-        return self.model_family == EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY
+        return self.model_family in {
+            EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+            EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
+        }
 
     def _new_model(self, model_family: str | None = None) -> nn.Module:
         selected_family = self.model_family if model_family is None else model_family

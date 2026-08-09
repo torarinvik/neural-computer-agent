@@ -5728,3 +5728,28 @@ capacity. It does not establish general continual learning. The next test
 must preserve the same accounting while stressing partial evidence, gradual
 drift, or a broader disjoint family. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_transition_model_compounding_seed_widening_promoted_2026-08-10/`.
+
+## Replay-free partial evidence and gradual factual drift (2026-08-10)
+
+The next model-first pressure test now passes on three seeds. Each drift
+regime exposed only `8` of `12` available transition rows to an affine
+sufficient-statistics model. The router consumed every presented row once,
+staged each drift version outside the committed bank, and promoted it only
+after held-out prediction and retention verification. Slopes `1.0`, `1.5`, and
+`2.0` became stable external slots `[0, 1, 2]`; each reached `1.0` planner
+mastery, and returning to the original regime selected slot `0` with `1.0`
+mastery and an unchanged digest.
+
+A corrupted stream was staged but rejected by the retention probe without
+changing the committed bank. Raw provisional rows, old-regime replay, and
+controller updates were all zero; persistence was exact. This is the first
+promoted evidence that the factual external boundary can version gradual drift
+from partial, replay-free evidence while retaining earlier behavior.
+
+The claim is still bounded: affine dynamics, a fixed opaque context encoder,
+finite capacity, and a small planner. It does not establish learned
+multimodal context formation, unrestricted growth, nonlinear drift, or general
+continual learning. The next bottleneck is learned evidence/address formation
+for richer nonlinear drift under the same no-replay and retention gates.
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_partial_drift_streaming_model_promoted_2026-08-10/`.
