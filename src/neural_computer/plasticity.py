@@ -822,6 +822,12 @@ class ExternalOutcomeProgramRouter(nn.Module):
     interpret a program code, expose a semantic slot name, or receive a
     verifier-private answer.  A caller resolves the sampled choice through a
     separately versioned executable-program memory.
+
+    This is preferential action-routing state, not factual world knowledge.
+    It is appropriate for bounded address/credit experiments, but the
+    canonical continual-learning path should store external transition facts
+    and derive intentions by search so that new regimes do not overwrite a
+    stale task policy.
     """
 
     schema = EXTERNAL_OUTCOME_PROGRAM_ROUTER_SCHEMA
@@ -868,6 +874,7 @@ class ExternalOutcomeProgramRouter(nn.Module):
             "feature_width": self.feature_width,
             "program_capacity": self.program_capacity,
             "initial_programs": self.initial_programs,
+            "knowledge_type": "preferential_action_routing_v1",
             "update_rule": "append_only_opaque_program_choice_credit_v1",
             "credit_rule": self.credit_rule.schema,
             "active_mask": "append_only_capacity_mask_v1",

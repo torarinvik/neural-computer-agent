@@ -20,7 +20,12 @@ PYTHONPATH=src:. .venv/bin/python \
 ```
 
 This is a bounded outcome-routed memory-cell result, not general continual
-learning or learned context formation from raw modalities.
+learning or learned context formation from raw modalities. The cells store
+preferential executable routing state, so this experiment is a control for
+external address growth—not the canonical long-term knowledge substrate.
+For continual-learning claims, prefer the factual transition-model plus
+goal-conditioned planner path in
+`experiments/external_transition_model_compounding/`.
 
 The promoted three-seed rung selected `[0, 1, 0, 1, 0, 1]` on alternating
 streams with identical event features, retained the old cell at **82.67–90.33%**,

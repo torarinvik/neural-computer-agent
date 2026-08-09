@@ -2493,3 +2493,27 @@ wrong-cell control below **0.67%**. Persistence was exact and old-cell replay
 was zero. This is bounded outcome-based cell routing, not learned raw-modality
 context formation or general continual learning. See
 `session_records/sequence_working_memory_2026-08-02/external_program_cell_routing_promoted_2026-08-10/`.
+
+### Canonical continual-learning rule imported from the 2026-08-09 session
+
+The strongest lesson from the exported game-learning session is that freezing
+does not remove forgetting when a policy remains stored elsewhere; it relocates
+it into the adapter, router, or other plastic component. The canonical path is
+factual external transition knowledge plus inference-time goal-conditioned
+search:
+
+`event -> external transition model -> search from current goal -> intention`
+
+The controller stays frozen, factual model state can be extended, and behavior
+is recomputed rather than stored as a task preference. Program routers/cells
+remain valuable bounded address and delayed-credit primitives, but are not the
+general knowledge substrate. New experiments must separate deployed mastery,
+zero-shot transfer, and actual acquisition cost, with measured floors and
+verified harness arguments before promotion.
+
+The nested policy-free model-compounding signal is now widened to four seeds.
+The two new seeds again beat matched fresh acquisition at every target while
+retaining earlier factual models byte-for-byte and using zero old-regime
+replay. This remains a bounded nested-dynamics result; the next pressure test
+is partial evidence, gradual drift, or broader disjoint dynamics. See
+`session_records/sequence_working_memory_2026-08-02/external_transition_model_compounding_seed_widening_promoted_2026-08-10/`.

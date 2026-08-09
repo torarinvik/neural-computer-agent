@@ -6,8 +6,8 @@ import argparse
 import hashlib
 import json
 import time
-from pathlib import Path
 from collections.abc import Callable
+from pathlib import Path
 
 import torch
 import torch.nn.functional as F
@@ -230,7 +230,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             context,
             TARGET_UPDATES,
             stop_at_threshold=True,
-            mastery_probe=lambda: float(
+            mastery_probe=lambda context=context, regime_index=regime_index: float(
                 _evaluate(
                     bank,
                     state_codes,
@@ -260,7 +260,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             context,
             TARGET_UPDATES,
             stop_at_threshold=True,
-            mastery_probe=lambda: float(
+            mastery_probe=lambda fresh=fresh, context=context, regime_index=regime_index: float(
                 _evaluate(
                     fresh,
                     state_codes,

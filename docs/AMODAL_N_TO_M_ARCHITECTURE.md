@@ -5672,3 +5672,59 @@ complete verifier bundle. Evidence is archived in
 This is a promoted bounded external address-space-growth primitive. It does
 not establish unrestricted memory growth, arbitrary program induction,
 positive transfer against a fresh learner, or general continual learning.
+
+## Imported policy-free learning rule (2026-08-10)
+
+The exported game-learning session provides a useful architectural correction
+for interpreting the results above. Across several failed consolidation
+mechanisms, forgetting did not disappear when a component was frozen; it moved
+into the remaining plastic component. The successful route changed the thing
+being stored: an external transition model stores factual predictions of how
+an opaque state changes after an opaque intention, while a planner derives
+behavior from the current opaque goal at inference time. A fact can be
+incomplete on a new regime and be extended by new observations; a stored
+preference can be wrong and must be unlearned.
+
+This makes the following priority rule normative:
+
+* The canonical continual-learning path is `event -> factual external model
+  -> goal-conditioned search -> intention`. The controller remains frozen
+  while external model state learns.
+* `ExternalOutcomeProgramRouter` and its program-cell bank are bounded
+  preferential-action routing primitives. They are useful controls for
+  address growth and delayed credit, but are not the general knowledge
+  substrate and do not establish arbitrary new computation.
+* New experiments must report deployed capability separately from zero-shot
+  capability and acquisition cost. Internal model loss alone is not mastery;
+  the stopping prefix must satisfy a held-out planner/verifier gate.
+* Every promoted result must begin with measured no-agent and shuffled-outcome
+  floors, verify that the requested configuration actually ran, and charge
+  actual optimizer work rather than a fixed budget. The exported session found
+  multiple plausible results whose harness or metric made the target
+  hypothesis impossible to observe.
+
+The session also reinforces a representation constraint: the number-line
+control succeeded where a grid formulation stalled because the instruction and
+state codes were easier to distinguish. This does not justify hand-assigned
+semantics in the controller, but it does require frontends to preserve
+separability and experiments to test instruction encoding as a first-class
+factor. The next high-ROI work is therefore model-first partial/drifting
+evidence and longer alternating model-bank growth—not another action-policy
+consolidation variant.
+
+## Seed-widened policy-free model compounding (2026-08-10)
+
+The nested factual-model compounding rung was widened from two to four seeds.
+Seeds `70313` and `70314` again reached deployed planner mastery at every
+target, beat matched fresh acquisition at every target (`25/28/21` versus
+`42/40/31`, and `34/30/23` versus `46/48/43`), retained every prior model at
+mastery with byte-stable state, and used zero old-regime replay during target
+adaptation. Together with seeds `70311` and `70312`, this is a four-seed
+replicated downward acquisition-cost signal.
+
+The claim remains deliberately narrow: one small nested dynamics family,
+supplied context vectors, finite planner horizon, and finite external model
+capacity. It does not establish general continual learning. The next test
+must preserve the same accounting while stressing partial evidence, gradual
+drift, or a broader disjoint family. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_transition_model_compounding_seed_widening_promoted_2026-08-10/`.
