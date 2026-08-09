@@ -466,12 +466,17 @@ def test_protected_meta_operator_starts_with_an_inert_residual_family() -> None:
 
     register = torch.randn(3, 8)
     result = machine.execute(register, machine.instructions[0])
+    machine.add_basis_slot()
+    addressed_result = machine.execute(
+        register, machine.instructions[0], basis_slot=0
+    )
 
     assert machine.configuration()["operator_mode"] == (
         "factorized_protected_meta"
     )
     assert result.shape == register.shape
     assert torch.isfinite(result).all()
+    assert torch.equal(result, addressed_result)
 
 
 def test_external_register_state_is_external_and_quiet_ticks_do_not_mutate_it() -> None:

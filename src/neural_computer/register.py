@@ -1244,6 +1244,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         elif state_bank is not None:
             raise ValueError("state bank addressing requires shared banked mode")
         if basis_slot is not None and self.operator_mode not in (
+            "factorized_protected_meta",
             EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
             EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
             EXTERNAL_REGISTER_SHARED_BANKED_MODE,

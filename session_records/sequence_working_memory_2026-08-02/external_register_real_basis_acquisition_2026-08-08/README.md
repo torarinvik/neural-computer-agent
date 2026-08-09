@@ -868,3 +868,13 @@ mechanism therefore has no valid capability result yet; the rung is rejected
 for under-training rather than for a retention failure. A future run must
 first establish a mastered protected-meta source checkpoint before testing
 chain acquisition.
+
+## Protected-meta basis-routing correction — source contract still fails
+
+The first screen revealed that a supplied basis address bypassed
+`factorized_protected_meta`; that routing bug is now fixed and covered by a
+regression test. The corrected source-only screen still reached only
+`0.5039–0.6563` source floors in the two seeds, so protected-meta cannot yet
+serve as a mastered source checkpoint in this audit. This rejects the current
+unbounded protected-meta contract as a usable foundation; the next repair must
+stabilize its base transition before evaluating protected sequence capacity.
