@@ -5256,3 +5256,28 @@ transaction boundary, but does not establish arbitrary learned value
 alignment, unbounded storage, or general continual learning. Evidence is
 archived in
 `session_records/sequence_working_memory_2026-08-02/memory_representation_migration_promoted_2026-08-09/`.
+
+## Outcome-only event-space alignment under frozen computation (2026-08-09)
+
+The first replicated learned-alignment rung now trains only a replaceable
+external event bridge after freezing the parent controller, external register,
+and output decoder. The trainer cyclically permutes the learned event tensor,
+masks controller state, and supplies the bridge only the sampled scalar
+verifier outcome from the opaque action record. A matched reward-shuffled arm
+and digest checks prevent the result from being explained by privileged
+representation labels or parent drift.
+
+Across seeds `69316` and `69317`, source capability was `0.941`/`0.992`, the
+changed event space was `0.516`/`0.727` before bridge adaptation, and the
+outcome-trained bridge reached `0.992`/`0.996`. Shuffled-outcome controls stayed
+at `0.559`/`0.613`; source retention and every frozen-component digest gate
+passed. Stable prefixes appeared at `4,096` and `2,048` unique verifier bits,
+with zero replayed examples. The full reports and accounting ledger are in
+`session_records/sequence_working_memory_2026-08-02/outcome_only_event_alignment_promoted_2026-08-09/`.
+
+This is a meaningful foundation result: a frozen computational substrate can
+learn a bounded event-space correction through an isolated plastic boundary.
+It is not yet arbitrary multimodal alignment or general continual learning.
+The next bottleneck is to replace the known cyclic permutation with unknown,
+composed, and eventually modality-specific representation drift while keeping
+the same scalar-only credit and retention controls.
