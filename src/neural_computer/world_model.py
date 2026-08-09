@@ -63,6 +63,9 @@ EXTERNAL_TRANSITION_MODEL_BANK_SCHEMA = (
 EXTERNAL_TRANSITION_MODEL_GROWTH_SCHEMA = (
     "neural-computer.external-transition-model-growth.v1"
 )
+EXTERNAL_TRANSITION_MODEL_EVICTION_SCHEMA = (
+    "neural-computer.external-transition-model-eviction.v1"
+)
 EXTERNAL_TRANSITION_MODEL_CANDIDATE_SCHEMA = (
     "neural-computer.external-transition-model-candidate.v1"
 )
@@ -525,6 +528,71 @@ class ExternalTransitionModelBank(nn.Module):
             content_digest_after=content_after,
             reason="retention-verified capacity growth committed",
         )
+
+    def evict_verified(
+        self,
+        index: int,
+        retention_probe: Callable[[ExternalTransitionModelBank], bool],
+    ) -> ExternalTransitionModelEvictionReceipt:
+        """Remove one slot only after a disposable post-eviction proof.
+
+        The live bank is untouched while the candidate is constructed and
+        tested. The probe owns the definition of retained behavior; callers
+        should include every still-required opaque context and its held-out
+        verifier floor. Aliased model objects are reconstructed through the
+        normal payload boundary, so removing one logical context cannot
+        accidentally remove another context's shared parameters.
+        """
+
+        if not 0 <= index < self.context_count:
+            raise IndexError("transition-model eviction slot is out of range")
+        if not callable(retention_probe):
+            raise TypeError("transition-model eviction retention probe is invalid")
+        before = self.content_digest()
+        physical_before = self.physical_model_count
+        if not bool(retention_probe(self)):
+            return ExternalTransitionModelEvictionReceipt(
+                accepted=False,
+                evicted_index=index,
+                source_context_count=self.context_count,
+                destination_context_count=self.context_count,
+                physical_models_before=physical_before,
+                physical_models_after=physical_before,
+                content_digest_before=before,
+                content_digest_after=before,
+                reason="pre-eviction retention probe failed",
+            ).validate()
+
+        candidate = ExternalTransitionModelBank.from_payload(self.payload())
+        del candidate._contexts[index]
+        del candidate.models[index]
+        after = candidate.content_digest()
+        if not bool(retention_probe(candidate)):
+            return ExternalTransitionModelEvictionReceipt(
+                accepted=False,
+                evicted_index=index,
+                source_context_count=self.context_count,
+                destination_context_count=candidate.context_count,
+                physical_models_before=physical_before,
+                physical_models_after=candidate.physical_model_count,
+                content_digest_before=before,
+                content_digest_after=before,
+                reason="post-eviction retention probe failed",
+            ).validate()
+
+        self._contexts = candidate._contexts
+        self.models = candidate.models
+        return ExternalTransitionModelEvictionReceipt(
+            accepted=True,
+            evicted_index=index,
+            source_context_count=self.context_count + 1,
+            destination_context_count=self.context_count,
+            physical_models_before=physical_before,
+            physical_models_after=self.physical_model_count,
+            content_digest_before=before,
+            content_digest_after=after,
+            reason="retention-verified model-slot eviction committed",
+        ).validate()
 
     def forward(
         self,
@@ -1084,6 +1152,39 @@ class ExternalTransitionModelGrowthReceipt:
             raise ValueError("accepted transition-model growth did not grow capacity")
         if not isinstance(self.reason, str) or not self.reason:
             raise ValueError("transition-model growth receipt reason is missing")
+        return self
+
+
+@dataclass(frozen=True)
+class ExternalTransitionModelEvictionReceipt:
+    """Auditable result of verifier-gated logical model-slot eviction."""
+
+    accepted: bool
+    evicted_index: int
+    source_context_count: int
+    destination_context_count: int
+    physical_models_before: int
+    physical_models_after: int
+    content_digest_before: str
+    content_digest_after: str
+    reason: str
+    schema: str = EXTERNAL_TRANSITION_MODEL_EVICTION_SCHEMA
+
+    def validate(self) -> ExternalTransitionModelEvictionReceipt:
+        if self.schema != EXTERNAL_TRANSITION_MODEL_EVICTION_SCHEMA:
+            raise ValueError("unsupported transition-model eviction schema")
+        if min(
+            self.evicted_index,
+            self.source_context_count,
+            self.destination_context_count,
+            self.physical_models_before,
+            self.physical_models_after,
+        ) < 0:
+            raise ValueError("transition-model eviction counts are invalid")
+        if self.accepted and self.destination_context_count != self.source_context_count - 1:
+            raise ValueError("accepted transition-model eviction count is invalid")
+        if not isinstance(self.reason, str) or not self.reason:
+            raise ValueError("transition-model eviction receipt reason is missing")
         return self
 
 

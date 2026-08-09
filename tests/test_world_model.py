@@ -264,6 +264,50 @@ def test_transition_model_bank_growth_is_verified_and_content_preserving() -> No
     assert restored.content_digest() == bank.content_digest()
 
 
+def test_transition_model_bank_eviction_is_verified_and_alias_safe() -> None:
+    torch.manual_seed(1209)
+    bank = ExternalTransitionModelBank(2, 1, 3, hidden_width=8, capacity=3)
+    source = bank.ensure_context(torch.tensor([1.0, 0.0, 0.0]))
+    redundant = bank.ensure_context(
+        torch.tensor([0.0, 1.0, 0.0]),
+        initialize_from=source,
+    )
+    bank.models[redundant] = bank.models[source]
+    retained = bank.ensure_context(torch.tensor([0.0, 0.0, 1.0]))
+    source_digest = bank.models[source].digest()
+    retained_context = bank.context_at(retained)
+    content_before = bank.content_digest()
+
+    def retention_probe(candidate: ExternalTransitionModelBank) -> bool:
+        if candidate.context_count == 3:
+            return candidate.models[0].digest() == source_digest
+        return (
+            candidate.context_count == 2
+            and candidate.models[0].digest() == source_digest
+            and torch.equal(candidate.context_at(1), retained_context)
+        )
+
+    accepted = bank.evict_verified(
+        redundant,
+        retention_probe,
+    )
+
+    assert accepted.accepted
+    assert accepted.source_context_count == 3
+    assert accepted.destination_context_count == 2
+    assert accepted.physical_models_before == 2
+    assert accepted.physical_models_after == 2
+    assert bank.context_count == 2
+    assert bank.models[0].digest() == source_digest
+    assert bank.content_digest() != content_before
+    restored = ExternalTransitionModelBank.from_payload(bank.payload())
+    assert restored.digest() == bank.digest()
+    rejected = bank.evict_verified(0, lambda _candidate: False)
+    assert not rejected.accepted
+    assert bank.context_count == 2
+    assert bank.models[0].digest() == source_digest
+
+
 def test_transition_model_bank_consolidation_shares_only_equivalent_models() -> None:
     torch.manual_seed(1212)
     bank = ExternalTransitionModelBank(2, 1, 3, hidden_width=8)

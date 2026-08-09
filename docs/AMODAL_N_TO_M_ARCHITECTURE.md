@@ -4853,3 +4853,18 @@ and the router and bank capacities stayed synchronized. This improves the
 memory lifecycle but remains bounded continual learning; it does not provide
 unrestricted growth, learned eviction, or compression of active candidate
 evidence.
+
+## Verifier-gated external model-slot eviction (2026-08-09)
+
+The model bank now supports `evict_verified(index, retention_probe)`. It
+constructs a disposable payload clone, runs the caller's retention probe on
+the live bank and again after removing one logical context, then commits the
+new context/model lists only when both pass. Payload reconstruction preserves
+shared model aliases, so removing one logical alias cannot delete another
+context's parameters. Failed probes leave the live bank and digest unchanged.
+
+The focused regression accepted removal of a redundant aliased slot while
+retaining the source and third context, then rejected a destructive probe
+without mutation. This closes safe capacity reuse, but it is not learned
+eviction: the retention probe remains caller-owned, and no slot is removed
+without an explicit verifier proof.
