@@ -68,6 +68,10 @@ parser.add_argument("--view", choices=("none", "roll", "crop"), default="none",
                          "allocentric encoder at 0.69/axis -- present but "
                          "~30%% wrong, which is 'approaches, misses by a cell'.")
 parser.add_argument(
+    "--dense-goal", action="store_true",
+    help="old encoding: two normalised floats. Default is one-hot per "
+         "axis, matching the numeric reacher that works.")
+parser.add_argument(
     "--localise", type=float, default=0.0,
     help="auxiliary self-supervised loss: predict the avatar's own cell "
          "from the screen encoding. A linear probe reads position out of "
@@ -105,7 +109,12 @@ decoder = agent.runtime.output_bus.decoders["keypress"]
 # Goal encoder: normalised (row, col) -> event payload. Structured rather
 # than a lookup table, so "reach (3,4)" and "reach (3,5)" are near each
 # other and unseen cells are interpolations rather than blanks.
-goal_encoder = torch.nn.Linear(2, args.width)
+# Goal encoding. Two normalised floats through a linear layer is a very
+# entangled code -- the numeric reacher, which WORKS, feeds a one-hot
+# (20 -> 64). One-hot row + one-hot col (16 -> 64) gives the grid the
+# same clarity of instruction.
+goal_encoder = torch.nn.Linear(
+    2 if args.dense_goal else 2 * (2 * GRID - 1), args.width)
 # Auxiliary localisation heads: encoding -> own row, own col.
 locate_row = torch.nn.Linear(args.width, GRID)
 locate_col = torch.nn.Linear(args.width, GRID)
@@ -165,8 +174,14 @@ def avatar_cells(observation: torch.Tensor) -> torch.Tensor:
 
 
 def encode(targets: torch.Tensor, *, span: int = GRID) -> torch.Tensor:
-    normalised = targets.float() / (span - 1)
-    payload = goal_encoder(normalised)
+    if args.dense_goal:
+        features = targets.float() / (span - 1)
+    else:
+        width = 2 * GRID - 1
+        features = torch.zeros(targets.shape[0], 2 * width)
+        features.scatter_(1, targets[:, :1].clamp(0, width - 1), 1.0)
+        features.scatter_(1, targets[:, 1:].clamp(0, width - 1) + width, 1.0)
+    payload = goal_encoder(features)
     return payload / payload.norm(dim=-1, keepdim=True).clamp_min(1e-6) * 4.0
 
 
