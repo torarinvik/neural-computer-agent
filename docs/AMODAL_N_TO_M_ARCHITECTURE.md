@@ -4336,3 +4336,30 @@ source-retention and shuffled-outcome gates.
 
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_outcome_credit_three_phase_promoted_2026-08-09/`.
+
+## External outcome-credit four-phase value baseline (2026-08-09)
+
+The external delayed-credit policy now has an optional external,
+feature-conditioned value baseline. The baseline is trained only from learned
+features and terminal scalar outcomes, and supplies a trajectory baseline to
+the policy update. Its weights, feature trace, prediction trace, and counters
+are external tensor state; neither the frozen controller nor the plasticity
+rules are updated. Missing feedback remains a no-write path, and the state
+round-trips through a versioned tensor payload.
+
+The matched four-phase audit used `3,000` source and `3,000` target episodes
+per seed. With the baseline enabled, target exact-sequence accuracy reached
+`0.9067` and `0.9033`, with stable `0.90` prefixes at `2,500` and `3,000`
+episodes. Source retention was `0.9233` and `0.9067`; no-trace controls were
+`0.2067` and `0.0167`, and reward-shuffled controls were `0.0833` and
+`0.0233`. Both seeds used zero replay and zero optimizer updates and passed
+the source, stability, causal-control, missing-evidence, persistence, and
+frozen-rule gates.
+
+This promotes four-phase delayed scalar credit with external value-baseline
+variance reduction. It remains a bounded continual-memory primitive rather
+than general continual learning: the policy is fixed-width, the relation is
+linear in learned event features, and the audit does not test changing
+relations, many-capability interference, arbitrary executable programs, or
+unrestricted memory growth. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_outcome_credit_four_phase_value_baseline_promoted_2026-08-09/`.

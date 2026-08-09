@@ -9,6 +9,8 @@ from neural_computer import (
     ExternalMemoryWritePolicy,
     ExternalOutcomeCreditPlasticity,
     ExternalOutcomeCreditState,
+    ExternalOutcomeValueBaseline,
+    ExternalOutcomeValueState,
     MemoryEvictionObservation,
     MemoryWriteObservation,
 )
@@ -140,6 +142,74 @@ def test_external_outcome_credit_state_round_trips_as_tensor_payload() -> None:
     assert torch.equal(restored.baseline, state.baseline)
     assert torch.equal(restored.decisions, state.decisions)
     assert torch.equal(restored.feedbacks, state.feedbacks)
+
+
+def test_external_outcome_value_baseline_learns_and_round_trips() -> None:
+    critic = ExternalOutcomeValueBaseline(
+        feature_width=3,
+        initial_learning_rate=0.2,
+        initial_trace_decay=0.8,
+    )
+    state = critic.initial_state(1)
+    prediction, state = critic.record_decision(
+        state,
+        torch.tensor([[1.0, 0.0, 0.0]]),
+    )
+    updated = critic.apply_feedback(
+        state,
+        torch.ones(1),
+        terminal=torch.ones(1, dtype=torch.bool),
+    )
+    restored = critic.state_from_payload(critic.state_payload(updated))
+
+    assert torch.allclose(prediction, torch.full((1,), 0.5))
+    assert bool(torch.any(updated.weights != 0.0))
+    assert torch.equal(updated.eligibility, torch.zeros_like(updated.eligibility))
+    assert isinstance(restored, ExternalOutcomeValueState)
+    assert torch.equal(restored.weights, updated.weights)
+    assert torch.equal(restored.bias, updated.bias)
+    assert torch.equal(restored.feedbacks, updated.feedbacks)
+
+
+def test_external_outcome_value_baseline_missing_feedback_is_no_write() -> None:
+    critic = ExternalOutcomeValueBaseline(
+        feature_width=2,
+        initial_learning_rate=0.2,
+        initial_trace_decay=0.8,
+    )
+    state = critic.initial_state(1)
+    _, state = critic.record_decision(state, torch.tensor([[1.0, 0.0]]))
+    missing = critic.apply_feedback(
+        state,
+        torch.ones(1),
+        present=torch.zeros(1, dtype=torch.bool),
+        terminal=torch.ones(1, dtype=torch.bool),
+    )
+
+    assert torch.equal(missing.weights, state.weights)
+    assert torch.equal(missing.eligibility, state.eligibility)
+    assert torch.equal(missing.bias, state.bias)
+    assert torch.equal(missing.prediction_trace, state.prediction_trace)
+    assert torch.equal(missing.trace_mass, state.trace_mass)
+    assert torch.equal(missing.feedbacks, state.feedbacks)
+
+
+def test_external_outcome_credit_accepts_external_value_baseline_override() -> None:
+    rule = ExternalOutcomeCreditPlasticity(feature_width=2, action_count=2)
+    state = rule.record_decision(
+        rule.initial_state(1),
+        torch.tensor([[1.0, 0.0]]),
+        torch.tensor([0]),
+        torch.tensor([0.5]),
+    )
+    updated = rule.apply_feedback(
+        state,
+        torch.ones(1),
+        baseline_override=torch.zeros(1),
+        terminal=torch.ones(1, dtype=torch.bool),
+    )
+
+    assert bool(torch.any(updated.policy != 0.0))
 
 
 def _observation(batch: int = 3) -> MemoryWriteObservation:

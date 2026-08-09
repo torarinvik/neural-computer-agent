@@ -1144,6 +1144,29 @@
       "optimizer_updates": 0,
       "controls": "source mastery/retention, stable-prefix, no-trace rejection, reward-shuffle rejection, missing-feedback no-write, persistence, frozen-rule, and zero-replay gates passed",
       "decision": "promote replicated three-phase scaling; keep four-phase sparse-credit variance as the next bottleneck"
+    },
+    {
+      "experiment": "external_outcome_credit_four_phase_value_baseline",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "An external feature-conditioned value baseline will reduce sparse terminal-credit variance enough for the same frozen eligibility policy to acquire a four-phase relation while retaining source capability.",
+      "module": "ExternalOutcomeValueBaseline",
+      "phase_count": 4,
+      "source_episodes": 3000,
+      "target_episodes": 3000,
+      "value_baseline_learning_rate": 0.05,
+      "value_baseline_trace_decay": 0.9,
+      "replayed_examples": 0,
+      "unique_verifier_bits_per_seed": 6000,
+      "unique_logical_lifetimes_per_seed": 6000,
+      "target_final_accuracy": [0.906667, 0.903333],
+      "stable_episodes_to_threshold": [2500, 3000],
+      "no_trace_control_accuracy": [0.206667, 0.016667],
+      "reward_shuffled_control_accuracy": [0.083333, 0.023333],
+      "source_retention": [0.923333, 0.906667],
+      "optimizer_updates": 0,
+      "controls": "source mastery/retention, stable-prefix, no-trace rejection, reward-shuffle rejection, missing-feedback no-write, persistence, frozen-policy, frozen-baseline, and zero-replay gates passed",
+      "decision": "promote four-phase delayed scalar credit with external value-baseline variance reduction; next integrate the path with executable external programs and test many-capability interference without replay"
     }
   ]
 }

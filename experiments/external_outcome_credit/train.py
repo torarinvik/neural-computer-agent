@@ -24,6 +24,7 @@ import torch
 from neural_computer import (
     ExternalOutcomeCreditPlasticity,
     ExternalOutcomeCreditState,
+    ExternalOutcomeValueBaseline,
 )
 
 
@@ -100,6 +101,7 @@ def _train_stream(
     eval_relation: torch.Tensor,
     eval_every: int,
     phase_count: int,
+    value_baseline: ExternalOutcomeValueBaseline | None = None,
     feedback_override: torch.Tensor | None = None,
 ) -> tuple[
     ExternalOutcomeCreditState,
@@ -110,10 +112,21 @@ def _train_stream(
         raise ValueError("feedback override must have one value per episode")
     outcomes: list[torch.Tensor] = []
     progress: list[dict[str, object]] = []
+    value_state = (
+        None
+        if value_baseline is None
+        else value_baseline.initial_state(
+            state.policy.shape[0],
+            device=state.policy.device,
+            dtype=state.policy.dtype,
+        )
+    )
     with torch.no_grad():
         for index, event in enumerate(events):
             event = event.unsqueeze(0)
             state = rule.begin_episode(state)
+            if value_state is not None:
+                value_state = value_baseline.begin_episode(value_state)
             choices: list[torch.Tensor] = []
             for phase in range(phase_count):
                 feature = _phase_feature(event, phase, phase_count)
@@ -124,6 +137,11 @@ def _train_stream(
                     choice,
                     propensity,
                 )
+                if value_state is not None:
+                    _, value_state = value_baseline.record_decision(
+                        value_state,
+                        feature,
+                    )
                 choices.append(choice)
             chosen = torch.stack(choices, dim=1)
             target = _hidden_target(event, relation)
@@ -134,11 +152,23 @@ def _train_stream(
                 if feedback_override is None
                 else feedback_override[index : index + 1]
             )
+            baseline_override = (
+                None
+                if value_state is None
+                else value_baseline.episode_baseline(value_state)
+            )
             state = rule.apply_feedback(
                 state,
                 feedback,
                 terminal=torch.ones(1, dtype=torch.bool),
+                baseline_override=baseline_override,
             )
+            if value_state is not None:
+                value_state = value_baseline.apply_feedback(
+                    value_state,
+                    feedback,
+                    terminal=torch.ones(1, dtype=torch.bool),
+                )
             if (index + 1) % eval_every == 0:
                 exact, phase_scores = _evaluate(
                     rule,
@@ -240,6 +270,18 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         initial_trace_decay=args.trace_decay,
         initial_baseline_rate=args.baseline_rate,
     )
+    value_baseline = (
+        None
+        if not args.value_baseline
+        else ExternalOutcomeValueBaseline(
+            feature_width,
+            initial_learning_rate=args.value_learning_rate,
+            initial_trace_decay=args.value_trace_decay,
+        )
+    )
+    value_baseline_digest_before = (
+        None if value_baseline is None else _digest(value_baseline)
+    )
     rule_digest_before = _digest(rule)
     source_state, _, source_progress = _train_stream(
         rule,
@@ -250,6 +292,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         eval_relation=relation_source,
         eval_every=args.eval_every,
         phase_count=args.phases,
+        value_baseline=value_baseline,
     )
     source_before, source_phase_before = _evaluate(
         rule, source_state, source_eval, relation_source, args.phases
@@ -264,6 +307,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         eval_relation=relation_target,
         eval_every=args.eval_every,
         phase_count=args.phases,
+        value_baseline=value_baseline,
     )
     no_trace_rule = ExternalOutcomeCreditPlasticity(
         feature_width,
@@ -281,6 +325,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         eval_relation=relation_target,
         eval_every=args.eval_every,
         phase_count=args.phases,
+        value_baseline=value_baseline,
     )
     permutation = torch.randperm(
         target_outcomes.shape[0], generator=torch.Generator().manual_seed(args.seed + 20_002)
@@ -295,6 +340,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         eval_relation=relation_target,
         eval_every=args.eval_every,
         phase_count=args.phases,
+        value_baseline=value_baseline,
         feedback_override=shuffled_outcomes,
     )
 
@@ -336,6 +382,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         for name in ("policy", "eligibility", "baseline", "decisions", "feedbacks")
     )
     rule_digest_after = _digest(rule)
+    value_baseline_digest_after = (
+        None if value_baseline is None else _digest(value_baseline)
+    )
     inherited_stable = _stable_episode_prefix(
         target_progress, args.mastery_threshold
     )
@@ -356,6 +405,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "missing_feedback_no_write": missing_feedback_no_write,
         "persistence_exact": persistence_exact,
         "plasticity_rule_frozen": rule_digest_before == rule_digest_after,
+        "value_baseline_rule_frozen": (
+            value_baseline_digest_before == value_baseline_digest_after
+        ),
         "no_replayed_examples": True,
     }
     report = {
@@ -374,6 +426,17 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "phase_count": args.phases,
         "feature_width": feature_width,
         "trace_decay": float(rule.trace_decay.detach()),
+        "value_baseline_enabled": value_baseline is not None,
+        "value_baseline_learning_rate": (
+            None
+            if value_baseline is None
+            else float(value_baseline.learning_rate.detach())
+        ),
+        "value_baseline_trace_decay": (
+            None
+            if value_baseline is None
+            else float(value_baseline.trace_decay.detach())
+        ),
         "mastery_threshold": args.mastery_threshold,
         "source_progress": source_progress,
         "target_progress": target_progress,
@@ -396,6 +459,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "missing_feedback_no_write": missing_feedback_no_write,
         "persistence_exact": persistence_exact,
         "plasticity_rule_frozen": rule_digest_before == rule_digest_after,
+        "value_baseline_rule_frozen": (
+            value_baseline_digest_before == value_baseline_digest_after
+        ),
         "accounting": {
             "unique_verifier_bits": args.source_episodes + args.target_episodes,
             "unique_logical_lifetimes": args.source_episodes + args.target_episodes,
@@ -430,6 +496,9 @@ def main() -> None:
     parser.add_argument("--learning-rate", type=float, default=0.03)
     parser.add_argument("--trace-decay", type=float, default=0.95)
     parser.add_argument("--baseline-rate", type=float, default=0.02)
+    parser.add_argument("--value-baseline", action="store_true")
+    parser.add_argument("--value-learning-rate", type=float, default=0.05)
+    parser.add_argument("--value-trace-decay", type=float, default=0.90)
     parser.add_argument("--mastery-threshold", type=float, default=0.90)
     args = parser.parse_args()
     print(json.dumps(run(args), indent=2))

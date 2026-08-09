@@ -25,6 +25,9 @@ EXTERNAL_FAST_WEIGHT_SCHEMA = (
 EXTERNAL_OUTCOME_CREDIT_SCHEMA = (
     "neural-computer.external-outcome-credit-plasticity.v1"
 )
+EXTERNAL_OUTCOME_VALUE_SCHEMA = (
+    "neural-computer.external-outcome-value-baseline.v1"
+)
 
 
 @dataclass(frozen=True)
@@ -525,6 +528,7 @@ class ExternalOutcomeCreditPlasticity(nn.Module):
         *,
         present: torch.Tensor | None = None,
         terminal: torch.Tensor | None = None,
+        baseline_override: torch.Tensor | None = None,
     ) -> ExternalOutcomeCreditState:
         """Apply scalar feedback to all eligible decisions in the trace."""
 
@@ -540,8 +544,20 @@ class ExternalOutcomeCreditPlasticity(nn.Module):
         if terminal is None:
             terminal = torch.zeros(batch_size, dtype=torch.bool, device=outcome.device)
         self._validate_presence(terminal, batch_size, device=outcome.device)
+        if baseline_override is not None:
+            if (
+                baseline_override.shape != (batch_size,)
+                or not bool(torch.isfinite(baseline_override).all())
+            ):
+                raise ValueError("outcome-credit baseline override must be finite [batch]")
+            if bool(((baseline_override < 0.0) | (baseline_override > 1.0)).any()):
+                raise ValueError("outcome-credit baseline override must lie in [0, 1]")
+            if baseline_override.device != outcome.device:
+                raise ValueError("outcome-credit baseline override is on the wrong device")
         active = present[:, None, None]
-        centered = outcome - state.baseline
+        centered = outcome - (
+            state.baseline if baseline_override is None else baseline_override
+        )
         update = (
             self.learning_rate.to(dtype=state.policy.dtype)
             * centered[:, None, None]
@@ -620,6 +636,357 @@ class ExternalOutcomeCreditPlasticity(nn.Module):
                 raise TypeError(f"outcome-credit payload field {name!r} must be a tensor")
             tensors[name] = value
         state = ExternalOutcomeCreditState(**tensors)
+        self._validate_state(state)
+        return state
+
+
+@dataclass(frozen=True)
+class ExternalOutcomeValueState:
+    """External feature-conditioned baseline state for delayed outcomes."""
+
+    weights: torch.Tensor
+    eligibility: torch.Tensor
+    bias: torch.Tensor
+    prediction_trace: torch.Tensor
+    trace_mass: torch.Tensor
+    decisions: torch.Tensor
+    feedbacks: torch.Tensor
+
+    def validate(self, *, feature_width: int) -> None:
+        if self.weights.ndim != 2 or self.weights.shape[1] != feature_width:
+            raise ValueError("outcome-value weights have the wrong shape")
+        if self.eligibility.shape != self.weights.shape:
+            raise ValueError("outcome-value eligibility has the wrong shape")
+        batch_size = self.weights.shape[0]
+        for name, value in (
+            ("bias", self.bias),
+            ("prediction_trace", self.prediction_trace),
+            ("trace_mass", self.trace_mass),
+            ("decisions", self.decisions),
+            ("feedbacks", self.feedbacks),
+        ):
+            if value.shape != (batch_size,):
+                raise ValueError(f"outcome-value {name} has the wrong shape")
+        for name, value in (
+            ("decisions", self.decisions),
+            ("feedbacks", self.feedbacks),
+        ):
+            if value.dtype not in (torch.int32, torch.int64):
+                raise TypeError(f"outcome-value {name} must be integer")
+            if bool((value < 0).any()):
+                raise ValueError(f"outcome-value {name} cannot be negative")
+        if bool((self.trace_mass < 0.0).any()):
+            raise ValueError("outcome-value trace mass cannot be negative")
+        if not all(
+            bool(torch.isfinite(value).all())
+            for value in (
+                self.weights,
+                self.eligibility,
+                self.bias,
+                self.prediction_trace,
+                self.trace_mass,
+            )
+        ):
+            raise ValueError("outcome-value state must contain finite values")
+        for value in (
+            self.eligibility,
+            self.bias,
+            self.prediction_trace,
+            self.trace_mass,
+            self.decisions,
+            self.feedbacks,
+        ):
+            if value.device != self.weights.device:
+                raise ValueError("outcome-value state tensors must share a device")
+
+
+class ExternalOutcomeValueBaseline(nn.Module):
+    """Learn a memory-side value baseline from scalar outcomes only.
+
+    This critic is an optional variance-reduction companion to
+    :class:`ExternalOutcomeCreditPlasticity`.  Its weights, feature trace, and
+    predicted-value trace are external state.  It receives no correct choice,
+    task identity, or privileged state; a caller may pass the resulting
+    trajectory baseline back to the policy credit rule.
+    """
+
+    schema = EXTERNAL_OUTCOME_VALUE_SCHEMA
+
+    def __init__(
+        self,
+        feature_width: int,
+        *,
+        initial_learning_rate: float = 0.05,
+        initial_trace_decay: float = 0.9,
+        initial_value: float = 0.5,
+    ) -> None:
+        super().__init__()
+        if feature_width < 1:
+            raise ValueError("outcome-value feature width must be positive")
+        if not 0.0 < initial_learning_rate <= 1.0:
+            raise ValueError("outcome-value learning rate must lie in (0, 1]")
+        if not 0.0 <= initial_trace_decay < 1.0:
+            raise ValueError("outcome-value trace decay must lie in [0, 1)")
+        if not 0.0 < initial_value < 1.0:
+            raise ValueError("outcome-value initial value must lie in (0, 1)")
+        self.feature_width = int(feature_width)
+        self.initial_value = float(initial_value)
+        self._trace_decay_exact_zero = initial_trace_decay == 0.0
+        self.learning_rate_logit = nn.Parameter(
+            torch.logit(torch.tensor(float(initial_learning_rate)).clamp(1e-4, 1.0 - 1e-4))
+        )
+        self.trace_decay_logit = nn.Parameter(
+            torch.tensor(0.0)
+            if self._trace_decay_exact_zero
+            else torch.logit(torch.tensor(float(initial_trace_decay)).clamp(1e-4, 1.0 - 1e-4))
+        )
+
+    @property
+    def learning_rate(self) -> torch.Tensor:
+        return self.learning_rate_logit.sigmoid()
+
+    @property
+    def trace_decay(self) -> torch.Tensor:
+        if self._trace_decay_exact_zero:
+            return torch.zeros_like(self.trace_decay_logit)
+        return self.trace_decay_logit.sigmoid()
+
+    def configuration(self) -> dict[str, int | float | str]:
+        return {
+            "schema": self.schema,
+            "feature_width": self.feature_width,
+            "update_rule": "external_trace_value_baseline_v1",
+            "trace": "decayed_feature_and_prediction_trace_v1",
+            "learning_rate": float(self.learning_rate.detach()),
+            "trace_decay": float(self.trace_decay.detach()),
+            "initial_value": self.initial_value,
+        }
+
+    def initial_state(
+        self,
+        batch_size: int,
+        *,
+        device: torch.device | str = "cpu",
+        dtype: torch.dtype = torch.float32,
+    ) -> ExternalOutcomeValueState:
+        if batch_size < 1:
+            raise ValueError("outcome-value batch size must be positive")
+        weights = torch.zeros(batch_size, self.feature_width, device=device, dtype=dtype)
+        return ExternalOutcomeValueState(
+            weights=weights,
+            eligibility=torch.zeros_like(weights),
+            bias=torch.full(
+                (batch_size,),
+                float(torch.logit(torch.tensor(self.initial_value))),
+                device=device,
+                dtype=dtype,
+            ),
+            prediction_trace=torch.zeros(batch_size, device=device, dtype=dtype),
+            trace_mass=torch.zeros(batch_size, device=device, dtype=dtype),
+            decisions=torch.zeros(batch_size, device=device, dtype=torch.long),
+            feedbacks=torch.zeros(batch_size, device=device, dtype=torch.long),
+        )
+
+    def _validate_features(
+        self,
+        features: torch.Tensor,
+        *,
+        batch_size: int | None = None,
+    ) -> None:
+        if features.ndim != 2 or features.shape[1] != self.feature_width:
+            raise ValueError("outcome-value features have the wrong shape")
+        if batch_size is not None and features.shape[0] != batch_size:
+            raise ValueError("outcome-value feature batch does not match state")
+        if not bool(torch.isfinite(features).all()):
+            raise ValueError("outcome-value features must be finite")
+
+    @staticmethod
+    def _validate_presence(
+        present: torch.Tensor,
+        batch_size: int,
+        *,
+        device: torch.device,
+    ) -> None:
+        if present.shape != (batch_size,) or present.dtype is not torch.bool:
+            raise ValueError("outcome-value presence must be boolean [batch]")
+        if present.device != device:
+            raise ValueError("outcome-value presence is on the wrong device")
+
+    def _validate_state(self, state: ExternalOutcomeValueState) -> None:
+        state.validate(feature_width=self.feature_width)
+
+    def predict(
+        self,
+        state: ExternalOutcomeValueState,
+        features: torch.Tensor,
+    ) -> torch.Tensor:
+        self._validate_state(state)
+        self._validate_features(features, batch_size=state.weights.shape[0])
+        logits = torch.einsum("bf,bf->b", features, state.weights) + state.bias
+        return logits.sigmoid()
+
+    def record_decision(
+        self,
+        state: ExternalOutcomeValueState,
+        features: torch.Tensor,
+        *,
+        present: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, ExternalOutcomeValueState]:
+        """Record one feature and return its current value prediction."""
+
+        self._validate_state(state)
+        batch_size = state.weights.shape[0]
+        self._validate_features(features, batch_size=batch_size)
+        if present is None:
+            present = torch.ones(batch_size, dtype=torch.bool, device=features.device)
+        self._validate_presence(present, batch_size, device=features.device)
+        prediction = self.predict(state, features)
+        decay = self.trace_decay.to(dtype=features.dtype)
+        next_eligibility = decay * state.eligibility + features
+        next_prediction_trace = decay * state.prediction_trace + prediction
+        next_mass = decay * state.trace_mass + 1.0
+        active = present[:, None]
+        next_eligibility = torch.where(active, next_eligibility, state.eligibility)
+        next_prediction_trace = torch.where(
+            present, next_prediction_trace, state.prediction_trace
+        )
+        next_mass = torch.where(present, next_mass, state.trace_mass)
+        next_state = ExternalOutcomeValueState(
+            weights=state.weights,
+            eligibility=next_eligibility,
+            bias=state.bias,
+            prediction_trace=next_prediction_trace,
+            trace_mass=next_mass,
+            decisions=state.decisions + present.to(device=state.decisions.device).long(),
+            feedbacks=state.feedbacks,
+        )
+        self._validate_state(next_state)
+        return prediction, next_state
+
+    def episode_baseline(self, state: ExternalOutcomeValueState) -> torch.Tensor:
+        """Return the trace-weighted baseline for the current episode."""
+
+        self._validate_state(state)
+        default = state.bias.sigmoid()
+        return torch.where(
+            state.trace_mass > 0.0,
+            state.prediction_trace / state.trace_mass.clamp_min(1e-8),
+            default,
+        )
+
+    def apply_feedback(
+        self,
+        state: ExternalOutcomeValueState,
+        outcome: torch.Tensor,
+        *,
+        present: torch.Tensor | None = None,
+        terminal: torch.Tensor | None = None,
+    ) -> ExternalOutcomeValueState:
+        """Fit the external value trace to one scalar outcome."""
+
+        self._validate_state(state)
+        batch_size = state.weights.shape[0]
+        if outcome.shape != (batch_size,) or not bool(torch.isfinite(outcome).all()):
+            raise ValueError("outcome-value outcome must be finite [batch]")
+        if bool(((outcome < 0.0) | (outcome > 1.0)).any()):
+            raise ValueError("outcome-value outcome must lie in [0, 1]")
+        if present is None:
+            present = torch.ones(batch_size, dtype=torch.bool, device=outcome.device)
+        self._validate_presence(present, batch_size, device=outcome.device)
+        if terminal is None:
+            terminal = torch.zeros(batch_size, dtype=torch.bool, device=outcome.device)
+        self._validate_presence(terminal, batch_size, device=outcome.device)
+        baseline = self.episode_baseline(state)
+        error = outcome - baseline
+        update = self.learning_rate.to(dtype=state.weights.dtype) * error[:, None] * state.eligibility
+        active = present[:, None]
+        next_weights = torch.where(active, state.weights + update, state.weights)
+        next_bias = torch.where(
+            present,
+            state.bias + self.learning_rate.to(dtype=state.bias.dtype) * error,
+            state.bias,
+        )
+        clear_flat = terminal & present
+        clear = clear_flat[:, None]
+        next_eligibility = torch.where(
+            clear, torch.zeros_like(state.eligibility), state.eligibility
+        )
+        next_prediction_trace = torch.where(
+            clear_flat,
+            torch.zeros_like(state.prediction_trace),
+            state.prediction_trace,
+        )
+        next_mass = torch.where(
+            clear_flat,
+            torch.zeros_like(state.trace_mass),
+            state.trace_mass,
+        )
+        next_state = ExternalOutcomeValueState(
+            weights=next_weights,
+            eligibility=next_eligibility,
+            bias=next_bias,
+            prediction_trace=next_prediction_trace,
+            trace_mass=next_mass,
+            decisions=state.decisions,
+            feedbacks=state.feedbacks + present.to(device=state.feedbacks.device).long(),
+        )
+        self._validate_state(next_state)
+        return next_state
+
+    def begin_episode(self, state: ExternalOutcomeValueState) -> ExternalOutcomeValueState:
+        self._validate_state(state)
+        next_state = ExternalOutcomeValueState(
+            weights=state.weights,
+            eligibility=torch.zeros_like(state.eligibility),
+            bias=state.bias,
+            prediction_trace=torch.zeros_like(state.prediction_trace),
+            trace_mass=torch.zeros_like(state.trace_mass),
+            decisions=state.decisions,
+            feedbacks=state.feedbacks,
+        )
+        self._validate_state(next_state)
+        return next_state
+
+    def state_payload(self, state: ExternalOutcomeValueState) -> dict[str, object]:
+        self._validate_state(state)
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "weights": state.weights.detach().cpu().clone(),
+            "eligibility": state.eligibility.detach().cpu().clone(),
+            "bias": state.bias.detach().cpu().clone(),
+            "prediction_trace": state.prediction_trace.detach().cpu().clone(),
+            "trace_mass": state.trace_mass.detach().cpu().clone(),
+            "decisions": state.decisions.detach().cpu().clone(),
+            "feedbacks": state.feedbacks.detach().cpu().clone(),
+        }
+
+    def state_from_payload(
+        self,
+        payload: Mapping[str, object],
+    ) -> ExternalOutcomeValueState:
+        if payload.get("schema") != self.schema:
+            raise ValueError("unsupported outcome-value state schema")
+        configuration = payload.get("configuration")
+        if not isinstance(configuration, Mapping):
+            raise TypeError("outcome-value state configuration is invalid")
+        if configuration.get("feature_width") != self.feature_width:
+            raise ValueError("outcome-value state dimensions do not match")
+        tensors: dict[str, torch.Tensor] = {}
+        for name in (
+            "weights",
+            "eligibility",
+            "bias",
+            "prediction_trace",
+            "trace_mass",
+            "decisions",
+            "feedbacks",
+        ):
+            value = payload.get(name)
+            if not isinstance(value, torch.Tensor):
+                raise TypeError(f"outcome-value payload field {name!r} must be a tensor")
+            tensors[name] = value
+        state = ExternalOutcomeValueState(**tensors)
         self._validate_state(state)
         return state
 
