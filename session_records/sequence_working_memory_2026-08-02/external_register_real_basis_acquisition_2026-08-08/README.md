@@ -249,6 +249,33 @@ increasing width.
 Each run used `69,632` verifier bits, `8,704` logical lifetimes, `577`
 optimizer updates, and zero replayed examples.
 
+## Verifier-gated snapshot consolidation — positive mechanism, mixed replication
+
+The candidate path now has a genuine staging boundary. During mutable growth,
+the trainer may retain the best held-out snapshot, but that snapshot is not
+admitted immediately. It is restored, treated as frozen external capability
+state, and subjected to four independent post-freeze verifier probes. Admission
+also requires the fixed source-retention floor; an unstable or retention-
+breaking candidate is rolled back transactionally.
+
+At a longer 512-update target budget, both seeds found a high-performing frozen
+candidate and passed all four target probes: seed `69316` scored
+`0.9531`/`0.9531`/`0.9453`/`0.9648`, while seed `69317` scored
+`1.0` on every probe. Seed `69317` passed the inherited source floor
+(`0.8281` minimum) and was promoted. Seed `69316` was correctly rejected
+because one inherited source remained below the absolute floor (`0.7578`),
+despite zero measured regression from its own baseline. Thus the mechanism
+solves the transient-candidate admission problem in one seed, but the strict
+two-seed promotion gate remains mixed and this is not yet a general continual-
+learning claim.
+
+The target training curves themselves stayed below threshold, which is
+important: promotion came only from the frozen snapshot's independent
+verification window, not from relabelling a drifting training trajectory.
+Each run used `121,856` verifier bits, `15,360` logical lifetimes, `961`
+optimizer updates, and zero replayed examples; `2,048` verifier bits were
+spent on post-freeze consolidation probes.
+
 ## Attention-pooled event reader follow-up — rejected
 
 Fresh slots were given a generic attention reader over the bounded event

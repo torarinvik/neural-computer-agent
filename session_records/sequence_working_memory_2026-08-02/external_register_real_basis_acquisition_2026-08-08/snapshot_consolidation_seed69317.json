@@ -1,0 +1,15 @@
+{
+  "schema": "neural-computer.external-register-real-basis-acquisition-snapshot-consolidation-summary.v1",
+  "seed": 69317,
+  "target_updates": 512,
+  "restore_best_checkpoint": true,
+  "consolidation_probe_scores": [1.0, 1.0, 1.0, 1.0],
+  "source_accuracy_after": [0.921875, 0.828125, 0.90625],
+  "candidate_stable": true,
+  "retained": true,
+  "promoted": true,
+  "rollback_applied": false,
+  "unique_verifier_bits": 121856,
+  "unique_logical_lifetimes": 15360,
+  "replayed_examples": 0
+}

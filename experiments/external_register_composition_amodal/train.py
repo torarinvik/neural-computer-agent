@@ -421,6 +421,7 @@ def _train_stage(
     q_head: OpaqueVerifierQ | None = None,
     event_bridge: AmodalEventBridge | None = None,
     ema_decay: float = 0.0,
+    restore_best_checkpoint: bool = False,
 ) -> list[dict[str, float | int]]:
     if anchor_weight < 0.0:
         raise ValueError("anchor weight cannot be negative")
@@ -435,6 +436,8 @@ def _train_stage(
         else None
     )
     progress: list[dict[str, float | int]] = []
+    best_checkpoint: list[torch.Tensor] | None = None
+    best_accuracy = float("-inf")
     for update in range(1, updates + 1):
         batch = _batch(
             operation,
@@ -481,28 +484,38 @@ def _train_stage(
         if eval_every > 0 and (
             update % eval_every == 0 or update == updates
         ):
+            heldout_accuracy = _accuracy(
+                parent,
+                machine,
+                decoder,
+                operation=operation,
+                instructions=instructions,
+                count=audit_count,
+                span=span,
+                seed=audit_seed + update,
+                credit_mode=credit_mode,
+                generated_composition_ids=generated_composition_ids,
+                generated_compositions=generated_compositions,
+                execution_mode=execution_mode,
+                value_head=value_head,
+                q_head=q_head,
+                event_bridge=event_bridge,
+            )
             progress.append(
                 {
                     "update": update,
-                    "heldout_accuracy": _accuracy(
-                        parent,
-                        machine,
-                        decoder,
-                        operation=operation,
-                        instructions=instructions,
-                        count=audit_count,
-                        span=span,
-                        seed=audit_seed + update,
-                        credit_mode=credit_mode,
-                        generated_composition_ids=generated_composition_ids,
-                        generated_compositions=generated_compositions,
-                        execution_mode=execution_mode,
-                        value_head=value_head,
-                        q_head=q_head,
-                        event_bridge=event_bridge,
-                    ),
+                    "heldout_accuracy": heldout_accuracy,
                 }
             )
+            if restore_best_checkpoint and heldout_accuracy > best_accuracy:
+                best_accuracy = heldout_accuracy
+                best_checkpoint = [
+                    parameter.detach().clone() for parameter in trainable
+                ]
+    if best_checkpoint is not None:
+        with torch.no_grad():
+            for parameter, snapshot in zip(trainable, best_checkpoint, strict=True):
+                parameter.copy_(snapshot)
     return progress
 
 

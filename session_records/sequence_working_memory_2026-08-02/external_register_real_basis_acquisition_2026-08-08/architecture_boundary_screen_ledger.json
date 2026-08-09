@@ -42,9 +42,20 @@
       "stable_prefix": "failed",
       "source_retention": "passed",
       "seeds": [69316, 69317]
+    },
+    {
+      "name": "verifier_gated_best_snapshot_consolidation",
+      "decision": "retain_mechanism_mixed_replication",
+      "verifier_bits_per_run": 121856,
+      "logical_lifetimes_per_run": 15360,
+      "consolidation_probe_bits_per_run": 2048,
+      "stable_prefix": "passed_for_frozen_candidate_both_seeds",
+      "source_retention": "mixed",
+      "promoted_seeds": [69317],
+      "rolled_back_seeds": [69316]
     }
   ],
-  "next_frontier": "stable_consolidation_objective_for_candidate_event_bridge",
+  "next_frontier": "replicate_snapshot_consolidation_while_repairing_source_floor",
   "candidate_event_bridge": {
     "decision": "retain_architecture_reject_current_learning_rung",
     "verifier_bits_per_run": 70656,

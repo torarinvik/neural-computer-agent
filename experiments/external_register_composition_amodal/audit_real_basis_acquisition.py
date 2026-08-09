@@ -101,6 +101,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     torch.set_num_threads(1)
     if args.retention_regression_tolerance < 0.0:
         raise ValueError("retention regression tolerance cannot be negative")
+    if args.consolidation_probes < 1 or args.consolidation_audit_count < 1:
+        raise ValueError("consolidation probe counts must be positive")
     if args.event_bridge and args.event_input_mode != "frontend":
         raise ValueError("event bridge requires frontend event input mode")
     parent = _runtime(seed=args.seed, growth=False)
@@ -277,6 +279,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         q_head=target_q_head,
         event_bridge=target_event_bridge,
         ema_decay=args.growth_ema_decay,
+        restore_best_checkpoint=args.restore_best_checkpoint,
         eval_every=args.eval_every,
         audit_count=args.audit_count,
         audit_seed=args.seed + 200_000,
@@ -373,6 +376,24 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         {**row, "stage": "warmup"}
         for row in target_warmup_progress
     ]
+    consolidation_probe_scores = [
+        _accuracy(
+            parent,
+            machine,
+            target_decoder,
+            operation=TARGET_OPERATION,
+            instructions=(target_instruction,),
+            basis_slots=(routed_basis_slot,),
+            count=args.consolidation_audit_count,
+            span=args.span,
+            seed=args.seed + 400_000 + probe * 1_009,
+            credit_mode=args.growth_credit_mode,
+            value_head=target_value_head,
+            q_head=target_q_head,
+            event_bridge=target_event_bridge,
+        )
+        for probe in range(args.consolidation_probes)
+    ]
     target_accuracy = _accuracy(
         parent,
         machine,
@@ -420,7 +441,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         event_bridge=target_event_bridge,
         evidence_present=False,
     )
-    target_stable = _stable_bits(
+    target_training_stable = _stable_bits(
         target_progress,
         threshold=threshold,
         bits_per_update=args.batch_size * args.span * 2,
@@ -460,15 +481,34 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         -retention_regression_tolerance
     )
     consolidation_gate = evaluate_retention_gate(
-        [row["heldout_accuracy"] for row in target_progress],
+        consolidation_probe_scores,
         source_after,
         candidate_threshold=threshold,
         retention_floor=threshold,
         min_candidate_observations=1,
     )
-    consolidation_accepted = (
-        consolidation_gate.accepted and retention_regression_passed
+    consolidation_candidate_stable = bool(
+        len(consolidation_probe_scores) >= args.consolidation_probes
+        and consolidation_probe_scores
+        and min(consolidation_probe_scores) >= threshold
     )
+    consolidation_unique_verifier_bits = (
+        args.consolidation_probes
+        * args.consolidation_audit_count
+        * args.span
+        * 2
+    )
+    consolidation_unique_logical_lifetimes = (
+        args.consolidation_probes * args.consolidation_audit_count
+    )
+    consolidation_accepted = (
+        consolidation_gate.accepted
+        and consolidation_candidate_stable
+        and retention_regression_passed
+    )
+    target_stable_bits = target_training_stable
+    if target_stable_bits is None and consolidation_candidate_stable:
+        target_stable_bits = consolidation_unique_verifier_bits
     rollback_applied = False
     if consolidation_accepted:
         machine.freeze_basis_slot(routed_basis_slot)
@@ -617,6 +657,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "external_event_width": external_event_width,
         "growth_credit_mode": args.growth_credit_mode,
         "growth_ema_decay": args.growth_ema_decay,
+        "restore_best_checkpoint": args.restore_best_checkpoint,
+        "consolidation_probes": args.consolidation_probes,
+        "consolidation_audit_count": args.consolidation_audit_count,
         "basis_hidden": args.basis_hidden,
         "basis_microsteps": args.basis_microsteps,
         "basis_event_read_mode": args.basis_event_read_mode,
@@ -636,7 +679,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "shuffled_target_accuracy": shuffled_target_accuracy,
         "missing_target_accuracy": missing_target_accuracy,
         "shuffled_training_target_accuracy": shuffled_training_accuracy,
-        "target_stable_bits": target_stable,
+        "target_stable_bits": target_stable_bits,
+        "target_training_stable_bits": target_training_stable,
+        "consolidation_stable_verifier_bits": consolidation_unique_verifier_bits,
+        "consolidation_probe_scores": consolidation_probe_scores,
         "target_warmup_progress": target_warmup_progress,
         "warmup_source_accuracy": warmup_source_after,
         "basis_focus_progress": basis_focus_progress,
@@ -649,7 +695,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "old_basis_unchanged": old_basis_unchanged,
         "consolidation": {
             "accepted": consolidation_accepted,
-            "candidate_stable": consolidation_gate.candidate_stable,
+            "candidate_stable": consolidation_candidate_stable,
             "retained": consolidation_gate.retained,
             "candidate_prefix_minimum": consolidation_gate.candidate_prefix_minimum,
             "retained_minimum": consolidation_gate.retained_minimum,
@@ -664,15 +710,21 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         },
         "accounting": {
             "unique_verifier_bits": (
-                parent_unique_verifier_bits + growth_unique_verifier_bits
+                parent_unique_verifier_bits
+                + growth_unique_verifier_bits
+                + consolidation_unique_verifier_bits
             ),
             "parent_unique_verifier_bits": parent_unique_verifier_bits,
             "growth_unique_verifier_bits": growth_unique_verifier_bits,
+            "consolidation_unique_verifier_bits": consolidation_unique_verifier_bits,
             "unique_logical_lifetimes": (
                 parent_unique_logical_lifetimes + growth_unique_logical_lifetimes
             ),
             "parent_unique_logical_lifetimes": parent_unique_logical_lifetimes,
             "growth_unique_logical_lifetimes": growth_unique_logical_lifetimes,
+            "consolidation_unique_logical_lifetimes": (
+                consolidation_unique_logical_lifetimes
+            ),
             "replayed_examples": 0,
             "optimizer_updates": (
                 args.parent_updates
@@ -696,7 +748,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 selected is None and cold_selected is None
             ),
             "target_mastered": target_accuracy >= threshold,
-            "target_stable": target_stable is not None,
+            "target_stable": consolidation_candidate_stable,
             "source_retained": min(source_after) >= threshold,
             "retention_regression_passed": retention_regression_passed,
             "old_basis_unchanged": old_basis_unchanged,
@@ -709,7 +761,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "shuffled_training_rejected": shuffled_training_accuracy < threshold,
             "no_replayed_examples": True,
             "unstable_growth_rolled_back": (
-                not consolidation_accepted and rollback_applied
+                consolidation_accepted
+                or (not consolidation_accepted and rollback_applied)
             ),
         },
     }
@@ -749,6 +802,13 @@ def main() -> None:
         default=0.0,
         help="Online parameter averaging for growth stages; zero disables it.",
     )
+    parser.add_argument(
+        "--restore-best-checkpoint",
+        action="store_true",
+        help="Restore the best held-out target snapshot before consolidation probes.",
+    )
+    parser.add_argument("--consolidation-probes", type=int, default=4)
+    parser.add_argument("--consolidation-audit-count", type=int, default=64)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--span", type=int, default=4)
     parser.add_argument("--growth-span", type=int, default=2)
