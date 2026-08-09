@@ -7,6 +7,7 @@ from neural_computer import (
     ExternalRegisterComputeBasis,
     ExternalRegisterInstruction,
     IntentEvent,
+    LearnedRegisterRoleBinding,
 )
 
 
@@ -211,6 +212,48 @@ def test_shared_canonical_mode_applies_one_internal_state_contract_per_step() ->
     assert len(trace) == 2
     assert torch.isfinite(final).all()
     assert torch.allclose(trace[0].mean(dim=-1), torch.zeros(2), atol=1e-5)
+
+
+def test_learned_role_binding_is_shared_and_shape_preserving() -> None:
+    torch.manual_seed(915)
+    binding = LearnedRegisterRoleBinding(8, 5, role_count=2)
+    register = torch.randn(3, 8)
+    code = torch.randn(3, 5)
+    roles = binding(register, code)
+
+    assert binding.configuration()["schema"] == (
+        "neural-computer.external-register-learned-role-binding.v1"
+    )
+    assert roles.shape == (3, 2, 4)
+    assert torch.isfinite(roles).all()
+    assert roles.reshape(3, -1).shape[1] == register.shape[1]
+    roles.sum().backward()
+    assert binding.role_seed.grad is not None
+
+
+def test_shared_role_bound_mode_returns_learned_role_trace() -> None:
+    torch.manual_seed(916)
+    machine = ExternalCapabilityRegisterMachine(
+        event_width=4,
+        action_width=2,
+        intention_width=6,
+        register_width=8,
+        instruction_width=5,
+        interpreter_hidden=12,
+        operator_mode="factorized_shared_role_bound",
+        role_count=2,
+        instructions=tuple(ExternalRegisterInstruction(5) for _ in range(2)),
+    )
+    register = torch.randn(3, 8)
+    final, roles = machine.execute_chain_role_trace(register, machine.instructions)
+
+    assert machine.configuration()["operator_mode"] == (
+        "factorized_shared_role_bound"
+    )
+    assert machine.configuration()["role_count"] == 2
+    assert len(roles) == 2
+    assert all(role.shape == (3, 2, 4) for role in roles)
+    assert torch.isfinite(final).all()
 
 
 def test_new_basis_slot_does_not_resize_controller_or_existing_instruction_data() -> None:

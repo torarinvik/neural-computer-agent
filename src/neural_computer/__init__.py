@@ -198,11 +198,13 @@ from .promotion import (
 )
 from .register import (
     EXTERNAL_REGISTER_SHARED_CANONICAL_MODE,
+    EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
     EXTERNAL_REGISTER_SHARED_BANKED_MODE,
     EXTERNAL_REGISTER_EXECUTION_TRACE_SCHEMA,
     EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
     EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
     EXTERNAL_REGISTER_READOUT_SCHEMA,
+    EXTERNAL_REGISTER_ROLE_BINDING_SCHEMA,
     CanonicalRegisterReadout,
     EXTERNAL_REGISTER_BASIS_SCHEMA,
     EXTERNAL_REGISTER_COMPATIBILITY_SCHEMA,
@@ -214,6 +216,7 @@ from .register import (
     ExternalRegisterComputeBasis,
     ExternalRegisterInstruction,
     ExternalRegisterState,
+    LearnedRegisterRoleBinding,
 )
 from .retention import (
     RETENTION_LEDGER_SCHEMA,

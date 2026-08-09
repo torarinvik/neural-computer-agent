@@ -773,3 +773,26 @@ The next bottleneck is not access to prior states but the content of those
 states: the system needs a learned representation with invariants that make
 intermediate results reusable across operators, rather than merely a better
 addressing mechanism for incompatible tensors.
+
+## Learned role binding — rejected as a universal transfer solution
+
+The register now exposes an opt-in `factorized_shared_role_bound` mode. A
+shared instruction-conditioned slot-attention layer converts each executed
+register state into learned latent role slots. The slots have no assigned
+semantics and preserve the same total width as the register; composition
+decoders can consume the final role bank or the ordered role banks for every
+intermediate state.
+
+This was tested with the same balanced `576`-update source calibration and
+two-seed composition ladder. Source retention remained exact and ordinary
+behavior/causal controls passed for the direct and several composition
+targets, but strict positive transfer was `0/12` composition comparisons:
+neither seed established a stable inherited threshold against its fresh
+control. The new role representation therefore does not yet provide a
+reusable learned state algebra.
+
+The role-binding API is retained as a clean representational primitive, but
+the universal transfer claim is rejected. The bottleneck is now more specific:
+the system needs learned relational invariants that are preserved by the
+operator itself, not only a learned view layered on top of incompatible
+intermediate states.

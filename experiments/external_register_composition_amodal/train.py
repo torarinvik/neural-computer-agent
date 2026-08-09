@@ -30,6 +30,7 @@ from neural_computer import (
     ExternalCapabilityRegisterMachine,
     AmodalEventBridge,
     ExternalRegisterInstruction,
+    EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
     OpaqueProtocolDecoder,
     CanonicalRegisterReadout,
     PersistentOpaqueStateStore,
@@ -209,7 +210,23 @@ def _rollout(
             event = parent_state.hidden.detach()
         if machine.event_width != event.shape[1]:
             raise ValueError("machine event width is incompatible with parent event")
-        if preserve_execution_trace:
+        if machine.operator_mode == EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE:
+            register, register_state, role_trace = machine.read_execute_register_role_trace(
+                event=event,
+                action=previous_action,
+                outcome=previous_reward,
+                intention=output.intention,
+                state=register_state,
+                present=present,
+                instructions=instructions,
+                basis_slots=basis_slots,
+            )
+            if not role_trace:
+                raise ValueError("role-bound execution requires at least one instruction")
+            decoded_register = torch.cat(
+                tuple(role.flatten(1) for role in role_trace), dim=-1
+            ) if preserve_execution_trace else role_trace[-1].flatten(1)
+        elif preserve_execution_trace:
             register, register_state, trace = machine.read_execute_register_trace(
                 event=event,
                 action=previous_action,

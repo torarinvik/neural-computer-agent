@@ -42,6 +42,81 @@ EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE = "factorized_shared_interpreter"
 EXTERNAL_REGISTER_SHARED_BOUNDED_MODE = "factorized_shared_bounded"
 EXTERNAL_REGISTER_SHARED_BANKED_MODE = "factorized_shared_banked"
 EXTERNAL_REGISTER_SHARED_CANONICAL_MODE = "factorized_shared_canonical"
+EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE = "factorized_shared_role_bound"
+
+
+EXTERNAL_REGISTER_ROLE_BINDING_SCHEMA = (
+    "neural-computer.external-register-learned-role-binding.v1"
+)
+
+
+class LearnedRegisterRoleBinding(nn.Module):
+    """Bind one register state into shared, learned latent role slots.
+
+    Slots have no hand-assigned semantics.  They are persistent parameters
+    shared by every instruction, while the opaque instruction conditions the
+    query used to read a projected state-token bank.  The output is a compact
+    ``[batch, role, role_width]`` representation that preserves separately
+    bindable content for a downstream decoder.
+    """
+
+    def __init__(
+        self,
+        register_width: int,
+        instruction_width: int,
+        *,
+        role_count: int = 4,
+    ) -> None:
+        super().__init__()
+        if min(register_width, instruction_width, role_count) < 1:
+            raise ValueError("role-binding dimensions must be positive")
+        if register_width % role_count:
+            raise ValueError("register width must divide evenly into role slots")
+        self.register_width = int(register_width)
+        self.instruction_width = int(instruction_width)
+        self.role_count = int(role_count)
+        self.role_width = self.register_width // self.role_count
+        self.role_seed = nn.Parameter(torch.randn(role_count, self.role_width) * 0.02)
+        self.state_tokens = nn.Linear(
+            register_width, role_count * self.role_width
+        )
+        self.key = nn.Linear(self.role_width, self.role_width)
+        self.value = nn.Linear(self.role_width, self.role_width)
+        self.query = nn.Linear(instruction_width, self.role_width)
+        self.gate = nn.Linear(instruction_width, role_count)
+        self.contract = nn.LayerNorm(self.role_width)
+
+    def configuration(self) -> dict[str, int | str]:
+        return {
+            "schema": EXTERNAL_REGISTER_ROLE_BINDING_SCHEMA,
+            "register_width": self.register_width,
+            "instruction_width": self.instruction_width,
+            "role_count": self.role_count,
+            "role_width": self.role_width,
+            "binding": "shared_instruction_conditioned_slot_attention_v1",
+            "semantics": "learned_from_verifier_outcomes_no_assigned_roles_v1",
+        }
+
+    def forward(
+        self,
+        register: torch.Tensor,
+        code: torch.Tensor,
+    ) -> torch.Tensor:
+        if register.ndim != 2 or register.shape[1] != self.register_width:
+            raise ValueError("register has the wrong shape for role binding")
+        if code.shape != (register.shape[0], self.instruction_width):
+            raise ValueError("instruction code has the wrong shape for role binding")
+        tokens = self.state_tokens(register).view(
+            register.shape[0], self.role_count, self.role_width
+        )
+        queries = self.role_seed.unsqueeze(0) + self.query(code).unsqueeze(1)
+        scores = torch.einsum(
+            "brd,btd->brt", queries, self.key(tokens)
+        ).div(self.role_width**0.5)
+        weights = torch.softmax(scores, dim=-1)
+        attended = torch.einsum("brt,btd->brd", weights, self.value(tokens))
+        roles = self.contract(attended + queries)
+        return roles * torch.sigmoid(self.gate(code)).unsqueeze(-1)
 
 
 class CanonicalRegisterReadout(nn.Module):
@@ -451,6 +526,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         basis_event_read_mode: str = "flattened_window",
         event_input_mode: str = "frontend",
         event_window_size: int = 0,
+        role_count: int = 4,
     ) -> None:
         super().__init__()
         if min(
@@ -477,6 +553,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             raise ValueError("unsupported external event input mode")
         if event_window_size < 0:
             raise ValueError("event window size must be non-negative")
+        if role_count < 1:
+            raise ValueError("role count must be positive")
         if operator_mode not in (
             "factorized_low_rank",
             "factorized_film",
@@ -487,9 +565,15 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
             EXTERNAL_REGISTER_SHARED_BANKED_MODE,
             EXTERNAL_REGISTER_SHARED_CANONICAL_MODE,
+            EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
             "unconstrained_mlp",
         ):
             raise ValueError("unsupported external register operator mode")
+        if (
+            operator_mode == EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE
+            and register_width % role_count
+        ):
+            raise ValueError("role-bound mode requires divisible register width")
         if context_width is not None and context_width < 1:
             raise ValueError("context width must be positive")
         members = tuple(instructions)
@@ -525,6 +609,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         self.basis_event_read_mode = basis_event_read_mode
         self.event_input_mode = event_input_mode
         self.event_window_size = int(event_window_size)
+        self.role_count = int(role_count)
         seed_width = self.event_width + self.action_width + 2 + self.intention_width
         self.input_encoder = nn.Sequential(
             nn.Linear(seed_width, interpreter_hidden),
@@ -547,6 +632,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
             EXTERNAL_REGISTER_SHARED_BANKED_MODE,
             EXTERNAL_REGISTER_SHARED_CANONICAL_MODE,
+            EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
         ):
             self.operator_left = nn.Linear(
                 instruction_width,
@@ -569,6 +655,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
             EXTERNAL_REGISTER_SHARED_BANKED_MODE,
             EXTERNAL_REGISTER_SHARED_CANONICAL_MODE,
+            EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
         ):
             # Serial instruction chains are sensitive to unbounded additive
             # drift.  Normalize the read state, bound the learned proposal,
@@ -587,6 +674,12 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             nn.init.zeros_(self.bank_gate.bias)
         if operator_mode == EXTERNAL_REGISTER_SHARED_CANONICAL_MODE:
             self.state_contract = nn.LayerNorm(register_width)
+        if operator_mode == EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE:
+            self.role_binding = LearnedRegisterRoleBinding(
+                register_width,
+                instruction_width,
+                role_count=role_count,
+            )
         if operator_mode == "factorized_protected_meta":
             # This branch is an isolated, initially inert operator-family
             # prior.  The base low-rank operator can be protected while this
@@ -667,6 +760,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "basis_event_read_mode": self.basis_event_read_mode,
             "event_input_mode": self.event_input_mode,
             "event_window_size": self.event_window_size,
+            "role_count": self.role_count,
             "state": "external_working_register_with_recurrent_context_v2",
             "execution": "shared_interpreter_serial_instruction_chain_v1",
             "compute_basis": (
@@ -675,6 +769,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                     EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
                     EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
                     EXTERNAL_REGISTER_SHARED_BANKED_MODE,
+                    EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
                 )
                 else EXTERNAL_REGISTER_BASIS_SCHEMA
             ),
@@ -684,6 +779,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                     EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
                     EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
                     EXTERNAL_REGISTER_SHARED_BANKED_MODE,
+                    EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
                 )
                 else "opaque_memory_side_slot_index_v1"
             ),
@@ -994,6 +1090,20 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         pooled = torch.einsum("bt,btd->bd", weights, values)
         return torch.sigmoid(self.bank_gate(code)) * pooled
 
+    def bind_roles(
+        self,
+        register: torch.Tensor,
+        instruction: ExternalRegisterInstruction,
+    ) -> torch.Tensor:
+        """Return the learned role-slot view of one executed register state."""
+
+        if self.operator_mode != EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE:
+            raise ValueError("role binding requires shared role-bound mode")
+        code = instruction.expanded(
+            register.shape[0], device=register.device, dtype=register.dtype
+        )
+        return self.role_binding(register, code)
+
     def execute(
         self,
         register: torch.Tensor,
@@ -1024,7 +1134,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
             EXTERNAL_REGISTER_SHARED_BANKED_MODE,
             EXTERNAL_REGISTER_SHARED_CANONICAL_MODE,
-            EXTERNAL_REGISTER_SHARED_CANONICAL_MODE,
+            EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
         ):
             if not 0 <= basis_slot < len(self.basis_slots):
                 raise ValueError("basis slot index is out of range")
@@ -1042,6 +1152,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
             EXTERNAL_REGISTER_SHARED_BANKED_MODE,
             EXTERNAL_REGISTER_SHARED_CANONICAL_MODE,
+            EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
         ):
             operator_register = (
                 self.operator_normalizer(register)
@@ -1050,6 +1161,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                     EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
                     EXTERNAL_REGISTER_SHARED_BANKED_MODE,
                     EXTERNAL_REGISTER_SHARED_CANONICAL_MODE,
+                    EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
                 )
                 else register
             )
@@ -1080,7 +1192,10 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 proposal = torch.tanh(base_proposal + self.operator_bias(code))
                 gate = torch.sigmoid(self.operator_composition_gate(code))
                 return self.state_contract(register + gate * proposal)
-            if self.operator_mode == EXTERNAL_REGISTER_SHARED_BOUNDED_MODE:
+            if self.operator_mode in (
+                EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
+                EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
+            ):
                 proposal = torch.tanh(base_proposal + self.operator_bias(code))
                 gate = torch.sigmoid(self.operator_composition_gate(code))
                 return register + gate * proposal
@@ -1184,6 +1299,33 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             )
             states.append(register)
         return register, tuple(states)
+
+    def execute_chain_role_trace(
+        self,
+        register: torch.Tensor,
+        instructions: Iterable[ExternalRegisterInstruction],
+        *,
+        basis_slots: Iterable[int | None] | None = None,
+        event_window: torch.Tensor | None = None,
+        event_window_mask: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, tuple[torch.Tensor, ...]]:
+        """Execute a chain and return one learned role bank per instruction."""
+
+        if self.operator_mode != EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE:
+            raise ValueError("role traces require shared role-bound mode")
+        selected = tuple(instructions)
+        final, states = self.execute_chain_trace(
+            register,
+            selected,
+            basis_slots=basis_slots,
+            event_window=event_window,
+            event_window_mask=event_window_mask,
+        )
+        role_trace = tuple(
+            self.bind_roles(state, instruction)
+            for state, instruction in zip(states, selected, strict=True)
+        )
+        return final, role_trace
 
     def observe_register(
         self,
@@ -1333,6 +1475,52 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         return torch.where(
             present.unsqueeze(-1), executed, register
         ), next_state, trace
+
+    def read_execute_register_role_trace(
+        self,
+        *,
+        event: torch.Tensor,
+        action: torch.Tensor,
+        outcome: torch.Tensor,
+        intention: IntentEvent,
+        state: ExternalRegisterState,
+        present: torch.Tensor | None = None,
+        instructions: Iterable[ExternalRegisterInstruction] | None = None,
+        basis_slots: Iterable[int | None] | None = None,
+    ) -> tuple[torch.Tensor, ExternalRegisterState, tuple[torch.Tensor, ...]]:
+        """Observe, execute, and expose the learned role bank per step."""
+
+        if present is None:
+            present = torch.ones(
+                event.shape[0], dtype=torch.bool, device=event.device
+            )
+        register, next_state = self.observe_register(
+            event=event,
+            action=action,
+            outcome=outcome,
+            intention=intention,
+            state=state,
+            present=present,
+        )
+        selected = self.instructions if instructions is None else tuple(instructions)
+        executed, role_trace = self.execute_chain_role_trace(
+            register,
+            selected,
+            basis_slots=basis_slots,
+            event_window=next_state.event_window,
+            event_window_mask=next_state.event_window_mask,
+        )
+        role_trace = tuple(
+            torch.where(
+                present.unsqueeze(-1).unsqueeze(-1),
+                value,
+                self.bind_roles(register, instruction),
+            )
+            for value, instruction in zip(role_trace, selected, strict=True)
+        )
+        return torch.where(
+            present.unsqueeze(-1), executed, register
+        ), next_state, role_trace
 
     def to_intention(self, register: torch.Tensor) -> IntentEvent:
         """Project a register to the opaque intention transport boundary."""

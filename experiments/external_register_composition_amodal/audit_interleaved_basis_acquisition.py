@@ -1339,6 +1339,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             else "sequential_with_restarts"
         ),
         "joint_source_updates": args.joint_source_updates,
+        "operator_mode": args.operator_mode,
+        "operator_rank": args.operator_rank,
+        "role_binding": (
+            machine.configuration().get("role_count")
+            if args.operator_mode == "factorized_shared_role_bound"
+            else None
+        ),
         "preserve_composition_trace": args.preserve_composition_trace,
         "target_operations": list(target_operations),
         "composition_programs": [list(program) for program in composition_programs]
