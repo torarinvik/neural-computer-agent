@@ -516,6 +516,62 @@ def test_online_router_stages_candidate_before_heldout_verified_promotion() -> N
     assert router.bank.models[0].digest() == source_digest
 
 
+def test_online_router_persists_provisional_evidence_window() -> None:
+    torch.manual_seed(1213)
+    bank = ExternalTransitionModelBank(2, 1, 4, hidden_width=8, capacity=2)
+    encoder = ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4)
+    bank.ensure_context(torch.tensor([1.0, 0.0, 0.0, 0.0]))
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        encoder,
+        match_tolerance=1e-8,
+        admission_observations=2,
+        max_contexts=2,
+        defer_admission=True,
+    )
+    rows = [
+        ExternalTransitionObservation(
+            state=torch.tensor([[0.1, 0.2]]),
+            intention=torch.tensor([[0.3]]),
+            next_state=torch.tensor([[0.7, -0.4]]),
+            confidence=torch.ones(1),
+        ),
+        ExternalTransitionObservation(
+            state=torch.tensor([[0.2, 0.1]]),
+            intention=torch.tensor([[-0.3]]),
+            next_state=torch.tensor([[0.4, -0.6]]),
+            confidence=torch.ones(1),
+        ),
+        ExternalTransitionObservation(
+            state=torch.tensor([[-0.2, 0.4]]),
+            intention=torch.tensor([[0.1]]),
+            next_state=torch.tensor([[0.0, 0.6]]),
+            confidence=torch.ones(1),
+        ),
+        ExternalTransitionObservation(
+            state=torch.tensor([[0.5, -0.1]]),
+            intention=torch.tensor([[-0.2]]),
+            next_state=torch.tensor([[0.3, -0.5]]),
+            confidence=torch.ones(1),
+        ),
+    ]
+
+    router.observe(rows[0])
+    first_staged = router.observe(rows[1])
+    assert first_staged.status == "staged"
+    router.observe(rows[2])
+    second_staged = router.observe(rows[3])
+    assert second_staged.status == "staged"
+    payload = router.state_payload()
+    restored = ExternalOnlineTransitionContextRouter.from_payload(payload)
+
+    assert len(payload["provisional_observations"]) == 2
+    assert len(restored._provisional_observations) == 2
+    assert restored.provisional_model is not None
+    assert restored._provisional_context is not None
+    assert restored.state_payload()["bank"]["sha256"] == bank.digest()
+
+
 def test_online_transition_context_router_growth_updates_capacity_atomically() -> None:
     bank = ExternalTransitionModelBank(2, 1, 4, hidden_width=8, capacity=1)
     encoder = ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4)

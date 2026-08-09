@@ -23,4 +23,10 @@ held-out rows. The next mechanism is evidence-aware candidate acquisition:
 decide when a candidate has enough diverse coverage to promote, and use
 structured/current evidence to improve it without replaying protected slots.
 
+This hypothesis was subsequently tested by retaining the cumulative candidate
+evidence window. The follow-up passed both seeds and is archived in
+`../external_provisional_candidate_promotion_promoted_2026-08-09/`; this
+rejection remains the required negative control for the original sparse-window
+implementation.
+
 Reports are protected by `SHA256SUMS`.

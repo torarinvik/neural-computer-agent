@@ -137,17 +137,31 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
     )
     content_before_stage = bank.content_digest()
     staged_results = []
+    candidate_optimizer = None
+    candidate_evidence_presentations = 0
     for row in _rows(training):
         result = router.observe(row)
         staged_results.append(result.status)
         if result.status == "pending":
             continue
         assert result.status == "staged"
-        optimizer = torch.optim.Adam(router.provisional_model.parameters(), lr=0.02)
+        if candidate_optimizer is None:
+            candidate_optimizer = torch.optim.Adam(
+                router.provisional_model.parameters(), lr=0.02
+            )
+        evidence_rows = sum(
+            observation.state.shape[0]
+            for observation in router._provisional_observations
+        )
+        candidate_evidence_presentations += evidence_rows * 100
         for _ in range(100):
-            router.adaptation_step(result, optimizer)
+            router.adaptation_step(result, candidate_optimizer)
     content_before_promotion = bank.content_digest()
     committed_count_before_promotion = bank.context_count
+    candidate_evidence_unique_rows = sum(
+        observation.state.shape[0]
+        for observation in router._provisional_observations
+    )
     heldout_context = router._provisional_context
     if heldout_context is None:
         raise RuntimeError("candidate context was not staged")
@@ -194,6 +208,11 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "training_rows": TRAIN_ROWS,
             "heldout_rows": HELDOUT_ROWS,
             "candidate_updates": staged_results.count("staged") * 100,
+            "candidate_evidence_unique_rows": candidate_evidence_unique_rows,
+            "candidate_evidence_presentations": candidate_evidence_presentations,
+            "candidate_evidence_replayed_rows": (
+                candidate_evidence_presentations - candidate_evidence_unique_rows
+            ),
             "policy": "none_copy_on_write_external_model_candidate_v1",
         },
         "gates": gates,
@@ -211,6 +230,10 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "controller_parameter_updates": 0,
             "committed_bank_updates_before_promotion": 0,
             "provisional_candidate_updates": staged_results.count("staged") * 100,
+            "provisional_evidence_unique_rows": candidate_evidence_unique_rows,
+            "provisional_evidence_replayed_rows": (
+                candidate_evidence_presentations - candidate_evidence_unique_rows
+            ),
             "old_slot_replay": 0,
         },
         "digests": {

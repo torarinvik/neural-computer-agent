@@ -1596,6 +1596,7 @@ class ExternalOnlineTransitionContextRouter:
         self._conflict_windows = 0
         self._provisional_context: torch.Tensor | None = None
         self._provisional_model: ExternalTransitionModel | None = None
+        self._provisional_observations: list[ExternalTransitionObservation] = []
 
     @property
     def pending_observations(self) -> int:
@@ -1622,6 +1623,7 @@ class ExternalOnlineTransitionContextRouter:
             "defer_admission": self.defer_admission,
             "routing": "factual_prediction_error_then_bound_continuation_v2",
             "writes": "caller_owned_slot_only_v1",
+            "provisional_evidence": "cumulative_verified_window_v1",
         }
 
     def grow_verified(
@@ -1757,6 +1759,7 @@ class ExternalOnlineTransitionContextRouter:
             model.load_state_dict(self.bank.models[prior_index].state_dict())
         self._provisional_context = context.detach().clone()
         self._provisional_model = model
+        self._provisional_observations.clear()
 
     def _staged_result(
         self,
@@ -1764,6 +1767,7 @@ class ExternalOnlineTransitionContextRouter:
     ) -> ExternalOnlineTransitionContextResult:
         if self._provisional_context is None or self._provisional_model is None:
             raise RuntimeError("staged result requested without a candidate")
+        self._provisional_observations.append(self._clone_observation(observation))
         return ExternalOnlineTransitionContextResult(
             status="staged",
             slot_index=None,
@@ -1813,6 +1817,7 @@ class ExternalOnlineTransitionContextRouter:
             self._pending.clear()
             self._provisional_context = None
             self._provisional_model = None
+            self._provisional_observations.clear()
             self._active_slot = index
             self._conflict_windows = 0
             return ExternalOnlineTransitionContextResult(
@@ -1926,7 +1931,10 @@ class ExternalOnlineTransitionContextRouter:
             ):
                 return 0.0
             optimizer.zero_grad()
-            loss = self._provisional_model.loss(result.observation)
+            evidence = self._merge_observations(
+                self._provisional_observations or [result.observation]
+            )
+            loss = self._provisional_model.loss(evidence)
             loss.backward()
             optimizer.step()
             return float(loss.detach())
@@ -2044,6 +2052,7 @@ class ExternalOnlineTransitionContextRouter:
         self._conflict_windows = 0
         self._provisional_context = None
         self._provisional_model = None
+        self._provisional_observations.clear()
         return ExternalTransitionModelCandidateReceipt(
             accepted=True,
             slot_index=slot_index,
@@ -2107,6 +2116,10 @@ class ExternalOnlineTransitionContextRouter:
                 if self._provisional_model is None
                 else self._provisional_model.state_payload()
             ),
+            "provisional_observations": [
+                self._observation_payload(row)
+                for row in self._provisional_observations
+            ],
         }
 
     @classmethod
@@ -2122,12 +2135,17 @@ class ExternalOnlineTransitionContextRouter:
         bank_payload = payload.get("bank")
         encoder_payload = payload.get("context_encoder")
         pending_payload = payload.get("pending")
+        provisional_observations_payload = payload.get("provisional_observations", [])
         if not isinstance(bank_payload, Mapping) or not isinstance(
             encoder_payload, Mapping
         ):
             raise TypeError("online transition-context router components are missing")
         if not isinstance(pending_payload, list):
             raise TypeError("online transition-context router pending rows are invalid")
+        if not isinstance(provisional_observations_payload, list):
+            raise TypeError(
+                "online transition-context provisional evidence is invalid"
+            )
         bank = ExternalTransitionModelBank.from_payload(bank_payload)
         encoder = ExternalTransitionContextEncoder.from_payload(encoder_payload)
         router = cls(
@@ -2192,6 +2210,17 @@ class ExternalOnlineTransitionContextRouter:
                 raise ValueError("online transition provisional model is incompatible")
             router._provisional_context = provisional_context.detach().clone()
             router._provisional_model = restored_model
+            for observation_payload in provisional_observations_payload:
+                observation = cls._observation_from_payload(observation_payload)
+                observation.validate(
+                    state_width=bank.state_width,
+                    intention_width=bank.intention_width,
+                )
+                router._provisional_observations.append(observation)
+        elif provisional_observations_payload:
+            raise ValueError(
+                "online transition provisional evidence has no candidate"
+            )
         return router
 
 

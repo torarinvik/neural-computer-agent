@@ -4795,18 +4795,23 @@ Evidence is archived in
 
 The router now supports `defer_admission=True`: a novel context creates a
 provisional `ExternalTransitionModel` outside the committed bank. Caller-owned
-updates affect only that candidate. `promote_staged_candidate` clones the bank,
-checks held-out transition error, runs a caller-owned retention probe, and only
-then commits the candidate as a new slot. A failed proof leaves the committed
-bank unchanged.
+updates affect only that candidate. The candidate retains a cumulative opaque
+evidence window across staged observations, so later updates can assign credit
+using all verified current-stream evidence without touching protected slots.
+`promote_staged_candidate` clones the bank, checks held-out transition error,
+runs a caller-owned retention probe, and only then commits the candidate as a
+new slot. A failed proof leaves the committed bank unchanged.
 
-The unit lifecycle promotion passed, including source-byte stability. A
-two-seed held-out audit was intentionally rejected: after `200` provisional
-updates, held-out errors were `3.203` and `0.665` against tolerance `0.2`.
-Staging isolation passed, but the candidate did not generalize from four
-current rows to two held-out rows. This is the correct boundary: copy-on-write
-prevents corruption, but it does not create information or solve credit
-assignment. The next work is evidence-aware candidate acquisition and
-coverage-based promotion, not weakening the held-out gate. Evidence is
-archived in
+The initial sparse-evidence audit was intentionally rejected: copy-on-write
+isolation passed, but four current rows did not generalize reliably to two
+held-out rows. After adding cumulative candidate evidence-window training, the
+two-seed rerun passed held-out prediction with errors `0.129` and `0.143` at
+tolerance `0.2`; source slots remained byte-stable, the frozen controller was
+unchanged, and exact payload persistence passed. Four unique target rows were
+presented `600` times to the candidate (`596` candidate-evidence replayed
+rows), while old committed-slot replay stayed zero. This promotes a bounded
+credit-assignment mechanism, not replay-free general continual learning or
+unrestricted memory growth. Evidence from the rejection remains archived in
 `session_records/sequence_working_memory_2026-08-02/external_provisional_candidate_promotion_rejected_2026-08-09/`.
+The promoted rerun is archived in
+`session_records/sequence_working_memory_2026-08-02/external_provisional_candidate_promotion_promoted_2026-08-09/`.
