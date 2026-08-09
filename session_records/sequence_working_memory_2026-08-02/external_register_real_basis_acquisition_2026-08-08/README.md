@@ -1165,3 +1165,16 @@ program representation.
 Raw reports:
 `matched_program_memory_canonical_readout/report_seed69317.json` and
 `matched_program_memory_canonical_readout/report_seed69318.json`.
+
+## Conditioned sequence decoder prior — rejected as a transfer accelerator
+
+A source-calibrated conditioned shared sequence decoder preserved target
+mastery, but fresh transfer was positive for only `1/6` held-out programs
+across seeds `69317` and `69318` (`0/3` and `1/3`). This is below the
+canonical register readout's `3/6` result and fails the strict all-program
+transfer gate. More decoder conditioning is therefore not the next lever;
+the bottleneck remains a portable sequence-level state/program
+representation shared by the interpreter and external memory.
+Raw reports:
+`matched_program_memory_sequence_decoder_prior/report_seed69317.json` and
+`matched_program_memory_sequence_decoder_prior/report_seed69318.json`.

@@ -984,6 +984,22 @@
       "sequence_floor": 0.6875,
       "fixed_program_memory_floor": 0.734375,
       "decision": "reject learned program routing; soft route interference is worse than fixed program slots"
+    },
+    {
+      "experiment": "matched_external_program_memory_conditioned_sequence_decoder_prior_transfer",
+      "date": "2026-08-09",
+      "seeds": [69317, 69318],
+      "claim": "A source-calibrated conditioned shared sequence decoder prior will accelerate fresh external-memory transfer across held-out programs.",
+      "fresh_controller": true,
+      "interpreter_prior": "source_interpreter_state",
+      "sequence_decoder_prior": "source_calibrated_conditioned_shared_decoder",
+      "replayed_examples": 0,
+      "unique_verifier_bits_per_seed": 347648,
+      "fresh_accuracy_scores": [0.8125, 0.90625, 0.859375, 0.859375, 0.859375, 0.90625],
+      "positive_transfer_count": 1,
+      "positive_transfer_denominator": 6,
+      "heldout_gates": "all passed on both seeds",
+      "decision": "reject conditioned sequence decoder prior as a transfer accelerator; retain canonical readout as the stronger qualified direction"
     }
   ]
 }
