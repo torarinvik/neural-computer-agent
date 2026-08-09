@@ -3033,6 +3033,9 @@ class _ProvisionalTransitionCandidate:
     model_family: str
     observations: list[ExternalTransitionObservation]
     evidence_count: int = 0
+    deferred_observations: list[ExternalTransitionObservation] = field(
+        default_factory=list
+    )
     alternatives: dict[str, nn.Module] = field(default_factory=dict)
 
     def models(self) -> dict[str, nn.Module]:
@@ -3070,6 +3073,8 @@ class ExternalOnlineTransitionContextRouter:
         provisional_continuation_tolerance: float | None = None,
         provisional_evidence_policy: str = "cumulative_replay",
         provisional_match_margin: float = 0.0,
+        ambiguous_evidence_policy: str = "discard",
+        quarantine_capacity: int = 0,
     ) -> None:
         if (
             bank.state_width != context_encoder.state_width
@@ -3101,6 +3106,16 @@ class ExternalOnlineTransitionContextRouter:
             )
         if provisional_match_margin < 0.0:
             raise ValueError("provisional context match margin cannot be negative")
+        if ambiguous_evidence_policy not in {"discard", "quarantine"}:
+            raise ValueError(
+                "ambiguous evidence policy must be discard or quarantine"
+            )
+        if quarantine_capacity < 0:
+            raise ValueError("ambiguous evidence quarantine capacity cannot be negative")
+        if ambiguous_evidence_policy == "quarantine" and quarantine_capacity < 1:
+            raise ValueError(
+                "quarantine policy requires a positive quarantine capacity"
+            )
         if admission_observations < 1:
             raise ValueError("online context admission count must be positive")
         if max_contexts is not None and max_contexts < 1:
@@ -3148,16 +3163,28 @@ class ExternalOnlineTransitionContextRouter:
         self.defer_admission = bool(defer_admission)
         self.provisional_evidence_policy = str(provisional_evidence_policy)
         self.provisional_match_margin = float(provisional_match_margin)
+        self.ambiguous_evidence_policy = str(ambiguous_evidence_policy)
+        self.quarantine_capacity = int(quarantine_capacity)
         self.candidate_model_families = families
         self._pending: list[ExternalTransitionObservation] = []
         self._active_slot: int | None = None
         self._active_slot_id: int | None = None
         self._conflict_windows = 0
         self._provisional_candidates: list[_ProvisionalTransitionCandidate] = []
+        self._ambiguous_quarantine: list[ExternalTransitionObservation] = []
 
     @property
     def pending_observations(self) -> int:
         return len(self._pending)
+
+    @property
+    def quarantined_observations(self) -> int:
+        """Return the number of unresolved ambiguous rows held externally."""
+
+        return sum(
+            observation.state.shape[0]
+            for observation in self._ambiguous_quarantine
+        )
 
     @property
     def provisional_model(self) -> nn.Module | None:
@@ -3240,6 +3267,8 @@ class ExternalOnlineTransitionContextRouter:
                 else "streaming_sufficient_statistics_v1"
             ),
             "provisional_evidence_policy": self.provisional_evidence_policy,
+            "ambiguous_evidence_policy": self.ambiguous_evidence_policy,
+            "quarantine_capacity": self.quarantine_capacity,
             "provisional_candidates": "isolated_indexed_copy_on_write_v1",
         }
 
@@ -3553,6 +3582,58 @@ class ExternalOnlineTransitionContextRouter:
             for model in candidate.models().values()
         )
 
+    def _quarantine_bundle(
+        self,
+        observation: ExternalTransitionObservation,
+    ) -> bool:
+        """Store one ambiguous bundle only when bounded quarantine has room."""
+
+        if self.ambiguous_evidence_policy != "quarantine":
+            return False
+        rows = int(observation.state.shape[0])
+        if self.quarantined_observations + rows > self.quarantine_capacity:
+            return False
+        self._ambiguous_quarantine.append(self._clone_observation(observation))
+        return True
+
+    def _resolve_quarantine(self) -> None:
+        """Assign only clearly resolved bundles to provisional candidates.
+
+        Resolution is model-side evidence routing, not a parameter update. The
+        candidate's caller-owned ``adaptation_step`` consumes the deferred
+        bundle exactly once and clears it after the sufficient-statistics
+        update. Bundles that remain ambiguous stay outside every candidate.
+        """
+
+        if not self._ambiguous_quarantine or not self._provisional_candidates:
+            return
+        unresolved: list[ExternalTransitionObservation] = []
+        for observation in self._ambiguous_quarantine:
+            candidate_errors = [
+                self._candidate_error(candidate, observation)
+                for candidate in self._provisional_candidates
+            ]
+            best_index = min(
+                range(len(candidate_errors)),
+                key=lambda index: (candidate_errors[index], index),
+            )
+            ordered = sorted(candidate_errors)
+            margin = (
+                float("inf")
+                if len(ordered) == 1
+                else ordered[1] - ordered[0]
+            )
+            if (
+                candidate_errors[best_index]
+                <= self.provisional_continuation_tolerance
+                and margin >= self.provisional_match_margin
+            ):
+                candidate = self._provisional_candidates[best_index]
+                candidate.deferred_observations.append(observation)
+            else:
+                unresolved.append(observation)
+        self._ambiguous_quarantine = unresolved
+
     def observe(
         self,
         observation: ExternalTransitionObservation,
@@ -3651,12 +3732,18 @@ class ExternalOnlineTransitionContextRouter:
                 )
                 if candidate_error <= self.provisional_continuation_tolerance:
                     if candidate_margin < self.provisional_match_margin:
+                        stored = self._quarantine_bundle(bundle)
                         self._pending.clear()
                         return self._pending_result(
-                            status="ambiguous",
+                            status=(
+                                "ambiguous"
+                                if stored or self.ambiguous_evidence_policy == "discard"
+                                else "capacity"
+                            ),
                             prediction_error=candidate_error,
                             observation=bundle,
                         )
+                    self._resolve_quarantine()
                     self._pending.clear()
                     return self._staged_result(
                         bundle,
@@ -3756,17 +3843,21 @@ class ExternalOnlineTransitionContextRouter:
                         "streaming_statistics candidates cannot replay provisional evidence"
                     )
                 evidence = result.observation
+                deferred = list(candidate.deferred_observations)
             else:
+                deferred = list(candidate.deferred_observations)
                 evidence = self._merge_observations(
-                    candidate.observations
+                    (candidate.observations + deferred)
                     if replay_evidence
-                    else [result.observation]
+                    else ([result.observation] + deferred)
                 )
             primary_loss = candidate.model.loss(evidence)
             for family, model in candidate.models().items():
                 if hasattr(model, "observe"):
                     with torch.no_grad():
                         model.observe(result.observation)
+                        for deferred_observation in deferred:
+                            model.observe(deferred_observation)
                     continue
                 selected_optimizer = (
                     optimizer.get(family)
@@ -3784,6 +3875,11 @@ class ExternalOnlineTransitionContextRouter:
                 model_loss = model.loss(evidence)
                 model_loss.backward()
                 selected_optimizer.step()
+            if deferred:
+                candidate.evidence_count += sum(
+                    int(observation.state.shape[0]) for observation in deferred
+                )
+                candidate.deferred_observations.clear()
             return float(primary_loss.detach())
         if result.slot_index is None or result.context is None or result.observation is None:
             return 0.0
@@ -3852,6 +3948,28 @@ class ExternalOnlineTransitionContextRouter:
                 content_digest_before=before,
                 content_digest_after=before,
                 reason="no provisional candidate is staged",
+            ).validate()
+        if self._ambiguous_quarantine:
+            return ExternalTransitionModelCandidateReceipt(
+                accepted=False,
+                slot_index=None,
+                context_count=self.bank.context_count,
+                heldout_error=float("inf"),
+                candidate_digest=candidate.model.digest(),
+                content_digest_before=before,
+                content_digest_after=before,
+                reason="unresolved ambiguous evidence remains quarantined",
+            ).validate()
+        if candidate.deferred_observations:
+            return ExternalTransitionModelCandidateReceipt(
+                accepted=False,
+                slot_index=None,
+                context_count=self.bank.context_count,
+                heldout_error=float("inf"),
+                candidate_digest=candidate.model.digest(),
+                content_digest_before=before,
+                content_digest_after=before,
+                reason="resolved ambiguous evidence has not been consumed",
             ).validate()
         candidate_models = candidate.models()
         selection = self.bank.select_model_family_verified(
@@ -4048,6 +4166,10 @@ class ExternalOnlineTransitionContextRouter:
                     self._observation_payload(row)
                     for row in candidate.observations
                 ],
+                "deferred_observations": [
+                    self._observation_payload(row)
+                    for row in candidate.deferred_observations
+                ],
             }
             for candidate in self._provisional_candidates
         ]
@@ -4062,6 +4184,10 @@ class ExternalOnlineTransitionContextRouter:
             "bank": self.bank.payload(),
             "context_encoder": self.context_encoder.state_payload(),
             "pending": [self._observation_payload(row) for row in self._pending],
+            "ambiguous_quarantine": [
+                self._observation_payload(row)
+                for row in self._ambiguous_quarantine
+            ],
             "active_slot": self._active_slot,
             "active_slot_id": self._active_slot_id,
             "conflict_windows": self._conflict_windows,
@@ -4100,6 +4226,7 @@ class ExternalOnlineTransitionContextRouter:
         bank_payload = payload.get("bank")
         encoder_payload = payload.get("context_encoder")
         pending_payload = payload.get("pending")
+        ambiguous_quarantine_payload = payload.get("ambiguous_quarantine", [])
         provisional_candidates_payload = payload.get("provisional_candidates")
         provisional_observations_payload = payload.get("provisional_observations", [])
         if not isinstance(bank_payload, Mapping) or not isinstance(
@@ -4108,6 +4235,10 @@ class ExternalOnlineTransitionContextRouter:
             raise TypeError("online transition-context router components are missing")
         if not isinstance(pending_payload, list):
             raise TypeError("online transition-context router pending rows are invalid")
+        if not isinstance(ambiguous_quarantine_payload, list):
+            raise TypeError(
+                "online transition-context ambiguous quarantine rows are invalid"
+            )
         if not isinstance(provisional_observations_payload, list):
             raise TypeError(
                 "online transition-context provisional evidence is invalid"
@@ -4154,6 +4285,10 @@ class ExternalOnlineTransitionContextRouter:
             provisional_match_margin=float(
                 configuration.get("provisional_match_margin", 0.0)
             ),
+            ambiguous_evidence_policy=str(
+                configuration.get("ambiguous_evidence_policy", "discard")
+            ),
+            quarantine_capacity=int(configuration.get("quarantine_capacity", 0)),
         )
         for row_payload in pending_payload:
             row = cls._observation_from_payload(row_payload)
@@ -4164,6 +4299,17 @@ class ExternalOnlineTransitionContextRouter:
             if row.state.shape[0] != 1:
                 raise ValueError("online transition pending row is not scalar")
             router._pending.append(row)
+        for row_payload in ambiguous_quarantine_payload:
+            row = cls._observation_from_payload(row_payload)
+            row.validate(
+                state_width=bank.state_width,
+                intention_width=bank.intention_width,
+            )
+            router._ambiguous_quarantine.append(row)
+        if router.quarantined_observations > router.quarantine_capacity:
+            raise ValueError(
+                "online transition ambiguous quarantine exceeds configured capacity"
+            )
         active_slot = payload.get("active_slot")
         if active_slot is not None and (
             not isinstance(active_slot, int) or not 0 <= active_slot < bank.context_count
@@ -4217,6 +4363,9 @@ class ExternalOnlineTransitionContextRouter:
             candidate_models_payload = candidate_payload.get("models")
             candidate_model_family = candidate_payload.get("model_family")
             observations_payload = candidate_payload.get("observations", [])
+            deferred_observations_payload = candidate_payload.get(
+                "deferred_observations", []
+            )
             evidence_count = candidate_payload.get(
                 "evidence_count", len(observations_payload)
             )
@@ -4230,6 +4379,10 @@ class ExternalOnlineTransitionContextRouter:
                 raise TypeError("online transition provisional model candidates are invalid")
             if not isinstance(observations_payload, list):
                 raise TypeError("online transition provisional evidence is invalid")
+            if not isinstance(deferred_observations_payload, list):
+                raise TypeError(
+                    "online transition deferred provisional evidence is invalid"
+                )
             if not isinstance(evidence_count, int) or evidence_count < 0:
                 raise ValueError("online transition provisional evidence count is invalid")
             if (
@@ -4291,6 +4444,14 @@ class ExternalOnlineTransitionContextRouter:
                     intention_width=bank.intention_width,
                 )
                 observations.append(observation)
+            deferred_observations: list[ExternalTransitionObservation] = []
+            for observation_payload in deferred_observations_payload:
+                observation = cls._observation_from_payload(observation_payload)
+                observation.validate(
+                    state_width=bank.state_width,
+                    intention_width=bank.intention_width,
+                )
+                deferred_observations.append(observation)
             router._provisional_candidates.append(
                 _ProvisionalTransitionCandidate(
                     context=provisional_context.detach().clone(),
@@ -4298,6 +4459,7 @@ class ExternalOnlineTransitionContextRouter:
                     model_family=primary_family,
                     observations=observations,
                     evidence_count=evidence_count,
+                    deferred_observations=deferred_observations,
                     alternatives={
                         family: model
                         for family, model in restored_models.items()

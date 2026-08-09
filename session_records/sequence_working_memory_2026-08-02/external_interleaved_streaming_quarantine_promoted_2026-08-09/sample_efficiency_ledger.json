@@ -1,0 +1,30 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "external_interleaved_streaming_quarantine_2026-08-09",
+  "status": "interleaved_streaming_quarantine_promoted_bounded",
+  "population_seeds": [1901, 1902],
+  "unique_logical_lifetimes_total": 384,
+  "unique_verifier_bits_total": 768,
+  "optimizer_updates_total": 0,
+  "streaming_statistics_updates_total": 384,
+  "replayed_examples_total": 0,
+  "old_evidence_replay_total": 0,
+  "raw_provisional_rows_persisted_total": 0,
+  "quarantined_rows_held_then_consumed_total": 8,
+  "transfer_ratio_against_fresh_learner": null,
+  "verification": {
+    "heldout_errors_by_seed": [
+      [1.3165250140056983e-14, 1.8121615319444118e-13, 1.693437057248559e-14],
+      [2.0185242366466127e-14, 1.1478318295843337e-13, 1.2153906353562505e-14]
+    ],
+    "shuffled_heldout_error_by_seed": [37.48672103881836, 13.993684768676758],
+    "candidate_evidence_counts_before_quarantine_by_seed": [[64, 64], [64, 64]],
+    "candidate_evidence_counts_after_quarantine_by_seed": [[72, 64], [72, 64]],
+    "quarantined_rows_by_seed": [4, 4],
+    "quarantine_resolved_rows_by_seed": [4, 4],
+    "raw_rows_retained_by_seed": [[0, 0], [0, 0]],
+    "capacity_refusal_by_seed": [true, true],
+    "exact_persistence_by_seed": [true, true]
+  },
+  "claim_boundary": "Replicated interleaved replay-free factual-candidate isolation with bounded transactional ambiguity handling; not arbitrary nonlinear one-pass learning, unrestricted growth, or general continual learning."
+}

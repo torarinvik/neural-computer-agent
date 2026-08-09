@@ -1,0 +1,94 @@
+{
+  "schema": "neural-computer.external-interleaved-streaming-quarantine-pressure-test.v2",
+  "claim_boundary": "Two interleaved partial factual streams can be isolated in copy-on-write external candidates and promoted through held-out model-family and retention gates without candidate-side raw evidence or old replay. Ambiguous bundles may live in a bounded external quarantine and are consumed once after resolution; this is not general continual learning.",
+  "seed": 1901,
+  "configuration": {
+    "train_rows": 64,
+    "window_rows": 4,
+    "regime_count": 3,
+    "candidate_model_families": [
+      "affine_sufficient_statistics_v1",
+      "random_feature_sufficient_statistics_v1"
+    ],
+    "provisional_evidence_policy": "streaming_statistics",
+    "ambiguous_evidence_policy": "quarantine",
+    "quarantine_capacity": 8,
+    "loss_threshold": 1e-06
+  },
+  "metrics": {
+    "candidate_evidence_counts": [
+      64,
+      64
+    ],
+    "candidate_evidence_counts_after_quarantine": [
+      72,
+      64
+    ],
+    "candidate_families": [
+      [
+        "affine_sufficient_statistics_v1",
+        "random_feature_sufficient_statistics_v1"
+      ],
+      [
+        "affine_sufficient_statistics_v1",
+        "random_feature_sufficient_statistics_v1"
+      ]
+    ],
+    "ambiguous_windows": 1,
+    "resolved_statuses": [
+      "pending",
+      "pending",
+      "pending",
+      "staged"
+    ],
+    "quarantined_before_resolution": 4,
+    "quarantined_after_resolution": 0,
+    "raw_rows_retained": [
+      0,
+      0
+    ],
+    "heldout_errors": [
+      1.3165250140056983e-14,
+      1.8121615319444118e-13,
+      1.693437057248559e-14
+    ],
+    "shuffled_heldout_error": 37.48672103881836,
+    "capacity": {
+      "capacity_events": 1,
+      "committed_context_count": 1,
+      "provisional_candidate_count": 1
+    }
+  },
+  "accounting": {
+    "unique_verifier_bits": 384,
+    "unique_logical_lifetimes": 192,
+    "streaming_statistics_updates": 192,
+    "optimizer_updates": 0,
+    "replayed_examples": 0,
+    "old_committed_slot_replay": 0,
+    "raw_provisional_rows_persisted": 0,
+    "quarantined_rows_held_then_consumed": 4,
+    "search_expansions": 0,
+    "wall_seconds": 0.13440962502500042
+  },
+  "digests": {
+    "controller": "6b291fd117ab616c5f609d9c2b57b04bf2b53b59c06dc6d156614c35657d0a75"
+  },
+  "gates": {
+    "two_candidates_isolated": true,
+    "quarantine_consumed_exactly_once": true,
+    "ambiguous_window_quarantined": true,
+    "quarantine_resolved_once": true,
+    "raw_candidate_rows_not_retained": true,
+    "heldout_family_selection": true,
+    "all_promotions_accepted": true,
+    "all_heldout_errors_pass": true,
+    "shuffled_transition_rejected": true,
+    "shuffled_raw_rows_not_retained": true,
+    "capacity_refuses_unverified_growth": true,
+    "exact_source_persistence": true,
+    "controller_frozen": true,
+    "zero_replayed_examples": true
+  },
+  "promoted": true
+}

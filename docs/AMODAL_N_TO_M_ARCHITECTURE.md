@@ -5459,3 +5459,33 @@ statistics are. The system must learn a stronger streaming nonlinear model or
 an evidence-accumulation policy that preserves ambiguity without mixing
 streams; increasing capacity or silently replaying provisional rows is not an
 acceptable substitute.
+
+## Transactional quarantine for ambiguous streaming evidence (2026-08-09)
+
+The interleaved streaming boundary now has an explicit ambiguity policy. With
+`ambiguous_evidence_policy="quarantine"`, a bundle whose best provisional
+candidate is within tolerance but below the required prediction-error margin is
+copied into a bounded external quarantine. It changes no candidate statistics,
+cannot be promoted while unresolved, is serialized with the router, and is
+assigned only after a later observation produces a verified margin. The next
+adaptation step consumes the deferred bundle once and clears it. Capacity
+overflow refuses the bundle rather than silently mixing streams.
+
+Across seeds `1901` and `1902`, the same two interleaved candidates first
+consumed `64` rows each. A deliberately over-conservative margin quarantined
+`4` rows, persisted and restored them, then resolved them to the correct target
+candidate; post-resolution evidence counts were `[72, 64]` and the quarantine
+was empty. Candidate raw-row retention remained `[0, 0]`, shuffled controls
+were rejected at `37.49` and `13.99`, all held-out/retention/capacity/frozen
+controller gates passed, and replayed examples remained `0`. The promoted
+records are in
+`session_records/sequence_working_memory_2026-08-02/external_interleaved_streaming_quarantine_promoted_2026-08-09/`.
+
+This is a stronger evidence-preservation boundary, not a claim of general
+continual learning: the quarantined rows are bounded external state and are
+consumed once, not magically reconstructed. The next high-value test is to
+replace the hand-set margin stress with a learned/calibrated reliability and
+delay policy on partial nonlinear streams, while measuring positive transfer
+against a fresh learner. The exported prior session reinforces the same
+direction: a shared trajectory-statistics route is a promising reusable
+mechanism, but safe storage alone did not produce positive transfer.

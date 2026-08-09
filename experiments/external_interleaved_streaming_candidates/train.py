@@ -92,6 +92,8 @@ def _router(capacity: int) -> ExternalOnlineTransitionContextRouter:
         defer_admission=True,
         candidate_model_families=(AFFINE_FAMILY, RANDOM_FEATURE_FAMILY),
         provisional_evidence_policy="streaming_statistics",
+        ambiguous_evidence_policy="quarantine",
+        quarantine_capacity=WINDOW_ROWS * 2,
     )
 
 
@@ -154,25 +156,27 @@ def _normal(seed: int) -> dict[str, object]:
         tuple(router._provisional_candidates[index].models())
         for index in range(2)
     ]
-    router.provisional_continuation_tolerance = 100.0
-    midpoint_state = target_a.state[:WINDOW_ROWS]
-    midpoint_intention = target_a.intention[:WINDOW_ROWS]
-    candidate_predictions = [
-        candidate.model(midpoint_state, midpoint_intention)
-        for candidate in router._provisional_candidates
-    ]
-    midpoint = ExternalTransitionObservation(
-        state=midpoint_state,
-        intention=midpoint_intention,
-        next_state=sum(candidate_predictions) / len(candidate_predictions),
-        confidence=torch.ones(WINDOW_ROWS),
-    )
+    extra_target_a = _observation(seed + 100, 2.0)
+    router.provisional_match_margin = 1000.0
     ambiguity_statuses = [
-        router.observe(_row(midpoint, index)).status
+        router.observe(_row(extra_target_a, index)).status
         for index in range(WINDOW_ROWS)
     ]
     ambiguous_windows = ambiguity_statuses.count("ambiguous")
     router.provisional_continuation_tolerance = 0.05
+    router.provisional_match_margin = 0.05
+    quarantined_before_resolution = router.quarantined_observations
+    resolved_statuses = []
+    for index in range(WINDOW_ROWS, WINDOW_ROWS * 2):
+        result = router.observe(_row(extra_target_a, index))
+        resolved_statuses.append(result.status)
+        if result.status == "staged":
+            router.adaptation_step(result, None, replay_evidence=False)
+    quarantined_after_resolution = router.quarantined_observations
+    candidate_counts_after_quarantine = [
+        router.provisional_evidence_count(index)
+        for index in range(router.provisional_candidate_count)
+    ]
 
     def retain_source(candidate: ExternalTransitionModelBank) -> bool:
         return (
@@ -212,8 +216,12 @@ def _normal(seed: int) -> dict[str, object]:
         "target_contexts": [target_a_context, target_b_context],
         "promotions": [first, second],
         "candidate_counts": candidate_counts,
+        "candidate_counts_after_quarantine": candidate_counts_after_quarantine,
         "candidate_families": candidate_families,
         "ambiguous_windows": ambiguous_windows,
+        "resolved_statuses": resolved_statuses,
+        "quarantined_before_resolution": quarantined_before_resolution,
+        "quarantined_after_resolution": quarantined_after_resolution,
         "raw_rows": raw_rows,
         "heldout_errors": heldout_errors,
         "source_digest": router.bank.models[0].digest(),
@@ -287,7 +295,17 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
     normal_router = normal["router"]
     gates = {
         "two_candidates_isolated": normal["candidate_counts"] == [64, 64],
-        "ambiguous_window_refused": normal["ambiguous_windows"] == 1,
+        "quarantine_consumed_exactly_once": (
+            normal["candidate_counts_after_quarantine"] == [72, 64]
+        ),
+        "ambiguous_window_quarantined": (
+            normal["ambiguous_windows"] == 1
+            and normal["quarantined_before_resolution"] == WINDOW_ROWS
+        ),
+        "quarantine_resolved_once": (
+            normal["quarantined_after_resolution"] == 0
+            and normal["resolved_statuses"].count("staged") == 1
+        ),
         "raw_candidate_rows_not_retained": normal["raw_rows"] == [0, 0],
         "heldout_family_selection": all(
             bool(receipt.accepted)
@@ -313,12 +331,14 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         "zero_replayed_examples": True,
     }
     report = {
-        "schema": "neural-computer.external-interleaved-streaming-candidates-pressure-test.v1",
+        "schema": "neural-computer.external-interleaved-streaming-quarantine-pressure-test.v2",
         "claim_boundary": (
             "Two interleaved partial factual streams can be isolated in "
             "copy-on-write external candidates and promoted through held-out "
-            "model-family and retention gates without raw candidate evidence "
-            "or old replay; this is not general continual learning."
+            "model-family and retention gates without candidate-side raw "
+            "evidence or old replay. Ambiguous bundles may live in a bounded "
+            "external quarantine and are consumed once after resolution; this "
+            "is not general continual learning."
         ),
         "seed": seed,
         "configuration": {
@@ -327,12 +347,20 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "regime_count": REGIME_COUNT,
             "candidate_model_families": [AFFINE_FAMILY, RANDOM_FEATURE_FAMILY],
             "provisional_evidence_policy": "streaming_statistics",
+            "ambiguous_evidence_policy": "quarantine",
+            "quarantine_capacity": WINDOW_ROWS * 2,
             "loss_threshold": LOSS_THRESHOLD,
         },
         "metrics": {
             "candidate_evidence_counts": normal["candidate_counts"],
+            "candidate_evidence_counts_after_quarantine": normal[
+                "candidate_counts_after_quarantine"
+            ],
             "candidate_families": normal["candidate_families"],
             "ambiguous_windows": normal["ambiguous_windows"],
+            "resolved_statuses": normal["resolved_statuses"],
+            "quarantined_before_resolution": normal["quarantined_before_resolution"],
+            "quarantined_after_resolution": normal["quarantined_after_resolution"],
             "raw_rows_retained": normal["raw_rows"],
             "heldout_errors": normal["heldout_errors"],
             "shuffled_heldout_error": shuffled["heldout_error"],
@@ -346,6 +374,9 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "replayed_examples": 0,
             "old_committed_slot_replay": 0,
             "raw_provisional_rows_persisted": 0,
+            "quarantined_rows_held_then_consumed": normal[
+                "quarantined_before_resolution"
+            ],
             "search_expansions": 0,
             "wall_seconds": time.perf_counter() - begun,
         },

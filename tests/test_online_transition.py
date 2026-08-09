@@ -819,6 +819,163 @@ def test_streaming_statistics_isolates_two_interleaved_candidates() -> None:
     assert random_feature_family in router.configuration()["candidate_model_families"]
 
 
+def test_ambiguous_streaming_evidence_is_quarantined_resolved_and_persisted() -> None:
+    torch.manual_seed(1308)
+    affine_family = "affine_sufficient_statistics_v1"
+    random_feature_family = "random_feature_sufficient_statistics_v1"
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        4,
+        model_family="mixed_verified_v1",
+        affine_ridge=1e-7,
+        random_feature_width=64,
+        random_feature_seed=19,
+        capacity=3,
+    )
+    encoder = ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4)
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        encoder,
+        match_tolerance=1e-6,
+        match_margin=1e-4,
+        continuation_tolerance=1e-6,
+        provisional_continuation_tolerance=0.05,
+        provisional_match_margin=0.05,
+        admission_observations=2,
+        max_contexts=3,
+        defer_admission=True,
+        candidate_model_families=(affine_family, random_feature_family),
+        provisional_evidence_policy="streaming_statistics",
+        ambiguous_evidence_policy="quarantine",
+        quarantine_capacity=2,
+    )
+    source = _affine_observation(16)
+    for row in range(source.state.shape[0]):
+        result = router.observe(
+            ExternalTransitionObservation(
+                state=source.state[row : row + 1],
+                intention=source.intention[row : row + 1],
+                next_state=source.next_state[row : row + 1],
+                confidence=torch.ones(1),
+            )
+        )
+        if result.status == "staged":
+            router.adaptation_step(result, None, replay_evidence=False)
+    source_receipt = router.promote_staged_candidate(
+        source,
+        lambda candidate: candidate.context_count == 1,
+        prediction_tolerance=1e-6,
+    )
+    assert source_receipt.accepted
+    committed_source_context = router.bank.context_at(0)
+
+    target_a = ExternalTransitionObservation(
+        state=source.state,
+        intention=source.intention,
+        next_state=source.next_state * 2.0,
+        confidence=source.confidence,
+    )
+    target_b = ExternalTransitionObservation(
+        state=source.state,
+        intention=source.intention,
+        next_state=source.next_state * -1.0,
+        confidence=source.confidence,
+    )
+    for observation in (target_a, target_b):
+        for row in range(target_a.state.shape[0]):
+            result = router.observe(
+                ExternalTransitionObservation(
+                    state=observation.state[row : row + 1],
+                    intention=observation.intention[row : row + 1],
+                    next_state=observation.next_state[row : row + 1],
+                    confidence=torch.ones(1),
+                )
+            )
+            if result.status == "staged":
+                router.adaptation_step(result, None, replay_evidence=False)
+
+    assert router.provisional_candidate_count == 2
+    assert [router.provisional_evidence_count(index) for index in range(2)] == [
+        16,
+        16,
+    ]
+    router.provisional_match_margin = 1000.0
+    ambiguous = None
+    for row in range(2):
+        ambiguous = router.observe(
+            ExternalTransitionObservation(
+                state=target_a.state[row : row + 1],
+                intention=target_a.intention[row : row + 1],
+                next_state=target_a.next_state[row : row + 1],
+                confidence=torch.ones(1),
+            )
+        )
+    assert ambiguous is not None and ambiguous.status == "ambiguous"
+    assert router.quarantined_observations == 2
+    rejected = router.promote_staged_candidate(
+        target_a,
+        lambda candidate: candidate.context_count == 2,
+        prediction_tolerance=1e-6,
+        candidate_index=0,
+    )
+    assert not rejected.accepted
+    assert "quarantined" in rejected.reason
+
+    restored = ExternalOnlineTransitionContextRouter.from_payload(
+        router.state_payload()
+    )
+    assert restored.quarantined_observations == 2
+    assert restored.provisional_evidence_count(0) == 16
+    restored.provisional_match_margin = 0.05
+    resolved = None
+    for row in range(2, 4):
+        resolved = restored.observe(
+            ExternalTransitionObservation(
+                state=target_a.state[row : row + 1],
+                intention=target_a.intention[row : row + 1],
+                next_state=target_a.next_state[row : row + 1],
+                confidence=torch.ones(1),
+            )
+        )
+        if resolved.status == "staged":
+            restored.adaptation_step(resolved, None, replay_evidence=False)
+    assert resolved is not None and resolved.status == "staged"
+    assert restored.quarantined_observations == 0
+    assert restored.provisional_evidence_count(0) == 20
+    assert restored._provisional_candidates[0].deferred_observations == []
+    assert all(
+        not candidate.observations
+        for candidate in restored._provisional_candidates
+    )
+
+    def retained(candidate: ExternalTransitionModelBank) -> bool:
+        return (
+            candidate.context_count == 2
+            and float(
+                candidate.loss(
+                    source,
+                    committed_source_context.unsqueeze(0).expand(
+                        source.state.shape[0], -1
+                    ),
+                )
+            )
+            < 1e-6
+        )
+
+    promoted = restored.promote_staged_candidate(
+        target_a,
+        retained,
+        prediction_tolerance=1e-6,
+        candidate_index=0,
+    )
+    assert promoted.accepted
+    payload = restored.state_payload()
+    assert payload["ambiguous_quarantine"] == []
+    assert payload["configuration"]["ambiguous_evidence_policy"] == "quarantine"
+    assert random_feature_family in restored.configuration()["candidate_model_families"]
+
+
 def test_affine_transition_statistics_learns_and_persists_one_pass() -> None:
     torch.manual_seed(1301)
     model = ExternalAffineTransitionStatistics(2, 1, ridge=1e-7)
