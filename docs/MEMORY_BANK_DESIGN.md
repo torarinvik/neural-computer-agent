@@ -2260,3 +2260,56 @@ across 8 seeds per arm the draw means are 1.75 (off) and 1.38 (on), max
 small-sample luck.
 
 Evidence: `goal_factored_cued_v1_2026-08-09` plus the four-arm sweep.
+
+**F58 (probes 101-108). The executor does not fail from goal COUNT; it
+fails because a small goal set is memorisable. Four mechanisms
+eliminated, and the arity framing withdrawn.** The arity-3 executor was
+logged as weakness 19 on the theory that three goals are harder than
+two. Measured, on six fresh seeds, phase-1 only, first draw:
+
+| arm | converged | note |
+| --- | ---: | --- |
+| mixed, 1500 updates | 0/5 | every side 0.01-0.03 |
+| mixed, 3600 updates | 0/6 | budget is not the constraint |
+| mixed, hidden 64 | 0/6 | capacity is not the constraint |
+| sequential isolation | 0/6 | but the ONLY arm producing a learned side |
+| consolidated (EWC 1 / 10 / 200) | 0/6 each | goal0 1.00, later goals 0.02 |
+| **two goals only** | **0/4** | **so it is not the arity** |
+
+Three things fall out. (1) **Consolidation strength is irrelevant** —
+EWC at 1, 10 and 200 give identical results, so my earlier "over-
+protection / intransigence" reading is withdrawn: the penalty was never
+the blocker. (2) **Two goals fail on this game too**, so the arity-3
+framing in weakness 19 is wrong. (3) The signature across every arm is
+the same: **one goal reaches 1.00 and the rest sit at 0.02** — the plant
+learns an unconditional habit and never reads the goal channel at all.
+
+The mechanism is now clear and is a property of the TASK DESIGN, not the
+optimiser. With a handful of goals, "always do the one thing" is a
+competitive policy, so nothing ever forces the plant to condition on its
+instruction. Isolation is worst of all: with a single goal commanded,
+ignoring the goal channel is *optimal*. Every curriculum we tried
+therefore trains a habit and then asks it to become conditional, which
+is the one transition none of them can make.
+
+This is the literature's own result arriving from our side: Chan et al.
+(LITERATURE_MAP S1) find that few, frequent, fixed-meaning classes drive
+in-WEIGHTS memorisation while many varied ones drive in-CONTEXT reading.
+Three goals is the pathological regime by that criterion.
+
+**Consequence, and it is a redesign rather than a fix.** The remedy is
+not a better update rule but a goal space too large to memorise: a
+UNIVERSAL reacher, "from any state X reach any state Y", with hindsight
+relabelling supplying free dense data (every trajectory is a correct
+demonstration of reaching wherever it ended up — re-derivation, so the
+no-replay rule is intact). Conditioning stops being something to
+enforce and becomes the only representable solution. It also predicts
+that adding a game should require ZERO plant change, only a new target —
+the continual-learning claim by construction rather than by measurement.
+Recorded as the executor's new direction; the bank keeps its job
+unchanged, since a universal reacher tells you how to get anywhere and
+nothing about where to want to go (the twins survive the reframe
+untouched).
+
+Probes 101-108 are `goal_composition.py` with `--curriculum`,
+`--hidden`, `--ewc`, and `--phase1-sides`.

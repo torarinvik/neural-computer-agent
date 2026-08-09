@@ -67,6 +67,11 @@ parser.add_argument("--eval-episodes", type=int, default=4)
 parser.add_argument("--ewc", type=float, default=200.0)
 parser.add_argument("--ewc-mu", type=float, default=3.0)
 parser.add_argument(
+    "--phase1-sides", type=int, default=0,
+    help="diagnostic: restrict phase 1 to the first N sides (0 = all). "
+         "Separates 'three goals is hard' from 'the dual game's "
+         "plane1/plane2/both perception is hard'.")
+parser.add_argument(
     "--curriculum", choices=("mixed", "sequential", "consolidated"),
     default="mixed",
     help="sequential: acquire each goal alone (isolation always "
@@ -75,6 +80,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 SIDES = 3
+
 DELTAS = torch.tensor([[-1, 0], [0, 1], [1, 0], [0, -1]])
 train_games, holdout_games = compose_suite()
 TRAIN = {c.name: c for c in train_games}
@@ -288,8 +294,9 @@ for attempt in range(args.max_restarts):
                         [p.detach().clone() for p in plant]))
 
     for update in range(args.competence_updates):
+        live_sides = args.phase1_sides or SIDES
         if args.curriculum == "consolidated" and update < solo:
-            stage = min(update // per_side, SIDES - 1)
+            stage = min(update // per_side, live_sides - 1)
             if stage > consolidated_upto:
                 if consolidated_upto >= 0:
                     consolidate(consolidated_upto)
@@ -300,10 +307,11 @@ for attempt in range(args.max_restarts):
             # from scratch is basin-determined (0/9 first-draw at both
             # hidden 32 and 64, so capacity is not the constraint).
             # Acquire each goal alone, then mix to reconcile them.
-            chosen = min(update // per_side, SIDES - 1)
+            chosen = min(update // per_side, live_sides - 1)
         else:
-            weights = torch.softmax(-torch.tensor(score) / 0.25, dim=-1)
-            weights = weights * 0.6 + 0.4 / SIDES
+            live = torch.tensor(score[:live_sides])
+            weights = torch.softmax(-live / 0.25, dim=-1)
+            weights = weights * 0.6 + 0.4 / live_sides
             chosen = int(torch.multinomial(weights, 1))
         command = torch.full((args.batch_size,), chosen)
         out = episode(PHASE1_GAME, command=command,
@@ -313,18 +321,6 @@ for attempt in range(args.max_restarts):
             advantage * out["mask"]).sum() / out["mask"].sum().clamp_min(1)
         terms = advantage * out["logp"] * out["mask"]
         loss = -terms.sum() / terms.shape[0]
-        if anchors:
-            # Arbitrated release (the promoted rule): protect where an
-            # earlier goal's Fisher is large, release in proportion to
-            # this goal's own gradient demand.
-            penalty = torch.zeros(())
-            for fisher, anchor in anchors:
-                for f, a, p in zip(fisher, anchor, plant):
-                    demand = (p.grad.detach().square()
-                              if p.grad is not None else torch.zeros_like(p))
-                    release = f / (f + args.ewc_mu * demand + 1e-12)
-                    penalty = penalty + (release * f * (p - a).square()).sum()
-            loss = loss + args.ewc * penalty / max(len(anchors), 1)
         ignorance_live = (args.ignorance > 0.0
                           and min(score) >= args.ignorance_gate)
         if ignorance_live and update % 3 == 0:
@@ -348,12 +344,27 @@ for attempt in range(args.max_restarts):
             score[chosen] = 0.9 * score[chosen] + 0.1 * ratio
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
+        if anchors:
+            # Task gradient FIRST, then the penalty added in closed form
+            # -- the promoted implementation. Computing the release from
+            # a stale p.grad (the previous update's, penalty included)
+            # protected goal 0 perfectly (1.00 on 5/6 seeds) while making
+            # goals 1 and 2 unlearnable: over-protection, RWalk's
+            # "intransigence" pole.
+            with torch.no_grad():
+                for fisher, anchor in anchors:
+                    for f, a, p in zip(fisher, anchor, plant):
+                        if p.grad is None:
+                            continue
+                        demand = p.grad.detach().square()
+                        release = f / (f + args.ewc_mu * demand + 1e-12)
+                        p.grad += args.ewc * release * f * (p.detach() - a)
         torch.nn.utils.clip_grad_norm_(params, 1.0)
         optimizer.step()
         project_commands()
         if (update + 1) % 300 == 0:
             curve.append([round(v, 3) for v in score])
-    if min(score) >= 0.55:
+    if min(score[:(args.phase1_sides or SIDES)]) >= 0.55:
         break
 attempts = attempt + 1
 COMMANDS.requires_grad_(False)

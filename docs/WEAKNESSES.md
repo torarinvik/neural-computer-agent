@@ -182,7 +182,9 @@ rung promotes, rejects, or qualifies. Ordered by severity.
     re-state the addressing line's claims only after the corrected runs
     report on both seeds.
 
-19. **The arity-3 executor is the binding constraint** — composition and
+19. *Reframed by F58: not arity, memorisability.*
+    **The executor learns an unconditional habit instead of reading its
+    goal** — composition and
     cued addressing both work conditional on a plant that can follow
     every goal in its vocabulary, and at three goals that plant converges
     unreliably: restart draws of 3, 6 and 5 across three seeds, one seed
