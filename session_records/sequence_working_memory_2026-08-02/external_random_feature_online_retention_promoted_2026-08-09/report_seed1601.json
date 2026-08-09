@@ -1,0 +1,10 @@
+{
+  "schema": "neural-computer.external-random-feature-online-retention-pressure-test.v1",
+  "seed": 1601,
+  "configuration": {"regime_count": 4, "train_rows_per_regime": 64, "heldout_rows_per_regime": 64, "feature_width": 128, "context_keys": "learned_encoder_opaque_candidate_keys"},
+  "gates": {"all_heldout_pass": true, "all_promotions_pass": true, "prior_retention_verified_each_step": true, "zero_replayed_examples": true, "exact_router_persistence": true},
+  "promoted": true,
+  "metrics": {"heldout_error_after_all_learning": [0.0009046802297234535, 2.6483963665668853e-05, 0.007005414925515652, 4.124839324504137e-05], "promotion_records": [{"accepted": true, "heldout_error": 0.0009046802297234535, "staged_updates": 8}, {"accepted": true, "heldout_error": 2.6483963665668853e-05, "staged_updates": 8}, {"accepted": true, "heldout_error": 0.007005414925515652, "staged_updates": 8}, {"accepted": true, "heldout_error": 4.124839324504137e-05, "staged_updates": 8}], "context_count": 4},
+  "accounting": {"unique_verifier_bits": 512, "unique_logical_lifetimes": 512, "optimizer_updates": 0, "streaming_statistics_updates": 228, "replayed_examples": 0, "old_evidence_replay": 0},
+  "claim_boundary": "bounded online replay-free nonlinear retention with learned opaque context keys; not general continual learning"
+}

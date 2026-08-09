@@ -4978,3 +4978,21 @@ unrestricted memory growth, or general continual learning. Evidence is
 archived in
 `session_records/sequence_working_memory_2026-08-02/external_random_feature_retention_promoted_2026-08-09/` and the rejection is in
 `session_records/sequence_working_memory_2026-08-02/external_random_feature_retention_rejected_2026-08-09/`.
+
+## Online learned-context nonlinear retention (2026-08-09)
+
+The online router now separates committed-slot continuation tolerance from
+provisional-candidate continuation tolerance. A new regime can therefore
+reject the active committed model while allowing its quarantined statistical
+candidate to accumulate evidence. Replay-free sufficient-statistics slots no
+longer copy prior-regime statistics as transfer initialization; only trainable
+nonlinear weights inherit a prior.
+
+Across seeds `1601` and `1602`, four disjoint nonlinear streams arrived one row
+at a time. The context encoder formed opaque candidate keys without regime
+labels, all four promotions passed the `0.02` held-out floor, prior-slot
+retention probes passed at every promotion, zero replay was recorded, and exact
+router persistence passed. This is the strongest current retention result, but
+the context encoder was not trained in this fixture and the memory capacity is
+four slots. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_random_feature_online_retention_promoted_2026-08-09/`.

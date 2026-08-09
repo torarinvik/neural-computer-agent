@@ -1,0 +1,14 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "external_random_feature_online_retention_2026-08-09",
+  "status": "online_replay_free_nonlinear_retention_promoted_bounded",
+  "population_seeds": [1601, 1602],
+  "unique_logical_lifetimes_total": 1024,
+  "unique_verifier_bits_total": 1024,
+  "optimizer_updates_total": 0,
+  "streaming_statistics_updates_total": 456,
+  "replayed_examples_total": 0,
+  "old_evidence_replay_total": 0,
+  "verification": {"heldout_error_by_seed": [[0.0009046802297234535, 0.000026483963665668853, 0.007005414925515652, 0.00004124839324504137], [0.0009079958545044065, 0.000031907322409097105, 0.014194239862263203, 0.0002446975850034505]], "all_promotions_pass": [true, true], "prior_retention_verified_each_step": [true, true], "exact_router_persistence": [true, true]},
+  "claim_boundary": "Replicated bounded online replay-free nonlinear retention with opaque candidate keys; not learned unrestricted routing, unrestricted growth, or general continual learning."
+}

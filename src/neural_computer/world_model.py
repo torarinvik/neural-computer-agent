@@ -543,7 +543,10 @@ class ExternalTransitionModelBank(nn.Module):
         }:
             raise ValueError("unsupported transition-model slot family")
         model = self._new_model(selected_family)
-        if initialize_from is not None:
+        if (
+            initialize_from is not None
+            and selected_family == EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY
+        ):
             if self._model_families[initialize_from] != selected_family:
                 raise ValueError("transition-model transfer families differ")
             model.load_state_dict(self.models[initialize_from].state_dict())
@@ -1919,6 +1922,7 @@ class ExternalOnlineTransitionContextRouter:
         conflict_patience: int = 1,
         defer_admission: bool = False,
         candidate_model_families: Sequence[str] | None = None,
+        provisional_continuation_tolerance: float | None = None,
     ) -> None:
         if (
             bank.state_width != context_encoder.state_width
@@ -1933,6 +1937,11 @@ class ExternalOnlineTransitionContextRouter:
             raise ValueError("online context match margin cannot be negative")
         if continuation_tolerance is not None and continuation_tolerance < 0.0:
             raise ValueError("online context continuation tolerance cannot be negative")
+        if (
+            provisional_continuation_tolerance is not None
+            and provisional_continuation_tolerance < 0.0
+        ):
+            raise ValueError("provisional continuation tolerance cannot be negative")
         if conflict_patience < 1:
             raise ValueError("online context conflict patience must be positive")
         if admission_observations < 1:
@@ -1972,6 +1981,11 @@ class ExternalOnlineTransitionContextRouter:
             match_tolerance
             if continuation_tolerance is None
             else continuation_tolerance
+        )
+        self.provisional_continuation_tolerance = float(
+            self.continuation_tolerance
+            if provisional_continuation_tolerance is None
+            else provisional_continuation_tolerance
         )
         self.conflict_patience = int(conflict_patience)
         self.defer_admission = bool(defer_admission)
@@ -2053,6 +2067,7 @@ class ExternalOnlineTransitionContextRouter:
             "admission_observations": self.admission_observations,
             "max_contexts": self.max_contexts,
             "continuation_tolerance": self.continuation_tolerance,
+            "provisional_continuation_tolerance": self.provisional_continuation_tolerance,
             "conflict_patience": self.conflict_patience,
             "defer_admission": self.defer_admission,
             "candidate_model_families": list(self.candidate_model_families),
@@ -2209,7 +2224,10 @@ class ExternalOnlineTransitionContextRouter:
         if prior_index is not None:
             prior_family = self.bank.model_family_at(prior_index)
             for family, model in models.items():
-                if family == prior_family:
+                if (
+                    family == prior_family
+                    and family == EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY
+                ):
                     model.load_state_dict(self.bank.models[prior_index].state_dict())
         self._provisional_candidates.append(
             _ProvisionalTransitionCandidate(
@@ -2298,7 +2316,7 @@ class ExternalOnlineTransitionContextRouter:
                 candidate
                 for candidate in self._provisional_candidates
                 if self._candidate_error(candidate, bundle)
-                > self.continuation_tolerance
+                > self.provisional_continuation_tolerance
             ]
             self._active_slot = index
             self._conflict_windows = 0
@@ -2358,7 +2376,7 @@ class ExternalOnlineTransitionContextRouter:
                     candidate_errors,
                     key=lambda item: (item[0], item[1]),
                 )
-                if candidate_error <= self.continuation_tolerance:
+                if candidate_error <= self.provisional_continuation_tolerance:
                     self._pending.clear()
                     return self._staged_result(
                         bundle,
@@ -2821,6 +2839,11 @@ class ExternalOnlineTransitionContextRouter:
                 configuration.get(
                     "continuation_tolerance", configuration["match_tolerance"]
                 )
+            ),
+            provisional_continuation_tolerance=(
+                None
+                if configuration.get("provisional_continuation_tolerance") is None
+                else float(configuration["provisional_continuation_tolerance"])
             ),
             conflict_patience=int(configuration.get("conflict_patience", 1)),
             defer_admission=bool(configuration.get("defer_admission", False)),

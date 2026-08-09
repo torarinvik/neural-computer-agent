@@ -303,6 +303,29 @@ def test_mixed_bank_keeps_affine_and_nonlinear_slots_independently() -> None:
     assert restored.content_digest() == bank.content_digest()
 
 
+def test_replay_free_statistics_slots_do_not_copy_prior_regime_evidence() -> None:
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        3,
+        model_family="random_feature_sufficient_statistics_v1",
+        capacity=2,
+    )
+    source = bank.ensure_context(torch.tensor([1.0, 0.0, 0.0]))
+    observation = _affine_observation(1)
+    bank.adaptation_step(
+        observation,
+        bank.context_at(source).unsqueeze(0),
+        None,
+    )
+    target = bank.ensure_context(
+        torch.tensor([0.0, 1.0, 0.0]),
+        initialize_from=source,
+    )
+    assert int(bank.models[source].sample_count) == 1
+    assert int(bank.models[target].sample_count) == 0
+
+
 def test_mixed_router_adapts_both_families_and_promotes_verified_winner() -> None:
     torch.manual_seed(1305)
     bank = ExternalTransitionModelBank(
