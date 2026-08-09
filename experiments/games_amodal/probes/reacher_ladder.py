@@ -329,4 +329,20 @@ target_curve = [c for c in curve if c["tag"] == "target"]
 mastered = next((c["update"] for c in target_curve
                  if c["reach"] >= args.mastery), None)
 report["updates_to_mastery"] = mastered
+# LIFETIME cost, which is the objective's actual denominator. Comparing
+# target-updates alone silently gifts the warm arms their warm-up: at
+# 800 target updates a warm arm has really spent 800 + warm_updates.
+# Under honest single-target accounting the warm arms are further behind
+# than every table so far has shown.
+#
+# But a prior is meant to be paid for ONCE and reused MANY times, so the
+# fair denominator is warm_updates/k + target_updates over k tasks. With
+# k=1 -- which is every transfer test in this project -- amortisation is
+# impossible by construction, exactly as F62 found cheap targets made
+# benefit undetectable. The multi-target test is the missing rung.
+warm_spent = (args.warm_updates
+              if (args.warm_mix or args.warm_start) else 0)
+report["lifetime_updates"] = warm_spent + args.updates
+report["warm_updates_spent"] = warm_spent
+report["amortised_over_targets"] = 1
 print(json.dumps(report, indent=1))
