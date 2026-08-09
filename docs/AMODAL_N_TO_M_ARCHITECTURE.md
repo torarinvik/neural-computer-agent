@@ -4116,3 +4116,11 @@ the replicated composition gate in one seed, so a single frozen bridge is not
 the production solution. Future interface adaptation must remain capability-
 conditioned and independently verified. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_real_basis_acquisition_2026-08-08/interleaved_shared_bridge_prior_diagnostic/`.
+
+A capability-conditioned event bridge now provides an opt-in reusable
+interface prior. It conditions shared bridge weights on opaque learned
+program vectors rather than copying protocol-specific decoder weights. One
+seed passed the composition and transfer gates, but the second failed both
+composition candidates, so the mechanism is not promoted yet. Evidence is
+archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_real_basis_acquisition_2026-08-08/interleaved_conditioned_bridge_prior_diagnostic/`.

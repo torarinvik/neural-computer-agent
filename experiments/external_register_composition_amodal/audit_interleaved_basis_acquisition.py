@@ -23,6 +23,7 @@ from experiments.working_memory_continuous.canonical_growth_pressure_test import
 )
 from neural_computer import (
     AmodalEventBridge,
+    CapabilityConditionedEventBridge,
     ExternalRegisterInstruction,
     OpaqueProtocolDecoder,
 )
@@ -47,6 +48,12 @@ from .train import (
 TARGET_OPERATIONS = ("complement_rotate", "prefix_parity")
 COMPOSITION_PROGRAMS = tuple(permutations(SOURCE_OPERATIONS))
 MASTERY_THRESHOLD = 0.8
+
+
+def _instruction_context(instructions) -> torch.Tensor:
+    return torch.stack(
+        tuple(instruction.code.detach().squeeze(0) for instruction in instructions)
+    ).mean(dim=0)
 
 
 def _score(
@@ -203,6 +210,7 @@ def _prepare_candidates(
     decoder_prior_state: dict[str, torch.Tensor] | None = None,
     composition_programs: tuple[tuple[str, ...], ...] = COMPOSITION_PROGRAMS,
     bridge_prior_state: dict[str, torch.Tensor] | None = None,
+    conditioned_bridge_prior: bool = False,
 ) -> list[dict[str, object]]:
     candidates = []
     for index, operation in enumerate(operations):
@@ -238,11 +246,27 @@ def _prepare_candidates(
             )
             if decoder_prior_state is not None:
                 decoder.load_state_dict(decoder_prior_state, strict=True)
-            bridge = AmodalEventBridge(
-                EVENT_WIDTH, parent.controller.width, EVENT_WIDTH, hidden=64
+            bridge = (
+                CapabilityConditionedEventBridge(
+                    EVENT_WIDTH,
+                    parent.controller.width,
+                    EVENT_WIDTH,
+                    INSTRUCTION_WIDTH,
+                    hidden=64,
+                )
+                if conditioned_bridge_prior
+                else AmodalEventBridge(
+                    EVENT_WIDTH, parent.controller.width, EVENT_WIDTH, hidden=64
+                )
             )
             if bridge_prior_state is not None:
                 bridge.load_state_dict(bridge_prior_state, strict=True)
+                if conditioned_bridge_prior:
+                    bridge.set_context(
+                        _instruction_context(
+                            tuple(machine.instructions[index] for index in source_indices)
+                        )
+                    )
                 for parameter in bridge.parameters():
                     parameter.requires_grad_(False)
             candidates.append(
@@ -308,89 +332,6 @@ def _train_candidate_schedule(
         audit_seed=seed_base + 100_000,
         decoder_trainable=True,
     )
-
-
-def _train_shared_bridge_prior(
-    parent,
-    machine,
-    source_specs,
-    *,
-    args: argparse.Namespace,
-) -> tuple[AmodalEventBridge, list[dict[str, object]]]:
-    """Learn one reusable event interface from mastered source outcomes."""
-    bridge = AmodalEventBridge(
-        EVENT_WIDTH, parent.controller.width, EVENT_WIDTH, hidden=64
-    )
-    _freeze(machine)
-    optimizer = torch.optim.AdamW(
-        bridge.parameters(), lr=args.learning_rate, weight_decay=1e-5
-    )
-    for _, _, decoder, _ in source_specs:
-        for parameter in decoder.parameters():
-            parameter.requires_grad_(False)
-    best_state = None
-    best_floor = float("-inf")
-    progress = []
-    for update in range(1, args.bridge_prior_updates + 1):
-        index = (update - 1) % len(source_specs)
-        operation, instruction, decoder, basis_slot = source_specs[index]
-        batch = _batch(
-            operation,
-            count=args.batch_size,
-            span=args.span,
-            seed=args.seed + 1_900_000 + update * 10_007,
-        )
-        loss, _ = _rollout(
-            parent,
-            machine,
-            decoder,
-            batch,
-            (instruction,),
-            basis_slots=(basis_slot,),
-            train_decoder=False,
-            credit_mode="attempted_bce",
-            event_bridge=bridge,
-        )
-        optimizer.zero_grad(set_to_none=True)
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(bridge.parameters(), 1.0)
-        optimizer.step()
-        if update % args.eval_every == 0 or update == args.bridge_prior_updates:
-            scores = [
-                _accuracy(
-                    parent,
-                    machine,
-                    decoder,
-                    operation=operation_name,
-                    instructions=(instruction_value,),
-                    basis_slots=(slot,),
-                    count=args.source_selection_audit_count,
-                    span=args.span,
-                    seed=args.seed + 60_000 + source_index * 101 + source_index * 1009,
-                    credit_mode="paired_counterfactual",
-                    event_bridge=bridge,
-                )
-                for source_index, (
-                    operation_name,
-                    instruction_value,
-                    decoder,
-                    slot,
-                ) in enumerate(source_specs)
-            ]
-            floor = min(scores)
-            progress.append({"update": update, "source_scores": scores})
-            if floor > best_floor:
-                best_floor = floor
-                best_state = {
-                    name: value.detach().clone()
-                    for name, value in bridge.state_dict().items()
-                }
-    if best_state is not None:
-        bridge.load_state_dict(best_state, strict=True)
-    for _, _, decoder, _ in source_specs:
-        for parameter in decoder.parameters():
-            parameter.requires_grad_(True)
-    return bridge, progress
     for parameter in candidate["decoder"].parameters():
         parameter.requires_grad_(False)
     _train_interleaved_phase(
@@ -425,6 +366,132 @@ def _train_shared_bridge_prior(
     )
 
 
+def _source_bridge_accuracy(
+    parent,
+    machine,
+    source_spec,
+    *,
+    bridge,
+    conditioned: bool,
+    count: int,
+    span: int,
+    seed: int,
+) -> float:
+    operation, instruction, decoder, basis_slot = source_spec
+    if conditioned:
+        bridge.set_context(_instruction_context((instruction,)))
+    return _accuracy(
+        parent,
+        machine,
+        decoder,
+        operation=operation,
+        instructions=(instruction,),
+        basis_slots=(basis_slot,),
+        count=count,
+        span=span,
+        seed=seed,
+        credit_mode="paired_counterfactual",
+        event_bridge=bridge,
+    )
+
+
+def _train_shared_bridge_prior(
+    parent,
+    machine,
+    source_specs,
+    *,
+    args: argparse.Namespace,
+) -> tuple[AmodalEventBridge, list[dict[str, object]]]:
+    """Learn one reusable event interface from mastered source outcomes."""
+    bridge = (
+        CapabilityConditionedEventBridge(
+            EVENT_WIDTH,
+            parent.controller.width,
+            EVENT_WIDTH,
+            INSTRUCTION_WIDTH,
+            hidden=64,
+        )
+        if args.reuse_conditioned_bridge_prior
+        else AmodalEventBridge(
+            EVENT_WIDTH, parent.controller.width, EVENT_WIDTH, hidden=64
+        )
+    )
+    _freeze(machine)
+    optimizer = torch.optim.AdamW(
+        bridge.parameters(), lr=args.learning_rate, weight_decay=1e-5
+    )
+    for _, _, decoder, _ in source_specs:
+        for parameter in decoder.parameters():
+            parameter.requires_grad_(False)
+    best_state = None
+    best_floor = float("-inf")
+    progress = []
+    for update in range(1, args.bridge_prior_updates + 1):
+        index = (update - 1) % len(source_specs)
+        operation, instruction, decoder, basis_slot = source_specs[index]
+        if args.reuse_conditioned_bridge_prior:
+            bridge.set_context(_instruction_context((instruction,)))
+        batch = _batch(
+            operation,
+            count=args.batch_size,
+            span=args.span,
+            seed=args.seed + 1_900_000 + update * 10_007,
+        )
+        loss, _ = _rollout(
+            parent,
+            machine,
+            decoder,
+            batch,
+            (instruction,),
+            basis_slots=(basis_slot,),
+            train_decoder=False,
+            credit_mode="attempted_bce",
+            event_bridge=bridge,
+        )
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(bridge.parameters(), 1.0)
+        optimizer.step()
+        if update % args.eval_every == 0 or update == args.bridge_prior_updates:
+            scores = [
+                _source_bridge_accuracy(
+                    parent,
+                    machine,
+                    source_spec=(
+                        operation_name,
+                        instruction_value,
+                        decoder,
+                        slot,
+                    ),
+                    bridge=bridge,
+                    count=args.source_selection_audit_count,
+                    span=args.span,
+                    seed=args.seed + 60_000 + source_index * 101 + source_index * 1009,
+                    conditioned=args.reuse_conditioned_bridge_prior,
+                )
+                for source_index, (
+                    operation_name,
+                    instruction_value,
+                    decoder,
+                    slot,
+                ) in enumerate(source_specs)
+            ]
+            floor = min(scores)
+            progress.append({"update": update, "source_scores": scores})
+            if floor > best_floor:
+                best_floor = floor
+                best_state = {
+                    name: value.detach().clone()
+                    for name, value in bridge.state_dict().items()
+                }
+    if best_state is not None:
+        bridge.load_state_dict(best_state, strict=True)
+    for _, _, decoder, _ in source_specs:
+        for parameter in decoder.parameters():
+            parameter.requires_grad_(True)
+    return bridge, progress
+
+
 def run(args: argparse.Namespace) -> dict[str, object]:
     torch.set_num_threads(1)
     target_operations = tuple(
@@ -434,6 +501,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("at least one target operation is required")
     if args.source_restarts < 1:
         raise ValueError("source restarts must be positive")
+    if args.reuse_shared_bridge_prior and args.reuse_conditioned_bridge_prior:
+        raise ValueError("choose one bridge prior mode")
+    args.reuse_shared_bridge_prior = (
+        args.reuse_shared_bridge_prior or args.reuse_conditioned_bridge_prior
+    )
     if not 1 <= args.composition_program_count <= len(COMPOSITION_PROGRAMS):
         raise ValueError("composition program count is outside the available grammar")
     composition_programs = COMPOSITION_PROGRAMS[: args.composition_program_count]
@@ -567,6 +639,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         decoder_prior_state=decoder_prior_state,
         composition_programs=composition_programs,
         bridge_prior_state=bridge_prior_state,
+        conditioned_bridge_prior=args.reuse_conditioned_bridge_prior,
     )
     retained_before = [
         source_score(spec, index) for index, spec in enumerate(source_specs)
@@ -633,6 +706,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         decoder_prior_state=decoder_prior_state,
         composition_programs=composition_programs,
         bridge_prior_state=bridge_prior_state,
+        conditioned_bridge_prior=args.reuse_conditioned_bridge_prior,
     )
     _freeze(shuffled_machine)
     for candidate in shuffled_candidates:
@@ -672,11 +746,30 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         source_indices = tuple(
             SOURCE_OPERATIONS.index(primitive) for primitive in program
         )
-        fresh_bridge = AmodalEventBridge(
-            EVENT_WIDTH, parent.controller.width, EVENT_WIDTH, hidden=64
+        fresh_bridge = (
+            CapabilityConditionedEventBridge(
+                EVENT_WIDTH,
+                parent.controller.width,
+                EVENT_WIDTH,
+                INSTRUCTION_WIDTH,
+                hidden=64,
+            )
+            if args.reuse_conditioned_bridge_prior
+            else AmodalEventBridge(
+                EVENT_WIDTH, parent.controller.width, EVENT_WIDTH, hidden=64
+            )
         )
         if bridge_prior_state is not None:
             fresh_bridge.load_state_dict(bridge_prior_state, strict=True)
+            if args.reuse_conditioned_bridge_prior:
+                fresh_bridge.set_context(
+                    _instruction_context(
+                        tuple(
+                            fresh_machine.instructions[index]
+                            for index in source_indices
+                        )
+                    )
+                )
             for parameter in fresh_bridge.parameters():
                 parameter.requires_grad_(False)
         fresh_candidate = {
@@ -920,7 +1013,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "decoder_prior": "source_decoder_0"
         if args.reuse_decoder_prior
         else None,
-        "shared_bridge_prior": "outcome_trained_source_bridge"
+        "shared_bridge_prior": (
+            "conditioned_outcome_trained_source_bridge"
+            if args.reuse_conditioned_bridge_prior
+            else "outcome_trained_source_bridge"
+        )
         if args.reuse_shared_bridge_prior
         else None,
         "source_before": source_before,
@@ -1022,6 +1119,12 @@ def main() -> None:
         action=argparse.BooleanOptionalAction,
         default=False,
         help="train and freeze one event bridge from mastered source outcomes",
+    )
+    parser.add_argument(
+        "--reuse-conditioned-bridge-prior",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="condition a reusable bridge on opaque source-program vectors",
     )
     parser.add_argument("--bridge-prior-updates", type=int, default=128)
     parser.add_argument("--retention-regression-tolerance", type=float, default=0.02)

@@ -178,6 +178,19 @@
       "retention_on_mastered_primitives": "source retention unchanged with exact paired deltas zero",
       "positive_transfer": false,
       "decision": "reject a single shared bridge as a general adaptation prior; retain opt-in diagnostic only"
+    },
+    {
+      "experiment": "interleaved_capability_conditioned_bridge_prior_diagnostic",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "A shared event bridge conditioned on opaque learned program vectors can improve compositional adaptation without protocol-specific decoder reuse.",
+      "composition_program_count": 2,
+      "bridge_prior_updates": 128,
+      "bridge_prior_training_verifier_bits_per_run": 16384,
+      "replayed_examples": 0,
+      "retention_on_mastered_primitives": "source retention unchanged with exact paired deltas zero",
+      "positive_transfer": "seed 69317 only",
+      "decision": "retain as promising opt-in architecture diagnostic; reject replicated promotion pending seed-stable results"
     }
   ]
 }

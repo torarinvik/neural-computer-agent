@@ -566,3 +566,18 @@ The opt-in mechanism remains useful for diagnostics, but the next design must
 learn an interface prior that conditions on capability state without copying
 protocol-specific weights or relying on one fixed bridge. Evidence is in
 `interleaved_shared_bridge_prior_diagnostic/`.
+
+## Capability-conditioned bridge prior diagnostic — mixed, not promoted
+
+The next design uses shared bridge weights conditioned by an opaque aggregate
+of the learned instruction/program vectors. This preserves a reusable
+interface while allowing capability-specific adaptation; the context has no
+hand-assigned semantic fields. Seed `69317` passed both compositions and the
+strict fresh-transfer comparison, with inherited stable bits of `32,768` and
+`16,384` versus fresh `40,960` each. Seed `69316` rejected both compositions
+at `0.7852` and `0.7695` consolidation accuracy, and its fresh learners also
+failed stable mastery.
+
+The mechanism is promising but not replicated. It remains opt-in; the
+production default and promotion claim are unchanged. Evidence is in
+`interleaved_conditioned_bridge_prior_diagnostic/`.

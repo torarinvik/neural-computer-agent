@@ -1869,3 +1869,11 @@ compositions was tested across both seeds. It was seed-dependent and failed
 the replicated composition gate, so it is not adopted as the general prior.
 Evidence is in
 `external_register_real_basis_acquisition_2026-08-08/interleaved_shared_bridge_prior_diagnostic/`.
+
+## Capability-conditioned bridge prior diagnostic (2026-08-09)
+
+A shared event bridge conditioned on opaque learned program vectors showed a
+positive result in seed 69317 but failed both composition gates in seed 69316.
+It remains an opt-in research path, not a promoted general continual-learning
+mechanism. Evidence is in
+`external_register_real_basis_acquisition_2026-08-08/interleaved_conditioned_bridge_prior_diagnostic/`.
