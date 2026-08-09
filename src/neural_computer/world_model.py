@@ -1821,6 +1821,22 @@ class ExternalOnlineTransitionContextRouter:
             self.max_contexts = destination_capacity
         return receipt
 
+    def evict_verified(
+        self,
+        index: int,
+        retention_probe: Callable[[ExternalTransitionModelBank], bool],
+    ) -> ExternalTransitionModelEvictionReceipt:
+        """Evict a bank tail and invalidate any stale active-slot reference."""
+
+        receipt = self.bank.evict_verified(index, retention_probe)
+        if (
+            receipt.accepted
+            and self._active_slot is not None
+            and self._active_slot >= self.bank.context_count
+        ):
+            self._active_slot = None
+        return receipt
+
     @staticmethod
     def _clone_observation(
         observation: ExternalTransitionObservation,

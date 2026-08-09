@@ -4870,3 +4870,9 @@ source and another context, then rejected a non-tail/destructive probe without
 mutation. This closes safe capacity reuse, but it is not learned
 eviction: the retention probe remains caller-owned, and no slot is removed
 without an explicit verifier proof.
+
+The router-level lifecycle regression also passed a complete grow → promote →
+tail-evict → stage → promote cycle. Eviction invalidates a stale active-slot
+reference before the next candidate is learned, and the original source model
+remains byte-stable throughout. This is the current safe route to reuse finite
+capacity while stable logical addresses remain an open design requirement.
