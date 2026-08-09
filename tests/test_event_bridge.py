@@ -9,7 +9,7 @@ from experiments.external_register_composition_amodal.train import (
 from experiments.working_memory_continuous.canonical_growth_pressure_test import (
     _runtime,
 )
-from neural_computer import AmodalEventBridge
+from neural_computer import AmodalEventBridge, CapabilityConditionedEventBridge
 from neural_computer import OpaqueProtocolDecoder
 
 
@@ -28,6 +28,21 @@ def test_event_bridge_validates_inputs() -> None:
         bridge(torch.zeros(3, 5), torch.zeros(3, 6))
     with pytest.raises(ValueError, match="controller state"):
         bridge(torch.zeros(3, 4), torch.zeros(3, 5))
+
+
+def test_conditioned_event_bridge_is_identity_and_context_versioned() -> None:
+    bridge = CapabilityConditionedEventBridge(4, 6, 4, 3, hidden=8)
+    frontend = torch.randn(3, 4)
+    state = torch.randn(3, 6)
+    bridge.set_context(torch.tensor([1.0, 2.0, 3.0]))
+
+    torch.testing.assert_close(bridge(frontend, state), frontend)
+    configuration = bridge.configuration()
+    assert configuration["schema"] == "neural-computer.conditioned-event-bridge.v1"
+    assert configuration["context_width"] == 3
+
+    with pytest.raises(ValueError, match="capability context"):
+        bridge.set_context(torch.zeros(2))
 
 
 def test_external_rollout_trains_bridge_while_parent_stays_frozen() -> None:

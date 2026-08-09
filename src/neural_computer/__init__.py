@@ -106,7 +106,12 @@ from .episodic import (
     episodic_context_contrastive_loss,
     paired_event_credit_loss,
 )
-from .event_bridge import EVENT_BRIDGE_SCHEMA, AmodalEventBridge
+from .event_bridge import (
+    CONDITIONED_EVENT_BRIDGE_SCHEMA,
+    EVENT_BRIDGE_SCHEMA,
+    AmodalEventBridge,
+    CapabilityConditionedEventBridge,
+)
 from .growth import (
     GrowthLoadReceipt,
     compose_growth_artifacts,
@@ -315,7 +320,9 @@ __all__ = [
     "EpisodicCreditHead",
     "EpisodicIntentAdapter",
     "EVENT_BRIDGE_SCHEMA",
+    "CONDITIONED_EVENT_BRIDGE_SCHEMA",
     "AmodalEventBridge",
+    "CapabilityConditionedEventBridge",
     "EventReliabilityPolicy",
     "EventTokenWindow",
     "EventWaitPolicy",
