@@ -41,6 +41,7 @@ EXTERNAL_REGISTER_READOUT_SCHEMA = (
 EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE = "factorized_shared_interpreter"
 EXTERNAL_REGISTER_SHARED_BOUNDED_MODE = "factorized_shared_bounded"
 EXTERNAL_REGISTER_SHARED_BANKED_MODE = "factorized_shared_banked"
+EXTERNAL_REGISTER_SHARED_CANONICAL_MODE = "factorized_shared_canonical"
 
 
 class CanonicalRegisterReadout(nn.Module):
@@ -485,6 +486,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
             EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
             EXTERNAL_REGISTER_SHARED_BANKED_MODE,
+            EXTERNAL_REGISTER_SHARED_CANONICAL_MODE,
             "unconstrained_mlp",
         ):
             raise ValueError("unsupported external register operator mode")
@@ -544,6 +546,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
             EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
             EXTERNAL_REGISTER_SHARED_BANKED_MODE,
+            EXTERNAL_REGISTER_SHARED_CANONICAL_MODE,
         ):
             self.operator_left = nn.Linear(
                 instruction_width,
@@ -565,6 +568,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "factorized_bounded_residual",
             EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
             EXTERNAL_REGISTER_SHARED_BANKED_MODE,
+            EXTERNAL_REGISTER_SHARED_CANONICAL_MODE,
         ):
             # Serial instruction chains are sensitive to unbounded additive
             # drift.  Normalize the read state, bound the learned proposal,
@@ -581,6 +585,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             self.bank_value = nn.Linear(register_width, register_width)
             self.bank_gate = nn.Linear(instruction_width, 1)
             nn.init.zeros_(self.bank_gate.bias)
+        if operator_mode == EXTERNAL_REGISTER_SHARED_CANONICAL_MODE:
+            self.state_contract = nn.LayerNorm(register_width)
         if operator_mode == "factorized_protected_meta":
             # This branch is an isolated, initially inert operator-family
             # prior.  The base low-rank operator can be protected while this
@@ -1017,6 +1023,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
             EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
             EXTERNAL_REGISTER_SHARED_BANKED_MODE,
+            EXTERNAL_REGISTER_SHARED_CANONICAL_MODE,
+            EXTERNAL_REGISTER_SHARED_CANONICAL_MODE,
         ):
             if not 0 <= basis_slot < len(self.basis_slots):
                 raise ValueError("basis slot index is out of range")
@@ -1033,6 +1041,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
             EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
             EXTERNAL_REGISTER_SHARED_BANKED_MODE,
+            EXTERNAL_REGISTER_SHARED_CANONICAL_MODE,
         ):
             operator_register = (
                 self.operator_normalizer(register)
@@ -1040,6 +1049,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                     "factorized_bounded_residual",
                     EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
                     EXTERNAL_REGISTER_SHARED_BANKED_MODE,
+                    EXTERNAL_REGISTER_SHARED_CANONICAL_MODE,
                 )
                 else register
             )
@@ -1066,6 +1076,10 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 proposal = torch.tanh(base_proposal + self.operator_bias(code))
                 gate = torch.sigmoid(self.operator_composition_gate(code))
                 return register + gate * proposal
+            if self.operator_mode == EXTERNAL_REGISTER_SHARED_CANONICAL_MODE:
+                proposal = torch.tanh(base_proposal + self.operator_bias(code))
+                gate = torch.sigmoid(self.operator_composition_gate(code))
+                return self.state_contract(register + gate * proposal)
             if self.operator_mode == EXTERNAL_REGISTER_SHARED_BOUNDED_MODE:
                 proposal = torch.tanh(base_proposal + self.operator_bias(code))
                 gate = torch.sigmoid(self.operator_composition_gate(code))

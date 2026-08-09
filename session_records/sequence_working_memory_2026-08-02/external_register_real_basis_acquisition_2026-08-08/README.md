@@ -733,6 +733,26 @@ next step is learned, opaque addressing over the bank so the next instruction
 can select relevant intermediate state without relying only on execution
 position.
 
+## Internal canonical state contract — mixed, not promoted
+
+The shared interpreter gained an opt-in `factorized_shared_canonical` mode
+that applies a learned LayerNorm state contract after every bounded
+instruction transition. This tests internal content compatibility rather
+than decoder-side normalization; the trace decoder and fresh control remain
+matched.
+
+Both seeds passed composition behavior and exact retention gates, but strict
+positive transfer appeared in only one of four composition/seed comparisons.
+Seed `69316` had inherited stable costs of `57,344`/`24,576` versus fresh
+`24,576`/`40,960`; seed `69317` had `16,384`/`8,192` versus fresh
+`8,192`/`24,576`. The global contract helps one ordering and hurts another,
+so it is not a universal content invariant.
+
+The result rejects imposed normalization as the final solution. The next
+design must learn content structure—such as separately bindable roles or
+relations—rather than force every intermediate into one undifferentiated
+normalized vector.
+
 ## Learned bank addressing — useful interface, not transfer
 
 The register now has an opt-in `factorized_shared_banked` mode. Each opaque

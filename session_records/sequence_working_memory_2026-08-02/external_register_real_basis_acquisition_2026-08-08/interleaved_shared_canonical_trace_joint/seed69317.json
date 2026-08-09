@@ -1,0 +1,354 @@
+{
+  "schema": "neural-computer.external-register-interleaved-basis-acquisition-audit.v1",
+  "seed": 69317,
+  "source_operations": [
+    "reverse",
+    "adjacent_xor",
+    "complement"
+  ],
+  "source_acquisition_mode": "balanced_joint_calibration_upper_bound",
+  "joint_source_updates": 576,
+  "preserve_composition_trace": true,
+  "target_operations": [
+    "complement_rotate",
+    "prefix_parity"
+  ],
+  "composition_programs": [
+    [
+      "reverse",
+      "adjacent_xor",
+      "complement"
+    ],
+    [
+      "reverse",
+      "complement",
+      "adjacent_xor"
+    ]
+  ],
+  "decoder_prior": null,
+  "shared_bridge_prior": null,
+  "source_before": [
+    0.93359375,
+    0.984375,
+    0.99609375
+  ],
+  "source_attempt_scores": [
+    [
+      0.93359375
+    ],
+    [
+      0.984375
+    ],
+    [
+      0.99609375
+    ]
+  ],
+  "retained_before": [
+    0.93359375,
+    0.984375,
+    0.99609375
+  ],
+  "bridge_prior_source_after": [
+    0.93359375,
+    0.984375,
+    0.99609375
+  ],
+  "bridge_prior_progress": [],
+  "canonical_readout_prior": null,
+  "canonical_readout_prior_progress": [],
+  "targets": [
+    {
+      "operation": "complement_rotate",
+      "composition_program": null,
+      "candidate_accuracy": 0.984375,
+      "consolidation_probe_accuracy": 0.984375,
+      "shuffled_training_accuracy": 0.5546875,
+      "missing_evidence_accuracy": 0.5,
+      "retained_before": [
+        0.93359375,
+        0.984375,
+        0.99609375
+      ],
+      "retained_after": [
+        0.93359375,
+        0.984375,
+        0.99609375
+      ],
+      "retention_deltas": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "candidate_progress": [
+        {
+          "update": 64,
+          "heldout_accuracy": 0.765625
+        },
+        {
+          "update": 128,
+          "heldout_accuracy": 0.875
+        },
+        {
+          "update": 192,
+          "heldout_accuracy": 0.9453125
+        },
+        {
+          "update": 256,
+          "heldout_accuracy": 0.953125
+        },
+        {
+          "update": 320,
+          "heldout_accuracy": 0.9609375
+        },
+        {
+          "update": 384,
+          "heldout_accuracy": 0.96875
+        },
+        {
+          "update": 448,
+          "heldout_accuracy": 0.9765625
+        },
+        {
+          "update": 512,
+          "heldout_accuracy": 0.96875
+        }
+      ],
+      "accepted": true
+    },
+    {
+      "operation": "prefix_parity",
+      "composition_program": null,
+      "candidate_accuracy": 0.9296875,
+      "consolidation_probe_accuracy": 0.9375,
+      "shuffled_training_accuracy": 0.53125,
+      "missing_evidence_accuracy": 0.5,
+      "retained_before": [
+        0.93359375,
+        0.984375,
+        0.99609375
+      ],
+      "retained_after": [
+        0.93359375,
+        0.984375,
+        0.99609375
+      ],
+      "retention_deltas": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "candidate_progress": [
+        {
+          "update": 64,
+          "heldout_accuracy": 0.78125
+        },
+        {
+          "update": 128,
+          "heldout_accuracy": 0.828125
+        },
+        {
+          "update": 192,
+          "heldout_accuracy": 0.875
+        },
+        {
+          "update": 256,
+          "heldout_accuracy": 0.9296875
+        },
+        {
+          "update": 320,
+          "heldout_accuracy": 0.9296875
+        },
+        {
+          "update": 384,
+          "heldout_accuracy": 0.9375
+        },
+        {
+          "update": 448,
+          "heldout_accuracy": 0.890625
+        },
+        {
+          "update": 512,
+          "heldout_accuracy": 0.90625
+        }
+      ],
+      "accepted": true
+    },
+    {
+      "operation": "generated_composition",
+      "composition_program": [
+        "reverse",
+        "adjacent_xor",
+        "complement"
+      ],
+      "candidate_accuracy": 0.9609375,
+      "consolidation_probe_accuracy": 0.96484375,
+      "shuffled_training_accuracy": 0.5625,
+      "missing_evidence_accuracy": 0.5,
+      "retained_before": [
+        0.93359375,
+        0.984375,
+        0.99609375
+      ],
+      "retained_after": [
+        0.93359375,
+        0.984375,
+        0.99609375
+      ],
+      "retention_deltas": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "candidate_progress": [
+        {
+          "update": 64,
+          "heldout_accuracy": 0.7890625
+        },
+        {
+          "update": 128,
+          "heldout_accuracy": 0.859375
+        },
+        {
+          "update": 192,
+          "heldout_accuracy": 0.8828125
+        },
+        {
+          "update": 256,
+          "heldout_accuracy": 0.9296875
+        },
+        {
+          "update": 320,
+          "heldout_accuracy": 0.9375
+        },
+        {
+          "update": 384,
+          "heldout_accuracy": 0.9453125
+        },
+        {
+          "update": 448,
+          "heldout_accuracy": 0.9453125
+        },
+        {
+          "update": 512,
+          "heldout_accuracy": 0.9609375
+        }
+      ],
+      "accepted": true
+    },
+    {
+      "operation": "generated_composition",
+      "composition_program": [
+        "reverse",
+        "complement",
+        "adjacent_xor"
+      ],
+      "candidate_accuracy": 0.9609375,
+      "consolidation_probe_accuracy": 0.9765625,
+      "shuffled_training_accuracy": 0.6015625,
+      "missing_evidence_accuracy": 0.5,
+      "retained_before": [
+        0.93359375,
+        0.984375,
+        0.99609375
+      ],
+      "retained_after": [
+        0.93359375,
+        0.984375,
+        0.99609375
+      ],
+      "retention_deltas": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "candidate_progress": [
+        {
+          "update": 64,
+          "heldout_accuracy": 0.8046875
+        },
+        {
+          "update": 128,
+          "heldout_accuracy": 0.859375
+        },
+        {
+          "update": 192,
+          "heldout_accuracy": 0.859375
+        },
+        {
+          "update": 256,
+          "heldout_accuracy": 0.953125
+        },
+        {
+          "update": 320,
+          "heldout_accuracy": 0.9453125
+        },
+        {
+          "update": 384,
+          "heldout_accuracy": 0.9453125
+        },
+        {
+          "update": 448,
+          "heldout_accuracy": 0.9609375
+        },
+        {
+          "update": 512,
+          "heldout_accuracy": 0.96875
+        }
+      ],
+      "accepted": true
+    }
+  ],
+  "fresh_transfer": [
+    {
+      "composition_program": [
+        "reverse",
+        "adjacent_xor",
+        "complement"
+      ],
+      "inherited_stable_bits": 16384,
+      "fresh_stable_bits": 8192,
+      "fresh_accuracy": 0.9453125,
+      "fresh_source_training_verifier_bits": 73728,
+      "positive_transfer": false
+    },
+    {
+      "composition_program": [
+        "reverse",
+        "complement",
+        "adjacent_xor"
+      ],
+      "inherited_stable_bits": 8192,
+      "fresh_stable_bits": 24576,
+      "fresh_accuracy": 0.953125,
+      "fresh_source_training_verifier_bits": 73728,
+      "positive_transfer": true
+    }
+  ],
+  "transfer_promoted": false,
+  "curriculum_fresh_control": true,
+  "interleaving": {
+    "schedule": "round_robin_per_local_update",
+    "candidate_count": 4,
+    "separate_optimizer_state": true,
+    "transactional_admission": true
+  },
+  "accounting": {
+    "replayed_examples": 0,
+    "parent_training_verifier_bits": 2048,
+    "source_training_verifier_bits": 73728,
+    "source_selection_verifier_bits": 13824,
+    "joint_source_calibration_verifier_bits": 73728,
+    "bridge_prior_training_verifier_bits": 0,
+    "canonical_readout_prior_training_verifier_bits": 0,
+    "normal_target_training_verifier_bits": 311296,
+    "shuffled_target_training_verifier_bits": 311296,
+    "fresh_transfer_training_verifier_bits": 155648,
+    "fresh_curriculum_source_verifier_bits": 147456,
+    "progress_audit_verifier_bits": 19456,
+    "suite_and_control_verifier_bits": 9728,
+    "unique_verifier_bits": 1044480,
+    "optimizer_updates": 8160,
+    "unique_logical_lifetimes": 136064
+  },
+  "promoted": true
+}

@@ -191,6 +191,28 @@ def test_shared_banked_mode_reads_only_prior_intermediate_states() -> None:
     assert not torch.equal(final, first_only)
 
 
+def test_shared_canonical_mode_applies_one_internal_state_contract_per_step() -> None:
+    machine = ExternalCapabilityRegisterMachine(
+        event_width=4,
+        action_width=2,
+        intention_width=6,
+        register_width=8,
+        instruction_width=5,
+        interpreter_hidden=12,
+        operator_mode="factorized_shared_canonical",
+        instructions=tuple(ExternalRegisterInstruction(5) for _ in range(2)),
+    )
+    register = torch.randn(2, 8)
+    final, trace = machine.execute_chain_trace(register, machine.instructions)
+
+    assert machine.configuration()["operator_mode"] == (
+        "factorized_shared_canonical"
+    )
+    assert len(trace) == 2
+    assert torch.isfinite(final).all()
+    assert torch.allclose(trace[0].mean(dim=-1), torch.zeros(2), atol=1e-5)
+
+
 def test_new_basis_slot_does_not_resize_controller_or_existing_instruction_data() -> None:
     machine = _machine()
     old_instruction = machine.instructions[0].code.detach().clone()

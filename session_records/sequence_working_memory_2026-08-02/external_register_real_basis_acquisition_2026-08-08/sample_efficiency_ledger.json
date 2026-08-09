@@ -352,6 +352,22 @@
       "behavior_promotion": "both composition candidates passed in both seeds",
       "positive_transfer": "one of four composition/seed comparisons",
       "decision": "retain learned bank addressing as an extensible interface; reject replicated transfer promotion"
+    },
+    {
+      "experiment": "interleaved_shared_canonical_trace_joint_diagnostic",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "An internal normalized canonical state contract makes intermediate register content reusable across operators.",
+      "operator_mode": "factorized_shared_canonical",
+      "preserve_composition_trace": true,
+      "joint_source_updates": 576,
+      "composition_program_count": 2,
+      "curriculum_fresh_control": true,
+      "replayed_examples": 0,
+      "retention_on_mastered_primitives": "source deltas exact zero in both seeds",
+      "behavior_promotion": "both seeds passed composition behavior gates",
+      "positive_transfer": "one of four composition/seed comparisons",
+      "decision": "reject universal normalization claim; retain canonical mode as a diagnostic and continue toward learned content invariants"
     }
   ]
 }
