@@ -2712,3 +2712,54 @@ Everything else — diversity, freezing, wider channels, cost accounting,
 retrieval-first — has been built and measured.
 
 Probes 157-160 are `reacher_ladder.py --retrieval-first --targets`.
+
+**F67 (probes 161-169). Policy-free beats every policy-storing variant,
+and transfers. Six failures were one failure.** F11, F50, F58, F61,
+F64/65 and F66 are the same event: a policy gets stored, and it is wrong
+for the next task. Freezing relocated the staleness; diversity only made
+the stored policy less wrong; a wider channel did nothing. So remove the
+policy. The plant learns a transition model — (state, action) -> next
+state, self-supervised from random play, no reward and no goal — and
+behaviour is DERIVED by breadth-first search in that model toward
+whatever goal the bank supplies.
+
+Three seeds, r4 (walled grid), sparse:
+
+| arm | reach | target training |
+| --- | ---: | --- |
+| floor | 0.172 | — |
+| warm + frozen policy (F66) | 0.133 | 800 updates |
+| cold-trained policy | 0.441 | 800 updates |
+| **policy-free, model from r1+r3** | **0.573** | **NONE** |
+| **policy-free, model from r4 itself** | **0.969** | none (dynamics only) |
+
+**The founding claim is satisfied for the first time.** A model learned
+on other domains, with zero gradient steps on the target, beats a policy
+trained on the target directly (0.573 vs 0.441). Prior learning made a
+novel task cheaper — in fact free.
+
+**And on its own domain, model+search more than doubles a learned
+policy** (0.969 vs 0.441) while needing no policy training at all. The
+model reaches accuracy 1.000 in every arm: dynamics are easy to learn;
+it was always the policy that was hard.
+
+**Depth buys competence**: 0.531 at depth 6, 0.573 at depth 12. First
+evidence in this program for the deliberation property — more thinking,
+better behaviour, no additional weights — which weakness 9 has flagged
+as untested since the beginning.
+
+**Why a model transfers where a policy cannot.** A model is FACTUAL; a
+policy is PREFERENTIAL. A model learned on a line and an open grid is
+not *wrong* about a walled grid, only *incomplete* — it has never seen a
+wall, so it mispredicts exactly there, which is why transferred search
+gets 0.573 rather than 0.969. Incompleteness is repaired by observing
+new dynamics, cheaply and additively. A wrong policy must first be
+unlearned. That asymmetry is the whole result.
+
+**Architectural consequence.** The plant should hold the map, the bank
+should hold destinations, and behaviour should be computed rather than
+stored. That is what `GOAL_FACTORED_DESIGN` specified and what was never
+actually built — every rung until now trained a policy into the plant
+while claiming the plant held only general machinery.
+
+Probes 161-169 are `reacher_ladder.py --model-search`.

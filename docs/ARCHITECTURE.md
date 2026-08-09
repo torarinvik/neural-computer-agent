@@ -44,6 +44,10 @@ Three parts, and the interfaces between them are the design.
 
 ### 2.1 Plant (fixed, shared, task-invariant)
 
+**Holds a MODEL, not a policy (F67).** Six findings were one failure —
+a stored policy going stale — and the fix is to store no policy. The
+plant learns dynamics; behaviour is computed by search at act time.
+
 A small recurrent controller with amodal encoders and decoders. It
 receives a state, receives a **goal**, and acts. It holds:
 
@@ -176,9 +180,16 @@ never was.
    adapter — across three sequential targets the frozen arm's zero-shot
    DECLINES (0.531 -> 0.129) while a cold arm stays flat (0.422 ->
    0.363), costs 60% more, and ends worse. Freezing relocates the
-   storage-rule violation to whatever is still plastic. One untried
-   mechanism remains: a plant holding NO policy, with behaviour derived
-   by search over a learned model.
+   storage-rule violation to whatever is still plastic. **RESOLVED by
+   F67:** hold no policy at all. A plant that learns only a transition
+   model, with behaviour derived by search, beats every policy-storing
+   variant — 0.969 on its own domain against a learned policy's 0.441,
+   and 0.573 on a novel domain with ZERO target training, also beating
+   0.441. The founding claim is satisfied: prior learning made a novel
+   task cheaper. A model is factual and transfers as incompleteness (fix
+   by observing); a policy is preferential and transfers as error (must
+   be unlearned). Depth buys competence (0.531 -> 0.573, depth 6 -> 12),
+   the first evidence for the deliberation property.
 3. **Retrieval is never tried before learning.** The bank is only ever
    *given* fragments; it is never asked whether it already contains a
    solution. Without that loop, reuse cannot be selected even if it is
