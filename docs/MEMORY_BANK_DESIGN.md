@@ -2222,3 +2222,41 @@ plausible numbers rather than errors.
 Open: decoy on ONE twin at 0.43-0.49 on two seeds (the default-response
 residue), and phase-2 acquisition on two seeds. Evidence:
 `goal_factored_cued_v1_2026-08-09`.
+
+**F57 (probes 97-100, 4 arms x 8 seeds). Ignorance trades against
+acquisition; gating it on measured competence recovers both.** The
+goal-factored cued rung's two residual failures were decoy-on-one-twin
+and phase-2 acquisition. A matched four-arm sweep, same seeds
+(69316-69323), same everything else:
+
+| arm | mastery both | FULL bar | worst-twin decoy |
+| --- | ---: | ---: | ---: |
+| ignorance 0.0 | 6/8 | 2/8 | 0.551 |
+| ignorance 2.0, ungated | 4/8 | 4/8 | 0.323 |
+| **ignorance 2.0, gated at 0.7** | **6/8** | **5/8** | **0.355** |
+| ignorance 3.0, gated at 0.85 | 5/8 | 3/8 | 0.391 |
+
+Ignorance does what it was built for — worst-twin decoy falls from 0.551
+to 0.323 against a measured floor of ~0.33, so a noise fragment stops
+buying performance — but it costs acquisition, 6/8 down to 4/8. This is
+the retention/acquisition tension (F24, Continual World) appearing in a
+third place: pressure that protects one property degrades the other.
+
+**Gating on measured competence gets both.** Ignorance switches on only
+once the laggard command score clears 0.7, so the executor acquires
+unimpeded and necessity is trained in afterwards. That recovers mastery
+to 6/8 while holding decoy at 0.355, and is the best full-bar rate the
+program has produced on this problem: 5/8. Note the ordering is the
+promoted consolidation line's own (acquire, then protect), arrived at
+here from measurement rather than by analogy.
+
+Harder is worse: ignorance 3.0 gated at 0.85 is the weakest gated arm
+(3/8), so this is not a dial to turn up.
+
+**Retraction.** I hypothesised from a 6-seed run that ignorance
+regularises phase-1 and collapses the restart count to 1. It does not:
+across 8 seeds per arm the draw means are 1.75 (off) and 1.38 (on), max
+3 in both, and the gated arms sit at 2.12. The all-ones run was
+small-sample luck.
+
+Evidence: `goal_factored_cued_v1_2026-08-09` plus the four-arm sweep.
