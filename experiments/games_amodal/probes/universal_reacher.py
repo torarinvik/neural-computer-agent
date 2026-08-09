@@ -68,6 +68,14 @@ parser.add_argument("--view", choices=("none", "roll", "crop"), default="none",
                          "allocentric encoder at 0.69/axis -- present but "
                          "~30%% wrong, which is 'approaches, misses by a cell'.")
 parser.add_argument(
+    "--oracle-state", action="store_true",
+    help="DECISIVE test: replace the screen encoding with a perfect "
+         "one-hot of the avatar's own cell, exactly the clean state the "
+         "numeric reacher gets. If reach jumps toward 0.9 the screen "
+         "encoder is the bottleneck; if it stays near 0.3 the 2D task "
+         "itself is (four actions, walls, longer paths) and perception "
+         "was never the story.")
+parser.add_argument(
     "--dense-goal", action="store_true",
     help="old encoding: two normalised floats. Default is one-hot per "
          "axis, matching the numeric reacher that works.")
@@ -115,10 +123,14 @@ decoder = agent.runtime.output_bus.decoders["keypress"]
 # same clarity of instruction.
 goal_encoder = torch.nn.Linear(
     2 if args.dense_goal else 2 * (2 * GRID - 1), args.width)
+# Oracle state encoder: one-hot(cell) -> payload, the numeric reacher's
+# clean instruction applied to "where am I".
+state_encoder = torch.nn.Linear(GRID * GRID, args.width)
 # Auxiliary localisation heads: encoding -> own row, own col.
 locate_row = torch.nn.Linear(args.width, GRID)
 locate_col = torch.nn.Linear(args.width, GRID)
 params = (plant + list(goal_encoder.parameters())
+          + list(state_encoder.parameters())
           + list(locate_row.parameters()) + list(locate_col.parameters()))
 optimizer = torch.optim.Adam(params, lr=1e-3)
 
@@ -237,7 +249,17 @@ def rollout(targets: torch.Tensor, *, seed: int, sample: bool,
     gap = true_gaps(raw, fields, avatar_cells(raw))
     start_gap = gap.clone()
     for _step in range(args.steps):
-        screen_event = agent.runtime.encoders["screen"](observation)
+        if args.oracle_state:
+            here = avatar_cells(raw)
+            one_hot = torch.zeros(args.batch_size, GRID * GRID)
+            one_hot.scatter_(
+                1, (here[:, 0] * GRID + here[:, 1]).unsqueeze(-1), 1.0)
+            payload = state_encoder(one_hot)
+            screen_event = AmodalEvent(
+                payload=payload / payload.norm(dim=-1, keepdim=True)
+                .clamp_min(1e-6) * 4.0)
+        else:
+            screen_event = agent.runtime.encoders["screen"](observation)
         if args.localise > 0.0:
             payload = getattr(screen_event, "payload", screen_event)
             here = avatar_cells(raw)
