@@ -41,6 +41,9 @@ EXTERNAL_ONLINE_CONTEXT_RESOLVER_SCHEMA = (
     "neural-computer.external-online-context-resolver.v1"
 )
 EXTERNAL_GOAL_EVALUATOR_SCHEMA = "neural-computer.external-goal-evaluator.v1"
+EXTERNAL_TRANSITION_EVIDENCE_EVALUATOR_SCHEMA = (
+    "neural-computer.external-transition-evidence-evaluator.v1"
+)
 EXTERNAL_MODEL_PLANNER_SCHEMA = "neural-computer.external-model-planner.v1"
 
 
@@ -332,6 +335,108 @@ class ExternalGoalEvaluator(nn.Module):
         )
         return nn.functional.binary_cross_entropy_with_logits(
             self(state, goal_state), targets
+        )
+
+    def digest(self) -> str:
+        digest = hashlib.sha256()
+        digest.update(self.schema.encode("utf-8"))
+        for name, value in sorted(self.state_dict().items()):
+            detached = value.detach().cpu().contiguous()
+            digest.update(name.encode("utf-8"))
+            digest.update(str(detached.dtype).encode("utf-8"))
+            digest.update(repr(tuple(detached.shape)).encode("utf-8"))
+            digest.update(detached.numpy().tobytes())
+        return digest.hexdigest()
+
+
+class ExternalTransitionEvidenceEvaluator(nn.Module):
+    """Learned external verifier for noisy factual transition evidence."""
+
+    schema = EXTERNAL_TRANSITION_EVIDENCE_EVALUATOR_SCHEMA
+
+    def __init__(self, state_width: int, *, hidden_width: int = 64) -> None:
+        super().__init__()
+        if min(state_width, hidden_width) < 1:
+            raise ValueError("transition-evidence dimensions must be positive")
+        self.state_width = int(state_width)
+        self.hidden_width = int(hidden_width)
+        self.network = nn.Sequential(
+            nn.Linear(self.state_width * 3 + 1, self.hidden_width),
+            nn.GELU(),
+            nn.Linear(self.hidden_width, self.hidden_width),
+            nn.GELU(),
+            nn.Linear(self.hidden_width, 1),
+        )
+
+    def configuration(self) -> dict[str, int | str]:
+        return {
+            "schema": self.schema,
+            "state_width": self.state_width,
+            "hidden_width": self.hidden_width,
+            "training": "deterministic_transition_verifier_outcomes_v1",
+            "behavior": "read_only_consistency_gate_v1",
+        }
+
+    def _validate_inputs(
+        self,
+        prediction: torch.Tensor,
+        observed: torch.Tensor,
+        hit: torch.Tensor | None,
+    ) -> torch.Tensor:
+        _validate_tensor(
+            prediction, name="transition prediction", ndim=2, width=self.state_width
+        )
+        _validate_tensor(
+            observed, name="observed next state", ndim=2, width=self.state_width
+        )
+        if prediction.shape != observed.shape:
+            raise ValueError("transition prediction and observation shapes differ")
+        if hit is None:
+            return torch.ones(
+                prediction.shape[0], device=prediction.device, dtype=prediction.dtype
+            )
+        if hit.shape not in ((prediction.shape[0],), (prediction.shape[0], 1)):
+            raise ValueError("transition hit flags must match the batch")
+        hit_value = hit.reshape(-1).to(
+            device=prediction.device, dtype=prediction.dtype
+        )
+        if not bool(torch.isfinite(hit_value).all()) or bool(
+            torch.any(hit_value < 0) or torch.any(hit_value > 1)
+        ):
+            raise ValueError("transition hit flags must lie in [0, 1]")
+        return hit_value
+
+    def forward(
+        self,
+        prediction: torch.Tensor,
+        observed: torch.Tensor,
+        hit: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        hit_value = self._validate_inputs(prediction, observed, hit)
+        difference = (prediction - observed).square()
+        features = torch.cat(
+            (prediction, observed, difference, hit_value.unsqueeze(-1)), dim=-1
+        )
+        return self.network(features).squeeze(-1)
+
+    def loss(
+        self,
+        prediction: torch.Tensor,
+        observed: torch.Tensor,
+        outcome: torch.Tensor,
+        hit: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        if outcome.shape not in ((prediction.shape[0],), (prediction.shape[0], 1)):
+            raise ValueError("transition-evidence outcomes must match the batch")
+        if not bool(torch.isfinite(outcome).all()) or bool(
+            torch.any(outcome < 0) or torch.any(outcome > 1)
+        ):
+            raise ValueError("transition-evidence outcomes must lie in [0, 1]")
+        targets = outcome.reshape(-1).to(
+            device=prediction.device, dtype=prediction.dtype
+        )
+        return nn.functional.binary_cross_entropy_with_logits(
+            self(prediction, observed, hit), targets
         )
 
     def digest(self) -> str:
@@ -719,6 +824,8 @@ class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
         address_seed: int = 0,
         admission_observations: int = 3,
         contradiction_observations: int = 2,
+        evidence_evaluator: ExternalTransitionEvidenceEvaluator | None = None,
+        evidence_threshold: float = 0.5,
     ) -> None:
         super().__init__(
             context_width,
@@ -727,8 +834,14 @@ class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
         )
         if admission_observations < 1 or contradiction_observations < 1:
             raise ValueError("online admission thresholds must be positive")
+        if not 0.0 < evidence_threshold < 1.0:
+            raise ValueError("online evidence threshold must lie in (0, 1)")
+        if evidence_evaluator is not None and evidence_evaluator.state_width < 1:
+            raise ValueError("online evidence evaluator is invalid")
         self.admission_observations = int(admission_observations)
         self.contradiction_observations = int(contradiction_observations)
+        self.evidence_evaluator = evidence_evaluator
+        self.evidence_threshold = float(evidence_threshold)
         self._assigned: dict[tuple[float, ...], int] = {}
         self._pending: dict[
             tuple[float, ...], list[ExternalTransitionObservation]
@@ -743,8 +856,31 @@ class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
             "address_seed": self.address_seed,
             "admission_observations": self.admission_observations,
             "contradiction_observations": self.contradiction_observations,
+            "evidence_threshold": self.evidence_threshold,
+            "evidence_evaluator": (
+                None
+                if self.evidence_evaluator is None
+                else self.evidence_evaluator.configuration()
+            ),
             "behavior": "uncertain_rows_are_not_written_v1",
         }
+
+    def _consistent(
+        self,
+        prediction: torch.Tensor,
+        observed: torch.Tensor,
+        hits: torch.Tensor,
+    ) -> tuple[bool, float]:
+        error = float((prediction - observed).square().mean().detach())
+        if self.evidence_evaluator is None:
+            return error <= self.match_tolerance, error
+        with torch.no_grad():
+            probability = float(
+                torch.sigmoid(
+                    self.evidence_evaluator(prediction, observed, hits)
+                ).mean()
+            )
+        return probability >= self.evidence_threshold, error
 
     def _stream_id(self, stream_key: torch.Tensor) -> tuple[float, ...]:
         _validate_tensor(
@@ -810,7 +946,10 @@ class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
             error = float(
                 (prediction - observation.next_state).square().mean().detach()
             )
-            if error <= self.match_tolerance and (
+            consistent, _error = self._consistent(
+                prediction, observation.next_state, hits
+            )
+            if consistent and (
                 best is None or error < best[1]
             ):
                 best = (index, error)
@@ -853,6 +992,11 @@ class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
             raise ValueError("online resolver expects one observation per call")
         if memory.context_width != self.context_width:
             raise ValueError("resolver and transition memory context widths differ")
+        if (
+            self.evidence_evaluator is not None
+            and self.evidence_evaluator.state_width != memory.state_width
+        ):
+            raise ValueError("evidence evaluator and transition memory widths differ")
         stream_id = self._stream_id(stream_key)
         current = self._clone_observation(observation)
         pending = self._pending.setdefault(stream_id, [])
@@ -860,13 +1004,11 @@ class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
         if stream_id not in self._assigned:
             candidate = self._candidate(current, memory)
             if candidate is not None and not pending:
-                committed = self._commit(
-                    stream_id, memory, candidate[0], [current]
-                )
+                self._assigned[stream_id] = candidate[0]
                 return ExternalOnlineContextResolution(
                     status="reused",
                     context=self._addresses[candidate[0]].clone(),
-                    committed_observations=committed,
+                    committed_observations=0,
                     pending_observations=0,
                 ).validate(context_width=self.context_width)
             pending.append(current)
@@ -896,17 +1038,16 @@ class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
             context=context.to(current.state).unsqueeze(0),
         )
         if bool(hits.all()):
-            error = float(
-                (prediction - current.next_state).square().mean().detach()
+            consistent, _error = self._consistent(
+                prediction, current.next_state, hits
             )
-            if error <= self.match_tolerance:
+            if consistent:
                 pending.clear()
                 self._contradiction_streak.pop(stream_id, None)
-                committed = self._commit(stream_id, memory, context_index, [current])
                 return ExternalOnlineContextResolution(
                     status="reused",
                     context=context.clone(),
-                    committed_observations=committed,
+                    committed_observations=0,
                     pending_observations=0,
                 ).validate(context_width=self.context_width)
             self._contradiction_streak[stream_id] = (
@@ -983,7 +1124,10 @@ class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
 
     @classmethod
     def from_payload(
-        cls, payload: Mapping[str, Any]
+        cls,
+        payload: Mapping[str, Any],
+        *,
+        evidence_evaluator: ExternalTransitionEvidenceEvaluator | None = None,
     ) -> ExternalOnlineContextAddressResolver:
         if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
             raise ValueError("unsupported online context-resolver payload")
@@ -993,6 +1137,8 @@ class ExternalOnlineContextAddressResolver(ExternalContextAddressResolver):
             address_seed=int(payload["address_seed"]),
             admission_observations=int(payload["admission_observations"]),
             contradiction_observations=int(payload["contradiction_observations"]),
+            evidence_threshold=float(payload.get("evidence_threshold", 0.5)),
+            evidence_evaluator=evidence_evaluator,
         )
         addresses = payload.get("addresses")
         if not isinstance(addresses, list):
@@ -1293,6 +1439,7 @@ __all__ = [
     "ExternalModelBasedPlanner",
     "ExternalOnlineContextAddressResolver",
     "ExternalOnlineContextResolution",
+    "ExternalTransitionEvidenceEvaluator",
     "ExternalTransitionMemory",
     "ExternalTransitionModel",
     "ExternalTransitionObservation",

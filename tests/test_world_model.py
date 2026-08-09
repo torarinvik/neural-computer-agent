@@ -5,6 +5,7 @@ from neural_computer import (
     ExternalGoalEvaluator,
     ExternalModelBasedPlanner,
     ExternalOnlineContextAddressResolver,
+    ExternalTransitionEvidenceEvaluator,
     ExternalTransitionMemory,
     ExternalTransitionModel,
     ExternalTransitionObservation,
@@ -270,6 +271,11 @@ def test_online_context_resolver_accumulates_interleaved_evidence_without_early_
     assert a3.status == "admitted" and b3.status == "admitted"
     assert memory.record_count == 6
 
+    duplicate = resolver.observe(row(0.0, 1.0), torch.tensor([1.0, 1.0]), memory)
+    assert duplicate.status == "reused"
+    assert duplicate.committed_observations == 0
+    assert memory.record_count == 6
+
     reversal_1 = resolver.observe(row(0.0, -1.0), stream_a, memory)
     reversal_2 = resolver.observe(row(1.0, 0.0), stream_a, memory)
     assert reversal_1.status == "conflict"
@@ -293,3 +299,17 @@ def test_online_context_resolver_accumulates_interleaved_evidence_without_early_
     resumed_result = resumed.observe(row(2.0, 3.0), stream_a, pending_memory)
     assert resumed_result.status == "admitted"
     assert pending_memory.record_count == 3
+
+
+def test_transition_evidence_evaluator_has_versioned_scalar_outcome_boundary() -> None:
+    evaluator = ExternalTransitionEvidenceEvaluator(3, hidden_width=8)
+    prediction = torch.zeros(4, 3)
+    observed = torch.tensor(
+        [[0.0, 0.0, 0.0], [0.1, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, -1.0, 0.0]]
+    )
+    outcomes = torch.tensor([1.0, 1.0, 0.0, 0.0])
+    logits = evaluator(prediction, observed, torch.ones(4))
+
+    assert logits.shape == (4,)
+    assert torch.isfinite(evaluator.loss(prediction, observed, outcomes))
+    assert evaluator.configuration()["behavior"] == "read_only_consistency_gate_v1"

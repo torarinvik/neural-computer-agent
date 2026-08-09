@@ -4505,3 +4505,26 @@ resolver does not yet infer contexts from raw modalities, learn its evidence
 thresholds, cluster arbitrary partial evidence, or compress unbounded history.
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_online_context_admission_promoted_2026-08-09/`.
+
+## Learned transition evidence and read-only reuse (2026-08-09)
+
+The next two-seed rung adds `ExternalTransitionEvidenceEvaluator` as an
+independently trainable memory-side verifier. It classifies whether a stored
+opaque next-state prediction remains consistent with a noisy observed tensor.
+When reuse is accepted, the online resolver is read-only: it does not replace
+the mastered factual row with the noisy observation. Only genuinely admitted
+new evidence writes to memory.
+
+Both seeds accepted a noisy duplicate as reuse with zero writes and exact
+source retention, while the fixed exact-match control allocated a duplicate
+context. Contradictory evidence still admitted a new context; wrong-context,
+fresh-memory, persistence, and frozen-controller gates passed. Target
+adaptation used zero optimizer updates and zero replayed examples.
+
+The evaluator's own pretraining cost is accounted for explicitly: 1,024
+synthetic verifier rows, 500 optimizer updates, and 510,976 repeated training
+rows. This promotes a robustness boundary only; it is not replay-free learning
+of the evaluator. The next bottleneck is to learn evidence calibration online
+from real multimodal event tensors and test whether the verifier transfers
+across representation changes without replay. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_learned_evidence_admission_promoted_2026-08-09/`.
