@@ -998,3 +998,20 @@ is retained as a tested interface, but the experiment is rejected for
 promotion. The remaining bottleneck is routing/selecting the correct learned
 operator from the observed sequence, not simply adding external parameter
 capacity. Raw report: `protected_bounded_meta_operator_slots/report_seed69316.json`.
+
+## Learned operator routing — partial improvement, not promoted
+
+The first learned router used the mean of the opaque instruction codes as its
+query. It improved the rank-8 operator-slot floor from `0.6641` to `0.7031`
+while preserving source skills exactly, but the query was permutation-invariant
+and therefore could not distinguish orderings in principle. Rank-16 with the
+same router reached `0.7344`, still below the prior `0.7422` rank-16 shared
+baseline. Sharpening the softmax to temperature `0.25` did not improve it.
+
+The boundary was then corrected with a learned GRU order encoder. Although it
+can distinguish a sequence from its reversal, the matched rank-8 screen fell
+to `0.6719`. This rejects the current routing training recipe: the system has
+an order-sensitive address interface, but outcome credit through a soft mixture
+and temporary per-order decoders is too weak to reliably specialize slots.
+The four raw reports are under
+`protected_bounded_meta_operator_routing/`; none is promoted.

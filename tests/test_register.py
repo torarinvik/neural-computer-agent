@@ -543,6 +543,31 @@ def test_external_sequence_operator_memory_grows_and_executes_opaque_slots() -> 
     assert torch.isfinite(result).all()
 
 
+def test_external_sequence_operator_memory_learns_opaque_route_weights() -> None:
+    torch.manual_seed(904)
+    memory = ExternalSequenceOperatorMemory(8, 5, operator_rank=2)
+    memory.add_slot()
+    memory.add_slot()
+    query = torch.randn(3, 5)
+    weights = memory.route_weights(query)
+
+    assert weights.shape == (3, 2)
+    assert torch.allclose(weights.sum(dim=-1), torch.ones(3))
+    assert torch.isfinite(weights).all()
+
+
+def test_external_sequence_operator_memory_encodes_ordered_programs() -> None:
+    torch.manual_seed(905)
+    memory = ExternalSequenceOperatorMemory(8, 5, operator_rank=2)
+    codes = torch.randn(1, 3, 5)
+    forward = memory.encode_program(codes)
+    reversed_codes = memory.encode_program(codes.flip(1))
+
+    assert forward.shape == (1, 5)
+    assert reversed_codes.shape == (1, 5)
+    assert not torch.equal(forward, reversed_codes)
+
+
 def test_external_register_state_is_external_and_quiet_ticks_do_not_mutate_it() -> None:
     torch.manual_seed(903)
     machine = _machine()

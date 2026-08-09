@@ -650,6 +650,25 @@
       "sequence_progress": "final ordering scores 0.6953, 0.8672, 0.8047, 0.6641, 0.7656, 0.8203",
       "sequence_floor": 0.6640625,
       "decision": "reject operator-slot promotion; external computation capacity alone does not solve sequence/operator routing"
+    },
+    {
+      "experiment": "protected_bounded_meta_operator_routing_sweep_sequence384",
+      "date": "2026-08-09",
+      "seeds": [69316],
+      "claim": "Learned opaque addressing can specialize external operator slots by observed sequence context without changing the frozen controller.",
+      "operator_mode": "factorized_protected_bounded_meta",
+      "routing_variants": {
+        "mean_query_rank8_temperature1": 0.703125,
+        "mean_query_rank16_temperature1": 0.734375,
+        "mean_query_rank16_temperature0.25": 0.734375,
+        "gru_order_sensitive_query_rank8_temperature0.25": 0.671875
+      },
+      "baseline_floor": 0.7421875,
+      "sequence_calibration_updates": 384,
+      "composition_program_count": 6,
+      "replayed_examples": 0,
+      "source_retention": "exact zero deltas in every variant",
+      "decision": "reject routing promotion; order-sensitive address representation exists, but soft outcome credit with temporary per-order decoders does not beat the rank-16 baseline"
     }
   ]
 }

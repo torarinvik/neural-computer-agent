@@ -659,6 +659,21 @@ def _train_sequence_calibration(
         )
         for program in programs
     ]
+    use_operator_router = bool(
+        sequence_operator_memory is not None
+        and args.use_operator_sequence_router
+    )
+
+    def route_query(program: tuple[str, ...]) -> torch.Tensor:
+        instructions = tuple(
+            machine.instructions[args.source_operations.index(name)]
+            for name in program
+        )
+        codes = torch.stack(
+            tuple(instruction.code.detach().squeeze(0) for instruction in instructions)
+        ).unsqueeze(0)
+        return sequence_operator_memory.encode_program(codes).squeeze(0)
+
     protected_meta_mode = args.operator_mode in (
         "factorized_protected_meta",
         "factorized_protected_bounded_meta",
@@ -718,7 +733,12 @@ def _train_sequence_calibration(
             ),
             sequence_operator_memory=sequence_operator_memory,
             sequence_operator_slot=(
-                index if sequence_operator_memory is not None else None
+                index
+                if sequence_operator_memory is not None and not use_operator_router
+                else None
+            ),
+            sequence_operator_route_query=(
+                route_query(program) if use_operator_router else None
             ),
         )
         optimizer.zero_grad(set_to_none=True)
@@ -756,8 +776,11 @@ def _train_sequence_calibration(
                     sequence_operator_memory=sequence_operator_memory,
                     sequence_operator_slot=(
                         index_value
-                        if sequence_operator_memory is not None
+                        if sequence_operator_memory is not None and not use_operator_router
                         else None
+                    ),
+                    sequence_operator_route_query=(
+                        route_query(program_value) if use_operator_router else None
                     ),
                 )
                 for index_value, program_value in enumerate(programs)
@@ -1034,6 +1057,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("source checkpoint input cannot be combined with source calibration")
     if args.use_sequence_memory and args.use_operator_sequence_memory:
         raise ValueError("choose value or operator sequence memory")
+    if args.use_operator_sequence_router and not args.use_operator_sequence_memory:
+        raise ValueError("operator sequence routing requires operator sequence memory")
     if args.reuse_shared_bridge_prior and args.reuse_conditioned_bridge_prior:
         raise ValueError("choose one bridge prior mode")
     args.reuse_shared_bridge_prior = (
@@ -1206,6 +1231,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             REGISTER_WIDTH,
             INSTRUCTION_WIDTH,
             operator_rank=args.operator_rank,
+            router_temperature=args.operator_router_temperature,
         )
         for _ in composition_programs:
             sequence_operator_memory.add_slot()
@@ -1747,7 +1773,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "sequence_calibration_updates": args.sequence_calibration_updates,
         "sequence_calibration_trainable_surface": (
             (
-                "sequence_operator_memory_slots_plus_temporary_decoders"
+                (
+                    "sequence_operator_memory_slots_plus_learned_router_plus_temporary_decoders"
+                    if args.use_operator_sequence_router
+                    else "sequence_operator_memory_slots_plus_temporary_decoders"
+                )
                 if args.use_operator_sequence_memory
                 else (
                     "sequence_memory_slots_plus_temporary_decoders"
@@ -1934,6 +1964,18 @@ def main() -> None:
         action=argparse.BooleanOptionalAction,
         default=False,
         help="train one append-only low-rank operator slot per calibration ordering",
+    )
+    parser.add_argument(
+        "--use-operator-sequence-router",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="learn opaque soft addressing over external operator slots",
+    )
+    parser.add_argument(
+        "--operator-router-temperature",
+        type=float,
+        default=0.25,
+        help="softmax temperature for learned external-operator addressing",
     )
     parser.add_argument("--warmup-updates", type=int, default=64)
     parser.add_argument("--focus-updates", type=int, default=64)

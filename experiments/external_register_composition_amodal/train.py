@@ -156,6 +156,7 @@ def _rollout(
     meta_context: torch.Tensor | None = None,
     sequence_operator_memory=None,
     sequence_operator_slot: int | None = None,
+    sequence_operator_route_query: torch.Tensor | None = None,
     *,
     train_decoder: bool,
     shuffle_outcomes: bool = False,
@@ -179,6 +180,15 @@ def _rollout(
             meta_context = meta_context.unsqueeze(0).expand(batch_size, -1)
         elif meta_context.shape[0] != batch_size:
             raise ValueError("meta context batch size does not match rollout")
+    if sequence_operator_route_query is not None:
+        if sequence_operator_route_query.ndim == 1:
+            sequence_operator_route_query = sequence_operator_route_query.unsqueeze(0).expand(
+                batch_size, -1
+            )
+        elif sequence_operator_route_query.shape[0] != batch_size:
+            raise ValueError(
+                "sequence operator route query batch size does not match rollout"
+            )
     parent_state = parent.initial_state(batch_size, device=device)
     register_state = machine.initial_state(batch_size, device=device)
     zeros = torch.zeros(batch_size, device=device)
@@ -231,6 +241,7 @@ def _rollout(
                 meta_context=meta_context,
                 sequence_operator_memory=sequence_operator_memory,
                 sequence_operator_slot=sequence_operator_slot,
+                sequence_operator_route_query=sequence_operator_route_query,
             )
             if not role_trace:
                 raise ValueError("role-bound execution requires at least one instruction")
@@ -250,6 +261,7 @@ def _rollout(
                 meta_context=meta_context,
                 sequence_operator_memory=sequence_operator_memory,
                 sequence_operator_slot=sequence_operator_slot,
+                sequence_operator_route_query=sequence_operator_route_query,
             )
             decoded_register = torch.cat(trace, dim=-1)
         else:
@@ -270,6 +282,7 @@ def _rollout(
                 meta_context=meta_context,
                 sequence_operator_memory=sequence_operator_memory,
                 sequence_operator_slot=sequence_operator_slot,
+                sequence_operator_route_query=sequence_operator_route_query,
             )
             decoded_register = (
                 register if register_readout is None else register_readout(register)
@@ -611,6 +624,7 @@ def _accuracy(
     meta_context: torch.Tensor | None = None,
     sequence_operator_memory=None,
     sequence_operator_slot: int | None = None,
+    sequence_operator_route_query: torch.Tensor | None = None,
     count: int,
     span: int,
     seed: int,
@@ -649,6 +663,7 @@ def _accuracy(
             meta_context=meta_context,
             sequence_operator_memory=sequence_operator_memory,
             sequence_operator_slot=sequence_operator_slot,
+            sequence_operator_route_query=sequence_operator_route_query,
             train_decoder=False,
             shuffle_outcomes=shuffle_outcomes,
             credit_mode=credit_mode,
