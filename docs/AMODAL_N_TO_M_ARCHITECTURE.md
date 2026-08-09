@@ -4124,3 +4124,9 @@ seed passed the composition and transfer gates, but the second failed both
 composition candidates, so the mechanism is not promoted yet. Evidence is
 archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_real_basis_acquisition_2026-08-08/interleaved_conditioned_bridge_prior_diagnostic/`.
+
+Repeating source acquisition with two restart candidates repairs the
+conditioned-bridge behavior rung across both seeds. This promotes bounded
+source-robust compositional retention, while matched fresh learners still do
+not establish positive sample-efficiency transfer. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_real_basis_acquisition_2026-08-08/interleaved_conditioned_bridge_restart_repair/`.

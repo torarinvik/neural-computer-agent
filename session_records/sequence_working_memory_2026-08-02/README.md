@@ -1877,3 +1877,12 @@ positive result in seed 69317 but failed both composition gates in seed 69316.
 It remains an opt-in research path, not a promoted general continual-learning
 mechanism. Evidence is in
 `external_register_real_basis_acquisition_2026-08-08/interleaved_conditioned_bridge_prior_diagnostic/`.
+
+## Conditioned bridge source-restart repair (2026-08-09)
+
+Increasing source acquisition to two restart candidates repaired the mixed
+conditioned-bridge behavior result: both seeds promoted both compositions with
+zero replay. Fresh stable-transfer mastery still failed, so this is a bounded
+robustness promotion rather than a general sample-efficiency claim. Evidence
+is in
+`external_register_real_basis_acquisition_2026-08-08/interleaved_conditioned_bridge_restart_repair/`.

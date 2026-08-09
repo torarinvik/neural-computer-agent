@@ -581,3 +581,16 @@ failed stable mastery.
 The mechanism is promising but not replicated. It remains opt-in; the
 production default and promotion claim are unchanged. Evidence is in
 `interleaved_conditioned_bridge_prior_diagnostic/`.
+
+## Conditioned bridge source-restart repair — promoted bounded rung
+
+The mixed conditioned-bridge result was rerun with only source acquisition
+robustness changed: two source restarts instead of one. Both seeds then
+promoted both compositions. Seed `69316` reached consolidation probes
+`0.9492`/`0.9805`; seed `69317` reached `0.9805`/`0.9453`. Source selection
+floors were `0.9961`/`0.8125`/`0.9023` and `0.9961`/`0.9648`/`0.9648`, and
+all source retention deltas remained exactly zero. Fresh controls still did
+not reach stable mastery, so this promotes robust bounded behavior—not
+positive sample-efficiency transfer. Each run used zero replay.
+
+Evidence is in `interleaved_conditioned_bridge_restart_repair/`.

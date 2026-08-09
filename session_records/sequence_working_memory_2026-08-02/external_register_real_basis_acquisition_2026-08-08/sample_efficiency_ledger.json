@@ -191,6 +191,19 @@
       "retention_on_mastered_primitives": "source retention unchanged with exact paired deltas zero",
       "positive_transfer": "seed 69317 only",
       "decision": "retain as promising opt-in architecture diagnostic; reject replicated promotion pending seed-stable results"
+    },
+    {
+      "experiment": "interleaved_conditioned_bridge_source_restart_repair",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "Two source-acquisition restarts stabilize the capability-conditioned bridge composition rung without changing the interface mechanism.",
+      "composition_program_count": 2,
+      "source_restarts": 2,
+      "replayed_examples": 0,
+      "retention_on_mastered_primitives": "all exact paired source deltas zero; source floors passed",
+      "behavior_promoted": true,
+      "positive_transfer": false,
+      "decision": "promote bounded source-robust conditioned composition; retain fresh-transfer bottleneck"
     }
   ]
 }
