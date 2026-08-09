@@ -4953,6 +4953,9 @@ exact payload restoration passed.
 
 This family is available to the same mixed bank and router and is selected only
 through held-out verifier evidence. It expands replay-free learning beyond
-affine maps, but remains a fixed finite basis: it is not unrestricted neural
-computation, and future work must test basis growth, distribution shift, and
-long-horizon retention before treating it as general continual learning.
+affine maps. Its basis can now grow through a retention-verified algebraic
+transaction: old sufficient statistics are remapped and new features begin
+with zero historical evidence, so no old rows are replayed. This is still not
+unrestricted neural computation; distribution shift, repeated growth, and
+long-horizon retention remain unverified before treating it as general
+continual learning.

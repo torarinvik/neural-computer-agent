@@ -116,6 +116,58 @@ def test_random_feature_statistics_learns_nonlinear_transitions_one_pass() -> No
         assert torch.allclose(restored(state[64:], intention[64:]), model(state[64:], intention[64:]))
 
 
+def test_random_feature_growth_preserves_old_predictions_without_replay() -> None:
+    torch.manual_seed(1403)
+    model = ExternalRandomFeatureTransitionStatistics(
+        2,
+        1,
+        feature_width=16,
+        ridge=1e-4,
+        seed=19,
+    )
+    state = torch.rand(32, 2) * 2.0 - 1.0
+    intention = torch.rand(32, 1) * 2.0 - 1.0
+    next_state = torch.cat(
+        (
+            torch.sin(2.0 * state[:, 0:1] + intention),
+            state[:, 0:1] * state[:, 1:2] + intention.square(),
+        ),
+        dim=-1,
+    )
+    model.observe(ExternalTransitionObservation(state, intention, next_state))
+    probe_state = torch.rand(16, 2) * 2.0 - 1.0
+    probe_intention = torch.rand(16, 1) * 2.0 - 1.0
+    before = model(probe_state, probe_intention).detach().clone()
+    sample_count = int(model.sample_count)
+    receipt = model.grow_features_verified(
+        32,
+        lambda candidate: torch.allclose(
+            candidate(probe_state, probe_intention),
+            before,
+            atol=2e-5,
+            rtol=0.0,
+        ),
+    )
+    assert receipt.accepted
+    assert model.feature_width == 32
+    assert int(model.sample_count) == sample_count
+    assert torch.allclose(
+        model(probe_state, probe_intention),
+        before,
+        atol=2e-5,
+        rtol=0.0,
+    )
+    digest = model.digest()
+    rejected = model.grow_features_verified(64, lambda _candidate: False)
+    assert not rejected.accepted
+    assert model.feature_width == 32
+    assert model.digest() == digest
+    restored = ExternalRandomFeatureTransitionStatistics.from_payload(
+        model.state_payload()
+    )
+    assert restored.digest() == model.digest()
+
+
 def test_router_stages_and_promotes_affine_candidate_without_optimizer() -> None:
     bank = ExternalTransitionModelBank(
         2,

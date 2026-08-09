@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import math
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -29,6 +29,9 @@ EXTERNAL_TRANSITION_AFFINE_STATISTICS_SCHEMA = (
 )
 EXTERNAL_TRANSITION_RANDOM_FEATURE_STATISTICS_SCHEMA = (
     "neural-computer.external-transition-random-feature-statistics.v1"
+)
+EXTERNAL_TRANSITION_RANDOM_FEATURE_GROWTH_SCHEMA = (
+    "neural-computer.external-transition-random-feature-growth.v1"
 )
 class ExternalAffineTransitionStatistics(nn.Module):
     """Compact online memory for an opaque affine transition function."""
@@ -190,6 +193,32 @@ class ExternalAffineTransitionStatistics(nn.Module):
         return model
 
 
+@dataclass(frozen=True)
+class ExternalRandomFeatureGrowthReceipt:
+    """Auditable result of verifier-gated nonlinear basis growth."""
+
+    accepted: bool
+    source_width: int
+    destination_width: int
+    content_digest_before: str
+    content_digest_after: str
+    reason: str
+    schema: str = EXTERNAL_TRANSITION_RANDOM_FEATURE_GROWTH_SCHEMA
+
+    def validate(self) -> ExternalRandomFeatureGrowthReceipt:
+        if self.schema != EXTERNAL_TRANSITION_RANDOM_FEATURE_GROWTH_SCHEMA:
+            raise ValueError("unsupported random-feature growth schema")
+        if self.source_width < 1 or self.destination_width < self.source_width:
+            raise ValueError("random-feature growth widths are invalid")
+        if not self.content_digest_before or not self.content_digest_after:
+            raise ValueError("random-feature growth digests are missing")
+        if not self.reason:
+            raise ValueError("random-feature growth reason is missing")
+        if self.accepted and self.destination_width == self.source_width:
+            raise ValueError("accepted random-feature growth did not grow")
+        return self
+
+
 class ExternalRandomFeatureTransitionStatistics(nn.Module):
     """Replay-free nonlinear transition memory with a frozen feature map.
 
@@ -307,6 +336,100 @@ class ExternalRandomFeatureTransitionStatistics(nn.Module):
 
     def _weights(self) -> torch.Tensor:
         return torch.linalg.solve(self.normal_matrix, self.target_matrix)
+
+    def _grow_features(self, destination_width: int) -> None:
+        if not isinstance(destination_width, int):
+            raise TypeError("random-feature destination width must be an integer")
+        if destination_width <= self.feature_width:
+            raise ValueError("random-feature destination width must grow")
+        source_width = self.feature_width
+        added_width = destination_width - source_width
+        generator = torch.Generator(device="cpu")
+        generator.manual_seed(self.seed + source_width * 100003)
+        input_width = self.state_width + self.intention_width
+        projection = torch.randn(
+            input_width,
+            added_width,
+            generator=generator,
+            dtype=self.projection.dtype,
+        ) / math.sqrt(input_width)
+        bias = torch.rand(
+            added_width,
+            generator=generator,
+            dtype=self.bias.dtype,
+        ) * (2.0 * math.pi)
+        self.projection = torch.cat((self.projection, projection), dim=-1)
+        self.bias = torch.cat((self.bias, bias), dim=-1)
+
+        old_normal = self.normal_matrix
+        old_target = self.target_matrix
+        new_statistics_width = destination_width + 1
+        new_normal = torch.eye(
+            new_statistics_width,
+            dtype=old_normal.dtype,
+            device=old_normal.device,
+        ) * self.ridge
+        new_normal[:source_width, :source_width] = old_normal[:source_width, :source_width]
+        new_normal[:source_width, destination_width] = old_normal[:source_width, source_width]
+        new_normal[destination_width, :source_width] = old_normal[source_width, :source_width]
+        new_normal[destination_width, destination_width] = old_normal[source_width, source_width]
+        new_target = torch.zeros(
+            new_statistics_width,
+            self.state_width,
+            dtype=old_target.dtype,
+            device=old_target.device,
+        )
+        new_target[:source_width] = old_target[:source_width]
+        new_target[destination_width] = old_target[source_width]
+        self.normal_matrix = new_normal
+        self.target_matrix = new_target
+        self.feature_width = destination_width
+
+    def grow_features_verified(
+        self,
+        destination_width: int,
+        retention_probe: Callable[[ExternalRandomFeatureTransitionStatistics], bool],
+    ) -> ExternalRandomFeatureGrowthReceipt:
+        """Expand the fixed basis only after proving old behavior is retained."""
+
+        if not callable(retention_probe):
+            raise TypeError("random-feature growth retention probe must be callable")
+        source_width = self.feature_width
+        before = self.digest()
+        if not bool(retention_probe(self)):
+            return ExternalRandomFeatureGrowthReceipt(
+                accepted=False,
+                source_width=source_width,
+                destination_width=source_width,
+                content_digest_before=before,
+                content_digest_after=before,
+                reason="pre-growth retention probe failed",
+            ).validate()
+        candidate = self.from_payload(self.state_payload())
+        candidate._grow_features(destination_width)
+        after = candidate.digest()
+        if not bool(retention_probe(candidate)):
+            return ExternalRandomFeatureGrowthReceipt(
+                accepted=False,
+                source_width=source_width,
+                destination_width=source_width,
+                content_digest_before=before,
+                content_digest_after=before,
+                reason="post-growth retention probe failed",
+            ).validate()
+        self.feature_width = candidate.feature_width
+        self.projection = candidate.projection
+        self.bias = candidate.bias
+        self.normal_matrix = candidate.normal_matrix
+        self.target_matrix = candidate.target_matrix
+        return ExternalRandomFeatureGrowthReceipt(
+            accepted=True,
+            source_width=source_width,
+            destination_width=destination_width,
+            content_digest_before=before,
+            content_digest_after=after,
+            reason="retention-verified nonlinear basis growth committed",
+        ).validate()
 
     def forward(self, state: torch.Tensor, intention: torch.Tensor) -> torch.Tensor:
         return self._features(state, intention) @ self._weights()
@@ -523,8 +646,10 @@ def select_verified_transition_model_family(
 __all__ = [
     "EXTERNAL_TRANSITION_AFFINE_STATISTICS_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_FAMILY_SELECTION_SCHEMA",
+    "EXTERNAL_TRANSITION_RANDOM_FEATURE_GROWTH_SCHEMA",
     "EXTERNAL_TRANSITION_RANDOM_FEATURE_STATISTICS_SCHEMA",
     "ExternalAffineTransitionStatistics",
+    "ExternalRandomFeatureGrowthReceipt",
     "ExternalRandomFeatureTransitionStatistics",
     "ExternalTransitionModelFamilyCandidateReceipt",
     "ExternalTransitionModelFamilySelection",
