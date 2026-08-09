@@ -4790,3 +4790,23 @@ accumulation from partial streams—how to turn provisional observations into a
 useful model without either polluting a protected slot or minting duplicates.
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_partial_evidence_identity_rejected_2026-08-09/`.
+
+## Copy-on-write provisional model candidates (2026-08-09)
+
+The router now supports `defer_admission=True`: a novel context creates a
+provisional `ExternalTransitionModel` outside the committed bank. Caller-owned
+updates affect only that candidate. `promote_staged_candidate` clones the bank,
+checks held-out transition error, runs a caller-owned retention probe, and only
+then commits the candidate as a new slot. A failed proof leaves the committed
+bank unchanged.
+
+The unit lifecycle promotion passed, including source-byte stability. A
+two-seed held-out audit was intentionally rejected: after `200` provisional
+updates, held-out errors were `3.203` and `0.665` against tolerance `0.2`.
+Staging isolation passed, but the candidate did not generalize from four
+current rows to two held-out rows. This is the correct boundary: copy-on-write
+prevents corruption, but it does not create information or solve credit
+assignment. The next work is evidence-aware candidate acquisition and
+coverage-based promotion, not weakening the held-out gate. Evidence is
+archived in
+`session_records/sequence_working_memory_2026-08-02/external_provisional_candidate_promotion_rejected_2026-08-09/`.

@@ -63,6 +63,9 @@ EXTERNAL_TRANSITION_MODEL_BANK_SCHEMA = (
 EXTERNAL_TRANSITION_MODEL_GROWTH_SCHEMA = (
     "neural-computer.external-transition-model-growth.v1"
 )
+EXTERNAL_TRANSITION_MODEL_CANDIDATE_SCHEMA = (
+    "neural-computer.external-transition-model-candidate.v1"
+)
 EXTERNAL_TRANSITION_MODEL_CONSOLIDATION_SCHEMA = (
     "neural-computer.external-transition-model-consolidation.v1"
 )
@@ -1085,6 +1088,36 @@ class ExternalTransitionModelGrowthReceipt:
 
 
 @dataclass(frozen=True)
+class ExternalTransitionModelCandidateReceipt:
+    """Auditable result of promoting a staged external model candidate."""
+
+    accepted: bool
+    slot_index: int | None
+    context_count: int
+    heldout_error: float
+    candidate_digest: str
+    content_digest_before: str
+    content_digest_after: str
+    reason: str
+    schema: str = EXTERNAL_TRANSITION_MODEL_CANDIDATE_SCHEMA
+
+    def validate(self) -> ExternalTransitionModelCandidateReceipt:
+        if self.schema != EXTERNAL_TRANSITION_MODEL_CANDIDATE_SCHEMA:
+            raise ValueError("unsupported transition-model candidate schema")
+        if self.context_count < 0:
+            raise ValueError("transition-model candidate context count is invalid")
+        if self.accepted and (self.slot_index is None or self.slot_index < 0):
+            raise ValueError("accepted transition-model candidate has no slot")
+        if not math.isfinite(self.heldout_error) and self.accepted:
+            raise ValueError("accepted transition-model candidate error is invalid")
+        if not isinstance(self.candidate_digest, str) or not self.candidate_digest:
+            raise ValueError("transition-model candidate digest is missing")
+        if not isinstance(self.reason, str) or not self.reason:
+            raise ValueError("transition-model candidate reason is missing")
+        return self
+
+
+@dataclass(frozen=True)
 class ExternalTransitionModelConsolidationReceipt:
     """Auditable result of safe parameter-sharing consolidation."""
 
@@ -1467,6 +1500,7 @@ class ExternalOnlineTransitionContextResult:
             "matched",
             "continuation",
             "conflict",
+            "staged",
             "pending",
             "admitted",
             "reused",
@@ -1523,6 +1557,7 @@ class ExternalOnlineTransitionContextRouter:
         max_contexts: int | None = None,
         continuation_tolerance: float | None = None,
         conflict_patience: int = 1,
+        defer_admission: bool = False,
     ) -> None:
         if (
             bank.state_width != context_encoder.state_width
@@ -1555,13 +1590,22 @@ class ExternalOnlineTransitionContextRouter:
             else continuation_tolerance
         )
         self.conflict_patience = int(conflict_patience)
+        self.defer_admission = bool(defer_admission)
         self._pending: list[ExternalTransitionObservation] = []
         self._active_slot: int | None = None
         self._conflict_windows = 0
+        self._provisional_context: torch.Tensor | None = None
+        self._provisional_model: ExternalTransitionModel | None = None
 
     @property
     def pending_observations(self) -> int:
         return len(self._pending)
+
+    @property
+    def provisional_model(self) -> ExternalTransitionModel | None:
+        """Return the staged model, if any, for caller-owned updates."""
+
+        return self._provisional_model
 
     def configuration(self) -> dict[str, int | float | str | None]:
         return {
@@ -1575,6 +1619,7 @@ class ExternalOnlineTransitionContextRouter:
             "max_contexts": self.max_contexts,
             "continuation_tolerance": self.continuation_tolerance,
             "conflict_patience": self.conflict_patience,
+            "defer_admission": self.defer_admission,
             "routing": "factual_prediction_error_then_bound_continuation_v2",
             "writes": "caller_owned_slot_only_v1",
         }
@@ -1697,6 +1742,54 @@ class ExternalOnlineTransitionContextRouter:
             context_width=self.bank.context_width,
         )
 
+    def _stage_candidate(
+        self,
+        context: torch.Tensor,
+        *,
+        prior_index: int | None,
+    ) -> None:
+        model = ExternalTransitionModel(
+            self.bank.state_width,
+            self.bank.intention_width,
+            hidden_width=self.bank.hidden_width,
+        )
+        if prior_index is not None:
+            model.load_state_dict(self.bank.models[prior_index].state_dict())
+        self._provisional_context = context.detach().clone()
+        self._provisional_model = model
+
+    def _staged_result(
+        self,
+        observation: ExternalTransitionObservation,
+    ) -> ExternalOnlineTransitionContextResult:
+        if self._provisional_context is None or self._provisional_model is None:
+            raise RuntimeError("staged result requested without a candidate")
+        return ExternalOnlineTransitionContextResult(
+            status="staged",
+            slot_index=None,
+            context=self._provisional_context.detach().clone(),
+            pending_observations=0,
+            prediction_error=self._slot_error_from_model(
+                self._provisional_model,
+                observation,
+            ),
+            observation=observation,
+        ).validate(
+            state_width=self.bank.state_width,
+            intention_width=self.bank.intention_width,
+            context_width=self.bank.context_width,
+        )
+
+    @staticmethod
+    def _slot_error_from_model(
+        model: ExternalTransitionModel,
+        observation: ExternalTransitionObservation,
+    ) -> float:
+        prediction = model(observation.state, observation.intention)
+        return float(
+            (prediction - observation.next_state).square().mean().detach()
+        )
+
     def observe(
         self,
         observation: ExternalTransitionObservation,
@@ -1718,6 +1811,8 @@ class ExternalOnlineTransitionContextRouter:
         if match is not None:
             index, error, _margin, context = match
             self._pending.clear()
+            self._provisional_context = None
+            self._provisional_model = None
             self._active_slot = index
             self._conflict_windows = 0
             return ExternalOnlineTransitionContextResult(
@@ -1763,6 +1858,24 @@ class ExternalOnlineTransitionContextRouter:
             self._active_slot = None
             self._conflict_windows = 0
 
+        if self.defer_admission:
+            if self._provisional_model is None:
+                with torch.no_grad():
+                    candidate_context = self.context_encoder.encode_observation(
+                        bundle
+                    ).detach()
+                prior_index: int | None = None
+                if self.bank.context_count:
+                    prior_index = int(
+                        (
+                            self.bank.contexts
+                            @ candidate_context.to(self.bank.contexts)
+                        ).argmax()
+                    )
+                self._stage_candidate(candidate_context, prior_index=prior_index)
+            self._pending.clear()
+            return self._staged_result(bundle)
+
         if self.max_contexts is not None and self.bank.context_count >= self.max_contexts:
             self._pending.clear()
             return self._pending_result(status="capacity")
@@ -1805,6 +1918,18 @@ class ExternalOnlineTransitionContextRouter:
             intention_width=self.bank.intention_width,
             context_width=self.bank.context_width,
         )
+        if result.status == "staged":
+            if (
+                self._provisional_model is None
+                or self._provisional_context is None
+                or result.observation is None
+            ):
+                return 0.0
+            optimizer.zero_grad()
+            loss = self._provisional_model.loss(result.observation)
+            loss.backward()
+            optimizer.step()
+            return float(loss.detach())
         if result.slot_index is None or result.context is None or result.observation is None:
             return 0.0
         context = result.context.to(result.observation.state)
@@ -1816,6 +1941,119 @@ class ExternalOnlineTransitionContextRouter:
             context_batch,
             optimizer,
         )
+
+    def promote_staged_candidate(
+        self,
+        heldout_observation: ExternalTransitionObservation,
+        retention_probe: Callable[[ExternalTransitionModelBank], bool],
+        *,
+        prediction_tolerance: float = 0.05,
+    ) -> ExternalTransitionModelCandidateReceipt:
+        """Commit a provisional model only after held-out and retention proof."""
+
+        if prediction_tolerance < 0.0:
+            raise ValueError("candidate prediction tolerance cannot be negative")
+        heldout_observation.validate(
+            state_width=self.bank.state_width,
+            intention_width=self.bank.intention_width,
+        )
+        if not callable(retention_probe):
+            raise TypeError("candidate retention probe must be callable")
+        before = self.bank.content_digest()
+        model = self._provisional_model
+        context = self._provisional_context
+        candidate_digest = "none" if model is None else model.digest()
+        if model is None or context is None:
+            return ExternalTransitionModelCandidateReceipt(
+                accepted=False,
+                slot_index=None,
+                context_count=self.bank.context_count,
+                heldout_error=float("inf"),
+                candidate_digest=candidate_digest,
+                content_digest_before=before,
+                content_digest_after=before,
+                reason="no provisional candidate is staged",
+            ).validate()
+        if self.bank.capacity is not None and self.bank.context_count >= self.bank.capacity:
+            return ExternalTransitionModelCandidateReceipt(
+                accepted=False,
+                slot_index=None,
+                context_count=self.bank.context_count,
+                heldout_error=float("inf"),
+                candidate_digest=candidate_digest,
+                content_digest_before=before,
+                content_digest_after=before,
+                reason="committed model-bank capacity is full",
+            ).validate()
+
+        candidate_bank = ExternalTransitionModelBank.from_payload(self.bank.payload())
+        candidate_count_before = candidate_bank.context_count
+        candidate_index = candidate_bank.ensure_context(context)
+        if candidate_index != candidate_count_before:
+            return ExternalTransitionModelCandidateReceipt(
+                accepted=False,
+                slot_index=None,
+                context_count=self.bank.context_count,
+                heldout_error=float("inf"),
+                candidate_digest=candidate_digest,
+                content_digest_before=before,
+                content_digest_after=before,
+                reason="provisional context duplicates a committed context",
+            ).validate()
+        candidate_bank.models[candidate_index].load_state_dict(model.state_dict())
+        heldout_context = context.unsqueeze(0).expand(
+            heldout_observation.state.shape[0], -1
+        )
+        heldout_error = float(
+            candidate_bank.loss(heldout_observation, heldout_context).detach()
+        )
+        if heldout_error > prediction_tolerance:
+            return ExternalTransitionModelCandidateReceipt(
+                accepted=False,
+                slot_index=None,
+                context_count=self.bank.context_count,
+                heldout_error=heldout_error,
+                candidate_digest=candidate_digest,
+                content_digest_before=before,
+                content_digest_after=before,
+                reason="held-out candidate prediction failed",
+            ).validate()
+        if not bool(retention_probe(candidate_bank)):
+            return ExternalTransitionModelCandidateReceipt(
+                accepted=False,
+                slot_index=None,
+                context_count=self.bank.context_count,
+                heldout_error=heldout_error,
+                candidate_digest=candidate_digest,
+                content_digest_before=before,
+                content_digest_after=before,
+                reason="candidate retention probe failed",
+            ).validate()
+
+        promoted_model = ExternalTransitionModel(
+            self.bank.state_width,
+            self.bank.intention_width,
+            hidden_width=self.bank.hidden_width,
+        )
+        promoted_model.load_state_dict(model.state_dict())
+        self.bank._contexts.append(context.detach().cpu().clone())
+        self.bank.models.append(promoted_model)
+        after = self.bank.content_digest()
+        slot_index = self.bank.context_count - 1
+        self._active_slot = slot_index
+        self._conflict_windows = 0
+        self._provisional_context = None
+        self._provisional_model = None
+        return ExternalTransitionModelCandidateReceipt(
+            accepted=True,
+            slot_index=slot_index,
+            context_count=self.bank.context_count,
+            heldout_error=heldout_error,
+            candidate_digest=candidate_digest,
+            content_digest_before=before,
+            content_digest_after=after,
+            reason="held-out and retention-verified candidate promotion committed",
+        ).validate()
 
     @staticmethod
     def _observation_payload(
@@ -1859,6 +2097,16 @@ class ExternalOnlineTransitionContextRouter:
             "pending": [self._observation_payload(row) for row in self._pending],
             "active_slot": self._active_slot,
             "conflict_windows": self._conflict_windows,
+            "provisional_context": (
+                None
+                if self._provisional_context is None
+                else self._provisional_context.detach().cpu().clone()
+            ),
+            "provisional_model": (
+                None
+                if self._provisional_model is None
+                else self._provisional_model.state_payload()
+            ),
         }
 
     @classmethod
@@ -1899,6 +2147,7 @@ class ExternalOnlineTransitionContextRouter:
                 )
             ),
             conflict_patience=int(configuration.get("conflict_patience", 1)),
+            defer_admission=bool(configuration.get("defer_admission", False)),
         )
         for row_payload in pending_payload:
             row = cls._observation_from_payload(row_payload)
@@ -1919,6 +2168,30 @@ class ExternalOnlineTransitionContextRouter:
         if not isinstance(conflict_windows, int) or conflict_windows < 0:
             raise ValueError("online transition conflict count is invalid")
         router._conflict_windows = conflict_windows
+        provisional_context = payload.get("provisional_context")
+        provisional_model = payload.get("provisional_model")
+        if (provisional_context is None) != (provisional_model is None):
+            raise ValueError("online transition provisional candidate is incomplete")
+        if provisional_context is not None and not isinstance(provisional_context, torch.Tensor):
+            raise TypeError("online transition provisional context is not a tensor")
+        if provisional_context is not None:
+            _validate_tensor(
+                provisional_context,
+                name="online transition provisional context",
+                ndim=1,
+                width=bank.context_width,
+            )
+            if not isinstance(provisional_model, Mapping):
+                raise TypeError("online transition provisional model is invalid")
+            restored_model = ExternalTransitionModel.from_payload(provisional_model)
+            if (
+                restored_model.state_width != bank.state_width
+                or restored_model.intention_width != bank.intention_width
+                or restored_model.hidden_width != bank.hidden_width
+            ):
+                raise ValueError("online transition provisional model is incompatible")
+            router._provisional_context = provisional_context.detach().clone()
+            router._provisional_model = restored_model
         return router
 
 
@@ -3403,6 +3676,7 @@ __all__ = [
     "EXTERNAL_TRANSITION_EVIDENCE_CALIBRATOR_SCHEMA",
     "EXTERNAL_TRANSITION_MEMORY_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_BANK_SCHEMA",
+    "EXTERNAL_TRANSITION_MODEL_CANDIDATE_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_COMPRESSION_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_COMPRESSION_SELECTION_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_CONSOLIDATION_SCHEMA",
@@ -3424,6 +3698,7 @@ __all__ = [
     "ExternalTransitionMemory",
     "ExternalTransitionModel",
     "ExternalTransitionModelBank",
+    "ExternalTransitionModelCandidateReceipt",
     "ExternalTransitionModelCompressionReceipt",
     "ExternalTransitionModelCompressionSelection",
     "ExternalTransitionModelConsolidationReceipt",

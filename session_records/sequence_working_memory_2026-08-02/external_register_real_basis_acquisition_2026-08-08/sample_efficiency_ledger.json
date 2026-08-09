@@ -1515,6 +1515,21 @@
       "old_slot_optimizer_updates": [0, 0],
       "controller_parameter_updates": [0, 0],
       "decision": "reject short-prefix capability promotion; retain prefix objective and active-stream router infrastructure, next solve partial-evidence credit assignment and protected provisional learning"
+    },
+    {
+      "experiment": "external_provisional_candidate_promotion",
+      "date": "2026-08-09",
+      "seeds": [70611, 70612],
+      "claim": "A novel transition model can learn in a provisional external workspace and enter the committed bank only after held-out prediction and retention verification, without changing old slots before promotion.",
+      "module": "ExternalOnlineTransitionContextRouter(defer_admission=True) + ExternalTransitionModelCandidateReceipt",
+      "provisional_updates_per_seed": [200, 200],
+      "heldout_error": [3.2025277614593506, 0.6652592420578003],
+      "heldout_tolerance": 0.2,
+      "staging_bank_write_before_promotion": [false, false],
+      "source_slot_byte_stable": [true, true],
+      "controller_parameter_updates": [0, 0],
+      "promotion_accepted": [false, false],
+      "decision": "reject candidate capability promotion; promote copy-on-write isolation as infrastructure, next learn evidence coverage and provisional credit assignment"
     }
   ]
 }

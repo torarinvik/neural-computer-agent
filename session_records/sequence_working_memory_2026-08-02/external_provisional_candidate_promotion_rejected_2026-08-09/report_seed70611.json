@@ -1,0 +1,49 @@
+{
+  "schema": "neural-computer.external-provisional-candidate-promotion-pressure-test.v1",
+  "seed": 70611,
+  "configuration": {
+    "admission_observations": 2,
+    "training_rows": 4,
+    "heldout_rows": 2,
+    "candidate_updates": 200,
+    "policy": "none_copy_on_write_external_model_candidate_v1"
+  },
+  "gates": {
+    "controller_unchanged": true,
+    "candidate_staged_without_bank_write": true,
+    "promotion_accepted": false,
+    "heldout_prediction_passes": false,
+    "source_slot_byte_stable": true,
+    "retention_probe_preserved_source": false,
+    "persistence_payload_boundary": true
+  },
+  "promoted": false,
+  "candidate": {
+    "staged_statuses": [
+      "pending",
+      "staged",
+      "pending",
+      "staged"
+    ],
+    "heldout_error": 3.2025277614593506,
+    "receipt": {
+      "accepted": false,
+      "slot_index": null,
+      "reason": "held-out candidate prediction failed"
+    }
+  },
+  "accounting": {
+    "controller_parameter_updates": 0,
+    "committed_bank_updates_before_promotion": 0,
+    "provisional_candidate_updates": 200,
+    "old_slot_replay": 0
+  },
+  "digests": {
+    "controller": "9ee55d708f5953c48f98dcbe0365ef06bfb7f1989f0e0dc4088af57242840382",
+    "source": "e8a02d8aff36aae623a1917ddc37d4e88392f5fb87c11b92f5452a774741ff6d",
+    "bank_before_stage": "cb3a0a1b6c058046088c4d7108456c33144a0f021b0616e622b58f9f2436a2dc",
+    "bank_before_promotion": "cb3a0a1b6c058046088c4d7108456c33144a0f021b0616e622b58f9f2436a2dc",
+    "bank_after_promotion": "cb3a0a1b6c058046088c4d7108456c33144a0f021b0616e622b58f9f2436a2dc"
+  },
+  "elapsed_seconds": 0.8178738330025226
+}

@@ -460,6 +460,62 @@ def test_online_transition_context_router_capacity_guard_does_not_grow_or_write(
     assert router.bank.context_count == 1
 
 
+def test_online_router_stages_candidate_before_heldout_verified_promotion() -> None:
+    torch.manual_seed(1212)
+    bank = ExternalTransitionModelBank(2, 1, 4, hidden_width=8, capacity=2)
+    encoder = ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4)
+    source_index = bank.ensure_context(torch.tensor([1.0, 0.0, 0.0, 0.0]))
+    source_digest = bank.models[source_index].digest()
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        encoder,
+        match_tolerance=1e-8,
+        admission_observations=2,
+        max_contexts=2,
+        defer_admission=True,
+    )
+    rows = [
+        ExternalTransitionObservation(
+            state=torch.tensor([[0.1, 0.2]]),
+            intention=torch.tensor([[0.3]]),
+            next_state=torch.tensor([[0.7, -0.4]]),
+            confidence=torch.ones(1),
+        ),
+        ExternalTransitionObservation(
+            state=torch.tensor([[0.2, 0.1]]),
+            intention=torch.tensor([[-0.3]]),
+            next_state=torch.tensor([[0.4, -0.6]]),
+            confidence=torch.ones(1),
+        ),
+    ]
+
+    router.observe(rows[0])
+    staged = router.observe(rows[1])
+    assert staged.status == "staged"
+    assert router.bank.context_count == 1
+    assert router.provisional_model is not None
+    optimizer = torch.optim.Adam(router.provisional_model.parameters(), lr=0.03)
+    for _ in range(80):
+        router.adaptation_step(staged, optimizer)
+
+    receipt = router.promote_staged_candidate(
+        ExternalTransitionObservation(
+            state=torch.cat([row.state for row in rows]),
+            intention=torch.cat([row.intention for row in rows]),
+            next_state=torch.cat([row.next_state for row in rows]),
+            confidence=torch.ones(2),
+        ),
+        lambda candidate: candidate.context_count == 2
+        and candidate.models[0].digest() == source_digest,
+        prediction_tolerance=0.05,
+    )
+    assert receipt.accepted
+    assert receipt.slot_index == 1
+    assert router.bank.context_count == 2
+    assert router.provisional_model is None
+    assert router.bank.models[0].digest() == source_digest
+
+
 def test_online_transition_context_router_growth_updates_capacity_atomically() -> None:
     bank = ExternalTransitionModelBank(2, 1, 4, hidden_width=8, capacity=1)
     encoder = ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4)
