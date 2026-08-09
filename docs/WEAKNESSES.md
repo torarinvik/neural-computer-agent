@@ -71,7 +71,9 @@ rung promotes, rejects, or qualifies. Ordered by severity.
     remain two-seed. Next: widen the ladder and externalization claims
     before any external write-up.
 
-11. **Bank tested on two contexts only, with no shared structure** — the
+11. *Largely CLOSED by the goal-factored rung — see the update at the end
+    of this entry.*
+    **Bank tested on two contexts only, with no shared structure** — the
     self-organizing bank is promoted for contradictory context selection
     but has never been asked to *share* a fragment between related
     contexts, which is the compounding claim. Evidence:
@@ -88,7 +90,22 @@ rung promotes, rejects, or qualifies. Ordered by severity.
     fragments is not practicing composition, because the agent never has
     to succeed on an unseen pairing. Next: rotate held-out PAIRINGS
     inside training (train/holdout rotation over rule pairs), which is
-    the actual MLC protocol.
+    the actual MLC protocol. *Updated 2026-08-09 by the
+    composition rung:* the MLC protocol was not needed. Under the
+    goal factorisation a fragment is two SLOTS (which side to want per
+    cue), so a held-out pairing is ASSEMBLED from slots trained in other
+    games with zero gradient steps. Measured on the two non-degenerate
+    held-out pairings, two seeds: assembled 0.569-0.706 against trained
+    0.698-0.702 and a measured floor of 0.333 — 85% and 111% of trained
+    performance on combinations never practised — while the scrambled
+    control (same donors, wrong cues) sits at or below floor (0.207-0.271).
+    Evidence: `goal_composition_v1_2026-08-09`. What made it work is the
+    thing the four failed mechanisms lacked: fragments that name a goal
+    in a vocabulary the plant already executes, rather than opaque
+    whole-programs. Remaining: c11's swap control is degenerate (both
+    cues want the same side) so compose_suite needs a holdout set
+    designed for swap controls; and the claim is conditional on a
+    competent executor, which at arity 3 is unreliable (weakness 19).
 13. **The anti-collapse penalty is also an anti-sharing penalty** — the
     diversity term that closed selector collapse (F12/F13) repels every
     pair of contexts equally, so it forbids the fragment reuse that
@@ -164,6 +181,18 @@ rung promotes, rejects, or qualifies. Ordered by severity.
     reported — run the gate with no agent and confirm it FAILS — and
     re-state the addressing line's claims only after the corrected runs
     report on both seeds.
+
+19. **The arity-3 executor is the binding constraint** — composition and
+    cued addressing both work conditional on a plant that can follow
+    every goal in its vocabulary, and at three goals that plant converges
+    unreliably: restart draws of 3, 6 and 5 across three seeds, one seed
+    failing all six draws, and uneven per-side competence even on success
+    (0.29-0.88). At two goals the same machinery is reliable. Isolation
+    always converges; joint training is basin-determined. Evidence: F57,
+    `goal_composition_v1_2026-08-09`. Next: budget scaling (running),
+    then sequential isolation with the promoted consolidation anchor
+    protecting each acquired goal — the program's own continual-learning
+    machinery used to build its own executor.
 
 14. **Battery scale is six games; motor games are excluded** — the
     staggered battery (`staggered_battery_v1_2026-08-07`) holds six
