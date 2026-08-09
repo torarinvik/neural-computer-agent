@@ -52,6 +52,14 @@ parser.add_argument("--hidden", type=int, default=32)
 parser.add_argument("--size", type=int, default=8)
 parser.add_argument("--eval-batches", type=int, default=4)
 parser.add_argument(
+    "--adapt-decoder", action="store_true",
+    help="widen the adaptation channel: adapt the OUTPUT HEAD as well as "
+         "the goal encoding. F64 measured the frozen prior carrying real "
+         "competence (0.520 zero-shot vs 0.172 floor) that 800 updates "
+         "of goal-adapter training could only lift to 0.613. A goal "
+         "adapter re-maps what a goal MEANS but cannot change what the "
+         "frozen policy DOES with it; the head can.")
+parser.add_argument(
     "--sparse", action="store_true",
     help="reward ONLY on arrival -- no progress shaping. F62 found every "
          "transfer test in this project used targets that are cheap cold "
@@ -291,8 +299,13 @@ if args.warm_mix:
         # combination, and the cheap form of "reuse rather than relearn".
         for parameter in params:
             parameter.requires_grad_(False)
-        target_optimizer = torch.optim.Adam(adapter.parameters(), lr=1e-2)
-        report["adapted_params"] = sum(p.numel() for p in adapter.parameters())
+        adapted = list(adapter.parameters())
+        if args.adapt_decoder:
+            for parameter in decoder.parameters():
+                parameter.requires_grad_(True)
+            adapted += list(decoder.parameters())
+        target_optimizer = torch.optim.Adam(adapted, lr=1e-2)
+        report["adapted_params"] = sum(p.numel() for p in adapted)
 elif args.warm_start:
     train(SPEC[args.warm_start], args.warm_updates, "warm", curve)
     report["warm_rung_final"] = measure(SPEC[args.warm_start])
