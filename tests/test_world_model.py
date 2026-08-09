@@ -245,6 +245,60 @@ def test_transition_model_bank_growth_is_verified_and_content_preserving() -> No
     assert restored.content_digest() == bank.content_digest()
 
 
+def test_transition_model_bank_consolidation_shares_only_equivalent_models() -> None:
+    torch.manual_seed(1212)
+    bank = ExternalTransitionModelBank(2, 1, 3, hidden_width=8)
+    first = bank.ensure_context(torch.tensor([1.0, 0.0, 0.0]))
+    second = bank.ensure_context(
+        torch.tensor([0.0, 1.0, 0.0]),
+        initialize_from=first,
+    )
+    heldout = ExternalTransitionObservation(
+        state=torch.randn(5, 2),
+        intention=torch.randn(5, 1),
+        next_state=torch.randn(5, 2),
+    )
+
+    accepted = bank.consolidate_verified(first, second, [heldout])
+
+    assert accepted.accepted
+    assert bank.physical_model_count == 1
+    assert bank.model_aliases() == [0, 0]
+    restored = ExternalTransitionModelBank.from_payload(bank.payload())
+    assert restored.physical_model_count == 1
+    assert restored.model_aliases() == [0, 0]
+
+    rejected_bank = ExternalTransitionModelBank(2, 1, 3, hidden_width=8)
+    rejected_first = rejected_bank.ensure_context(torch.tensor([1.0, 0.0, 0.0]))
+    rejected_second = rejected_bank.ensure_context(
+        torch.tensor([0.0, 1.0, 0.0]),
+        initialize_from=rejected_first,
+    )
+    optimizer = torch.optim.Adam(
+        rejected_bank.models[rejected_second].parameters(),
+        lr=0.1,
+    )
+    rejected_observation = ExternalTransitionObservation(
+        state=torch.zeros(5, 2),
+        intention=torch.zeros(5, 1),
+        next_state=torch.ones(5, 2),
+    )
+    rejected_bank.adaptation_step(
+        rejected_observation,
+        torch.tensor([0.0, 1.0, 0.0]).expand(5, -1),
+        optimizer,
+    )
+    rejected = rejected_bank.consolidate_verified(
+        rejected_first,
+        rejected_second,
+        [heldout],
+        prediction_tolerance=1e-8,
+    )
+
+    assert not rejected.accepted
+    assert rejected_bank.physical_model_count == 2
+
+
 def test_online_transition_context_router_admits_current_bundle_and_persists() -> None:
     torch.manual_seed(1210)
     bank = ExternalTransitionModelBank(2, 1, 4, hidden_width=8)

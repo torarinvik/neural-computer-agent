@@ -1411,6 +1411,27 @@
       "persistence_exact": [true, true],
       "controls": "full-capacity no-write refusal, pre/post held-out retention probe, content digest integrity, isolated fourth-slot admission, prior retention, frozen controller, zero old-prior replay, wrong-context, corruption, fresh model, and persistence passed",
       "decision": "promote verifier-gated capacity growth; reject consolidation of distinct transition functions until behavior-preserving equivalence is demonstrated"
+    },
+    {
+      "experiment": "external_transition_model_consolidation",
+      "date": "2026-08-09",
+      "seeds": [70111, 70112],
+      "claim": "Equivalent external transition slots can share physical parameters while retaining opaque context keys, while disjoint factual functions are rejected without mutation.",
+      "module": "ExternalTransitionModelBank.consolidate_verified",
+      "source_optimizer_updates_per_seed": 1200,
+      "target_optimizer_updates_per_seed": 1200,
+      "consolidation_optimizer_updates_per_seed": [0, 0],
+      "physical_models_before": [3, 3],
+      "physical_models_after_equivalent": [2, 2],
+      "equivalent_heldout_difference": [0.0, 0.0],
+      "distinct_heldout_difference": [0.17368312180042267, 0.12605009973049164],
+      "distinct_consolidation_rejected": [true, true],
+      "contexts_preserved": [true, true],
+      "controller_parameter_updates": [0, 0],
+      "wrong_context_control": [true, true],
+      "persistence_exact": [true, true],
+      "controls": "equivalent held-out acceptance, physical parameter sharing, context/index preservation, pre/post retention, distinct-function rejection/no-mutation, frozen controller, zero consolidation updates, wrong-context, and persistence passed",
+      "decision": "promote behavior-verified parameter sharing; next test learned compression/shared representations and longer-horizon equivalence probes"
     }
   ]
 }

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import math
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -61,6 +61,9 @@ EXTERNAL_TRANSITION_MODEL_BANK_SCHEMA = (
 )
 EXTERNAL_TRANSITION_MODEL_GROWTH_SCHEMA = (
     "neural-computer.external-transition-model-growth.v1"
+)
+EXTERNAL_TRANSITION_MODEL_CONSOLIDATION_SCHEMA = (
+    "neural-computer.external-transition-model-consolidation.v1"
 )
 EXTERNAL_MODEL_PLANNER_SCHEMA = "neural-computer.external-model-planner.v1"
 
@@ -337,6 +340,12 @@ class ExternalTransitionModelBank(nn.Module):
         return len(self._contexts)
 
     @property
+    def physical_model_count(self) -> int:
+        """Return the number of unique parameter objects behind all contexts."""
+
+        return len({id(model) for model in self.models})
+
+    @property
     def contexts(self) -> torch.Tensor:
         """Return a detached snapshot of the opaque slot keys."""
 
@@ -573,11 +582,120 @@ class ExternalTransitionModelBank(nn.Module):
         optimizer.step()
         return float(loss.detach())
 
+    def consolidate_verified(
+        self,
+        first: int,
+        second: int,
+        heldout: Sequence[ExternalTransitionObservation],
+        *,
+        prediction_tolerance: float = 1e-6,
+        retention_probe: Callable[[ExternalTransitionModelBank], bool] | None = None,
+    ) -> ExternalTransitionModelConsolidationReceipt:
+        """Share equivalent slot parameters only after held-out verification.
+
+        Context keys and indices remain intact. The second context is made an
+        alias of the first model object, reducing physical parameter storage
+        without forcing callers to rewrite opaque addresses. Distinct factual
+        functions are rejected before mutation.
+        """
+
+        if not 0 <= first < self.context_count or not 0 <= second < self.context_count:
+            raise IndexError("transition-model consolidation slot is out of range")
+        if first == second:
+            raise ValueError("transition-model consolidation slots must differ")
+        if prediction_tolerance < 0.0:
+            raise ValueError("transition-model consolidation tolerance cannot be negative")
+        if not heldout:
+            raise ValueError("transition-model consolidation needs held-out evidence")
+        for observation in heldout:
+            observation.validate(
+                state_width=self.state_width,
+                intention_width=self.intention_width,
+            )
+        before_content = self.content_digest()
+        if retention_probe is not None and not callable(retention_probe):
+            raise TypeError("transition-model consolidation retention probe is invalid")
+        if retention_probe is not None and not bool(retention_probe(self)):
+            return ExternalTransitionModelConsolidationReceipt(
+                accepted=False,
+                first=first,
+                second=second,
+                context_count=self.context_count,
+                physical_models_before=self.physical_model_count,
+                physical_models_after=self.physical_model_count,
+                max_heldout_difference=float("inf"),
+                content_digest_before=before_content,
+                content_digest_after=before_content,
+                reason="pre-consolidation retention probe failed",
+            ).validate()
+
+        max_difference = 0.0
+        for observation in heldout:
+            first_prediction = self.models[first](
+                observation.state,
+                observation.intention,
+            )
+            second_prediction = self.models[second](
+                observation.state,
+                observation.intention,
+            )
+            max_difference = max(
+                max_difference,
+                float(
+                    (first_prediction - second_prediction).square().mean().detach()
+                ),
+            )
+        if max_difference > prediction_tolerance:
+            return ExternalTransitionModelConsolidationReceipt(
+                accepted=False,
+                first=first,
+                second=second,
+                context_count=self.context_count,
+                physical_models_before=self.physical_model_count,
+                physical_models_after=self.physical_model_count,
+                max_heldout_difference=max_difference,
+                content_digest_before=before_content,
+                content_digest_after=before_content,
+                reason="held-out transition functions are not equivalent",
+            ).validate()
+
+        physical_before = self.physical_model_count
+        original_second = self.models[second]
+        self.models[second] = self.models[first]
+        after_content = self.content_digest()
+        if retention_probe is not None and not bool(retention_probe(self)):
+            self.models[second] = original_second
+            return ExternalTransitionModelConsolidationReceipt(
+                accepted=False,
+                first=first,
+                second=second,
+                context_count=self.context_count,
+                physical_models_before=physical_before,
+                physical_models_after=self.physical_model_count,
+                max_heldout_difference=max_difference,
+                content_digest_before=before_content,
+                content_digest_after=self.content_digest(),
+                reason="post-consolidation retention probe failed",
+            ).validate()
+        return ExternalTransitionModelConsolidationReceipt(
+            accepted=True,
+            first=first,
+            second=second,
+            context_count=self.context_count,
+            physical_models_before=physical_before,
+            physical_models_after=self.physical_model_count,
+            max_heldout_difference=max_difference,
+            content_digest_before=before_content,
+            content_digest_after=after_content,
+            reason="equivalent transition models now share parameters",
+        ).validate()
+
     def content_digest(self) -> str:
         """Digest slot keys and model weights without capacity metadata."""
 
         digest = hashlib.sha256()
         digest.update(self.schema.encode("utf-8"))
+        digest.update(repr(self.model_aliases()).encode("utf-8"))
         for context in self._contexts:
             detached = context.detach().cpu().contiguous()
             digest.update(detached.numpy().tobytes())
@@ -585,6 +703,16 @@ class ExternalTransitionModelBank(nn.Module):
             digest.update(str(index).encode("utf-8"))
             digest.update(model.digest().encode("utf-8"))
         return digest.hexdigest()
+
+    def model_aliases(self) -> list[int]:
+        """Return the canonical model index for each opaque context key."""
+
+        canonical: dict[int, int] = {}
+        aliases: list[int] = []
+        for index, model in enumerate(self.models):
+            identity = id(model)
+            aliases.append(canonical.setdefault(identity, index))
+        return aliases
 
     def digest(self) -> str:
         digest = hashlib.sha256()
@@ -597,6 +725,7 @@ class ExternalTransitionModelBank(nn.Module):
             "schema": self.schema,
             "configuration": self.configuration(),
             "contexts": [context.tolist() for context in self._contexts],
+            "model_aliases": self.model_aliases(),
             "models": [
                 {
                     "state": {
@@ -620,12 +749,24 @@ class ExternalTransitionModelBank(nn.Module):
         configuration = payload.get("configuration")
         contexts = payload.get("contexts")
         models = payload.get("models")
+        model_aliases = payload.get("model_aliases")
         if not isinstance(configuration, Mapping):
             raise TypeError("transition-model bank configuration is missing")
         if not isinstance(contexts, list) or not isinstance(models, list):
             raise TypeError("transition-model bank payload lists are invalid")
         if len(contexts) != len(models):
             raise ValueError("transition-model bank payload lengths differ")
+        if model_aliases is None:
+            aliases = list(range(len(models)))
+        elif isinstance(model_aliases, list):
+            aliases = [int(alias) for alias in model_aliases]
+        else:
+            raise TypeError("transition-model bank model aliases are invalid")
+        if len(aliases) != len(models) or any(
+            alias < 0 or alias > index
+            for index, alias in enumerate(aliases)
+        ):
+            raise ValueError("transition-model bank model aliases are invalid")
         bank = cls(
             int(configuration["state_width"]),
             int(configuration["intention_width"]),
@@ -683,6 +824,9 @@ class ExternalTransitionModelBank(nn.Module):
             bank.models[index].load_state_dict(normalized, strict=True)
             if model_payload.get("sha256") != bank.models[index].digest():
                 raise ValueError("transition-model bank slot checksum mismatch")
+        for index, alias in enumerate(aliases):
+            if alias != index:
+                bank.models[index] = bank.models[alias]
         if payload.get("sha256") != bank.digest():
             raise ValueError("transition-model bank checksum mismatch")
         return bank
@@ -710,6 +854,44 @@ class ExternalTransitionModelGrowthReceipt:
             raise ValueError("accepted transition-model growth did not grow capacity")
         if not isinstance(self.reason, str) or not self.reason:
             raise ValueError("transition-model growth receipt reason is missing")
+        return self
+
+
+@dataclass(frozen=True)
+class ExternalTransitionModelConsolidationReceipt:
+    """Auditable result of safe parameter-sharing consolidation."""
+
+    accepted: bool
+    first: int
+    second: int
+    context_count: int
+    physical_models_before: int
+    physical_models_after: int
+    max_heldout_difference: float
+    content_digest_before: str
+    content_digest_after: str
+    reason: str
+    schema: str = EXTERNAL_TRANSITION_MODEL_CONSOLIDATION_SCHEMA
+
+    def validate(self) -> ExternalTransitionModelConsolidationReceipt:
+        if self.schema != EXTERNAL_TRANSITION_MODEL_CONSOLIDATION_SCHEMA:
+            raise ValueError("unsupported transition-model consolidation schema")
+        if min(
+            self.first,
+            self.second,
+            self.context_count,
+            self.physical_models_before,
+            self.physical_models_after,
+        ) < 0:
+            raise ValueError("transition-model consolidation counts are invalid")
+        if self.first == self.second:
+            raise ValueError("transition-model consolidation slots must differ")
+        if not math.isfinite(self.max_heldout_difference) and self.accepted:
+            raise ValueError("accepted transition-model consolidation difference is invalid")
+        if self.accepted and self.physical_models_after >= self.physical_models_before:
+            raise ValueError("accepted consolidation did not reduce physical models")
+        if not isinstance(self.reason, str) or not self.reason:
+            raise ValueError("transition-model consolidation reason is missing")
         return self
 
 
@@ -2792,6 +2974,7 @@ __all__ = [
     "EXTERNAL_TRANSITION_EVIDENCE_CALIBRATOR_SCHEMA",
     "EXTERNAL_TRANSITION_MEMORY_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_BANK_SCHEMA",
+    "EXTERNAL_TRANSITION_MODEL_CONSOLIDATION_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_GROWTH_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_SCHEMA",
     "EXTERNAL_TRANSITION_OBSERVATION_SCHEMA",
@@ -2810,6 +2993,7 @@ __all__ = [
     "ExternalTransitionMemory",
     "ExternalTransitionModel",
     "ExternalTransitionModelBank",
+    "ExternalTransitionModelConsolidationReceipt",
     "ExternalTransitionModelGrowthReceipt",
     "ExternalTransitionObservation",
     "ModelBasedPlanningResult",

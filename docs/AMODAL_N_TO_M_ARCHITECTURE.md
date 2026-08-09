@@ -4665,3 +4665,26 @@ is a verifier-gated consolidation/compression candidate that preserves every
 slot's held-out behavior, with rejection as the default when equivalence is
 not demonstrated. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_transition_model_capacity_growth_promoted_2026-08-09/`.
+
+## Behavior-verified transition-model consolidation (2026-08-09)
+
+The bank now supports safe parameter-sharing consolidation. Two opaque context
+keys remain present and addressable, but their model objects may share one
+parameter set only when caller-supplied held-out transition predictions are
+equivalent and an optional retention probe passes before and after the
+transaction. The content digest records aliasing, and payload restore
+reconstructs the sharing relationship.
+
+Across two seeds, equivalent source/duplicate slots reduced physical model
+objects from three to two while preserving all three context keys and factual
+loss. A source slot and a disjoint target slot produced held-out prediction
+differences of `0.174` and `0.126` and were rejected without mutation. The
+controller and consolidation path performed zero optimizer updates; exact
+persistence and wrong-context controls passed.
+
+This promotes behavior-verified parameter sharing, not semantic merging or
+unbounded compression. A finite held-out probe can miss an untested
+difference, and the current mechanism does not yet learn low-rank/shared
+representations for genuinely complementary functions. Evidence is archived
+in
+`session_records/sequence_working_memory_2026-08-02/external_transition_model_consolidation_promoted_2026-08-09/`.
