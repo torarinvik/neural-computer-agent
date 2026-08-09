@@ -642,6 +642,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "factorized_hybrid",
             "factorized_bounded_residual",
             "factorized_protected_meta",
+            "factorized_protected_bounded_meta",
             EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
             EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
             EXTERNAL_REGISTER_SHARED_BANKED_MODE,
@@ -721,6 +722,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "factorized_hybrid",
             "factorized_bounded_residual",
             "factorized_protected_meta",
+            "factorized_protected_bounded_meta",
             EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
             EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
             EXTERNAL_REGISTER_SHARED_BANKED_MODE,
@@ -753,6 +755,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
             EXTERNAL_REGISTER_SHARED_RELATIONAL_MODE,
             EXTERNAL_REGISTER_SHARED_STABLE_RELATIONAL_MODE,
+            "factorized_protected_bounded_meta",
         ):
             # Serial instruction chains are sensitive to unbounded additive
             # drift.  Normalize the read state, bound the learned proposal,
@@ -790,7 +793,10 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 role_count=role_count,
                 instruction_conditioned_binding=False,
             )
-        if operator_mode == "factorized_protected_meta":
+        if operator_mode in (
+            "factorized_protected_meta",
+            "factorized_protected_bounded_meta",
+        ):
             # This branch is an isolated, initially inert operator-family
             # prior.  The base low-rank operator can be protected while this
             # residual family learns across later fresh procedures.
@@ -882,6 +888,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                     EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
                     EXTERNAL_REGISTER_SHARED_RELATIONAL_MODE,
                     EXTERNAL_REGISTER_SHARED_STABLE_RELATIONAL_MODE,
+                    "factorized_protected_bounded_meta",
                 )
                 else EXTERNAL_REGISTER_BASIS_SCHEMA
             ),
@@ -894,6 +901,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                     EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
                     EXTERNAL_REGISTER_SHARED_RELATIONAL_MODE,
                     EXTERNAL_REGISTER_SHARED_STABLE_RELATIONAL_MODE,
+                    "factorized_protected_bounded_meta",
                 )
                 else "opaque_memory_side_slot_index_v1"
             ),
@@ -1245,6 +1253,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             raise ValueError("state bank addressing requires shared banked mode")
         if basis_slot is not None and self.operator_mode not in (
             "factorized_protected_meta",
+            "factorized_protected_bounded_meta",
             EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
             EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
             EXTERNAL_REGISTER_SHARED_BANKED_MODE,
@@ -1265,6 +1274,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "factorized_hybrid",
             "factorized_bounded_residual",
             "factorized_protected_meta",
+            "factorized_protected_bounded_meta",
             EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
             EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
             EXTERNAL_REGISTER_SHARED_BANKED_MODE,
@@ -1282,6 +1292,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                     EXTERNAL_REGISTER_SHARED_CANONICAL_MODE,
                     EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
                     EXTERNAL_REGISTER_SHARED_RELATIONAL_MODE,
+                    "factorized_protected_bounded_meta",
                 )
                 else register
             )
@@ -1335,20 +1346,33 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 proposal = torch.tanh(base_proposal + self.operator_bias(code))
                 gate = torch.sigmoid(self.operator_composition_gate(code))
                 return register + gate * proposal
-            if self.operator_mode == "factorized_protected_meta":
+            if self.operator_mode in (
+                "factorized_protected_meta",
+                "factorized_protected_bounded_meta",
+            ):
                 meta_left = torch.tanh(self.operator_meta_left(code)).reshape(
                     register.shape[0], self.register_width, self.operator_rank
                 )
                 meta_right = torch.tanh(self.operator_meta_right(code)).reshape(
                     register.shape[0], self.operator_rank, self.register_width
                 )
+                meta_register = (
+                    self.operator_normalizer(register)
+                    if self.operator_mode == "factorized_protected_bounded_meta"
+                    else register
+                )
                 meta_projected = torch.einsum(
-                    "br,bkr->bk", register, meta_right
+                    "br,bkr->bk", meta_register, meta_right
                 )
                 meta_proposal = torch.einsum(
                     "bk,brk->br", meta_projected, meta_left
                 ) + self.operator_meta_bias(code)
                 meta_gate = torch.sigmoid(self.operator_meta_gate(code))
+                if self.operator_mode == "factorized_protected_bounded_meta":
+                    base = torch.tanh(base_proposal + self.operator_bias(code))
+                    base_gate = torch.sigmoid(self.operator_composition_gate(code))
+                    meta_residual = 0.5 * meta_gate * torch.tanh(meta_proposal)
+                    return register + base_gate * (base + meta_residual)
                 return register + base_proposal + self.operator_bias(code) + (
                     0.5 * meta_gate * torch.tanh(meta_proposal)
                 )

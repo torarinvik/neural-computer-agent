@@ -42,7 +42,7 @@ def test_canonical_register_readout_validates_register_shape_and_finiteness() ->
         raise AssertionError("expected finite-value validation")
 
 
-def _machine() -> ExternalCapabilityRegisterMachine:
+def _machine(**kwargs: object) -> ExternalCapabilityRegisterMachine:
     return ExternalCapabilityRegisterMachine(
         event_width=4,
         action_width=2,
@@ -54,6 +54,7 @@ def _machine() -> ExternalCapabilityRegisterMachine:
             ExternalRegisterInstruction(5),
             ExternalRegisterInstruction(5),
         ),
+        **kwargs,
     )
 
 
@@ -477,6 +478,22 @@ def test_protected_meta_operator_starts_with_an_inert_residual_family() -> None:
     assert result.shape == register.shape
     assert torch.isfinite(result).all()
     assert torch.equal(result, addressed_result)
+
+
+def test_protected_bounded_meta_operator_is_bounded_and_basis_independent() -> None:
+    machine = _machine(operator_mode="factorized_protected_bounded_meta")
+    register = torch.randn(3, 8)
+    instruction = machine.instructions[0]
+    result = machine.execute(register, instruction)
+    machine.add_basis_slot()
+    addressed_result = machine.execute(register, instruction, basis_slot=0)
+
+    assert machine.configuration()["operator_mode"] == (
+        "factorized_protected_bounded_meta"
+    )
+    assert torch.equal(result, addressed_result)
+    assert torch.isfinite(result).all()
+    assert (result - register).abs().max() <= 1.0
 
 
 def test_external_register_state_is_external_and_quiet_ticks_do_not_mutate_it() -> None:

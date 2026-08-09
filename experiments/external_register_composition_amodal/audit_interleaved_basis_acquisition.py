@@ -457,18 +457,11 @@ def _train_joint_source_bank(parent, machine, *, args, seed_base: int):
         OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
         for _ in args.source_operations
     ]
-    if args.operator_mode == "factorized_protected_meta":
-        for parameter in machine.parameters():
-            parameter.requires_grad_(False)
-        trainable = [
-            parameter
-            for name, parameter in machine.named_parameters()
-            if name.startswith("operator_meta_")
-        ]
-        for parameter in trainable:
-            parameter.requires_grad_(True)
-    else:
-        trainable = list(machine.parameters())
+    # Source acquisition must train the base operator from its random
+    # initialization.  Protection begins only at the later sequence-
+    # calibration boundary, where the mastered base is frozen and the
+    # zero-initialized meta residual is opened.
+    trainable = list(machine.parameters())
     trainable.extend(
         parameter for decoder in decoders for parameter in decoder.parameters()
     )
@@ -1549,7 +1542,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "sequence_calibration_updates": args.sequence_calibration_updates,
         "sequence_calibration_trainable_surface": (
             "operator_meta_residual_plus_temporary_decoders"
-            if args.operator_mode == "factorized_protected_meta"
+            if args.operator_mode in (
+                "factorized_protected_meta",
+                "factorized_protected_bounded_meta",
+            )
             else "entire_machine_plus_temporary_decoders"
         ),
         "sequence_calibration_accepted": sequence_calibration_accepted,

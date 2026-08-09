@@ -483,6 +483,20 @@
       "replayed_examples": 0,
       "source_mastery": "failed; source floors 0.5039–0.6563",
       "decision": "retain the routing fix, reject the current unbounded protected-meta base as a source foundation, and stabilize it before sequence calibration"
+    },
+    {
+      "experiment": "protected_bounded_meta_source_contract",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "A bounded protected-meta operator can establish a mastered source checkpoint before opening an isolated continual-learning residual.",
+      "operator_mode": "factorized_protected_bounded_meta",
+      "source_calibration_boundary": "train base operator during source acquisition; freeze base only for later sequence calibration",
+      "joint_source_updates": 576,
+      "composition_program_count": 0,
+      "replayed_examples": 0,
+      "source_mastery": "passed; source floors 0.9414–1.0000",
+      "sequence_result": "not yet established; short target probe remained near chance and the oversized paired sequence rung was stopped before report emission",
+      "decision": "retain the bounded operator and corrected calibration boundary; run a short meta-only sequence calibration from the mastered checkpoint"
     }
   ]
 }

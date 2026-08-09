@@ -878,3 +878,20 @@ regression test. The corrected source-only screen still reached only
 serve as a mastered source checkpoint in this audit. This rejects the current
 unbounded protected-meta contract as a usable foundation; the next repair must
 stabilize its base transition before evaluating protected sequence capacity.
+
+## Protected bounded-meta source contract — source foundation restored
+
+The source-calibration audit was also freezing the protected base operator
+before it had ever been trained. That boundary is now corrected: source
+acquisition trains the base normally, while only later sequence calibration
+freezes it and opens the zero-initialized meta residual. A separate
+`factorized_protected_bounded_meta` mode normalizes the register, bounds the
+base proposal, and keeps basis-slot routing on the shared protected operator.
+
+In the matched two-seed source screen, both seeds passed source mastery with
+floors `0.9414–1.0000`. This restores a valid protected source checkpoint, but
+does not yet establish sequence acquisition: the short target probe remained
+near chance, and the larger paired sequence rung was stopped as an
+over-budget diagnostic before producing a report. The next experiment is a
+short, properly bounded meta-only sequence calibration from this mastered
+checkpoint.
