@@ -539,6 +539,7 @@ class ExternalTransitionModelBank(nn.Module):
         if selected_family not in {
             EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
             EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+            EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
         }:
             raise ValueError("unsupported transition-model slot family")
         model = self._new_model(selected_family)

@@ -4961,3 +4961,20 @@ long-horizon retention remain unverified before treating it as general
 continual learning.
 The two-seed reports and accounting ledger are archived in
 `session_records/sequence_working_memory_2026-08-02/external_random_feature_one_pass_promoted_2026-08-09/`.
+
+## Long-horizon replay-free nonlinear slot retention (2026-08-09)
+
+The retention pressure test learned four disjoint nonlinear transition
+families into isolated sufficient-statistics slots, then revisited all four
+after later slots had been acquired. With ridge `1e-4`, both seeds passed every
+held-out floor, zero replay, unchanged slot digests, and exact bank
+persistence. The rejected ridge `1e-5` run retained earlier slots perfectly
+but failed the capability floor on two regimes; it is archived separately as a
+controlled negative result.
+
+This promotes bounded replay-free nonlinear retention with verifier-supplied
+context keys. It does not yet demonstrate learned context formation,
+unrestricted memory growth, or general continual learning. Evidence is
+archived in
+`session_records/sequence_working_memory_2026-08-02/external_random_feature_retention_promoted_2026-08-09/` and the rejection is in
+`session_records/sequence_working_memory_2026-08-02/external_random_feature_retention_rejected_2026-08-09/`.

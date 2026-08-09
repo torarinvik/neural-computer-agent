@@ -1,0 +1,14 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "external_random_feature_retention_2026-08-09_ridge_1e-4",
+  "status": "replay_free_nonlinear_slot_retention_promoted_bounded",
+  "population_seeds": [1501, 1502],
+  "unique_logical_lifetimes_total": 1024,
+  "unique_verifier_bits_total": 1024,
+  "optimizer_updates_total": 0,
+  "streaming_statistics_updates_total": 8,
+  "replayed_examples_total": 0,
+  "old_evidence_replay_total": 0,
+  "verification": {"heldout_error_by_seed": [[0.0009106763172894716, 0.000030082379453233443, 0.005089662037789822, 0.00005927402526140213], [0.0010241027921438217, 0.00003567539533833042, 0.0012407666072249413, 0.00010226354788755998]], "slot_digests_stable": [true, true], "exact_persistence": [true, true]},
+  "claim_boundary": "Replicated bounded replay-free nonlinear slot retention with supplied context keys; not learned unrestricted routing or general continual learning."
+}

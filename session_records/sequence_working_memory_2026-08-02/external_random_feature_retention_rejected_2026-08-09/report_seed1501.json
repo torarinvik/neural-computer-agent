@@ -1,0 +1,10 @@
+{
+  "schema": "neural-computer.external-random-feature-retention-pressure-test.v1",
+  "seed": 1501,
+  "configuration": {"regime_count": 4, "train_rows_per_regime": 64, "heldout_rows_per_regime": 64, "feature_width": 128, "context_keys": "verifier_supplied_one_hot_fixture", "affine_ridge": 1e-5},
+  "gates": {"all_heldout_pass": false, "later_learning_retains_earlier_slots": true, "revisit_errors_stable": true, "zero_replayed_examples": true, "exact_bank_persistence": true},
+  "promoted": false,
+  "metrics": {"heldout_error_after_learning": [0.0031135650351643562, 0.057525765150785446, 0.005339573137462139, 0.0017091400222852826], "heldout_error_after_revisit": [0.0031135650351643562, 0.057525765150785446, 0.005339573137462139, 0.0017091400222852826], "slot_digests_stable": true, "context_count": 4},
+  "accounting": {"unique_verifier_bits": 512, "unique_logical_lifetimes": 512, "optimizer_updates": 0, "streaming_statistics_updates": 4, "replayed_examples": 0, "old_evidence_replay": 0},
+  "claim_boundary": "rejected capability configuration; bounded slot retention mechanism still passed"
+}
