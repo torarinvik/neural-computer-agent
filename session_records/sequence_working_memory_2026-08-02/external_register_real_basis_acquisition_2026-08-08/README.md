@@ -808,11 +808,16 @@ state contract.
 Under the full balanced `576`-update source calibration, both seeds reached
 strong source mastery and all six source-program permutations reached
 `0.8359–0.9375` held-out behavior. Retention and causal controls remained
-valid. Nevertheless, the matched fresh learners did not reach stable
-thresholds in any of the twelve comparisons, so the strict transfer gate
-could not be evaluated as positive (`0/12` promoted comparisons).
+valid. The first run used an untrained fresh source bank and was therefore
+diagnostic only (`0/12` evaluable transfer comparisons).
+
+The corrected matched curriculum trains each fresh source bank with the same
+balanced source budget before target learning. It produced stable fresh
+thresholds for ten of twelve comparisons and strict positive transfer in
+`2/12`: the same `reverse -> complement -> adjacent_xor` program in both
+seeds. The other orderings were ties, losses, or failed fresh thresholds.
 
 This is the strongest evidence so far that relational structure belongs in the
-operator transition, but it is not yet a continual-learning promotion. The
-next bottleneck is making the fresh learner a valid stable baseline while
-retaining the relational transition’s source-to-composition behavior.
+operator transition, but the order-specific signal is not yet a continual-
+learning promotion. The next bottleneck is making the relational invariant
+generalize across program orderings rather than benefiting one learned path.

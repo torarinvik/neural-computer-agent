@@ -402,6 +402,25 @@
       "composition_behavior": "all six programs reached 0.8359–0.9375 in both seeds",
       "positive_transfer": "zero of twelve strict comparisons; fresh controls did not reach stable thresholds",
       "decision": "retain relational transition as the strongest operator candidate, but do not promote continual-learning transfer until the fresh baseline stabilizes"
+    },
+    {
+      "experiment": "interleaved_shared_relational_trace_joint_matched_fresh_curriculum",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "Operator-integrated relational state transitions improve composition learning against a properly acquired fresh learner.",
+      "operator_mode": "factorized_shared_relational",
+      "role_count": 4,
+      "preserve_composition_trace": true,
+      "joint_source_updates": 576,
+      "composition_program_count": 6,
+      "curriculum_fresh_control": true,
+      "replayed_examples": 0,
+      "source_mastery": "both seeds reached source floors above 0.94",
+      "retention_on_mastered_primitives": "source deltas exact zero in both seeds",
+      "composition_behavior": "all six programs passed behavior/retention/causal gates in both seeds",
+      "fresh_control": "ten of twelve fresh comparisons reached stable thresholds",
+      "positive_transfer": "two of twelve strict comparisons, same reverse -> complement -> adjacent_xor ordering in both seeds",
+      "decision": "retain as a promising operator primitive; reject general promotion until transfer replicates across program orderings"
     }
   ]
 }
