@@ -895,3 +895,14 @@ near chance, and the larger paired sequence rung was stopped as an
 over-budget diagnostic before producing a report. The next experiment is a
 short, properly bounded meta-only sequence calibration from this mastered
 checkpoint.
+
+## Protected bounded-meta sequence calibration — short rung under-trained
+
+The sequence-calibration optimizer now correctly freezes the entire machine
+for protected modes and opens only `operator_meta_*` plus temporary decoders.
+The first short probe used the validated batch size but reached only
+`0.5781–0.6563` source floors, so it is not an interpretable sequence result.
+The retention deltas were exactly zero, but source mastery was not met. The
+rung is rejected for under-training; the next run must reuse or persist the
+mastered source checkpoint instead of recalibrating it inside every sequence
+probe.

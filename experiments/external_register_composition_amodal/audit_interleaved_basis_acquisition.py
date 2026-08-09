@@ -561,9 +561,23 @@ def _train_sequence_calibration(
         )
         for program in programs
     ]
-    trainable = list(machine.parameters()) + [
+    protected_meta_mode = args.operator_mode in (
+        "factorized_protected_meta",
+        "factorized_protected_bounded_meta",
+    )
+    if protected_meta_mode:
+        for parameter in machine.parameters():
+            parameter.requires_grad_(False)
+        trainable = [
+            parameter
+            for name, parameter in machine.named_parameters()
+            if name.startswith("operator_meta_")
+        ]
+    else:
+        trainable = list(machine.parameters())
+    trainable.extend(
         parameter for decoder in decoders for parameter in decoder.parameters()
-    ]
+    )
     optimizer = torch.optim.AdamW(trainable, lr=args.learning_rate, weight_decay=1e-5)
     best_state = None
     best_floor = float("-inf")

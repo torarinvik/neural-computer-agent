@@ -497,6 +497,21 @@
       "source_mastery": "passed; source floors 0.9414–1.0000",
       "sequence_result": "not yet established; short target probe remained near chance and the oversized paired sequence rung was stopped before report emission",
       "decision": "retain the bounded operator and corrected calibration boundary; run a short meta-only sequence calibration from the mastered checkpoint"
+    },
+    {
+      "experiment": "protected_bounded_meta_short_sequence_surface_check",
+      "date": "2026-08-09",
+      "seeds": [69316],
+      "claim": "A short protected bounded-meta calibration can acquire one opaque source chain while preserving mastered primitives.",
+      "operator_mode": "factorized_protected_bounded_meta",
+      "sequence_calibration_updates": 4,
+      "sequence_calibration_trainable_surface": "operator_meta_residual_plus_temporary_decoders",
+      "composition_program_count": 1,
+      "replayed_examples": 0,
+      "source_mastery": "failed before calibration comparison; floors 0.5781–0.6563",
+      "retention_deltas": "exact zero in the short probe",
+      "sequence_result": "not interpretable",
+      "decision": "reject as under-trained; persist and reuse mastered source checkpoints before the next sequence rung"
     }
   ]
 }
