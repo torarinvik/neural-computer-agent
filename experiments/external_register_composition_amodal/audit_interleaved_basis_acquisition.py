@@ -43,7 +43,10 @@ from .train import (
 )
 
 TARGET_OPERATIONS = ("complement_rotate", "prefix_parity")
-COMPOSITION_PROGRAM = ("complement", "reverse", "adjacent_xor")
+COMPOSITION_PROGRAMS = (
+    ("complement", "reverse", "adjacent_xor"),
+    ("adjacent_xor", "complement", "reverse"),
+)
 MASTERY_THRESHOLD = 0.8
 
 
@@ -201,27 +204,33 @@ def _prepare_candidates(
             }
         )
     if include_composition:
-        # This candidate has no new instruction or basis.  It is a fresh
-        # decoder/bridge learning to expose a generated program executed by
-        # the three frozen source capabilities, which makes the test about
+        # Each candidate has no new instruction or basis.  It is a fresh
+        # decoder/bridge learning to expose a different generated program
+        # executed by the frozen source capabilities, making the test about
         # compositional reuse rather than another direct primitive.
-        source_indices = tuple(
-            SOURCE_OPERATIONS.index(primitive) for primitive in COMPOSITION_PROGRAM
-        )
-        candidates.append(
-            {
-                "operation": "generated_composition",
-                "instructions": tuple(machine.instructions[index] for index in source_indices),
-                "basis_slots": source_indices,
-                "generated_composition_ids": (0,),
-                "generated_compositions": (COMPOSITION_PROGRAM,),
-                "mutable": False,
-                "decoder": OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16),
-                "bridge": AmodalEventBridge(
-                    EVENT_WIDTH, parent.controller.width, EVENT_WIDTH, hidden=64
-                ),
-            }
-        )
+        for program in COMPOSITION_PROGRAMS:
+            source_indices = tuple(
+                SOURCE_OPERATIONS.index(primitive) for primitive in program
+            )
+            candidates.append(
+                {
+                    "operation": "generated_composition",
+                    "instructions": tuple(
+                        machine.instructions[index] for index in source_indices
+                    ),
+                    "basis_slots": source_indices,
+                    "generated_composition_ids": (0,),
+                    "generated_compositions": (program,),
+                    "composition_program": program,
+                    "mutable": False,
+                    "decoder": OpaqueProtocolDecoder(
+                        REGISTER_WIDTH, ACTION_WIDTH, hidden=16
+                    ),
+                    "bridge": AmodalEventBridge(
+                        EVENT_WIDTH, parent.controller.width, EVENT_WIDTH, hidden=64
+                    ),
+                }
+            )
     return candidates
 
 
@@ -475,6 +484,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         records.append(
             {
                 "operation": candidate["operation"],
+                "composition_program": list(candidate["composition_program"])
+                if candidate.get("composition_program") is not None
+                else None,
                 "candidate_accuracy": score,
                 "consolidation_probe_accuracy": probe,
                 "shuffled_training_accuracy": shuffled,
@@ -575,9 +587,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "seed": args.seed,
         "source_operations": list(SOURCE_OPERATIONS),
         "target_operations": list(target_operations),
-        "composition_program": list(COMPOSITION_PROGRAM)
+        "composition_programs": [list(program) for program in COMPOSITION_PROGRAMS]
         if args.include_composition
-        else None,
+        else [],
         "source_before": source_before,
         "source_attempt_scores": source_attempt_counts,
         "retained_before": retained_before,

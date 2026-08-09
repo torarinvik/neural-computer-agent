@@ -476,3 +476,24 @@ This promotes concurrent reuse of a learned frozen program chain under fresh
 plasticity. It is still bounded external-memory growth: the next pressure
 test is multiple independently sampled composition programs, followed by
 longer sequences and transfer against matched fresh learners.
+
+## Multiple concurrent composition programs — promoted replicated rung
+
+The next pressure test interleaved four candidates: the two direct targets
+above plus two fresh decoder/bridge candidates for independently ordered
+programs, `complement -> reverse -> adjacent_xor` and
+`adjacent_xor -> complement -> reverse`. Both programs executed only the
+three frozen source instructions; neither received new compute capacity.
+
+Both seeds promoted all four candidates. Direct target accuracies were
+`0.9063`/`0.9453` and `0.9688`/`0.9844`. The two composition candidates
+reached `0.8281`/`0.9531` in seed `69316` and `0.9531`/`0.9609` in seed
+`69317`; every consolidation probe exceeded `0.855`. Shuffled controls
+remained below `0.680`, missing-evidence scores were `0.5`, source retention
+deltas were exactly zero, and replay was zero. Each run used `732,160`
+verifier bits, `96,000` logical lifetimes, and `5,728` optimizer updates.
+
+This strengthens the promotion from one favorable composition to multiple
+ordered programs under concurrent plasticity. It remains bounded: the next
+test should sample composition programs from a larger grammar and measure
+transfer against matched fresh learners.

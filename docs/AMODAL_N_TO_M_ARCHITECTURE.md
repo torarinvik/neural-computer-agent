@@ -4077,3 +4077,12 @@ retention, with zero replay. This is bounded concurrent compositional reuse,
 not unrestricted program induction or general continual learning. Evidence is
 archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_real_basis_acquisition_2026-08-08/interleaved_composition_transfer/`.
+
+The subsequent replicated audit interleaved two independently ordered frozen
+source programs with the same two direct capabilities. All four fresh
+decoder/bridge candidates passed consolidation, missing-evidence,
+shuffled-outcome, and exact source-retention gates across both seeds with zero
+replay. This is stronger bounded concurrent compositional reuse, while larger
+program grammars, fresh-learner transfer, and unrestricted continual learning
+remain open. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_real_basis_acquisition_2026-08-08/interleaved_multi_composition_transfer/`.

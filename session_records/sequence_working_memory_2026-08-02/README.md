@@ -1826,3 +1826,12 @@ source-retention gates with zero replay. This promotes bounded compositional
 reuse under concurrent plasticity; multiple independently sampled programs,
 longer horizons, and fresh-learner transfer remain open. Evidence is in
 `external_register_real_basis_acquisition_2026-08-08/interleaved_composition_transfer/`.
+
+## Multiple concurrent composition programs (2026-08-09)
+
+Two independently ordered frozen source programs were learned through fresh
+decoder/bridge pairs while two direct capabilities learned concurrently. Both
+seeds promoted all four candidates with zero replay and exact source
+retention. This strengthens bounded compositional reuse; larger program
+grammars and fresh-learner transfer remain open. Evidence is in
+`external_register_real_basis_acquisition_2026-08-08/interleaved_multi_composition_transfer/`.

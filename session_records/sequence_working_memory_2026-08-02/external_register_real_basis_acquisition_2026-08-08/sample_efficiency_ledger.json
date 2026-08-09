@@ -106,6 +106,24 @@
       "retention_on_mastered_primitives": "all paired fixed-suite deltas zero; source floor passed",
       "transfer_ratio_against_fresh_learner": "not measured",
       "decision": "promote bounded concurrent reuse of a learned frozen program chain; multiple independently sampled compositions remain untested"
+    },
+    {
+      "experiment": "interleaved_multiple_concurrent_composition_programs",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "Two independently ordered frozen source programs can be exposed by fresh decoder/bridge pairs while two direct capabilities learn concurrently, without replay or source retention loss.",
+      "composition_programs": [
+        ["complement", "reverse", "adjacent_xor"],
+        ["adjacent_xor", "complement", "reverse"]
+      ],
+      "unique_verifier_bits_per_run": 732160,
+      "unique_logical_lifetimes_per_run": 96000,
+      "optimizer_updates_per_run": 5728,
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": "all four candidates passed frozen consolidation probes in both seeds",
+      "retention_on_mastered_primitives": "all paired fixed-suite deltas zero; source floor passed",
+      "transfer_ratio_against_fresh_learner": "not measured",
+      "decision": "promote bounded multi-program concurrent compositional reuse; larger grammar and fresh-learner transfer remain untested"
     }
   ]
 }
