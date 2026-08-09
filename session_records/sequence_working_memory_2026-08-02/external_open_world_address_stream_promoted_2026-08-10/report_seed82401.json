@@ -1,0 +1,319 @@
+{
+  "schema": "neural-computer.external-open-world-address-stream.v1",
+  "seed": 82401,
+  "claim_boundary": "bounded open-world-style nonlinear address formation from an untrained encoder; not unrestricted continual learning",
+  "configuration": {
+    "regime_count": 8,
+    "capacity_schedule": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "presented_rows_per_regime": 32,
+    "heldout_rows_per_regime": 64,
+    "admission_rows": 8,
+    "context_encoder_optimizer_updates": 0,
+    "model_family": "random_feature_sufficient_statistics_v1",
+    "address_update": "copy_on_write_current_bundle_anchor_separation_v1"
+  },
+  "gates": {
+    "untrained_encoder": true,
+    "zero_encoder_pretraining_updates": true,
+    "all_regimes_acquired": true,
+    "one_growth_per_new_regime": true,
+    "all_growth_retention_verified": true,
+    "all_heldout_errors_pass": true,
+    "revisits_match_existing_slots": true,
+    "no_duplicate_slots": true,
+    "all_prior_slots_retained": true,
+    "corruption_rejected_without_bank_write": true,
+    "address_adapter_learned_online": true,
+    "base_adapter_copy_on_write": true,
+    "controller_unchanged": true,
+    "no_raw_candidate_rows_retained": true,
+    "exact_persistence": true
+  },
+  "promoted": true,
+  "acquisitions": [
+    {
+      "name": "regime_00",
+      "statuses": {
+        "pending": 28,
+        "staged": 4
+      },
+      "slot_id": 0,
+      "heldout_error": 0.0001919478818308562,
+      "address_version": 5
+    },
+    {
+      "name": "regime_01",
+      "statuses": {
+        "pending": 28,
+        "staged": 4
+      },
+      "slot_id": 1,
+      "heldout_error": 0.00022286386229097843,
+      "address_version": 10
+    },
+    {
+      "name": "regime_02",
+      "statuses": {
+        "pending": 28,
+        "staged": 4
+      },
+      "slot_id": 2,
+      "heldout_error": 0.000373613293049857,
+      "address_version": 15
+    },
+    {
+      "name": "regime_03",
+      "statuses": {
+        "pending": 28,
+        "staged": 4
+      },
+      "slot_id": 3,
+      "heldout_error": 0.0006539667374454439,
+      "address_version": 20
+    },
+    {
+      "name": "regime_04",
+      "statuses": {
+        "pending": 28,
+        "staged": 4
+      },
+      "slot_id": 4,
+      "heldout_error": 0.00033048237673938274,
+      "address_version": 25
+    },
+    {
+      "name": "regime_05",
+      "statuses": {
+        "pending": 28,
+        "staged": 4
+      },
+      "slot_id": 5,
+      "heldout_error": 0.0004409432294778526,
+      "address_version": 30
+    },
+    {
+      "name": "regime_06",
+      "statuses": {
+        "pending": 28,
+        "staged": 4
+      },
+      "slot_id": 6,
+      "heldout_error": 0.0014165594475343823,
+      "address_version": 35
+    },
+    {
+      "name": "regime_07",
+      "statuses": {
+        "pending": 28,
+        "staged": 4
+      },
+      "slot_id": 7,
+      "heldout_error": 0.003919327165931463,
+      "address_version": 40
+    }
+  ],
+  "revisits": [
+    {
+      "name": "regime_07",
+      "statuses": {
+        "pending": 28,
+        "matched": 4
+      }
+    },
+    {
+      "name": "regime_06",
+      "statuses": {
+        "pending": 28,
+        "matched": 4
+      }
+    },
+    {
+      "name": "regime_05",
+      "statuses": {
+        "pending": 28,
+        "matched": 4
+      }
+    },
+    {
+      "name": "regime_04",
+      "statuses": {
+        "pending": 28,
+        "matched": 4
+      }
+    },
+    {
+      "name": "regime_03",
+      "statuses": {
+        "pending": 28,
+        "matched": 4
+      }
+    },
+    {
+      "name": "regime_02",
+      "statuses": {
+        "pending": 28,
+        "matched": 4
+      }
+    },
+    {
+      "name": "regime_01",
+      "statuses": {
+        "pending": 28,
+        "matched": 4
+      }
+    },
+    {
+      "name": "regime_00",
+      "statuses": {
+        "pending": 28,
+        "matched": 4
+      }
+    },
+    {
+      "name": "regime_01",
+      "statuses": {
+        "pending": 28,
+        "matched": 4
+      }
+    },
+    {
+      "name": "regime_02",
+      "statuses": {
+        "pending": 28,
+        "matched": 4
+      }
+    },
+    {
+      "name": "regime_03",
+      "statuses": {
+        "pending": 28,
+        "matched": 4
+      }
+    },
+    {
+      "name": "regime_04",
+      "statuses": {
+        "pending": 28,
+        "matched": 4
+      }
+    },
+    {
+      "name": "regime_05",
+      "statuses": {
+        "pending": 28,
+        "matched": 4
+      }
+    },
+    {
+      "name": "regime_06",
+      "statuses": {
+        "pending": 28,
+        "matched": 4
+      }
+    }
+  ],
+  "capacity_growth": [
+    {
+      "source_capacity": 1,
+      "destination_capacity": 2,
+      "context_count": 1
+    },
+    {
+      "source_capacity": 2,
+      "destination_capacity": 3,
+      "context_count": 2
+    },
+    {
+      "source_capacity": 3,
+      "destination_capacity": 4,
+      "context_count": 3
+    },
+    {
+      "source_capacity": 4,
+      "destination_capacity": 5,
+      "context_count": 4
+    },
+    {
+      "source_capacity": 5,
+      "destination_capacity": 6,
+      "context_count": 5
+    },
+    {
+      "source_capacity": 6,
+      "destination_capacity": 7,
+      "context_count": 6
+    },
+    {
+      "source_capacity": 7,
+      "destination_capacity": 8,
+      "context_count": 7
+    }
+  ],
+  "corruption_control": {
+    "statuses": {
+      "pending": 28,
+      "staged": 4
+    },
+    "accepted": false,
+    "bank_unchanged": true
+  },
+  "status_counts": {
+    "regime_00:pending": 28,
+    "regime_00:staged": 4,
+    "regime_01:pending": 28,
+    "regime_01:staged": 4,
+    "regime_02:pending": 28,
+    "regime_02:staged": 4,
+    "regime_03:pending": 28,
+    "regime_03:staged": 4,
+    "regime_04:pending": 28,
+    "regime_04:staged": 4,
+    "regime_05:pending": 28,
+    "regime_05:staged": 4,
+    "regime_06:pending": 28,
+    "regime_06:staged": 4,
+    "regime_07:pending": 28,
+    "regime_07:staged": 4,
+    "regime_07:revisit:pending": 28,
+    "regime_07:revisit:matched": 4,
+    "regime_06:revisit:pending": 56,
+    "regime_06:revisit:matched": 8,
+    "regime_05:revisit:pending": 56,
+    "regime_05:revisit:matched": 8,
+    "regime_04:revisit:pending": 56,
+    "regime_04:revisit:matched": 8,
+    "regime_03:revisit:pending": 56,
+    "regime_03:revisit:matched": 8,
+    "regime_02:revisit:pending": 56,
+    "regime_02:revisit:matched": 8,
+    "regime_01:revisit:pending": 56,
+    "regime_01:revisit:matched": 8,
+    "regime_00:revisit:pending": 28,
+    "regime_00:revisit:matched": 4
+  },
+  "address_adapter": {
+    "base_digest": "198b11fcdba19c81c176170ecbbb57ee69735876f88903b8bc6199b7961771f7",
+    "final_digest": "0dcb9be5e46baa144ff13327597661b622cb36b872578702f3a111a8f1cce3ea",
+    "final_version": 40
+  },
+  "accounting": {
+    "unique_verifier_bits": 1024,
+    "unique_logical_lifetimes": 1024,
+    "context_encoder_optimizer_updates": 0,
+    "address_adapter_optimizer_updates": 160,
+    "model_statistics_updates": 32,
+    "replayed_examples": 0,
+    "old_regime_replay": 0,
+    "controller_optimizer_updates": 0,
+    "wall_seconds": 2.245633209007792
+  }
+}

@@ -5855,3 +5855,27 @@ retention-verified factual lifecycle management and statistics-aware storage
 compression, not semantic merging, unrestricted memory growth, or general
 continual learning. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_nonlinear_address_compaction_promoted_2026-08-10/`.
+
+## Open-world-style address formation without encoder pretraining (2026-08-10)
+
+The next pressure test removes the source-pretraining assumption from learned
+address formation. `ExternalTransitionContextEncoder` starts untrained and
+receives zero optimizer updates. Eight nonlinear regimes arrive sequentially;
+capacity grows `1 -> 8` through seven retention-verified transactions, and
+each new address is formed by isolated copy-on-write adaptation from its
+current evidence windows.
+
+Seeds `82401`, `82402`, and `82403` all passed. Each acquired eight distinct
+slots, reached held-out MSE below `0.004`, returned to every regime in reverse
+and interleaved order with matched existing slots, retained all earlier factual
+models, rejected corrupted evidence without a bank write, kept the controller
+frozen, retained no raw candidate rows, and restored exactly. Address versions
+advanced to `40` per seed; context-encoder pretraining and old-regime replay
+were both zero.
+
+This is stronger than source-pretrained learned-context routing: identity is
+formed online by an external copy-on-write state while historical keys remain
+immutable. The claim remains bounded: the stream and capacity are finite, the
+factual basis is fixed random features, and this does not establish
+unrestricted general continual learning. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_open_world_address_stream_promoted_2026-08-10/`.

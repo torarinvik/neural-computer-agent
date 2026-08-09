@@ -1,0 +1,32 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_open_world_address_stream",
+  "decision": "promote",
+  "claim_boundary": "three-seed bounded online address formation from an untrained encoder across eight nonlinear regimes; not unrestricted general continual learning",
+  "seeds": [82401, 82402, 82403],
+  "accounting": {
+    "regimes_per_seed": 8,
+    "initial_capacity": 1,
+    "final_capacity": 8,
+    "capacity_growth_transactions_per_seed": 7,
+    "presented_rows_per_regime": 32,
+    "heldout_rows_per_regime": 64,
+    "context_encoder_optimizer_updates": 0,
+    "address_adapter_optimizer_updates_per_seed": 160,
+    "replayed_examples": 0,
+    "old_regime_replay": 0,
+    "controller_optimizer_updates": 0
+  },
+  "gates": {
+    "all_three_seeds_promoted": true,
+    "untrained_encoder": true,
+    "verified_capacity_growth": true,
+    "all_revisits_matched": true,
+    "no_duplicate_slots": true,
+    "all_prior_retention": true,
+    "corruption_rejected_without_write": true,
+    "copy_on_write_isolation": true,
+    "exact_persistence": true,
+    "frozen_controller": true
+  }
+}
