@@ -124,6 +124,22 @@
       "retention_on_mastered_primitives": "all paired fixed-suite deltas zero; source floor passed",
       "transfer_ratio_against_fresh_learner": "not measured",
       "decision": "promote bounded multi-program concurrent compositional reuse; larger grammar and fresh-learner transfer remain untested"
+    },
+    {
+      "experiment": "interleaved_full_three_source_permutation_grammar",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "All six permutations of three frozen source capabilities can be exposed through fresh decoder/bridge pairs while two direct capabilities learn concurrently, without replay or source retention loss.",
+      "composition_program_count": 6,
+      "candidate_count": 8,
+      "unique_verifier_bits_per_run": 1379328,
+      "unique_logical_lifetimes_per_run": 181120,
+      "optimizer_updates_per_run": 10848,
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": "all eight candidates passed frozen consolidation probes in both seeds",
+      "retention_on_mastered_primitives": "all paired fixed-suite deltas zero; source floor passed",
+      "transfer_ratio_against_fresh_learner": "not measured",
+      "decision": "promote bounded full finite permutation grammar; larger depth, novel primitives, and fresh-learner transfer remain untested"
     }
   ]
 }

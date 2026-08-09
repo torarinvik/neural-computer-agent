@@ -1835,3 +1835,12 @@ seeds promoted all four candidates with zero replay and exact source
 retention. This strengthens bounded compositional reuse; larger program
 grammars and fresh-learner transfer remain open. Evidence is in
 `external_register_real_basis_acquisition_2026-08-08/interleaved_multi_composition_transfer/`.
+
+## Full three-source permutation grammar (2026-08-09)
+
+All six orderings of the three acquired source operations were exposed through
+fresh decoder/bridge candidates while two direct capabilities learned
+concurrently. Both seeds promoted all eight candidates with zero replay and
+exact source retention. This validates the complete tested finite grammar,
+not unrestricted program induction. Evidence is in
+`external_register_real_basis_acquisition_2026-08-08/interleaved_full_composition_grammar/`.

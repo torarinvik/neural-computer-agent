@@ -4086,3 +4086,11 @@ replay. This is stronger bounded concurrent compositional reuse, while larger
 program grammars, fresh-learner transfer, and unrestricted continual learning
 remain open. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_real_basis_acquisition_2026-08-08/interleaved_multi_composition_transfer/`.
+
+The full finite three-source permutation grammar has now also passed the
+concurrent audit. Six independently ordered frozen programs and two direct
+capabilities all passed consolidation, causal, missing-evidence, and exact
+source-retention gates across both seeds with zero replay. This remains a
+bounded grammar result rather than unrestricted program induction or general
+continual learning. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_real_basis_acquisition_2026-08-08/interleaved_full_composition_grammar/`.

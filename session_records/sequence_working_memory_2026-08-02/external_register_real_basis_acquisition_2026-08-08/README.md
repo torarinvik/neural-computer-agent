@@ -497,3 +497,23 @@ This strengthens the promotion from one favorable composition to multiple
 ordered programs under concurrent plasticity. It remains bounded: the next
 test should sample composition programs from a larger grammar and measure
 transfer against matched fresh learners.
+
+## Full three-source permutation grammar — promoted replicated rung
+
+The composition family was expanded to all six permutations of the three
+frozen source operations. The audit therefore interleaved eight candidates:
+two direct capabilities and six fresh decoder/bridge candidates, one for each
+program ordering. No composition candidate received a new instruction or
+basis slot.
+
+All eight candidates promoted in both seeds. The weakest consolidation probe
+was `0.8711` in seed `69316` and `0.9297` in seed `69317`; shuffled controls
+stayed below `0.633`, missing-evidence scores stayed below the mastery floor,
+and every source-retention delta was exactly zero. Each run used `1,379,328`
+verifier bits, `181,120` logical lifetimes, `10,848` optimizer updates, and
+zero replayed examples.
+
+This promotes concurrent compositional reuse across the complete finite
+permutation family tested here. It is still a bounded grammar result; larger
+program depth, novel primitives, and transfer against matched fresh learners
+remain open.

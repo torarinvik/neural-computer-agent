@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+from itertools import permutations
 from pathlib import Path
 
 import torch
@@ -43,10 +44,7 @@ from .train import (
 )
 
 TARGET_OPERATIONS = ("complement_rotate", "prefix_parity")
-COMPOSITION_PROGRAMS = (
-    ("complement", "reverse", "adjacent_xor"),
-    ("adjacent_xor", "complement", "reverse"),
-)
+COMPOSITION_PROGRAMS = tuple(permutations(SOURCE_OPERATIONS))
 MASTERY_THRESHOLD = 0.8
 
 
