@@ -1,0 +1,35 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_transition_lifetime_capacity_stream",
+  "entries": [
+    {
+      "seed": 1701,
+      "arm": "bank-owned-lifetime-policy",
+      "unique_verifier_bits": 600,
+      "unique_logical_lifetimes": 2400,
+      "optimizer_updates": 600,
+      "replayed_examples": 0,
+      "controller_updates": 0,
+      "heldout_selection": 1.0,
+      "retention_floor": true,
+      "random_control": 0.5,
+      "recency_control": 1.0,
+      "promoted": true
+    },
+    {
+      "seed": 1702,
+      "arm": "bank-owned-lifetime-policy",
+      "unique_verifier_bits": 600,
+      "unique_logical_lifetimes": 2400,
+      "optimizer_updates": 600,
+      "replayed_examples": 0,
+      "controller_updates": 0,
+      "heldout_selection": 1.0,
+      "retention_floor": true,
+      "random_control": 0.5,
+      "recency_control": 1.0,
+      "promoted": true
+    }
+  ],
+  "claim_boundary": "long bounded alternating retention stream; not unrestricted general continual learning"
+}

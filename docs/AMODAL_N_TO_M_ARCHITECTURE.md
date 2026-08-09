@@ -5076,3 +5076,25 @@ continual learning. The next bottleneck is a longer alternating stream with
 genuinely retained versus disposable capabilities, where lifetime selection
 must coexist with verified model growth, consolidation, and compression under
 the same capacity budget.
+
+## Long alternating retention under shared capacity (2026-08-09)
+
+The next pressure test ran three recurring factual transition models through a
+bounded four-slot bank while replacing a disposable fourth model across `600`
+training and `240` held-out pressure events per seed. Every eviction proposal
+was checked against held-out behavior for all recurring models. Both seeds
+preserved every recurring capability at every measured prefix, with learned
+safe admission `1.000`/`1.000`, versus random `0.500` and recency `1.000`.
+
+This is a meaningful retention result, not a policy-superiority result:
+recency is equally strong because the fixture intentionally makes disposable
+models stale. Seed 1702 had five training misses before converging; the
+verifier-authorized fallback preserved the recurring models after each miss.
+Evidence and accounting are archived in
+`session_records/sequence_working_memory_2026-08-02/external_transition_lifetime_capacity_stream_promoted_2026-08-09/`.
+
+The remaining high-ROI bottleneck is sharper: make retained versus disposable
+capabilities genuinely ambiguous to recency, then integrate verified
+consolidation and compression decisions into the same lifecycle ledger. Until
+that passes, the system has bounded retention with safe fallback, not general
+continual learning.

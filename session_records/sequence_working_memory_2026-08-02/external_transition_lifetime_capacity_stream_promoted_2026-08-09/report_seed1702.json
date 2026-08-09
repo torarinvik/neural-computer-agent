@@ -1,0 +1,52 @@
+{
+  "schema": "neural-computer.external-transition-lifetime-capacity-stream.v1",
+  "seed": 1702,
+  "configuration": {
+    "train_streams": 50,
+    "evaluation_streams": 20,
+    "pressures_per_stream": 12,
+    "capacity": 4,
+    "recurring_capabilities": 3,
+    "verifier": "heldout-recurring-model-retention-v1"
+  },
+  "gates": {
+    "learned_beats_random_by_margin": true,
+    "learned_retention_floor": true,
+    "stream_retention_floor": true,
+    "exact_policy_persistence": true,
+    "zero_controller_updates": true,
+    "zero_replayed_transition_examples": true
+  },
+  "promoted": true,
+  "metrics": {
+    "train": {
+      "pressure_events": 600,
+      "learned_successes": 595,
+      "learned_selection": 0.9916666666666667,
+      "learned_retention_floor": true,
+      "stream_retention_floor": true
+    },
+    "evaluation": {
+      "pressure_events": 240,
+      "learned_successes": 240,
+      "learned_selection": 1.0,
+      "learned_retention_floor": true,
+      "stream_retention_floor": true
+    },
+    "controls": {
+      "random": 0.5,
+      "recency": 1.0
+    },
+    "policy_digest": "8f7d0941d8cc5020ce7a406b23d97fb35deb81a734032e79335122108ab9533e"
+  },
+  "accounting": {
+    "unique_verifier_bits": 600,
+    "unique_logical_lifetimes": 2400,
+    "policy_optimizer_updates": 600,
+    "controller_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "old_memory_replay": 0,
+    "wall_seconds": 7.475707291974686
+  },
+  "claim_boundary": "long bounded alternating retention stream; not unrestricted general continual learning"
+}
