@@ -1000,6 +1000,23 @@
       "positive_transfer_denominator": 6,
       "heldout_gates": "all passed on both seeds",
       "decision": "reject conditioned sequence decoder prior as a transfer accelerator; retain canonical readout as the stronger qualified direction"
+    },
+    {
+      "experiment": "external_register_normalized_execution_position",
+      "date": "2026-08-09",
+      "seeds": [69316],
+      "claim": "A generic normalized program-counter signal will improve portable four-instruction serial composition without task-specific metadata.",
+      "operator_mode": "factorized_low_rank",
+      "execution_position_mode": "normalized_sinusoidal",
+      "replayed_examples": 0,
+      "unique_verifier_bits": 147456,
+      "composition_accuracy": 0.71484375,
+      "fresh_composition_accuracy": 1.0,
+      "composition_stable_bits_to_threshold": null,
+      "fresh_stable_bits_to_threshold": 16384,
+      "retention_on_mastered_primitives": 0.8828125,
+      "heldout_gates": "persistence, frozen-parent, missing-evidence, and reward-shuffled controls passed; inherited composition stable-prefix gate failed",
+      "decision": "reject execution-position injection as a current transfer accelerator; remove optional branch and target the portable serial state representation"
     }
   ]
 }

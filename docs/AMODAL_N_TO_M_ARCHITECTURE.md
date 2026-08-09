@@ -4138,3 +4138,14 @@ were slower in three of four comparisons. This rejects positive transfer and
 localizes the bottleneck to source-state geometry/interface alignment rather
 than memory capacity. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_real_basis_acquisition_2026-08-08/interleaved_conditioned_curriculum_transfer/`.
+
+An optional generic normalized program-counter signal was then tested in the
+shared register interpreter. It improved primitive retention on one matched
+four-instruction rung (`0.8828`) but the inherited composition never reached a
+stable prefix and finished at `0.7148`, below the no-position baseline's
+`0.8477`; the fresh learner reached stable mastery in `16,384` verifier bits.
+The position injection is rejected as a current transfer accelerator and was
+removed from the production path. The result does not disprove a future
+execution context, but shows that adding structural position to the existing
+instruction code does not repair the portable serial algebra. Evidence is in
+`session_records/sequence_working_memory_2026-08-02/external_register_execution_position_rejected_v1_2026-08-09/`.
