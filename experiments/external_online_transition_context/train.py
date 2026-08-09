@@ -254,12 +254,13 @@ def _factual_error(
     return float((prediction - observation.next_state).square().mean().detach())
 
 
-def _new_bank() -> ExternalTransitionModelBank:
+def _new_bank(capacity: int | None = None) -> ExternalTransitionModelBank:
     return ExternalTransitionModelBank(
         STATE_WIDTH,
         INTENTION_WIDTH,
         CONTEXT_WIDTH,
         hidden_width=MODEL_HIDDEN_WIDTH,
+        capacity=capacity,
     )
 
 
@@ -293,7 +294,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
     for parameter in controller.parameters():
         parameter.requires_grad_(False)
 
-    bank = _new_bank()
+    bank = _new_bank(capacity=MAX_CONTEXTS)
     base_index = bank.ensure_context(base_context)
     auxiliary_index = bank.ensure_context(
         auxiliary_context,
@@ -346,7 +347,10 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
     capacity_events = 0
     unexpected_matches: list[str] = []
     trace: list[dict[str, object]] = []
-    for regime, observation in sequence:
+    def consume(regime: str, observation: ExternalTransitionObservation) -> None:
+        nonlocal target_updates, target_current_rows
+        nonlocal target_admissions, target_matches_after_admission
+        nonlocal capacity_events
         for row in _rows(observation):
             result = router.observe(row)
             route_counts[f"{regime}:{result.status}"] += 1
@@ -383,9 +387,60 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
                     "updates": updates,
                 }
             )
+
+    for regime, observation in sequence:
+        consume(regime, observation)
     target_index = min(assignments["target"]) if assignments["target"] else None
     target_context = (
         None if target_index is None else router.bank.context_at(target_index)
+    )
+    pre_growth_content_digest = bank.content_digest()
+
+    def retention_probe(candidate: ExternalTransitionModelBank) -> bool:
+        if target_index is None:
+            return False
+        candidate_target_context = candidate.context_at(target_index)
+        base_result = _evaluate(
+            candidate,
+            state_codes,
+            intention_codes,
+            base_context,
+            BASE_DELTAS,
+            horizon=4,
+        )
+        auxiliary_result = _evaluate(
+            candidate,
+            state_codes,
+            intention_codes,
+            auxiliary_context,
+            AUXILIARY_DELTAS,
+            horizon=4,
+            targets=AUXILIARY_TARGETS,
+        )
+        target_result = _evaluate(
+            candidate,
+            state_codes,
+            intention_codes,
+            candidate_target_context,
+            TARGET_DELTAS,
+            horizon=2,
+        )
+        return (
+            float(base_result["mastery"]) >= 0.8
+            and float(auxiliary_result["mastery"]) >= 0.8
+            and float(target_result["mastery"]) >= 0.8
+        )
+
+    growth_receipt = router.grow_verified(4, retention_probe)
+    if growth_receipt.accepted:
+        consume("capacity_growth", observations["capacity"])
+    capacity_index = (
+        min(assignments["capacity_growth"])
+        if assignments["capacity_growth"]
+        else None
+    )
+    capacity_context = (
+        None if capacity_index is None else router.bank.context_at(capacity_index)
     )
     base_after = _evaluate(
         bank,
@@ -413,6 +468,18 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             intention_codes,
             target_context,
             TARGET_DELTAS,
+            horizon=2,
+        )
+    )
+    capacity_after = (
+        {"successes": [], "mastery": 0.0}
+        if capacity_context is None
+        else _evaluate(
+            bank,
+            state_codes,
+            intention_codes,
+            capacity_context,
+            CAPACITY_DELTAS,
             horizon=2,
         )
     )
@@ -491,10 +558,19 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             prior_digests["base"] == bank.models[base_index].digest()
             and prior_digests["auxiliary"] == bank.models[auxiliary_index].digest()
         ),
-        "capacity_guard_no_growth": (
+        "capacity_refusal_no_write": (
             capacity_events >= 1
-            and bank.context_count == MAX_CONTEXTS
+            and not assignments["capacity"]
             and not unexpected_matches
+        ),
+        "capacity_growth_verified": (
+            growth_receipt.accepted
+            and growth_receipt.destination_capacity == MAX_CONTEXTS + 1
+            and growth_receipt.content_digest_before == pre_growth_content_digest
+            and capacity_index == MAX_CONTEXTS
+            and bank.capacity == MAX_CONTEXTS + 1
+            and bank.context_count == MAX_CONTEXTS + 1
+            and float(capacity_after["mastery"]) >= 0.8
         ),
         "wrong_context_control": wrong_context_mse > TARGET_LOSS_THRESHOLD,
         "corruption_control": float(corrupted_result["mastery"]) < 0.8,
@@ -551,6 +627,17 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         "retention": {
             "base": base_after,
             "auxiliary": auxiliary_after,
+            "capacity_growth_regime": capacity_after,
+        },
+        "capacity_growth": {
+            "accepted": growth_receipt.accepted,
+            "source_capacity": growth_receipt.source_capacity,
+            "destination_capacity": growth_receipt.destination_capacity,
+            "context_count": growth_receipt.context_count,
+            "content_digest_before": growth_receipt.content_digest_before,
+            "content_digest_after": growth_receipt.content_digest_after,
+            "reason": growth_receipt.reason,
+            "replayed_old_prior_rows": 0,
         },
         "fresh_target": {
             "optimizer_updates": fresh_updates,
@@ -572,7 +659,8 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "external_prior_replay_during_target": 0,
             "target_current_stream_replay": target_current_rows,
             "unique_target_transition_lifetimes": POSITION_COUNT * 2,
-            "context_slots_after_capacity_attempt": bank.context_count,
+            "context_slots_before_growth": MAX_CONTEXTS,
+            "context_slots_after_capacity_growth": bank.context_count,
         },
         "digests": {
             "controller": controller_digest,
