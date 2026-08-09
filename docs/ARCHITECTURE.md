@@ -131,6 +131,14 @@ Flat curve = a library of separate entries. Downward = a map. This is
 the headline gate and it is falsifiable in a way "we did not forget"
 never was.
 
+**MET (F69), with a model-holding plant.** Three novel rungs in
+sequence: policy cost 100 -> 300 -> 400 (rising, total 800, quality
+decaying 0.977 -> 0.441); model cost 50 -> 125 -> 25 (falling, total
+200, quality flat 1.000 -> 0.812). Four times cheaper and uniformly
+better, with the third task the cheapest of the three. Scope: one
+family, three rungs, one seed at this configuration — F67's transfer
+result replicates across three seeds, this curve does not yet.
+
 ---
 
 ## 4. What is established

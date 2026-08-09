@@ -284,8 +284,16 @@ def rollout(spec, *, seed: int, sample: bool, random_actions: bool = False):
 
 
 
-def learn_model(spec, updates: int) -> float:
-    """Self-supervised dynamics, from random play. No reward, no goal."""
+def learn_model(spec, updates: int, stop_at: float = 0.0) -> tuple:
+    """Self-supervised dynamics, from random play. No reward, no goal.
+
+    Returns (accuracy, updates ACTUALLY spent). With `stop_at`, training
+    halts once the model predicts this rung's dynamics that well -- so a
+    rung whose dynamics are already covered by earlier rungs costs
+    almost nothing. Without early stopping every rung consumed a flat
+    allowance and cost could not fall (F68's caveat: 900 was an upper
+    bound, not a measured minimum).
+    """
     walls = wall_cells(spec)
     rows = N if spec["dims"] == 2 else 1
     moves = MOVES_2D if spec["dims"] == 2 else MOVES_1D
@@ -316,11 +324,12 @@ def learn_model(spec, updates: int) -> float:
         model_optimizer.zero_grad(set_to_none=True)
         loss.backward()
         model_optimizer.step()
-        if step + 1 == updates:
-            with torch.no_grad():
-                accuracy = float(
-                    (logits.argmax(-1) == torch.tensor(targets)).float().mean())
-    return accuracy
+        with torch.no_grad():
+            accuracy = float(
+                (logits.argmax(-1) == torch.tensor(targets)).float().mean())
+        if stop_at and (step + 1) % 25 == 0 and accuracy >= stop_at:
+            return accuracy, step + 1
+    return accuracy, updates
 
 
 def search_action(cell: int, goal: int, spec, depth: int) -> int:
@@ -460,7 +469,7 @@ if args.model_search:
     # searching that model. Nothing task-specific is learned or carried.
     sources = (args.warm_mix.split(",") if args.warm_mix
                else [args.warm_start] if args.warm_start else [args.rung])
-    accuracies = {name: round(learn_model(SPEC[name], 600), 4)
+    accuracies = {name: round(learn_model(SPEC[name], 600)[0], 4)
                   for name in sources}
     report["model_accuracy"] = accuracies
     report["model_sources"] = sources
@@ -480,11 +489,13 @@ if args.model_search:
         for name in args.targets.split(","):
             rung = SPEC[name]
             before = policy_free_reach(rung)
+            # Cost is what the MODEL actually needed: train only until
+            # this rung's dynamics are predicted, and skip entirely if
+            # search already solves it.
             if before >= args.mastery:
                 spent = 0          # already covered: reuse costs nothing
             else:
-                spent = 300
-                learn_model(rung, spent)
+                _, spent = learn_model(rung, 600, stop_at=0.98)
             model_spend += spent
             report["model_sequence"].append({
                 "rung": name, "zero_shot": before,

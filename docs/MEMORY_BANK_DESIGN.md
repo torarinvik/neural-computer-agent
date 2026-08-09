@@ -2806,3 +2806,44 @@ with zero target training) and F68 (no degradation across a sequence
 where a policy-based agent loses more than half its competence).
 
 Probes 170-172 are `reacher_ladder.py --model-search --targets`.
+
+**F69 (probe 173). The acquisition-cost curve bends DOWN. The founding
+claim is met in full.** F68 left one gap: quality did not degrade, but
+cost was slightly higher because every rung received a flat 300-update
+allowance regardless of need. Charging what the model actually required
+(train until this rung's dynamics are predicted at 0.98; skip entirely
+if search already solves it) closes it:
+
+| rung | policy cost | **model cost** | policy final | **model final** |
+| --- | ---: | ---: | ---: | ---: |
+| r2 | 100 | **50** | 0.977 | **1.000** |
+| r3 | 300 | **125** | 0.695 | **0.969** |
+| r4 | 400 | **25** | 0.441 | **0.812** |
+| total | 800 | **200** | | |
+
+**Four times cheaper and uniformly better.** The shape matters more than
+the total: policy cost RISES across the sequence (100 -> 300 -> 400)
+while model cost FALLS (50 -> 125 -> 25). The third novel task is the
+cheapest of the three, because the model already covers most of what it
+needs.
+
+That is the headline gate stated in `ARCHITECTURE.md` §3 — *acquisition
+cost for task N falls as N grows* — measured, for the first time in 69
+findings. Flat would have meant a library; this is a map.
+
+**The whole project in one line.** A policy is preferential, so every
+new task contradicts the last and cost compounds upward. A model is
+factual, so every new task ADDS to it and cost compounds downward.
+Sixty-eight findings of consolidation mechanisms, penalties, freezing,
+adapters and curricula were attempts to make a policy behave like a
+model. Storing a model instead is what worked.
+
+**Honest scope.** This is one task family (grid navigation), one agent,
+three rungs, one seed at this configuration. F67's transfer result holds
+across three seeds; this cost curve does not yet. The claim earned here
+is that the mechanism CAN produce a downward curve, not that it does so
+generally — the next work is seed-widening and a family whose dynamics
+genuinely differ rather than nest.
+
+Probe 173 is `reacher_ladder.py --model-search --targets` with model
+early-stopping.
