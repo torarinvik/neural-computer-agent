@@ -772,6 +772,25 @@
       "sequence_floor": 0.734375,
       "baseline_floor": 0.7421875,
       "decision": "retain as leading architecture but defer promotion pending replication and learned program-slot routing"
+    },
+    {
+      "experiment": "protected_bounded_meta_shared_program_memory_router_sequence384",
+      "date": "2026-08-09",
+      "seeds": [69316],
+      "claim": "Learned outcome-only routing over executable program slots will preserve the fixed program-memory result while removing slot-index dependence.",
+      "operator_mode": "factorized_protected_bounded_meta",
+      "operator_rank": 16,
+      "sequence_memory": "six append-only ordered instruction-code programs",
+      "program_slot_router": true,
+      "route_credit": "counterfactual scalar outcome per all six programs",
+      "sequence_calibration_updates": 384,
+      "composition_program_count": 6,
+      "replayed_examples": 0,
+      "unique_verifier_bits": 375424,
+      "source_retention": "exact zero deltas; source floors 0.9296875–0.9609375",
+      "sequence_floor": 0.6875,
+      "fixed_program_memory_floor": 0.734375,
+      "decision": "reject learned program routing; soft route interference is worse than fixed program slots"
     }
   ]
 }

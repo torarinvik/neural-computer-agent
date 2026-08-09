@@ -687,6 +687,10 @@ def _train_sequence_calibration(
         sequence_operator_memory is not None
         and args.use_operator_sequence_router
     )
+    use_program_router = bool(
+        sequence_program_memory is not None
+        and args.use_sequence_program_router
+    )
 
     def route_query(program: tuple[str, ...]) -> torch.Tensor:
         instructions = tuple(
@@ -696,7 +700,11 @@ def _train_sequence_calibration(
         codes = torch.stack(
             tuple(instruction.code.detach().squeeze(0) for instruction in instructions)
         ).unsqueeze(0)
-        return sequence_operator_memory.encode_program(codes).squeeze(0)
+        if use_operator_router:
+            return sequence_operator_memory.encode_program(codes).squeeze(0)
+        if use_program_router:
+            return sequence_program_memory.encode_program(codes).squeeze(0)
+        raise ValueError("no sequence route memory is enabled")
 
     protected_meta_mode = args.operator_mode in (
         "factorized_protected_meta",
@@ -783,9 +791,14 @@ def _train_sequence_calibration(
                     device=batch.input_frames.device,
                     dtype=batch.input_frames.dtype,
                 )
-                if sequence_program_memory is not None
+                if sequence_program_memory is not None and not use_program_router
                 else None
             ),
+            sequence_program_memory=sequence_program_memory,
+            sequence_program_route_query=(
+                route_query(program) if use_program_router else None
+            ),
+            program_route_probe=(args.use_route_outcome_credit and use_program_router),
         )
         if use_operator_router and args.route_assignment_loss_weight > 0.0:
             all_route_weights = torch.stack(
@@ -861,8 +874,15 @@ def _train_sequence_calibration(
                             device=torch.device("cpu"),
                             dtype=torch.float32,
                         ).squeeze(0)
-                        if sequence_program_memory is not None
+                        if sequence_program_memory is not None and not use_program_router
                         else None
+                    ),
+                    sequence_program_memory=sequence_program_memory,
+                    sequence_program_route_query=(
+                        route_query(program_value) if use_program_router else None
+                    ),
+                    program_route_probe=(
+                        args.use_route_outcome_credit and use_program_router
                     ),
                 )
                 for index_value, program_value in enumerate(programs)
@@ -1166,10 +1186,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("choose one sequence memory implementation")
     if args.use_sequence_program_memory and args.use_operator_sequence_router:
         raise ValueError("program memory routing is not yet combined with operator routing")
+    if args.use_sequence_program_router and not args.use_sequence_program_memory:
+        raise ValueError("program routing requires sequence program memory")
     if args.use_operator_sequence_router and not args.use_operator_sequence_memory:
         raise ValueError("operator sequence routing requires operator sequence memory")
-    if args.use_route_outcome_credit and not args.use_operator_sequence_router:
-        raise ValueError("route outcome credit requires operator sequence routing")
+    if args.use_route_outcome_credit and not (
+        args.use_operator_sequence_router or args.use_sequence_program_router
+    ):
+        raise ValueError("route outcome credit requires sequence routing")
     if args.conditioned_sequence_decoder and not args.use_operator_sequence_router:
         raise ValueError("conditioned sequence decoder requires operator sequence routing")
     if args.conditioned_sequence_decoder and not args.shared_sequence_decoder:
@@ -1899,7 +1923,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         + suite_and_control_bits
     )
     if args.use_sequence_program_memory:
-        sequence_surface = "sequence_program_memory_slots_plus_temporary_decoders"
+        sequence_surface = (
+            "sequence_program_memory_slots_plus_learned_router_plus_outcome_probe"
+            if args.use_sequence_program_router and args.use_route_outcome_credit
+            else "sequence_program_memory_slots_plus_learned_router"
+            if args.use_sequence_program_router
+            else "sequence_program_memory_slots_plus_temporary_decoders"
+        )
     elif args.use_operator_sequence_memory:
         if args.use_operator_sequence_router:
             if args.conditioned_sequence_decoder:
@@ -2120,6 +2150,12 @@ def main() -> None:
         action=argparse.BooleanOptionalAction,
         default=False,
         help="store ordered opaque instruction programs for the shared interpreter",
+    )
+    parser.add_argument(
+        "--use-sequence-program-router",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="learn opaque routing over executable program-memory slots",
     )
     parser.add_argument(
         "--use-operator-sequence-memory",

@@ -160,6 +160,8 @@ def _rollout(
     sequence_operator_route_query: torch.Tensor | None = None,
     decoder_context: torch.Tensor | None = None,
     sequence_program_codes: torch.Tensor | None = None,
+    sequence_program_memory=None,
+    sequence_program_route_query: torch.Tensor | None = None,
     *,
     train_decoder: bool,
     shuffle_outcomes: bool = False,
@@ -172,6 +174,7 @@ def _rollout(
     register_readout: CanonicalRegisterReadout | None = None,
     preserve_execution_trace: bool = False,
     route_probe: bool = False,
+    program_route_probe: bool = False,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     if execution_mode not in ("in_place", "read_execute"):
         raise ValueError(f"unknown execution mode: {execution_mode!r}")
@@ -182,6 +185,11 @@ def _rollout(
             raise ValueError("route probing requires routed operator memory")
         if execution_mode != "read_execute" or preserve_execution_trace:
             raise ValueError("route probing requires plain read_execute mode")
+    if program_route_probe:
+        if sequence_program_memory is None or sequence_program_route_query is None:
+            raise ValueError("program route probing requires routed program memory")
+        if execution_mode != "read_execute" or preserve_execution_trace:
+            raise ValueError("program route probing requires plain read_execute mode")
     device = batch.input_frames.device
     batch_size = batch.batch_size
     if meta_context is not None:
@@ -197,6 +205,15 @@ def _rollout(
         elif sequence_operator_route_query.shape[0] != batch_size:
             raise ValueError(
                 "sequence operator route query batch size does not match rollout"
+            )
+    if sequence_program_route_query is not None:
+        if sequence_program_route_query.ndim == 1:
+            sequence_program_route_query = sequence_program_route_query.unsqueeze(0).expand(
+                batch_size, -1
+            )
+        elif sequence_program_route_query.shape[0] != batch_size:
+            raise ValueError(
+                "sequence program route query batch size does not match rollout"
             )
     if decoder_context is not None:
         if decoder_context.ndim == 1:
@@ -265,6 +282,50 @@ def _rollout(
             event = parent_state.hidden.detach()
         if machine.event_width != event.shape[1]:
             raise ValueError("machine event width is incompatible with parent event")
+        if program_route_probe and collect_route_probe:
+            next_state = None
+            slot_logits = []
+            for slot in range(len(sequence_program_memory.programs)):
+                codes = sequence_program_memory.program_codes(
+                    slot,
+                    batch_size=batch_size,
+                    device=event.device,
+                    dtype=event.dtype,
+                )
+                candidate_register, candidate_state = machine.observe_register(
+                    event=event,
+                    action=previous_action,
+                    outcome=previous_reward,
+                    intention=output.intention,
+                    state=register_state,
+                    present=present,
+                )
+                executed = machine.execute_code_chain(
+                    candidate_register,
+                    codes,
+                    event_window=candidate_state.event_window,
+                    event_window_mask=candidate_state.event_window_mask,
+                )
+                if next_state is None:
+                    next_state = candidate_state
+                candidate_register = torch.where(
+                    present.unsqueeze(-1), executed, candidate_register
+                )
+                decoded = (
+                    candidate_register
+                    if register_readout is None
+                    else register_readout(candidate_register)
+                )
+                slot_logits.append(decode(decoded))
+            if next_state is None or not slot_logits:
+                raise ValueError("program route probing requires at least one slot")
+            register_state = next_state
+            stacked_logits = torch.stack(tuple(slot_logits), dim=1)
+            weights = sequence_program_memory.route_weights(
+                sequence_program_route_query
+            )
+            route_probe_logits.append(stacked_logits)
+            return torch.einsum("bs,bsa->ba", weights, stacked_logits), register_state.register
         if sequence_program_codes is not None:
             register, next_state = machine.observe_register(
                 event=event,
@@ -411,7 +472,7 @@ def _rollout(
         logits, value_state = tick(
             frame,
             feedback,
-            collect_route_probe=route_probe,
+            collect_route_probe=route_probe or program_route_probe,
         )
         probabilities = logits.softmax(dim=-1)
         # Actions are sampled from this epsilon-smoothed behavior policy.  The
@@ -425,7 +486,7 @@ def _rollout(
         )
         reward = (action == correct).to(logits.dtype)
         delivered = reward.roll(1) if shuffle_outcomes else reward
-        if route_probe:
+        if route_probe or program_route_probe:
             attempted = torch.tensor(
                 [[0, 1]], dtype=torch.long, device=device
             ).expand(batch_size, -1)
@@ -438,8 +499,10 @@ def _rollout(
                 utilities.unsqueeze(1).expand_as(slot_logits),
                 reduction="none",
             ).mean(dim=-1)
-            route_weights = sequence_operator_memory.route_weights(
-                sequence_operator_route_query
+            route_weights = (
+                sequence_operator_memory.route_weights(sequence_operator_route_query)
+                if route_probe
+                else sequence_program_memory.route_weights(sequence_program_route_query)
             )
             loss = (route_weights * slot_losses).sum(dim=-1).mean()
         elif credit_mode == "paired_counterfactual":
@@ -740,6 +803,9 @@ def _accuracy(
     sequence_operator_route_query: torch.Tensor | None = None,
     decoder_context: torch.Tensor | None = None,
     sequence_program_codes: torch.Tensor | None = None,
+    sequence_program_memory=None,
+    sequence_program_route_query: torch.Tensor | None = None,
+    program_route_probe: bool = False,
     count: int,
     span: int,
     seed: int,
@@ -781,6 +847,9 @@ def _accuracy(
             sequence_operator_route_query=sequence_operator_route_query,
             decoder_context=decoder_context,
             sequence_program_codes=sequence_program_codes,
+            sequence_program_memory=sequence_program_memory,
+            sequence_program_route_query=sequence_program_route_query,
+            program_route_probe=program_route_probe,
             train_decoder=False,
             shuffle_outcomes=shuffle_outcomes,
             credit_mode=credit_mode,

@@ -1071,3 +1071,10 @@ program data rather than new transition networks. It is retained as the
 leading architecture, but not promoted until replication closes the gap and
 the route is learned rather than slot-indexed. Raw report:
 `protected_bounded_meta_program_memory/report_seed69316.json`.
+
+Learned soft routing over those executable program slots was then tested with
+the same six-slot counterfactual outcome credit. It fell to `0.6875`
+(`0.7656, 0.7188, 0.8047, 0.7344, 0.6875, 0.7500`) while retaining source
+skills exactly. Routing is therefore not promoted; fixed program-slot
+execution is currently more reliable than learned soft selection. Raw report:
+`protected_bounded_meta_program_router/report_seed69316.json`.
