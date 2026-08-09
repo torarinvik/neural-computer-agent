@@ -575,6 +575,61 @@ def test_online_router_persists_provisional_evidence_window() -> None:
     assert restored.state_payload()["bank"]["sha256"] == bank.digest()
 
 
+def test_online_router_promotes_candidate_with_verified_capacity_growth() -> None:
+    torch.manual_seed(1215)
+    bank = ExternalTransitionModelBank(2, 1, 4, hidden_width=8, capacity=1)
+    encoder = ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4)
+    source_index = bank.ensure_context(torch.tensor([1.0, 0.0, 0.0, 0.0]))
+    source_digest = bank.models[source_index].digest()
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        encoder,
+        match_tolerance=1e-8,
+        continuation_tolerance=1e9,
+        admission_observations=2,
+        max_contexts=2,
+        defer_admission=True,
+    )
+    rows = [
+        ExternalTransitionObservation(
+            state=torch.tensor([[0.1, 0.2]]),
+            intention=torch.tensor([[0.3]]),
+            next_state=torch.tensor([[0.7, -0.4]]),
+            confidence=torch.ones(1),
+        ),
+        ExternalTransitionObservation(
+            state=torch.tensor([[0.2, 0.1]]),
+            intention=torch.tensor([[-0.3]]),
+            next_state=torch.tensor([[0.4, -0.6]]),
+            confidence=torch.ones(1),
+        ),
+    ]
+    router.observe(rows[0])
+    staged = router.observe(rows[1])
+    optimizer = torch.optim.Adam(router.provisional_model.parameters(), lr=0.03)
+    for _ in range(80):
+        router.adaptation_step(staged, optimizer)
+
+    receipt = router.promote_staged_candidate(
+        ExternalTransitionObservation(
+            state=torch.cat([row.state for row in rows]),
+            intention=torch.cat([row.intention for row in rows]),
+            next_state=torch.cat([row.next_state for row in rows]),
+            confidence=torch.ones(2),
+        ),
+        lambda candidate: candidate.context_count == 2
+        and candidate.models[0].digest() == source_digest,
+        prediction_tolerance=0.05,
+        destination_capacity=2,
+    )
+
+    assert receipt.accepted
+    assert router.bank.capacity == 2
+    assert router.max_contexts == 2
+    assert router.bank.context_count == 2
+    assert router.bank.models[0].digest() == source_digest
+
+
 def test_online_router_isolates_alternating_provisional_candidates() -> None:
     torch.manual_seed(1214)
     bank = ExternalTransitionModelBank(2, 1, 4, hidden_width=8, capacity=3)

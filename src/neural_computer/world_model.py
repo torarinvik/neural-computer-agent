@@ -2056,11 +2056,30 @@ class ExternalOnlineTransitionContextRouter:
         *,
         prediction_tolerance: float = 0.05,
         candidate_index: int = 0,
+        destination_capacity: int | None = None,
     ) -> ExternalTransitionModelCandidateReceipt:
-        """Commit a provisional model only after held-out and retention proof."""
+        """Commit a provisional model only after held-out and retention proof.
+
+        When the committed bank is full, ``destination_capacity`` can request
+        an atomic metadata-only capacity expansion as part of the same
+        copy-on-write candidate transaction. Existing model content is copied
+        before the candidate is tested; a failed candidate never changes the
+        live capacity or slots.
+        """
 
         if prediction_tolerance < 0.0:
             raise ValueError("candidate prediction tolerance cannot be negative")
+        if destination_capacity is not None:
+            if not isinstance(destination_capacity, int):
+                raise TypeError("destination capacity must be an integer")
+            if self.bank.capacity is None:
+                raise ValueError(
+                    "destination capacity requires a bounded model bank"
+                )
+            if destination_capacity <= self.bank.capacity:
+                raise ValueError(
+                    "destination capacity must exceed current model-bank capacity"
+                )
         heldout_observation.validate(
             state_width=self.bank.state_width,
             intention_width=self.bank.intention_width,
@@ -2087,7 +2106,11 @@ class ExternalOnlineTransitionContextRouter:
                 content_digest_after=before,
                 reason="no provisional candidate is staged",
             ).validate()
-        if self.bank.capacity is not None and self.bank.context_count >= self.bank.capacity:
+        if (
+            destination_capacity is None
+            and self.bank.capacity is not None
+            and self.bank.context_count >= self.bank.capacity
+        ):
             return ExternalTransitionModelCandidateReceipt(
                 accepted=False,
                 slot_index=None,
@@ -2100,6 +2123,16 @@ class ExternalOnlineTransitionContextRouter:
             ).validate()
 
         candidate_bank = ExternalTransitionModelBank.from_payload(self.bank.payload())
+        target_capacity = (
+            self.bank.capacity
+            if destination_capacity is None
+            else destination_capacity
+        )
+        if target_capacity is not None:
+            candidate_content_before_growth = candidate_bank.content_digest()
+            candidate_bank.capacity = target_capacity
+            if candidate_bank.content_digest() != candidate_content_before_growth:
+                raise RuntimeError("candidate capacity growth changed model content")
         candidate_count_before = candidate_bank.context_count
         bank_candidate_index = candidate_bank.ensure_context(context)
         if bank_candidate_index != candidate_count_before:
@@ -2151,6 +2184,10 @@ class ExternalOnlineTransitionContextRouter:
         promoted_model.load_state_dict(model.state_dict())
         self.bank._contexts.append(context.detach().cpu().clone())
         self.bank.models.append(promoted_model)
+        if destination_capacity is not None:
+            self.bank.capacity = destination_capacity
+            if self.max_contexts is not None:
+                self.max_contexts = destination_capacity
         after = self.bank.content_digest()
         slot_index = self.bank.context_count - 1
         self._active_slot = slot_index
@@ -2164,7 +2201,12 @@ class ExternalOnlineTransitionContextRouter:
             candidate_digest=candidate_digest,
             content_digest_before=before,
             content_digest_after=after,
-            reason="held-out and retention-verified candidate promotion committed",
+            reason=(
+                "held-out and retention-verified candidate promotion with "
+                "capacity growth committed"
+                if destination_capacity is not None
+                else "held-out and retention-verified candidate promotion committed"
+            ),
         ).validate()
 
     @staticmethod

@@ -27,6 +27,11 @@ stream from silently contaminating an earlier candidate; the focused
 alternating-isolation regression covers staging, payload restore, promotion of
 the second candidate, and byte stability of the first.
 
+When the committed bank is full, `promote_staged_candidate` can now request a
+larger bounded capacity in the same copy-on-write transaction. Capacity is
+expanded only in the disposable candidate bank; held-out prediction and the
+retention probe must pass before the live capacity and model slot are changed.
+
 ```text
 .venv/bin/python experiments/external_provisional_candidate_promotion/train.py \
   --seed 70611 \

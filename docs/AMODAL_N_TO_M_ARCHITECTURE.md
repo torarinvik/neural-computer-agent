@@ -4835,3 +4835,21 @@ gates, and the first candidate's digest remained unchanged. The complete suite p
 yet general continual learning: candidate capacity is finite, candidate
 evidence is still replayed within each quarantine, and multi-candidate
 promotion still requires caller-owned held-out verification.
+
+## Candidate-driven verifier-gated capacity growth (2026-08-09)
+
+The candidate lifecycle now closes the full-capacity transition. When a
+committed bank is full, `promote_staged_candidate` may receive a larger
+`destination_capacity`. The disposable candidate bank expands capacity as
+metadata only, checks that its content digest is unchanged, appends the
+candidate, and runs the held-out and caller-owned retention gates. Only after
+both pass does the live bank capacity and slot change; a rejection leaves both
+unchanged. The router's logical candidate capacity is updated atomically with
+the bank.
+
+A focused regression passed this transaction with a one-slot bank: the
+candidate was promoted into capacity two, the source slot remained byte-stable,
+and the router and bank capacities stayed synchronized. This improves the
+memory lifecycle but remains bounded continual learning; it does not provide
+unrestricted growth, learned eviction, or compression of active candidate
+evidence.
