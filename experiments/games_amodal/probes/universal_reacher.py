@@ -36,7 +36,12 @@ import json
 
 import torch
 
-from experiments.games_amodal.game_family import FamilyConfig, FamilyVerifier
+from experiments.games_amodal.game_family import (
+    FamilyConfig,
+    FamilyVerifier,
+    egocentric_crop,
+    egocentric_view,
+)
 from experiments.games_amodal.shared_controller import (
     SHARED_SCREEN_CHANNELS,
     SharedControllerAgent,
@@ -54,6 +59,13 @@ parser.add_argument("--gamma", type=float, default=0.9)
 parser.add_argument("--width", type=int, default=64)
 parser.add_argument("--hidden", type=int, default=32)
 parser.add_argument("--eval-batches", type=int, default=4)
+parser.add_argument("--view", choices=("none", "roll", "crop"), default="none",
+                    help="egocentric view: the avatar sits at the centre, so "
+                         "absolute position stops mattering and the encoder "
+                         "only has to convey the target's RELATIVE offset. "
+                         "A linear probe reads absolute position out of the "
+                         "allocentric encoder at 0.69/axis -- present but "
+                         "~30%% wrong, which is 'approaches, misses by a cell'.")
 parser.add_argument(
     "--holdout-quadrant", action="store_true", default=True,
     help="reserve the bottom-right quadrant of targets for the held-out gate")
@@ -77,6 +89,14 @@ decoder = agent.runtime.output_bus.decoders["keypress"]
 goal_encoder = torch.nn.Linear(2, args.width)
 params = plant + list(goal_encoder.parameters())
 optimizer = torch.optim.Adam(params, lr=1e-3)
+
+
+def viewed(grid: torch.Tensor) -> torch.Tensor:
+    if args.view == "roll":
+        return egocentric_view(grid)
+    if args.view == "crop":
+        return egocentric_crop(grid)
+    return grid
 
 
 def avatar_cells(observation: torch.Tensor) -> torch.Tensor:
@@ -119,8 +139,9 @@ def rollout(targets: torch.Tensor, *, seed: int, sample: bool,
     rng = torch.Generator().manual_seed(seed + 5)
     goal_payload = encode(targets)
     rewards, logps, actions, arrived = [], [], [], torch.zeros(args.batch_size)
-    observation = pad_channels(verifier.observation(), SHARED_SCREEN_CHANNELS)
-    gap = (avatar_cells(observation) - targets).abs().sum(dim=-1).float()
+    raw = pad_channels(verifier.observation(), SHARED_SCREEN_CHANNELS)
+    observation = viewed(raw)
+    gap = (avatar_cells(raw) - targets).abs().sum(dim=-1).float()
     for _step in range(args.steps):
         events = [agent.runtime.encoders["screen"](observation),
                   AmodalEvent(payload=goal_payload)]
@@ -136,9 +157,9 @@ def rollout(targets: torch.Tensor, *, seed: int, sample: bool,
             logps.append(decision.propensity.clamp_min(1e-8).log())
         actions.append(acts)
         verifier.step(acts)
-        observation = pad_channels(
-            verifier.observation(), SHARED_SCREEN_CHANNELS)
-        new_gap = (avatar_cells(observation) - targets).abs().sum(dim=-1).float()
+        raw = pad_channels(verifier.observation(), SHARED_SCREEN_CHANNELS)
+        observation = viewed(raw)
+        new_gap = (avatar_cells(raw) - targets).abs().sum(dim=-1).float()
         # Progress reward, self-computed: closer is better, arriving pays.
         step_reward = (gap - new_gap) + 2.0 * (new_gap == 0).float()
         arrived = torch.maximum(arrived, (new_gap == 0).float())
