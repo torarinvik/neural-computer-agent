@@ -512,6 +512,23 @@
       "retention_deltas": "exact zero in the short probe",
       "sequence_result": "not interpretable",
       "decision": "reject as under-trained; persist and reuse mastered source checkpoints before the next sequence rung"
+    },
+    {
+      "experiment": "protected_bounded_meta_persisted_source_sequence64",
+      "date": "2026-08-09",
+      "seeds": [69316],
+      "claim": "An isolated bounded meta residual can learn an opaque source chain from a persisted mastered source checkpoint without changing earlier primitives.",
+      "operator_mode": "factorized_protected_bounded_meta",
+      "source_checkpoint": "artifacts/checkpoints/protected_bounded_meta_source_seed69316.pt",
+      "sequence_calibration_updates": 64,
+      "sequence_calibration_trainable_surface": "operator_meta_residual_plus_temporary_decoders",
+      "composition_program_count": 1,
+      "replayed_examples": 0,
+      "source_mastery": "passed; reloaded source scores 0.96875–0.9765625",
+      "sequence_progress": "0.625 at update 16, 0.71875 at 32, 0.7578125 at 48, 0.8046875 at 64",
+      "retention_deltas": "exact zero",
+      "fresh_transfer": "negative; fresh accuracy 0.375",
+      "decision": "retain as the strongest current continual-memory signal; do not promote until replicated across seeds and orderings"
     }
   ]
 }

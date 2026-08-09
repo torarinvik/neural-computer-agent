@@ -49,12 +49,91 @@ from .train import (
 TARGET_OPERATIONS = ("complement_rotate", "prefix_parity")
 COMPOSITION_PROGRAMS = tuple(permutations(SOURCE_OPERATIONS))
 MASTERY_THRESHOLD = 0.8
+SOURCE_CHECKPOINT_SCHEMA = (
+    "neural-computer.external-register-source-checkpoint.v1"
+)
 
 
 def _instruction_context(instructions) -> torch.Tensor:
     return torch.stack(
         tuple(instruction.code.detach().squeeze(0) for instruction in instructions)
     ).mean(dim=0)
+
+
+def _save_source_checkpoint(
+    path: Path,
+    *,
+    parent,
+    machine,
+    source_decoders: list[OpaqueProtocolDecoder],
+    source_operations: tuple[str, ...],
+    source_scores: list[float],
+) -> None:
+    """Persist only a verified mastered source bank for later diagnostics."""
+
+    if min(source_scores, default=0.0) < MASTERY_THRESHOLD:
+        raise ValueError("refusing to save an unmastered source checkpoint")
+    payload = {
+        "schema": SOURCE_CHECKPOINT_SCHEMA,
+        "operator_mode": machine.operator_mode,
+        "operator_rank": machine.operator_rank,
+        "source_operations": list(source_operations),
+        "source_scores": list(source_scores),
+        "machine_configuration": machine.configuration(),
+        "parent_state": {
+            name: value.detach().cpu().clone()
+            for name, value in parent.state_dict().items()
+        },
+        "machine_state": {
+            name: value.detach().cpu().clone()
+            for name, value in machine.state_dict().items()
+        },
+        "source_decoder_states": [
+            {
+                name: value.detach().cpu().clone()
+                for name, value in decoder.state_dict().items()
+            }
+            for decoder in source_decoders
+        ],
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(payload, path)
+
+
+def _load_source_checkpoint(
+    path: Path,
+    *,
+    parent,
+    machine,
+    source_operations: tuple[str, ...],
+) -> list[OpaqueProtocolDecoder]:
+    """Load and validate a previously verified source bank."""
+
+    payload = torch.load(path, map_location="cpu", weights_only=False)
+    if payload.get("schema") != SOURCE_CHECKPOINT_SCHEMA:
+        raise ValueError("unsupported source checkpoint schema")
+    if payload.get("operator_mode") != machine.operator_mode:
+        raise ValueError("source checkpoint operator mode does not match")
+    if payload.get("operator_rank") != machine.operator_rank:
+        raise ValueError("source checkpoint operator rank does not match")
+    if tuple(payload.get("source_operations", ())) != source_operations:
+        raise ValueError("source checkpoint source order does not match")
+    source_scores = tuple(float(value) for value in payload.get("source_scores", ()))
+    if len(source_scores) != len(source_operations):
+        raise ValueError("source checkpoint decoder count does not match")
+    if min(source_scores, default=0.0) < MASTERY_THRESHOLD:
+        raise ValueError("source checkpoint is below the mastery threshold")
+    parent.load_state_dict(payload["parent_state"], strict=True)
+    machine.load_state_dict(payload["machine_state"], strict=True)
+    decoder_states = payload["source_decoder_states"]
+    if len(decoder_states) != len(source_operations):
+        raise ValueError("source checkpoint decoder count does not match")
+    decoders = []
+    for state in decoder_states:
+        decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
+        decoder.load_state_dict(state, strict=True)
+        decoders.append(decoder)
+    return decoders
 
 
 def _score(
@@ -884,6 +963,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("joint source updates cannot be negative")
     if args.sequence_calibration_updates < 0:
         raise ValueError("sequence calibration updates cannot be negative")
+    if args.source_checkpoint_in and args.joint_source_updates:
+        raise ValueError("source checkpoint input cannot be combined with source calibration")
     if args.reuse_shared_bridge_prior and args.reuse_conditioned_bridge_prior:
         raise ValueError("choose one bridge prior mode")
     args.reuse_shared_bridge_prior = (
@@ -914,7 +995,16 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         machine.add_basis_slot()
     source_decoders = []
     source_attempt_counts = []
-    if args.joint_source_updates:
+    source_checkpoint_loaded = args.source_checkpoint_in is not None
+    if source_checkpoint_loaded:
+        source_decoders = _load_source_checkpoint(
+            args.source_checkpoint_in,
+            parent=parent,
+            machine=machine,
+            source_operations=args.source_operations,
+        )
+        source_attempt_counts = [["loaded_checkpoint"] for _ in source_decoders]
+    elif args.joint_source_updates:
         source_decoders = _train_joint_source_bank(
             parent,
             machine,
@@ -942,7 +1032,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         ]
     for index in (
         range(len(args.source_operations))
-        if not args.joint_source_updates
+        if not args.joint_source_updates and not source_checkpoint_loaded
         else ()
     ):
         source_parent = copy.deepcopy(machine)
@@ -1018,6 +1108,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         )
 
     source_before = [source_score(spec, index) for index, spec in enumerate(source_specs)]
+    if args.source_checkpoint_out:
+        _save_source_checkpoint(
+            args.source_checkpoint_out,
+            parent=parent,
+            machine=machine,
+            source_decoders=source_decoders,
+            source_operations=args.source_operations,
+            source_scores=source_before,
+        )
     sequence_calibration_progress: list[dict[str, object]] = []
     sequence_calibration_source_after = list(source_before)
     sequence_calibration_accepted = False
@@ -1593,6 +1692,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         if args.reuse_shared_bridge_prior
         else None,
         "source_before": source_before,
+        "source_checkpoint_loaded": source_checkpoint_loaded,
+        "source_checkpoint_out": (
+            str(args.source_checkpoint_out)
+            if args.source_checkpoint_out is not None
+            else None
+        ),
         "source_attempt_scores": source_attempt_counts,
         "retained_before": retained_before,
         "bridge_prior_source_after": bridge_prior_source_after,
@@ -1685,6 +1790,18 @@ def main() -> None:
         type=int,
         default=0,
         help="balanced source-bank calibration updates (diagnostic upper bound)",
+    )
+    parser.add_argument(
+        "--source-checkpoint-in",
+        type=Path,
+        default=None,
+        help="load a previously verified mastered source bank",
+    )
+    parser.add_argument(
+        "--source-checkpoint-out",
+        type=Path,
+        default=None,
+        help="save the source bank only when every source passes mastery",
     )
     parser.add_argument("--source-restarts", type=int, default=1)
     parser.add_argument(

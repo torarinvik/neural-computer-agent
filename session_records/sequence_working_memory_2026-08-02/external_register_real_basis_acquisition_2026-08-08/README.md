@@ -896,6 +896,24 @@ over-budget diagnostic before producing a report. The next experiment is a
 short, properly bounded meta-only sequence calibration from this mastered
 checkpoint.
 
+## Persisted source checkpoint — valid parent/controller boundary
+
+Source capability is relative to the trained parent runtime, not only the
+external register. The persisted source checkpoint therefore stores and
+validates the parent state, bounded protected-meta machine state, and opaque
+source decoders together. A first checkpoint for seed `69316` passed source
+mastery at `0.9648–0.9727`; reload reproduced `0.96875–0.97656` source scores.
+
+## Meta-only sequence calibration from persisted source — promising, not promoted
+
+With the parent and source bank restored, only `operator_meta_*` and temporary
+sequence decoders were trainable. On one ordering, the sequence floor rose
+monotonically from `0.625` at update 16 to `0.8047` at update 64, while source
+retention remained exact (`0.96875–0.97656`, zero deltas). This is the strongest
+protected continual-memory signal so far, but it is only one seed and one
+ordering; fresh transfer remained negative and no promotion gate was met.
+The next rung is a matched second seed plus additional orderings.
+
 ## Protected bounded-meta sequence calibration — short rung under-trained
 
 The sequence-calibration optimizer now correctly freezes the entire machine
