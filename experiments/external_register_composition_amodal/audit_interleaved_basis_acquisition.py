@@ -42,7 +42,7 @@ from .train import (
     _rollout,
 )
 
-TARGET_OPERATIONS = ("complement_rotate", "prefix_parity")
+TARGET_OPERATIONS = ("complement_rotate", "prefix_parity", "global_parity")
 MASTERY_THRESHOLD = 0.8
 
 
@@ -189,6 +189,13 @@ def _prepare_candidates(parent, machine, operations: tuple[str, ...]) -> list[di
 
 def run(args: argparse.Namespace) -> dict[str, object]:
     torch.set_num_threads(1)
+    target_operations = tuple(
+        operation for operation in args.target_operations.split(",") if operation
+    )
+    if not target_operations:
+        raise ValueError("at least one target operation is required")
+    if args.source_restarts < 1:
+        raise ValueError("source restarts must be positive")
     parent = _runtime(seed=args.seed, growth=False)
     _train_with_progress(
         parent,
@@ -203,17 +210,58 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     )
     parent.eval()
     machine = _new_machine(
-        len(SOURCE_OPERATIONS) + len(TARGET_OPERATIONS),
+        len(SOURCE_OPERATIONS),
         operator_mode=args.operator_mode,
     )
     for _ in SOURCE_OPERATIONS:
         machine.add_basis_slot()
-    source_decoders = [
-        OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
-        for _ in SOURCE_OPERATIONS
-    ]
-    for index, decoder in enumerate(source_decoders):
-        _train_source(parent, machine, decoder, index, args)
+    source_decoders = []
+    source_attempt_counts = []
+    for index in range(len(SOURCE_OPERATIONS)):
+        source_parent = copy.deepcopy(machine)
+        best_machine_state = None
+        best_decoder_state = None
+        best_score = float("-inf")
+        attempts = []
+        for attempt in range(args.source_restarts):
+            candidate_machine = copy.deepcopy(source_parent)
+            candidate_decoder = OpaqueProtocolDecoder(
+                REGISTER_WIDTH, ACTION_WIDTH, hidden=16
+            )
+            attempt_args = copy.copy(args)
+            attempt_args.seed = args.seed + index * 100_003 + attempt * 1_000_000
+            _train_source(
+                parent, candidate_machine, candidate_decoder, index, attempt_args
+            )
+            candidate_score = _accuracy(
+                parent,
+                candidate_machine,
+                candidate_decoder,
+                operation=SOURCE_OPERATIONS[index],
+                instructions=(candidate_machine.instructions[index],),
+                basis_slots=(index,),
+                count=args.source_selection_audit_count,
+                span=args.span,
+                seed=args.seed + 60_000 + index * 101 + index * 1009,
+                credit_mode="paired_counterfactual",
+            )
+            attempts.append(candidate_score)
+            if candidate_score > best_score:
+                best_score = candidate_score
+                best_machine_state = {
+                    name: value.detach().clone()
+                    for name, value in candidate_machine.state_dict().items()
+                }
+                best_decoder_state = {
+                    name: value.detach().clone()
+                    for name, value in candidate_decoder.state_dict().items()
+                }
+        assert best_machine_state is not None and best_decoder_state is not None
+        machine.load_state_dict(best_machine_state, strict=True)
+        decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
+        decoder.load_state_dict(best_decoder_state, strict=True)
+        source_decoders.append(decoder)
+        source_attempt_counts.append(attempts)
 
     source_specs = [
         (operation, machine.instructions[index], decoder, index)
@@ -222,7 +270,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         )
     ]
 
-    def source_score(spec, offset: int) -> float:
+    def source_score(spec, index: int) -> float:
         operation, instruction, decoder, basis_slot = spec
         return _accuracy(
             parent,
@@ -231,17 +279,25 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             operation=operation,
             instructions=(instruction,),
             basis_slots=(basis_slot,),
-            count=args.audit_count,
+            count=args.source_selection_audit_count,
             span=args.span,
-            seed=args.seed + 70_000 + offset,
+            seed=args.seed + 60_000 + index * 101 + index * 1009,
             credit_mode="paired_counterfactual",
         )
 
     source_before = [source_score(spec, index) for index, spec in enumerate(source_specs)]
+    source_attempt_count = sum(len(attempts) for attempts in source_attempt_counts)
+    # Do not allocate future target instructions until source acquisition is
+    # complete.  The first source phase trains machine parameters jointly; if
+    # future capacity exists already, it becomes an accidental optimizer
+    # participant and source quality depends on the number of capabilities we
+    # happened to reserve for later.
+    for _ in target_operations:
+        machine.add_instruction(ExternalRegisterInstruction(INSTRUCTION_WIDTH))
     pre_growth_machine = copy.deepcopy(machine)
-    candidates = _prepare_candidates(parent, machine, TARGET_OPERATIONS)
+    candidates = _prepare_candidates(parent, machine, target_operations)
     retained_before = [
-        source_score(spec, index + 10_000) for index, spec in enumerate(source_specs)
+        source_score(spec, index) for index, spec in enumerate(source_specs)
     ]
     _freeze(machine)
     for candidate in candidates:
@@ -300,7 +356,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
 
     shuffled_machine = copy.deepcopy(pre_growth_machine)
     shuffled_candidates = _prepare_candidates(
-        parent, shuffled_machine, TARGET_OPERATIONS
+        parent, shuffled_machine, target_operations
     )
     _freeze(shuffled_machine)
     for candidate in shuffled_candidates:
@@ -331,7 +387,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     records = []
     for index, candidate in enumerate(candidates):
         retained_after = [
-            source_score(spec, index + 20_000 + offset)
+            source_score(spec, offset)
             for offset, spec in enumerate(source_specs)
         ]
         score = _score(
@@ -399,7 +455,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         # leave one candidate admitted when the paired pressure test fails.
         machine = pre_growth_machine
 
-    candidate_count = len(TARGET_OPERATIONS)
+    candidate_count = len(target_operations)
     source_selection_evaluations = (
         (args.source_updates + args.eval_every - 1) // args.eval_every
     )
@@ -416,24 +472,24 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     audit_lifetimes = (
         candidate_count * args.audit_count * 3
         + candidate_count * args.consolidation_audit_count
-        + len(source_specs) * args.audit_count * 3
-        + source_selection_evaluations * len(source_specs) * args.source_selection_audit_count
+        + len(source_specs) * args.source_selection_audit_count * 3
+        + source_selection_evaluations * source_attempt_count * args.source_selection_audit_count
         + phase_audit_lifetimes * 2
     )
     logical_lifetimes = (
         args.parent_updates * args.batch_size
-        + args.source_updates * len(SOURCE_OPERATIONS) * args.batch_size
+        + args.source_updates * source_attempt_count * args.batch_size
         + normal_target_training_lifetimes
         + shuffled_target_training_lifetimes
         + audit_lifetimes
     )
     parent_training_bits = args.parent_updates * args.batch_size * 2 * 2
     source_training_bits = (
-        args.source_updates * len(SOURCE_OPERATIONS) * args.batch_size * args.span * 2
+        args.source_updates * source_attempt_count * args.batch_size * args.span * 2
     )
     source_selection_bits = (
         source_selection_evaluations
-        * len(SOURCE_OPERATIONS)
+        * source_attempt_count
         * args.source_selection_audit_count
         * args.span
         * 2
@@ -454,7 +510,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     suite_and_control_bits = (
         candidate_count * args.audit_count * 3 * args.span * 2
         + candidate_count * args.consolidation_audit_count * args.span * 2
-        + len(source_specs) * args.audit_count * 3 * args.span * 2
+        + len(source_specs) * args.source_selection_audit_count * 3 * args.span * 2
     )
     unique_verifier_bits = (
         parent_training_bits
@@ -469,8 +525,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "schema": "neural-computer.external-register-interleaved-basis-acquisition-audit.v1",
         "seed": args.seed,
         "source_operations": list(SOURCE_OPERATIONS),
-        "target_operations": list(TARGET_OPERATIONS),
+        "target_operations": list(target_operations),
         "source_before": source_before,
+        "source_attempt_scores": source_attempt_counts,
         "retained_before": retained_before,
         "targets": records,
         "interleaving": {
@@ -491,7 +548,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "unique_verifier_bits": unique_verifier_bits,
             "optimizer_updates": (
                 args.parent_updates
-                + args.source_updates * len(SOURCE_OPERATIONS)
+                + args.source_updates * source_attempt_count
                 + candidate_count * (args.warmup_updates + args.focus_updates + args.target_updates)
                 + candidate_count * (args.warmup_updates + args.focus_updates + args.target_updates)
             ),
@@ -510,6 +567,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=69316)
     parser.add_argument("--parent-updates", type=int, default=32)
     parser.add_argument("--source-updates", type=int, default=192)
+    parser.add_argument("--source-restarts", type=int, default=1)
     parser.add_argument("--warmup-updates", type=int, default=64)
     parser.add_argument("--focus-updates", type=int, default=64)
     parser.add_argument("--target-updates", type=int, default=512)
@@ -524,7 +582,10 @@ def main() -> None:
         "--restore-best-source-checkpoint", action="store_true", default=True
     )
     parser.add_argument("--learning-rate", type=float, default=1e-3)
-    parser.add_argument("--operator-mode", default="factorized_bounded_residual")
+    parser.add_argument("--operator-mode", default="factorized_low_rank")
+    parser.add_argument(
+        "--target-operations", default=",".join(TARGET_OPERATIONS)
+    )
     parser.add_argument("--retention-regression-tolerance", type=float, default=0.02)
     args = parser.parse_args()
     print(json.dumps(run(args), indent=2))

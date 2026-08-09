@@ -421,13 +421,33 @@ gate admitted both candidates only if both passed retention and causal controls.
 Both seeds promoted both targets. Seed `69316` reached candidate accuracies
 `0.9844`/`0.8984`; seed `69317` reached `0.9688`/`0.9453`. Shuffled-training
 controls were `0.6172`/`0.5938` and `0.5547`/`0.5313`; missing-evidence scores
-were exactly `0.5`; all retention deltas were non-negative. Each run used
-`406,784` verifier bits, `52,576` logical lifetimes, `1,888` optimizer updates,
-and zero replay.
+were exactly `0.5`; the corrected paired-suite retention deltas were all zero.
+Each run used `406,272` verifier bits, `53,152` logical lifetimes, `3,168`
+optimizer updates, and zero replay. The accounting includes the independently
+trained shuffled-outcome pair.
 
 During this work the external event bridge was also repaired: the frozen
 parent remains detached, but bridge parameters now receive gradients. A
 regression test proves both properties. This makes the interleaved result a
 valid learned-boundary measurement rather than a fixed random bridge screen.
-The next frontier is interleaving more than two mutable capabilities and
-testing genuine composition transfer under that concurrent plasticity.
+
+## Interleaved three-target acquisition — promoted replicated rung
+
+The three-way audit trained `complement_rotate`, `prefix_parity`, and
+`global_parity` in the same round-robin schedule. The source machine was built
+with source instructions only; target instructions and basis capacity were
+appended only after source acquisition. The operator family was the
+factorized low-rank implementation, because the bounded-residual family did
+not meet the source floor in this configuration.
+
+Both seeds promoted all three concurrent targets with exact zero retention
+deltas. Seed `69316` candidate accuracies were `0.9688`, `0.9063`, and
+`0.9922`; seed `69317` reached `1.0000`, `0.9844`, and `1.0000`. Shuffled
+controls stayed below `0.586`, missing evidence remained `0.5`, and the
+source floors were `0.8086`/`0.8477`/`0.8828` and
+`0.9961`/`0.9063`/`0.9688`. Each run used `570,368` verifier bits,
+`74,720` logical lifetimes, `4,448` optimizer updates, and zero replay.
+
+This is the strongest concurrent-plasticity result in this path so far. The
+remaining frontier is concurrent compositional transfer with more than one
+composition family, not merely more independent target slots.

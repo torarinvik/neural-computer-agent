@@ -34,12 +34,12 @@
       ],
       "retained_after": [
         1.0,
-        0.84375,
+        0.8203125,
         0.90625
       ],
       "retention_deltas": [
         0.0,
-        0.0234375,
+        0.0,
         0.0
       ],
       "candidate_progress": [
@@ -91,13 +91,13 @@
       ],
       "retained_after": [
         1.0,
-        0.8359375,
-        0.921875
+        0.8203125,
+        0.90625
       ],
       "retention_deltas": [
         0.0,
-        0.015625,
-        0.015625
+        0.0,
+        0.0
       ],
       "candidate_progress": [
         {
@@ -144,9 +144,16 @@
   },
   "accounting": {
     "replayed_examples": 0,
-    "unique_verifier_bits": 406784,
-    "optimizer_updates": 1888,
-    "unique_logical_lifetimes": 52576
+    "parent_training_verifier_bits": 2048,
+    "source_training_verifier_bits": 73728,
+    "source_selection_verifier_bits": 4608,
+    "normal_target_training_verifier_bits": 155648,
+    "shuffled_target_training_verifier_bits": 155648,
+    "progress_audit_verifier_bits": 9728,
+    "suite_and_control_verifier_bits": 4864,
+    "unique_verifier_bits": 406272,
+    "optimizer_updates": 3168,
+    "unique_logical_lifetimes": 53152
   },
   "promoted": true
 }

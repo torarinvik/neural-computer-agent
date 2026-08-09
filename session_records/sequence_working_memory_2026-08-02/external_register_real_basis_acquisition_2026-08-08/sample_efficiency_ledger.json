@@ -69,14 +69,28 @@
       "date": "2026-08-09",
       "seeds": [69316, 69317],
       "claim": "Two unseen external capabilities can learn concurrently with isolated optimizer state and retain prior source capabilities without replay.",
-      "unique_verifier_bits_per_run": 406784,
-      "unique_logical_lifetimes_per_run": 52576,
-      "optimizer_updates_per_run": 1888,
+      "unique_verifier_bits_per_run": 406272,
+      "unique_logical_lifetimes_per_run": 53152,
+      "optimizer_updates_per_run": 3168,
       "replayed_examples": 0,
       "stable_bits_to_threshold": "both candidates passed frozen consolidation probe gate",
       "retention_on_mastered_primitives": "all deltas non-negative; source floor passed",
       "transfer_ratio_against_fresh_learner": "not measured",
       "decision": "promote bounded interleaved two-target rung; composition under concurrent plasticity remains untested"
+    },
+    {
+      "experiment": "interleaved_three_target_low_rank_growth",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "Three unseen external capabilities can learn concurrently with independent optimizer state, a frozen source-only parent, and no replay.",
+      "unique_verifier_bits_per_run": 570368,
+      "unique_logical_lifetimes_per_run": 74720,
+      "optimizer_updates_per_run": 4448,
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": "all three candidates passed frozen consolidation probes in both seeds",
+      "retention_on_mastered_primitives": "all paired fixed-suite deltas zero; source floor passed",
+      "transfer_ratio_against_fresh_learner": "not measured",
+      "decision": "promote bounded interleaved three-target low-rank rung; concurrent multi-family composition remains untested"
     }
   ]
 }

@@ -124,9 +124,9 @@
     {
       "name": "interleaved_two_target_mutable_growth",
       "decision": "promote_replicated_interleaved_growth_rung",
-      "verifier_bits_per_run": 406784,
-      "logical_lifetimes_per_run": 52576,
-      "optimizer_updates_per_run": 1888,
+      "verifier_bits_per_run": 406272,
+      "logical_lifetimes_per_run": 53152,
+      "optimizer_updates_per_run": 3168,
       "frozen_candidate_probe_gate": "passed_for_both_targets_both_seeds",
       "source_retention": "passed",
       "causal_controls": "shuffled-training rejected; missing-evidence at 0.5",
@@ -135,9 +135,25 @@
       "schedule": "round_robin_per_local_update",
       "replayed_examples": 0,
       "event_bridge": "gradient-path repair verified"
+    },
+    {
+      "name": "interleaved_three_target_low_rank_growth",
+      "decision": "promote_replicated_interleaved_three_target_rung",
+      "verifier_bits_per_run": 570368,
+      "logical_lifetimes_per_run": 74720,
+      "optimizer_updates_per_run": 4448,
+      "frozen_candidate_probe_gate": "passed_for_all_three_targets_both_seeds",
+      "source_retention": "passed",
+      "causal_controls": "shuffled-training rejected; missing-evidence at 0.5",
+      "promoted_seeds": [69316, 69317],
+      "target_operations": ["complement_rotate", "prefix_parity", "global_parity"],
+      "schedule": "round_robin_per_local_update",
+      "operator_mode": "factorized_low_rank",
+      "replayed_examples": 0,
+      "source_construction": "source-only machine before target append"
     }
   ],
-  "next_frontier": "interleaved_three_plus_capabilities_and_composition_transfer",
+  "next_frontier": "concurrent_compositional_transfer_across_multiple_families",
   "candidate_event_bridge": {
     "decision": "retain_architecture_reject_current_learning_rung",
     "verifier_bits_per_run": 70656,
