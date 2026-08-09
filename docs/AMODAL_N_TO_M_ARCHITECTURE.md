@@ -4860,11 +4860,13 @@ The model bank now supports `evict_verified(index, retention_probe)`. It
 constructs a disposable payload clone, runs the caller's retention probe on
 the live bank and again after removing one logical context, then commits the
 new context/model lists only when both pass. Payload reconstruction preserves
-shared model aliases, so removing one logical alias cannot delete another
-context's parameters. Failed probes leave the live bank and digest unchanged.
+shared model aliases, so removing one aliased tail cannot delete another
+context's parameters. Middle-slot eviction is rejected because it would
+renumber opaque addresses; stable slot IDs or an explicit remapping protocol
+are still future work. Failed probes leave the live bank and digest unchanged.
 
-The focused regression accepted removal of a redundant aliased slot while
-retaining the source and third context, then rejected a destructive probe
-without mutation. This closes safe capacity reuse, but it is not learned
+The focused regression accepted removal of an aliased tail while retaining the
+source and another context, then rejected a non-tail/destructive probe without
+mutation. This closes safe capacity reuse, but it is not learned
 eviction: the retention probe remains caller-owned, and no slot is removed
 without an explicit verifier proof.

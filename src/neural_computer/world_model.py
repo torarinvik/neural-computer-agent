@@ -536,12 +536,14 @@ class ExternalTransitionModelBank(nn.Module):
     ) -> ExternalTransitionModelEvictionReceipt:
         """Remove one slot only after a disposable post-eviction proof.
 
+        Only the tail slot may be evicted until stable slot IDs/remapping are
+        introduced; removing a middle index would renumber opaque addresses.
         The live bank is untouched while the candidate is constructed and
         tested. The probe owns the definition of retained behavior; callers
         should include every still-required opaque context and its held-out
         verifier floor. Aliased model objects are reconstructed through the
-        normal payload boundary, so removing one logical context cannot
-        accidentally remove another context's shared parameters.
+        normal payload boundary, so removing the tail cannot accidentally
+        remove another context's shared parameters.
         """
 
         if not 0 <= index < self.context_count:
@@ -550,6 +552,21 @@ class ExternalTransitionModelBank(nn.Module):
             raise TypeError("transition-model eviction retention probe is invalid")
         before = self.content_digest()
         physical_before = self.physical_model_count
+        if index != self.context_count - 1:
+            return ExternalTransitionModelEvictionReceipt(
+                accepted=False,
+                evicted_index=index,
+                source_context_count=self.context_count,
+                destination_context_count=self.context_count,
+                physical_models_before=physical_before,
+                physical_models_after=physical_before,
+                content_digest_before=before,
+                content_digest_after=before,
+                reason=(
+                    "non-tail eviction rejected to preserve opaque slot "
+                    "indices"
+                ),
+            ).validate()
         if not bool(retention_probe(self)):
             return ExternalTransitionModelEvictionReceipt(
                 accepted=False,

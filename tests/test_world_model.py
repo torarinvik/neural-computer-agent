@@ -272,10 +272,10 @@ def test_transition_model_bank_eviction_is_verified_and_alias_safe() -> None:
         torch.tensor([0.0, 1.0, 0.0]),
         initialize_from=source,
     )
-    bank.models[redundant] = bank.models[source]
     retained = bank.ensure_context(torch.tensor([0.0, 0.0, 1.0]))
+    bank.models[retained] = bank.models[source]
     source_digest = bank.models[source].digest()
-    retained_context = bank.context_at(retained)
+    redundant_context = bank.context_at(redundant)
     content_before = bank.content_digest()
 
     def retention_probe(candidate: ExternalTransitionModelBank) -> bool:
@@ -284,11 +284,11 @@ def test_transition_model_bank_eviction_is_verified_and_alias_safe() -> None:
         return (
             candidate.context_count == 2
             and candidate.models[0].digest() == source_digest
-            and torch.equal(candidate.context_at(1), retained_context)
+            and torch.equal(candidate.context_at(1), redundant_context)
         )
 
     accepted = bank.evict_verified(
-        redundant,
+        retained,
         retention_probe,
     )
 
@@ -302,7 +302,10 @@ def test_transition_model_bank_eviction_is_verified_and_alias_safe() -> None:
     assert bank.content_digest() != content_before
     restored = ExternalTransitionModelBank.from_payload(bank.payload())
     assert restored.digest() == bank.digest()
-    rejected = bank.evict_verified(0, lambda _candidate: False)
+    non_tail = bank.evict_verified(0, lambda _candidate: True)
+    assert not non_tail.accepted
+    assert "slot indices" in non_tail.reason
+    rejected = bank.evict_verified(1, lambda _candidate: False)
     assert not rejected.accepted
     assert bank.context_count == 2
     assert bank.models[0].digest() == source_digest
