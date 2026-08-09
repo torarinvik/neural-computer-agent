@@ -180,7 +180,12 @@ def _rollout(
 ) -> tuple[torch.Tensor, torch.Tensor]:
     if execution_mode not in ("in_place", "read_execute"):
         raise ValueError(f"unknown execution mode: {execution_mode!r}")
-    if bridge_event_mode not in ("normal", "zero", "norm_matched_noise"):
+    if bridge_event_mode not in (
+        "normal",
+        "zero",
+        "cyclic_permutation",
+        "norm_matched_noise",
+    ):
         raise ValueError(f"unknown bridge event mode: {bridge_event_mode!r}")
     if bridge_state_mode not in ("normal", "zero"):
         raise ValueError(f"unknown bridge state mode: {bridge_state_mode!r}")
@@ -284,6 +289,11 @@ def _rollout(
             bridge_event = event
             if bridge_event_mode == "zero":
                 bridge_event = torch.zeros_like(bridge_event)
+            elif bridge_event_mode == "cyclic_permutation":
+                # A deterministic representation-space replacement used by
+                # trainer diagnostics. The controller never sees this raw
+                # transform; the bridge must learn to undo it.
+                bridge_event = torch.roll(bridge_event, shifts=1, dims=-1)
             elif bridge_event_mode == "norm_matched_noise":
                 # Deterministic, data-independent noise with the original
                 # row norm. This is a trainer-only corruption control; the
