@@ -360,6 +360,99 @@ class ExternalSequenceMemory(nn.Module):
         )
 
 
+class _ExternalSequenceOperatorSlot(nn.Module):
+    def __init__(
+        self,
+        register_width: int,
+        instruction_width: int,
+        operator_rank: int,
+    ) -> None:
+        super().__init__()
+        self.register_width = register_width
+        self.instruction_width = instruction_width
+        self.operator_rank = operator_rank
+        self.left = nn.Linear(
+            instruction_width, register_width * operator_rank
+        )
+        self.right = nn.Linear(
+            instruction_width, operator_rank * register_width
+        )
+        self.bias = nn.Linear(instruction_width, register_width)
+        self.gate = nn.Linear(instruction_width, register_width)
+        for module in (self.left, self.right, self.bias):
+            nn.init.normal_(module.weight, mean=0.0, std=0.01)
+            nn.init.zeros_(module.bias)
+        nn.init.zeros_(self.gate.weight)
+        nn.init.constant_(self.gate.bias, -2.0)
+
+    def residual(
+        self, register: torch.Tensor, code: torch.Tensor
+    ) -> torch.Tensor:
+        left = torch.tanh(self.left(code)).reshape(
+            register.shape[0], self.register_width, self.operator_rank
+        )
+        right = torch.tanh(self.right(code)).reshape(
+            register.shape[0], self.operator_rank, self.register_width
+        )
+        projected = torch.einsum("br,bkr->bk", register, right)
+        proposal = torch.einsum("bk,brk->br", projected, left) + self.bias(code)
+        return 0.5 * torch.sigmoid(self.gate(code)) * torch.tanh(proposal)
+
+
+class ExternalSequenceOperatorMemory(nn.Module):
+    """Append-only instruction-conditioned transition slots.
+
+    Unlike a value slot, each entry stores a small learned operator.  Slots
+    are external state and grow independently from the controller and shared
+    register interpreter.
+    """
+
+    def __init__(
+        self,
+        register_width: int,
+        instruction_width: int,
+        *,
+        operator_rank: int = 8,
+    ) -> None:
+        super().__init__()
+        if min(register_width, instruction_width, operator_rank) < 1:
+            raise ValueError("sequence operator memory dimensions must be positive")
+        self.register_width = int(register_width)
+        self.instruction_width = int(instruction_width)
+        self.operator_rank = int(operator_rank)
+        self.slots = nn.ModuleList()
+
+    def configuration(self) -> dict[str, int | str]:
+        return {
+            "schema": "neural-computer.external-sequence-operator-memory.v1",
+            "register_width": self.register_width,
+            "instruction_width": self.instruction_width,
+            "operator_rank": self.operator_rank,
+            "slot_count": len(self.slots),
+            "growth": "append_only_external_operator_state_v1",
+        }
+
+    def add_slot(self) -> int:
+        self.slots.append(
+            _ExternalSequenceOperatorSlot(
+                self.register_width,
+                self.instruction_width,
+                self.operator_rank,
+            )
+        )
+        return len(self.slots) - 1
+
+    def residual(
+        self,
+        slot: int,
+        register: torch.Tensor,
+        code: torch.Tensor,
+    ) -> torch.Tensor:
+        if not 0 <= slot < len(self.slots):
+            raise ValueError("sequence operator memory slot index is out of range")
+        return self.slots[slot].residual(register, code)
+
+
 class ExternalRegisterInstruction(nn.Module):
     """One opaque, independently persisted instruction vector.
 
@@ -1284,6 +1377,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         event_window_mask: torch.Tensor | None = None,
         state_bank: torch.Tensor | None = None,
         meta_context: torch.Tensor | None = None,
+        sequence_operator_memory: ExternalSequenceOperatorMemory | None = None,
+        sequence_operator_slot: int | None = None,
     ) -> torch.Tensor:
         """Apply one instruction without access to raw events or feedback."""
 
@@ -1301,6 +1396,16 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 "factorized_protected_bounded_meta",
             ):
                 raise ValueError("meta context requires a protected-meta mode")
+        if sequence_operator_memory is not None:
+            if sequence_operator_slot is None:
+                raise ValueError("sequence operator memory requires a slot")
+            if self.operator_mode not in (
+                "factorized_protected_meta",
+                "factorized_protected_bounded_meta",
+            ):
+                raise ValueError("sequence operator memory requires protected-meta mode")
+        elif sequence_operator_slot is not None:
+            raise ValueError("sequence operator slot requires a memory object")
         code = instruction.expanded(
             register.shape[0],
             device=register.device,
@@ -1369,6 +1474,13 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             )
             projected = torch.einsum("br,bkr->bk", operator_register, right)
             base_proposal = torch.einsum("bk,brk->br", projected, left)
+            operator_memory_residual = (
+                sequence_operator_memory.residual(
+                    sequence_operator_slot, register, code
+                )
+                if sequence_operator_memory is not None
+                else 0.0
+            )
             if self.operator_mode in (
                 "factorized_low_rank",
                 EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
@@ -1437,12 +1549,15 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                         else 0.0
                     )
                     return register + base_gate * (
-                        base + meta_residual + memory_residual
+                        base + meta_residual + memory_residual + operator_memory_residual
                     )
                 residual = 0.5 * meta_gate * torch.tanh(meta_proposal)
                 if meta_context is not None:
                     residual = residual + 0.5 * torch.tanh(meta_context)
-                return register + base_proposal + self.operator_bias(code) + residual
+                return (
+                    register + base_proposal + self.operator_bias(code) + residual
+                    + operator_memory_residual
+                )
         if self.operator_mode in ("factorized_film", "factorized_hybrid"):
             features = torch.tanh(self.operator_feature(register))
             modulation = torch.tanh(self.operator_modulation(code))
@@ -1473,6 +1588,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         event_window: torch.Tensor | None = None,
         event_window_mask: torch.Tensor | None = None,
         meta_context: torch.Tensor | None = None,
+        sequence_operator_memory: ExternalSequenceOperatorMemory | None = None,
+        sequence_operator_slot: int | None = None,
     ) -> torch.Tensor:
         """Apply a memory-selected instruction chain to a working register."""
         register, _ = self.execute_chain_trace(
@@ -1482,6 +1599,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             event_window=event_window,
             event_window_mask=event_window_mask,
             meta_context=meta_context,
+            sequence_operator_memory=sequence_operator_memory,
+            sequence_operator_slot=sequence_operator_slot,
         )
         return register
 
@@ -1494,6 +1613,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         event_window: torch.Tensor | None = None,
         event_window_mask: torch.Tensor | None = None,
         meta_context: torch.Tensor | None = None,
+        sequence_operator_memory: ExternalSequenceOperatorMemory | None = None,
+        sequence_operator_slot: int | None = None,
     ) -> tuple[torch.Tensor, tuple[torch.Tensor, ...]]:
         """Execute a chain while preserving each intermediate register state.
 
@@ -1518,6 +1639,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 event_window=event_window,
                 event_window_mask=event_window_mask,
                 meta_context=meta_context,
+                sequence_operator_memory=sequence_operator_memory,
+                sequence_operator_slot=sequence_operator_slot,
                 state_bank=(
                     torch.stack(states, dim=1)
                     if states and self.operator_mode == EXTERNAL_REGISTER_SHARED_BANKED_MODE
@@ -1630,6 +1753,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         instructions: Iterable[ExternalRegisterInstruction] | None = None,
         basis_slots: Iterable[int | None] | None = None,
         meta_context: torch.Tensor | None = None,
+        sequence_operator_memory: ExternalSequenceOperatorMemory | None = None,
+        sequence_operator_slot: int | None = None,
     ) -> tuple[torch.Tensor, ExternalRegisterState]:
         """Observe once, then execute a transient program snapshot.
 
@@ -1659,6 +1784,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             event_window=next_state.event_window,
             event_window_mask=next_state.event_window_mask,
             meta_context=meta_context,
+            sequence_operator_memory=sequence_operator_memory,
+            sequence_operator_slot=sequence_operator_slot,
         )
         return torch.where(
             present.unsqueeze(-1), executed, register
@@ -1676,6 +1803,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         instructions: Iterable[ExternalRegisterInstruction] | None = None,
         basis_slots: Iterable[int | None] | None = None,
         meta_context: torch.Tensor | None = None,
+        sequence_operator_memory: ExternalSequenceOperatorMemory | None = None,
+        sequence_operator_slot: int | None = None,
     ) -> tuple[torch.Tensor, ExternalRegisterState, tuple[torch.Tensor, ...]]:
         """Read context, execute, and return an opaque intermediate-state bank."""
         if present is None:
@@ -1698,6 +1827,8 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             event_window=next_state.event_window,
             event_window_mask=next_state.event_window_mask,
             meta_context=meta_context,
+            sequence_operator_memory=sequence_operator_memory,
+            sequence_operator_slot=sequence_operator_slot,
         )
         trace = tuple(
             torch.where(present.unsqueeze(-1), value, register)

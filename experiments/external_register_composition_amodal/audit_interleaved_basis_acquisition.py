@@ -28,6 +28,7 @@ from neural_computer import (
     ExternalRegisterInstruction,
     OpaqueProtocolDecoder,
     ExternalSequenceMemory,
+    ExternalSequenceOperatorMemory,
 )
 
 from .audit_real_basis_acquisition import (
@@ -561,6 +562,7 @@ def _train_joint_source_bank(parent, machine, *, args, seed_base: int):
     optimizer = torch.optim.AdamW(trainable, lr=args.learning_rate, weight_decay=1e-5)
     best_state = None
     best_memory_state = None
+    best_operator_memory_state = None
     best_decoders = None
     best_floor = float("-inf")
     for update in range(1, args.joint_source_updates + 1):
@@ -634,6 +636,7 @@ def _train_sequence_calibration(
     seed_base: int,
     source_decoders: list[OpaqueProtocolDecoder] | None = None,
     sequence_memory: ExternalSequenceMemory | None = None,
+    sequence_operator_memory: ExternalSequenceOperatorMemory | None = None,
 ) -> list[dict[str, object]]:
     """Calibrate the shared operator on opaque multi-instruction chains.
 
@@ -663,15 +666,18 @@ def _train_sequence_calibration(
     if protected_meta_mode:
         for parameter in machine.parameters():
             parameter.requires_grad_(False)
-        trainable = (
-            list(sequence_memory.parameters())
-            if sequence_memory is not None
-            else [
+        if sequence_operator_memory is not None:
+            trainable = list(sequence_operator_memory.parameters())
+        else:
+            trainable = (
+                list(sequence_memory.parameters())
+                if sequence_memory is not None
+                else [
                 parameter
                 for name, parameter in machine.named_parameters()
                 if name.startswith("operator_meta_")
-            ]
-        )
+                ]
+            )
     else:
         trainable = list(machine.parameters())
     trainable.extend(
@@ -710,6 +716,10 @@ def _train_sequence_calibration(
                 if sequence_memory is not None
                 else None
             ),
+            sequence_operator_memory=sequence_operator_memory,
+            sequence_operator_slot=(
+                index if sequence_operator_memory is not None else None
+            ),
         )
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
@@ -741,6 +751,12 @@ def _train_sequence_calibration(
                     meta_context=(
                         sequence_memory.slots[index_value]
                         if sequence_memory is not None
+                        else None
+                    ),
+                    sequence_operator_memory=sequence_operator_memory,
+                    sequence_operator_slot=(
+                        index_value
+                        if sequence_operator_memory is not None
                         else None
                     ),
                 )
@@ -787,11 +803,23 @@ def _train_sequence_calibration(
                         name: value.detach().clone()
                         for name, value in sequence_memory.state_dict().items()
                     }
+                if sequence_operator_memory is not None:
+                    best_operator_memory_state = {
+                        name: value.detach().clone()
+                        for name, value in sequence_operator_memory.state_dict().items()
+                    }
     if best_state is None:
         raise RuntimeError("sequence calibration did not produce a checkpoint")
     machine.load_state_dict(best_state, strict=True)
     if sequence_memory is not None and best_memory_state is not None:
         sequence_memory.load_state_dict(best_memory_state, strict=True)
+    if (
+        sequence_operator_memory is not None
+        and best_operator_memory_state is not None
+    ):
+        sequence_operator_memory.load_state_dict(
+            best_operator_memory_state, strict=True
+        )
     return progress
 
 def _train_shared_bridge_prior(
@@ -1004,6 +1032,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("sequence calibration updates cannot be negative")
     if args.source_checkpoint_in and args.joint_source_updates:
         raise ValueError("source checkpoint input cannot be combined with source calibration")
+    if args.use_sequence_memory and args.use_operator_sequence_memory:
+        raise ValueError("choose value or operator sequence memory")
     if args.reuse_shared_bridge_prior and args.reuse_conditioned_bridge_prior:
         raise ValueError("choose one bridge prior mode")
     args.reuse_shared_bridge_prior = (
@@ -1166,10 +1196,19 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         )
     sequence_calibration_progress: list[dict[str, object]] = []
     sequence_memory = None
+    sequence_operator_memory = None
     if args.use_sequence_memory and args.sequence_calibration_updates:
         sequence_memory = ExternalSequenceMemory(REGISTER_WIDTH)
         for _ in composition_programs:
             sequence_memory.add_slot()
+    if args.use_operator_sequence_memory and args.sequence_calibration_updates:
+        sequence_operator_memory = ExternalSequenceOperatorMemory(
+            REGISTER_WIDTH,
+            INSTRUCTION_WIDTH,
+            operator_rank=args.operator_rank,
+        )
+        for _ in composition_programs:
+            sequence_operator_memory.add_slot()
     sequence_calibration_source_after = list(source_before)
     sequence_calibration_accepted = False
     if args.sequence_calibration_updates:
@@ -1182,6 +1221,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             seed_base=args.seed + 1_700_000,
             source_decoders=source_decoders,
             sequence_memory=sequence_memory,
+            sequence_operator_memory=sequence_operator_memory,
         )
         sequence_calibration_source_after = [
             source_score(spec, index) for index, spec in enumerate(source_specs)
@@ -1707,9 +1747,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "sequence_calibration_updates": args.sequence_calibration_updates,
         "sequence_calibration_trainable_surface": (
             (
-                "sequence_memory_slots_plus_temporary_decoders"
-                if args.use_sequence_memory
-                else "operator_meta_residual_plus_temporary_decoders"
+                "sequence_operator_memory_slots_plus_temporary_decoders"
+                if args.use_operator_sequence_memory
+                else (
+                    "sequence_memory_slots_plus_temporary_decoders"
+                    if args.use_sequence_memory
+                    else "operator_meta_residual_plus_temporary_decoders"
+                )
             )
             if args.operator_mode in (
                 "factorized_protected_meta",
@@ -1724,6 +1768,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "sequence_memory": (
             sequence_memory.configuration()
             if sequence_memory is not None
+            else None
+        ),
+        "sequence_operator_memory": (
+            sequence_operator_memory.configuration()
+            if sequence_operator_memory is not None
             else None
         ),
         "operator_mode": args.operator_mode,
@@ -1879,6 +1928,12 @@ def main() -> None:
         action=argparse.BooleanOptionalAction,
         default=False,
         help="train one append-only external state slot per calibration ordering",
+    )
+    parser.add_argument(
+        "--use-operator-sequence-memory",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="train one append-only low-rank operator slot per calibration ordering",
     )
     parser.add_argument("--warmup-updates", type=int, default=64)
     parser.add_argument("--focus-updates", type=int, default=64)

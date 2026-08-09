@@ -985,3 +985,16 @@ low-rank transition slots, while keeping the controller frozen.
 The rank-16 diagnostic reached only a `0.7422` floor after 384 updates (final
 scores `0.8203, 0.8203, 0.8203, 0.8359, 0.7422, 0.7500`). Rank widening is
 therefore insufficient; the shared residual still interferes across programs.
+
+## Operator-valued sequence slots — rejected
+
+The next repair gave each of the six orderings an isolated append-only
+low-rank transition operator (rank 8), while freezing the controller and
+shared base. This added trainable computation rather than only storing a
+register vector, and preserved all three mastered source primitives exactly.
+It nevertheless reached only a `0.6641` all-order floor after 384 updates,
+below the rank-16 shared-residual diagnostic floor of `0.7422`. The mechanism
+is retained as a tested interface, but the experiment is rejected for
+promotion. The remaining bottleneck is routing/selecting the correct learned
+operator from the observed sequence, not simply adding external parameter
+capacity. Raw report: `protected_bounded_meta_operator_slots/report_seed69316.json`.

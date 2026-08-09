@@ -7,6 +7,7 @@ from neural_computer import (
     ExternalRegisterComputeBasis,
     ExternalRegisterInstruction,
     ExternalSequenceMemory,
+    ExternalSequenceOperatorMemory,
     IntentEvent,
     LearnedRegisterRoleBinding,
 )
@@ -521,6 +522,25 @@ def test_protected_meta_execution_accepts_external_sequence_context() -> None:
 
     assert contextual.shape == plain.shape
     assert not torch.equal(plain, contextual)
+
+
+def test_external_sequence_operator_memory_grows_and_executes_opaque_slots() -> None:
+    machine = _machine(operator_mode="factorized_protected_bounded_meta")
+    memory = ExternalSequenceOperatorMemory(8, 5, operator_rank=2)
+    slot = memory.add_slot()
+    register = torch.randn(3, 8)
+    instruction = machine.instructions[0]
+
+    result = machine.execute(
+        register,
+        instruction,
+        sequence_operator_memory=memory,
+        sequence_operator_slot=slot,
+    )
+
+    assert memory.configuration()["slot_count"] == 1
+    assert result.shape == register.shape
+    assert torch.isfinite(result).all()
 
 
 def test_external_register_state_is_external_and_quiet_ticks_do_not_mutate_it() -> None:

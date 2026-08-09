@@ -154,6 +154,8 @@ def _rollout(
     instructions: tuple[ExternalRegisterInstruction, ...],
     basis_slots: tuple[int | None, ...] | None = None,
     meta_context: torch.Tensor | None = None,
+    sequence_operator_memory=None,
+    sequence_operator_slot: int | None = None,
     *,
     train_decoder: bool,
     shuffle_outcomes: bool = False,
@@ -227,6 +229,8 @@ def _rollout(
                 instructions=instructions,
                 basis_slots=basis_slots,
                 meta_context=meta_context,
+                sequence_operator_memory=sequence_operator_memory,
+                sequence_operator_slot=sequence_operator_slot,
             )
             if not role_trace:
                 raise ValueError("role-bound execution requires at least one instruction")
@@ -244,6 +248,8 @@ def _rollout(
                 instructions=instructions,
                 basis_slots=basis_slots,
                 meta_context=meta_context,
+                sequence_operator_memory=sequence_operator_memory,
+                sequence_operator_slot=sequence_operator_slot,
             )
             decoded_register = torch.cat(trace, dim=-1)
         else:
@@ -262,6 +268,8 @@ def _rollout(
                 instructions=instructions,
                 basis_slots=basis_slots,
                 meta_context=meta_context,
+                sequence_operator_memory=sequence_operator_memory,
+                sequence_operator_slot=sequence_operator_slot,
             )
             decoded_register = (
                 register if register_readout is None else register_readout(register)
@@ -601,6 +609,8 @@ def _accuracy(
     instructions: tuple[ExternalRegisterInstruction, ...],
     basis_slots: tuple[int | None, ...] | None = None,
     meta_context: torch.Tensor | None = None,
+    sequence_operator_memory=None,
+    sequence_operator_slot: int | None = None,
     count: int,
     span: int,
     seed: int,
@@ -637,6 +647,8 @@ def _accuracy(
             instructions,
             basis_slots=basis_slots,
             meta_context=meta_context,
+            sequence_operator_memory=sequence_operator_memory,
+            sequence_operator_slot=sequence_operator_slot,
             train_decoder=False,
             shuffle_outcomes=shuffle_outcomes,
             credit_mode=credit_mode,
