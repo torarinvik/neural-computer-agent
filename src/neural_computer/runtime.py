@@ -7,7 +7,8 @@ vocabulary or device protocol.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+import hashlib
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 
 import torch
@@ -29,8 +30,15 @@ from .interface import (
 )
 from .memory import MemoryBackend
 from .policies import EventWaitPolicy
+from .representation import (
+    DEFAULT_CONTROLLER_STATE_SPACE_ID,
+    DEFAULT_EVENT_SPACE_ID,
+    DEFAULT_INTENTION_SPACE_ID,
+    REPRESENTATION_SPACE_SCHEMA,
+    validate_representation_space_id,
+)
 
-RUNTIME_FORMAT = "neural-computer.amodal-runtime.v29"
+RUNTIME_FORMAT = "neural-computer.amodal-runtime.v30"
 
 
 class OpaqueProtocolDecoder(nn.Module):
@@ -127,11 +135,19 @@ class AmodalInputBus(nn.Module):
     silently lost in a pre-controller averaging step.
     """
 
-    def __init__(self, event_width: int) -> None:
+    def __init__(
+        self,
+        event_width: int,
+        *,
+        event_space_id: str = DEFAULT_EVENT_SPACE_ID,
+    ) -> None:
         super().__init__()
         if event_width < 1:
             raise ValueError("event_width must be positive")
         self.event_width = event_width
+        self.event_space_id = validate_representation_space_id(
+            event_space_id, name="event_space_id"
+        )
 
     def configuration(self) -> dict[str, int | str]:
         return {
@@ -154,9 +170,17 @@ class AmodalInputBus(nn.Module):
 class AmodalOutputBus(nn.Module):
     """Fan one opaque intention out to any runtime-variable decoder set."""
 
-    def __init__(self, decoders: Mapping[str, nn.Module] | None = None) -> None:
+    def __init__(
+        self,
+        decoders: Mapping[str, nn.Module] | None = None,
+        *,
+        intention_space_id: str = DEFAULT_INTENTION_SPACE_ID,
+    ) -> None:
         super().__init__()
         self.decoders = nn.ModuleDict(dict(decoders or {}))
+        self.intention_space_id = validate_representation_space_id(
+            intention_space_id, name="intention_space_id"
+        )
 
     def register_decoder(self, name: str, decoder: nn.Module) -> None:
         if not name or name in self.decoders:
@@ -174,6 +198,66 @@ class AmodalRuntimeOutput:
     intention: IntentEvent
     decoded: dict[str, torch.Tensor]
     execution_logits: torch.Tensor
+
+
+@dataclass(frozen=True)
+class RuntimeMigrationExample:
+    """One paired source/target trajectory for runtime replacement checks."""
+
+    source_events: AmodalEventCollection | Sequence[AmodalEvent]
+    target_events: AmodalEventCollection | Sequence[AmodalEvent]
+    source_state: ControllerState
+    target_state: ControllerState
+    feedback: ControllerFeedback
+    elapsed: torch.Tensor | float = 1.0
+
+
+@dataclass(frozen=True)
+class RuntimeMigrationReceipt:
+    """Verifier-gated, copy-on-write frontend/controller migration result."""
+
+    accepted: bool
+    source_event_space_id: str
+    target_event_space_id: str
+    source_state_space_id: str
+    target_state_space_id: str
+    source_intention_space_id: str
+    target_intention_space_id: str
+    example_count: int
+    max_intention_difference: float
+    max_execution_difference: float
+    max_continuation_difference: float
+    source_digest: str
+    target_digest: str
+    reason: str
+    schema: str = "neural-computer.runtime-migration.v1"
+
+    def validate(self) -> RuntimeMigrationReceipt:
+        if self.schema != "neural-computer.runtime-migration.v1":
+            raise ValueError("unsupported runtime migration schema")
+        if self.example_count < 1:
+            raise ValueError("runtime migration needs at least one example")
+        for name, value in (
+            ("max_intention_difference", self.max_intention_difference),
+            ("max_execution_difference", self.max_execution_difference),
+            ("max_continuation_difference", self.max_continuation_difference),
+        ):
+            if not torch.isfinite(torch.tensor(value)) or value < 0.0:
+                raise ValueError(f"runtime migration {name} is invalid")
+        for name, value in (
+            ("source_event_space_id", self.source_event_space_id),
+            ("target_event_space_id", self.target_event_space_id),
+            ("source_state_space_id", self.source_state_space_id),
+            ("target_state_space_id", self.target_state_space_id),
+            ("source_intention_space_id", self.source_intention_space_id),
+            ("target_intention_space_id", self.target_intention_space_id),
+            ("source_digest", self.source_digest),
+            ("target_digest", self.target_digest),
+            ("reason", self.reason),
+        ):
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"runtime migration {name} is missing")
+        return self
 
 
 @dataclass(frozen=True)
@@ -436,16 +520,39 @@ class AmodalControllerRuntime(nn.Module):
         output_bus: AmodalOutputBus | None = None,
         memory: MemoryBackend | None = None,
         wait_policy: EventWaitPolicy | None = None,
+        event_space_id: str = DEFAULT_EVENT_SPACE_ID,
+        state_space_id: str = DEFAULT_CONTROLLER_STATE_SPACE_ID,
+        intention_space_id: str = DEFAULT_INTENTION_SPACE_ID,
     ) -> None:
         super().__init__()
         if memory is not None and not isinstance(memory, MemoryBackend):
             raise TypeError("memory must implement the MemoryBackend contract")
+        event_space_id = validate_representation_space_id(
+            event_space_id, name="event_space_id"
+        )
+        state_space_id = validate_representation_space_id(
+            state_space_id, name="state_space_id"
+        )
+        intention_space_id = validate_representation_space_id(
+            intention_space_id, name="intention_space_id"
+        )
         self.controller = controller
         self.encoders = nn.ModuleDict(dict(encoders or {}))
-        self.input_bus = input_bus or AmodalInputBus(controller.width)
-        self.output_bus = output_bus or AmodalOutputBus()
+        self.input_bus = input_bus or AmodalInputBus(
+            controller.width, event_space_id=event_space_id
+        )
+        if self.input_bus.event_space_id != event_space_id:
+            raise ValueError("input bus event space does not match runtime")
+        self.output_bus = output_bus or AmodalOutputBus(
+            intention_space_id=intention_space_id
+        )
+        if self.output_bus.intention_space_id != intention_space_id:
+            raise ValueError("output bus intention space does not match runtime")
         self.memory = memory
         self.wait_policy = wait_policy
+        self.event_space_id = event_space_id
+        self.state_space_id = state_space_id
+        self.intention_space_id = intention_space_id
 
     @property
     def event_width(self) -> int:
@@ -687,9 +794,169 @@ class AmodalControllerRuntime(nn.Module):
     ) -> ControllerState:
         return self.controller.initial_state(batch_size, device=device, dtype=dtype)
 
+    @staticmethod
+    def _controller_digest(runtime: AmodalControllerRuntime) -> str:
+        digest = hashlib.sha256()
+        digest.update(repr(runtime.configuration()).encode("utf-8"))
+        for name, value in sorted(runtime.controller.state_dict().items()):
+            digest.update(name.encode("utf-8"))
+            digest.update(value.detach().cpu().contiguous().numpy().tobytes())
+        return digest.hexdigest()
+
+    @staticmethod
+    def _migration_difference(first: torch.Tensor, second: torch.Tensor) -> float:
+        if first.shape != second.shape:
+            raise ValueError("runtime migration tensors have different shapes")
+        return float((first - second).square().mean().detach())
+
+    def migrate_controller_verified(
+        self,
+        candidate: AmodalControllerRuntime,
+        examples: Sequence[RuntimeMigrationExample],
+        *,
+        prediction_tolerance: float = 1e-6,
+        retention_probe: Callable[[AmodalControllerRuntime], bool] | None = None,
+    ) -> RuntimeMigrationReceipt:
+        """Approve a frontend/controller replacement without mutating either.
+
+        Each example supplies source and replacement event representations plus
+        their corresponding controller states. The candidate is accepted only
+        when intentions, execution decisions, and continuation state remain
+        within the held-out tolerance. This is an interface migration gate;
+        it does not learn an alignment map or infer a decoder protocol.
+        """
+
+        if not isinstance(candidate, AmodalControllerRuntime):
+            raise TypeError("runtime migration candidate is invalid")
+        if prediction_tolerance < 0.0 or not torch.isfinite(
+            torch.tensor(prediction_tolerance)
+        ):
+            raise ValueError("runtime migration tolerance is invalid")
+        if not examples:
+            raise ValueError("runtime migration needs held-out examples")
+        if self.memory is not None or candidate.memory is not None:
+            raise ValueError(
+                "runtime migration requires memory-free probes; verify external memory separately"
+            )
+        if (
+            self.event_width != candidate.event_width
+            or self.intention_width != candidate.intention_width
+            or self.controller.workspace_slots != candidate.controller.workspace_slots
+            or self.controller.event_window_capacity
+            != candidate.controller.event_window_capacity
+            or self.controller.source_key_width != candidate.controller.source_key_width
+            or self.controller.feedback_width != candidate.controller.feedback_width
+        ):
+            raise ValueError("runtime migration controller structure does not match")
+        if (
+            self.event_space_id == candidate.event_space_id
+            and self.state_space_id == candidate.state_space_id
+            and self.intention_space_id == candidate.intention_space_id
+        ):
+            raise ValueError("runtime migration does not replace a representation space")
+        source_digest = self._controller_digest(self)
+        target_digest = self._controller_digest(candidate)
+        max_intention_difference = 0.0
+        max_execution_difference = 0.0
+        max_continuation_difference = 0.0
+        for example in examples:
+            source_collection = self.input_bus(example.source_events)
+            target_collection = candidate.input_bus(example.target_events)
+            batch = source_collection.payload.shape[0]
+            if target_collection.payload.shape[0] != batch:
+                raise ValueError("runtime migration example batch sizes differ")
+            source_override = torch.zeros(
+                batch,
+                device=source_collection.payload.device,
+                dtype=source_collection.payload.dtype,
+            )
+            target_override = torch.zeros(
+                batch,
+                device=target_collection.payload.device,
+                dtype=target_collection.payload.dtype,
+            )
+            with torch.no_grad():
+                source_output, source_next = self.controller.step(
+                    source_collection,
+                    example.source_state,
+                    example.feedback,
+                    memory=None,
+                    elapsed=example.elapsed,
+                    memory_write_override=source_override,
+                    memory_write_gradient=False,
+                )
+                target_output, target_next = candidate.controller.step(
+                    target_collection,
+                    example.target_state,
+                    example.feedback,
+                    memory=None,
+                    elapsed=example.elapsed,
+                    memory_write_override=target_override,
+                    memory_write_gradient=False,
+                )
+            max_intention_difference = max(
+                max_intention_difference,
+                self._migration_difference(
+                    source_output.intention.payload,
+                    target_output.intention.payload,
+                ),
+            )
+            max_execution_difference = max(
+                max_execution_difference,
+                self._migration_difference(
+                    source_output.execution_logits,
+                    target_output.execution_logits,
+                ),
+            )
+            for source_value, target_value in (
+                (source_next.hidden, target_next.hidden),
+                (source_next.workspace, target_next.workspace),
+                (source_next.latest_event, target_next.latest_event),
+                (source_next.workspace_usage, target_next.workspace_usage),
+                (source_next.source_trust, target_next.source_trust),
+            ):
+                max_continuation_difference = max(
+                    max_continuation_difference,
+                    self._migration_difference(source_value, target_value),
+                )
+        accepted = max(
+            max_intention_difference,
+            max_execution_difference,
+            max_continuation_difference,
+        ) <= prediction_tolerance
+        if accepted and retention_probe is not None:
+            if not callable(retention_probe):
+                raise TypeError("runtime migration retention probe is invalid")
+            accepted = bool(retention_probe(candidate))
+        reason = (
+            "candidate passed paired held-out controller and continuation checks"
+            if accepted
+            else "candidate changed held-out controller behavior"
+        )
+        return RuntimeMigrationReceipt(
+            accepted=accepted,
+            source_event_space_id=self.event_space_id,
+            target_event_space_id=candidate.event_space_id,
+            source_state_space_id=self.state_space_id,
+            target_state_space_id=candidate.state_space_id,
+            source_intention_space_id=self.intention_space_id,
+            target_intention_space_id=candidate.intention_space_id,
+            example_count=len(examples),
+            max_intention_difference=max_intention_difference,
+            max_execution_difference=max_execution_difference,
+            max_continuation_difference=max_continuation_difference,
+            source_digest=source_digest,
+            target_digest=target_digest,
+            reason=reason,
+        ).validate()
+
     def configuration(self) -> dict[str, object]:
         return {
             "format": RUNTIME_FORMAT,
+            "representation_space_schema": REPRESENTATION_SPACE_SCHEMA,
+            "event_space_id": self.event_space_id,
+            "state_space_id": self.state_space_id,
+            "intention_space_id": self.intention_space_id,
             "controller": self.controller.configuration(),
             "input_bus": self.input_bus.configuration(),
             "encoder_names": tuple(self.encoders.keys()),

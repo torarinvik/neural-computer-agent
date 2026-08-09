@@ -29,6 +29,13 @@ from .memory import (
     MemoryQuery,
     MemoryWriteReceipt,
 )
+from .representation import (
+    DEFAULT_INTENTION_SPACE_ID,
+    DEFAULT_STATE_SPACE_ID,
+)
+from .representation import (
+    REPRESENTATION_SPACE_SCHEMA as EXTERNAL_REPRESENTATION_SPACE_SCHEMA,
+)
 
 if TYPE_CHECKING:
     from .online_transition import ExternalTransitionModelFamilySelection
@@ -97,15 +104,9 @@ EXTERNAL_MODEL_PLANNER_SCHEMA = "neural-computer.external-model-planner.v1"
 EXTERNAL_GOAL_CONDITIONED_MODEL_SELECTION_SCHEMA = (
     "neural-computer.external-goal-conditioned-model-selection.v1"
 )
-EXTERNAL_REPRESENTATION_SPACE_SCHEMA = (
-    "neural-computer.external-representation-space.v1"
-)
 EXTERNAL_TRANSITION_MODEL_MIGRATION_SCHEMA = (
     "neural-computer.external-transition-model-migration.v1"
 )
-
-DEFAULT_STATE_SPACE_ID = "opaque-state-v1"
-DEFAULT_INTENTION_SPACE_ID = "opaque-intention-v1"
 
 EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY = "nonlinear_mlp_v1"
 EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY = "affine_sufficient_statistics_v1"

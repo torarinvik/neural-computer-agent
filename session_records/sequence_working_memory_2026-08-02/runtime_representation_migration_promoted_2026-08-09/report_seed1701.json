@@ -1,0 +1,43 @@
+{
+  "schema": "neural-computer.runtime-representation-migration.v1",
+  "seed": 1701,
+  "configuration": {
+    "source_spaces": [
+      "frontend-v1",
+      "controller-state-v1",
+      "intention-v1"
+    ],
+    "target_spaces": [
+      "frontend-v2",
+      "controller-state-v2",
+      "intention-v2"
+    ],
+    "heldout_two_stream_examples": 24,
+    "migration": "paired_event_window_controller_retention_v1"
+  },
+  "gates": {
+    "behavior_preserving_migration": true,
+    "drifted_candidate_rejected": true,
+    "stable_prefix_examples": true,
+    "zero_controller_optimizer_updates": true,
+    "zero_replayed_examples": true,
+    "external_memory_untouched": true
+  },
+  "promoted": true,
+  "metrics": {
+    "accepted_max_intention_difference": 0.0,
+    "accepted_max_execution_difference": 0.0,
+    "accepted_max_continuation_difference": 0.0,
+    "rejected_max_intention_difference": 0.09367087483406067,
+    "rejected_max_continuation_difference": 0.0319661945104599
+  },
+  "accounting": {
+    "unique_verifier_bits": 24,
+    "unique_logical_lifetimes": 48,
+    "optimizer_updates": 0,
+    "controller_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "wall_seconds": 0.2977533339872025
+  },
+  "claim_boundary": "paired multimodal runtime compatibility gate; not learned alignment or general continual learning"
+}

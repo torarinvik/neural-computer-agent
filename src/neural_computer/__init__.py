@@ -260,6 +260,12 @@ from .relevance import (
     ExternalGoalConditionedMemoryRelevance,
     GoalConditionedMemoryProposal,
 )
+from .representation import (
+    DEFAULT_CONTROLLER_STATE_SPACE_ID,
+    DEFAULT_EVENT_SPACE_ID,
+    REPRESENTATION_SPACE_SCHEMA,
+    validate_representation_space_id,
+)
 from .retention import (
     RETENTION_LEDGER_SCHEMA,
     CapabilityRetentionLedger,
@@ -282,6 +288,8 @@ from .runtime import (
     AmodalRuntimeOutput,
     ConditionedOpaqueProtocolDecoder,
     OpaqueProtocolDecoder,
+    RuntimeMigrationExample,
+    RuntimeMigrationReceipt,
 )
 from .state_store import OPAQUE_STATE_STORE_SCHEMA, PersistentOpaqueStateStore
 from .world_model import (
@@ -357,6 +365,8 @@ __all__ = [
     "CONDITIONED_EVENT_BRIDGE_SCHEMA",
     "CONSOLIDATION_OPERATION_COUNT",
     "CONSOLIDATION_POLICY_SCHEMA",
+    "DEFAULT_CONTROLLER_STATE_SPACE_ID",
+    "DEFAULT_EVENT_SPACE_ID",
     "DEFAULT_INTENTION_SPACE_ID",
     "DEFAULT_STATE_SPACE_ID",
     "EVENT_BRIDGE_SCHEMA",
@@ -446,6 +456,7 @@ __all__ = [
     "MEMORY_SNAPSHOT_FORMAT",
     "OPAQUE_STATE_STORE_SCHEMA",
     "PROMOTION_SCHEMA",
+    "REPRESENTATION_SPACE_SCHEMA",
     "RETENTION_LEDGER_SCHEMA",
     "AdaptiveOnlineEpisodicRelationReader",
     "AmodalCognitiveController",
@@ -608,6 +619,8 @@ __all__ = [
     "PromotionRejected",
     "RetentionGateDecision",
     "RetentionPolicyConfig",
+    "RuntimeMigrationExample",
+    "RuntimeMigrationReceipt",
     "StagedCapabilityReceipt",
     "accumulate_current_gradients",
     "apply_consolidation_proposal",
@@ -644,6 +657,7 @@ __all__ = [
     "sha256_file",
     "sha256_files",
     "stable_prefix_minimum",
+    "validate_representation_space_id",
     "verify_consolidation_proposal",
     "write_promotion_record",
     "zero_gradient_map",

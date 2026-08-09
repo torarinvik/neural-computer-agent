@@ -41,6 +41,7 @@ LEGACY_RUNTIME_FORMAT_V25 = "neural-computer.amodal-runtime.v25"
 LEGACY_RUNTIME_FORMAT_V26 = "neural-computer.amodal-runtime.v26"
 LEGACY_RUNTIME_FORMAT_V27 = "neural-computer.amodal-runtime.v27"
 LEGACY_RUNTIME_FORMAT_V28 = "neural-computer.amodal-runtime.v28"
+LEGACY_RUNTIME_FORMAT_V29 = "neural-computer.amodal-runtime.v29"
 
 
 def _memory_configuration_matches(
@@ -62,10 +63,23 @@ def _memory_configuration_matches(
 
 
 def _runtime_configuration_matches(
-    expected: dict[str, object], payload: object
+    expected: dict[str, object],
+    payload: object,
+    *,
+    allow_legacy_representation: bool = False,
 ) -> bool:
-    if not isinstance(payload, dict) or set(expected) != set(payload):
+    if not isinstance(payload, dict):
         return False
+    if set(expected) != set(payload):
+        optional = {
+            "representation_space_schema",
+            "event_space_id",
+            "state_space_id",
+            "intention_space_id",
+        }
+        if not allow_legacy_representation or set(payload) != set(expected) - optional:
+            return False
+        expected = {key: value for key, value in expected.items() if key not in optional}
     return all(
         _memory_configuration_matches(expected[key], payload[key])
         if key == "memory"
@@ -117,6 +131,7 @@ def load_runtime_components(
     payload_format = payload.get("format")
     if payload_format not in {
         RUNTIME_FORMAT,
+        LEGACY_RUNTIME_FORMAT_V29,
         LEGACY_RUNTIME_FORMAT_V28,
         LEGACY_RUNTIME_FORMAT_V27,
         LEGACY_RUNTIME_FORMAT_V26,
@@ -457,8 +472,15 @@ def load_runtime_components(
             "format": payload_format,
             "controller": legacy_controller,
         }
+    if payload_format == LEGACY_RUNTIME_FORMAT_V29:
+        expected_configuration = {
+            **expected_configuration,
+            "format": payload_format,
+        }
     if not _runtime_configuration_matches(
-        expected_configuration, payload.get("configuration")
+        expected_configuration,
+        payload.get("configuration"),
+        allow_legacy_representation=payload_format == LEGACY_RUNTIME_FORMAT_V29,
     ):
         raise ValueError("checkpoint configuration does not match runtime")
     components = payload["components"]

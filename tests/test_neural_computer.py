@@ -938,9 +938,45 @@ def test_runtime_checkpoint_loads_independent_components(tmp_path) -> None:
     restored = build()
     payload = load_runtime_components(restored, checkpoint)
 
-    assert payload["format"] == "neural-computer.amodal-runtime.v29"
+    assert payload["format"] == "neural-computer.amodal-runtime.v30"
     for left, right in zip(source.parameters(), restored.parameters(), strict=True):
         assert torch.equal(left, right)
+
+
+def test_v29_runtime_checkpoint_defaults_representation_spaces(tmp_path) -> None:
+    controller = AmodalCognitiveController(
+        width=8,
+        workspace_slots=2,
+        intention_width=4,
+        feedback_width=3,
+    )
+    source = AmodalControllerRuntime(controller)
+    payload = source.checkpoint_payload()
+    payload["format"] = "neural-computer.amodal-runtime.v29"
+    payload["configuration"]["format"] = "neural-computer.amodal-runtime.v29"
+    for field in (
+        "representation_space_schema",
+        "event_space_id",
+        "state_space_id",
+        "intention_space_id",
+    ):
+        payload["configuration"].pop(field)
+    checkpoint = tmp_path / "runtime-v29.pt"
+    torch.save(payload, checkpoint)
+
+    restored = AmodalControllerRuntime(
+        AmodalCognitiveController(
+            width=8,
+            workspace_slots=2,
+            intention_width=4,
+            feedback_width=3,
+        )
+    )
+    load_runtime_components(restored, checkpoint)
+
+    assert restored.event_space_id == "opaque-event-v1"
+    assert restored.state_space_id == "controller-state-v1"
+    assert restored.intention_space_id == "opaque-intention-v1"
 
 
 def test_growth_register_boundary_is_prior_only_and_stateful() -> None:

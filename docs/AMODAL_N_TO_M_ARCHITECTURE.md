@@ -5193,3 +5193,21 @@ zero held-out prediction difference, both drifted candidates were rejected,
 and the old planner/bank mismatch was rejected before search. Evidence is
 archived in
 `session_records/sequence_working_memory_2026-08-02/external_transition_representation_migration_promoted_2026-08-09/`.
+
+## Runtime-wide representation replacement (2026-08-09)
+
+The same contract now reaches the canonical `N encoders -> event bus -> one
+controller -> intention bus -> M decoders` runtime. The runtime records event,
+controller-state, and intention space IDs, and exposes a copy-on-write
+migration probe over paired source/target event windows. It compares the
+controller's intention, execution decision, and continuation state while
+leaving external memory out of the probe so memory migration remains an
+independent contract.
+
+Across two seeds and 24 held-out two-stream windows, a behavior-preserving
+replacement passed with zero differences in all three measured outputs. A
+candidate with changed controller behavior failed in both seeds. This is the
+first runtime-wide compatibility gate, but it is still not learned alignment:
+the target event representation is supplied by the caller and must already be
+behavior-preserving. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/runtime_representation_migration_promoted_2026-08-09/`.

@@ -1,0 +1,31 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "runtime_representation_migration",
+  "entries": [
+    {
+      "seed": 1701,
+      "arm": "paired-two-stream-runtime-migration",
+      "unique_verifier_bits": 24,
+      "unique_logical_lifetimes": 48,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "controller_updates": 0,
+      "accepted_migration": true,
+      "drift_rejected": true,
+      "promoted": true
+    },
+    {
+      "seed": 1702,
+      "arm": "paired-two-stream-runtime-migration",
+      "unique_verifier_bits": 24,
+      "unique_logical_lifetimes": 48,
+      "optimizer_updates": 0,
+      "replayed_examples": 0,
+      "controller_updates": 0,
+      "accepted_migration": true,
+      "drift_rejected": true,
+      "promoted": true
+    }
+  ],
+  "claim_boundary": "paired multimodal runtime compatibility gate; not learned alignment or general continual learning"
+}
