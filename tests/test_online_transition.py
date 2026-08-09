@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 import torch
 
 from neural_computer import (
@@ -8,6 +9,7 @@ from neural_computer import (
     ExternalRandomFeatureTransitionStatistics,
     ExternalTransitionContextEncoder,
     ExternalTransitionModelBank,
+    ExternalTransitionModelLifetimePolicy,
     ExternalTransitionObservation,
 )
 
@@ -27,6 +29,113 @@ def _affine_observation(rows: int = 8) -> ExternalTransitionObservation:
     )
 
 
+def test_lifetime_policy_is_permutation_equivariant_and_masks_protected_slots() -> None:
+    torch.manual_seed(1501)
+    policy = ExternalTransitionModelLifetimePolicy(4, hidden_width=8)
+    contexts = torch.nn.functional.normalize(torch.randn(3, 4), dim=-1)
+    slot_ids = (10, 20, 30)
+    usage = torch.tensor([1.0, 4.0, 2.0])
+    age = torch.tensor([3.0, 1.0, 8.0])
+    error = torch.tensor([0.2, 0.4, 0.1])
+    protected = torch.tensor([False, True, False])
+
+    proposal = policy.propose(contexts, slot_ids, usage, age, error, protected)
+    permutation = torch.tensor([2, 0, 1])
+    permuted = policy.propose(
+        contexts.index_select(0, permutation),
+        tuple(slot_ids[index] for index in permutation.tolist()),
+        usage.index_select(0, permutation),
+        age.index_select(0, permutation),
+        error.index_select(0, permutation),
+        protected.index_select(0, permutation),
+    )
+
+    original_scores = dict(zip(proposal.eligible_slot_ids, proposal.scores.tolist()))
+    permuted_scores = dict(zip(permuted.eligible_slot_ids, permuted.scores.tolist()))
+    assert original_scores.keys() == permuted_scores.keys()
+    for slot_id, score in original_scores.items():
+        assert score == pytest.approx(permuted_scores[slot_id])
+    assert proposal.selected_slot_id != 20
+    all_protected = policy.propose(
+        contexts,
+        slot_ids,
+        usage,
+        age,
+        error,
+        torch.ones(3, dtype=torch.bool),
+    )
+    assert all_protected.selected_slot_id is None
+
+
+def test_lifetime_policy_learns_one_verifier_bit_and_persists_exactly() -> None:
+    torch.manual_seed(1502)
+    policy = ExternalTransitionModelLifetimePolicy(3, hidden_width=8)
+    contexts = torch.nn.functional.normalize(torch.randn(2, 3), dim=-1)
+    before = policy.digest()
+    loss = policy.adaptation_step(
+        contexts,
+        (0, 1),
+        torch.tensor([1.0, 2.0]),
+        torch.tensor([3.0, 1.0]),
+        torch.tensor([0.1, 0.2]),
+        selected_slot_id=1,
+        verifier_accepted=False,
+    )
+    assert loss > 0.0
+    assert policy.digest() != before
+    restored = ExternalTransitionModelLifetimePolicy.from_payload(
+        policy.state_payload()
+    )
+    assert restored.digest() == policy.digest()
+    assert torch.equal(
+        restored(
+            contexts,
+            torch.tensor([1.0, 2.0]),
+            torch.tensor([3.0, 1.0]),
+            torch.tensor([0.1, 0.2]),
+        ),
+        policy(
+            contexts,
+            torch.tensor([1.0, 2.0]),
+            torch.tensor([3.0, 1.0]),
+            torch.tensor([0.1, 0.2]),
+        ),
+    )
+
+
+def test_lifetime_policy_transaction_is_verifier_gated_and_uses_stable_ids() -> None:
+    torch.manual_seed(1503)
+    bank = ExternalTransitionModelBank(2, 1, 3, hidden_width=8, capacity=3)
+    bank.ensure_context(torch.tensor([1.0, 0.0, 0.0]))
+    bank.ensure_context(torch.tensor([0.0, 1.0, 0.0]))
+    bank.ensure_context(torch.tensor([0.0, 0.0, 1.0]))
+    policy = ExternalTransitionModelLifetimePolicy(3, hidden_width=8)
+    metadata = {
+        "usage": torch.tensor([4.0, 1.0, 3.0]),
+        "age": torch.tensor([1.0, 4.0, 2.0]),
+        "prediction_error": torch.tensor([0.2, 0.4, 0.1]),
+    }
+    bank_digest = bank.digest()
+    proposal, rejected = policy.evict_verified(
+        bank,
+        **metadata,
+        protected=torch.tensor([True, False, True]),
+        retention_probe=lambda _candidate: False,
+    )
+    assert proposal.selected_slot_id == 1
+    assert rejected is not None and not rejected.accepted
+    assert bank.digest() == bank_digest
+
+    proposal, accepted = policy.evict_verified(
+        bank,
+        **metadata,
+        protected=torch.tensor([True, False, True]),
+        retention_probe=lambda candidate: candidate.slot_ids in {(0, 1, 2), (0, 2)},
+    )
+    assert proposal.selected_slot_id == 1
+    assert accepted is not None and accepted.accepted
+    assert accepted.evicted_slot_id == 1
+    assert bank.slot_ids == (0, 2)
 def test_affine_statistics_is_a_bank_fast_path_without_optimizer_replay() -> None:
     observation = _affine_observation()
     bank = ExternalTransitionModelBank(

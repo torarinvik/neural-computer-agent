@@ -13,6 +13,7 @@ from neural_computer import (
     ExternalTransitionMemory,
     ExternalTransitionModel,
     ExternalTransitionModelBank,
+    ExternalTransitionModelLifetimePolicy,
     ExternalTransitionObservation,
 )
 
@@ -376,6 +377,34 @@ def test_online_router_repairs_active_physical_index_after_logical_eviction() ->
     assert router._active_slot_id == 2
     assert router._active_slot == 1
     assert router.bank.slot_id_at(router._active_slot) == 2
+
+
+def test_online_router_repairs_reference_after_policy_selected_eviction() -> None:
+    bank = ExternalTransitionModelBank(2, 1, 3, hidden_width=8, capacity=3)
+    bank.ensure_context(torch.tensor([1.0, 0.0, 0.0]))
+    bank.ensure_context(torch.tensor([0.0, 1.0, 0.0]))
+    bank.ensure_context(torch.tensor([0.0, 0.0, 1.0]))
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=3),
+        max_contexts=3,
+    )
+    router._set_active_slot(2)
+    policy = ExternalTransitionModelLifetimePolicy(3, hidden_width=8)
+
+    proposal, receipt = router.evict_with_lifetime_policy_verified(
+        policy,
+        torch.tensor([4.0, 1.0, 3.0]),
+        torch.tensor([1.0, 4.0, 2.0]),
+        torch.tensor([0.2, 0.4, 0.1]),
+        torch.tensor([True, False, True]),
+        lambda candidate: candidate.slot_ids in {(0, 1, 2), (0, 2)},
+    )
+
+    assert proposal.selected_slot_id == 1
+    assert receipt is not None and receipt.accepted
+    assert router._active_slot_id == 2
+    assert router._active_slot == 1
 
 
 def test_transition_model_bank_consolidation_shares_only_equivalent_models() -> None:

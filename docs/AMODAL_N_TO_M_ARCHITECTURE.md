@@ -5020,3 +5020,26 @@ decisions remain caller/verifier-owned. The next bottleneck is a learned,
 auditable memory policy that can choose what to consolidate, compress, or evict
 under long alternating streams while preserving the stable logical address
 contract.
+
+## Verifier-trained external lifetime proposals (2026-08-09)
+
+The bounded bank now exposes `ExternalTransitionModelLifetimePolicy`. It is an
+independently replaceable, permutation-equivariant scorer over opaque context
+keys and generic usage, age, and factual-error telemetry. It proposes a stable
+logical slot ID; protected slots are hard-masked before selection. The policy
+cannot mutate the bank directly: `evict_verified_id` still performs the
+copy-on-write pre/post retention proof, and the policy consumes only the single
+verifier outcome bit from that transaction as an external update.
+
+Focused controls pass permutation-equivalent scoring, all-protected refusal,
+rejection without bank mutation, stable-ID middle eviction, exact policy
+checkpoint restoration, and router active-reference repair. The full suite
+passes `424` tests before this policy's addition; the policy itself has no
+controller parameters or controller optimizer updates.
+
+This is a learned proposal mechanism, not learned eviction or unrestricted
+continual memory: the verifier remains authoritative, telemetry is supplied by
+the caller, and no long-horizon multi-seed capability gain has been promoted.
+The next experiment must train this policy online across alternating regimes
+and compare it against FIFO/recency and random eviction under identical
+retention probes, with every verifier bit and policy update accounted for.

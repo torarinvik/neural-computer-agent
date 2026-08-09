@@ -72,6 +72,9 @@ EXTERNAL_TRANSITION_MODEL_EVICTION_SCHEMA = (
 EXTERNAL_TRANSITION_MODEL_SLOT_ADDRESS_SCHEMA = (
     "neural-computer.external-transition-model-slot-address.v1"
 )
+EXTERNAL_TRANSITION_MODEL_LIFETIME_POLICY_SCHEMA = (
+    "neural-computer.external-transition-model-lifetime-policy.v1"
+)
 EXTERNAL_TRANSITION_MODEL_CANDIDATE_SCHEMA = (
     "neural-computer.external-transition-model-candidate.v1"
 )
@@ -1322,6 +1325,7 @@ class ExternalTransitionModelBank(nn.Module):
             raise ValueError("compressed transition-model payload checksum mismatch")
         return bank
 
+
     def compress_verified(
         self,
         *,
@@ -1593,6 +1597,305 @@ class ExternalTransitionModelBank(nn.Module):
         ):
             raise ValueError("transition-model bank checksum mismatch")
         return bank
+
+
+@dataclass(frozen=True)
+class ExternalTransitionModelLifetimeProposal:
+    """A learned, verifier-independent proposal for one logical slot."""
+
+    selected_slot_id: int | None
+    scores: torch.Tensor
+    eligible_slot_ids: tuple[int, ...]
+    reason: str
+    schema: str = EXTERNAL_TRANSITION_MODEL_LIFETIME_POLICY_SCHEMA
+
+    def validate(self) -> ExternalTransitionModelLifetimeProposal:
+        if self.schema != EXTERNAL_TRANSITION_MODEL_LIFETIME_POLICY_SCHEMA:
+            raise ValueError("unsupported transition-model lifetime schema")
+        if self.scores.ndim != 1 or self.scores.shape[0] != len(
+            self.eligible_slot_ids
+        ):
+            raise ValueError("transition-model lifetime scores are misaligned")
+        if bool(torch.isnan(self.scores).any()):
+            raise ValueError("transition-model lifetime scores contain NaN")
+        if len(set(self.eligible_slot_ids)) != len(self.eligible_slot_ids):
+            raise ValueError("transition-model lifetime slot IDs are duplicated")
+        if any(slot_id < 0 for slot_id in self.eligible_slot_ids):
+            raise ValueError("transition-model lifetime slot ID is invalid")
+        if self.selected_slot_id is not None and self.selected_slot_id not in (
+            self.eligible_slot_ids
+        ):
+            raise ValueError("transition-model lifetime selected slot is ineligible")
+        if not isinstance(self.reason, str) or not self.reason:
+            raise ValueError("transition-model lifetime proposal reason is missing")
+        return self
+
+
+class ExternalTransitionModelLifetimePolicy(nn.Module):
+    """Learn a generic slot-lifetime score outside the frozen controller.
+
+    The scorer sees only opaque context keys and generic usage/age/error
+    telemetry. It is permutation-equivariant over slots and emits a proposal;
+    a verifier-owned retention probe remains the sole authority that can
+    commit eviction. A verifier outcome can update this policy once without
+    retaining or replaying the transition evidence that produced it.
+    """
+
+    schema = EXTERNAL_TRANSITION_MODEL_LIFETIME_POLICY_SCHEMA
+
+    def __init__(
+        self,
+        context_width: int,
+        *,
+        hidden_width: int = 32,
+        learning_rate: float = 1e-2,
+    ) -> None:
+        super().__init__()
+        if context_width < 1 or hidden_width < 1:
+            raise ValueError("transition lifetime policy widths must be positive")
+        if learning_rate <= 0.0 or not math.isfinite(learning_rate):
+            raise ValueError("transition lifetime policy learning rate must be positive")
+        self.context_width = int(context_width)
+        self.hidden_width = int(hidden_width)
+        self.learning_rate = float(learning_rate)
+        self.feature_width = self.context_width + 3
+        self.network = nn.Sequential(
+            nn.Linear(self.feature_width, self.hidden_width),
+            nn.GELU(),
+            nn.Linear(self.hidden_width, 1),
+        )
+
+    def configuration(self) -> dict[str, int | float | str]:
+        return {
+            "schema": self.schema,
+            "context_width": self.context_width,
+            "hidden_width": self.hidden_width,
+            "learning_rate": self.learning_rate,
+            "inputs": "opaque_context_usage_age_prediction_error_v1",
+            "output": "larger_score_means_evict_v1",
+            "updates": "single_verified_outcome_v1",
+        }
+
+    def _features(
+        self,
+        contexts: torch.Tensor,
+        usage: torch.Tensor,
+        age: torch.Tensor,
+        prediction_error: torch.Tensor,
+    ) -> torch.Tensor:
+        _validate_tensor(
+            contexts,
+            name="transition lifetime contexts",
+            ndim=2,
+            width=self.context_width,
+        )
+        values = []
+        for name, value in (
+            ("transition lifetime usage", usage),
+            ("transition lifetime age", age),
+            ("transition lifetime prediction error", prediction_error),
+        ):
+            if value.ndim != 1 or value.shape[0] != contexts.shape[0]:
+                raise ValueError(f"{name} must have shape [slot_count]")
+            if not bool(torch.isfinite(value).all()) or bool(torch.any(value < 0)):
+                raise ValueError(f"{name} must be finite and non-negative")
+            values.append(torch.log1p(value).to(contexts))
+        return torch.cat((contexts, torch.stack(values, dim=-1)), dim=-1)
+
+    def forward(
+        self,
+        contexts: torch.Tensor,
+        usage: torch.Tensor,
+        age: torch.Tensor,
+        prediction_error: torch.Tensor,
+    ) -> torch.Tensor:
+        features = self._features(contexts, usage, age, prediction_error)
+        return self.network(features).squeeze(-1)
+
+    @torch.no_grad()
+    def propose(
+        self,
+        contexts: torch.Tensor,
+        slot_ids: Sequence[int],
+        usage: torch.Tensor,
+        age: torch.Tensor,
+        prediction_error: torch.Tensor,
+        protected: torch.Tensor,
+    ) -> ExternalTransitionModelLifetimeProposal:
+        if len(slot_ids) != contexts.shape[0]:
+            raise ValueError("transition lifetime slot IDs do not match contexts")
+        if protected.ndim != 1 or protected.shape[0] != contexts.shape[0]:
+            raise ValueError("transition lifetime protection mask is misaligned")
+        if protected.dtype != torch.bool:
+            raise TypeError("transition lifetime protection mask must be boolean")
+        scores = self(contexts, usage, age, prediction_error)
+        eligible = tuple(
+            int(slot_id)
+            for slot_id, is_protected in zip(slot_ids, protected.tolist(), strict=True)
+            if not is_protected
+        )
+        eligible_indices = [
+            index
+            for index, is_protected in enumerate(protected.tolist())
+            if not is_protected
+        ]
+        if not eligible_indices:
+            return ExternalTransitionModelLifetimeProposal(
+                selected_slot_id=None,
+                scores=scores.new_empty((0,)),
+                eligible_slot_ids=eligible,
+                reason="all external transition slots are protected",
+            ).validate()
+        selected_index = max(
+            eligible_indices,
+            key=lambda index: (float(scores[index]), -index),
+        )
+        return ExternalTransitionModelLifetimeProposal(
+            selected_slot_id=int(slot_ids[selected_index]),
+            scores=scores[eligible_indices].detach().clone(),
+            eligible_slot_ids=eligible,
+            reason="learned lifetime score selected an unprotected logical slot",
+        ).validate()
+
+    def adaptation_step(
+        self,
+        contexts: torch.Tensor,
+        slot_ids: Sequence[int],
+        usage: torch.Tensor,
+        age: torch.Tensor,
+        prediction_error: torch.Tensor,
+        selected_slot_id: int,
+        verifier_accepted: bool,
+        optimizer: torch.optim.Optimizer | None = None,
+    ) -> float:
+        """Consume exactly one verifier bit as external policy learning."""
+
+        if selected_slot_id not in slot_ids:
+            raise KeyError("transition lifetime selected slot is unknown")
+        selected_index = list(slot_ids).index(selected_slot_id)
+        logits = self(contexts, usage, age, prediction_error)
+        target = torch.tensor(
+            [float(verifier_accepted)],
+            device=logits.device,
+            dtype=logits.dtype,
+        )
+        loss = torch.nn.functional.binary_cross_entropy_with_logits(
+            logits[selected_index : selected_index + 1],
+            target,
+        )
+        selected_optimizer = optimizer
+        if selected_optimizer is None:
+            selected_optimizer = torch.optim.SGD(
+                self.parameters(),
+                lr=self.learning_rate,
+            )
+        selected_optimizer.zero_grad()
+        loss.backward()
+        selected_optimizer.step()
+        return float(loss.detach())
+
+    def evict_verified(
+        self,
+        bank: ExternalTransitionModelBank,
+        usage: torch.Tensor,
+        age: torch.Tensor,
+        prediction_error: torch.Tensor,
+        protected: torch.Tensor,
+        retention_probe: Callable[[ExternalTransitionModelBank], bool],
+        optimizer: torch.optim.Optimizer | None = None,
+    ) -> tuple[
+        ExternalTransitionModelLifetimeProposal,
+        ExternalTransitionModelEvictionReceipt | None,
+    ]:
+        """Propose, verifier-check, optionally learn from, and commit eviction."""
+
+        proposal = self.propose(
+            bank.contexts,
+            bank.slot_ids,
+            usage,
+            age,
+            prediction_error,
+            protected,
+        )
+        if proposal.selected_slot_id is None:
+            return proposal, None
+        contexts_before = bank.contexts
+        slot_ids_before = bank.slot_ids
+        receipt = bank.evict_verified_id(
+            proposal.selected_slot_id,
+            retention_probe,
+        )
+        self.adaptation_step(
+            contexts_before,
+            slot_ids_before,
+            usage,
+            age,
+            prediction_error,
+            proposal.selected_slot_id,
+            receipt.accepted,
+            optimizer,
+        )
+        return proposal, receipt
+
+    def state_payload(self) -> dict[str, object]:
+        """Persist the external policy without any controller parameters."""
+
+        state = {
+            name: value.detach().cpu().clone()
+            for name, value in self.state_dict().items()
+        }
+        digest = hashlib.sha256()
+        digest.update(repr(self.configuration()).encode("utf-8"))
+        for name, value in state.items():
+            digest.update(name.encode("utf-8"))
+            digest.update(str(value.dtype).encode("utf-8"))
+            digest.update(repr(tuple(value.shape)).encode("utf-8"))
+            digest.update(value.contiguous().numpy().tobytes())
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "state": state,
+            "sha256": digest.hexdigest(),
+        }
+
+    def digest(self) -> str:
+        payload = self.state_payload()
+        return str(payload["sha256"])
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, Any],
+    ) -> ExternalTransitionModelLifetimePolicy:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported transition lifetime policy payload")
+        configuration = payload.get("configuration")
+        state = payload.get("state")
+        if not isinstance(configuration, Mapping) or not isinstance(state, Mapping):
+            raise TypeError("transition lifetime policy payload is incomplete")
+        policy = cls(
+            int(configuration["context_width"]),
+            hidden_width=int(configuration["hidden_width"]),
+            learning_rate=float(configuration["learning_rate"]),
+        )
+        current = policy.state_dict()
+        if tuple(state) != tuple(current):
+            raise ValueError("transition lifetime policy state names differ")
+        normalized: dict[str, torch.Tensor] = {}
+        for name, expected in current.items():
+            value = state[name]
+            if not isinstance(value, torch.Tensor):
+                raise TypeError("transition lifetime policy state is not a tensor")
+            if value.shape != expected.shape or value.dtype != expected.dtype:
+                raise ValueError("transition lifetime policy state is incompatible")
+            if not bool(torch.isfinite(value).all()):
+                raise ValueError("transition lifetime policy state is not finite")
+            normalized[name] = value.detach().clone()
+        policy.load_state_dict(normalized, strict=True)
+        if payload.get("sha256") != policy.digest():
+            raise ValueError("transition lifetime policy checksum mismatch")
+        return policy
+
 
 
 @dataclass(frozen=True)
@@ -2333,6 +2636,34 @@ class ExternalOnlineTransitionContextRouter:
         if receipt.accepted:
             self._refresh_active_slot()
         return receipt
+
+    def evict_with_lifetime_policy_verified(
+        self,
+        policy: ExternalTransitionModelLifetimePolicy,
+        usage: torch.Tensor,
+        age: torch.Tensor,
+        prediction_error: torch.Tensor,
+        protected: torch.Tensor,
+        retention_probe: Callable[[ExternalTransitionModelBank], bool],
+        optimizer: torch.optim.Optimizer | None = None,
+    ) -> tuple[
+        ExternalTransitionModelLifetimeProposal,
+        ExternalTransitionModelEvictionReceipt | None,
+    ]:
+        """Use a learned proposal while preserving router address repair."""
+
+        proposal, receipt = policy.evict_verified(
+            self.bank,
+            usage,
+            age,
+            prediction_error,
+            protected,
+            retention_probe,
+            optimizer,
+        )
+        if receipt is not None and receipt.accepted:
+            self._refresh_active_slot()
+        return proposal, receipt
 
     def evict_verified_id(
         self,
