@@ -223,6 +223,44 @@ def test_growth_int8_codec_round_trips_with_explicit_scales() -> None:
     assert torch.equal(restored["growth.bias"], artifact["growth.bias"])
 
 
+def test_growth_int8_row_codec_preserves_leading_dimension_scales() -> None:
+    artifact = {
+        "growth.normal_matrix": torch.tensor(
+            [[1000.0, -500.0], [0.01, -0.02]], dtype=torch.float32
+        )
+    }
+
+    compressed = compress_growth_artifact(artifact, dtype="int8_row")
+    restored = decompress_growth_artifact(compressed)
+
+    assert compressed["growth.normal_matrix"].dtype == torch.int8
+    assert compressed["growth.normal_matrix.__scale__"].shape == (2, 1)
+    assert torch.allclose(
+        restored["growth.normal_matrix"],
+        artifact["growth.normal_matrix"],
+        rtol=0.01,
+        atol=0.01,
+    )
+
+
+def test_growth_float16_stats_codec_is_a_float16_storage_alias() -> None:
+    artifact = {
+        "growth.target_matrix": torch.tensor(
+            [[1.25, -2.5], [0.01, -0.02]], dtype=torch.float32
+        )
+    }
+
+    compressed = compress_growth_artifact(artifact, dtype="float16_stats")
+    restored = decompress_growth_artifact(compressed)
+
+    assert compressed["growth.target_matrix"].dtype == torch.float16
+    assert torch.allclose(
+        restored["growth.target_matrix"].float(),
+        artifact["growth.target_matrix"],
+        atol=0.01,
+    )
+
+
 def test_growth_int8_codec_rejects_unscaled_int8_entries() -> None:
     with pytest.raises(ValueError, match="missing its scale"):
         decompress_growth_artifact(

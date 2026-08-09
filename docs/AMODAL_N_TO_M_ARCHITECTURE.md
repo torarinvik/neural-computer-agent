@@ -5837,19 +5837,21 @@ slot is then added, and `consolidate_verified()` shares its parameters with the
 original while preserving both opaque logical addresses. Physical models fall
 from `7` to `6`; historical model digests and address keys remain unchanged.
 
-The audit also tests the existing float16 and int8 storage codecs against a
-baseline-plus-`1e-3` held-out factual retention delta. All six codec candidates
-across seeds `82301`, `82302`, and `82303` are rejected: quantizing the
-replay-free random-feature normal-equation statistics produces deltas as high
-as `1.1233` for float16 and `6.5146` for int8. The compressed payload still
-round-trips its aliases and logical addresses, but no unsafe codec is
-promoted. This is the intended verifier behavior and identifies the next
-implementation target as a statistics-aware codec, not a relaxed tolerance.
+The audit tests legacy float16/int8, row-int8, and the new
+`float16_stats` codec against a baseline-plus-`1e-3` held-out factual
+retention delta. The legacy codecs are rejected: quantizing the replay-free
+random-feature normal-equation statistics produces deltas as high as `1.1233`
+for float16 and `6.5146` for int8. `float16_stats` preserves the immutable
+Fourier basis and ill-conditioned normal matrix, stores the solved predictor in
+float16, and reconstructs the target matrix on restore. It is selected on all
+three seeds, reducing bank storage from `487,564` to `483,952` bytes while
+keeping every held-out delta below `5e-5`. Alias and logical-address
+round-trips remain exact.
 
 Controller updates, compaction optimizer updates, replay, and old-regime
 replay are zero; corruption is staged and rejected without a bank write; and
 router persistence is exact for all three seeds. This promotes bounded
-retention-verified factual lifecycle management and safe compression
-rejection, not semantic merging, unrestricted memory growth, or general
+retention-verified factual lifecycle management and statistics-aware storage
+compression, not semantic merging, unrestricted memory growth, or general
 continual learning. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_nonlinear_address_compaction_promoted_2026-08-10/`.

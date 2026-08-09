@@ -2,7 +2,7 @@
   "schema": "neural-computer.sample-efficiency-ledger.v1",
   "experiment": "external_nonlinear_address_compaction",
   "decision": "promote",
-  "claim_boundary": "three-seed retention-verified nonlinear factual-memory growth and equivalent-slot consolidation with unsafe codec rejection; not unrestricted continual learning",
+  "claim_boundary": "three-seed retention-verified nonlinear factual-memory growth, equivalent-slot consolidation, and statistics-aware storage compression; not unrestricted continual learning",
   "seeds": [82301, 82302, 82303],
   "accounting": {
     "initial_capacity": 4,
@@ -17,13 +17,17 @@
     "old_regime_replay": 0,
     "controller_optimizer_updates": 0,
     "compaction_optimizer_updates": 0,
-    "compression_retention_delta": 0.001
+    "compression_retention_delta": 0.001,
+    "compression_source_bytes_per_bank": 487564,
+    "compression_selected_bytes_per_bank": 483952,
+    "compression_selected_codec": "float16_stats"
   },
   "gates": {
     "all_three_seeds_promoted": true,
     "both_growth_transactions_verified": true,
     "equivalent_consolidation_verified": true,
-    "unsafe_codecs_rejected_without_promotion": true,
+    "statistics_aware_codec_promoted": true,
+    "legacy_codecs_rejected_without_promotion": true,
     "logical_addresses_and_aliases_persisted": true,
     "historical_model_digests_stable": true,
     "corruption_rejected_without_write": true,

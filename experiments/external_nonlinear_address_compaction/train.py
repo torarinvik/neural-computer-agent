@@ -285,14 +285,19 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         raise RuntimeError(f"verified consolidation failed: {consolidation.reason}")
 
     compression = bank.select_compression_verified(
-        (torch.float16, torch.int8),
+        (torch.float16, torch.int8, "int8_row", "float16_stats"),
         retention_probe=retains_with_compression_delta,
     )
+    selected_codec = (
+        compression.selected_codec
+        if compression.selected_codec in {"int8_row", "float16_stats"}
+        else torch.float16
+    )
     compressed_restored = ExternalTransitionModelBank.from_compressed_payload(
-        bank.compressed_payload(dtype=torch.float16)
+        bank.compressed_payload(dtype=selected_codec)
     )
     compression_deltas: dict[str, dict[str, float]] = {}
-    for codec in (torch.float16, torch.int8):
+    for codec in (torch.float16, torch.int8, "int8_row", "float16_stats"):
         candidate = ExternalTransitionModelBank.from_compressed_payload(
             bank.compressed_payload(dtype=codec)
         )
@@ -305,7 +310,9 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
     restored = ExternalOnlineTransitionContextRouter.from_payload(
         router.state_payload()
     )
-    compressed_retention = retains_with_compression_delta(compressed_restored)
+    compressed_retention = compression.accepted and retains_with_compression_delta(
+        compressed_restored
+    )
     historical_ids_stable = bank.slot_ids == historical_slot_ids + (duplicate_slot_id,)
     for slot_id, digest in historical_digests.items():
         index = bank.physical_index_for_slot_id(slot_id)
@@ -356,12 +363,21 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             and consolidation.physical_models_after
             == consolidation.physical_models_before - 1
         ),
-        "unsafe_codecs_rejected_without_promotion": (
-            not compression.accepted
-            and all(not receipt.accepted for receipt in compression.receipts)
+        "statistics_aware_compression_verified": (
+            compression.accepted
+            and compression.selected_codec in {"int8_row", "float16_stats"}
+        ),
+        "selected_compressed_retention_pass": compressed_retention,
+            "legacy_codecs_rejected_without_promotion": (
+            all(
+                not receipt.accepted
+                for receipt in compression.receipts
+                if receipt.codec in {"torch.float16", "torch.int8"}
+            )
             and any(
-                max(deltas.values()) > COMPRESSION_RETENTION_DELTA
-                for deltas in compression_deltas.values()
+                max(compression_deltas[codec].values())
+                > COMPRESSION_RETENTION_DELTA
+                for codec in ("torch.float16", "torch.int8")
             )
         ),
         "compression_payload_roundtrip_exact": (
@@ -410,7 +426,12 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "admission_rows": ADMISSION_ROWS,
             "context_encoder_updates": CONTEXT_UPDATES,
             "model_family": RANDOM_FEATURE_FAMILY,
-            "compression_candidates": [str(torch.float16), str(torch.int8)],
+            "compression_candidates": [
+                str(torch.float16),
+                str(torch.int8),
+                "int8_row",
+                "float16_stats",
+            ],
             "compression_retention_delta": COMPRESSION_RETENTION_DELTA,
         },
         "gates": gates,

@@ -124,6 +124,11 @@ class ExternalAffineTransitionStatistics(nn.Module):
     def _weights(self) -> torch.Tensor:
         return torch.linalg.solve(self.normal_matrix, self.target_matrix)
 
+    def predictor_weights(self) -> torch.Tensor:
+        """Return the solved factual predictor for representation-aware storage."""
+
+        return self._weights().detach().clone()
+
     def forward(self, state: torch.Tensor, intention: torch.Tensor) -> torch.Tensor:
         features = self._features(state, intention).to(self.normal_matrix)
         return features @ self._weights()
@@ -336,6 +341,11 @@ class ExternalRandomFeatureTransitionStatistics(nn.Module):
 
     def _weights(self) -> torch.Tensor:
         return torch.linalg.solve(self.normal_matrix, self.target_matrix)
+
+    def predictor_weights(self) -> torch.Tensor:
+        """Return the solved factual predictor for representation-aware storage."""
+
+        return self._weights().detach().clone()
 
     def _grow_features(self, destination_width: int) -> None:
         if not isinstance(destination_width, int):

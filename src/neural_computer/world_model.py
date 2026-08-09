@@ -1637,7 +1637,32 @@ class ExternalTransitionModelBank(nn.Module):
 
         models: list[dict[str, object]] = []
         for model in self.models:
-            state = compress_growth_artifact(model.state_dict(), dtype=dtype)
+            preserve_names: tuple[str, ...] = ()
+            compression_state = model.state_dict()
+            if (
+                str(dtype) in {"int8_row", "float16_stats"}
+                and getattr(model, "schema", None)
+                == "neural-computer.external-transition-random-feature-statistics.v1"
+            ):
+                # The random Fourier basis is immutable representation state;
+                # only the learned normal equations should be quantized.
+                preserve_names = ("projection", "bias", "normal_matrix")
+            if (
+                str(dtype) == "float16_stats"
+                and getattr(model, "schema", None)
+                == "neural-computer.external-transition-random-feature-statistics.v1"
+            ):
+                # Store the solved predictor rather than quantizing the
+                # right-hand side of an ill-conditioned linear system. The
+                # restore path reconstructs target_matrix from the exact
+                # normal matrix and this compressed predictor.
+                compression_state = dict(compression_state)
+                compression_state["target_matrix"] = model.predictor_weights()
+            state = compress_growth_artifact(
+                compression_state,
+                dtype=dtype,
+                preserve_names=preserve_names,
+            )
             models.append(
                 {
                     "state": state,
@@ -1760,6 +1785,15 @@ class ExternalTransitionModelBank(nn.Module):
             if model_payload.get("sha256") != bank._tensor_map_digest(state):
                 raise ValueError("compressed transition-model slot checksum mismatch")
             decompressed = decompress_growth_artifact(state)
+            if (
+                payload.get("codec") == "float16_stats"
+                and getattr(bank.models[index], "schema", None)
+                == "neural-computer.external-transition-random-feature-statistics.v1"
+            ):
+                decompressed["target_matrix"] = (
+                    decompressed["normal_matrix"].to(torch.float32)
+                    @ decompressed["target_matrix"].to(torch.float32)
+                )
             current = bank.models[index].state_dict()
             if tuple(decompressed) != tuple(current):
                 raise ValueError("compressed transition-model state names differ")

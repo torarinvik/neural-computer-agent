@@ -20,7 +20,9 @@
     "model_family": "random_feature_sufficient_statistics_v1",
     "compression_candidates": [
       "torch.float16",
-      "torch.int8"
+      "torch.int8",
+      "int8_row",
+      "float16_stats"
     ],
     "compression_retention_delta": 0.001
   },
@@ -30,7 +32,9 @@
     "two_capacity_growths_verified": true,
     "all_acquisition_heldout_errors_pass": true,
     "consolidation_verified": true,
-    "unsafe_codecs_rejected_without_promotion": true,
+    "statistics_aware_compression_verified": true,
+    "selected_compressed_retention_pass": true,
+    "legacy_codecs_rejected_without_promotion": true,
     "compression_payload_roundtrip_exact": true,
     "stable_logical_addresses": true,
     "historical_model_digests_stable": true,
@@ -108,9 +112,9 @@
     "duplicate_slot_id": 6
   },
   "compression": {
-    "accepted": false,
-    "selected_codec": null,
-    "retention_pass": false,
+    "accepted": true,
+    "selected_codec": "float16_stats",
+    "retention_pass": true,
     "retention_deltas": {
       "torch.float16": {
         "source_a": 0.03174734736148821,
@@ -129,6 +133,24 @@
         "target_e": 0.4147693475242704,
         "target_f": 0.30733387399232015,
         "duplicate_target_c": 5.030638921656646
+      },
+      "int8_row": {
+        "source_a": 37.445681615418835,
+        "source_b": 145.1365877394992,
+        "target_c": 207.37888454238418,
+        "target_d": 32.449515657965094,
+        "target_e": 189.67229201993905,
+        "target_f": 54.19380985427415,
+        "duplicate_target_c": 207.37888454238418
+      },
+      "float16_stats": {
+        "source_a": 7.882353202148806e-06,
+        "source_b": 8.226597856264561e-07,
+        "target_c": -4.316316335462034e-06,
+        "target_d": -8.235464338213205e-05,
+        "target_e": -3.761914558708668e-05,
+        "target_f": 5.6934659369289875e-06,
+        "duplicate_target_c": -4.316316335462034e-06
       }
     },
     "receipts": [
@@ -143,6 +165,18 @@
         "accepted": false,
         "source_bytes": 487564,
         "compressed_bytes": 122045
+      },
+      {
+        "codec": "int8_row",
+        "accepted": false,
+        "source_bytes": 487564,
+        "compressed_bytes": 485758
+      },
+      {
+        "codec": "float16_stats",
+        "accepted": true,
+        "source_bytes": 487564,
+        "compressed_bytes": 483952
       }
     ]
   },
@@ -178,6 +212,6 @@
     "replayed_examples": 0,
     "old_regime_replay": 0,
     "compaction_optimizer_updates": 0,
-    "wall_seconds": 1.9591685000341386
+    "wall_seconds": 2.0555102909565903
   }
 }

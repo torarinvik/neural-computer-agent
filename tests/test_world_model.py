@@ -847,6 +847,54 @@ def test_transition_model_bank_compression_requires_retention_and_round_trips() 
     assert restored.context_count == bank.context_count
 
 
+def test_random_feature_stats_compression_quantizes_solved_predictor() -> None:
+    torch.manual_seed(1214)
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        2,
+        model_family="random_feature_sufficient_statistics_v1",
+        random_feature_width=16,
+        capacity=1,
+    )
+    context = torch.tensor([1.0, 0.0])
+    index = bank.ensure_context(context)
+    observation = ExternalTransitionObservation(
+        state=torch.randn(8, 2),
+        intention=torch.randn(8, 1),
+        next_state=torch.randn(8, 2),
+    )
+    bank.adaptation_step(
+        observation,
+        context.expand(observation.state.shape[0], -1),
+        None,
+    )
+    baseline = float(
+        bank.loss(
+            observation,
+            context.expand(observation.state.shape[0], -1),
+        )
+    )
+
+    payload = bank.compressed_payload(dtype="float16_stats")
+    restored = ExternalTransitionModelBank.from_compressed_payload(payload)
+    restored_loss = float(
+        restored.loss(
+            observation,
+            context.expand(observation.state.shape[0], -1),
+        )
+    )
+
+    assert index == 0
+    assert payload["codec"] == "float16_stats"
+    assert restored_loss <= baseline + 1e-3
+    assert restored.context_count == bank.context_count
+    assert restored.slot_ids == bank.slot_ids
+    assert (
+        payload["models"][0]["state"]["target_matrix"].dtype == torch.float16
+    )
+
+
 def test_transition_model_bank_selects_smallest_retained_codec() -> None:
     bank = ExternalTransitionModelBank(2, 1, 2, hidden_width=8)
     first = bank.ensure_context(torch.tensor([1.0, 0.0]))

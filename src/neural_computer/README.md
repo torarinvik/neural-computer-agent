@@ -267,6 +267,13 @@ gates across seeds `69316` and `69317`. This remains a replaceable storage
 codec, not learned compression, arbitrary new computation, or general
 continual learning.
 
+The external random-feature transition bank adds a representation-aware
+`float16_stats` codec. It keeps the immutable Fourier basis and ill-conditioned
+normal matrix lossless, stores the solved predictor in float16, and reconstructs
+the target sufficient statistics on restore. It is eligible for promotion only
+through the same held-out factual-retention verifier; generic float16/int8
+quantization remains available but is not silently substituted for this codec.
+
 `EpisodicContextEncoder` is the next memory-side boundary. It consumes ordered
 learned event tensors, opaque actions, scalar outcomes, and presence, then
 emits a normalized episode context and per-event credit scores. The

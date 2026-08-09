@@ -7,8 +7,8 @@ retention-verified external-memory lifecycle operations:
 - create a copy-on-write equivalent factual slot;
 - consolidate only the equivalent slots while preserving both opaque logical
   addresses;
-- test storage codecs and reject them when sufficient-statistics quantization
-  causes held-out drift;
+- select a statistics-aware float16 codec only after a held-out retention
+  probe, while rejecting unsafe legacy codecs;
 - reject corrupted evidence without changing the committed bank.
 
 The controller is frozen. Source examples are not replayed during target
@@ -20,10 +20,12 @@ PYTHONPATH=. .venv/bin/python \
   --seed 82301 --report-out /tmp/external-address-compaction-82301.json
 ```
 
-The random-feature sufficient-statistics family intentionally rejects the
-current float16/int8 codecs when their quantization changes held-out factual
-predictions. This is a promoted safety result: compression is never accepted
-just to reduce bytes. A statistics-aware codec is a separate follow-up.
+The random-feature sufficient-statistics family rejects the legacy per-tensor
+float16/int8 codecs when their quantization changes held-out factual
+predictions. The new `float16_stats` codec preserves the immutable basis and
+ill-conditioned normal matrix, stores the solved predictor in float16, and
+reconstructs the target statistics on restore. It is promoted only when it
+passes the same verifier. Compression is never accepted just to reduce bytes.
 
 This establishes a bounded lifecycle contract, not semantic model merging,
 unrestricted memory growth, or general continual learning.
