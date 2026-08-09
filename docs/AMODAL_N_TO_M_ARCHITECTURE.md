@@ -4816,6 +4816,14 @@ unrestricted memory growth. Evidence from the rejection remains archived in
 The promoted rerun is archived in
 `session_records/sequence_working_memory_2026-08-02/external_provisional_candidate_promotion_promoted_2026-08-09/`.
 
+A strict one-pass control then disabled candidate-window replay. Both seeds
+preserved controller/source isolation and exact persistence, but held-out
+errors rose to `0.882` and `0.778` against tolerance `0.2`; no older candidate
+evidence was replayed. This rejects the claim that the current fixed MLP can
+learn the sparse target stream in one pass. Repeating the current bundle was
+accounted separately from old-evidence replay. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_provisional_candidate_one_pass_rejected_2026-08-09/`.
+
 ## Alternating provisional-candidate isolation (2026-08-09)
 
 The previous candidate boundary had one mutable provisional model. If a

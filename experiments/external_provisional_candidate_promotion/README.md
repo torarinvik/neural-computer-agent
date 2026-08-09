@@ -37,3 +37,7 @@ retention probe must pass before the live capacity and model slot are changed.
   --seed 70611 \
   --report-out /tmp/external-provisional-candidate.json
 ```
+
+The strict one-pass control is available with `--no-evidence-replay`; its
+two-seed rejection is archived separately because current-bundle repetition
+and older-window replay are accounted as different quantities.

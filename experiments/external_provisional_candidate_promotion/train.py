@@ -84,7 +84,12 @@ def _rows(observation: ExternalTransitionObservation) -> list[ExternalTransition
     ]
 
 
-def run(seed: int, report_out: Path) -> dict[str, object]:
+def run(
+    seed: int,
+    report_out: Path,
+    *,
+    replay_evidence: bool = True,
+) -> dict[str, object]:
     begun = time.perf_counter()
     torch.manual_seed(seed)
     source_observation, training, heldout = _observation(seed)
@@ -140,6 +145,8 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
     staged_results = []
     candidate_optimizer = None
     candidate_evidence_presentations = 0
+    candidate_old_evidence_replayed_rows = 0
+    candidate_current_evidence_presentations = 0
     for row in _rows(training):
         result = router.observe(row)
         staged_results.append(result.status)
@@ -150,13 +157,26 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             candidate_optimizer = torch.optim.Adam(
                 router.provisional_model.parameters(), lr=0.02
             )
-        evidence_rows = sum(
-            observation.state.shape[0]
-            for observation in router._provisional_observations
+        current_rows = result.observation.state.shape[0]
+        cumulative_rows = (
+            sum(
+                observation.state.shape[0]
+                for observation in router._provisional_observations
+            )
+            if replay_evidence
+            else current_rows
         )
-        candidate_evidence_presentations += evidence_rows * 100
+        candidate_evidence_presentations += cumulative_rows * 100
+        candidate_current_evidence_presentations += current_rows * 100
+        candidate_old_evidence_replayed_rows += (
+            cumulative_rows - current_rows
+        ) * 100
         for _ in range(100):
-            router.adaptation_step(result, candidate_optimizer)
+            router.adaptation_step(
+                result,
+                candidate_optimizer,
+                replay_evidence=replay_evidence,
+            )
     content_before_promotion = bank.content_digest()
     committed_count_before_promotion = bank.context_count
     candidate_evidence_unique_rows = sum(
@@ -214,7 +234,15 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "candidate_evidence_replayed_rows": (
                 candidate_evidence_presentations - candidate_evidence_unique_rows
             ),
-            "policy": "none_copy_on_write_external_model_candidate_v1",
+            "candidate_old_evidence_replayed_rows": candidate_old_evidence_replayed_rows,
+            "candidate_current_evidence_presentations": (
+                candidate_current_evidence_presentations
+            ),
+            "policy": (
+                "none_copy_on_write_external_model_candidate_cumulative_v1"
+                if replay_evidence
+                else "none_copy_on_write_external_model_candidate_one_pass_v1"
+            ),
         },
         "gates": gates,
         "promoted": all(gates.values()),
@@ -234,6 +262,12 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "provisional_evidence_unique_rows": candidate_evidence_unique_rows,
             "provisional_evidence_replayed_rows": (
                 candidate_evidence_presentations - candidate_evidence_unique_rows
+            ),
+            "provisional_old_evidence_replayed_rows": (
+                candidate_old_evidence_replayed_rows
+            ),
+            "provisional_current_evidence_presentations": (
+                candidate_current_evidence_presentations
             ),
             "old_slot_replay": 0,
         },
@@ -256,8 +290,13 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=70611)
     parser.add_argument("--report-out", type=Path, required=True)
+    parser.add_argument(
+        "--no-evidence-replay",
+        action="store_true",
+        help="update only from the current staged observation",
+    )
     args = parser.parse_args()
-    run(args.seed, args.report_out)
+    run(args.seed, args.report_out, replay_evidence=not args.no_evidence_replay)
 
 
 if __name__ == "__main__":

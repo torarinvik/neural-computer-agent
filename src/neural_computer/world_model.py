@@ -2147,8 +2147,16 @@ class ExternalOnlineTransitionContextRouter:
         self,
         result: ExternalOnlineTransitionContextResult,
         optimizer: torch.optim.Optimizer,
+        *,
+        replay_evidence: bool = True,
     ) -> float:
-        """Update only the externally selected slot using current evidence."""
+        """Update only the externally selected slot using current evidence.
+
+        ``replay_evidence=True`` trains a provisional candidate against its
+        retained evidence window. Setting it to ``False`` performs a strictly
+        one-pass update on only the current staged observation; this is an
+        explicit audit/control mode for replay-free learning claims.
+        """
 
         result.validate(
             state_width=self.bank.state_width,
@@ -2165,7 +2173,7 @@ class ExternalOnlineTransitionContextRouter:
             candidate = self._provisional_candidates[candidate_index]
             optimizer.zero_grad()
             evidence = self._merge_observations(
-                candidate.observations or [result.observation]
+                candidate.observations if replay_evidence else [result.observation]
             )
             loss = candidate.model.loss(evidence)
             loss.backward()
