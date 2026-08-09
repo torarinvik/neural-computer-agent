@@ -418,25 +418,37 @@ def _rollout(
             )
             decoded_register = torch.cat(trace, dim=-1)
         else:
-            step = (
-                machine.step_register
-                if execution_mode == "in_place"
-                else machine.read_execute_register
-            )
-            register, register_state = step(
-                event=event,
-                action=previous_action,
-                outcome=previous_reward,
-                intention=output.intention,
-                state=register_state,
-                present=present,
-                instructions=instructions,
-                basis_slots=basis_slots,
-                meta_context=meta_context,
-                sequence_operator_memory=sequence_operator_memory,
-                sequence_operator_slot=sequence_operator_slot,
-                sequence_operator_route_query=sequence_operator_route_query,
-            )
+            if execution_mode == "in_place":
+                register, register_state = machine.step_register(
+                    event=event,
+                    action=previous_action,
+                    outcome=previous_reward,
+                    intention=output.intention,
+                    state=register_state,
+                    present=present,
+                    instructions=instructions,
+                    basis_slots=basis_slots,
+                    meta_context=meta_context,
+                    sequence_operator_memory=sequence_operator_memory,
+                    sequence_operator_slot=sequence_operator_slot,
+                    sequence_operator_route_query=sequence_operator_route_query,
+                )
+            else:
+                snapshot = machine.read_execute_register_snapshot(
+                    event=event,
+                    action=previous_action,
+                    outcome=previous_reward,
+                    intention=output.intention,
+                    state=register_state,
+                    present=present,
+                    instructions=instructions,
+                    basis_slots=basis_slots,
+                    meta_context=meta_context,
+                    sequence_operator_memory=sequence_operator_memory,
+                    sequence_operator_slot=sequence_operator_slot,
+                    sequence_operator_route_query=sequence_operator_route_query,
+                )
+                register, register_state = snapshot.executed, snapshot.observed
             decoded_register = (
                 register if register_readout is None else register_readout(register)
             )
