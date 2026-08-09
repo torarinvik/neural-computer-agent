@@ -1119,3 +1119,12 @@ failed (`0.4375–0.59375` fresh accuracy). This rejects another output-only
 patch: portability must be learned in the shared interpreter/register
 contract. Raw report:
 `fresh_decoder_readout_prior_smoke/report_seed69318.json`.
+
+Retaining the mastered shared interpreter while giving the fresh control a
+new external candidate produced `0.9063`, `0.8594`, and `0.8125` fresh target
+accuracy, with all held-out targets passing their consolidation and retention
+gates. One of three fresh learning curves showed positive transfer; the other
+two matched or lagged the inherited stable threshold. This validates the
+frozen-interpreter/external-memory boundary, but does not yet promote a
+general fresh-controller transfer claim. Raw report:
+`fresh_retained_interpreter_frozen_long/report_seed69318.json`.

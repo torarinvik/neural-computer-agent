@@ -1268,6 +1268,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("route assignment entropy weight cannot be negative")
     if args.source_checkpoint_in and args.joint_source_updates:
         raise ValueError("source checkpoint input cannot be combined with source calibration")
+    if args.reuse_interpreter_prior and args.curriculum_fresh_control:
+        raise ValueError(
+            "interpreter-prior transfer cannot be combined with fresh source curriculum"
+        )
     if args.use_sequence_memory and args.use_operator_sequence_memory:
         raise ValueError("choose value or operator sequence memory")
     if args.use_sequence_program_memory and (
@@ -1540,6 +1544,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             sequence_program_slot_by_program[program] = sequence_program_memory.add_program(
                 codes
             )
+    source_interpreter_prior_state = {
+        name: value.detach().clone()
+        for name, value in machine.state_dict().items()
+    }
     source_attempt_count = sum(len(attempts) for attempts in source_attempt_counts)
     # Do not allocate future target instructions until source acquisition is
     # complete.  The first source phase trains machine parameters jointly; if
@@ -1730,12 +1738,21 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             )
             for _ in args.source_operations:
                 fresh_machine.add_basis_slot()
-        fresh_sequence_calibration_progress = _train_sequence_calibration(
-            parent,
-            fresh_machine,
-            args=args,
-            composition_programs=composition_programs,
-            seed_base=args.seed + 2_400_000 + index * 20_003,
+        if args.reuse_interpreter_prior:
+            fresh_machine.load_state_dict(
+                source_interpreter_prior_state,
+                strict=True,
+            )
+        fresh_sequence_calibration_progress = (
+            []
+            if args.reuse_interpreter_prior
+            else _train_sequence_calibration(
+                parent,
+                fresh_machine,
+                args=args,
+                composition_programs=composition_programs,
+                seed_base=args.seed + 2_400_000 + index * 20_003,
+            )
         )
         source_indices = tuple(
             args.source_operations.index(primitive) for primitive in program
@@ -1788,9 +1805,17 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 for source_index in source_indices
             ),
             "basis_slots": source_indices,
-            "mutable": True,
-            "mutable_instructions": tuple(fresh_machine.instructions),
-            "mutable_basis_slots": tuple(range(len(args.source_operations))),
+            "mutable": not args.reuse_interpreter_prior,
+            "mutable_instructions": (
+                tuple(fresh_machine.instructions)
+                if not args.reuse_interpreter_prior
+                else ()
+            ),
+            "mutable_basis_slots": (
+                tuple(range(len(args.source_operations)))
+                if not args.reuse_interpreter_prior
+                else ()
+            ),
             "generated_composition_ids": (0,),
             "generated_compositions": (program,),
             "composition_program": program,
@@ -2194,6 +2219,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             and all(row["positive_transfer"] for row in transfer_records)
         ),
         "curriculum_fresh_control": args.curriculum_fresh_control,
+        "interpreter_prior": (
+            "source_interpreter_state"
+            if args.reuse_interpreter_prior
+            else None
+        ),
         "interleaving": {
             "schedule": "round_robin_per_local_update",
             "candidate_count": len(candidates),
@@ -2456,6 +2486,12 @@ def main() -> None:
         action=argparse.BooleanOptionalAction,
         default=False,
         help="acquire source primitives before training each fresh target control",
+    )
+    parser.add_argument(
+        "--reuse-interpreter-prior",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="initialize fresh transfer controls from the mastered shared interpreter state",
     )
     parser.add_argument("--bridge-prior-updates", type=int, default=128)
     parser.add_argument("--readout-prior-updates", type=int, default=256)

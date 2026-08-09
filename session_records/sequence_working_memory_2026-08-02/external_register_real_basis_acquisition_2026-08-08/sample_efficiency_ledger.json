@@ -897,6 +897,23 @@
       "decision": "reject output-only portability patch; align the shared interpreter/register contract instead"
     },
     {
+      "experiment": "fresh_retained_interpreter_external_program_transfer_long",
+      "date": "2026-08-09",
+      "seeds": [69318],
+      "claim": "Retaining the mastered shared interpreter while resetting external candidate state will preserve rapid acquisition and produce positive transfer.",
+      "fresh_controller": true,
+      "interpreter_prior": "source_interpreter_state",
+      "decoder_prior": "mastered source decoder 0",
+      "external_program_memory": "new held-out content-addressed slots",
+      "replayed_examples": 0,
+      "unique_verifier_bits": 345856,
+      "fresh_accuracy_scores": [0.90625, 0.859375, 0.8125],
+      "positive_transfer_count": 1,
+      "heldout_target_probe_scores": [0.9140625, 0.8828125, 0.8671875],
+      "source_retention": "exact zero deltas",
+      "decision": "retain frozen-interpreter boundary; do not promote general fresh-controller transfer until positive transfer replicates across all held-out programs and seeds"
+    },
+    {
       "experiment": "protected_bounded_meta_shared_program_memory_router_sequence384",
       "date": "2026-08-09",
       "seeds": [69316],
