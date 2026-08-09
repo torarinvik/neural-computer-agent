@@ -5544,3 +5544,28 @@ This removes evaluator pretraining replay from this reliability boundary, but
 it is intentionally not overclaimed: the bins are a bounded calibration
 primitive, the audit is sequential rather than interleaved nonlinear routing,
 and learned delay/absence behavior and positive transfer remain open.
+
+## Replay-free learned delay and absence policy (2026-08-09)
+
+`EventWaitStatistics` is the first replay-free external state for the
+timestamp-buffer decision itself. It consumes only the generic transport
+features already exposed to `EventWaitPolicy`—age, present fraction,
+completeness, arrival count, and arrival delta—and scalar utility indicating
+whether waiting was useful. A fixed quantized main-effect/pairwise basis is
+updated through signed ridge sufficient statistics. Exact context counts keep
+unseen partial windows at a neutral wait prior instead of extrapolating a
+release decision from unrelated evidence. The controller remains frozen and
+the buffer uses the same replaceable wait-policy interface.
+
+Across seeds `2301` and `2302`, each run consumed `192` training outcomes and
+`8` post-training retention outcomes with zero optimizer updates, zero replay,
+and zero raw feature rows. The learned policy waited through a delayed partner
+at age one, released a permanently absent partner at age two, released
+complete windows immediately, persisted exactly, and retained the earlier
+decisions after a new late-absence observation. Block-shuffled outcomes
+reversed the learned decisions and failed the control. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_one_pass_wait_statistics_promoted_2026-08-09/`.
+
+This promotes only bounded age/coverage delay and absence handling. It does
+not establish natural temporal inference, arbitrary missing-stream reasoning,
+positive transfer against a fresh learner, or general continual learning.

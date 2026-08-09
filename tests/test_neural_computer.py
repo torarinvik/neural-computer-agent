@@ -18,6 +18,7 @@ from neural_computer import (
     ContentAddressedMemory,
     ControllerFeedback,
     EventWaitPolicy,
+    EventWaitStatistics,
     ExecutableArtifactMemory,
     MemoryBackend,
     MemoryQuery,
@@ -372,6 +373,90 @@ def test_learned_wait_policy_can_release_partial_windows_without_payload_access(
     assert not released[0].complete
     assert released[0].collection.present.tolist() == [[True, False]]
     assert released[0].collection.confidence[0, 1] == 0
+
+
+def test_replay_free_wait_statistics_learns_delay_and_absence_without_rows() -> None:
+    policy = EventWaitStatistics(bin_count=4, ridge=1e-3)
+    delayed = EventWaitPolicy.features(
+        age=torch.full((8,), 1.0),
+        present_fraction=torch.full((8,), 0.5),
+        complete=torch.zeros(8),
+        arrival_count=torch.full((8,), 2.0),
+        arrival_delta=torch.full((8,), 1.0),
+    )
+    absent = EventWaitPolicy.features(
+        age=torch.full((8,), 2.0),
+        present_fraction=torch.full((8,), 0.5),
+        complete=torch.zeros(8),
+        arrival_count=torch.full((8,), 2.0),
+        arrival_delta=torch.full((8,), 2.0),
+    )
+    policy.observe(delayed, torch.ones(8))
+    policy.observe(absent, torch.zeros(8))
+
+    delayed_probability, absent_probability = policy(
+        torch.cat((delayed[:1], absent[:1]))
+    )
+    assert delayed_probability > 0.8
+    assert absent_probability < 0.2
+    assert int(policy.sample_count) == 16
+    assert torch.isfinite(policy.loss(delayed[:1], torch.ones(1)))
+
+    payload = policy.payload()
+    assert "observations" not in payload
+    restored = EventWaitStatistics.from_payload(payload)
+    assert torch.equal(policy(delayed[:1]), restored(delayed[:1]))
+    assert torch.equal(policy(absent[:1]), restored(absent[:1]))
+
+
+def test_replay_free_wait_statistics_drives_timestamp_buffer() -> None:
+    policy = EventWaitStatistics(bin_count=4, ridge=1e-2)
+    delayed = EventWaitPolicy.features(
+        age=torch.full((8,), 1.0),
+        present_fraction=torch.full((8,), 0.5),
+        complete=torch.zeros(8),
+        arrival_count=torch.full((8,), 2.0),
+        arrival_delta=torch.full((8,), 1.0),
+    )
+    absent = EventWaitPolicy.features(
+        age=torch.full((8,), 2.0),
+        present_fraction=torch.full((8,), 0.5),
+        complete=torch.zeros(8),
+        arrival_count=torch.full((8,), 2.0),
+        arrival_delta=torch.full((8,), 2.0),
+    )
+    policy.observe(delayed, torch.ones(8))
+    policy.observe(absent, torch.zeros(8))
+
+    delayed_buffer = AmodalEventWindowBuffer(("left", "right"), wait_policy=policy)
+    left_at_zero = AmodalEvent(
+        torch.ones(1, 16), timestamp=torch.tensor([0.0]), confidence=torch.ones(1)
+    )
+    left_at_one = AmodalEvent(
+        torch.ones(1, 16), timestamp=torch.tensor([1.0]), confidence=torch.ones(1)
+    )
+    assert delayed_buffer.push({"left": left_at_zero}) == []
+    assert delayed_buffer.push({"left": left_at_one}) == []
+    right_at_zero = AmodalEvent(
+        torch.ones(1, 16), timestamp=torch.tensor([0.0]), confidence=torch.ones(1)
+    )
+    delayed_release = delayed_buffer.push({"right": right_at_zero})
+    assert len(delayed_release) == 1
+    assert delayed_release[0].complete
+
+    absent_buffer = AmodalEventWindowBuffer(("left", "right"), wait_policy=policy)
+    assert absent_buffer.push({"left": left_at_zero}) == []
+    absent_release = absent_buffer.push(
+        {
+            "left": AmodalEvent(
+                torch.ones(1, 16),
+                timestamp=torch.tensor([2.0]),
+                confidence=torch.ones(1),
+            )
+        }
+    )
+    assert len(absent_release) == 1
+    assert not absent_release[0].complete
 
 
 def test_content_addressed_memory_round_trips_and_reports_receipts(tmp_path) -> None:

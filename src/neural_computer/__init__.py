@@ -208,7 +208,12 @@ from .plasticity import (
     project_parameter_update_against_reference,
     zero_gradient_map,
 )
-from .policies import EventReliabilityPolicy, EventWaitPolicy
+from .policies import (
+    EVENT_WAIT_STATISTICS_SCHEMA,
+    EventReliabilityPolicy,
+    EventWaitPolicy,
+    EventWaitStatistics,
+)
 from .program import EXTERNAL_PROGRAM_ARTIFACT_SCHEMA, ExternalProgramArtifact
 from .promotion import (
     HOLDOUT_LEDGER_SCHEMA,
@@ -380,6 +385,7 @@ __all__ = [
     "DEFAULT_STATE_SPACE_ID",
     "EVENT_BRIDGE_SCHEMA",
     "EVENT_SCHEMA",
+    "EVENT_WAIT_STATISTICS_SCHEMA",
     "EVENT_WINDOW_SCHEMA",
     "EXECUTION_STATES",
     "EXTERNAL_CAPABILITY_APPEND_ONLY_LEARNED_COMPUTE_SCREEN_SCHEMA",
@@ -517,6 +523,7 @@ __all__ = [
     "EventReliabilityPolicy",
     "EventTokenWindow",
     "EventWaitPolicy",
+    "EventWaitStatistics",
     "ExecutableArtifactMemory",
     "ExternalAffineTransitionStatistics",
     "ExternalCapabilityComposition",

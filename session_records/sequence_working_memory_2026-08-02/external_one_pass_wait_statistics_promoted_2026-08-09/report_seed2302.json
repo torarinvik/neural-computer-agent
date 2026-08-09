@@ -1,0 +1,76 @@
+{
+  "schema": "neural-computer.external-one-pass-wait-statistics.v1",
+  "claim_boundary": "A frozen controller can be paired with bounded external wait statistics that learn a narrow age/coverage delay and absence policy from one-pass scalar outcomes.",
+  "seed": 2302,
+  "training": {
+    "episodes": 64,
+    "outcomes": 192,
+    "heldout_episodes": 32,
+    "heldout_outcomes": 96,
+    "heldout_loss_before": 0.018151002004742622,
+    "heldout_loss_after": 0.018150970339775085,
+    "replayed_examples": 0,
+    "optimizer_updates": 0
+  },
+  "probabilities": {
+    "before_new_observation": {
+      "delayed_wait": 0.9820125102996826,
+      "absent_wait": 0.017987392842769623,
+      "complete_wait": 0.017986921593546867,
+      "training_loss": 0.01815100573003292
+    },
+    "after_new_observation": {
+      "delayed_wait": 0.9820122718811035,
+      "absent_wait": 0.01798710599541664,
+      "complete_wait": 0.017986871302127838,
+      "training_loss": 0.018150972202420235
+    },
+    "heldout_loss_before": 0.018151002004742622,
+    "heldout_loss_after": 0.018150970339775085,
+    "new_observation_count": 8
+  },
+  "behavior": {
+    "delayed_initial_releases": 0,
+    "delayed_advance_releases": 0,
+    "delayed_release_count": 1,
+    "delayed_release_complete": true,
+    "absent_initial_releases": 0,
+    "absent_release_count": 1,
+    "absent_release_partial": true,
+    "complete_release_count": 1,
+    "complete_release_complete": true
+  },
+  "shuffled_control": {
+    "delayed_wait": 0.01798737235367298,
+    "absent_wait": 0.9820125102996826,
+    "complete_wait": 0.017986930906772614
+  },
+  "gates": {
+    "one_pass_outcome_updates": true,
+    "zero_optimizer_updates": true,
+    "zero_replayed_examples": true,
+    "learned_delay_wait": true,
+    "learned_absence_release": true,
+    "complete_windows_release": true,
+    "heldout_loss_pass": true,
+    "delayed_behavior_waits_then_commits": true,
+    "absent_behavior_releases_partial": true,
+    "complete_behavior_releases": true,
+    "retention_after_new_observation": true,
+    "exact_policy_persistence": true,
+    "shuffled_outcome_rejected": true,
+    "controller_frozen": true
+  },
+  "accounting": {
+    "unique_verifier_bits": 296,
+    "unique_logical_lifetimes": 104,
+    "optimizer_updates": 0,
+    "replayed_examples": 0,
+    "raw_feature_rows_retained": 0,
+    "wall_time_seconds": 0.01880762499058619,
+    "mean_inference_latency_ms": null,
+    "stable_bits_to_threshold": 192,
+    "retention_on_mastered_primitives": 1.0,
+    "transfer_ratio_against_fresh_learner": null
+  }
+}

@@ -29,7 +29,7 @@ from .interface import (
     IntentEvent,
 )
 from .memory import MemoryBackend
-from .policies import EventWaitPolicy
+from .policies import EventWaitPolicy, EventWaitStatistics
 from .representation import (
     DEFAULT_CONTROLLER_STATE_SPACE_ID,
     DEFAULT_EVENT_SPACE_ID,
@@ -345,7 +345,7 @@ class AmodalEventWindowBuffer:
         *,
         tolerance: float = 0.0,
         max_wait: float | None = None,
-        wait_policy: EventWaitPolicy | None = None,
+        wait_policy: EventWaitPolicy | EventWaitStatistics | None = None,
     ) -> None:
         names = tuple(stream_names)
         if not names or any(not name for name in names):
@@ -519,7 +519,7 @@ class AmodalControllerRuntime(nn.Module):
         input_bus: AmodalInputBus | None = None,
         output_bus: AmodalOutputBus | None = None,
         memory: MemoryBackend | None = None,
-        wait_policy: EventWaitPolicy | None = None,
+        wait_policy: EventWaitPolicy | EventWaitStatistics | None = None,
         event_space_id: str = DEFAULT_EVENT_SPACE_ID,
         state_space_id: str = DEFAULT_CONTROLLER_STATE_SPACE_ID,
         intention_space_id: str = DEFAULT_INTENTION_SPACE_ID,
