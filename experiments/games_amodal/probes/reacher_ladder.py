@@ -52,6 +52,17 @@ parser.add_argument("--hidden", type=int, default=32)
 parser.add_argument("--size", type=int, default=8)
 parser.add_argument("--eval-batches", type=int, default=4)
 parser.add_argument(
+    "--retrieval-first", action="store_true",
+    help="try the prior BEFORE training, and stop as soon as a target is "
+         "mastered. Without this, cost per target is the BUDGET rather "
+         "than the work actually done -- every target consumes the full "
+         "allowance whether it needed it or not, so cost can never fall "
+         "and compounding is unobservable by construction (the same "
+         "defect as F62's cheap targets and the k=1 amortisation). This "
+         "is also the missing incentive from F65: a task the prior "
+         "already solves must cost ZERO, or reuse is never cheaper than "
+         "relearning.")
+parser.add_argument(
     "--targets", default="",
     help="comma-separated target rungs to learn SEQUENTIALLY after one "
          "warm-start, e.g. 'r3,r4'. The compounding claim needs k>1: a "
@@ -257,7 +268,9 @@ def rollout(spec, *, seed: int, sample: bool, random_actions: bool = False):
 
 
 def train(spec, updates: int, tag: str, curve: list, opt=None, mix=None):
+    """Returns updates ACTUALLY spent -- early-stops on mastery."""
     opt = opt or optimizer
+    spent = updates
     for update in range(updates):
         active = mix[update % len(mix)] if mix else spec
         out = rollout(active, seed=args.seed + update, sample=True)
@@ -273,8 +286,12 @@ def train(spec, updates: int, tag: str, curve: list, opt=None, mix=None):
             with torch.no_grad():
                 probe = rollout(active if mix else spec,
                                 seed=args.seed + 700_000, sample=False)
-            curve.append({"tag": tag, "update": update + 1,
-                          "reach": round(float(probe["arrived"].mean()), 4)})
+            reach = round(float(probe["arrived"].mean()), 4)
+            curve.append({"tag": tag, "update": update + 1, "reach": reach})
+            if args.retrieval_first and reach >= args.mastery:
+                spent = update + 1
+                break
+    return spent
 
 
 def measure(spec, *, rand: bool = False) -> dict:
@@ -336,19 +353,27 @@ if args.targets:
     # Sequential targets after ONE warm-start. Cost per target falls if
     # the prior is genuinely reusable; stays flat if each is relearned.
     report["sequence"] = []
+    spent_total = 0
     for name in args.targets.split(","):
         rung = SPEC[name]
         before = measure(rung)
         seq_curve: list = []
-        train(rung, args.updates, f"target:{name}", seq_curve,
-              target_optimizer)
+        if args.retrieval_first and before["reach"] >= args.mastery:
+            # Already solved by the prior: reuse costs nothing.
+            spent = 0
+        else:
+            spent = train(rung, args.updates, f"target:{name}", seq_curve,
+                          target_optimizer) or args.updates
+        spent_total += spent
         after = measure(rung)
         hit = next((c["update"] for c in seq_curve
                     if c["reach"] >= args.mastery), None)
         report["sequence"].append({
             "rung": name, "zero_shot": before["reach"],
-            "final": after["reach"], "updates_to_mastery": hit})
+            "final": after["reach"], "updates_to_mastery": hit,
+            "updates_spent": spent})
     report["final"] = report["sequence"][-1]
+    report["updates_spent_total"] = spent_total
 else:
     report["final"] = measure(spec)
 report["curve"] = curve
