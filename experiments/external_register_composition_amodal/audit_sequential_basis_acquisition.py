@@ -1,4 +1,4 @@
-"""Audit sequential acquisition of two unseen external capabilities."""
+"""Audit sequential acquisition of unseen external capabilities."""
 
 from __future__ import annotations
 
@@ -35,7 +35,12 @@ from .train import (
     _train_stage,
 )
 
-TARGET_OPERATIONS = ("rotate", "prefix_parity", "global_parity")
+TARGET_OPERATIONS = (
+    "rotate",
+    "prefix_parity",
+    "global_parity",
+    "complement_rotate",
+)
 MASTERY_THRESHOLD = 0.8
 
 

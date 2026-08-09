@@ -387,3 +387,25 @@ remained strong under these rerenders, so this is evidence for durable
 generalization—not evidence that unrestricted continual learning is solved.
 The next frontier is genuinely novel composition and longer, interleaved
 acquisition with bounded memory growth.
+
+## Sequential four-target acquisition — promoted replicated rung
+
+The fourth target was deliberately compositional: `complement_rotate` combines
+the previously acquired rotation and complement factors, but was not admitted
+as a previously mastered target. It received its own appended instruction,
+basis slot, decoder, and event bridge after `rotate`, `prefix_parity`, and
+`global_parity` had already been frozen.
+
+Both seeds promoted all four targets. The final retained minima were `0.8359`
+and `0.8516`; the new target's frozen consolidation probe minima were `0.9844`
+and `0.9023`. Shuffled controls remained below `0.540`, missing evidence stayed
+at `0.5`, fixed-suite retention deltas were exactly zero, and the frozen parent
+was unchanged. Seed `69316` used `665,088` verifier bits and `5,216`
+optimizer updates; seed `69317` used `955,904` verifier bits and `7,520`
+optimizer updates because it required one extra restart for the first target.
+Both used zero replayed examples.
+
+This is evidence that the isolated external memory can retain four promoted
+capabilities and acquire a novel factor composition. It still does not test
+interleaved learning of multiple mutable capabilities or unrestricted program
+induction; those are the next bottlenecks.
