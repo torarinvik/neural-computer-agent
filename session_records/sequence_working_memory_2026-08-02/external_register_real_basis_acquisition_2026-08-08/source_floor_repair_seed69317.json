@@ -7,7 +7,7 @@
   "consolidation_probe_scores": [1.0, 1.0, 1.0, 1.0],
   "source_retained": true,
   "promoted": true,
-  "unique_verifier_bits": 163328,
-  "unique_logical_lifetimes": 20544,
+  "unique_verifier_bits": 224768,
+  "unique_logical_lifetimes": 28992,
   "replayed_examples": 0
 }

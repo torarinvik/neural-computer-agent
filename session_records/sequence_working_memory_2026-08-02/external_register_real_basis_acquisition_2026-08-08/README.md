@@ -332,9 +332,32 @@ causal controls, source-retention, zero-replay, and rollback invariants pass.
 This is the first replicated rung where source retention and new target
 consolidation succeed together under the frozen-controller boundary.
 
-Each run used `163,328` verifier bits, `20,544` logical lifetimes, `1,249`
-optimizer updates, and zero replayed examples. The source-selection suite
-used `4,608` verifier bits and post-freeze target consolidation used `2,048`.
+Each run used `224,768` verifier bits, `28,992` logical lifetimes, `1,761`
+optimizer updates, and zero replayed examples. This total includes the
+shuffled-training control (`65,536` bits), source-selection suite (`4,608`
+bits), and post-freeze target consolidation (`2,048` bits).
 This proves a robust single new-capability acquisition rung, not yet
 unrestricted continual learning; the next pressure test is a second unseen
 capability acquired after the first has been promoted.
+
+## Sequential two-target acquisition — promoted replicated rung
+
+The next pressure test appended a second opaque instruction only after the
+first target had been promoted. It acquired `rotate`, froze it, then acquired
+`prefix_parity` with a new basis slot, new decoder, and new event bridge. The
+first target, all three sources, and the frozen controller were retained while
+the second target learned from fresh outcomes only.
+
+Both seeds promoted both targets. Seed `69316` reached target probe minima of
+`0.9688` for `rotate` and `0.8203` for `prefix_parity`; seed `69317` reached
+`0.8594` and `0.8750`. Every retained capability stayed above `0.8594` after
+the second acquisition. Shuffled-outcome training controls stayed below
+`0.516`, missing-evidence controls stayed at `0.5`, and zero replay was used.
+This is the first replicated evidence that the external memory can grow by
+more than one promoted capability without catastrophic forgetting in this
+pressure test.
+
+Each run used `370,176` verifier bits, `47,680` logical lifetimes, `2,912`
+optimizer updates, and zero replayed examples. The next frontier is a third
+sequential capability plus reversal testing, to distinguish durable growth
+from a two-stage benchmark effect.

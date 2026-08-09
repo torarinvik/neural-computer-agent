@@ -628,15 +628,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         args.parent_updates * args.batch_size * parent_streams
     )
     growth_unique_verifier_bits = (
-        (
-            args.source_updates * len(SOURCE_OPERATIONS)
-            + args.growth_warmup_updates
-            + args.growth_basis_focus_updates
-            + args.target_updates
-        )
+        args.source_updates * len(SOURCE_OPERATIONS) * args.batch_size * args.span * 2
+        + args.growth_warmup_updates
         * args.batch_size
-        * args.span
+        * args.growth_span
         * 2
+        + args.growth_basis_focus_updates * args.batch_size * args.span * 2
+        + args.target_updates * args.batch_size * args.span * 2
     )
     growth_unique_logical_lifetimes = (
         (
@@ -664,6 +662,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         * len(SOURCE_OPERATIONS)
         * args.source_selection_audit_count
     )
+    shuffled_control_unique_verifier_bits = (
+        args.target_updates * args.batch_size * args.span * 2
+    )
+    shuffled_control_unique_logical_lifetimes = args.target_updates * args.batch_size
     report = {
         "schema": "neural-computer.external-register-real-basis-acquisition-audit.v1",
         "claim_boundary": (
@@ -739,6 +741,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 parent_unique_verifier_bits
                 + growth_unique_verifier_bits
                 + source_selection_unique_verifier_bits
+                + shuffled_control_unique_verifier_bits
                 + consolidation_unique_verifier_bits
             ),
             "parent_unique_verifier_bits": parent_unique_verifier_bits,
@@ -746,16 +749,24 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "source_selection_unique_verifier_bits": (
                 source_selection_unique_verifier_bits
             ),
+            "shuffled_control_unique_verifier_bits": (
+                shuffled_control_unique_verifier_bits
+            ),
             "consolidation_unique_verifier_bits": consolidation_unique_verifier_bits,
             "unique_logical_lifetimes": (
                 parent_unique_logical_lifetimes
                 + growth_unique_logical_lifetimes
                 + source_selection_unique_logical_lifetimes
+                + shuffled_control_unique_logical_lifetimes
+                + consolidation_unique_logical_lifetimes
             ),
             "parent_unique_logical_lifetimes": parent_unique_logical_lifetimes,
             "growth_unique_logical_lifetimes": growth_unique_logical_lifetimes,
             "source_selection_unique_logical_lifetimes": (
                 source_selection_unique_logical_lifetimes
+            ),
+            "shuffled_control_unique_logical_lifetimes": (
+                shuffled_control_unique_logical_lifetimes
             ),
             "consolidation_unique_logical_lifetimes": (
                 consolidation_unique_logical_lifetimes
@@ -767,6 +778,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 + 1
                 + args.growth_warmup_updates
                 + args.growth_basis_focus_updates
+                + args.target_updates
                 + args.target_updates
             ),
             "growth_verifier_bits_per_query": (
