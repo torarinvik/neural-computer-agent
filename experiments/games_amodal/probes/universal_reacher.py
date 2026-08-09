@@ -67,6 +67,14 @@ parser.add_argument("--view", choices=("none", "roll", "crop"), default="none",
                          "allocentric encoder at 0.69/axis -- present but "
                          "~30%% wrong, which is 'approaches, misses by a cell'.")
 parser.add_argument(
+    "--localise", type=float, default=0.0,
+    help="auxiliary self-supervised loss: predict the avatar's own cell "
+         "from the screen encoding. A linear probe reads position out of "
+         "the encoder at only 0.69/axis, and REINFORCE gives almost no "
+         "signal to sharpen it -- so the reacher descends the gradient "
+         "well (gap 5.4 -> 2.0) and cannot land. The target is visible in "
+         "the observation, so this needs no verifier.")
+parser.add_argument(
     "--relative-goal", action="store_true",
     help="encode the goal as the offset (target - avatar) measured ONCE at "
          "episode start, not as an absolute cell. Egocentric views destroy "
@@ -97,7 +105,11 @@ decoder = agent.runtime.output_bus.decoders["keypress"]
 # than a lookup table, so "reach (3,4)" and "reach (3,5)" are near each
 # other and unseen cells are interpolations rather than blanks.
 goal_encoder = torch.nn.Linear(2, args.width)
-params = plant + list(goal_encoder.parameters())
+# Auxiliary localisation heads: encoding -> own row, own col.
+locate_row = torch.nn.Linear(args.width, GRID)
+locate_col = torch.nn.Linear(args.width, GRID)
+params = (plant + list(goal_encoder.parameters())
+          + list(locate_row.parameters()) + list(locate_col.parameters()))
 optimizer = torch.optim.Adam(params, lr=1e-3)
 
 
@@ -153,12 +165,20 @@ def rollout(targets: torch.Tensor, *, seed: int, sample: bool,
         (targets - start_cells + (GRID - 1)) if args.relative_goal else targets,
         span=(2 * GRID - 1) if args.relative_goal else GRID)
     rewards, logps, actions, arrived = [], [], [], torch.zeros(args.batch_size)
+    locate_terms = []
     raw = pad_channels(verifier.observation(), SHARED_SCREEN_CHANNELS)
     observation = viewed(raw)
     gap = (avatar_cells(raw) - targets).abs().sum(dim=-1).float()
     for _step in range(args.steps):
-        events = [agent.runtime.encoders["screen"](observation),
-                  AmodalEvent(payload=goal_payload)]
+        screen_event = agent.runtime.encoders["screen"](observation)
+        if args.localise > 0.0:
+            payload = getattr(screen_event, "payload", screen_event)
+            here = avatar_cells(raw)
+            locate_loss = (
+                torch.nn.functional.cross_entropy(locate_row(payload), here[:, 0])
+                + torch.nn.functional.cross_entropy(locate_col(payload), here[:, 1]))
+            locate_terms.append(locate_loss)
+        events = [screen_event, AmodalEvent(payload=goal_payload)]
         output, state = agent.runtime.step_events(events, state, feedback)
         if random_actions:
             acts = torch.randint(0, decoder.key_count, (args.batch_size,),
@@ -193,7 +213,9 @@ def rollout(targets: torch.Tensor, *, seed: int, sample: bool,
         returns[:, pos] = running
     return {"returns": returns, "logp": torch.stack(logps, dim=1),
             "actions": torch.stack(actions, dim=1),
-            "arrived": arrived, "final_gap": gap}
+            "arrived": arrived, "final_gap": gap,
+            "locate": (torch.stack(locate_terms).mean()
+                       if locate_terms else torch.zeros(()))}
 
 
 generator = torch.Generator().manual_seed(args.seed)
@@ -204,6 +226,7 @@ for update in range(args.updates):
     advantage = advantage - advantage.mean()
     advantage = advantage / advantage.std().clamp_min(1e-6)
     loss = -(advantage * out["logp"]).sum() / args.batch_size
+    loss = loss + args.localise * out["locate"]
     optimizer.zero_grad(set_to_none=True)
     loss.backward()
     torch.nn.utils.clip_grad_norm_(params, 1.0)
