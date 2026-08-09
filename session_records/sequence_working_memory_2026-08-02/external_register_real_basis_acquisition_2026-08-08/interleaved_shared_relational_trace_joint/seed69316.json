@@ -1,0 +1,673 @@
+{
+  "schema": "neural-computer.external-register-interleaved-basis-acquisition-audit.v1",
+  "seed": 69316,
+  "source_operations": [
+    "reverse",
+    "adjacent_xor",
+    "complement"
+  ],
+  "source_acquisition_mode": "balanced_joint_calibration_upper_bound",
+  "joint_source_updates": 576,
+  "operator_mode": "factorized_shared_relational",
+  "operator_rank": 8,
+  "role_binding": 4,
+  "preserve_composition_trace": true,
+  "target_operations": [
+    "complement_rotate",
+    "prefix_parity"
+  ],
+  "composition_programs": [
+    [
+      "reverse",
+      "adjacent_xor",
+      "complement"
+    ],
+    [
+      "reverse",
+      "complement",
+      "adjacent_xor"
+    ],
+    [
+      "adjacent_xor",
+      "reverse",
+      "complement"
+    ],
+    [
+      "adjacent_xor",
+      "complement",
+      "reverse"
+    ],
+    [
+      "complement",
+      "reverse",
+      "adjacent_xor"
+    ],
+    [
+      "complement",
+      "adjacent_xor",
+      "reverse"
+    ]
+  ],
+  "decoder_prior": null,
+  "shared_bridge_prior": null,
+  "source_before": [
+    0.984375,
+    0.97265625,
+    1.0
+  ],
+  "source_attempt_scores": [
+    [
+      0.984375
+    ],
+    [
+      0.97265625
+    ],
+    [
+      1.0
+    ]
+  ],
+  "retained_before": [
+    0.984375,
+    0.97265625,
+    1.0
+  ],
+  "bridge_prior_source_after": [
+    0.984375,
+    0.97265625,
+    1.0
+  ],
+  "bridge_prior_progress": [],
+  "canonical_readout_prior": null,
+  "canonical_readout_prior_progress": [],
+  "targets": [
+    {
+      "operation": "complement_rotate",
+      "composition_program": null,
+      "candidate_accuracy": 1.0,
+      "consolidation_probe_accuracy": 1.0,
+      "shuffled_training_accuracy": 0.640625,
+      "missing_evidence_accuracy": 0.5,
+      "retained_before": [
+        0.984375,
+        0.97265625,
+        1.0
+      ],
+      "retained_after": [
+        0.984375,
+        0.97265625,
+        1.0
+      ],
+      "retention_deltas": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "candidate_progress": [
+        {
+          "update": 64,
+          "heldout_accuracy": 0.671875
+        },
+        {
+          "update": 128,
+          "heldout_accuracy": 0.7421875
+        },
+        {
+          "update": 192,
+          "heldout_accuracy": 0.734375
+        },
+        {
+          "update": 256,
+          "heldout_accuracy": 0.8671875
+        },
+        {
+          "update": 320,
+          "heldout_accuracy": 0.9453125
+        },
+        {
+          "update": 384,
+          "heldout_accuracy": 0.984375
+        },
+        {
+          "update": 448,
+          "heldout_accuracy": 1.0
+        },
+        {
+          "update": 512,
+          "heldout_accuracy": 1.0
+        }
+      ],
+      "accepted": true
+    },
+    {
+      "operation": "prefix_parity",
+      "composition_program": null,
+      "candidate_accuracy": 0.8515625,
+      "consolidation_probe_accuracy": 0.8515625,
+      "shuffled_training_accuracy": 0.515625,
+      "missing_evidence_accuracy": 0.5,
+      "retained_before": [
+        0.984375,
+        0.97265625,
+        1.0
+      ],
+      "retained_after": [
+        0.984375,
+        0.97265625,
+        1.0
+      ],
+      "retention_deltas": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "candidate_progress": [
+        {
+          "update": 64,
+          "heldout_accuracy": 0.6953125
+        },
+        {
+          "update": 128,
+          "heldout_accuracy": 0.7421875
+        },
+        {
+          "update": 192,
+          "heldout_accuracy": 0.7578125
+        },
+        {
+          "update": 256,
+          "heldout_accuracy": 0.84375
+        },
+        {
+          "update": 320,
+          "heldout_accuracy": 0.8515625
+        },
+        {
+          "update": 384,
+          "heldout_accuracy": 0.8515625
+        },
+        {
+          "update": 448,
+          "heldout_accuracy": 0.8671875
+        },
+        {
+          "update": 512,
+          "heldout_accuracy": 0.84375
+        }
+      ],
+      "accepted": true
+    },
+    {
+      "operation": "generated_composition",
+      "composition_program": [
+        "reverse",
+        "adjacent_xor",
+        "complement"
+      ],
+      "candidate_accuracy": 0.8984375,
+      "consolidation_probe_accuracy": 0.90234375,
+      "shuffled_training_accuracy": 0.53125,
+      "missing_evidence_accuracy": 0.5,
+      "retained_before": [
+        0.984375,
+        0.97265625,
+        1.0
+      ],
+      "retained_after": [
+        0.984375,
+        0.97265625,
+        1.0
+      ],
+      "retention_deltas": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "candidate_progress": [
+        {
+          "update": 64,
+          "heldout_accuracy": 0.671875
+        },
+        {
+          "update": 128,
+          "heldout_accuracy": 0.7421875
+        },
+        {
+          "update": 192,
+          "heldout_accuracy": 0.734375
+        },
+        {
+          "update": 256,
+          "heldout_accuracy": 0.7890625
+        },
+        {
+          "update": 320,
+          "heldout_accuracy": 0.8125
+        },
+        {
+          "update": 384,
+          "heldout_accuracy": 0.84375
+        },
+        {
+          "update": 448,
+          "heldout_accuracy": 0.90625
+        },
+        {
+          "update": 512,
+          "heldout_accuracy": 0.8984375
+        }
+      ],
+      "accepted": true
+    },
+    {
+      "operation": "generated_composition",
+      "composition_program": [
+        "reverse",
+        "complement",
+        "adjacent_xor"
+      ],
+      "candidate_accuracy": 0.9375,
+      "consolidation_probe_accuracy": 0.94921875,
+      "shuffled_training_accuracy": 0.59375,
+      "missing_evidence_accuracy": 0.5,
+      "retained_before": [
+        0.984375,
+        0.97265625,
+        1.0
+      ],
+      "retained_after": [
+        0.984375,
+        0.97265625,
+        1.0
+      ],
+      "retention_deltas": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "candidate_progress": [
+        {
+          "update": 64,
+          "heldout_accuracy": 0.6875
+        },
+        {
+          "update": 128,
+          "heldout_accuracy": 0.8515625
+        },
+        {
+          "update": 192,
+          "heldout_accuracy": 0.8671875
+        },
+        {
+          "update": 256,
+          "heldout_accuracy": 0.921875
+        },
+        {
+          "update": 320,
+          "heldout_accuracy": 0.921875
+        },
+        {
+          "update": 384,
+          "heldout_accuracy": 0.9453125
+        },
+        {
+          "update": 448,
+          "heldout_accuracy": 0.9453125
+        },
+        {
+          "update": 512,
+          "heldout_accuracy": 0.9140625
+        }
+      ],
+      "accepted": true
+    },
+    {
+      "operation": "generated_composition",
+      "composition_program": [
+        "adjacent_xor",
+        "reverse",
+        "complement"
+      ],
+      "candidate_accuracy": 0.8671875,
+      "consolidation_probe_accuracy": 0.87109375,
+      "shuffled_training_accuracy": 0.5,
+      "missing_evidence_accuracy": 0.5,
+      "retained_before": [
+        0.984375,
+        0.97265625,
+        1.0
+      ],
+      "retained_after": [
+        0.984375,
+        0.97265625,
+        1.0
+      ],
+      "retention_deltas": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "candidate_progress": [
+        {
+          "update": 64,
+          "heldout_accuracy": 0.71875
+        },
+        {
+          "update": 128,
+          "heldout_accuracy": 0.8046875
+        },
+        {
+          "update": 192,
+          "heldout_accuracy": 0.796875
+        },
+        {
+          "update": 256,
+          "heldout_accuracy": 0.8203125
+        },
+        {
+          "update": 320,
+          "heldout_accuracy": 0.8359375
+        },
+        {
+          "update": 384,
+          "heldout_accuracy": 0.8203125
+        },
+        {
+          "update": 448,
+          "heldout_accuracy": 0.84375
+        },
+        {
+          "update": 512,
+          "heldout_accuracy": 0.875
+        }
+      ],
+      "accepted": true
+    },
+    {
+      "operation": "generated_composition",
+      "composition_program": [
+        "adjacent_xor",
+        "complement",
+        "reverse"
+      ],
+      "candidate_accuracy": 0.8671875,
+      "consolidation_probe_accuracy": 0.86328125,
+      "shuffled_training_accuracy": 0.5625,
+      "missing_evidence_accuracy": 0.5,
+      "retained_before": [
+        0.984375,
+        0.97265625,
+        1.0
+      ],
+      "retained_after": [
+        0.984375,
+        0.97265625,
+        1.0
+      ],
+      "retention_deltas": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "candidate_progress": [
+        {
+          "update": 64,
+          "heldout_accuracy": 0.6796875
+        },
+        {
+          "update": 128,
+          "heldout_accuracy": 0.6875
+        },
+        {
+          "update": 192,
+          "heldout_accuracy": 0.71875
+        },
+        {
+          "update": 256,
+          "heldout_accuracy": 0.75
+        },
+        {
+          "update": 320,
+          "heldout_accuracy": 0.8515625
+        },
+        {
+          "update": 384,
+          "heldout_accuracy": 0.8515625
+        },
+        {
+          "update": 448,
+          "heldout_accuracy": 0.8515625
+        },
+        {
+          "update": 512,
+          "heldout_accuracy": 0.859375
+        }
+      ],
+      "accepted": true
+    },
+    {
+      "operation": "generated_composition",
+      "composition_program": [
+        "complement",
+        "reverse",
+        "adjacent_xor"
+      ],
+      "candidate_accuracy": 0.8984375,
+      "consolidation_probe_accuracy": 0.890625,
+      "shuffled_training_accuracy": 0.578125,
+      "missing_evidence_accuracy": 0.5,
+      "retained_before": [
+        0.984375,
+        0.97265625,
+        1.0
+      ],
+      "retained_after": [
+        0.984375,
+        0.97265625,
+        1.0
+      ],
+      "retention_deltas": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "candidate_progress": [
+        {
+          "update": 64,
+          "heldout_accuracy": 0.6796875
+        },
+        {
+          "update": 128,
+          "heldout_accuracy": 0.7734375
+        },
+        {
+          "update": 192,
+          "heldout_accuracy": 0.8359375
+        },
+        {
+          "update": 256,
+          "heldout_accuracy": 0.84375
+        },
+        {
+          "update": 320,
+          "heldout_accuracy": 0.8359375
+        },
+        {
+          "update": 384,
+          "heldout_accuracy": 0.8984375
+        },
+        {
+          "update": 448,
+          "heldout_accuracy": 0.890625
+        },
+        {
+          "update": 512,
+          "heldout_accuracy": 0.8984375
+        }
+      ],
+      "accepted": true
+    },
+    {
+      "operation": "generated_composition",
+      "composition_program": [
+        "complement",
+        "adjacent_xor",
+        "reverse"
+      ],
+      "candidate_accuracy": 0.875,
+      "consolidation_probe_accuracy": 0.8671875,
+      "shuffled_training_accuracy": 0.546875,
+      "missing_evidence_accuracy": 0.5,
+      "retained_before": [
+        0.984375,
+        0.97265625,
+        1.0
+      ],
+      "retained_after": [
+        0.984375,
+        0.97265625,
+        1.0
+      ],
+      "retention_deltas": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "candidate_progress": [
+        {
+          "update": 64,
+          "heldout_accuracy": 0.65625
+        },
+        {
+          "update": 128,
+          "heldout_accuracy": 0.7890625
+        },
+        {
+          "update": 192,
+          "heldout_accuracy": 0.796875
+        },
+        {
+          "update": 256,
+          "heldout_accuracy": 0.828125
+        },
+        {
+          "update": 320,
+          "heldout_accuracy": 0.828125
+        },
+        {
+          "update": 384,
+          "heldout_accuracy": 0.8515625
+        },
+        {
+          "update": 448,
+          "heldout_accuracy": 0.8515625
+        },
+        {
+          "update": 512,
+          "heldout_accuracy": 0.84375
+        }
+      ],
+      "accepted": true
+    }
+  ],
+  "fresh_transfer": [
+    {
+      "composition_program": [
+        "reverse",
+        "adjacent_xor",
+        "complement"
+      ],
+      "inherited_stable_bits": 40960,
+      "fresh_stable_bits": null,
+      "fresh_accuracy": 0.6328125,
+      "fresh_source_training_verifier_bits": 0,
+      "positive_transfer": false
+    },
+    {
+      "composition_program": [
+        "reverse",
+        "complement",
+        "adjacent_xor"
+      ],
+      "inherited_stable_bits": 16384,
+      "fresh_stable_bits": null,
+      "fresh_accuracy": 0.671875,
+      "fresh_source_training_verifier_bits": 0,
+      "positive_transfer": false
+    },
+    {
+      "composition_program": [
+        "adjacent_xor",
+        "reverse",
+        "complement"
+      ],
+      "inherited_stable_bits": 32768,
+      "fresh_stable_bits": null,
+      "fresh_accuracy": 0.6328125,
+      "fresh_source_training_verifier_bits": 0,
+      "positive_transfer": false
+    },
+    {
+      "composition_program": [
+        "adjacent_xor",
+        "complement",
+        "reverse"
+      ],
+      "inherited_stable_bits": 40960,
+      "fresh_stable_bits": null,
+      "fresh_accuracy": 0.6796875,
+      "fresh_source_training_verifier_bits": 0,
+      "positive_transfer": false
+    },
+    {
+      "composition_program": [
+        "complement",
+        "reverse",
+        "adjacent_xor"
+      ],
+      "inherited_stable_bits": 24576,
+      "fresh_stable_bits": null,
+      "fresh_accuracy": 0.6875,
+      "fresh_source_training_verifier_bits": 0,
+      "positive_transfer": false
+    },
+    {
+      "composition_program": [
+        "complement",
+        "adjacent_xor",
+        "reverse"
+      ],
+      "inherited_stable_bits": 32768,
+      "fresh_stable_bits": null,
+      "fresh_accuracy": 0.703125,
+      "fresh_source_training_verifier_bits": 0,
+      "positive_transfer": false
+    }
+  ],
+  "transfer_promoted": false,
+  "curriculum_fresh_control": false,
+  "interleaving": {
+    "schedule": "round_robin_per_local_update",
+    "candidate_count": 8,
+    "separate_optimizer_state": true,
+    "transactional_admission": true
+  },
+  "accounting": {
+    "replayed_examples": 0,
+    "parent_training_verifier_bits": 2048,
+    "source_training_verifier_bits": 73728,
+    "source_selection_verifier_bits": 13824,
+    "joint_source_calibration_verifier_bits": 73728,
+    "bridge_prior_training_verifier_bits": 0,
+    "canonical_readout_prior_training_verifier_bits": 0,
+    "normal_target_training_verifier_bits": 622592,
+    "shuffled_target_training_verifier_bits": 622592,
+    "fresh_transfer_training_verifier_bits": 466944,
+    "fresh_curriculum_source_verifier_bits": 0,
+    "progress_audit_verifier_bits": 38912,
+    "suite_and_control_verifier_bits": 14848,
+    "unique_verifier_bits": 1855488,
+    "optimizer_updates": 14688,
+    "unique_logical_lifetimes": 243712
+  },
+  "promoted": true
+}

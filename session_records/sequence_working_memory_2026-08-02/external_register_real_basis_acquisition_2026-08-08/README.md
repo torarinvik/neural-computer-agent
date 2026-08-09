@@ -796,3 +796,23 @@ the universal transfer claim is rejected. The bottleneck is now more specific:
 the system needs learned relational invariants that are preserved by the
 operator itself, not only a learned view layered on top of incompatible
 intermediate states.
+
+## Operator-integrated relational transition — promising, not yet promoted
+
+The shared interpreter now has an opt-in `factorized_shared_relational` mode.
+Unlike the rejected role-bound decoder view, this mode reads learned role
+slots inside every instruction transition, performs instruction-conditioned
+cross-role mixing, and writes the result back through the bounded residual
+state contract.
+
+Under the full balanced `576`-update source calibration, both seeds reached
+strong source mastery and all six source-program permutations reached
+`0.8359–0.9375` held-out behavior. Retention and causal controls remained
+valid. Nevertheless, the matched fresh learners did not reach stable
+thresholds in any of the twelve comparisons, so the strict transfer gate
+could not be evaluated as positive (`0/12` promoted comparisons).
+
+This is the strongest evidence so far that relational structure belongs in the
+operator transition, but it is not yet a continual-learning promotion. The
+next bottleneck is making the fresh learner a valid stable baseline while
+retaining the relational transition’s source-to-composition behavior.

@@ -43,6 +43,7 @@ EXTERNAL_REGISTER_SHARED_BOUNDED_MODE = "factorized_shared_bounded"
 EXTERNAL_REGISTER_SHARED_BANKED_MODE = "factorized_shared_banked"
 EXTERNAL_REGISTER_SHARED_CANONICAL_MODE = "factorized_shared_canonical"
 EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE = "factorized_shared_role_bound"
+EXTERNAL_REGISTER_SHARED_RELATIONAL_MODE = "factorized_shared_relational"
 
 
 EXTERNAL_REGISTER_ROLE_BINDING_SCHEMA = (
@@ -117,6 +118,72 @@ class LearnedRegisterRoleBinding(nn.Module):
         attended = torch.einsum("brt,btd->brd", weights, self.value(tokens))
         roles = self.contract(attended + queries)
         return roles * torch.sigmoid(self.gate(code)).unsqueeze(-1)
+
+
+EXTERNAL_REGISTER_RELATIONAL_TRANSITION_SCHEMA = (
+    "neural-computer.external-register-relational-transition.v1"
+)
+
+
+class InstructionConditionedRelationalTransition(nn.Module):
+    """Use learned role relations inside, rather than after, a transition.
+
+    The role slots are an internal coordinate system shared by all opaque
+    instructions.  Each instruction conditions both the role binding and a
+    cross-role attention pass; the mixed slots are then projected back into a
+    bounded register proposal.  No slot is assigned a semantic label.
+    """
+
+    def __init__(
+        self,
+        register_width: int,
+        instruction_width: int,
+        *,
+        role_count: int = 4,
+    ) -> None:
+        super().__init__()
+        self.binding = LearnedRegisterRoleBinding(
+            register_width,
+            instruction_width,
+            role_count=role_count,
+        )
+        self.register_width = int(register_width)
+        self.instruction_width = int(instruction_width)
+        self.role_count = int(role_count)
+        self.role_width = self.binding.role_width
+        self.query = nn.Linear(instruction_width, self.role_width)
+        self.key = nn.Linear(self.role_width, self.role_width)
+        self.value = nn.Linear(self.role_width, self.role_width)
+        self.output = nn.Linear(register_width, register_width)
+        self.gate = nn.Linear(instruction_width, register_width)
+
+    def configuration(self) -> dict[str, int | str]:
+        return {
+            "schema": EXTERNAL_REGISTER_RELATIONAL_TRANSITION_SCHEMA,
+            "register_width": self.register_width,
+            "instruction_width": self.instruction_width,
+            "role_count": self.role_count,
+            "role_width": self.role_width,
+            "transition": "instruction_conditioned_cross_role_attention_v1",
+            "semantics": "learned_from_verifier_outcomes_no_assigned_roles_v1",
+        }
+
+    def forward(
+        self,
+        register: torch.Tensor,
+        code: torch.Tensor,
+    ) -> torch.Tensor:
+        roles = self.binding(register, code)
+        queries = roles + self.query(code).unsqueeze(1)
+        scores = torch.einsum(
+            "brd,btd->brt", queries, self.key(roles)
+        ).div(self.role_width**0.5)
+        weights = torch.softmax(scores, dim=-1)
+        mixed = roles + torch.einsum(
+            "brt,btd->brd", weights, self.value(roles)
+        )
+        proposal = self.output(mixed.flatten(1))
+        return proposal * torch.sigmoid(self.gate(code))
 
 
 class CanonicalRegisterReadout(nn.Module):
@@ -566,6 +633,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             EXTERNAL_REGISTER_SHARED_BANKED_MODE,
             EXTERNAL_REGISTER_SHARED_CANONICAL_MODE,
             EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
+            EXTERNAL_REGISTER_SHARED_RELATIONAL_MODE,
             "unconstrained_mlp",
         ):
             raise ValueError("unsupported external register operator mode")
@@ -574,6 +642,11 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             and register_width % role_count
         ):
             raise ValueError("role-bound mode requires divisible register width")
+        if (
+            operator_mode == EXTERNAL_REGISTER_SHARED_RELATIONAL_MODE
+            and register_width % role_count
+        ):
+            raise ValueError("relational mode requires divisible register width")
         if context_width is not None and context_width < 1:
             raise ValueError("context width must be positive")
         members = tuple(instructions)
@@ -633,6 +706,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             EXTERNAL_REGISTER_SHARED_BANKED_MODE,
             EXTERNAL_REGISTER_SHARED_CANONICAL_MODE,
             EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
+            EXTERNAL_REGISTER_SHARED_RELATIONAL_MODE,
         ):
             self.operator_left = nn.Linear(
                 instruction_width,
@@ -656,6 +730,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             EXTERNAL_REGISTER_SHARED_BANKED_MODE,
             EXTERNAL_REGISTER_SHARED_CANONICAL_MODE,
             EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
+            EXTERNAL_REGISTER_SHARED_RELATIONAL_MODE,
         ):
             # Serial instruction chains are sensitive to unbounded additive
             # drift.  Normalize the read state, bound the learned proposal,
@@ -676,6 +751,12 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             self.state_contract = nn.LayerNorm(register_width)
         if operator_mode == EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE:
             self.role_binding = LearnedRegisterRoleBinding(
+                register_width,
+                instruction_width,
+                role_count=role_count,
+            )
+        if operator_mode == EXTERNAL_REGISTER_SHARED_RELATIONAL_MODE:
+            self.relational_transition = InstructionConditionedRelationalTransition(
                 register_width,
                 instruction_width,
                 role_count=role_count,
@@ -770,6 +851,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                     EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
                     EXTERNAL_REGISTER_SHARED_BANKED_MODE,
                     EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
+                    EXTERNAL_REGISTER_SHARED_RELATIONAL_MODE,
                 )
                 else EXTERNAL_REGISTER_BASIS_SCHEMA
             ),
@@ -780,6 +862,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                     EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
                     EXTERNAL_REGISTER_SHARED_BANKED_MODE,
                     EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
+                    EXTERNAL_REGISTER_SHARED_RELATIONAL_MODE,
                 )
                 else "opaque_memory_side_slot_index_v1"
             ),
@@ -1135,6 +1218,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             EXTERNAL_REGISTER_SHARED_BANKED_MODE,
             EXTERNAL_REGISTER_SHARED_CANONICAL_MODE,
             EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
+            EXTERNAL_REGISTER_SHARED_RELATIONAL_MODE,
         ):
             if not 0 <= basis_slot < len(self.basis_slots):
                 raise ValueError("basis slot index is out of range")
@@ -1153,6 +1237,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             EXTERNAL_REGISTER_SHARED_BANKED_MODE,
             EXTERNAL_REGISTER_SHARED_CANONICAL_MODE,
             EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
+            EXTERNAL_REGISTER_SHARED_RELATIONAL_MODE,
         ):
             operator_register = (
                 self.operator_normalizer(register)
@@ -1162,6 +1247,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                     EXTERNAL_REGISTER_SHARED_BANKED_MODE,
                     EXTERNAL_REGISTER_SHARED_CANONICAL_MODE,
                     EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
+                    EXTERNAL_REGISTER_SHARED_RELATIONAL_MODE,
                 )
                 else register
             )
@@ -1197,6 +1283,15 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
             ):
                 proposal = torch.tanh(base_proposal + self.operator_bias(code))
+                gate = torch.sigmoid(self.operator_composition_gate(code))
+                return register + gate * proposal
+            if self.operator_mode == EXTERNAL_REGISTER_SHARED_RELATIONAL_MODE:
+                relational_proposal = self.relational_transition(
+                    operator_register, code
+                )
+                proposal = torch.tanh(
+                    base_proposal + self.operator_bias(code) + relational_proposal
+                )
                 gate = torch.sigmoid(self.operator_composition_gate(code))
                 return register + gate * proposal
             if self.operator_mode == EXTERNAL_REGISTER_SHARED_BANKED_MODE:

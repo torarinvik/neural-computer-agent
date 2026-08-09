@@ -385,6 +385,23 @@
       "behavior_promotion": "direct controls passed; composition behavior was mixed across programs",
       "positive_transfer": "zero of twelve composition/seed comparisons",
       "decision": "retain the role-binding API as infrastructure but reject it as a universal compositional-transfer solution; require learned relational invariants in the operator state itself"
+    },
+    {
+      "experiment": "interleaved_shared_relational_trace_joint_diagnostic",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "Integrating instruction-conditioned cross-role mixing into the shared transition preserves compositional state structure.",
+      "operator_mode": "factorized_shared_relational",
+      "role_count": 4,
+      "preserve_composition_trace": true,
+      "joint_source_updates": 576,
+      "composition_program_count": 6,
+      "replayed_examples": 0,
+      "source_mastery": "both seeds reached source floors above 0.94",
+      "retention_on_mastered_primitives": "source deltas exact zero in both seeds",
+      "composition_behavior": "all six programs reached 0.8359–0.9375 in both seeds",
+      "positive_transfer": "zero of twelve strict comparisons; fresh controls did not reach stable thresholds",
+      "decision": "retain relational transition as the strongest operator candidate, but do not promote continual-learning transfer until the fresh baseline stabilizes"
     }
   ]
 }

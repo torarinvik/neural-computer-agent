@@ -192,6 +192,34 @@ def test_shared_banked_mode_reads_only_prior_intermediate_states() -> None:
     assert not torch.equal(final, first_only)
 
 
+def test_shared_relational_mode_integrates_role_relations_into_transition() -> None:
+    torch.manual_seed(917)
+    machine = ExternalCapabilityRegisterMachine(
+        event_width=4,
+        action_width=2,
+        intention_width=6,
+        register_width=8,
+        instruction_width=5,
+        interpreter_hidden=12,
+        operator_mode="factorized_shared_relational",
+        role_count=2,
+        instructions=tuple(ExternalRegisterInstruction(5) for _ in range(2)),
+    )
+    register = torch.randn(3, 8)
+    result = machine.execute_chain(register, machine.instructions)
+    loss = result.square().mean()
+    loss.backward()
+
+    assert machine.configuration()["operator_mode"] == (
+        "factorized_shared_relational"
+    )
+    assert machine.relational_transition.configuration()["schema"] == (
+        "neural-computer.external-register-relational-transition.v1"
+    )
+    assert torch.isfinite(result).all()
+    assert machine.relational_transition.binding.role_seed.grad is not None
+
+
 def test_shared_canonical_mode_applies_one_internal_state_contract_per_step() -> None:
     machine = ExternalCapabilityRegisterMachine(
         event_width=4,

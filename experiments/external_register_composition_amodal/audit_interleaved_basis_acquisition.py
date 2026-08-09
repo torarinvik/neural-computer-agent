@@ -1343,7 +1343,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "operator_rank": args.operator_rank,
         "role_binding": (
             machine.configuration().get("role_count")
-            if args.operator_mode == "factorized_shared_role_bound"
+            if args.operator_mode in (
+                "factorized_shared_role_bound",
+                "factorized_shared_relational",
+            )
             else None
         ),
         "preserve_composition_trace": args.preserve_composition_trace,
