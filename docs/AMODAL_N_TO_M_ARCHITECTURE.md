@@ -4430,3 +4430,28 @@ pressure test must vary dynamics, retain earlier transition knowledge, report
 actual model updates and search compute separately, and compare against a
 matched fresh model. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_model_based_planner_initial_rung_2026-08-09/`.
+
+## Append-only transition memory across disjoint dynamics (2026-08-09)
+
+The next two-seed rung adds `ExternalTransitionMemory`, an append-only factual
+store keyed by opaque state, intention, and context tensors, plus
+`ExternalGoalEvaluator`, a replaceable scalar verifier trained from outcome
+bits. The same state/intention pairs are presented under two different opaque
+contexts with different dynamics. The target phase appends 12 target facts to
+12 source facts; it performs zero target optimizer updates and replays zero
+source examples.
+
+Both seeds reached `1.0` target mastery and `1.0` source retention after the
+target append. Goal/context shuffles and corrupted-memory controls rejected,
+fresh-memory controls remained below mastery, persistence was exact, and the
+controller digest was unchanged. This supports the narrower claim that
+external append-only factual memory can prevent interference between two
+explicitly separated dynamics regimes while behavior is recomputed by search.
+
+The result remains bounded nonparametric memory, not general continual
+learning. Context discovery is supplied by the fixture, transitions are exact
+stored matches, and there is no learned consolidation, compression, or
+extrapolation beyond stored facts. The next bottleneck is to learn when and how
+to create a context/address, then test many regimes with controlled capacity
+growth and compression. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_transition_memory_transfer_promoted_2026-08-09/`.

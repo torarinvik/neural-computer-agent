@@ -1212,6 +1212,27 @@
       "fresh_model_control": [0.333333, 0.0],
       "controls": "controller unchanged, zero target updates, zero replay, goal shuffle, transition shuffle, fresh model, exact persistence",
       "decision": "promote only the bounded external-transition-plus-search interface; require disjoint-dynamics transfer, learned goal evaluation, and unrestricted-growth tests before general continual-learning claims"
+    },
+    {
+      "experiment": "external_transition_memory_transfer",
+      "date": "2026-08-09",
+      "seeds": [69401, 69402],
+      "claim": "An append-only external transition store can append a disjoint dynamics regime under an opaque context while retaining earlier facts and deriving behavior with a learned verifier and search.",
+      "module": "ExternalTransitionMemory + ExternalGoalEvaluator + ExternalModelBasedPlanner",
+      "source_transition_lifetimes_per_seed": 12,
+      "target_transition_lifetimes_per_seed": 12,
+      "target_unique_verifier_bits_per_seed": 3,
+      "target_optimizer_updates_per_seed": 0,
+      "evaluator_optimizer_updates_per_seed": 1200,
+      "replayed_examples": 0,
+      "target_mastery": [1.0, 1.0],
+      "source_retention_after_target_append": [1.0, 1.0],
+      "shuffled_goal_control": [0.0, 0.0],
+      "shuffled_context_control": [0.333333, 0.0],
+      "corrupted_memory_control": [0.0, 0.0],
+      "fresh_memory_control": [0.333333, 0.333333],
+      "controls": "frozen controller, source/target append receipts, source retention, goal/context shuffles, corruption, fresh memory, exact persistence, zero target optimizer updates, and zero replay passed",
+      "decision": "promote bounded disjoint-dynamics append-only factual memory; next test learned context discovery, many-regime interference, compression, and transfer beyond stored transitions"
     }
   ]
 }

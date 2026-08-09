@@ -22,10 +22,18 @@ from typing import Any
 import torch
 from torch import nn
 
+from .memory import (
+    AppendOnlyContentAddressedMemory,
+    MemoryQuery,
+    MemoryWriteReceipt,
+)
+
 EXTERNAL_TRANSITION_OBSERVATION_SCHEMA = (
     "neural-computer.external-transition-observation.v1"
 )
 EXTERNAL_TRANSITION_MODEL_SCHEMA = "neural-computer.external-transition-model.v1"
+EXTERNAL_TRANSITION_MEMORY_SCHEMA = "neural-computer.external-transition-memory.v1"
+EXTERNAL_GOAL_EVALUATOR_SCHEMA = "neural-computer.external-goal-evaluator.v1"
 EXTERNAL_MODEL_PLANNER_SCHEMA = "neural-computer.external-model-planner.v1"
 
 
@@ -259,6 +267,218 @@ class ExternalTransitionModel(nn.Module):
         return model
 
 
+class ExternalGoalEvaluator(nn.Module):
+    """A replaceable learned verifier for opaque terminal states."""
+
+    schema = EXTERNAL_GOAL_EVALUATOR_SCHEMA
+
+    def __init__(self, state_width: int, *, hidden_width: int = 64) -> None:
+        super().__init__()
+        if min(state_width, hidden_width) < 1:
+            raise ValueError("goal-evaluator dimensions must be positive")
+        self.state_width = int(state_width)
+        self.hidden_width = int(hidden_width)
+        self.network = nn.Sequential(
+            nn.Linear(self.state_width * 3, self.hidden_width),
+            nn.GELU(),
+            nn.Linear(self.hidden_width, self.hidden_width),
+            nn.GELU(),
+            nn.Linear(self.hidden_width, 1),
+        )
+
+    def configuration(self) -> dict[str, int | str]:
+        return {
+            "schema": self.schema,
+            "state_width": self.state_width,
+            "hidden_width": self.hidden_width,
+            "training": "scalar_verifier_outcomes_v1",
+            "score": "sigmoid_success_probability_v1",
+        }
+
+    def _validate_inputs(self, state: torch.Tensor, goal_state: torch.Tensor) -> None:
+        _validate_tensor(state, name="state", ndim=2, width=self.state_width)
+        _validate_tensor(
+            goal_state, name="goal_state", ndim=2, width=self.state_width
+        )
+        if state.shape[0] != goal_state.shape[0]:
+            raise ValueError("state and goal-state batches differ")
+
+    def forward(self, state: torch.Tensor, goal_state: torch.Tensor) -> torch.Tensor:
+        self._validate_inputs(state, goal_state)
+        difference = (state - goal_state).square()
+        return self.network(torch.cat((state, goal_state, difference), dim=-1)).squeeze(-1)
+
+    def loss(
+        self,
+        state: torch.Tensor,
+        goal_state: torch.Tensor,
+        outcome: torch.Tensor,
+    ) -> torch.Tensor:
+        if outcome.shape not in ((state.shape[0],), (state.shape[0], 1)):
+            raise ValueError("goal-evaluator outcomes must match the batch")
+        if not bool(torch.isfinite(outcome).all()):
+            raise ValueError("goal-evaluator outcomes must be finite")
+        if bool(torch.any(outcome < 0) or torch.any(outcome > 1)):
+            raise ValueError("goal-evaluator outcomes must lie in [0, 1]")
+        targets = outcome.reshape(-1).to(
+            device=state.device, dtype=state.dtype
+        )
+        return nn.functional.binary_cross_entropy_with_logits(
+            self(state, goal_state), targets
+        )
+
+    def digest(self) -> str:
+        digest = hashlib.sha256()
+        digest.update(self.schema.encode("utf-8"))
+        for name, value in sorted(self.state_dict().items()):
+            detached = value.detach().cpu().contiguous()
+            digest.update(name.encode("utf-8"))
+            digest.update(str(detached.dtype).encode("utf-8"))
+            digest.update(repr(tuple(detached.shape)).encode("utf-8"))
+            digest.update(detached.numpy().tobytes())
+        return digest.hexdigest()
+
+
+class ExternalTransitionMemory(nn.Module):
+    """Append-only factual transition memory keyed by learned opaque context."""
+
+    schema = EXTERNAL_TRANSITION_MEMORY_SCHEMA
+
+    def __init__(
+        self,
+        state_width: int,
+        intention_width: int,
+        *,
+        context_width: int = 0,
+        read_match_threshold: float = 0.999,
+        write_match_threshold: float = 0.999,
+    ) -> None:
+        super().__init__()
+        if min(state_width, intention_width) < 1 or context_width < 0:
+            raise ValueError("transition-memory dimensions are invalid")
+        self.state_width = int(state_width)
+        self.intention_width = int(intention_width)
+        self.context_width = int(context_width)
+        self.key_width = self.state_width + self.intention_width + self.context_width
+        self.store = AppendOnlyContentAddressedMemory(
+            self.key_width,
+            read_match_threshold=read_match_threshold,
+            write_match_threshold=write_match_threshold,
+        )
+
+    @property
+    def record_count(self) -> int:
+        return self.store.record_count
+
+    def configuration(self) -> dict[str, int | float | str]:
+        return {
+            "schema": self.schema,
+            "state_width": self.state_width,
+            "intention_width": self.intention_width,
+            "context_width": self.context_width,
+            "storage": "append_only_content_addressed_transition_facts_v1",
+            "behavior": "derived_by_external_search_not_stored_policy_v1",
+            "store": self.store.configuration(),
+        }
+
+    def _validate_context(
+        self, context: torch.Tensor | None, batch: int, device: torch.device
+    ) -> torch.Tensor:
+        if self.context_width == 0:
+            if context is not None:
+                raise ValueError("context is not configured for this transition memory")
+            return torch.empty(batch, 0, device=device)
+        if context is None:
+            raise ValueError("context is required for this transition memory")
+        _validate_tensor(context, name="context", ndim=2, width=self.context_width)
+        if context.shape[0] != batch:
+            raise ValueError("transition context batch differs")
+        return context.to(device=device)
+
+    def _key(
+        self,
+        state: torch.Tensor,
+        intention: torch.Tensor,
+        context: torch.Tensor | None,
+    ) -> torch.Tensor:
+        _validate_tensor(state, name="state", ndim=2, width=self.state_width)
+        _validate_tensor(
+            intention, name="intention", ndim=2, width=self.intention_width
+        )
+        if state.shape[0] != intention.shape[0]:
+            raise ValueError("state and intention batches differ")
+        context_value = self._validate_context(context, state.shape[0], state.device)
+        return torch.cat((context_value.to(state), state, intention), dim=-1)
+
+    def _stored_value(self, next_state: torch.Tensor) -> torch.Tensor:
+        padding = next_state.new_zeros(
+            next_state.shape[0], self.key_width - self.state_width
+        )
+        return torch.cat((next_state, padding), dim=-1)
+
+    @torch.no_grad()
+    def write(
+        self,
+        observation: ExternalTransitionObservation,
+        *,
+        context: torch.Tensor | None = None,
+    ) -> MemoryWriteReceipt:
+        observation.validate(
+            state_width=self.state_width,
+            intention_width=self.intention_width,
+        )
+        key = self._key(observation.state, observation.intention, context)
+        strength = (
+            torch.ones(observation.state.shape[0], device=key.device)
+            if observation.confidence is None
+            else observation.confidence.reshape(-1).to(key)
+        )
+        return self.store.write(key, self._stored_value(observation.next_state), strength)
+
+    @torch.no_grad()
+    def predict_with_hit(
+        self,
+        state: torch.Tensor,
+        intention: torch.Tensor,
+        *,
+        context: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        key = self._key(state, intention, context)
+        read = self.store.read(MemoryQuery(key=key))
+        return read.value[:, : self.state_width], read.hit
+
+    def forward(
+        self,
+        state: torch.Tensor,
+        intention: torch.Tensor,
+        context: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        return self.predict_with_hit(state, intention, context=context)[0]
+
+    def predict_with_context(
+        self,
+        state: torch.Tensor,
+        intention: torch.Tensor,
+        context: torch.Tensor,
+    ) -> torch.Tensor:
+        return self.forward(state, intention, context)
+
+    @torch.no_grad()
+    def clear(self) -> None:
+        self.store.clear()
+
+    def digest(self) -> str:
+        digest = hashlib.sha256()
+        digest.update(self.schema.encode("utf-8"))
+        for name, value in sorted(self.store.state_dict().items()):
+            detached = value.detach().cpu().contiguous()
+            digest.update(name.encode("utf-8"))
+            digest.update(str(detached.dtype).encode("utf-8"))
+            digest.update(repr(tuple(detached.shape)).encode("utf-8"))
+            digest.update(detached.numpy().tobytes())
+        return digest.hexdigest()
+
+
 @dataclass(frozen=True)
 class ModelBasedPlanningResult:
     """Opaque search output returned to an intention decoder."""
@@ -304,25 +524,49 @@ class ExternalModelBasedPlanner:
 
     def __init__(
         self,
-        model: ExternalTransitionModel,
+        model: nn.Module,
         *,
         beam_width: int = 4,
+        goal_evaluator: ExternalGoalEvaluator | None = None,
     ) -> None:
-        if not isinstance(model, ExternalTransitionModel):
-            raise TypeError("planner requires an ExternalTransitionModel")
+        if not isinstance(model, nn.Module) or not all(
+            isinstance(getattr(model, name, None), int)
+            for name in ("state_width", "intention_width")
+        ):
+            raise TypeError("planner requires a compatible external transition model")
         if beam_width < 1:
             raise ValueError("planner beam_width must be positive")
+        if goal_evaluator is not None and goal_evaluator.state_width != model.state_width:
+            raise ValueError("goal evaluator width must match transition model state width")
         self.model = model
         self.beam_width = int(beam_width)
+        self.goal_evaluator = goal_evaluator
 
     def configuration(self) -> dict[str, int | str]:
         return {
             "schema": self.schema,
             "beam_width": self.beam_width,
             "search": "opaque_candidate_beam_rollout_v1",
-            "objective": "terminal_opaque_goal_state_match_v1",
+            "objective": (
+                "learned_verifier_terminal_match_v1"
+                if self.goal_evaluator is not None
+                else "terminal_opaque_goal_state_match_v1"
+            ),
             "policy": "none_behavior_derived_at_inference_v1",
         }
+
+    def _predict(
+        self,
+        state: torch.Tensor,
+        intention: torch.Tensor,
+        context: torch.Tensor | None,
+    ) -> torch.Tensor:
+        if context is None:
+            return self.model(state, intention)
+        predictor = getattr(self.model, "predict_with_context", None)
+        if not callable(predictor):
+            raise TypeError("transition model does not expose contextual prediction")
+        return predictor(state, intention, context)
 
     def plan(
         self,
@@ -332,6 +576,7 @@ class ExternalModelBasedPlanner:
         *,
         horizon: int,
         beam_width: int | None = None,
+        transition_context: torch.Tensor | None = None,
     ) -> ModelBasedPlanningResult:
         """Return the lowest predicted-distance candidate sequence.
 
@@ -355,6 +600,18 @@ class ExternalModelBasedPlanner:
         )
         if goal_state.shape[0] != state.shape[0]:
             raise ValueError("state and goal_state batches differ")
+        if transition_context is not None:
+            context_width = getattr(self.model, "context_width", None)
+            if not isinstance(context_width, int) or context_width < 1:
+                raise ValueError("transition model does not accept a context")
+            _validate_tensor(
+                transition_context,
+                name="transition_context",
+                ndim=2,
+                width=context_width,
+            )
+            if transition_context.shape[0] != state.shape[0]:
+                raise ValueError("transition context batch differs")
         _validate_tensor(
             candidate_intentions,
             name="candidate_intentions",
@@ -395,21 +652,36 @@ class ExternalModelBasedPlanner:
                     parent_count = parent_states.shape[0]
                     candidate_count = row_candidates.shape[0]
                     expanded_nodes += parent_count * candidate_count
-                    next_states = self.model(
+                    next_states = self._predict(
                         parent_states.repeat_interleave(candidate_count, dim=0),
                         row_candidates.repeat(parent_count, 1),
+                        None
+                        if transition_context is None
+                        else transition_context[row]
+                        .unsqueeze(0)
+                        .expand(parent_count * candidate_count, -1),
                     ).reshape(parent_count, candidate_count, -1)
-                    distances = (
-                        next_states - goal_state[row].unsqueeze(0).unsqueeze(0)
-                    ).square().mean(dim=-1)
+                    if self.goal_evaluator is None:
+                        terminal_scores = (
+                            next_states - goal_state[row].unsqueeze(0).unsqueeze(0)
+                        ).square().mean(dim=-1)
+                    else:
+                        terminal_scores = -torch.sigmoid(
+                            self.goal_evaluator(
+                                next_states.reshape(-1, self.model.state_width),
+                                goal_state[row]
+                                .unsqueeze(0)
+                                .expand(parent_count * candidate_count, -1),
+                            )
+                        ).reshape(parent_count, candidate_count)
                     expanded: list[tuple[torch.Tensor, torch.Tensor, list[torch.Tensor], list[torch.Tensor]]] = []
                     for parent_index, parent in enumerate(beams):
                         for candidate_index in range(candidate_count):
                             score = (
-                                distances[parent_index, candidate_index]
+                                terminal_scores[parent_index, candidate_index]
                                 if _step == horizon - 1
                                 else torch.zeros_like(
-                                    distances[parent_index, candidate_index]
+                                    terminal_scores[parent_index, candidate_index]
                                 )
                             )
                             expanded.append(
@@ -442,10 +714,14 @@ class ExternalModelBasedPlanner:
 
 
 __all__ = [
+    "EXTERNAL_GOAL_EVALUATOR_SCHEMA",
     "EXTERNAL_MODEL_PLANNER_SCHEMA",
+    "EXTERNAL_TRANSITION_MEMORY_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_SCHEMA",
     "EXTERNAL_TRANSITION_OBSERVATION_SCHEMA",
+    "ExternalGoalEvaluator",
     "ExternalModelBasedPlanner",
+    "ExternalTransitionMemory",
     "ExternalTransitionModel",
     "ExternalTransitionObservation",
     "ModelBasedPlanningResult",

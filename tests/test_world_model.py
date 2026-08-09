@@ -1,7 +1,9 @@
 import torch
 
 from neural_computer import (
+    ExternalGoalEvaluator,
     ExternalModelBasedPlanner,
+    ExternalTransitionMemory,
     ExternalTransitionModel,
     ExternalTransitionObservation,
 )
@@ -127,3 +129,78 @@ def test_transition_observation_rejects_mismatched_batch_and_nonfinite_values() 
         assert "finite" in str(error)
     else:
         raise AssertionError("expected transition finiteness validation")
+
+
+def test_append_only_transition_memory_retains_disjoint_contextual_dynamics() -> None:
+    memory = ExternalTransitionMemory(1, 1, context_width=1)
+    state = torch.tensor([[0.0], [1.0]])
+    intention = torch.tensor([[1.0], [1.0]])
+    source = ExternalTransitionObservation(
+        state=state,
+        intention=intention,
+        next_state=torch.tensor([[1.0], [2.0]]),
+    )
+    target = ExternalTransitionObservation(
+        state=state,
+        intention=intention,
+        next_state=torch.tensor([[-1.0], [0.0]]),
+    )
+
+    memory.write(source, context=torch.ones(2, 1))
+    source_before, source_hits = memory.predict_with_hit(
+        state, intention, context=torch.ones(2, 1)
+    )
+    memory.write(target, context=-torch.ones(2, 1))
+    source_after, source_hits_after = memory.predict_with_hit(
+        state, intention, context=torch.ones(2, 1)
+    )
+    target_after, target_hits = memory.predict_with_hit(
+        state, intention, context=-torch.ones(2, 1)
+    )
+
+    assert memory.record_count == 4
+    assert source_hits.all() and source_hits_after.all() and target_hits.all()
+    assert torch.equal(source_before, source_after)
+    assert torch.equal(source_after, source.next_state)
+    assert torch.equal(target_after, target.next_state)
+
+
+def test_goal_evaluator_learns_scalar_verifier_without_latent_distance() -> None:
+    torch.manual_seed(1203)
+    evaluator = ExternalGoalEvaluator(2, hidden_width=16)
+    state = torch.tensor([[1.0, 0.0], [0.0, 1.0], [1.0, 0.0], [0.0, 1.0]])
+    goal = torch.tensor([[1.0, 0.0], [1.0, 0.0], [0.0, 1.0], [0.0, 1.0]])
+    outcome = torch.tensor([1.0, 0.0, 0.0, 1.0])
+    optimizer = torch.optim.Adam(evaluator.parameters(), lr=0.05)
+
+    for _ in range(250):
+        optimizer.zero_grad()
+        loss = evaluator.loss(state, goal, outcome)
+        loss.backward()
+        optimizer.step()
+
+    probability = torch.sigmoid(evaluator(state, goal))
+    assert probability[[0, 3]].min().item() > 0.99
+    assert probability[[1, 2]].max().item() < 0.01
+
+
+def test_planner_accepts_contextual_append_only_transition_memory() -> None:
+    memory = ExternalTransitionMemory(1, 1, context_width=1)
+    memory.write(
+        ExternalTransitionObservation(
+            state=torch.tensor([[0.0], [0.0]]),
+            intention=torch.tensor([[-1.0], [1.0]]),
+            next_state=torch.tensor([[-1.0], [1.0]]),
+        ),
+        context=torch.ones(2, 1),
+    )
+    result = ExternalModelBasedPlanner(memory).plan(
+        torch.zeros(1, 1),
+        torch.ones(1, 1),
+        torch.tensor([[-1.0], [1.0]]),
+        horizon=1,
+        transition_context=torch.ones(1, 1),
+    )
+
+    assert torch.equal(result.intentions[0, 0], torch.ones(1))
+    assert torch.equal(result.predicted_states[0, 0], torch.ones(1))

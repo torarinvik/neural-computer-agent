@@ -1,0 +1,188 @@
+{
+  "schema": "neural-computer.external-transition-memory-transfer-pressure-test.v1",
+  "seed": 69401,
+  "configuration": {
+    "state_width": 8,
+    "intention_width": 4,
+    "context_width": 6,
+    "position_count": 6,
+    "source_deltas": [
+      -1,
+      1
+    ],
+    "target_deltas": [
+      -2,
+      2
+    ],
+    "targets": [
+      [
+        0,
+        4
+      ],
+      [
+        4,
+        0
+      ],
+      [
+        1,
+        5
+      ]
+    ],
+    "policy": "none_append_only_transition_memory_plus_learned_verifier_search"
+  },
+  "gates": {
+    "controller_unchanged": true,
+    "evaluator_learns_verifier": true,
+    "source_memory_commits": true,
+    "target_memory_appends": true,
+    "target_mastery": true,
+    "source_retention_after_target_append": true,
+    "goal_conditioning_causal": true,
+    "context_conditioning_causal": true,
+    "corruption_control_not_mastered": true,
+    "fresh_control_not_mastered": true,
+    "persistence_exact": true
+  },
+  "promoted": true,
+  "source": {
+    "unique_transition_lifetimes": 12,
+    "optimizer_updates": 0,
+    "replayed_examples": 0,
+    "before_target_append": {
+      "successes": [
+        true,
+        true,
+        true
+      ],
+      "mastery": 1.0,
+      "predicted_final_positions": [
+        4,
+        0,
+        5
+      ],
+      "mean_latency_seconds": 0.002649514004588127,
+      "transition_hit_rate": 1.0
+    },
+    "memory_digest": "9293d0db5aa0097521e23014f326568818979b110aebf363315981685e495a29"
+  },
+  "target": {
+    "unique_transition_lifetimes": 12,
+    "unique_verifier_bits": 3,
+    "optimizer_updates": 0,
+    "replayed_examples": 0,
+    "memory_records_after_append": 24,
+    "after_target_append": {
+      "successes": [
+        true,
+        true,
+        true
+      ],
+      "mastery": 1.0,
+      "predicted_final_positions": [
+        4,
+        0,
+        5
+      ],
+      "mean_latency_seconds": 0.0009028613373326758,
+      "transition_hit_rate": 1.0
+    }
+  },
+  "retained": {
+    "successes": [
+      true,
+      true,
+      true
+    ],
+    "mastery": 1.0,
+    "predicted_final_positions": [
+      4,
+      0,
+      5
+    ],
+    "mean_latency_seconds": 0.0030342916531177857,
+    "transition_hit_rate": 1.0
+  },
+  "shuffled_goal": {
+    "successes": [
+      false,
+      false,
+      false
+    ],
+    "mastery": 0.0,
+    "predicted_final_positions": [
+      2,
+      4,
+      0
+    ],
+    "mean_latency_seconds": 0.0008114023366943002,
+    "transition_hit_rate": 1.0
+  },
+  "shuffled_context": {
+    "successes": [
+      false,
+      true,
+      false
+    ],
+    "mastery": 0.3333333333333333,
+    "predicted_final_positions": [
+      2,
+      0,
+      0
+    ],
+    "mean_latency_seconds": 0.0007507363334298134,
+    "transition_hit_rate": 1.0
+  },
+  "corrupted_memory": {
+    "successes": [
+      false,
+      false,
+      false
+    ],
+    "mastery": 0.0,
+    "predicted_final_positions": [
+      2,
+      5,
+      1
+    ],
+    "mean_latency_seconds": 0.0007191806798800826,
+    "transition_hit_rate": 1.0
+  },
+  "fresh_memory": {
+    "successes": [
+      false,
+      true,
+      false
+    ],
+    "mastery": 0.3333333333333333,
+    "predicted_final_positions": [
+      0,
+      0,
+      0
+    ],
+    "mean_latency_seconds": 0.0003344723178694646,
+    "transition_hit_rate": 0.0
+  },
+  "persisted_memory": {
+    "successes": [
+      true,
+      true,
+      true
+    ],
+    "mastery": 1.0,
+    "predicted_final_positions": [
+      4,
+      0,
+      5
+    ],
+    "mean_latency_seconds": 0.0007721799969052275,
+    "transition_hit_rate": 1.0
+  },
+  "evaluator": {
+    "optimizer_updates": 1200,
+    "replayed_examples": 0,
+    "final_loss": 6.891637553962937e-07,
+    "digest": "5eb82300af81fe38b645bfeaf156a0324375c36e0d165ca06b4133f1405f6edf"
+  },
+  "controller_digest": "8e1d7631a0a1fd8a2dc217eb115a1eb91dd2ab4190d53e507b534f6e8b385091",
+  "elapsed_seconds": 0.7962454159860499
+}
