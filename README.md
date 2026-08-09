@@ -2446,3 +2446,15 @@ controller. The old skill remains unchanged, routing is 100% with 50%
 shuffled-outcome controls, and both selected artifacts remain causal. Evidence
 is in
 `session_records/sequence_working_memory_2026-08-02/online_routed_growth_2026-08-04/`.
+
+### Latest promoted external capacity boundary (2026-08-09)
+
+The external opaque-program router can now grow its bounded address space
+through a verifier-gated copy-on-write transaction. Across two seeds, two
+mastered routes survived expansion from capacity two to three, the new slot
+was activated only after the receipt committed and then learned from scalar
+outcomes, and a reward-shuffled control failed. Persistence, rejection
+no-write, frozen-controller, frozen-rule, zero-replay, and zero-raw-row gates
+passed. This is safe bounded external capacity growth, not unrestricted
+memory growth or general continual learning. See
+`session_records/sequence_working_memory_2026-08-02/external_program_capacity_growth_promoted_2026-08-09/`.

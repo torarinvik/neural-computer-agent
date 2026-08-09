@@ -9,7 +9,9 @@ not task IDs, semantic labels, or correct unattempted actions.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+import copy
+import hashlib
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 
 import torch
@@ -30,6 +32,9 @@ EXTERNAL_OUTCOME_VALUE_SCHEMA = (
 )
 EXTERNAL_OUTCOME_PROGRAM_ROUTER_SCHEMA = (
     "neural-computer.external-outcome-program-router.v1"
+)
+EXTERNAL_OUTCOME_PROGRAM_CAPACITY_GROWTH_SCHEMA = (
+    "neural-computer.external-outcome-program-capacity-growth.v1"
 )
 
 
@@ -708,6 +713,43 @@ class ExternalOutcomeProgramRouterState:
         )
 
 
+@dataclass(frozen=True)
+class ExternalOutcomeProgramCapacityGrowthReceipt:
+    """Verifier receipt for a committed append-only router expansion."""
+
+    accepted: bool
+    source_capacity: int
+    destination_capacity: int
+    active_programs: int
+    state_digest_before: str
+    state_digest_after: str
+    reason: str
+    schema: str = EXTERNAL_OUTCOME_PROGRAM_CAPACITY_GROWTH_SCHEMA
+
+    def validate(self) -> ExternalOutcomeProgramCapacityGrowthReceipt:
+        if self.schema != EXTERNAL_OUTCOME_PROGRAM_CAPACITY_GROWTH_SCHEMA:
+            raise ValueError("unsupported program-capacity growth receipt schema")
+        if not isinstance(self.accepted, bool):
+            raise TypeError("program-capacity growth acceptance must be boolean")
+        if self.source_capacity < 1:
+            raise ValueError("program-capacity growth source must be positive")
+        if self.destination_capacity <= self.source_capacity:
+            raise ValueError("program-capacity growth must increase capacity")
+        if not 1 <= self.active_programs <= self.destination_capacity:
+            raise ValueError("program-capacity growth active count is invalid")
+        for name, digest in (
+            ("before", self.state_digest_before),
+            ("after", self.state_digest_after),
+        ):
+            if len(digest) != 64 or any(
+                character not in "0123456789abcdef" for character in digest
+            ):
+                raise ValueError(f"program-capacity growth {name} digest is invalid")
+        if not self.reason:
+            raise ValueError("program-capacity growth reason cannot be empty")
+        return self
+
+
 class ExternalOutcomeProgramRouter(nn.Module):
     """Route delayed scalar credit to opaque executable program choices.
 
@@ -819,6 +861,146 @@ class ExternalOutcomeProgramRouter(nn.Module):
         )
         self._validate_state(next_state)
         return next_state
+
+    @staticmethod
+    def _expanded_state(
+        state: ExternalOutcomeProgramRouterState,
+        destination_capacity: int,
+    ) -> ExternalOutcomeProgramRouterState:
+        current_capacity = state.credit.policy.shape[-1]
+        if destination_capacity <= current_capacity:
+            raise ValueError("expanded router capacity must exceed current capacity")
+        padding = destination_capacity - current_capacity
+        policy_padding = torch.zeros(
+            (*state.credit.policy.shape[:-1], padding),
+            dtype=state.credit.policy.dtype,
+            device=state.credit.policy.device,
+        )
+        eligibility_padding = torch.zeros_like(policy_padding)
+        credit = ExternalOutcomeCreditState(
+            policy=torch.cat((state.credit.policy, policy_padding), dim=-1),
+            eligibility=torch.cat(
+                (state.credit.eligibility, eligibility_padding), dim=-1
+            ),
+            baseline=state.credit.baseline,
+            decisions=state.credit.decisions,
+            feedbacks=state.credit.feedbacks,
+        )
+        return ExternalOutcomeProgramRouterState(
+            credit=credit,
+            active_programs=state.active_programs,
+        )
+
+    def _state_digest(self, state: ExternalOutcomeProgramRouterState) -> str:
+        """Digest router capacity and external state without serializing examples."""
+
+        self._validate_state(state)
+        digest = hashlib.sha256()
+        digest.update(repr(self.configuration()).encode("utf-8"))
+        digest.update(str(state.active_programs).encode("ascii"))
+        for tensor in (
+            state.credit.policy,
+            state.credit.eligibility,
+            state.credit.baseline,
+            state.credit.decisions,
+            state.credit.feedbacks,
+        ):
+            value = tensor.detach().cpu().contiguous()
+            digest.update(str(value.dtype).encode("ascii"))
+            digest.update(repr(tuple(value.shape)).encode("ascii"))
+            digest.update(value.numpy().tobytes())
+        return digest.hexdigest()
+
+    def _set_capacity(self, destination_capacity: int) -> None:
+        if destination_capacity <= self.program_capacity:
+            raise ValueError("destination router capacity must exceed current capacity")
+        self.program_capacity = int(destination_capacity)
+        self.credit_rule.action_count = int(destination_capacity)
+
+    def grow_capacity_verified(
+        self,
+        state: ExternalOutcomeProgramRouterState,
+        destination_capacity: int,
+        retention_probe: Callable[
+            [ExternalOutcomeProgramRouter, ExternalOutcomeProgramRouterState], bool
+        ],
+    ) -> tuple[ExternalOutcomeProgramCapacityGrowthReceipt, ExternalOutcomeProgramRouterState]:
+        """Grow executable address space only after old behavior survives a probe.
+
+        The candidate is copy-on-write: new policy and trace columns are zeroed,
+        all old columns are preserved, and the caller's verifier sees both the
+        source and expanded router.  The router object and returned state are
+        changed only after both probes pass.  New capacity remains inactive until
+        :meth:`append_program` is called explicitly.
+        """
+
+        self._validate_state(state)
+        if not isinstance(destination_capacity, int) or isinstance(
+            destination_capacity, bool
+        ):
+            raise TypeError("destination router capacity must be an integer")
+        if destination_capacity <= self.program_capacity:
+            raise ValueError("destination router capacity must exceed current capacity")
+        if not callable(retention_probe):
+            raise TypeError("program-capacity retention probe must be callable")
+
+        source_capacity = self.program_capacity
+        before_digest = self._state_digest(state)
+        source_result = retention_probe(self, state)
+        if isinstance(source_result, torch.Tensor):
+            if source_result.numel() != 1:
+                raise ValueError("program-capacity retention probe must return one value")
+            source_passed = bool(source_result.item())
+        else:
+            source_passed = bool(source_result)
+        if not source_passed:
+            receipt = ExternalOutcomeProgramCapacityGrowthReceipt(
+                accepted=False,
+                source_capacity=source_capacity,
+                destination_capacity=destination_capacity,
+                active_programs=state.active_programs,
+                state_digest_before=before_digest,
+                state_digest_after=before_digest,
+                reason="source retention probe rejected growth",
+            )
+            return receipt.validate(), state
+
+        candidate = copy.deepcopy(self)
+        candidate._set_capacity(destination_capacity)
+        candidate_state = candidate._expanded_state(state, destination_capacity)
+        candidate._validate_state(candidate_state)
+        candidate_result = retention_probe(candidate, candidate_state)
+        if isinstance(candidate_result, torch.Tensor):
+            if candidate_result.numel() != 1:
+                raise ValueError("program-capacity retention probe must return one value")
+            candidate_passed = bool(candidate_result.item())
+        else:
+            candidate_passed = bool(candidate_result)
+        after_digest = candidate._state_digest(candidate_state)
+        if not candidate_passed:
+            receipt = ExternalOutcomeProgramCapacityGrowthReceipt(
+                accepted=False,
+                source_capacity=source_capacity,
+                destination_capacity=destination_capacity,
+                active_programs=state.active_programs,
+                state_digest_before=before_digest,
+                state_digest_after=after_digest,
+                reason="expanded-state retention probe rejected growth",
+            )
+            return receipt.validate(), state
+
+        self._set_capacity(destination_capacity)
+        self._validate_state(candidate_state)
+        receipt = ExternalOutcomeProgramCapacityGrowthReceipt(
+            accepted=True,
+            source_capacity=source_capacity,
+            destination_capacity=destination_capacity,
+            active_programs=candidate_state.active_programs,
+            state_digest_before=before_digest,
+            state_digest_after=after_digest,
+            reason="retention probe accepted expanded state",
+        )
+        return receipt.validate(), candidate_state
 
     def logits(
         self,

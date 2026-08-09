@@ -5569,3 +5569,26 @@ reversed the learned decisions and failed the control. Evidence is archived in
 This promotes only bounded age/coverage delay and absence handling. It does
 not establish natural temporal inference, arbitrary missing-stream reasoning,
 positive transfer against a fresh learner, or general continual learning.
+
+## Verifier-gated external program capacity growth (2026-08-09)
+
+The external program router now supports transactional capacity growth. A
+growth request first verifies retention on the source state, creates a
+copy-on-write candidate with zero-initialized policy and eligibility columns,
+and verifies the candidate again. Only after both probes pass does the router
+commit the larger address space. New capacity remains inactive until an
+explicit append operation activates it, so adding memory cannot silently
+change the controller's available action set.
+
+Across seeds `2303` and `2304`, two opaque routes were learned from one-pass
+scalar outcomes, capacity grew from two to three, the third route was
+activated and learned, and both original routes remained correct. Rejected
+growth was a no-write transaction; persistence was exact; reward-shuffled
+outcomes failed; and the controller and plasticity rule remained frozen. The
+experiment used zero optimizer updates, zero replay, and retained zero raw
+feature rows. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_program_capacity_growth_promoted_2026-08-09/`.
+
+This is a promoted bounded external address-space-growth primitive. It does
+not establish unrestricted memory growth, arbitrary program induction,
+positive transfer against a fresh learner, or general continual learning.

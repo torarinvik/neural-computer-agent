@@ -272,7 +272,7 @@ def test_generated_composition_accepts_a_withheld_four_primitive_program() -> No
         )
     ]
     assert len(active) == 4
-    for marker_start in (24, 26, 28, 30):
+    for marker_start in (3, 7, 11, 15):
         assert bool(
             (
                 batch.query_frames[:, :, :, 27:30, marker_start:marker_start + 2]

@@ -1,0 +1,31 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_program_capacity_growth",
+  "seeds": [2303, 2304],
+  "per_seed": {
+    "unique_verifier_bits": 1200,
+    "unique_logical_lifetimes": 1200,
+    "optimizer_updates": 0,
+    "replayed_examples": 0,
+    "raw_feature_rows_retained": 0,
+    "stable_bits_to_threshold": 1200,
+    "retention_on_mastered_primitives": 1.0,
+    "transfer_ratio_against_fresh_learner": null
+  },
+  "total": {
+    "unique_verifier_bits": 2400,
+    "unique_logical_lifetimes": 2400,
+    "optimizer_updates": 0,
+    "replayed_examples": 0,
+    "raw_feature_rows_retained": 0
+  },
+  "controls": {
+    "frozen_controller": true,
+    "frozen_router_rule": true,
+    "reward_shuffled_outcome": true,
+    "rejected_growth_no_write": true,
+    "exact_persistence": true,
+    "retention_after_new_route": true
+  },
+  "claim_boundary": "verifier-gated bounded external address-space growth only"
+}

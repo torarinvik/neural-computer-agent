@@ -10,6 +10,7 @@ from neural_computer import (
     ExternalMemoryWritePolicy,
     ExternalOutcomeCreditPlasticity,
     ExternalOutcomeCreditState,
+    ExternalOutcomeProgramCapacityGrowthReceipt,
     ExternalOutcomeProgramRouter,
     ExternalOutcomeProgramRouterState,
     ExternalOutcomeValueBaseline,
@@ -197,6 +198,80 @@ def test_external_outcome_program_router_appends_and_round_trips() -> None:
     assert torch.equal(restored.credit.policy, state.credit.policy)
     assert torch.equal(restored.credit.feedbacks, state.credit.feedbacks)
     assert router.action_mask(restored).tolist() == [[True, True, False]]
+
+
+def test_external_outcome_program_router_growth_is_transactional_and_retains_policy() -> None:
+    router = ExternalOutcomeProgramRouter(
+        feature_width=3,
+        program_capacity=2,
+        initial_programs=2,
+        initial_learning_rate=0.2,
+        initial_trace_decay=0.8,
+    )
+    state = router.record_decision(
+        router.initial_state(1),
+        torch.tensor([[1.0, 0.0, 0.0]]),
+        torch.tensor([1]),
+        torch.tensor([0.5]),
+    )
+    state = router.apply_feedback(
+        state,
+        torch.ones(1),
+        terminal=torch.ones(1, dtype=torch.bool),
+    )
+    features = torch.tensor([[1.0, 0.0, 0.0]])
+    old_logits = router.logits(state, features)
+    old_policy = state.credit.policy.clone()
+    calls: list[tuple[int, int]] = []
+
+    def retain(candidate: ExternalOutcomeProgramRouter, candidate_state: object) -> bool:
+        assert isinstance(candidate_state, ExternalOutcomeProgramRouterState)
+        calls.append((candidate.program_capacity, candidate_state.credit.policy.shape[-1]))
+        return bool(torch.allclose(candidate.logits(candidate_state, features)[..., :2], old_logits))
+
+    receipt, grown = router.grow_capacity_verified(state, 4, retain)
+
+    assert isinstance(receipt, ExternalOutcomeProgramCapacityGrowthReceipt)
+    assert receipt.accepted
+    assert receipt.source_capacity == 2
+    assert receipt.destination_capacity == 4
+    assert calls == [(2, 2), (4, 4)]
+    assert router.program_capacity == 4
+    assert grown.active_programs == 2
+    assert torch.equal(grown.credit.policy[..., :2], old_policy)
+    assert torch.equal(grown.credit.policy[..., 2:], torch.zeros(1, 3, 2))
+    assert torch.allclose(router.logits(grown, features)[..., :2], old_logits)
+
+    restored = router.state_from_payload(router.state_payload(grown))
+    assert torch.equal(restored.credit.policy, grown.credit.policy)
+    assert router.action_mask(restored).tolist() == [[True, True, False, False]]
+
+
+def test_external_outcome_program_router_growth_rejection_does_not_mutate_capacity() -> None:
+    router = ExternalOutcomeProgramRouter(
+        feature_width=2,
+        program_capacity=2,
+        initial_programs=1,
+    )
+    state = router.initial_state(1)
+    old_policy = state.credit.policy.clone()
+    calls = 0
+
+    def reject_expanded(
+        _candidate: ExternalOutcomeProgramRouter,
+        _candidate_state: ExternalOutcomeProgramRouterState,
+    ) -> bool:
+        nonlocal calls
+        calls += 1
+        return calls == 1
+
+    receipt, unchanged = router.grow_capacity_verified(state, 3, reject_expanded)
+
+    assert not receipt.accepted
+    assert calls == 2
+    assert router.program_capacity == 2
+    assert unchanged is state
+    assert torch.equal(unchanged.credit.policy, old_policy)
 
 
 def test_external_outcome_value_baseline_learns_and_round_trips() -> None:
