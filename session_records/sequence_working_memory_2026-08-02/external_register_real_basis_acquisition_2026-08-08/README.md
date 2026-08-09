@@ -314,3 +314,27 @@ promoted.
 
 Each run used `70,656` verifier bits, `9,216` logical lifetimes, `577`
 optimizer updates, and zero replayed examples.
+
+## Source-floor repair with longer acquisition — promoted replicated rung
+
+The mixed snapshot result localized the remaining failure to source mastery:
+seed `69316` had not retained its inherited `adjacent_xor` capability above
+the absolute floor before target growth. Increasing source acquisition from
+`96` to `192` updates, while retaining fixed-suite best-checkpoint selection,
+repaired that failure without changing the frozen controller or replaying old
+examples.
+
+Both seeds now pass the complete promotion gate. Seed `69316` retains a
+minimum source score of `0.875` and its frozen target snapshot passes probes
+`1.0`/`0.9961`/`0.9961`/`1.0`; seed `69317` retains a minimum of `0.8594` and
+passes `1.0` on all four probes. Both target snapshots are promoted, and all
+causal controls, source-retention, zero-replay, and rollback invariants pass.
+This is the first replicated rung where source retention and new target
+consolidation succeed together under the frozen-controller boundary.
+
+Each run used `163,328` verifier bits, `20,544` logical lifetimes, `1,249`
+optimizer updates, and zero replayed examples. The source-selection suite
+used `4,608` verifier bits and post-freeze target consolidation used `2,048`.
+This proves a robust single new-capability acquisition rung, not yet
+unrestricted continual learning; the next pressure test is a second unseen
+capability acquired after the first has been promoted.

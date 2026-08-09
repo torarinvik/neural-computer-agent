@@ -1,0 +1,13 @@
+{
+  "schema": "neural-computer.external-register-source-floor-repair-summary.v1",
+  "seed": 69317,
+  "source_updates": 192,
+  "source_selection_audit_count": 64,
+  "source_accuracy_after": [0.96875, 0.859375, 0.984375],
+  "consolidation_probe_scores": [1.0, 1.0, 1.0, 1.0],
+  "source_retained": true,
+  "promoted": true,
+  "unique_verifier_bits": 163328,
+  "unique_logical_lifetimes": 20544,
+  "replayed_examples": 0
+}

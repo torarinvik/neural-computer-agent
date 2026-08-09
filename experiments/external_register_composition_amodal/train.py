@@ -422,6 +422,7 @@ def _train_stage(
     event_bridge: AmodalEventBridge | None = None,
     ema_decay: float = 0.0,
     restore_best_checkpoint: bool = False,
+    fixed_audit_seed: bool = False,
 ) -> list[dict[str, float | int]]:
     if anchor_weight < 0.0:
         raise ValueError("anchor weight cannot be negative")
@@ -492,7 +493,7 @@ def _train_stage(
                 instructions=instructions,
                 count=audit_count,
                 span=span,
-                seed=audit_seed + update,
+                seed=audit_seed if fixed_audit_seed else audit_seed + update,
                 credit_mode=credit_mode,
                 generated_composition_ids=generated_composition_ids,
                 generated_compositions=generated_compositions,

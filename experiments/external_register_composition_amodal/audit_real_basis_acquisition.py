@@ -66,6 +66,11 @@ def _train_source(parent, machine, decoder, index: int, args) -> None:
         seed=args.seed + 10_000 + index * 10_003,
         trainable=trainable,
         credit_mode="paired_counterfactual",
+        restore_best_checkpoint=args.restore_best_source_checkpoint,
+        eval_every=args.eval_every,
+        audit_count=args.source_selection_audit_count,
+        audit_seed=args.seed + 60_000 + index * 101 + index * 1009,
+        fixed_audit_seed=True,
     )
 
 
@@ -103,6 +108,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("retention regression tolerance cannot be negative")
     if args.consolidation_probes < 1 or args.consolidation_audit_count < 1:
         raise ValueError("consolidation probe counts must be positive")
+    if args.source_selection_audit_count < 1:
+        raise ValueError("source selection audit count must be positive")
     if args.event_bridge and args.event_input_mode != "frontend":
         raise ValueError("event bridge requires frontend event input mode")
     parent = _runtime(seed=args.seed, growth=False)
@@ -640,6 +647,23 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         )
         * args.batch_size
     )
+    source_selection_evaluations = (
+        (args.source_updates + args.eval_every - 1) // args.eval_every
+        if args.restore_best_source_checkpoint and args.eval_every > 0
+        else 0
+    )
+    source_selection_unique_verifier_bits = (
+        source_selection_evaluations
+        * len(SOURCE_OPERATIONS)
+        * args.source_selection_audit_count
+        * args.span
+        * 2
+    )
+    source_selection_unique_logical_lifetimes = (
+        source_selection_evaluations
+        * len(SOURCE_OPERATIONS)
+        * args.source_selection_audit_count
+    )
     report = {
         "schema": "neural-computer.external-register-real-basis-acquisition-audit.v1",
         "claim_boundary": (
@@ -658,6 +682,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "growth_credit_mode": args.growth_credit_mode,
         "growth_ema_decay": args.growth_ema_decay,
         "restore_best_checkpoint": args.restore_best_checkpoint,
+        "restore_best_source_checkpoint": args.restore_best_source_checkpoint,
+        "source_selection_audit_count": args.source_selection_audit_count,
         "consolidation_probes": args.consolidation_probes,
         "consolidation_audit_count": args.consolidation_audit_count,
         "basis_hidden": args.basis_hidden,
@@ -712,16 +738,25 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "unique_verifier_bits": (
                 parent_unique_verifier_bits
                 + growth_unique_verifier_bits
+                + source_selection_unique_verifier_bits
                 + consolidation_unique_verifier_bits
             ),
             "parent_unique_verifier_bits": parent_unique_verifier_bits,
             "growth_unique_verifier_bits": growth_unique_verifier_bits,
+            "source_selection_unique_verifier_bits": (
+                source_selection_unique_verifier_bits
+            ),
             "consolidation_unique_verifier_bits": consolidation_unique_verifier_bits,
             "unique_logical_lifetimes": (
-                parent_unique_logical_lifetimes + growth_unique_logical_lifetimes
+                parent_unique_logical_lifetimes
+                + growth_unique_logical_lifetimes
+                + source_selection_unique_logical_lifetimes
             ),
             "parent_unique_logical_lifetimes": parent_unique_logical_lifetimes,
             "growth_unique_logical_lifetimes": growth_unique_logical_lifetimes,
+            "source_selection_unique_logical_lifetimes": (
+                source_selection_unique_logical_lifetimes
+            ),
             "consolidation_unique_logical_lifetimes": (
                 consolidation_unique_logical_lifetimes
             ),
@@ -807,8 +842,14 @@ def main() -> None:
         action="store_true",
         help="Restore the best held-out target snapshot before consolidation probes.",
     )
+    parser.add_argument(
+        "--restore-best-source-checkpoint",
+        action="store_true",
+        help="Restore the best held-out snapshot for each inherited source.",
+    )
     parser.add_argument("--consolidation-probes", type=int, default=4)
     parser.add_argument("--consolidation-audit-count", type=int, default=64)
+    parser.add_argument("--source-selection-audit-count", type=int, default=64)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--span", type=int, default=4)
     parser.add_argument("--growth-span", type=int, default=2)
