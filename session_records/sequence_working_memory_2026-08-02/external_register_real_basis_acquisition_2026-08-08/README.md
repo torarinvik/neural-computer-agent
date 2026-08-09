@@ -1113,3 +1113,9 @@ its decoder from the mastered prior. A bounded smoke audit still produced no
 positive stable transfer, indicating that the current decoder prior remains
 coupled to the inherited controller representation. This is the next major
 interface bottleneck, not evidence against the external program store.
+
+Adding a source-trained canonical register readout to that fresh control also
+failed (`0.4375–0.59375` fresh accuracy). This rejects another output-only
+patch: portability must be learned in the shared interpreter/register
+contract. Raw report:
+`fresh_decoder_readout_prior_smoke/report_seed69318.json`.

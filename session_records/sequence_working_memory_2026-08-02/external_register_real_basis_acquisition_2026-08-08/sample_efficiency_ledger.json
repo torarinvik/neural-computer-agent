@@ -882,6 +882,21 @@
       "decision": "reject smoke promotion; decoder prior is not representation-independent across fresh controller weights"
     },
     {
+      "experiment": "fresh_controller_decoder_and_canonical_readout_prior_smoke",
+      "date": "2026-08-09",
+      "seeds": [69318],
+      "claim": "A source-trained canonical register readout will make the mastered decoder prior portable to a fresh controller.",
+      "fresh_controller": true,
+      "decoder_prior": "mastered source decoder 0",
+      "canonical_readout_prior": "source-trained frozen register readout",
+      "curriculum_fresh_control": true,
+      "replayed_examples": 0,
+      "unique_verifier_bits": 175744,
+      "fresh_accuracy_scores": [0.4375, 0.59375, 0.59375],
+      "positive_transfer": false,
+      "decision": "reject output-only portability patch; align the shared interpreter/register contract instead"
+    },
+    {
       "experiment": "protected_bounded_meta_shared_program_memory_router_sequence384",
       "date": "2026-08-09",
       "seeds": [69316],

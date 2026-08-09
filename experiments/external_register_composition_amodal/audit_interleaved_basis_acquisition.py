@@ -1773,6 +1773,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         )
         if decoder_prior_state is not None and not args.preserve_composition_trace:
             fresh_decoder.load_state_dict(decoder_prior_state, strict=True)
+        fresh_readout = None
+        if readout_prior_state is not None:
+            fresh_readout = CanonicalRegisterReadout(
+                REGISTER_WIDTH, REGISTER_WIDTH, hidden=64
+            )
+            fresh_readout.load_state_dict(readout_prior_state, strict=True)
+            for parameter in fresh_readout.parameters():
+                parameter.requires_grad_(False)
         fresh_candidate = {
             "operation": "generated_composition",
             "instructions": tuple(
@@ -1789,6 +1797,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "decoder": fresh_decoder,
             "bridge": fresh_bridge,
             "bridge_frozen": bridge_prior_state is not None,
+            "readout": fresh_readout,
             "preserve_execution_trace": args.preserve_composition_trace,
         }
         _train_candidate_schedule(
