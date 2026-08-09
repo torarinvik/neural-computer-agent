@@ -527,6 +527,25 @@ class ExternalSequenceProgramMemory(nn.Module):
         ).to(dtype=soft_weights.dtype)
         return hard_weights + soft_weights - soft_weights.detach()
 
+    def lookup_program_codes(self, query: torch.Tensor) -> torch.Tensor:
+        """Return one executable opaque program selected by content.
+
+        Lookup is intentionally singular: a controller asks for one program
+        for one opaque query, and the memory returns executable data rather
+        than exposing a slot identity to the controller.
+        """
+        if query.ndim == 1:
+            query = query.unsqueeze(0)
+        if query.ndim != 2 or query.shape[0] != 1:
+            raise ValueError("program lookup requires one query vector")
+        slot = int(self.route_weights(query).argmax(dim=-1).item())
+        return self.program_codes(
+            slot,
+            batch_size=1,
+            device=query.device,
+            dtype=query.dtype,
+        ).squeeze(0)
+
 
 class _ExternalSequenceOperatorSlot(nn.Module):
     def __init__(

@@ -599,6 +599,10 @@ def test_external_sequence_program_memory_content_addressing_selects_matching_pr
         memory.encode_program(second_codes.unsqueeze(0))
     )
     assert int(second_weights.argmax(dim=-1).item()) == 1
+    assert torch.equal(
+        memory.lookup_program_codes(memory.encode_program(second_codes.unsqueeze(0))),
+        second_codes,
+    )
     assert not any(
         parameter.requires_grad
         for module in (

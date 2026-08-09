@@ -1094,3 +1094,16 @@ sequence-calibration verifier bits. This is now the preferred external-memory
 interface, although the capability result itself remains below the `0.7422`
 rank-16 baseline. Raw report:
 `protected_bounded_meta_program_content_lookup/report_seed69317.json`.
+
+The next growth screen appended three held-out permutations after calibrating
+only the first three. With the mastered decoder prior reused as the output
+interface, all three new programs passed the retention, consolidation,
+shuffled-outcome, and missing-evidence gates: probe accuracies were `0.8828`,
+`0.8828`, and `0.8125`. This is the first promoted result showing that the
+external program store can grow and retrieve new executable data while the
+controller remains frozen. Raw report:
+`protected_bounded_meta_program_growth_decoder_prior/report_seed69317.json`.
+The same protocol replicated under seed `69318`, with held-out probe scores
+`0.8984`, `0.8906`, and `0.8516`, exact source retention, and shuffled-outcome
+failure. Raw replica:
+`protected_bounded_meta_program_growth_decoder_prior/report_seed69318.json`.

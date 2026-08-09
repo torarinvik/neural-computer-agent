@@ -164,6 +164,13 @@ def _score(
     shuffle_outcomes: bool = False,
     evidence_present: bool = True,
 ) -> float:
+    sequence_program_codes = _candidate_program_codes(
+        machine,
+        candidate,
+        batch_size=count,
+        device=torch.device("cpu"),
+        dtype=torch.float32,
+    )
     return _accuracy(
         parent,
         machine,
@@ -182,6 +189,28 @@ def _score(
         generated_compositions=candidate.get("generated_compositions"),
         register_readout=candidate.get("readout"),
         preserve_execution_trace=candidate.get("preserve_execution_trace", False),
+        sequence_program_codes=sequence_program_codes,
+    )
+
+
+def _candidate_program_codes(
+    machine,
+    candidate: dict[str, object],
+    *,
+    batch_size: int,
+    device: torch.device,
+    dtype: torch.dtype,
+) -> torch.Tensor | None:
+    memory = candidate.get("sequence_program_memory")
+    if memory is None:
+        return None
+    query_codes = torch.stack(
+        tuple(instruction.code.detach().squeeze(0) for instruction in candidate["instructions"])
+    ).unsqueeze(0)
+    query = memory.encode_program(query_codes)
+    codes = memory.lookup_program_codes(query)
+    return codes.to(device=device, dtype=dtype).unsqueeze(0).expand(
+        batch_size, -1, -1
     )
 
 
@@ -211,6 +240,12 @@ def _train_interleaved_phase(
     for candidate in candidates:
         decoder = candidate["decoder"]
         trainable = []
+        if candidate.get("program_mutable", False):
+            trainable.append(
+                candidate["sequence_program_memory"].programs[
+                    candidate["sequence_program_slot"]
+                ]
+            )
         if candidate.get("mutable", True):
             instructions = (
                 candidate["mutable_instructions"]
@@ -266,6 +301,13 @@ def _train_interleaved_phase(
             event_bridge=candidate["bridge"],
             register_readout=candidate.get("readout"),
             preserve_execution_trace=candidate.get("preserve_execution_trace", False),
+            sequence_program_codes=_candidate_program_codes(
+                machine,
+                candidate,
+                batch_size=batch_size,
+                device=batch.input_frames.device,
+                dtype=batch.input_frames.dtype,
+            ),
         )
         optimizer = candidate["phase_optimizer"]
         optimizer.zero_grad(set_to_none=True)
@@ -315,6 +357,8 @@ def _prepare_candidates(
     conditioned_bridge_prior: bool = False,
     readout_prior_state: dict[str, torch.Tensor] | None = None,
     preserve_composition_trace: bool = False,
+    sequence_program_memory=None,
+    program_slot_by_program: dict[tuple[str, ...], int] | None = None,
 ) -> list[dict[str, object]]:
     candidates = []
     for index, operation in enumerate(operations):
@@ -393,6 +437,17 @@ def _prepare_candidates(
                     "generated_compositions": (program,),
                     "composition_program": program,
                     "mutable": False,
+                    "program_mutable": (
+                        sequence_program_memory is not None
+                        and program_slot_by_program is not None
+                        and program in program_slot_by_program
+                    ),
+                    "sequence_program_memory": sequence_program_memory,
+                    "sequence_program_slot": (
+                        program_slot_by_program.get(program)
+                        if program_slot_by_program is not None
+                        else None
+                    ),
                     "decoder": decoder,
                     "bridge": bridge,
                     "bridge_frozen": bridge_prior_state is not None,
@@ -404,6 +459,10 @@ def _prepare_candidates(
 
 
 def _enable_candidate_capacity(machine, candidate: dict[str, object]) -> None:
+    if candidate.get("program_mutable", False):
+        candidate["sequence_program_memory"].programs[
+            candidate["sequence_program_slot"]
+        ].requires_grad_(True)
     if not candidate.get("mutable", True):
         return
     instructions = (
@@ -716,16 +775,11 @@ def _train_sequence_calibration(
     ) -> torch.Tensor:
         if not content_lookup:
             raise ValueError("content lookup is not enabled")
-        slot = int(
-            sequence_program_memory.route_weights(
-                route_query(program).unsqueeze(0)
-            ).argmax(dim=-1).item()
+        codes = sequence_program_memory.lookup_program_codes(
+            route_query(program),
         )
-        return sequence_program_memory.program_codes(
-            slot,
-            batch_size=batch_size,
-            device=device,
-            dtype=dtype,
+        return codes.to(device=device, dtype=dtype).unsqueeze(0).expand(
+            batch_size, -1, -1
         )
 
     protected_meta_mode = args.operator_mode in (
@@ -1224,6 +1278,18 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("program memory routing is not yet combined with operator routing")
     if args.use_sequence_program_router and not args.use_sequence_program_memory:
         raise ValueError("program routing requires sequence program memory")
+    if args.grow_sequence_program_memory and not (
+        args.use_sequence_program_memory
+        and args.use_sequence_program_router
+        and args.content_addressed_sequence_program_router
+    ):
+        raise ValueError(
+            "program memory growth requires content-addressed program routing"
+        )
+    if args.grow_sequence_program_memory and args.target_composition_start is None:
+        raise ValueError(
+            "program memory growth requires a held-out target composition range"
+        )
     if args.use_operator_sequence_router and not args.use_operator_sequence_memory:
         raise ValueError("operator sequence routing requires operator sequence memory")
     if args.use_route_outcome_credit and not (
@@ -1398,6 +1464,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     sequence_memory = None
     sequence_operator_memory = None
     sequence_program_memory = None
+    sequence_program_slot_by_program: dict[tuple[str, ...], int] = {}
     sequence_readout = None
     if args.use_sequence_memory and args.sequence_calibration_updates:
         sequence_memory = ExternalSequenceMemory(REGISTER_WIDTH)
@@ -1426,7 +1493,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                     for name in program
                 )
             )
-            sequence_program_memory.add_program(codes)
+            sequence_program_slot_by_program[program] = sequence_program_memory.add_program(
+                codes
+            )
     if args.use_shared_sequence_readout and args.sequence_calibration_updates:
         sequence_readout = CanonicalRegisterReadout(
             REGISTER_WIDTH, REGISTER_WIDTH, hidden=64
@@ -1458,6 +1527,19 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 machine_before_sequence_calibration.state_dict(), strict=True
             )
             sequence_calibration_source_after = list(source_before)
+    if args.grow_sequence_program_memory:
+        for program in target_composition_programs:
+            if program in sequence_program_slot_by_program:
+                raise ValueError("held-out program overlaps calibrated program")
+            codes = torch.stack(
+                tuple(
+                    machine.instructions[args.source_operations.index(name)].code.detach().squeeze(0)
+                    for name in program
+                )
+            )
+            sequence_program_slot_by_program[program] = sequence_program_memory.add_program(
+                codes
+            )
     source_attempt_count = sum(len(attempts) for attempts in source_attempt_counts)
     # Do not allocate future target instructions until source acquisition is
     # complete.  The first source phase trains machine parameters jointly; if
@@ -1511,6 +1593,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         conditioned_bridge_prior=args.reuse_conditioned_bridge_prior,
         preserve_composition_trace=args.preserve_composition_trace,
         readout_prior_state=readout_prior_state,
+        sequence_program_memory=(
+            sequence_program_memory if args.grow_sequence_program_memory else None
+        ),
+        program_slot_by_program=(
+            sequence_program_slot_by_program if args.grow_sequence_program_memory else None
+        ),
     )
     retained_before = [
         source_score(spec, index) for index, spec in enumerate(source_specs)
@@ -1569,6 +1657,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     )
 
     shuffled_machine = copy.deepcopy(pre_growth_machine)
+    shuffled_program_memory = (
+        copy.deepcopy(sequence_program_memory)
+        if args.grow_sequence_program_memory
+        else None
+    )
     shuffled_candidates = _prepare_candidates(
         parent,
         shuffled_machine,
@@ -1580,6 +1673,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         conditioned_bridge_prior=args.reuse_conditioned_bridge_prior,
         source_operations=args.source_operations,
         preserve_composition_trace=args.preserve_composition_trace,
+        sequence_program_memory=shuffled_program_memory,
+        program_slot_by_program=(
+            sequence_program_slot_by_program if args.grow_sequence_program_memory else None
+        ),
     )
     _freeze(shuffled_machine)
     for candidate in shuffled_candidates:
@@ -2211,6 +2308,12 @@ def main() -> None:
         action=argparse.BooleanOptionalAction,
         default=False,
         help="address executable programs by similarity to their encoded opaque contents",
+    )
+    parser.add_argument(
+        "--grow-sequence-program-memory",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="append held-out composition programs after calibration and train them as external data",
     )
     parser.add_argument(
         "--use-operator-sequence-memory",
