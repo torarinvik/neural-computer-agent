@@ -5489,3 +5489,32 @@ delay policy on partial nonlinear streams, while measuring positive transfer
 against a fresh learner. The exported prior session reinforces the same
 direction: a shared trajectory-statistics route is a promising reusable
 mechanism, but safe storage alone did not produce positive transfer.
+
+## Calibrated external reliability at streaming admission (2026-08-09)
+
+The streaming router now accepts an optional independently versioned evidence
+evaluator and threshold. For each candidate model, factual prediction error is
+first computed as usual; when the candidate has crossed an explicit warm-up
+evidence count, the evaluator may veto a low-error match. The warm-up is
+important: applying a learned reliability gate to an untrained provisional
+model starves it of the evidence needed to become useful. Before warm-up,
+candidate learning remains isolated and bounded; after warm-up, calibrated
+reliability controls continuation and ambiguity routing. Payload restore
+requires the external evaluator explicitly, preserving component replacement
+instead of reconstructing hidden dependencies.
+
+Across seeds `2001` and `2002`, two nonlinear candidates consumed `64` rows
+each through one-pass random-feature statistics and retained zero raw rows. A
+corrupted four-row bundle had raw errors `0.00791` and `0.01138`, both below
+the router continuation tolerance of `0.02`, but calibrated clean/noisy
+probabilities were `0.989`/`0.248` and `0.906`/`0.179`; both corrupted streams
+were rejected without changing candidate statistics. Held-out errors stayed
+below `0.0045`, contextual calibration and router persistence passed, and the
+controller digest remained unchanged. The promoted records are in
+`session_records/sequence_working_memory_2026-08-02/external_calibrated_streaming_admission_promoted_2026-08-09/`.
+
+This promotes bounded learned reliability at nonlinear streaming admission.
+The evaluator pretraining replay is explicitly charged in the ledger, while
+target candidate learning and calibration use unique rows. The next gap is
+learned temporal delay/absence handling and positive transfer against a fresh
+learner; a calibrated reliability gate is not general continual learning.

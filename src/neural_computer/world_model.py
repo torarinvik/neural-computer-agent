@@ -3075,6 +3075,9 @@ class ExternalOnlineTransitionContextRouter:
         provisional_match_margin: float = 0.0,
         ambiguous_evidence_policy: str = "discard",
         quarantine_capacity: int = 0,
+        evidence_evaluator: nn.Module | None = None,
+        evidence_threshold: float = 0.5,
+        evidence_gate_min_evidence: int = 0,
     ) -> None:
         if (
             bank.state_width != context_encoder.state_width
@@ -3116,6 +3119,15 @@ class ExternalOnlineTransitionContextRouter:
             raise ValueError(
                 "quarantine policy requires a positive quarantine capacity"
             )
+        if not 0.0 < evidence_threshold < 1.0:
+            raise ValueError("online evidence threshold must lie in (0, 1)")
+        if evidence_gate_min_evidence < 0:
+            raise ValueError("online evidence gate warm-up cannot be negative")
+        if evidence_evaluator is not None and (
+            not hasattr(evidence_evaluator, "state_width")
+            or int(evidence_evaluator.state_width) != bank.state_width
+        ):
+            raise ValueError("online evidence evaluator and bank widths differ")
         if admission_observations < 1:
             raise ValueError("online context admission count must be positive")
         if max_contexts is not None and max_contexts < 1:
@@ -3165,6 +3177,9 @@ class ExternalOnlineTransitionContextRouter:
         self.provisional_match_margin = float(provisional_match_margin)
         self.ambiguous_evidence_policy = str(ambiguous_evidence_policy)
         self.quarantine_capacity = int(quarantine_capacity)
+        self.evidence_evaluator = evidence_evaluator
+        self.evidence_threshold = float(evidence_threshold)
+        self.evidence_gate_min_evidence = int(evidence_gate_min_evidence)
         self.candidate_model_families = families
         self._pending: list[ExternalTransitionObservation] = []
         self._active_slot: int | None = None
@@ -3269,6 +3284,13 @@ class ExternalOnlineTransitionContextRouter:
             "provisional_evidence_policy": self.provisional_evidence_policy,
             "ambiguous_evidence_policy": self.ambiguous_evidence_policy,
             "quarantine_capacity": self.quarantine_capacity,
+            "evidence_threshold": self.evidence_threshold,
+            "evidence_gate_min_evidence": self.evidence_gate_min_evidence,
+            "evidence_evaluator": (
+                None
+                if self.evidence_evaluator is None
+                else self.evidence_evaluator.configuration()
+            ),
             "provisional_candidates": "isolated_indexed_copy_on_write_v1",
         }
 
@@ -3571,16 +3593,45 @@ class ExternalOnlineTransitionContextRouter:
             (prediction - observation.next_state).square().mean().detach()
         )
 
-    @classmethod
     def _candidate_error(
-        cls,
+        self,
         candidate: _ProvisionalTransitionCandidate,
         observation: ExternalTransitionObservation,
     ) -> float:
-        return min(
-            cls._slot_error_from_model(model, observation)
-            for model in candidate.models().values()
-        )
+        best_error = float("inf")
+        for model in candidate.models().values():
+            prediction = model(observation.state, observation.intention)
+            error = float(
+                (prediction - observation.next_state).square().mean().detach()
+            )
+            if (
+                self.evidence_evaluator is not None
+                and candidate.evidence_count >= self.evidence_gate_min_evidence
+            ):
+                context = candidate.context.to(prediction).unsqueeze(0).expand(
+                    observation.state.shape[0], -1
+                )
+                hits = torch.ones(
+                    observation.state.shape[0],
+                    device=prediction.device,
+                    dtype=prediction.dtype,
+                )
+                scorer = getattr(self.evidence_evaluator, "score", None)
+                with torch.no_grad():
+                    logits = (
+                        scorer(prediction, observation.next_state, hits, context)
+                        if callable(scorer)
+                        else self.evidence_evaluator(
+                            prediction,
+                            observation.next_state,
+                            hits,
+                        )
+                    )
+                    probability = float(torch.sigmoid(logits).mean())
+                if probability < self.evidence_threshold:
+                    continue
+            best_error = min(best_error, error)
+        return best_error
 
     def _quarantine_bundle(
         self,
@@ -4217,12 +4268,19 @@ class ExternalOnlineTransitionContextRouter:
     def from_payload(
         cls,
         payload: Mapping[str, Any],
+        *,
+        evidence_evaluator: nn.Module | None = None,
     ) -> ExternalOnlineTransitionContextRouter:
         if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
             raise ValueError("unsupported online transition-context router payload")
         configuration = payload.get("configuration")
         if not isinstance(configuration, Mapping):
             raise TypeError("online transition-context router configuration is missing")
+        serialized_evaluator = configuration.get("evidence_evaluator")
+        if serialized_evaluator is not None and evidence_evaluator is None:
+            raise ValueError(
+                "router payload requires its external evidence evaluator"
+            )
         bank_payload = payload.get("bank")
         encoder_payload = payload.get("context_encoder")
         pending_payload = payload.get("pending")
@@ -4289,6 +4347,11 @@ class ExternalOnlineTransitionContextRouter:
                 configuration.get("ambiguous_evidence_policy", "discard")
             ),
             quarantine_capacity=int(configuration.get("quarantine_capacity", 0)),
+            evidence_evaluator=evidence_evaluator,
+            evidence_threshold=float(configuration.get("evidence_threshold", 0.5)),
+            evidence_gate_min_evidence=int(
+                configuration.get("evidence_gate_min_evidence", 0)
+            ),
         )
         for row_payload in pending_payload:
             row = cls._observation_from_payload(row_payload)

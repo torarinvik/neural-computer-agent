@@ -1,0 +1,33 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "external_calibrated_streaming_admission_2026-08-09",
+  "status": "calibrated_streaming_admission_promoted_bounded",
+  "population_seeds": [2001, 2002],
+  "transition_unique_logical_lifetimes_total": 768,
+  "transition_unique_verifier_bits_total": 768,
+  "calibration_unique_verifier_bits_total": 384,
+  "evaluator_pretraining_unique_rows_total": 1024,
+  "evaluator_optimizer_updates_total": 512,
+  "calibrator_optimizer_updates_total": 256,
+  "target_optimizer_updates_total": 0,
+  "target_replayed_examples_total": 0,
+  "evaluator_replayed_examples_total": 261120,
+  "raw_provisional_rows_persisted_total": 0,
+  "transfer_ratio_against_fresh_learner": null,
+  "verification": {
+    "heldout_errors_by_seed": [
+      [0.004416862968355417, 0.00003716402716236189, 0.004407532513141632],
+      [0.0034977595787495375, 0.00001856599556049332, 0.0005131967482157052]
+    ],
+    "clean_probability_by_seed": [0.9888286590576172, 0.906273365020752],
+    "noisy_probability_by_seed": [0.2479514628648758, 0.17944541573524475],
+    "raw_corruption_error_by_seed": [0.007912326604127884, 0.011378680355846882],
+    "candidate_evidence_counts_by_seed": [[64, 64], [64, 64]],
+    "raw_candidate_rows_retained_by_seed": [[0, 0], [0, 0]],
+    "calibrated_corruption_rejected_by_seed": [true, true],
+    "external_calibration_persistence_by_seed": [true, true],
+    "router_persistence_by_seed": [true, true],
+    "controller_frozen_by_seed": [true, true]
+  },
+  "claim_boundary": "Replicated learned external reliability gating for bounded replay-free nonlinear candidate admission; evaluator pretraining replay is explicit and this is not general continual learning or learned delay compensation."
+}

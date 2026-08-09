@@ -1,0 +1,71 @@
+{
+  "schema": "neural-computer.external-calibrated-streaming-admission-pressure-test.v1",
+  "seed": 2001,
+  "claim_boundary": "A frozen transition-evidence evaluator plus independently persisted contextual calibration can reject low-error corrupted streaming evidence at a replay-free nonlinear candidate boundary; this is bounded learned reliability, not general continual learning or learned delay compensation.",
+  "configuration": {
+    "train_rows": 64,
+    "heldout_rows": 64,
+    "feature_width": 256,
+    "corruption_noise": 0.08,
+    "evidence_threshold": 0.5,
+    "calibration_updates_per_context": 64
+  },
+  "metrics": {
+    "clean_probability": 0.9888286590576172,
+    "noisy_probability": 0.2479514628648758,
+    "raw_corruption_error": 0.007912326604127884,
+    "corruption_statuses": [
+      "pending",
+      "pending",
+      "pending",
+      "capacity"
+    ],
+    "heldout_errors": [
+      0.004416862968355417,
+      3.716402716236189e-05,
+      0.004407532513141632
+    ],
+    "candidate_evidence_counts": [
+      64,
+      64
+    ],
+    "raw_candidate_rows_retained": [
+      0,
+      0
+    ],
+    "calibrator_context_count": 2
+  },
+  "gates": {
+    "evaluator_pretraining_passes": true,
+    "learned_clean_probability": true,
+    "learned_noisy_probability": true,
+    "raw_corruption_within_router_tolerance": true,
+    "calibrated_corruption_rejected": true,
+    "candidate_raw_rows_not_retained": true,
+    "all_promotions_accepted": true,
+    "heldout_errors_pass": true,
+    "external_calibration_persists": true,
+    "router_persists_with_external_gate": true,
+    "controller_frozen": true,
+    "zero_target_replay": true
+  },
+  "promoted": true,
+  "accounting": {
+    "transition_unique_lifetimes": 384,
+    "transition_unique_verifier_bits": 384,
+    "calibration_unique_verifier_bits": 192,
+    "evaluator_pretraining_unique_rows": 512,
+    "evaluator_optimizer_updates": 256,
+    "calibrator_optimizer_updates": 128,
+    "target_optimizer_updates": 0,
+    "target_replayed_examples": 0,
+    "evaluator_replayed_examples": 130560,
+    "raw_provisional_rows_persisted": 0,
+    "wall_seconds": 1.410910124948714
+  },
+  "digests": {
+    "controller": "3209e211332102871c841bf2ba016ce40ffe27b9d03c56b62472e2ef06137106",
+    "evaluator": "015c2352b35d6c603f1f65750912572493beaeff9c51b301dc629e74a843dd8f",
+    "calibrator": "8725ac5f19ff51293e17f678fb265de0bceb782a2fbe4f7f0937cc440f3d3101"
+  }
+}

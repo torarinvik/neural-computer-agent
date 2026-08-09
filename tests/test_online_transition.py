@@ -29,6 +29,30 @@ def _affine_observation(rows: int = 8) -> ExternalTransitionObservation:
     )
 
 
+class _DeterministicEvidenceGate(torch.nn.Module):
+    """Test-only replaceable evaluator with an opaque factual boundary."""
+
+    def __init__(self, state_width: int) -> None:
+        super().__init__()
+        self.state_width = state_width
+
+    def configuration(self) -> dict[str, int | str]:
+        return {
+            "schema": "test.deterministic-evidence-gate.v1",
+            "state_width": self.state_width,
+        }
+
+    def forward(
+        self,
+        prediction: torch.Tensor,
+        observed: torch.Tensor,
+        hit: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        del hit
+        error = (prediction - observed).square().mean(dim=-1)
+        return 8.0 - 100.0 * error
+
+
 def test_lifetime_policy_is_permutation_equivariant_and_masks_protected_slots() -> None:
     torch.manual_seed(1501)
     policy = ExternalTransitionModelLifetimePolicy(4, hidden_width=8)
@@ -974,6 +998,99 @@ def test_ambiguous_streaming_evidence_is_quarantined_resolved_and_persisted() ->
     assert payload["ambiguous_quarantine"] == []
     assert payload["configuration"]["ambiguous_evidence_policy"] == "quarantine"
     assert random_feature_family in restored.configuration()["candidate_model_families"]
+
+
+def test_streaming_router_uses_external_evidence_gate_for_corruption() -> None:
+    torch.manual_seed(1309)
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        4,
+        model_family="affine_sufficient_statistics_v1",
+        affine_ridge=1e-7,
+        capacity=2,
+    )
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4),
+        match_tolerance=1e-6,
+        match_margin=1e-4,
+        continuation_tolerance=1e-6,
+        provisional_continuation_tolerance=0.05,
+        admission_observations=2,
+        max_contexts=2,
+        defer_admission=True,
+        provisional_evidence_policy="streaming_statistics",
+        evidence_evaluator=_DeterministicEvidenceGate(2),
+        evidence_threshold=0.9,
+        evidence_gate_min_evidence=8,
+    )
+    source = _affine_observation(8)
+    for row in range(source.state.shape[0]):
+        result = router.observe(
+            ExternalTransitionObservation(
+                state=source.state[row : row + 1],
+                intention=source.intention[row : row + 1],
+                next_state=source.next_state[row : row + 1],
+                confidence=torch.ones(1),
+            )
+        )
+        if result.status == "staged":
+            router.adaptation_step(result, None, replay_evidence=False)
+    assert router.promote_staged_candidate(
+        source,
+        lambda candidate: candidate.context_count == 1,
+        prediction_tolerance=1e-6,
+    ).accepted
+
+    target = ExternalTransitionObservation(
+        state=source.state,
+        intention=source.intention,
+        next_state=source.next_state * 2.0,
+        confidence=source.confidence,
+    )
+    for row in range(target.state.shape[0]):
+        result = router.observe(
+            ExternalTransitionObservation(
+                state=target.state[row : row + 1],
+                intention=target.intention[row : row + 1],
+                next_state=target.next_state[row : row + 1],
+                confidence=torch.ones(1),
+            )
+        )
+        if result.status == "staged":
+            router.adaptation_step(result, None, replay_evidence=False)
+    assert router.provisional_candidate_count == 1
+    before = router.provisional_evidence_count(0)
+
+    corrupted = ExternalTransitionObservation(
+        state=target.state[:2],
+        intention=target.intention[:2],
+        next_state=target.next_state[:2] + 3.0,
+        confidence=torch.ones(2),
+    )
+    result = None
+    for row in range(2):
+        result = router.observe(
+            ExternalTransitionObservation(
+                state=corrupted.state[row : row + 1],
+                intention=corrupted.intention[row : row + 1],
+                next_state=corrupted.next_state[row : row + 1],
+                confidence=torch.ones(1),
+            )
+        )
+    assert result is not None and result.status == "capacity"
+    assert router.provisional_evidence_count(0) == before
+    payload = router.state_payload()
+    with pytest.raises(ValueError, match="external evidence evaluator"):
+        ExternalOnlineTransitionContextRouter.from_payload(payload)
+    restored = ExternalOnlineTransitionContextRouter.from_payload(
+        payload,
+        evidence_evaluator=router.evidence_evaluator,
+    )
+    assert restored.configuration()["evidence_threshold"] == pytest.approx(0.9)
+    assert restored.configuration()["evidence_gate_min_evidence"] == 8
+    assert restored.provisional_evidence_count(0) == before
 
 
 def test_affine_transition_statistics_learns_and_persists_one_pass() -> None:
