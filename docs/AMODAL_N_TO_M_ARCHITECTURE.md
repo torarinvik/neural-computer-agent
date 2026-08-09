@@ -5399,3 +5399,33 @@ important: reversal hysteresis must be calibrated against outcome noise, and
 the lifecycle must refuse eviction when evidence is ambiguous. The next
 frontier is learned consolidation/compression and genuinely ambiguous
 capacity pressure, not simply adding more cells.
+
+## Raw-evidence-free streaming transition candidates (2026-08-09)
+
+The online factual-memory boundary now has an explicit
+`provisional_evidence_policy`. Its `streaming_statistics` mode is restricted to
+model families that expose a one-pass `observe` operation, such as the fixed
+random-feature sufficient-statistics model. Each provisional transition row is
+consumed once into external statistics; the candidate persists only its opaque
+context key, model statistics, and an evidence count. Raw candidate rows are
+not retained and cannot be replayed accidentally during adaptation or payload
+restore. The existing cumulative-window mode remains available for general
+learned MLP candidates, whose replay requirement is now explicit rather than
+hidden behind a nominal “online” path.
+
+Across seeds `1801` and `1802`, three nonlinear transition regimes were
+staged and promoted from `64` rows each. Held-out factual errors were
+`[0.003073, 0.000021, 0.002236]` and `[0.001973, 0.000053, 0.013429]`, all
+below the `0.02` promotion threshold. Shuffled-next-state controls reached
+`1.646` and `0.915` and were rejected. Every prior slot retained its held-out
+behavior, the controller remained byte-stable, persistence was exact, and
+zero replayed examples or raw provisional rows were recorded. Evidence is
+archived in
+`session_records/sequence_working_memory_2026-08-02/external_streaming_statistics_candidate_promoted_2026-08-09/`.
+
+This promotes a raw-evidence-free provisional boundary for bounded nonlinear
+sufficient-statistics models. It does not make arbitrary nonlinear MLP
+learning one-pass or replay-free, and it does not establish unrestricted
+continual learning. The next bottleneck is to build a similarly explicit
+streaming learner for genuinely changing, partial dynamics rather than
+silently retaining a replay window.

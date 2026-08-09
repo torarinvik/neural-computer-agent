@@ -3031,6 +3031,7 @@ class _ProvisionalTransitionCandidate:
     model: nn.Module
     model_family: str
     observations: list[ExternalTransitionObservation]
+    evidence_count: int = 0
     alternatives: dict[str, nn.Module] = field(default_factory=dict)
 
     def models(self) -> dict[str, nn.Module]:
@@ -3066,6 +3067,7 @@ class ExternalOnlineTransitionContextRouter:
         defer_admission: bool = False,
         candidate_model_families: Sequence[str] | None = None,
         provisional_continuation_tolerance: float | None = None,
+        provisional_evidence_policy: str = "cumulative_replay",
     ) -> None:
         if (
             bank.state_width != context_encoder.state_width
@@ -3087,6 +3089,14 @@ class ExternalOnlineTransitionContextRouter:
             raise ValueError("provisional continuation tolerance cannot be negative")
         if conflict_patience < 1:
             raise ValueError("online context conflict patience must be positive")
+        if provisional_evidence_policy not in {
+            "cumulative_replay",
+            "streaming_statistics",
+        }:
+            raise ValueError(
+                "provisional evidence policy must be cumulative_replay or "
+                "streaming_statistics"
+            )
         if admission_observations < 1:
             raise ValueError("online context admission count must be positive")
         if max_contexts is not None and max_contexts < 1:
@@ -3132,6 +3142,7 @@ class ExternalOnlineTransitionContextRouter:
         )
         self.conflict_patience = int(conflict_patience)
         self.defer_admission = bool(defer_admission)
+        self.provisional_evidence_policy = str(provisional_evidence_policy)
         self.candidate_model_families = families
         self._pending: list[ExternalTransitionObservation] = []
         self._active_slot: int | None = None
@@ -3174,11 +3185,11 @@ class ExternalOnlineTransitionContextRouter:
         return self._provisional_candidates[candidate_index].context.detach().clone()
 
     def provisional_evidence_count(self, candidate_index: int) -> int:
-        """Return the number of evidence bundles retained by one candidate."""
+        """Return the number of evidence rows consumed by one candidate."""
 
         if not 0 <= candidate_index < len(self._provisional_candidates):
             raise IndexError("provisional candidate index is out of range")
-        return len(self._provisional_candidates[candidate_index].observations)
+        return self._provisional_candidates[candidate_index].evidence_count
 
     @property
     def _provisional_context(self) -> torch.Tensor | None:
@@ -3217,7 +3228,12 @@ class ExternalOnlineTransitionContextRouter:
             "candidate_model_families": list(self.candidate_model_families),
             "routing": "factual_prediction_error_then_bound_continuation_v2",
             "writes": "caller_owned_slot_only_v1",
-            "provisional_evidence": "cumulative_verified_window_v1",
+            "provisional_evidence": (
+                "cumulative_verified_window_v1"
+                if self.provisional_evidence_policy == "cumulative_replay"
+                else "streaming_sufficient_statistics_v1"
+            ),
+            "provisional_evidence_policy": self.provisional_evidence_policy,
             "provisional_candidates": "isolated_indexed_copy_on_write_v1",
         }
 
@@ -3452,6 +3468,12 @@ class ExternalOnlineTransitionContextRouter:
             family: self.bank._new_model(family)
             for family in self.candidate_model_families
         }
+        if self.provisional_evidence_policy == "streaming_statistics" and any(
+            not hasattr(model, "observe") for model in models.values()
+        ):
+            raise ValueError(
+                "streaming_statistics candidates require models with one-pass observe"
+            )
         if prior_index is not None:
             prior_family = self.bank.model_family_at(prior_index)
             for family, model in models.items():
@@ -3466,6 +3488,7 @@ class ExternalOnlineTransitionContextRouter:
                 model=models[self.candidate_model_families[0]],
                 model_family=self.candidate_model_families[0],
                 observations=[],
+                evidence_count=0,
                 alternatives={
                     family: model
                     for family, model in models.items()
@@ -3484,7 +3507,9 @@ class ExternalOnlineTransitionContextRouter:
         if not 0 <= candidate_index < len(self._provisional_candidates):
             raise RuntimeError("staged result requested without a candidate")
         candidate = self._provisional_candidates[candidate_index]
-        candidate.observations.append(self._clone_observation(observation))
+        candidate.evidence_count += int(observation.state.shape[0])
+        if self.provisional_evidence_policy == "cumulative_replay":
+            candidate.observations.append(self._clone_observation(observation))
         return ExternalOnlineTransitionContextResult(
             status="staged",
             slot_index=candidate_index,
@@ -3704,9 +3729,18 @@ class ExternalOnlineTransitionContextRouter:
             ):
                 return 0.0
             candidate = self._provisional_candidates[candidate_index]
-            evidence = self._merge_observations(
-                candidate.observations if replay_evidence else [result.observation]
-            )
+            if self.provisional_evidence_policy == "streaming_statistics":
+                if replay_evidence:
+                    raise ValueError(
+                        "streaming_statistics candidates cannot replay provisional evidence"
+                    )
+                evidence = result.observation
+            else:
+                evidence = self._merge_observations(
+                    candidate.observations
+                    if replay_evidence
+                    else [result.observation]
+                )
             primary_loss = candidate.model.loss(evidence)
             for family, model in candidate.models().items():
                 if hasattr(model, "observe"):
@@ -3988,6 +4022,7 @@ class ExternalOnlineTransitionContextRouter:
                     family: model.state_payload()
                     for family, model in candidate.models().items()
                 },
+                "evidence_count": candidate.evidence_count,
                 "observations": [
                     self._observation_payload(row)
                     for row in candidate.observations
@@ -4092,6 +4127,9 @@ class ExternalOnlineTransitionContextRouter:
                 if configuration.get("candidate_model_families") is None
                 else tuple(str(family) for family in configuration["candidate_model_families"])
             ),
+            provisional_evidence_policy=str(
+                configuration.get("provisional_evidence_policy", "cumulative_replay")
+            ),
         )
         for row_payload in pending_payload:
             row = cls._observation_from_payload(row_payload)
@@ -4155,6 +4193,9 @@ class ExternalOnlineTransitionContextRouter:
             candidate_models_payload = candidate_payload.get("models")
             candidate_model_family = candidate_payload.get("model_family")
             observations_payload = candidate_payload.get("observations", [])
+            evidence_count = candidate_payload.get(
+                "evidence_count", len(observations_payload)
+            )
             if not isinstance(provisional_context, torch.Tensor):
                 raise TypeError("online transition provisional context is not a tensor")
             if not isinstance(provisional_model, Mapping):
@@ -4165,6 +4206,8 @@ class ExternalOnlineTransitionContextRouter:
                 raise TypeError("online transition provisional model candidates are invalid")
             if not isinstance(observations_payload, list):
                 raise TypeError("online transition provisional evidence is invalid")
+            if not isinstance(evidence_count, int) or evidence_count < 0:
+                raise ValueError("online transition provisional evidence count is invalid")
             _validate_tensor(
                 provisional_context,
                 name="online transition provisional context",
@@ -4223,6 +4266,7 @@ class ExternalOnlineTransitionContextRouter:
                     model=restored_models[primary_family],
                     model_family=primary_family,
                     observations=observations,
+                    evidence_count=evidence_count,
                     alternatives={
                         family: model
                         for family, model in restored_models.items()

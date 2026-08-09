@@ -1,0 +1,25 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "external_streaming_statistics_candidate_2026-08-09",
+  "status": "raw_evidence_free_streaming_candidate_promoted_bounded",
+  "population_seeds": [1801, 1802],
+  "unique_logical_lifetimes_total": 768,
+  "unique_verifier_bits_total": 768,
+  "optimizer_updates_total": 0,
+  "streaming_statistics_updates_total": 384,
+  "replayed_examples_total": 0,
+  "old_evidence_replay_total": 0,
+  "raw_provisional_rows_persisted_total": 0,
+  "transfer_ratio_against_fresh_learner": null,
+  "verification": {
+    "heldout_errors_by_seed": [
+      [0.003072878811508417, 0.000020596424292307347, 0.0022362982854247093],
+      [0.00197267672047019, 0.000052616225730162114, 0.013428764417767525]
+    ],
+    "shuffled_heldout_error_by_seed": [1.6463240385055542, 0.9152382612228394],
+    "raw_rows_retained_by_seed": [[0, 0, 0], [0, 0, 0]],
+    "exact_persistence_by_seed": [true, true],
+    "controller_frozen_by_seed": [true, true]
+  },
+  "claim_boundary": "Replicated raw-evidence-free provisional nonlinear sufficient-statistics candidates with protected-slot retention; not general continual learning or unrestricted computation."
+}

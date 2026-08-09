@@ -602,6 +602,73 @@ def test_mixed_router_adapts_both_families_and_promotes_verified_winner() -> Non
     assert router.bank.model_family_at(0) == "affine_sufficient_statistics_v1"
 
 
+def test_streaming_statistics_candidate_does_not_retain_raw_evidence() -> None:
+    torch.manual_seed(1306)
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        4,
+        model_family="affine_sufficient_statistics_v1",
+        affine_ridge=1e-7,
+        capacity=2,
+    )
+    source_context = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    source_index = bank.ensure_context(source_context)
+    source = _affine_observation(8)
+    bank.adaptation_step(
+        source,
+        source_context.unsqueeze(0).expand(source.state.shape[0], -1),
+        None,
+    )
+    target = ExternalTransitionObservation(
+        state=source.state,
+        intention=source.intention,
+        next_state=source.next_state * 1.7,
+        confidence=source.confidence,
+    )
+    encoder = ExternalTransitionContextEncoder(2, 1, hidden_width=8, context_width=4)
+    router = ExternalOnlineTransitionContextRouter(
+        bank,
+        encoder,
+        match_tolerance=1e-8,
+        continuation_tolerance=1e9,
+        admission_observations=2,
+        max_contexts=2,
+        defer_admission=True,
+        provisional_evidence_policy="streaming_statistics",
+    )
+    for row in range(target.state.shape[0]):
+        result = router.observe(
+            ExternalTransitionObservation(
+                state=target.state[row : row + 1],
+                intention=target.intention[row : row + 1],
+                next_state=target.next_state[row : row + 1],
+                confidence=torch.ones(1),
+            )
+        )
+        if result.status == "staged":
+            router.adaptation_step(result, None, replay_evidence=False)
+
+    assert router.provisional_candidate_count == 1
+    assert router.provisional_evidence_count(0) == target.state.shape[0]
+    assert router._provisional_observations == []
+    payload = router.state_payload()
+    assert payload["configuration"]["provisional_evidence_policy"] == (
+        "streaming_statistics"
+    )
+    assert payload["provisional_observations"] == []
+    assert payload["provisional_candidates"][0]["observations"] == []
+    assert payload["provisional_candidates"][0]["evidence_count"] == 8
+
+    restored = ExternalOnlineTransitionContextRouter.from_payload(payload)
+    assert restored.provisional_evidence_count(0) == 8
+    assert restored._provisional_observations == []
+    assert restored.provisional_model is not None
+    assert int(restored.provisional_model.sample_count) == 8
+    assert restored.state_payload()["bank"]["sha256"] == bank.digest()
+    assert source_index == 0
+
+
 def test_affine_transition_statistics_learns_and_persists_one_pass() -> None:
     torch.manual_seed(1301)
     model = ExternalAffineTransitionStatistics(2, 1, ridge=1e-7)
