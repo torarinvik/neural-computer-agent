@@ -5783,3 +5783,30 @@ without changing the meaning of old keys, followed by verified model-bank
 growth and compression under longer alternating streams. Evidence is archived
 in
 `session_records/sequence_working_memory_2026-08-02/external_nonlinear_drift_learned_context_promoted_2026-08-10/`.
+
+## Copy-on-write learned address adaptation under long nonlinear alternation (2026-08-10)
+
+The next boundary adds `ExternalTransitionContextAddressAdapter`. It keeps
+the source-trained context encoder and every committed bank key immutable. A
+factual mismatch creates an isolated address-encoder copy; the copy learns
+stability and generic separation from historical keys using only the current
+evidence window. Its version is committed only alongside a held-out,
+retention-verified factual model candidate.
+
+The three-seed stream acquired four nonlinear target regimes from `32/64`
+presented rows each, interleaved source and target revisits across twelve
+streams, and ended with six retained slots. Every revisit matched an existing
+slot; no duplicate target slot was minted. Address versions advanced to `20`
+per seed while historical keys stayed unchanged. Corrupted evidence staged but
+failed held-out verification without a bank write; controller updates, raw
+candidate retention, and old-regime replay were zero; persistence was exact.
+All gates passed for seeds `82101`, `82102`, and `82103`.
+
+This promotes bounded long-horizon nonlinear factual-memory routing with
+copy-on-write learned address versions. It does not establish open-world
+continual learning: the factual basis and capacity are finite, the encoder is
+source-pretrained, and address adaptation is triggered by a router-detected
+mismatch. The next frontier is unbounded growth with verified consolidation or
+compression, plus a learned evidence policy that can decide when a mismatch is
+real under noisy multimodal streams. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_nonlinear_address_shift_stream_promoted_2026-08-10/`.
