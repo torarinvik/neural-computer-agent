@@ -1861,3 +1861,11 @@ as an adaptation shortcut. It was seed- and program-dependent, so the strict
 replicated transfer gate rejected it. Raw action-decoder reuse is not adopted
 as the general prior. Evidence is in
 `external_register_real_basis_acquisition_2026-08-08/interleaved_decoder_prior_diagnostic/`.
+
+## Shared event-bridge prior diagnostic (2026-08-09)
+
+An event bridge trained from mastered source outcomes and then frozen for new
+compositions was tested across both seeds. It was seed-dependent and failed
+the replicated composition gate, so it is not adopted as the general prior.
+Evidence is in
+`external_register_real_basis_acquisition_2026-08-08/interleaved_shared_bridge_prior_diagnostic/`.

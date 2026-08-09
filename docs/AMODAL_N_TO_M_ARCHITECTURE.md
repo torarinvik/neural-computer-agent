@@ -4109,3 +4109,10 @@ production boundary therefore does not assume decoder weights transfer across
 skills; a future interface prior must be protocol-agnostic and independently
 verified. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_register_real_basis_acquisition_2026-08-08/interleaved_decoder_prior_diagnostic/`.
+
+A shared event bridge trained from mastered source outcomes was tested as a
+protocol-agnostic interface prior. It preserved source retention but failed
+the replicated composition gate in one seed, so a single frozen bridge is not
+the production solution. Future interface adaptation must remain capability-
+conditioned and independently verified. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_real_basis_acquisition_2026-08-08/interleaved_shared_bridge_prior_diagnostic/`.

@@ -551,3 +551,18 @@ retained as an explicit opt-in diagnostic, not as the production default. The
 next intervention should learn a protocol-agnostic interface representation or
 adaptation rule, rather than copying action-decoder weights across skills.
 Evidence is in `interleaved_decoder_prior_diagnostic/`.
+
+## Shared outcome-trained event bridge diagnostic — rejected
+
+The next intervention trained one reusable `AmodalEventBridge` from attempted
+scalar outcomes on the three mastered source capabilities, froze it, and
+provided the same bridge to new compositions and their fresh controls. Source
+retention stayed unchanged, but the composition gate was seed-dependent:
+seed `69316` rejected both composition candidates at `0.7578`/`0.7734`
+consolidation accuracy, while seed `69317` passed at `0.8828`/`0.9258`.
+
+This rejects a simple shared bridge prior as a general adaptation solution.
+The opt-in mechanism remains useful for diagnostics, but the next design must
+learn an interface prior that conditions on capability state without copying
+protocol-specific weights or relying on one fixed bridge. Evidence is in
+`interleaved_shared_bridge_prior_diagnostic/`.
