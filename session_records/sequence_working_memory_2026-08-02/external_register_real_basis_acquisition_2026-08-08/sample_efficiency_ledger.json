@@ -950,6 +950,23 @@
       "decision": "reject conditioned bridge as a transfer accelerator; adapter-only priors do not improve the learning curve"
     },
     {
+      "experiment": "matched_external_program_memory_canonical_readout_transfer",
+      "date": "2026-08-09",
+      "seeds": [69317, 69318],
+      "claim": "A source-trained frozen canonical register readout will improve fresh external-memory transfer across held-out programs.",
+      "fresh_controller": true,
+      "interpreter_prior": "source_interpreter_state",
+      "decoder_prior": "mastered source decoder 0",
+      "canonical_readout_prior": true,
+      "replayed_examples": 0,
+      "unique_verifier_bits": 711680,
+      "fresh_accuracy_scores": [0.890625, 0.859375, 0.796875, 0.890625, 0.875, 0.890625],
+      "positive_transfer_count": 3,
+      "positive_transfer_denominator": 6,
+      "heldout_gates": "all passed on both seeds",
+      "decision": "retain canonical readout as a qualified interface direction; do not promote because all-program positive transfer was not achieved"
+    },
+    {
       "experiment": "protected_bounded_meta_shared_program_memory_router_sequence384",
       "date": "2026-08-09",
       "seeds": [69316],

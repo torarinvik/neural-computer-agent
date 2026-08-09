@@ -1150,3 +1150,18 @@ rejects another adapter-only route and keeps the research focus on the
 shared interpreter and external memory contract.
 Raw report:
 `matched_program_memory_conditioned_bridge/report_seed69318.json`.
+
+## Canonical register readout prior — qualified direction, not promoted
+
+Replacing the fresh output readout with a source-trained frozen canonical
+register convention improved matched fresh transfer from `1/6` positive
+programs to `3/6` across seeds `69317` and `69318`. Every held-out target
+still passed consolidation, retention, shuffled-outcome, and missing-evidence
+gates. The result is not yet a general transfer claim: three programs still
+matched or lagged the inherited stable prefix, and the strict all-program
+criterion remains unmet. The readout prior is retained as a useful interface
+component while the next effort targets a genuinely reusable sequence-level
+program representation.
+Raw reports:
+`matched_program_memory_canonical_readout/report_seed69317.json` and
+`matched_program_memory_canonical_readout/report_seed69318.json`.
