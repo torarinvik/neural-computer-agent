@@ -174,6 +174,10 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "candidate_digest": receipt.candidate_digest,
             "reason": receipt.reason,
         }
+    selection = bank.select_compression_verified(
+        (torch.float16, torch.int8, "int4"),
+        retention_probe=retention_probe,
+    )
     float16_restored = ExternalTransitionModelBank.from_compressed_payload(
         bank.compressed_payload(dtype=torch.float16)
     )
@@ -184,6 +188,9 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         "float16_accepted": receipts["torch.float16"]["accepted"],
         "int8_accepted": receipts["torch.int8"]["accepted"],
         "int4_rejected": not receipts["int4"]["accepted"],
+        "adaptive_selection_picks_smallest_retained": (
+            selection.accepted and selection.selected_codec == "torch.int8"
+        ),
         "float16_saves_bytes": (
             receipts["torch.float16"]["compressed_bytes"]
             < receipts["torch.float16"]["source_bytes"]
@@ -216,6 +223,12 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         "target": {"optimizer_updates": target_updates, "loss": target_loss},
         "baseline_losses": baseline,
         "compression_receipts": receipts,
+        "adaptive_selection": {
+            "accepted": selection.accepted,
+            "selected_codec": selection.selected_codec,
+            "candidate_codecs": [receipt.codec for receipt in selection.receipts],
+            "reason": selection.reason,
+        },
         "heldout_loss_deltas": deltas,
         "accounting": {
             "controller_parameter_updates": 0,

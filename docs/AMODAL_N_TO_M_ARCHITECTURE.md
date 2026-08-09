@@ -4710,3 +4710,7 @@ finite held-out probes can miss rare failures; the next frontier is adaptive
 codec selection and longer-horizon/alternating validation before compressed
 artifacts are promoted. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_transition_model_compression_promoted_2026-08-09/`.
+
+The codec boundary also exposes adaptive selection: it evaluates each caller
+candidate with the same probe and selects the smallest accepted artifact. In
+both compression seeds it selected int8 over float16 after rejecting int4.

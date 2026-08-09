@@ -338,6 +338,23 @@ def test_transition_model_bank_compression_requires_retention_and_round_trips() 
     assert restored.context_count == bank.context_count
 
 
+def test_transition_model_bank_selects_smallest_retained_codec() -> None:
+    bank = ExternalTransitionModelBank(2, 1, 2, hidden_width=8)
+    first = bank.ensure_context(torch.tensor([1.0, 0.0]))
+    bank.ensure_context(torch.tensor([0.0, 1.0]), initialize_from=first)
+
+    selection = bank.select_compression_verified(
+        (torch.float16, torch.int8, "int4"),
+        retention_probe=lambda candidate: candidate.physical_model_count == 2,
+    )
+
+    assert selection.accepted
+    assert len(selection.receipts) == 3
+    accepted = [receipt for receipt in selection.receipts if receipt.accepted]
+    smallest = min(accepted, key=lambda receipt: receipt.compressed_bytes)
+    assert selection.selected_codec == smallest.codec
+
+
 def test_online_transition_context_router_admits_current_bundle_and_persists() -> None:
     torch.manual_seed(1210)
     bank = ExternalTransitionModelBank(2, 1, 4, hidden_width=8)

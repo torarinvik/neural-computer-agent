@@ -7,9 +7,10 @@ the same source/target retention probe and round-trip exactly through the
 versioned compressed payload boundary. An int4 candidate is included as a
 stricter control and is rejected when its held-out loss drift exceeds tolerance.
 
-The result concerns checkpoint/external-memory bytes, not live float32 runtime
-parameter dtype. A caller must promote the compressed artifact only after the
-probe passes.
+The bank also selects the smallest accepted codec automatically; in this
+fixture that is int8 because int4 fails. The result concerns
+checkpoint/external-memory bytes, not live float32 runtime parameter dtype. A
+caller must promote the compressed artifact only after the probe passes.
 
 ```text
 .venv/bin/python experiments/external_transition_model_compression/train.py \

@@ -69,6 +69,9 @@ EXTERNAL_TRANSITION_MODEL_CONSOLIDATION_SCHEMA = (
 EXTERNAL_TRANSITION_MODEL_COMPRESSION_SCHEMA = (
     "neural-computer.external-transition-model-compression.v1"
 )
+EXTERNAL_TRANSITION_MODEL_COMPRESSION_SELECTION_SCHEMA = (
+    "neural-computer.external-transition-model-compression-selection.v1"
+)
 EXTERNAL_MODEL_PLANNER_SCHEMA = "neural-computer.external-model-planner.v1"
 
 
@@ -880,6 +883,38 @@ class ExternalTransitionModelBank(nn.Module):
             ),
         ).validate()
 
+    def select_compression_verified(
+        self,
+        codecs: Sequence[torch.dtype | str],
+        *,
+        retention_probe: Callable[[ExternalTransitionModelBank], bool] | None = None,
+    ) -> ExternalTransitionModelCompressionSelection:
+        """Select the smallest codec whose independent candidate is retained."""
+
+        if not codecs:
+            raise ValueError("compression codec candidates must be nonempty")
+        if len({str(codec) for codec in codecs}) != len(codecs):
+            raise ValueError("compression codec candidates must be unique")
+        receipts = tuple(
+            self.compress_verified(dtype=codec, retention_probe=retention_probe)
+            for codec in codecs
+        )
+        accepted = [receipt for receipt in receipts if receipt.accepted]
+        if not accepted:
+            return ExternalTransitionModelCompressionSelection(
+                accepted=False,
+                selected_codec=None,
+                receipts=receipts,
+                reason="no compression candidate passed retention",
+            ).validate()
+        selected = min(accepted, key=lambda receipt: receipt.compressed_bytes)
+        return ExternalTransitionModelCompressionSelection(
+            accepted=True,
+            selected_codec=selected.codec,
+            receipts=receipts,
+            reason="smallest retained compression candidate selected",
+        ).validate()
+
     def content_digest(self) -> str:
         """Digest slot keys and model weights without capacity metadata."""
 
@@ -1112,6 +1147,36 @@ class ExternalTransitionModelCompressionReceipt:
             raise ValueError("transition-model compression codec is missing")
         if not isinstance(self.reason, str) or not self.reason:
             raise ValueError("transition-model compression reason is missing")
+        return self
+
+
+@dataclass(frozen=True)
+class ExternalTransitionModelCompressionSelection:
+    """Selection record for the smallest retained external codec."""
+
+    accepted: bool
+    selected_codec: str | None
+    receipts: tuple[ExternalTransitionModelCompressionReceipt, ...]
+    reason: str
+    schema: str = EXTERNAL_TRANSITION_MODEL_COMPRESSION_SELECTION_SCHEMA
+
+    def validate(self) -> ExternalTransitionModelCompressionSelection:
+        if self.schema != EXTERNAL_TRANSITION_MODEL_COMPRESSION_SELECTION_SCHEMA:
+            raise ValueError("unsupported transition-model compression selection schema")
+        if not self.receipts:
+            raise ValueError("compression selection has no candidate receipts")
+        if self.accepted:
+            if self.selected_codec is None:
+                raise ValueError("accepted compression selection has no codec")
+            if not any(
+                receipt.accepted and receipt.codec == self.selected_codec
+                for receipt in self.receipts
+            ):
+                raise ValueError("selected compression codec was not accepted")
+        elif self.selected_codec is not None:
+            raise ValueError("rejected compression selection has a codec")
+        if not isinstance(self.reason, str) or not self.reason:
+            raise ValueError("compression selection reason is missing")
         return self
 
 
@@ -3195,6 +3260,7 @@ __all__ = [
     "EXTERNAL_TRANSITION_MEMORY_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_BANK_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_COMPRESSION_SCHEMA",
+    "EXTERNAL_TRANSITION_MODEL_COMPRESSION_SELECTION_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_CONSOLIDATION_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_GROWTH_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_SCHEMA",
@@ -3215,6 +3281,7 @@ __all__ = [
     "ExternalTransitionModel",
     "ExternalTransitionModelBank",
     "ExternalTransitionModelCompressionReceipt",
+    "ExternalTransitionModelCompressionSelection",
     "ExternalTransitionModelConsolidationReceipt",
     "ExternalTransitionModelGrowthReceipt",
     "ExternalTransitionObservation",

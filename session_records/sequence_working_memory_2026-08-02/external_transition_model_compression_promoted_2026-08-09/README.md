@@ -10,5 +10,6 @@ deltas stayed below `4e-8`, and int8 below `9e-6`. Int4 reduced storage to
 
 The controller and compression path performed zero optimizer updates, context
 and alias metadata persisted, and codec acceptance was caller-owned and
-verifier-gated. This promotes storage compression only, not live reduced-
+verifier-gated. The adaptive selector chose int8, the smallest accepted codec,
+in both seeds. This promotes storage compression only, not live reduced-
 precision reasoning or arbitrary learned computation.

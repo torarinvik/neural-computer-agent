@@ -1446,6 +1446,7 @@
       "float16_accepted": [true, true],
       "int8_accepted": [true, true],
       "int4_rejected": [true, true],
+      "adaptive_selected_codec": ["torch.int8", "torch.int8"],
       "float16_max_loss_delta": [9.139331066791191e-09, 3.649074642453343e-08],
       "int8_max_loss_delta": [8.858842720058818e-06, 4.8527292415556644e-06],
       "int4_loss_delta_range": [[0.0005219232397735111, 0.0005436937204461569], [0.0002735947700784891, 0.0007601280610538552]],

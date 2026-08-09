@@ -17,6 +17,7 @@
     "float16_accepted": true,
     "int8_accepted": true,
     "int4_rejected": true,
+    "adaptive_selection_picks_smallest_retained": true,
     "float16_saves_bytes": true,
     "int8_saves_bytes": true,
     "float16_persistence_exact": true,
@@ -41,7 +42,7 @@
       "codec": "torch.float16",
       "source_bytes": 26944,
       "compressed_bytes": 13472,
-      "candidate_digest": "4880f180dfc47b7a3b2fed72007f3956cd97fbdb4cc748aff474651f41bc6cb1",
+      "candidate_digest": "a65704d0c2404080ea872977fe2280bc9af9ad1161859102209cd9a3a251f627",
       "reason": "compressed candidate passed retention probe"
     },
     "torch.int8": {
@@ -49,7 +50,7 @@
       "codec": "torch.int8",
       "source_bytes": 26944,
       "compressed_bytes": 6784,
-      "candidate_digest": "da5e9829064f9855609129853504a215ce96e26d2132d9f220435ea6ccbb65c8",
+      "candidate_digest": "b32e9b3f12c55f18f088de70659a1cc7075b4ca3eb7637d3ccdb16c326c377db",
       "reason": "compressed candidate passed retention probe"
     },
     "int4": {
@@ -57,9 +58,19 @@
       "codec": "int4",
       "source_bytes": 26944,
       "compressed_bytes": 5176,
-      "candidate_digest": "cc12bdeaff00984f4e7045d532dfd00d9c5c7224b3e4192f215c6048636b65c9",
+      "candidate_digest": "762340213750bd618edcdf5f86d1620b599e44be5eb9095cda5909f8cb8b7da1",
       "reason": "compressed candidate failed retention probe"
     }
+  },
+  "adaptive_selection": {
+    "accepted": true,
+    "selected_codec": "torch.int8",
+    "candidate_codecs": [
+      "torch.float16",
+      "torch.int8",
+      "int4"
+    ],
+    "reason": "smallest retained compression candidate selected"
   },
   "heldout_loss_deltas": {
     "torch.float16": [
@@ -84,7 +95,7 @@
   },
   "digests": {
     "controller": "3d837eee80e5bf1afa4ccea6fae426c6266fd324a77815f53e833c5e37ec0b1d",
-    "bank": "33a7ad53d3993e6efa56f4c61e426a70dc38e3fc6d5e79fdc54881d53517c178"
+    "bank": "1bf5e46cb562228e04ffd16b812af4c107575a39e2369428da0cf362f22e6c9d"
   },
-  "elapsed_seconds": 6.818565750028938
+  "elapsed_seconds": 6.12572683300823
 }
