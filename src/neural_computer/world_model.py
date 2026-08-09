@@ -89,6 +89,9 @@ EXTERNAL_MODEL_PLANNER_SCHEMA = "neural-computer.external-model-planner.v1"
 EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY = "nonlinear_mlp_v1"
 EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY = "affine_sufficient_statistics_v1"
 EXTERNAL_TRANSITION_MIXED_MODEL_FAMILY = "mixed_verified_v1"
+EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY = (
+    "random_feature_sufficient_statistics_v1"
+)
 
 
 def _validate_tensor(
@@ -344,6 +347,8 @@ class ExternalTransitionModelBank(nn.Module):
         model_family: str = EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
         affine_ridge: float = 1e-5,
         adaptation_learning_rate: float = 1e-2,
+        random_feature_width: int = 128,
+        random_feature_seed: int = 0,
     ) -> None:
         super().__init__()
         if min(state_width, intention_width, context_width, hidden_width) < 1:
@@ -356,12 +361,15 @@ class ExternalTransitionModelBank(nn.Module):
             EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
             EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
             EXTERNAL_TRANSITION_MIXED_MODEL_FAMILY,
+            EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
         }:
             raise ValueError("unsupported external transition-model family")
         if affine_ridge <= 0.0:
             raise ValueError("affine transition ridge must be positive")
         if adaptation_learning_rate <= 0.0 or not math.isfinite(adaptation_learning_rate):
             raise ValueError("transition-model adaptation learning rate must be positive")
+        if random_feature_width < 1:
+            raise ValueError("random-feature width must be positive")
         self.state_width = int(state_width)
         self.intention_width = int(intention_width)
         self.context_width = int(context_width)
@@ -371,6 +379,8 @@ class ExternalTransitionModelBank(nn.Module):
         self.model_family = str(model_family)
         self.affine_ridge = float(affine_ridge)
         self.adaptation_learning_rate = float(adaptation_learning_rate)
+        self.random_feature_width = int(random_feature_width)
+        self.random_feature_seed = int(random_feature_seed)
         self.models = nn.ModuleList()
         self._contexts: list[torch.Tensor] = []
         self._model_families: list[str] = []
@@ -388,6 +398,7 @@ class ExternalTransitionModelBank(nn.Module):
         if selected_family not in {
             EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
             EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+            EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
         }:
             raise ValueError("unsupported external transition-model family")
         if selected_family == EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY:
@@ -399,7 +410,19 @@ class ExternalTransitionModelBank(nn.Module):
         # Keep this import local: online_transition depends on the observation
         # type defined in this module, while the bank only needs the optional
         # fast-path implementation when it instantiates one.
-        from .online_transition import ExternalAffineTransitionStatistics
+        from .online_transition import (
+            ExternalAffineTransitionStatistics,
+            ExternalRandomFeatureTransitionStatistics,
+        )
+
+        if selected_family == EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY:
+            return ExternalRandomFeatureTransitionStatistics(
+                self.state_width,
+                self.intention_width,
+                feature_width=self.random_feature_width,
+                ridge=self.affine_ridge,
+                seed=self.random_feature_seed,
+            )
 
         return ExternalAffineTransitionStatistics(
             self.state_width,
@@ -551,6 +574,8 @@ class ExternalTransitionModelBank(nn.Module):
             "model_families": list(self._model_families),
             "affine_ridge": self.affine_ridge,
             "adaptation_learning_rate": self.adaptation_learning_rate,
+            "random_feature_width": self.random_feature_width,
+            "random_feature_seed": self.random_feature_seed,
             "matching_tolerance": self.matching_tolerance,
             "growth": "append_only_isolated_model_slots_v1",
             "behavior": "derived_by_external_model_search_v1",
@@ -580,6 +605,7 @@ class ExternalTransitionModelBank(nn.Module):
         allowed = {
             EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
             EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+            EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
         }
         normalized = [str(family) for family in families]
         if any(family not in allowed for family in normalized):
@@ -1062,6 +1088,8 @@ class ExternalTransitionModelBank(nn.Module):
             adaptation_learning_rate=float(
                 configuration.get("adaptation_learning_rate", 1e-2)
             ),
+            random_feature_width=int(configuration.get("random_feature_width", 128)),
+            random_feature_seed=int(configuration.get("random_feature_seed", 0)),
             capacity=(
                 None
                 if configuration.get("capacity") is None
@@ -1283,6 +1311,8 @@ class ExternalTransitionModelBank(nn.Module):
             adaptation_learning_rate=float(
                 configuration.get("adaptation_learning_rate", 1e-2)
             ),
+            random_feature_width=int(configuration.get("random_feature_width", 128)),
+            random_feature_seed=int(configuration.get("random_feature_seed", 0)),
             capacity=(
                 None
                 if configuration.get("capacity") is None
@@ -1911,12 +1941,14 @@ class ExternalOnlineTransitionContextRouter:
         allowed_families = {
             EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
             EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+            EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
         }
         if candidate_model_families is None:
             families = (
                 (
                     EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
                     EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+                    EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
                 )
                 if bank.model_family == EXTERNAL_TRANSITION_MIXED_MODEL_FAMILY
                 else (bank.model_family,)
@@ -2677,11 +2709,16 @@ class ExternalOnlineTransitionContextRouter:
         schema = payload.get("schema")
         if schema == EXTERNAL_TRANSITION_MODEL_SCHEMA:
             return ExternalTransitionModel.from_payload(payload)
-        from .online_transition import ExternalAffineTransitionStatistics
+        from .online_transition import (
+            ExternalAffineTransitionStatistics,
+            ExternalRandomFeatureTransitionStatistics,
+        )
 
-        if schema != ExternalAffineTransitionStatistics.schema:
+        if schema == ExternalAffineTransitionStatistics.schema:
+            return ExternalAffineTransitionStatistics.from_payload(payload)
+        if schema != ExternalRandomFeatureTransitionStatistics.schema:
             raise ValueError("unsupported online transition provisional model")
-        return ExternalAffineTransitionStatistics.from_payload(payload)
+        return ExternalRandomFeatureTransitionStatistics.from_payload(payload)
 
     def state_payload(self) -> dict[str, object]:
         provisional_candidates = [
@@ -2868,6 +2905,7 @@ class ExternalOnlineTransitionContextRouter:
                 if family not in {
                     EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
                     EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+                    EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
                 }:
                     raise ValueError("online transition provisional family is invalid")
                 if not isinstance(model_payload, Mapping):
@@ -4406,6 +4444,7 @@ __all__ = [
     "EXTERNAL_TRANSITION_MODEL_SCHEMA",
     "EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY",
     "EXTERNAL_TRANSITION_OBSERVATION_SCHEMA",
+    "EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY",
     "ExternalContextAddressResolver",
     "ExternalContextResolution",
     "ExternalContextualEvidenceCalibrator",

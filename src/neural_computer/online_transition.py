@@ -27,6 +27,9 @@ from .world_model import (
 EXTERNAL_TRANSITION_AFFINE_STATISTICS_SCHEMA = (
     "neural-computer.external-transition-affine-statistics.v1"
 )
+EXTERNAL_TRANSITION_RANDOM_FEATURE_STATISTICS_SCHEMA = (
+    "neural-computer.external-transition-random-feature-statistics.v1"
+)
 class ExternalAffineTransitionStatistics(nn.Module):
     """Compact online memory for an opaque affine transition function."""
 
@@ -187,6 +190,195 @@ class ExternalAffineTransitionStatistics(nn.Module):
         return model
 
 
+class ExternalRandomFeatureTransitionStatistics(nn.Module):
+    """Replay-free nonlinear transition memory with a frozen feature map.
+
+    The random feature projection is fixed at construction and persisted as
+    part of the external artifact. Only normal-equation sufficient statistics
+    change during adaptation, so individual observations are not retained or
+    replayed. This is a bounded nonlinear basis, not unrestricted computation.
+    """
+
+    schema = EXTERNAL_TRANSITION_RANDOM_FEATURE_STATISTICS_SCHEMA
+
+    def __init__(
+        self,
+        state_width: int,
+        intention_width: int,
+        *,
+        feature_width: int = 128,
+        ridge: float = 1e-5,
+        seed: int = 0,
+    ) -> None:
+        super().__init__()
+        if min(state_width, intention_width, feature_width) < 1:
+            raise ValueError("random-feature transition dimensions must be positive")
+        if ridge <= 0.0 or not math.isfinite(ridge):
+            raise ValueError("random-feature transition ridge must be finite and positive")
+        self.state_width = int(state_width)
+        self.intention_width = int(intention_width)
+        self.feature_width = int(feature_width)
+        self.ridge = float(ridge)
+        self.seed = int(seed)
+        input_width = self.state_width + self.intention_width
+        generator = torch.Generator(device="cpu")
+        generator.manual_seed(self.seed)
+        self.register_buffer(
+            "projection",
+            torch.randn(
+                input_width,
+                self.feature_width,
+                generator=generator,
+                dtype=torch.float32,
+            )
+            / math.sqrt(input_width),
+        )
+        self.register_buffer(
+            "bias",
+            torch.rand(
+                self.feature_width,
+                generator=generator,
+                dtype=torch.float32,
+            )
+            * (2.0 * math.pi),
+        )
+        statistics_width = self.feature_width + 1
+        self.register_buffer(
+            "normal_matrix",
+            torch.eye(statistics_width, dtype=torch.float32) * self.ridge,
+        )
+        self.register_buffer(
+            "target_matrix",
+            torch.zeros(statistics_width, self.state_width, dtype=torch.float32),
+        )
+        self.register_buffer("sample_count", torch.zeros((), dtype=torch.long))
+
+    def configuration(self) -> dict[str, int | float | str]:
+        return {
+            "schema": self.schema,
+            "state_width": self.state_width,
+            "intention_width": self.intention_width,
+            "feature_width": self.feature_width,
+            "ridge": self.ridge,
+            "seed": self.seed,
+            "representation": "opaque_frozen_random_features_v1",
+            "updates": "single_pass_weighted_normal_equations_v1",
+            "storage": "frozen_features_and_sufficient_statistics_v1",
+        }
+
+    def _features(
+        self,
+        state: torch.Tensor,
+        intention: torch.Tensor,
+    ) -> torch.Tensor:
+        if state.ndim != 2 or state.shape[-1] != self.state_width:
+            raise ValueError("random-feature transition state has the wrong shape")
+        if intention.ndim != 2 or intention.shape[-1] != self.intention_width:
+            raise ValueError("random-feature transition intention has the wrong shape")
+        if state.shape[0] != intention.shape[0]:
+            raise ValueError("random-feature transition batches differ")
+        if not bool(torch.isfinite(state).all()) or not bool(torch.isfinite(intention).all()):
+            raise ValueError("random-feature transition inputs must be finite")
+        inputs = torch.cat((state, intention), dim=-1).to(self.projection)
+        features = torch.cos(inputs @ self.projection + self.bias)
+        return torch.cat((features, torch.ones(features.shape[0], 1)), dim=-1)
+
+    def _validate_observation(self, observation: ExternalTransitionObservation) -> None:
+        observation.validate(
+            state_width=self.state_width,
+            intention_width=self.intention_width,
+        )
+
+    def observe(self, observation: ExternalTransitionObservation) -> None:
+        """Consume verified evidence once without retaining the rows."""
+
+        self._validate_observation(observation)
+        features = self._features(observation.state, observation.intention)
+        targets = observation.next_state.to(self.normal_matrix)
+        if observation.confidence is None:
+            weights = torch.ones(features.shape[0], device=features.device)
+        else:
+            weights = observation.confidence.reshape(-1).to(features)
+        if not bool(torch.isfinite(weights).all()) or bool(torch.any(weights < 0)):
+            raise ValueError("random-feature transition confidence is invalid")
+        self.normal_matrix.add_(features.transpose(0, 1) @ (features * weights[:, None]))
+        self.target_matrix.add_(features.transpose(0, 1) @ (targets * weights[:, None]))
+        self.sample_count.add_(observation.state.shape[0])
+
+    def _weights(self) -> torch.Tensor:
+        return torch.linalg.solve(self.normal_matrix, self.target_matrix)
+
+    def forward(self, state: torch.Tensor, intention: torch.Tensor) -> torch.Tensor:
+        return self._features(state, intention) @ self._weights()
+
+    def loss(self, observation: ExternalTransitionObservation) -> torch.Tensor:
+        self._validate_observation(observation)
+        prediction = self(observation.state, observation.intention)
+        errors = (prediction - observation.next_state.to(prediction)).square().mean(dim=-1)
+        if observation.confidence is None:
+            return errors.mean()
+        weights = observation.confidence.reshape(-1).to(errors)
+        return (errors * weights).sum() / weights.sum().clamp_min(1e-12)
+
+    def digest(self) -> str:
+        digest = hashlib.sha256()
+        digest.update(self.schema.encode("utf-8"))
+        for name, value in sorted(self.state_dict().items()):
+            detached = value.detach().cpu().contiguous()
+            digest.update(name.encode("utf-8"))
+            digest.update(str(detached.dtype).encode("utf-8"))
+            digest.update(repr(tuple(detached.shape)).encode("utf-8"))
+            digest.update(detached.numpy().tobytes())
+        return digest.hexdigest()
+
+    def state_payload(self) -> dict[str, Any]:
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "state": {
+                name: value.detach().cpu().clone()
+                for name, value in self.state_dict().items()
+            },
+            "sha256": self.digest(),
+        }
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, Any],
+    ) -> ExternalRandomFeatureTransitionStatistics:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported random-feature transition payload")
+        configuration = payload.get("configuration")
+        state = payload.get("state")
+        if not isinstance(configuration, Mapping) or not isinstance(state, Mapping):
+            raise TypeError("random-feature transition payload is incomplete")
+        model = cls(
+            int(configuration["state_width"]),
+            int(configuration["intention_width"]),
+            feature_width=int(configuration["feature_width"]),
+            ridge=float(configuration["ridge"]),
+            seed=int(configuration["seed"]),
+        )
+        current = model.state_dict()
+        if tuple(state) != tuple(current):
+            raise ValueError("random-feature transition state names differ")
+        normalized: dict[str, torch.Tensor] = {}
+        for name, expected in current.items():
+            value = state[name]
+            if not isinstance(value, torch.Tensor):
+                raise TypeError("random-feature transition state is not a tensor")
+            if value.shape != expected.shape or value.dtype != expected.dtype:
+                raise ValueError("random-feature transition state is incompatible")
+            if not bool(torch.isfinite(value).all()):
+                raise ValueError("random-feature transition state is not finite")
+            normalized[name] = value.detach().clone()
+        model.load_state_dict(normalized, strict=True)
+        if payload.get("sha256") != model.digest():
+            raise ValueError("random-feature transition checksum mismatch")
+        return model
+
+
 @dataclass(frozen=True)
 class ExternalTransitionModelFamilyCandidateReceipt:
     """Verifier result for one independently trained opaque model candidate."""
@@ -331,7 +523,9 @@ def select_verified_transition_model_family(
 __all__ = [
     "EXTERNAL_TRANSITION_AFFINE_STATISTICS_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_FAMILY_SELECTION_SCHEMA",
+    "EXTERNAL_TRANSITION_RANDOM_FEATURE_STATISTICS_SCHEMA",
     "ExternalAffineTransitionStatistics",
+    "ExternalRandomFeatureTransitionStatistics",
     "ExternalTransitionModelFamilyCandidateReceipt",
     "ExternalTransitionModelFamilySelection",
     "select_verified_transition_model_family",

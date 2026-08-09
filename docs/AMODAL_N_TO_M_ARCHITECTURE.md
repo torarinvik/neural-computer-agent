@@ -4940,3 +4940,19 @@ before promotion. This removes the remaining hand-assigned family choice from
 the promotion path, but it is still a bounded model-family set: new families,
 automatic optimizer provisioning, and replay-free nonlinear adaptation remain
 open continual-learning bottlenecks.
+
+## Replay-free fixed nonlinear features (2026-08-09)
+
+The affine primitive's one-pass limitation is now pressure-tested with a fixed
+cosine feature map. `ExternalRandomFeatureTransitionStatistics` persists the
+feature projection and updates only weighted normal/target matrices, so it
+consumes nonlinear transition evidence once without retaining raw rows or
+requiring optimizer state. Across two seeds, `64` nonlinear training rows were
+presented once and `64` held-out rows were evaluated with errors below `0.02`;
+exact payload restoration passed.
+
+This family is available to the same mixed bank and router and is selected only
+through held-out verifier evidence. It expands replay-free learning beyond
+affine maps, but remains a fixed finite basis: it is not unrestricted neural
+computation, and future work must test basis growth, distribution shift, and
+long-horizon retention before treating it as general continual learning.

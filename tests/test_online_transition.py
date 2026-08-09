@@ -5,6 +5,7 @@ import torch
 from neural_computer import (
     ExternalAffineTransitionStatistics,
     ExternalOnlineTransitionContextRouter,
+    ExternalRandomFeatureTransitionStatistics,
     ExternalTransitionContextEncoder,
     ExternalTransitionModelBank,
     ExternalTransitionObservation,
@@ -74,6 +75,45 @@ def test_nonlinear_bank_can_update_through_memory_boundary_without_optimizer() -
         None,
     )
     assert bank.models[0].digest() != before
+
+
+def test_random_feature_statistics_learns_nonlinear_transitions_one_pass() -> None:
+    for seed in (1401, 1402):
+        torch.manual_seed(seed)
+        model = ExternalRandomFeatureTransitionStatistics(
+            2,
+            1,
+            feature_width=128,
+            ridge=1e-4,
+            seed=17,
+        )
+        state = torch.rand(128, 2) * 2.0 - 1.0
+        intention = torch.rand(128, 1) * 2.0 - 1.0
+        next_state = torch.cat(
+            (
+                torch.sin(2.0 * state[:, 0:1] + intention),
+                state[:, 0:1] * state[:, 1:2] + intention.square(),
+            ),
+            dim=-1,
+        )
+        train = ExternalTransitionObservation(
+            state=state[:64],
+            intention=intention[:64],
+            next_state=next_state[:64],
+        )
+        heldout = ExternalTransitionObservation(
+            state=state[64:],
+            intention=intention[64:],
+            next_state=next_state[64:],
+        )
+        model.observe(train)
+        assert int(model.sample_count) == 64
+        assert float(model.loss(heldout)) < 0.02
+        restored = ExternalRandomFeatureTransitionStatistics.from_payload(
+            model.state_payload()
+        )
+        assert restored.digest() == model.digest()
+        assert torch.allclose(restored(state[64:], intention[64:]), model(state[64:], intention[64:]))
 
 
 def test_router_stages_and_promotes_affine_candidate_without_optimizer() -> None:
@@ -248,6 +288,7 @@ def test_mixed_router_adapts_both_families_and_promotes_verified_winner() -> Non
     assert set(router._provisional_candidates[0].models()) == {
         "nonlinear_mlp_v1",
         "affine_sufficient_statistics_v1",
+        "random_feature_sufficient_statistics_v1",
     }
     router.adaptation_step(staged, None)
     assert int(
@@ -262,6 +303,7 @@ def test_mixed_router_adapts_both_families_and_promotes_verified_winner() -> Non
     assert set(restored._provisional_candidates[0].models()) == {
         "nonlinear_mlp_v1",
         "affine_sufficient_statistics_v1",
+        "random_feature_sufficient_statistics_v1",
     }
     receipt = router.promote_staged_candidate(
         _affine_observation(4),
