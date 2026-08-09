@@ -29,6 +29,7 @@ from neural_computer import (
     ExternalRegisterInstruction,
     OpaqueProtocolDecoder,
     ExternalSequenceMemory,
+    ExternalSequenceProgramMemory,
     ExternalSequenceOperatorMemory,
 )
 
@@ -639,6 +640,7 @@ def _train_sequence_calibration(
     sequence_memory: ExternalSequenceMemory | None = None,
     sequence_operator_memory: ExternalSequenceOperatorMemory | None = None,
     sequence_readout: CanonicalRegisterReadout | None = None,
+    sequence_program_memory: ExternalSequenceProgramMemory | None = None,
 ) -> list[dict[str, object]]:
     """Calibrate the shared operator on opaque multi-instruction chains.
 
@@ -705,6 +707,8 @@ def _train_sequence_calibration(
             parameter.requires_grad_(False)
         if sequence_operator_memory is not None:
             trainable = list(sequence_operator_memory.parameters())
+        elif sequence_program_memory is not None:
+            trainable = list(sequence_program_memory.parameters())
         else:
             trainable = (
                 list(sequence_memory.parameters())
@@ -772,6 +776,16 @@ def _train_sequence_calibration(
             route_probe=(args.use_route_outcome_credit and use_operator_router),
             register_readout=sequence_readout,
             decoder_context=(route_query(program) if args.conditioned_sequence_decoder else None),
+            sequence_program_codes=(
+                sequence_program_memory.program_codes(
+                    index,
+                    batch_size=args.batch_size,
+                    device=batch.input_frames.device,
+                    dtype=batch.input_frames.dtype,
+                )
+                if sequence_program_memory is not None
+                else None
+            ),
         )
         if use_operator_router and args.route_assignment_loss_weight > 0.0:
             all_route_weights = torch.stack(
@@ -838,6 +852,16 @@ def _train_sequence_calibration(
                     decoder_context=(
                         route_query(program_value)
                         if args.conditioned_sequence_decoder
+                        else None
+                    ),
+                    sequence_program_codes=(
+                        sequence_program_memory.program_codes(
+                            index_value,
+                            batch_size=1,
+                            device=torch.device("cpu"),
+                            dtype=torch.float32,
+                        ).squeeze(0)
+                        if sequence_program_memory is not None
                         else None
                     ),
                 )
@@ -1136,6 +1160,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("source checkpoint input cannot be combined with source calibration")
     if args.use_sequence_memory and args.use_operator_sequence_memory:
         raise ValueError("choose value or operator sequence memory")
+    if args.use_sequence_program_memory and (
+        args.use_sequence_memory or args.use_operator_sequence_memory
+    ):
+        raise ValueError("choose one sequence memory implementation")
+    if args.use_sequence_program_memory and args.use_operator_sequence_router:
+        raise ValueError("program memory routing is not yet combined with operator routing")
     if args.use_operator_sequence_router and not args.use_operator_sequence_memory:
         raise ValueError("operator sequence routing requires operator sequence memory")
     if args.use_route_outcome_credit and not args.use_operator_sequence_router:
@@ -1307,6 +1337,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     sequence_calibration_progress: list[dict[str, object]] = []
     sequence_memory = None
     sequence_operator_memory = None
+    sequence_program_memory = None
     sequence_readout = None
     if args.use_sequence_memory and args.sequence_calibration_updates:
         sequence_memory = ExternalSequenceMemory(REGISTER_WIDTH)
@@ -1321,6 +1352,19 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         )
         for _ in composition_programs:
             sequence_operator_memory.add_slot()
+    if args.use_sequence_program_memory and args.sequence_calibration_updates:
+        sequence_program_memory = ExternalSequenceProgramMemory(
+            INSTRUCTION_WIDTH,
+            router_temperature=args.operator_router_temperature,
+        )
+        for program in composition_programs:
+            codes = torch.stack(
+                tuple(
+                    machine.instructions[args.source_operations.index(name)].code.detach().squeeze(0)
+                    for name in program
+                )
+            )
+            sequence_program_memory.add_program(codes)
     if args.use_shared_sequence_readout and args.sequence_calibration_updates:
         sequence_readout = CanonicalRegisterReadout(
             REGISTER_WIDTH, REGISTER_WIDTH, hidden=64
@@ -1339,6 +1383,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             sequence_memory=sequence_memory,
             sequence_operator_memory=sequence_operator_memory,
             sequence_readout=sequence_readout,
+            sequence_program_memory=sequence_program_memory,
         )
         sequence_calibration_source_after = [
             source_score(spec, index) for index, spec in enumerate(source_specs)
@@ -1853,6 +1898,22 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         + progress_audit_bits
         + suite_and_control_bits
     )
+    if args.use_sequence_program_memory:
+        sequence_surface = "sequence_program_memory_slots_plus_temporary_decoders"
+    elif args.use_operator_sequence_memory:
+        if args.use_operator_sequence_router:
+            if args.conditioned_sequence_decoder:
+                sequence_surface = "sequence_operator_memory_slots_plus_learned_router_plus_conditioned_shared_decoder"
+            elif args.shared_sequence_decoder:
+                sequence_surface = "sequence_operator_memory_slots_plus_learned_router_plus_shared_decoder"
+            else:
+                sequence_surface = "sequence_operator_memory_slots_plus_learned_router_plus_temporary_decoders"
+        else:
+            sequence_surface = "sequence_operator_memory_slots_plus_temporary_decoders"
+    elif args.use_sequence_memory:
+        sequence_surface = "sequence_memory_slots_plus_temporary_decoders"
+    else:
+        sequence_surface = "operator_meta_residual_plus_temporary_decoders"
     report = {
         "schema": "neural-computer.external-register-interleaved-basis-acquisition-audit.v1",
         "seed": args.seed,
@@ -1864,39 +1925,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         ),
         "joint_source_updates": args.joint_source_updates,
         "sequence_calibration_updates": args.sequence_calibration_updates,
-        "sequence_calibration_trainable_surface": (
-            (
-                (
-                    "sequence_operator_memory_slots_plus_learned_router_plus_outcome_probe_plus_conditioned_shared_decoder_plus_readout"
-                    if args.use_route_outcome_credit
-                    and args.conditioned_sequence_decoder
-                    and args.use_shared_sequence_readout
-                    else "sequence_operator_memory_slots_plus_learned_router_plus_outcome_probe_plus_conditioned_shared_decoder"
-                    if args.use_route_outcome_credit and args.conditioned_sequence_decoder
-                    else "sequence_operator_memory_slots_plus_learned_router_plus_outcome_probe_plus_shared_decoder"
-                    if args.use_route_outcome_credit and args.shared_sequence_decoder
-                    else "sequence_operator_memory_slots_plus_learned_router_plus_shared_decoder_plus_readout"
-                    if args.shared_sequence_decoder and args.use_shared_sequence_readout
-                    else "sequence_operator_memory_slots_plus_learned_router_plus_shared_decoder"
-                    if args.shared_sequence_decoder
-                    else "sequence_operator_memory_slots_plus_learned_router_plus_outcome_probe_plus_readout"
-                    if args.use_route_outcome_credit and args.use_shared_sequence_readout
-                    else "sequence_operator_memory_slots_plus_learned_router_plus_outcome_probe_plus_temporary_decoders"
-                    if args.use_route_outcome_credit
-                    else "sequence_operator_memory_slots_plus_learned_router_plus_readout"
-                    if args.use_shared_sequence_readout
-                    else "sequence_operator_memory_slots_plus_learned_router_plus_temporary_decoders"
-                )
-                if args.use_operator_sequence_router
-                else "sequence_operator_memory_slots_plus_temporary_decoders"
-            )
-            if args.use_operator_sequence_memory
-            else (
-                "sequence_memory_slots_plus_temporary_decoders"
-                if args.use_sequence_memory
-                else "operator_meta_residual_plus_temporary_decoders"
-            )
-        ),
+        "sequence_calibration_trainable_surface": sequence_surface,
         "sequence_calibration_accepted": sequence_calibration_accepted,
         "sequence_calibration_source_before": source_before,
         "sequence_calibration_source_after": sequence_calibration_source_after,
@@ -1904,6 +1933,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "sequence_memory": (
             sequence_memory.configuration()
             if sequence_memory is not None
+            else None
+        ),
+        "sequence_program_memory": (
+            sequence_program_memory.configuration()
+            if sequence_program_memory is not None
             else None
         ),
         "sequence_operator_memory": (
@@ -2080,6 +2114,12 @@ def main() -> None:
         action=argparse.BooleanOptionalAction,
         default=False,
         help="train one append-only external state slot per calibration ordering",
+    )
+    parser.add_argument(
+        "--use-sequence-program-memory",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="store ordered opaque instruction programs for the shared interpreter",
     )
     parser.add_argument(
         "--use-operator-sequence-memory",

@@ -48,6 +48,9 @@ EXTERNAL_REGISTER_SHARED_STABLE_RELATIONAL_MODE = (
     "factorized_shared_stable_relational"
 )
 EXTERNAL_SEQUENCE_MEMORY_SCHEMA = "neural-computer.external-sequence-memory.v1"
+EXTERNAL_SEQUENCE_PROGRAM_MEMORY_SCHEMA = (
+    "neural-computer.external-sequence-program-memory.v1"
+)
 
 
 EXTERNAL_REGISTER_ROLE_BINDING_SCHEMA = (
@@ -357,6 +360,112 @@ class ExternalSequenceMemory(nn.Module):
             raise ValueError("sequence memory slot index is out of range")
         return self.slots[slot].to(device=device, dtype=dtype).expand(
             batch_size, -1
+        )
+
+
+class ExternalSequenceProgramMemory(nn.Module):
+    """Append-only opaque program data executed by one shared interpreter."""
+
+    schema = EXTERNAL_SEQUENCE_PROGRAM_MEMORY_SCHEMA
+
+    def __init__(
+        self,
+        instruction_width: int,
+        *,
+        router_hidden: int = 32,
+        router_temperature: float = 1.0,
+    ) -> None:
+        super().__init__()
+        if min(instruction_width, router_hidden) < 1:
+            raise ValueError("sequence program memory dimensions must be positive")
+        if router_temperature <= 0.0:
+            raise ValueError("sequence program router temperature must be positive")
+        self.instruction_width = int(instruction_width)
+        self.router_hidden = int(router_hidden)
+        self.router_temperature = float(router_temperature)
+        self.programs = nn.ParameterList()
+        self.slot_keys = nn.ParameterList()
+        self.query_encoder = nn.GRU(
+            self.instruction_width, self.router_hidden, batch_first=True
+        )
+        self.program_query = nn.Linear(
+            self.router_hidden, self.instruction_width
+        )
+        self.route_query_encoder = nn.Sequential(
+            nn.Linear(self.instruction_width, self.router_hidden),
+            nn.GELU(),
+            nn.Linear(self.router_hidden, self.router_hidden),
+        )
+        self.key_encoder = nn.Sequential(
+            nn.Linear(self.instruction_width, self.router_hidden),
+            nn.GELU(),
+            nn.Linear(self.router_hidden, self.router_hidden),
+        )
+
+    def configuration(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "instruction_width": self.instruction_width,
+            "router_hidden": self.router_hidden,
+            "router_temperature": self.router_temperature,
+            "slot_count": len(self.programs),
+            "program_lengths": [int(program.shape[0]) for program in self.programs],
+            "storage": "append_only_opaque_instruction_sequences_v1",
+            "computation": "shared_register_interpreter_v1",
+        }
+
+    def add_program(self, codes: torch.Tensor) -> int:
+        if (
+            codes.ndim != 2
+            or codes.shape[0] < 1
+            or codes.shape[1] != self.instruction_width
+        ):
+            raise ValueError(
+                "program codes must have shape [steps, instruction_width]"
+            )
+        if not bool(torch.isfinite(codes).all()):
+            raise ValueError("program codes must be finite")
+        self.programs.append(nn.Parameter(codes.detach().clone()))
+        key = nn.Parameter(torch.empty(self.instruction_width))
+        nn.init.normal_(key, mean=0.0, std=0.02)
+        self.slot_keys.append(key)
+        return len(self.programs) - 1
+
+    def program_codes(
+        self,
+        slot: int,
+        *,
+        batch_size: int,
+        device: torch.device,
+        dtype: torch.dtype,
+    ) -> torch.Tensor:
+        if not 0 <= slot < len(self.programs):
+            raise ValueError("sequence program memory slot index is out of range")
+        return self.programs[slot].to(device=device, dtype=dtype).unsqueeze(0).expand(
+            batch_size, -1, -1
+        )
+
+    def encode_program(self, codes: torch.Tensor) -> torch.Tensor:
+        if (
+            codes.ndim != 3
+            or codes.shape[1] < 1
+            or codes.shape[2] != self.instruction_width
+        ):
+            raise ValueError("program codes must have shape [batch, steps, width]")
+        _, hidden = self.query_encoder(codes)
+        return self.program_query(hidden[-1])
+
+    def route_weights(self, query: torch.Tensor) -> torch.Tensor:
+        if query.ndim != 2 or query.shape[1] != self.instruction_width:
+            raise ValueError("sequence program route query has the wrong shape")
+        if not len(self.programs):
+            raise ValueError("cannot route an empty sequence program memory")
+        keys = torch.stack(tuple(self.slot_keys), dim=0)
+        query_latent = self.route_query_encoder(query)
+        key_latent = self.key_encoder(keys)
+        logits = torch.einsum("bh,sh->bs", query_latent, key_latent)
+        return torch.softmax(
+            logits / (self.router_temperature * (self.router_hidden**0.5)), dim=-1
         )
 
 
@@ -1448,8 +1557,9 @@ class ExternalCapabilityRegisterMachine(nn.Module):
     def execute(
         self,
         register: torch.Tensor,
-        instruction: ExternalRegisterInstruction,
+        instruction: ExternalRegisterInstruction | None = None,
         *,
+        instruction_code: torch.Tensor | None = None,
         basis_slot: int | None = None,
         event_window: torch.Tensor | None = None,
         event_window_mask: torch.Tensor | None = None,
@@ -1463,8 +1573,20 @@ class ExternalCapabilityRegisterMachine(nn.Module):
 
         if register.ndim != 2 or register.shape[1] != self.register_width:
             raise ValueError("register has the wrong shape for execution")
-        if instruction.instruction_width != self.instruction_width:
-            raise ValueError("instruction width does not match the machine")
+        if (instruction is None) == (instruction_code is None):
+            raise ValueError("execution requires exactly one instruction or code")
+        if instruction is not None:
+            if instruction.instruction_width != self.instruction_width:
+                raise ValueError("instruction width does not match the machine")
+        else:
+            if (
+                instruction_code.ndim != 2
+                or instruction_code.shape != (
+                    register.shape[0], self.instruction_width
+                )
+                or not bool(torch.isfinite(instruction_code).all())
+            ):
+                raise ValueError("instruction code has the wrong shape or values")
         if meta_context is not None:
             if meta_context.shape != register.shape:
                 raise ValueError("meta context has the wrong shape")
@@ -1498,10 +1620,14 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 raise ValueError("sequence operator route query has the wrong shape")
             if not bool(torch.isfinite(sequence_operator_route_query).all()):
                 raise ValueError("sequence operator route query must be finite")
-        code = instruction.expanded(
-            register.shape[0],
-            device=register.device,
-            dtype=register.dtype,
+        code = (
+            instruction.expanded(
+                register.shape[0],
+                device=register.device,
+                dtype=register.dtype,
+            )
+            if instruction is not None
+            else instruction_code.to(device=register.device, dtype=register.dtype)
         )
         if self.operator_mode == EXTERNAL_REGISTER_SHARED_BANKED_MODE:
             bank_read = self._read_state_bank(code, state_bank)
@@ -1674,6 +1800,40 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         proposal = self.transition(features)
         gate = torch.sigmoid(self.update_gate(features))
         return register + gate * proposal
+
+    def execute_code_chain(
+        self,
+        register: torch.Tensor,
+        program_codes: torch.Tensor,
+        *,
+        event_window: torch.Tensor | None = None,
+        event_window_mask: torch.Tensor | None = None,
+        meta_context: torch.Tensor | None = None,
+        sequence_operator_memory: ExternalSequenceOperatorMemory | None = None,
+        sequence_operator_slot: int | None = None,
+        sequence_operator_route_query: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """Execute opaque program codes through the shared interpreter."""
+
+        if (
+            program_codes.ndim != 3
+            or program_codes.shape[0] != register.shape[0]
+            or program_codes.shape[1] < 1
+            or program_codes.shape[2] != self.instruction_width
+        ):
+            raise ValueError("program codes have the wrong shape for execution")
+        for code in program_codes.transpose(0, 1):
+            register = self.execute(
+                register,
+                instruction_code=code,
+                event_window=event_window,
+                event_window_mask=event_window_mask,
+                meta_context=meta_context,
+                sequence_operator_memory=sequence_operator_memory,
+                sequence_operator_slot=sequence_operator_slot,
+                sequence_operator_route_query=sequence_operator_route_query,
+            )
+        return register
 
     def execute_chain(
         self,

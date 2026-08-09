@@ -755,6 +755,23 @@
       "source_retention": "exact zero deltas; source floors 0.96875–0.9765625",
       "sequence_floor": 0.4140625,
       "decision": "retain conditioned decoder interface but reject promotion; reusable conditioning improves representation sharing yet remains below the 0.7421875 baseline"
+    },
+    {
+      "experiment": "protected_bounded_meta_shared_executable_program_memory_sequence384",
+      "date": "2026-08-09",
+      "seeds": [69316],
+      "claim": "Append-only ordered opaque instruction programs executed by one shared interpreter can match the rank-16 sequence-capacity baseline without independent transition networks.",
+      "operator_mode": "factorized_protected_bounded_meta",
+      "operator_rank": 16,
+      "sequence_memory": "six append-only ordered instruction-code programs",
+      "sequence_calibration_updates": 384,
+      "composition_program_count": 6,
+      "replayed_examples": 0,
+      "unique_verifier_bits": 129664,
+      "source_retention": "exact zero deltas; source floors 0.9296875–0.9609375",
+      "sequence_floor": 0.734375,
+      "baseline_floor": 0.7421875,
+      "decision": "retain as leading architecture but defer promotion pending replication and learned program-slot routing"
     }
   ]
 }

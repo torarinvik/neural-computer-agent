@@ -8,6 +8,7 @@ from neural_computer import (
     ExternalRegisterInstruction,
     ExternalSequenceMemory,
     ExternalSequenceOperatorMemory,
+    ExternalSequenceProgramMemory,
     IntentEvent,
     LearnedRegisterRoleBinding,
 )
@@ -541,6 +542,37 @@ def test_external_sequence_operator_memory_grows_and_executes_opaque_slots() -> 
     assert memory.configuration()["slot_count"] == 1
     assert result.shape == register.shape
     assert torch.isfinite(result).all()
+
+
+def test_external_sequence_program_memory_stores_ordered_shared_program_data() -> None:
+    torch.manual_seed(906)
+    memory = ExternalSequenceProgramMemory(5, router_temperature=0.25)
+    first = memory.add_program(torch.randn(3, 5))
+    second = memory.add_program(torch.randn(2, 5))
+    query = memory.encode_program(
+        memory.program_codes(first, batch_size=1, device=torch.device("cpu"), dtype=torch.float32)
+    )
+    weights = memory.route_weights(query)
+
+    assert (first, second) == (0, 1)
+    assert memory.configuration()["computation"] == "shared_register_interpreter_v1"
+    assert memory.configuration()["program_lengths"] == [3, 2]
+    assert weights.shape == (1, 2)
+    assert torch.allclose(weights.sum(dim=-1), torch.ones(1))
+
+
+def test_shared_machine_executes_external_program_codes_without_new_operator() -> None:
+    machine = _machine(operator_mode="factorized_protected_bounded_meta")
+    register = torch.randn(2, 8)
+    instructions = (machine.instructions[0], machine.instructions[1])
+    codes = torch.stack(
+        tuple(instruction.code.squeeze(0) for instruction in instructions)
+    ).unsqueeze(0).expand(2, -1, -1)
+
+    expected = machine.execute_chain(register, instructions)
+    actual = machine.execute_code_chain(register, codes)
+
+    assert torch.allclose(actual, expected)
 
 
 def test_external_sequence_operator_memory_learns_opaque_route_weights() -> None:

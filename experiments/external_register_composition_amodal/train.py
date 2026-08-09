@@ -30,6 +30,7 @@ from neural_computer import (
     ExternalCapabilityRegisterMachine,
     AmodalEventBridge,
     ExternalRegisterInstruction,
+    ExternalSequenceProgramMemory,
     EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE,
     OpaqueProtocolDecoder,
     CanonicalRegisterReadout,
@@ -158,6 +159,7 @@ def _rollout(
     sequence_operator_slot: int | None = None,
     sequence_operator_route_query: torch.Tensor | None = None,
     decoder_context: torch.Tensor | None = None,
+    sequence_program_codes: torch.Tensor | None = None,
     *,
     train_decoder: bool,
     shuffle_outcomes: bool = False,
@@ -201,6 +203,18 @@ def _rollout(
             decoder_context = decoder_context.unsqueeze(0).expand(batch_size, -1)
         elif decoder_context.shape[0] != batch_size:
             raise ValueError("decoder context batch size does not match rollout")
+    if sequence_program_codes is not None:
+        if sequence_program_codes.ndim == 2:
+            sequence_program_codes = sequence_program_codes.unsqueeze(0).expand(
+                batch_size, -1, -1
+            )
+        if (
+            sequence_program_codes.ndim != 3
+            or sequence_program_codes.shape[0] != batch_size
+            or sequence_program_codes.shape[1] < 1
+            or sequence_program_codes.shape[2] != INSTRUCTION_WIDTH
+        ):
+            raise ValueError("sequence program codes have the wrong shape")
     parent_state = parent.initial_state(batch_size, device=device)
     register_state = machine.initial_state(batch_size, device=device)
     zeros = torch.zeros(batch_size, device=device)
@@ -251,6 +265,27 @@ def _rollout(
             event = parent_state.hidden.detach()
         if machine.event_width != event.shape[1]:
             raise ValueError("machine event width is incompatible with parent event")
+        if sequence_program_codes is not None:
+            register, next_state = machine.observe_register(
+                event=event,
+                action=previous_action,
+                outcome=previous_reward,
+                intention=output.intention,
+                state=register_state,
+                present=present,
+            )
+            executed = machine.execute_code_chain(
+                register,
+                sequence_program_codes,
+                event_window=next_state.event_window,
+                event_window_mask=next_state.event_window_mask,
+            )
+            register_state = next_state
+            register = torch.where(present.unsqueeze(-1), executed, register)
+            decoded_register = (
+                register if register_readout is None else register_readout(register)
+            )
+            return decode(decoded_register), register
         if route_probe and collect_route_probe:
             next_state = None
             slot_logits = []
@@ -704,6 +739,7 @@ def _accuracy(
     sequence_operator_slot: int | None = None,
     sequence_operator_route_query: torch.Tensor | None = None,
     decoder_context: torch.Tensor | None = None,
+    sequence_program_codes: torch.Tensor | None = None,
     count: int,
     span: int,
     seed: int,
@@ -744,6 +780,7 @@ def _accuracy(
             sequence_operator_slot=sequence_operator_slot,
             sequence_operator_route_query=sequence_operator_route_query,
             decoder_context=decoder_context,
+            sequence_program_codes=sequence_program_codes,
             train_decoder=False,
             shuffle_outcomes=shuffle_outcomes,
             credit_mode=credit_mode,

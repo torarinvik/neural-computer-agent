@@ -1059,3 +1059,15 @@ improved the floor to `0.4141` (`0.5703, 0.7500, 0.6094, 0.6094, 0.7344,
 far below `0.7422`, so it is not promoted. It is retained as the correct
 reusable decoder interface to develop further. Raw report:
 `protected_bounded_meta_conditioned_decoder/report_seed69316.json`.
+
+## Shared executable program memory — near promotion
+
+The independent transition slots were replaced with append-only ordered
+instruction-code programs executed by the shared register interpreter. The
+program-memory screen reached `0.7344` after 384 updates
+(`0.8516, 0.8047, 0.7578, 0.7969, 0.8125, 0.7344`) with exact source
+retention. This nearly matches the `0.7422` rank-16 baseline while storing
+program data rather than new transition networks. It is retained as the
+leading architecture, but not promoted until replication closes the gap and
+the route is learned rather than slot-indexed. Raw report:
+`protected_bounded_meta_program_memory/report_seed69316.json`.
