@@ -868,6 +868,20 @@
       "decision": "promote bounded external-program growth with decoder prior; replicated across two calibration seeds, but do not yet claim general continual learning"
     },
     {
+      "experiment": "fresh_controller_decoder_prior_transfer_smoke",
+      "date": "2026-08-09",
+      "seeds": [69318],
+      "claim": "Loading the mastered decoder prior into a fresh controller will produce positive stable transfer.",
+      "fresh_controller": true,
+      "decoder_prior": "mastered source decoder 0",
+      "curriculum_fresh_control": true,
+      "replayed_examples": 0,
+      "unique_verifier_bits": 167552,
+      "fresh_accuracy_scores": [0.59375, 0.75, 0.4375],
+      "positive_transfer": false,
+      "decision": "reject smoke promotion; decoder prior is not representation-independent across fresh controller weights"
+    },
+    {
       "experiment": "protected_bounded_meta_shared_program_memory_router_sequence384",
       "date": "2026-08-09",
       "seeds": [69316],

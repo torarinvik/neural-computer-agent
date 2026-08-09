@@ -1107,3 +1107,9 @@ The same protocol replicated under seed `69318`, with held-out probe scores
 `0.8984`, `0.8906`, and `0.8516`, exact source retention, and shuffled-outcome
 failure. Raw replica:
 `protected_bounded_meta_program_growth_decoder_prior/report_seed69318.json`.
+
+The fresh-controller transfer control was corrected to actually initialize
+its decoder from the mastered prior. A bounded smoke audit still produced no
+positive stable transfer, indicating that the current decoder prior remains
+coupled to the inherited controller representation. This is the next major
+interface bottleneck, not evidence against the external program store.

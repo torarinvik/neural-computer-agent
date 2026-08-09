@@ -1766,6 +1766,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 )
             for parameter in fresh_bridge.parameters():
                 parameter.requires_grad_(False)
+        fresh_decoder = OpaqueProtocolDecoder(
+            REGISTER_WIDTH * (len(program) if args.preserve_composition_trace else 1),
+            ACTION_WIDTH,
+            hidden=16,
+        )
+        if decoder_prior_state is not None and not args.preserve_composition_trace:
+            fresh_decoder.load_state_dict(decoder_prior_state, strict=True)
         fresh_candidate = {
             "operation": "generated_composition",
             "instructions": tuple(
@@ -1779,13 +1786,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "generated_composition_ids": (0,),
             "generated_compositions": (program,),
             "composition_program": program,
-            "decoder": OpaqueProtocolDecoder(
-                REGISTER_WIDTH * (
-                    len(program) if args.preserve_composition_trace else 1
-                ),
-                ACTION_WIDTH,
-                hidden=16,
-            ),
+            "decoder": fresh_decoder,
             "bridge": fresh_bridge,
             "bridge_frozen": bridge_prior_state is not None,
             "preserve_execution_trace": args.preserve_composition_trace,
