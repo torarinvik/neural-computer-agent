@@ -35,6 +35,7 @@ EXTERNAL_REGISTER_COMPATIBILITY_SCHEMA = (
 EXTERNAL_REGISTER_READOUT_SCHEMA = (
     "neural-computer.external-register-canonical-readout.v1"
 )
+EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE = "factorized_shared_interpreter"
 
 
 class CanonicalRegisterReadout(nn.Module):
@@ -476,6 +477,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "factorized_hybrid",
             "factorized_bounded_residual",
             "factorized_protected_meta",
+            EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
             "unconstrained_mlp",
         ):
             raise ValueError("unsupported external register operator mode")
@@ -532,6 +534,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "factorized_hybrid",
             "factorized_bounded_residual",
             "factorized_protected_meta",
+            EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
         ):
             self.operator_left = nn.Linear(
                 instruction_width,
@@ -641,8 +644,16 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "event_window_size": self.event_window_size,
             "state": "external_working_register_with_recurrent_context_v2",
             "execution": "shared_interpreter_serial_instruction_chain_v1",
-            "compute_basis": EXTERNAL_REGISTER_BASIS_SCHEMA,
-            "basis_binding": "opaque_memory_side_slot_index_v1",
+            "compute_basis": (
+                "neural-computer.external-register-shared-interpreter.v1"
+                if self.operator_mode == EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE
+                else EXTERNAL_REGISTER_BASIS_SCHEMA
+            ),
+            "basis_binding": (
+                "instruction_vector_selects_shared_interpreter_v1"
+                if self.operator_mode == EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE
+                else "opaque_memory_side_slot_index_v1"
+            ),
             "read_execute": EXTERNAL_REGISTER_READ_EXECUTE_SCHEMA,
             "downstream_input": "preceding_register_plus_bounded_event_window_v1",
         }
@@ -942,7 +953,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             device=register.device,
             dtype=register.dtype,
         )
-        if basis_slot is not None:
+        if basis_slot is not None and self.operator_mode != EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE:
             if not 0 <= basis_slot < len(self.basis_slots):
                 raise ValueError("basis slot index is out of range")
             if self.event_window_size:
@@ -955,6 +966,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "factorized_hybrid",
             "factorized_bounded_residual",
             "factorized_protected_meta",
+            EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
         ):
             operator_register = (
                 self.operator_normalizer(register)
@@ -973,7 +985,10 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             )
             projected = torch.einsum("br,bkr->bk", operator_register, right)
             base_proposal = torch.einsum("bk,brk->br", projected, left)
-            if self.operator_mode == "factorized_low_rank":
+            if self.operator_mode in (
+                "factorized_low_rank",
+                EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
+            ):
                 return register + base_proposal + self.operator_bias(code)
             if self.operator_mode == "factorized_bounded_residual":
                 proposal = torch.tanh(base_proposal + self.operator_bias(code))

@@ -626,3 +626,23 @@ favored it on one and tied on the other. The readout is retained as clean
 interface infrastructure and a diagnostic boundary, but the learned
 source-state geometry remains the bottleneck. Output normalization alone is
 not enough to make independently acquired external programs composable.
+
+## Shared interpreter family diagnostic — strongest direction, not promoted
+
+The next intervention changed the external execution contract itself. In
+`factorized_shared_interpreter` mode, addressed basis slots resolve through
+one shared factorized operator family; only the opaque instruction vector
+selects the operation. This removes the independent per-slot MLP geometries
+that made serial composition ill-conditioned.
+
+The matched two-seed result is mixed. Seed `69317` passed both composition
+transfer gates, with inherited stable costs of `16,384` and `40,960` bits
+versus fresh costs of `57,344` and `49,152`. Seed `69316` failed transfer on
+both programs and rejected one composition for mastery; source floors were
+also weaker than the independent-slot baseline. Retention deltas remained
+exactly zero and shuffled-outcome controls stayed causal.
+
+This is the strongest current architectural direction, but not yet a
+promoted continual-learning capability. The next bottleneck is robust source
+acquisition under a shared operator family, including order sensitivity and
+capacity allocation—not another decoder or readout prior.

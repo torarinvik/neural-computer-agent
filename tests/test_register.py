@@ -98,6 +98,31 @@ def test_external_compute_basis_is_append_only_and_memory_addressable() -> None:
     assert not torch.equal(default, extended)
 
 
+def test_shared_interpreter_mode_uses_one_instruction_family_for_addressed_slots() -> None:
+    machine = ExternalCapabilityRegisterMachine(
+        event_width=4,
+        action_width=2,
+        intention_width=6,
+        register_width=8,
+        instruction_width=5,
+        interpreter_hidden=12,
+        operator_mode="factorized_shared_interpreter",
+        instructions=(ExternalRegisterInstruction(5),),
+        basis_slots=(ExternalRegisterComputeBasis(8, 5, hidden=10),),
+    )
+    register = torch.randn(2, 8)
+    shared = machine.execute(register, machine.instructions[0])
+    addressed = machine.execute(register, machine.instructions[0], basis_slot=0)
+
+    assert machine.configuration()["operator_mode"] == (
+        "factorized_shared_interpreter"
+    )
+    assert machine.configuration()["basis_binding"] == (
+        "instruction_vector_selects_shared_interpreter_v1"
+    )
+    assert torch.equal(shared, addressed)
+
+
 def test_new_basis_slot_does_not_resize_controller_or_existing_instruction_data() -> None:
     machine = _machine()
     old_instruction = machine.instructions[0].code.detach().clone()
