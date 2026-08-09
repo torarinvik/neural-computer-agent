@@ -4,6 +4,7 @@ from neural_computer import (
     CanonicalRegisterReadout,
     ExternalCapabilityRegisterMachine,
     ExternalExecutionSnapshot,
+    ExternalProgramArtifact,
     ExternalRegisterBasisCompatibilityPrior,
     ExternalRegisterComputeBasis,
     ExternalRegisterInstruction,
@@ -822,6 +823,26 @@ def test_external_decoder_can_consume_a_memory_selected_register_chain() -> None
     assert second_register.shape == (2, 8)
     assert decoded.payload.shape == (2, 6)
     assert final_state.initialized.equal(torch.ones(2, dtype=torch.bool))
+
+
+def test_register_executes_rehydrated_program_artifact_without_unpacking_protocol_data() -> None:
+    torch.manual_seed(920)
+    machine = _machine()
+    artifact = ExternalProgramArtifact(
+        codes=torch.stack(
+            tuple(instruction.code.detach().squeeze(0) for instruction in machine.instructions)
+        ),
+        interpreter_schema="neural-computer.external-register.v4",
+        execution_schema="neural-computer.external-register-read-execute.v1",
+    )
+    register = torch.randn(2, 8)
+    direct = machine.execute_code_chain(
+        register,
+        artifact.codes.unsqueeze(0).expand(2, -1, -1),
+    )
+    loaded = machine.execute_artifact(register, artifact)
+
+    assert torch.equal(loaded, direct)
 
 
 def test_event_window_is_persistent_and_available_to_new_basis_slots() -> None:

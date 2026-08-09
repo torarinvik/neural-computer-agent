@@ -2083,6 +2083,38 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             )
         return register
 
+    def execute_artifact(
+        self,
+        register: torch.Tensor,
+        artifact: ExternalProgramArtifact,
+        *,
+        event_window: torch.Tensor | None = None,
+        event_window_mask: torch.Tensor | None = None,
+        meta_context: torch.Tensor | None = None,
+        sequence_operator_memory: ExternalSequenceOperatorMemory | None = None,
+        sequence_operator_slot: int | None = None,
+        sequence_operator_route_query: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """Execute one ABI-validated portable program artifact."""
+
+        if not isinstance(artifact, ExternalProgramArtifact):
+            raise TypeError("register execution requires an external program artifact")
+        artifact.validate_for(
+            instruction_width=self.instruction_width,
+            interpreter_schema=EXTERNAL_REGISTER_SCHEMA,
+            execution_schema=EXTERNAL_REGISTER_READ_EXECUTE_SCHEMA,
+        )
+        return self.execute_code_chain(
+            register,
+            artifact.codes.unsqueeze(0).expand(register.shape[0], -1, -1),
+            event_window=event_window,
+            event_window_mask=event_window_mask,
+            meta_context=meta_context,
+            sequence_operator_memory=sequence_operator_memory,
+            sequence_operator_slot=sequence_operator_slot,
+            sequence_operator_route_query=sequence_operator_route_query,
+        )
+
     def execute_chain(
         self,
         register: torch.Tensor,
