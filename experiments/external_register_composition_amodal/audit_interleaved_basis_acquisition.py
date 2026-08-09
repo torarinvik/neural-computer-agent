@@ -42,7 +42,8 @@ from .train import (
     _rollout,
 )
 
-TARGET_OPERATIONS = ("complement_rotate", "prefix_parity", "global_parity")
+TARGET_OPERATIONS = ("complement_rotate", "prefix_parity")
+COMPOSITION_PROGRAM = ("complement", "reverse", "adjacent_xor")
 MASTERY_THRESHOLD = 0.8
 
 
@@ -62,8 +63,8 @@ def _score(
         machine,
         candidate["decoder"],
         operation=candidate["operation"],
-        instructions=(candidate["instruction"],),
-        basis_slots=(candidate["basis_slot"],),
+        instructions=candidate["instructions"],
+        basis_slots=candidate["basis_slots"],
         count=count,
         span=span,
         seed=seed,
@@ -71,6 +72,8 @@ def _score(
         shuffle_outcomes=shuffle_outcomes,
         evidence_present=evidence_present,
         event_bridge=candidate["bridge"],
+        generated_composition_ids=candidate.get("generated_composition_ids"),
+        generated_compositions=candidate.get("generated_compositions"),
     )
 
 
@@ -99,8 +102,10 @@ def _train_interleaved_phase(
     optimizers = []
     for candidate in candidates:
         decoder = candidate["decoder"]
-        basis = machine.basis_slots[candidate["basis_slot"]]
-        trainable = [candidate["instruction"].code, *basis.parameters()]
+        trainable = []
+        if candidate.get("mutable", True):
+            basis = machine.basis_slots[candidate["basis_slot"]]
+            trainable.extend([candidate["instruction"].code, *basis.parameters()])
         trainable.extend(candidate["bridge"].parameters())
         if decoder_trainable:
             trainable.extend(decoder.parameters())
@@ -120,14 +125,16 @@ def _train_interleaved_phase(
             count=batch_size,
             span=span,
             seed=seed + index * 100_003 + local_update * 10_007,
+            generated_composition_ids=candidate.get("generated_composition_ids"),
+            generated_compositions=candidate.get("generated_compositions"),
         )
         loss, _ = _rollout(
             parent,
             machine,
             candidate["decoder"],
             batch,
-            (candidate["instruction"],),
-            basis_slots=(candidate["basis_slot"],),
+            candidate["instructions"],
+            basis_slots=candidate["basis_slots"],
             train_decoder=True,
             credit_mode="attempted_bce",
             shuffle_outcomes=shuffle_outcomes,
@@ -168,7 +175,13 @@ def _train_interleaved_phase(
                     parameter.copy_(snapshot)
 
 
-def _prepare_candidates(parent, machine, operations: tuple[str, ...]) -> list[dict[str, object]]:
+def _prepare_candidates(
+    parent,
+    machine,
+    operations: tuple[str, ...],
+    *,
+    include_composition: bool,
+) -> list[dict[str, object]]:
     candidates = []
     for index, operation in enumerate(operations):
         instruction = machine.instructions[len(SOURCE_OPERATIONS) + index]
@@ -178,6 +191,31 @@ def _prepare_candidates(parent, machine, operations: tuple[str, ...]) -> list[di
                 "operation": operation,
                 "instruction": instruction,
                 "basis_slot": basis_slot,
+                "instructions": (instruction,),
+                "basis_slots": (basis_slot,),
+                "mutable": True,
+                "decoder": OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16),
+                "bridge": AmodalEventBridge(
+                    EVENT_WIDTH, parent.controller.width, EVENT_WIDTH, hidden=64
+                ),
+            }
+        )
+    if include_composition:
+        # This candidate has no new instruction or basis.  It is a fresh
+        # decoder/bridge learning to expose a generated program executed by
+        # the three frozen source capabilities, which makes the test about
+        # compositional reuse rather than another direct primitive.
+        source_indices = tuple(
+            SOURCE_OPERATIONS.index(primitive) for primitive in COMPOSITION_PROGRAM
+        )
+        candidates.append(
+            {
+                "operation": "generated_composition",
+                "instructions": tuple(machine.instructions[index] for index in source_indices),
+                "basis_slots": source_indices,
+                "generated_composition_ids": (0,),
+                "generated_compositions": (COMPOSITION_PROGRAM,),
+                "mutable": False,
                 "decoder": OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16),
                 "bridge": AmodalEventBridge(
                     EVENT_WIDTH, parent.controller.width, EVENT_WIDTH, hidden=64
@@ -295,15 +333,21 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     for _ in target_operations:
         machine.add_instruction(ExternalRegisterInstruction(INSTRUCTION_WIDTH))
     pre_growth_machine = copy.deepcopy(machine)
-    candidates = _prepare_candidates(parent, machine, target_operations)
+    candidates = _prepare_candidates(
+        parent,
+        machine,
+        target_operations,
+        include_composition=args.include_composition,
+    )
     retained_before = [
         source_score(spec, index) for index, spec in enumerate(source_specs)
     ]
     _freeze(machine)
     for candidate in candidates:
-        candidate["instruction"].code.requires_grad_(True)
-        for parameter in machine.basis_slots[candidate["basis_slot"]].parameters():
-            parameter.requires_grad_(True)
+        if candidate.get("mutable", True):
+            candidate["instruction"].code.requires_grad_(True)
+            for parameter in machine.basis_slots[candidate["basis_slot"]].parameters():
+                parameter.requires_grad_(True)
 
     _train_interleaved_phase(
         parent,
@@ -356,13 +400,17 @@ def run(args: argparse.Namespace) -> dict[str, object]:
 
     shuffled_machine = copy.deepcopy(pre_growth_machine)
     shuffled_candidates = _prepare_candidates(
-        parent, shuffled_machine, target_operations
+        parent,
+        shuffled_machine,
+        target_operations,
+        include_composition=args.include_composition,
     )
     _freeze(shuffled_machine)
     for candidate in shuffled_candidates:
-        candidate["instruction"].code.requires_grad_(True)
-        for parameter in shuffled_machine.basis_slots[candidate["basis_slot"]].parameters():
-            parameter.requires_grad_(True)
+        if candidate.get("mutable", True):
+            candidate["instruction"].code.requires_grad_(True)
+            for parameter in shuffled_machine.basis_slots[candidate["basis_slot"]].parameters():
+                parameter.requires_grad_(True)
     for phase_updates, phase_span, phase_seed, decoder_trainable in (
         (args.warmup_updates, args.warmup_span, args.seed + 800_000, True),
         (args.focus_updates, args.span, args.seed + 900_000, False),
@@ -448,14 +496,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     accepted = all(record["accepted"] for record in records)
     if accepted:
         for candidate in candidates:
-            machine.freeze_basis_slot(candidate["basis_slot"])
-            candidate["instruction"].code.requires_grad_(False)
+            if candidate.get("mutable", True):
+                machine.freeze_basis_slot(candidate["basis_slot"])
+                candidate["instruction"].code.requires_grad_(False)
     else:
         # The transaction is all-or-nothing: concurrent mutable growth cannot
         # leave one candidate admitted when the paired pressure test fails.
         machine = pre_growth_machine
 
-    candidate_count = len(target_operations)
+    candidate_count = len(candidates)
     source_selection_evaluations = (
         (args.source_updates + args.eval_every - 1) // args.eval_every
     )
@@ -526,6 +575,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "seed": args.seed,
         "source_operations": list(SOURCE_OPERATIONS),
         "target_operations": list(target_operations),
+        "composition_program": list(COMPOSITION_PROGRAM)
+        if args.include_composition
+        else None,
         "source_before": source_before,
         "source_attempt_scores": source_attempt_counts,
         "retained_before": retained_before,
@@ -585,6 +637,12 @@ def main() -> None:
     parser.add_argument("--operator-mode", default="factorized_low_rank")
     parser.add_argument(
         "--target-operations", default=",".join(TARGET_OPERATIONS)
+    )
+    parser.add_argument(
+        "--include-composition",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="interleave a fresh decoder/bridge for a frozen source-program composition",
     )
     parser.add_argument("--retention-regression-tolerance", type=float, default=0.02)
     args = parser.parse_args()

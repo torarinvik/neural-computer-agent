@@ -91,6 +91,21 @@
       "retention_on_mastered_primitives": "all paired fixed-suite deltas zero; source floor passed",
       "transfer_ratio_against_fresh_learner": "not measured",
       "decision": "promote bounded interleaved three-target low-rank rung; concurrent multi-family composition remains untested"
+    },
+    {
+      "experiment": "interleaved_concurrent_composition_transfer",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "A fresh decoder and event bridge can learn to expose a frozen chain of three previously acquired source capabilities while two direct capabilities learn concurrently, without replay or source retention loss.",
+      "composition_program": ["complement", "reverse", "adjacent_xor"],
+      "unique_verifier_bits_per_run": 570368,
+      "unique_logical_lifetimes_per_run": 74720,
+      "optimizer_updates_per_run": 4448,
+      "replayed_examples": 0,
+      "stable_bits_to_threshold": "all three candidates passed frozen consolidation probes in both seeds",
+      "retention_on_mastered_primitives": "all paired fixed-suite deltas zero; source floor passed",
+      "transfer_ratio_against_fresh_learner": "not measured",
+      "decision": "promote bounded concurrent reuse of a learned frozen program chain; multiple independently sampled compositions remain untested"
     }
   ]
 }

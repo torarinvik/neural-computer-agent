@@ -1816,3 +1816,13 @@ zero replay. The earlier seed-69317 rejection was traced to inconsistent raw
 minimum versus stable-prefix retention accounting and is retained as a
 historical control. Evidence is in
 `three_step_view_growth_retention_exploration_2026-08-06/`.
+
+## Concurrent compositional transfer (2026-08-09)
+
+Two direct capabilities and a fresh decoder/bridge learned concurrently while
+the decoder exposed a frozen chain of three acquired source capabilities.
+Both seeds passed the causal, missing-evidence, consolidation, and exact
+source-retention gates with zero replay. This promotes bounded compositional
+reuse under concurrent plasticity; multiple independently sampled programs,
+longer horizons, and fresh-learner transfer remain open. Evidence is in
+`external_register_real_basis_acquisition_2026-08-08/interleaved_composition_transfer/`.

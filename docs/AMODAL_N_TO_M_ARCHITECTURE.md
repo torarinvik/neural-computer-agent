@@ -4067,3 +4067,13 @@ correct-action utilities. Shuffled-training controls collapse to `0.4766` and
 `0.5000`; normal target accuracy remains `0.9375` and `0.9063` with source
 retention intact. Stable-prefix promotion still fails, so growth remains
 rejected while the credit-path repair is retained.
+
+The next concurrent audit promotes a stronger boundary: two fresh direct
+capabilities and a fresh decoder/bridge for a frozen three-instruction source
+program learned in the same round-robin schedule. Across seeds 69316 and
+69317, all three candidates passed frozen consolidation probes, missing-
+evidence and shuffled-outcome controls, and exact fixed-suite source
+retention, with zero replay. This is bounded concurrent compositional reuse,
+not unrestricted program induction or general continual learning. Evidence is
+archived in
+`session_records/sequence_working_memory_2026-08-02/external_register_real_basis_acquisition_2026-08-08/interleaved_composition_transfer/`.

@@ -451,3 +451,28 @@ source floors were `0.8086`/`0.8477`/`0.8828` and
 This is the strongest concurrent-plasticity result in this path so far. The
 remaining frontier is concurrent compositional transfer with more than one
 composition family, not merely more independent target slots.
+
+## Concurrent compositional transfer — promoted replicated rung
+
+The follow-up kept the round-robin schedule but replaced the third direct
+target with a genuinely compositional candidate. The candidate received a
+fresh decoder and event bridge, while its computation was a frozen chain of
+the three acquired source instructions for `complement -> reverse ->
+adjacent_xor`. Two fresh direct capabilities (`complement_rotate` and
+`prefix_parity`) learned concurrently beside it. The composition candidate
+therefore had no new instruction or basis slot and could succeed only by
+reusing the learned external program chain.
+
+Both seeds promoted all three candidates. Seed `69316` reached direct target
+accuracies `0.8984` and `0.9453`, and composition accuracy `0.8281`; seed
+`69317` reached `1.0000`, `0.9844`, and `0.9688`. Frozen consolidation probe
+accuracies were `0.8945`/`0.9453`/`0.8047` and `0.9922`/`0.9844`/`0.9766`.
+Shuffled-outcome controls stayed below `0.727`, missing-evidence scores were
+`0.5`, and all source retention deltas were exactly zero. Each run used
+`570,368` verifier bits, `74,720` logical lifetimes, `4,448` optimizer
+updates, and zero replayed examples.
+
+This promotes concurrent reuse of a learned frozen program chain under fresh
+plasticity. It is still bounded external-memory growth: the next pressure
+test is multiple independently sampled composition programs, followed by
+longer sequences and transfer against matched fresh learners.
