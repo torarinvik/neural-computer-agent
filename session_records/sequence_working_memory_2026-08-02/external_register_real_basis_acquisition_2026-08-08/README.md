@@ -1052,3 +1052,10 @@ failed: the floor fell to `0.1875` (`0.1875, 0.8125, 0.6094, 0.6016, 0.8203,
 the mismatch is upstream in the operator-learning contract, not merely in the
 final decoder. Raw report:
 `protected_bounded_meta_shared_readout/report_seed69316.json`.
+
+Finally, one shared decoder conditioned on the opaque ordered program context
+improved the floor to `0.4141` (`0.5703, 0.7500, 0.6094, 0.6094, 0.7344,
+0.4141`). This is better than the unconditioned shared-decoder floor but still
+far below `0.7422`, so it is not promoted. It is retained as the correct
+reusable decoder interface to develop further. Raw report:
+`protected_bounded_meta_conditioned_decoder/report_seed69316.json`.

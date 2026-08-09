@@ -157,6 +157,7 @@ def _rollout(
     sequence_operator_memory=None,
     sequence_operator_slot: int | None = None,
     sequence_operator_route_query: torch.Tensor | None = None,
+    decoder_context: torch.Tensor | None = None,
     *,
     train_decoder: bool,
     shuffle_outcomes: bool = False,
@@ -195,6 +196,11 @@ def _rollout(
             raise ValueError(
                 "sequence operator route query batch size does not match rollout"
             )
+    if decoder_context is not None:
+        if decoder_context.ndim == 1:
+            decoder_context = decoder_context.unsqueeze(0).expand(batch_size, -1)
+        elif decoder_context.shape[0] != batch_size:
+            raise ValueError("decoder context batch size does not match rollout")
     parent_state = parent.initial_state(batch_size, device=device)
     register_state = machine.initial_state(batch_size, device=device)
     zeros = torch.zeros(batch_size, device=device)
@@ -210,6 +216,11 @@ def _rollout(
     )
     encoder = parent.encoders["vision"]
     route_probe_logits: list[torch.Tensor] = []
+
+    def decode(register: torch.Tensor) -> torch.Tensor:
+        if decoder_context is None:
+            return decoder(register)
+        return decoder(register, decoder_context)
 
     def tick(
         frame: torch.Tensor,
@@ -264,7 +275,7 @@ def _rollout(
                     if register_readout is None
                     else register_readout(slot_register)
                 )
-                slot_logits.append(decoder(decoded))
+                slot_logits.append(decode(decoded))
             if next_state is None or not slot_logits:
                 raise ValueError("route probing requires at least one operator slot")
             register_state = next_state
@@ -333,7 +344,7 @@ def _rollout(
             decoded_register = (
                 register if register_readout is None else register_readout(register)
             )
-        return decoder(decoded_register), register
+        return decode(decoded_register), register
 
     quiet = _feedback(
         previous_action,
@@ -692,6 +703,7 @@ def _accuracy(
     sequence_operator_memory=None,
     sequence_operator_slot: int | None = None,
     sequence_operator_route_query: torch.Tensor | None = None,
+    decoder_context: torch.Tensor | None = None,
     count: int,
     span: int,
     seed: int,
@@ -731,6 +743,7 @@ def _accuracy(
             sequence_operator_memory=sequence_operator_memory,
             sequence_operator_slot=sequence_operator_slot,
             sequence_operator_route_query=sequence_operator_route_query,
+            decoder_context=decoder_context,
             train_decoder=False,
             shuffle_outcomes=shuffle_outcomes,
             credit_mode=credit_mode,

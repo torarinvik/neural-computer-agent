@@ -16,6 +16,7 @@ from neural_computer import (
     ArtifactConsolidationReceipt,
     ContentAddressedMemory,
     ControllerFeedback,
+    ConditionedOpaqueProtocolDecoder,
     EventWaitPolicy,
     ExecutableArtifactMemory,
     MemoryBackend,
@@ -223,6 +224,18 @@ def test_runtime_supports_variable_encoders_and_decoders_without_resize() -> Non
     assert output.decoded["json"].shape == (3, 4)
     assert output.decoded["speech"].shape == (3, 6)
     assert output.execution_logits.shape == (3, 3)
+
+
+def test_conditioned_decoder_shares_weights_and_consumes_opaque_context() -> None:
+    decoder = ConditionedOpaqueProtocolDecoder(5, 4, 3, hidden=8)
+    intention = torch.randn(2, 5)
+    context = torch.randn(2, 4)
+    first = decoder(intention, context)
+    second = decoder(intention, context.flip(0))
+
+    assert first.shape == (2, 3)
+    assert not torch.equal(first, second)
+    assert decoder.configuration()["context"] == "opaque_learned_program_state_v1"
 
 
 def test_deliberation_is_bounded_and_uses_quiet_internal_ticks() -> None:

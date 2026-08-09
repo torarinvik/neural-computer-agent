@@ -59,6 +59,66 @@ class OpaqueProtocolDecoder(nn.Module):
         return self.network(payload[:, : self.intention_width])
 
 
+class ConditionedOpaqueProtocolDecoder(nn.Module):
+    """Shared decoder conditioned on an opaque learned program context.
+
+    The decoder weights are shared across capabilities; context is learned
+    external state and is not a protocol label, task ID, or privileged target.
+    This preserves reusable decoding while allowing distinct learned programs
+    to expose different action-relevant conventions.
+    """
+
+    schema = "neural-computer.conditioned-opaque-protocol-decoder.v1"
+
+    def __init__(
+        self,
+        intention_width: int,
+        context_width: int,
+        output_width: int,
+        *,
+        hidden: int = 64,
+    ) -> None:
+        super().__init__()
+        if min(intention_width, context_width, output_width, hidden) < 1:
+            raise ValueError("conditioned decoder dimensions are invalid")
+        self.intention_width = int(intention_width)
+        self.context_width = int(context_width)
+        self.output_width = int(output_width)
+        self.hidden = int(hidden)
+        self.network = nn.Sequential(
+            nn.Linear(self.intention_width + self.context_width, hidden),
+            nn.GELU(),
+            nn.Linear(hidden, output_width),
+        )
+
+    def configuration(self) -> dict[str, int | str]:
+        return {
+            "schema": self.schema,
+            "intention_width": self.intention_width,
+            "context_width": self.context_width,
+            "output_width": self.output_width,
+            "hidden": self.hidden,
+            "context": "opaque_learned_program_state_v1",
+        }
+
+    def forward(
+        self,
+        intention: IntentEvent | torch.Tensor,
+        context: torch.Tensor,
+    ) -> torch.Tensor:
+        payload = intention.payload if isinstance(intention, IntentEvent) else intention
+        if (
+            payload.ndim != 2
+            or payload.shape[1] < self.intention_width
+            or context.ndim != 2
+            or context.shape != (payload.shape[0], self.context_width)
+        ):
+            raise ValueError("conditioned decoder inputs have incompatible shapes")
+        return self.network(
+            torch.cat((payload[:, : self.intention_width], context), dim=-1)
+        )
+
+
 class AmodalInputBus(nn.Module):
     """Transport-preserving input bus.
 

@@ -244,6 +244,7 @@ from .runtime import (
     AmodalOutputBus,
     AmodalRuntimeOutput,
     OpaqueProtocolDecoder,
+    ConditionedOpaqueProtocolDecoder,
 )
 from .state_store import OPAQUE_STATE_STORE_SCHEMA, PersistentOpaqueStateStore
 
@@ -391,6 +392,7 @@ __all__ = [
     "OpaqueCapacityPlanner",
     "OpaqueConsolidationPolicy",
     "OpaqueProtocolDecoder",
+    "ConditionedOpaqueProtocolDecoder",
     "OpaqueViewRouteExtension",
     "PageLocalLearnedComputeCandidateScreen",
     "PersistentAppendOnlyContentAddressedMemory",

@@ -25,6 +25,7 @@ from neural_computer import (
     AmodalEventBridge,
     CapabilityConditionedEventBridge,
     CanonicalRegisterReadout,
+    ConditionedOpaqueProtocolDecoder,
     ExternalRegisterInstruction,
     OpaqueProtocolDecoder,
     ExternalSequenceMemory,
@@ -658,8 +659,15 @@ def _train_sequence_calibration(
     if args.shared_sequence_decoder and args.preserve_composition_trace:
         if any(len(program) != len(programs[0]) for program in programs):
             raise ValueError("shared sequence decoder requires equal trace widths")
-    shared_decoder = OpaqueProtocolDecoder(
-        decoder_input_width, ACTION_WIDTH, hidden=16
+    shared_decoder = (
+        ConditionedOpaqueProtocolDecoder(
+            decoder_input_width,
+            INSTRUCTION_WIDTH,
+            ACTION_WIDTH,
+            hidden=32,
+        )
+        if args.conditioned_sequence_decoder
+        else OpaqueProtocolDecoder(decoder_input_width, ACTION_WIDTH, hidden=16)
     )
     decoders = (
         [shared_decoder for _ in programs]
@@ -763,6 +771,7 @@ def _train_sequence_calibration(
             ),
             route_probe=(args.use_route_outcome_credit and use_operator_router),
             register_readout=sequence_readout,
+            decoder_context=(route_query(program) if args.conditioned_sequence_decoder else None),
         )
         if use_operator_router and args.route_assignment_loss_weight > 0.0:
             all_route_weights = torch.stack(
@@ -826,6 +835,11 @@ def _train_sequence_calibration(
                         route_query(program_value) if use_operator_router else None
                     ),
                     register_readout=sequence_readout,
+                    decoder_context=(
+                        route_query(program_value)
+                        if args.conditioned_sequence_decoder
+                        else None
+                    ),
                 )
                 for index_value, program_value in enumerate(programs)
             ]
@@ -1126,6 +1140,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("operator sequence routing requires operator sequence memory")
     if args.use_route_outcome_credit and not args.use_operator_sequence_router:
         raise ValueError("route outcome credit requires operator sequence routing")
+    if args.conditioned_sequence_decoder and not args.use_operator_sequence_router:
+        raise ValueError("conditioned sequence decoder requires operator sequence routing")
+    if args.conditioned_sequence_decoder and not args.shared_sequence_decoder:
+        raise ValueError("conditioned sequence decoder requires shared sequence decoder")
     if args.reuse_shared_bridge_prior and args.reuse_conditioned_bridge_prior:
         raise ValueError("choose one bridge prior mode")
     args.reuse_shared_bridge_prior = (
@@ -1849,10 +1867,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "sequence_calibration_trainable_surface": (
             (
                 (
-                    "sequence_operator_memory_slots_plus_learned_router_plus_outcome_probe_plus_shared_decoder_plus_readout"
+                    "sequence_operator_memory_slots_plus_learned_router_plus_outcome_probe_plus_conditioned_shared_decoder_plus_readout"
                     if args.use_route_outcome_credit
-                    and args.shared_sequence_decoder
+                    and args.conditioned_sequence_decoder
                     and args.use_shared_sequence_readout
+                    else "sequence_operator_memory_slots_plus_learned_router_plus_outcome_probe_plus_conditioned_shared_decoder"
+                    if args.use_route_outcome_credit and args.conditioned_sequence_decoder
                     else "sequence_operator_memory_slots_plus_learned_router_plus_outcome_probe_plus_shared_decoder"
                     if args.use_route_outcome_credit and args.shared_sequence_decoder
                     else "sequence_operator_memory_slots_plus_learned_router_plus_shared_decoder_plus_readout"
@@ -2096,6 +2116,12 @@ def main() -> None:
         action=argparse.BooleanOptionalAction,
         default=False,
         help="train one canonical register readout across sequence-calibration programs",
+    )
+    parser.add_argument(
+        "--conditioned-sequence-decoder",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="use one shared decoder conditioned on opaque program context",
     )
     parser.add_argument(
         "--route-assignment-loss-weight",
