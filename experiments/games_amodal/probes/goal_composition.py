@@ -59,10 +59,19 @@ parser.add_argument("--batch-size", type=int, default=32)
 parser.add_argument("--steps", type=int, default=48)
 parser.add_argument("--gamma", type=float, default=0.95)
 parser.add_argument("--width", type=int, default=64)
+parser.add_argument("--hidden", type=int, default=32)
 parser.add_argument("--max-restarts", type=int, default=6)
 parser.add_argument("--ignorance", type=float, default=2.0)
 parser.add_argument("--ignorance-gate", type=float, default=0.7)
 parser.add_argument("--eval-episodes", type=int, default=4)
+parser.add_argument("--ewc", type=float, default=200.0)
+parser.add_argument("--ewc-mu", type=float, default=3.0)
+parser.add_argument(
+    "--curriculum", choices=("mixed", "sequential", "consolidated"),
+    default="mixed",
+    help="sequential: acquire each goal alone (isolation always "
+         "converges) then a mixed consolidation tail; mixed: laggard "
+         "sampling from the start (basin-determined, 0/9 first-draw)")
 args = parser.parse_args()
 
 SIDES = 3
@@ -77,7 +86,7 @@ def build_plant(attempt: int):
     torch.manual_seed(args.seed + 7000 * attempt)
     agent = SharedControllerAgent(
         event_width=args.width, intention_width=32, feedback_width=16,
-        hidden=32, event_window_capacity=8, shared_drivers=True,
+        hidden=args.hidden, event_window_capacity=8, shared_drivers=True,
     )
     plant = list(trainable_parameters(
         [agent.controller, *agent.game_modules(agent.games[0])]
@@ -241,10 +250,61 @@ for attempt in range(args.max_restarts):
     optimizer = torch.optim.Adam(params, lr=1e-3)
     score = [0.5] * SIDES
     curve = []
+    solo = int(args.competence_updates * 0.6)
+    per_side = max(1, solo // SIDES)
+    anchors: list[tuple[list[torch.Tensor], list[torch.Tensor]]] = []
+    consolidated_upto = -1
+
+    def consolidate(side: int) -> None:
+        """Diagonal Fisher + anchor for the goal just acquired.
+
+        Sequential isolation ACQUIRES (the only arm that ever produced a
+        learned side on seeds 201-206) but does not RETAIN: later goals
+        overwrite earlier ones, which is catastrophic forgetting inside a
+        single training phase. This is the promoted consolidation line
+        applied to the plant's own goal vocabulary.
+        """
+        fisher = [torch.zeros_like(p) for p in plant]
+        for batch in range(2):
+            out = episode(PHASE1_GAME,
+                          command=torch.full((args.batch_size,), side),
+                          seed=args.seed + 500_000 + 97 * side + batch,
+                          sample=True)
+            log_likelihood = (
+                out["logp"] * out["mask"]).sum() / out["mask"].sum().clamp_min(1)
+            for p in plant:
+                if p.grad is not None:
+                    p.grad = None
+            log_likelihood.backward()
+            for slot, p in zip(fisher, plant):
+                if p.grad is not None:
+                    slot += p.grad.detach().square()
+        for p in plant:
+            p.grad = None
+        total = sum(f.sum() for f in fisher)
+        count = sum(f.numel() for f in fisher)
+        mean = (total / count).clamp_min(1e-12)
+        anchors.append(([f / mean for f in fisher],
+                        [p.detach().clone() for p in plant]))
+
     for update in range(args.competence_updates):
-        weights = torch.softmax(-torch.tensor(score) / 0.25, dim=-1)
-        weights = weights * 0.6 + 0.4 / SIDES
-        chosen = int(torch.multinomial(weights, 1))
+        if args.curriculum == "consolidated" and update < solo:
+            stage = min(update // per_side, SIDES - 1)
+            if stage > consolidated_upto:
+                if consolidated_upto >= 0:
+                    consolidate(consolidated_upto)
+                consolidated_upto = stage
+            chosen = stage
+        elif args.curriculum == "sequential" and update < solo:
+            # Isolation converges on every seed tried; joint training
+            # from scratch is basin-determined (0/9 first-draw at both
+            # hidden 32 and 64, so capacity is not the constraint).
+            # Acquire each goal alone, then mix to reconcile them.
+            chosen = min(update // per_side, SIDES - 1)
+        else:
+            weights = torch.softmax(-torch.tensor(score) / 0.25, dim=-1)
+            weights = weights * 0.6 + 0.4 / SIDES
+            chosen = int(torch.multinomial(weights, 1))
         command = torch.full((args.batch_size,), chosen)
         out = episode(PHASE1_GAME, command=command,
                       seed=args.seed + update, sample=True)
@@ -253,6 +313,18 @@ for attempt in range(args.max_restarts):
             advantage * out["mask"]).sum() / out["mask"].sum().clamp_min(1)
         terms = advantage * out["logp"] * out["mask"]
         loss = -terms.sum() / terms.shape[0]
+        if anchors:
+            # Arbitrated release (the promoted rule): protect where an
+            # earlier goal's Fisher is large, release in proportion to
+            # this goal's own gradient demand.
+            penalty = torch.zeros(())
+            for fisher, anchor in anchors:
+                for f, a, p in zip(fisher, anchor, plant):
+                    demand = (p.grad.detach().square()
+                              if p.grad is not None else torch.zeros_like(p))
+                    release = f / (f + args.ewc_mu * demand + 1e-12)
+                    penalty = penalty + (release * f * (p - a).square()).sum()
+            loss = loss + args.ewc * penalty / max(len(anchors), 1)
         ignorance_live = (args.ignorance > 0.0
                           and min(score) >= args.ignorance_gate)
         if ignorance_live and update % 3 == 0:
@@ -301,6 +373,7 @@ def competence(side: int) -> float:
 
 report = {
     "seed": args.seed, "phase1_attempts": attempts,
+    "hidden": args.hidden, "competence_updates": args.competence_updates,
     "competence": {f"side{s}": competence(s) for s in range(SIDES)},
     "competence_curve": curve,
 }
