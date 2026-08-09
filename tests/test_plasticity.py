@@ -1,3 +1,4 @@
+import pytest
 import torch
 
 from neural_computer import (
@@ -9,6 +10,8 @@ from neural_computer import (
     ExternalMemoryWritePolicy,
     ExternalOutcomeCreditPlasticity,
     ExternalOutcomeCreditState,
+    ExternalOutcomeProgramRouter,
+    ExternalOutcomeProgramRouterState,
     ExternalOutcomeValueBaseline,
     ExternalOutcomeValueState,
     MemoryEvictionObservation,
@@ -142,6 +145,58 @@ def test_external_outcome_credit_state_round_trips_as_tensor_payload() -> None:
     assert torch.equal(restored.baseline, state.baseline)
     assert torch.equal(restored.decisions, state.decisions)
     assert torch.equal(restored.feedbacks, state.feedbacks)
+
+
+def test_external_outcome_credit_masks_unadmitted_actions() -> None:
+    rule = ExternalOutcomeCreditPlasticity(feature_width=2, action_count=3)
+    state = rule.initial_state(1)
+    mask = torch.tensor([[True, False, False]])
+    logits = rule.logits(state, torch.tensor([[1.0, 0.0]]), action_mask=mask)
+
+    assert int(logits.argmax(dim=-1).item()) == 0
+    with pytest.raises(ValueError, match="masked out"):
+        rule.record_decision(
+            state,
+            torch.tensor([[1.0, 0.0]]),
+            torch.tensor([1]),
+            torch.ones(1),
+            action_mask=mask,
+        )
+
+
+def test_external_outcome_program_router_appends_and_round_trips() -> None:
+    router = ExternalOutcomeProgramRouter(
+        feature_width=3,
+        program_capacity=3,
+        initial_programs=1,
+        initial_learning_rate=0.2,
+        initial_trace_decay=0.8,
+    )
+    state = router.initial_state(1)
+    state = router.append_program(state)
+    choice, propensity = router.sample_program(
+        state,
+        torch.tensor([[1.0, 0.0, 0.0]]),
+        exploration=0.0,
+    )
+    state = router.record_decision(
+        state,
+        torch.tensor([[1.0, 0.0, 0.0]]),
+        choice,
+        propensity,
+    )
+    state = router.apply_feedback(
+        state,
+        torch.ones(1),
+        terminal=torch.ones(1, dtype=torch.bool),
+    )
+    restored = router.state_from_payload(router.state_payload(state))
+
+    assert isinstance(restored, ExternalOutcomeProgramRouterState)
+    assert restored.active_programs == 2
+    assert torch.equal(restored.credit.policy, state.credit.policy)
+    assert torch.equal(restored.credit.feedbacks, state.credit.feedbacks)
+    assert router.action_mask(restored).tolist() == [[True, True, False]]
 
 
 def test_external_outcome_value_baseline_learns_and_round_trips() -> None:

@@ -28,6 +28,9 @@ EXTERNAL_OUTCOME_CREDIT_SCHEMA = (
 EXTERNAL_OUTCOME_VALUE_SCHEMA = (
     "neural-computer.external-outcome-value-baseline.v1"
 )
+EXTERNAL_OUTCOME_PROGRAM_ROUTER_SCHEMA = (
+    "neural-computer.external-outcome-program-router.v1"
+)
 
 
 @dataclass(frozen=True)
@@ -451,6 +454,24 @@ class ExternalOutcomeCreditPlasticity(nn.Module):
         if present.device != device:
             raise ValueError("outcome-credit presence is on the wrong device")
 
+    def _validate_action_mask(
+        self,
+        action_mask: torch.Tensor,
+        batch_size: int,
+        *,
+        device: torch.device,
+    ) -> None:
+        if action_mask.ndim != 2 or action_mask.shape[0] != batch_size or action_mask.shape[1] < 1:
+            raise ValueError("outcome-credit action mask must have shape [batch, action]")
+        if action_mask.dtype is not torch.bool:
+            raise TypeError("outcome-credit action mask must be boolean")
+        if action_mask.device != device:
+            raise ValueError("outcome-credit action mask is on the wrong device")
+        if not bool(action_mask.any(dim=-1).all()):
+            raise ValueError("outcome-credit action mask must allow one action per row")
+        if action_mask.shape[1] != self.action_count:
+            raise ValueError("outcome-credit action mask has the wrong action width")
+
     def _validate_state(self, state: ExternalOutcomeCreditState) -> None:
         state.validate(
             feature_width=self.feature_width,
@@ -461,12 +482,25 @@ class ExternalOutcomeCreditPlasticity(nn.Module):
         self,
         state: ExternalOutcomeCreditState,
         features: torch.Tensor,
+        *,
+        action_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Read the current external policy without mutating state."""
 
         self._validate_state(state)
         self._validate_features(features, batch_size=state.policy.shape[0])
-        return torch.einsum("bf,bfa->ba", features, state.policy)
+        logits = torch.einsum("bf,bfa->ba", features, state.policy)
+        if action_mask is None:
+            return logits
+        self._validate_action_mask(
+            action_mask,
+            batch_size=state.policy.shape[0],
+            device=features.device,
+        )
+        return logits.masked_fill(
+            ~action_mask,
+            torch.finfo(logits.dtype).min,
+        )
 
     def record_decision(
         self,
@@ -476,6 +510,7 @@ class ExternalOutcomeCreditPlasticity(nn.Module):
         propensity: torch.Tensor,
         *,
         present: torch.Tensor | None = None,
+        action_mask: torch.Tensor | None = None,
     ) -> ExternalOutcomeCreditState:
         """Append one choice's log-probability gradient to the trace."""
 
@@ -496,7 +531,19 @@ class ExternalOutcomeCreditPlasticity(nn.Module):
         if present is None:
             present = torch.ones(batch_size, dtype=torch.bool, device=features.device)
         self._validate_presence(present, batch_size, device=features.device)
-        probabilities = self.logits(state, features).softmax(dim=-1)
+        if action_mask is not None:
+            self._validate_action_mask(
+                action_mask,
+                batch_size=batch_size,
+                device=features.device,
+            )
+            if bool((~action_mask).gather(1, choice.to(torch.long).unsqueeze(-1)).squeeze(-1).any()):
+                raise ValueError("outcome-credit choice is masked out")
+        probabilities = self.logits(
+            state,
+            features,
+            action_mask=action_mask,
+        ).softmax(dim=-1)
         selected_probability = probabilities.gather(1, choice.to(torch.long).unsqueeze(-1)).squeeze(-1)
         importance = selected_probability / propensity
         one_hot = F.one_hot(choice.to(torch.long), self.action_count).to(
@@ -636,6 +683,267 @@ class ExternalOutcomeCreditPlasticity(nn.Module):
                 raise TypeError(f"outcome-credit payload field {name!r} must be a tensor")
             tensors[name] = value
         state = ExternalOutcomeCreditState(**tensors)
+        self._validate_state(state)
+        return state
+
+
+@dataclass(frozen=True)
+class ExternalOutcomeProgramRouterState:
+    """External delayed-credit state for an append-only program bank."""
+
+    credit: ExternalOutcomeCreditState
+    active_programs: int
+
+    def validate(
+        self,
+        *,
+        feature_width: int,
+        program_capacity: int,
+    ) -> None:
+        if not 1 <= self.active_programs <= program_capacity:
+            raise ValueError("active program count is outside router capacity")
+        self.credit.validate(
+            feature_width=feature_width,
+            action_count=program_capacity,
+        )
+
+
+class ExternalOutcomeProgramRouter(nn.Module):
+    """Route delayed scalar credit to opaque executable program choices.
+
+    The router is a memory-side orchestration primitive.  Its policy and
+    eligibility trace are external state, while program slots are append-only
+    candidates activated through an opaque capacity mask.  It does not
+    interpret a program code, expose a semantic slot name, or receive a
+    verifier-private answer.  A caller resolves the sampled choice through a
+    separately versioned executable-program memory.
+    """
+
+    schema = EXTERNAL_OUTCOME_PROGRAM_ROUTER_SCHEMA
+
+    def __init__(
+        self,
+        feature_width: int,
+        program_capacity: int,
+        *,
+        initial_programs: int = 1,
+        initial_learning_rate: float = 0.1,
+        initial_trace_decay: float = 0.9,
+        initial_baseline_rate: float = 0.05,
+        initial_baseline: float = 0.5,
+    ) -> None:
+        super().__init__()
+        if program_capacity < 1:
+            raise ValueError("program router capacity must be positive")
+        if not 1 <= initial_programs <= program_capacity:
+            raise ValueError("initial program count is outside router capacity")
+        self.feature_width = int(feature_width)
+        self.program_capacity = int(program_capacity)
+        self.credit_rule = ExternalOutcomeCreditPlasticity(
+            self.feature_width,
+            self.program_capacity,
+            initial_learning_rate=initial_learning_rate,
+            initial_trace_decay=initial_trace_decay,
+            initial_baseline_rate=initial_baseline_rate,
+            initial_baseline=initial_baseline,
+        )
+        self.initial_programs = int(initial_programs)
+
+    @property
+    def learning_rate(self) -> torch.Tensor:
+        return self.credit_rule.learning_rate
+
+    @property
+    def trace_decay(self) -> torch.Tensor:
+        return self.credit_rule.trace_decay
+
+    def configuration(self) -> dict[str, int | float | str]:
+        return {
+            "schema": self.schema,
+            "feature_width": self.feature_width,
+            "program_capacity": self.program_capacity,
+            "initial_programs": self.initial_programs,
+            "update_rule": "append_only_opaque_program_choice_credit_v1",
+            "credit_rule": self.credit_rule.schema,
+            "active_mask": "append_only_capacity_mask_v1",
+        }
+
+    def initial_state(
+        self,
+        batch_size: int,
+        *,
+        device: torch.device | str = "cpu",
+        dtype: torch.dtype = torch.float32,
+    ) -> ExternalOutcomeProgramRouterState:
+        state = ExternalOutcomeProgramRouterState(
+            credit=self.credit_rule.initial_state(
+                batch_size,
+                device=device,
+                dtype=dtype,
+            ),
+            active_programs=self.initial_programs,
+        )
+        self._validate_state(state)
+        return state
+
+    def _validate_state(self, state: ExternalOutcomeProgramRouterState) -> None:
+        state.validate(
+            feature_width=self.feature_width,
+            program_capacity=self.program_capacity,
+        )
+
+    def action_mask(
+        self,
+        state: ExternalOutcomeProgramRouterState,
+    ) -> torch.Tensor:
+        self._validate_state(state)
+        batch_size = state.credit.policy.shape[0]
+        indices = torch.arange(
+            self.program_capacity,
+            device=state.credit.policy.device,
+        )
+        return (indices < state.active_programs).unsqueeze(0).expand(batch_size, -1)
+
+    def append_program(
+        self,
+        state: ExternalOutcomeProgramRouterState,
+    ) -> ExternalOutcomeProgramRouterState:
+        """Activate one newly admitted program without resizing the policy."""
+
+        self._validate_state(state)
+        if state.active_programs >= self.program_capacity:
+            raise OverflowError("program router capacity is exhausted")
+        next_state = ExternalOutcomeProgramRouterState(
+            credit=state.credit,
+            active_programs=state.active_programs + 1,
+        )
+        self._validate_state(next_state)
+        return next_state
+
+    def logits(
+        self,
+        state: ExternalOutcomeProgramRouterState,
+        features: torch.Tensor,
+    ) -> torch.Tensor:
+        self._validate_state(state)
+        return self.credit_rule.logits(
+            state.credit,
+            features,
+            action_mask=self.action_mask(state),
+        )
+
+    def sample_program(
+        self,
+        state: ExternalOutcomeProgramRouterState,
+        features: torch.Tensor,
+        *,
+        exploration: float = 0.1,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Sample an opaque program index and return its exact propensity."""
+
+        if not 0.0 <= exploration <= 1.0:
+            raise ValueError("program-router exploration must lie in [0, 1]")
+        mask = self.action_mask(state)
+        probabilities = self.logits(state, features).softmax(dim=-1)
+        active_count = mask.sum(dim=-1, keepdim=True).to(probabilities.dtype)
+        behavior = (1.0 - exploration) * probabilities
+        behavior = behavior + exploration * mask.to(probabilities.dtype) / active_count
+        choice = torch.multinomial(behavior, 1).squeeze(-1)
+        propensity = behavior.gather(1, choice.unsqueeze(-1)).squeeze(-1)
+        return choice, propensity
+
+    def record_decision(
+        self,
+        state: ExternalOutcomeProgramRouterState,
+        features: torch.Tensor,
+        choice: torch.Tensor,
+        propensity: torch.Tensor,
+        *,
+        present: torch.Tensor | None = None,
+    ) -> ExternalOutcomeProgramRouterState:
+        next_state = ExternalOutcomeProgramRouterState(
+            credit=self.credit_rule.record_decision(
+                state.credit,
+                features,
+                choice,
+                propensity,
+                present=present,
+                action_mask=self.action_mask(state),
+            ),
+            active_programs=state.active_programs,
+        )
+        self._validate_state(next_state)
+        return next_state
+
+    def apply_feedback(
+        self,
+        state: ExternalOutcomeProgramRouterState,
+        outcome: torch.Tensor,
+        *,
+        present: torch.Tensor | None = None,
+        terminal: torch.Tensor | None = None,
+        baseline_override: torch.Tensor | None = None,
+    ) -> ExternalOutcomeProgramRouterState:
+        next_state = ExternalOutcomeProgramRouterState(
+            credit=self.credit_rule.apply_feedback(
+                state.credit,
+                outcome,
+                present=present,
+                terminal=terminal,
+                baseline_override=baseline_override,
+            ),
+            active_programs=state.active_programs,
+        )
+        self._validate_state(next_state)
+        return next_state
+
+    def begin_episode(
+        self,
+        state: ExternalOutcomeProgramRouterState,
+    ) -> ExternalOutcomeProgramRouterState:
+        next_state = ExternalOutcomeProgramRouterState(
+            credit=self.credit_rule.begin_episode(state.credit),
+            active_programs=state.active_programs,
+        )
+        self._validate_state(next_state)
+        return next_state
+
+    def state_payload(
+        self,
+        state: ExternalOutcomeProgramRouterState,
+    ) -> dict[str, object]:
+        self._validate_state(state)
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "active_programs": state.active_programs,
+            "credit": self.credit_rule.state_payload(state.credit),
+        }
+
+    def state_from_payload(
+        self,
+        payload: Mapping[str, object],
+    ) -> ExternalOutcomeProgramRouterState:
+        if payload.get("schema") != self.schema:
+            raise ValueError("unsupported program-router state schema")
+        configuration = payload.get("configuration")
+        if not isinstance(configuration, Mapping):
+            raise TypeError("program-router state configuration is invalid")
+        if (
+            configuration.get("feature_width") != self.feature_width
+            or configuration.get("program_capacity") != self.program_capacity
+        ):
+            raise ValueError("program-router state dimensions do not match")
+        active_programs = payload.get("active_programs")
+        if not isinstance(active_programs, int) or isinstance(active_programs, bool):
+            raise TypeError("program-router active program count must be an integer")
+        credit_payload = payload.get("credit")
+        if not isinstance(credit_payload, Mapping):
+            raise TypeError("program-router credit payload is invalid")
+        state = ExternalOutcomeProgramRouterState(
+            credit=self.credit_rule.state_from_payload(credit_payload),
+            active_programs=active_programs,
+        )
         self._validate_state(state)
         return state
 
