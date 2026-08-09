@@ -52,6 +52,30 @@ def test_affine_statistics_is_a_bank_fast_path_without_optimizer_replay() -> Non
     assert restored.content_digest() == bank.content_digest()
 
 
+def test_nonlinear_bank_can_update_through_memory_boundary_without_optimizer() -> None:
+    torch.manual_seed(1302)
+    bank = ExternalTransitionModelBank(
+        2,
+        1,
+        3,
+        adaptation_learning_rate=0.03,
+    )
+    context = torch.tensor([1.0, 0.0, 0.0])
+    bank.ensure_context(context)
+    observation = ExternalTransitionObservation(
+        state=torch.randn(4, 2),
+        intention=torch.randn(4, 1),
+        next_state=torch.randn(4, 2),
+    )
+    before = bank.models[0].digest()
+    bank.adaptation_step(
+        observation,
+        context.unsqueeze(0).expand(4, -1),
+        None,
+    )
+    assert bank.models[0].digest() != before
+
+
 def test_router_stages_and_promotes_affine_candidate_without_optimizer() -> None:
     bank = ExternalTransitionModelBank(
         2,
@@ -225,13 +249,7 @@ def test_mixed_router_adapts_both_families_and_promotes_verified_winner() -> Non
         "nonlinear_mlp_v1",
         "affine_sufficient_statistics_v1",
     }
-    nonlinear_optimizer = torch.optim.Adam(
-        router.provisional_model.parameters(), lr=0.03
-    )
-    router.adaptation_step(
-        staged,
-        {"nonlinear_mlp_v1": nonlinear_optimizer},
-    )
+    router.adaptation_step(staged, None)
     assert int(
         router._provisional_candidates[0].alternatives[
             "affine_sufficient_statistics_v1"

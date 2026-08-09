@@ -4926,6 +4926,13 @@ context and adapts them independently: sufficient statistics consume the
 current verified observation once, while nonlinear candidates use caller-owned
 optimizer state.
 
+The nonlinear path also has a bank-owned SGD fallback with an explicit learning
+rate in the external configuration. Callers may still inject a richer
+optimizer, but the controller and runtime no longer need to construct one just
+to perform an isolated external update. This removes an interface dependency,
+not the learning difficulty: the fallback is still a gradient update and does
+not make the nonlinear model replay-free or one-pass competent.
+
 Promotion evaluates all adapted candidates on held-out factual evidence, then
 commits only the smallest accepted family and runs the existing bank retention
 probe. The focused regression also round-trips both provisional candidates

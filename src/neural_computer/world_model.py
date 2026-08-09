@@ -343,6 +343,7 @@ class ExternalTransitionModelBank(nn.Module):
         capacity: int | None = None,
         model_family: str = EXTERNAL_TRANSITION_NONLINEAR_MODEL_FAMILY,
         affine_ridge: float = 1e-5,
+        adaptation_learning_rate: float = 1e-2,
     ) -> None:
         super().__init__()
         if min(state_width, intention_width, context_width, hidden_width) < 1:
@@ -359,6 +360,8 @@ class ExternalTransitionModelBank(nn.Module):
             raise ValueError("unsupported external transition-model family")
         if affine_ridge <= 0.0:
             raise ValueError("affine transition ridge must be positive")
+        if adaptation_learning_rate <= 0.0 or not math.isfinite(adaptation_learning_rate):
+            raise ValueError("transition-model adaptation learning rate must be positive")
         self.state_width = int(state_width)
         self.intention_width = int(intention_width)
         self.context_width = int(context_width)
@@ -367,6 +370,7 @@ class ExternalTransitionModelBank(nn.Module):
         self.capacity = None if capacity is None else int(capacity)
         self.model_family = str(model_family)
         self.affine_ridge = float(affine_ridge)
+        self.adaptation_learning_rate = float(adaptation_learning_rate)
         self.models = nn.ModuleList()
         self._contexts: list[torch.Tensor] = []
         self._model_families: list[str] = []
@@ -546,10 +550,11 @@ class ExternalTransitionModelBank(nn.Module):
             "model_family": self.model_family,
             "model_families": list(self._model_families),
             "affine_ridge": self.affine_ridge,
+            "adaptation_learning_rate": self.adaptation_learning_rate,
             "matching_tolerance": self.matching_tolerance,
             "growth": "append_only_isolated_model_slots_v1",
             "behavior": "derived_by_external_model_search_v1",
-            "updates": "caller_selected_slot_only_v1",
+            "updates": "caller_or_bank_owned_optimizer_v1",
         }
         if self.capacity is not None:
             configuration["capacity"] = self.capacity
@@ -837,8 +842,9 @@ class ExternalTransitionModelBank(nn.Module):
                 else optimizer
             )
             if selected_optimizer is None:
-                raise ValueError(
-                    "nonlinear transition-model updates require an optimizer"
+                selected_optimizer = torch.optim.SGD(
+                    model.parameters(),
+                    lr=self.adaptation_learning_rate,
                 )
             selected_optimizer.zero_grad()
             model_loss = model.loss(subset)
@@ -1053,6 +1059,9 @@ class ExternalTransitionModelBank(nn.Module):
                 )
             ),
             affine_ridge=float(configuration.get("affine_ridge", 1e-5)),
+            adaptation_learning_rate=float(
+                configuration.get("adaptation_learning_rate", 1e-2)
+            ),
             capacity=(
                 None
                 if configuration.get("capacity") is None
@@ -1271,6 +1280,9 @@ class ExternalTransitionModelBank(nn.Module):
                 )
             ),
             affine_ridge=float(configuration.get("affine_ridge", 1e-5)),
+            adaptation_learning_rate=float(
+                configuration.get("adaptation_learning_rate", 1e-2)
+            ),
             capacity=(
                 None
                 if configuration.get("capacity") is None
@@ -2423,8 +2435,9 @@ class ExternalOnlineTransitionContextRouter:
                     else None
                 )
                 if selected_optimizer is None:
-                    raise ValueError(
-                        "each nonlinear provisional family requires an optimizer"
+                    selected_optimizer = torch.optim.SGD(
+                        model.parameters(),
+                        lr=self.bank.adaptation_learning_rate,
                     )
                 selected_optimizer.zero_grad()
                 model_loss = model.loss(evidence)
