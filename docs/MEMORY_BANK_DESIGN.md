@@ -2422,3 +2422,56 @@ measured, not assumed -- a flat curve is a real result and would say the
 shared controller carries nothing across these steps.
 
 Probes 121-124 are `universal_reacher.py --oracle-state`.
+
+**F61 (probes 129-132). Freezing the plant does NOT rescue cross-domain
+transfer. The plant absorbs domain-specific POLICY, not just habits, and
+a goal adapter cannot undo it.** The sharpest test of the storage rule
+we have posed, and it fails.
+
+| arm | r4 (walled grid) reach | mastered |
+| --- | ---: | --- |
+| cold start | **0.996** | 150 updates |
+| warm from r1 (line), trainable plant | 0.277 | 0/2 seeds |
+| warm from r1, **frozen plant + 4160-param goal adapter** | **0.211** | 0/2 seeds |
+
+The warm rung itself reaches 1.000, so the plant did master the line
+before transferring. Pre-training on a structurally unrelated domain
+costs roughly 0.78 of final performance, and freezing recovers none of
+it — it is marginally worse.
+
+**Why the adapter cannot work, stated precisely.** The adapter re-maps
+what the goal MEANS; it cannot change how the plant PURSUES goals. A
+plant trained on a line has learned "pick a direction and hold it" as
+its pursuit policy. That policy is wrong in 2D with an obstacle, and no
+re-encoding of the goal vector repairs a wrong policy. So the failure
+localises: after training on one domain the plant holds domain-specific
+CONTROL, not merely a stylistic habit.
+
+**This is the storage rule violated at the deepest level yet.** F11 put
+a default context in the weights, F50 let one twin take the plant, F58
+produced an unconditional habit instead of goal-reading — all content
+that should have been external. Here the thing in the weights is the
+pursuit policy itself, which the architecture has always assumed was the
+legitimately shared part. The assumption is now measured false for
+structurally unrelated domains.
+
+**Two admissible routes, both untested.**
+
+1. **Never let the plant specialise.** Train it on diverse domains
+   concurrently from the start, so no single domain's control policy can
+   become the prior. This is the Chan et al. argument (LITERATURE_MAP S1)
+   applied one level up: few domains and it memorises one, many and only
+   the common machinery survives. Cheap to test with the ladder — train
+   r1 and r3 interleaved, then measure r4.
+2. **Give the plant no policy to be wrong.** Keep only the transition
+   model in weights and DERIVE the policy by search over that model.
+   There is then nothing domain-specific to transfer, because there is no
+   learned controller — only a map plus a planner. This is the
+   deliberative-search rung (GOAL_FACTORED_DESIGN rung C), promoted from
+   "future work" to "the architecture's answer to F61".
+
+Route 2 is the stronger claim and the better fit to the reacher
+formulation: a learned d(X, Y) IS a search heuristic, and a planner over
+a model has no habits to carry.
+
+Probes 129-132 are `reacher_ladder.py --warm-start r1 [--freeze-plant]`.

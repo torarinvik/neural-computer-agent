@@ -131,12 +131,18 @@ never was.
 
 ## 5. What is open
 
-1. **Cross-domain transfer is NEGATIVE.** Warm-starting the walled grid
-   from the line gives 0.535 vs 0.996 cold, at 5x the updates. The plant
-   absorbs "hold one direction" as a habit and carries it where it is
-   wrong. *In flight:* freeze the plant after the first domain and adapt
-   only a 4160-parameter goal adapter — the architecture's own
-   prescription, and the sharpest test of §1 we have posed.
+1. **Cross-domain transfer is NEGATIVE, and freezing the plant does not
+   fix it (F61).** Warm-starting the walled grid from the line: 0.277
+   trainable, 0.211 frozen-plus-adapter, against 0.996 cold. The adapter
+   re-maps what the goal means but cannot change how the plant pursues
+   goals — and a plant trained on a line has learned "hold one
+   direction" as its pursuit POLICY, which is wrong in 2D. So the plant
+   absorbs domain-specific control, not merely style, and §2.1's
+   assumption that goal-pursuit is the legitimately shared part is
+   measured false across unrelated domains. Two untested routes: train
+   on diverse domains concurrently so nothing can become the prior, or
+   hold only the transition model and DERIVE the policy by search, so
+   there is no learned controller to carry habits at all.
 2. **Cost is not in the objective** (§3.2, §3.3), so nothing yet
    pressures reuse.
 3. **Retrieval is never tried before learning.** The bank is only ever
