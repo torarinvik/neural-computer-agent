@@ -1,0 +1,36 @@
+{
+  "schema": "neural-computer.external-random-feature-one-pass-pressure-test.v1",
+  "seed": 1402,
+  "configuration": {
+    "train_rows": 64,
+    "heldout_rows": 64,
+    "feature_width": 128,
+    "optimizer_updates": 0,
+    "replayed_examples": 0,
+    "representation": "opaque_frozen_random_features_v1"
+  },
+  "gates": {
+    "train_prediction_passes": true,
+    "heldout_prediction_passes": true,
+    "one_pass_sample_count": true,
+    "raw_evidence_not_stored": true,
+    "exact_persistence": true
+  },
+  "promoted": true,
+  "metrics": {
+    "train_error": 6.842792208772153e-05,
+    "heldout_error": 0.001443773857317865,
+    "sample_count": 64,
+    "state_digest": "1ac026c5701c99ed48beee7d22ebb4935ef66e06a0e81b6d092e8e186a8618d9"
+  },
+  "accounting": {
+    "unique_verifier_bits": 128,
+    "unique_logical_lifetimes": 128,
+    "optimizer_updates": 0,
+    "streaming_statistics_updates": 1,
+    "replayed_examples": 0,
+    "old_evidence_replay": 0,
+    "wall_seconds": 0.0036341670202091336
+  },
+  "claim_boundary": "bounded replay-free nonlinear feature memory; not general continual learning"
+}

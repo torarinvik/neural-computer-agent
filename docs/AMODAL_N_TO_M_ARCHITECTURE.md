@@ -4939,7 +4939,7 @@ probe. The focused regression also round-trips both provisional candidates
 before promotion. This removes the remaining hand-assigned family choice from
 the promotion path, but it is still a bounded model-family set: new families,
 automatic optimizer provisioning, and replay-free nonlinear adaptation remain
-open continual-learning bottlenecks.
+open continual-learning bottlenecks for the general nonlinear model.
 
 ## Replay-free fixed nonlinear features (2026-08-09)
 
@@ -4959,3 +4959,5 @@ with zero historical evidence, so no old rows are replayed. This is still not
 unrestricted neural computation; distribution shift, repeated growth, and
 long-horizon retention remain unverified before treating it as general
 continual learning.
+The two-seed reports and accounting ledger are archived in
+`session_records/sequence_working_memory_2026-08-02/external_random_feature_one_pass_promoted_2026-08-09/`.
