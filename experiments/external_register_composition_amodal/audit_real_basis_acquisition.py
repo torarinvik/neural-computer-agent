@@ -42,7 +42,17 @@ def _freeze(machine) -> None:
         parameter.requires_grad_(False)
 
 
-def _train_source(parent, machine, decoder, index: int, args) -> None:
+def _train_source(
+    parent,
+    machine,
+    decoder,
+    index: int,
+    args,
+    *,
+    source_operations: tuple[str, ...] = SOURCE_OPERATIONS,
+) -> None:
+    if len(source_operations) != len(SOURCE_OPERATIONS):
+        raise ValueError("source operation order must preserve the source count")
     instruction = machine.instructions[index]
     if index == 0:
         trainable = [*machine.parameters(), *decoder.parameters()]
@@ -57,7 +67,7 @@ def _train_source(parent, machine, decoder, index: int, args) -> None:
         parent,
         machine,
         decoder,
-        operation=SOURCE_OPERATIONS[index],
+        operation=source_operations[index],
         instructions=(instruction,),
         basis_slots=(index,),
         updates=args.source_updates,

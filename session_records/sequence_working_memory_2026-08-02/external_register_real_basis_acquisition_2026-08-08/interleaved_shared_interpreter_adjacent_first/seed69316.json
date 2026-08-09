@@ -1,0 +1,353 @@
+{
+  "schema": "neural-computer.external-register-interleaved-basis-acquisition-audit.v1",
+  "seed": 69316,
+  "source_operations": [
+    "adjacent_xor",
+    "reverse",
+    "complement"
+  ],
+  "target_operations": [
+    "complement_rotate",
+    "prefix_parity"
+  ],
+  "composition_programs": [
+    [
+      "reverse",
+      "adjacent_xor",
+      "complement"
+    ],
+    [
+      "reverse",
+      "complement",
+      "adjacent_xor"
+    ]
+  ],
+  "decoder_prior": null,
+  "shared_bridge_prior": null,
+  "source_before": [
+    0.95703125,
+    0.8359375,
+    0.9453125
+  ],
+  "source_attempt_scores": [
+    [
+      0.90625,
+      0.95703125
+    ],
+    [
+      0.78515625,
+      0.8359375
+    ],
+    [
+      0.92578125,
+      0.9453125
+    ]
+  ],
+  "retained_before": [
+    0.95703125,
+    0.8359375,
+    0.9453125
+  ],
+  "bridge_prior_source_after": [
+    0.95703125,
+    0.8359375,
+    0.9453125
+  ],
+  "bridge_prior_progress": [],
+  "canonical_readout_prior": null,
+  "canonical_readout_prior_progress": [],
+  "targets": [
+    {
+      "operation": "complement_rotate",
+      "composition_program": null,
+      "candidate_accuracy": 0.9140625,
+      "consolidation_probe_accuracy": 0.91015625,
+      "shuffled_training_accuracy": 0.5703125,
+      "missing_evidence_accuracy": 0.5,
+      "retained_before": [
+        0.95703125,
+        0.8359375,
+        0.9453125
+      ],
+      "retained_after": [
+        0.95703125,
+        0.8359375,
+        0.9453125
+      ],
+      "retention_deltas": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "candidate_progress": [
+        {
+          "update": 64,
+          "heldout_accuracy": 0.8203125
+        },
+        {
+          "update": 128,
+          "heldout_accuracy": 0.828125
+        },
+        {
+          "update": 192,
+          "heldout_accuracy": 0.8046875
+        },
+        {
+          "update": 256,
+          "heldout_accuracy": 0.8359375
+        },
+        {
+          "update": 320,
+          "heldout_accuracy": 0.8515625
+        },
+        {
+          "update": 384,
+          "heldout_accuracy": 0.875
+        },
+        {
+          "update": 448,
+          "heldout_accuracy": 0.8671875
+        },
+        {
+          "update": 512,
+          "heldout_accuracy": 0.9140625
+        }
+      ],
+      "accepted": true
+    },
+    {
+      "operation": "prefix_parity",
+      "composition_program": null,
+      "candidate_accuracy": 0.921875,
+      "consolidation_probe_accuracy": 0.890625,
+      "shuffled_training_accuracy": 0.609375,
+      "missing_evidence_accuracy": 0.5,
+      "retained_before": [
+        0.95703125,
+        0.8359375,
+        0.9453125
+      ],
+      "retained_after": [
+        0.95703125,
+        0.8359375,
+        0.9453125
+      ],
+      "retention_deltas": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "candidate_progress": [
+        {
+          "update": 64,
+          "heldout_accuracy": 0.75
+        },
+        {
+          "update": 128,
+          "heldout_accuracy": 0.765625
+        },
+        {
+          "update": 192,
+          "heldout_accuracy": 0.765625
+        },
+        {
+          "update": 256,
+          "heldout_accuracy": 0.8125
+        },
+        {
+          "update": 320,
+          "heldout_accuracy": 0.8203125
+        },
+        {
+          "update": 384,
+          "heldout_accuracy": 0.828125
+        },
+        {
+          "update": 448,
+          "heldout_accuracy": 0.8515625
+        },
+        {
+          "update": 512,
+          "heldout_accuracy": 0.890625
+        }
+      ],
+      "accepted": true
+    },
+    {
+      "operation": "generated_composition",
+      "composition_program": [
+        "reverse",
+        "adjacent_xor",
+        "complement"
+      ],
+      "candidate_accuracy": 0.8671875,
+      "consolidation_probe_accuracy": 0.859375,
+      "shuffled_training_accuracy": 0.625,
+      "missing_evidence_accuracy": 0.5,
+      "retained_before": [
+        0.95703125,
+        0.8359375,
+        0.9453125
+      ],
+      "retained_after": [
+        0.95703125,
+        0.8359375,
+        0.9453125
+      ],
+      "retention_deltas": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "candidate_progress": [
+        {
+          "update": 64,
+          "heldout_accuracy": 0.640625
+        },
+        {
+          "update": 128,
+          "heldout_accuracy": 0.65625
+        },
+        {
+          "update": 192,
+          "heldout_accuracy": 0.71875
+        },
+        {
+          "update": 256,
+          "heldout_accuracy": 0.8125
+        },
+        {
+          "update": 320,
+          "heldout_accuracy": 0.7734375
+        },
+        {
+          "update": 384,
+          "heldout_accuracy": 0.8203125
+        },
+        {
+          "update": 448,
+          "heldout_accuracy": 0.8359375
+        },
+        {
+          "update": 512,
+          "heldout_accuracy": 0.875
+        }
+      ],
+      "accepted": true
+    },
+    {
+      "operation": "generated_composition",
+      "composition_program": [
+        "reverse",
+        "complement",
+        "adjacent_xor"
+      ],
+      "candidate_accuracy": 0.8359375,
+      "consolidation_probe_accuracy": 0.8515625,
+      "shuffled_training_accuracy": 0.5234375,
+      "missing_evidence_accuracy": 0.5,
+      "retained_before": [
+        0.95703125,
+        0.8359375,
+        0.9453125
+      ],
+      "retained_after": [
+        0.95703125,
+        0.8359375,
+        0.9453125
+      ],
+      "retention_deltas": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "candidate_progress": [
+        {
+          "update": 64,
+          "heldout_accuracy": 0.65625
+        },
+        {
+          "update": 128,
+          "heldout_accuracy": 0.6171875
+        },
+        {
+          "update": 192,
+          "heldout_accuracy": 0.671875
+        },
+        {
+          "update": 256,
+          "heldout_accuracy": 0.7421875
+        },
+        {
+          "update": 320,
+          "heldout_accuracy": 0.7421875
+        },
+        {
+          "update": 384,
+          "heldout_accuracy": 0.8125
+        },
+        {
+          "update": 448,
+          "heldout_accuracy": 0.84375
+        },
+        {
+          "update": 512,
+          "heldout_accuracy": 0.8359375
+        }
+      ],
+      "accepted": true
+    }
+  ],
+  "fresh_transfer": [
+    {
+      "composition_program": [
+        "reverse",
+        "adjacent_xor",
+        "complement"
+      ],
+      "inherited_stable_bits": 49152,
+      "fresh_stable_bits": 49152,
+      "fresh_accuracy": 0.8984375,
+      "fresh_source_training_verifier_bits": 73728,
+      "positive_transfer": false
+    },
+    {
+      "composition_program": [
+        "reverse",
+        "complement",
+        "adjacent_xor"
+      ],
+      "inherited_stable_bits": 49152,
+      "fresh_stable_bits": 32768,
+      "fresh_accuracy": 0.921875,
+      "fresh_source_training_verifier_bits": 73728,
+      "positive_transfer": false
+    }
+  ],
+  "transfer_promoted": false,
+  "curriculum_fresh_control": true,
+  "interleaving": {
+    "schedule": "round_robin_per_local_update",
+    "candidate_count": 4,
+    "separate_optimizer_state": true,
+    "transactional_admission": true
+  },
+  "accounting": {
+    "replayed_examples": 0,
+    "parent_training_verifier_bits": 2048,
+    "source_training_verifier_bits": 147456,
+    "source_selection_verifier_bits": 9216,
+    "bridge_prior_training_verifier_bits": 0,
+    "canonical_readout_prior_training_verifier_bits": 0,
+    "normal_target_training_verifier_bits": 311296,
+    "shuffled_target_training_verifier_bits": 311296,
+    "fresh_transfer_training_verifier_bits": 155648,
+    "fresh_curriculum_source_verifier_bits": 147456,
+    "progress_audit_verifier_bits": 19456,
+    "suite_and_control_verifier_bits": 9728,
+    "unique_verifier_bits": 1113600,
+    "optimizer_updates": 8736,
+    "unique_logical_lifetimes": 144704
+  },
+  "promoted": true
+}

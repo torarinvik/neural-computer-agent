@@ -262,6 +262,21 @@
       "retention_on_mastered_primitives": "exact zero source retention deltas, but source floors weakened in both seeds",
       "positive_transfer": "one program in seed 69317 only",
       "decision": "reject rank increase; retain rank 8 as the stronger shared-interpreter baseline and investigate acquisition-order asymmetry"
+    },
+    {
+      "experiment": "interleaved_shared_interpreter_adjacent_first_order_diagnostic",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "Putting the harder adjacent_xor source first improves the shared operator contract and reduces composition cost.",
+      "operator_mode": "factorized_shared_interpreter",
+      "source_order": ["adjacent_xor", "reverse", "complement"],
+      "composition_program_count": 2,
+      "source_restarts": 2,
+      "curriculum_fresh_control": true,
+      "replayed_examples": 0,
+      "retention_on_mastered_primitives": "exact zero source retention deltas, but source mastery weakened, especially in seed 69317",
+      "positive_transfer": false,
+      "decision": "reject adjacent-first acquisition order; retain order as a diagnostic and preserve the original reverse-first baseline"
     }
   ]
 }

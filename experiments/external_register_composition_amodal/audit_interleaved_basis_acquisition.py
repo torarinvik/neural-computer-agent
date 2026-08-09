@@ -209,6 +209,7 @@ def _prepare_candidates(
     machine,
     operations: tuple[str, ...],
     *,
+    source_operations: tuple[str, ...] = SOURCE_OPERATIONS,
     include_composition: bool,
     decoder_prior_state: dict[str, torch.Tensor] | None = None,
     composition_programs: tuple[tuple[str, ...], ...] = COMPOSITION_PROGRAMS,
@@ -218,7 +219,7 @@ def _prepare_candidates(
 ) -> list[dict[str, object]]:
     candidates = []
     for index, operation in enumerate(operations):
-        instruction = machine.instructions[len(SOURCE_OPERATIONS) + index]
+        instruction = machine.instructions[len(source_operations) + index]
         basis_slot = machine.add_basis_slot()
         candidates.append(
             {
@@ -243,7 +244,7 @@ def _prepare_candidates(
         # compositional reuse rather than another direct primitive.
         for program in composition_programs:
             source_indices = tuple(
-                SOURCE_OPERATIONS.index(primitive) for primitive in program
+                source_operations.index(primitive) for primitive in program
             )
             decoder = OpaqueProtocolDecoder(
                 REGISTER_WIDTH, ACTION_WIDTH, hidden=16
@@ -410,17 +411,24 @@ def _source_bridge_accuracy(
 def _fresh_source_curriculum(parent, *, args, seed_base: int):
     """Acquire a matched fresh source bank before target adaptation."""
     machine = _new_machine(
-        len(SOURCE_OPERATIONS),
+        len(args.source_operations),
         operator_mode=args.operator_mode,
         operator_rank=args.operator_rank,
     )
-    for _ in SOURCE_OPERATIONS:
+    for _ in args.source_operations:
         machine.add_basis_slot()
-    for index in range(len(SOURCE_OPERATIONS)):
+    for index in range(len(args.source_operations)):
         decoder = OpaqueProtocolDecoder(REGISTER_WIDTH, ACTION_WIDTH, hidden=16)
         source_args = copy.copy(args)
         source_args.seed = seed_base + index * 100_003
-        _train_source(parent, machine, decoder, index, source_args)
+        _train_source(
+            parent,
+            machine,
+            decoder,
+            index,
+            source_args,
+            source_operations=args.source_operations,
+        )
     return machine
 
 def _train_shared_bridge_prior(
@@ -617,6 +625,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     )
     if not target_operations:
         raise ValueError("at least one target operation is required")
+    source_operations = tuple(
+        operation for operation in args.source_order.split(",") if operation
+    )
+    if len(source_operations) != len(SOURCE_OPERATIONS) or set(source_operations) != set(
+        SOURCE_OPERATIONS
+    ):
+        raise ValueError("source order must be a permutation of the source operations")
+    args.source_operations = source_operations
     if args.source_restarts < 1:
         raise ValueError("source restarts must be positive")
     if args.reuse_shared_bridge_prior and args.reuse_conditioned_bridge_prior:
@@ -641,15 +657,15 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     )
     parent.eval()
     machine = _new_machine(
-        len(SOURCE_OPERATIONS),
+        len(args.source_operations),
         operator_mode=args.operator_mode,
         operator_rank=args.operator_rank,
     )
-    for _ in SOURCE_OPERATIONS:
+    for _ in args.source_operations:
         machine.add_basis_slot()
     source_decoders = []
     source_attempt_counts = []
-    for index in range(len(SOURCE_OPERATIONS)):
+    for index in range(len(args.source_operations)):
         source_parent = copy.deepcopy(machine)
         best_machine_state = None
         best_decoder_state = None
@@ -663,13 +679,18 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             attempt_args = copy.copy(args)
             attempt_args.seed = args.seed + index * 100_003 + attempt * 1_000_000
             _train_source(
-                parent, candidate_machine, candidate_decoder, index, attempt_args
+                parent,
+                candidate_machine,
+                candidate_decoder,
+                index,
+                attempt_args,
+                source_operations=args.source_operations,
             )
             candidate_score = _accuracy(
                 parent,
                 candidate_machine,
                 candidate_decoder,
-                operation=SOURCE_OPERATIONS[index],
+                operation=args.source_operations[index],
                 instructions=(candidate_machine.instructions[index],),
                 basis_slots=(index,),
                 count=args.source_selection_audit_count,
@@ -698,7 +719,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     source_specs = [
         (operation, machine.instructions[index], decoder, index)
         for index, (operation, decoder) in enumerate(
-            zip(SOURCE_OPERATIONS, source_decoders, strict=True)
+            zip(args.source_operations, source_decoders, strict=True)
         )
     ]
 
@@ -764,6 +785,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         machine,
         target_operations,
         include_composition=args.include_composition,
+        source_operations=args.source_operations,
         decoder_prior_state=decoder_prior_state,
         composition_programs=composition_programs,
         bridge_prior_state=bridge_prior_state,
@@ -874,7 +896,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 seed_base=args.seed + 2_000_000 + index * 20_003,
             )
             fresh_source_training_bits = (
-                len(SOURCE_OPERATIONS)
+                len(args.source_operations)
                 * args.source_updates
                 * args.batch_size
                 * args.span
@@ -882,14 +904,14 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             )
         else:
             fresh_machine = _new_machine(
-                len(SOURCE_OPERATIONS),
+                len(args.source_operations),
                 operator_mode=args.operator_mode,
                 operator_rank=args.operator_rank,
             )
-            for _ in SOURCE_OPERATIONS:
+            for _ in args.source_operations:
                 fresh_machine.add_basis_slot()
         source_indices = tuple(
-            SOURCE_OPERATIONS.index(primitive) for primitive in program
+            args.source_operations.index(primitive) for primitive in program
         )
         fresh_bridge = (
             CapabilityConditionedEventBridge(
@@ -926,7 +948,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "basis_slots": source_indices,
             "mutable": True,
             "mutable_instructions": tuple(fresh_machine.instructions),
-            "mutable_basis_slots": tuple(range(len(SOURCE_OPERATIONS))),
+            "mutable_basis_slots": tuple(range(len(args.source_operations))),
             "generated_composition_ids": (0,),
             "generated_compositions": (program,),
             "composition_program": program,
@@ -1167,7 +1189,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     report = {
         "schema": "neural-computer.external-register-interleaved-basis-acquisition-audit.v1",
         "seed": args.seed,
-        "source_operations": list(SOURCE_OPERATIONS),
+        "source_operations": list(args.source_operations),
         "target_operations": list(target_operations),
         "composition_programs": [list(program) for program in composition_programs]
         if args.include_composition
@@ -1239,7 +1261,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 * (args.warmup_updates + args.focus_updates + args.target_updates)
                 + (
                     fresh_transfer_candidate_count
-                    * len(SOURCE_OPERATIONS)
+                    * len(args.source_operations)
                     * args.source_updates
                     if args.curriculum_fresh_control
                     else 0
@@ -1279,6 +1301,11 @@ def main() -> None:
     parser.add_argument("--operator-rank", type=int, default=8)
     parser.add_argument(
         "--target-operations", default=",".join(TARGET_OPERATIONS)
+    )
+    parser.add_argument(
+        "--source-order",
+        default=",".join(SOURCE_OPERATIONS),
+        help="acquisition order for the opaque source operations",
     )
     parser.add_argument(
         "--include-composition",

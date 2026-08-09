@@ -661,3 +661,17 @@ trains the shared operator weights, while later skills mostly train their
 opaque instruction vectors. The next diagnostic will test order sensitivity
 and seek a way to acquire the shared operator contract without privileging
 the first capability.
+
+## Acquisition-order screen — rejected adjacent-first order
+
+The audit now exposes source acquisition order as an explicit control. Moving
+the harder `adjacent_xor` capability ahead of `reverse` did not improve the
+shared contract. Seed `69316` had no positive transfer, while seed `69317`
+failed source mastery for all three source floors (`0.8594/0.7656/0.875`) and
+had no stable inherited composition. Retention deltas remained exactly zero,
+so the failure is acquisition quality rather than forgetting.
+
+This confirms that the shared interpreter is order-sensitive. The original
+reverse-first order remains the stronger baseline, but the real fix is to
+learn or calibrate the shared operator contract without allowing the first
+capability to define it.
