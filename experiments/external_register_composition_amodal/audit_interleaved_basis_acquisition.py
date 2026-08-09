@@ -60,6 +60,19 @@ def _instruction_context(instructions) -> torch.Tensor:
     ).mean(dim=0)
 
 
+def _positive_transfer(
+    inherited_stable_bits: int | None,
+    fresh_stable_bits: int | None,
+) -> bool:
+    """Return true only when inherited capacity reaches mastery sooner."""
+
+    return bool(
+        inherited_stable_bits is not None
+        and fresh_stable_bits is not None
+        and inherited_stable_bits < fresh_stable_bits
+    )
+
+
 def _save_source_checkpoint(
     path: Path,
     *,
@@ -1416,10 +1429,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                     if fresh_sequence_calibration_progress
                     else 0
                 ),
-                "positive_transfer": bool(
-                    inherited_stable is not None
-                    and fresh_stable is not None
-                    and fresh_stable > inherited_stable
+                "positive_transfer": _positive_transfer(
+                    inherited_stable,
+                    fresh_stable,
                 ),
             }
         )

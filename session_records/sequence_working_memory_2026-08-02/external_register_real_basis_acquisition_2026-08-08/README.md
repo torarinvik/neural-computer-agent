@@ -931,3 +931,23 @@ The retention deltas were exactly zero, but source mastery was not met. The
 rung is rejected for under-training; the next run must reuse or persist the
 mastered source checkpoint instead of recalibrating it inside every sequence
 probe.
+
+## Protected bounded-meta order generalization — replicated at 128 updates
+
+At 128 updates, both tested orderings crossed the sequence mastery threshold
+on both seeds: seed `69316` reached `0.8203` and `0.8281`, while seed `69317`
+reached `0.8359` and `0.8516`. Source floors stayed above `0.9453` with exact
+zero retention deltas. This promotes the bounded operator from a promising
+single-order signal to replicated bounded sequence capacity, but still not to
+general continual learning because the fresh target learner has not yet shown
+a sample-efficiency advantage.
+
+## Frozen-controller target adaptation — capability retained, transfer not yet improved
+
+With the source controller and meta operator frozen, seed `69317` received 128
+target updates. The two direct target operations reached `0.875` each; one
+composition reached `0.875`, while the second reached `0.7813`. All source
+retention deltas remained exactly zero. The inherited learner did not yet beat
+the fresh-control stable-bit curve, so this demonstrates retained frozen-core
+adaptation but not reusable sample-efficiency gain. The transfer predicate was
+also corrected to require fewer inherited stable bits than fresh.

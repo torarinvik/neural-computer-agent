@@ -546,6 +546,35 @@
       "retention_deltas": "exact zero",
       "fresh_transfer": "negative on both orderings",
       "decision": "retain as replicated learning signal; reject promotion until sequence mastery and useful transfer generalize across seeds/orderings"
+    },
+    {
+      "experiment": "protected_bounded_meta_order_generalization_128",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "Bounded protected-meta sequence capacity reaches mastery across two orderings and two source seeds without forgetting.",
+      "operator_mode": "factorized_protected_bounded_meta",
+      "sequence_calibration_updates": 128,
+      "composition_program_count": 2,
+      "replayed_examples": 0,
+      "source_mastery": "passed; floors 0.9453–1.0",
+      "sequence_mastery": "passed; seed69316 floors 0.8203/0.8281; seed69317 floors 0.8359/0.8516",
+      "retention_deltas": "exact zero",
+      "decision": "promote bounded protected-meta as a replicated sequence-capacity primitive, but not as general continual learning until fresh transfer improves"
+    },
+    {
+      "experiment": "protected_bounded_meta_frozen_controller_target_transfer_128",
+      "date": "2026-08-09",
+      "seeds": [69317],
+      "claim": "A frozen controller with external protected capacity can acquire new target procedures while retaining mastered source primitives.",
+      "operator_mode": "factorized_protected_bounded_meta",
+      "sequence_calibration_updates": 128,
+      "target_updates": 128,
+      "composition_program_count": 2,
+      "replayed_examples": 0,
+      "source_retention": "exact zero deltas",
+      "target_results": "direct targets 0.875/0.875; compositions 0.875 and 0.7813",
+      "fresh_transfer": "no positive sample-efficiency transfer; inherited stable-bit curve did not beat fresh",
+      "decision": "retain as frozen-core adaptation evidence; prioritize transfer-efficiency mechanism next"
     }
   ]
 }

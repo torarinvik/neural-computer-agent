@@ -3,6 +3,7 @@ import torch
 
 from experiments.external_register_composition_amodal.audit_interleaved_basis_acquisition import (
     _load_source_checkpoint,
+    _positive_transfer,
     _save_source_checkpoint,
 )
 from experiments.external_register_composition_amodal.train import (
@@ -76,3 +77,9 @@ def test_source_checkpoint_refuses_unmastered_bank(tmp_path) -> None:
             source_operations=("reverse", "adjacent_xor", "complement"),
             source_scores=[0.8, 0.79, 1.0],
         )
+
+
+def test_positive_transfer_requires_fewer_inherited_bits() -> None:
+    assert _positive_transfer(8_192, 12_288)
+    assert not _positive_transfer(12_288, 8_192)
+    assert not _positive_transfer(None, 8_192)
