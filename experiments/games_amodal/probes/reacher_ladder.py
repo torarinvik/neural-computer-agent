@@ -51,6 +51,14 @@ parser.add_argument("--width", type=int, default=64)
 parser.add_argument("--hidden", type=int, default=32)
 parser.add_argument("--size", type=int, default=8)
 parser.add_argument("--eval-batches", type=int, default=4)
+parser.add_argument(
+    "--freeze-plant", action="store_true",
+    help="after the warm-start rung, FREEZE the controller and adapt only "
+         "a small per-rung goal adapter. Warm-starting with a trainable "
+         "plant measured NEGATIVE transfer (r1 -> r4: 0.535 vs 0.996 cold, "
+         "5x the updates) -- the plant carries the line's 'hold one "
+         "direction' as a habit. This is the architecture's own answer: "
+         "generic machinery frozen in the plant, adaptation in the bank.")
 parser.add_argument("--mastery", type=float, default=0.8,
                     help="reach level counted as mastered for the cost curve")
 args = parser.parse_args()
@@ -79,6 +87,12 @@ params = list({id(p): p for p in (
     list(agent.controller.parameters()) + list(decoder.parameters())
     + list(state_encoder.parameters()) + list(goal_encoder.parameters()))}.values())
 optimizer = torch.optim.Adam(params, lr=1e-3)
+# Per-rung adapter -- the bank's role: a small module that re-maps the
+# goal for a new world while the plant stays fixed.
+adapter = torch.nn.Linear(args.width, args.width)
+with torch.no_grad():
+    adapter.weight.copy_(torch.eye(args.width))
+    adapter.bias.zero_()
 
 
 def wall_cells(spec) -> set[tuple[int, int]]:
@@ -163,7 +177,9 @@ def rollout(spec, *, seed: int, sample: bool, random_actions: bool = False):
         events = [
             AmodalEvent(payload=encode(one_hot(cells, N * N),
                                        state_encoder, N * N)),
-            AmodalEvent(payload=encode(goal_features, goal_encoder, N)),
+            AmodalEvent(payload=(adapter(encode(goal_features, goal_encoder, N))
+                                 if args.freeze_plant
+                                 else encode(goal_features, goal_encoder, N))),
         ]
         output, state = agent.runtime.step_events(events, state, feedback)
         if random_actions:
@@ -205,16 +221,18 @@ def rollout(spec, *, seed: int, sample: bool, random_actions: bool = False):
             "steps_used": steps_used, "optimal": optimal}
 
 
-def train(spec, updates: int, tag: str, curve: list):
+def train(spec, updates: int, tag: str, curve: list, opt=None):
+    opt = opt or optimizer
     for update in range(updates):
         out = rollout(spec, seed=args.seed + update, sample=True)
         advantage = out["returns"].detach()
         advantage = (advantage - advantage.mean()) / advantage.std().clamp_min(1e-6)
         loss = -(advantage * out["logp"]).sum() / args.batch_size
-        optimizer.zero_grad(set_to_none=True)
+        opt.zero_grad(set_to_none=True)
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(params, 1.0)
-        optimizer.step()
+        torch.nn.utils.clip_grad_norm_(
+            [p for group in opt.param_groups for p in group["params"]], 1.0)
+        opt.step()
         if (update + 1) % 100 == 0:
             with torch.no_grad():
                 probe = rollout(spec, seed=args.seed + 700_000, sample=False)
@@ -240,11 +258,18 @@ def measure(spec, *, rand: bool = False) -> dict:
 spec = SPEC[args.rung]
 report = {"seed": args.seed, "rung": args.rung, "warm_start": args.warm_start}
 curve: list = []
+target_optimizer = optimizer
 if args.warm_start:
     train(SPEC[args.warm_start], args.warm_updates, "warm", curve)
     report["warm_rung_final"] = measure(SPEC[args.warm_start])
+    if args.freeze_plant:
+        for parameter in params:
+            parameter.requires_grad_(False)
+        target_optimizer = torch.optim.Adam(adapter.parameters(), lr=1e-2)
+        report["adapted_params"] = sum(
+            p.numel() for p in adapter.parameters())
 report["no_agent"] = measure(spec, rand=True)
-train(spec, args.updates, "target", curve)
+train(spec, args.updates, "target", curve, target_optimizer)
 report["final"] = measure(spec)
 report["curve"] = curve
 target_curve = [c for c in curve if c["tag"] == "target"]
