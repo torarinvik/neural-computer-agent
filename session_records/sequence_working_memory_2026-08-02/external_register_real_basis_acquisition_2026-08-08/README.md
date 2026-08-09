@@ -732,3 +732,24 @@ stability, but a positional bank alone is not a learned state algebra. The
 next step is learned, opaque addressing over the bank so the next instruction
 can select relevant intermediate state without relying only on execution
 position.
+
+## Learned bank addressing — useful interface, not transfer
+
+The register now has an opt-in `factorized_shared_banked` mode. Each opaque
+instruction produces a learned query over prior intermediate states, reads a
+weighted opaque value, and applies the bounded shared transition. No task,
+operation, or semantic address is supplied. The preserved trace decoder and
+matched fresh control use the same interface.
+
+Both seeds passed the composition behavior and retention gates, but strict
+positive transfer appeared in only one of four composition/seed comparisons.
+Seed `69316` required inherited stable costs of `32,768`/`49,152` versus fresh
+`16,384`/`49,152`; seed `69317` improved one composition to `16,384` versus
+fresh `32,768`, while the other inherited path tied or lost. The attention
+router is retained as extensible infrastructure, not promoted as the learned
+compositional solution.
+
+The next bottleneck is not access to prior states but the content of those
+states: the system needs a learned representation with invariants that make
+intermediate results reusable across operators, rather than merely a better
+addressing mechanism for incompatible tensors.

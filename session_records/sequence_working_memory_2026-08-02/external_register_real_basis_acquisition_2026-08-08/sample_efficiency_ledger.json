@@ -336,6 +336,22 @@
       "behavior_promotion": "seed 69317 passed; seed 69316 rejected one direct candidate while composition candidates passed",
       "positive_transfer": "one of four composition/seed comparisons",
       "decision": "retain execution trace as a useful binding interface; reject replicated transfer promotion and continue toward explicit learned state addressing"
+    },
+    {
+      "experiment": "interleaved_shared_banked_trace_joint_diagnostic",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "Opaque instruction-conditioned attention over prior intermediate states creates reliable compositional transfer.",
+      "operator_mode": "factorized_shared_banked",
+      "preserve_composition_trace": true,
+      "joint_source_updates": 576,
+      "composition_program_count": 2,
+      "curriculum_fresh_control": true,
+      "replayed_examples": 0,
+      "retention_on_mastered_primitives": "source deltas exact zero in both seeds",
+      "behavior_promotion": "both composition candidates passed in both seeds",
+      "positive_transfer": "one of four composition/seed comparisons",
+      "decision": "retain learned bank addressing as an extensible interface; reject replicated transfer promotion"
     }
   ]
 }

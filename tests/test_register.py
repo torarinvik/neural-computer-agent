@@ -166,6 +166,31 @@ def test_execution_trace_preserves_each_opaque_intermediate_state() -> None:
     assert not torch.equal(trace[0], trace[1])
 
 
+def test_shared_banked_mode_reads_only_prior_intermediate_states() -> None:
+    torch.manual_seed(914)
+    machine = ExternalCapabilityRegisterMachine(
+        event_width=4,
+        action_width=2,
+        intention_width=6,
+        register_width=8,
+        instruction_width=5,
+        interpreter_hidden=12,
+        operator_mode="factorized_shared_banked",
+        instructions=tuple(ExternalRegisterInstruction(5) for _ in range(3)),
+    )
+    register = torch.randn(2, 8)
+    final, trace = machine.execute_chain_trace(register, machine.instructions)
+    first_only = machine.execute(register, machine.instructions[0])
+
+    assert machine.configuration()["operator_mode"] == "factorized_shared_banked"
+    assert machine.configuration()["basis_binding"] == (
+        "instruction_vector_selects_shared_interpreter_v1"
+    )
+    assert len(trace) == 3
+    assert torch.isfinite(final).all()
+    assert not torch.equal(final, first_only)
+
+
 def test_new_basis_slot_does_not_resize_controller_or_existing_instruction_data() -> None:
     machine = _machine()
     old_instruction = machine.instructions[0].code.detach().clone()

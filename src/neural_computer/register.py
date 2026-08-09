@@ -40,6 +40,7 @@ EXTERNAL_REGISTER_READOUT_SCHEMA = (
 )
 EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE = "factorized_shared_interpreter"
 EXTERNAL_REGISTER_SHARED_BOUNDED_MODE = "factorized_shared_bounded"
+EXTERNAL_REGISTER_SHARED_BANKED_MODE = "factorized_shared_banked"
 
 
 class CanonicalRegisterReadout(nn.Module):
@@ -483,6 +484,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "factorized_protected_meta",
             EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
             EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
+            EXTERNAL_REGISTER_SHARED_BANKED_MODE,
             "unconstrained_mlp",
         ):
             raise ValueError("unsupported external register operator mode")
@@ -541,6 +543,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "factorized_protected_meta",
             EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
             EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
+            EXTERNAL_REGISTER_SHARED_BANKED_MODE,
         ):
             self.operator_left = nn.Linear(
                 instruction_width,
@@ -561,6 +564,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         if operator_mode in (
             "factorized_bounded_residual",
             EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
+            EXTERNAL_REGISTER_SHARED_BANKED_MODE,
         ):
             # Serial instruction chains are sensitive to unbounded additive
             # drift.  Normalize the read state, bound the learned proposal,
@@ -571,6 +575,12 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 instruction_width, register_width
             )
             nn.init.zeros_(self.operator_composition_gate.bias)
+        if operator_mode == EXTERNAL_REGISTER_SHARED_BANKED_MODE:
+            self.bank_query = nn.Linear(instruction_width, instruction_width)
+            self.bank_key = nn.Linear(register_width, instruction_width)
+            self.bank_value = nn.Linear(register_width, register_width)
+            self.bank_gate = nn.Linear(instruction_width, 1)
+            nn.init.zeros_(self.bank_gate.bias)
         if operator_mode == "factorized_protected_meta":
             # This branch is an isolated, initially inert operator-family
             # prior.  The base low-rank operator can be protected while this
@@ -658,6 +668,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 if self.operator_mode in (
                     EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
                     EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
+                    EXTERNAL_REGISTER_SHARED_BANKED_MODE,
                 )
                 else EXTERNAL_REGISTER_BASIS_SCHEMA
             ),
@@ -666,6 +677,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 if self.operator_mode in (
                     EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
                     EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
+                    EXTERNAL_REGISTER_SHARED_BANKED_MODE,
                 )
                 else "opaque_memory_side_slot_index_v1"
             ),
@@ -949,6 +961,33 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             torch.where(active, shifted_mask, state.event_window_mask),
         )
 
+    def _read_state_bank(
+        self,
+        code: torch.Tensor,
+        state_bank: torch.Tensor | None,
+    ) -> torch.Tensor:
+        if state_bank is None:
+            return torch.zeros(
+                code.shape[0],
+                self.register_width,
+                device=code.device,
+                dtype=code.dtype,
+            )
+        if state_bank.ndim != 3 or state_bank.shape[0] != code.shape[0]:
+            raise ValueError("state bank must have shape [batch, slots, width]")
+        if state_bank.shape[2] != self.register_width or state_bank.shape[1] < 1:
+            raise ValueError("state bank has incompatible register dimensions")
+        if not bool(torch.isfinite(state_bank).all()):
+            raise ValueError("state bank must contain only finite values")
+        query = self.bank_query(code)
+        keys = self.bank_key(state_bank)
+        scores = torch.einsum("bd,btd->bt", query, keys)
+        scores = scores / (self.instruction_width**0.5)
+        weights = torch.softmax(scores, dim=-1)
+        values = self.bank_value(state_bank)
+        pooled = torch.einsum("bt,btd->bd", weights, values)
+        return torch.sigmoid(self.bank_gate(code)) * pooled
+
     def execute(
         self,
         register: torch.Tensor,
@@ -957,6 +996,7 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         basis_slot: int | None = None,
         event_window: torch.Tensor | None = None,
         event_window_mask: torch.Tensor | None = None,
+        state_bank: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Apply one instruction without access to raw events or feedback."""
 
@@ -969,9 +1009,14 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             device=register.device,
             dtype=register.dtype,
         )
+        if self.operator_mode == EXTERNAL_REGISTER_SHARED_BANKED_MODE:
+            bank_read = self._read_state_bank(code, state_bank)
+        elif state_bank is not None:
+            raise ValueError("state bank addressing requires shared banked mode")
         if basis_slot is not None and self.operator_mode not in (
             EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
             EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
+            EXTERNAL_REGISTER_SHARED_BANKED_MODE,
         ):
             if not 0 <= basis_slot < len(self.basis_slots):
                 raise ValueError("basis slot index is out of range")
@@ -987,15 +1032,19 @@ class ExternalCapabilityRegisterMachine(nn.Module):
             "factorized_protected_meta",
             EXTERNAL_REGISTER_SHARED_INTERPRETER_MODE,
             EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
+            EXTERNAL_REGISTER_SHARED_BANKED_MODE,
         ):
             operator_register = (
                 self.operator_normalizer(register)
                 if self.operator_mode in (
                     "factorized_bounded_residual",
                     EXTERNAL_REGISTER_SHARED_BOUNDED_MODE,
+                    EXTERNAL_REGISTER_SHARED_BANKED_MODE,
                 )
                 else register
             )
+            if self.operator_mode == EXTERNAL_REGISTER_SHARED_BANKED_MODE:
+                operator_register = operator_register + bank_read
             left = torch.tanh(self.operator_left(code)).reshape(
                 register.shape[0],
                 self.register_width,
@@ -1018,6 +1067,10 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 gate = torch.sigmoid(self.operator_composition_gate(code))
                 return register + gate * proposal
             if self.operator_mode == EXTERNAL_REGISTER_SHARED_BOUNDED_MODE:
+                proposal = torch.tanh(base_proposal + self.operator_bias(code))
+                gate = torch.sigmoid(self.operator_composition_gate(code))
+                return register + gate * proposal
+            if self.operator_mode == EXTERNAL_REGISTER_SHARED_BANKED_MODE:
                 proposal = torch.tanh(base_proposal + self.operator_bias(code))
                 gate = torch.sigmoid(self.operator_composition_gate(code))
                 return register + gate * proposal
@@ -1069,23 +1122,13 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         event_window_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Apply a memory-selected instruction chain to a working register."""
-
-        selected = tuple(instructions)
-        selected_basis = (
-            (None,) * len(selected)
-            if basis_slots is None
-            else tuple(basis_slots)
+        register, _ = self.execute_chain_trace(
+            register,
+            instructions,
+            basis_slots=basis_slots,
+            event_window=event_window,
+            event_window_mask=event_window_mask,
         )
-        if len(selected_basis) != len(selected):
-            raise ValueError("basis slot bindings must match instruction count")
-        for instruction, basis_slot in zip(selected, selected_basis):
-            register = self.execute(
-                register,
-                instruction,
-                basis_slot=basis_slot,
-                event_window=event_window,
-                event_window_mask=event_window_mask,
-            )
         return register
 
     def execute_chain_trace(
@@ -1119,6 +1162,11 @@ class ExternalCapabilityRegisterMachine(nn.Module):
                 basis_slot=basis_slot,
                 event_window=event_window,
                 event_window_mask=event_window_mask,
+                state_bank=(
+                    torch.stack(states, dim=1)
+                    if states and self.operator_mode == EXTERNAL_REGISTER_SHARED_BANKED_MODE
+                    else None
+                ),
             )
             states.append(register)
         return register, tuple(states)
