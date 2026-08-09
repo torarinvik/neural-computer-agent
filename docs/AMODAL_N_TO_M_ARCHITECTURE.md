@@ -5827,3 +5827,29 @@ promotes verified nonlinear memory growth under learned address adaptation, not
 unrestricted growth or autonomous consolidation/compression. Evidence is
 archived in
 `session_records/sequence_working_memory_2026-08-02/external_nonlinear_address_shift_capacity_growth_promoted_2026-08-10/`.
+
+## Nonlinear address compaction and statistics-aware codec boundary (2026-08-10)
+
+The next three-seed lifecycle audit composes the long nonlinear address stream
+with two external-memory operations. Capacity grows `4 -> 6 -> 7` only after
+held-out retention probes. A copy-on-write equivalent of the `target_c` factual
+slot is then added, and `consolidate_verified()` shares its parameters with the
+original while preserving both opaque logical addresses. Physical models fall
+from `7` to `6`; historical model digests and address keys remain unchanged.
+
+The audit also tests the existing float16 and int8 storage codecs against a
+baseline-plus-`1e-3` held-out factual retention delta. All six codec candidates
+across seeds `82301`, `82302`, and `82303` are rejected: quantizing the
+replay-free random-feature normal-equation statistics produces deltas as high
+as `1.1233` for float16 and `6.5146` for int8. The compressed payload still
+round-trips its aliases and logical addresses, but no unsafe codec is
+promoted. This is the intended verifier behavior and identifies the next
+implementation target as a statistics-aware codec, not a relaxed tolerance.
+
+Controller updates, compaction optimizer updates, replay, and old-regime
+replay are zero; corruption is staged and rejected without a bank write; and
+router persistence is exact for all three seeds. This promotes bounded
+retention-verified factual lifecycle management and safe compression
+rejection, not semantic merging, unrestricted memory growth, or general
+continual learning. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_nonlinear_address_compaction_promoted_2026-08-10/`.

@@ -1,0 +1,183 @@
+{
+  "schema": "neural-computer.external-nonlinear-address-compaction.v1",
+  "seed": 82303,
+  "claim_boundary": "retention-verified factual-memory growth, alias consolidation, and storage compression; not semantic merging or unrestricted general continual learning",
+  "configuration": {
+    "regimes": [
+      "source_a",
+      "source_b",
+      "target_c",
+      "target_d",
+      "target_e",
+      "target_f"
+    ],
+    "initial_capacity": 4,
+    "final_capacity": 7,
+    "presented_rows_per_regime": 32,
+    "heldout_rows_per_regime": 64,
+    "admission_rows": 8,
+    "context_encoder_updates": 400,
+    "model_family": "random_feature_sufficient_statistics_v1",
+    "compression_candidates": [
+      "torch.float16",
+      "torch.int8"
+    ],
+    "compression_retention_delta": 0.001
+  },
+  "gates": {
+    "context_encoder_converged": true,
+    "all_targets_acquired": true,
+    "two_capacity_growths_verified": true,
+    "all_acquisition_heldout_errors_pass": true,
+    "consolidation_verified": true,
+    "unsafe_codecs_rejected_without_promotion": true,
+    "compression_payload_roundtrip_exact": true,
+    "stable_logical_addresses": true,
+    "historical_model_digests_stable": true,
+    "alias_relationship_persisted": true,
+    "corruption_rejected_without_bank_write": true,
+    "controller_unchanged": true,
+    "no_raw_candidate_rows_retained": true,
+    "adapter_copy_on_write": true,
+    "router_persistence_exact": true
+  },
+  "promoted": true,
+  "context_encoder": {
+    "optimizer_updates": 400,
+    "loss": 1.251696744475339e-06,
+    "aggregation": "mean_pool"
+  },
+  "acquisitions": [
+    {
+      "name": "target_c",
+      "statuses": {
+        "pending": 28,
+        "staged": 4
+      },
+      "slot_id": 2,
+      "heldout_error": 0.00015903671737760305
+    },
+    {
+      "name": "target_d",
+      "statuses": {
+        "pending": 28,
+        "staged": 4
+      },
+      "slot_id": 3,
+      "heldout_error": 0.001110715325921774
+    },
+    {
+      "name": "target_e",
+      "statuses": {
+        "pending": 28,
+        "staged": 4
+      },
+      "slot_id": 4,
+      "heldout_error": 0.0008647183421999216
+    },
+    {
+      "name": "target_f",
+      "statuses": {
+        "pending": 28,
+        "staged": 4
+      },
+      "slot_id": 5,
+      "heldout_error": 0.0007053739973343909
+    }
+  ],
+  "capacity_growth": [
+    {
+      "source_capacity": 4,
+      "destination_capacity": 6,
+      "context_count": 4,
+      "reason": "retention-verified capacity growth committed"
+    },
+    {
+      "source_capacity": 6,
+      "destination_capacity": 7,
+      "context_count": 6,
+      "reason": "retention-verified capacity growth committed"
+    }
+  ],
+  "consolidation": {
+    "accepted": true,
+    "physical_models_before": 7,
+    "physical_models_after": 6,
+    "max_heldout_difference": 0.0,
+    "source_slot_id": 2,
+    "duplicate_slot_id": 6
+  },
+  "compression": {
+    "accepted": false,
+    "selected_codec": null,
+    "retention_pass": false,
+    "retention_deltas": {
+      "torch.float16": {
+        "source_a": 0.03174734736148821,
+        "source_b": 0.05019821649966616,
+        "target_c": 0.0951049808645621,
+        "target_d": 0.03464254969730973,
+        "target_e": 0.08648628345690668,
+        "target_f": 0.017638745193835348,
+        "duplicate_target_c": 0.0951049808645621
+      },
+      "torch.int8": {
+        "source_a": 4.428628011292858,
+        "source_b": 1.545595765622238,
+        "target_c": 5.030638921656646,
+        "target_d": 4.702807741705328,
+        "target_e": 0.4147693475242704,
+        "target_f": 0.30733387399232015,
+        "duplicate_target_c": 5.030638921656646
+      }
+    },
+    "receipts": [
+      {
+        "codec": "torch.float16",
+        "accepted": false,
+        "source_bytes": 487564,
+        "compressed_bytes": 243810
+      },
+      {
+        "codec": "torch.int8",
+        "accepted": false,
+        "source_bytes": 487564,
+        "compressed_bytes": 122045
+      }
+    ]
+  },
+  "corruption_control": {
+    "statuses": {
+      "pending": 28,
+      "staged": 4
+    },
+    "accepted": false,
+    "bank_unchanged": true
+  },
+  "status_counts": {
+    "target_c:pending": 28,
+    "target_c:staged": 4,
+    "target_d:pending": 28,
+    "target_d:staged": 4,
+    "target_e:pending": 28,
+    "target_e:staged": 4,
+    "target_f:pending": 28,
+    "target_f:staged": 4
+  },
+  "address_adapter": {
+    "base_digest": "1f85c3b00c554fbfadb2367d8dab897f96cf34493ae12ccbb74432300075f50c",
+    "final_digest": "3595ad6a141e94c9766b783c1d51fe3f8159533e3331bda494c44ae7ed18806e",
+    "final_version": 20
+  },
+  "accounting": {
+    "unique_verifier_bits": 768,
+    "unique_logical_lifetimes": 768,
+    "context_encoder_optimizer_updates": 400,
+    "model_statistics_updates": 18,
+    "controller_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "old_regime_replay": 0,
+    "compaction_optimizer_updates": 0,
+    "wall_seconds": 1.9591685000341386
+  }
+}
