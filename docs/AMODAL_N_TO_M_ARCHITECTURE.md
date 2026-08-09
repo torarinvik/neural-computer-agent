@@ -4714,3 +4714,32 @@ artifacts are promoted. Evidence is archived in
 The codec boundary also exposes adaptive selection: it evaluates each caller
 candidate with the same probe and selects the smallest accepted artifact. In
 both compression seeds it selected int8 over float16 after rejecting int4.
+
+## Accounted policy-free model compounding (2026-08-09)
+
+The exported games session supplies the most important design correction for
+continual learning: a policy stores preferences and can become wrong on a new
+task, while a transition model stores factual dynamics and can be extended;
+behavior can then be recomputed by search for the current opaque goal. The
+games session also exposed two measurement hazards that are now normative here:
+zero-shot capability is not the same claim as faster acquisition, and an
+internal model-loss threshold is not deployed mastery.
+
+`experiments/external_transition_model_compounding/` turns those lessons into
+a fast canonical audit. One source regime is followed by three target regimes.
+Each target is initialized from the preceding external transition model and
+adapted in isolation; a matched fresh model is trained for every target. The
+stopping prefix requires both transition loss and planner mastery. Reports
+charge source acquisition in cumulative cost, keep current-target reuse
+separate from old-regime replay, and record planner expansions and latency
+separately from optimizer work.
+
+Both seeds passed: warm target updates were `24/23/17` and `25/22/17`, versus
+fresh `38/38/34` and `35/38/41`; cumulative warm cost ended at `1,264` versus
+fresh `1,310` and `1,314`. Every target mastered, earlier models remained at
+`1.0` and byte-stable, the controller stayed frozen, and old-regime replay was
+zero. This promotes a replicated downward acquisition-cost signal in one
+nested dynamics family. It does not establish general continual learning:
+the fixture is small, context vectors are supplied, and the dynamics are not
+yet genuinely disjoint across a wider family. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_transition_model_compounding_promoted_2026-08-09/`.

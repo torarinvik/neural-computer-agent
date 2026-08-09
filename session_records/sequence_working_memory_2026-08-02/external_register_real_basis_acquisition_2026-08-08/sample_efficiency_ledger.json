@@ -1455,6 +1455,27 @@
       "persistence_exact": [true, true],
       "controls": "float16/int8 held-out retention acceptance, int4 rejection, byte accounting, frozen controller, zero compression updates, and compressed payload persistence passed",
       "decision": "promote verifier-gated external storage codecs; next test adaptive codec selection and longer-horizon alternating validation"
+    },
+    {
+      "experiment": "external_transition_model_compounding",
+      "date": "2026-08-09",
+      "seeds": [70311, 70312],
+      "claim": "Sequential external transition-model acquisition can reduce cumulative model updates across three target regimes while preserving earlier factual models and deriving behavior by search.",
+      "module": "ExternalTransitionModelBank + ExternalModelBasedPlanner",
+      "source_optimizer_updates_per_seed": [1200, 1200],
+      "target_warm_updates_per_seed": [[24, 23, 17], [25, 22, 17]],
+      "target_fresh_updates_per_seed": [[38, 38, 34], [35, 38, 41]],
+      "cumulative_warm_updates_after_final_target": [1264, 1264],
+      "cumulative_fresh_updates_after_final_target": [1310, 1314],
+      "zero_shot_mastery_by_target": [[0.0, 0.6666666666666666, 0.3333333333333333], [0.3333333333333333, 0.6666666666666666, 0.6666666666666666]],
+      "target_mastery": [[1.0, 1.0, 1.0], [1.0, 1.0, 1.0]],
+      "prior_retention": [[1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0]],
+      "prior_model_byte_stability": [true, true],
+      "old_regime_replay_during_target": [0, 0],
+      "controller_parameter_updates": [0, 0],
+      "planner_compute_accounted_separately": [true, true],
+      "controls": "outcome-based stopping, matched fresh models, zero-shot separation, cumulative source-cost accounting, planner expansion/latency accounting, prior mastery and byte stability, frozen controller, zero old-regime replay, and persistence passed",
+      "decision": "promote bounded policy-free compounding signal; next test genuinely disjoint dynamics, wider seeds, and learned online context identity"
     }
   ]
 }
