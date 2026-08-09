@@ -1167,6 +1167,32 @@
       "optimizer_updates": 0,
       "controls": "source mastery/retention, stable-prefix, no-trace rejection, reward-shuffle rejection, missing-feedback no-write, persistence, frozen-policy, frozen-baseline, and zero-replay gates passed",
       "decision": "promote four-phase delayed scalar credit with external value-baseline variance reduction; next integrate the path with executable external programs and test many-capability interference without replay"
+    },
+    {
+      "experiment": "external_outcome_program_router",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "A memory-side outcome-credit router will acquire a new multi-step capability by selecting an appended opaque executable artifact with one terminal scalar outcome while preserving a prior capability state.",
+      "module": "ExternalOutcomeProgramRouter",
+      "executor": "ExternalCapabilityRegisterMachine",
+      "program_capacity": 3,
+      "initial_programs": 2,
+      "phase_count": 2,
+      "source_episodes": 2000,
+      "target_episodes": 9000,
+      "interpreter_pretraining_updates_per_seed": 900,
+      "router_optimizer_updates_per_seed": 0,
+      "replayed_examples": 0,
+      "unique_verifier_bits_per_seed": 11000,
+      "unique_logical_lifetimes_per_seed": 11000,
+      "target_final_accuracy": [0.91, 0.93],
+      "stable_episodes_to_threshold": [8500, 3500],
+      "no_trace_control_accuracy": [0.43, 0.21],
+      "reward_shuffled_control_accuracy": [0.073333, 0.13],
+      "capacity_control_accuracy": [0.576667, 0.396667],
+      "source_retention": [0.98, 0.976667],
+      "controls": "source mastery/retention, source-state isolation, appended-program use, stable-prefix, no-trace rejection, reward-shuffle rejection, no-append capacity rejection, missing-feedback no-write, router/artifact persistence, frozen executor/program memory/rules, and zero-replay gates passed",
+      "decision": "promote bounded outcome-only routing over executable external artifacts; next test many-capability interference and fresh-relation transfer against a matched fresh executor"
     }
   ]
 }

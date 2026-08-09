@@ -4363,3 +4363,37 @@ linear in learned event features, and the audit does not test changing
 relations, many-capability interference, arbitrary executable programs, or
 unrestricted memory growth. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_outcome_credit_four_phase_value_baseline_promoted_2026-08-09/`.
+
+## Outcome-only routing over executable external programs (2026-08-09)
+
+The memory boundary now exposes `ExternalOutcomeProgramRouter` and
+`ExternalOutcomeProgramRouterState`. The router is an append-only choice
+layer over a separately versioned executable-program memory: it masks
+unadmitted candidates, samples opaque program indices, records exact behavior
+propensities, carries eligibility across a sequence, and applies one terminal
+scalar verifier outcome to the external route state. Activating a new program
+does not resize the controller or change the learned program rule. Router
+state includes the active candidate count and round-trips through a nested
+tensor-only payload.
+
+The matched audit used three pre-admitted artifacts executed by the shared
+external register interpreter. Two programs were available during source
+acquisition; a third was activated before a fresh two-phase target relation.
+The controller, interpreter, program memory, router rule, and value-baseline
+rule were frozen during route learning. Target accuracy was `0.9100` and
+`0.9300`, with stable prefixes at `8,500` and `3,500` target episodes. Source
+retention was `0.9800` and `0.9767`. No-trace controls reached `0.4300` and
+`0.2100`, reward-shuffled controls `0.0733` and `0.1300`, and the no-append
+capacity controls `0.5767` and `0.3967`. Both seeds passed appended-program
+use, missing-evidence, persistence, frozen-component, source-state isolation,
+and zero-replay gates; route acquisition made zero optimizer updates.
+
+This promotes a bounded bridge from scalar delayed credit to executable
+external programs. It is not program induction, arbitrary new computation,
+unrestricted growth, or general continual learning: the executable artifact
+interpreter is pre-admitted, the route capacity is finite, and source and
+target capability states are isolated. The next bottleneck is interference
+and transfer when many capabilities share one growing address space, followed
+by fresh-relation transfer against a matched fresh executor. Evidence is
+archived in
+`session_records/sequence_working_memory_2026-08-02/external_outcome_program_router_promoted_2026-08-09/`.
