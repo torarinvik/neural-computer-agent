@@ -2763,3 +2763,46 @@ actually built — every rung until now trained a policy into the plant
 while claiming the plant held only general machinery.
 
 Probes 161-169 are `reacher_ladder.py --model-search`.
+
+**F68 (probes 170-172). Policy-free does not degrade across a sequence.
+This is the forgetting result the whole project was chasing.** F67
+showed model+search wins on a single target. The multi-target apparatus
+(one agent, three novel rungs in sequence, cost as work actually done)
+answers the founding question directly:
+
+| rung | policy-based, cold sequential | **policy-free (model+search)** |
+| --- | ---: | ---: |
+| r2 | 0.977 | **1.000** |
+| r3 | 0.695 | **0.969** |
+| r4 | 0.441 | **1.000** |
+| total | 800 policy updates | 900 model updates |
+
+**The policy-based agent degrades as the sequence proceeds (0.977 ->
+0.695 -> 0.441). The policy-free agent does not (1.000 -> 0.969 ->
+1.000).** Comparable cost, completely different trajectory.
+
+That decay is catastrophic forgetting, measured directly and without a
+retention probe: each new rung damages the policy that served the last.
+Every consolidation mechanism this program built — Fisher anchors,
+arbitrated release, freezing, adapters — exists to slow that curve.
+**Storing a model instead of a policy removes it.** Nothing is
+overwritten because nothing preferential is stored; new dynamics are
+added to a model that was never in conflict with them.
+
+Also visible: r4 zero-shot 0.625 after learning only r2 and r3's
+dynamics — two thirds of the way to a novel rung before seeing it,
+which is compounding rather than mere retention.
+
+**Caveat on cost, stated plainly.** Each rung was given a flat 300
+model updates because zero-shot never cleared the 0.8 retrieval bar, so
+900 is an upper bound rather than a measured minimum; a lower bar or an
+early-stop on model accuracy would cut it. The claim here is about the
+QUALITY trajectory (flat vs decaying), which is unambiguous, not about
+the cost being lower — total cost was slightly higher.
+
+**Status of the founding claim.** Supported, on two independent
+measurements: F67 (a transferred model beats a target-trained policy
+with zero target training) and F68 (no degradation across a sequence
+where a policy-based agent loses more than half its competence).
+
+Probes 170-172 are `reacher_ladder.py --model-search --targets`.

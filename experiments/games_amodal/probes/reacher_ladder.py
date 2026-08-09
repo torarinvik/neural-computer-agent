@@ -350,6 +350,37 @@ def search_action(cell: int, goal: int, spec, depth: int) -> int:
     return 0
 
 
+
+def policy_free_hits(spec) -> int:
+    """Trials solved by searching the learned model. No policy anywhere."""
+    walls = wall_cells(spec)
+    rows = N if spec["dims"] == 2 else 1
+    free = [(r, c) for r in range(rows) for c in range(N)
+            if (r, c) not in walls]
+    generator = torch.Generator().manual_seed(args.seed + 900)
+    moves = MOVES_2D if spec["dims"] == 2 else MOVES_1D
+    hits = 0
+    for _trial in range(32):
+        picks = torch.randint(0, len(free), (2,), generator=generator)
+        position, goal = free[int(picks[0])], free[int(picks[1])]
+        for _ in range(args.steps):
+            if position == goal:
+                hits += 1
+                break
+            action = search_action(position[0] * N + position[1],
+                                   goal[0] * N + goal[1], spec,
+                                   args.model_search)
+            dr, dc = moves[action]
+            nxt = (position[0] + dr, position[1] + dc)
+            if 0 <= nxt[0] < rows and 0 <= nxt[1] < N and nxt not in walls:
+                position = nxt
+    return hits
+
+
+def policy_free_reach(spec) -> float:
+    return round(policy_free_hits(spec) / 32, 4)
+
+
 def train(spec, updates: int, tag: str, curve: list, opt=None, mix=None):
     """Returns updates ACTUALLY spent -- early-stops on mastery."""
     opt = opt or optimizer
@@ -433,30 +464,32 @@ if args.model_search:
                   for name in sources}
     report["model_accuracy"] = accuracies
     report["model_sources"] = sources
-    walls = wall_cells(spec)
-    rows = N if spec["dims"] == 2 else 1
-    free = [(r, c) for r in range(rows) for c in range(N)
-            if (r, c) not in walls]
-    generator = torch.Generator().manual_seed(args.seed + 900)
-    moves = MOVES_2D if spec["dims"] == 2 else MOVES_1D
-    hits = 0
+    hits = policy_free_hits(spec)
     trials = 32
-    for trial in range(trials):
-        picks = torch.randint(0, len(free), (2,), generator=generator)
-        position, goal = free[int(picks[0])], free[int(picks[1])]
-        for _ in range(args.steps):
-            if position == goal:
-                hits += 1
-                break
-            action = search_action(position[0] * N + position[1],
-                                   goal[0] * N + goal[1], spec,
-                                   args.model_search)
-            dr, dc = moves[action]
-            nxt = (position[0] + dr, position[1] + dc)
-            if (0 <= nxt[0] < rows and 0 <= nxt[1] < N
-                    and nxt not in walls):
-                position = nxt
     report["policy_free_reach"] = round(hits / trials, 4)
+
+    if args.targets:
+        # COMPOUNDING, policy-free. Walk a sequence of novel rungs. For
+        # each: measure search performance BEFORE learning its dynamics
+        # (zero-shot from the model built on everything prior), then
+        # learn its dynamics only if needed, and record the cost. If a
+        # model compounds, later rungs should be progressively cheaper
+        # because their dynamics are already covered.
+        report["model_sequence"] = []
+        model_spend = 0
+        for name in args.targets.split(","):
+            rung = SPEC[name]
+            before = policy_free_reach(rung)
+            if before >= args.mastery:
+                spent = 0          # already covered: reuse costs nothing
+            else:
+                spent = 300
+                learn_model(rung, spent)
+            model_spend += spent
+            report["model_sequence"].append({
+                "rung": name, "zero_shot": before,
+                "after": policy_free_reach(rung), "model_updates": spent})
+        report["model_updates_total"] = model_spend
 if args.warm_mix or args.warm_start:
     # ZERO-SHOT reuse: what the warm plant does on the target BEFORE any
     # target training. This is the purest transfer number and we had
