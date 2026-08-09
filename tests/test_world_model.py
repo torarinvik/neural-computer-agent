@@ -10,6 +10,7 @@ from neural_computer import (
     ExternalOnlineTransitionContextRouter,
     ExternalTransitionContextEncoder,
     ExternalTransitionEvidenceEvaluator,
+    ExternalTransitionEvidenceStatistics,
     ExternalTransitionMemory,
     ExternalTransitionModel,
     ExternalTransitionModelBank,
@@ -1301,6 +1302,32 @@ def test_transition_evidence_evaluator_has_versioned_scalar_outcome_boundary() -
     assert logits.shape == (4,)
     assert torch.isfinite(evaluator.loss(prediction, observed, outcomes))
     assert evaluator.configuration()["behavior"] == "read_only_consistency_gate_v1"
+
+
+def test_transition_evidence_statistics_learns_once_and_persists_without_rows() -> None:
+    statistics = ExternalTransitionEvidenceStatistics(
+        2,
+        bin_count=8,
+        error_scale=0.1,
+    )
+    prediction = torch.zeros(4, 2)
+    observed = torch.tensor(
+        [[0.0, 0.0], [0.01, 0.0], [0.5, 0.0], [0.6, 0.0]]
+    )
+    outcomes = torch.tensor([1.0, 1.0, 0.0, 0.0])
+    statistics.observe(prediction, observed, outcomes, torch.ones(4))
+
+    assert int(statistics.observation_count) == 4
+    assert torch.isfinite(statistics(prediction, observed)).all()
+    assert torch.isfinite(statistics.loss(prediction, observed, outcomes))
+    payload = statistics.payload()
+    assert "observations" not in payload
+    restored = ExternalTransitionEvidenceStatistics.from_payload(payload)
+    assert restored.digest() == statistics.digest()
+    assert torch.equal(
+        restored(prediction, observed),
+        statistics(prediction, observed),
+    )
 
 
 def test_contextual_evidence_calibration_isolated_and_persistent() -> None:

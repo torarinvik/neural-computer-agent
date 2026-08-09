@@ -55,6 +55,9 @@ EXTERNAL_GOAL_EVALUATOR_SCHEMA = "neural-computer.external-goal-evaluator.v1"
 EXTERNAL_TRANSITION_EVIDENCE_EVALUATOR_SCHEMA = (
     "neural-computer.external-transition-evidence-evaluator.v1"
 )
+EXTERNAL_TRANSITION_EVIDENCE_STATISTICS_SCHEMA = (
+    "neural-computer.external-transition-evidence-statistics.v1"
+)
 EXTERNAL_TRANSITION_EVIDENCE_CALIBRATOR_SCHEMA = (
     "neural-computer.external-transition-evidence-calibrator.v1"
 )
@@ -4707,6 +4710,216 @@ class ExternalTransitionEvidenceEvaluator(nn.Module):
         return digest.hexdigest()
 
 
+class ExternalTransitionEvidenceStatistics(nn.Module):
+    """Replay-free scalar reliability calibration from verifier outcomes.
+
+    The evaluator is deliberately limited to factual prediction error. It
+    stores only per-error-bin positive/negative sufficient statistics; no
+    prediction, observation, or outcome row is retained. This is a generic
+    external reliability component, not a task or modality-specific solver.
+    """
+
+    schema = EXTERNAL_TRANSITION_EVIDENCE_STATISTICS_SCHEMA
+
+    def __init__(
+        self,
+        state_width: int,
+        *,
+        bin_count: int = 16,
+        error_scale: float = 0.1,
+        prior_count: float = 1.0,
+    ) -> None:
+        super().__init__()
+        if state_width < 1 or bin_count < 2:
+            raise ValueError("evidence-statistics dimensions are invalid")
+        if error_scale <= 0.0 or not math.isfinite(error_scale):
+            raise ValueError("evidence-statistics error scale is invalid")
+        if prior_count <= 0.0 or not math.isfinite(prior_count):
+            raise ValueError("evidence-statistics prior count is invalid")
+        self.state_width = int(state_width)
+        self.bin_count = int(bin_count)
+        self.error_scale = float(error_scale)
+        self.prior_count = float(prior_count)
+        self.register_buffer(
+            "error_edges",
+            torch.logspace(
+                -6.0,
+                math.log10(self.error_scale),
+                self.bin_count - 1,
+                dtype=torch.float32,
+            ),
+        )
+        self.register_buffer(
+            "positive_counts",
+            torch.zeros(self.bin_count, dtype=torch.float32),
+        )
+        self.register_buffer(
+            "negative_counts",
+            torch.zeros(self.bin_count, dtype=torch.float32),
+        )
+        self.register_buffer("observation_count", torch.zeros((), dtype=torch.long))
+
+    def configuration(self) -> dict[str, int | float | str]:
+        return {
+            "schema": self.schema,
+            "state_width": self.state_width,
+            "bin_count": self.bin_count,
+            "error_scale": self.error_scale,
+            "prior_count": self.prior_count,
+            "training": "one_pass_scalar_verifier_outcomes_v1",
+            "storage": "error_bin_sufficient_statistics_only_v1",
+        }
+
+    def _validate_inputs(
+        self,
+        prediction: torch.Tensor,
+        observed: torch.Tensor,
+        hit: torch.Tensor | None,
+    ) -> None:
+        _validate_tensor(
+            prediction,
+            name="transition prediction",
+            ndim=2,
+            width=self.state_width,
+        )
+        _validate_tensor(
+            observed,
+            name="observed next state",
+            ndim=2,
+            width=self.state_width,
+        )
+        if prediction.shape != observed.shape:
+            raise ValueError("transition prediction and observation shapes differ")
+        if hit is not None:
+            if hit.shape not in ((prediction.shape[0],), (prediction.shape[0], 1)):
+                raise ValueError("transition hit flags must match the batch")
+            values = hit.reshape(-1)
+            if not bool(torch.isfinite(values).all()) or bool(
+                torch.any(values < 0) or torch.any(values > 1)
+            ):
+                raise ValueError("transition hit flags must lie in [0, 1]")
+
+    def _bin_indices(
+        self,
+        prediction: torch.Tensor,
+        observed: torch.Tensor,
+        hit: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        self._validate_inputs(prediction, observed, hit)
+        errors = (prediction - observed).square().mean(dim=-1)
+        return torch.bucketize(errors.detach().to(self.error_edges), self.error_edges)
+
+    def forward(
+        self,
+        prediction: torch.Tensor,
+        observed: torch.Tensor,
+        hit: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        indices = self._bin_indices(prediction, observed, hit)
+        positive = self.positive_counts.to(indices.device)[indices] + self.prior_count
+        negative = self.negative_counts.to(indices.device)[indices] + self.prior_count
+        return (positive / negative).log()
+
+    def loss(
+        self,
+        prediction: torch.Tensor,
+        observed: torch.Tensor,
+        outcome: torch.Tensor,
+        hit: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        if outcome.shape not in ((prediction.shape[0],), (prediction.shape[0], 1)):
+            raise ValueError("evidence-statistics outcomes must match the batch")
+        targets = outcome.reshape(-1).to(prediction)
+        if not bool(torch.isfinite(targets).all()) or bool(
+            torch.any(targets < 0) or torch.any(targets > 1)
+        ):
+            raise ValueError("evidence-statistics outcomes must lie in [0, 1]")
+        return nn.functional.binary_cross_entropy_with_logits(
+            self(prediction, observed, hit),
+            targets,
+        )
+
+    def observe(
+        self,
+        prediction: torch.Tensor,
+        observed: torch.Tensor,
+        outcome: torch.Tensor,
+        hit: torch.Tensor | None = None,
+    ) -> None:
+        """Consume scalar verifier outcomes once without retaining examples."""
+
+        if outcome.shape not in ((prediction.shape[0],), (prediction.shape[0], 1)):
+            raise ValueError("evidence-statistics outcomes must match the batch")
+        targets = outcome.reshape(-1).to(self.positive_counts)
+        if not bool(torch.isfinite(targets).all()) or bool(
+            torch.any(targets < 0) or torch.any(targets > 1)
+        ):
+            raise ValueError("evidence-statistics outcomes must lie in [0, 1]")
+        indices = self._bin_indices(prediction, observed, hit).to(
+            self.positive_counts.device
+        )
+        self.positive_counts.index_add_(0, indices, targets)
+        self.negative_counts.index_add_(0, indices, 1.0 - targets)
+        self.observation_count.add_(prediction.shape[0])
+
+    def digest(self) -> str:
+        digest = hashlib.sha256()
+        digest.update(repr(self.configuration()).encode("utf-8"))
+        for name, value in sorted(self.state_dict().items()):
+            detached = value.detach().cpu().contiguous()
+            digest.update(name.encode("utf-8"))
+            digest.update(str(detached.dtype).encode("utf-8"))
+            digest.update(repr(tuple(detached.shape)).encode("utf-8"))
+            digest.update(detached.numpy().tobytes())
+        return digest.hexdigest()
+
+    def payload(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "state": {
+                name: value.detach().cpu().clone()
+                for name, value in self.state_dict().items()
+            },
+            "sha256": self.digest(),
+        }
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, Any],
+    ) -> ExternalTransitionEvidenceStatistics:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported evidence-statistics payload")
+        configuration = payload.get("configuration")
+        state = payload.get("state")
+        if not isinstance(configuration, Mapping) or not isinstance(state, Mapping):
+            raise TypeError("evidence-statistics payload is incomplete")
+        restored = cls(
+            int(configuration["state_width"]),
+            bin_count=int(configuration["bin_count"]),
+            error_scale=float(configuration["error_scale"]),
+            prior_count=float(configuration["prior_count"]),
+        )
+        current = restored.state_dict()
+        if tuple(state) != tuple(current):
+            raise ValueError("evidence-statistics state names differ")
+        normalized: dict[str, torch.Tensor] = {}
+        for name, expected in current.items():
+            value = state[name]
+            if not isinstance(value, torch.Tensor):
+                raise TypeError("evidence-statistics state is not a tensor")
+            if value.shape != expected.shape or value.dtype != expected.dtype:
+                raise ValueError("evidence-statistics state is incompatible")
+            if not bool(torch.isfinite(value).all()):
+                raise ValueError("evidence-statistics state is not finite")
+            normalized[name] = value.detach().clone()
+        restored.load_state_dict(normalized, strict=True)
+        if payload.get("sha256") != restored.digest():
+            raise ValueError("evidence-statistics checksum mismatch")
+        return restored
+
+
 class ExternalTransitionEvidenceCalibrator(nn.Module):
     """Trainable scalar calibration state around a frozen evidence evaluator."""
 
@@ -6129,6 +6342,7 @@ __all__ = [
     "EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY",
     "EXTERNAL_TRANSITION_CONTEXT_ENCODER_SCHEMA",
     "EXTERNAL_TRANSITION_EVIDENCE_CALIBRATOR_SCHEMA",
+    "EXTERNAL_TRANSITION_EVIDENCE_STATISTICS_SCHEMA",
     "EXTERNAL_TRANSITION_MEMORY_SCHEMA",
     "EXTERNAL_TRANSITION_MIXED_MODEL_FAMILY",
     "EXTERNAL_TRANSITION_MODEL_BANK_SCHEMA",
@@ -6155,6 +6369,7 @@ __all__ = [
     "ExternalTransitionContextEncoder",
     "ExternalTransitionEvidenceCalibrator",
     "ExternalTransitionEvidenceEvaluator",
+    "ExternalTransitionEvidenceStatistics",
     "ExternalTransitionMemory",
     "ExternalTransitionModel",
     "ExternalTransitionModelBank",

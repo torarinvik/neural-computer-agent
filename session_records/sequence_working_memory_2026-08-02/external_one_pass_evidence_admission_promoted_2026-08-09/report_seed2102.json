@@ -1,0 +1,67 @@
+{
+  "schema": "neural-computer.external-one-pass-evidence-admission-pressure-test.v1",
+  "seed": 2102,
+  "claim_boundary": "A replay-free error-bin sufficient-statistics evaluator can learn scalar reliability and reject low-error corrupted nonlinear streaming evidence without retaining examples; this is bounded reliability, not general continual learning.",
+  "configuration": {
+    "train_rows": 64,
+    "heldout_rows": 64,
+    "calibration_rows": 512,
+    "positive_noise": 0.04,
+    "corruption_noise": 0.08,
+    "evidence_threshold": 0.5
+  },
+  "metrics": {
+    "clean_probability": 0.9923076629638672,
+    "noisy_probability": 0.42296501994132996,
+    "raw_corruption_error": 0.0021102544851601124,
+    "corruption_statuses": [
+      "pending",
+      "pending",
+      "pending",
+      "capacity"
+    ],
+    "candidate_evidence_counts": [
+      64,
+      64
+    ],
+    "raw_candidate_rows": [
+      0,
+      0
+    ],
+    "heldout_errors": [
+      0.001877554110251367,
+      3.159100378979929e-05,
+      0.0036645010113716125
+    ]
+  },
+  "gates": {
+    "one_pass_calibration": true,
+    "zero_evaluator_replay": true,
+    "clean_probability": true,
+    "noisy_probability": true,
+    "raw_corruption_within_tolerance": true,
+    "corruption_rejected": true,
+    "candidate_counts": true,
+    "candidate_raw_rows_not_retained": true,
+    "all_promotions_accepted": true,
+    "heldout_errors_pass": true,
+    "statistics_persist": true,
+    "router_persists_with_gate": true,
+    "controller_frozen": true
+  },
+  "promoted": true,
+  "accounting": {
+    "transition_unique_lifetimes": 384,
+    "transition_unique_verifier_bits": 384,
+    "calibration_unique_verifier_bits": 512,
+    "statistics_updates": 512,
+    "optimizer_updates": 0,
+    "replayed_examples": 0,
+    "raw_provisional_rows_persisted": 0,
+    "wall_seconds": 0.435915166977793
+  },
+  "digests": {
+    "controller": "21db08b549076247914ae8cf39469795c778492e449ddd66d2452354a003ea5f",
+    "evidence_statistics": "af721f0e5ac86d7c9c1cbd57a47a454fe32e32dbb5e465a57e8eec6ca1f0bb0f"
+  }
+}

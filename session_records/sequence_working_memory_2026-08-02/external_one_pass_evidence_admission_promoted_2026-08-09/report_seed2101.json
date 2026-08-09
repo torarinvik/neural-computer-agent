@@ -1,0 +1,67 @@
+{
+  "schema": "neural-computer.external-one-pass-evidence-admission-pressure-test.v1",
+  "seed": 2101,
+  "claim_boundary": "A replay-free error-bin sufficient-statistics evaluator can learn scalar reliability and reject low-error corrupted nonlinear streaming evidence without retaining examples; this is bounded reliability, not general continual learning.",
+  "configuration": {
+    "train_rows": 64,
+    "heldout_rows": 64,
+    "calibration_rows": 512,
+    "positive_noise": 0.04,
+    "corruption_noise": 0.08,
+    "evidence_threshold": 0.5
+  },
+  "metrics": {
+    "clean_probability": 0.9923076629638672,
+    "noisy_probability": 0.4110185503959656,
+    "raw_corruption_error": 0.0027719633653759956,
+    "corruption_statuses": [
+      "pending",
+      "pending",
+      "pending",
+      "capacity"
+    ],
+    "candidate_evidence_counts": [
+      64,
+      64
+    ],
+    "raw_candidate_rows": [
+      0,
+      0
+    ],
+    "heldout_errors": [
+      0.0009523623739369214,
+      1.0664904039003886e-05,
+      0.00837261788547039
+    ]
+  },
+  "gates": {
+    "one_pass_calibration": true,
+    "zero_evaluator_replay": true,
+    "clean_probability": true,
+    "noisy_probability": true,
+    "raw_corruption_within_tolerance": true,
+    "corruption_rejected": true,
+    "candidate_counts": true,
+    "candidate_raw_rows_not_retained": true,
+    "all_promotions_accepted": true,
+    "heldout_errors_pass": true,
+    "statistics_persist": true,
+    "router_persists_with_gate": true,
+    "controller_frozen": true
+  },
+  "promoted": true,
+  "accounting": {
+    "transition_unique_lifetimes": 384,
+    "transition_unique_verifier_bits": 384,
+    "calibration_unique_verifier_bits": 512,
+    "statistics_updates": 512,
+    "optimizer_updates": 0,
+    "replayed_examples": 0,
+    "raw_provisional_rows_persisted": 0,
+    "wall_seconds": 0.43660104100126773
+  },
+  "digests": {
+    "controller": "4104941ec8e1db16f07d01b556b3ed6e21c81616c8ae3968d0eab0bbb38b6967",
+    "evidence_statistics": "1c352ff3b9bc8294c23ea989fe462da68e1a9fa879f55ce4937b0057119b5ebc"
+  }
+}

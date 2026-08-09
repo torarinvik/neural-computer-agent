@@ -5518,3 +5518,29 @@ The evaluator pretraining replay is explicitly charged in the ledger, while
 target candidate learning and calibration use unique rows. The next gap is
 learned temporal delay/absence handling and positive transfer against a fresh
 learner; a calibrated reliability gate is not general continual learning.
+
+## Replay-free sufficient-statistics reliability (2026-08-09)
+
+The replay-heavy neural evidence pretraining path now has a narrower
+replay-free alternative: `ExternalTransitionEvidenceStatistics`. It maps
+generic factual prediction error into bounded logarithmic bins and learns
+positive/negative evidence counts from scalar verifier outcomes. Its payload
+contains only fixed bin edges, counts, and an observation count; it has no
+optimizer, raw examples, or replay buffer. The router consumes it through the
+same replaceable evidence-evaluator interface and still applies the explicit
+provisional warm-up before allowing reliability to veto continuation.
+
+Across seeds `2101` and `2102`, the statistics evaluator consumed `512` unique
+calibration outcomes per seed with zero replay and zero optimizer updates.
+Two sequential nonlinear candidates each consumed `64` rows and retained no
+raw rows. Clean probability was `0.992` in both seeds, noisy probability was
+`0.252` and `0.343`, and corrupted bundles with raw MSE `0.00565` and `0.00439`
+were rejected despite a `0.02` router tolerance. Held-out errors remained
+below `0.0084`; persistence, candidate isolation, frozen-controller, and
+zero-replay gates passed. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_one_pass_evidence_admission_promoted_2026-08-09/`.
+
+This removes evaluator pretraining replay from this reliability boundary, but
+it is intentionally not overclaimed: the bins are a bounded calibration
+primitive, the audit is sequential rather than interleaved nonlinear routing,
+and learned delay/absence behavior and positive transfer remain open.
