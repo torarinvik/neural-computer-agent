@@ -4314,3 +4314,25 @@ capability across a changed relation while preserving old states.
 
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_outcome_credit_promoted_2026-08-09/`.
+
+## External outcome-credit sequence-length scaling (2026-08-09)
+
+The eligibility state was generalized from two to an arbitrary fixed number of
+temporal phases without changing its update rule or exposing verifier labels.
+The matched three-phase rung used `3,000` source and `4,000` target episodes per
+seed, one terminal scalar outcome per episode, and no replay. Target sequence
+accuracy was `0.9567` and `0.9733`; stable `0.90` mastery was reached at
+`1,500` and `1,000` target episodes. The no-trace controls reached only
+`0.1133` and `0.3800`, reward-shuffled controls `0.1267` and `0.1533`, and
+source retention remained `0.9400` and `0.9267`.
+
+This promotes replicated three-phase delayed-credit scaling. Four phases show
+the expected causal signal but are not promoted yet: short exploratory rungs
+either leave source mastery below the gate or fail the stable target prefix.
+The next bottleneck is variance and acquisition cost under sparse terminal
+feedback, not basic eligibility correctness. The next intervention should test
+a learned external value baseline or variance-reduced credit, with the same
+source-retention and shuffled-outcome gates.
+
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_outcome_credit_three_phase_promoted_2026-08-09/`.

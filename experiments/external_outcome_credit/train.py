@@ -1,9 +1,9 @@
-"""Pressure-test external eligibility traces on a learned two-step relation.
+"""Pressure-test external eligibility traces on learned multi-step relations.
 
-The learner receives one standardized event tensor, samples two opaque
-choices, logs their exact behavior propensities, and receives only one terminal
-scalar verifier outcome.  A hidden verifier relation maps the event to the
-two-choice sequence; its parameters and labels never enter the learner.
+The learner receives one standardized event tensor, samples opaque choices,
+logs their exact behavior propensities, and receives only one terminal scalar
+verifier outcome.  A hidden verifier relation maps the event to the choice
+sequence; its parameters and labels never enter the learner.
 
 The main comparison is a matched external state with eligibility traces versus
 a fresh state with the trace disabled.  A reward-shuffled control receives the
@@ -48,21 +48,25 @@ def _state_digest(state: ExternalOutcomeCreditState) -> str:
     return digest.hexdigest()
 
 
-def _phase_feature(event: torch.Tensor, phase: int) -> torch.Tensor:
+def _phase_feature(
+    event: torch.Tensor,
+    phase: int,
+    phase_count: int,
+) -> torch.Tensor:
     if event.ndim != 2:
         raise ValueError("events must have shape [batch, width]")
-    if phase not in (0, 1):
-        raise ValueError("the pressure test has exactly two phases")
-    first = event if phase == 0 else torch.zeros_like(event)
-    second = event if phase == 1 else torch.zeros_like(event)
+    if phase_count < 2 or phase not in range(phase_count):
+        raise ValueError("phase must be inside a sequence of at least two phases")
+    event_blocks = [torch.zeros_like(event) for _ in range(phase_count)]
+    event_blocks[phase] = event
     phase_token = torch.zeros(
         event.shape[0],
-        2,
+        phase_count,
         device=event.device,
         dtype=event.dtype,
     )
     phase_token[:, phase] = 1.0
-    return torch.cat((first, second, phase_token), dim=-1)
+    return torch.cat((*event_blocks, phase_token), dim=-1)
 
 
 def _hidden_target(
@@ -95,6 +99,7 @@ def _train_stream(
     eval_events: torch.Tensor,
     eval_relation: torch.Tensor,
     eval_every: int,
+    phase_count: int,
     feedback_override: torch.Tensor | None = None,
 ) -> tuple[
     ExternalOutcomeCreditState,
@@ -110,8 +115,8 @@ def _train_stream(
             event = event.unsqueeze(0)
             state = rule.begin_episode(state)
             choices: list[torch.Tensor] = []
-            for phase in range(2):
-                feature = _phase_feature(event, phase)
+            for phase in range(phase_count):
+                feature = _phase_feature(event, phase, phase_count)
                 choice, propensity = _sample_choice(rule, state, feature)
                 state = rule.record_decision(
                     state,
@@ -140,6 +145,7 @@ def _train_stream(
                     state,
                     eval_events,
                     eval_relation,
+                    phase_count,
                 )
                 progress.append(
                     {
@@ -156,17 +162,18 @@ def _evaluate(
     state: ExternalOutcomeCreditState,
     events: torch.Tensor,
     relation: torch.Tensor,
+    phase_count: int,
 ) -> tuple[float, list[float]]:
     exact: list[float] = []
-    phase_scores = [[], []]
+    phase_scores = [[] for _ in range(phase_count)]
     with torch.no_grad():
         state = rule.begin_episode(state)
         for event in events:
             event = event.unsqueeze(0)
             choices: list[torch.Tensor] = []
             target = _hidden_target(event, relation)
-            for phase in range(2):
-                feature = _phase_feature(event, phase)
+            for phase in range(phase_count):
+                feature = _phase_feature(event, phase, phase_count)
                 choice = rule.logits(state, feature).argmax(dim=-1)
                 choices.append(choice)
                 phase_scores[phase].append(float((choice == target[:, phase]).item()))
@@ -192,20 +199,24 @@ def _stable_episode_prefix(
 
 
 def run(args: argparse.Namespace) -> dict[str, object]:
+    torch.set_num_threads(1)
     if min(
         args.source_episodes,
         args.target_episodes,
         args.evaluation_episodes,
         args.eval_every,
         args.event_width,
+        args.phases,
     ) < 1:
         raise ValueError("episode counts, eval interval, and width must be positive")
     if not 0.0 < args.mastery_threshold <= 1.0:
         raise ValueError("mastery threshold must lie in (0, 1]")
+    if args.phases < 2:
+        raise ValueError("at least two delayed-credit phases are required")
     torch.manual_seed(args.seed)
     generator = torch.Generator(device="cpu").manual_seed(args.seed + 10_001)
-    relation_source = torch.randn(2, args.event_width, generator=generator)
-    relation_target = torch.randn(2, args.event_width, generator=generator)
+    relation_source = torch.randn(args.phases, args.event_width, generator=generator)
+    relation_target = torch.randn(args.phases, args.event_width, generator=generator)
     source_events = torch.randn(
         args.source_episodes + args.evaluation_episodes,
         args.event_width,
@@ -220,7 +231,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     source_eval = source_events[args.source_episodes :]
     target_train = target_events[: args.target_episodes]
     target_eval = target_events[args.target_episodes :]
-    feature_width = args.event_width * 2 + 2
+    feature_width = args.event_width * args.phases + args.phases
 
     rule = ExternalOutcomeCreditPlasticity(
         feature_width,
@@ -238,9 +249,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         eval_events=source_eval,
         eval_relation=relation_source,
         eval_every=args.eval_every,
+        phase_count=args.phases,
     )
     source_before, source_phase_before = _evaluate(
-        rule, source_state, source_eval, relation_source
+        rule, source_state, source_eval, relation_source, args.phases
     )
 
     target_state, target_outcomes, target_progress = _train_stream(
@@ -251,6 +263,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         eval_events=target_eval,
         eval_relation=relation_target,
         eval_every=args.eval_every,
+        phase_count=args.phases,
     )
     no_trace_rule = ExternalOutcomeCreditPlasticity(
         feature_width,
@@ -267,6 +280,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         eval_events=target_eval,
         eval_relation=relation_target,
         eval_every=args.eval_every,
+        phase_count=args.phases,
     )
     permutation = torch.randperm(
         target_outcomes.shape[0], generator=torch.Generator().manual_seed(args.seed + 20_002)
@@ -280,24 +294,25 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         eval_events=target_eval,
         eval_relation=relation_target,
         eval_every=args.eval_every,
+        phase_count=args.phases,
         feedback_override=shuffled_outcomes,
     )
 
     source_after, source_phase_after = _evaluate(
-        rule, source_state, source_eval, relation_source
+        rule, source_state, source_eval, relation_source, args.phases
     )
     target_final, target_phase_final = _evaluate(
-        rule, target_state, target_eval, relation_target
+        rule, target_state, target_eval, relation_target, args.phases
     )
     no_trace_final, no_trace_phase_final = _evaluate(
-        no_trace_rule, no_trace_state, target_eval, relation_target
+        no_trace_rule, no_trace_state, target_eval, relation_target, args.phases
     )
     shuffled_final, shuffled_phase_final = _evaluate(
-        rule, shuffled_state, target_eval, relation_target
+        rule, shuffled_state, target_eval, relation_target, args.phases
     )
 
     with torch.no_grad():
-        probe_feature = _phase_feature(target_train[:1], 0)
+        probe_feature = _phase_feature(target_train[:1], 0, args.phases)
         probe_state = rule.record_decision(
             rule.begin_episode(target_state),
             probe_feature,
@@ -346,7 +361,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     report = {
         "schema": "neural-computer.external-outcome-credit-pressure-test.v1",
         "claim_boundary": (
-            "An external eligibility-trace policy learns a hidden two-step "
+            "An external eligibility-trace policy learns a hidden multi-step "
             "event-to-choice relation from terminal scalar outcomes without "
             "controller updates or replay. This is a bounded causal-credit "
             "primitive, not general continual learning or arbitrary program "
@@ -356,6 +371,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "source_episodes": args.source_episodes,
         "target_episodes": args.target_episodes,
         "evaluation_episodes": args.evaluation_episodes,
+        "phase_count": args.phases,
         "feature_width": feature_width,
         "trace_decay": float(rule.trace_decay.detach()),
         "mastery_threshold": args.mastery_threshold,
@@ -383,7 +399,9 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "accounting": {
             "unique_verifier_bits": args.source_episodes + args.target_episodes,
             "unique_logical_lifetimes": args.source_episodes + args.target_episodes,
-            "external_decision_updates": 2 * (args.source_episodes + args.target_episodes),
+            "external_decision_updates": args.phases * (
+                args.source_episodes + args.target_episodes
+            ),
             "external_feedback_updates": args.source_episodes + args.target_episodes,
             "optimizer_updates": 0,
             "replayed_examples": 0,
@@ -407,6 +425,7 @@ def main() -> None:
     parser.add_argument("--target-episodes", type=int, default=5000)
     parser.add_argument("--evaluation-episodes", type=int, default=500)
     parser.add_argument("--eval-every", type=int, default=500)
+    parser.add_argument("--phases", type=int, default=2)
     parser.add_argument("--event-width", type=int, default=4)
     parser.add_argument("--learning-rate", type=float, default=0.03)
     parser.add_argument("--trace-decay", type=float, default=0.95)
