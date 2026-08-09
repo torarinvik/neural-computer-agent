@@ -4167,3 +4167,12 @@ the register interpreter, but it is an interface/persistence gain rather than
 evidence of new learned capability or positive transfer. Behavior still must
 be verified after loading, and the next capability bottleneck remains a
 portable execution-state representation shared across longer programs.
+
+The runtime now exposes that state boundary explicitly through
+`ExternalExecutionSnapshot`. It separates the durable observed register from
+the transient executed register and opaque intermediate trace, carries an
+optional program-artifact digest, and round-trips through a versioned
+tensor-only payload. Existing `read_execute_register()` behavior remains
+compatible; the typed snapshot is the contract for new callers. This is a
+correctness and replacement seam, not yet a claim that the learned serial
+interpreter can solve arbitrary longer programs.

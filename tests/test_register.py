@@ -3,6 +3,7 @@ import torch
 from neural_computer import (
     CanonicalRegisterReadout,
     ExternalCapabilityRegisterMachine,
+    ExternalExecutionSnapshot,
     ExternalRegisterBasisCompatibilityPrior,
     ExternalRegisterComputeBasis,
     ExternalRegisterInstruction,
@@ -732,6 +733,50 @@ def test_read_execute_uses_a_transient_snapshot_without_mutating_observed_state(
     assert torch.equal(snapshot_state.register, observed_state.register)
     assert torch.equal(snapshot_state.context, observed_state.context)
     assert not torch.equal(snapshot, snapshot_state.register)
+
+
+def test_typed_execution_snapshot_round_trips_observation_and_trace() -> None:
+    torch.manual_seed(919)
+    machine = _machine()
+    state = machine.initial_state(2, device="cpu")
+    snapshot = machine.read_execute_register_snapshot(
+        event=torch.randn(2, 4),
+        action=torch.zeros(2, 2),
+        outcome=torch.zeros(2),
+        intention=IntentEvent(torch.randn(2, 6)),
+        state=state,
+        program_digest="a" * 64,
+    )
+    restored = ExternalExecutionSnapshot.from_payload(snapshot.payload())
+
+    assert snapshot.observed.register.shape == (2, 8)
+    assert snapshot.executed.shape == (2, 8)
+    assert len(snapshot.trace) == 2
+    assert snapshot.program_digest == "a" * 64
+    assert torch.equal(restored.observed.register, snapshot.observed.register)
+    assert torch.equal(restored.executed, snapshot.executed)
+    assert all(
+        torch.equal(left, right)
+        for left, right in zip(restored.trace, snapshot.trace, strict=True)
+    )
+
+
+def test_typed_execution_snapshot_rejects_malformed_program_digest() -> None:
+    machine = _machine()
+    state = machine.initial_state(1, device="cpu")
+    try:
+        machine.read_execute_register_snapshot(
+            event=torch.zeros(1, 4),
+            action=torch.zeros(1, 2),
+            outcome=torch.zeros(1),
+            intention=IntentEvent(torch.zeros(1, 6)),
+            state=state,
+            program_digest="not-a-digest",
+        )
+    except ValueError as error:
+        assert "digest" in str(error)
+    else:
+        raise AssertionError("expected malformed program digest failure")
 
 
 def test_in_place_step_preserves_legacy_mutating_execution_contract() -> None:

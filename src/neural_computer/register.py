@@ -33,6 +33,10 @@ EXTERNAL_REGISTER_READ_EXECUTE_SCHEMA = (
 EXTERNAL_REGISTER_EXECUTION_TRACE_SCHEMA = (
     "neural-computer.external-register-execution-trace.v1"
 )
+EXTERNAL_REGISTER_STATE_SCHEMA = "neural-computer.external-register-state.v1"
+EXTERNAL_REGISTER_EXECUTION_SNAPSHOT_SCHEMA = (
+    "neural-computer.external-register-execution-snapshot.v1"
+)
 EXTERNAL_REGISTER_BASIS_SCHEMA = "neural-computer.external-register-compute-basis.v1"
 EXTERNAL_REGISTER_COMPATIBILITY_SCHEMA = (
     "neural-computer.external-register-compatibility-prior.v1"
@@ -316,6 +320,139 @@ class ExternalRegisterState:
             if not bool(torch.isfinite(self.event_window).all()):
                 raise ValueError("external event window must contain finite values")
         return self
+
+    def payload(self) -> dict[str, torch.Tensor | str | None]:
+        """Return a detached tensor-only payload for durable external state."""
+
+        return {
+            "schema": EXTERNAL_REGISTER_STATE_SCHEMA,
+            "register": self.register.detach().cpu().clone(),
+            "context": self.context.detach().cpu().clone(),
+            "initialized": self.initialized.detach().cpu().clone(),
+            "event_window": (
+                self.event_window.detach().cpu().clone()
+                if self.event_window is not None
+                else None
+            ),
+            "event_window_mask": (
+                self.event_window_mask.detach().cpu().clone()
+                if self.event_window_mask is not None
+                else None
+            ),
+        }
+
+    @classmethod
+    def from_payload(cls, payload: dict[str, object]) -> ExternalRegisterState:
+        """Restore one state payload; dimensional validation remains runtime-owned."""
+
+        if not isinstance(payload, dict):
+            raise TypeError("external register state payload must be a dictionary")
+        if payload.get("schema") != EXTERNAL_REGISTER_STATE_SCHEMA:
+            raise ValueError("unsupported external register state schema")
+        required = ("register", "context", "initialized")
+        if any(not isinstance(payload.get(name), torch.Tensor) for name in required):
+            raise TypeError("external register state payload is missing tensors")
+        event_window = payload.get("event_window")
+        event_window_mask = payload.get("event_window_mask")
+        if (event_window is None) != (event_window_mask is None):
+            raise ValueError("external register event window payload is incomplete")
+        if event_window is not None and not isinstance(event_window, torch.Tensor):
+            raise TypeError("external register event window must be a tensor or null")
+        if event_window_mask is not None and not isinstance(
+            event_window_mask, torch.Tensor
+        ):
+            raise TypeError("external register event window mask must be a tensor or null")
+        return cls(
+            register=payload["register"],
+            context=payload["context"],
+            initialized=payload["initialized"],
+            event_window=event_window,
+            event_window_mask=event_window_mask,
+        )
+
+
+@dataclass(frozen=True)
+class ExternalExecutionSnapshot:
+    """Typed boundary between durable observation state and transient execution."""
+
+    observed: ExternalRegisterState
+    executed: torch.Tensor
+    trace: tuple[torch.Tensor, ...] = ()
+    program_digest: str | None = None
+
+    def validate(
+        self,
+        *,
+        batch_size: int,
+        register_width: int,
+        context_width: int,
+        event_width: int | None = None,
+        event_window_size: int = 0,
+        program_length: int | None = None,
+    ) -> ExternalExecutionSnapshot:
+        self.observed.validate(
+            batch_size=batch_size,
+            register_width=register_width,
+            context_width=context_width,
+            event_width=event_width,
+            event_window_size=event_window_size,
+        )
+        if self.executed.shape != (batch_size, register_width):
+            raise ValueError("execution snapshot output has the wrong shape")
+        if not bool(torch.isfinite(self.executed).all()):
+            raise ValueError("execution snapshot output must be finite")
+        if program_length is not None and len(self.trace) != program_length:
+            raise ValueError("execution snapshot trace length does not match program")
+        for state in self.trace:
+            if state.shape != (batch_size, register_width):
+                raise ValueError("execution snapshot trace has the wrong shape")
+            if not bool(torch.isfinite(state).all()):
+                raise ValueError("execution snapshot trace must be finite")
+        if self.program_digest is not None:
+            if len(self.program_digest) != 64:
+                raise ValueError("execution snapshot program digest is malformed")
+            try:
+                int(self.program_digest, 16)
+            except ValueError as error:
+                raise ValueError(
+                    "execution snapshot program digest is malformed"
+                ) from error
+        return self
+
+    def payload(self) -> dict[str, object]:
+        """Return an opaque payload suitable for transient checkpointing."""
+
+        return {
+            "schema": EXTERNAL_REGISTER_EXECUTION_SNAPSHOT_SCHEMA,
+            "observed": self.observed.payload(),
+            "executed": self.executed.detach().cpu().clone(),
+            "trace": tuple(value.detach().cpu().clone() for value in self.trace),
+            "program_digest": self.program_digest,
+        }
+
+    @classmethod
+    def from_payload(cls, payload: dict[str, object]) -> ExternalExecutionSnapshot:
+        """Restore a snapshot without interpreting its learned state."""
+
+        if not isinstance(payload, dict):
+            raise TypeError("execution snapshot payload must be a dictionary")
+        if payload.get("schema") != EXTERNAL_REGISTER_EXECUTION_SNAPSHOT_SCHEMA:
+            raise ValueError("unsupported external execution snapshot schema")
+        observed = payload.get("observed")
+        executed = payload.get("executed")
+        trace = payload.get("trace", ())
+        if not isinstance(observed, dict) or not isinstance(executed, torch.Tensor):
+            raise TypeError("execution snapshot payload is missing tensors")
+        if not isinstance(trace, (tuple, list)) or not all(
+            isinstance(value, torch.Tensor) for value in trace
+        ):
+            raise TypeError("execution snapshot trace must be a tensor sequence")
+        return cls(
+            observed=ExternalRegisterState.from_payload(observed),
+            executed=executed,
+            trace=tuple(trace),
+            program_digest=payload.get("program_digest"),
+        )
 
 
 class ExternalSequenceMemory(nn.Module):
@@ -2218,6 +2355,55 @@ class ExternalCapabilityRegisterMachine(nn.Module):
         return torch.where(
             present.unsqueeze(-1), executed, register
         ), next_state, trace
+
+    def read_execute_register_snapshot(
+        self,
+        *,
+        event: torch.Tensor,
+        action: torch.Tensor,
+        outcome: torch.Tensor,
+        intention: IntentEvent,
+        state: ExternalRegisterState,
+        present: torch.Tensor | None = None,
+        instructions: Iterable[ExternalRegisterInstruction] | None = None,
+        basis_slots: Iterable[int | None] | None = None,
+        meta_context: torch.Tensor | None = None,
+        sequence_operator_memory: ExternalSequenceOperatorMemory | None = None,
+        sequence_operator_slot: int | None = None,
+        sequence_operator_route_query: torch.Tensor | None = None,
+        program_digest: str | None = None,
+    ) -> ExternalExecutionSnapshot:
+        """Return one typed observe/execute snapshot without mutating memory."""
+
+        selected = self.instructions if instructions is None else tuple(instructions)
+        executed, observed, trace = self.read_execute_register_trace(
+            event=event,
+            action=action,
+            outcome=outcome,
+            intention=intention,
+            state=state,
+            present=present,
+            instructions=selected,
+            basis_slots=basis_slots,
+            meta_context=meta_context,
+            sequence_operator_memory=sequence_operator_memory,
+            sequence_operator_slot=sequence_operator_slot,
+            sequence_operator_route_query=sequence_operator_route_query,
+        )
+        snapshot = ExternalExecutionSnapshot(
+            observed=observed,
+            executed=executed,
+            trace=trace,
+            program_digest=program_digest,
+        )
+        return snapshot.validate(
+            batch_size=event.shape[0],
+            register_width=self.register_width,
+            context_width=self.context_width,
+            event_width=self.event_width,
+            event_window_size=self.event_window_size,
+            program_length=len(selected),
+        )
 
     def read_execute_register_role_trace(
         self,
