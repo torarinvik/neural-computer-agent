@@ -1,0 +1,216 @@
+{
+  "schema": "neural-computer.external-learned-transition-context-pressure-test.v1",
+  "seed": 69911,
+  "configuration": {
+    "state_width": 8,
+    "intention_width": 4,
+    "context_width": 16,
+    "model_hidden_width": 48,
+    "context_hidden_width": 48,
+    "base_deltas": [
+      -1,
+      1
+    ],
+    "auxiliary_deltas": [
+      -3,
+      3
+    ],
+    "target_deltas": [
+      -2,
+      2
+    ],
+    "context_updates": 500,
+    "base_updates": 1200,
+    "target_updates": 125,
+    "regime_labels_used_by_learner": false,
+    "policy": "none_external_learned_context_model_bank_search_v1"
+  },
+  "gates": {
+    "controller_unchanged": true,
+    "context_encoder_learns": true,
+    "context_views_stable": true,
+    "context_regimes_separable": true,
+    "context_is_automatically_grown": true,
+    "base_model_learns": true,
+    "auxiliary_model_learns": true,
+    "target_model_adapts": true,
+    "target_learns_faster_than_fresh": true,
+    "base_retained": true,
+    "auxiliary_retained": true,
+    "base_slot_byte_stable": true,
+    "auxiliary_slot_byte_stable": true,
+    "wrong_context_control": true,
+    "corruption_control": true,
+    "fresh_control_is_matched": true,
+    "persistence_exact": true
+  },
+  "promoted": true,
+  "context_encoder": {
+    "optimizer_updates": 500,
+    "loss": 4.172324281626061e-07,
+    "pairwise_cosines": [
+      [
+        1.0,
+        -0.48563992977142334,
+        0.6215461492538452
+      ],
+      [
+        -0.48563992977142334,
+        1.0,
+        0.3819427192211151
+      ],
+      [
+        0.6215460896492004,
+        0.3819427490234375,
+        0.9999998807907104
+      ]
+    ],
+    "same_bundle_clean_noisy_cosines": [
+      0.9999465346336365,
+      0.9998538494110107,
+      0.9997150301933289
+    ],
+    "replayed_examples": 0
+  },
+  "base": {
+    "optimizer_updates": 1200,
+    "loss": 8.059755640665855e-11,
+    "retention": {
+      "successes": [
+        true,
+        true,
+        true
+      ],
+      "mastery": 1.0,
+      "predicted_final_positions": [
+        4,
+        0,
+        5
+      ]
+    },
+    "replayed_examples": 14388
+  },
+  "auxiliary": {
+    "optimizer_updates": 1200,
+    "loss": 1.6765708323873696e-06,
+    "retention": {
+      "successes": [
+        true,
+        true
+      ],
+      "mastery": 1.0,
+      "predicted_final_positions": [
+        3,
+        0
+      ]
+    },
+    "replayed_examples": 14388
+  },
+  "target": {
+    "optimizer_updates": 21,
+    "loss": 0.00954474974423647,
+    "prior_slot": 0,
+    "before_adaptation": {
+      "successes": [
+        false,
+        false,
+        true
+      ],
+      "mastery": 0.3333333333333333,
+      "predicted_final_positions": [
+        0,
+        5,
+        5
+      ]
+    },
+    "after_adaptation": {
+      "successes": [
+        true,
+        true,
+        true
+      ],
+      "mastery": 1.0,
+      "predicted_final_positions": [
+        4,
+        0,
+        5
+      ]
+    },
+    "replayed_old_examples": 0,
+    "replayed_current_stream_examples": 240
+  },
+  "fresh_target": {
+    "optimizer_updates": 38,
+    "loss": 0.009689594618976116,
+    "result": {
+      "successes": [
+        true,
+        true,
+        true
+      ],
+      "mastery": 1.0,
+      "predicted_final_positions": [
+        4,
+        0,
+        5
+      ]
+    }
+  },
+  "wrong_context": {
+    "successes": [
+      false,
+      false,
+      true
+    ],
+    "mastery": 0.3333333333333333,
+    "predicted_final_positions": [
+      0,
+      5,
+      5
+    ]
+  },
+  "corrupted_target": {
+    "optimizer_updates": 58,
+    "loss": 0.009959311224520206,
+    "result": {
+      "successes": [
+        false,
+        false,
+        false
+      ],
+      "mastery": 0.0,
+      "predicted_final_positions": [
+        0,
+        5,
+        1
+      ]
+    }
+  },
+  "persisted_target": {
+    "successes": [
+      true,
+      true,
+      true
+    ],
+    "mastery": 1.0,
+    "predicted_final_positions": [
+      4,
+      0,
+      5
+    ]
+  },
+  "accounting": {
+    "context_slots": 3,
+    "controller_parameter_updates": 0,
+    "context_encoder_parameter_updates": 500,
+    "old_base_replay_during_target": 0,
+    "target_current_stream_replay": 240,
+    "target_updates": 21,
+    "fresh_target_updates": 38
+  },
+  "digests": {
+    "context_encoder": "2a654ef8bbdc371556e8526389d455499859df303e04a7ec03e28ddbab3c0b89",
+    "bank": "ce7c6445bc6ea863da3ca95408211ee53548caa074481cb781b5125d0ab8dd2d"
+  },
+  "elapsed_seconds": 12.809211583982687
+}

@@ -50,6 +50,9 @@ EXTERNAL_TRANSITION_EVIDENCE_CALIBRATOR_SCHEMA = (
 EXTERNAL_CONTEXTUAL_EVIDENCE_CALIBRATOR_SCHEMA = (
     "neural-computer.contextual-evidence-calibrator.v1"
 )
+EXTERNAL_TRANSITION_CONTEXT_ENCODER_SCHEMA = (
+    "neural-computer.external-transition-context-encoder.v1"
+)
 EXTERNAL_TRANSITION_MODEL_BANK_SCHEMA = (
     "neural-computer.external-transition-model-bank.v1"
 )
@@ -538,7 +541,31 @@ class ExternalTransitionModelBank(nn.Module):
             matching_tolerance=float(configuration["matching_tolerance"]),
         )
         for values, model_payload in zip(contexts, models, strict=True):
-            index = bank.ensure_context(torch.tensor(values, dtype=torch.float32))
+            context = torch.tensor(values, dtype=torch.float32)
+            _validate_tensor(
+                context,
+                name="transition-model payload context",
+                ndim=1,
+                width=bank.context_width,
+            )
+            if not torch.allclose(
+                torch.linalg.vector_norm(context),
+                torch.ones((), dtype=context.dtype),
+                atol=1e-5,
+                rtol=1e-5,
+            ):
+                raise ValueError("transition-model payload context is not normalized")
+            if bool(torch.linalg.vector_norm(context) <= 1e-12):
+                raise ValueError("transition-model payload context is zero")
+            index = bank.context_count
+            bank._contexts.append(context.clone())
+            bank.models.append(
+                ExternalTransitionModel(
+                    bank.state_width,
+                    bank.intention_width,
+                    hidden_width=bank.hidden_width,
+                )
+            )
             if not isinstance(model_payload, Mapping):
                 raise TypeError("transition-model bank slot is invalid")
             state_payload = model_payload.get("state")
@@ -559,6 +586,214 @@ class ExternalTransitionModelBank(nn.Module):
         if payload.get("sha256") != bank.digest():
             raise ValueError("transition-model bank checksum mismatch")
         return bank
+
+
+class ExternalTransitionContextEncoder(nn.Module):
+    """Encode opaque transition bundles into stable external context keys."""
+
+    schema = EXTERNAL_TRANSITION_CONTEXT_ENCODER_SCHEMA
+
+    def __init__(
+        self,
+        state_width: int,
+        intention_width: int,
+        *,
+        hidden_width: int = 64,
+        context_width: int = 32,
+    ) -> None:
+        super().__init__()
+        if min(state_width, intention_width, hidden_width, context_width) < 1:
+            raise ValueError("transition-context dimensions must be positive")
+        self.state_width = int(state_width)
+        self.intention_width = int(intention_width)
+        self.hidden_width = int(hidden_width)
+        self.context_width = int(context_width)
+        token_width = self.state_width * 2 + self.intention_width + 1
+        self.token_encoder = nn.Sequential(
+            nn.Linear(token_width, self.hidden_width),
+            nn.GELU(),
+        )
+        self.recurrent = nn.GRU(
+            self.hidden_width,
+            self.hidden_width,
+            batch_first=True,
+        )
+        self.context_projection = nn.Linear(
+            self.hidden_width,
+            self.context_width,
+        )
+
+    def configuration(self) -> dict[str, int | str]:
+        return {
+            "schema": self.schema,
+            "state_width": self.state_width,
+            "intention_width": self.intention_width,
+            "hidden_width": self.hidden_width,
+            "context_width": self.context_width,
+            "input": "opaque_state_intention_next_state_confidence_v1",
+            "training": "paired_noisy_transition_view_contrastive_v1",
+            "inference": "read_only_context_key_v1",
+        }
+
+    def _validate_inputs(
+        self,
+        state: torch.Tensor,
+        intention: torch.Tensor,
+        next_state: torch.Tensor,
+        confidence: torch.Tensor | None,
+    ) -> torch.Tensor:
+        for name, value, width in (
+            ("context state", state, self.state_width),
+            ("context intention", intention, self.intention_width),
+            ("context next state", next_state, self.state_width),
+        ):
+            _validate_tensor(value, name=name, ndim=3, width=width)
+        if state.shape != next_state.shape:
+            raise ValueError("context state and next-state shapes differ")
+        if state.shape[:2] != intention.shape[:2]:
+            raise ValueError("context state and intention batches differ")
+        if confidence is None:
+            return torch.ones(
+                state.shape[:2],
+                device=state.device,
+                dtype=state.dtype,
+            )
+        if confidence.shape not in (state.shape[:2], (*state.shape[:2], 1)):
+            raise ValueError("context confidence must match batch and time")
+        values = confidence.reshape(state.shape[0], state.shape[1]).to(
+            device=state.device,
+            dtype=state.dtype,
+        )
+        if not bool(torch.isfinite(values).all()) or bool(torch.any(values < 0)):
+            raise ValueError("context confidence must be finite and non-negative")
+        return values
+
+    def forward(
+        self,
+        state: torch.Tensor,
+        intention: torch.Tensor,
+        next_state: torch.Tensor,
+        confidence: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        confidence_values = self._validate_inputs(
+            state,
+            intention,
+            next_state,
+            confidence,
+        )
+        tokens = torch.cat(
+            (
+                state,
+                intention,
+                next_state,
+                confidence_values.unsqueeze(-1),
+            ),
+            dim=-1,
+        )
+        sequence, _hidden = self.recurrent(self.token_encoder(tokens))
+        return torch.nn.functional.normalize(
+            self.context_projection(sequence[:, -1]),
+            dim=-1,
+        )
+
+    def encode_observation(
+        self,
+        observation: ExternalTransitionObservation,
+    ) -> torch.Tensor:
+        observation.validate(
+            state_width=self.state_width,
+            intention_width=self.intention_width,
+        )
+        confidence = observation.confidence
+        return self(
+            observation.state.unsqueeze(0),
+            observation.intention.unsqueeze(0),
+            observation.next_state.unsqueeze(0),
+            None if confidence is None else confidence.unsqueeze(0),
+        )[0]
+
+    @staticmethod
+    def contrastive_loss(
+        left_context: torch.Tensor,
+        right_context: torch.Tensor,
+        *,
+        temperature: float = 0.1,
+    ) -> torch.Tensor:
+        if left_context.ndim != 2 or right_context.shape != left_context.shape:
+            raise ValueError("context views must have shape [batch, context_width]")
+        if left_context.shape[0] < 2:
+            raise ValueError("context contrastive loss needs at least two views")
+        if temperature <= 0.0:
+            raise ValueError("context contrastive temperature must be positive")
+        if not bool(torch.isfinite(left_context).all()) or not bool(
+            torch.isfinite(right_context).all()
+        ):
+            raise ValueError("context views must be finite")
+        left = torch.nn.functional.normalize(left_context, dim=-1)
+        right = torch.nn.functional.normalize(right_context, dim=-1)
+        logits = left @ right.transpose(0, 1) / temperature
+        labels = torch.arange(left.shape[0], device=left.device)
+        return 0.5 * (
+            nn.functional.cross_entropy(logits, labels)
+            + nn.functional.cross_entropy(logits.transpose(0, 1), labels)
+        )
+
+    def state_payload(self) -> dict[str, Any]:
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "state": {
+                name: value.detach().cpu().clone()
+                for name, value in self.state_dict().items()
+            },
+            "sha256": self.digest(),
+        }
+
+    def digest(self) -> str:
+        digest = hashlib.sha256()
+        digest.update(self.schema.encode("utf-8"))
+        for name, value in sorted(self.state_dict().items()):
+            detached = value.detach().cpu().contiguous()
+            digest.update(name.encode("utf-8"))
+            digest.update(str(detached.dtype).encode("utf-8"))
+            digest.update(repr(tuple(detached.shape)).encode("utf-8"))
+            digest.update(detached.numpy().tobytes())
+        return digest.hexdigest()
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, Any],
+    ) -> ExternalTransitionContextEncoder:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported transition-context encoder payload")
+        configuration = payload.get("configuration")
+        state = payload.get("state")
+        if not isinstance(configuration, Mapping) or not isinstance(state, Mapping):
+            raise TypeError("transition-context encoder payload is incomplete")
+        encoder = cls(
+            int(configuration["state_width"]),
+            int(configuration["intention_width"]),
+            hidden_width=int(configuration["hidden_width"]),
+            context_width=int(configuration["context_width"]),
+        )
+        current = encoder.state_dict()
+        if tuple(state) != tuple(current):
+            raise ValueError("transition-context encoder state names differ")
+        normalized: dict[str, torch.Tensor] = {}
+        for name, expected in current.items():
+            value = state[name]
+            if not isinstance(value, torch.Tensor):
+                raise TypeError("transition-context encoder state is not a tensor")
+            if value.shape != expected.shape or value.dtype != expected.dtype:
+                raise ValueError("transition-context encoder state is incompatible")
+            if not bool(torch.isfinite(value).all()):
+                raise ValueError("transition-context encoder state is not finite")
+            normalized[name] = value.detach().clone()
+        encoder.load_state_dict(normalized, strict=True)
+        if payload.get("sha256") != encoder.digest():
+            raise ValueError("transition-context encoder checksum mismatch")
+        return encoder
 
 
 class ExternalGoalEvaluator(nn.Module):
@@ -2037,6 +2272,7 @@ __all__ = [
     "EXTERNAL_GOAL_EVALUATOR_SCHEMA",
     "EXTERNAL_MODEL_PLANNER_SCHEMA",
     "EXTERNAL_ONLINE_CONTEXT_RESOLVER_SCHEMA",
+    "EXTERNAL_TRANSITION_CONTEXT_ENCODER_SCHEMA",
     "EXTERNAL_TRANSITION_EVIDENCE_CALIBRATOR_SCHEMA",
     "EXTERNAL_TRANSITION_MEMORY_SCHEMA",
     "EXTERNAL_TRANSITION_MODEL_BANK_SCHEMA",
@@ -2049,6 +2285,7 @@ __all__ = [
     "ExternalModelBasedPlanner",
     "ExternalOnlineContextAddressResolver",
     "ExternalOnlineContextResolution",
+    "ExternalTransitionContextEncoder",
     "ExternalTransitionEvidenceCalibrator",
     "ExternalTransitionEvidenceEvaluator",
     "ExternalTransitionMemory",

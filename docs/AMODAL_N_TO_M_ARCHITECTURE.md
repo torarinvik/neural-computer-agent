@@ -4581,3 +4581,33 @@ append-only. It is not yet general continual learning. The next bottlenecks
 are learned context formation, alternating-regime stress, and model-slot
 consolidation/compression. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_transition_model_bank_continual_promoted_2026-08-09/`.
+
+## Learned opaque transition context formation (2026-08-09)
+
+The next two-seed rung replaces supplied context vectors with
+`ExternalTransitionContextEncoder`. The encoder consumes only opaque state,
+intention, next-state, and generic confidence tensors. It is trained outside
+the controller with a paired noisy-view contrastive objective: the same
+transition bundle should produce a stable key, while different bundles remain
+separable. A held-out target dynamics bundle then grows a new
+`ExternalTransitionModelBank` slot from the learned key; no regime label, task
+ID, or privileged simulator field is passed to the learner.
+
+Same-bundle clean/noisy cosine similarity was at least `0.9992` in both seeds,
+and all context-formation, automatic-slot-growth, frozen-controller, prior
+retention, wrong-context, corruption, fresh-model, byte-stability, and
+persistence gates passed. The held-out target reached `1.0` measured mastery
+after 21 and 19 optimizer updates, versus 38 and 26 for matched fresh models.
+Both earlier factual slots retained `1.0` measured mastery; old prior examples
+replayed during target adaptation were zero. The context encoder itself used
+500 external optimizer updates and its training views are accounted for
+separately.
+
+This promotes learned context formation for a finite transition bundle. It
+does not establish online identity formation over an alternating unbounded
+stream: the encoder is trained before the held-out target is evaluated, the
+model bank is append-only, current target examples are reused, and there is no
+slot consolidation or compression. The next bottleneck is therefore online
+context identity and capacity management under alternating regimes. Evidence
+is archived in
+`session_records/sequence_working_memory_2026-08-02/external_learned_transition_context_promoted_2026-08-09/`.

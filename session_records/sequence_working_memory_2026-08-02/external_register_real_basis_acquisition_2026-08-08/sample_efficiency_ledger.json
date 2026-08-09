@@ -1337,6 +1337,29 @@
       "persistence_exact": [true, true],
       "controls": "matched fresh model, early-stop threshold, source retention, source-slot digest, wrong-context, corruption, persistence, frozen controller, and zero old-source replay passed",
       "decision": "promote bounded policy-free model-bank acquisition and its replicated speed signal; next learn context formation and test alternating regimes with capacity growth, consolidation, and compression"
+    },
+    {
+      "experiment": "external_learned_transition_context",
+      "date": "2026-08-09",
+      "seeds": [69911, 69912],
+      "claim": "An independently trained external context encoder forms stable opaque keys from paired noisy transition views, automatically grows a new model-bank slot for held-out dynamics without regime labels, and preserves earlier factual slots while the controller remains frozen.",
+      "module": "ExternalTransitionContextEncoder + ExternalTransitionModelBank + ExternalModelBasedPlanner",
+      "context_optimizer_updates_per_seed": 500,
+      "target_optimizer_updates_per_seed": [21, 19],
+      "fresh_target_updates_per_seed": [38, 26],
+      "target_mastery": [1.0, 1.0],
+      "fresh_target_mastery": [1.0, 1.0],
+      "base_retention": [1.0, 1.0],
+      "auxiliary_retention": [1.0, 1.0],
+      "same_bundle_clean_noisy_cosine_min": [0.9997150301933285, 0.9992471933364868],
+      "old_prior_replay_during_target": [0, 0],
+      "controller_parameter_updates": [0, 0],
+      "regime_labels_used_by_learner": [false, false],
+      "wrong_context_control": [true, true],
+      "corruption_control": [true, true],
+      "persistence_exact": [true, true],
+      "controls": "learned context loss, paired-view stability, regime separation, automatic slot growth, frozen controller, prior retention, prior-slot byte stability, wrong-context, corruption, matched fresh model, persistence, and zero old-prior replay passed",
+      "decision": "promote bounded learned context formation; next test online identity under alternating regimes and capacity pressure, then consolidation and compression"
     }
   ]
 }

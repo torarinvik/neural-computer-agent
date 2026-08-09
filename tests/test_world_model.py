@@ -6,12 +6,49 @@ from neural_computer import (
     ExternalGoalEvaluator,
     ExternalModelBasedPlanner,
     ExternalOnlineContextAddressResolver,
+    ExternalTransitionContextEncoder,
     ExternalTransitionEvidenceEvaluator,
     ExternalTransitionMemory,
     ExternalTransitionModel,
     ExternalTransitionModelBank,
     ExternalTransitionObservation,
 )
+
+
+def test_transition_context_encoder_is_opaque_normalized_and_persistent() -> None:
+    torch.manual_seed(1200)
+    encoder = ExternalTransitionContextEncoder(
+        3,
+        2,
+        hidden_width=8,
+        context_width=5,
+    )
+    observation = ExternalTransitionObservation(
+        state=torch.randn(4, 3),
+        intention=torch.randn(4, 2),
+        next_state=torch.randn(4, 3),
+        confidence=torch.ones(4),
+    )
+
+    context = encoder.encode_observation(observation)
+    batched = encoder(
+        observation.state.unsqueeze(0),
+        observation.intention.unsqueeze(0),
+        observation.next_state.unsqueeze(0),
+        observation.confidence.unsqueeze(0),
+    )
+    assert context.shape == (5,)
+    assert torch.allclose(torch.linalg.vector_norm(context), torch.ones(()))
+    assert torch.allclose(context, batched[0])
+
+    left = torch.randn(3, 5)
+    right = torch.randn(3, 5)
+    assert torch.isfinite(encoder.contrastive_loss(left, right))
+
+    restored = ExternalTransitionContextEncoder.from_payload(encoder.state_payload())
+    assert restored.configuration() == encoder.configuration()
+    assert restored.digest() == encoder.digest()
+    assert torch.equal(restored.encode_observation(observation), context)
 
 
 def test_transition_model_learns_from_opaque_observations_without_controller_state() -> None:
@@ -170,6 +207,20 @@ def test_transition_model_bank_isolates_updates_and_round_trips() -> None:
     else:
         raise AssertionError("unknown model context must not mutate the bank")
     assert bank.context_count == count_before_unknown
+
+
+def test_transition_model_bank_round_trip_preserves_learned_context_bytes() -> None:
+    bank = ExternalTransitionModelBank(2, 2, 3, hidden_width=8)
+    context = torch.nn.functional.normalize(
+        torch.tensor([0.1234567, -0.7654321, 0.2345678]),
+        dim=0,
+    )
+    bank.ensure_context(context)
+
+    restored = ExternalTransitionModelBank.from_payload(bank.payload())
+
+    assert restored.digest() == bank.digest()
+    assert torch.equal(restored._contexts[0], bank._contexts[0])
 
 
 def test_transition_observation_rejects_mismatched_batch_and_nonfinite_values() -> None:
