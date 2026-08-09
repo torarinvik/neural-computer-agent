@@ -914,6 +914,13 @@ protected continual-memory signal so far, but it is only one seed and one
 ordering; fresh transfer remained negative and no promotion gate was met.
 The next rung is a matched second seed plus additional orderings.
 
+The matched seed `69317` run across two orderings reproduced exact source
+retention but not full sequence mastery: floors reached `0.7344` and `0.7656`
+at update 64, with source floors `0.9453–1.0`. Fresh transfer remained
+negative. This supports a reproducible protected-meta learning signal, but
+the mechanism is not promoted; the current bottleneck is order/seed
+generalization and useful transfer to fresh procedures.
+
 ## Protected bounded-meta sequence calibration — short rung under-trained
 
 The sequence-calibration optimizer now correctly freezes the entire machine

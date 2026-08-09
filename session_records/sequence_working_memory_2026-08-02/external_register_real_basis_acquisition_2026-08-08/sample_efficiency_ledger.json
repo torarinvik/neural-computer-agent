@@ -529,6 +529,23 @@
       "retention_deltas": "exact zero",
       "fresh_transfer": "negative; fresh accuracy 0.375",
       "decision": "retain as the strongest current continual-memory signal; do not promote until replicated across seeds and orderings"
+    },
+    {
+      "experiment": "protected_bounded_meta_persisted_source_sequence64_seed69317_programs2",
+      "date": "2026-08-09",
+      "seeds": [69317],
+      "claim": "The protected bounded-meta sequence-learning signal replicates across a second seed and multiple orderings without source forgetting.",
+      "operator_mode": "factorized_protected_bounded_meta",
+      "source_checkpoint": "artifacts/checkpoints/protected_bounded_meta_source_seed69317.pt",
+      "sequence_calibration_updates": 64,
+      "sequence_calibration_trainable_surface": "operator_meta_residual_plus_temporary_decoders",
+      "composition_program_count": 2,
+      "replayed_examples": 0,
+      "source_mastery": "passed; source floors 0.9453125–1.0",
+      "sequence_progress": "ordering floors 0.734375 and 0.765625 at update 64",
+      "retention_deltas": "exact zero",
+      "fresh_transfer": "negative on both orderings",
+      "decision": "retain as replicated learning signal; reject promotion until sequence mastery and useful transfer generalize across seeds/orderings"
     }
   ]
 }
