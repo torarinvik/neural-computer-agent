@@ -1,0 +1,98 @@
+{
+  "schema": "neural-computer.external-program-compounding-pressure-test.v1",
+  "claim_boundary": "A frozen-controller external program router can retain a mastered route state while acquiring an added opaque program at lower accounted cost than a fresh route state; this is not arbitrary program induction or general continual learning.",
+  "seed": 2401,
+  "configuration": {
+    "event_width": 4,
+    "phases": 2,
+    "source_programs": 2,
+    "program_capacity": 3,
+    "source_episodes": 2000,
+    "target_episodes": 7000,
+    "evaluation_episodes": 300,
+    "probe_episodes_per_candidate": 64,
+    "mastery_threshold": 0.8,
+    "policy": "external_outcome_program_compounding_v1"
+  },
+  "gates": {
+    "controller_frozen": true,
+    "executor_frozen": true,
+    "program_memory_frozen": true,
+    "source_mastery": true,
+    "warm_target_mastery": true,
+    "fresh_target_mastery": true,
+    "warm_beats_fresh": true,
+    "old_external_cell_retained": true,
+    "shuffled_outcome_control_rejected": true,
+    "source_state_unchanged_during_selection": true,
+    "new_program_present_in_target": true,
+    "zero_old_regime_replay": true
+  },
+  "promoted": true,
+  "source": {
+    "accuracy": 0.9766666666666667,
+    "outcome_mean": 0.640500009059906,
+    "state_digest": "6784ee0f965876db6044ad6892f781eab2bd83307654862bffbdd11e455755c1"
+  },
+  "prior_selection": {
+    "schema": "neural-computer.external-outcome-program-prior-selection.v1",
+    "selected_initialization": "transfer",
+    "source_active_programs": 2,
+    "destination_capacity": 3,
+    "destination_active_programs": 3,
+    "transfer_probe_score": 0.2366666666666667,
+    "fresh_probe_score": 0.5466666666666666,
+    "probe_updates_per_candidate": 64,
+    "source_state_digest": "6784ee0f965876db6044ad6892f781eab2bd83307654862bffbdd11e455755c1",
+    "selected_state_digest": "ba8d8fa275eeb8386bfa7bc72a52e4731975997a23f25748a24f231eae6f9931",
+    "reason": "transferred route state passed the factual challenger"
+  },
+  "warm": {
+    "target_accuracy": 0.94,
+    "mutable_target_cell_source_probe": 0.7,
+    "continuation_updates": 6936,
+    "accounted_updates": 7064,
+    "stable_continuation_episodes": 500,
+    "stable_target_cost_including_probe": 628
+  },
+  "fresh": {
+    "target_accuracy": 0.9433333333333334,
+    "updates": 7000,
+    "stable_target_episodes": 1000,
+    "stable_target_cost": 1000
+  },
+  "retention": {
+    "old_external_cell_accuracy_after_target_learning": 0.9766666666666667
+  },
+  "shuffled_outcome_control": {
+    "target_accuracy": 0.25333333333333335,
+    "updates": 7000
+  },
+  "accounting": {
+    "unique_verifier_bits": 9000,
+    "unique_logical_lifetimes": 9000,
+    "warm_model_state_updates": 9064,
+    "fresh_model_state_updates": 9000,
+    "shadow_prior_probe_updates": 128,
+    "old_regime_replay_during_target_adaptation": 0,
+    "controller_optimizer_updates": 0,
+    "interpreter_optimizer_updates": 900,
+    "stable_bits_to_threshold": {
+      "warm": 2564,
+      "fresh": 3000
+    },
+    "warm_stable_model_updates": 2628,
+    "fresh_stable_model_updates": 3000,
+    "warm_stable_unique_verifier_bits": 2564,
+    "fresh_stable_unique_verifier_bits": 3000,
+    "warm_stable_target_cost": 628,
+    "fresh_stable_target_cost": 1000,
+    "transfer_ratio_against_fresh_target": 1.5923566878980893
+  },
+  "digests": {
+    "controller": "08e27a6bc9d90d36514201199e03b404423098d12753726ae691dc48d8a94367",
+    "executor": "68fa6acd65f2a567775034dc2dccc0f5bef2d54cce29fec0e91532ac9cc0e5b5",
+    "program_memory": "3a62ce69a2ad7c0210a84315003f9afa49b60d758bea4e60e6707a25930a128e"
+  },
+  "elapsed_seconds": 65.65188362501794
+}

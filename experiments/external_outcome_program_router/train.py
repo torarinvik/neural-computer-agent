@@ -258,6 +258,7 @@ def _train_stream(
     eval_every: int,
     tolerance: float,
     feedback_override: torch.Tensor | None = None,
+    protected_programs: int | None = None,
 ) -> tuple[
     ExternalOutcomeProgramRouterState,
     object,
@@ -321,6 +322,7 @@ def _train_stream(
                 feedback,
                 terminal=torch.ones(1, dtype=torch.bool),
                 baseline_override=baseline,
+                protected_programs=protected_programs,
             )
             value_state = value_baseline.apply_feedback(
                 value_state,

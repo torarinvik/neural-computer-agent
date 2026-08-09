@@ -11,6 +11,7 @@ from neural_computer import (
     ExternalOutcomeCreditPlasticity,
     ExternalOutcomeCreditState,
     ExternalOutcomeProgramCapacityGrowthReceipt,
+    ExternalOutcomeProgramPriorSelectionReceipt,
     ExternalOutcomeProgramRouter,
     ExternalOutcomeProgramRouterState,
     ExternalOutcomeValueBaseline,
@@ -272,6 +273,88 @@ def test_external_outcome_program_router_growth_rejection_does_not_mutate_capaci
     assert router.program_capacity == 2
     assert unchanged is state
     assert torch.equal(unchanged.credit.policy, old_policy)
+
+
+def test_external_outcome_program_router_prior_challenger_is_copy_on_write() -> None:
+    router = ExternalOutcomeProgramRouter(
+        feature_width=2,
+        program_capacity=2,
+        initial_programs=2,
+    )
+    state = router.record_decision(
+        router.initial_state(1),
+        torch.tensor([[1.0, 0.0]]),
+        torch.tensor([1]),
+        torch.tensor([0.5]),
+    )
+    state = router.apply_feedback(
+        state,
+        torch.ones(1),
+        terminal=torch.ones(1, dtype=torch.bool),
+    )
+    source_policy = state.credit.policy.clone()
+    source_capacity = router.program_capacity
+
+    def probe(
+        transfer_router: ExternalOutcomeProgramRouter,
+        transfer_state: ExternalOutcomeProgramRouterState,
+        fresh_router: ExternalOutcomeProgramRouter,
+        fresh_state: ExternalOutcomeProgramRouterState,
+    ) -> tuple[
+        float,
+        float,
+        ExternalOutcomeProgramRouterState,
+        ExternalOutcomeProgramRouterState,
+    ]:
+        del transfer_router, fresh_router
+        return 0.25, 0.75, transfer_state, fresh_state
+
+    receipt, selected_router, selected_state = router.select_verified_transfer_prior(
+        state,
+        3,
+        3,
+        probe,
+        probe_updates=4,
+    )
+
+    assert isinstance(receipt, ExternalOutcomeProgramPriorSelectionReceipt)
+    assert receipt.selected_initialization == "transfer"
+    assert receipt.source_active_programs == 2
+    assert receipt.destination_capacity == 3
+    assert receipt.destination_active_programs == 3
+    assert receipt.probe_updates == 4
+    assert selected_router.program_capacity == 3
+    assert selected_state.active_programs == 3
+    assert router.program_capacity == source_capacity
+    assert torch.equal(state.credit.policy, source_policy)
+    assert receipt.source_state_digest == router._state_digest(state)
+    assert receipt.selected_state_digest == selected_router._state_digest(selected_state)
+
+
+def test_external_outcome_program_router_protected_prefix_is_retention_safe() -> None:
+    router = ExternalOutcomeProgramRouter(
+        feature_width=2,
+        program_capacity=3,
+        initial_programs=3,
+        initial_learning_rate=0.5,
+        initial_trace_decay=0.0,
+    )
+    state = router.record_decision(
+        router.initial_state(1),
+        torch.tensor([[1.0, 0.0]]),
+        torch.tensor([2]),
+        torch.tensor([0.5]),
+    )
+    old_policy = state.credit.policy.clone()
+    updated = router.apply_feedback(
+        state,
+        torch.ones(1),
+        terminal=torch.ones(1, dtype=torch.bool),
+        protected_programs=2,
+    )
+
+    assert torch.equal(updated.credit.policy[..., :2], old_policy[..., :2])
+    assert not torch.equal(updated.credit.policy[..., 2:], old_policy[..., 2:])
 
 
 def test_external_outcome_value_baseline_learns_and_round_trips() -> None:

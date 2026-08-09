@@ -5618,6 +5618,33 @@ experiment used zero optimizer updates, zero replay, and retained zero raw
 feature rows. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_program_capacity_growth_promoted_2026-08-09/`.
 
+## Stable-prefix external program-cell compounding (2026-08-10)
+
+The external program boundary now has a replicated positive-transfer result.
+`experiments/external_program_compounding/` learns two opaque executable
+program routes into one external source cell, then creates a target cell with a
+third program. A copy-on-write challenger gives transferred and fresh target
+route states the same `64` current-target rows; the selected cell continues
+without replaying source rows. The old source cell remains a separate,
+unchanged external memory object.
+
+Using the required stable-prefix metric, all three seeds reached target
+mastery in `628` accounted target router updates when warm, versus `1,000`
+for matched fresh cells (`1.59x` target acquisition ratio). Old-cell retention
+was `97.67%`, `95.67%`, and `98.67%`. The controller, register interpreter,
+and program artifacts remained frozen; shuffled outcomes failed; the source
+state digest was unchanged by challenger selection; and controller optimizer
+updates were zero. The full source-plus-target stable totals were `2,628`
+versus `3,000` updates per seed.
+
+This promotes a bounded external program-cell compounding mechanism, not
+general continual learning. The source and target novelty support is still
+deliberately separable, and an upstream learned context/address path is not
+yet demonstrated. The next bottleneck is learned routing among multiple
+retained cells under overlapping or drifting evidence. Evidence is archived
+in
+`session_records/sequence_working_memory_2026-08-02/external_program_compounding_promoted_2026-08-10/`.
+
 This is a promoted bounded external address-space-growth primitive. It does
 not establish unrestricted memory growth, arbitrary program induction,
 positive transfer against a fresh learner, or general continual learning.

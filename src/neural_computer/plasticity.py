@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import math
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 
@@ -35,6 +36,9 @@ EXTERNAL_OUTCOME_PROGRAM_ROUTER_SCHEMA = (
 )
 EXTERNAL_OUTCOME_PROGRAM_CAPACITY_GROWTH_SCHEMA = (
     "neural-computer.external-outcome-program-capacity-growth.v1"
+)
+EXTERNAL_OUTCOME_PROGRAM_PRIOR_SELECTION_SCHEMA = (
+    "neural-computer.external-outcome-program-prior-selection.v1"
 )
 
 
@@ -750,6 +754,62 @@ class ExternalOutcomeProgramCapacityGrowthReceipt:
         return self
 
 
+@dataclass(frozen=True)
+class ExternalOutcomeProgramPriorSelectionReceipt:
+    """Auditable choice between transferred and fresh external route state."""
+
+    selected_initialization: str
+    source_active_programs: int
+    destination_capacity: int
+    destination_active_programs: int
+    transfer_probe_score: float
+    fresh_probe_score: float
+    probe_updates: int
+    source_state_digest: str
+    selected_state_digest: str
+    reason: str
+    schema: str = EXTERNAL_OUTCOME_PROGRAM_PRIOR_SELECTION_SCHEMA
+
+    def validate(self) -> ExternalOutcomeProgramPriorSelectionReceipt:
+        if self.schema != EXTERNAL_OUTCOME_PROGRAM_PRIOR_SELECTION_SCHEMA:
+            raise ValueError("unsupported program prior-selection schema")
+        if self.selected_initialization not in {"transfer", "fresh"}:
+            raise ValueError("program prior selection is invalid")
+        for name, value in (
+            ("source_active_programs", self.source_active_programs),
+            ("destination_capacity", self.destination_capacity),
+            ("destination_active_programs", self.destination_active_programs),
+        ):
+            if (
+                not isinstance(value, int)
+                or isinstance(value, bool)
+                or value < 1
+            ):
+                raise ValueError(f"program prior {name} is invalid")
+        if self.destination_active_programs > self.destination_capacity:
+            raise ValueError("program prior active count exceeds capacity")
+        for name, value in (
+            ("transfer_probe_score", self.transfer_probe_score),
+            ("fresh_probe_score", self.fresh_probe_score),
+        ):
+            if not isinstance(value, (float, int)) or not math.isfinite(float(value)):
+                raise ValueError(f"program prior {name} is invalid")
+        if (
+            not isinstance(self.probe_updates, int)
+            or isinstance(self.probe_updates, bool)
+            or self.probe_updates < 0
+        ):
+            raise ValueError("program prior probe updates are invalid")
+        for name, value in (
+            ("source_state_digest", self.source_state_digest),
+            ("selected_state_digest", self.selected_state_digest),
+            ("reason", self.reason),
+        ):
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"program prior {name} is missing")
+        return self
+
+
 class ExternalOutcomeProgramRouter(nn.Module):
     """Route delayed scalar credit to opaque executable program choices.
 
@@ -1002,6 +1062,130 @@ class ExternalOutcomeProgramRouter(nn.Module):
         )
         return receipt.validate(), candidate_state
 
+    def select_verified_transfer_prior(
+        self,
+        state: ExternalOutcomeProgramRouterState,
+        destination_capacity: int,
+        destination_active_programs: int,
+        probe: Callable[
+            [
+                ExternalOutcomeProgramRouter,
+                ExternalOutcomeProgramRouterState,
+                ExternalOutcomeProgramRouter,
+                ExternalOutcomeProgramRouterState,
+            ],
+            tuple[
+                float,
+                float,
+                ExternalOutcomeProgramRouterState,
+                ExternalOutcomeProgramRouterState,
+            ],
+        ],
+        *,
+        probe_updates: int = 0,
+    ) -> tuple[
+        ExternalOutcomeProgramPriorSelectionReceipt,
+        ExternalOutcomeProgramRouter,
+        ExternalOutcomeProgramRouterState,
+    ]:
+        """Choose transferred or fresh route state through isolated candidates.
+
+        The live router and state are never passed to ``probe``.  The transfer
+        candidate preserves the source external state and grows its address
+        space when requested; the fresh candidate starts with empty external
+        state under the same frozen plasticity rule.  The caller owns bounded
+        probe updates and returns both scores and post-probe states.  Only the
+        selected candidate is returned for an explicit append/commit.
+        """
+
+        self._validate_state(state)
+        if not isinstance(destination_capacity, int) or isinstance(
+            destination_capacity, bool
+        ):
+            raise TypeError("destination program capacity must be an integer")
+        if destination_capacity < self.program_capacity:
+            raise ValueError("destination program capacity cannot shrink")
+        if not isinstance(destination_active_programs, int) or isinstance(
+            destination_active_programs, bool
+        ):
+            raise TypeError("destination active programs must be an integer")
+        if not self.initial_programs <= destination_active_programs <= destination_capacity:
+            raise ValueError("destination active programs are invalid")
+        if destination_active_programs < state.active_programs:
+            raise ValueError("destination active programs cannot remove source routes")
+        if not callable(probe):
+            raise TypeError("program prior probe must be callable")
+        if not isinstance(probe_updates, int) or isinstance(probe_updates, bool):
+            raise TypeError("program prior probe updates must be an integer")
+        if probe_updates < 0:
+            raise ValueError("program prior probe updates cannot be negative")
+
+        source_digest = self._state_digest(state)
+        transfer = copy.deepcopy(self)
+        if destination_capacity > transfer.program_capacity:
+            transfer._set_capacity(destination_capacity)
+            transfer_state = transfer._expanded_state(state, destination_capacity)
+        else:
+            transfer_state = copy.deepcopy(state)
+        while transfer_state.active_programs < destination_active_programs:
+            transfer_state = transfer.append_program(transfer_state)
+
+        fresh = copy.deepcopy(self)
+        if destination_capacity > fresh.program_capacity:
+            fresh._set_capacity(destination_capacity)
+        batch_size = state.credit.policy.shape[0]
+        fresh_state = ExternalOutcomeProgramRouterState(
+            credit=fresh.credit_rule.initial_state(
+                batch_size,
+                device=state.credit.policy.device,
+                dtype=state.credit.policy.dtype,
+            ),
+            active_programs=destination_active_programs,
+        )
+        fresh._validate_state(fresh_state)
+        scores = probe(transfer, transfer_state, fresh, fresh_state)
+        if not isinstance(scores, (tuple, list)) or len(scores) != 4:
+            raise TypeError(
+                "program prior probe must return two scores and two states"
+            )
+        transfer_score, fresh_score, transfer_state, fresh_state = scores
+        transfer._validate_state(transfer_state)
+        fresh._validate_state(fresh_state)
+        if not all(
+            isinstance(value, (float, int))
+            and math.isfinite(float(value))
+            for value in (transfer_score, fresh_score)
+        ):
+            raise ValueError("program prior probe scores must be finite")
+        if self._state_digest(state) != source_digest:
+            raise RuntimeError("program prior probe mutated the source state")
+        selected_initialization = (
+            "transfer" if float(transfer_score) <= float(fresh_score) else "fresh"
+        )
+        selected_router, selected_state = (
+            (transfer, transfer_state)
+            if selected_initialization == "transfer"
+            else (fresh, fresh_state)
+        )
+        selected_digest = selected_router._state_digest(selected_state)
+        receipt = ExternalOutcomeProgramPriorSelectionReceipt(
+            selected_initialization=selected_initialization,
+            source_active_programs=state.active_programs,
+            destination_capacity=destination_capacity,
+            destination_active_programs=destination_active_programs,
+            transfer_probe_score=float(transfer_score),
+            fresh_probe_score=float(fresh_score),
+            probe_updates=probe_updates,
+            source_state_digest=source_digest,
+            selected_state_digest=selected_digest,
+            reason=(
+                "transferred route state passed the factual challenger"
+                if selected_initialization == "transfer"
+                else "fresh route state won the factual challenger"
+            ),
+        )
+        return receipt.validate(), selected_router, selected_state
+
     def logits(
         self,
         state: ExternalOutcomeProgramRouterState,
@@ -1065,7 +1249,15 @@ class ExternalOutcomeProgramRouter(nn.Module):
         present: torch.Tensor | None = None,
         terminal: torch.Tensor | None = None,
         baseline_override: torch.Tensor | None = None,
+        protected_programs: int | None = None,
     ) -> ExternalOutcomeProgramRouterState:
+        self._validate_state(state)
+        if protected_programs is not None and (
+            not isinstance(protected_programs, int)
+            or isinstance(protected_programs, bool)
+            or not 0 <= protected_programs <= state.active_programs
+        ):
+            raise ValueError("protected program prefix is invalid")
         next_state = ExternalOutcomeProgramRouterState(
             credit=self.credit_rule.apply_feedback(
                 state.credit,
@@ -1076,6 +1268,25 @@ class ExternalOutcomeProgramRouter(nn.Module):
             ),
             active_programs=state.active_programs,
         )
+        if protected_programs:
+            policy = next_state.credit.policy.clone()
+            eligibility = next_state.credit.eligibility.clone()
+            policy[..., :protected_programs] = state.credit.policy[
+                ..., :protected_programs
+            ]
+            eligibility[..., :protected_programs] = state.credit.eligibility[
+                ..., :protected_programs
+            ]
+            next_state = ExternalOutcomeProgramRouterState(
+                credit=ExternalOutcomeCreditState(
+                    policy=policy,
+                    eligibility=eligibility,
+                    baseline=next_state.credit.baseline,
+                    decisions=next_state.credit.decisions,
+                    feedbacks=next_state.credit.feedbacks,
+                ),
+                active_programs=next_state.active_programs,
+            )
         self._validate_state(next_state)
         return next_state
 

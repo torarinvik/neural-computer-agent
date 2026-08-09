@@ -2470,3 +2470,15 @@ seed was slightly worse, so the effect was rejected for promotion. This
 establishes a useful anti-negative-transfer mechanism, not general continual
 learning. The reports and ledger are in
 `session_records/sequence_working_memory_2026-08-02/external_transition_model_disjoint_compounding_rejected_2026-08-09/`.
+
+### Stable-prefix external program-cell compounding (2026-08-10)
+
+The external program memory now has a replicated positive-transfer rung. A
+source cell mastering two opaque programs is retained while a target cell
+adds a third. Across three seeds, warm acquisition reached a stable threshold
+in **628** accounted route updates versus **1,000** fresh, a **1.59x** target
+acquisition ratio; old-cell retention was **95.67–98.67%**. The controller,
+interpreter, and artifacts stayed frozen, and shuffled outcomes failed. This
+is bounded program-cell compounding, not general program induction or
+unrestricted continual learning. See
+`session_records/sequence_working_memory_2026-08-02/external_program_compounding_promoted_2026-08-10/`.
