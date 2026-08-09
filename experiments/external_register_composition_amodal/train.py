@@ -168,11 +168,17 @@ def _rollout(
     event_bridge: AmodalEventBridge | None = None,
     register_readout: CanonicalRegisterReadout | None = None,
     preserve_execution_trace: bool = False,
+    route_probe: bool = False,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     if execution_mode not in ("in_place", "read_execute"):
         raise ValueError(f"unknown execution mode: {execution_mode!r}")
     if preserve_execution_trace and execution_mode != "read_execute":
         raise ValueError("execution traces require read_execute mode")
+    if route_probe:
+        if sequence_operator_memory is None or sequence_operator_route_query is None:
+            raise ValueError("route probing requires routed operator memory")
+        if execution_mode != "read_execute" or preserve_execution_trace:
+            raise ValueError("route probing requires plain read_execute mode")
     device = batch.input_frames.device
     batch_size = batch.batch_size
     if meta_context is not None:
@@ -203,8 +209,14 @@ def _rollout(
         device=device,
     )
     encoder = parent.encoders["vision"]
+    route_probe_logits: list[torch.Tensor] = []
 
-    def tick(frame: torch.Tensor, feedback) -> torch.Tensor:
+    def tick(
+        frame: torch.Tensor,
+        feedback,
+        *,
+        collect_route_probe: bool = False,
+    ) -> torch.Tensor:
         nonlocal parent_state, register_state
         with torch.no_grad():
             event = encoder(frame)
@@ -228,6 +240,40 @@ def _rollout(
             event = parent_state.hidden.detach()
         if machine.event_width != event.shape[1]:
             raise ValueError("machine event width is incompatible with parent event")
+        if route_probe and collect_route_probe:
+            next_state = None
+            slot_logits = []
+            for slot in range(len(sequence_operator_memory.slots)):
+                slot_register, candidate_state = machine.read_execute_register(
+                    event=event,
+                    action=previous_action,
+                    outcome=previous_reward,
+                    intention=output.intention,
+                    state=register_state,
+                    present=present,
+                    instructions=instructions,
+                    basis_slots=basis_slots,
+                    meta_context=meta_context,
+                    sequence_operator_memory=sequence_operator_memory,
+                    sequence_operator_slot=slot,
+                )
+                if next_state is None:
+                    next_state = candidate_state
+                decoded = (
+                    slot_register
+                    if register_readout is None
+                    else register_readout(slot_register)
+                )
+                slot_logits.append(decoder(decoded))
+            if next_state is None or not slot_logits:
+                raise ValueError("route probing requires at least one operator slot")
+            register_state = next_state
+            stacked_logits = torch.stack(tuple(slot_logits), dim=1)
+            weights = sequence_operator_memory.route_weights(
+                sequence_operator_route_query
+            )
+            route_probe_logits.append(stacked_logits)
+            return torch.einsum("bs,bsa->ba", weights, stacked_logits), register_state.register
         if machine.operator_mode == EXTERNAL_REGISTER_SHARED_ROLE_BOUND_MODE:
             register, register_state, role_trace = machine.read_execute_register_role_trace(
                 event=event,
@@ -316,7 +362,11 @@ def _rollout(
             previous_propensity,
             previous_has_feedback,
         )
-        logits, value_state = tick(frame, feedback)
+        logits, value_state = tick(
+            frame,
+            feedback,
+            collect_route_probe=route_probe,
+        )
         probabilities = logits.softmax(dim=-1)
         # Actions are sampled from this epsilon-smoothed behavior policy.  The
         # exact propensity must travel with the opaque action record; using the
@@ -329,7 +379,24 @@ def _rollout(
         )
         reward = (action == correct).to(logits.dtype)
         delivered = reward.roll(1) if shuffle_outcomes else reward
-        if credit_mode == "paired_counterfactual":
+        if route_probe:
+            attempted = torch.tensor(
+                [[0, 1]], dtype=torch.long, device=device
+            ).expand(batch_size, -1)
+            utilities = (attempted == correct.unsqueeze(1)).to(logits.dtype)
+            if shuffle_outcomes:
+                utilities = utilities.roll(1, dims=0)
+            slot_logits = route_probe_logits[-1]
+            slot_losses = F.binary_cross_entropy_with_logits(
+                slot_logits,
+                utilities.unsqueeze(1).expand_as(slot_logits),
+                reduction="none",
+            ).mean(dim=-1)
+            route_weights = sequence_operator_memory.route_weights(
+                sequence_operator_route_query
+            )
+            loss = (route_weights * slot_losses).sum(dim=-1).mean()
+        elif credit_mode == "paired_counterfactual":
             attempted = torch.tensor(
                 [[0, 1]], dtype=torch.long, device=device
             ).expand(batch_size, -1)

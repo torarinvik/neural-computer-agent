@@ -1015,3 +1015,22 @@ an order-sensitive address interface, but outcome credit through a soft mixture
 and temporary per-order decoders is too weak to reliably specialize slots.
 The four raw reports are under
 `protected_bounded_meta_operator_routing/`; none is promoted.
+
+## Counterfactual route credit — rejected
+
+The router was then trained with an explicit outcome-only probe: every query
+executed all six opaque operator slots from the same observed state, and the
+router received scalar-verifier credit for the slot-level action outcomes.
+This removed the main gradient-dilution objection, but the all-order floor was
+only `0.6719` after 384 updates. Source retention remained exact. The method
+also cost six counterfactual slot evaluations per query (`294,912` verifier
+bits in the corrected accounting), so it is rejected on both capability and
+efficiency. The remaining problem is not merely missing feedback; temporary
+decoders and independently learned operators still provide no stable reusable
+credit signal for specialization. Raw report:
+`protected_bounded_meta_route_credit/report_seed69316.json`.
+
+Adding a balanced low-entropy assignment regularizer to break slot symmetry
+also failed: the floor was `0.6641` with the same exact source retention and
+the same `294,912` verifier-bit counterfactual cost. This is archived as
+`protected_bounded_meta_route_credit/report_assignment01_seed69316.json`.

@@ -669,6 +669,40 @@
       "replayed_examples": 0,
       "source_retention": "exact zero deltas in every variant",
       "decision": "reject routing promotion; order-sensitive address representation exists, but soft outcome credit with temporary per-order decoders does not beat the rank-16 baseline"
+    },
+    {
+      "experiment": "protected_bounded_meta_counterfactual_route_credit_sequence384",
+      "date": "2026-08-09",
+      "seeds": [69316],
+      "claim": "Direct scalar-verifier credit for every external operator slot will specialize learned routing while the controller remains frozen.",
+      "operator_mode": "factorized_protected_bounded_meta",
+      "operator_rank": 8,
+      "route_credit": "counterfactual scalar outcome per all six operator slots",
+      "sequence_calibration_updates": 384,
+      "composition_program_count": 6,
+      "replayed_examples": 0,
+      "unique_verifier_bits": 294912,
+      "source_retention": "exact zero deltas; source floors 0.96875–0.9765625",
+      "sequence_floor": 0.671875,
+      "decision": "reject route-credit promotion; explicit slot-level outcome feedback did not beat the 0.7421875 baseline and required sixfold counterfactual cost"
+    },
+    {
+      "experiment": "protected_bounded_meta_counterfactual_route_credit_balanced_assignment_sequence384",
+      "date": "2026-08-09",
+      "seeds": [69316],
+      "claim": "A balanced low-entropy allocation prior will break exchangeable external-slot symmetry and improve outcome-trained routing.",
+      "operator_mode": "factorized_protected_bounded_meta",
+      "operator_rank": 8,
+      "route_credit": "counterfactual scalar outcome per all six operator slots",
+      "route_assignment_loss_weight": 0.1,
+      "route_assignment_entropy_weight": 0.01,
+      "sequence_calibration_updates": 384,
+      "composition_program_count": 6,
+      "replayed_examples": 0,
+      "unique_verifier_bits": 294912,
+      "source_retention": "exact zero deltas; source floors 0.96875–0.9765625",
+      "sequence_floor": 0.6640625,
+      "decision": "reject allocation prior; breaking slot symmetry without reusable computation coupling did not improve routing"
     }
   ]
 }

@@ -740,7 +740,28 @@ def _train_sequence_calibration(
             sequence_operator_route_query=(
                 route_query(program) if use_operator_router else None
             ),
+            route_probe=(args.use_route_outcome_credit and use_operator_router),
         )
+        if use_operator_router and args.route_assignment_loss_weight > 0.0:
+            all_route_weights = torch.stack(
+                tuple(
+                    sequence_operator_memory.route_weights(
+                        route_query(value).unsqueeze(0)
+                    )
+                    for value in programs
+                ),
+                dim=0,
+            )
+            column_balance = (
+                all_route_weights.mean(dim=0) - (1.0 / len(programs))
+            ).square().mean()
+            entropy = -(
+                all_route_weights.clamp_min(torch.finfo(all_route_weights.dtype).tiny)
+                * all_route_weights.clamp_min(torch.finfo(all_route_weights.dtype).tiny).log()
+            ).sum(dim=-1).mean()
+            loss = loss + args.route_assignment_loss_weight * (
+                column_balance + args.route_assignment_entropy_weight * entropy
+            )
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(trainable, 1.0)
@@ -1053,12 +1074,18 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         raise ValueError("joint source updates cannot be negative")
     if args.sequence_calibration_updates < 0:
         raise ValueError("sequence calibration updates cannot be negative")
+    if args.route_assignment_loss_weight < 0.0:
+        raise ValueError("route assignment loss weight cannot be negative")
+    if args.route_assignment_entropy_weight < 0.0:
+        raise ValueError("route assignment entropy weight cannot be negative")
     if args.source_checkpoint_in and args.joint_source_updates:
         raise ValueError("source checkpoint input cannot be combined with source calibration")
     if args.use_sequence_memory and args.use_operator_sequence_memory:
         raise ValueError("choose value or operator sequence memory")
     if args.use_operator_sequence_router and not args.use_operator_sequence_memory:
         raise ValueError("operator sequence routing requires operator sequence memory")
+    if args.use_route_outcome_credit and not args.use_operator_sequence_router:
+        raise ValueError("route outcome credit requires operator sequence routing")
     if args.reuse_shared_bridge_prior and args.reuse_conditioned_bridge_prior:
         raise ValueError("choose one bridge prior mode")
     args.reuse_shared_bridge_prior = (
@@ -1728,6 +1755,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         if sequence_calibration_progress
         else 0
     )
+    if args.use_route_outcome_credit and sequence_calibration_progress:
+        sequence_calibration_bits *= args.composition_program_count
     fresh_sequence_calibration_bits = sum(
         int(row["fresh_sequence_calibration_verifier_bits"])
         for row in transfer_records
@@ -1774,7 +1803,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "sequence_calibration_trainable_surface": (
             (
                 (
-                    "sequence_operator_memory_slots_plus_learned_router_plus_temporary_decoders"
+                    (
+                        "sequence_operator_memory_slots_plus_learned_router_plus_outcome_probe_plus_temporary_decoders"
+                        if args.use_route_outcome_credit
+                        else "sequence_operator_memory_slots_plus_learned_router_plus_temporary_decoders"
+                    )
                     if args.use_operator_sequence_router
                     else "sequence_operator_memory_slots_plus_temporary_decoders"
                 )
@@ -1803,6 +1836,19 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "sequence_operator_memory": (
             sequence_operator_memory.configuration()
             if sequence_operator_memory is not None
+            else None
+        ),
+        "route_credit": (
+            "counterfactual_scalar_outcome_per_operator_slot"
+            if args.use_route_outcome_credit
+            else None
+        ),
+        "route_assignment_regularization": (
+            {
+                "loss_weight": args.route_assignment_loss_weight,
+                "entropy_weight": args.route_assignment_entropy_weight,
+            }
+            if args.route_assignment_loss_weight > 0.0
             else None
         ),
         "operator_mode": args.operator_mode,
@@ -1976,6 +2022,24 @@ def main() -> None:
         type=float,
         default=0.25,
         help="softmax temperature for learned external-operator addressing",
+    )
+    parser.add_argument(
+        "--use-route-outcome-credit",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="train routing from counterfactual scalar outcomes of every operator slot",
+    )
+    parser.add_argument(
+        "--route-assignment-loss-weight",
+        type=float,
+        default=0.0,
+        help="memory-side weight for balanced low-entropy context-to-slot assignment",
+    )
+    parser.add_argument(
+        "--route-assignment-entropy-weight",
+        type=float,
+        default=0.01,
+        help="relative entropy penalty inside route assignment regularization",
     )
     parser.add_argument("--warmup-updates", type=int, default=64)
     parser.add_argument("--focus-updates", type=int, default=64)
