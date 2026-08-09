@@ -1346,6 +1346,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             if args.operator_mode in (
                 "factorized_shared_role_bound",
                 "factorized_shared_relational",
+                "factorized_shared_stable_relational",
             )
             else None
         ),

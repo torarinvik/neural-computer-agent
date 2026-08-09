@@ -421,6 +421,25 @@
       "fresh_control": "ten of twelve fresh comparisons reached stable thresholds",
       "positive_transfer": "two of twelve strict comparisons, same reverse -> complement -> adjacent_xor ordering in both seeds",
       "decision": "retain as a promising operator primitive; reject general promotion until transfer replicates across program orderings"
+    },
+    {
+      "experiment": "interleaved_shared_stable_relational_trace_joint_matched_fresh_curriculum",
+      "date": "2026-08-09",
+      "seeds": [69316, 69317],
+      "claim": "Instruction-independent role binding broadens relational-transition transfer across program orderings.",
+      "operator_mode": "factorized_shared_stable_relational",
+      "role_count": 4,
+      "preserve_composition_trace": true,
+      "joint_source_updates": 576,
+      "composition_program_count": 6,
+      "curriculum_fresh_control": true,
+      "replayed_examples": 0,
+      "source_mastery": "both seeds reached source floors above 0.96",
+      "retention_on_mastered_primitives": "source deltas exact zero in both seeds",
+      "composition_behavior": "all six programs passed behavior/retention/causal gates in both seeds",
+      "fresh_control": "ten of twelve fresh comparisons reached stable thresholds",
+      "positive_transfer": "four of twelve strict comparisons, two orderings in each seed",
+      "decision": "retain stable-slot relational mode as the strongest current operator candidate; reject full promotion until all-order fresh transfer is reliable"
     }
   ]
 }

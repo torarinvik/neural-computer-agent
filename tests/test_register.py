@@ -220,6 +220,33 @@ def test_shared_relational_mode_integrates_role_relations_into_transition() -> N
     assert machine.relational_transition.binding.role_seed.grad is not None
 
 
+def test_stable_relational_mode_keeps_role_binding_instruction_independent() -> None:
+    machine = ExternalCapabilityRegisterMachine(
+        event_width=4,
+        action_width=2,
+        intention_width=6,
+        register_width=8,
+        instruction_width=5,
+        interpreter_hidden=12,
+        operator_mode="factorized_shared_stable_relational",
+        role_count=2,
+        instructions=(ExternalRegisterInstruction(5),),
+    )
+    assert machine.configuration()["operator_mode"] == (
+        "factorized_shared_stable_relational"
+    )
+    assert machine.relational_transition.configuration()[
+        "instruction_conditioned_binding"
+    ] is False
+
+    register = torch.randn(2, 8)
+    code_a = torch.randn(2, 5)
+    code_b = torch.randn(2, 5)
+    roles_a = machine.relational_transition.binding(register, code_a)
+    roles_b = machine.relational_transition.binding(register, code_b)
+    assert torch.equal(roles_a, roles_b)
+
+
 def test_shared_canonical_mode_applies_one_internal_state_contract_per_step() -> None:
     machine = ExternalCapabilityRegisterMachine(
         event_width=4,

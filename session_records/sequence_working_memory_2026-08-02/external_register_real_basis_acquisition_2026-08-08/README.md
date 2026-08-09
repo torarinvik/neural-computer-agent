@@ -821,3 +821,22 @@ This is the strongest evidence so far that relational structure belongs in the
 operator transition, but the order-specific signal is not yet a continual-
 learning promotion. The next bottleneck is making the relational invariant
 generalize across program orderings rather than benefiting one learned path.
+
+## Stable-slot relational transition — broader signal, not yet promoted
+
+The relational transition now has a stable-slot variant,
+`factorized_shared_stable_relational`. Its learned role binding is
+instruction-independent, while cross-role mixing remains instruction-
+conditioned. This separates representation identity from operation semantics.
+
+With the full balanced source calibration and matched fresh curricula, both
+seeds passed source mastery, composition behavior, retention, and causal gates
+for all six permutations. Strict positive transfer increased to `4/12`
+comparisons: two orderings in each seed, rather than one repeated ordering in
+the previous relational mode. Fresh thresholds were still missing or slower
+for several comparisons, and no all-order promotion gate was met.
+
+This is a genuine broadening of the signal, but not general continual
+learning. The next bottleneck is making stable relational state acquisition
+reliably support every ordering and every fresh control, rather than improving
+only a subset of permutations.
