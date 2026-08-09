@@ -2313,3 +2313,67 @@ untouched).
 
 Probes 101-108 are `goal_composition.py` with `--curriculum`,
 `--hidden`, `--ewc`, and `--phase1-sides`.
+
+**F59 (probes 109-120). The goal-conditioning machinery works; the GRID
+reacher does not, and five interventions failed to fix it.** The
+universal-reacher reframe (GOAL_FACTORED_DESIGN revision) was built in
+two modalities. Same controller, same goal channel, same decoder.
+
+| testbed | reach | floor | path ratio | budget |
+| --- | ---: | ---: | ---: | ---: |
+| **numeric line** | **0.938** | 0.344 | **1.010** | 250 updates |
+| grid (best arm) | 0.375 | 0.180 | — | 2500 updates |
+
+**The number line settles the central question.** With state = an
+integer, the agent reaches 94% of commanded targets by a path within 1%
+of the provably optimal `|Y - X|`, from a tenth of the budget. So the
+controller, the goal channel and the decoder are sound: F58's "the plant
+cannot condition on a goal" is refuted. It is also the first time this
+program has verified OPTIMALITY rather than inferring competence from
+score, and the first test of the amodal claim in a modality with no
+spatial structure.
+
+**The grid stays at ~2x floor through five interventions**, each
+measured on two seeds:
+
+| intervention | result |
+| --- | --- |
+| egocentric crop/roll, absolute goal | WORSE (0.207/0.258 vs 0.316) |
+| relative goals | held-out 0.273 -> 0.461, trained flat |
+| egocentric crop, relative goal | worse again; most habitual arm (0.532) |
+| self-supervised localisation head | WORSE (0.375 -> 0.305) |
+| true shortest-path (BFS) reward | 0.285 vs Manhattan's 0.375 |
+
+Only relative goals earned their place, and for generalisation rather
+than competence: offsets are translation-invariant, so a reserved
+quadrant is not novel in offset space. That is also the property that
+makes a goal TREE work, since a subgoal must mean the same thing
+wherever it appears.
+
+**Two retractions.** (1) A linear probe reads avatar position out of the
+screen encoder at 0.699/0.672 per axis against 0.125 chance — I inferred
+that the ~30% error was the binding constraint, and the localisation
+intervention refuted it. A measured correlate is not a cause; the
+intervention is what settles it. (2) I predicted the BFS reward would
+fix the stall, since the map has a solid wall column and 21 of 64 cells
+need a detour that a Manhattan reward pays negatively. It did not:
+Manhattan is right for the other 43 cells and gives a smooth dense
+gradient, while true distance adds plateaus and long detours a 24-step
+budget often cannot finish. Correcting the reward also made the task
+harder.
+
+**Measurement faults in this rung alone: three** — Manhattan distance in
+a walled map, the unreachable-target sentinel leaking into the metric
+(one seed collapsed to conditioning agreement 1.000), and the
+localisation red herring. Session total: six. The mechanism has been
+changed far less often than the things measuring it, and every "the
+learner cannot do this" has so far resolved into "the task or the metric
+was wrong" — except this one, which is still open.
+
+**Standing:** the reacher is validated in the modality where perception
+is free and unvalidated where it is not. The grid gap is a perception or
+horizon problem, not a goal-conditioning one, and it is the honest
+blocker for the reacher rung. Numeric remains the control surface where
+every part is known to work.
+
+Probes 109-120 are `numeric_reacher.py` and `universal_reacher.py`.
