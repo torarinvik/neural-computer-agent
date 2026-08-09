@@ -932,6 +932,16 @@ rung is rejected for under-training; the next run must reuse or persist the
 mastered source checkpoint instead of recalibrating it inside every sequence
 probe.
 
+## All-order protected-meta capacity — shared residual interference
+
+An all-six-permutation screen (384 updates, 64 per ordering) preserved source
+skills exactly but reached only a `0.71875` sequence floor. Four orderings
+were near or above mastery while two remained weak, despite the two-order
+screen mastering both orderings at the same per-order budget. This rejects the
+current shared residual as an all-order memory contract: its updates interfere
+across sequence programs. The next diagnostic increases operator rank before
+adding a separate sequence-memory bank.
+
 ## Protected bounded-meta order generalization — replicated at 128 updates
 
 At 128 updates, both tested orderings crossed the sequence mastery threshold
@@ -961,3 +971,7 @@ Source retention remained exact, so this is not catastrophic forgetting, but
 the learned meta residual does not yet generalize to unseen orderings and can
 make them harder to learn. The next repair must make the external computation
 memory sequence/order-aware or otherwise prevent seen-order specialization.
+
+The rank-16 diagnostic reached only a `0.7422` floor after 384 updates (final
+scores `0.8203, 0.8203, 0.8203, 0.8359, 0.7422, 0.7500`). Rank widening is
+therefore insufficient; the shared residual still interferes across programs.
