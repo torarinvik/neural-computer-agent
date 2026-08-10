@@ -461,3 +461,25 @@ provenance, but the boundary remains bounded composition rather than learned
 operation discovery, arbitrary new computation, or general continual
 learning. The next experiment should drive candidate proposals from partial
 multimodal observations and active outcome-only exploration.
+
+## Signed external-entry value factorization (2026-08-10)
+
+The exported games-session frontier exposed a more general delta requirement:
+an external entry must be able to reverse an existing value prediction without
+forcing the shared state representation to relearn the whole value surface.
+`ExternalSignedEntryValueModel` makes that contract explicit. Its state path
+produces a positive, polarity-free salience; its opaque entry path produces an
+odd scalar polarity; the factual value is their product. Negating an entry
+therefore negates the prediction by construction, while a zero entry is
+neutral.
+
+The promoted three-seed audit in
+`session_records/sequence_working_memory_2026-08-02/signed_entry_value_promoted_2026-08-10/`
+trains only on positive entries, freezes the model, and evaluates negative
+entries with zero target updates. Entry shuffling breaks the prediction,
+exact oddness and persistence hold, and the signed model beats a matched
+unfactorized control on the contradictory target. This is a real reusable
+signed-delta boundary, but not yet live multimodal search integration,
+arbitrary value learning, or general continual learning. The next step is to
+connect signed entries to model-based search and test them across changing
+external regimes without replay.

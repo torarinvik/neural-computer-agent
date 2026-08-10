@@ -59,6 +59,9 @@ EXTERNAL_ONLINE_CONTEXT_RESOLVER_SCHEMA = (
     "neural-computer.external-online-context-resolver.v1"
 )
 EXTERNAL_GOAL_EVALUATOR_SCHEMA = "neural-computer.external-goal-evaluator.v1"
+EXTERNAL_SIGNED_ENTRY_VALUE_SCHEMA = (
+    "neural-computer.external-signed-entry-value.v1"
+)
 EXTERNAL_TRANSITION_EVIDENCE_EVALUATOR_SCHEMA = (
     "neural-computer.external-transition-evidence-evaluator.v1"
 )
@@ -8249,6 +8252,160 @@ class ExternalGoalEvaluator(nn.Module):
         return model
 
 
+class ExternalSignedEntryValueModel(nn.Module):
+    """Predict an opaque outcome by separating reusable salience from entry polarity.
+
+    The state pathway computes a positive, polarity-free salience.  The
+    external entry contributes a single odd scalar in ``[-1, 1]`` and can
+    therefore reverse the prediction without changing the shared state map.
+    This is a memory-side factual value model, not a policy or a controller
+    branch: callers still derive behavior by searching its predictions.
+    """
+
+    schema = EXTERNAL_SIGNED_ENTRY_VALUE_SCHEMA
+
+    def __init__(
+        self,
+        state_width: int,
+        entry_width: int,
+        *,
+        hidden_width: int = 64,
+    ) -> None:
+        super().__init__()
+        if min(state_width, entry_width, hidden_width) < 1:
+            raise ValueError("signed-entry value dimensions must be positive")
+        self.state_width = int(state_width)
+        self.entry_width = int(entry_width)
+        self.hidden_width = int(hidden_width)
+        self.state_network = nn.Sequential(
+            nn.Linear(self.state_width, self.hidden_width),
+            nn.GELU(),
+            nn.Linear(self.hidden_width, self.hidden_width),
+            nn.GELU(),
+            nn.Linear(self.hidden_width, 1),
+        )
+        # No bias makes the entry pathway exactly odd: negating an opaque
+        # entry negates its polarity, regardless of the learned state map.
+        self.entry_projection = nn.Linear(self.entry_width, 1, bias=False)
+        # Start orientation-neutral.  A random negative orientation can block
+        # the positive-only acquisition rung because the positive salience
+        # pathway cannot compensate by changing sign.  Zero lets the first
+        # scalar outcomes orient the external entry before salience adapts.
+        nn.init.zeros_(self.entry_projection.weight)
+
+    def configuration(self) -> dict[str, int | str]:
+        return {
+            "schema": self.schema,
+            "state_width": self.state_width,
+            "entry_width": self.entry_width,
+            "hidden_width": self.hidden_width,
+            "training": "scalar_verifier_outcomes_v1",
+            "state_factor": "positive_polarity_free_salience_v1",
+            "entry_factor": "odd_tanh_scalar_polarity_v1",
+            "composition": "salience_times_entry_polarity_v1",
+            "behavior": "factual_value_for_inference_search_v1",
+        }
+
+    def _validate_inputs(
+        self,
+        state: torch.Tensor,
+        entry: torch.Tensor,
+    ) -> None:
+        _validate_tensor(state, name="signed-entry state", ndim=2, width=self.state_width)
+        _validate_tensor(entry, name="signed-entry value", ndim=2, width=self.entry_width)
+        if state.shape[0] != entry.shape[0]:
+            raise ValueError("signed-entry state and entry batches differ")
+
+    def state_salience(self, state: torch.Tensor) -> torch.Tensor:
+        _validate_tensor(state, name="signed-entry state", ndim=2, width=self.state_width)
+        raw = self.state_network(state).squeeze(-1)
+        return torch.nn.functional.softplus(raw) + 1e-6
+
+    def entry_polarity(self, entry: torch.Tensor) -> torch.Tensor:
+        _validate_tensor(entry, name="signed-entry value", ndim=2, width=self.entry_width)
+        return self.entry_projection(entry).squeeze(-1).tanh()
+
+    def forward(self, state: torch.Tensor, entry: torch.Tensor) -> torch.Tensor:
+        self._validate_inputs(state, entry)
+        return self.state_salience(state) * self.entry_polarity(entry)
+
+    def loss(
+        self,
+        state: torch.Tensor,
+        entry: torch.Tensor,
+        outcome: torch.Tensor,
+    ) -> torch.Tensor:
+        if outcome.shape not in ((state.shape[0],), (state.shape[0], 1)):
+            raise ValueError("signed-entry outcomes must match the batch")
+        if not bool(torch.isfinite(outcome).all()):
+            raise ValueError("signed-entry outcomes must be finite")
+        if bool(torch.any(outcome < 0) or torch.any(outcome > 1)):
+            raise ValueError("signed-entry outcomes must lie in [0, 1]")
+        targets = outcome.reshape(-1).to(device=state.device, dtype=state.dtype)
+        return nn.functional.binary_cross_entropy_with_logits(
+            self(state, entry), targets
+        )
+
+    def digest(self) -> str:
+        digest = hashlib.sha256()
+        digest.update(self.schema.encode("utf-8"))
+        digest.update(repr(self.configuration()).encode("utf-8"))
+        for name, value in sorted(self.state_dict().items()):
+            detached = value.detach().cpu().contiguous()
+            digest.update(name.encode("utf-8"))
+            digest.update(str(detached.dtype).encode("utf-8"))
+            digest.update(repr(tuple(detached.shape)).encode("utf-8"))
+            digest.update(detached.numpy().tobytes())
+        return digest.hexdigest()
+
+    def state_payload(self) -> dict[str, Any]:
+        """Persist the external value model with an interface checksum."""
+
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "state": {
+                name: value.detach().cpu().clone()
+                for name, value in self.state_dict().items()
+            },
+            "sha256": self.digest(),
+        }
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, Any],
+    ) -> ExternalSignedEntryValueModel:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported signed-entry value payload")
+        configuration = payload.get("configuration")
+        state = payload.get("state")
+        if not isinstance(configuration, Mapping) or not isinstance(state, Mapping):
+            raise TypeError("signed-entry value payload is incomplete")
+        model = cls(
+            int(configuration["state_width"]),
+            int(configuration["entry_width"]),
+            hidden_width=int(configuration["hidden_width"]),
+        )
+        current = model.state_dict()
+        if tuple(state) != tuple(current):
+            raise ValueError("signed-entry value state names differ")
+        normalized: dict[str, torch.Tensor] = {}
+        for name, expected in current.items():
+            value = state[name]
+            if not isinstance(value, torch.Tensor):
+                raise TypeError("signed-entry value state is not a tensor")
+            if value.shape != expected.shape or value.dtype != expected.dtype:
+                raise ValueError("signed-entry value state is incompatible")
+            if not bool(torch.isfinite(value).all()):
+                raise ValueError("signed-entry value state is not finite")
+            normalized[name] = value.detach().clone()
+        model.load_state_dict(normalized, strict=True)
+        if payload.get("sha256") != model.digest():
+            raise ValueError("signed-entry value checksum mismatch")
+        return model
+
+
 class ExternalTransitionEvidenceEvaluator(nn.Module):
     """Learned external verifier for noisy factual transition evidence."""
 
@@ -10664,6 +10821,7 @@ __all__ = [
     "EXTERNAL_ONLINE_CONTEXT_RESOLVER_SCHEMA",
     "EXTERNAL_ONLINE_TRANSITION_CONTEXT_ROUTER_SCHEMA",
     "EXTERNAL_REPRESENTATION_SPACE_SCHEMA",
+    "EXTERNAL_SIGNED_ENTRY_VALUE_SCHEMA",
     "EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY",
     "EXTERNAL_TRANSITION_CONTEXT_ADDRESS_ADAPTER_SCHEMA",
     "EXTERNAL_TRANSITION_CONTEXT_ENCODER_SCHEMA",
@@ -10696,6 +10854,7 @@ __all__ = [
     "ExternalOnlineContextResolution",
     "ExternalOnlineTransitionContextResult",
     "ExternalOnlineTransitionContextRouter",
+    "ExternalSignedEntryValueModel",
     "ExternalTransitionContextAddressAdapter",
     "ExternalTransitionContextEncoder",
     "ExternalTransitionEvidenceCalibrator",

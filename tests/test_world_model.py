@@ -15,6 +15,7 @@ from neural_computer import (
     ExternalModelBasedPlanner,
     ExternalOnlineContextAddressResolver,
     ExternalOnlineTransitionContextRouter,
+    ExternalSignedEntryValueModel,
     ExternalSparseTransitionEvidenceIndex,
     ExternalTransitionContextAddressAdapter,
     ExternalTransitionContextEncoder,
@@ -3590,3 +3591,31 @@ def test_online_resolver_passes_candidate_context_to_contextual_calibrator() -> 
     assert reused.status == "reused"
     assert reused.committed_observations == 0
     assert memory.record_count == 1
+
+
+def test_signed_entry_value_factorizes_salience_and_polarity() -> None:
+    torch.manual_seed(1208)
+    model = ExternalSignedEntryValueModel(3, 2, hidden_width=8)
+    state = torch.randn(5, 3)
+    entry = torch.randn(5, 2)
+    salience = model.state_salience(state)
+    polarity = model.entry_polarity(entry)
+    logits = model(state, entry)
+
+    assert bool((salience > 0.0).all())
+    assert torch.allclose(model.state_salience(state), salience)
+    assert torch.allclose(model.entry_polarity(-entry), -polarity)
+    assert torch.allclose(model(state, -entry), -logits, atol=1e-6, rtol=1e-6)
+
+    payload = model.state_payload()
+    restored = ExternalSignedEntryValueModel.from_payload(payload)
+    assert restored.digest() == model.digest()
+    assert torch.allclose(restored(state, entry), logits)
+    corrupt = dict(payload)
+    corrupt["state"] = dict(payload["state"])
+    corrupt["state"]["entry_projection.weight"] = (
+        corrupt["state"]["entry_projection.weight"].clone()
+    )
+    corrupt["state"]["entry_projection.weight"][0, 0] += 0.1
+    with pytest.raises(ValueError, match="checksum"):
+        ExternalSignedEntryValueModel.from_payload(corrupt)

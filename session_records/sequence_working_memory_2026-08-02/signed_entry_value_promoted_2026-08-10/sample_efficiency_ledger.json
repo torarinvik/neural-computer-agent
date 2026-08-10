@@ -1,0 +1,29 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "signed_entry_value",
+  "date": "2026-08-10",
+  "claim": "frozen shared salience transfers to a contradictory opaque entry polarity",
+  "claim_boundary": "not arbitrary value learning, general continual learning, or unrestricted memory growth",
+  "seeds": [9101, 9102, 9103],
+  "unique_verifier_bits": [32768, 32768, 32768],
+  "unique_logical_lifetimes": [32768, 32768, 32768],
+  "diagnostic_target_lifetimes": [192, 192, 192],
+  "optimizer_updates": [1024, 1024, 1024],
+  "target_optimizer_updates": [0, 0, 0],
+  "controller_optimizer_updates": [0, 0, 0],
+  "replayed_examples": [0, 0, 0],
+  "wall_time_seconds": [1.9508990420144983, 1.9918702500290237, 2.0153632500441745],
+  "mean_inference_latency_ms": [0.12099740524718072, 0.07790496965753846, 0.13899346959078684],
+  "stable_bits_to_threshold": null,
+  "retention_on_mastered_primitives": [
+    0.00008295382576761767,
+    0.000018325550627196208,
+    0.00002899660830735229
+  ],
+  "transfer_ratio_against_fresh_learner": null,
+  "signed_source_error": [0.00008295382576761767, 0.000018325550627196208, 0.00002899660830735229],
+  "signed_target_error": [0.0001815084833651781, 0.0000204981115530245, 0.000021028976334491745],
+  "unfactorized_target_error": [0.03524239361286163, 0.047596342861652374, 0.06322580575942993],
+  "signed_shuffled_entry_error": [0.20825715363025665, 0.20105136930942535, 0.18634213507175446],
+  "promoted": true
+}

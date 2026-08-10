@@ -8067,3 +8067,23 @@ composition, but it is not arbitrary program synthesis, learned operation
 discovery, or general continual learning. The next step is to generate and
 verify candidates from partial multimodal experience and active outcome-only
 exploration rather than a fixed algebraic catalogue.
+
+## Signed external-entry value factorization (2026-08-10)
+
+External memory entries may need to change the polarity of an existing
+prediction without forcing the shared state representation to relearn its
+salience. `ExternalSignedEntryValueModel` defines this as a versioned,
+protocol-agnostic boundary: the state tensor produces a strictly positive
+polarity-free salience, the opaque external-entry tensor produces an odd
+scalar polarity, and factual value is their product. A zero entry is neutral;
+negating an entry negates the value by construction.
+
+The promoted three-seed audit under
+`session_records/sequence_working_memory_2026-08-02/signed_entry_value_promoted_2026-08-10/`
+trains only on positive entries, freezes the model, and transfers to held-out
+negative entries with zero target updates. The boundary is reusable across
+modalities because it consumes learned state and entry tensors, not raw
+formats or hand-assigned semantics. It is not yet arbitrary value learning,
+live multimodal search integration, unrestricted memory growth, or general
+continual learning. The next pressure test is to connect signed entries to
+factual model-based search across changing external regimes without replay.
