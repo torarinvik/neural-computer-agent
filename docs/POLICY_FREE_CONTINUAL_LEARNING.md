@@ -1150,3 +1150,17 @@ long nonstationary Brain Workshop stream, nor that it solves general
 continual learning. The next experiment must combine executable hypothesis
 frontiers, maintenance cost, and complete-prefix retention on genuinely
 rendered families.
+
+## File-scoped execution state (2026-08-10)
+
+The executable runtime now isolates recurrent register/context state by the
+external file's stable logical ID. A capability can be revisited after other
+files have run without inheriting their working state, while verified file
+retirement removes the corresponding state entry. Alternating-route and
+retirement/reload tests pass without changing controller parameters.
+
+This is a prerequisite for honest continual-learning measurements: content
+retention is not enough if temporal working state is shared accidentally. The
+next pressure remains a real nonstationary Brain Workshop acquisition stream,
+where this isolation must support new capability admission and maintenance
+without loss of earlier families.

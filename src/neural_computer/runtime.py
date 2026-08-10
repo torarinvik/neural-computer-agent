@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import torch
 from torch import nn
@@ -1294,7 +1294,8 @@ class ExternalControllerTrajectoryQueryAdapter(nn.Module):
         return query
 
 
-EXTERNAL_PROGRAM_RUNTIME_SCHEMA = "neural-computer.external-program-runtime.v1"
+EXTERNAL_PROGRAM_RUNTIME_SCHEMA = "neural-computer.external-program-runtime.v2"
+_STANDALONE_PROGRAM_STATE_KEY = -1
 
 
 @dataclass(frozen=True)
@@ -1303,6 +1304,7 @@ class ExternalProgramRuntimeState:
 
     controller: ControllerState
     program: ExternalRegisterState
+    program_states: Mapping[int, ExternalRegisterState] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -1321,6 +1323,7 @@ class ExternalProgramRuntimeOutput:
     intention: IntentEvent
     decoded: dict[str, torch.Tensor]
     selected_program_slot: int | None
+    selected_program_logical_id: int | None = None
     schema: str = EXTERNAL_PROGRAM_RUNTIME_SCHEMA
 
 
@@ -1330,8 +1333,10 @@ class ExternalProgramAmodalRuntime(nn.Module):
     This is the CPU-plus-files seam suggested by the architecture work.  A
     fixed controller handles learned events, working memory, and feedback;
     an external register interpreter executes a versioned opaque artifact;
-    the intention bus fans the result out to any decoders.  Program files can
+    the intention bus fans the result out to any decoders. Program files can
     be replaced, routed, or grown without changing controller parameters.
+    Each retained logical file owns an isolated recurrent execution state;
+    switching files never leaks one capability's working state into another.
     """
 
     schema = EXTERNAL_PROGRAM_RUNTIME_SCHEMA
@@ -1428,25 +1433,34 @@ class ExternalProgramAmodalRuntime(nn.Module):
         device: torch.device | str,
         dtype: torch.dtype = torch.float32,
     ) -> ExternalProgramRuntimeState:
+        program_state = self.machine.initial_state(
+            batch_size,
+            device=device,
+            dtype=dtype,
+        )
+        if self.program_memory is None:
+            program_states = {_STANDALONE_PROGRAM_STATE_KEY: program_state}
+        else:
+            program_states = {
+                logical_id: program_state
+                for logical_id in self.program_memory.logical_slot_ids
+            }
         return ExternalProgramRuntimeState(
             controller=self.runtime.initial_state(
                 batch_size,
                 device=device,
                 dtype=dtype,
             ),
-            program=self.machine.initial_state(
-                batch_size,
-                device=device,
-                dtype=dtype,
-            ),
+            program=program_state,
+            program_states=program_states,
         )
 
     def _select_program(
         self,
         controller_output: ControllerOutput,
-    ) -> tuple[ExternalProgramArtifact, int | None]:
+    ) -> tuple[ExternalProgramArtifact, int | None, int]:
         if self.program is not None:
-            return self.program, None
+            return self.program, None, _STANDALONE_PROGRAM_STATE_KEY
         if self.program_memory is None or self.program_query_adapter is None:
             raise RuntimeError("external program runtime has no program source")
         query = self.program_query_adapter(controller_output)
@@ -1463,7 +1477,7 @@ class ExternalProgramAmodalRuntime(nn.Module):
             interpreter_schema="neural-computer.external-register.v4",
             execution_schema="neural-computer.external-register-read-execute.v1",
         )
-        return artifact, slot
+        return artifact, slot, self.program_memory.logical_slot_id(slot)
 
     def step_events(
         self,
@@ -1487,14 +1501,22 @@ class ExternalProgramAmodalRuntime(nn.Module):
             disable_workspace=disable_workspace,
             memory_scope=memory_scope,
         )
-        artifact, selected_slot = self._select_program(controller_output)
+        artifact, selected_slot, logical_id = self._select_program(controller_output)
         present = collection.present.any(dim=1)
+        program_states = dict(state.program_states)
+        program_state = program_states.get(logical_id)
+        if program_state is None:
+            program_state = self.machine.initial_state(
+                present.shape[0],
+                device=present.device,
+                dtype=controller_output.state_representation.dtype,
+            )
         snapshot = self.machine.read_execute_artifact_snapshot(
             event=controller_output.state_representation,
             action=feedback.action,
             outcome=feedback.reward,
             intention=controller_output.intention,
-            state=state.program,
+            state=program_state,
             artifact=artifact,
             present=present,
         )
@@ -1508,10 +1530,24 @@ class ExternalProgramAmodalRuntime(nn.Module):
             intention=intention,
             decoded=self.runtime.output_bus(intention),
             selected_program_slot=selected_slot,
+            selected_program_logical_id=(
+                None
+                if logical_id == _STANDALONE_PROGRAM_STATE_KEY
+                else logical_id
+            ),
         )
+        program_states[logical_id] = snapshot.observed
+        if self.program_memory is not None:
+            active_ids = set(self.program_memory.logical_slot_ids)
+            program_states = {
+                key: value
+                for key, value in program_states.items()
+                if key in active_ids
+            }
         return output, ExternalProgramRuntimeState(
             controller=next_controller,
             program=snapshot.observed,
+            program_states=program_states,
         )
 
 

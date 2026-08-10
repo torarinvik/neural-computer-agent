@@ -1439,3 +1439,14 @@ The promoted audit is archived at
 `session_records/sequence_working_memory_2026-08-02/external_program_memory_maintenance_promoted_2026-08-10/`.
 It qualifies replay-free learned lifecycle choice on a bounded executable
 workload, not general continual learning or unrestricted program acquisition.
+
+## File-scoped executable working state
+
+`ExternalProgramAmodalRuntime` keeps a separate recurrent
+`ExternalRegisterState` for every stable logical file ID in
+`ExternalSequenceProgramMemory`. Routing between files no longer carries one
+file's temporal context into another. State for newly admitted files is
+created lazily, and state for verified-retired IDs is pruned on the next
+runtime step. The controller remains fixed-size and unaware of file identity.
+
+The runtime schema is `neural-computer.external-program-runtime.v2`.

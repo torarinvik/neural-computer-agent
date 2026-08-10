@@ -8837,3 +8837,19 @@ compression, autonomous verification, unrestricted growth, arbitrary program
 induction, or general continual learning. The next decisive pressure is to
 join maintenance with persistent multi-step hypothesis acquisition on real
 Brain Workshop family streams and charge retention/storage cost in the utility.
+
+## File-scoped executable working state (2026-08-10)
+
+`ExternalProgramAmodalRuntime` now maintains one recurrent register state per
+stable external logical file ID. A routed file switch therefore resumes that
+file's own working context instead of inheriting the previous file's temporal
+state. Newly admitted files receive state lazily; verified eviction prunes
+retired IDs; physical compaction does not change state ownership. The
+controller width and intention bus are unchanged.
+
+This closes a subtle but important continual-learning failure mode: a memory
+bank could previously preserve file contents while mixing the temporal state
+of different capabilities at execution time. The runtime audit covers
+alternating routes, state non-interference, verified retirement, and reload of
+stable IDs. It is still a bounded runtime integrity result, not evidence of
+general program acquisition or general continual learning.
