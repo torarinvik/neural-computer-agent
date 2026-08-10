@@ -6938,3 +6938,22 @@ with one rejected cost seed remains the more conservative population audit.
 
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_transition_model_disjoint_compounding_controls_promoted_2026-08-10/`.
+
+## Broader disjoint transfer-challenger calibration (2026-08-10)
+
+The transfer-vs-fresh challenger is now tested on seven distinct opaque
+dynamics: two sources followed by five targets. Both candidates receive the
+same eight-update factual probe and are then trained independently to full
+mastery, so probe choice can be compared against actual acquisition cost.
+Across three seeds and 15 target comparisons, the probe selected the eventual
+lower-cost candidate every time. All candidates mastered, random-intention
+floors stayed below mastery, contexts remained separated, prior slots were
+byte-stable, and old-regime replay was zero.
+
+This promotes bounded cost-predictive transfer selection. It does not establish
+unrestricted memory growth, arbitrary new computation, or general continual
+learning; the earlier five-seed negative-cost audit remains a required
+conservative control.
+
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_transition_model_challenger_calibration_promoted_2026-08-10/`.

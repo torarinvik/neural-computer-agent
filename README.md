@@ -2695,3 +2695,12 @@ model/search arm mastered both disjoint targets and retained every source slot.
 This strengthens the control boundary, not the claim to general continual
 learning. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_transition_model_disjoint_compounding_controls_promoted_2026-08-10/`.
+
+The transfer challenger has now been calibrated on a broader family as well:
+seven distinct dynamics, two source regimes, and five targets. Across three
+seeds, both transfer and fresh candidates were trained to full mastery, and
+the eight-update probe selected the eventual lower-cost candidate on all 15
+comparisons. This promotes a bounded cost-predictive transfer mechanism while
+retaining the conservative five-seed negative-cost audit. Evidence is archived
+in
+`session_records/sequence_working_memory_2026-08-02/external_transition_model_challenger_calibration_promoted_2026-08-10/`.

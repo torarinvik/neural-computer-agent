@@ -1,0 +1,611 @@
+{
+  "schema": "neural-computer.external-transition-model-challenger-calibration.v1",
+  "seed": 95001,
+  "configuration": {
+    "regime_count": 7,
+    "source_regimes": [
+      0,
+      1
+    ],
+    "target_regimes": [
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "context_updates": 400,
+    "source_updates": 700,
+    "target_updates": 220,
+    "probe_updates": 8,
+    "no_agent_trials_per_target": 128,
+    "mastery_threshold": 0.8,
+    "policy": "none_both_candidates_full_cost_calibration_v1"
+  },
+  "tables": [
+    [
+      [
+        1,
+        6,
+        4,
+        7,
+        4,
+        0,
+        2,
+        7
+      ],
+      [
+        7,
+        6,
+        5,
+        6,
+        6,
+        5,
+        2,
+        4
+      ]
+    ],
+    [
+      [
+        5,
+        3,
+        5,
+        5,
+        1,
+        1,
+        6,
+        3
+      ],
+      [
+        7,
+        5,
+        6,
+        3,
+        7,
+        4,
+        5,
+        4
+      ]
+    ],
+    [
+      [
+        5,
+        5,
+        3,
+        4,
+        3,
+        2,
+        6,
+        3
+      ],
+      [
+        2,
+        5,
+        2,
+        4,
+        3,
+        3,
+        7,
+        4
+      ]
+    ],
+    [
+      [
+        5,
+        1,
+        5,
+        1,
+        2,
+        1,
+        1,
+        7
+      ],
+      [
+        7,
+        6,
+        3,
+        4,
+        5,
+        2,
+        6,
+        6
+      ]
+    ],
+    [
+      [
+        5,
+        1,
+        6,
+        5,
+        0,
+        3,
+        5,
+        6
+      ],
+      [
+        3,
+        1,
+        5,
+        3,
+        5,
+        6,
+        4,
+        6
+      ]
+    ],
+    [
+      [
+        7,
+        7,
+        2,
+        6,
+        1,
+        5,
+        4,
+        1
+      ],
+      [
+        3,
+        5,
+        1,
+        4,
+        6,
+        0,
+        3,
+        5
+      ]
+    ],
+    [
+      [
+        1,
+        0,
+        3,
+        6,
+        5,
+        3,
+        5,
+        1
+      ],
+      [
+        3,
+        7,
+        7,
+        0,
+        6,
+        0,
+        1,
+        3
+      ]
+    ]
+  ],
+  "targets": [
+    [
+      [
+        0,
+        2
+      ],
+      [
+        1,
+        5
+      ],
+      [
+        2,
+        6
+      ]
+    ],
+    [
+      [
+        0,
+        1
+      ],
+      [
+        1,
+        5
+      ],
+      [
+        2,
+        5
+      ]
+    ],
+    [
+      [
+        0,
+        4
+      ],
+      [
+        1,
+        2
+      ],
+      [
+        2,
+        3
+      ]
+    ],
+    [
+      [
+        0,
+        5
+      ],
+      [
+        1,
+        6
+      ],
+      [
+        2,
+        6
+      ]
+    ],
+    [
+      [
+        0,
+        5
+      ],
+      [
+        1,
+        1
+      ],
+      [
+        2,
+        6
+      ]
+    ],
+    [
+      [
+        0,
+        5
+      ],
+      [
+        1,
+        0
+      ],
+      [
+        2,
+        1
+      ]
+    ],
+    [
+      [
+        0,
+        1
+      ],
+      [
+        1,
+        7
+      ],
+      [
+        2,
+        1
+      ]
+    ]
+  ],
+  "context_loss": 7.152555099310121e-07,
+  "min_context_distance": 0.10356871038675308,
+  "source": [
+    {
+      "regime": 0,
+      "updates": 41,
+      "loss": 0.008588260039687157,
+      "result": {
+        "successes": [
+          true,
+          true,
+          true
+        ],
+        "mastery": 1.0,
+        "expanded_nodes": 42
+      },
+      "slot_id": 0
+    },
+    {
+      "regime": 1,
+      "updates": 42,
+      "loss": 0.006318253464996815,
+      "result": {
+        "successes": [
+          true,
+          true,
+          true
+        ],
+        "mastery": 1.0,
+        "expanded_nodes": 42
+      },
+      "slot_id": 1
+    }
+  ],
+  "targets_audit": [
+    {
+      "regime": 2,
+      "slot_id": 2,
+      "probe": {
+        "transfer_error": 0.06230274587869644,
+        "fresh_error": 0.07354620099067688,
+        "winner": "transfer",
+        "updates": 8
+      },
+      "full_transfer": {
+        "updates": 24,
+        "loss": 0.009127912111580372,
+        "result": {
+          "successes": [
+            true,
+            true,
+            true
+          ],
+          "mastery": 1.0,
+          "expanded_nodes": 42
+        }
+      },
+      "full_fresh": {
+        "updates": 27,
+        "loss": 0.007541820872575045,
+        "result": {
+          "successes": [
+            true,
+            true,
+            true
+          ],
+          "mastery": 1.0,
+          "expanded_nodes": 42
+        }
+      },
+      "full_winner": "transfer",
+      "probe_matches_full": true,
+      "prior_slots_byte_stable": true,
+      "no_agent": {
+        "trials_per_target": 128,
+        "attempts": 384,
+        "successes": 168,
+        "mastery": 0.4375
+      }
+    },
+    {
+      "regime": 3,
+      "slot_id": 3,
+      "probe": {
+        "transfer_error": 0.055210817605257034,
+        "fresh_error": 0.07291655987501144,
+        "winner": "transfer",
+        "updates": 8
+      },
+      "full_transfer": {
+        "updates": 18,
+        "loss": 0.009987576864659786,
+        "result": {
+          "successes": [
+            true,
+            true,
+            true
+          ],
+          "mastery": 1.0,
+          "expanded_nodes": 42
+        }
+      },
+      "full_fresh": {
+        "updates": 36,
+        "loss": 0.00917984638363123,
+        "result": {
+          "successes": [
+            true,
+            true,
+            true
+          ],
+          "mastery": 1.0,
+          "expanded_nodes": 42
+        }
+      },
+      "full_winner": "transfer",
+      "probe_matches_full": true,
+      "prior_slots_byte_stable": true,
+      "no_agent": {
+        "trials_per_target": 128,
+        "attempts": 384,
+        "successes": 107,
+        "mastery": 0.2786458333333333
+      }
+    },
+    {
+      "regime": 4,
+      "slot_id": 4,
+      "probe": {
+        "transfer_error": 0.04448126256465912,
+        "fresh_error": 0.07024532556533813,
+        "winner": "transfer",
+        "updates": 8
+      },
+      "full_transfer": {
+        "updates": 18,
+        "loss": 0.008603564463555813,
+        "result": {
+          "successes": [
+            true,
+            true,
+            true
+          ],
+          "mastery": 1.0,
+          "expanded_nodes": 42
+        }
+      },
+      "full_fresh": {
+        "updates": 33,
+        "loss": 0.008793452754616737,
+        "result": {
+          "successes": [
+            true,
+            true,
+            true
+          ],
+          "mastery": 1.0,
+          "expanded_nodes": 42
+        }
+      },
+      "full_winner": "transfer",
+      "probe_matches_full": true,
+      "prior_slots_byte_stable": true,
+      "no_agent": {
+        "trials_per_target": 128,
+        "attempts": 384,
+        "successes": 194,
+        "mastery": 0.5052083333333334
+      }
+    },
+    {
+      "regime": 5,
+      "slot_id": 5,
+      "probe": {
+        "transfer_error": 0.06926476955413818,
+        "fresh_error": 0.08614622801542282,
+        "winner": "transfer",
+        "updates": 8
+      },
+      "full_transfer": {
+        "updates": 23,
+        "loss": 0.00921520497649908,
+        "result": {
+          "successes": [
+            true,
+            true,
+            true
+          ],
+          "mastery": 1.0,
+          "expanded_nodes": 42
+        }
+      },
+      "full_fresh": {
+        "updates": 35,
+        "loss": 0.009826860390603542,
+        "result": {
+          "successes": [
+            true,
+            true,
+            true
+          ],
+          "mastery": 1.0,
+          "expanded_nodes": 42
+        }
+      },
+      "full_winner": "transfer",
+      "probe_matches_full": true,
+      "prior_slots_byte_stable": true,
+      "no_agent": {
+        "trials_per_target": 128,
+        "attempts": 384,
+        "successes": 99,
+        "mastery": 0.2578125
+      }
+    },
+    {
+      "regime": 6,
+      "slot_id": 6,
+      "probe": {
+        "transfer_error": 0.026007918640971184,
+        "fresh_error": 0.07121904194355011,
+        "winner": "transfer",
+        "updates": 8
+      },
+      "full_transfer": {
+        "updates": 15,
+        "loss": 0.006672471761703491,
+        "result": {
+          "successes": [
+            true,
+            true,
+            true
+          ],
+          "mastery": 1.0,
+          "expanded_nodes": 42
+        }
+      },
+      "full_fresh": {
+        "updates": 34,
+        "loss": 0.009360718540847301,
+        "result": {
+          "successes": [
+            true,
+            true,
+            true
+          ],
+          "mastery": 1.0,
+          "expanded_nodes": 42
+        }
+      },
+      "full_winner": "transfer",
+      "probe_matches_full": true,
+      "prior_slots_byte_stable": true,
+      "no_agent": {
+        "trials_per_target": 128,
+        "attempts": 384,
+        "successes": 128,
+        "mastery": 0.3333333333333333
+      }
+    }
+  ],
+  "controls": {
+    "no_agent": {
+      "2": {
+        "trials_per_target": 128,
+        "attempts": 384,
+        "successes": 168,
+        "mastery": 0.4375
+      },
+      "3": {
+        "trials_per_target": 128,
+        "attempts": 384,
+        "successes": 107,
+        "mastery": 0.2786458333333333
+      },
+      "4": {
+        "trials_per_target": 128,
+        "attempts": 384,
+        "successes": 194,
+        "mastery": 0.5052083333333334
+      },
+      "5": {
+        "trials_per_target": 128,
+        "attempts": 384,
+        "successes": 99,
+        "mastery": 0.2578125
+      },
+      "6": {
+        "trials_per_target": 128,
+        "attempts": 384,
+        "successes": 128,
+        "mastery": 0.3333333333333333
+      }
+    }
+  },
+  "gates": {
+    "controller_unchanged": true,
+    "context_encoder_converged": true,
+    "all_tables_distinct": true,
+    "contexts_separated": true,
+    "all_source_regimes_mastered": true,
+    "all_candidates_mastered": true,
+    "all_probe_choices_match_full_cost": true,
+    "probe_match_rate_at_least_half": true,
+    "all_no_agent_floors_below_mastery": true,
+    "warm_selected_cost_beats_fresh": true,
+    "prior_slots_byte_stable": true,
+    "old_regime_replay_zero": true,
+    "planner_is_inference_only": true
+  },
+  "promoted": true,
+  "accounting": {
+    "unique_transition_rows": 112,
+    "old_regime_replay_during_adaptation": 0,
+    "source_optimizer_updates": 83,
+    "warm_selected_optimizer_updates": 181,
+    "fresh_optimizer_updates": 248,
+    "probe_optimizer_updates_per_candidate": 8,
+    "no_agent_verifier_trials": 1920,
+    "controller_optimizer_updates": 0,
+    "context_encoder_optimizer_updates": 400,
+    "probe_match_rate": 1.0,
+    "transfer_ratio_against_fresh": 1.3701657458563536
+  },
+  "digests": {
+    "controller": "0c2357afd96523fe1e33790c658f8abac819235e99e94bdf6962d275a565b243",
+    "context_encoder": "b945f889d6175e495b56d741eaf79265ef170ff6dd055c303dd5c722bdccaf2d",
+    "bank": "953db7a7faa152625e635bafcec52a6fbe751c9608a88c2e17f33c5ecadf941c"
+  },
+  "elapsed_seconds": 1.9085808749659918
+}
