@@ -5887,3 +5887,41 @@ collection retained, since F129 shows reading needs that asymmetry.
 
 Probe 229 is `--seek-plane2 0.25`, 2 seeds. Probe 230 is
 `--tied-salience`, 3 seeds.
+
+**F131 (probe 231). The decomposition answers: on the boolean ground,
+holding DEPTH at one application produces the first reading signal
+anywhere in the composition probes — so depth is the constraint and
+carrying two piece-parameters in one entry is not.** 256 worlds, two
+pieces, iterated, learned reader, `--max-len 1`:
+
+| measure (held-out worlds) | own entry | stranger | withheld |
+| --- | ---: | ---: | ---: |
+| per-bit accuracy | **0.6096** | 0.5794 | 0.5806 |
+| exact match | 0.0244 | 0.0249 | 0.0156 |
+
+Chance is 0.5 per-bit and 0.0039 exact. The per-bit gap of own over
+stranger is +0.0302 on held-out worlds, positive in 10 of 16 worlds
+individually (range -0.050 to +0.112) — small and noisy, but it is the
+first time in this probe family that supplying the CORRECT world's
+entry beats supplying a foreign one. At depth 4 the same probe gives
+stranger identical to own to four decimals (F120, F124).
+
+Two things this settles and one it does not:
+  * SETTLED — two pieces in one entry is not the blocker. The entry
+    can carry both a mask and a shift well enough to beat a stranger's;
+  * SETTLED — the boolean ground is not simply too hard. It reads,
+    weakly, when depth is removed;
+  * NOT SETTLED — whether the depth failure is gradient reach (the
+    reader's signal must survive four step applications) or
+    representational drift (the world parameter degrading in the
+    latent). A depth ladder discriminates: gradient reach should decay
+    smoothly with depth, drift should show a knee.
+
+This also rehabilitates the curriculum idea (F127) as untested rather
+than refuted: F127 ran on the arithmetic ground, whose multi-world
+results are confounded by modular multiplication (F128). A curriculum
+on the boolean ground, starting where reading demonstrably works,
+is a different experiment.
+
+Probe 231 is `bool_compose.py --iterate --max-len 1 --worlds 256`.
+Depth ladder (L1 second seed, L2) running.
