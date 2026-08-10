@@ -71,6 +71,21 @@ parser.add_argument(
          "A curriculum gets reading established on the readable task "
          "first, then extends it — the bootstrapping F120 identified.")
 parser.add_argument(
+    "--contrastive", type=float, default=0.0,
+    help="NON-PRIVILEGED reader pre-training. For this fraction of "
+         "updates, train the reader alone so that two entries read "
+         "from DIFFERENT observation samples of the SAME world agree, "
+         "and entries from different worlds do not (InfoNCE over a "
+         "batch of worlds). Then freeze the reader and train the plant "
+         "to bind whatever code it settled on. F138 showed the reader "
+         "can produce a usable entry when given a consistent target, "
+         "and F136 showed task loss through a frozen plant cannot find "
+         "one; the property distillation actually supplied was "
+         "CONSISTENCY, which needs no privileged parameters — a "
+         "learner always knows which observations came from the same "
+         "world. Phase order is reversed from --two-phase: reader "
+         "first, plant second.")
+parser.add_argument(
     "--distill", action="store_true",
     help="in phase 2, train the reader to MATCH the oracle entry "
          "directly (squared error on the entry vector) instead of "
@@ -341,6 +356,24 @@ def reader_examples(world: dict, generator: torch.Generator):
 data_gen = torch.Generator().manual_seed(args.seed * 6700417)
 uniform = math.log(M)
 phase_one = int(args.train_updates * args.two_phase)
+contrast_end = int(args.train_updates * args.contrastive)
+
+
+def contrastive_loss(batch_worlds: list) -> torch.Tensor:
+    """InfoNCE: an entry must match a SECOND reading of its own world
+    better than any other world's. Uses only world identity, which the
+    learner observes directly."""
+    anchors = torch.stack([
+        reader(*reader_examples(w, data_gen)).flatten()
+        for w in batch_worlds])
+    others = torch.stack([
+        reader(*reader_examples(w, data_gen)).flatten()
+        for w in batch_worlds])
+    anchors = torch.nn.functional.normalize(anchors, dim=-1)
+    others = torch.nn.functional.normalize(others, dim=-1)
+    logits = anchors @ others.T / 0.1
+    target = torch.arange(len(batch_worlds))
+    return torch.nn.functional.cross_entropy(logits, target)
 for update in range(args.train_updates):
     if args.two_phase > 0 and update == phase_one:
         # freeze the plant; from here only the reader learns, and it
@@ -348,6 +381,18 @@ for update in range(args.train_updates):
         for parameter in plant.parameters():
             parameter.requires_grad_(False)
         optimizer = torch.optim.Adam(reader.parameters(), lr=args.lr)
+    if args.contrastive > 0 and update < contrast_end:
+        picks = torch.randperm(
+            len(train_worlds), generator=data_gen)[:8].tolist()
+        loss = contrastive_loss([train_worlds[i] for i in picks])
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        continue
+    if args.contrastive > 0 and update == contrast_end:
+        for parameter in reader.parameters():
+            parameter.requires_grad_(False)
+        optimizer = torch.optim.Adam(plant.parameters(), lr=args.lr)
     world = train_worlds[int(torch.randint(
         0, len(train_worlds), (1,), generator=data_gen))]
     pool = train_programs
