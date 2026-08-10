@@ -5491,7 +5491,10 @@ do not learn the composite, learn the piece and iterate it.
 
 Caveats held open deliberately: (1) one seed — the effect is
 chance-to-ceiling so it is not a noise question, but replication is
-queued; (2) reading is absent from this arm by construction (one
+queued; **RESOLVED 2026-08-10: seed 69317 also gives 1.0000 trained /
+1.0000 held-out, and F125's length-extrapolation arm gives 1.0000 on
+programs of an unseen depth — two seeds and the strictest split all at
+ceiling;** (2) reading is absent from this arm by construction (one
 world), so the open question is whether the same interface lets the
 BANK ENTRY supply the pieces across many worlds — that is exactly what
 F120's failing 64-world setting will now re-test; (3) held-out

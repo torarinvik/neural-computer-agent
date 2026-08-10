@@ -9,3 +9,5 @@ per token through a SHARED step function instead of one-shot.
 
 Chance 0.0435. No intermediate supervision; identical parameter count.
 The shared step function is the entire compositional prior.
+
+Replication (added 2026-08-10): seed 69317 also 1.0000 / 1.0000.

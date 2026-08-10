@@ -1,0 +1,27 @@
+{
+  "seed": 69317,
+  "modulus": 23,
+  "worlds": 2,
+  "held_worlds": 1,
+  "train_programs": 18,
+  "held_programs": 12,
+  "chance": 0.0435,
+  "held_out_worlds": {
+    "w1": {
+      "trained_programs": 0.0443,
+      "held_programs": 0.0378,
+      "withheld": 0.0352,
+      "stranger": 0.0378,
+      "swap_truth_with_own_entry": 0.0508
+    }
+  },
+  "trained_worlds": {
+    "w0": {
+      "trained_programs": 1.0,
+      "held_programs": 1.0,
+      "withheld": 0.7695,
+      "stranger": 1.0,
+      "swap_truth_with_own_entry": 0.0352
+    }
+  }
+}
