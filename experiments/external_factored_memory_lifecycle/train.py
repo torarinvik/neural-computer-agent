@@ -270,6 +270,27 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             ).slot_id
         )
 
+    partial_digest_before = router.digest()
+    partial_routes = [
+        router.route_partial_bundle(
+            _rows(train[regime])[:5],
+            min_match_fraction=1.0,
+            match_tolerance=PREDICTION_TOLERANCE,
+            contradiction_tolerance=PREDICTION_TOLERANCE,
+            match_margin=0.0,
+        ).slot_id
+        for regime in (0, 3)
+    ]
+    contradictory = router.route_partial_bundle(
+        _rows(train[0])[:2] + _rows(train[1])[:2],
+        min_match_fraction=0.5,
+        match_tolerance=PREDICTION_TOLERANCE,
+        contradiction_tolerance=PREDICTION_TOLERANCE,
+        match_margin=0.0,
+    )
+    empty_partial = router.route_partial_bundle([])
+    partial_digest_after = router.digest()
+
     all_heldout = {regime: heldout[regime] for regime in range(4)}
     compressed_selection = router.select_compression_verified(
         ["float16_stats", torch.float16],
@@ -332,6 +353,13 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         "growth_retained_prior_slots": growth_receipt.accepted
         and growth_receipt.context_count == 2,
         "four_regimes_routed_before_eviction": routes_before_eviction == [0, 1, 2, 3],
+        "partial_known_evidence_routes": partial_routes == [0, 3],
+        "contradictory_partial_evidence_is_ambiguous": contradictory.status
+        == "ambiguous"
+        and contradictory.slot_id is None,
+        "empty_partial_evidence_is_noop": empty_partial.status == "ambiguous"
+        and empty_partial.slot_id is None,
+        "partial_reads_do_not_mutate": partial_digest_before == partial_digest_after,
         "compression_selected": compressed_selection.accepted,
         "compression_roundtrip_retained": compressed_roundtrip,
         "eviction_accepted": eviction_receipt.accepted,
@@ -368,6 +396,9 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "eviction_receipt": eviction_receipt.__dict__,
             "compression_selection": compressed_selection.__dict__,
             "routes_before_eviction": routes_before_eviction,
+            "partial_routes": partial_routes,
+            "contradictory_partial_status": contradictory.status,
+            "empty_partial_status": empty_partial.status,
             "routes_after_eviction": routes_after_eviction,
             "restored_routes": restored_routes,
             "final_slot_ids": list(router.slot_ids),
