@@ -5731,3 +5731,28 @@ This is the general shape of the mistake worth avoiding: the failing
 configuration differed from the working one in more than one way, and
 until they are separated any story about the cause is a guess. F117
 cost three arms to exactly this error.
+
+**A confound in the arithmetic ground, noted before it can mislead.**
+`math_compose`'s multiplicative piece is g(x) = a*x mod 23 with `a`
+drawn per world. With ONE world `a` is fixed and the model memorises a
+single 23x23 table — trivial. Across 256 worlds it must learn modular
+multiplication as a general operation with the multiplier supplied at
+runtime, which is the hardest well-known function in this size class.
+So "1 world perfect, 256 worlds chance" on the arithmetic ground has a
+completely mundane candidate explanation that has nothing to do with
+banks, reading, or composition.
+
+The boolean ground exists precisely to remove it — XOR-with-mask and
+rotate-by-k are elementwise and permutation operations with no such
+difficulty — and boolean fails at 64 and 512 worlds too (F120, F124).
+That already argues the confound is not the whole story. The
+decomposition arms are therefore being run on BOTH grounds: if boolean
+`--max-len 1` at 256 worlds also fails to read, the defect is carrying
+TWO piece-parameters in one entry, and neither arithmetic hardness nor
+depth explains it.
+
+Recording this because the confound was present from F117 onward and I
+did not name it until three cells of a 2x2 had come back at chance —
+the same lesson as F104 (a benchmark must be checked for what it lets
+a wrong mechanism score) applied to the generating function instead of
+the policy.
