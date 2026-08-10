@@ -183,6 +183,27 @@ unrouted composition is explicitly rejected. This is a storage and execution
 contract, not a claim of arbitrary procedure induction or general continual
 learning.
 
+`ExternalControllerTrajectoryQueryAdapter` is an optional memory-side address
+adapter. It augments the final opaque controller state with masked mean/max
+statistics over the learned event-token window, allowing a growing router to
+retain more trajectory identity without changing the planner state or adding a
+modality branch. `ExternalOutcomeIntentionRouter` also supplies a bounded
+exploration floor for unqualified cells so appended memory receives evidence
+before route logits can suppress it.
+
+The rejected six-regime audit is intentionally preserved as a design control:
+copying an external intention-generator policy into a contradictory regime can
+produce negative transfer. Long-term growth must therefore prefer factual
+residual/delta candidates or fresh challengers and held-out copy-on-write
+selection over blind policy cloning.
+
+Retention is split into two authorities: noisy online outcomes may adapt
+unprotected cells, while `ExternalOutcomeIntentionRouter.verify_and_protect`
+is a held-out copy-on-write gate for freezing them. The verifier transaction
+records a stable-prefix receipt and changes only protection/qualification
+metadata; it never
+silently trains content or routing.
+
 The outcome-only view-routing audit trains `FactorizedOpaqueAddressRouter`
 from paired attempted-view outcomes. Across two seeds it reaches `1.000`
 held-out route accuracy and `1.000` candidate-permutation accuracy, while the

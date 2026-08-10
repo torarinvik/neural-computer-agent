@@ -1,0 +1,528 @@
+{
+  "schema": "neural-computer.policy-free-intention-prefix-growth.v1",
+  "claim_boundary": "six-regime bounded routed external-memory growth with context-gated stable-prefix retention and matched fresh transfer; not general continual learning",
+  "seed": 85401,
+  "configuration": {
+    "regime_count": 6,
+    "max_updates_per_regime": 240,
+    "delay_steps": 3,
+    "retention_floor": 0.9,
+    "route_floor": 0.15,
+    "router": {
+      "schema": "neural-computer.external-routed-intention-memory.v2",
+      "memory": {
+        "schema": "neural-computer.external-outcome-intention-memory.v1",
+        "generator": {
+          "schema": "neural-computer.external-outcome-intention-generator.v1",
+          "context_width": 20,
+          "intention_width": 2,
+          "hidden_width": 32,
+          "feature_width": 21,
+          "initial_learning_rate": 0.03,
+          "initial_trace_decay": 0.0,
+          "initial_baseline_rate": 0.05,
+          "initial_baseline": 0.5,
+          "noise_scale": 0.35,
+          "initial_parameter_scale": 0.05,
+          "update_rule": "outcome_only_gaussian_score_credit_external_mlp_v1",
+          "state": "external_generator_cells_and_eligibility_v1",
+          "controller": "frozen_opaque_context_only_v1",
+          "persistence": "tensor_only_versioned_payload_v1"
+        },
+        "capacity": "independent_external_cells_runtime_variable_v1",
+        "proposal": "sparse_opaque_candidate_subset_with_physical_cell_ids_v1",
+        "credit": "delayed_proposal_specific_gaussian_score_gradients_v1",
+        "controller": "frozen_opaque_context_only_v1",
+        "persistence": "generator_tensor_payload_v1"
+      },
+      "routing": "opaque_context_to_external_cell_mixture_then_sparse_materialization_v2",
+      "credit": "outcome_only_route_score_gradient_v1",
+      "temperature": 1.0,
+      "exploration_bonus": 0.75,
+      "initial_learning_rate": 0.1,
+      "initial_baseline_rate": 0.05,
+      "initial_baseline": 0.5,
+      "initial_routing_scale": 0.01,
+      "unqualified_cell_probability": 0.25,
+      "retention": {
+        "mastery_threshold": 0.8,
+        "min_mastery_feedbacks": 8,
+        "reversal_threshold": 0.5,
+        "reversal_patience": 4,
+        "context_relevance_threshold": 0.9,
+        "heldout_gate": "verifier_prefix_minimum_copy_on_write_v1"
+      },
+      "capacity": "append_only_external_cell_count_v1",
+      "controller": "frozen_opaque_context_only_v1"
+    },
+    "fresh_control": "pre_regime_caller_owned_cell_snapshot_v1",
+    "growth_cell": "fresh_unqualified_cell_in_accumulated_bank_v1",
+    "route_query_adapter": {
+      "schema": "neural-computer.external-controller-trajectory-query-adapter.v1",
+      "controller_width": 4,
+      "controller_feature_width": 12,
+      "event_feature_width": 4,
+      "input_width": 20,
+      "query_width": 20,
+      "hidden_width": 0,
+      "input": "opaque_controller_state_plus_event_token_trajectory_v1",
+      "statistics": "masked_mean_and_max_v1",
+      "behavior": "replaceable_memory_address_query_not_reasoning_branch_v1"
+    }
+  },
+  "gates": {
+    "all_regimes_mastered": false,
+    "every_new_cell_auto_protected": false,
+    "stable_prefix_content_retained": false,
+    "stable_prefix_route_retained": false,
+    "positive_transfer_on_every_successor": false,
+    "sparse_materialization": true,
+    "reward_shuffled_control_failed": true,
+    "missing_evidence_is_noop": true,
+    "memory_corruption_probe_detected": true,
+    "exact_persistence": true,
+    "controller_frozen": true,
+    "zero_replayed_examples": true,
+    "six_cells_present": true
+  },
+  "promoted": false,
+  "metrics": {
+    "history": [
+      {
+        "regime": 0,
+        "warm_cell": 0,
+        "warm_updates": 46,
+        "fresh_updates": 48,
+        "transfer_ratio_fresh_over_warm": 1.0434782608695652,
+        "warm_mastery_cell_score": 0.9740287661552429,
+        "fresh_mastery_cell_score": 0.964769184589386,
+        "warm_auto_protected": false,
+        "retention": {
+          "0": {
+            "content_score": 0.9740287661552429,
+            "route_hit_rate": 1.0,
+            "mean_route_probability": 1.0
+          }
+        },
+        "materialized_candidate_cells": {
+          "minimum": 1,
+          "maximum": 1,
+          "mean": 1.0
+        }
+      },
+      {
+        "regime": 1,
+        "warm_cell": 1,
+        "warm_updates": 107,
+        "fresh_updates": 26,
+        "transfer_ratio_fresh_over_warm": 0.24299065420560748,
+        "warm_mastery_cell_score": 0.974032461643219,
+        "fresh_mastery_cell_score": 0.9875771403312683,
+        "warm_auto_protected": false,
+        "retention": {
+          "0": {
+            "content_score": 0.8912243843078613,
+            "route_hit_rate": 0.53125,
+            "mean_route_probability": 0.5872726440429688
+          },
+          "1": {
+            "content_score": 0.974032461643219,
+            "route_hit_rate": 0.09375,
+            "mean_route_probability": 0.08302047848701477
+          }
+        },
+        "materialized_candidate_cells": {
+          "minimum": 1,
+          "maximum": 1,
+          "mean": 1.0
+        }
+      },
+      {
+        "regime": 2,
+        "warm_cell": 2,
+        "warm_updates": 46,
+        "fresh_updates": 21,
+        "transfer_ratio_fresh_over_warm": 0.45652173913043476,
+        "warm_mastery_cell_score": 0.9422849416732788,
+        "fresh_mastery_cell_score": 0.9522886276245117,
+        "warm_auto_protected": false,
+        "retention": {
+          "0": {
+            "content_score": 0.8876793384552002,
+            "route_hit_rate": 0.21875,
+            "mean_route_probability": 0.2649677097797394
+          },
+          "1": {
+            "content_score": 0.8360256552696228,
+            "route_hit_rate": 0.125,
+            "mean_route_probability": 0.06030847132205963
+          },
+          "2": {
+            "content_score": 0.9422849416732788,
+            "route_hit_rate": 0.875,
+            "mean_route_probability": 0.8648303747177124
+          }
+        },
+        "materialized_candidate_cells": {
+          "minimum": 1,
+          "maximum": 1,
+          "mean": 1.0
+        }
+      },
+      {
+        "regime": 3,
+        "warm_cell": 3,
+        "warm_updates": 63,
+        "fresh_updates": 16,
+        "transfer_ratio_fresh_over_warm": 0.25396825396825395,
+        "warm_mastery_cell_score": 0.9730702638626099,
+        "fresh_mastery_cell_score": 0.9544996619224548,
+        "warm_auto_protected": false,
+        "retention": {
+          "0": {
+            "content_score": 0.8603909611701965,
+            "route_hit_rate": 0.09375,
+            "mean_route_probability": 0.13084493577480316
+          },
+          "1": {
+            "content_score": 0.7753157019615173,
+            "route_hit_rate": 0.03125,
+            "mean_route_probability": 0.046587273478507996
+          },
+          "2": {
+            "content_score": 0.9273792505264282,
+            "route_hit_rate": 0.71875,
+            "mean_route_probability": 0.7887817025184631
+          },
+          "3": {
+            "content_score": 0.9730702638626099,
+            "route_hit_rate": 0.84375,
+            "mean_route_probability": 0.8185200095176697
+          }
+        },
+        "materialized_candidate_cells": {
+          "minimum": 1,
+          "maximum": 1,
+          "mean": 1.0
+        }
+      },
+      {
+        "regime": 4,
+        "warm_cell": 4,
+        "warm_updates": 60,
+        "fresh_updates": 17,
+        "transfer_ratio_fresh_over_warm": 0.2833333333333333,
+        "warm_mastery_cell_score": 0.9490302801132202,
+        "fresh_mastery_cell_score": 0.9584412574768066,
+        "warm_auto_protected": false,
+        "retention": {
+          "0": {
+            "content_score": 0.9148640632629395,
+            "route_hit_rate": 0.125,
+            "mean_route_probability": 0.112622931599617
+          },
+          "1": {
+            "content_score": 0.8359357118606567,
+            "route_hit_rate": 0.0,
+            "mean_route_probability": 0.04099121689796448
+          },
+          "2": {
+            "content_score": 0.9886589646339417,
+            "route_hit_rate": 0.53125,
+            "mean_route_probability": 0.6359102725982666
+          },
+          "3": {
+            "content_score": 0.6625502109527588,
+            "route_hit_rate": 0.65625,
+            "mean_route_probability": 0.5649120807647705
+          },
+          "4": {
+            "content_score": 0.9490302801132202,
+            "route_hit_rate": 0.40625,
+            "mean_route_probability": 0.45688101649284363
+          }
+        },
+        "materialized_candidate_cells": {
+          "minimum": 1,
+          "maximum": 1,
+          "mean": 1.0
+        }
+      },
+      {
+        "regime": 5,
+        "warm_cell": 5,
+        "warm_updates": 48,
+        "fresh_updates": 33,
+        "transfer_ratio_fresh_over_warm": 0.6875,
+        "warm_mastery_cell_score": 0.9536427855491638,
+        "fresh_mastery_cell_score": 0.996741771697998,
+        "warm_auto_protected": false,
+        "retention": {
+          "0": {
+            "content_score": 0.6600140333175659,
+            "route_hit_rate": 0.15625,
+            "mean_route_probability": 0.0797431543469429
+          },
+          "1": {
+            "content_score": 0.8359357118606567,
+            "route_hit_rate": 0.03125,
+            "mean_route_probability": 0.0344429686665535
+          },
+          "2": {
+            "content_score": 0.9980373382568359,
+            "route_hit_rate": 0.59375,
+            "mean_route_probability": 0.5734891295433044
+          },
+          "3": {
+            "content_score": 0.6712914705276489,
+            "route_hit_rate": 0.4375,
+            "mean_route_probability": 0.5241283774375916
+          },
+          "4": {
+            "content_score": 0.9485653638839722,
+            "route_hit_rate": 0.34375,
+            "mean_route_probability": 0.4004085063934326
+          },
+          "5": {
+            "content_score": 0.9536427855491638,
+            "route_hit_rate": 0.25,
+            "mean_route_probability": 0.1693357676267624
+          }
+        },
+        "materialized_candidate_cells": {
+          "minimum": 1,
+          "maximum": 1,
+          "mean": 1.0
+        }
+      }
+    ],
+    "prefix_probes": [
+      {
+        "0": {
+          "content_score": 0.9740287661552429,
+          "route_hit_rate": 1.0,
+          "mean_route_probability": 1.0
+        }
+      },
+      {
+        "0": {
+          "content_score": 0.8912243843078613,
+          "route_hit_rate": 0.53125,
+          "mean_route_probability": 0.5872726440429688
+        },
+        "1": {
+          "content_score": 0.974032461643219,
+          "route_hit_rate": 0.09375,
+          "mean_route_probability": 0.08302047848701477
+        }
+      },
+      {
+        "0": {
+          "content_score": 0.8876793384552002,
+          "route_hit_rate": 0.21875,
+          "mean_route_probability": 0.2649677097797394
+        },
+        "1": {
+          "content_score": 0.8360256552696228,
+          "route_hit_rate": 0.125,
+          "mean_route_probability": 0.06030847132205963
+        },
+        "2": {
+          "content_score": 0.9422849416732788,
+          "route_hit_rate": 0.875,
+          "mean_route_probability": 0.8648303747177124
+        }
+      },
+      {
+        "0": {
+          "content_score": 0.8603909611701965,
+          "route_hit_rate": 0.09375,
+          "mean_route_probability": 0.13084493577480316
+        },
+        "1": {
+          "content_score": 0.7753157019615173,
+          "route_hit_rate": 0.03125,
+          "mean_route_probability": 0.046587273478507996
+        },
+        "2": {
+          "content_score": 0.9273792505264282,
+          "route_hit_rate": 0.71875,
+          "mean_route_probability": 0.7887817025184631
+        },
+        "3": {
+          "content_score": 0.9730702638626099,
+          "route_hit_rate": 0.84375,
+          "mean_route_probability": 0.8185200095176697
+        }
+      },
+      {
+        "0": {
+          "content_score": 0.9148640632629395,
+          "route_hit_rate": 0.125,
+          "mean_route_probability": 0.112622931599617
+        },
+        "1": {
+          "content_score": 0.8359357118606567,
+          "route_hit_rate": 0.0,
+          "mean_route_probability": 0.04099121689796448
+        },
+        "2": {
+          "content_score": 0.9886589646339417,
+          "route_hit_rate": 0.53125,
+          "mean_route_probability": 0.6359102725982666
+        },
+        "3": {
+          "content_score": 0.6625502109527588,
+          "route_hit_rate": 0.65625,
+          "mean_route_probability": 0.5649120807647705
+        },
+        "4": {
+          "content_score": 0.9490302801132202,
+          "route_hit_rate": 0.40625,
+          "mean_route_probability": 0.45688101649284363
+        }
+      },
+      {
+        "0": {
+          "content_score": 0.6600140333175659,
+          "route_hit_rate": 0.15625,
+          "mean_route_probability": 0.0797431543469429
+        },
+        "1": {
+          "content_score": 0.8359357118606567,
+          "route_hit_rate": 0.03125,
+          "mean_route_probability": 0.0344429686665535
+        },
+        "2": {
+          "content_score": 0.9980373382568359,
+          "route_hit_rate": 0.59375,
+          "mean_route_probability": 0.5734891295433044
+        },
+        "3": {
+          "content_score": 0.6712914705276489,
+          "route_hit_rate": 0.4375,
+          "mean_route_probability": 0.5241283774375916
+        },
+        "4": {
+          "content_score": 0.9485653638839722,
+          "route_hit_rate": 0.34375,
+          "mean_route_probability": 0.4004085063934326
+        },
+        "5": {
+          "content_score": 0.9536427855491638,
+          "route_hit_rate": 0.25,
+          "mean_route_probability": 0.1693357676267624
+        }
+      }
+    ],
+    "prefix_content_floor": 0.6600140333175659,
+    "prefix_route_probability_floor": 0.0344429686665535,
+    "warm_transfer_ratios": [
+      0.24299065420560748,
+      0.45652173913043476,
+      0.25396825396825395,
+      0.2833333333333333,
+      0.6875
+    ],
+    "reward_shuffled": {
+      "updates": 240,
+      "deterministic_best_score": 0.00022564957907889038,
+      "deterministic_best_cell": 0,
+      "mastery_cell": 0,
+      "mastery_cell_score": 0.00022564957907889038,
+      "selected_cell_counts": {
+        "0": 240
+      },
+      "selected_cell_fraction": {
+        "0": 1.0
+      },
+      "materialized_candidate_cells": {
+        "minimum": 1,
+        "maximum": 1,
+        "mean": 1.0
+      },
+      "mean_outcome": 0.5036082270244757,
+      "feedbacks": 240,
+      "routing_decisions": [
+        240
+      ],
+      "search_expansions": 240,
+      "wall_seconds": 1.236107207951136
+    },
+    "missing_evidence": {
+      "state_unchanged": true,
+      "routing_decisions": [
+        0
+      ],
+      "routing_feedbacks": [
+        0
+      ]
+    },
+    "memory_corruption": {
+      "clean_score": 0.6600140333175659,
+      "corrupted_score": 0.245060533285141,
+      "corruption_detected": true
+    },
+    "final_retention": {
+      "protected": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "observations": [
+        156,
+        43,
+        56,
+        80,
+        20,
+        15
+      ],
+      "successes": [
+        82.57170104980469,
+        14.409046173095703,
+        20.044551849365234,
+        36.45701599121094,
+        6.667764663696289,
+        6.089771270751953
+      ],
+      "prefix_minima": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "reversal_counts": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "mastered": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "accounting": {
+    "unique_verifier_bits": 370,
+    "control_outcome_bits": 240,
+    "unique_logical_lifetimes": 6,
+    "external_memory_updates": 610,
+    "optimizer_updates": 0,
+    "controller_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "search_expansions": 370,
+    "wall_seconds": 4.924472916987725
+  }
+}

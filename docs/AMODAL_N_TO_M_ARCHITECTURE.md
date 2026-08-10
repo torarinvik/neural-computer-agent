@@ -3861,6 +3861,48 @@ mechanism, not the universal-computation gap. The exact audit required roughly
 procedure complexity and verification cost are now explicit implementation
 bottlenecks.
 
+## Trajectory-statistics route queries and automatic cell qualification (2026-08-10)
+
+The memory-side route boundary now has an optional
+`ExternalControllerTrajectoryQueryAdapter`. It keeps the factual planner on
+the ordinary controller state, while an external router may address a growing
+bank using the final learned controller representation plus masked mean/max
+statistics of the learned event-token window. This is the direct import from
+the exported games session's successful `trajectory_stats` direction. It is a
+replaceable address query, not a modality-specific reasoning branch, and it
+does not expose raw event formats or physical cell IDs to the controller.
+
+`ExternalOutcomeIntentionRouter` also gives unqualified external cells a
+differentiable exploration floor. An appended cell therefore receives causal
+evidence before a learned route can suppress it permanently. The floor is
+memory lifecycle behavior and remains separate from content generation,
+retention, and decoder protocols.
+
+Retention state is now tensor-only and versioned with context prototypes,
+qualification counters, automatic protection, and hysteretic reversal. Low
+outcomes from an unrelated opaque context do not release a protected cell;
+only relevant evidence can start a reversal era. Legacy routed-memory payloads
+migrate with a fresh retention ledger.
+
+The six-regime pressure test in
+`session_records/policy_free_intention_prefix_growth_rejected_2026-08-10/`
+was rejected. The richer query and exploration floor did not overcome the
+remaining policy-copy problem: a sampled intention generator is still a
+policy-like artifact, so copying it into a new contradictory regime can cause
+negative transfer. This confirms the exported session's plant/bank lesson:
+reusable structure belongs in frozen computation, while new regimes should be
+verified residual/delta candidates or fresh challengers selected
+copy-on-write. Automatic protection also cannot be promoted from noisy
+exploration rewards alone; it requires a held-out verifier prefix.
+
+That verifier boundary is now executable through
+`ExternalOutcomeIntentionRouter.verify_and_protect`. The caller supplies a
+fresh outcome prefix and an opaque route context. If its minimum outcome
+clears the configured floor, the transaction protects the cell and records
+the qualification; otherwise the state is returned unchanged. The operation
+does not update content, route logits, counters, or eligibility traces, so a
+retention decision cannot accidentally become another learning update.
+
 The runtime-opaque four-source audit was repeated in source order `[4, 3, 2,
 0]` across seeds `69316` and `69317`. All rewrites, reload, retention,
 reversal, corruption, frozen-core, and zero-replay gates passed. This promotes

@@ -1203,6 +1203,90 @@ class ExternalControllerStateAdapter(nn.Module):
         return projected
 
 
+class ExternalControllerTrajectoryQueryAdapter(nn.Module):
+    """Build an opaque route query from controller state and event history.
+
+    The factual planner still consumes the ordinary controller state. This
+    replaceable memory-side adapter is only for addressing a growing external
+    bank. It uses the final learned state plus masked mean/max statistics of
+    the learned event-token window, preserving more regime identity than a
+    single final-state projection without exposing raw modality formats.
+    """
+
+    schema = "neural-computer.external-controller-trajectory-query-adapter.v1"
+
+    def __init__(
+        self,
+        controller_width: int,
+        query_width: int | None = None,
+        *,
+        hidden_width: int = 0,
+    ) -> None:
+        super().__init__()
+        if controller_width < 1 or hidden_width < 0:
+            raise ValueError("trajectory-query adapter dimensions are invalid")
+        self.controller_width = int(controller_width)
+        self.controller_feature_width = self.controller_width * 3
+        self.event_feature_width = self.controller_width
+        self.input_width = self.controller_feature_width + 2 * self.event_feature_width
+        self.query_width = self.input_width if query_width is None else int(query_width)
+        if self.query_width < 1:
+            raise ValueError("trajectory-query adapter query width must be positive")
+        self.hidden_width = int(hidden_width)
+        if hidden_width:
+            self.network = nn.Sequential(
+                nn.Linear(self.input_width, hidden_width),
+                nn.GELU(),
+                nn.Linear(hidden_width, self.query_width),
+            )
+        elif self.query_width == self.input_width:
+            self.network = nn.Identity()
+        else:
+            self.network = nn.Linear(self.input_width, self.query_width)
+
+    def configuration(self) -> dict[str, int | str]:
+        return {
+            "schema": self.schema,
+            "controller_width": self.controller_width,
+            "controller_feature_width": self.controller_feature_width,
+            "event_feature_width": self.event_feature_width,
+            "input_width": self.input_width,
+            "query_width": self.query_width,
+            "hidden_width": self.hidden_width,
+            "input": "opaque_controller_state_plus_event_token_trajectory_v1",
+            "statistics": "masked_mean_and_max_v1",
+            "behavior": "replaceable_memory_address_query_not_reasoning_branch_v1",
+        }
+
+    def forward(
+        self,
+        output: ControllerOutput,
+        state: ControllerState,
+    ) -> torch.Tensor:
+        representation = output.state_representation
+        if representation.ndim != 2 or representation.shape[1] != self.controller_feature_width:
+            raise ValueError("trajectory-query controller representation has the wrong shape")
+        payload = state.event_window.payload
+        present = state.event_window.present
+        if payload.ndim != 3 or payload.shape[2] != self.event_feature_width:
+            raise ValueError("trajectory-query event tokens have the wrong shape")
+        if present.shape != payload.shape[:2] or present.dtype != torch.bool:
+            raise ValueError("trajectory-query event presence has the wrong shape")
+        present_float = present.to(dtype=payload.dtype)
+        denominator = present_float.sum(dim=1, keepdim=True).clamp_min(1.0)
+        mean = (payload * present_float.unsqueeze(-1)).sum(dim=1) / denominator
+        max_values = payload.masked_fill(~present.unsqueeze(-1), -torch.inf).amax(dim=1)
+        has_event = present.any(dim=1, keepdim=True)
+        max_values = torch.where(has_event, max_values, torch.zeros_like(max_values))
+        features = torch.cat((representation, mean, max_values), dim=-1)
+        if not bool(torch.isfinite(features).all()):
+            raise ValueError("trajectory-query features must be finite")
+        query = self.network(features)
+        if not bool(torch.isfinite(query).all()):
+            raise ValueError("trajectory-query output must be finite")
+        return query
+
+
 @dataclass(frozen=True)
 class PolicyFreeRuntimeOutput:
     """One model-derived intention produced by the policy-free runtime.
@@ -1255,6 +1339,7 @@ class PolicyFreeAmodalRuntime:
         intention_generator: ExternalOutcomeIntentionGenerator | None = None,
         intention_memory: ExternalOutcomeIntentionMemory | None = None,
         intention_router: ExternalOutcomeIntentionRouter | None = None,
+        route_query_adapter: ExternalControllerTrajectoryQueryAdapter | None = None,
         entry_repertoire: ExternalEntryRepertoire | None = None,
         entry_binding_repertoire: ExternalEntryBindingRepertoire | None = None,
         include_exploration_seed: bool = False,
@@ -1305,11 +1390,27 @@ class PolicyFreeAmodalRuntime:
             )
         if intention_router is not None and (
             intention_router.intention_width != runtime.intention_width
-            or intention_router.context_width != planner.model.state_width
         ):
             raise ValueError(
                 "intention router dimensions do not match policy-free runtime"
             )
+        if route_query_adapter is not None and not isinstance(
+            route_query_adapter, ExternalControllerTrajectoryQueryAdapter
+        ):
+            raise TypeError("route query adapter has the wrong type")
+        if route_query_adapter is not None and intention_router is None:
+            raise ValueError("route query adapter requires an intention router")
+        if route_query_adapter is None and intention_router is not None and (
+            intention_router.context_width != planner.model.state_width
+        ):
+            raise ValueError(
+                "intention router context width requires a route query adapter"
+            )
+        if route_query_adapter is not None and intention_router is not None and (
+            route_query_adapter.controller_width != runtime.controller.width
+            or route_query_adapter.query_width != intention_router.context_width
+        ):
+            raise ValueError("route query adapter does not match controller or router")
         if entry_repertoire is not None:
             entry_value_model = planner.entry_value_model
             if entry_value_model is None:
@@ -1337,6 +1438,7 @@ class PolicyFreeAmodalRuntime:
         self.intention_generator = intention_generator
         self.intention_memory = intention_memory
         self.intention_router = intention_router
+        self.route_query_adapter = route_query_adapter
         self.entry_repertoire = entry_repertoire
         self.entry_binding_repertoire = entry_binding_repertoire
         self.include_exploration_seed = include_exploration_seed
@@ -1401,6 +1503,11 @@ class PolicyFreeAmodalRuntime:
                 None
                 if self.intention_router is None
                 else self.intention_router.configuration()
+            ),
+            "route_query_adapter": (
+                None
+                if self.route_query_adapter is None
+                else self.route_query_adapter.configuration()
             ),
             "entry_repertoire": (
                 None
@@ -1676,6 +1783,11 @@ class PolicyFreeAmodalRuntime:
             memory_write_gradient=memory_write_gradient,
         )
         model_state = self.state_adapter(controller_output)
+        route_query = (
+            model_state
+            if self.route_query_adapter is None
+            else self.route_query_adapter(controller_output, next_state)
+        )
         proposal = None
         intention_generation = None
         intention_memory_generation = None
@@ -1725,7 +1837,7 @@ class PolicyFreeAmodalRuntime:
                 )
             intention_routing = self.intention_router.propose(
                 intention_router_state,
-                model_state,
+                route_query,
             )
             if self.entry_binding_repertoire is not None:
                 raise ValueError(

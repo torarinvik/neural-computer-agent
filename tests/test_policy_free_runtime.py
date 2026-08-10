@@ -7,6 +7,7 @@ from neural_computer import (
     AmodalEvent,
     ControllerFeedback,
     ExternalControllerStateAdapter,
+    ExternalControllerTrajectoryQueryAdapter,
     ExternalEntryBindingRepertoire,
     ExternalEntryRepertoire,
     ExternalIntentionRepertoire,
@@ -86,6 +87,58 @@ def test_policy_free_runtime_decodes_planner_intention_not_controller_preference
     assert torch.allclose(output.decoded["echo"], output.intention.payload)
     assert policy_free.configuration()["behavior"] == (
         "factual_model_search_no_stored_policy_v1"
+    )
+
+
+def test_policy_free_router_can_use_trajectory_statistics_without_changing_planner_state() -> None:
+    torch.manual_seed(121)
+    controller = AmodalCognitiveController(
+        width=4,
+        workspace_slots=2,
+        intention_width=2,
+        feedback_width=3,
+        event_window_capacity=4,
+    )
+    runtime = AmodalControllerRuntime(controller)
+    state = runtime.initial_state(1, device="cpu")
+    feedback = _feedback()
+    event = [AmodalEvent(torch.randn(1, 4))]
+    route_adapter = ExternalControllerTrajectoryQueryAdapter(4)
+    memory = ExternalOutcomeIntentionMemory(
+        ExternalOutcomeIntentionGenerator(
+            context_width=route_adapter.query_width,
+            intention_width=2,
+            hidden_width=8,
+        )
+    )
+    router = ExternalOutcomeIntentionRouter(memory)
+    policy_free = PolicyFreeAmodalRuntime(
+        runtime,
+        ExternalModelBasedPlanner(_AdditiveFactualModel(), beam_width=4),
+        intention_router=router,
+        route_query_adapter=route_adapter,
+    )
+    preview, _ = runtime.step_events(event, state, feedback)
+    goal = preview.controller.state_representation.detach().clone()
+
+    output, _ = policy_free.step_events(
+        event,
+        state,
+        feedback,
+        goal,
+        horizon=1,
+        beam_width=4,
+        intention_router_state=router.initial_state(1),
+    )
+
+    assert output.intention_routing is not None
+    assert output.state.shape == (1, 12)
+    assert output.intention_routing.candidates.features.shape == (
+        1,
+        route_adapter.query_width + 1,
+    )
+    assert policy_free.configuration()["route_query_adapter"]["statistics"] == (
+        "masked_mean_and_max_v1"
     )
 
 

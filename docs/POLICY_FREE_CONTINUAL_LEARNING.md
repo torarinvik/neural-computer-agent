@@ -689,3 +689,33 @@ count across the two seeds. This is a bounded positive transfer result, not a
 claim of unrestricted growth or Brain Workshop mastery. The next high-ROI
 pressure is a longer stable-prefix retention/transfer ledger that measures
 route and verifier cost as the library grows.
+
+## Route identity is an information boundary
+
+The exported games session identified a useful route-query pattern: a final
+state alone can collapse distinct regimes, while trajectory statistics retain
+more of the learned evidence needed for addressing. The production runtime now
+supports `ExternalControllerTrajectoryQueryAdapter`, which forms an opaque
+route query from the controller's final learned representation and masked
+mean/max learned event-token statistics. The planner still sees the normal
+state representation; only the replaceable external address resolver sees the
+richer query.
+
+New external cells also receive an unqualified-cell exploration floor. This
+prevents a new file from becoming permanently unreachable before it has
+received enough verifier evidence to qualify or be rejected. The floor is not
+a semantic route label and does not bypass held-out verification.
+
+`ExternalOutcomeIntentionRouter.verify_and_protect` is the explicit held-out
+retention transaction. It accepts only a fresh verifier prefix and commits a
+protection bit when the stable prefix clears its floor; it does not update
+generator content, route parameters, counters, or eligibility traces. This
+keeps online exploration evidence separate from the authority that freezes a
+memory file.
+
+The six-regime audit was rejected and is recorded in
+`session_records/policy_free_intention_prefix_growth_rejected_2026-08-10/`.
+Its failure is architectural evidence: blindly copying an intention-generator
+policy into a contradictory regime is negative transfer. The next promotion
+must use a factual residual/delta or a fresh challenger, then commit only
+after held-out candidate mastery and complete-prefix retention pass.

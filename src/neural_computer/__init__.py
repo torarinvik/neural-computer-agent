@@ -205,10 +205,13 @@ from .intention_memory import (
 )
 from .intention_router import (
     EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA,
+    EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V1,
     EXTERNAL_ROUTED_INTENTION_PROPOSAL_SCHEMA,
+    EXTERNAL_ROUTED_INTENTION_RETENTION_VERIFICATION_SCHEMA,
     ExternalOutcomeIntentionRouter,
     ExternalRoutedIntentionMemoryState,
     ExternalRoutedIntentionProposal,
+    ExternalRoutedRetentionVerification,
 )
 from .interface import (
     EVENT_SCHEMA,
@@ -415,6 +418,7 @@ from .runtime import (
     AmodalRuntimeOutput,
     ConditionedOpaqueProtocolDecoder,
     ExternalControllerStateAdapter,
+    ExternalControllerTrajectoryQueryAdapter,
     OpaqueProtocolDecoder,
     PolicyFreeAmodalRuntime,
     PolicyFreeRuntimeOutput,
@@ -655,7 +659,9 @@ __all__ = [
     "EXTERNAL_REGISTER_STATE_SCHEMA",
     "EXTERNAL_REPRESENTATION_SPACE_SCHEMA",
     "EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA",
+    "EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V1",
     "EXTERNAL_ROUTED_INTENTION_PROPOSAL_SCHEMA",
+    "EXTERNAL_ROUTED_INTENTION_RETENTION_VERIFICATION_SCHEMA",
     "EXTERNAL_SIGNED_ENTRY_VALUE_SCHEMA",
     "EXTERNAL_STREAM_BINDING_FACTUAL_CONSOLIDATION_SCHEMA",
     "EXTERNAL_STREAM_BINDING_FACTUAL_GROWTH_SCHEMA",
@@ -788,6 +794,7 @@ __all__ = [
     "ExternalContextualEvidenceCalibrator",
     "ExternalContextualTransitionEvidenceStatistics",
     "ExternalControllerStateAdapter",
+    "ExternalControllerTrajectoryQueryAdapter",
     "ExternalEntryAdmissionReceipt",
     "ExternalEntryBindingAdmissionReceipt",
     "ExternalEntryBindingConsolidationReceipt",
@@ -865,6 +872,7 @@ __all__ = [
     "ExternalRegisterState",
     "ExternalRoutedIntentionMemoryState",
     "ExternalRoutedIntentionProposal",
+    "ExternalRoutedRetentionVerification",
     "ExternalSequenceMemory",
     "ExternalSequenceOperatorMemory",
     "ExternalSequenceProgramMemory",

@@ -22,6 +22,7 @@ import torch
 
 from experiments.policy_free_intention_memory import train as base
 from neural_computer import (
+    ExternalControllerTrajectoryQueryAdapter,
     ExternalOutcomeIntentionGenerator,
     ExternalOutcomeIntentionMemory,
     ExternalOutcomeIntentionRouter,
@@ -49,6 +50,14 @@ def _digest_state(state: ExternalRoutedIntentionMemoryState) -> str:
         ("cells.decisions", state.cells.decisions),
         ("cells.feedbacks", state.cells.feedbacks),
         ("cells.protected", state.cells.protected),
+        ("retention_observations", state.retention_observations),
+        ("retention_successes", state.retention_successes),
+        ("retention_prefix_minima", state.retention_prefix_minima),
+        ("retention_reversal_streaks", state.retention_reversal_streaks),
+        ("retention_reversal_counts", state.retention_reversal_counts),
+        ("retention_mastered", state.retention_mastered),
+        ("retention_context_prototypes", state.retention_context_prototypes),
+        ("retention_context_masses", state.retention_context_masses),
         ("routing_keys", state.routing_keys),
         ("routing_bias", state.routing_bias),
         ("routing_baseline", state.routing_baseline),
@@ -125,6 +134,28 @@ def _single_cell_state(
         routing_bias=state.routing_bias[cell_index : cell_index + 1].clone(),
         routing_decisions=state.routing_decisions[cell_index : cell_index + 1].clone(),
         routing_feedbacks=state.routing_feedbacks[cell_index : cell_index + 1].clone(),
+        retention_observations=state.retention_observations[
+            cell_index : cell_index + 1
+        ].clone(),
+        retention_successes=state.retention_successes[
+            cell_index : cell_index + 1
+        ].clone(),
+        retention_prefix_minima=state.retention_prefix_minima[
+            cell_index : cell_index + 1
+        ].clone(),
+        retention_reversal_streaks=state.retention_reversal_streaks[
+            cell_index : cell_index + 1
+        ].clone(),
+        retention_reversal_counts=state.retention_reversal_counts[
+            cell_index : cell_index + 1
+        ].clone(),
+        retention_mastered=state.retention_mastered[cell_index : cell_index + 1].clone(),
+        retention_context_prototypes=state.retention_context_prototypes[
+            cell_index : cell_index + 1
+        ].clone(),
+        retention_context_masses=state.retention_context_masses[
+            cell_index : cell_index + 1
+        ].clone(),
     )
 
 
@@ -133,11 +164,16 @@ def _new_policy(
     reference: PolicyFreeAmodalRuntime,
     seed: int,
     cell_count: int,
+    mastery_threshold: float = 0.95,
+    min_mastery_feedbacks: int = 8,
+    context_width: int = base.STATE_WIDTH,
+    route_query_adapter: ExternalControllerTrajectoryQueryAdapter | None = None,
+    unqualified_cell_probability: float = 0.0,
 ) -> tuple[PolicyFreeAmodalRuntime, ExternalOutcomeIntentionRouter, ExternalRoutedIntentionMemoryState]:
     torch.manual_seed(seed)
     memory = ExternalOutcomeIntentionMemory(
         ExternalOutcomeIntentionGenerator(
-            context_width=base.STATE_WIDTH,
+            context_width=context_width,
             intention_width=base.INTENTION_WIDTH,
             hidden_width=32,
             initial_learning_rate=0.03,
@@ -149,12 +185,16 @@ def _new_policy(
     router = ExternalOutcomeIntentionRouter(
         memory,
         exploration_bonus=ROUTING_EXPLORATION_BONUS,
+        mastery_threshold=mastery_threshold,
+        min_mastery_feedbacks=min_mastery_feedbacks,
+        unqualified_cell_probability=unqualified_cell_probability,
     )
     policy = PolicyFreeAmodalRuntime(
         reference.runtime,
         reference.planner,
         state_adapter=reference.state_adapter,
         intention_router=router,
+        route_query_adapter=route_query_adapter,
     )
     return policy, router, router.initial_state(cell_count)
 
@@ -168,6 +208,7 @@ def _train_regime(
     feedback,
     event,
     context: torch.Tensor,
+    goal_context: torch.Tensor | None = None,
     target: torch.Tensor,
     max_updates: int,
     delay: int,
@@ -176,7 +217,10 @@ def _train_regime(
     action_shuffled: bool = False,
     random_seed: int,
     stop_at_mastery: bool = True,
+    mastery_cell: int | None = None,
 ) -> tuple[ExternalRoutedIntentionMemoryState, dict[str, object]]:
+    if mastery_cell is not None and not 0 <= mastery_cell < state.cells.baseline.shape[0]:
+        raise ValueError("mastery cell is out of range")
     begun = time.perf_counter()
     pending: deque[tuple[ExternalRoutedIntentionProposal, torch.Tensor]] = deque()
     random_source = torch.Generator().manual_seed(random_seed)
@@ -185,6 +229,7 @@ def _train_regime(
     observed_outcomes: list[float] = []
     search_expansions = 0
     updates = 0
+    planner_context = context if goal_context is None else goal_context
 
     def apply_pending() -> None:
         nonlocal state
@@ -200,7 +245,7 @@ def _train_regime(
             event,
             controller_state,
             feedback,
-            base._goal(context, target),
+            base._goal(planner_context, target),
             horizon=base.HORIZON,
             beam_width=base.BEAM_WIDTH,
             intention_router_state=state,
@@ -241,8 +286,11 @@ def _train_regime(
         if len(pending) > delay:
             apply_pending()
 
+        mean_scores = base._utility(router.mean(state, context)[0], target)
         deterministic_score = float(
-            base._utility(router.mean(state, context)[0], target).max().item()
+            mean_scores[mastery_cell].item()
+            if mastery_cell is not None
+            else mean_scores.max().item()
         )
         if (
             stop_at_mastery
@@ -259,11 +307,18 @@ def _train_regime(
 
     means = router.mean(state, context)[0]
     mean_scores = base._utility(means, target)
+    scored_cell = (
+        mastery_cell
+        if mastery_cell is not None
+        else int(mean_scores.argmax().item())
+    )
     selected_counts = Counter(selected)
     report = {
         "updates": updates,
         "deterministic_best_score": float(mean_scores.max().item()),
         "deterministic_best_cell": int(mean_scores.argmax().item()),
+        "mastery_cell": mastery_cell,
+        "mastery_cell_score": float(mean_scores[scored_cell].item()),
         "selected_cell_counts": {str(k): v for k, v in sorted(selected_counts.items())},
         "selected_cell_fraction": {
             str(k): v / max(1, len(selected)) for k, v in sorted(selected_counts.items())
@@ -292,6 +347,7 @@ def _missing_evidence_control(
     feedback,
     event,
     context: torch.Tensor,
+    goal_context: torch.Tensor | None = None,
     target: torch.Tensor,
 ) -> dict[str, object]:
     before = _digest_state(state)
@@ -300,7 +356,10 @@ def _missing_evidence_control(
             event,
             controller_state,
             feedback,
-            base._goal(context, target),
+            base._goal(
+                context if goal_context is None else goal_context,
+                target,
+            ),
             horizon=base.HORIZON,
             beam_width=base.BEAM_WIDTH,
             intention_router_state=state,
@@ -378,6 +437,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         random_seed=seed + 1,
     )
     source_snapshot = _cell_snapshot(state, 0)
+    source_auto_protected = bool(state.cells.protected[0])
     state = router.protect(state, [0])
     state, successor_cell = router.append_cell(state, source_cell=0)
     state, successor = _train_regime(
@@ -394,6 +454,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         random_seed=seed + 2,
     )
     successor_snapshot = _cell_snapshot(state, successor_cell)
+    successor_auto_protected = bool(state.cells.protected[successor_cell])
     state = router.protect(state, [successor_cell])
 
     pre_reversal = state
@@ -563,6 +624,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             and matched_fresh_initial_digest == _digest_state(matched_fresh_state)
         ),
         "protected_cells_unchanged_by_later_learning": protected_retention,
+        "automatic_source_retention_protection": source_auto_protected,
         "append_only_external_growth": state.cells.baseline.shape[0] == 3,
         "exact_routed_memory_persistence": _digest_state(persistence) == _digest_state(state),
         "controller_frozen": controller_digest == base._digest_module(controller),
@@ -606,6 +668,13 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "reversal_cell": reversal_cell,
             "final_routing_decisions": state.routing_decisions.tolist(),
             "final_routing_feedbacks": state.routing_feedbacks.tolist(),
+            "final_retention": {
+                "protected": state.cells.protected.tolist(),
+                "observations": state.retention_observations.tolist(),
+                "prefix_minima": state.retention_prefix_minima.tolist(),
+                "reversal_counts": state.retention_reversal_counts.tolist(),
+                "successor_auto_protected": successor_auto_protected,
+            },
         },
         "accounting": {
             "unique_verifier_bits": (

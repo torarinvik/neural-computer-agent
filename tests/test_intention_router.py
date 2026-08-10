@@ -1,6 +1,7 @@
 import torch
 
 from neural_computer import (
+    EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V1,
     ExternalOutcomeIntentionGenerator,
     ExternalOutcomeIntentionMemory,
     ExternalOutcomeIntentionRouter,
@@ -30,7 +31,7 @@ def _router() -> tuple[ExternalOutcomeIntentionRouter, object]:
 
 def test_router_selects_one_cell_and_credits_only_that_cell() -> None:
     router, state = _router()
-    context = torch.zeros(1, 4)
+    context = torch.tensor([[1.0, 0.0, 0.0, 0.0]])
     proposal = router.propose(state, context)
     selected = int(proposal.selected_cells.item())
     before = state
@@ -77,6 +78,27 @@ def test_router_explores_appended_cells_protects_content_and_reloads() -> None:
     restored = router.state_from_payload(payload)
     assert torch.equal(restored.routing_keys, state.routing_keys)
     assert torch.equal(restored.cells.input_weights, state.cells.input_weights)
+    assert torch.equal(
+        restored.retention_context_prototypes,
+        state.retention_context_prototypes,
+    )
+
+    legacy_payload = dict(payload)
+    legacy_payload["schema"] = EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V1
+    for name in (
+        "retention_observations",
+        "retention_successes",
+        "retention_prefix_minima",
+        "retention_reversal_streaks",
+        "retention_reversal_counts",
+        "retention_mastered",
+        "retention_context_prototypes",
+        "retention_context_masses",
+    ):
+        legacy_payload.pop(name)
+    migrated = router.state_from_payload(legacy_payload)
+    assert migrated.retention_observations.shape == state.retention_observations.shape
+    assert int(migrated.retention_observations.sum()) == 0
 
 
 def test_router_batches_sparse_union_and_credits_physical_cells() -> None:
@@ -94,3 +116,94 @@ def test_router_batches_sparse_union_and_credits_physical_cells() -> None:
     state = router.apply_feedback(state, proposal, torch.ones(4))
     assert int(state.routing_decisions.sum()) == 4
     assert int(state.routing_feedbacks.sum()) == 4
+
+
+def test_router_gives_unqualified_cells_an_exploration_floor() -> None:
+    router, state = _router()
+    state = router.protect(state, [0])
+    state, new_cell = router.append_cell(state)
+    proposal = router.propose(state, torch.zeros(1, 4))
+
+    assert new_cell == 2
+    assert float(proposal.route_probabilities[0, new_cell]) >= 0.25
+    assert proposal.candidates.cell_indices == (new_cell,)
+
+
+def test_router_retention_auto_protects_and_releases_with_hysteresis() -> None:
+    torch.manual_seed(7711)
+    memory = ExternalOutcomeIntentionMemory(
+        ExternalOutcomeIntentionGenerator(
+            context_width=4,
+            intention_width=2,
+            hidden_width=8,
+            noise_scale=0.3,
+        )
+    )
+    router = ExternalOutcomeIntentionRouter(
+        memory,
+        mastery_threshold=0.75,
+        min_mastery_feedbacks=3,
+        reversal_threshold=0.25,
+        reversal_patience=3,
+    )
+    state = router.initial_state(1)
+    context = torch.tensor([[1.0, 0.0, 0.0, 0.0]])
+
+    def observe(value: float) -> None:
+        nonlocal state
+        proposal = router.propose(state, context)
+        state = router.record_decision(state, proposal)
+        state = router.apply_feedback(state, proposal, torch.tensor([value]))
+
+    for _ in range(3):
+        observe(1.0)
+    assert bool(state.cells.protected[0])
+    assert bool(state.retention_mastered[0])
+    protected_weights = state.cells.output_weights.clone()
+
+    for _ in range(3):
+        observe(0.0)
+    assert not bool(state.cells.protected[0])
+    assert not bool(state.retention_mastered[0])
+    assert int(state.retention_reversal_counts[0]) == 1
+    assert torch.equal(state.cells.output_weights, protected_weights)
+
+    for _ in range(3):
+        observe(1.0)
+    assert bool(state.cells.protected[0])
+    assert int(state.retention_observations[0]) == 3
+
+
+def test_router_heldout_verifier_can_protect_without_mutating_learning_state() -> None:
+    router, state = _router()
+    context = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    before = router.state_payload(state)
+
+    state, receipt = router.verify_and_protect(
+        state,
+        0,
+        context,
+        [1.0] * 8,
+        floor=0.9,
+    )
+
+    assert receipt.accepted
+    assert receipt.reason == "heldout_prefix_floor_passed"
+    assert bool(state.cells.protected[0])
+    assert bool(state.retention_mastered[0])
+    assert int(state.retention_observations.sum()) == int(
+        before["retention_observations"].sum()
+    )
+    assert torch.equal(state.cells.input_weights, before["cells"]["input_weights"])
+    assert torch.equal(state.routing_keys, before["routing_keys"])
+
+    rejected_state, rejected = router.verify_and_protect(
+        state,
+        0,
+        torch.tensor([0.0, 1.0, 0.0, 0.0]),
+        [1.0] * 8,
+        floor=0.9,
+    )
+    assert not rejected.accepted
+    assert rejected.reason == "heldout_context_not_relevant"
+    assert torch.equal(rejected_state.cells.input_weights, state.cells.input_weights)

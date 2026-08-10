@@ -14,11 +14,17 @@ from .intention_memory import (
     ExternalOutcomeIntentionMemory,
 )
 
-EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA = (
+EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V1 = (
     "neural-computer.external-routed-intention-memory.v1"
+)
+EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA = (
+    "neural-computer.external-routed-intention-memory.v2"
 )
 EXTERNAL_ROUTED_INTENTION_PROPOSAL_SCHEMA = (
     "neural-computer.external-routed-intention-proposal.v1"
+)
+EXTERNAL_ROUTED_INTENTION_RETENTION_VERIFICATION_SCHEMA = (
+    "neural-computer.external-routed-intention-retention-verification.v1"
 )
 
 
@@ -32,6 +38,14 @@ class ExternalRoutedIntentionMemoryState:
     routing_baseline: torch.Tensor
     routing_decisions: torch.Tensor
     routing_feedbacks: torch.Tensor
+    retention_observations: torch.Tensor
+    retention_successes: torch.Tensor
+    retention_prefix_minima: torch.Tensor
+    retention_reversal_streaks: torch.Tensor
+    retention_reversal_counts: torch.Tensor
+    retention_mastered: torch.Tensor
+    retention_context_prototypes: torch.Tensor
+    retention_context_masses: torch.Tensor
 
     def validate(
         self,
@@ -52,6 +66,14 @@ class ExternalRoutedIntentionMemoryState:
             "routing_baseline": (1,),
             "routing_decisions": (cell_count,),
             "routing_feedbacks": (cell_count,),
+            "retention_observations": (cell_count,),
+            "retention_successes": (cell_count,),
+            "retention_prefix_minima": (cell_count,),
+            "retention_reversal_streaks": (cell_count,),
+            "retention_reversal_counts": (cell_count,),
+            "retention_mastered": (cell_count,),
+            "retention_context_prototypes": (cell_count, context_width),
+            "retention_context_masses": (cell_count,),
         }
         tensors = {
             "routing_keys": self.routing_keys,
@@ -59,25 +81,62 @@ class ExternalRoutedIntentionMemoryState:
             "routing_baseline": self.routing_baseline,
             "routing_decisions": self.routing_decisions,
             "routing_feedbacks": self.routing_feedbacks,
+            "retention_observations": self.retention_observations,
+            "retention_successes": self.retention_successes,
+            "retention_prefix_minima": self.retention_prefix_minima,
+            "retention_reversal_streaks": self.retention_reversal_streaks,
+            "retention_reversal_counts": self.retention_reversal_counts,
+            "retention_mastered": self.retention_mastered,
+            "retention_context_prototypes": self.retention_context_prototypes,
+            "retention_context_masses": self.retention_context_masses,
         }
         for name, value in tensors.items():
             if value.shape != expected[name]:
                 raise ValueError(f"routed intention {name} has the wrong shape")
             if value.device != self.cells.input_weights.device:
                 raise ValueError("routed intention state tensors must share a device")
-        for name in ("routing_keys", "routing_bias", "routing_baseline"):
+        for name in (
+            "routing_keys",
+            "routing_bias",
+            "routing_baseline",
+            "retention_successes",
+            "retention_prefix_minima",
+            "retention_context_prototypes",
+            "retention_context_masses",
+        ):
             if not bool(torch.isfinite(tensors[name]).all()):
                 raise ValueError(f"routed intention {name} must be finite")
-        for name in ("routing_decisions", "routing_feedbacks"):
+        for name in (
+            "routing_decisions",
+            "routing_feedbacks",
+            "retention_observations",
+            "retention_reversal_streaks",
+            "retention_reversal_counts",
+        ):
             if tensors[name].dtype not in (torch.int32, torch.int64):
                 raise TypeError(f"routed intention {name} must be integer")
             if bool((tensors[name] < 0).any()):
                 raise ValueError(f"routed intention {name} cannot be negative")
+        if tensors["retention_mastered"].dtype != torch.bool:
+            raise TypeError("routed intention retention mastered must be boolean")
         if bool(
             (self.routing_baseline < 0.0).any()
             or (self.routing_baseline > 1.0).any()
+            or (self.retention_prefix_minima < 0.0).any()
+            or (self.retention_prefix_minima > 1.0).any()
         ):
             raise ValueError("routed intention baseline must lie in [0, 1]")
+        if bool(
+            (
+                self.retention_successes
+                > self.retention_observations.to(
+                    dtype=self.retention_successes.dtype
+                )
+            ).any()
+        ):
+            raise ValueError("routed intention retention successes exceed observations")
+        if bool((self.retention_context_masses < 0.0).any()):
+            raise ValueError("routed intention retention context masses cannot be negative")
 
 
 @dataclass(frozen=True)
@@ -170,6 +229,63 @@ class ExternalRoutedIntentionProposal:
         return self
 
 
+@dataclass(frozen=True)
+class ExternalRoutedRetentionVerification:
+    """Held-out prefix evidence for verifier-gated cell protection."""
+
+    cell_index: int
+    outcomes: tuple[float, ...]
+    prefix_minimum: float
+    mean_outcome: float
+    floor: float
+    accepted: bool
+    context_relevance: float | None
+    reason: str
+    schema: str = EXTERNAL_ROUTED_INTENTION_RETENTION_VERIFICATION_SCHEMA
+
+    def validate(self) -> ExternalRoutedRetentionVerification:
+        if self.schema != EXTERNAL_ROUTED_INTENTION_RETENTION_VERIFICATION_SCHEMA:
+            raise ValueError("unsupported routed retention verification schema")
+        if not isinstance(self.cell_index, int) or isinstance(self.cell_index, bool):
+            raise TypeError("routed retention cell index must be an integer")
+        if self.cell_index < 0:
+            raise ValueError("routed retention cell index cannot be negative")
+        if not self.outcomes or not all(
+            math.isfinite(float(value)) and 0.0 <= float(value) <= 1.0
+            for value in self.outcomes
+        ):
+            raise ValueError("routed retention outcomes must lie in [0, 1]")
+        for name, value in (
+            ("prefix minimum", self.prefix_minimum),
+            ("mean outcome", self.mean_outcome),
+            ("floor", self.floor),
+        ):
+            if not math.isfinite(float(value)) or not 0.0 <= float(value) <= 1.0:
+                raise ValueError(f"routed retention {name} is invalid")
+        if not math.isclose(
+            self.prefix_minimum,
+            min(self.outcomes),
+            rel_tol=1e-6,
+            abs_tol=1e-6,
+        ) or not math.isclose(
+            self.mean_outcome,
+            sum(self.outcomes) / len(self.outcomes),
+            rel_tol=1e-6,
+            abs_tol=1e-6,
+        ):
+            raise ValueError("routed retention summary does not match outcomes")
+        if not isinstance(self.accepted, bool):
+            raise TypeError("routed retention acceptance must be boolean")
+        if self.context_relevance is not None and (
+            not math.isfinite(float(self.context_relevance))
+            or not -1.0 <= float(self.context_relevance) <= 1.0
+        ):
+            raise ValueError("routed retention context relevance is invalid")
+        if not isinstance(self.reason, str) or not self.reason:
+            raise ValueError("routed retention verification reason is missing")
+        return self
+
+
 class ExternalOutcomeIntentionRouter:
     """Select external intention cells from opaque context and scalar outcomes."""
 
@@ -185,6 +301,12 @@ class ExternalOutcomeIntentionRouter:
         temperature: float = 1.0,
         exploration_bonus: float = 0.75,
         initial_routing_scale: float = 0.01,
+        unqualified_cell_probability: float = 0.25,
+        mastery_threshold: float = 0.95,
+        min_mastery_feedbacks: int = 8,
+        reversal_threshold: float = 0.5,
+        reversal_patience: int = 4,
+        context_relevance_threshold: float = 0.9,
     ) -> None:
         if not isinstance(memory, ExternalOutcomeIntentionMemory):
             raise TypeError("intention router requires external intention memory")
@@ -200,6 +322,18 @@ class ExternalOutcomeIntentionRouter:
             raise ValueError("intention router exploration bonus is invalid")
         if not math.isfinite(initial_routing_scale) or initial_routing_scale <= 0.0:
             raise ValueError("intention router initialization scale is invalid")
+        if not 0.0 <= unqualified_cell_probability < 1.0:
+            raise ValueError("intention router unqualified-cell probability is invalid")
+        if not 0.0 <= mastery_threshold <= 1.0:
+            raise ValueError("intention router mastery threshold is invalid")
+        if min_mastery_feedbacks < 1:
+            raise ValueError("intention router mastery observations must be positive")
+        if not 0.0 <= reversal_threshold <= 1.0:
+            raise ValueError("intention router reversal threshold is invalid")
+        if reversal_patience < 1:
+            raise ValueError("intention router reversal patience must be positive")
+        if not -1.0 <= context_relevance_threshold <= 1.0:
+            raise ValueError("intention router context relevance threshold is invalid")
         self.memory = memory
         self.initial_learning_rate = float(initial_learning_rate)
         self.initial_baseline_rate = float(initial_baseline_rate)
@@ -207,6 +341,12 @@ class ExternalOutcomeIntentionRouter:
         self.temperature = float(temperature)
         self.exploration_bonus = float(exploration_bonus)
         self.initial_routing_scale = float(initial_routing_scale)
+        self.unqualified_cell_probability = float(unqualified_cell_probability)
+        self.mastery_threshold = float(mastery_threshold)
+        self.min_mastery_feedbacks = int(min_mastery_feedbacks)
+        self.reversal_threshold = float(reversal_threshold)
+        self.reversal_patience = int(reversal_patience)
+        self.context_relevance_threshold = float(context_relevance_threshold)
 
     @property
     def context_width(self) -> int:
@@ -224,7 +364,7 @@ class ExternalOutcomeIntentionRouter:
         return {
             "schema": self.schema,
             "memory": self.memory.configuration(),
-            "routing": "opaque_context_to_external_cell_softmax_then_sparse_materialization_v1",
+            "routing": "opaque_context_to_external_cell_mixture_then_sparse_materialization_v2",
             "credit": "outcome_only_route_score_gradient_v1",
             "temperature": self.temperature,
             "exploration_bonus": self.exploration_bonus,
@@ -232,6 +372,15 @@ class ExternalOutcomeIntentionRouter:
             "initial_baseline_rate": self.initial_baseline_rate,
             "initial_baseline": self.initial_baseline,
             "initial_routing_scale": self.initial_routing_scale,
+            "unqualified_cell_probability": self.unqualified_cell_probability,
+            "retention": {
+                "mastery_threshold": self.mastery_threshold,
+                "min_mastery_feedbacks": self.min_mastery_feedbacks,
+                "reversal_threshold": self.reversal_threshold,
+                "reversal_patience": self.reversal_patience,
+                "context_relevance_threshold": self.context_relevance_threshold,
+                "heldout_gate": "verifier_prefix_minimum_copy_on_write_v1",
+            },
             "capacity": "append_only_external_cell_count_v1",
             "controller": "frozen_opaque_context_only_v1",
         }
@@ -259,6 +408,24 @@ class ExternalOutcomeIntentionRouter:
             ),
             routing_decisions=torch.zeros(cell_count, device=device, dtype=torch.long),
             routing_feedbacks=torch.zeros(cell_count, device=device, dtype=torch.long),
+            retention_observations=torch.zeros(
+                cell_count, device=device, dtype=torch.long
+            ),
+            retention_successes=torch.zeros(cell_count, device=device, dtype=dtype),
+            retention_prefix_minima=torch.ones(cell_count, device=device, dtype=dtype),
+            retention_reversal_streaks=torch.zeros(
+                cell_count, device=device, dtype=torch.long
+            ),
+            retention_reversal_counts=torch.zeros(
+                cell_count, device=device, dtype=torch.long
+            ),
+            retention_mastered=torch.zeros(
+                cell_count, device=device, dtype=torch.bool
+            ),
+            retention_context_prototypes=torch.zeros(
+                cell_count, self.context_width, device=device, dtype=dtype
+            ),
+            retention_context_masses=torch.zeros(cell_count, device=device, dtype=dtype),
         )
         self._validate_state(state)
         return state
@@ -316,7 +483,23 @@ class ExternalOutcomeIntentionRouter:
             + state.routing_bias.unsqueeze(0)
             + exploration_bonus
         ) / self.temperature
-        probabilities = torch.softmax(logits, dim=-1)
+        base_probabilities = torch.softmax(logits, dim=-1)
+        unqualified = (
+            (~state.cells.protected)
+            & (state.retention_observations < self.min_mastery_feedbacks)
+        ).to(dtype=context.dtype)
+        unqualified_count = unqualified.sum()
+        if (
+            self.unqualified_cell_probability > 0.0
+            and bool(unqualified_count > 0)
+        ):
+            unqualified_distribution = unqualified.unsqueeze(0) / unqualified_count
+            probabilities = (
+                (1.0 - self.unqualified_cell_probability) * base_probabilities
+                + self.unqualified_cell_probability * unqualified_distribution
+            )
+        else:
+            probabilities = base_probabilities
         selected_cells = torch.multinomial(
             probabilities,
             1,
@@ -346,7 +529,17 @@ class ExternalOutcomeIntentionRouter:
             selected_cells,
             num_classes=cell_count,
         ).to(dtype=context.dtype)
-        route_bias_gradients = (one_hot - probabilities) / self.temperature
+        selected_base_probabilities = base_probabilities[row_indices, selected_cells]
+        selected_probabilities = probabilities[row_indices, selected_cells]
+        route_bias_gradients = (
+            (1.0 - self.unqualified_cell_probability)
+            * (
+                selected_base_probabilities
+                / selected_probabilities.clamp_min(1e-12)
+            ).unsqueeze(-1)
+            * (one_hot - base_probabilities)
+            / self.temperature
+        )
         route_key_gradients = context.unsqueeze(1) * route_bias_gradients.unsqueeze(-1)
         route_propensities = probabilities[row_indices, selected_cells]
         proposal = ExternalRoutedIntentionProposal(
@@ -435,6 +628,24 @@ class ExternalOutcomeIntentionRouter:
             present=present,
             terminal=terminal,
         )
+        (
+            protected,
+            retention_observations,
+            retention_successes,
+            retention_prefix_minima,
+            retention_reversal_streaks,
+            retention_reversal_counts,
+            retention_mastered,
+            retention_context_prototypes,
+            retention_context_masses,
+        ) = self._update_retention(
+            state,
+            proposal.selected_cells,
+            outcome,
+            present,
+            proposal.candidates.features[:, :-1],
+        )
+        cells = replace(cells, protected=protected)
         centered = outcome - state.routing_baseline[0]
         active = present
         update_scale = self.initial_learning_rate * centered * active.to(
@@ -464,9 +675,113 @@ class ExternalOutcomeIntentionRouter:
             routing_bias=state.routing_bias + route_bias_delta,
             routing_baseline=(state.routing_baseline + baseline_delta).clamp(0.0, 1.0),
             routing_feedbacks=state.routing_feedbacks + feedback_counts,
+            retention_observations=retention_observations,
+            retention_successes=retention_successes,
+            retention_prefix_minima=retention_prefix_minima,
+            retention_reversal_streaks=retention_reversal_streaks,
+            retention_reversal_counts=retention_reversal_counts,
+            retention_mastered=retention_mastered,
+            retention_context_prototypes=retention_context_prototypes,
+            retention_context_masses=retention_context_masses,
         )
         self._validate_state(next_state)
         return next_state
+
+    def _update_retention(
+        self,
+        state: ExternalRoutedIntentionMemoryState,
+        selected_cells: torch.Tensor,
+        outcome: torch.Tensor,
+        present: torch.Tensor,
+        contexts: torch.Tensor,
+    ) -> tuple[
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+    ]:
+        """Update stable-prefix mastery and hysteretic reversal state."""
+
+        protected = state.cells.protected.clone()
+        observations = state.retention_observations.clone()
+        successes = state.retention_successes.clone()
+        prefix_minima = state.retention_prefix_minima.clone()
+        reversal_streaks = state.retention_reversal_streaks.clone()
+        reversal_counts = state.retention_reversal_counts.clone()
+        mastered = state.retention_mastered.clone()
+        context_prototypes = state.retention_context_prototypes.clone()
+        context_masses = state.retention_context_masses.clone()
+        active = present & (selected_cells >= 0)
+        for batch_index in torch.nonzero(active, as_tuple=False).flatten().tolist():
+            cell_index = int(selected_cells[batch_index].item())
+            value = float(outcome[batch_index].item())
+            context = contexts[batch_index]
+            mass = float(context_masses[cell_index].item())
+            if bool(protected[cell_index]) and mass > 0.0:
+                relevance = torch.nn.functional.cosine_similarity(
+                    context.unsqueeze(0),
+                    context_prototypes[cell_index].unsqueeze(0),
+                    dim=-1,
+                ).item()
+                if relevance < self.context_relevance_threshold:
+                    continue
+            context_weight = max(value, 0.0)
+            if context_weight > 0.0:
+                next_mass = mass + context_weight
+                context_prototypes[cell_index] = (
+                    context_prototypes[cell_index] * mass
+                    + context * context_weight
+                ) / next_mass
+                context_masses[cell_index] = next_mass
+            observations[cell_index] += 1
+            successes[cell_index] += value
+            observation_count = int(observations[cell_index].item())
+            if bool(protected[cell_index]):
+                if observation_count >= self.min_mastery_feedbacks:
+                    prefix_minima[cell_index] = torch.minimum(
+                        prefix_minima[cell_index],
+                        successes[cell_index] / observation_count,
+                    )
+                if value <= self.reversal_threshold:
+                    reversal_streaks[cell_index] += 1
+                else:
+                    reversal_streaks[cell_index] = 0
+                if int(reversal_streaks[cell_index].item()) >= self.reversal_patience:
+                    protected[cell_index] = False
+                    reversal_counts[cell_index] += 1
+                    reversal_streaks[cell_index] = 0
+                    observations[cell_index] = 0
+                    successes[cell_index] = 0.0
+                    prefix_minima[cell_index] = 1.0
+                    mastered[cell_index] = False
+                    context_prototypes[cell_index].zero_()
+                    context_masses[cell_index] = 0.0
+            elif not bool(mastered[cell_index]):
+                current_mean = successes[cell_index] / observation_count
+                if (
+                    observation_count >= self.min_mastery_feedbacks
+                    and float(current_mean.item()) >= self.mastery_threshold
+                ):
+                    mastered[cell_index] = True
+                    protected[cell_index] = True
+                    prefix_minima[cell_index] = current_mean
+                    reversal_streaks[cell_index] = 0
+        return (
+            protected,
+            observations,
+            successes,
+            prefix_minima,
+            reversal_streaks,
+            reversal_counts,
+            mastered,
+            context_prototypes,
+            context_masses,
+        )
 
     def _validate_state_and_proposal(
         self,
@@ -488,26 +803,34 @@ class ExternalOutcomeIntentionRouter:
         state: ExternalRoutedIntentionMemoryState,
         *,
         source_cell: int | None = None,
+        copy_route: bool = True,
     ) -> tuple[ExternalRoutedIntentionMemoryState, int]:
         """Append content and a fresh/transfer route address copy-on-write."""
 
         self._validate_state(state)
+        if not isinstance(copy_route, bool):
+            raise TypeError("intention router copy_route must be boolean")
         next_cells, new_index = self.memory.append_cell(
             state.cells,
             source_cell=source_cell,
         )
         device = state.routing_keys.device
         dtype = state.routing_keys.dtype
+        if source_cell is not None and not 0 <= source_cell < state.routing_keys.shape[0]:
+            raise ValueError("intention router source cell is out of range")
         if source_cell is None:
             new_key = self.initial_routing_scale * torch.randn(
                 1, self.context_width, device=device, dtype=dtype
             )
             new_bias = torch.zeros(1, device=device, dtype=dtype)
-        else:
-            if not 0 <= source_cell < state.routing_keys.shape[0]:
-                raise ValueError("intention router source cell is out of range")
+        elif copy_route:
             new_key = state.routing_keys[source_cell : source_cell + 1].clone()
             new_bias = state.routing_bias[source_cell : source_cell + 1].clone()
+        else:
+            new_key = self.initial_routing_scale * torch.randn(
+                1, self.context_width, device=device, dtype=dtype
+            )
+            new_bias = torch.zeros(1, device=device, dtype=dtype)
         next_state = replace(
             state,
             cells=next_cells,
@@ -519,6 +842,56 @@ class ExternalOutcomeIntentionRouter:
             ),
             routing_feedbacks=torch.cat(
                 (state.routing_feedbacks, torch.zeros(1, device=device, dtype=torch.long)),
+                dim=0,
+            ),
+            retention_observations=torch.cat(
+                (
+                    state.retention_observations,
+                    torch.zeros(1, device=device, dtype=torch.long),
+                ),
+                dim=0,
+            ),
+            retention_successes=torch.cat(
+                (state.retention_successes, torch.zeros(1, device=device, dtype=dtype)),
+                dim=0,
+            ),
+            retention_prefix_minima=torch.cat(
+                (state.retention_prefix_minima, torch.ones(1, device=device, dtype=dtype)),
+                dim=0,
+            ),
+            retention_reversal_streaks=torch.cat(
+                (
+                    state.retention_reversal_streaks,
+                    torch.zeros(1, device=device, dtype=torch.long),
+                ),
+                dim=0,
+            ),
+            retention_reversal_counts=torch.cat(
+                (
+                    state.retention_reversal_counts,
+                    torch.zeros(1, device=device, dtype=torch.long),
+                ),
+                dim=0,
+            ),
+            retention_mastered=torch.cat(
+                (
+                    state.retention_mastered,
+                    torch.zeros(1, device=device, dtype=torch.bool),
+                ),
+                dim=0,
+            ),
+            retention_context_prototypes=torch.cat(
+                (
+                    state.retention_context_prototypes,
+                    torch.zeros(1, self.context_width, device=device, dtype=dtype),
+                ),
+                dim=0,
+            ),
+            retention_context_masses=torch.cat(
+                (
+                    state.retention_context_masses,
+                    torch.zeros(1, device=device, dtype=dtype),
+                ),
                 dim=0,
             ),
         )
@@ -536,6 +909,114 @@ class ExternalOutcomeIntentionRouter:
         )
         self._validate_state(next_state)
         return next_state
+
+    def verify_and_protect(
+        self,
+        state: ExternalRoutedIntentionMemoryState,
+        cell_index: int,
+        context: torch.Tensor,
+        outcomes: torch.Tensor | list[float] | tuple[float, ...],
+        *,
+        floor: float | None = None,
+    ) -> tuple[
+        ExternalRoutedIntentionMemoryState,
+        ExternalRoutedRetentionVerification,
+    ]:
+        """Qualify a cell from held-out outcomes without learning from them.
+
+        The caller owns the verifier and must provide fresh prefix outcomes.
+        This transaction never updates generator content, route parameters,
+        decisions, feedbacks, or eligibility traces. It only commits the
+        protection bit when every held-out prefix outcome clears ``floor``.
+        """
+
+        self._validate_state(state)
+        if not isinstance(cell_index, int) or isinstance(cell_index, bool):
+            raise TypeError("routed retention cell index must be an integer")
+        cell_count = state.cells.baseline.shape[0]
+        if not 0 <= cell_index < cell_count:
+            raise IndexError("routed retention cell index is out of range")
+        if context.ndim != 1 or context.shape[0] != self.context_width:
+            raise ValueError("routed retention context has the wrong shape")
+        if context.device != state.routing_keys.device:
+            raise ValueError("routed retention context is on the wrong device")
+        if not bool(torch.isfinite(context).all()):
+            raise ValueError("routed retention context must be finite")
+        if isinstance(outcomes, torch.Tensor):
+            if outcomes.ndim != 1 or outcomes.device != context.device:
+                raise ValueError("routed retention outcomes must be a device-local vector")
+            values = tuple(float(value) for value in outcomes.detach().cpu().tolist())
+        else:
+            values = tuple(float(value) for value in outcomes)
+        if not values:
+            raise ValueError("routed retention needs at least one held-out outcome")
+        selected_floor = self.mastery_threshold if floor is None else float(floor)
+        if not 0.0 <= selected_floor <= 1.0:
+            raise ValueError("routed retention floor must lie in [0, 1]")
+        context_relevance: float | None = None
+        mass = float(state.retention_context_masses[cell_index].item())
+        if mass > 0.0:
+            context_relevance = float(
+                torch.nn.functional.cosine_similarity(
+                    context.unsqueeze(0),
+                    state.retention_context_prototypes[cell_index].unsqueeze(0),
+                    dim=-1,
+                ).item()
+            )
+        prefix_minimum = min(values)
+        mean_outcome = sum(values) / len(values)
+        accepted = (
+            len(values) >= self.min_mastery_feedbacks
+            and prefix_minimum >= selected_floor
+            and (
+                context_relevance is None
+                or context_relevance >= self.context_relevance_threshold
+            )
+        )
+        if accepted:
+            cells = self.memory.protect(state.cells, [cell_index])
+            mastered = state.retention_mastered.clone()
+            mastered[cell_index] = True
+            prefix_minima = state.retention_prefix_minima.clone()
+            prefix_minima[cell_index] = min(
+                prefix_minimum,
+                float(prefix_minima[cell_index]),
+            )
+            context_prototypes = state.retention_context_prototypes.clone()
+            context_masses = state.retention_context_masses.clone()
+            if mass <= 0.0:
+                context_prototypes[cell_index] = context
+                context_masses[cell_index] = 1.0
+            next_state = replace(
+                state,
+                cells=cells,
+                retention_mastered=mastered,
+                retention_prefix_minima=prefix_minima,
+                retention_context_prototypes=context_prototypes,
+                retention_context_masses=context_masses,
+            )
+            reason = "heldout_prefix_floor_passed"
+        else:
+            next_state = state
+            reason = "heldout_prefix_floor_failed"
+            if len(values) < self.min_mastery_feedbacks:
+                reason = "heldout_prefix_too_short"
+            elif context_relevance is not None and (
+                context_relevance < self.context_relevance_threshold
+            ):
+                reason = "heldout_context_not_relevant"
+        receipt = ExternalRoutedRetentionVerification(
+            cell_index=cell_index,
+            outcomes=values,
+            prefix_minimum=prefix_minimum,
+            mean_outcome=mean_outcome,
+            floor=selected_floor,
+            accepted=accepted,
+            context_relevance=context_relevance,
+            reason=reason,
+        ).validate()
+        self._validate_state(next_state)
+        return next_state, receipt
 
     def begin_episode(
         self,
@@ -568,13 +1049,22 @@ class ExternalOutcomeIntentionRouter:
             "routing_baseline": state.routing_baseline.detach().cpu().clone(),
             "routing_decisions": state.routing_decisions.detach().cpu().clone(),
             "routing_feedbacks": state.routing_feedbacks.detach().cpu().clone(),
+            "retention_observations": state.retention_observations.detach().cpu().clone(),
+            "retention_successes": state.retention_successes.detach().cpu().clone(),
+            "retention_prefix_minima": state.retention_prefix_minima.detach().cpu().clone(),
+            "retention_reversal_streaks": state.retention_reversal_streaks.detach().cpu().clone(),
+            "retention_reversal_counts": state.retention_reversal_counts.detach().cpu().clone(),
+            "retention_mastered": state.retention_mastered.detach().cpu().clone(),
+            "retention_context_prototypes": state.retention_context_prototypes.detach().cpu().clone(),
+            "retention_context_masses": state.retention_context_masses.detach().cpu().clone(),
         }
 
     def state_from_payload(
         self,
         payload: Mapping[str, object],
     ) -> ExternalRoutedIntentionMemoryState:
-        if payload.get("schema") != self.schema:
+        schema = payload.get("schema")
+        if schema not in (self.schema, EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V1):
             raise ValueError("unsupported routed intention state schema")
         configuration = payload.get("configuration")
         if not isinstance(configuration, Mapping):
@@ -596,6 +1086,56 @@ class ExternalOutcomeIntentionRouter:
             if not isinstance(value, torch.Tensor):
                 raise TypeError(f"routed intention payload field {name!r} must be a tensor")
             values[name] = value
+        cell_count = cells.baseline.shape[0]
+        if schema == EXTERNAL_ROUTED_INTENTION_MEMORY_SCHEMA_V1:
+            device = cells.input_weights.device
+            dtype = cells.input_weights.dtype
+            values.update(
+                {
+                    "retention_observations": torch.zeros(
+                        cell_count, device=device, dtype=torch.long
+                    ),
+                    "retention_successes": torch.zeros(
+                        cell_count, device=device, dtype=dtype
+                    ),
+                    "retention_prefix_minima": torch.ones(
+                        cell_count, device=device, dtype=dtype
+                    ),
+                    "retention_reversal_streaks": torch.zeros(
+                        cell_count, device=device, dtype=torch.long
+                    ),
+                    "retention_reversal_counts": torch.zeros(
+                        cell_count, device=device, dtype=torch.long
+                    ),
+                    "retention_mastered": torch.zeros(
+                        cell_count, device=device, dtype=torch.bool
+                    ),
+                    "retention_context_prototypes": torch.zeros(
+                        cell_count, self.context_width, device=device, dtype=dtype
+                    ),
+                    "retention_context_masses": torch.zeros(
+                        cell_count, device=device, dtype=dtype
+                    ),
+                }
+            )
+        else:
+            retention_names = (
+                "retention_observations",
+                "retention_successes",
+                "retention_prefix_minima",
+                "retention_reversal_streaks",
+                "retention_reversal_counts",
+                "retention_mastered",
+                "retention_context_prototypes",
+                "retention_context_masses",
+            )
+            for name in retention_names:
+                value = payload.get(name)
+                if not isinstance(value, torch.Tensor):
+                    raise TypeError(
+                        f"routed intention payload field {name!r} must be a tensor"
+                    )
+                values[name] = value
         state = ExternalRoutedIntentionMemoryState(cells=cells, **values)
         self._validate_state(state)
         return state
