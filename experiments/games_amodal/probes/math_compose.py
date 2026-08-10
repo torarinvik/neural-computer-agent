@@ -145,6 +145,11 @@ def all_programs() -> tuple[list, list]:
                 (short_by_len if length <= args.train_max_len
                  else long_by_len).append(program)
         return short_by_len, long_by_len
+    if not long:
+        # --max-len 1: nothing to hold out on the PROGRAM axis. Reuse
+        # the trained programs so the held-out WORLD axis (the reading
+        # test) still reports, rather than dividing by zero.
+        return short, short
     order = torch.randperm(len(long), generator=generator).tolist()
     half = len(long) // 2
     held = [long[i] for i in order[:half]]
