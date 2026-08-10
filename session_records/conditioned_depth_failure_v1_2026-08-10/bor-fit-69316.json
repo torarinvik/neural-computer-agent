@@ -1,0 +1,36 @@
+{
+  "seed": 69316,
+  "width": 8,
+  "worlds": 2,
+  "held_worlds": 1,
+  "train_programs": 18,
+  "held_programs": 12,
+  "chance_exact": 0.003906,
+  "chance_bit": 0.5,
+  "held_out_worlds": {
+    "b125k1": {
+      "trained_programs": 0.3889,
+      "held_programs": 0.3333,
+      "withheld": 0.0195,
+      "stranger": 0.3333,
+      "swap_truth_with_own_entry": 0.1693,
+      "bits_trained_programs": 0.6944,
+      "bits_held_programs": 0.6667,
+      "bits_withheld": 0.6209,
+      "bits_stranger": 0.6667
+    }
+  },
+  "trained_worlds": {
+    "b9k1": {
+      "trained_programs": 1.0,
+      "held_programs": 1.0,
+      "withheld": 0.0638,
+      "stranger": 1.0,
+      "swap_truth_with_own_entry": 0.1745,
+      "bits_trained_programs": 1.0,
+      "bits_held_programs": 1.0,
+      "bits_withheld": 0.7329,
+      "bits_stranger": 1.0
+    }
+  }
+}

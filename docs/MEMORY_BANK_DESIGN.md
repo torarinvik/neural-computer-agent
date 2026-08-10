@@ -6011,3 +6011,47 @@ alone: it works with the pieces in WEIGHTS, and supplying them from
 CONTEXT still fails above depth 1 (F131, F132).
 
 Probe 233 is `bool_compose.py --iterate --worlds 2 --ignorance 0`.
+
+**F134 (probe 234). The clean confirmation. On the boolean ground,
+with the world's identity handed over exactly, the iterated plant
+fails at depth 4 across 256 worlds — 0.5587 per-bit against 0.5 chance
+and 1.0000 in the single-world control.** Every alternative
+explanation has now been removed simultaneously:
+
+  * not arithmetic hardness — XOR-with-mask and rotate-by-k, no
+    grokking-class function anywhere;
+  * not reading — oracle entries supply (b, k) exactly;
+  * not diversity — F122 showed 10x is inert, and this is the same
+    256 worlds;
+  * not the interface — this IS the iterated interface, the one that
+    scores 1.0000 on the same ground with one world (F133).
+
+| boolean, 256 worlds, oracle entry, iterated | per-bit | exact |
+| --- | ---: | ---: |
+| own entry | 0.5587 | 0.0067 |
+| stranger entry | 0.5439 | 0.0058 |
+| withheld entry | 0.5043 | 0.0036 |
+| single-world control (F133) | **1.0000** | **1.0000** |
+
+The ordering own > stranger > withheld is intact, so the plant IS
+using the entry — it simply cannot execute with it. The gap between
+0.5587 and 1.0000 is the whole finding.
+
+**Stated as plainly as it can be: the plant can apply a piece whose
+parameters live in its weights, arbitrarily deep. It can apply a piece
+whose parameters come from context, exactly once. It cannot do both.**
+That conjunction is what the bank thesis requires — the bank exists
+precisely to supply parameters from context, and multi-step tasks are
+the ones worth having a bank for.
+
+The next candidate, from the shape of the failure rather than from a
+new idea: the entry is currently re-attended at EVERY step, so the
+step function must re-extract the same (b, k) on each application and
+any error in that extraction compounds with depth. An interpreter does
+not work this way — it binds its arguments once and then runs the
+loop over bound values. `--bind-params` decodes the entry ONCE into
+one explicit parameter vector per piece token, and the step function
+then sees only (latent, bound parameter). If depth stops mattering,
+repeated re-extraction was the mechanism.
+
+Probe 234 is `bool_compose.py --iterate --oracle-entry --worlds 256`.
