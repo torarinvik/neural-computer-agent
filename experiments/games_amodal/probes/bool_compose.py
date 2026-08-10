@@ -69,6 +69,16 @@ parser.add_argument(
          "A curriculum gets reading established on the readable task "
          "first, then extends it — the bootstrapping F120 identified.")
 parser.add_argument(
+    "--deep-binder", action="store_true",
+    help="make the entry->parameters decoder an MLP instead of a "
+         "single linear map. F135's oracle entry was itself a LINEAR "
+         "projection of one-hot world parameters, so a linear binder "
+         "inverted it trivially — that ceiling may have been partly an "
+         "artefact of matching encoders. A contrastively-learned code "
+         "(F139) identifies the world but in an arbitrary, likely "
+         "nonlinear arrangement, and a linear binder cannot decode it. "
+         "This changes only the binder, so it is attributable.")
+parser.add_argument(
     "--contrastive", type=float, default=0.0,
     help="NON-PRIVILEGED reader pre-training. For this fraction of "
          "updates, train the reader alone so that two entries read "
@@ -258,7 +268,11 @@ class Plant(torch.nn.Module):
                 dropout=0.0, norm_first=True) for _ in range(3)])
         self.norm = torch.nn.LayerNorm(dim)
         self.head = torch.nn.Linear(dim, W)
-        self.binder = torch.nn.Linear(dim, 2 * dim)
+        self.binder = (torch.nn.Sequential(
+            torch.nn.Linear(dim, 4 * dim), torch.nn.ReLU(),
+            torch.nn.Linear(4 * dim, 4 * dim), torch.nn.ReLU(),
+            torch.nn.Linear(4 * dim, 2 * dim))
+            if args.deep_binder else torch.nn.Linear(dim, 2 * dim))
         self.apply_bound = torch.nn.Sequential(
             torch.nn.Linear(2 * dim, 2 * dim), torch.nn.ReLU(),
             torch.nn.Linear(2 * dim, dim))
