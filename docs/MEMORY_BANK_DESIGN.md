@@ -5623,3 +5623,36 @@ only entry effect anywhere). Oracle-entry arms are running to decide
 whether execution is sound and reading is the sole constraint.
 
 Probe 224 is `bool_compose.py --iterate`, 2 seeds + 1 length arm.
+
+**F125 (probe 225). F121 survives the strictest form of the test:
+trained on programs of length <=3 only, the iterated plant answers
+LENGTH-4 programs — never demonstrated at that length — at 1.0000.**
+The one way F121 could have been passed without composing was
+interpolation within a length, since its held-out programs shared
+lengths 3 and 4 with trained ones. The extrapolation split removes
+that: 14 training programs covering lengths 1-3, 16 held-out programs
+all of length 4, no overlap.
+
+| split | trained | held-out |
+| --- | ---: | ---: |
+| one-shot, same-length (F119) | 1.0000 | 0.0794 |
+| iterated, same-length (F121) | 1.0000 | 1.0000 |
+| **iterated, length-extrapolation (F125)** | **1.0000** | **1.0000** |
+
+Applying a piece one more time than was ever demonstrated, and getting
+every one of sixteen unseen length-4 programs exactly right, is the
+claim in its strongest available form. Nothing about the number 4 was
+in the training distribution; only the step was.
+
+What is now settled about composition, and what is not:
+  * SETTLED — a shared per-element step function composes, extends to
+    unseen arrangements, and extends to unseen DEPTHS, with no
+    intermediate supervision;
+  * NOT SETTLED — whether the pieces can come from a bank entry rather
+    than from weights. Every composition success so far (F121, F125)
+    is single-world, where the step needs no per-world content;
+    every multi-world arm (F120, F122, F124) has reading dead. That
+    junction is the whole remaining question and the oracle-entry arms
+    are running against it.
+
+Probe 225 is `math_compose.py --iterate --train-max-len 3`, 1 seed.
