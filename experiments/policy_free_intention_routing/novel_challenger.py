@@ -38,6 +38,8 @@ class ChallengerTask:
     probe_direction: str
     report_schema: str
     claim_boundary: str
+    event_key: str = "successor"
+    context_key: str = "successor"
 
     def validate(self) -> ChallengerTask:
         if not self.task_id:
@@ -54,6 +56,8 @@ class ChallengerTask:
             raise ValueError("challenger task probe direction is invalid")
         if not self.report_schema or not self.claim_boundary:
             raise ValueError("challenger task report metadata is required")
+        if not self.event_key or not self.context_key:
+            raise ValueError("challenger task event and context keys are required")
         return self
 
 
@@ -335,6 +339,8 @@ def _run_challenger(
     feedback = prepared["feedback"]
     events = prepared["events"]
     contexts = prepared["contexts"]
+    task_event = events[task.event_key]
+    task_context = contexts[task.context_key]
     source_cell = prepared["successor_cell"]
     source_digest = router._state_digest(state)
     probe_records: dict[str, dict[str, object]] = {}
@@ -355,8 +361,8 @@ def _run_challenger(
             state=transfer_state,
             controller_state=controller_state,
             feedback=feedback,
-            event=events["successor"],
-            context=contexts["successor"],
+            event=task_event,
+            context=task_context,
             target=task.target,
             context_mask=task.context_mask,
             max_updates=CHALLENGER_PROBE_UPDATES,
@@ -373,8 +379,8 @@ def _run_challenger(
             state=fresh_state,
             controller_state=controller_state,
             feedback=feedback,
-            event=events["successor"],
-            context=contexts["successor"],
+            event=task_event,
+            context=task_context,
             target=task.target,
             context_mask=task.context_mask,
             max_updates=CHALLENGER_PROBE_UPDATES,
@@ -387,14 +393,14 @@ def _run_challenger(
             transfer_router,
             transfer_state,
             transfer_cell,
-            contexts["successor"],
+            task_context,
             task,
         )
         fresh_score = _score(
             fresh_router,
             fresh_state,
             fresh_cell,
-            contexts["successor"],
+            task_context,
             task,
         )
         probe_records.update(
@@ -421,8 +427,8 @@ def _run_challenger(
         state=selected_state,
         controller_state=controller_state,
         feedback=feedback,
-        event=events["successor"],
-        context=contexts["successor"],
+        event=task_event,
+        context=task_context,
         target=task.target,
         context_mask=task.context_mask,
         max_updates=NOVEL_MAX_UPDATES,
@@ -435,7 +441,7 @@ def _run_challenger(
         router=selected_router,
         state=selected_state,
         cell_index=selected_cell,
-        context=contexts["successor"],
+        context=task_context,
         context_mask=task.context_mask,
         target=task.target,
     )
@@ -446,14 +452,14 @@ def _run_challenger(
         reference_policy=reference_policy,
         controller_state=controller_state,
         feedback=feedback,
-        event=events["successor"],
-        context=contexts["successor"],
+        event=task_event,
+        context=task_context,
     )
     corruption = _cell_corruption_probe(
         selected_router,
         selected_state,
         selected_cell,
-        contexts["successor"],
+        task_context,
         task,
     )
     reversal_state, reversal_cell = selected_router.append_cell(
@@ -492,7 +498,7 @@ def _run_challenger(
         router=selected_router,
         state=reversal_state,
         cell_index=selected_cell,
-        context=contexts["successor"],
+        context=task_context,
         context_mask=task.context_mask,
         target=task.target,
     )
@@ -683,6 +689,8 @@ def run(
             "task_id": task.task_id,
             "novel_context_mask": task.context_mask.tolist(),
             "novel_target": task.target.tolist(),
+            "event_key": task.event_key,
+            "context_key": task.context_key,
             "expected_initialization": task.expected_initialization,
             "probe_direction": task.probe_direction,
             "minimum_probe_margin": CHALLENGER_MIN_PROBE_MARGIN,

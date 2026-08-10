@@ -8611,3 +8611,9 @@ the router selects on `probe_score - cost_weight * cost` while recording both
 raw and adjusted scores. Zero-cost calls retain the v1 behavior. This keeps
 budget policy on the external-memory side of the amodal boundary instead of
 adding a controller branch.
+
+The sequential admission audit now exercises this boundary repeatedly: three
+unseen task families are admitted from the same protected successor, each
+using v2 cost-aware receipts, and every earlier file passes a complete-prefix
+held-out verifier before the next append. This is bounded lifecycle evidence
+for the CPU/files analogy, not arbitrary computation or unrestricted memory.

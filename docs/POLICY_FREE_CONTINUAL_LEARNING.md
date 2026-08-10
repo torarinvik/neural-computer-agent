@@ -920,3 +920,21 @@ copying. Matched warm acquisition is faster in two of three seeds, so this
 does not establish a universal warm-over-fresh speedup or broad positive
 transfer. The next step is cost-aware admission across multiple genuinely
 different task families.
+
+## Sequential cost-aware admission and prefix retention (2026-08-10)
+
+The next audit admits three unseen families sequentially from one protected
+successor: nearby positive transfer, unrelated negative transfer, and an
+alternate nearby successor. Each admission uses nonzero cost-aware v2
+selection, then a held-out verifier checks the complete prefix of all earlier
+files before the next file is created. Across three seeds, every run selects
+`transfer -> fresh -> transfer`, grows external memory from eight to eleven
+cells, and passes every prefix verifier. Reports and accounting are archived
+in `session_records/policy_free_intention_sequential_admission_promoted_2026-08-10/`.
+
+This promotes bounded repeated admission with complete-prefix retention and
+explicit deployment-budget accounting. It does not establish broad task-
+family generalization, arbitrary new computation, unrestricted growth,
+compression, or general continual learning. The next pressure is a learned
+cost model and a larger task-family matrix without relying on a fixed source
+cell or synthetic target geometry.

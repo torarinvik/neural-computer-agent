@@ -1,0 +1,1731 @@
+{
+  "schema": "neural-computer.policy-free-intention-sequential-admission.v1",
+  "claim_boundary": "bounded sequential cost-aware copy-or-fresh admission over three unseen task families with complete-prefix retention; broad task-family generalization, arbitrary new computation, unrestricted growth, and general continual learning remain unqualified",
+  "seed": 85302,
+  "configuration": {
+    "known_curriculum": "adaptive_versioned_multi_stage",
+    "admissions": [
+      {
+        "task_id": "family_a_nearby_successor",
+        "event_key": "successor",
+        "context_key": "successor",
+        "context_mask": [
+          true,
+          true,
+          true,
+          false,
+          true,
+          true,
+          false,
+          true,
+          false,
+          true,
+          false,
+          true
+        ],
+        "target": [
+          0.44999998807907104,
+          -0.8199999928474426
+        ],
+        "expected_initialization": "transfer",
+        "transfer_cost": 0.15,
+        "fresh_cost": 0.45,
+        "cost_weight": 0.1
+      },
+      {
+        "task_id": "unseen_target_blind_copy_negative_transfer",
+        "event_key": "successor",
+        "context_key": "successor",
+        "context_mask": [
+          true,
+          false,
+          true,
+          true,
+          false,
+          true,
+          true,
+          false,
+          false,
+          true,
+          false,
+          true
+        ],
+        "target": [
+          -0.25,
+          0.3499999940395355
+        ],
+        "expected_initialization": "fresh",
+        "transfer_cost": 0.45,
+        "fresh_cost": 0.15,
+        "cost_weight": 0.1
+      },
+      {
+        "task_id": "family_c_alternate_nearby_successor",
+        "event_key": "successor",
+        "context_key": "successor",
+        "context_mask": [
+          true,
+          true,
+          false,
+          true,
+          true,
+          false,
+          true,
+          true,
+          false,
+          true,
+          false,
+          false
+        ],
+        "target": [
+          0.6200000047683716,
+          -0.8799999952316284
+        ],
+        "expected_initialization": "transfer",
+        "transfer_cost": 0.2,
+        "fresh_cost": 0.5,
+        "cost_weight": 0.1
+      }
+    ],
+    "probe_updates": 12,
+    "minimum_probe_margin": 0.02,
+    "minimum_adjusted_margin": 0.001,
+    "replayed_examples": 0
+  },
+  "gates": {
+    "warm_known_source_retained": true,
+    "fresh_known_source_retained": true,
+    "warm_known_successor_retained": true,
+    "fresh_known_successor_retained": true,
+    "warm_all_tasks_selected_expected_prior": true,
+    "fresh_all_tasks_selected_expected_prior": true,
+    "warm_all_probe_margins_material": true,
+    "fresh_all_probe_margins_material": true,
+    "warm_all_adjusted_margins_material": true,
+    "fresh_all_adjusted_margins_material": true,
+    "warm_all_tasks_unseen": true,
+    "fresh_all_tasks_unseen": true,
+    "task_masks_pairwise_distinct": true,
+    "task_targets_pairwise_distinct": true,
+    "warm_all_tasks_retained": true,
+    "fresh_all_tasks_retained": true,
+    "warm_complete_prefix_after_every_admission": true,
+    "fresh_complete_prefix_after_every_admission": true,
+    "warm_all_source_states_unchanged": true,
+    "fresh_all_source_states_unchanged": true,
+    "warm_cost_aware_receipts": true,
+    "fresh_cost_aware_receipts": true,
+    "warm_latest_survived_reversal": true,
+    "fresh_latest_survived_reversal": true,
+    "warm_missing_evidence_is_noop": true,
+    "fresh_missing_evidence_is_noop": true,
+    "warm_memory_corruption_detected": true,
+    "fresh_memory_corruption_detected": true,
+    "warm_reward_shuffled_control_not_sample_efficient": true,
+    "fresh_reward_shuffled_control_not_sample_efficient": true,
+    "warm_action_shuffled_control_not_sample_efficient": true,
+    "fresh_action_shuffled_control_not_sample_efficient": true,
+    "warm_append_only_growth": true,
+    "fresh_append_only_growth": true,
+    "warm_persistence_exact": true,
+    "fresh_persistence_exact": true,
+    "controller_frozen": true,
+    "state_adapter_frozen": true,
+    "zero_replayed_examples": true
+  },
+  "promoted": true,
+  "metrics": {
+    "warm": {
+      "tasks": [
+        {
+          "task_id": "family_a_nearby_successor",
+          "selected_initialization": "transfer",
+          "selected_cell": 8,
+          "probe": {
+            "transfer": {
+              "updates": 12,
+              "deterministic_best_score": 0.9647863507270813,
+              "deterministic_best_cell": 8,
+              "mastery_cell": 8,
+              "mastery_cell_score": 0.9647863507270813,
+              "selected_cell_counts": {
+                "8": 12
+              },
+              "selected_cell_fraction": {
+                "8": 1.0
+              },
+              "materialized_candidate_cells": {
+                "minimum": 1,
+                "maximum": 1,
+                "mean": 1.0
+              },
+              "mean_outcome": 0.6927516584595045,
+              "context_mask_patterns": {
+                "111011010101": 12
+              },
+              "final_context_mask": "111011010101",
+              "context_variant_forks": [],
+              "adaptive_stage_mastery": false,
+              "stage_index": 0,
+              "stage_count": 0,
+              "stage_mastery_complete": true,
+              "stage_mastery_records": [],
+              "stage_verifier_bits": 0,
+              "feedbacks": 83,
+              "routing_decisions": [
+                29,
+                13,
+                4,
+                3,
+                4,
+                4,
+                4,
+                3,
+                12
+              ],
+              "search_expansions": 12,
+              "wall_seconds": 0.06718616600846872
+            },
+            "fresh": {
+              "updates": 12,
+              "deterministic_best_score": 0.6661183834075928,
+              "deterministic_best_cell": 8,
+              "mastery_cell": 8,
+              "mastery_cell_score": 0.6661183834075928,
+              "selected_cell_counts": {
+                "8": 12
+              },
+              "selected_cell_fraction": {
+                "8": 1.0
+              },
+              "materialized_candidate_cells": {
+                "minimum": 1,
+                "maximum": 1,
+                "mean": 1.0
+              },
+              "mean_outcome": 0.3484105058014393,
+              "context_mask_patterns": {
+                "111011010101": 12
+              },
+              "final_context_mask": "111011010101",
+              "context_variant_forks": [],
+              "adaptive_stage_mastery": false,
+              "stage_index": 0,
+              "stage_count": 0,
+              "stage_mastery_complete": true,
+              "stage_mastery_records": [],
+              "stage_verifier_bits": 0,
+              "feedbacks": 83,
+              "routing_decisions": [
+                29,
+                13,
+                4,
+                3,
+                4,
+                4,
+                4,
+                3,
+                12
+              ],
+              "search_expansions": 12,
+              "wall_seconds": 0.06608658301411197
+            }
+          },
+          "continuation": {
+            "updates": 1,
+            "deterministic_best_score": 0.9601089358329773,
+            "deterministic_best_cell": 8,
+            "mastery_cell": 8,
+            "mastery_cell_score": 0.9601089358329773,
+            "selected_cell_counts": {
+              "8": 1
+            },
+            "selected_cell_fraction": {
+              "8": 1.0
+            },
+            "materialized_candidate_cells": {
+              "minimum": 1,
+              "maximum": 1,
+              "mean": 1.0
+            },
+            "mean_outcome": 0.9156787991523743,
+            "context_mask_patterns": {
+              "111011010101": 1
+            },
+            "final_context_mask": "111011010101",
+            "context_variant_forks": [],
+            "adaptive_stage_mastery": false,
+            "stage_index": 0,
+            "stage_count": 0,
+            "stage_mastery_complete": true,
+            "stage_mastery_records": [],
+            "stage_verifier_bits": 0,
+            "feedbacks": 84,
+            "routing_decisions": [
+              29,
+              13,
+              4,
+              3,
+              4,
+              4,
+              4,
+              3,
+              13
+            ],
+            "search_expansions": 1,
+            "wall_seconds": 0.006347415968775749
+          },
+          "retention": {
+            "accepted": true,
+            "deterministic_score": 0.9601089358329773,
+            "verifier_bits": 8,
+            "prefix_minimum": 0.9601089358329773,
+            "context_relevance_minimum": 1.0,
+            "reason": "heldout_prefix_floor_passed"
+          },
+          "prefix": {
+            "accepted": true,
+            "records": [
+              {
+                "task_id": "known_source",
+                "cell": 0,
+                "accepted": true,
+                "deterministic_score": 0.9707528352737427,
+                "verifier_bits": 8,
+                "prefix_minimum": 0.9707528352737427
+              },
+              {
+                "task_id": "known_successor",
+                "cell": 7,
+                "accepted": true,
+                "deterministic_score": 0.9705778956413269,
+                "verifier_bits": 8,
+                "prefix_minimum": 0.9705778956413269
+              },
+              {
+                "task_id": "family_a_nearby_successor",
+                "cell": 8,
+                "accepted": true,
+                "deterministic_score": 0.9601089358329773,
+                "verifier_bits": 8,
+                "prefix_minimum": 0.9601089358329773
+              }
+            ],
+            "verifier_bits": 24
+          },
+          "source_unchanged": true,
+          "schema_v2": true,
+          "adjusted_margin": 0.32866796731948855,
+          "task_unseen": true,
+          "receipt": {
+            "selected_initialization": "transfer",
+            "source_cell": 7,
+            "transfer_cell": 8,
+            "fresh_cell": 8,
+            "transfer_probe_score": 0.9647863507270813,
+            "fresh_probe_score": 0.6661183834075928,
+            "probe_updates": 12,
+            "source_state_digest": "70dc63be8596acfdfe88622cc365321c0ce875b3242bb586145980408ee615d9",
+            "selected_state_digest": "011f2f31172eb7962210865f77f3d8bfd2c5660e4bb6c56ca8eee3fba9888c37",
+            "reason": "transferred external intention state won the cost-aware verifier challenger",
+            "schema": "neural-computer.external-routed-intention-prior-selection.v2",
+            "transfer_cost": 0.15,
+            "fresh_cost": 0.45,
+            "cost_weight": 0.1,
+            "transfer_adjusted_score": 0.9497863507270813,
+            "fresh_adjusted_score": 0.6211183834075927
+          }
+        },
+        {
+          "task_id": "unseen_target_blind_copy_negative_transfer",
+          "selected_initialization": "fresh",
+          "selected_cell": 9,
+          "probe": {
+            "transfer": {
+              "updates": 12,
+              "deterministic_best_score": 0.08317466080188751,
+              "deterministic_best_cell": 9,
+              "mastery_cell": 9,
+              "mastery_cell_score": 0.08317466080188751,
+              "selected_cell_counts": {
+                "9": 12
+              },
+              "selected_cell_fraction": {
+                "9": 1.0
+              },
+              "materialized_candidate_cells": {
+                "minimum": 1,
+                "maximum": 1,
+                "mean": 1.0
+              },
+              "mean_outcome": 0.06580893342227985,
+              "context_mask_patterns": {
+                "101101100101": 12
+              },
+              "final_context_mask": "101101100101",
+              "context_variant_forks": [],
+              "adaptive_stage_mastery": false,
+              "stage_index": 0,
+              "stage_count": 0,
+              "stage_mastery_complete": true,
+              "stage_mastery_records": [],
+              "stage_verifier_bits": 0,
+              "feedbacks": 96,
+              "routing_decisions": [
+                29,
+                13,
+                4,
+                3,
+                4,
+                4,
+                4,
+                3,
+                13,
+                12
+              ],
+              "search_expansions": 12,
+              "wall_seconds": 0.06727187498472631
+            },
+            "fresh": {
+              "updates": 12,
+              "deterministic_best_score": 0.9619475603103638,
+              "deterministic_best_cell": 9,
+              "mastery_cell": 9,
+              "mastery_cell_score": 0.9619475603103638,
+              "selected_cell_counts": {
+                "8": 1,
+                "9": 11
+              },
+              "selected_cell_fraction": {
+                "8": 0.08333333333333333,
+                "9": 0.9166666666666666
+              },
+              "materialized_candidate_cells": {
+                "minimum": 1,
+                "maximum": 1,
+                "mean": 1.0
+              },
+              "mean_outcome": 0.6874006446450949,
+              "context_mask_patterns": {
+                "101101100101": 12
+              },
+              "final_context_mask": "101101100101",
+              "context_variant_forks": [],
+              "adaptive_stage_mastery": false,
+              "stage_index": 0,
+              "stage_count": 0,
+              "stage_mastery_complete": true,
+              "stage_mastery_records": [],
+              "stage_verifier_bits": 0,
+              "feedbacks": 96,
+              "routing_decisions": [
+                29,
+                13,
+                4,
+                3,
+                4,
+                4,
+                4,
+                3,
+                13,
+                11
+              ],
+              "search_expansions": 12,
+              "wall_seconds": 0.06339754199143499
+            }
+          },
+          "continuation": {
+            "updates": 10,
+            "deterministic_best_score": 0.9688452482223511,
+            "deterministic_best_cell": 9,
+            "mastery_cell": 9,
+            "mastery_cell_score": 0.9688452482223511,
+            "selected_cell_counts": {
+              "9": 10
+            },
+            "selected_cell_fraction": {
+              "9": 1.0
+            },
+            "materialized_candidate_cells": {
+              "minimum": 1,
+              "maximum": 1,
+              "mean": 1.0
+            },
+            "mean_outcome": 0.6770931020379066,
+            "context_mask_patterns": {
+              "101101100101": 10
+            },
+            "final_context_mask": "101101100101",
+            "context_variant_forks": [],
+            "adaptive_stage_mastery": false,
+            "stage_index": 0,
+            "stage_count": 0,
+            "stage_mastery_complete": true,
+            "stage_mastery_records": [],
+            "stage_verifier_bits": 0,
+            "feedbacks": 106,
+            "routing_decisions": [
+              29,
+              13,
+              4,
+              3,
+              4,
+              4,
+              4,
+              3,
+              13,
+              21
+            ],
+            "search_expansions": 10,
+            "wall_seconds": 0.05233220802620053
+          },
+          "retention": {
+            "accepted": true,
+            "deterministic_score": 0.9688452482223511,
+            "verifier_bits": 8,
+            "prefix_minimum": 0.9688452482223511,
+            "context_relevance_minimum": 1.0,
+            "reason": "heldout_prefix_floor_passed"
+          },
+          "prefix": {
+            "accepted": true,
+            "records": [
+              {
+                "task_id": "known_source",
+                "cell": 0,
+                "accepted": true,
+                "deterministic_score": 0.9707528352737427,
+                "verifier_bits": 8,
+                "prefix_minimum": 0.9707528352737427
+              },
+              {
+                "task_id": "known_successor",
+                "cell": 7,
+                "accepted": true,
+                "deterministic_score": 0.9705778956413269,
+                "verifier_bits": 8,
+                "prefix_minimum": 0.9705778956413269
+              },
+              {
+                "task_id": "family_a_nearby_successor",
+                "cell": 8,
+                "accepted": true,
+                "deterministic_score": 0.9601089358329773,
+                "verifier_bits": 8,
+                "prefix_minimum": 0.9601089358329773
+              },
+              {
+                "task_id": "unseen_target_blind_copy_negative_transfer",
+                "cell": 9,
+                "accepted": true,
+                "deterministic_score": 0.9688452482223511,
+                "verifier_bits": 8,
+                "prefix_minimum": 0.9688452482223511
+              }
+            ],
+            "verifier_bits": 32
+          },
+          "source_unchanged": true,
+          "schema_v2": true,
+          "adjusted_margin": 0.9087728995084763,
+          "task_unseen": true,
+          "receipt": {
+            "selected_initialization": "fresh",
+            "source_cell": 7,
+            "transfer_cell": 9,
+            "fresh_cell": 9,
+            "transfer_probe_score": 0.08317466080188751,
+            "fresh_probe_score": 0.9619475603103638,
+            "probe_updates": 12,
+            "source_state_digest": "d851ad88f14d72f642014776e856c2f11118cb85e2c62aed93c24f6f7a807d4f",
+            "selected_state_digest": "5467b1625679fa6f1f9cb6fb05843ba5d3d879f0e12abfcdc2b1efd62bd79f28",
+            "reason": "fresh external intention state won the cost-aware verifier challenger",
+            "schema": "neural-computer.external-routed-intention-prior-selection.v2",
+            "transfer_cost": 0.45,
+            "fresh_cost": 0.15,
+            "cost_weight": 0.1,
+            "transfer_adjusted_score": 0.03817466080188751,
+            "fresh_adjusted_score": 0.9469475603103638
+          }
+        },
+        {
+          "task_id": "family_c_alternate_nearby_successor",
+          "selected_initialization": "transfer",
+          "selected_cell": 10,
+          "probe": {
+            "transfer": {
+              "updates": 12,
+              "deterministic_best_score": 0.9904057383537292,
+              "deterministic_best_cell": 10,
+              "mastery_cell": 10,
+              "mastery_cell_score": 0.9904057383537292,
+              "selected_cell_counts": {
+                "10": 12
+              },
+              "selected_cell_fraction": {
+                "10": 1.0
+              },
+              "materialized_candidate_cells": {
+                "minimum": 1,
+                "maximum": 1,
+                "mean": 1.0
+              },
+              "mean_outcome": 0.7047996446490288,
+              "context_mask_patterns": {
+                "110110110100": 12
+              },
+              "final_context_mask": "110110110100",
+              "context_variant_forks": [],
+              "adaptive_stage_mastery": false,
+              "stage_index": 0,
+              "stage_count": 0,
+              "stage_mastery_complete": true,
+              "stage_mastery_records": [],
+              "stage_verifier_bits": 0,
+              "feedbacks": 118,
+              "routing_decisions": [
+                29,
+                13,
+                4,
+                3,
+                4,
+                4,
+                4,
+                3,
+                13,
+                21,
+                12
+              ],
+              "search_expansions": 12,
+              "wall_seconds": 0.06393170804949477
+            },
+            "fresh": {
+              "updates": 12,
+              "deterministic_best_score": 0.6517720222473145,
+              "deterministic_best_cell": 10,
+              "mastery_cell": 10,
+              "mastery_cell_score": 0.6517720222473145,
+              "selected_cell_counts": {
+                "10": 12
+              },
+              "selected_cell_fraction": {
+                "10": 1.0
+              },
+              "materialized_candidate_cells": {
+                "minimum": 1,
+                "maximum": 1,
+                "mean": 1.0
+              },
+              "mean_outcome": 0.425161499530077,
+              "context_mask_patterns": {
+                "110110110100": 12
+              },
+              "final_context_mask": "110110110100",
+              "context_variant_forks": [],
+              "adaptive_stage_mastery": false,
+              "stage_index": 0,
+              "stage_count": 0,
+              "stage_mastery_complete": true,
+              "stage_mastery_records": [],
+              "stage_verifier_bits": 0,
+              "feedbacks": 118,
+              "routing_decisions": [
+                29,
+                13,
+                4,
+                3,
+                4,
+                4,
+                4,
+                3,
+                13,
+                21,
+                12
+              ],
+              "search_expansions": 12,
+              "wall_seconds": 0.07032979204086587
+            }
+          },
+          "continuation": {
+            "updates": 1,
+            "deterministic_best_score": 0.9881976842880249,
+            "deterministic_best_cell": 10,
+            "mastery_cell": 10,
+            "mastery_cell_score": 0.9881976842880249,
+            "selected_cell_counts": {
+              "10": 1
+            },
+            "selected_cell_fraction": {
+              "10": 1.0
+            },
+            "materialized_candidate_cells": {
+              "minimum": 1,
+              "maximum": 1,
+              "mean": 1.0
+            },
+            "mean_outcome": 0.7439630031585693,
+            "context_mask_patterns": {
+              "110110110100": 1
+            },
+            "final_context_mask": "110110110100",
+            "context_variant_forks": [],
+            "adaptive_stage_mastery": false,
+            "stage_index": 0,
+            "stage_count": 0,
+            "stage_mastery_complete": true,
+            "stage_mastery_records": [],
+            "stage_verifier_bits": 0,
+            "feedbacks": 119,
+            "routing_decisions": [
+              29,
+              13,
+              4,
+              3,
+              4,
+              4,
+              4,
+              3,
+              13,
+              21,
+              13
+            ],
+            "search_expansions": 1,
+            "wall_seconds": 0.006310374999884516
+          },
+          "retention": {
+            "accepted": true,
+            "deterministic_score": 0.9881976842880249,
+            "verifier_bits": 8,
+            "prefix_minimum": 0.9881976842880249,
+            "context_relevance_minimum": 1.0,
+            "reason": "heldout_prefix_floor_passed"
+          },
+          "prefix": {
+            "accepted": true,
+            "records": [
+              {
+                "task_id": "known_source",
+                "cell": 0,
+                "accepted": true,
+                "deterministic_score": 0.9707528352737427,
+                "verifier_bits": 8,
+                "prefix_minimum": 0.9707528352737427
+              },
+              {
+                "task_id": "known_successor",
+                "cell": 7,
+                "accepted": true,
+                "deterministic_score": 0.9705778956413269,
+                "verifier_bits": 8,
+                "prefix_minimum": 0.9705778956413269
+              },
+              {
+                "task_id": "family_a_nearby_successor",
+                "cell": 8,
+                "accepted": true,
+                "deterministic_score": 0.9601089358329773,
+                "verifier_bits": 8,
+                "prefix_minimum": 0.9601089358329773
+              },
+              {
+                "task_id": "unseen_target_blind_copy_negative_transfer",
+                "cell": 9,
+                "accepted": true,
+                "deterministic_score": 0.9688452482223511,
+                "verifier_bits": 8,
+                "prefix_minimum": 0.9688452482223511
+              },
+              {
+                "task_id": "family_c_alternate_nearby_successor",
+                "cell": 10,
+                "accepted": true,
+                "deterministic_score": 0.9881976842880249,
+                "verifier_bits": 8,
+                "prefix_minimum": 0.9881976842880249
+              }
+            ],
+            "verifier_bits": 40
+          },
+          "source_unchanged": true,
+          "schema_v2": true,
+          "adjusted_margin": 0.3686337161064148,
+          "task_unseen": true,
+          "receipt": {
+            "selected_initialization": "transfer",
+            "source_cell": 7,
+            "transfer_cell": 10,
+            "fresh_cell": 10,
+            "transfer_probe_score": 0.9904057383537292,
+            "fresh_probe_score": 0.6517720222473145,
+            "probe_updates": 12,
+            "source_state_digest": "59b107e8e21cc2af0f586e39fc8f9180d89ffded133cd7fc42fdc6e493bb0aab",
+            "selected_state_digest": "ff1eda99af430df3dc2f0b2242e55c18c2bd19820cb5e2991c85a46637430056",
+            "reason": "transferred external intention state won the cost-aware verifier challenger",
+            "schema": "neural-computer.external-routed-intention-prior-selection.v2",
+            "transfer_cost": 0.2,
+            "fresh_cost": 0.5,
+            "cost_weight": 0.1,
+            "transfer_adjusted_score": 0.9704057383537292,
+            "fresh_adjusted_score": 0.6017720222473144
+          }
+        }
+      ],
+      "controls": {
+        "reward_shuffled": {
+          "updates": 160,
+          "deterministic_best_score": 8.488709863740951e-05,
+          "deterministic_best_cell": 0,
+          "mastery_cell": null,
+          "mastery_cell_score": 8.488709863740951e-05,
+          "selected_cell_counts": {
+            "0": 160
+          },
+          "selected_cell_fraction": {
+            "0": 1.0
+          },
+          "materialized_candidate_cells": {
+            "minimum": 1,
+            "maximum": 1,
+            "mean": 1.0
+          },
+          "mean_outcome": 0.5062277242541313,
+          "context_mask_patterns": {
+            "110110110100": 160
+          },
+          "final_context_mask": "110110110100",
+          "context_variant_forks": [],
+          "adaptive_stage_mastery": false,
+          "stage_index": 0,
+          "stage_count": 0,
+          "stage_mastery_complete": true,
+          "stage_mastery_records": [],
+          "stage_verifier_bits": 0,
+          "feedbacks": 160,
+          "routing_decisions": [
+            160
+          ],
+          "search_expansions": 160,
+          "wall_seconds": 0.7149816250312142,
+          "initial_score": 0.228613018989563
+        },
+        "action_shuffled": {
+          "updates": 160,
+          "deterministic_best_score": 0.0737992525100708,
+          "deterministic_best_cell": 0,
+          "mastery_cell": null,
+          "mastery_cell_score": 0.0737992525100708,
+          "selected_cell_counts": {
+            "0": 160
+          },
+          "selected_cell_fraction": {
+            "0": 1.0
+          },
+          "materialized_candidate_cells": {
+            "minimum": 1,
+            "maximum": 1,
+            "mean": 1.0
+          },
+          "mean_outcome": 0.10245552939284033,
+          "context_mask_patterns": {
+            "110110110100": 160
+          },
+          "final_context_mask": "110110110100",
+          "context_variant_forks": [],
+          "adaptive_stage_mastery": false,
+          "stage_index": 0,
+          "stage_count": 0,
+          "stage_mastery_complete": true,
+          "stage_mastery_records": [],
+          "stage_verifier_bits": 0,
+          "feedbacks": 160,
+          "routing_decisions": [
+            160
+          ],
+          "search_expansions": 160,
+          "wall_seconds": 0.797973082982935,
+          "initial_score": 0.23687589168548584
+        },
+        "missing_evidence": {
+          "state_unchanged": true,
+          "routing_decisions": [
+            0
+          ],
+          "routing_feedbacks": [
+            0
+          ]
+        }
+      },
+      "corruption": {
+        "clean_score": 0.9881976842880249,
+        "corrupted_score": 0.234922394156456,
+        "corruption_detected": true
+      },
+      "reversal": {
+        "updates": 260,
+        "deterministic_best_score": 0.9680183529853821,
+        "deterministic_best_cell": 11,
+        "mastery_cell": 11,
+        "mastery_cell_score": 0.9680183529853821,
+        "selected_cell_counts": {
+          "5": 1,
+          "6": 3,
+          "7": 3,
+          "10": 2,
+          "11": 251
+        },
+        "selected_cell_fraction": {
+          "5": 0.0038461538461538464,
+          "6": 0.011538461538461539,
+          "7": 0.011538461538461539,
+          "10": 0.007692307692307693,
+          "11": 0.9653846153846154
+        },
+        "materialized_candidate_cells": {
+          "minimum": 1,
+          "maximum": 1,
+          "mean": 1.0
+        },
+        "mean_outcome": 0.42961975098945776,
+        "context_mask_patterns": {
+          "111110100101": 260
+        },
+        "final_context_mask": "111110100101",
+        "context_variant_forks": [],
+        "adaptive_stage_mastery": false,
+        "stage_index": 0,
+        "stage_count": 0,
+        "stage_mastery_complete": true,
+        "stage_mastery_records": [],
+        "stage_verifier_bits": 0,
+        "feedbacks": 379,
+        "routing_decisions": [
+          29,
+          13,
+          4,
+          3,
+          4,
+          4,
+          4,
+          3,
+          13,
+          21,
+          13,
+          251
+        ],
+        "search_expansions": 260,
+        "wall_seconds": 1.332864416996017
+      },
+      "latest_after_reversal": {
+        "accepted": true,
+        "deterministic_score": 0.9881976842880249,
+        "verifier_bits": 8,
+        "prefix_minimum": 0.9881976842880249,
+        "context_relevance_minimum": 1.0,
+        "reason": "heldout_prefix_floor_passed"
+      },
+      "initial_external_cells": 8,
+      "final_external_cells": 11
+    },
+    "fresh": {
+      "tasks": [
+        {
+          "task_id": "family_a_nearby_successor",
+          "selected_initialization": "transfer",
+          "selected_cell": 8,
+          "probe": {
+            "transfer": {
+              "updates": 12,
+              "deterministic_best_score": 0.8787251114845276,
+              "deterministic_best_cell": 8,
+              "mastery_cell": 8,
+              "mastery_cell_score": 0.8787251114845276,
+              "selected_cell_counts": {
+                "8": 12
+              },
+              "selected_cell_fraction": {
+                "8": 1.0
+              },
+              "materialized_candidate_cells": {
+                "minimum": 1,
+                "maximum": 1,
+                "mean": 1.0
+              },
+              "mean_outcome": 0.7678473020593325,
+              "context_mask_patterns": {
+                "111011010101": 12
+              },
+              "final_context_mask": "111011010101",
+              "context_variant_forks": [],
+              "adaptive_stage_mastery": false,
+              "stage_index": 0,
+              "stage_count": 0,
+              "stage_mastery_complete": true,
+              "stage_mastery_records": [],
+              "stage_verifier_bits": 0,
+              "feedbacks": 95,
+              "routing_decisions": [
+                19,
+                22,
+                7,
+                4,
+                2,
+                4,
+                2,
+                3,
+                12
+              ],
+              "search_expansions": 12,
+              "wall_seconds": 0.059479250048752874
+            },
+            "fresh": {
+              "updates": 12,
+              "deterministic_best_score": 0.9036422371864319,
+              "deterministic_best_cell": 8,
+              "mastery_cell": 8,
+              "mastery_cell_score": 0.9036422371864319,
+              "selected_cell_counts": {
+                "8": 12
+              },
+              "selected_cell_fraction": {
+                "8": 1.0
+              },
+              "materialized_candidate_cells": {
+                "minimum": 1,
+                "maximum": 1,
+                "mean": 1.0
+              },
+              "mean_outcome": 0.3717838581651449,
+              "context_mask_patterns": {
+                "111011010101": 12
+              },
+              "final_context_mask": "111011010101",
+              "context_variant_forks": [],
+              "adaptive_stage_mastery": false,
+              "stage_index": 0,
+              "stage_count": 0,
+              "stage_mastery_complete": true,
+              "stage_mastery_records": [],
+              "stage_verifier_bits": 0,
+              "feedbacks": 95,
+              "routing_decisions": [
+                19,
+                22,
+                7,
+                4,
+                2,
+                4,
+                2,
+                3,
+                12
+              ],
+              "search_expansions": 12,
+              "wall_seconds": 0.06460191699443385
+            }
+          },
+          "continuation": {
+            "updates": 15,
+            "deterministic_best_score": 0.997072696685791,
+            "deterministic_best_cell": 8,
+            "mastery_cell": 8,
+            "mastery_cell_score": 0.997072696685791,
+            "selected_cell_counts": {
+              "8": 15
+            },
+            "selected_cell_fraction": {
+              "8": 1.0
+            },
+            "materialized_candidate_cells": {
+              "minimum": 1,
+              "maximum": 1,
+              "mean": 1.0
+            },
+            "mean_outcome": 0.6524140814940135,
+            "context_mask_patterns": {
+              "111011010101": 15
+            },
+            "final_context_mask": "111011010101",
+            "context_variant_forks": [],
+            "adaptive_stage_mastery": false,
+            "stage_index": 0,
+            "stage_count": 0,
+            "stage_mastery_complete": true,
+            "stage_mastery_records": [],
+            "stage_verifier_bits": 0,
+            "feedbacks": 110,
+            "routing_decisions": [
+              19,
+              22,
+              7,
+              4,
+              2,
+              4,
+              2,
+              3,
+              27
+            ],
+            "search_expansions": 15,
+            "wall_seconds": 0.08268070797203109
+          },
+          "retention": {
+            "accepted": true,
+            "deterministic_score": 0.997072696685791,
+            "verifier_bits": 8,
+            "prefix_minimum": 0.997072696685791,
+            "context_relevance_minimum": 1.0,
+            "reason": "heldout_prefix_floor_passed"
+          },
+          "prefix": {
+            "accepted": true,
+            "records": [
+              {
+                "task_id": "known_source",
+                "cell": 0,
+                "accepted": true,
+                "deterministic_score": 0.9716100692749023,
+                "verifier_bits": 8,
+                "prefix_minimum": 0.9716100692749023
+              },
+              {
+                "task_id": "known_successor",
+                "cell": 7,
+                "accepted": true,
+                "deterministic_score": 0.9991570711135864,
+                "verifier_bits": 8,
+                "prefix_minimum": 0.9991570711135864
+              },
+              {
+                "task_id": "family_a_nearby_successor",
+                "cell": 8,
+                "accepted": true,
+                "deterministic_score": 0.997072696685791,
+                "verifier_bits": 8,
+                "prefix_minimum": 0.997072696685791
+              }
+            ],
+            "verifier_bits": 24
+          },
+          "source_unchanged": true,
+          "schema_v2": true,
+          "adjusted_margin": 0.00508287429809573,
+          "task_unseen": true,
+          "receipt": {
+            "selected_initialization": "transfer",
+            "source_cell": 7,
+            "transfer_cell": 8,
+            "fresh_cell": 8,
+            "transfer_probe_score": 0.8787251114845276,
+            "fresh_probe_score": 0.9036422371864319,
+            "probe_updates": 12,
+            "source_state_digest": "7fc857c0ac10a1c826a624021c084a90251c9d621b595db9f1bd161cfb3e2112",
+            "selected_state_digest": "7b16425441eb82dac2514cc37472d1ef82d510e0415ccbbd88e95a2d39353b15",
+            "reason": "transferred external intention state won the cost-aware verifier challenger",
+            "schema": "neural-computer.external-routed-intention-prior-selection.v2",
+            "transfer_cost": 0.15,
+            "fresh_cost": 0.45,
+            "cost_weight": 0.1,
+            "transfer_adjusted_score": 0.8637251114845276,
+            "fresh_adjusted_score": 0.8586422371864318
+          }
+        },
+        {
+          "task_id": "unseen_target_blind_copy_negative_transfer",
+          "selected_initialization": "fresh",
+          "selected_cell": 9,
+          "probe": {
+            "transfer": {
+              "updates": 12,
+              "deterministic_best_score": 0.2661597728729248,
+              "deterministic_best_cell": 9,
+              "mastery_cell": 9,
+              "mastery_cell_score": 0.2661597728729248,
+              "selected_cell_counts": {
+                "9": 12
+              },
+              "selected_cell_fraction": {
+                "9": 1.0
+              },
+              "materialized_candidate_cells": {
+                "minimum": 1,
+                "maximum": 1,
+                "mean": 1.0
+              },
+              "mean_outcome": 0.059903968630048134,
+              "context_mask_patterns": {
+                "101101100101": 12
+              },
+              "final_context_mask": "101101100101",
+              "context_variant_forks": [],
+              "adaptive_stage_mastery": false,
+              "stage_index": 0,
+              "stage_count": 0,
+              "stage_mastery_complete": true,
+              "stage_mastery_records": [],
+              "stage_verifier_bits": 0,
+              "feedbacks": 122,
+              "routing_decisions": [
+                19,
+                22,
+                7,
+                4,
+                2,
+                4,
+                2,
+                3,
+                27,
+                12
+              ],
+              "search_expansions": 12,
+              "wall_seconds": 0.06024129199795425
+            },
+            "fresh": {
+              "updates": 12,
+              "deterministic_best_score": 0.9478951096534729,
+              "deterministic_best_cell": 9,
+              "mastery_cell": 9,
+              "mastery_cell_score": 0.9478951096534729,
+              "selected_cell_counts": {
+                "9": 12
+              },
+              "selected_cell_fraction": {
+                "9": 1.0
+              },
+              "materialized_candidate_cells": {
+                "minimum": 1,
+                "maximum": 1,
+                "mean": 1.0
+              },
+              "mean_outcome": 0.740287184715271,
+              "context_mask_patterns": {
+                "101101100101": 12
+              },
+              "final_context_mask": "101101100101",
+              "context_variant_forks": [],
+              "adaptive_stage_mastery": false,
+              "stage_index": 0,
+              "stage_count": 0,
+              "stage_mastery_complete": true,
+              "stage_mastery_records": [],
+              "stage_verifier_bits": 0,
+              "feedbacks": 122,
+              "routing_decisions": [
+                19,
+                22,
+                7,
+                4,
+                2,
+                4,
+                2,
+                3,
+                27,
+                12
+              ],
+              "search_expansions": 12,
+              "wall_seconds": 0.057972999988123775
+            }
+          },
+          "continuation": {
+            "updates": 11,
+            "deterministic_best_score": 0.9910284876823425,
+            "deterministic_best_cell": 9,
+            "mastery_cell": 9,
+            "mastery_cell_score": 0.9910284876823425,
+            "selected_cell_counts": {
+              "9": 11
+            },
+            "selected_cell_fraction": {
+              "9": 1.0
+            },
+            "materialized_candidate_cells": {
+              "minimum": 1,
+              "maximum": 1,
+              "mean": 1.0
+            },
+            "mean_outcome": 0.6416810696775263,
+            "context_mask_patterns": {
+              "101101100101": 11
+            },
+            "final_context_mask": "101101100101",
+            "context_variant_forks": [],
+            "adaptive_stage_mastery": false,
+            "stage_index": 0,
+            "stage_count": 0,
+            "stage_mastery_complete": true,
+            "stage_mastery_records": [],
+            "stage_verifier_bits": 0,
+            "feedbacks": 133,
+            "routing_decisions": [
+              19,
+              22,
+              7,
+              4,
+              2,
+              4,
+              2,
+              3,
+              27,
+              23
+            ],
+            "search_expansions": 11,
+            "wall_seconds": 0.05560979200527072
+          },
+          "retention": {
+            "accepted": true,
+            "deterministic_score": 0.9910284876823425,
+            "verifier_bits": 8,
+            "prefix_minimum": 0.9910284876823425,
+            "context_relevance_minimum": 1.0,
+            "reason": "heldout_prefix_floor_passed"
+          },
+          "prefix": {
+            "accepted": true,
+            "records": [
+              {
+                "task_id": "known_source",
+                "cell": 0,
+                "accepted": true,
+                "deterministic_score": 0.9716100692749023,
+                "verifier_bits": 8,
+                "prefix_minimum": 0.9716100692749023
+              },
+              {
+                "task_id": "known_successor",
+                "cell": 7,
+                "accepted": true,
+                "deterministic_score": 0.9991570711135864,
+                "verifier_bits": 8,
+                "prefix_minimum": 0.9991570711135864
+              },
+              {
+                "task_id": "family_a_nearby_successor",
+                "cell": 8,
+                "accepted": true,
+                "deterministic_score": 0.997072696685791,
+                "verifier_bits": 8,
+                "prefix_minimum": 0.997072696685791
+              },
+              {
+                "task_id": "unseen_target_blind_copy_negative_transfer",
+                "cell": 9,
+                "accepted": true,
+                "deterministic_score": 0.9910284876823425,
+                "verifier_bits": 8,
+                "prefix_minimum": 0.9910284876823425
+              }
+            ],
+            "verifier_bits": 32
+          },
+          "source_unchanged": true,
+          "schema_v2": true,
+          "adjusted_margin": 0.7117353367805481,
+          "task_unseen": true,
+          "receipt": {
+            "selected_initialization": "fresh",
+            "source_cell": 7,
+            "transfer_cell": 9,
+            "fresh_cell": 9,
+            "transfer_probe_score": 0.2661597728729248,
+            "fresh_probe_score": 0.9478951096534729,
+            "probe_updates": 12,
+            "source_state_digest": "685bf79820767b89bd492b9102df1de5489e8374fa9dbda9e62f1607d0692ec8",
+            "selected_state_digest": "7ee73b753635a8450bd5c04706c973c7bc6f42e9889b3c2f2c2af88d79307504",
+            "reason": "fresh external intention state won the cost-aware verifier challenger",
+            "schema": "neural-computer.external-routed-intention-prior-selection.v2",
+            "transfer_cost": 0.45,
+            "fresh_cost": 0.15,
+            "cost_weight": 0.1,
+            "transfer_adjusted_score": 0.2211597728729248,
+            "fresh_adjusted_score": 0.9328951096534729
+          }
+        },
+        {
+          "task_id": "family_c_alternate_nearby_successor",
+          "selected_initialization": "transfer",
+          "selected_cell": 10,
+          "probe": {
+            "transfer": {
+              "updates": 12,
+              "deterministic_best_score": 0.9190987944602966,
+              "deterministic_best_cell": 10,
+              "mastery_cell": 10,
+              "mastery_cell_score": 0.9190987944602966,
+              "selected_cell_counts": {
+                "10": 12
+              },
+              "selected_cell_fraction": {
+                "10": 1.0
+              },
+              "materialized_candidate_cells": {
+                "minimum": 1,
+                "maximum": 1,
+                "mean": 1.0
+              },
+              "mean_outcome": 0.7429666394988695,
+              "context_mask_patterns": {
+                "110110110100": 12
+              },
+              "final_context_mask": "110110110100",
+              "context_variant_forks": [],
+              "adaptive_stage_mastery": false,
+              "stage_index": 0,
+              "stage_count": 0,
+              "stage_mastery_complete": true,
+              "stage_mastery_records": [],
+              "stage_verifier_bits": 0,
+              "feedbacks": 145,
+              "routing_decisions": [
+                19,
+                22,
+                7,
+                4,
+                2,
+                4,
+                2,
+                3,
+                27,
+                23,
+                12
+              ],
+              "search_expansions": 12,
+              "wall_seconds": 0.06537058396497741
+            },
+            "fresh": {
+              "updates": 12,
+              "deterministic_best_score": 0.6235389113426208,
+              "deterministic_best_cell": 10,
+              "mastery_cell": 10,
+              "mastery_cell_score": 0.6235389113426208,
+              "selected_cell_counts": {
+                "7": 1,
+                "10": 11
+              },
+              "selected_cell_fraction": {
+                "7": 0.08333333333333333,
+                "10": 0.9166666666666666
+              },
+              "materialized_candidate_cells": {
+                "minimum": 1,
+                "maximum": 1,
+                "mean": 1.0
+              },
+              "mean_outcome": 0.24176779094462594,
+              "context_mask_patterns": {
+                "110110110100": 12
+              },
+              "final_context_mask": "110110110100",
+              "context_variant_forks": [],
+              "adaptive_stage_mastery": false,
+              "stage_index": 0,
+              "stage_count": 0,
+              "stage_mastery_complete": true,
+              "stage_mastery_records": [],
+              "stage_verifier_bits": 0,
+              "feedbacks": 145,
+              "routing_decisions": [
+                19,
+                22,
+                7,
+                4,
+                2,
+                4,
+                2,
+                3,
+                27,
+                23,
+                11
+              ],
+              "search_expansions": 12,
+              "wall_seconds": 0.06277416698867455
+            }
+          },
+          "continuation": {
+            "updates": 11,
+            "deterministic_best_score": 0.9706172943115234,
+            "deterministic_best_cell": 10,
+            "mastery_cell": 10,
+            "mastery_cell_score": 0.9706172943115234,
+            "selected_cell_counts": {
+              "10": 11
+            },
+            "selected_cell_fraction": {
+              "10": 1.0
+            },
+            "materialized_candidate_cells": {
+              "minimum": 1,
+              "maximum": 1,
+              "mean": 1.0
+            },
+            "mean_outcome": 0.711076554926959,
+            "context_mask_patterns": {
+              "110110110100": 11
+            },
+            "final_context_mask": "110110110100",
+            "context_variant_forks": [],
+            "adaptive_stage_mastery": false,
+            "stage_index": 0,
+            "stage_count": 0,
+            "stage_mastery_complete": true,
+            "stage_mastery_records": [],
+            "stage_verifier_bits": 0,
+            "feedbacks": 156,
+            "routing_decisions": [
+              19,
+              22,
+              7,
+              4,
+              2,
+              4,
+              2,
+              3,
+              27,
+              23,
+              23
+            ],
+            "search_expansions": 11,
+            "wall_seconds": 0.05965079099405557
+          },
+          "retention": {
+            "accepted": true,
+            "deterministic_score": 0.9706172943115234,
+            "verifier_bits": 8,
+            "prefix_minimum": 0.9706172943115234,
+            "context_relevance_minimum": 1.0,
+            "reason": "heldout_prefix_floor_passed"
+          },
+          "prefix": {
+            "accepted": true,
+            "records": [
+              {
+                "task_id": "known_source",
+                "cell": 0,
+                "accepted": true,
+                "deterministic_score": 0.9716100692749023,
+                "verifier_bits": 8,
+                "prefix_minimum": 0.9716100692749023
+              },
+              {
+                "task_id": "known_successor",
+                "cell": 7,
+                "accepted": true,
+                "deterministic_score": 0.9991570711135864,
+                "verifier_bits": 8,
+                "prefix_minimum": 0.9991570711135864
+              },
+              {
+                "task_id": "family_a_nearby_successor",
+                "cell": 8,
+                "accepted": true,
+                "deterministic_score": 0.997072696685791,
+                "verifier_bits": 8,
+                "prefix_minimum": 0.997072696685791
+              },
+              {
+                "task_id": "unseen_target_blind_copy_negative_transfer",
+                "cell": 9,
+                "accepted": true,
+                "deterministic_score": 0.9910284876823425,
+                "verifier_bits": 8,
+                "prefix_minimum": 0.9910284876823425
+              },
+              {
+                "task_id": "family_c_alternate_nearby_successor",
+                "cell": 10,
+                "accepted": true,
+                "deterministic_score": 0.9706172943115234,
+                "verifier_bits": 8,
+                "prefix_minimum": 0.9706172943115234
+              }
+            ],
+            "verifier_bits": 40
+          },
+          "source_unchanged": true,
+          "schema_v2": true,
+          "adjusted_margin": 0.3255598831176758,
+          "task_unseen": true,
+          "receipt": {
+            "selected_initialization": "transfer",
+            "source_cell": 7,
+            "transfer_cell": 10,
+            "fresh_cell": 10,
+            "transfer_probe_score": 0.9190987944602966,
+            "fresh_probe_score": 0.6235389113426208,
+            "probe_updates": 12,
+            "source_state_digest": "1b8efa899c7f0888bf2c0def7364bd2df8f8bde47ba67356de7321340a20612e",
+            "selected_state_digest": "d8cc496726bfc003e9a3e5cf9887f154dc21de09a2928a080857ee584e0080aa",
+            "reason": "transferred external intention state won the cost-aware verifier challenger",
+            "schema": "neural-computer.external-routed-intention-prior-selection.v2",
+            "transfer_cost": 0.2,
+            "fresh_cost": 0.5,
+            "cost_weight": 0.1,
+            "transfer_adjusted_score": 0.8990987944602966,
+            "fresh_adjusted_score": 0.5735389113426208
+          }
+        }
+      ],
+      "controls": {
+        "reward_shuffled": {
+          "updates": 160,
+          "deterministic_best_score": 0.3176460266113281,
+          "deterministic_best_cell": 0,
+          "mastery_cell": null,
+          "mastery_cell_score": 0.3176460266113281,
+          "selected_cell_counts": {
+            "0": 160
+          },
+          "selected_cell_fraction": {
+            "0": 1.0
+          },
+          "materialized_candidate_cells": {
+            "minimum": 1,
+            "maximum": 1,
+            "mean": 1.0
+          },
+          "mean_outcome": 0.5062277242541313,
+          "context_mask_patterns": {
+            "110110110100": 160
+          },
+          "final_context_mask": "110110110100",
+          "context_variant_forks": [],
+          "adaptive_stage_mastery": false,
+          "stage_index": 0,
+          "stage_count": 0,
+          "stage_mastery_complete": true,
+          "stage_mastery_records": [],
+          "stage_verifier_bits": 0,
+          "feedbacks": 160,
+          "routing_decisions": [
+            160
+          ],
+          "search_expansions": 160,
+          "wall_seconds": 0.8100762499962002,
+          "initial_score": 0.22757595777511597
+        },
+        "action_shuffled": {
+          "updates": 160,
+          "deterministic_best_score": 0.11996378004550934,
+          "deterministic_best_cell": 0,
+          "mastery_cell": null,
+          "mastery_cell_score": 0.11996378004550934,
+          "selected_cell_counts": {
+            "0": 160
+          },
+          "selected_cell_fraction": {
+            "0": 1.0
+          },
+          "materialized_candidate_cells": {
+            "minimum": 1,
+            "maximum": 1,
+            "mean": 1.0
+          },
+          "mean_outcome": 0.10245552939284033,
+          "context_mask_patterns": {
+            "110110110100": 160
+          },
+          "final_context_mask": "110110110100",
+          "context_variant_forks": [],
+          "adaptive_stage_mastery": false,
+          "stage_index": 0,
+          "stage_count": 0,
+          "stage_mastery_complete": true,
+          "stage_mastery_records": [],
+          "stage_verifier_bits": 0,
+          "feedbacks": 160,
+          "routing_decisions": [
+            160
+          ],
+          "search_expansions": 160,
+          "wall_seconds": 0.6095889169955626,
+          "initial_score": 0.22580605745315552
+        },
+        "missing_evidence": {
+          "state_unchanged": true,
+          "routing_decisions": [
+            0
+          ],
+          "routing_feedbacks": [
+            0
+          ]
+        }
+      },
+      "corruption": {
+        "clean_score": 0.9706172943115234,
+        "corrupted_score": 0.234922394156456,
+        "corruption_detected": true
+      },
+      "reversal": {
+        "updates": 260,
+        "deterministic_best_score": 0.9765329957008362,
+        "deterministic_best_cell": 11,
+        "mastery_cell": 11,
+        "mastery_cell_score": 0.9765329957008362,
+        "selected_cell_counts": {
+          "7": 4,
+          "9": 7,
+          "11": 249
+        },
+        "selected_cell_fraction": {
+          "7": 0.015384615384615385,
+          "9": 0.026923076923076925,
+          "11": 0.9576923076923077
+        },
+        "materialized_candidate_cells": {
+          "minimum": 1,
+          "maximum": 1,
+          "mean": 1.0
+        },
+        "mean_outcome": 0.3915935733507817,
+        "context_mask_patterns": {
+          "111110100101": 260
+        },
+        "final_context_mask": "111110100101",
+        "context_variant_forks": [],
+        "adaptive_stage_mastery": false,
+        "stage_index": 0,
+        "stage_count": 0,
+        "stage_mastery_complete": true,
+        "stage_mastery_records": [],
+        "stage_verifier_bits": 0,
+        "feedbacks": 416,
+        "routing_decisions": [
+          19,
+          22,
+          7,
+          4,
+          2,
+          4,
+          2,
+          3,
+          27,
+          23,
+          23,
+          249
+        ],
+        "search_expansions": 260,
+        "wall_seconds": 1.250767541991081
+      },
+      "latest_after_reversal": {
+        "accepted": true,
+        "deterministic_score": 0.9706172943115234,
+        "verifier_bits": 8,
+        "prefix_minimum": 0.9706172943115234,
+        "context_relevance_minimum": 1.0,
+        "reason": "heldout_prefix_floor_passed"
+      },
+      "initial_external_cells": 8,
+      "final_external_cells": 11
+    }
+  },
+  "accounting": {
+    "warm_unique_verifier_bits": 84,
+    "fresh_unique_verifier_bits": 109,
+    "warm_heldout_verifier_bits": 96,
+    "fresh_heldout_verifier_bits": 96,
+    "warm_control_outcome_bits": 320,
+    "fresh_control_outcome_bits": 320,
+    "warm_external_cells": 11,
+    "fresh_external_cells": 11,
+    "optimizer_updates": 0,
+    "controller_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "wall_seconds": 7.7146945830318145
+  }
+}

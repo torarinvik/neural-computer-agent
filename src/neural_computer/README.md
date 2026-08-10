@@ -1337,3 +1337,8 @@ seeds, while the negative-transfer harness continues to select fresh state.
 Both records are retained under `session_records/` and deliberately keep
 universal speedup and broad generalization unclaimed. Selection receipts also
 support v2 cost-aware adjusted scores for deployment-budget decisions.
+
+The sequential admission harness extends this to three unseen families with
+append-only growth and complete-prefix retention after every admission. Its
+three-seed record is archived at
+`session_records/policy_free_intention_sequential_admission_promoted_2026-08-10/`.
