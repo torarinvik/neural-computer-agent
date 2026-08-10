@@ -69,6 +69,18 @@ parser.add_argument(
          "A curriculum gets reading established on the readable task "
          "first, then extends it — the bootstrapping F120 identified.")
 parser.add_argument(
+    "--contrastive-aux", type=float, default=0.0,
+    help="contrastive term as an AUXILIARY loss during joint training "
+         "rather than a frozen pre-training phase. F139 showed a "
+         "contrastive code is discriminative but not shaped for the "
+         "binder; F140 showed the binder cannot be given capacity to "
+         "compensate (a nonlinear binder drops the oracle ceiling from "
+         "0.9983 to 0.6196). So the code must be made task-shaped "
+         "WHILE it is made discriminative, not before: the task loss "
+         "supplies the shape, the contrastive term supplies the "
+         "gradient that breaks F106's deadlock, and neither waits for "
+         "the other.")
+parser.add_argument(
     "--deep-binder", action="store_true",
     help="make the entry->parameters decoder an MLP instead of a "
          "single linear map. F135's oracle entry was itself a LINEAR "
@@ -441,6 +453,11 @@ for update in range(args.train_updates):
         p = torch.sigmoid(blind).clamp(1e-6, 1 - 1e-6)
         entropy = -(p * p.log() + (1 - p) * (1 - p).log()).mean()
         loss = loss + args.ignorance * (math.log(2) - entropy)
+    if args.contrastive_aux > 0:
+        picks = torch.randperm(
+            len(train_worlds), generator=data_gen)[:8].tolist()
+        loss = loss + args.contrastive_aux * contrastive_loss(
+            [train_worlds[i] for i in picks])
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
