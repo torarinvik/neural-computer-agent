@@ -6,27 +6,36 @@ rung promotes, rejects, or qualifies. Ordered by severity.
 
 ## Open
 
-0. **DEEPEST OPEN PROBLEM — the plant does not COMPOSE (F119). It
-   executes trained programs at 1.0000 and unseen ARRANGEMENTS of the
-   same pieces at chance (0.0794 vs 0.0435).** Measured with reading
-   removed entirely (one world, ignorance off), so this is not a bank
-   failure and no amount of world diversity touches it: inside a single
-   world the model memorises 18 opaque composite functions rather than
-   two pieces plus a rule for combining them. This is the puzzle-piece
-   thesis — "store each fact at the level of the most universes it
-   applies to" — failing in its purest form, and it is upstream of
-   everything the bank is for. Evidence: F119, correcting F117's
-   "fit fails first" (fit does not fail; it is perfect).
-   Cause is the interface we chose: the whole program is shown as a bag
-   of tokens and answered in ONE shot, so nothing forces sequential
-   application.
-   Next: `--iterate` (running) — a latent stepped once per program
-   token through a SHARED step function, decoded only at the end, no
-   intermediate supervision, identical parameter count. The exact F119
-   setting is the first arm, so the interface is the only difference.
-   If held-out programs jump, composition was an interface property
-   all along; if not, the piece-reuse claim needs rethinking before any
-   more bank work.
+0. **SOLVED IN THE CLEAN SETTING, OPEN WITH READING — composition is
+   an INTERFACE property (F121). Iterating one piece at a time through
+   a shared step function took held-out program composition from
+   chance to perfect: 0.0794 -> 1.0000.** F119 had established the
+   defect (one-shot interface fits 18 composite functions at 1.0000
+   and generalises to none); F121 shows the same model, same parameter
+   count, no intermediate supervision, gets every unseen arrangement
+   right once the step function is shared across positions. Evidence:
+   `iterated_composition_v1_2026-08-10`.
+   Still open, in priority order:
+   (a) **does the BANK feed it?** F120's 64-world boolean setting had
+       reading entirely absent (stranger entry bit-identical to own).
+       Iterated arms on that exact setting are running — this is the
+       question that matters for the architecture;
+   (b) **length extrapolation** — F121's held-out programs share
+       lengths with trained ones, so within-length interpolation is
+       not yet excluded; strict train-<=3 / test-4 arms running in
+       both probes;
+   (c) one seed so far (chance-to-ceiling, so not a noise question,
+       but replication is queued);
+   (d) **carry it back to the games**: the beam search already applies
+       a learned step repeatedly, so the games may already have the
+       right interface — worth checking rather than assuming.
+
+0-lesson. **The ignorance objective is toothless when the model is
+   bad (F120).** It penalises being accurate WITHOUT the entry; a
+   model that is inaccurate either way satisfies it trivially. It
+   fixed F106 precisely because that model was already accurate on
+   the twin-average. Precondition now stated: get the model predicting
+   before expecting the ignorance term to force reading.
 
 1. **Games polarity: the second salience channel is starved by the
    collection policy (F118).** Two-channel salience reached pooled
