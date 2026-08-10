@@ -1,0 +1,25 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external-program-hypothesis-frontier-promoted-2026-08-10",
+  "claim_status": "promoted_bounded_multi_step_external_program_search",
+  "seeds": [23001, 23002, 23003],
+  "warm_frontier_evaluations": [22, 28, 13],
+  "random_parent_frontier_evaluations": [62, 66, 50],
+  "warm_target_mastery": [1.0, 1.0, 1.0],
+  "source_retention": [1.0, 1.0, 1.0],
+  "unique_verifier_bits": [2720, 3040, 2048],
+  "unique_logical_lifetimes": [85, 95, 64],
+  "frontier_verifier_outcomes": [2720, 3040, 2048],
+  "interpreter_optimizer_updates": [500, 500, 500],
+  "controller_optimizer_updates": [0, 0, 0],
+  "replayed_examples": [0, 0, 0],
+  "raw_verifier_rows_retained": [0, 0, 0],
+  "promotion_gates_per_seed": [17, 17, 17],
+  "notes": [
+    "The target is a held-out three-instruction composition absent from durable file memory.",
+    "Warm search starts from a useful opaque atom; the matched control starts from a random opaque file.",
+    "The default finite breadth-first frontier retains a protected root plus bounded provisional hypotheses.",
+    "Admission consumes the same ordered scalar verifier stream used by the frontier; raw rows are not persisted.",
+    "This is bounded multi-step external-memory search, not open-ended program induction or general continual learning."
+  ]
+}

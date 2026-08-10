@@ -1386,3 +1386,22 @@ protected parent while a matched fresh atom fails the same bounded search
 budget. This qualifies one-edit structural synthesis only; multi-step beam
 search, arbitrary program induction, and general continual learning remain
 open.
+
+## Persistent multi-step external hypotheses
+
+`ExternalProgramHypothesisFrontier` is the memory-side continuation of
+`ExternalProgramCandidateSearch`. It performs bounded generic composition of
+opaque executable files while keeping the controller, interpreter, and
+protected capability files unchanged. Provisional hypotheses include only
+opaque artifact tensors, parent checksums, depth, scalar quality, and
+replay-free aggregate search state. `payload()` / `from_payload()` preserve
+the frontier exactly without serializing raw verifier outcomes.
+
+The default frontier mode is exhaustive breadth-first local expansion from a
+replaceable instruction bank. It is a correctness-oriented finite mode for
+multi-step composition; `proposal_mode="stochastic"` retains the learned
+operator-prior path for future scale experiments. Admission remains an
+independent stable-prefix transaction, so failed hypotheses cannot overwrite
+protected external files. This establishes a bounded CPU-plus-files search
+seam, not arbitrary program induction, unrestricted growth, or general
+continual learning.

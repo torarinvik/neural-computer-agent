@@ -1072,3 +1072,30 @@ frozen-controller, zero-replay, and zero-controller-update gates pass.
 This is bounded one-edit structural synthesis, not open-ended program
 induction or general continual learning. The next pressure is a persistent
 multi-step hypothesis frontier on a genuine Brain Workshop family stream.
+
+## Persistent multi-step executable hypothesis frontier (2026-08-10)
+
+`ExternalProgramHypothesisFrontier` extends the one-edit search without moving
+computation into the controller. Provisional candidate files are copy-on-write
+frontier state; the protected root is retained across every update, and
+frontier persistence contains only opaque tensors, parent/depth structure,
+candidate checksums, and aggregate scalar-outcome statistics. The default
+proposal schedule is finite breadth-first opaque expansion, which gives the
+multi-step search a deterministic completeness bound for a supplied bank while
+remaining compatible with a future learned proposal policy.
+
+Across seeds `23001`, `23002`, and `23003`, a useful parent reaches a held-out
+three-step executable target in `22`, `28`, and `13` verifier evaluations. A
+matched random parent needs `62`, `66`, and `50`. Source retention and target
+mastery are `1.0000` in every run; corruption is rejected without a memory
+write; frontier/file reload, protected-root retention, frozen interpreter,
+frozen controller, and zero replay all pass. The complete promotion record is
+under
+`session_records/sequence_working_memory_2026-08-02/external_program_hypothesis_frontier_promoted_2026-08-10/`.
+
+This promotes a bounded multi-step external-memory search and admission seam.
+It does not promote arbitrary program induction, unrestricted memory growth,
+or general continual learning. The next required pressure test is to use the
+frontier against a non-synthetic Brain Workshop family stream and measure
+whether newly admitted executable files improve held-out learning curves
+without replay or loss of earlier families.

@@ -355,6 +355,13 @@ from .program import (
     ExternalProgramArtifact,
     evaluate_external_program_admission,
 )
+from .program_frontier import (
+    EXTERNAL_PROGRAM_HYPOTHESIS_FRONTIER_SCHEMA,
+    EXTERNAL_PROGRAM_HYPOTHESIS_SCHEMA,
+    ExternalProgramHypothesis,
+    ExternalProgramHypothesisFrontier,
+    ExternalProgramHypothesisFrontierState,
+)
 from .program_search import (
     EXTERNAL_PROGRAM_CANDIDATE_PROPOSAL_SCHEMA,
     EXTERNAL_PROGRAM_CANDIDATE_SEARCH_SCHEMA,
@@ -679,6 +686,8 @@ __all__ = [
     "EXTERNAL_PROGRAM_ARTIFACT_SCHEMA",
     "EXTERNAL_PROGRAM_CANDIDATE_PROPOSAL_SCHEMA",
     "EXTERNAL_PROGRAM_CANDIDATE_SEARCH_SCHEMA",
+    "EXTERNAL_PROGRAM_HYPOTHESIS_FRONTIER_SCHEMA",
+    "EXTERNAL_PROGRAM_HYPOTHESIS_SCHEMA",
     "EXTERNAL_PROGRAM_RUNTIME_SCHEMA",
     "EXTERNAL_REGISTER_BASIS_ARTIFACT_SCHEMA",
     "EXTERNAL_REGISTER_BASIS_SCHEMA",
@@ -920,6 +929,9 @@ __all__ = [
     "ExternalProgramCandidateProposal",
     "ExternalProgramCandidateSearch",
     "ExternalProgramCandidateSearchState",
+    "ExternalProgramHypothesis",
+    "ExternalProgramHypothesisFrontier",
+    "ExternalProgramHypothesisFrontierState",
     "ExternalProgramRuntimeOutput",
     "ExternalProgramRuntimeState",
     "ExternalRandomFeatureGrowthReceipt",

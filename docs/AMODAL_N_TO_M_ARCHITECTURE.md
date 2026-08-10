@@ -8758,3 +8758,28 @@ program induction, Turing-complete learning, unrestricted growth, or general
 continual learning. The next decisive implementation is a persistent
 multi-step candidate frontier evaluated on a real Brain Workshop family
 stream, with provisional hypotheses isolated from protected files.
+
+## Persistent multi-step executable hypothesis frontier (2026-08-10)
+
+The next rung is now implemented as `ExternalProgramHypothesisFrontier`. It
+keeps provisional opaque executable files outside durable capability memory,
+retains a protected root, and persists parent digests, depths, scalar quality,
+candidate digests, and aggregate search statistics. Its default exhaustive
+mode enumerates finite replace/insert/delete/swap neighborhoods in breadth-first
+order; a stochastic mode remains available for later learned proposal priors.
+Neither mode exposes instruction meaning to the controller or stores raw
+verifier rows. Only a candidate that clears the independent stable-prefix
+verifier reaches `ExternalSequenceProgramMemory.admit_verified_artifact()`.
+
+The three-seed promotion is archived in
+`session_records/sequence_working_memory_2026-08-02/external_program_hypothesis_frontier_promoted_2026-08-10/`.
+A useful one-atom parent composes a held-out three-atom target in `13--28`
+verifier evaluations; a matched random parent requires `50--66`. The source
+file remains protected and exact on held-out registers, the target reaches
+`1.0000` mastery, corrupted admission is a no-op, frontier and file state
+reload exactly, and both interpreter and controller receive zero optimizer
+updates. This is the first persistent multi-step external-memory search seam,
+not evidence of open-ended program induction, unrestricted memory growth,
+Turing-complete acquisition, or general continual learning. The next decisive
+test is the same frontier on genuinely rendered Brain Workshop task families,
+where the verifier and target composition are not synthetic atom sequences.

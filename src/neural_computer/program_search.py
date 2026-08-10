@@ -440,6 +440,109 @@ class ExternalProgramCandidateSearch:
         if not self.min_program_length <= parent.program_length <= self.max_program_length:
             raise ValueError("external program search parent length is outside bounds")
 
+    def exhaustive_candidates(
+        self,
+        parent: ExternalProgramArtifact,
+    ) -> tuple[tuple[int, torch.Tensor], ...]:
+        """Enumerate finite opaque edits from an external instruction bank.
+
+        This is a structural enumeration only.  It never assigns meaning to
+        an instruction row; the bank is simply a replaceable collection of
+        learned vectors.  Continuous jitter is intentionally excluded because
+        it has no finite exhaustive neighborhood.
+        """
+
+        self._validate_parent(parent)
+        if self.instruction_bank is None:
+            raise ValueError("exhaustive program search requires an instruction bank")
+        candidates: list[tuple[int, torch.Tensor]] = []
+        seen: set[str] = set()
+
+        def add(operator_index: int, codes: torch.Tensor) -> None:
+            artifact = ExternalProgramArtifact(
+                codes=codes,
+                interpreter_schema=parent.interpreter_schema,
+                execution_schema=parent.execution_schema,
+                output_schema=parent.output_schema,
+            )
+            digest = artifact.digest()
+            if digest == parent.digest() or digest in seen:
+                return
+            seen.add(digest)
+            candidates.append((operator_index, codes.detach().clone()))
+
+        bank = self.instruction_bank.to(
+            device=parent.codes.device,
+            dtype=parent.codes.dtype,
+        )
+        if len(bank):
+            for position in range(parent.program_length):
+                for atom in bank:
+                    codes = parent.codes.detach().clone()
+                    codes[position] = atom
+                    add(0, codes)
+        if parent.program_length < self.max_program_length:
+            for position in range(parent.program_length + 1):
+                for atom in bank:
+                    add(
+                        1,
+                        torch.cat(
+                            (
+                                parent.codes[:position],
+                                atom.unsqueeze(0),
+                                parent.codes[position:],
+                            ),
+                            dim=0,
+                        ),
+                    )
+        if parent.program_length > self.min_program_length:
+            for position in range(parent.program_length):
+                add(
+                    2,
+                    torch.cat(
+                        (parent.codes[:position], parent.codes[position + 1 :]),
+                        dim=0,
+                    ),
+                )
+        if parent.program_length > 1:
+            for first in range(parent.program_length):
+                for second in range(first + 1, parent.program_length):
+                    codes = parent.codes.detach().clone()
+                    codes[[first, second]] = codes[[second, first]]
+                    add(3, codes)
+        return tuple(candidates)
+
+    def propose_exhaustive(
+        self,
+        state: ExternalProgramCandidateSearchState,
+        parent: ExternalProgramArtifact,
+    ) -> ExternalProgramCandidateProposal:
+        """Return the first unseen finite edit for a parent hypothesis."""
+
+        state.validate()
+        self._validate_parent(parent)
+        parent_digest = parent.digest()
+        candidates = self.exhaustive_candidates(parent)
+        selection_probability = 1.0 / max(1, len(candidates))
+        for operator_index, codes in candidates:
+            artifact = ExternalProgramArtifact(
+                codes=codes,
+                interpreter_schema=parent.interpreter_schema,
+                execution_schema=parent.execution_schema,
+                output_schema=parent.output_schema,
+            )
+            if artifact.digest() in state.seen_candidate_digests:
+                continue
+            return ExternalProgramCandidateProposal(
+                artifact=artifact,
+                parent_digest=parent_digest,
+                operator=PROGRAM_MUTATION_OPERATORS[operator_index],
+                operator_index=operator_index,
+                attempt_id=state.proposals,
+                selection_probability=selection_probability,
+            ).validate()
+        raise RuntimeError("external program search parent neighborhood is exhausted")
+
     def propose(
         self,
         state: ExternalProgramCandidateSearchState,
