@@ -1179,6 +1179,12 @@ in a mixed batch, without retaining raw verifier rows or adding a controller
 branch. The current runtime does not silently update route parameters; the
 credit learner remains an independently versioned memory-side component.
 
+Executable route exploration is now an explicit runtime control rather than
+an accidental side effect: greedy deployment reports propensity one, while an
+epsilon mixture samples new files and records the selected probability per
+row. This supplies evidence to a future route learner without changing the
+controller or pretending that exploration itself is learned.
+
 The controller-plus-file working state is also restartable. A versioned
 tensor-only checkpoint preserves the controller event window and workspace
 together with every logical file's recurrent register state, while executable

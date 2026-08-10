@@ -96,6 +96,7 @@ def _runtime(
     *,
     memory: ExternalSequenceProgramMemory | None = None,
     program_query_adapter=None,
+    program_route_exploration: float = 0.0,
 ):
     controller = AmodalCognitiveController(
         width=4,
@@ -120,6 +121,7 @@ def _runtime(
         program=_artifact() if memory is None else None,
         program_memory=memory,
         program_query_adapter=program_query_adapter,
+        program_route_exploration=program_route_exploration,
     )
 
 
@@ -137,7 +139,7 @@ def test_external_program_runtime_routes_file_result_to_decoders_without_core_mu
         _feedback(2),
     )
 
-    assert output.schema == "neural-computer.external-program-runtime.v5"
+    assert output.schema == "neural-computer.external-program-runtime.v6"
     assert output.execution.program_digest is not None
     assert len(output.execution.program_digest) == 64
     assert len(output.execution.trace) == 3
@@ -169,6 +171,11 @@ def test_external_program_memory_selects_file_without_exposing_slot_to_controlle
     assert output.program_route_probabilities.shape == (1, 2)
     torch.testing.assert_close(
         output.program_route_probabilities.sum(dim=-1),
+        torch.ones(1),
+    )
+    assert output.program_route_propensities is not None
+    torch.testing.assert_close(
+        output.program_route_propensities,
         torch.ones(1),
     )
     assert output.execution.program_digest in {first.digest(), second.digest()}
@@ -217,6 +224,33 @@ def test_external_program_runtime_allows_explicit_final_state_route_adapter():
     assert agent.configuration()["program_query_adapter"]["schema"] == (
         "neural-computer.external-controller-state-adapter.v1"
     )
+
+
+def test_external_program_runtime_exploration_reports_exact_route_propensity():
+    torch.manual_seed(9033)
+    memory = _PartitionedProgramMemory()
+    memory.add_artifact(_artifact())
+    memory.add_artifact(_artifact())
+    _runtime_module, _machine, agent = _runtime(
+        memory=memory,
+        program_route_exploration=0.25,
+    )
+    output, _ = agent.step_events(
+        [AmodalEvent(torch.randn(2, 4))],
+        agent.initial_state(2, device="cpu"),
+        _feedback(2),
+    )
+
+    assert output.program_route_probabilities is not None
+    assert output.program_route_propensities is not None
+    selected = output.selected_program_slots
+    assert selected is not None
+    expected = output.program_route_probabilities.gather(
+        1,
+        selected.unsqueeze(-1),
+    ).squeeze(-1)
+    torch.testing.assert_close(output.program_route_propensities, expected)
+    assert bool(torch.all(output.program_route_propensities > 0.0))
 
 
 def test_external_program_runtime_supports_mixed_file_schedule_in_one_batch():

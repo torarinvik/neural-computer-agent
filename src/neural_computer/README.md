@@ -1449,7 +1449,7 @@ file's temporal context into another. State for newly admitted files is
 created lazily, and state for verified-retired IDs is pruned on the next
 runtime step. The controller remains fixed-size and unaware of file identity.
 
-The runtime schema is `neural-computer.external-program-runtime.v5`. Version 5
+The runtime schema is `neural-computer.external-program-runtime.v6`. Version 6
 uses the replaceable trajectory query by default, so executable-memory routing
 sees the post-step controller representation plus masked event-window
 statistics. Different rows may route to different files in one tick, with
@@ -1458,6 +1458,9 @@ final-state adapter remains available as an explicit compatibility choice.
 The output additionally carries the opaque route query and soft file
 probabilities for host-side delayed scalar credit and exact propensity
 accounting; neither is returned to the controller.
+Route exploration is disabled by default. When enabled with
+`program_route_exploration`, the output also reports the exact selected-file
+propensity for delayed scalar credit.
 
 `ExternalProgramRuntimeState.payload()` and `from_payload()` provide a
 versioned tensor-only pause/resume checkpoint for the controller working state

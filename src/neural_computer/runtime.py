@@ -1294,7 +1294,7 @@ class ExternalControllerTrajectoryQueryAdapter(nn.Module):
         return query
 
 
-EXTERNAL_PROGRAM_RUNTIME_SCHEMA = "neural-computer.external-program-runtime.v5"
+EXTERNAL_PROGRAM_RUNTIME_SCHEMA = "neural-computer.external-program-runtime.v6"
 EXTERNAL_PROGRAM_RUNTIME_STATE_SCHEMA = (
     "neural-computer.external-program-runtime-state.v1"
 )
@@ -1412,6 +1412,7 @@ class ExternalProgramRuntimeOutput:
     selected_program_logical_ids: torch.Tensor | None = None
     program_route_query: torch.Tensor | None = None
     program_route_probabilities: torch.Tensor | None = None
+    program_route_propensities: torch.Tensor | None = None
     execution_snapshots: tuple[ExternalExecutionSnapshot, ...] = ()
     schema: str = EXTERNAL_PROGRAM_RUNTIME_SCHEMA
 
@@ -1442,6 +1443,7 @@ class ExternalProgramAmodalRuntime(nn.Module):
             | ExternalControllerTrajectoryQueryAdapter
             | None
         ) = None,
+        program_route_exploration: float = 0.0,
     ) -> None:
         super().__init__()
         if not isinstance(runtime, AmodalControllerRuntime):
@@ -1450,6 +1452,8 @@ class ExternalProgramAmodalRuntime(nn.Module):
             raise TypeError("external program runtime requires a register machine")
         if (program is None) == (program_memory is None):
             raise ValueError("external program runtime requires one program source")
+        if not 0.0 <= float(program_route_exploration) <= 1.0:
+            raise ValueError("program route exploration must lie in [0, 1]")
         controller_feature_width = runtime.controller.width * 3
         if machine.event_width != controller_feature_width:
             raise ValueError(
@@ -1502,6 +1506,7 @@ class ExternalProgramAmodalRuntime(nn.Module):
             if program_memory is not None
             else None
         )
+        self.program_route_exploration = float(program_route_exploration)
 
     def configuration(self) -> dict[str, object]:
         return {
@@ -1525,6 +1530,12 @@ class ExternalProgramAmodalRuntime(nn.Module):
                 None
                 if self.program_query_adapter is None
                 else self.program_query_adapter.configuration()
+            ),
+            "program_route_exploration": self.program_route_exploration,
+            "program_route_behavior": (
+                "greedy_argmax_v1"
+                if self.program_route_exploration == 0.0
+                else "epsilon_mixture_sampled_with_propensity_v1"
             ),
             "controller_output": "diagnostic_only_v1",
             "decoder_input": "external_program_intention_v1",
@@ -1568,6 +1579,7 @@ class ExternalProgramAmodalRuntime(nn.Module):
         torch.Tensor,
         torch.Tensor | None,
         torch.Tensor | None,
+        torch.Tensor | None,
     ]:
         if self.program is not None:
             batch_size = controller_output.state_representation.shape[0]
@@ -1584,6 +1596,7 @@ class ExternalProgramAmodalRuntime(nn.Module):
                     dtype=torch.long,
                     device=controller_output.state_representation.device,
                 ),
+                None,
                 None,
                 None,
             )
@@ -1605,13 +1618,27 @@ class ExternalProgramAmodalRuntime(nn.Module):
             # Preserve that policy and expose its normalized weights as the
             # only honest propensity surface available at this boundary.
             probabilities = route_weights.detach()
-        selected = route_weights.argmax(dim=-1)
+        probabilities = probabilities.clamp_min(0.0)
+        probabilities = probabilities / probabilities.sum(dim=-1, keepdim=True).clamp_min(1e-12)
+        if self.program_route_exploration:
+            behavior = (1.0 - self.program_route_exploration) * probabilities
+            behavior = behavior + self.program_route_exploration / probabilities.shape[1]
+            selected = torch.multinomial(behavior, 1).squeeze(-1)
+            propensity = behavior.gather(1, selected.unsqueeze(-1)).squeeze(-1)
+        else:
+            behavior = probabilities
+            selected = route_weights.argmax(dim=-1)
+            propensity = torch.ones(
+                selected.shape,
+                device=selected.device,
+                dtype=probabilities.dtype,
+            )
         logical_ids = torch.tensor(
             [self.program_memory.logical_slot_id(int(slot)) for slot in selected],
             dtype=torch.long,
             device=selected.device,
         )
-        return logical_ids, selected, query, probabilities
+        return logical_ids, selected, query, behavior, propensity
 
     @staticmethod
     def _merge_register_states(
@@ -1679,6 +1706,7 @@ class ExternalProgramAmodalRuntime(nn.Module):
             selected_slots,
             program_route_query,
             program_route_probabilities,
+            program_route_propensities,
         ) = self._select_program(
             controller_output,
             next_controller,
@@ -1800,6 +1828,11 @@ class ExternalProgramAmodalRuntime(nn.Module):
                 None
                 if program_route_probabilities is None
                 else program_route_probabilities.detach().clone()
+            ),
+            program_route_propensities=(
+                None
+                if program_route_propensities is None
+                else program_route_propensities.detach().clone()
             ),
             execution_snapshots=execution_snapshots,
         )
