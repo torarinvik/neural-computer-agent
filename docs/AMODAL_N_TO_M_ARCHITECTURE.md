@@ -8260,10 +8260,12 @@ The next boundary is implemented by `ExternalOutcomeIntentionRouter`. It keeps
 the controller-to-memory interface opaque while adding a memory-side
 context-conditioned route distribution over runtime-sized external cells.
 Unseen cells receive bounded exploration; the sampled cell emits the only
-candidate passed to the factual planner. A delayed scalar verifier outcome
-updates the selected cell's content and the route score using proposal-specific
-propensities. The controller is unchanged and never sees physical cell IDs,
-raw modality data, or protocol-shaped actions.
+candidate passed to the factual planner. Routing precedes content generation,
+so a sparse proposal materializes only the selected physical cell IDs rather
+than the whole bank for a single controller context. A delayed scalar verifier
+outcome updates the selected cell's content and the route score using
+proposal-specific propensities. The controller is unchanged and never sees
+physical cell IDs, raw modality data, or protocol-shaped actions.
 
 The route proposal is independently versioned and serializable. It contains
 selected-cell provenance for delayed credit, but that provenance stays on the
@@ -8277,5 +8279,8 @@ The replicated audit is archived under
 `session_records/policy_free_intention_routing_2026-08-10/`. It promotes
 caller-free bounded routing and rollback safety only. It does not establish
 unrestricted memory growth, compression, arbitrary new computation, or
-general continual learning; route overhead and long-horizon stable-prefix
-transfer are the next bottlenecks.
+general continual learning. A fresh cell cloned from the exact pre-source
+initial state provides a matched transfer control; both seeds show faster
+successor acquisition from the protected source-derived cell. Route-cost
+scaling, compression, and long-horizon stable-prefix transfer remain the next
+bottlenecks.

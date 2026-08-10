@@ -1166,12 +1166,17 @@ negative transfer. `ExternalOutcomeIntentionRouter` now adds a replaceable
 memory-side context-to-cell route policy. The runtime receives only the
 selected opaque intention; route propensity and delayed scalar feedback remain
 in the external state, and append/protect/persistence semantics are preserved.
+Routing occurs before content generation, so sparse proposals materialize only
+the selected physical cell IDs instead of the whole external bank for a
+single-context step.
 The replicated audit in
 `session_records/policy_free_intention_routing_2026-08-10/` promotes caller-free
 bounded routing with shuffled, missing-evidence, corruption, frozen-core, and
 zero-replay controls. It does not claim unrestricted growth, compression,
-arbitrary new computation, or general continual learning; route-cost scaling
-and stable-prefix transfer remain open.
+arbitrary new computation, or general continual learning. A matched fresh-cell
+control now shows positive successor transfer, while route-cost scaling,
+compression, and stable-prefix operation beyond this bounded audit remain
+open.
 
 `PolicyFreeAmodalRuntime` is the canonical integration seam for that generator.
 It proposes from the controller's opaque adapted state, leaves generator state

@@ -474,7 +474,10 @@ def test_policy_free_runtime_uses_learned_router_without_caller_cell_selection()
     )
 
     assert output.intention_routing is not None
-    assert output.intention_routing.candidates.intentions.shape == (1, 3, 2)
+    assert output.intention_routing.candidates.intentions.shape == (1, 1, 2)
+    assert output.intention_routing.candidates.cell_indices == (
+        int(output.intention_routing.selected_cells.item()),
+    )
     assert output.intention_routing.selected_intentions.shape == (1, 2)
     assert output.planning.candidate_indices is not None
     assert output.planning.candidate_indices.tolist() == [[0]]

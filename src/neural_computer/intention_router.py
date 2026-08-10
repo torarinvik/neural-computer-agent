@@ -141,6 +141,13 @@ class ExternalRoutedIntentionProposal:
             (self.selected_cells >= cell_count).any()
         ):
             raise ValueError("routed intention selected cell is out of range")
+        candidate_indices = torch.tensor(
+            self.candidates.cell_indices,
+            device=self.selected_cells.device,
+            dtype=torch.long,
+        )
+        if not bool(torch.isin(self.selected_cells, candidate_indices).all()):
+            raise ValueError("routed intention selected cell is absent from candidates")
         for name, value in (
             ("selected_intentions", self.selected_intentions),
             ("route_probabilities", self.route_probabilities),
@@ -217,7 +224,7 @@ class ExternalOutcomeIntentionRouter:
         return {
             "schema": self.schema,
             "memory": self.memory.configuration(),
-            "routing": "opaque_context_to_external_cell_softmax_v1",
+            "routing": "opaque_context_to_external_cell_softmax_then_sparse_materialization_v1",
             "credit": "outcome_only_route_score_gradient_v1",
             "temperature": self.temperature,
             "exploration_bonus": self.exploration_bonus,
@@ -294,11 +301,10 @@ class ExternalOutcomeIntentionRouter:
         *,
         generator: torch.Generator | None = None,
     ) -> ExternalRoutedIntentionProposal:
-        """Query all cells, then sample one opaque cell for this context."""
+        """Sample an opaque route, then materialize only routed cells."""
 
         self._validate_state(state)
         self._validate_context(context, state)
-        candidates = self.memory.propose(state.cells, context, generator=generator)
         batch = context.shape[0]
         cell_count = state.cells.baseline.shape[0]
         exploration_bonus = self.exploration_bonus / torch.sqrt(
@@ -316,8 +322,26 @@ class ExternalOutcomeIntentionRouter:
             1,
             generator=generator,
         ).squeeze(-1)
+        selected_cell_indices = tuple(
+            sorted({int(index) for index in selected_cells.detach().cpu().tolist()})
+        )
+        candidates = self.memory.propose(
+            state.cells,
+            context,
+            cell_indices=selected_cell_indices,
+            generator=generator,
+        )
+        candidate_positions = {
+            cell_index: position
+            for position, cell_index in enumerate(candidates.cell_indices)
+        }
+        selected_positions = torch.tensor(
+            [candidate_positions[int(index)] for index in selected_cells.detach().cpu()],
+            device=context.device,
+            dtype=torch.long,
+        )
         row_indices = torch.arange(batch, device=context.device)
-        selected_intentions = candidates.intentions[row_indices, selected_cells]
+        selected_intentions = candidates.intentions[row_indices, selected_positions]
         one_hot = torch.nn.functional.one_hot(
             selected_cells,
             num_classes=cell_count,

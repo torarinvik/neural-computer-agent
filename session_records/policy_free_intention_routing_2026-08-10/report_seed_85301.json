@@ -1,6 +1,6 @@
 {
   "schema": "neural-computer.policy-free-intention-routing.v1",
-  "claim_boundary": "bounded caller-free context-conditioned routing over protected and growing external intention cells with delayed scalar credit; not general continual learning",
+  "claim_boundary": "bounded caller-free context-conditioned routing over protected and growing external intention cells with delayed scalar credit and matched fresh successor transfer; not general continual learning",
   "seed": 85301,
   "configuration": {
     "controller_width": 4,
@@ -31,12 +31,12 @@
           "persistence": "tensor_only_versioned_payload_v1"
         },
         "capacity": "independent_external_cells_runtime_variable_v1",
-        "proposal": "one_opaque_candidate_per_cell_and_context_v1",
+        "proposal": "sparse_opaque_candidate_subset_with_physical_cell_ids_v1",
         "credit": "delayed_proposal_specific_gaussian_score_gradients_v1",
         "controller": "frozen_opaque_context_only_v1",
         "persistence": "generator_tensor_payload_v1"
       },
-      "routing": "opaque_context_to_external_cell_softmax_v1",
+      "routing": "opaque_context_to_external_cell_softmax_then_sparse_materialization_v1",
       "credit": "outcome_only_route_score_gradient_v1",
       "temperature": 1.0,
       "exploration_bonus": 0.75,
@@ -168,12 +168,12 @@
             "persistence": "tensor_only_versioned_payload_v1"
           },
           "capacity": "independent_external_cells_runtime_variable_v1",
-          "proposal": "one_opaque_candidate_per_cell_and_context_v1",
+          "proposal": "sparse_opaque_candidate_subset_with_physical_cell_ids_v1",
           "credit": "delayed_proposal_specific_gaussian_score_gradients_v1",
           "controller": "frozen_opaque_context_only_v1",
           "persistence": "generator_tensor_payload_v1"
         },
-        "routing": "opaque_context_to_external_cell_softmax_v1",
+        "routing": "opaque_context_to_external_cell_softmax_then_sparse_materialization_v1",
         "credit": "outcome_only_route_score_gradient_v1",
         "temperature": 1.0,
         "exploration_bonus": 0.75,
@@ -188,19 +188,23 @@
       "entry_binding_repertoire": null,
       "include_exploration_seed": false
     },
-    "candidate_selection": "router_selected_intention_only_no_caller_cell_index_v1"
+    "candidate_selection": "router_selected_intention_only_no_caller_cell_index_v1",
+    "fresh_successor_control": "matched_caller_owned_fresh_append_state_v1"
   },
   "gates": {
     "source_mastered_after_delayed_feedback": true,
     "successor_mastered_by_caller_free_routing": true,
     "successor_route_used_new_cell": true,
+    "single_context_sparse_materialization": true,
     "negative_transfer_probe_detected": true,
     "reversal_mastered_under_noise": true,
     "fresh_successor_control_mastered": true,
+    "warm_successor_faster_than_matched_fresh": true,
     "reward_shuffled_control_failed": true,
     "action_shuffled_control_failed": true,
     "missing_evidence_is_noop": true,
     "memory_corruption_probe_detected": true,
+    "matched_fresh_control_state_valid": true,
     "protected_cells_unchanged_by_later_learning": true,
     "append_only_external_growth": true,
     "exact_routed_memory_persistence": true,
@@ -211,119 +215,150 @@
   "promoted": true,
   "metrics": {
     "source": {
-      "updates": 31,
-      "deterministic_best_score": 0.9519352912902832,
+      "updates": 24,
+      "deterministic_best_score": 0.9779627919197083,
       "deterministic_best_cell": 0,
       "selected_cell_counts": {
-        "0": 31
+        "0": 24
       },
       "selected_cell_fraction": {
         "0": 1.0
       },
-      "mean_outcome": 0.46645272015443734,
-      "feedbacks": 31,
+      "materialized_candidate_cells": {
+        "minimum": 1,
+        "maximum": 1,
+        "mean": 1.0
+      },
+      "mean_outcome": 0.42332891929739463,
+      "feedbacks": 24,
       "routing_decisions": [
-        31
+        24
       ],
-      "search_expansions": 31,
-      "wall_seconds": 0.18336962501052767
+      "search_expansions": 24,
+      "wall_seconds": 0.11900608299765736
     },
     "successor": {
-      "updates": 35,
-      "deterministic_best_score": 0.9847264885902405,
+      "updates": 7,
+      "deterministic_best_score": 0.9508273005485535,
       "deterministic_best_cell": 1,
       "selected_cell_counts": {
-        "0": 19,
-        "1": 16
+        "0": 2,
+        "1": 5
       },
       "selected_cell_fraction": {
-        "0": 0.5428571428571428,
-        "1": 0.45714285714285713
+        "0": 0.2857142857142857,
+        "1": 0.7142857142857143
       },
-      "mean_outcome": 0.7498336464166642,
-      "feedbacks": 66,
+      "materialized_candidate_cells": {
+        "minimum": 1,
+        "maximum": 1,
+        "mean": 1.0
+      },
+      "mean_outcome": 0.665602309363229,
+      "feedbacks": 31,
       "routing_decisions": [
-        50,
-        16
+        26,
+        5
       ],
-      "search_expansions": 35,
-      "wall_seconds": 0.20609429199248552
+      "search_expansions": 7,
+      "wall_seconds": 0.02921079203952104
     },
     "inherited_reversal": {
       "updates": 60,
-      "deterministic_best_score": 0.009524205699563026,
-      "deterministic_best_cell": 0,
+      "deterministic_best_score": 0.005763450171798468,
+      "deterministic_best_cell": 2,
       "selected_cell_counts": {
-        "0": 23,
-        "1": 19,
+        "0": 22,
+        "1": 20,
         "2": 18
       },
       "selected_cell_fraction": {
-        "0": 0.38333333333333336,
-        "1": 0.31666666666666665,
+        "0": 0.36666666666666664,
+        "1": 0.3333333333333333,
         "2": 0.3
       },
-      "mean_outcome": 0.01843191099148195,
-      "feedbacks": 126,
+      "materialized_candidate_cells": {
+        "minimum": 1,
+        "maximum": 1,
+        "mean": 1.0
+      },
+      "mean_outcome": 0.019240977270965232,
+      "feedbacks": 91,
       "routing_decisions": [
-        73,
-        35,
+        48,
+        25,
         18
       ],
       "search_expansions": 60,
-      "wall_seconds": 0.3753965419600718
+      "wall_seconds": 0.3101708749891259
     },
     "reversal": {
       "updates": 260,
-      "deterministic_best_score": 0.9188679456710815,
+      "deterministic_best_score": 0.9783661961555481,
       "deterministic_best_cell": 2,
       "selected_cell_counts": {
-        "0": 54,
-        "1": 42,
-        "2": 164
+        "0": 30,
+        "1": 32,
+        "2": 198
       },
       "selected_cell_fraction": {
-        "0": 0.2076923076923077,
-        "1": 0.16153846153846155,
-        "2": 0.6307692307692307
+        "0": 0.11538461538461539,
+        "1": 0.12307692307692308,
+        "2": 0.7615384615384615
       },
-      "mean_outcome": 0.41560900748434226,
-      "feedbacks": 326,
+      "materialized_candidate_cells": {
+        "minimum": 1,
+        "maximum": 1,
+        "mean": 1.0
+      },
+      "mean_outcome": 0.5244145639760133,
+      "feedbacks": 291,
       "routing_decisions": [
-        104,
-        58,
-        164
+        56,
+        37,
+        198
       ],
       "search_expansions": 260,
-      "wall_seconds": 1.5665664579719305
+      "wall_seconds": 1.2780418750480749
     },
     "fresh_successor": {
-      "updates": 32,
-      "deterministic_best_score": 0.9725489020347595,
+      "updates": 46,
+      "deterministic_best_score": 0.9539694786071777,
       "deterministic_best_cell": 0,
       "selected_cell_counts": {
-        "0": 32
+        "0": 46
       },
       "selected_cell_fraction": {
         "0": 1.0
       },
-      "mean_outcome": 0.42674070969223976,
-      "feedbacks": 32,
+      "materialized_candidate_cells": {
+        "minimum": 1,
+        "maximum": 1,
+        "mean": 1.0
+      },
+      "mean_outcome": 0.5863020194127507,
+      "feedbacks": 46,
       "routing_decisions": [
-        32
+        46
       ],
-      "search_expansions": 32,
-      "wall_seconds": 0.19288250000681728
+      "search_expansions": 46,
+      "wall_seconds": 0.200055249966681
     },
+    "transfer_ratio_against_matched_fresh": 6.571428571428571,
     "reward_shuffled": {
       "updates": 160,
-      "deterministic_best_score": 0.5790746212005615,
+      "deterministic_best_score": 0.4003397822380066,
       "deterministic_best_cell": 0,
       "selected_cell_counts": {
         "0": 160
       },
       "selected_cell_fraction": {
         "0": 1.0
+      },
+      "materialized_candidate_cells": {
+        "minimum": 1,
+        "maximum": 1,
+        "mean": 1.0
       },
       "mean_outcome": 0.5457223817706108,
       "feedbacks": 160,
@@ -331,11 +366,11 @@
         160
       ],
       "search_expansions": 160,
-      "wall_seconds": 0.9322752500302158
+      "wall_seconds": 0.7961057919892482
     },
     "action_shuffled": {
       "updates": 160,
-      "deterministic_best_score": 0.26931512355804443,
+      "deterministic_best_score": 0.3165217936038971,
       "deterministic_best_cell": 0,
       "selected_cell_counts": {
         "0": 160
@@ -343,13 +378,18 @@
       "selected_cell_fraction": {
         "0": 1.0
       },
+      "materialized_candidate_cells": {
+        "minimum": 1,
+        "maximum": 1,
+        "mean": 1.0
+      },
       "mean_outcome": 0.09310309831406982,
       "feedbacks": 160,
       "routing_decisions": [
         160
       ],
       "search_expansions": 160,
-      "wall_seconds": 0.9843920409912243
+      "wall_seconds": 0.7743479160126299
     },
     "missing_evidence": {
       "state_unchanged": true,
@@ -361,31 +401,31 @@
       ]
     },
     "memory_corruption": {
-      "clean_score": 0.9519352912902832,
-      "corrupted_score": 0.9514883160591125,
+      "clean_score": 0.9779627919197083,
+      "corrupted_score": 0.245060533285141,
       "corruption_detected": true
     },
     "reversal_cell": 2,
     "final_routing_decisions": [
-      104,
-      58,
-      164
+      56,
+      37,
+      198
     ],
     "final_routing_feedbacks": [
-      104,
-      58,
-      164
+      56,
+      37,
+      198
     ]
   },
   "accounting": {
-    "unique_verifier_bits": 418,
+    "unique_verifier_bits": 397,
     "control_outcome_bits": 320,
     "unique_logical_lifetimes": 6,
-    "external_memory_updates": 738,
+    "external_memory_updates": 717,
     "optimizer_updates": 0,
     "controller_optimizer_updates": 0,
     "replayed_examples": 0,
-    "search_expansions": 738,
-    "wall_seconds": 4.628406959003769
+    "search_expansions": 717,
+    "wall_seconds": 3.6829821669962257
   }
 }

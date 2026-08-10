@@ -65,6 +65,7 @@ class ExternalIntentionMemoryProposal:
         hidden_width: int,
         batch: int | None = None,
         cell_count: int | None = None,
+        candidate_count: int | None = None,
     ) -> ExternalIntentionMemoryProposal:
         if self.schema != EXTERNAL_INTENTION_MEMORY_PROPOSAL_SCHEMA:
             raise ValueError("unsupported intention-memory proposal schema")
@@ -77,12 +78,16 @@ class ExternalIntentionMemoryProposal:
             raise ValueError("intention-memory candidate width is wrong")
         if batch is not None and proposal_batch != batch:
             raise ValueError("intention-memory proposal batch differs")
-        if cell_count is not None and proposal_cells != cell_count:
-            raise ValueError("intention-memory proposal cell count differs")
-        if len(self.cell_indices) != proposal_cells or tuple(self.cell_indices) != tuple(
-            range(proposal_cells)
+        if candidate_count is not None and proposal_cells != candidate_count:
+            raise ValueError("intention-memory proposal candidate count differs")
+        if not self.cell_indices or len(self.cell_indices) != proposal_cells:
+            raise ValueError("intention-memory proposal cell indices are invalid")
+        if tuple(self.cell_indices) != tuple(sorted(set(self.cell_indices))):
+            raise ValueError("intention-memory proposal cell indices are not ordered")
+        if cell_count is not None and (
+            self.cell_indices[0] < 0 or self.cell_indices[-1] >= cell_count
         ):
-            raise ValueError("intention-memory cell indices are not canonical")
+            raise ValueError("intention-memory proposal cell index is out of range")
         expected = {
             "means": (proposal_batch, proposal_cells, intention_width),
             "features": (proposal_batch, context_width + 1),
@@ -152,7 +157,7 @@ class ExternalOutcomeIntentionMemory:
             "schema": self.schema,
             "generator": self.generator.configuration(),
             "capacity": "independent_external_cells_runtime_variable_v1",
-            "proposal": "one_opaque_candidate_per_cell_and_context_v1",
+            "proposal": "sparse_opaque_candidate_subset_with_physical_cell_ids_v1",
             "credit": "delayed_proposal_specific_gaussian_score_gradients_v1",
             "controller": "frozen_opaque_context_only_v1",
             "persistence": "generator_tensor_payload_v1",
@@ -216,9 +221,16 @@ class ExternalOutcomeIntentionMemory:
         state: ExternalOutcomeIntentionGeneratorState,
         context: torch.Tensor,
         *,
+        cell_indices: torch.Tensor | list[int] | tuple[int, ...] | None = None,
         generator: torch.Generator | None = None,
     ) -> ExternalIntentionMemoryProposal:
-        """Sample every external cell for every controller context."""
+        """Sample selected external cells for every controller context.
+
+        When ``cell_indices`` is omitted, every cell is materialized for
+        backward-compatible full-memory reads.  A sparse ordered set of
+        physical cell IDs materializes only those cells while retaining their
+        external IDs in the proposal for delayed feedback.
+        """
 
         state.validate(
             context_width=self.context_width,
@@ -228,6 +240,36 @@ class ExternalOutcomeIntentionMemory:
         self._validate_context(context, state)
         batch = context.shape[0]
         cells = state.baseline.shape[0]
+        if cell_indices is None:
+            selected_indices = tuple(range(cells))
+        elif isinstance(cell_indices, torch.Tensor):
+            if cell_indices.ndim != 1 or cell_indices.dtype not in (
+                torch.int32,
+                torch.int64,
+            ):
+                raise ValueError("intention-memory cell indices must be integer [cells]")
+            selected_indices = tuple(
+                int(index)
+                for index in cell_indices.detach().to(device="cpu", dtype=torch.long).tolist()
+            )
+        else:
+            selected_indices = tuple(int(index) for index in cell_indices)
+        if not selected_indices or tuple(selected_indices) != tuple(
+            sorted(set(selected_indices))
+        ):
+            raise ValueError("intention-memory cell indices must be ordered and unique")
+        if selected_indices[0] < 0 or selected_indices[-1] >= cells:
+            raise ValueError("intention-memory cell index is out of range")
+        index_tensor = torch.tensor(
+            selected_indices,
+            device=context.device,
+            dtype=torch.long,
+        )
+        input_weights = state.input_weights.index_select(0, index_tensor)
+        input_bias = state.input_bias.index_select(0, index_tensor)
+        output_weights = state.output_weights.index_select(0, index_tensor)
+        output_bias = state.output_bias.index_select(0, index_tensor)
+        candidate_cells = len(selected_indices)
         features = torch.cat(
             (
                 context,
@@ -236,11 +278,11 @@ class ExternalOutcomeIntentionMemory:
             dim=-1,
         )
         hidden = torch.tanh(
-            torch.einsum("bf,chf->bch", features, state.input_weights)
-            + state.input_bias.unsqueeze(0)
+            torch.einsum("bf,chf->bch", features, input_weights)
+            + input_bias.unsqueeze(0)
         )
-        means = torch.einsum("bch,coh->bco", hidden, state.output_weights)
-        means = means + state.output_bias.unsqueeze(0)
+        means = torch.einsum("bch,coh->bco", hidden, output_weights)
+        means = means + output_bias.unsqueeze(0)
         noise = torch.randn(
             means.shape,
             device=means.device,
@@ -261,7 +303,7 @@ class ExternalOutcomeIntentionMemory:
         output_weight_gradients = torch.einsum("bco,bch->bcoh", score, hidden)
         output_bias_gradients = score
         hidden_score = torch.einsum(
-            "bco,coh->bch", score, state.output_weights
+            "bco,coh->bch", score, output_weights
         ) * (1.0 - hidden.square())
         input_weight_gradients = torch.einsum(
             "bch,bf->bchf", hidden_score, features
@@ -278,7 +320,7 @@ class ExternalOutcomeIntentionMemory:
             input_bias_gradients=input_bias_gradients,
             output_weight_gradients=output_weight_gradients,
             output_bias_gradients=output_bias_gradients,
-            cell_indices=tuple(range(cells)),
+            cell_indices=selected_indices,
             noise_scale=self.generator.noise_scale,
         )
         return proposal.validate(
@@ -287,6 +329,7 @@ class ExternalOutcomeIntentionMemory:
             hidden_width=self.hidden_width,
             batch=batch,
             cell_count=cells,
+            candidate_count=candidate_cells,
         )
 
     def record_decision(
@@ -312,6 +355,7 @@ class ExternalOutcomeIntentionMemory:
             present = torch.ones(batch, dtype=torch.bool, device=device)
         self._validate_presence(present, batch=batch, device=device)
         active = present & (selected >= 0)
+        self._proposal_positions(state, proposal, selected, active)
         counts = torch.zeros_like(state.decisions)
         if bool(active.any()):
             counts.index_add_(0, selected[active], torch.ones_like(selected[active]))
@@ -322,6 +366,37 @@ class ExternalOutcomeIntentionMemory:
             hidden_width=self.hidden_width,
         )
         return next_state
+
+    def _proposal_positions(
+        self,
+        state: ExternalOutcomeIntentionGeneratorState,
+        proposal: ExternalIntentionMemoryProposal,
+        selected_cells: torch.Tensor,
+        active: torch.Tensor,
+    ) -> torch.Tensor:
+        """Map physical cell IDs to columns in a sparse proposal."""
+
+        proposal_indices = torch.tensor(
+            proposal.cell_indices,
+            device=selected_cells.device,
+            dtype=torch.long,
+        )
+        lookup = torch.full(
+            (state.baseline.shape[0],),
+            -1,
+            device=selected_cells.device,
+            dtype=torch.long,
+        )
+        lookup[proposal_indices] = torch.arange(
+            proposal_indices.shape[0],
+            device=selected_cells.device,
+            dtype=torch.long,
+        )
+        safe_selected = selected_cells.clamp_min(0)
+        positions = lookup[safe_selected]
+        if bool(active.any()) and bool((positions[active] < 0).any()):
+            raise ValueError("selected intention cell is absent from the proposal")
+        return positions
 
     def apply_feedback(
         self,
@@ -356,6 +431,13 @@ class ExternalOutcomeIntentionMemory:
             self._validate_presence(terminal, batch=batch, device=device)
         active = present & (selected >= 0)
         safe_selected = selected.clamp_min(0)
+        proposal_positions = self._proposal_positions(
+            state,
+            proposal,
+            selected,
+            active,
+        )
+        safe_positions = proposal_positions.clamp_min(0)
         mutable = active & ~state.protected[safe_selected]
         centered = outcome - state.baseline[safe_selected]
         update_scale = (
@@ -366,7 +448,7 @@ class ExternalOutcomeIntentionMemory:
 
         def aggregate(gradients: torch.Tensor) -> torch.Tensor:
             selected_gradients = gradients[
-                torch.arange(batch, device=device), safe_selected
+                torch.arange(batch, device=device), safe_positions
             ]
             contribution = selected_gradients * update_scale.reshape(
                 batch, *([1] * (selected_gradients.ndim - 1))

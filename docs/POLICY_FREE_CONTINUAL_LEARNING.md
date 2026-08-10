@@ -667,7 +667,9 @@ feedback counters. The runtime receives only the routed opaque intention; it
 does not receive or choose a cell index. The proposal retains the selected
 cell, route propensity, and route score gradients so a later scalar verifier
 outcome can credit both the emitted cell content and the route that selected
-it.
+it. Routing now happens before content generation: sparse proposals carry the
+physical IDs of only the selected cells, so a one-context step does not
+materialize score gradients for the whole memory bank.
 
 The two-seed audit in
 `session_records/policy_free_intention_routing_2026-08-10/` uses one frozen
@@ -677,12 +679,13 @@ that fails its probe. Both seeds automatically attempt the appended successor
 cell without a caller address, recover a fresh reversal under 20% verifier
 noise, pass reward-shuffled, action-shuffled, missing-evidence, corruption,
 persistence, frozen-core, and zero-replay gates, and retain protected cell
-content.
+content. The sparse-materialization gate is also one on both seeds.
 
 This promotes caller-free bounded routing over external memory. It does not
 promote unrestricted growth, learned compression, arbitrary new computation,
-or general continual learning. Routing overhead currently removes the earlier
-warm-successor speed advantage in this audit, so the next high-ROI pressure is
-selective routing with a stable-prefix retention/transfer ledger: it must
-reduce route and verifier cost as the library grows while preserving all
-mastered cells, then scale to Brain Workshop working-memory tasks.
+or general continual learning. With a matched fresh cell cloned before source
+training, warm successor acquisition is `6.57x` and `2.56x` cheaper in update
+count across the two seeds. This is a bounded positive transfer result, not a
+claim of unrestricted growth or Brain Workshop mastery. The next high-ROI
+pressure is a longer stable-prefix retention/transfer ledger that measures
+route and verifier cost as the library grows.

@@ -44,7 +44,8 @@ def test_router_selects_one_cell_and_credits_only_that_cell() -> None:
     )
     state = router.apply_feedback(state, proposal, torch.ones(1))
 
-    assert proposal.candidates.intentions.shape == (1, 2, 2)
+    assert proposal.candidates.intentions.shape == (1, 1, 2)
+    assert proposal.candidates.cell_indices == (selected,)
     assert proposal.selected_intentions.shape == (1, 2)
     assert state.routing_decisions.tolist() == [1 if selected == 0 else 0, 1 if selected == 1 else 0]
     assert int(state.routing_feedbacks.sum()) == 1
@@ -76,3 +77,20 @@ def test_router_explores_appended_cells_protects_content_and_reloads() -> None:
     restored = router.state_from_payload(payload)
     assert torch.equal(restored.routing_keys, state.routing_keys)
     assert torch.equal(restored.cells.input_weights, state.cells.input_weights)
+
+
+def test_router_batches_sparse_union_and_credits_physical_cells() -> None:
+    router, state = _router()
+    state, _ = router.append_cell(state)
+    context = torch.randn(4, 4)
+    proposal = router.propose(state, context)
+    selected = proposal.selected_cells.tolist()
+
+    assert proposal.candidates.cell_indices == tuple(sorted(set(selected)))
+    assert all(
+        int(cell_index) in proposal.candidates.cell_indices for cell_index in selected
+    )
+    state = router.record_decision(state, proposal)
+    state = router.apply_feedback(state, proposal, torch.ones(4))
+    assert int(state.routing_decisions.sum()) == 4
+    assert int(state.routing_feedbacks.sum()) == 4

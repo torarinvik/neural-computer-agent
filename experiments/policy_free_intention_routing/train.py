@@ -88,6 +88,46 @@ def _cell_matches(state, cell_index: int, snapshot) -> bool:
     )
 
 
+def _single_cell_state(
+    state: ExternalRoutedIntentionMemoryState,
+    cell_index: int,
+) -> ExternalRoutedIntentionMemoryState:
+    """Extract one caller-owned cell as a matched fresh-control state."""
+
+    cells = state.cells
+    single_cells = replace(
+        cells,
+        input_weights=cells.input_weights[cell_index : cell_index + 1].clone(),
+        input_bias=cells.input_bias[cell_index : cell_index + 1].clone(),
+        output_weights=cells.output_weights[cell_index : cell_index + 1].clone(),
+        output_bias=cells.output_bias[cell_index : cell_index + 1].clone(),
+        input_weight_eligibility=cells.input_weight_eligibility[
+            cell_index : cell_index + 1
+        ].clone(),
+        input_bias_eligibility=cells.input_bias_eligibility[
+            cell_index : cell_index + 1
+        ].clone(),
+        output_weight_eligibility=cells.output_weight_eligibility[
+            cell_index : cell_index + 1
+        ].clone(),
+        output_bias_eligibility=cells.output_bias_eligibility[
+            cell_index : cell_index + 1
+        ].clone(),
+        baseline=cells.baseline[cell_index : cell_index + 1].clone(),
+        decisions=cells.decisions[cell_index : cell_index + 1].clone(),
+        feedbacks=cells.feedbacks[cell_index : cell_index + 1].clone(),
+        protected=cells.protected[cell_index : cell_index + 1].clone(),
+    )
+    return replace(
+        state,
+        cells=single_cells,
+        routing_keys=state.routing_keys[cell_index : cell_index + 1].clone(),
+        routing_bias=state.routing_bias[cell_index : cell_index + 1].clone(),
+        routing_decisions=state.routing_decisions[cell_index : cell_index + 1].clone(),
+        routing_feedbacks=state.routing_feedbacks[cell_index : cell_index + 1].clone(),
+    )
+
+
 def _new_policy(
     *,
     reference: PolicyFreeAmodalRuntime,
@@ -141,6 +181,7 @@ def _train_regime(
     pending: deque[tuple[ExternalRoutedIntentionProposal, torch.Tensor]] = deque()
     random_source = torch.Generator().manual_seed(random_seed)
     selected: list[int] = []
+    materialized_candidate_counts: list[int] = []
     observed_outcomes: list[float] = []
     search_expansions = 0
     updates = 0
@@ -167,6 +208,7 @@ def _train_regime(
         proposal = output.intention_routing
         if proposal is None:
             raise AssertionError("policy-free routing did not return a proposal")
+        materialized_candidate_counts.append(len(proposal.candidates.cell_indices))
         if output.planning.candidate_indices is None:
             raise AssertionError("planner dropped selected-intention provenance")
         if output.planning.candidate_indices.tolist() != [[0]]:
@@ -226,6 +268,12 @@ def _train_regime(
         "selected_cell_fraction": {
             str(k): v / max(1, len(selected)) for k, v in sorted(selected_counts.items())
         },
+        "materialized_candidate_cells": {
+            "minimum": min(materialized_candidate_counts),
+            "maximum": max(materialized_candidate_counts),
+            "mean": sum(materialized_candidate_counts)
+            / max(1, len(materialized_candidate_counts)),
+        },
         "mean_outcome": sum(observed_outcomes) / max(1, len(observed_outcomes)),
         "feedbacks": int(state.routing_feedbacks.sum().item()),
         "routing_decisions": state.routing_decisions.tolist(),
@@ -281,15 +329,17 @@ def _corruption_probe(
     context: torch.Tensor,
     target: torch.Tensor,
 ) -> dict[str, object]:
-    clean_score = float(base._utility(router.mean(state, context)[0], target).max().item())
+    clean_score = float(base._utility(router.mean(state, context)[:, 0], target).item())
     corrupted_cells = replace(
         state.cells,
         output_weights=state.cells.output_weights.clone(),
+        output_bias=state.cells.output_bias.clone(),
     )
-    corrupted_cells.output_weights[0].add_(2.0)
+    corrupted_cells.output_weights[0].zero_()
+    corrupted_cells.output_bias[0].zero_()
     corrupted = replace(state, cells=corrupted_cells)
     corrupted_score = float(
-        base._utility(router.mean(corrupted, context)[0], target).max().item()
+        base._utility(router.mean(corrupted, context)[:, 0], target).item()
     )
     return {
         "clean_score": clean_score,
@@ -311,6 +361,8 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         seed=seed + 7000,
         cell_count=1,
     )
+    matched_fresh_state = _single_cell_state(state, 0)
+    matched_fresh_initial_digest = _digest_state(matched_fresh_state)
 
     state, source = _train_regime(
         policy=policy,
@@ -384,11 +436,12 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         stop_at_mastery=False,
     )
 
-    fresh_policy, fresh_router, fresh_state = _new_policy(
+    fresh_policy, fresh_router, _fresh_initial_state = _new_policy(
         reference=reference_policy,
         seed=seed + 12000,
         cell_count=1,
     )
+    fresh_state = matched_fresh_state
     fresh_state, fresh = _train_regime(
         policy=fresh_policy,
         router=fresh_router,
@@ -490,13 +543,25 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         "source_mastered_after_delayed_feedback": source["deterministic_best_score"] >= base.MASTERY_THRESHOLD,
         "successor_mastered_by_caller_free_routing": successor["deterministic_best_score"] >= base.MASTERY_THRESHOLD,
         "successor_route_used_new_cell": successor["selected_cell_counts"].get(str(successor_cell), 0) > 0,
+        "single_context_sparse_materialization": (
+            source["materialized_candidate_cells"]["maximum"] == 1
+            and successor["materialized_candidate_cells"]["maximum"] == 1
+            and reversal["materialized_candidate_cells"]["maximum"] == 1
+        ),
         "negative_transfer_probe_detected": negative_transfer,
         "reversal_mastered_under_noise": reversal["deterministic_best_score"] >= base.NOISY_MASTERY_THRESHOLD,
         "fresh_successor_control_mastered": fresh["deterministic_best_score"] >= base.MASTERY_THRESHOLD,
+        "warm_successor_faster_than_matched_fresh": (
+            successor["updates"] < fresh["updates"]
+        ),
         "reward_shuffled_control_failed": shuffled["deterministic_best_score"] < base.MASTERY_THRESHOLD,
         "action_shuffled_control_failed": action_shuffled["deterministic_best_score"] < base.MASTERY_THRESHOLD,
         "missing_evidence_is_noop": missing["state_unchanged"],
         "memory_corruption_probe_detected": corruption["corruption_detected"],
+        "matched_fresh_control_state_valid": (
+            matched_fresh_state.cells.baseline.shape[0] == 1
+            and matched_fresh_initial_digest == _digest_state(matched_fresh_state)
+        ),
         "protected_cells_unchanged_by_later_learning": protected_retention,
         "append_only_external_growth": state.cells.baseline.shape[0] == 3,
         "exact_routed_memory_persistence": _digest_state(persistence) == _digest_state(state),
@@ -508,7 +573,8 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
         "schema": "neural-computer.policy-free-intention-routing.v1",
         "claim_boundary": (
             "bounded caller-free context-conditioned routing over protected and growing "
-            "external intention cells with delayed scalar credit; not general continual learning"
+            "external intention cells with delayed scalar credit and matched fresh "
+            "successor transfer; not general continual learning"
         ),
         "seed": seed,
         "configuration": {
@@ -521,6 +587,7 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "router": router.configuration(),
             "runtime": policy.configuration(),
             "candidate_selection": "router_selected_intention_only_no_caller_cell_index_v1",
+            "fresh_successor_control": "matched_caller_owned_fresh_append_state_v1",
         },
         "gates": gates,
         "promoted": all(gates.values()),
@@ -530,6 +597,8 @@ def run(seed: int, report_out: Path) -> dict[str, object]:
             "inherited_reversal": inherited_reversal,
             "reversal": reversal,
             "fresh_successor": fresh,
+            "transfer_ratio_against_matched_fresh": fresh["updates"]
+            / max(1, successor["updates"]),
             "reward_shuffled": shuffled,
             "action_shuffled": action_shuffled,
             "missing_evidence": missing,
