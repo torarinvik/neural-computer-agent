@@ -8091,6 +8091,22 @@ can alter searched behavior without changing the controller, transition model,
 or decoder protocol. The next pressure test is this search path across
 changing external regimes without replay.
 
+## Persistent external entry repertoire (2026-08-10)
+
+`ExternalEntryRepertoire` is the independent long-term store for factual
+value entries. It grows append-only, deduplicates near-equivalent opaque
+vectors, records outcome/propensity sufficient statistics without replay,
+round-trips through a checksummed payload, and admits novel entries only via
+an isolated held-out verifier. `PolicyFreeAmodalRuntime` retrieves its
+runtime-sized proposal and can record post-search outcomes without updating
+the controller or entry-value model.
+
+This establishes the files-like memory lifecycle, not unrestricted growth or
+learned compression. The proposal is currently an ordered opaque entry set;
+callers must provide candidate intentions in matching order. The next
+pressure is an explicit versioned intention↔entry binding store, then
+retention-safe consolidation and compression across changing regimes.
+
 ## Live signed-entry search (2026-08-10)
 
 The external value contract now reaches factual behavior derivation.

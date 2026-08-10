@@ -20,6 +20,11 @@ from .controller import (
     ControllerOutput,
     ControllerState,
 )
+from .entry import (
+    ExternalEntryObservationReceipt,
+    ExternalEntryProposal,
+    ExternalEntryRepertoire,
+)
 from .intention import (
     ExternalIntentionObservationReceipt,
     ExternalIntentionProposal,
@@ -1199,6 +1204,7 @@ class PolicyFreeRuntimeOutput:
     goal_state: torch.Tensor
     selected_slot_id: int | None
     proposal: ExternalIntentionProposal | None = None
+    entry_proposal: ExternalEntryProposal | None = None
     schema: str = POLICY_FREE_RUNTIME_SCHEMA
 
 
@@ -1225,6 +1231,7 @@ class PolicyFreeAmodalRuntime:
         *,
         state_adapter: ExternalControllerStateAdapter | None = None,
         intention_repertoire: ExternalIntentionRepertoire | None = None,
+        entry_repertoire: ExternalEntryRepertoire | None = None,
         include_exploration_seed: bool = False,
     ) -> None:
         if not isinstance(runtime, AmodalControllerRuntime):
@@ -1246,12 +1253,21 @@ class PolicyFreeAmodalRuntime:
             intention_repertoire.width != runtime.intention_width
         ):
             raise ValueError("intention repertoire width does not match runtime")
+        if entry_repertoire is not None:
+            entry_value_model = planner.entry_value_model
+            if entry_value_model is None:
+                raise ValueError(
+                    "entry repertoire requires an external entry value model"
+                )
+            if entry_repertoire.width != entry_value_model.entry_width:
+                raise ValueError("entry repertoire width does not match planner")
         if not isinstance(include_exploration_seed, bool):
             raise TypeError("policy-free exploration-seed flag must be boolean")
         self.runtime = runtime
         self.planner = planner
         self.state_adapter = selected_adapter
         self.intention_repertoire = intention_repertoire
+        self.entry_repertoire = entry_repertoire
         self.include_exploration_seed = include_exploration_seed
 
     @property
@@ -1282,6 +1298,11 @@ class PolicyFreeAmodalRuntime:
                 if self.intention_repertoire is None
                 else self.intention_repertoire.configuration()
             ),
+            "entry_repertoire": (
+                None
+                if self.entry_repertoire is None
+                else self.entry_repertoire.configuration()
+            ),
             "include_exploration_seed": self.include_exploration_seed,
         }
 
@@ -1300,6 +1321,25 @@ class PolicyFreeAmodalRuntime:
         payload = intention.payload if isinstance(intention, IntentEvent) else intention
         return self.intention_repertoire.observe(
             payload,
+            utility=utility,
+            propensity=propensity,
+            timestamp=timestamp,
+        )
+
+    def observe_entry(
+        self,
+        entry: torch.Tensor,
+        *,
+        utility: torch.Tensor | float | None = None,
+        propensity: torch.Tensor | float | None = None,
+        timestamp: torch.Tensor | int | None = None,
+    ) -> ExternalEntryObservationReceipt:
+        """Commit post-search opaque entry experience to external memory."""
+
+        if self.entry_repertoire is None:
+            raise RuntimeError("policy-free runtime has no entry repertoire")
+        return self.entry_repertoire.observe(
+            entry,
             utility=utility,
             propensity=propensity,
             timestamp=timestamp,
@@ -1345,6 +1385,7 @@ class PolicyFreeAmodalRuntime:
         )
         model_state = self.state_adapter(controller_output)
         proposal = None
+        entry_proposal = None
         if candidate_intentions is None:
             if self.intention_repertoire is None:
                 raise ValueError(
@@ -1358,6 +1399,12 @@ class PolicyFreeAmodalRuntime:
                 ),
             )
             candidate_intentions = proposal.intentions
+        if candidate_entries is None and self.entry_repertoire is not None:
+            entry_proposal = self.entry_repertoire.propose(
+                device=model_state.device,
+                dtype=model_state.dtype,
+            )
+            candidate_entries = entry_proposal.entries
         if isinstance(self.planner.model, ExternalTransitionModelBank):
             if transition_context is not None:
                 raise ValueError(
@@ -1406,6 +1453,7 @@ class PolicyFreeAmodalRuntime:
                 goal_state=goal_state.detach().clone(),
                 selected_slot_id=selected_slot_id,
                 proposal=proposal,
+                entry_proposal=entry_proposal,
             ),
             next_state,
         )

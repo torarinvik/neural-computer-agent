@@ -98,6 +98,16 @@ from .credit import (
     paired_counterfactual_policy_loss,
     paired_counterfactual_ranking_loss,
 )
+from .entry import (
+    EXTERNAL_ENTRY_ADMISSION_SCHEMA,
+    EXTERNAL_ENTRY_OBSERVATION_SCHEMA,
+    EXTERNAL_ENTRY_PROPOSAL_SCHEMA,
+    EXTERNAL_ENTRY_REPERTOIRE_SCHEMA,
+    ExternalEntryAdmissionReceipt,
+    ExternalEntryObservationReceipt,
+    ExternalEntryProposal,
+    ExternalEntryRepertoire,
+)
 from .episodic import (
     AdaptiveOnlineEpisodicRelationReader,
     EpisodicContextEncoder,
@@ -540,6 +550,10 @@ __all__ = [
     "EXTERNAL_CONTEXTUAL_EVIDENCE_CALIBRATOR_SCHEMA",
     "EXTERNAL_CONTEXTUAL_TRANSITION_EVIDENCE_STATISTICS_SCHEMA",
     "EXTERNAL_CONTEXT_ADDRESS_RESOLVER_SCHEMA",
+    "EXTERNAL_ENTRY_ADMISSION_SCHEMA",
+    "EXTERNAL_ENTRY_OBSERVATION_SCHEMA",
+    "EXTERNAL_ENTRY_PROPOSAL_SCHEMA",
+    "EXTERNAL_ENTRY_REPERTOIRE_SCHEMA",
     "EXTERNAL_FACTORED_TRANSITION_EXACT_RESIDUAL_MODE",
     "EXTERNAL_FACTORED_TRANSITION_LEARNED_RESIDUAL_MODE",
     "EXTERNAL_FACTORED_TRANSITION_MODEL_SCHEMA",
@@ -732,6 +746,10 @@ __all__ = [
     "ExternalContextualEvidenceCalibrator",
     "ExternalContextualTransitionEvidenceStatistics",
     "ExternalControllerStateAdapter",
+    "ExternalEntryAdmissionReceipt",
+    "ExternalEntryObservationReceipt",
+    "ExternalEntryProposal",
+    "ExternalEntryRepertoire",
     "ExternalExecutionSnapshot",
     "ExternalFactoredTransitionModel",
     "ExternalFactoredTransitionRouter",

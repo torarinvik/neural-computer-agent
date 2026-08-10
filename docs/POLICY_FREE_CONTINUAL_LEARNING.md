@@ -505,3 +505,19 @@ matched planner with no entry-value model is polarity-insensitive. This
 promotes live signed-delta search, not arbitrary value learning or general
 continual learning. The next pressure is persistent entry growth and
 changing-regime search with independent held-out factual verification.
+
+## Persistent external entry repertoire (2026-08-10)
+
+`ExternalEntryRepertoire` is now the independent long-term store for factual
+value entries. It grows append-only, deduplicates near-equivalent opaque
+vectors, accumulates outcome/propensity statistics without replay, round-trips
+through a checksummed payload, and admits novel entries only through an
+isolated held-out verifier. `PolicyFreeAmodalRuntime` can retrieve a
+runtime-sized proposal and record post-search outcomes without updating the
+controller or entry-value model.
+
+This is a real memory lifecycle, not unrestricted memory growth or learned
+compression. The current proposal is an ordered opaque entry set, so callers
+must still provide candidate intentions in the matching order. The next
+pressure is an explicit versioned intention↔entry binding store, followed by
+retention-safe consolidation and compression across changing regimes.
