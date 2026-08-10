@@ -824,3 +824,31 @@ context encoder, and verifier calibration remain bounded, and no arbitrary new
 computation has been demonstrated. The next bottleneck is scaling and
 maintaining these mechanisms under genuinely novel distributions and learned
 procedures rather than synthetic factual regimes.
+
+## Factorized masked content and residual reuse (2026-08-10)
+
+The next step makes reusable computation across evidence distributions
+explicit. In opt-in masked mode, `ExternalOutcomeIntentionGenerator` now has
+a mask-stable content ABI: the observation mask remains in the proposal for
+routing and retention, but its channel is structurally disconnected from the
+mutable nonlinear content path. A separate learned value-only context
+residual can explain evidence-specific output changes without rewriting the
+shared hidden content program. Both paths live in replaceable external memory
+and receive the same delayed scalar credit; the controller stays frozen.
+
+The two-seed audit in
+`session_records/policy_free_intention_masked_routing_factorized_promoted_2026-08-10/`
+passes the existing overlapping-mask promotion gates. Warm successor
+acquisition takes `9/26` and `11/20` updates against matched fresh learners,
+with source/successor held-out retention, shuffled reward/action controls,
+missing-evidence no-op, corruption, exact reload, frozen-core, noisy
+reversal, and zero-replay controls all passing. Generator schema v2 migrates
+older compatible dense files by initializing the residual tensors to zero, so
+the factorized path can be enabled as an external-state upgrade.
+
+This promotes factorized external reuse for the bounded overlapping-mask
+regime. It does not promote multi-stage evidence growth: the strict
+versioned curriculum still reaches its final stage at a fixed update boundary
+and has no replicated warm-over-fresh speedup. Unrestricted memory growth,
+learned compression, arbitrary new computation, and general continual
+learning remain unqualified.

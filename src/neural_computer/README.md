@@ -1295,3 +1295,16 @@ warm-over-fresh speedup. See
 `session_records/policy_free_intention_masked_routing_versioned_rejected_2026-08-10/`.
 Arbitrary missing-stream reasoning, unrestricted growth, compression, and
 general continual learning remain unqualified.
+
+The generator also exposes an opt-in factorized masked-content ABI. With
+`mask_stable_content=True`, the observation mask remains available to routing
+and retention but cannot mutate the nonlinear hidden content program.
+`factorized_context_residual=True` adds a separate learned residual from
+observed values and bias to the opaque intention. This keeps evidence-specific
+adaptation in independently replaceable external state, supports delayed
+score-function credit, copy-on-write growth, protected retention, and exact
+schema migration, including zero-initialized upgrades from compatible legacy
+generator files, without adding a controller branch. The bounded
+overlapping-mask audit promotes this mechanism across two seeds; the
+multi-stage versioned curriculum remains rejected. See
+`session_records/policy_free_intention_masked_routing_factorized_promoted_2026-08-10/`.

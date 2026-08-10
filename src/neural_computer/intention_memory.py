@@ -53,6 +53,7 @@ class ExternalIntentionMemoryProposal:
     input_bias_gradients: torch.Tensor
     output_weight_gradients: torch.Tensor
     output_bias_gradients: torch.Tensor
+    context_residual_weight_gradients: torch.Tensor
     cell_indices: tuple[int, ...]
     noise_scale: float
     schema: str = EXTERNAL_INTENTION_MEMORY_PROPOSAL_SCHEMA
@@ -116,6 +117,12 @@ class ExternalIntentionMemoryProposal:
                 proposal_cells,
                 intention_width,
             ),
+            "context_residual_weight_gradients": (
+                proposal_batch,
+                proposal_cells,
+                intention_width,
+                context_width + 1,
+            ),
         }
         for name, value in (
             ("means", self.means),
@@ -127,6 +134,10 @@ class ExternalIntentionMemoryProposal:
             ("input_bias_gradients", self.input_bias_gradients),
             ("output_weight_gradients", self.output_weight_gradients),
             ("output_bias_gradients", self.output_bias_gradients),
+            (
+                "context_residual_weight_gradients",
+                self.context_residual_weight_gradients,
+            ),
         ):
             if value.shape != expected[name]:
                 raise ValueError(f"intention-memory {name} has the wrong shape")
@@ -285,12 +296,20 @@ class ExternalOutcomeIntentionMemory:
             context_mask,
             batch_size=batch,
         )
+        content_features = self.generator.content_features(features)
         hidden = torch.tanh(
-            torch.einsum("bf,chf->bch", features, input_weights)
+            torch.einsum("bf,chf->bch", content_features, input_weights)
             + input_bias.unsqueeze(0)
         )
         means = torch.einsum("bch,coh->bco", hidden, output_weights)
         means = means + output_bias.unsqueeze(0)
+        residual_features = self.generator.residual_features(features)
+        if self.generator.factorized_context_residual:
+            means = means + torch.einsum(
+                "bf,cof->bco",
+                residual_features,
+                state.context_residual_weights.index_select(0, index_tensor),
+            )
         noise = torch.randn(
             means.shape,
             device=means.device,
@@ -314,8 +333,13 @@ class ExternalOutcomeIntentionMemory:
             "bco,coh->bch", score, output_weights
         ) * (1.0 - hidden.square())
         input_weight_gradients = torch.einsum(
-            "bch,bf->bchf", hidden_score, features
+            "bch,bf->bchf", hidden_score, content_features
         )
+        context_residual_weight_gradients = torch.einsum(
+            "bco,bf->bcof", score, residual_features
+        )
+        if not self.generator.factorized_context_residual:
+            context_residual_weight_gradients.zero_()
         input_bias_gradients = hidden_score
         proposal = ExternalIntentionMemoryProposal(
             intentions=intentions,
@@ -328,6 +352,7 @@ class ExternalOutcomeIntentionMemory:
             input_bias_gradients=input_bias_gradients,
             output_weight_gradients=output_weight_gradients,
             output_bias_gradients=output_bias_gradients,
+            context_residual_weight_gradients=context_residual_weight_gradients,
             cell_indices=selected_indices,
             noise_scale=self.generator.noise_scale,
         )
@@ -480,6 +505,9 @@ class ExternalOutcomeIntentionMemory:
             proposal.output_weight_gradients
         )
         next_output_bias = state.output_bias + aggregate(proposal.output_bias_gradients)
+        next_context_residual_weights = state.context_residual_weights + aggregate(
+            proposal.context_residual_weight_gradients
+        )
         baseline_delta = torch.zeros_like(state.baseline)
         if bool(mutable.any()):
             baseline_delta.index_add_(
@@ -498,6 +526,7 @@ class ExternalOutcomeIntentionMemory:
             input_bias=next_input_bias,
             output_weights=next_output_weights,
             output_bias=next_output_bias,
+            context_residual_weights=next_context_residual_weights,
             baseline=(state.baseline + baseline_delta).clamp(0.0, 1.0),
             feedbacks=state.feedbacks + feedback_counts,
         )
@@ -545,11 +574,20 @@ class ExternalOutcomeIntentionMemory:
             context_mask,
             batch_size=context.shape[0],
         )
+        content_features = self.generator.content_features(features)
         hidden = torch.tanh(
-            torch.einsum("bf,chf->bch", features, state.input_weights)
+            torch.einsum("bf,chf->bch", content_features, state.input_weights)
             + state.input_bias.unsqueeze(0)
         )
-        return torch.einsum("bch,coh->bco", hidden, state.output_weights) + state.output_bias.unsqueeze(0)
+        means = torch.einsum("bch,coh->bco", hidden, state.output_weights)
+        means = means + state.output_bias.unsqueeze(0)
+        if self.generator.factorized_context_residual:
+            means = means + torch.einsum(
+                "bf,cof->bco",
+                self.generator.residual_features(features),
+                state.context_residual_weights,
+            )
+        return means
 
     def _validate_state_and_context(
         self,

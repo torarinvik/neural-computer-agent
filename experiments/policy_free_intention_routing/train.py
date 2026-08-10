@@ -161,6 +161,11 @@ def _digest_state(state: ExternalRoutedIntentionMemoryState) -> str:
         ("cells.input_bias", state.cells.input_bias),
         ("cells.output_weights", state.cells.output_weights),
         ("cells.output_bias", state.cells.output_bias),
+        ("cells.context_residual_weights", state.cells.context_residual_weights),
+        (
+            "cells.context_residual_eligibility",
+            state.cells.context_residual_eligibility,
+        ),
         ("cells.baseline", state.cells.baseline),
         ("cells.decisions", state.cells.decisions),
         ("cells.feedbacks", state.cells.feedbacks),
@@ -201,6 +206,7 @@ def _cell_snapshot(state: ExternalRoutedIntentionMemoryState, cell_index: int):
             "input_bias",
             "output_weights",
             "output_bias",
+            "context_residual_weights",
             "baseline",
         )
     )
@@ -210,7 +216,14 @@ def _cell_matches(state, cell_index: int, snapshot) -> bool:
     return all(
         torch.equal(getattr(state.cells, name)[cell_index], expected)
         for name, expected in zip(
-            ("input_weights", "input_bias", "output_weights", "output_bias", "baseline"),
+            (
+                "input_weights",
+                "input_bias",
+                "output_weights",
+                "output_bias",
+                "context_residual_weights",
+                "baseline",
+            ),
             snapshot,
             strict=True,
         )
@@ -230,6 +243,12 @@ def _single_cell_state(
         input_bias=cells.input_bias[cell_index : cell_index + 1].clone(),
         output_weights=cells.output_weights[cell_index : cell_index + 1].clone(),
         output_bias=cells.output_bias[cell_index : cell_index + 1].clone(),
+        context_residual_weights=cells.context_residual_weights[
+            cell_index : cell_index + 1
+        ].clone(),
+        context_residual_eligibility=cells.context_residual_eligibility[
+            cell_index : cell_index + 1
+        ].clone(),
         input_weight_eligibility=cells.input_weight_eligibility[
             cell_index : cell_index + 1
         ].clone(),
@@ -297,6 +316,8 @@ def _new_policy(
     unqualified_cell_probability: float = 0.0,
     context_masking: bool = False,
     context_mask_profile_scale: float = 6.0,
+    mask_stable_content: bool = False,
+    factorized_context_residual: bool = False,
 ) -> tuple[PolicyFreeAmodalRuntime, ExternalOutcomeIntentionRouter, ExternalRoutedIntentionMemoryState]:
     torch.manual_seed(seed)
     memory = ExternalOutcomeIntentionMemory(
@@ -309,6 +330,8 @@ def _new_policy(
             noise_scale=0.35,
             initial_parameter_scale=0.05,
             context_masking=context_masking,
+            mask_stable_content=mask_stable_content,
+            factorized_context_residual=factorized_context_residual,
         )
     )
     router = ExternalOutcomeIntentionRouter(
@@ -629,9 +652,11 @@ def _corruption_probe(
         state.cells,
         output_weights=state.cells.output_weights.clone(),
         output_bias=state.cells.output_bias.clone(),
+        context_residual_weights=state.cells.context_residual_weights.clone(),
     )
     corrupted_cells.output_weights[0].zero_()
     corrupted_cells.output_bias[0].zero_()
+    corrupted_cells.context_residual_weights[0].zero_()
     corrupted = replace(state, cells=corrupted_cells)
     corrupted_score = float(
         base._utility(
@@ -702,12 +727,18 @@ def run(
     *,
     masked_context: bool = False,
     mask_curriculum: str = "complementary",
+    factorized_context_residual: bool = False,
 ) -> dict[str, object]:
     begun = time.perf_counter()
     torch.set_num_threads(1)
     controller, reference_runtime, reference_policy, _, controller_state, feedback, events, contexts = (
         base._build(seed)
     )
+    if factorized_context_residual and not masked_context:
+        raise ValueError("factorized context residual requires --masked-context")
+    versioned_mask_growth = mask_curriculum == "versioned_multi_stage"
+    use_mask_stable_content = versioned_mask_growth or factorized_context_residual
+    use_factorized_context_residual = versioned_mask_growth or factorized_context_residual
     controller_digest = base._digest_module(controller)
     adapter_digest = base._digest_module(reference_policy.state_adapter)
     policy, router, state = _new_policy(
@@ -721,6 +752,8 @@ def run(
             if mask_curriculum == "versioned_multi_stage"
             else 0.0
         ),
+        mask_stable_content=use_mask_stable_content,
+        factorized_context_residual=use_factorized_context_residual,
     )
     (
         source_mask,
@@ -734,7 +767,6 @@ def run(
     successor_training_mask = (
         None if successor_mask_schedule is not None else successor_mask
     )
-    versioned_mask_growth = mask_curriculum == "versioned_multi_stage"
     matched_fresh_state = _single_cell_state(state, 0)
     matched_fresh_initial_digest = _digest_state(matched_fresh_state)
 
@@ -845,6 +877,8 @@ def run(
         context_mask_profile_scale=(
             VERSIONED_CONTEXT_PROFILE_SCALE if versioned_mask_growth else 0.0
         ),
+        mask_stable_content=use_mask_stable_content,
+        factorized_context_residual=use_factorized_context_residual,
     )
     fresh_state = matched_fresh_state
     fresh_state, fresh = _train_regime(
@@ -871,6 +905,8 @@ def run(
         seed=seed + 13000,
         cell_count=1,
         context_masking=masked_context,
+        mask_stable_content=use_mask_stable_content,
+        factorized_context_residual=use_factorized_context_residual,
     )
     shuffled_policy = PolicyFreeAmodalRuntime(
         reference_runtime,
@@ -900,6 +936,8 @@ def run(
         seed=seed + 14000,
         cell_count=1,
         context_masking=masked_context,
+        mask_stable_content=use_mask_stable_content,
+        factorized_context_residual=use_factorized_context_residual,
     )
     action_policy = PolicyFreeAmodalRuntime(
         reference_runtime,
@@ -929,6 +967,8 @@ def run(
         seed=seed + 15000,
         cell_count=1,
         context_masking=masked_context,
+        mask_stable_content=use_mask_stable_content,
+        factorized_context_residual=use_factorized_context_residual,
     )
     missing_policy = PolicyFreeAmodalRuntime(
         reference_runtime,
@@ -1060,6 +1100,8 @@ def run(
             "retention_verifier": "deterministic_heldout_prefix_copy_on_write_v1",
             "masked_context": masked_context,
             "mask_curriculum": mask_curriculum,
+            "mask_stable_content": use_mask_stable_content,
+            "factorized_context_residual": use_factorized_context_residual,
             "successor_mask_schedule": (
                 None
                 if successor_mask_schedule is None
@@ -1170,12 +1212,21 @@ def main() -> None:
         default="complementary",
         help="observation-mask schedule used with --masked-context",
     )
+    parser.add_argument(
+        "--factorized-context-residual",
+        action="store_true",
+        help=(
+            "keep masked content stable and add a learned value-only residual "
+            "path to the external intention generator"
+        ),
+    )
     args = parser.parse_args()
     run(
         args.seed,
         args.report_out,
         masked_context=args.masked_context,
         mask_curriculum=args.mask_curriculum,
+        factorized_context_residual=args.factorized_context_residual,
     )
 
 

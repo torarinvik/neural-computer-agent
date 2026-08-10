@@ -375,7 +375,7 @@ def test_masked_copy_on_write_neutralizes_source_unobserved_dimensions() -> None
     )
     assert torch.equal(
         state.cells.input_weights[exposed_child, :, 1],
-        source_input_weights[:, 1],
+        torch.zeros(8),
     )
     assert torch.equal(
         state.cells.input_weights[exposed_child, :, 3],

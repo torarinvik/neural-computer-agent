@@ -1117,8 +1117,6 @@ class ExternalOutcomeIntentionRouter:
                 source_observed_dimensions = observed_masses > 0.0
             input_weights = next_cells.input_weights.clone()
             unavailable = ~source_observed_dimensions
-            if context_mask is not None:
-                unavailable = unavailable & ~context_mask
             input_weights[new_index, :, : self.context_width][:, unavailable] = 0.0
             input_weights[new_index, :, self.context_width : 2 * self.context_width][
                 :, unavailable

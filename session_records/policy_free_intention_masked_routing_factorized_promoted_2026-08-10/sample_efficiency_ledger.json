@@ -1,0 +1,22 @@
+{
+  "schema": "sample-efficiency-ledger-v1",
+  "experiment": "policy_free_intention_masked_routing_factorized_promoted_2026-08-10",
+  "status": "promoted_factorized_masked_transfer",
+  "population_seeds": [85301, 85302],
+  "unique_verifier_bits_per_seed": [393, 396],
+  "control_outcome_bits_per_seed": [320, 320],
+  "optimizer_updates_per_seed": [0, 0],
+  "controller_optimizer_updates_per_seed": [0, 0],
+  "replayed_examples_per_seed": [0, 0],
+  "heldout_verifier_bits_per_seed": [16, 16],
+  "successor_updates_per_seed": [9, 11],
+  "fresh_successor_updates_per_seed": [26, 20],
+  "transfer_ratio_against_matched_fresh": [2.888888888888889, 1.8181818181818181],
+  "retention_on_mastered_primitives": [1.0, 1.0],
+  "controller_frozen": [true, true],
+  "state_adapter_frozen": [true, true],
+  "explicit_mask_features": [true, true],
+  "factorized_residual_enabled": [true, true],
+  "protected_retention_verifier": [true, true],
+  "claim_boundary": "Promoted bounded factorized external content/residual reuse for caller-free overlapping-mask transfer. Gradual or multi-stage evidence growth, unrestricted growth, compression, arbitrary new computation, and general continual learning remain unqualified."
+}

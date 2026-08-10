@@ -38,8 +38,11 @@ EXTERNAL_INTENTION_EXPLORATION_SCHEMA = (
 EXTERNAL_INTENTION_CONSOLIDATION_SCHEMA = (
     "neural-computer.external-intention-consolidation.v1"
 )
-EXTERNAL_OUTCOME_INTENTION_GENERATOR_SCHEMA = (
+EXTERNAL_OUTCOME_INTENTION_GENERATOR_SCHEMA_V1 = (
     "neural-computer.external-outcome-intention-generator.v1"
+)
+EXTERNAL_OUTCOME_INTENTION_GENERATOR_SCHEMA = (
+    "neural-computer.external-outcome-intention-generator.v2"
 )
 EXTERNAL_INTENTION_GENERATION_PROPOSAL_SCHEMA = (
     "neural-computer.external-intention-generation-proposal.v1"
@@ -141,6 +144,8 @@ class ExternalOutcomeIntentionGeneratorState:
     input_bias_eligibility: torch.Tensor
     output_weight_eligibility: torch.Tensor
     output_bias_eligibility: torch.Tensor
+    context_residual_weights: torch.Tensor
+    context_residual_eligibility: torch.Tensor
     baseline: torch.Tensor
     decisions: torch.Tensor
     feedbacks: torch.Tensor
@@ -177,6 +182,16 @@ class ExternalOutcomeIntentionGeneratorState:
                 hidden_width,
             ),
             "output_bias_eligibility": (batch_size, intention_width),
+            "context_residual_weights": (
+                batch_size,
+                intention_width,
+                context_width + 1,
+            ),
+            "context_residual_eligibility": (
+                batch_size,
+                intention_width,
+                context_width + 1,
+            ),
             "baseline": (batch_size,),
             "decisions": (batch_size,),
             "feedbacks": (batch_size,),
@@ -191,6 +206,8 @@ class ExternalOutcomeIntentionGeneratorState:
             "input_bias_eligibility": self.input_bias_eligibility,
             "output_weight_eligibility": self.output_weight_eligibility,
             "output_bias_eligibility": self.output_bias_eligibility,
+            "context_residual_weights": self.context_residual_weights,
+            "context_residual_eligibility": self.context_residual_eligibility,
             "baseline": self.baseline,
             "decisions": self.decisions,
             "feedbacks": self.feedbacks,
@@ -212,6 +229,8 @@ class ExternalOutcomeIntentionGeneratorState:
             "input_bias_eligibility",
             "output_weight_eligibility",
             "output_bias_eligibility",
+            "context_residual_weights",
+            "context_residual_eligibility",
             "baseline",
         ):
             if not bool(torch.isfinite(tensors[name]).all()):
@@ -323,6 +342,8 @@ class ExternalOutcomeIntentionGenerator:
         noise_scale: float = 0.5,
         initial_parameter_scale: float = 0.05,
         context_masking: bool = False,
+        mask_stable_content: bool = False,
+        factorized_context_residual: bool = False,
     ) -> None:
         dimensions = (context_width, intention_width, hidden_width)
         if min(dimensions) < 1:
@@ -341,6 +362,12 @@ class ExternalOutcomeIntentionGenerator:
             raise ValueError("intention generator parameter scale is invalid")
         if not isinstance(context_masking, bool):
             raise TypeError("intention generator context masking must be boolean")
+        if not isinstance(mask_stable_content, bool):
+            raise TypeError("intention generator mask-stable content must be boolean")
+        if mask_stable_content and not context_masking:
+            raise ValueError("mask-stable content requires context masking")
+        if not isinstance(factorized_context_residual, bool):
+            raise TypeError("intention generator factorized residual must be boolean")
         self.context_width = int(context_width)
         self.intention_width = int(intention_width)
         self.hidden_width = int(hidden_width)
@@ -351,6 +378,8 @@ class ExternalOutcomeIntentionGenerator:
         self.noise_scale = float(noise_scale)
         self.initial_parameter_scale = float(initial_parameter_scale)
         self.context_masking = bool(context_masking)
+        self.mask_stable_content = bool(mask_stable_content)
+        self.factorized_context_residual = bool(factorized_context_residual)
 
     @property
     def feature_width(self) -> int:
@@ -366,6 +395,8 @@ class ExternalOutcomeIntentionGenerator:
             "hidden_width": self.hidden_width,
             "feature_width": self.feature_width,
             "context_masking": self.context_masking,
+            "mask_stable_content": self.mask_stable_content,
+            "factorized_context_residual": self.factorized_context_residual,
             "initial_learning_rate": self.initial_learning_rate,
             "initial_trace_decay": self.initial_trace_decay,
             "initial_baseline_rate": self.initial_baseline_rate,
@@ -413,6 +444,20 @@ class ExternalOutcomeIntentionGenerator:
             input_bias_eligibility=torch.zeros(batch_size, self.hidden_width, device=device, dtype=dtype),
             output_weight_eligibility=torch.zeros_like(output_weights),
             output_bias_eligibility=torch.zeros(batch_size, self.intention_width, device=device, dtype=dtype),
+            context_residual_weights=torch.zeros(
+                batch_size,
+                self.intention_width,
+                self.context_width + 1,
+                device=device,
+                dtype=dtype,
+            ),
+            context_residual_eligibility=torch.zeros(
+                batch_size,
+                self.intention_width,
+                self.context_width + 1,
+                device=device,
+                dtype=dtype,
+            ),
             baseline=torch.full(
                 (batch_size,),
                 self.initial_baseline,
@@ -433,6 +478,17 @@ class ExternalOutcomeIntentionGenerator:
             hidden_width=self.hidden_width,
             feature_width=self.feature_width,
         )
+        if self.mask_stable_content:
+            mask_weights = state.input_weights[
+                :, :, self.context_width : 2 * self.context_width
+            ]
+            if bool(mask_weights.abs().max() > 0.0):
+                raise ValueError("mask-stable content state has mutable mask weights")
+
+    def residual_features(self, features: torch.Tensor) -> torch.Tensor:
+        """Return observed values plus bias for the factorized residual path."""
+
+        return torch.cat((features[:, : self.context_width], features[:, -1:]), dim=-1)
 
     def _validate_context(
         self,
@@ -502,6 +558,21 @@ class ExternalOutcomeIntentionGenerator:
             )
         return features, observed_context, mask
 
+    def content_features(self, features: torch.Tensor) -> torch.Tensor:
+        """Return features allowed to influence the mutable content path.
+
+        The full feature tensor remains in proposals so the memory/router can
+        recover observation provenance.  In mask-stable mode the mask channel
+        is structurally disconnected from hidden content computation; routing
+        and retention still consume it separately.
+        """
+
+        if self.mask_stable_content:
+            stable_features = features.clone()
+            stable_features[:, self.context_width : 2 * self.context_width] = 0.0
+            return stable_features
+        return features
+
     def _validate_presence(
         self,
         present: torch.Tensor,
@@ -531,11 +602,18 @@ class ExternalOutcomeIntentionGenerator:
         )
         if context.device != state.input_weights.device:
             raise ValueError("intention generator context is on the wrong device")
+        content_features = self.content_features(features)
+        residual_features = self.residual_features(features)
         hidden = torch.tanh(
-            torch.einsum("bf,bhf->bh", features, state.input_weights)
+            torch.einsum("bf,bhf->bh", content_features, state.input_weights)
             + state.input_bias
         )
-        return torch.einsum("bh,boh->bo", hidden, state.output_weights) + state.output_bias
+        result = torch.einsum("bh,boh->bo", hidden, state.output_weights) + state.output_bias
+        if self.factorized_context_residual:
+            result = result + torch.einsum(
+                "bf,bof->bo", residual_features, state.context_residual_weights
+            )
+        return result
 
     def propose(
         self,
@@ -556,11 +634,17 @@ class ExternalOutcomeIntentionGenerator:
         )
         if context.device != state.input_weights.device:
             raise ValueError("intention generator context is on the wrong device")
+        content_features = self.content_features(features)
+        residual_features = self.residual_features(features)
         hidden = torch.tanh(
-            torch.einsum("bf,bhf->bh", features, state.input_weights)
+            torch.einsum("bf,bhf->bh", content_features, state.input_weights)
             + state.input_bias
         )
         means = torch.einsum("bh,boh->bo", hidden, state.output_weights) + state.output_bias
+        if self.factorized_context_residual:
+            means = means + torch.einsum(
+                "bf,bof->bo", residual_features, state.context_residual_weights
+            )
         noise = torch.randn(
             means.shape,
             device=means.device,
@@ -594,7 +678,7 @@ class ExternalOutcomeIntentionGenerator:
         self,
         state: ExternalOutcomeIntentionGeneratorState,
         proposal: ExternalIntentionGenerationProposal,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         score = proposal.noise / proposal.noise_scale
         output_weight_gradient = torch.einsum(
             "bo,bh->boh", score, proposal.hidden
@@ -604,14 +688,22 @@ class ExternalOutcomeIntentionGenerator:
             "bo,boh->bh", score, state.output_weights
         ) * (1.0 - proposal.hidden.square())
         input_weight_gradient = torch.einsum(
-            "bh,bf->bhf", hidden_score, proposal.features
+            "bh,bf->bhf", hidden_score, self.content_features(proposal.features)
         )
         input_bias_gradient = hidden_score
+        residual_weight_gradient = torch.einsum(
+            "bo,bf->bof",
+            score,
+            self.residual_features(proposal.features),
+        )
+        if not self.factorized_context_residual:
+            residual_weight_gradient.zero_()
         return (
             input_weight_gradient,
             input_bias_gradient,
             output_weight_gradient,
             output_bias_gradient,
+            residual_weight_gradient,
         )
 
     def record_decision(
@@ -652,6 +744,7 @@ class ExternalOutcomeIntentionGenerator:
                     state.input_bias_eligibility,
                     state.output_weight_eligibility,
                     state.output_bias_eligibility,
+                    state.context_residual_eligibility,
                 ),
                 gradients,
                 strict=True,
@@ -666,6 +759,8 @@ class ExternalOutcomeIntentionGenerator:
             input_bias_eligibility=next_eligibilities[1],
             output_weight_eligibility=next_eligibilities[2],
             output_bias_eligibility=next_eligibilities[3],
+            context_residual_weights=state.context_residual_weights,
+            context_residual_eligibility=next_eligibilities[4],
             baseline=state.baseline,
             decisions=state.decisions + present.long(),
             feedbacks=state.feedbacks,
@@ -723,6 +818,10 @@ class ExternalOutcomeIntentionGenerator:
             input_bias=update_tensor(state.input_bias, state.input_bias_eligibility),
             output_weights=update_tensor(state.output_weights, state.output_weight_eligibility),
             output_bias=update_tensor(state.output_bias, state.output_bias_eligibility),
+            context_residual_weights=update_tensor(
+                state.context_residual_weights,
+                state.context_residual_eligibility,
+            ),
             input_weight_eligibility=torch.where(
                 (terminal & present).reshape(batch_size, 1, 1),
                 torch.zeros_like(state.input_weight_eligibility),
@@ -742,6 +841,11 @@ class ExternalOutcomeIntentionGenerator:
                 (terminal & present).reshape(batch_size, 1),
                 torch.zeros_like(state.output_bias_eligibility),
                 state.output_bias_eligibility,
+            ),
+            context_residual_eligibility=torch.where(
+                (terminal & present).reshape(batch_size, 1, 1),
+                torch.zeros_like(state.context_residual_eligibility),
+                state.context_residual_eligibility,
             ),
             baseline=torch.where(
                 mutable,
@@ -771,6 +875,10 @@ class ExternalOutcomeIntentionGenerator:
             input_bias_eligibility=torch.zeros_like(state.input_bias_eligibility),
             output_weight_eligibility=torch.zeros_like(state.output_weight_eligibility),
             output_bias_eligibility=torch.zeros_like(state.output_bias_eligibility),
+            context_residual_weights=state.context_residual_weights,
+            context_residual_eligibility=torch.zeros_like(
+                state.context_residual_eligibility
+            ),
             baseline=state.baseline,
             decisions=state.decisions,
             feedbacks=state.feedbacks,
@@ -806,11 +914,18 @@ class ExternalOutcomeIntentionGenerator:
             new_input_weights = self.initial_parameter_scale * torch.randn_like(
                 state.input_weights[:1]
             )
+            if self.context_masking:
+                new_input_weights[
+                    :, :, self.context_width : 2 * self.context_width
+                ].zero_()
             new_input_bias = torch.zeros_like(state.input_bias[:1])
             new_output_weights = self.initial_parameter_scale * torch.randn_like(
                 state.output_weights[:1]
             )
             new_output_bias = torch.zeros_like(state.output_bias[:1])
+            new_context_residual_weights = torch.zeros_like(
+                state.context_residual_weights[:1]
+            )
             new_baseline = torch.full_like(state.baseline[:1], self.initial_baseline)
         else:
             new_input_weights = state.input_weights[source_row : source_row + 1].clone()
@@ -821,12 +936,25 @@ class ExternalOutcomeIntentionGenerator:
             new_input_bias = state.input_bias[source_row : source_row + 1].clone()
             new_output_weights = state.output_weights[source_row : source_row + 1].clone()
             new_output_bias = state.output_bias[source_row : source_row + 1].clone()
+            new_context_residual_weights = state.context_residual_weights[
+                source_row : source_row + 1
+            ].clone()
             new_baseline = state.baseline[source_row : source_row + 1].clone()
         next_state = ExternalOutcomeIntentionGeneratorState(
             input_weights=torch.cat((state.input_weights, new_input_weights), dim=0),
             input_bias=torch.cat((state.input_bias, new_input_bias), dim=0),
             output_weights=torch.cat((state.output_weights, new_output_weights), dim=0),
             output_bias=torch.cat((state.output_bias, new_output_bias), dim=0),
+            context_residual_weights=torch.cat(
+                (state.context_residual_weights, new_context_residual_weights), dim=0
+            ),
+            context_residual_eligibility=torch.cat(
+                (
+                    state.context_residual_eligibility,
+                    torch.zeros_like(state.context_residual_eligibility[:1]),
+                ),
+                dim=0,
+            ),
             input_weight_eligibility=torch.cat(
                 (state.input_weight_eligibility, torch.zeros_like(state.input_weight_eligibility[:1])),
                 dim=0,
@@ -882,6 +1010,8 @@ class ExternalOutcomeIntentionGenerator:
             input_bias=state.input_bias,
             output_weights=state.output_weights,
             output_bias=state.output_bias,
+            context_residual_weights=state.context_residual_weights,
+            context_residual_eligibility=state.context_residual_eligibility,
             input_weight_eligibility=state.input_weight_eligibility,
             input_bias_eligibility=state.input_bias_eligibility,
             output_weight_eligibility=state.output_weight_eligibility,
@@ -908,6 +1038,8 @@ class ExternalOutcomeIntentionGenerator:
             "input_bias": state.input_bias.detach().cpu().clone(),
             "output_weights": state.output_weights.detach().cpu().clone(),
             "output_bias": state.output_bias.detach().cpu().clone(),
+            "context_residual_weights": state.context_residual_weights.detach().cpu().clone(),
+            "context_residual_eligibility": state.context_residual_eligibility.detach().cpu().clone(),
             "input_weight_eligibility": state.input_weight_eligibility.detach().cpu().clone(),
             "input_bias_eligibility": state.input_bias_eligibility.detach().cpu().clone(),
             "output_weight_eligibility": state.output_weight_eligibility.detach().cpu().clone(),
@@ -922,7 +1054,10 @@ class ExternalOutcomeIntentionGenerator:
         self,
         payload: Mapping[str, object],
     ) -> ExternalOutcomeIntentionGeneratorState:
-        if payload.get("schema") != self.schema:
+        if payload.get("schema") not in (
+            self.schema,
+            EXTERNAL_OUTCOME_INTENTION_GENERATOR_SCHEMA_V1,
+        ):
             raise ValueError("unsupported intention-generator state schema")
         configuration = payload.get("configuration")
         if not isinstance(configuration, Mapping):
@@ -940,6 +1075,13 @@ class ExternalOutcomeIntentionGenerator:
             raise ValueError("intention-generator state feature width does not match")
         if configuration.get("context_masking", False) != self.context_masking:
             raise ValueError("intention-generator state masking mode does not match")
+        if configuration.get("mask_stable_content", False) != self.mask_stable_content:
+            raise ValueError("intention-generator state content mode does not match")
+        payload_factorized_residual = bool(
+            configuration.get("factorized_context_residual", False)
+        )
+        if payload_factorized_residual and not self.factorized_context_residual:
+            raise ValueError("intention-generator state residual mode does not match")
         names = (
             "input_weights",
             "input_bias",
@@ -957,6 +1099,23 @@ class ExternalOutcomeIntentionGenerator:
         tensors = {name: payload.get(name) for name in names}
         if any(not isinstance(value, torch.Tensor) for value in tensors.values()):
             raise TypeError("intention-generator state payload must contain tensors")
+        residual_shape = (
+            tensors["baseline"].shape[0],
+            self.intention_width,
+            self.context_width + 1,
+        )
+        for name in ("context_residual_weights", "context_residual_eligibility"):
+            value = payload.get(name)
+            if value is None:
+                tensors[name] = torch.zeros(
+                    residual_shape,
+                    device=tensors["input_weights"].device,
+                    dtype=tensors["input_weights"].dtype,
+                )
+            elif isinstance(value, torch.Tensor):
+                tensors[name] = value
+            else:
+                raise TypeError(f"intention-generator state field {name!r} must be a tensor")
         state = ExternalOutcomeIntentionGeneratorState(**tensors)
         self._validate_state(state)
         return state
@@ -2133,6 +2292,7 @@ __all__ = [
     "EXTERNAL_INTENTION_PROPOSAL_SCHEMA",
     "EXTERNAL_INTENTION_REPERTOIRE_SCHEMA",
     "EXTERNAL_OUTCOME_INTENTION_GENERATOR_SCHEMA",
+    "EXTERNAL_OUTCOME_INTENTION_GENERATOR_SCHEMA_V1",
     "ExternalIntentionAdmissionReceipt",
     "ExternalIntentionCompositionExplorer",
     "ExternalIntentionConsolidationReceipt",

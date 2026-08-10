@@ -8313,6 +8313,19 @@ inventing useful new intention vectors from partial multimodal experience.
 Learned candidate generation, equivalence discovery, unrestricted growth, and
 general continual learning remain unqualified.
 
+The external generator now adds an opt-in factorized masked-content boundary.
+In `mask_stable_content` mode, observation masks remain explicit evidence for
+routing and retention but are disconnected from the mutable nonlinear hidden
+content path. `factorized_context_residual` adds a separate learned residual
+from observed values plus bias to the opaque intention; it is external state,
+is copied on write, receives delayed outcome credit, and is persisted through
+generator schema v2. Older compatible generator v1 payloads migrate with zero
+residual state. The two-seed overlapping-mask audit promotes this factorization as a
+bounded reuse mechanism, with warm/fresh successor update counts of `9/26`
+and `11/20`; it does not change the controller boundary or qualify general
+continual learning. See
+`session_records/policy_free_intention_masked_routing_factorized_promoted_2026-08-10/`.
+
 ## Outcome-trained intention content generation (2026-08-10)
 
 `ExternalOutcomeIntentionGenerator` adds the missing provisional-content
