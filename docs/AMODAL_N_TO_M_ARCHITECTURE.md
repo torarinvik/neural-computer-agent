@@ -6453,3 +6453,20 @@ This closes a read-safety gap, not the full version-formation problem. The
 system still needs a learned policy for when unresolved evidence should be
 quarantined, revisited, merged into an existing version, or promoted as a new
 version under genuinely missing streams and nonstationary context.
+
+## Replay-free partial-stream acquisition (2026-08-10)
+
+The factored row-wise candidate path now has a promoted bounded result under
+short current streams. Across five seeds, four nonlinear regimes each staged
+after seven of fourteen stream rows, learned from the remaining current rows
+through replay-free random-feature sufficient statistics, and passed an
+independent four-row held-out gate. Later full revisits and one-row partial
+reads routed correctly; contradictory and empty reads remained read-only and
+ambiguous. The controller, base, and context encoder stayed frozen.
+
+This shows that the strongest current factual learner can acquire a new
+version from a short stream without replay. It does not solve the rejected
+short-prefix context-identity problem: the context encoder is still frozen,
+the stream schedule is fixed, and open-world version formation under unseen
+missingness remains unqualified. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_partial_stream_promoted_2026-08-10/`.
