@@ -6,21 +6,50 @@ rung promotes, rejects, or qualifies. Ordered by severity.
 
 ## Open
 
-0. **Signed pathway doubles behaviour but the polarity scalar never
-   goes negative (F113): held-out +0.0069 -> +0.0692 (seed 69317
-   +0.1027, near the +0.1234 oracle-value target), top=food 0.667 on
-   normal worlds — yet inverted twins stay flat (top=food 0.073,
-   rewards ~0).** tanh(polarity(entry)) learned "up or off", not
-   "up or down": all gain landed on one polarity. The F112 asymmetry
-   is now isolated to a single learned scalar per world. Two-seed
-   spread is wide (+0.0357 / +0.1027). Evidence:
-   `signed_entry_v1_2026-08-10`.
-   Next: (1) log tanh(polarity(entry)) per held-out world — if it is
-   never negative the reader's twin entries are too similar for a
-   linear map to sign-split, and (2) the diff-entry mechanism (entry
-   as delta from the nearest existing entry, the "replaced puzzle
-   piece") is the targeted fix; (3) a third seed before any promotion
-   claim; then the +0.0720 search/dynamics residual (F110).
+0. **DEEPEST OPEN PROBLEM — the plant does not COMPOSE (F119). It
+   executes trained programs at 1.0000 and unseen ARRANGEMENTS of the
+   same pieces at chance (0.0794 vs 0.0435).** Measured with reading
+   removed entirely (one world, ignorance off), so this is not a bank
+   failure and no amount of world diversity touches it: inside a single
+   world the model memorises 18 opaque composite functions rather than
+   two pieces plus a rule for combining them. This is the puzzle-piece
+   thesis — "store each fact at the level of the most universes it
+   applies to" — failing in its purest form, and it is upstream of
+   everything the bank is for. Evidence: F119, correcting F117's
+   "fit fails first" (fit does not fail; it is perfect).
+   Cause is the interface we chose: the whole program is shown as a bag
+   of tokens and answered in ONE shot, so nothing forces sequential
+   application.
+   Next: `--iterate` (running) — a latent stepped once per program
+   token through a SHARED step function, decoded only at the end, no
+   intermediate supervision, identical parameter count. The exact F119
+   setting is the first arm, so the interface is the only difference.
+   If held-out programs jump, composition was an interface property
+   all along; if not, the piece-reuse claim needs rethinking before any
+   more bank work.
+
+1. **Games polarity: the second salience channel is starved by the
+   collection policy (F118).** Two-channel salience reached pooled
+   held-out +0.0947 (ladder -0.0205 -> +0.0069 -> +0.0816 -> +0.0947
+   against the +0.1234 oracle-value target) and normal worlds saturate
+   at top=food 1.000 — but in every seed one polarity channel is alive
+   at +-1 and the other is dead at ~0, because `--seek` steered
+   collection at plane-1 objects only, so plane-2 consumption events
+   are nearly absent and inverted worlds have nothing to learn "seek"
+   from. Architecture has the slot; the data never filled it. F116
+   refuted the F113 hypothesis: the polarity scalar DOES sign-split.
+   Evidence: `two_channel_salience_v1_2026-08-10`,
+   `polarity_scalar_diagnostic_v1_2026-08-10`.
+   Next: balanced-plane seeking (running, 3 seeds). Then the +0.0720
+   search/dynamics residual (F110).
+
+2. **Retired metric: "% of headroom" must not be quoted again.** It
+   passed 100% (119.5% at F118) because the twin-entry arm falls far
+   below the context-free floor — a confident wrong-rule agent seeks
+   poison rather than wandering — so the denominator was never valid.
+   Report held-out reward against +0.1234 / +0.1954, and entry effect
+   separately as an unnormalised causal magnitude. See the measurement
+   correction entry in MEMORY_BANK_DESIGN.md.
 
 0-prev-F112. **Polarity asymmetry found (F112): the value head
    suppresses but cannot promote** — top=food 0.219 normal vs 0.021
