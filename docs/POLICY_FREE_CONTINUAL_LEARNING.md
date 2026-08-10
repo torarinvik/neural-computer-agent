@@ -1270,6 +1270,7 @@ The bounded harness for that next rung is
 `experiments/brainworkshop_canonical/goal_fragment_staging.py`. It trains only
 the existing external reader/decoder path, derives a candidate from the
 rendered cue's learned event, feeds fresh episode scores into the stager, and
-checks missing-evidence and inverted-outcome no-admission controls. Its report
-labels itself `staging_boundary_only`; it is intentionally not a promotion
-record until the fragment is coupled to downstream model-based behavior.
+checks missing-evidence, fresh-candidate, inverted-outcome, and reversal
+no-admission controls. Its report labels itself `staging_boundary_only`; it is
+intentionally not a promotion record until the fragment is coupled to
+downstream model-based behavior.

@@ -39,7 +39,9 @@ class GoalFragmentStagingReport:
     candidate_digest: str
     accepted: bool
     missing_evidence_accepted: bool
+    fresh_candidate_accepted: bool
     inverted_outcome_accepted: bool
+    reversal_accepted: bool
     controller_unchanged: bool
     unique_verifier_bits: int
     unique_logical_lifetimes: int
@@ -120,7 +122,7 @@ def run_goal_fragment_staging_audit(
         raise ValueError("staging threshold must lie in [0, 1]")
 
     agent = CanonicalBrainWorkshopAgent(
-        symbol_count=max(4, cue_symbol + 1),
+        symbol_count=max(4, cue_symbol + 2),
         n_back=n_back,
         event_width=16,
         intention_width=6,
@@ -195,6 +197,21 @@ def run_goal_fragment_staging_audit(
         _stable_probe(candidate, candidate.values.shape[-1]),
     )
 
+    fresh_candidate = _cue_candidate(agent, cue_symbol + 1)
+    fresh_digest = fresh_candidate.digest(state_width=candidate.values.shape[-1])
+    fresh = ExternalGoalFragmentStager(
+        candidate.values.shape[-1],
+        threshold=threshold,
+        min_observations=3,
+        min_stable_observations=2,
+    )
+    fresh.observe(fresh_candidate, 0.0, eligible=False)
+    fresh_admission = fresh.admit_verified(
+        ExternalGoalFragmentMemory(candidate.values.shape[-1]),
+        fresh_digest,
+        _stable_probe(fresh_candidate, candidate.values.shape[-1]),
+    )
+
     inverted = ExternalGoalFragmentStager(
         candidate.values.shape[-1],
         threshold=threshold,
@@ -225,13 +242,29 @@ def run_goal_fragment_staging_audit(
         _stable_probe(candidate, candidate.values.shape[-1]),
     )
 
+    reversal = ExternalGoalFragmentStager(
+        candidate.values.shape[-1],
+        threshold=threshold,
+        min_observations=3,
+        min_stable_observations=2,
+    )
+    for outcome in (1.0, 1.0, 1.0, 0.0, 0.0):
+        reversal.observe(candidate, outcome)
+    reversal_admission = reversal.admit_verified(
+        ExternalGoalFragmentMemory(candidate.values.shape[-1]),
+        digest,
+        _stable_probe(candidate, candidate.values.shape[-1]),
+    )
+
     return GoalFragmentStagingReport(
         schema=GOAL_FRAGMENT_STAGING_AUDIT_SCHEMA,
         status="staging_boundary_only",
         candidate_digest=digest,
         accepted=admission.accepted,
         missing_evidence_accepted=missing_admission.accepted,
+        fresh_candidate_accepted=fresh_admission.accepted,
         inverted_outcome_accepted=inverted_admission.accepted,
+        reversal_accepted=reversal_admission.accepted,
         controller_unchanged=(
             controller_before == controller_after_training == _controller_digest(agent)
         ),

@@ -137,6 +137,9 @@ def test_goal_fragment_staging_uses_real_verifier_bits_without_controller_update
     assert report.replayed_examples == 0
     assert report.controller_unchanged
     assert not report.missing_evidence_accepted
+    assert not report.fresh_candidate_accepted
+    assert not report.inverted_outcome_accepted
+    assert not report.reversal_accepted
 
 
 def test_relation_reader_can_replace_gru_context_in_canonical_runner() -> None:
