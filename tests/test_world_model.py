@@ -312,6 +312,50 @@ def test_transition_route_memory_replacement_is_atomic_and_retention_gated() -> 
     assert restored.propose(new_query, (10,), minimum_score=0.9).selected_slot_id == 10
 
 
+def test_transition_route_memory_capacity_growth_is_atomic_and_replay_free() -> None:
+    memory = ExternalTransitionRouteMemory(
+        4,
+        max_prototypes_per_slot=1,
+        merge_cosine=0.99,
+    )
+    first = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    second = torch.tensor([0.0, 1.0, 0.0, 0.0])
+    third = torch.tensor([0.0, 0.0, 1.0, 0.0])
+    fourth = torch.tensor([0.0, 0.0, 0.0, 1.0])
+    memory.register_slot(10, prototype=first)
+    source_digest = memory.digest()
+
+    rejected = memory.grow_verified(3, lambda _candidate: False)
+    assert not rejected.accepted
+    assert memory.max_prototypes_per_slot == 1
+    assert memory.digest() == source_digest
+
+    def retention_probe(candidate: ExternalTransitionRouteMemory) -> bool:
+        return (
+            candidate.max_prototypes_per_slot == 3
+            and candidate.propose(first, (10,), minimum_score=0.99).selected_slot_id
+            == 10
+        )
+
+    accepted = memory.grow_verified(3, retention_probe)
+    assert accepted.accepted
+    assert accepted.source_capacity == 1
+    assert accepted.destination_capacity == 3
+    assert memory.max_prototypes_per_slot == 3
+    assert memory.prototype_count(10) == 1
+    assert memory.observe(10, second)
+    assert memory.observe(10, third)
+    assert not memory.observe(10, fourth)
+    assert memory.prototype_count(10) == 3
+    for query in (first, second, third):
+        assert memory.propose(query, (10,), minimum_score=0.99).selected_slot_id == 10
+
+    restored = ExternalTransitionRouteMemory.from_payload(memory.state_payload())
+    assert restored.max_prototypes_per_slot == 3
+    assert restored.total_prototype_count == 3
+    assert restored.digest() == memory.digest()
+
+
 def test_transition_route_query_can_use_slot_local_prototype_memory() -> None:
     memory = ExternalTransitionRouteMemory(4)
     query = ExternalTransitionRouteQuery(

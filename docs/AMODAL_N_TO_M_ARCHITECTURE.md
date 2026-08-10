@@ -7372,3 +7372,28 @@ learning. The next pressure test measures masked-prototype capacity pressure,
 verifier-gated consolidation and eviction, and transfer to unseen partial-
 window patterns. Evidence and accounting are archived in
 `session_records/sequence_working_memory_2026-08-02/external_goal_representation_alignment_masked_prototype_promoted_2026-08-10/`.
+
+## Verifier-gated masked identity-memory growth (2026-08-10)
+
+The external route-memory boundary now supports copy-on-write growth of the
+per-slot prototype budget. A capacity increase is committed only after a
+retention probe verifies the existing opaque routes on the candidate memory;
+rejected growth leaves the live digest and capacity unchanged. Existing rows
+are copied directly, so memory capacity can grow independently of controller,
+model, adapter, or verifier updates and without replaying old experiences.
+
+Across seeds `85201`, `85202`, `85203`, and `85204`, identity memory grew from
+one to three prototypes per slot. Two distinct partial observations were then
+appended for one slot under a shared mask while retaining both original full
+routes. Affine mastery was `1.0`; nonlinear mastery was `0.9917`–`1.0`. Exact
+persistence, frozen controller/model/verifier state, and zero replay passed in
+every run.
+
+A cross-mask diagnostic was not promoted: the second partial pattern was not
+reliably novel in seeds `85202` and `85204`. This identifies mask-aware
+novelty/consolidation and unseen-mask transfer as the next implementation
+pressure point. The promoted result remains bounded external-memory growth,
+not autonomous retention policy, unbounded memory, semantic open-world
+identity, or general continual learning. Evidence and accounting are archived
+in
+`session_records/sequence_working_memory_2026-08-02/external_goal_representation_alignment_masked_growth_promoted_2026-08-10/`.

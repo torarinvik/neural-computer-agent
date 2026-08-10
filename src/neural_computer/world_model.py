@@ -86,6 +86,9 @@ EXTERNAL_TRANSITION_ROUTE_MEMORY_SCHEMA = (
 EXTERNAL_TRANSITION_ROUTE_MEMORY_REPLACEMENT_SCHEMA = (
     "neural-computer.external-transition-route-memory-replacement.v1"
 )
+EXTERNAL_TRANSITION_ROUTE_MEMORY_GROWTH_SCHEMA = (
+    "neural-computer.external-transition-route-memory-growth.v1"
+)
 EXTERNAL_TRANSITION_SPARSE_EVIDENCE_SCHEMA = (
     "neural-computer.external-transition-sparse-evidence.v1"
 )
@@ -3453,6 +3456,41 @@ class ExternalTransitionRouteMemoryReplacementReceipt:
         return self
 
 
+@dataclass(frozen=True)
+class ExternalTransitionRouteMemoryGrowthReceipt:
+    """Auditable copy-on-write growth of the per-slot prototype budget."""
+
+    accepted: bool
+    source_capacity: int
+    destination_capacity: int
+    prototype_count: int
+    source_digest: str
+    destination_digest: str
+    reason: str
+    schema: str = EXTERNAL_TRANSITION_ROUTE_MEMORY_GROWTH_SCHEMA
+
+    def validate(self) -> ExternalTransitionRouteMemoryGrowthReceipt:
+        if self.schema != EXTERNAL_TRANSITION_ROUTE_MEMORY_GROWTH_SCHEMA:
+            raise ValueError("unsupported transition route-memory growth schema")
+        if min(self.source_capacity, self.destination_capacity) < 1:
+            raise ValueError("transition route-memory growth counts are invalid")
+        if self.prototype_count < 0:
+            raise ValueError("transition route-memory growth prototype count is invalid")
+        if self.accepted:
+            if self.destination_capacity <= self.source_capacity:
+                raise ValueError("accepted route-memory growth did not increase capacity")
+        elif self.destination_capacity != self.source_capacity:
+            raise ValueError("rejected route-memory growth changed capacity")
+        for name, value in (
+            ("source_digest", self.source_digest),
+            ("destination_digest", self.destination_digest),
+            ("reason", self.reason),
+        ):
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"transition route-memory growth {name} is missing")
+        return self
+
+
 class ExternalTransitionRouteMemory:
     """Bounded slot-local prototypes for continual opaque route identity.
 
@@ -3794,6 +3832,57 @@ class ExternalTransitionRouteMemory:
             destination_digest=destination_digest,
             query_digest=query_digest,
             reason=reason.replace("requires verifier retention probe", "passed verifier retention probe"),
+        ).validate()
+
+    def grow_verified(
+        self,
+        destination_max_prototypes_per_slot: int,
+        retention_probe: Callable[[ExternalTransitionRouteMemory], bool],
+    ) -> ExternalTransitionRouteMemoryGrowthReceipt:
+        """Increase memory capacity only after a candidate retains old routes.
+
+        Growth is copy-on-write.  The live memory is untouched when the probe
+        rejects the candidate, and existing prototype rows are copied without
+        replaying their source experiences.  The capacity change is therefore
+        an independently persisted external-memory operation rather than a
+        controller or adapter update.
+        """
+
+        if (
+            not isinstance(destination_max_prototypes_per_slot, int)
+            or isinstance(destination_max_prototypes_per_slot, bool)
+            or destination_max_prototypes_per_slot <= self.max_prototypes_per_slot
+        ):
+            raise ValueError("transition route-memory destination capacity must grow")
+        if not callable(retention_probe):
+            raise TypeError("transition route-memory growth retention probe is invalid")
+        source_capacity = self.max_prototypes_per_slot
+        source_digest = self.digest()
+        source_count = self.total_prototype_count
+        candidate = self.from_payload(self.state_payload())
+        candidate.max_prototypes_per_slot = int(destination_max_prototypes_per_slot)
+        candidate._version += 1
+        if not bool(retention_probe(candidate)):
+            return ExternalTransitionRouteMemoryGrowthReceipt(
+                accepted=False,
+                source_capacity=source_capacity,
+                destination_capacity=source_capacity,
+                prototype_count=source_count,
+                source_digest=source_digest,
+                destination_digest=source_digest,
+                reason="verifier retention probe rejected route-memory growth",
+            ).validate()
+        self.max_prototypes_per_slot = candidate.max_prototypes_per_slot
+        self._version = candidate._version
+        destination_digest = self.digest()
+        return ExternalTransitionRouteMemoryGrowthReceipt(
+            accepted=True,
+            source_capacity=source_capacity,
+            destination_capacity=self.max_prototypes_per_slot,
+            prototype_count=self.total_prototype_count,
+            source_digest=source_digest,
+            destination_digest=destination_digest,
+            reason="retention-verified route-memory capacity growth committed",
         ).validate()
 
     def prototype_count(self, slot_id: int) -> int:
