@@ -5166,3 +5166,43 @@ gated) entry interaction in the value head, or the diff-entry mechanism
 "same world, one piece swapped" natively.
 
 Probe 212 is `game_slots.py` value_fidelity(), 2 seeds (69316/69317).
+
+**F113 (probe 213). The signed entry pathway more than doubles behaviour
+— held-out +0.0069 to +0.0692, entry effect +0.1036 to +0.2230 (98% of
+the twin-separation headroom) — but every point of the gain lands on
+normal-polarity worlds; the inverted twins are still flat.** The change:
+value += tanh(polarity(entry)) * salience(state) — the state supplies a
+polarity-free object salience, the entry supplies one scalar in [-1,1],
+so promote and suppress become one sign apart instead of a re-mapping
+of the whole value surface. Pooled over 2 seeds:
+
+| measure | F111 (attention only) | F113 (signed pathway) |
+| --- | ---: | ---: |
+| held-out reward | +0.0069 | **+0.0692** (+0.0357 / +0.1027) |
+| twin entry | -0.0968 | **-0.1538** |
+| entry effect | +0.1036 | **+0.2230** |
+| top=food, normal worlds | 0.219 | **0.667** |
+| top=food, inverted (~) | 0.021 | 0.073 |
+| value-truth correlation | 0.173 | 0.229 |
+| oracle-value target | +0.1234 | +0.1234 |
+
+Seed 69317 alone reaches +0.1027 — within noise of the oracle-value
+target — with single worlds at +0.35 (oracle full-battery ceiling is
++0.1954). The mechanism works exactly as designed on one polarity:
+top=food on normal worlds triples to 0.667, and the twin penalty
+deepens again (-0.126 / -0.181), the signature of harder reading.
+
+But the inverted worlds barely move (rewards -0.03..+0.03, top=food
+0.073), so the polarity scalar is not actually flipping: the salience
+term learned "toward the plane-1 object" and the tanh learned to turn
+it UP on normal worlds and merely OFF on ~ worlds. Suppression via the
+old attention path still handles poison (top=poison 0.016), which is
+why ~ worlds sit at zero rather than negative. The asymmetry F112 found
+is now isolated to a single learned scalar per world — the next probe
+should log tanh(polarity(entry)) per held-out world directly: if it is
+positive-or-zero everywhere rather than sign-split, the failure is in
+the reader's entry (twins too similar for a linear map to separate), and
+the diff-entry mechanism is the targeted fix.
+
+Two-seed spread is wide (+0.0357 / +0.1027); any promotion claim needs
+a third seed. Probe 213 is `game_slots.py --signed-entry`, 2 seeds.
