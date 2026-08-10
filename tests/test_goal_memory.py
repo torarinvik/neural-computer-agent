@@ -2,6 +2,7 @@ import torch
 from torch import nn
 
 from neural_computer import (
+    EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
     AmodalCognitiveController,
     AmodalControllerRuntime,
     AmodalEvent,
@@ -10,6 +11,7 @@ from neural_computer import (
     ExternalGoalFragmentMemory,
     ExternalGoalFragmentStager,
     ExternalModelBasedPlanner,
+    ExternalTransitionModelBank,
     ExternalTransitionObservation,
     PersistentOpaqueContextRouteEvidence,
     PolicyFreeAmodalRuntime,
@@ -208,6 +210,60 @@ def test_policy_free_runtime_routes_goal_fragments_from_opaque_context_evidence(
     for name, value in controller.state_dict().items():
         assert torch.equal(value, controller_before[name])
 
+
+def test_policy_free_runtime_can_consume_one_fresh_transition_without_replay() -> None:
+    torch.manual_seed(74)
+    controller = AmodalCognitiveController(
+        width=4,
+        workspace_slots=2,
+        intention_width=2,
+        feedback_width=3,
+        event_window_capacity=4,
+    )
+    runtime = AmodalControllerRuntime(controller)
+    bank = ExternalTransitionModelBank(
+        state_width=12,
+        intention_width=2,
+        context_width=4,
+        model_family=EXTERNAL_TRANSITION_AFFINE_MODEL_FAMILY,
+    )
+    policy_free = PolicyFreeAmodalRuntime(
+        runtime,
+        ExternalModelBasedPlanner(bank, beam_width=2),
+    )
+    state_values = torch.randn(4, 12)
+    intentions = torch.randn(4, 2)
+    next_values = state_values.clone()
+    next_values[:, :2] += intentions
+    observation = ExternalTransitionObservation(
+        state=state_values,
+        intention=intentions,
+        next_state=next_values,
+    )
+    target_observation = ExternalTransitionObservation(
+        state=state_values + 0.25,
+        intention=intentions,
+        next_state=next_values + 0.25,
+    )
+    controller_before = {
+        name: value.detach().clone() for name, value in controller.state_dict().items()
+    }
+
+    source_context = torch.tensor([1.0, 0.0, 0.0, 0.0])
+    target_context = torch.tensor([0.0, 1.0, 0.0, 0.0])
+    policy_free.learn_transition_once(observation, source_context)
+    source_index = bank.ensure_context(source_context)
+    source_digest = bank.models[source_index].digest()
+    policy_free.learn_transition_once(target_observation, target_context)
+    target_index = bank.ensure_context(target_context)
+
+    assert bank.replay_free_updates
+    assert bank.context_count == 2
+    assert int(bank.models[source_index].sample_count) == observation.state.shape[0]
+    assert int(bank.models[target_index].sample_count) == target_observation.state.shape[0]
+    assert bank.models[source_index].digest() == source_digest
+    for name, value in controller.state_dict().items():
+        assert torch.equal(value, controller_before[name])
 
 def test_intersection_goal_fragments_require_all_puzzle_pieces() -> None:
     memory = ExternalGoalFragmentMemory(2)

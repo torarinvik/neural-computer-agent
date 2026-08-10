@@ -2587,6 +2587,51 @@ class PolicyFreeAmodalRuntime:
             intention_width=self.runtime.intention_width,
         )
 
+    def learn_transition_once(
+        self,
+        observation: ExternalTransitionObservation,
+        context: torch.Tensor,
+        optimizer: torch.optim.Optimizer | Mapping[int, torch.optim.Optimizer] | None = None,
+    ) -> float:
+        """Consume one fresh transition observation without replay.
+
+        The planner must own an affine or random-feature
+        :class:`ExternalTransitionModelBank`, whose update is a sufficient-
+        statistics write rather than an optimizer replay loop.  Each opaque
+        context is ensured before the bank consumes the observation; old slots
+        are therefore not updated merely because a new context arrived.
+        Neural transition slots are intentionally rejected here because a
+        one-pass gradient update would not establish retention.
+        """
+
+        if not isinstance(self.planner.model, ExternalTransitionModelBank):
+            raise TypeError(
+                "replay-free transition learning requires a transition-model bank"
+            )
+        bank = self.planner.model
+        if not bank.replay_free_updates:
+            raise ValueError(
+                "replay-free transition learning requires an affine or "
+                "random-feature bank"
+            )
+        observation.validate(
+            state_width=bank.state_width,
+            intention_width=bank.intention_width,
+        )
+        if context.ndim == 1:
+            context = context.unsqueeze(0)
+        if context.ndim != 2 or context.shape[1] != bank.context_width:
+            raise ValueError(
+                "transition learning context must have shape [batch, context_width]"
+            )
+        if context.shape[0] == 1 and observation.state.shape[0] > 1:
+            context = context.expand(observation.state.shape[0], -1)
+        elif context.shape[0] != observation.state.shape[0]:
+            raise ValueError("transition learning context batch does not match data")
+        for row in context:
+            bank.ensure_context(row)
+        return bank.adaptation_step(observation, context, optimizer)
+
     def observe_goal_fragment(
         self,
         candidate: ExternalGoalFragmentCandidate,

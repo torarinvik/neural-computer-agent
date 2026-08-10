@@ -1317,7 +1317,9 @@ are deliberately absent.
 
 This is the correct training seam for external affine, random-feature, or
 neural transition-model banks: collect a fresh row once, update only the
-selected external slot, and preserve the controller. It does not itself prove
+selected external slot through `learn_transition_once()`, and preserve the
+controller. That method rejects replay-dependent neural banks, making a
+zero-replay claim mechanically explicit. It does not itself prove
 that the learned model transfers to a new task; that still requires recursive
 held-out rollout error, planner success, fresh-learner comparison, and
 complete-prefix retention.

@@ -167,7 +167,9 @@ decoder-facing intention, next learned state, and optional generic
 confidence. External transition-model banks can consume that row without
 letting protocol actions or verifier answers enter the controller. Recursive
 held-out model rollout and fresh-learner transfer remain required before
-claiming general continual learning.
+claiming general continual learning. `learn_transition_once()` enforces the
+replay-free affine/random-feature bank path and refuses a replay-dependent
+neural slot.
 
 The canonical runner exposes the route table through a versioned
 `route_state_payload()` / `load_route_state_payload()` boundary. Reloading it
