@@ -8,6 +8,7 @@ from neural_computer import (
     EXTERNAL_TRANSITION_RANDOM_FEATURE_MODEL_FAMILY,
     ExternalContextAddressResolver,
     ExternalContextualEvidenceCalibrator,
+    ExternalContextualTransitionEvidenceStatistics,
     ExternalFactoredTransitionModel,
     ExternalFactoredTransitionRouter,
     ExternalGoalEvaluator,
@@ -2353,6 +2354,97 @@ def test_factored_reliability_gate_vetoes_corruption_but_preserves_growth_path()
         router.state_payload(), evidence_evaluator=reliability
     )
     assert restored.digest() == router.digest()
+
+
+def test_factored_contextual_reliability_isolates_opaque_slots() -> None:
+    model = ExternalFactoredTransitionModel(1, 1, 2, hidden_width=8)
+    for parameter in model.base.parameters():
+        parameter.data.zero_()
+    model.freeze_base()
+    encoder = ExternalTransitionContextEncoder(1, 1, hidden_width=8, context_width=2)
+    router = ExternalFactoredTransitionRouter(
+        model,
+        encoder,
+        max_contexts=2,
+        match_tolerance=0.02,
+        match_margin=0.0,
+        quarantine_capacity=2,
+    )
+    source_a = ExternalTransitionObservation(
+        state=torch.tensor([[-1.0], [-0.5]]),
+        intention=torch.ones(2, 1),
+        next_state=torch.tensor([[-0.5], [0.0]]),
+    )
+    source_b = ExternalTransitionObservation(
+        state=torch.tensor([[0.5], [1.0]]),
+        intention=torch.ones(2, 1),
+        next_state=torch.tensor([[1.0], [1.5]]),
+    )
+    assert router.route_bundle((source_a,)).status == "staged"
+    assert router.promote_staged_candidate(source_a, lambda _candidate: True).accepted
+    assert router.route_bundle((source_b,)).status == "staged"
+    assert router.promote_staged_candidate(source_b, lambda _candidate: True).accepted
+
+    evaluator = ExternalContextualEvidenceCalibrator(
+        ExternalTransitionEvidenceEvaluator(1, hidden_width=4),
+        context_width=2,
+    )
+    first_context = router.contexts[0]
+    second_context = router.contexts[1]
+    first_index = evaluator.ensure_context(first_context)
+    second_index = evaluator.ensure_context(second_context)
+    with torch.no_grad():
+        evaluator.calibrators[first_index].bias.fill_(10.0)
+        evaluator.calibrators[second_index].bias.fill_(-10.0)
+    router.evidence_evaluator = evaluator
+    router.committed_evidence_gate = True
+
+    source_a_drift = ExternalTransitionObservation(
+        state=source_a.state,
+        intention=source_a.intention,
+        next_state=source_a.next_state + 0.01,
+    )
+    source_b_drift = ExternalTransitionObservation(
+        state=source_b.state,
+        intention=source_b.intention,
+        next_state=source_b.next_state + 0.01,
+    )
+    allowed = router.route_bundle((source_a_drift,))
+    vetoed = router.route_bundle((source_b_drift,))
+
+    assert allowed.status == "matched"
+    assert allowed.slot_id == router.slot_ids[0]
+    assert vetoed.status == "reliability_veto"
+    assert vetoed.quarantine_accepted is True
+    assert router.quarantined_observations == source_b.state.shape[0]
+
+
+def test_contextual_evidence_statistics_isolate_and_persist_contexts() -> None:
+    statistics = ExternalContextualTransitionEvidenceStatistics(
+        1,
+        2,
+        bin_count=8,
+        error_scale=0.1,
+        prior_count=0.01,
+    )
+    prediction = torch.zeros(2, 1)
+    observed = torch.full((2, 1), 0.01)
+    contexts = torch.tensor([[1.0, 0.0], [0.0, 1.0]])
+    statistics.observe(
+        prediction,
+        observed,
+        torch.tensor([0.0, 1.0]),
+        contexts,
+    )
+
+    scores = statistics.score(prediction, observed, None, contexts)
+    assert scores[0] < 0.0
+    assert scores[1] > 0.0
+    restored = ExternalContextualTransitionEvidenceStatistics.from_payload(
+        statistics.payload()
+    )
+    assert restored.digest() == statistics.digest()
+    assert torch.equal(restored.score(prediction, observed, None, contexts), scores)
 
 
 def test_factored_router_resolves_quarantine_into_isolated_candidate() -> None:

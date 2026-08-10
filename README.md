@@ -2659,3 +2659,12 @@ the retained evidence and restores the original route without mutating the
 fact bank or staging a candidate. This is bounded near-boundary recovery and
 overflow accounting, not general continual learning. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_boundary_recovery_promoted_2026-08-10/`.
+
+Reliability is now isolated by opaque factual context as well. Across three
+seeds, identical near-boundary errors with alternating verifier outcomes were
+vetoed only in the negative slots and routed to the correct positive slots;
+the matched global-statistics control over-vetoed the positive slot. The
+contextual sufficient statistics persisted exactly while the fact bank,
+controller, and context encoder stayed frozen. This is bounded context-local
+reliability, not general continual learning. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_contextual_reliability_promoted_2026-08-10/`.

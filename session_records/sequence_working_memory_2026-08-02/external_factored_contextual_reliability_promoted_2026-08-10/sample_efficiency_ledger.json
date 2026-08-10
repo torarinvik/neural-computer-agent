@@ -1,0 +1,34 @@
+{
+  "schema": "neural-computer.sample-efficiency-ledger.v1",
+  "experiment": "external_factored_contextual_reliability",
+  "decision": "promote",
+  "claim_boundary": "three-seed context-isolated replay-free reliability gating with a global over-veto control; not general continual learning",
+  "seeds": [92001, 92002, 92003],
+  "accounting": {
+    "slots_per_seed": 4,
+    "rows_per_slot": 4,
+    "unique_verifier_outcomes_per_seed": 16,
+    "unique_logical_transition_lifetimes_per_seed": 16,
+    "contextual_sufficient_statistics_updates_per_seed": 4,
+    "global_control_statistics_updates_per_seed": 4,
+    "base_optimizer_updates": 0,
+    "residual_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "old_regime_replay": 0,
+    "controller_optimizer_updates": 0,
+    "context_encoder_optimizer_updates": 0
+  },
+  "gates": {
+    "all_three_seeds_passed": true,
+    "negative_slots_vetoed": true,
+    "positive_slots_matched": true,
+    "stable_slot_identity_preserved": true,
+    "global_control_overvetoed": true,
+    "fact_bank_unchanged_by_routes": true,
+    "contextual_state_persisted": true,
+    "base_frozen": true,
+    "controller_frozen": true,
+    "context_encoder_frozen": true,
+    "replay_free": true
+  }
+}

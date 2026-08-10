@@ -6867,3 +6867,21 @@ learning.
 
 Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_boundary_recovery_promoted_2026-08-10/`.
+
+## Context-isolated reliability statistics (2026-08-10)
+
+The factored router now supports replay-free reliability sufficient statistics
+addressed by opaque factual context. This closes a real interference hole in
+the global error-bin gate: across three seeds, four slots received the same
+near-tolerance error but alternating verifier outcomes. The contextual gate
+vetoed only the negative slots and preserved positive-slot identity, while a
+matched global gate over-vetoed the positive slot.
+
+The contextual state round-tripped exactly, the fact bank remained unchanged
+by routing, and the base, controller, and context encoder stayed frozen. This
+promotes context-local reliability as a bounded continual-memory primitive;
+it does not establish learned raw-modality context formation, unrestricted
+memory growth, or general continual learning.
+
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_contextual_reliability_promoted_2026-08-10/`.

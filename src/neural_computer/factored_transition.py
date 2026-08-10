@@ -826,6 +826,7 @@ class ExternalFactoredTransitionRouter:
             if self.committed_evidence_gate and not self._evidence_allows(
                 prediction,
                 observation.next_state,
+                context=context,
                 candidate_evidence_count=None,
             ):
                 if error <= (
@@ -854,6 +855,8 @@ class ExternalFactoredTransitionRouter:
         self,
         prediction: torch.Tensor,
         observed: torch.Tensor,
+        *,
+        context: torch.Tensor | None = None,
     ) -> float:
         """Read caller-owned reliability state without changing factual memory."""
 
@@ -866,11 +869,20 @@ class ExternalFactoredTransitionRouter:
         )
         scorer = getattr(self.evidence_evaluator, "score", None)
         with torch.no_grad():
-            logits = (
-                scorer(prediction, observed, hits)
-                if callable(scorer)
-                else self.evidence_evaluator(prediction, observed, hits)
-            )
+            if callable(scorer):
+                if context is not None and hasattr(
+                    self.evidence_evaluator, "context_width"
+                ):
+                    context_batch = (
+                        context.unsqueeze(0).expand(prediction.shape[0], -1)
+                        if context.ndim == 1
+                        else context
+                    )
+                    logits = scorer(prediction, observed, hits, context_batch)
+                else:
+                    logits = scorer(prediction, observed, hits)
+            else:
+                logits = self.evidence_evaluator(prediction, observed, hits)
             return float(torch.sigmoid(logits).mean())
 
     def _evidence_allows(
@@ -878,6 +890,7 @@ class ExternalFactoredTransitionRouter:
         prediction: torch.Tensor,
         observed: torch.Tensor,
         *,
+        context: torch.Tensor | None = None,
         candidate_evidence_count: int | None,
     ) -> bool:
         """Conservatively veto unreliable evidence after explicit warm-up."""
@@ -897,7 +910,7 @@ class ExternalFactoredTransitionRouter:
             ready = candidate_evidence_count >= self.evidence_gate_min_evidence
         return (
             not ready
-            or self._evidence_probability(prediction, observed)
+            or self._evidence_probability(prediction, observed, context=context)
             >= self.evidence_threshold
         )
 
@@ -926,16 +939,19 @@ class ExternalFactoredTransitionRouter:
         slot_id = proposal.selected_slot_id
         if slot_id is None or not self.committed_evidence_gate:
             return slot_id
-        context = self._contexts[self._slot_ids.index(slot_id)].to(observation.state)
+        context = self._contexts[self._slot_ids.index(slot_id)]
         prediction = self.model.predict_with_context(
             observation.state,
             observation.intention,
-            context.unsqueeze(0).expand(observation.state.shape[0], -1),
+            context.to(observation.state).unsqueeze(0).expand(
+                observation.state.shape[0], -1
+            ),
         )
         error = float((prediction - observation.next_state).square().mean().detach())
         if not self._evidence_allows(
             prediction,
             observation.next_state,
+            context=context,
             candidate_evidence_count=None,
         ):
             if error <= self.match_tolerance:
@@ -1000,6 +1016,7 @@ class ExternalFactoredTransitionRouter:
             if self.committed_evidence_gate and not self._evidence_allows(
                 candidate_prediction,
                 observation.next_state,
+                context=self._candidate_context,
                 candidate_evidence_count=sum(
                     item.state.shape[0] for item in self._candidate_evidence
                 ),
@@ -1213,6 +1230,7 @@ class ExternalFactoredTransitionRouter:
             if self.committed_evidence_gate and not self._evidence_allows(
                 prediction,
                 merged.next_state,
+                context=context,
                 candidate_evidence_count=None,
             ):
                 continue

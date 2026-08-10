@@ -62,6 +62,9 @@ EXTERNAL_TRANSITION_EVIDENCE_EVALUATOR_SCHEMA = (
 EXTERNAL_TRANSITION_EVIDENCE_STATISTICS_SCHEMA = (
     "neural-computer.external-transition-evidence-statistics.v1"
 )
+EXTERNAL_CONTEXTUAL_TRANSITION_EVIDENCE_STATISTICS_SCHEMA = (
+    "neural-computer.contextual-transition-evidence-statistics.v1"
+)
 EXTERNAL_TRANSITION_EVIDENCE_CALIBRATOR_SCHEMA = (
     "neural-computer.external-transition-evidence-calibrator.v1"
 )
@@ -7545,6 +7548,293 @@ class ExternalTransitionEvidenceStatistics(nn.Module):
         return restored
 
 
+class ExternalContextualTransitionEvidenceStatistics(nn.Module):
+    """Replay-free reliability statistics isolated by opaque context key.
+
+    Global error-bin statistics are useful when all regimes share one
+    verifier distribution, but they can let evidence from one factual slot
+    veto another.  This component keeps the same one-pass sufficient
+    statistics while addressing them by learned opaque context.  It stores no
+    transition or verifier rows and is usable by either transition router.
+    """
+
+    schema = EXTERNAL_CONTEXTUAL_TRANSITION_EVIDENCE_STATISTICS_SCHEMA
+
+    def __init__(
+        self,
+        state_width: int,
+        context_width: int,
+        *,
+        bin_count: int = 16,
+        error_scale: float = 0.1,
+        prior_count: float = 1.0,
+        matching_tolerance: float = 1e-4,
+    ) -> None:
+        super().__init__()
+        if min(state_width, context_width) < 1 or bin_count < 2:
+            raise ValueError("contextual evidence-statistics dimensions are invalid")
+        if error_scale <= 0.0 or not math.isfinite(error_scale):
+            raise ValueError("contextual evidence-statistics error scale is invalid")
+        if prior_count <= 0.0 or not math.isfinite(prior_count):
+            raise ValueError("contextual evidence-statistics prior is invalid")
+        if matching_tolerance < 0.0 or not math.isfinite(matching_tolerance):
+            raise ValueError("contextual evidence-statistics matching tolerance is invalid")
+        self.state_width = int(state_width)
+        self.context_width = int(context_width)
+        self.bin_count = int(bin_count)
+        self.error_scale = float(error_scale)
+        self.prior_count = float(prior_count)
+        self.matching_tolerance = float(matching_tolerance)
+        self.register_buffer(
+            "error_edges",
+            torch.logspace(
+                -6.0,
+                math.log10(self.error_scale),
+                self.bin_count - 1,
+                dtype=torch.float32,
+            ),
+        )
+        self.register_buffer(
+            "contexts",
+            torch.empty((0, self.context_width), dtype=torch.float32),
+        )
+        self.register_buffer(
+            "positive_counts",
+            torch.empty((0, self.bin_count), dtype=torch.float32),
+        )
+        self.register_buffer(
+            "negative_counts",
+            torch.empty((0, self.bin_count), dtype=torch.float32),
+        )
+        self.register_buffer("observation_count", torch.zeros((), dtype=torch.long))
+
+    @property
+    def context_count(self) -> int:
+        return int(self.contexts.shape[0])
+
+    def configuration(self) -> dict[str, int | float | str]:
+        return {
+            "schema": self.schema,
+            "state_width": self.state_width,
+            "context_width": self.context_width,
+            "bin_count": self.bin_count,
+            "error_scale": self.error_scale,
+            "prior_count": self.prior_count,
+            "matching_tolerance": self.matching_tolerance,
+            "training": "one_pass_contextual_scalar_verifier_outcomes_v1",
+            "storage": "per_context_error_bin_sufficient_statistics_only_v1",
+        }
+
+    def _validate_context(self, context: torch.Tensor) -> torch.Tensor:
+        if context.ndim == 1:
+            context = context.unsqueeze(0)
+        _validate_tensor(
+            context,
+            name="contextual evidence context",
+            ndim=2,
+            width=self.context_width,
+        )
+        norms = torch.linalg.vector_norm(context, dim=-1)
+        if bool(torch.any(norms <= 1e-12)):
+            raise ValueError("contextual evidence contexts must be non-zero")
+        return torch.nn.functional.normalize(
+            context.detach().to(device=self.contexts.device, dtype=self.contexts.dtype),
+            dim=-1,
+        )
+
+    def _context_indices(self, context: torch.Tensor) -> torch.Tensor:
+        normalized = self._validate_context(context)
+        indices: list[int] = []
+        for row in normalized:
+            if self.context_count:
+                distances = torch.linalg.vector_norm(self.contexts - row, dim=-1)
+                nearest = int(distances.argmin())
+                if float(distances[nearest]) <= self.matching_tolerance:
+                    indices.append(nearest)
+                    continue
+            index = self.context_count
+            self._buffers["contexts"] = torch.cat((self.contexts, row.unsqueeze(0)))
+            self._buffers["positive_counts"] = torch.cat(
+                (
+                    self.positive_counts,
+                    self.positive_counts.new_zeros((1, self.bin_count)),
+                )
+            )
+            self._buffers["negative_counts"] = torch.cat(
+                (
+                    self.negative_counts,
+                    self.negative_counts.new_zeros((1, self.bin_count)),
+                )
+            )
+            indices.append(index)
+        return torch.tensor(indices, dtype=torch.long, device=self.contexts.device)
+
+    def _validate_inputs(
+        self,
+        prediction: torch.Tensor,
+        observed: torch.Tensor,
+        hit: torch.Tensor | None,
+        context: torch.Tensor,
+    ) -> torch.Tensor:
+        _validate_tensor(
+            prediction,
+            name="contextual transition prediction",
+            ndim=2,
+            width=self.state_width,
+        )
+        _validate_tensor(
+            observed,
+            name="contextual observed next state",
+            ndim=2,
+            width=self.state_width,
+        )
+        if prediction.shape != observed.shape:
+            raise ValueError("contextual transition prediction and observation differ")
+        if hit is not None:
+            if hit.shape not in ((prediction.shape[0],), (prediction.shape[0], 1)):
+                raise ValueError("contextual transition hit flags must match batch")
+            values = hit.reshape(-1)
+            if not bool(torch.isfinite(values).all()) or bool(
+                torch.any(values < 0) or torch.any(values > 1)
+            ):
+                raise ValueError("contextual transition hit flags are invalid")
+        normalized = self._validate_context(context)
+        if normalized.shape[0] == 1 and prediction.shape[0] != 1:
+            normalized = normalized.expand(prediction.shape[0], -1)
+        if normalized.shape[0] != prediction.shape[0]:
+            raise ValueError("contextual evidence context batch differs")
+        return normalized
+
+    def _bin_indices(
+        self,
+        prediction: torch.Tensor,
+        observed: torch.Tensor,
+    ) -> torch.Tensor:
+        errors = (prediction - observed).square().mean(dim=-1)
+        return torch.bucketize(errors.detach().to(self.error_edges), self.error_edges)
+
+    def score(
+        self,
+        prediction: torch.Tensor,
+        observed: torch.Tensor,
+        hit: torch.Tensor | None,
+        context: torch.Tensor,
+    ) -> torch.Tensor:
+        normalized = self._validate_inputs(prediction, observed, hit, context)
+        indices = self._context_indices(normalized)
+        bins = self._bin_indices(prediction, observed).to(indices.device)
+        positive = self.positive_counts[indices, bins] + self.prior_count
+        negative = self.negative_counts[indices, bins] + self.prior_count
+        return (positive / negative).log().to(prediction)
+
+    def forward(
+        self,
+        prediction: torch.Tensor,
+        observed: torch.Tensor,
+        hit: torch.Tensor | None,
+        context: torch.Tensor,
+    ) -> torch.Tensor:
+        return self.score(prediction, observed, hit, context)
+
+    def observe(
+        self,
+        prediction: torch.Tensor,
+        observed: torch.Tensor,
+        outcome: torch.Tensor,
+        context: torch.Tensor,
+        hit: torch.Tensor | None = None,
+    ) -> None:
+        normalized = self._validate_inputs(prediction, observed, hit, context)
+        if outcome.shape not in ((prediction.shape[0],), (prediction.shape[0], 1)):
+            raise ValueError("contextual evidence outcomes must match batch")
+        targets = outcome.reshape(-1).to(self.positive_counts)
+        if not bool(torch.isfinite(targets).all()) or bool(
+            torch.any(targets < 0) or torch.any(targets > 1)
+        ):
+            raise ValueError("contextual evidence outcomes are invalid")
+        indices = self._context_indices(normalized)
+        bins = self._bin_indices(prediction, observed).to(indices.device)
+        flat = indices * self.bin_count + bins
+        self.positive_counts.view(-1).index_add_(0, flat, targets)
+        self.negative_counts.view(-1).index_add_(0, flat, 1.0 - targets)
+        self.observation_count.add_(prediction.shape[0])
+
+    def digest(self) -> str:
+        digest = hashlib.sha256()
+        digest.update(repr(self.configuration()).encode("utf-8"))
+        for name, value in sorted(self.state_dict().items()):
+            detached = value.detach().cpu().contiguous()
+            digest.update(name.encode("utf-8"))
+            digest.update(str(detached.dtype).encode("utf-8"))
+            digest.update(repr(tuple(detached.shape)).encode("utf-8"))
+            digest.update(detached.numpy().tobytes())
+        return digest.hexdigest()
+
+    def payload(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "configuration": self.configuration(),
+            "state": {
+                name: value.detach().cpu().clone()
+                for name, value in self.state_dict().items()
+            },
+            "sha256": self.digest(),
+        }
+
+    @classmethod
+    def from_payload(
+        cls,
+        payload: Mapping[str, Any],
+    ) -> ExternalContextualTransitionEvidenceStatistics:
+        if not isinstance(payload, Mapping) or payload.get("schema") != cls.schema:
+            raise ValueError("unsupported contextual evidence-statistics payload")
+        configuration = payload.get("configuration")
+        state = payload.get("state")
+        if not isinstance(configuration, Mapping) or not isinstance(state, Mapping):
+            raise TypeError("contextual evidence-statistics payload is incomplete")
+        restored = cls(
+            int(configuration["state_width"]),
+            int(configuration["context_width"]),
+            bin_count=int(configuration["bin_count"]),
+            error_scale=float(configuration["error_scale"]),
+            prior_count=float(configuration["prior_count"]),
+            matching_tolerance=float(configuration["matching_tolerance"]),
+        )
+        expected = restored.state_dict()
+        if tuple(state) != tuple(expected):
+            raise ValueError("contextual evidence-statistics state names differ")
+        normalized: dict[str, torch.Tensor] = {}
+        for name, value in state.items():
+            if not isinstance(value, torch.Tensor):
+                raise TypeError("contextual evidence-statistics state is not a tensor")
+            if value.dtype != expected[name].dtype:
+                raise ValueError("contextual evidence-statistics state is incompatible")
+            if name == "contexts" and (
+                value.ndim != 2 or value.shape[1] != restored.context_width
+            ):
+                raise ValueError("contextual evidence-statistics contexts are incompatible")
+            if name in {"positive_counts", "negative_counts"} and (
+                value.ndim != 2
+                or value.shape[1] != restored.bin_count
+                or value.shape[0] != state["contexts"].shape[0]
+            ):
+                raise ValueError("contextual evidence-statistics counts are incompatible")
+            if name not in {"contexts", "positive_counts", "negative_counts"} and (
+                value.shape != expected[name].shape
+            ):
+                raise ValueError("contextual evidence-statistics state is incompatible")
+            if not bool(torch.isfinite(value).all()):
+                raise ValueError("contextual evidence-statistics state is non-finite")
+            normalized[name] = value.detach().clone()
+        restored._buffers["contexts"] = normalized["contexts"].clone()
+        restored._buffers["positive_counts"] = normalized["positive_counts"].clone()
+        restored._buffers["negative_counts"] = normalized["negative_counts"].clone()
+        restored.load_state_dict(normalized, strict=True)
+        if payload.get("sha256") != restored.digest():
+            raise ValueError("contextual evidence-statistics checksum mismatch")
+        return restored
+
+
 class ExternalTransitionEvidenceCalibrator(nn.Module):
     """Trainable scalar calibration state around a frozen evidence evaluator."""
 
@@ -9254,6 +9544,7 @@ __all__ = [
     "DEFAULT_INTENTION_SPACE_ID",
     "DEFAULT_STATE_SPACE_ID",
     "EXTERNAL_CONTEXTUAL_EVIDENCE_CALIBRATOR_SCHEMA",
+    "EXTERNAL_CONTEXTUAL_TRANSITION_EVIDENCE_STATISTICS_SCHEMA",
     "EXTERNAL_CONTEXT_ADDRESS_RESOLVER_SCHEMA",
     "EXTERNAL_GOAL_CONDITIONED_MODEL_SELECTION_SCHEMA",
     "EXTERNAL_GOAL_EVALUATOR_SCHEMA",
@@ -9286,6 +9577,7 @@ __all__ = [
     "ExternalContextAddressResolver",
     "ExternalContextResolution",
     "ExternalContextualEvidenceCalibrator",
+    "ExternalContextualTransitionEvidenceStatistics",
     "ExternalGoalEvaluator",
     "ExternalModelBasedPlanner",
     "ExternalOnlineContextAddressResolver",

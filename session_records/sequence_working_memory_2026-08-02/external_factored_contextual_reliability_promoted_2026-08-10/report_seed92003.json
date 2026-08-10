@@ -1,0 +1,68 @@
+{
+  "schema": "neural-computer.external-factored-contextual-reliability.v1",
+  "seed": 92003,
+  "configuration": {
+    "slot_count": 4,
+    "rows_per_slot": 4,
+    "drift_delta": 0.04,
+    "match_tolerance": 0.005,
+    "reliability_threshold": 0.9,
+    "reliability_warmup": 4,
+    "claim": "context-isolated-replay-free-reliability-v1"
+  },
+  "metrics": {
+    "contextual_statuses": [
+      "reliability_veto",
+      "matched",
+      "reliability_veto",
+      "matched"
+    ],
+    "contextual_slots": [
+      null,
+      1,
+      null,
+      3
+    ],
+    "global_control_status": "reliability_veto",
+    "quarantined_observations": 8,
+    "contextual_observation_count": 16,
+    "global_observation_count": 16
+  },
+  "gates": {
+    "all_slots_promoted": true,
+    "negative_slots_vetoed": true,
+    "positive_slots_match": true,
+    "positive_slot_identity_preserved": true,
+    "negative_quarantine_retained": true,
+    "global_control_overveto_is_observed": true,
+    "fact_bank_unchanged_by_routes": true,
+    "contextual_state_persisted": true,
+    "restored_positive_route": true,
+    "base_frozen": true,
+    "controller_frozen": true,
+    "context_encoder_unchanged": true,
+    "replay_free": true
+  },
+  "accounting": {
+    "unique_verifier_outcomes": 16,
+    "unique_logical_transition_lifetimes": 16,
+    "contextual_sufficient_statistics_updates": 4,
+    "global_control_statistics_updates": 4,
+    "base_optimizer_updates": 0,
+    "residual_optimizer_updates": 0,
+    "replayed_examples": 0,
+    "old_regime_replay": 0,
+    "controller_optimizer_updates": 0,
+    "context_encoder_optimizer_updates": 0,
+    "wall_seconds": 0.031905375013593584
+  },
+  "digests": {
+    "base": "d5406936006070bc08fc786f4b6bcffdf6555051316719a498c420755d41de44",
+    "controller": "64cc3fc7732fbe4daa54e0b49c2f36554812d141cbf64d41071c2e1ae667da4f",
+    "context_encoder": "fa556e207cd247524926eb0a42ac4a66861b4ceed0f6a72687bbe0ea5bdeefd7",
+    "router": "3b5bcc8fcb573e67ecee58935bb6735b9aa118cd369f03ec82cb6bd1252b7a94",
+    "contextual_statistics": "c2e7bc8666900da45d0741c70013f6443fdbc0bbf9f6519766e37ff9b1501b31",
+    "global_statistics": "6adfd6275ea98dcd888897791eeccc815693615a3cb535baeb695db87fb4217d"
+  },
+  "promoted": true
+}
