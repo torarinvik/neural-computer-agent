@@ -2535,3 +2535,14 @@ primitive, not learned open-world identity or automatic version promotion. See
 The same boundary can attach a persisted contradiction-aware sparse factual
 overlap index; it accelerates identity proposals but does not replace factual
 verification or promotion gates.
+
+The two mechanisms were then composed in a five-seed pressure test. Four
+opaque nonlinear regimes were admitted through randomized partial windows and
+each received a disjoint randomized drift update using only half of its new
+rows. All initial and drift versions promoted, old behavior remained within
+tolerance, mixed evidence stayed ambiguous, sparse identity and router state
+round-tripped exactly, and the controller/base/context encoder stayed frozen
+with zero old-regime replay during drift. This is a bounded composition result
+for randomized missingness plus gradual drift; it is not learned open-world
+version formation or general continual learning. Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_random_drift_promoted_2026-08-10/`.

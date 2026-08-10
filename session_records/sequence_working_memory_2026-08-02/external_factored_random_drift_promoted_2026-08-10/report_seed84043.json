@@ -1,0 +1,322 @@
+{
+  "schema": "neural-computer.external-factored-random-drift.v1",
+  "seed": 84043,
+  "configuration": {
+    "regime_count": 4,
+    "initial_observed_rows": 14,
+    "initial_heldout_rows": 4,
+    "initial_window_rows": 7,
+    "drift_update_rows": 4,
+    "drift_heldout_rows": 4,
+    "mask": "independent_seeded_random_permutations_v1",
+    "residual_model_family": "random_feature_sufficient_statistics_v1",
+    "claim": "bounded-factored-random-missingness-drift-composition-v1"
+  },
+  "metrics": {
+    "orders": {
+      "0": [
+        3,
+        9,
+        2,
+        4,
+        8,
+        13,
+        6,
+        10,
+        7,
+        0,
+        11,
+        12,
+        5,
+        1
+      ],
+      "1": [
+        0,
+        7,
+        2,
+        1,
+        8,
+        13,
+        3,
+        9,
+        5,
+        10,
+        6,
+        4,
+        12,
+        11
+      ],
+      "2": [
+        9,
+        3,
+        0,
+        10,
+        6,
+        2,
+        4,
+        1,
+        5,
+        7,
+        12,
+        13,
+        11,
+        8
+      ],
+      "3": [
+        9,
+        3,
+        10,
+        12,
+        4,
+        2,
+        0,
+        7,
+        5,
+        1,
+        6,
+        11,
+        13,
+        8
+      ]
+    },
+    "drift_orders": {
+      "0": [
+        7,
+        3,
+        4,
+        1,
+        6,
+        2,
+        5,
+        0
+      ],
+      "1": [
+        4,
+        7,
+        2,
+        5,
+        6,
+        3,
+        1,
+        0
+      ],
+      "2": [
+        0,
+        1,
+        7,
+        3,
+        5,
+        2,
+        6,
+        4
+      ],
+      "3": [
+        5,
+        3,
+        7,
+        2,
+        4,
+        6,
+        1,
+        0
+      ]
+    },
+    "stream_statuses": {
+      "0": [
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged"
+      ],
+      "1": [
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged"
+      ],
+      "2": [
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged"
+      ],
+      "3": [
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged",
+        "staged"
+      ]
+    },
+    "initial_promotion_receipts": [
+      {
+        "accepted": true,
+        "slot_id": 0,
+        "heldout_error": 0.0010371245443820953,
+        "reason": "candidate passed factual and retention probes",
+        "schema": "neural-computer.external-factored-transition-promotion.v1"
+      },
+      {
+        "accepted": true,
+        "slot_id": 1,
+        "heldout_error": 0.01450464129447937,
+        "reason": "candidate passed factual and retention probes",
+        "schema": "neural-computer.external-factored-transition-promotion.v1"
+      },
+      {
+        "accepted": true,
+        "slot_id": 2,
+        "heldout_error": 0.0697707012295723,
+        "reason": "candidate passed factual and retention probes",
+        "schema": "neural-computer.external-factored-transition-promotion.v1"
+      },
+      {
+        "accepted": true,
+        "slot_id": 3,
+        "heldout_error": 0.008916581980884075,
+        "reason": "candidate passed factual and retention probes",
+        "schema": "neural-computer.external-factored-transition-promotion.v1"
+      }
+    ],
+    "drift_promotion_receipts": [
+      {
+        "accepted": true,
+        "slot_id": 0,
+        "heldout_error": 0.0010517393238842487,
+        "reason": "bound residual passed factual and retention probes",
+        "schema": "neural-computer.external-factored-transition-promotion.v1",
+        "target_error_before": 0.0010371245443820953,
+        "target_error_after": 0.0022455407306551933,
+        "drift_error_after": 0.0010517394402995706
+      },
+      {
+        "accepted": true,
+        "slot_id": 1,
+        "heldout_error": 0.0030960720032453537,
+        "reason": "bound residual passed factual and retention probes",
+        "schema": "neural-computer.external-factored-transition-promotion.v1",
+        "target_error_before": 0.014504642225801945,
+        "target_error_after": 0.009000258520245552,
+        "drift_error_after": 0.0030960720032453537
+      },
+      {
+        "accepted": true,
+        "slot_id": 2,
+        "heldout_error": 0.0014130042400211096,
+        "reason": "bound residual passed factual and retention probes",
+        "schema": "neural-computer.external-factored-transition-promotion.v1",
+        "target_error_before": 0.0697707012295723,
+        "target_error_after": 0.0024963172618299723,
+        "drift_error_after": 0.0014130041236057878
+      },
+      {
+        "accepted": true,
+        "slot_id": 3,
+        "heldout_error": 0.0020266773644834757,
+        "reason": "bound residual passed factual and retention probes",
+        "schema": "neural-computer.external-factored-transition-promotion.v1",
+        "target_error_before": 0.00891658291220665,
+        "target_error_after": 0.004238831344991922,
+        "drift_error_after": 0.0020266773644834757
+      }
+    ],
+    "alternating_routes": {
+      "0": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "1": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "2": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "3": [
+        3,
+        3,
+        3,
+        3
+      ]
+    },
+    "restored_drift_routes": {
+      "0": 0,
+      "1": 1,
+      "2": 2,
+      "3": 3
+    },
+    "mixed_status": "ambiguous",
+    "retained_initial_mse": {
+      "0": 0.0022455407306551933,
+      "1": 0.009000258520245552,
+      "2": 0.0024963172618299723,
+      "3": 0.004238831344991922
+    },
+    "retained_drift_mse": {
+      "0": 0.0010517394402995706,
+      "1": 0.0030960720032453537,
+      "2": 0.0014130041236057878,
+      "3": 0.0020266773644834757
+    },
+    "sparse_records": 72
+  },
+  "gates": {
+    "all_initial_regimes_promoted": true,
+    "random_initial_windows_stage_and_continue": true,
+    "all_drift_versions_promoted": true,
+    "partial_drift_evidence": true,
+    "random_routes_alternate": true,
+    "mixed_partial_is_ambiguous": true,
+    "initial_retention_after_drift": true,
+    "drift_heldout_quality": true,
+    "exact_persistence": true,
+    "restored_drift_routes_correct": true,
+    "sparse_identity_persisted": true,
+    "base_unchanged": true,
+    "controller_unchanged": true,
+    "context_encoder_unchanged": true,
+    "replay_free": true
+  },
+  "accounting": {
+    "base_optimizer_updates": 0,
+    "residual_optimizer_updates": 0,
+    "residual_statistics_updates": 12,
+    "controller_optimizer_updates": 0,
+    "context_encoder_optimizer_updates": 0,
+    "old_regime_replay_during_drift": 0,
+    "unique_initial_observed_rows": 56,
+    "unique_initial_heldout_rows": 16,
+    "unique_drift_update_rows": 16,
+    "unique_drift_heldout_rows": 16,
+    "wall_seconds": 0.18941262498265132
+  },
+  "digests": {
+    "base": "5dc291a2783d524fdec132e7823c73e3b11904ce54072b0e280e1a260ca0945d",
+    "controller": "af56b73332cc83e550b4c6aaf58663c225dfb50a2ea2238af52bb2fe508cc188",
+    "context_encoder": "65e4ee5d867daf47aa9452e177f089005d1e3bb22e24c92a6ba4d9e3a39e45b5",
+    "router": "9fb50859cd552ff7157fcf51f61ea8240a55b2d621dc5cffe59ef09849f9cbc8"
+  },
+  "promoted": true
+}

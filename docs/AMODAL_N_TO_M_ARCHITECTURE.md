@@ -6532,3 +6532,33 @@ outcomes are kept as separate factual versions rather than averaged away.
 This is bounded replay-free drift retention, not arbitrary nonstationarity or
 learned semantic identity. Evidence is archived in
 `session_records/sequence_working_memory_2026-08-02/external_factored_nonlinear_drift_sparse_identity_promoted_2026-08-10/`.
+
+## Composition: randomized partial evidence plus drift (2026-08-10)
+
+The two strongest factored external-memory mechanisms were composed in
+`experiments/external_factored_random_drift/`. Four opaque nonlinear regimes
+were admitted through independent randomized seven-row windows. Each retained
+slot then received a disjoint randomized drift update containing only `4/8`
+rows, while the other four rows served as an independent drift gate. The
+previous regime's held-out rows were used as a retention gate and were not
+replayed during the drift transaction.
+
+Across five seeds, every initial and drift version promoted. Random partial
+reads routed the correct opaque slot, mixed-regime evidence remained
+ambiguous, all retained initial and drift held-outs stayed below the prediction
+tolerance, and router state plus the sparse evidence index round-tripped
+exactly. The controller, shared base, and context encoder remained byte-stable;
+old-regime replay and optimizer updates were zero. Each seed consumed `56`
+unique initial observed rows, `16` unique drift-update rows, and performed `12`
+external residual-statistics updates.
+
+This promotes only a bounded composition result: replay-free randomized
+partial evidence plus gradual factual drift. It does not establish learned
+semantic identity, arbitrary open-world version formation, nonstationary
+distribution discovery, unrestricted memory growth, or general continual
+learning. The unresolved high-ROI problem remains a learned resolver that can
+decide when later evidence belongs to an existing version, a new version, or
+an unresolved quarantine without caller-provided stream identity.
+
+Evidence is archived in
+`session_records/sequence_working_memory_2026-08-02/external_factored_random_drift_promoted_2026-08-10/`.
