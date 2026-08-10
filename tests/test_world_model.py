@@ -30,6 +30,7 @@ from neural_computer import (
     ExternalTransitionRouteMemory,
     ExternalTransitionRouteQuery,
     OpaqueCandidateGrowthRouter,
+    OpaqueCapacityPlanner,
 )
 
 
@@ -472,6 +473,40 @@ def test_transition_route_memory_consolidation_is_retention_gated_and_persistent
             ).selected_slot_id
             == 10
         )
+
+
+def test_transition_route_memory_adapts_to_opaque_capacity_planner() -> None:
+    memory = ExternalTransitionRouteMemory(
+        4,
+        max_prototypes_per_slot=3,
+        merge_cosine=0.99,
+    )
+    memory.register_slot(10, prototype=torch.tensor([1.0, 0.0, 0.0, 0.0]))
+    assert memory.observe(
+        10,
+        torch.tensor([0.0, 1.0, 0.0, 0.0]),
+        query_mask=torch.tensor([False, True, True, False]),
+    )
+    candidates = memory.policy_candidates(10)
+    assert candidates.keys.shape == (1, 3, 4)
+    assert candidates.values[0, 1].tolist() == [0.0, 1.0, 1.0, 0.0]
+    assert candidates.occupied[0].tolist() == [True, True, False]
+    source_digest = memory.digest()
+    planner = OpaqueCapacityPlanner(width=4, hidden=8).eval()
+    plan = memory.maintenance_plan(
+        10,
+        torch.tensor([0.0, 0.0, 0.0, 1.0]),
+        planner=planner,
+        query_mask=torch.tensor([True, False, False, True]),
+        protected_indices=(0,),
+    )
+    assert plan.action in {"admit", "evict", "consolidate", "grow"}
+    if plan.eviction_index is not None:
+        assert plan.eviction_index != 0
+    if plan.pair is not None:
+        assert plan.pair[0] != plan.pair[1]
+        assert all(index in {0, 1} for index in plan.pair)
+    assert memory.digest() == source_digest
 
 
 def test_transition_route_query_can_use_slot_local_prototype_memory() -> None:

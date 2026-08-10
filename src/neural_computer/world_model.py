@@ -27,6 +27,7 @@ from .addressing import OpaqueCandidateGrowthRouter
 from .growth import compress_growth_artifact, decompress_growth_artifact
 from .memory import (
     AppendOnlyContentAddressedMemory,
+    MemoryCandidates,
     MemoryQuery,
     MemoryWriteReceipt,
 )
@@ -4062,6 +4063,101 @@ class ExternalTransitionRouteMemory:
         if slot_id not in self._prototypes:
             raise KeyError(f"unknown transition route-memory slot: {slot_id}")
         return len(self._prototypes[slot_id])
+
+    def policy_candidates(self, slot_id: int) -> MemoryCandidates:
+        """Expose opaque rows to a replaceable memory-side capacity policy.
+
+        Keys are normalized route prototypes, values are learned evidence
+        masks, and strengths are generic support statistics.  No frontend,
+        modality, task, or protocol identity is encoded in this view.
+        """
+
+        self._validate_slot_id(slot_id)
+        if slot_id not in self._prototypes:
+            raise KeyError(f"unknown transition route-memory slot: {slot_id}")
+        capacity = self.max_prototypes_per_slot
+        keys = torch.zeros(1, capacity, self.width, dtype=torch.float32)
+        values = torch.zeros_like(keys)
+        strengths = torch.zeros(1, capacity, dtype=torch.float32)
+        timestamps = torch.zeros_like(strengths)
+        occupied = torch.zeros(1, capacity, dtype=torch.bool)
+        for index, (prototype, prototype_mask, count) in enumerate(
+            zip(
+                self._prototypes[slot_id],
+                self._prototype_masks[slot_id],
+                self._counts[slot_id],
+                strict=True,
+            )
+        ):
+            keys[0, index] = prototype
+            values[0, index] = (
+                torch.ones(self.width, dtype=torch.float32)
+                if prototype_mask is None
+                else prototype_mask.to(dtype=torch.float32)
+            )
+            strengths[0, index] = float(count) / float(count + 1)
+            occupied[0, index] = True
+        return MemoryCandidates(
+            keys=keys,
+            values=values,
+            strengths=strengths,
+            timestamps=timestamps,
+            occupied=occupied,
+        ).validate(width=self.width, capacity=capacity, batch=1)
+
+    def maintenance_plan(
+        self,
+        slot_id: int,
+        query: torch.Tensor,
+        *,
+        planner: Any,
+        query_mask: torch.Tensor | None = None,
+        protected_indices: Sequence[int] = (),
+        consolidation_available: bool = True,
+    ) -> Any:
+        """Ask an opaque capacity planner for a non-binding maintenance plan.
+
+        The planner sees only the candidate view returned by
+        :meth:`policy_candidates`, the normalized incoming route evidence, and
+        generic protection/availability facts.  Applying a plan remains the
+        caller's responsibility and must use ``grow_verified``,
+        ``consolidate_verified``, or ``replace_verified`` with an independent
+        retention probe.
+        """
+
+        self._validate_slot_id(slot_id)
+        if slot_id not in self._prototypes:
+            raise KeyError(f"unknown transition route-memory slot: {slot_id}")
+        if not callable(getattr(planner, "propose", None)):
+            raise TypeError("transition route-memory planner must expose propose")
+        if not isinstance(consolidation_available, bool):
+            raise TypeError("transition route-memory consolidation availability must be bool")
+        normalized, observed_mask = self._normalize(query, query_mask)
+        candidates = self.policy_candidates(slot_id)
+        protected = torch.zeros(
+            1,
+            self.max_prototypes_per_slot,
+            dtype=torch.bool,
+        )
+        for index in protected_indices:
+            if (
+                not isinstance(index, int)
+                or isinstance(index, bool)
+                or index < 0
+                or index >= self.prototype_count(slot_id)
+            ):
+                raise ValueError("transition route-memory protected index is invalid")
+            protected[0, index] = True
+        return planner.propose(
+            candidates,
+            normalized.unsqueeze(0),
+            observed_mask.to(dtype=torch.float32).unsqueeze(0),
+            protected,
+            consolidation_available=torch.tensor(
+                [consolidation_available],
+                dtype=torch.bool,
+            ),
+        )
 
     def propose(
         self,
